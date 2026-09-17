@@ -26,7 +26,8 @@ import {
 
 /** Expected column keys in order. */
 const EXPECTED_COLUMN_KEYS = [
-  'studentName',
+  'forename',
+  'surname',
   'completeness',
   'accuracy',
   'spag',
@@ -35,14 +36,15 @@ const EXPECTED_COLUMN_KEYS = [
 
 /** Expected column header accessible names in order. */
 const EXPECTED_COLUMN_HEADERS = [
-  'Student Name',
+  'Forename',
+  'Surname',
   'Completeness',
   'Accuracy',
   'SPaG',
   'Average',
 ] as const;
 
-/** Metric column keys (the four metric columns, not studentName). */
+/** Metric column keys (the four metric columns, not forename/surname). */
 const METRIC_COLUMN_KEYS = ['completeness', 'accuracy', 'spag', 'average'] as const;
 
 // ---------------------------------------------------------------------------
@@ -104,7 +106,7 @@ describe('buildStudentAveragesTableColumns', () => {
   // -----------------------------------------------------------------------
   // Column count and headers
   // -----------------------------------------------------------------------
-  it('returns five columns with correct keys and headers', () => {
+  it('returns six columns with correct keys and headers', () => {
     const columns = buildStudentAveragesTableColumns(EMPTY_FILTERS);
 
     expect(columns).toHaveLength(EXPECTED_COLUMN_KEYS.length);
@@ -112,9 +114,9 @@ describe('buildStudentAveragesTableColumns', () => {
     columns.forEach((column, index) => {
       expect(column.key).toBe(EXPECTED_COLUMN_KEYS[index]);
       const expectedHeader = EXPECTED_COLUMN_HEADERS[index];
-      // The studentName column (index 0) still has a plain string title;
-      // metric columns (indices 1-4) have a MetricIconLabel title (JSX).
-      if (index === 0) {
+      // The forename/surname columns (indices 0-1) still have plain string
+      // titles; metric columns (indices 2-5) have a MetricIconLabel title (JSX).
+      if (index <= 1) {
         expect(column.title).toBe(expectedHeader);
       } else {
         // Render the JSX title element and check the SVG's aria-label via
@@ -133,16 +135,18 @@ describe('buildStudentAveragesTableColumns', () => {
   });
 
   // -----------------------------------------------------------------------
-  // studentName column has no filter properties
+  // forename/surname columns have no filter properties
   // -----------------------------------------------------------------------
-  it('studentName column has no filters/filteredValue/onFilter', () => {
+  it('forename and surname columns have no filters/filteredValue/onFilter', () => {
     const columns = buildStudentAveragesTableColumns(EMPTY_FILTERS);
-    const nameColumn = columns.find((c) => c.key === 'studentName');
+    for (const key of ['forename', 'surname']) {
+      const nameColumn = columns.find((c) => c.key === key);
 
-    expect(nameColumn).toBeDefined();
-    expect(nameColumn!.filters).toBeUndefined();
-    expect(nameColumn!.filteredValue).toBeUndefined();
-    expect(nameColumn!.onFilter).toBeUndefined();
+      expect(nameColumn).toBeDefined();
+      expect(nameColumn!.filters).toBeUndefined();
+      expect(nameColumn!.filteredValue).toBeUndefined();
+      expect(nameColumn!.onFilter).toBeUndefined();
+    }
   });
 
   // -----------------------------------------------------------------------
@@ -239,19 +243,88 @@ describe('buildStudentAveragesTableColumns', () => {
   });
 
   // -----------------------------------------------------------------------
-  // studentName column renders plain Typography.Text
+  // forename/surname columns render plain Typography.Text
   // -----------------------------------------------------------------------
-  it('studentName column renders plain Typography.Text with the student name', () => {
+  it('forename and surname columns render plain Typography.Text with the split name', () => {
     const columns = buildStudentAveragesTableColumns(EMPTY_FILTERS);
-    const nameColumn = columns.find((c) => c.key === 'studentName');
-    expect(nameColumn).toBeDefined();
-    expect(nameColumn!.render).toBeDefined();
+    const forenameColumn = columns.find((c) => c.key === 'forename');
+    const surnameColumn = columns.find((c) => c.key === 'surname');
+    expect(forenameColumn).toBeDefined();
+    expect(surnameColumn).toBeDefined();
+    expect(forenameColumn!.render).toBeDefined();
+    expect(surnameColumn!.render).toBeDefined();
 
-    const record = buildRow({ studentId: 's-1', studentName: 'Alice' });
-    const renderedElement = nameColumn!.render!('Alice', record, 0);
+    const record = buildRow({ studentId: 's-1', studentName: 'Alice Smith' });
+    const forenameElement = forenameColumn!.render!('Alice', record, 0);
+    const surnameElement = surnameColumn!.render!('Smith', record, 0);
 
-    render(<>{renderedElement}</>);
+    render(<>{forenameElement}</>);
+    render(<>{surnameElement}</>);
     expect(screen.getByText('Alice')).toBeInTheDocument();
+    expect(screen.getByText('Smith')).toBeInTheDocument();
+  });
+
+  // -----------------------------------------------------------------------
+  // Split-column sorters order by their own derived value
+  // -----------------------------------------------------------------------
+  it('orders rows by surname via the Surname column sorter', () => {
+    const columns = buildStudentAveragesTableColumns(EMPTY_FILTERS);
+    const surnameColumn = columns.find((c) => c.key === 'surname');
+    expect(surnameColumn).toBeDefined();
+    expect(surnameColumn!.sorter).toBeDefined();
+
+    const sorter = surnameColumn!.sorter as {
+      compare: (first: StudentAverageRowModel, second: StudentAverageRowModel) => number;
+    };
+    const smithRow = buildRow({ studentId: 's-1', studentName: 'Alice Smith' });
+    const jonesRow = buildRow({ studentId: 's-2', studentName: 'Bob Jones' });
+
+    const sorted = [smithRow, jonesRow].toSorted(sorter.compare);
+    expect(sorted.map((row) => row.studentId)).toEqual(['s-2', 's-1']);
+  });
+
+  it('orders rows by forename via the Forename column sorter', () => {
+    const columns = buildStudentAveragesTableColumns(EMPTY_FILTERS);
+    const forenameColumn = columns.find((c) => c.key === 'forename');
+    expect(forenameColumn).toBeDefined();
+    expect(forenameColumn!.sorter).toBeDefined();
+
+    const sorter = forenameColumn!.sorter as {
+      compare: (first: StudentAverageRowModel, second: StudentAverageRowModel) => number;
+    };
+    // Same pair as the Surname sorter test with the opposite expectation:
+    // forename ascending puts Alice before Bob, while surname ascending puts
+    // Jones before Smith. This symmetry proves each column sorts by its own
+    // derived value rather than the full name.
+    const smithRow = buildRow({ studentId: 's-1', studentName: 'Alice Smith' });
+    const jonesRow = buildRow({ studentId: 's-2', studentName: 'Bob Jones' });
+
+    const sorted = [jonesRow, smithRow].toSorted(sorter.compare);
+    expect(sorted.map((row) => row.studentId)).toEqual(['s-1', 's-2']);
+  });
+
+  // -----------------------------------------------------------------------
+  // One-token names render an empty surname cell
+  // -----------------------------------------------------------------------
+  it('renders an empty surname cell for a one-token name', () => {
+    const columns = buildStudentAveragesTableColumns(EMPTY_FILTERS);
+    const forenameColumn = columns.find((c) => c.key === 'forename');
+    const surnameColumn = columns.find((c) => c.key === 'surname');
+    expect(forenameColumn).toBeDefined();
+    expect(surnameColumn).toBeDefined();
+
+    const record = buildRow({ studentId: 's-9', studentName: 'Plato' });
+    const { container: forenameContainer, unmount: unmountForename } = render(
+      <>{forenameColumn!.render!('Plato', record, 0)}</>
+    );
+    expect(forenameContainer.textContent).toContain('Plato');
+    unmountForename();
+
+    const { container: surnameContainer, unmount: unmountSurname } = render(
+      <>{surnameColumn!.render!('', record, 0)}</>
+    );
+    expect(surnameContainer.textContent).toBe('');
+    unmountSurname();
   });
 
   // -----------------------------------------------------------------------

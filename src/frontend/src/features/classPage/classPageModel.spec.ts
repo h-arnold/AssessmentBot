@@ -11,6 +11,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { createMetricResult } from '../../test/dataAnalysis/fixtures';
+import type { MetricResult } from '../../services/dataAnalysis/dataAnalysis.zod';
 import { buildClassPageViewModel, compareAssignmentUpdatedAtDesc } from './classPageModel';
 import type {
   ClassPageAdapterResult,
@@ -117,7 +118,7 @@ describe('buildClassPageViewModel', () => {
       const result = buildClassPageViewModel({
         adapterResult,
         filters: { searchTerm: '' },
-        sort: { column: 'studentName', direction: 'asc' },
+        sort: { column: 'forename', direction: 'asc' },
       });
 
       expect(result.recentAssignments).toEqual(adapterResult.recentAssignments);
@@ -150,7 +151,7 @@ describe('buildClassPageViewModel', () => {
       const result = buildClassPageViewModel({
         adapterResult,
         filters: { searchTerm: 'li' },
-        sort: { column: 'studentName', direction: 'asc' },
+        sort: { column: 'forename', direction: 'asc' },
       });
 
       const expectedFilteredCount = 2;
@@ -173,7 +174,7 @@ describe('buildClassPageViewModel', () => {
       const result = buildClassPageViewModel({
         adapterResult,
         filters: { searchTerm: '' },
-        sort: { column: 'studentName', direction: 'asc' },
+        sort: { column: 'forename', direction: 'asc' },
       });
 
       const expectedCount = 2;
@@ -182,50 +183,75 @@ describe('buildClassPageViewModel', () => {
   });
 
   // -----------------------------------------------------------------------
-  // Sort — studentName
+  // Sort — name columns (surname ordering differs from forename ordering)
   // -----------------------------------------------------------------------
-  describe('sort by studentName', () => {
-    it('sorts by studentName ascending when that column is specified', () => {
-      const charlieRow = buildStudentRow({ studentId: 's-3', studentName: 'Charlie' });
-      const aliceRow = buildStudentRow({ studentId: 's-1', studentName: 'Alice' });
-      const bobRow = buildStudentRow({ studentId: 's-2', studentName: 'Bob' });
-
+  describe('sort by name columns', () => {
+    it.each<{
+      name: string;
+      column: 'forename' | 'surname';
+      direction: 'asc' | 'desc';
+      students: [studentId: string, studentName: string][];
+      expectedIds: string[];
+    }>([
+      {
+        name: 'sorts by forename ascending when that column is specified',
+        column: 'forename',
+        direction: 'asc',
+        students: [
+          ['s-3', 'Charlie'],
+          ['s-1', 'Alice'],
+          ['s-2', 'Bob'],
+        ],
+        expectedIds: ['s-1', 's-2', 's-3'],
+      },
+      {
+        name: 'sorts by forename descending',
+        column: 'forename',
+        direction: 'desc',
+        students: [
+          ['s-1', 'Alice'],
+          ['s-3', 'Charlie'],
+          ['s-2', 'Bob'],
+        ],
+        expectedIds: ['s-3', 's-2', 's-1'],
+      },
+      {
+        name: 'sorts by surname ascending when that column is specified',
+        column: 'surname',
+        direction: 'asc',
+        students: [
+          ['s-1', 'Alice Smith'],
+          ['s-2', 'Bob Jones'],
+        ],
+        expectedIds: ['s-2', 's-1'],
+      },
+      {
+        name: 'sorts by surname descending',
+        column: 'surname',
+        direction: 'desc',
+        students: [
+          ['s-2', 'Bob Jones'],
+          ['s-1', 'Alice Smith'],
+        ],
+        expectedIds: ['s-1', 's-2'],
+      },
+    ])('$name', ({ column, direction, students, expectedIds }) => {
       const adapterResult = buildAdapterResult({
-        studentAverages: [charlieRow, aliceRow, bobRow],
+        studentAverages: students.map(([studentId, studentName]) =>
+          buildStudentRow({ studentId, studentName })
+        ),
       });
 
       const result = buildClassPageViewModel({
         adapterResult,
         filters: { searchTerm: '' },
-        sort: { column: 'studentName', direction: 'asc' },
+        sort: { column, direction },
       });
 
-      expect(result.studentAverages[0].studentId).toBe('s-1'); // Alice
-      expect(result.studentAverages[1].studentId).toBe('s-2'); // Bob
-      expect(result.studentAverages[2].studentId).toBe('s-3'); // Charlie
+      expect(result.studentAverages.map((row) => row.studentId)).toEqual(expectedIds);
     });
 
-    it('sorts by studentName descending', () => {
-      const aliceRow = buildStudentRow({ studentId: 's-1', studentName: 'Alice' });
-      const charlieRow = buildStudentRow({ studentId: 's-3', studentName: 'Charlie' });
-      const bobRow = buildStudentRow({ studentId: 's-2', studentName: 'Bob' });
-
-      const adapterResult = buildAdapterResult({
-        studentAverages: [aliceRow, charlieRow, bobRow],
-      });
-
-      const result = buildClassPageViewModel({
-        adapterResult,
-        filters: { searchTerm: '' },
-        sort: { column: 'studentName', direction: 'desc' },
-      });
-
-      expect(result.studentAverages[0].studentId).toBe('s-3'); // Charlie
-      expect(result.studentAverages[1].studentId).toBe('s-2'); // Bob
-      expect(result.studentAverages[2].studentId).toBe('s-1'); // Alice
-    });
-
-    it('sorts by studentName case-insensitively', () => {
+    it('sorts by forename case-insensitively', () => {
       const aliceRow = buildStudentRow({ studentId: 's-1', studentName: 'alice' });
       const bobRow = buildStudentRow({ studentId: 's-2', studentName: 'Bob' });
 
@@ -236,7 +262,7 @@ describe('buildClassPageViewModel', () => {
       const result = buildClassPageViewModel({
         adapterResult,
         filters: { searchTerm: '' },
-        sort: { column: 'studentName', direction: 'asc' },
+        sort: { column: 'forename', direction: 'asc' },
       });
 
       // Case-insensitive: 'alice' should sort before 'Bob'
@@ -249,122 +275,76 @@ describe('buildClassPageViewModel', () => {
   // Sort — metric columns (state-aware)
   // -----------------------------------------------------------------------
   describe('sort by metric columns (state-aware)', () => {
-    it('sorts by completeness ascending: computed (by value) → notAttempted → error', () => {
-      const lowComputedRow = buildStudentRow({
-        studentId: 's-1',
-        studentName: 'Alice',
+    /**
+     * Build a student row with the specified completeness result.
+     *
+     * @param {string} studentId - The student's identifier.
+     * @param {string} studentName - The student's display name.
+     * @param {MetricResult} completeness - The completeness state and value under test.
+     * @returns {StudentAverageRowModel} A student row with computed values for the other metrics.
+     */
+    function buildRowWithCompleteness(
+      studentId: string,
+      studentName: string,
+      completeness: MetricResult
+    ): StudentAverageRowModel {
+      return buildStudentRow({
+        studentId,
+        studentName,
         metrics: {
-          completeness: createMetricResult('computed', { value: 2 }),
+          completeness,
           accuracy: createMetricResult('computed'),
           spag: createMetricResult('computed'),
           average: createMetricResult('computed'),
         },
       });
-      const highComputedRow = buildStudentRow({
-        studentId: 's-2',
-        studentName: 'Bob',
-        metrics: {
-          completeness: createMetricResult('computed', { value: 8 }),
-          accuracy: createMetricResult('computed'),
-          spag: createMetricResult('computed'),
-          average: createMetricResult('computed'),
-        },
-      });
-      const notAttemptedRow = buildStudentRow({
-        studentId: 's-3',
-        studentName: 'Charlie',
-        metrics: {
-          completeness: createMetricResult('notAttempted'),
-          accuracy: createMetricResult('computed'),
-          spag: createMetricResult('computed'),
-          average: createMetricResult('computed'),
-        },
-      });
-      const errorRow = buildStudentRow({
-        studentId: 's-4',
-        studentName: 'Diana',
-        metrics: {
-          completeness: createMetricResult('error'),
-          accuracy: createMetricResult('computed'),
-          spag: createMetricResult('computed'),
-          average: createMetricResult('computed'),
-        },
-      });
+    }
 
-      const adapterResult = buildAdapterResult({
-        studentAverages: [errorRow, highComputedRow, notAttemptedRow, lowComputedRow],
-      });
+    const lowComputedRow = buildRowWithCompleteness(
+      's-1',
+      'Alice',
+      createMetricResult('computed', { value: 2 })
+    );
+    const highComputedRow = buildRowWithCompleteness(
+      's-2',
+      'Bob',
+      createMetricResult('computed', { value: 8 })
+    );
+    const notAttemptedRow = buildRowWithCompleteness(
+      's-3',
+      'Charlie',
+      createMetricResult('notAttempted')
+    );
+    const errorRow = buildRowWithCompleteness('s-4', 'Diana', createMetricResult('error'));
 
-      const result = buildClassPageViewModel({
-        adapterResult,
-        filters: { searchTerm: '' },
-        sort: { column: 'completeness', direction: 'asc' },
-      });
-
-      // Ascending: computed (2.0) → computed (8.0) → notAttempted → error
-      expect(result.studentAverages[0].studentId).toBe('s-1'); // Alice: computed, value 2
-      expect(result.studentAverages[1].studentId).toBe('s-2'); // Bob: computed, value 8
-      expect(result.studentAverages[2].studentId).toBe('s-3'); // Charlie: notAttempted
-      expect(result.studentAverages[3].studentId).toBe('s-4'); // Diana: error
-    });
-
-    it('sorts by completeness descending: error → notAttempted → computed (by value)', () => {
-      const highComputedRow = buildStudentRow({
-        studentId: 's-2',
-        studentName: 'Bob',
-        metrics: {
-          completeness: createMetricResult('computed', { value: 8 }),
-          accuracy: createMetricResult('computed'),
-          spag: createMetricResult('computed'),
-          average: createMetricResult('computed'),
-        },
-      });
-      const lowComputedRow = buildStudentRow({
-        studentId: 's-1',
-        studentName: 'Alice',
-        metrics: {
-          completeness: createMetricResult('computed', { value: 2 }),
-          accuracy: createMetricResult('computed'),
-          spag: createMetricResult('computed'),
-          average: createMetricResult('computed'),
-        },
-      });
-      const notAttemptedRow = buildStudentRow({
-        studentId: 's-3',
-        studentName: 'Charlie',
-        metrics: {
-          completeness: createMetricResult('notAttempted'),
-          accuracy: createMetricResult('computed'),
-          spag: createMetricResult('computed'),
-          average: createMetricResult('computed'),
-        },
-      });
-      const errorRow = buildStudentRow({
-        studentId: 's-4',
-        studentName: 'Diana',
-        metrics: {
-          completeness: createMetricResult('error'),
-          accuracy: createMetricResult('computed'),
-          spag: createMetricResult('computed'),
-          average: createMetricResult('computed'),
-        },
-      });
-
-      const adapterResult = buildAdapterResult({
-        studentAverages: [lowComputedRow, notAttemptedRow, highComputedRow, errorRow],
-      });
+    it.each<{
+      name: string;
+      direction: 'asc' | 'desc';
+      inputOrder: StudentAverageRowModel[];
+      expectedIds: string[];
+    }>([
+      {
+        name: 'sorts by completeness ascending: computed (by value) → notAttempted → error',
+        direction: 'asc',
+        inputOrder: [errorRow, highComputedRow, notAttemptedRow, lowComputedRow],
+        expectedIds: ['s-1', 's-2', 's-3', 's-4'],
+      },
+      {
+        name: 'sorts by completeness descending: error → notAttempted → computed (by value)',
+        direction: 'desc',
+        inputOrder: [lowComputedRow, notAttemptedRow, highComputedRow, errorRow],
+        expectedIds: ['s-4', 's-3', 's-2', 's-1'],
+      },
+    ])('$name', ({ direction, inputOrder, expectedIds }) => {
+      const adapterResult = buildAdapterResult({ studentAverages: inputOrder });
 
       const result = buildClassPageViewModel({
         adapterResult,
         filters: { searchTerm: '' },
-        sort: { column: 'completeness', direction: 'desc' },
+        sort: { column: 'completeness', direction },
       });
 
-      // Descending: error → notAttempted → computed (8.0) → computed (2.0)
-      expect(result.studentAverages[0].studentId).toBe('s-4'); // Diana: error
-      expect(result.studentAverages[1].studentId).toBe('s-3'); // Charlie: notAttempted
-      expect(result.studentAverages[2].studentId).toBe('s-2'); // Bob: computed, value 8
-      expect(result.studentAverages[3].studentId).toBe('s-1'); // Alice: computed, value 2
+      expect(result.studentAverages.map((row) => row.studentId)).toEqual(expectedIds);
     });
   });
 
@@ -420,7 +400,7 @@ describe('buildClassPageViewModel', () => {
       const result = buildClassPageViewModel({
         adapterResult,
         filters: { searchTerm: '' },
-        sort: { column: 'studentName', direction: 'asc' },
+        sort: { column: 'forename', direction: 'asc' },
       });
 
       // Same name "David" — tie-break by studentId ascending
@@ -433,7 +413,7 @@ describe('buildClassPageViewModel', () => {
   // Default sort
   // -----------------------------------------------------------------------
   describe('default sort', () => {
-    it('resets to studentName ascending when sort is null', () => {
+    it('resets to full-name ascending when sort is null', () => {
       const charlieRow = buildStudentRow({ studentId: 's-3', studentName: 'Charlie' });
       const aliceRow = buildStudentRow({ studentId: 's-1', studentName: 'Alice' });
 
@@ -447,17 +427,21 @@ describe('buildClassPageViewModel', () => {
         sort: null,
       });
 
-      // Defaults to studentName ascending: Alice before Charlie
+      // Defaults to full-name ascending: Alice before Charlie
       expect(result.studentAverages[0].studentId).toBe('s-1');
       expect(result.studentAverages[1].studentId).toBe('s-3');
     });
 
-    it('resets to studentName ascending when sort is undefined', () => {
-      const bobRow = buildStudentRow({ studentId: 's-2', studentName: 'Bob' });
-      const aliceRow = buildStudentRow({ studentId: 's-1', studentName: 'Alice' });
+    it('resets to full-name ascending when sort is undefined', () => {
+      // Same-forename pair: full-name ascending puts Brown before Smith,
+      // while a forename-only sort would tie on Alice and fall back to
+      // studentId (s-1 before s-2). Expecting Brown first pins full-name
+      // ordering as distinct from Forename ordering.
+      const aliceSmithRow = buildStudentRow({ studentId: 's-1', studentName: 'Alice Smith' });
+      const aliceBrownRow = buildStudentRow({ studentId: 's-2', studentName: 'Alice Brown' });
 
       const adapterResult = buildAdapterResult({
-        studentAverages: [bobRow, aliceRow],
+        studentAverages: [aliceSmithRow, aliceBrownRow],
       });
 
       const result = buildClassPageViewModel({
@@ -465,9 +449,9 @@ describe('buildClassPageViewModel', () => {
         filters: { searchTerm: '' },
       });
 
-      // Defaults to studentName ascending: Alice before Bob
-      expect(result.studentAverages[0].studentId).toBe('s-1');
-      expect(result.studentAverages[1].studentId).toBe('s-2');
+      // Defaults to full-name ascending: Alice Brown before Alice Smith
+      expect(result.studentAverages[0].studentId).toBe('s-2');
+      expect(result.studentAverages[1].studentId).toBe('s-1');
     });
   });
 

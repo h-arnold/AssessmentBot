@@ -2,8 +2,12 @@
  * Task Heatmap table component.
  *
  * Renders a grouped-header Ant Design Table from a structurally-narrowed
- * heatmap view model (`TaskHeatmapData`). The first column (Student Name) is
- * sticky with locale-aware sorting and default ascending order. Each task
+ * heatmap view model (`TaskHeatmapData`). The first two columns (Forename,
+ * Surname) are sticky: both derive their display values from the stored
+ * single-string `studentName` via the shared `splitStudentName` helper and
+ * sort by their own derived value with a `studentId` tie-break. The default
+ * initial order remains full-name ascending via the `rows.toSorted`
+ * pre-sort with the unchanged `compareStudentNames` comparator. Each task
  * column groups three metric sub-columns (Completeness, Accuracy, SPaG) with
  * score-range filters and a SPEC-ordered metric comparator.
  *
@@ -24,6 +28,7 @@ import type { TableColumnsType } from 'antd';
 import type { FilterValue } from 'antd/es/table/interface';
 
 import { compareStudentNames } from '../../services/dataAnalysis/compareStudentNames';
+import { compareStudentNamePart, splitStudentName } from '../../utils/splitStudentName';
 import {
   buildAdaptiveTierGroups,
   buildTaskMetricSubColumns,
@@ -34,7 +39,7 @@ import {
 } from './taskHeatmapTableColumns';
 import type { CellPreviewLookup } from './buildCellPreviewLookup';
 import type { PreviewStatus } from './assembleMergedPreviewData';
-import { APP_COL_WIDTH_STUDENT_NAME } from '../../theme/spacing';
+import { APP_COL_WIDTH_FORENAME, APP_COL_WIDTH_SURNAME } from '../../theme/spacing';
 
 // ---------------------------------------------------------------------------
 // Component
@@ -120,16 +125,36 @@ export function TaskHeatmapTable({
   );
 
   const columns: TableColumnsType<TaskHeatmapRow> = useMemo(() => {
-    // ── Student Name (top-level column, no children) ──────────────
-    const studentNameColumn = {
-      key: 'studentName',
-      title: 'Student Name',
+    // ── Forename / Surname (top-level sticky columns, no children) ──
+    // Both columns stay fixed at the start so the split name pair scrolls
+    // as one sticky unit. Neither column carries a `defaultSortOrder`: the
+    // default full-name ascending order comes from the `sortedRows` pre-sort
+    // above (unchanged `compareStudentNames`), and Ant Design applies the
+    // per-column derived sorter only after a header click.
+    const forenameColumn = {
+      key: 'forename',
+      title: 'Forename',
       fixed: 'start' as const,
-      width: APP_COL_WIDTH_STUDENT_NAME,
-      sorter: { compare: compareStudentNames, multiple: 1 },
-      defaultSortOrder: 'ascend' as const,
+      width: APP_COL_WIDTH_FORENAME,
+      sorter: {
+        compare: (a: TaskHeatmapRow, b: TaskHeatmapRow): number =>
+          compareStudentNamePart('forename', a, b),
+      },
       render: (_: unknown, record: TaskHeatmapRow): JSX.Element => (
-        <Typography.Text>{record.studentName}</Typography.Text>
+        <Typography.Text>{splitStudentName(record.studentName).forename}</Typography.Text>
+      ),
+    };
+    const surnameColumn = {
+      key: 'surname',
+      title: 'Surname',
+      fixed: 'start' as const,
+      width: APP_COL_WIDTH_SURNAME,
+      sorter: {
+        compare: (a: TaskHeatmapRow, b: TaskHeatmapRow): number =>
+          compareStudentNamePart('surname', a, b),
+      },
+      render: (_: unknown, record: TaskHeatmapRow): JSX.Element => (
+        <Typography.Text>{splitStudentName(record.studentName).surname}</Typography.Text>
       ),
     };
 
@@ -164,10 +189,10 @@ export function TaskHeatmapTable({
         title: group.title,
         children: group.columnIndices.map((index) => groupedTaskColumns[index]!),
       }));
-      return [studentNameColumn, ...taskTierColumns];
+      return [forenameColumn, surnameColumn, ...taskTierColumns];
     }
 
-    return [studentNameColumn, ...groupedTaskColumns];
+    return [forenameColumn, surnameColumn, ...groupedTaskColumns];
   }, [
     taskColumns,
     tableFilters,

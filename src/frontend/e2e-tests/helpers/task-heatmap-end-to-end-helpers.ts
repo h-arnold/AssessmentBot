@@ -48,7 +48,13 @@ export const HEATMAP_ASSIGNMENT_DISPLAY_TITLE = '7. Video Plan';
 
 const HEATMAP_TASK_IDS = ['task_001', 'task_002', 'task_003'] as const;
 
-/** The ten students seeded from the anon mock. */
+/**
+ * The ten students seeded from the anon mock.
+ *
+ * These literals intentionally remain honourific-free: the standing student
+ * name-table rule splits the first token into Forename and the remainder into
+ * Surname.
+ */
 const HEATMAP_STUDENTS: ReadonlyArray<HeatmapStudent> = [
   { id: '100000000004', name: 'Student One' },
   { id: '100000000005', name: 'Student Two' },

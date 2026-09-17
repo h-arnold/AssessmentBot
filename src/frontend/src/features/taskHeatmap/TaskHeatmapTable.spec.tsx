@@ -201,56 +201,20 @@ function buildHeatmapResult(overrides: Partial<HeatmapResult> = {}): HeatmapResu
  * @returns {HeatmapResult} A fixture where every cell is `notAttempted`.
  */
 function buildNoSubmissionsResult(): HeatmapResult {
+  const notAttemptedCellOverrides: CellOverrides = {
+    completenessValue: 'N',
+    accuracyValue: 'N',
+    spagValue: 'N',
+  };
   const rows: HeatmapRow[] = [
-    {
-      studentId: 's-1',
-      studentName: 'Student One',
-      cells: [
-        buildCell({
-          completenessValue: 'N',
-          accuracyValue: 'N',
-          spagValue: 'N',
-        }),
-        buildCell({
-          completenessValue: 'N',
-          accuracyValue: 'N',
-          spagValue: 'N',
-        }),
-      ],
-    },
-    {
-      studentId: 's-2',
-      studentName: 'Student Two',
-      cells: [
-        buildCell({
-          completenessValue: 'N',
-          accuracyValue: 'N',
-          spagValue: 'N',
-        }),
-        buildCell({
-          completenessValue: 'N',
-          accuracyValue: 'N',
-          spagValue: 'N',
-        }),
-      ],
-    },
-    {
-      studentId: 's-3',
-      studentName: 'Student Three',
-      cells: [
-        buildCell({
-          completenessValue: 'N',
-          accuracyValue: 'N',
-          spagValue: 'N',
-        }),
-        buildCell({
-          completenessValue: 'N',
-          accuracyValue: 'N',
-          spagValue: 'N',
-        }),
-      ],
-    },
-  ];
+    { studentId: 's-1', studentName: 'Student One' },
+    { studentId: 's-2', studentName: 'Student Two' },
+    { studentId: 's-3', studentName: 'Student Three' },
+  ].map(({ studentId, studentName }) => ({
+    studentId,
+    studentName,
+    cells: TASK_COLUMNS.map(() => buildCell(notAttemptedCellOverrides)),
+  }));
 
   return {
     assignmentId: 'assignment-1',
@@ -273,6 +237,43 @@ function buildZeroTasksResult(): HeatmapResult {
     className: 'Class A',
     rows: [],
     taskColumns: [],
+  };
+}
+
+/**
+ * Build a one-token-student fixture (empty-surname variant).
+ *
+ * @returns {HeatmapResult} A fixture with a single one-token student row.
+ */
+function buildOneTokenHeatmapResult(): HeatmapResult {
+  return buildHeatmapResult({
+    rows: [{ studentId: 's-1', studentName: 'Plato', cells: [buildCell({}), buildCell({})] }],
+  });
+}
+
+/**
+ * Build a heatmap result whose three orderings are pairwise distinct, so each
+ * split-column sorter is uniquely distinguished from the default full-name
+ * order and from the sibling column.
+ *
+ * Rows: Alice Smith (s-1), Alice Brown (s-2), Bob Jones (s-3).
+ * Full-name ascending: Brown s-2, Smith s-1, Jones s-3.
+ * Forename ascending (Alice tie broken by studentId, then Bob): s-1, s-2, s-3.
+ * Surname ascending (Brown, Jones, Smith): s-2, s-3, s-1.
+ *
+ * @returns {HeatmapResult} A heatmap result with sorter-distinguishing rows.
+ */
+function buildDistinctOrderHeatmapResult(): HeatmapResult {
+  return {
+    assignmentId: 'assignment-1',
+    assignmentName: 'Assignment One',
+    className: 'Class A',
+    rows: [
+      { studentId: 's-1', studentName: 'Alice Smith', cells: [buildCell({}), buildCell({})] },
+      { studentId: 's-2', studentName: 'Alice Brown', cells: [buildCell({}), buildCell({})] },
+      { studentId: 's-3', studentName: 'Bob Jones', cells: [buildCell({}), buildCell({})] },
+    ],
+    taskColumns: TASK_COLUMNS,
   };
 }
 
@@ -340,8 +341,12 @@ describe('TaskHeatmapTable', () => {
       />
     );
 
-    // Assert Student Name top-level column header
-    expect(screen.getByRole('columnheader', { name: /student name/i })).toBeInTheDocument();
+    // Assert Forename/Surname top-level column headers (no single Student Name)
+    expect(screen.getByRole('columnheader', { name: 'Forename' })).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: 'Surname' })).toBeInTheDocument();
+    expect(
+      screen.queryByRole('columnheader', { name: /student name/i })
+    ).not.toBeInTheDocument();
 
     // Assert task group headers
     expect(screen.getByRole('columnheader', { name: TASK_1_TITLE })).toBeInTheDocument();
@@ -417,10 +422,10 @@ describe('TaskHeatmapTable', () => {
   });
 
   // -------------------------------------------------------------------------
-  // 3. Student Name sort — click the Student Name column sorter and assert
-  //    the row order changes to compareStudentNames order.
+  // 3. Forename/Surname sort — click each split column sorter and assert
+  //    the row order follows that column's derived value.
   // -------------------------------------------------------------------------
-  it('clicking Student Name column sorter reorders rows via compareStudentNames', async () => {
+  it('clicking the Forename column sorter reorders rows by derived forename', async () => {
     const result = buildHeatmapResult();
     const { container } = render(
       <TaskHeatmapTable
@@ -431,7 +436,7 @@ describe('TaskHeatmapTable', () => {
       />
     );
 
-    // Default sort should be ascending by student name.
+    // Default sort is full-name ascending via the pre-sort.
     // Fixture students: Student One, Student Two, Student Three
     // compareStudentNames (locale-aware, case-insensitive):
     //   "Student One" < "Student Three" < "Student Two"
@@ -439,25 +444,49 @@ describe('TaskHeatmapTable', () => {
     const initialRowKeys = getRenderedRowKeys(container);
     expect(initialRowKeys).toEqual(['s-1', 's-3', 's-2']);
 
-    // Click the Student Name column header sorter
-    const studentNameHeader = screen.getByRole('columnheader', {
-      name: /student name/i,
-    });
-    const sorter = studentNameHeader.querySelector('.ant-table-column-sorters');
+    // Click the Forename column header sorter. Every fixture forename is
+    // "Student", so the derived forename ties and the studentId tie-break
+    // applies: s-1, s-2, s-3.
+    const forenameHeader = screen.getByRole('columnheader', { name: 'Forename' });
+    const sorter = forenameHeader.querySelector('.ant-table-column-sorters');
     expect(sorter).toBeInTheDocument();
 
-    // First click: descending (toggle from default 'ascend' to 'descend')
-    await user.click(sorter!);
-
-    // Expected descending order: Student Two, Student Three, Student One
-    const descRowKeys = getRenderedRowKeys(container);
-    expect(descRowKeys).toEqual(['s-2', 's-3', 's-1']);
-
-    // Second click: back to ascending
+    // First click: ascending forename order (studentId tie-break).
     await user.click(sorter!);
 
     const ascRowKeys = getRenderedRowKeys(container);
-    expect(ascRowKeys).toEqual(['s-1', 's-3', 's-2']);
+    expect(ascRowKeys).toEqual(['s-1', 's-2', 's-3']);
+  });
+
+  it('clicking the Surname column sorter reorders rows by derived surname', async () => {
+    const result = buildHeatmapResult();
+    const { container } = render(
+      <TaskHeatmapTable
+        heatmapResult={result}
+        cellPreviewLookup={null}
+        isAssignmentLoading={false}
+        showAssignmentError={false}
+      />
+    );
+
+    // Default sort is full-name ascending: s-1, s-3, s-2 (as above).
+    const initialRowKeys = getRenderedRowKeys(container);
+    expect(initialRowKeys).toEqual(['s-1', 's-3', 's-2']);
+
+    // Click the Surname column header sorter twice: ascending surname order
+    // (One < Three < Two) matches the default, so descend to observe the
+    // derived order: Two, Three, One.
+    const surnameHeader = screen.getByRole('columnheader', { name: 'Surname' });
+    const sorter = surnameHeader.querySelector('.ant-table-column-sorters');
+    expect(sorter).toBeInTheDocument();
+
+    // First click: ascending (matches the default full-name order here).
+    await user.click(sorter!);
+    expect(getRenderedRowKeys(container)).toEqual(['s-1', 's-3', 's-2']);
+
+    // Second click: descending surname order.
+    await user.click(sorter!);
+    expect(getRenderedRowKeys(container)).toEqual(['s-2', 's-3', 's-1']);
   });
 
   // -------------------------------------------------------------------------
@@ -516,10 +545,12 @@ describe('TaskHeatmapTable', () => {
       // Assert "No submissions yet" caption is present above the table
       expect(screen.getByText('No submissions yet')).toBeInTheDocument();
 
-      // Assert every student row still renders
-      expect(screen.getByText('Student One')).toBeInTheDocument();
-      expect(screen.getByText('Student Two')).toBeInTheDocument();
-      expect(screen.getByText('Student Three')).toBeInTheDocument();
+      // Assert every student row still renders (split forename/surname cells).
+      // All three forenames are "Student"; surnames are unique.
+      expect(screen.getAllByText('Student')).toHaveLength(STUDENT_ROW_COUNT);
+      expect(screen.getByText('One')).toBeInTheDocument();
+      expect(screen.getByText('Two')).toBeInTheDocument();
+      expect(screen.getByText('Three')).toBeInTheDocument();
 
       // Assert every task column renders with the expected group headers
       expect(screen.getByRole('columnheader', { name: TASK_1_TITLE })).toBeInTheDocument();
@@ -533,7 +564,7 @@ describe('TaskHeatmapTable', () => {
       );
     });
 
-    it('renders only the Student Name column header when taskColumns is empty', () => {
+    it('renders only the Forename/Surname column headers when taskColumns is empty', () => {
       const result = buildZeroTasksResult();
       render(
         <TaskHeatmapTable
@@ -544,8 +575,12 @@ describe('TaskHeatmapTable', () => {
         />
       );
 
-      // Student Name column should render
-      expect(screen.getByRole('columnheader', { name: /student name/i })).toBeInTheDocument();
+      // Forename/Surname columns should render, with no single Student Name column
+      expect(screen.getByRole('columnheader', { name: 'Forename' })).toBeInTheDocument();
+      expect(screen.getByRole('columnheader', { name: 'Surname' })).toBeInTheDocument();
+      expect(
+        screen.queryByRole('columnheader', { name: /student name/i })
+      ).not.toBeInTheDocument();
 
       // No task group headers
       expect(screen.queryByRole('columnheader', { name: TASK_1_ID })).not.toBeInTheDocument();
@@ -715,14 +750,38 @@ describe('TaskHeatmapTable', () => {
     });
   });
 
-  it('renders an error Alert in the popover when showAssignmentError is true', async () => {
+  it.each<{
+    title: string;
+    lookup: CellPreviewLookup | null;
+    showAssignmentError: boolean;
+    expectedText: string;
+  }>([
+    {
+      title: 'renders an error Alert in the popover when showAssignmentError is true',
+      lookup: null,
+      showAssignmentError: true,
+      expectedText: "Couldn't load task details",
+    },
+    {
+      title: 'shows artifact content from cellPreviewLookup in the popover when the lookup has data',
+      lookup: POPULATED_LOOKUP,
+      showAssignmentError: false,
+      expectedText: 'Student answered the question correctly.',
+    },
+    {
+      title: 'shows empty artifact and No reasoning available in the popover when the lookup has no entry',
+      lookup: EMPTY_LOOKUP,
+      showAssignmentError: false,
+      expectedText: 'No reasoning available',
+    },
+  ])('$title', async ({ lookup, showAssignmentError, expectedText }) => {
     const result = buildHeatmapResult();
     render(
       <TaskHeatmapTable
         heatmapResult={result}
-        cellPreviewLookup={null}
+        cellPreviewLookup={lookup}
         isAssignmentLoading={false}
-        showAssignmentError={true}
+        showAssignmentError={showAssignmentError}
       />
     );
 
@@ -735,58 +794,7 @@ describe('TaskHeatmapTable', () => {
     await waitFor(() => {
       const popover = document.querySelector('.ant-popover');
       expect(popover).toBeInTheDocument();
-      expect(popover!.textContent).toContain("Couldn't load task details");
-    });
-  });
-
-  it('shows artifact content from cellPreviewLookup in the popover when the lookup has data', async () => {
-    const result = buildHeatmapResult();
-    render(
-      <TaskHeatmapTable
-        heatmapResult={result}
-        cellPreviewLookup={POPULATED_LOOKUP}
-        isAssignmentLoading={false}
-        showAssignmentError={false}
-      />
-    );
-
-    const cell = getHeatmapCellByLabel('Student One, task_001, Completeness: 5');
-    const trigger = cell.querySelector('span')!;
-    expect(trigger).toBeInTheDocument();
-
-    await user.hover(trigger);
-
-    await waitFor(() => {
-      const popover = document.querySelector('.ant-popover');
-      expect(popover).toBeInTheDocument();
-      // The lookup provides TEXT artifact content — assert the reasoning text
-      expect(popover!.textContent).toContain('Student answered the question correctly.');
-    });
-  });
-
-  it('shows empty artifact and No reasoning available in the popover when the lookup has no entry', async () => {
-    const result = buildHeatmapResult();
-    render(
-      <TaskHeatmapTable
-        heatmapResult={result}
-        cellPreviewLookup={EMPTY_LOOKUP}
-        isAssignmentLoading={false}
-        showAssignmentError={false}
-      />
-    );
-
-    const cell = getHeatmapCellByLabel('Student One, task_001, Completeness: 5');
-    const trigger = cell.querySelector('span')!;
-    expect(trigger).toBeInTheDocument();
-
-    await user.hover(trigger);
-
-    await waitFor(() => {
-      const popover = document.querySelector('.ant-popover');
-      expect(popover).toBeInTheDocument();
-      // GREEN behaviour: when the lookup has no entry for this student/task,
-      // the popover shows "No reasoning available"
-      expect(popover!.textContent).toContain('No reasoning available');
+      expect(popover!.textContent).toContain(expectedText);
     });
   });
 
@@ -843,6 +851,98 @@ describe('TaskHeatmapTable', () => {
     expect(sortedRowKeys).not.toEqual(defaultRowKeys);
     // The first row should no longer be s-1 (Student One)
     expect(sortedRowKeys[0]).not.toBe('s-1');
+  });
+
+  // -------------------------------------------------------------------------
+  // 8. Split-cell rendering — two-token names split across the Forename and
+  //    Surname cells, while one-token students show the whole name in the
+  //    forename cell and an empty surname cell without crashing.
+  // -------------------------------------------------------------------------
+
+  it('renders a two-token student forename and surname in the split cells', () => {
+    const { container } = render(
+      <TaskHeatmapTable
+        heatmapResult={buildDistinctOrderHeatmapResult()}
+        cellPreviewLookup={null}
+        isAssignmentLoading={false}
+        showAssignmentError={false}
+      />
+    );
+
+    const row = container.querySelector('tbody tr[data-row-key="s-1"]');
+    expect(row).not.toBeNull();
+    const cells = row!.querySelectorAll('td');
+    // Forename then Surname are the first two body columns.
+    expect(cells[0]?.textContent).toBe('Alice');
+    expect(cells[1]?.textContent).toBe('Smith');
+  });
+
+  it('renders a one-token student forename with an empty surname cell', () => {
+    const { container } = render(
+      <TaskHeatmapTable
+        heatmapResult={buildOneTokenHeatmapResult()}
+        cellPreviewLookup={null}
+        isAssignmentLoading={false}
+        showAssignmentError={false}
+      />
+    );
+
+    const row = container.querySelector('tbody tr[data-row-key="s-1"]');
+    expect(row).not.toBeNull();
+    const cells = row!.querySelectorAll('td');
+    // Forename then Surname are the first two body columns.
+    expect(cells[0]?.textContent).toBe('Plato');
+    expect(cells[1]?.textContent).toBe('');
+  });
+
+  // -------------------------------------------------------------------------
+  // 9. Split-column sorting with pairwise-distinct orderings — each derived
+  //    sorter is uniquely distinguished from the default full-name order and
+  //    from its sibling column.
+  // -------------------------------------------------------------------------
+
+  it('orders rows by forename via the Forename column sorter under distinct orderings', async () => {
+    const { container } = render(
+      <TaskHeatmapTable
+        heatmapResult={buildDistinctOrderHeatmapResult()}
+        cellPreviewLookup={null}
+        isAssignmentLoading={false}
+        showAssignmentError={false}
+      />
+    );
+
+    // Default full-name ascending: Brown s-2, Smith s-1, Jones s-3.
+    expect(getRenderedRowKeys(container)).toEqual(['s-2', 's-1', 's-3']);
+
+    const forenameHeader = screen.getByRole('columnheader', { name: 'Forename' });
+    const sorter = forenameHeader.querySelector('.ant-table-column-sorters');
+    expect(sorter).toBeInTheDocument();
+    await user.click(sorter!);
+
+    // Forename ascending: Alice tie broken by studentId, then Bob.
+    expect(getRenderedRowKeys(container)).toEqual(['s-1', 's-2', 's-3']);
+  });
+
+  it('orders rows by surname via the Surname column sorter under distinct orderings', async () => {
+    const { container } = render(
+      <TaskHeatmapTable
+        heatmapResult={buildDistinctOrderHeatmapResult()}
+        cellPreviewLookup={null}
+        isAssignmentLoading={false}
+        showAssignmentError={false}
+      />
+    );
+
+    // Default full-name ascending: Brown s-2, Smith s-1, Jones s-3.
+    expect(getRenderedRowKeys(container)).toEqual(['s-2', 's-1', 's-3']);
+
+    const surnameHeader = screen.getByRole('columnheader', { name: 'Surname' });
+    const sorter = surnameHeader.querySelector('.ant-table-column-sorters');
+    expect(sorter).toBeInTheDocument();
+    await user.click(sorter!);
+
+    // Surname ascending: Brown, Jones, Smith.
+    expect(getRenderedRowKeys(container)).toEqual(['s-2', 's-3', 's-1']);
   });
 });
 

@@ -36,17 +36,17 @@
       },
       {
         "id": "student-0-3",
-        "name": "Miss Elta Metz",
+        "name": "Elta Metz",
         "email": "student-0-3@example.test"
       },
       {
         "id": "student-0-4",
-        "name": "Dr. Murray Connelly",
+        "name": "Murray Connelly",
         "email": "student-0-4@example.test"
       },
       {
         "id": "student-0-5",
-        "name": "Mrs. Myriam Hoppe",
+        "name": "Myriam Hoppe",
         "email": "student-0-5@example.test"
       },
       {
@@ -66,7 +66,7 @@
       },
       {
         "id": "student-0-9",
-        "name": "Mrs. Martine McLaughlin",
+        "name": "Martine McLaughlin",
         "email": "student-0-9@example.test"
       },
       {
@@ -273,7 +273,7 @@
           },
           {
             "studentId": "student-0-3",
-            "studentName": "Miss Elta Metz",
+            "studentName": "Elta Metz",
             "assignmentId": "assignment-0-1",
             "documentId": "submission-document-assignment-0-1-student-0-3",
             "items": {
@@ -331,7 +331,7 @@
           },
           {
             "studentId": "student-0-4",
-            "studentName": "Dr. Murray Connelly",
+            "studentName": "Murray Connelly",
             "assignmentId": "assignment-0-1",
             "documentId": "submission-document-assignment-0-1-student-0-4",
             "items": {
@@ -389,7 +389,7 @@
           },
           {
             "studentId": "student-0-5",
-            "studentName": "Mrs. Myriam Hoppe",
+            "studentName": "Myriam Hoppe",
             "assignmentId": "assignment-0-1",
             "documentId": "submission-document-assignment-0-1-student-0-5",
             "items": {
@@ -621,7 +621,7 @@
           },
           {
             "studentId": "student-0-9",
-            "studentName": "Mrs. Martine McLaughlin",
+            "studentName": "Martine McLaughlin",
             "assignmentId": "assignment-0-1",
             "documentId": "submission-document-assignment-0-1-student-0-9",
             "items": {
@@ -1159,7 +1159,7 @@
           },
           {
             "studentId": "student-0-3",
-            "studentName": "Miss Elta Metz",
+            "studentName": "Elta Metz",
             "assignmentId": "assignment-0-3",
             "documentId": "submission-document-assignment-0-3-student-0-3",
             "items": {
@@ -1217,7 +1217,7 @@
           },
           {
             "studentId": "student-0-4",
-            "studentName": "Dr. Murray Connelly",
+            "studentName": "Murray Connelly",
             "assignmentId": "assignment-0-3",
             "documentId": "submission-document-assignment-0-3-student-0-4",
             "items": {
@@ -1275,7 +1275,7 @@
           },
           {
             "studentId": "student-0-5",
-            "studentName": "Mrs. Myriam Hoppe",
+            "studentName": "Myriam Hoppe",
             "assignmentId": "assignment-0-3",
             "documentId": "submission-document-assignment-0-3-student-0-5",
             "items": {
@@ -1507,7 +1507,7 @@
           },
           {
             "studentId": "student-0-9",
-            "studentName": "Mrs. Martine McLaughlin",
+            "studentName": "Martine McLaughlin",
             "assignmentId": "assignment-0-3",
             "documentId": "submission-document-assignment-0-3-student-0-9",
             "items": {
@@ -1863,7 +1863,7 @@
           },
           {
             "studentId": "student-0-3",
-            "studentName": "Miss Elta Metz",
+            "studentName": "Elta Metz",
             "assignmentId": "assignment-0-4",
             "documentId": "submission-document-assignment-0-4-student-0-3",
             "items": {
@@ -1921,7 +1921,7 @@
           },
           {
             "studentId": "student-0-4",
-            "studentName": "Dr. Murray Connelly",
+            "studentName": "Murray Connelly",
             "assignmentId": "assignment-0-4",
             "documentId": "submission-document-assignment-0-4-student-0-4",
             "items": {
@@ -2091,7 +2091,7 @@
           },
           {
             "studentId": "student-0-3",
-            "studentName": "Miss Elta Metz",
+            "studentName": "Elta Metz",
             "assignmentId": "assignment-0-5",
             "documentId": "submission-document-assignment-0-5-student-0-3",
             "items": {
@@ -2125,7 +2125,7 @@
           },
           {
             "studentId": "student-0-4",
-            "studentName": "Dr. Murray Connelly",
+            "studentName": "Murray Connelly",
             "assignmentId": "assignment-0-5",
             "documentId": "submission-document-assignment-0-5-student-0-4",
             "items": {
@@ -2159,7 +2159,7 @@
           },
           {
             "studentId": "student-0-5",
-            "studentName": "Mrs. Myriam Hoppe",
+            "studentName": "Myriam Hoppe",
             "assignmentId": "assignment-0-5",
             "documentId": "submission-document-assignment-0-5-student-0-5",
             "items": {
@@ -2295,7 +2295,7 @@
           },
           {
             "studentId": "student-0-9",
-            "studentName": "Mrs. Martine McLaughlin",
+            "studentName": "Martine McLaughlin",
             "assignmentId": "assignment-0-5",
             "documentId": "submission-document-assignment-0-5-student-0-9",
             "items": {
@@ -2422,7 +2422,7 @@
     "students": [
       {
         "id": "student-1-0",
-        "name": "Mr. Floyd Kutch",
+        "name": "Floyd Kutch",
         "email": "student-1-0@example.test"
       },
       {
@@ -2504,7 +2504,7 @@
         "submissions": [
           {
             "studentId": "student-1-0",
-            "studentName": "Mr. Floyd Kutch",
+            "studentName": "Floyd Kutch",
             "assignmentId": "assignment-1-1",
             "documentId": "submission-document-assignment-1-1-student-1-0",
             "items": {
@@ -3208,7 +3208,7 @@
         "submissions": [
           {
             "studentId": "student-1-0",
-            "studentName": "Mr. Floyd Kutch",
+            "studentName": "Floyd Kutch",
             "assignmentId": "assignment-1-2",
             "documentId": "submission-document-assignment-1-2-student-1-0",
             "items": {
@@ -3390,7 +3390,7 @@
         "submissions": [
           {
             "studentId": "student-1-0",
-            "studentName": "Mr. Floyd Kutch",
+            "studentName": "Floyd Kutch",
             "assignmentId": "assignment-1-3",
             "documentId": "submission-document-assignment-1-3-student-1-0",
             "items": {
@@ -4094,7 +4094,7 @@
         "submissions": [
           {
             "studentId": "student-1-0",
-            "studentName": "Mr. Floyd Kutch",
+            "studentName": "Floyd Kutch",
             "assignmentId": "assignment-1-4",
             "documentId": "submission-document-assignment-1-4-student-1-0",
             "items": {
@@ -4392,7 +4392,7 @@
         "submissions": [
           {
             "studentId": "student-1-0",
-            "studentName": "Mr. Floyd Kutch",
+            "studentName": "Floyd Kutch",
             "assignmentId": "assignment-1-5",
             "documentId": "submission-document-assignment-1-5-student-1-0",
             "items": {
@@ -7230,7 +7230,7 @@
       },
       {
         "id": "student-3-2",
-        "name": "Dr. Devin Ryan",
+        "name": "Devin Ryan",
         "email": "student-3-2@example.test"
       },
       {
@@ -7240,7 +7240,7 @@
       },
       {
         "id": "student-3-4",
-        "name": "Dr. Kaden Rice",
+        "name": "Kaden Rice",
         "email": "student-3-4@example.test"
       },
       {
@@ -7255,7 +7255,7 @@
       },
       {
         "id": "student-3-7",
-        "name": "Mr. Darrick MacGyver",
+        "name": "Darrick MacGyver",
         "email": "student-3-7@example.test"
       },
       {
@@ -7265,7 +7265,7 @@
       },
       {
         "id": "student-3-9",
-        "name": "Miss Marsha Pollich",
+        "name": "Marsha Pollich",
         "email": "student-3-9@example.test"
       },
       {
@@ -7414,7 +7414,7 @@
           },
           {
             "studentId": "student-3-2",
-            "studentName": "Dr. Devin Ryan",
+            "studentName": "Devin Ryan",
             "assignmentId": "assignment-3-1",
             "documentId": null,
             "items": {
@@ -7530,7 +7530,7 @@
           },
           {
             "studentId": "student-3-4",
-            "studentName": "Dr. Kaden Rice",
+            "studentName": "Kaden Rice",
             "assignmentId": "assignment-3-1",
             "documentId": "submission-document-assignment-3-1-student-3-4",
             "items": {
@@ -7704,7 +7704,7 @@
           },
           {
             "studentId": "student-3-7",
-            "studentName": "Mr. Darrick MacGyver",
+            "studentName": "Darrick MacGyver",
             "assignmentId": "assignment-3-1",
             "documentId": "submission-document-assignment-3-1-student-3-7",
             "items": {
@@ -7820,7 +7820,7 @@
           },
           {
             "studentId": "student-3-9",
-            "studentName": "Miss Marsha Pollich",
+            "studentName": "Marsha Pollich",
             "assignmentId": "assignment-3-1",
             "documentId": "submission-document-assignment-3-1-student-3-9",
             "items": {
@@ -8118,7 +8118,7 @@
           },
           {
             "studentId": "student-3-2",
-            "studentName": "Dr. Devin Ryan",
+            "studentName": "Devin Ryan",
             "assignmentId": "assignment-3-2",
             "documentId": null,
             "items": {
@@ -8300,7 +8300,7 @@
           },
           {
             "studentId": "student-3-2",
-            "studentName": "Dr. Devin Ryan",
+            "studentName": "Devin Ryan",
             "assignmentId": "assignment-3-3",
             "documentId": null,
             "items": {
@@ -8416,7 +8416,7 @@
           },
           {
             "studentId": "student-3-4",
-            "studentName": "Dr. Kaden Rice",
+            "studentName": "Kaden Rice",
             "assignmentId": "assignment-3-3",
             "documentId": "submission-document-assignment-3-3-student-3-4",
             "items": {
@@ -8590,7 +8590,7 @@
           },
           {
             "studentId": "student-3-7",
-            "studentName": "Mr. Darrick MacGyver",
+            "studentName": "Darrick MacGyver",
             "assignmentId": "assignment-3-3",
             "documentId": "submission-document-assignment-3-3-student-3-7",
             "items": {
@@ -8706,7 +8706,7 @@
           },
           {
             "studentId": "student-3-9",
-            "studentName": "Miss Marsha Pollich",
+            "studentName": "Marsha Pollich",
             "assignmentId": "assignment-3-3",
             "documentId": "submission-document-assignment-3-3-student-3-9",
             "items": {
@@ -9004,7 +9004,7 @@
           },
           {
             "studentId": "student-3-2",
-            "studentName": "Dr. Devin Ryan",
+            "studentName": "Devin Ryan",
             "assignmentId": "assignment-3-4",
             "documentId": null,
             "items": {
@@ -9120,7 +9120,7 @@
           },
           {
             "studentId": "student-3-4",
-            "studentName": "Dr. Kaden Rice",
+            "studentName": "Kaden Rice",
             "assignmentId": "assignment-3-4",
             "documentId": "submission-document-assignment-3-4-student-3-4",
             "items": {
@@ -9324,7 +9324,7 @@
           },
           {
             "studentId": "student-3-4",
-            "studentName": "Dr. Kaden Rice",
+            "studentName": "Kaden Rice",
             "assignmentId": "assignment-3-5",
             "documentId": "submission-document-assignment-3-5-student-3-4",
             "items": {
@@ -9426,7 +9426,7 @@
           },
           {
             "studentId": "student-3-7",
-            "studentName": "Mr. Darrick MacGyver",
+            "studentName": "Darrick MacGyver",
             "assignmentId": "assignment-3-5",
             "documentId": "submission-document-assignment-3-5-student-3-7",
             "items": {
@@ -9494,7 +9494,7 @@
           },
           {
             "studentId": "student-3-9",
-            "studentName": "Miss Marsha Pollich",
+            "studentName": "Marsha Pollich",
             "assignmentId": "assignment-3-5",
             "documentId": "submission-document-assignment-3-5-student-3-9",
             "items": {

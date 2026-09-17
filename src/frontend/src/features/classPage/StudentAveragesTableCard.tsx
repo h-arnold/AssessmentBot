@@ -3,14 +3,15 @@
  *
  * Renders an Ant Design `Card` (`size="small"`, title `"Student Averages"`)
  * containing a control row (`Input.Search` on the left, static label on the
- * right) and an Ant Design `Table` with five columns (Student Name,
+ * right) and an Ant Design `Table` with six columns (Forename, Surname,
  * Completeness, Accuracy, SPaG, Average).
  *
  * @remarks
  * **State ownership.** The component owns three pieces of user-controlled
- * state: `searchTerm` (string, initial `''`), `sort` (column / direction,
- * initial `studentName` ascending), and `filters` (metric column band
- * filters, initial all empty).
+ * state: `searchTerm` (string, initial `''`), `sort` (column / direction or
+ * `null`, initial `null`), and `filters` (metric column band filters,
+ * initial all empty). A `null` sort means no explicit sort (initial render)
+ * or a cleared sort, and resolves to full-name ascending in the model.
  *
  * **Filtering.** The `onChange` callback stores the raw encoded filter keys
  * (score ranges with N/E toggle flags) into the typed `StudentAveragesTableFilters`
@@ -28,12 +29,14 @@
  * `SorterResult<StudentAverageRowModel> | SorterResult<StudentAverageRowModel>[]`.
  * If it is an array, the first element is used. When `sorter.order` is `null`
  * or `undefined` (clear-sort on third click), or `sorter.columnKey` is
- * missing, the sort resets to the default (`studentName` ascending).
+ * missing, the sort resets to `null`, which the model resolves to full-name
+ * ascending via the unchanged `compareStudentNames` ordering.
  *
  * **Clear-sort handling.** Ant Design v6 calls `onChange` with
  * `sorter.order === null` when the user clears the sort by clicking the
  * sorted column header a third time. The component detects this and resets
- * to the default sort.
+ * to the cleared (`null`) sort, so the table falls back to full-name
+ * ascending order.
  *
  * **Search input (v1 workaround).** The component uses `Space.Compact` with a
  * plain `Input` and `SearchOutlined` prefix instead of Ant Design's
@@ -56,7 +59,7 @@ import { SearchOutlined } from '@ant-design/icons';
 import type { ClassPageAdapterResult, StudentAverageRowModel } from './classPageAdapter.zod';
 import { pageContent } from '../../pages/pageContent';
 
-import { buildClassPageViewModel, DEFAULT_SORT } from './classPageModel';
+import { buildClassPageViewModel } from './classPageModel';
 import type { MetricColumnKey } from '../../services/dataAnalysis/metricDisplay/metricDisplayMeta';
 
 // ---------------------------------------------------------------------------
@@ -73,7 +76,7 @@ import {
 // ---------------------------------------------------------------------------
 
 /** Valid sort column keys for the Student Averages table. */
-type SortColumn = 'studentName' | MetricColumnKey;
+type SortColumn = 'forename' | 'surname' | MetricColumnKey;
 
 /** Sort state shape passed to the model. */
 type SortState = {
@@ -130,21 +133,22 @@ function extractFilterKeys(fv: FilterValue | null | undefined): readonly string[
 }
 
 /**
- * Normalise a single or array `SorterResult` to a typed `SortState`.
+ * Normalise a single or array `SorterResult` to a typed sort state.
  *
- * Returns the default sort when the sort is cleared (third click) or when the
- * column key is missing.
+ * Returns `null` when the sort is cleared (third click) or when the column
+ * key is missing. The model resolves a `null` sort to full-name ascending
+ * via the unchanged `compareStudentNames` ordering.
  *
  * @param {SorterResult<StudentAverageRowModel> | SorterResult<StudentAverageRowModel>[]} sorter -
  *   The sorter result from Ant Design's `onChange`.
- * @returns {SortState} The normalised sort state.
+ * @returns {SortState | null} The normalised sort state, or `null` when cleared.
  */
 function normaliseSorter(
   sorter: SorterResult<StudentAverageRowModel> | SorterResult<StudentAverageRowModel>[]
-): SortState {
+): SortState | null {
   const singleSorter = Array.isArray(sorter) ? sorter[0] : sorter;
   if (!singleSorter?.order || !singleSorter.columnKey) {
-    return DEFAULT_SORT;
+    return null;
   }
   const sortDirection = singleSorter.order === 'ascend' ? 'asc' : 'desc';
   return {
@@ -171,7 +175,9 @@ export function StudentAveragesTableCard(
 
   // ── State ──────────────────────────────────────────────────────────────
   const [searchTerm, setSearchTerm] = useState<string>('');
-  const [sort, setSort] = useState<SortState>(DEFAULT_SORT);
+  // Initial `null` sort resolves to full-name ascending in the model, so the
+  // initial order is unchanged by the column split.
+  const [sort, setSort] = useState<SortState | null>(null);
   const [filters, setFilters] = useState<StudentAveragesTableFilters>(INITIAL_FILTERS);
 
   // ── Memoised derived values ────────────────────────────────────────────
@@ -211,9 +217,9 @@ export function StudentAveragesTableCard(
    * Handle table sort and filter change.
    *
    * Maps the Ant Design `SorterResult` to the model's sort state vocabulary
-   * (`'ascend'` / `'descend'` → `'asc'` / `'desc'`). Resets to the default
-   * sort when the sort is cleared (third click) or when the column key is
-   * missing.
+   * (`'ascend'` / `'descend'` → `'asc'` / `'desc'`). Resets to the cleared
+   * (`null`) sort when the sort is cleared (third click) or when the column
+   * key is missing, so the model falls back to full-name ascending.
    *
    * Also stores the raw encoded filter keys from Ant Design's `filters` object
    * into the typed `StudentAveragesTableFilters` state so N/E toggle state set

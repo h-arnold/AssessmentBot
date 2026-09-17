@@ -44,10 +44,20 @@ export const APP_SPACE_SIZE_DEFAULT = 'middle' as const;
 export const APP_SPACE_SIZE_TIGHT = 'small' as const;
 
 /**
- * Fixed width (px) for the Student Name column. Shared by the Class and Task
- * Heatmap tables for consistent alignment.
+ * Fixed width (px) for the Forename column in the split student-name pair.
+ * Shared by the Class and Task Heatmap tables for consistent alignment.
+ * Pairs with `APP_COL_WIDTH_SURNAME` to preserve the original 200px
+ * single-column total: Forename (104) + Surname (96) = 200.
  */
-export const APP_COL_WIDTH_STUDENT_NAME = 200 as const;
+export const APP_COL_WIDTH_FORENAME = 104 as const;
+
+/**
+ * Fixed width (px) for the Surname column in the split student-name pair.
+ * Shared by the Class and Task Heatmap tables for consistent alignment.
+ * Pairs with `APP_COL_WIDTH_FORENAME` to preserve the original 200px
+ * single-column total: Forename (104) + Surname (96) = 200.
+ */
+export const APP_COL_WIDTH_SURNAME = 96 as const;
 
 /**
  * Fixed width (px) for a single metric column (e.g. Completeness, Accuracy, SPaG)

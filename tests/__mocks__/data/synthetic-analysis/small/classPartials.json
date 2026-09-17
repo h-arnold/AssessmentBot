@@ -8,13 +8,13 @@
     "classOwner": {
       "userId": "teacher-0",
       "email": "teacher-0@example.test",
-      "teacherName": "Mrs. Leola Kassulke"
+      "teacherName": "Leola Kassulke"
     },
     "teachers": [
       {
         "userId": "teacher-0",
         "email": "teacher-0@example.test",
-        "teacherName": "Mrs. Leola Kassulke"
+        "teacherName": "Leola Kassulke"
       }
     ],
     "active": true

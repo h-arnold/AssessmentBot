@@ -1,19 +1,23 @@
 /**
  * Column definitions for the Student Averages table.
  *
- * Exports a pure function that returns five column definitions in fixed order:
- * `studentName`, `completeness`, `accuracy`, `spag`, `average`. The metric
- * columns share a common pattern: gradient coloured-cell rendering (via
+ * Exports a pure function that returns six column definitions in fixed order:
+ * `forename`, `surname`, `completeness`, `accuracy`, `spag`, `average`. The
+ * Forename and Surname columns derive their display values from the stored
+ * single-string `studentName` via the shared `splitStudentName` helper (first
+ * token = forename, remainder = surname). The metric columns share a common
+ * pattern: gradient coloured-cell rendering (via
  * `resolveMetricTone(...).cellStyle`), and a numeric score-range filter via
  * `buildMetricRangeFilter`.
  *
  * @remarks
  * The `MetricToneColor` token set covers discrete `notAttempted` (`'default'`)
- * and `error` (`errorColor`) states only. Computed values render on a continuous
- * gradient and are filtered by score range, not by colour band. The `onFilter`
- * `resolveMetricTone` with the default scoring range `{ lower: 0, upper: 5 }`
- * to compute the cell's band, then compares the band colour string to the
- * filter value.
+ * and `error` (`errorColor`) states only. Computed values render on a
+ * continuous gradient (no fixed colour bands). Each metric column exposes a
+ * numeric score-range filter (`filterDropdown` with a range slider, Reset,
+ * and include-N/include-E toggles) whose `onFilter` matches computed scores
+ * inside the encoded range and honours the toggles for `notAttempted` and
+ * `error` states.
  *
  * **No React hooks.** The function is pure and called at render time by
  * `StudentAveragesTableCard` inside a `useMemo`.
@@ -30,7 +34,7 @@ import type { FilterValue } from 'antd/es/table/interface';
 import type { MetricResult } from '../../services/dataAnalysis/dataAnalysis.zod';
 import { getStudentMetric } from './classPageAdapter.zod';
 import type { StudentAverageRowModel } from './classPageAdapter.zod';
-import { compareStudentNames } from '../../services/dataAnalysis/compareStudentNames';
+import { compareStudentNamePart, splitStudentName } from '../../utils/splitStudentName';
 import { METRIC_DISPLAY_META } from '../../services/dataAnalysis/metricDisplay/metricDisplayMeta';
 import type { MetricColumnKey } from '../../services/dataAnalysis/metricDisplay/metricDisplayMeta';
 import {
@@ -40,7 +44,7 @@ import {
 import { buildMetricRangeFilter } from '../../services/dataAnalysis/metricDisplay/metricRangeFilter';
 import { decodeFilterToRange } from '../../services/dataAnalysis/metricDisplay/metricRangeKey';
 import { MetricIconLabel } from '../../components/MetricIconLabel/MetricIconLabel';
-import { APP_COL_WIDTH_STUDENT_NAME, APP_COL_WIDTH_METRIC_PILL } from '../../theme/spacing';
+import { APP_COL_WIDTH_FORENAME, APP_COL_WIDTH_SURNAME, APP_COL_WIDTH_METRIC_PILL } from '../../theme/spacing';
 
 // ---------------------------------------------------------------------------
 // Exported types
@@ -141,34 +145,55 @@ function buildMetricColumn(
 // ---------------------------------------------------------------------------
 
 /**
- * Build the five column definitions for the Student Averages table.
+ * Build the six column definitions for the Student Averages table.
  *
- * Columns in fixed order: `studentName`, `completeness`, `accuracy`, `spag`,
- * `average`. The `studentName` column is sortable with locale-aware,
- * case-insensitive comparison and a `studentId` tie-breaker. The four metric
- * columns each have a numeric score-range filter (via `buildMetricRangeFilter`)
- * and a `resolveMetricTone`-based gradient `cellStyle`.
+ * Columns in fixed order: `forename`, `surname`, `completeness`, `accuracy`,
+ * `spag`, `average`. Neither split column carries a `defaultSortOrder`: the
+ * initial order always comes from the view model, whose missing/cleared sort
+ * resolves to full-name ascending. A static default indicator on Forename
+ * would both misrepresent that ordering and make Ant Design re-sort the
+ * model-ordered rows by derived forename on mount. Each split column sorts
+ * by its own derived value with a `studentId` tie-break once the user sorts.
+ * The four metric columns each have a numeric score-range filter (via
+ * `buildMetricRangeFilter`) and a `resolveMetricTone`-based gradient
+ * `cellStyle`.
  *
  * @param {StudentAveragesTableFilters} filters - The current filter state for
  *   each metric column. Empty arrays mean no filter.
- * @returns {TableColumnsType<StudentAverageRowModel>} Five column definitions.
+ * @returns {TableColumnsType<StudentAverageRowModel>} Six column definitions.
  */
 export function buildStudentAveragesTableColumns(
   filters: StudentAveragesTableFilters
 ): TableColumnsType<StudentAverageRowModel> {
   return [
-    // ── Student Name (no filters) ──────────────────────────────────────
+    // ── Forename (no filters) ────────────────────────────────────────
+    // No `defaultSortOrder`: the initial full-name order comes from the
+    // view model (see `buildClassPageViewModel`), and a static indicator
+    // here would re-sort by derived forename on mount.
     {
-      key: 'studentName',
-      title: 'Student Name',
-      width: APP_COL_WIDTH_STUDENT_NAME,
+      key: 'forename',
+      title: 'Forename',
+      width: APP_COL_WIDTH_FORENAME,
       sorter: {
-        compare: compareStudentNames,
-        multiple: 1,
+        compare: (a: StudentAverageRowModel, b: StudentAverageRowModel): number =>
+          compareStudentNamePart('forename', a, b),
       },
-      defaultSortOrder: 'ascend',
       render: (_: unknown, record: StudentAverageRowModel): JSX.Element => (
-        <Typography.Text>{record.studentName}</Typography.Text>
+        <Typography.Text>{splitStudentName(record.studentName).forename}</Typography.Text>
+      ),
+    },
+
+    // ── Surname (no filters) ─────────────────────────────────────────
+    {
+      key: 'surname',
+      title: 'Surname',
+      width: APP_COL_WIDTH_SURNAME,
+      sorter: {
+        compare: (a: StudentAverageRowModel, b: StudentAverageRowModel): number =>
+          compareStudentNamePart('surname', a, b),
+      },
+      render: (_: unknown, record: StudentAverageRowModel): JSX.Element => (
+        <Typography.Text>{splitStudentName(record.studentName).surname}</Typography.Text>
       ),
     },
 

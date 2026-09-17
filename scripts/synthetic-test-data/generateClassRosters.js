@@ -5,6 +5,31 @@ const NULL_OWNER_CLASS_INDEX = 2;
 const ACTIVE_ALTERNATION_DIVISOR = 2;
 
 /**
+ * Leading honourific tokens stripped from generated person names. Only the
+ * first whitespace-separated token is ever removed; Faker suffix tokens and
+ * all remaining name tokens are preserved unchanged.
+ */
+const STRIPPED_LEADING_HONOURIFICS = new Set(['Mr', 'Mrs', 'Miss', 'Ms', 'Dr', 'Prof']);
+
+/**
+ * Removes one leading honourific token from a generated person name.
+ *
+ * @param {string} fullName The Faker-generated full person name.
+ * @returns {string} The name without a leading honourific, or the input unchanged.
+ */
+function stripLeadingHonourific(fullName) {
+  const [leadingToken, ...remainingTokens] = fullName.split(' ');
+  if (remainingTokens.length === 0) {
+    return fullName;
+  }
+  const bareToken = leadingToken.replace(/\.$/, '');
+  if (!STRIPPED_LEADING_HONOURIFICS.has(bareToken)) {
+    return fullName;
+  }
+  return remainingTokens.join(' ');
+}
+
+/**
  * Builds a deterministic teacher summary for a class.
  *
  * @param {{person: {fullName: () => string}}} faker Seeded Faker instance.
@@ -15,7 +40,7 @@ function buildTeacher(faker, classIndex) {
   return {
     userId: `teacher-${classIndex}`,
     email: `teacher-${classIndex}@example.test`,
-    teacherName: faker.person.fullName(),
+    teacherName: stripLeadingHonourific(faker.person.fullName()),
   };
 }
 
@@ -32,7 +57,7 @@ function buildStudents(faker, classIndex, studentsPerClass) {
   for (let studentIndex = 0; studentIndex < studentsPerClass; studentIndex += 1) {
     students.push({
       id: `student-${classIndex}-${studentIndex}`,
-      name: faker.person.fullName(),
+      name: stripLeadingHonourific(faker.person.fullName()),
       email: `student-${classIndex}-${studentIndex}@example.test`,
     });
   }
