@@ -177,7 +177,6 @@ export function buildStudentAveragesTableColumns(
       sorter: {
         compare: (a: StudentAverageRowModel, b: StudentAverageRowModel): number =>
           compareStudentNamePart('forename', a, b),
-        multiple: 1,
       },
       render: (_: unknown, record: StudentAverageRowModel): JSX.Element => (
         <Typography.Text>{splitStudentName(record.studentName).forename}</Typography.Text>
@@ -192,7 +191,6 @@ export function buildStudentAveragesTableColumns(
       sorter: {
         compare: (a: StudentAverageRowModel, b: StudentAverageRowModel): number =>
           compareStudentNamePart('surname', a, b),
-        multiple: 1,
       },
       render: (_: unknown, record: StudentAverageRowModel): JSX.Element => (
         <Typography.Text>{splitStudentName(record.studentName).surname}</Typography.Text>

@@ -139,7 +139,6 @@ export function TaskHeatmapTable({
       sorter: {
         compare: (a: TaskHeatmapRow, b: TaskHeatmapRow): number =>
           compareStudentNamePart('forename', a, b),
-        multiple: 1,
       },
       render: (_: unknown, record: TaskHeatmapRow): JSX.Element => (
         <Typography.Text>{splitStudentName(record.studentName).forename}</Typography.Text>
@@ -153,7 +152,6 @@ export function TaskHeatmapTable({
       sorter: {
         compare: (a: TaskHeatmapRow, b: TaskHeatmapRow): number =>
           compareStudentNamePart('surname', a, b),
-        multiple: 1,
       },
       render: (_: unknown, record: TaskHeatmapRow): JSX.Element => (
         <Typography.Text>{splitStudentName(record.studentName).surname}</Typography.Text>

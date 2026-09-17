@@ -66,8 +66,8 @@ interface MockColumn {
 /** The six column keys in order. */
 const COLUMN_KEYS = ['forename', 'surname', 'completeness', 'accuracy', 'spag', 'average'] as const;
 
-/** Default sort state (forename ascending) the model expects. */
-const DEFAULT_SORT = { column: 'forename', direction: 'asc' } as const;
+/** Forename-ascending sort state emitted on the first Forename header click. */
+const FORENAME_ASC_SORT = { column: 'forename', direction: 'asc' } as const;
 
 /** Sentinel for accessing the last element of an array. */
 const LAST_CALL_INDEX = -1;
@@ -310,7 +310,7 @@ describe('StudentAveragesTableCard', () => {
     // sort: { column: 'forename', direction: 'asc' } (ascending on first click)
     const lastCallArguments = mockBuildViewModel.mock.calls.at(LAST_CALL_INDEX)?.[0];
     expect(lastCallArguments).toBeDefined();
-    expect(lastCallArguments.sort).toMatchObject(DEFAULT_SORT);
+    expect(lastCallArguments.sort).toMatchObject(FORENAME_ASC_SORT);
   });
 
   // -----------------------------------------------------------------------
