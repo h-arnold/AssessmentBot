@@ -22,9 +22,7 @@ function stripLeadingHonourific(fullName) {
   if (remainingTokens.length === 0) {
     return fullName;
   }
-  const bareToken = leadingToken.endsWith('.')
-    ? leadingToken.slice(0, leadingToken.length - 1)
-    : leadingToken;
+  const bareToken = leadingToken.replace(/\.$/, '');
   if (!STRIPPED_LEADING_HONOURIFICS.has(bareToken)) {
     return fullName;
   }

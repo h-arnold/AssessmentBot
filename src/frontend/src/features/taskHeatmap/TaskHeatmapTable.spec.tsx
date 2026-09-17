@@ -201,56 +201,20 @@ function buildHeatmapResult(overrides: Partial<HeatmapResult> = {}): HeatmapResu
  * @returns {HeatmapResult} A fixture where every cell is `notAttempted`.
  */
 function buildNoSubmissionsResult(): HeatmapResult {
+  const notAttemptedCellOverrides: CellOverrides = {
+    completenessValue: 'N',
+    accuracyValue: 'N',
+    spagValue: 'N',
+  };
   const rows: HeatmapRow[] = [
-    {
-      studentId: 's-1',
-      studentName: 'Student One',
-      cells: [
-        buildCell({
-          completenessValue: 'N',
-          accuracyValue: 'N',
-          spagValue: 'N',
-        }),
-        buildCell({
-          completenessValue: 'N',
-          accuracyValue: 'N',
-          spagValue: 'N',
-        }),
-      ],
-    },
-    {
-      studentId: 's-2',
-      studentName: 'Student Two',
-      cells: [
-        buildCell({
-          completenessValue: 'N',
-          accuracyValue: 'N',
-          spagValue: 'N',
-        }),
-        buildCell({
-          completenessValue: 'N',
-          accuracyValue: 'N',
-          spagValue: 'N',
-        }),
-      ],
-    },
-    {
-      studentId: 's-3',
-      studentName: 'Student Three',
-      cells: [
-        buildCell({
-          completenessValue: 'N',
-          accuracyValue: 'N',
-          spagValue: 'N',
-        }),
-        buildCell({
-          completenessValue: 'N',
-          accuracyValue: 'N',
-          spagValue: 'N',
-        }),
-      ],
-    },
-  ];
+    { studentId: 's-1', studentName: 'Student One' },
+    { studentId: 's-2', studentName: 'Student Two' },
+    { studentId: 's-3', studentName: 'Student Three' },
+  ].map(({ studentId, studentName }) => ({
+    studentId,
+    studentName,
+    cells: TASK_COLUMNS.map(() => buildCell(notAttemptedCellOverrides)),
+  }));
 
   return {
     assignmentId: 'assignment-1',
@@ -786,14 +750,38 @@ describe('TaskHeatmapTable', () => {
     });
   });
 
-  it('renders an error Alert in the popover when showAssignmentError is true', async () => {
+  it.each<{
+    title: string;
+    lookup: CellPreviewLookup | null;
+    showAssignmentError: boolean;
+    expectedText: string;
+  }>([
+    {
+      title: 'renders an error Alert in the popover when showAssignmentError is true',
+      lookup: null,
+      showAssignmentError: true,
+      expectedText: "Couldn't load task details",
+    },
+    {
+      title: 'shows artifact content from cellPreviewLookup in the popover when the lookup has data',
+      lookup: POPULATED_LOOKUP,
+      showAssignmentError: false,
+      expectedText: 'Student answered the question correctly.',
+    },
+    {
+      title: 'shows empty artifact and No reasoning available in the popover when the lookup has no entry',
+      lookup: EMPTY_LOOKUP,
+      showAssignmentError: false,
+      expectedText: 'No reasoning available',
+    },
+  ])('$title', async ({ lookup, showAssignmentError, expectedText }) => {
     const result = buildHeatmapResult();
     render(
       <TaskHeatmapTable
         heatmapResult={result}
-        cellPreviewLookup={null}
+        cellPreviewLookup={lookup}
         isAssignmentLoading={false}
-        showAssignmentError={true}
+        showAssignmentError={showAssignmentError}
       />
     );
 
@@ -806,58 +794,7 @@ describe('TaskHeatmapTable', () => {
     await waitFor(() => {
       const popover = document.querySelector('.ant-popover');
       expect(popover).toBeInTheDocument();
-      expect(popover!.textContent).toContain("Couldn't load task details");
-    });
-  });
-
-  it('shows artifact content from cellPreviewLookup in the popover when the lookup has data', async () => {
-    const result = buildHeatmapResult();
-    render(
-      <TaskHeatmapTable
-        heatmapResult={result}
-        cellPreviewLookup={POPULATED_LOOKUP}
-        isAssignmentLoading={false}
-        showAssignmentError={false}
-      />
-    );
-
-    const cell = getHeatmapCellByLabel('Student One, task_001, Completeness: 5');
-    const trigger = cell.querySelector('span')!;
-    expect(trigger).toBeInTheDocument();
-
-    await user.hover(trigger);
-
-    await waitFor(() => {
-      const popover = document.querySelector('.ant-popover');
-      expect(popover).toBeInTheDocument();
-      // The lookup provides TEXT artifact content — assert the reasoning text
-      expect(popover!.textContent).toContain('Student answered the question correctly.');
-    });
-  });
-
-  it('shows empty artifact and No reasoning available in the popover when the lookup has no entry', async () => {
-    const result = buildHeatmapResult();
-    render(
-      <TaskHeatmapTable
-        heatmapResult={result}
-        cellPreviewLookup={EMPTY_LOOKUP}
-        isAssignmentLoading={false}
-        showAssignmentError={false}
-      />
-    );
-
-    const cell = getHeatmapCellByLabel('Student One, task_001, Completeness: 5');
-    const trigger = cell.querySelector('span')!;
-    expect(trigger).toBeInTheDocument();
-
-    await user.hover(trigger);
-
-    await waitFor(() => {
-      const popover = document.querySelector('.ant-popover');
-      expect(popover).toBeInTheDocument();
-      // When the lookup has no entry for this student/task, the popover
-      // shows "No reasoning available"
-      expect(popover!.textContent).toContain('No reasoning available');
+      expect(popover!.textContent).toContain(expectedText);
     });
   });
 

@@ -2,54 +2,63 @@ import { describe, expect, it } from 'vitest';
 import { compareStudentNamePart, splitStudentName } from './splitStudentName';
 
 describe('splitStudentName', () => {
-  it('returns empty forename and surname for an empty string', () => {
-    expect(splitStudentName('')).toEqual({ forename: '', surname: '' });
-  });
-
-  it('returns empty forename and surname for a whitespace-only string', () => {
-    expect(splitStudentName('   ')).toEqual({ forename: '', surname: '' });
-  });
-
-  it('returns the whole name as forename with an empty surname for a single token', () => {
-    expect(splitStudentName('Alice')).toEqual({ forename: 'Alice', surname: '' });
-  });
-
-  it('splits a two-token name into forename and surname', () => {
-    expect(splitStudentName('Alice Smith')).toEqual({ forename: 'Alice', surname: 'Smith' });
-  });
-
-  it('keeps apostrophes inside tokens when splitting', () => {
-    expect(splitStudentName("Burnice O'Kon")).toEqual({ forename: 'Burnice', surname: "O'Kon" });
-  });
-
-  it('joins the remaining tokens into a multi-token surname', () => {
-    expect(splitStudentName('Alice Mary Smith')).toEqual({
+  it.each<{ name: string; input: string; forename: string; surname: string }>([
+    {
+      name: 'returns empty forename and surname for an empty string',
+      input: '',
+      forename: '',
+      surname: '',
+    },
+    {
+      name: 'returns empty forename and surname for a whitespace-only string',
+      input: '   ',
+      forename: '',
+      surname: '',
+    },
+    {
+      name: 'returns the whole name as forename with an empty surname for a single token',
+      input: 'Alice',
       forename: 'Alice',
-      surname: 'Mary Smith',
-    });
-  });
-
-  it('collapses multiple internal spaces so the surname uses single spaces', () => {
-    expect(splitStudentName('Alice  Smith   Jones')).toEqual({
-      forename: 'Alice',
-      surname: 'Smith Jones',
-    });
-  });
-
-  it('trims leading and trailing whitespace around the tokens', () => {
-    expect(splitStudentName('  Alice   Smith  ')).toEqual({
+      surname: '',
+    },
+    {
+      name: 'splits a two-token name into forename and surname',
+      input: 'Alice Smith',
       forename: 'Alice',
       surname: 'Smith',
-    });
-  });
-
-  it('applies the first-token rule to honourific-shaped input without special-casing', () => {
-    // Non-behaviour lock-in: honourifics are never special-cased; the leading
-    // token is always the forename. Fixtures contain no such names (Section 1).
-    expect(splitStudentName('Miss Katarina Sauer')).toEqual({
+    },
+    {
+      name: 'keeps apostrophes inside tokens when splitting',
+      input: "Burnice O'Kon",
+      forename: 'Burnice',
+      surname: "O'Kon",
+    },
+    {
+      name: 'joins the remaining tokens into a multi-token surname',
+      input: 'Alice Mary Smith',
+      forename: 'Alice',
+      surname: 'Mary Smith',
+    },
+    {
+      name: 'collapses multiple internal spaces so the surname uses single spaces',
+      input: 'Alice  Smith   Jones',
+      forename: 'Alice',
+      surname: 'Smith Jones',
+    },
+    {
+      name: 'trims leading and trailing whitespace around the tokens',
+      input: '  Alice   Smith  ',
+      forename: 'Alice',
+      surname: 'Smith',
+    },
+    {
+      name: 'applies the first-token rule to honourific-shaped input without special-casing',
+      input: 'Miss Katarina Sauer',
       forename: 'Miss',
       surname: 'Katarina Sauer',
-    });
+    },
+  ])('$name', ({ input, forename, surname }) => {
+    expect(splitStudentName(input)).toEqual({ forename, surname });
   });
 });
 
