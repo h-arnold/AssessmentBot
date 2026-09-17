@@ -62,10 +62,12 @@ Consult these resources before and during review. Local docs contain project-spe
 - Local: [frontend-logging-and-error-handling.md](../../docs/developer/frontend/frontend-logging-and-error-handling.md)
 - Local: [frontend-modal-patterns.md](../../docs/developer/frontend/frontend-modal-patterns.md)
 - Local: [frontend-shared-helpers-and-abstraction-standards.md](../../docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md)
+- Local: [frontend-react-query-and-prefetch.md](../../docs/developer/frontend/frontend-react-query-and-prefetch.md)
 - Local: [frontend-shell-navigation-and-motion.md](../../docs/developer/frontend/frontend-shell-navigation-and-motion.md)
 - Local: [frontend-spacing-and-padding-standards.md](../../docs/developer/frontend/frontend-spacing-and-padding-standards.md)
 - Local: [metric-display-precision.md](../../docs/developer/frontend/metric-display-precision.md)
 - Local: [metric-icon-display.md](../../docs/developer/frontend/metric-icon-display.md)
+- Local: [navigation-consistency-status.md](../../docs/developer/frontend/navigation-consistency-status.md)
 - Ant Design v6 (LLM-friendly): <https://ant.design/llms.txt>
 - React: <https://react.dev>
 - TypeScript: <https://www.typescriptlang.org/docs/>
@@ -79,6 +81,11 @@ Consult these resources before and during review. Local docs contain project-spe
 - Local: [backend-logging-and-error-handling.md](../../docs/developer/backend/backend-logging-and-error-handling.md)
 - Local: [api-layer.md](../../docs/developer/backend/api-layer.md)
 - Local: [backend-testing.md](../../docs/developer/backend/backend-testing.md)
+- Local: [AssessmentFlow.md](../../docs/developer/backend/AssessmentFlow.md)
+- Local: [rehydration.md](../../docs/developer/backend/rehydration.md)
+- Local: [singletons.md](../../docs/developer/backend/singletons.md)
+- Local: [oauth-scopes.md](../../docs/developer/backend/oauth-scopes.md)
+- Local: [Vendoring.md](../../docs/developer/backend/Vendoring.md)
 - Local: [src/backend/AGENTS.md](../../src/backend/AGENTS.md) - Contains ArrayUtils usage patterns and utility class conventions
 - Google Apps Script Reference: <https://developers.google.com/apps-script/reference>
 
@@ -94,6 +101,7 @@ Consult these resources before and during review. Local docs contain project-spe
 - [AGENTS.md](../../AGENTS.md)
 - [CONTRIBUTING.md](../../CONTRIBUTING.md)
 - [Synthetic Test Data](../../docs/developer/testing/synthetic-test-data.md) — canonical architecture and canonical-fixture policy for the deterministic synthetic analysis corpus
+- [Known Flaky Tests](../../docs/developer/known-flaky-tests.md) — catalogue of known flaky tests and root causes
 
 **Data shapes (all modules — persistence, transport, validation)**:
 

@@ -17,6 +17,9 @@ Applies when editing `src/frontend/**`.
 | `docs/developer/frontend/frontend-testing.md`                                  | Frontend Vitest testing conventions and commands              |
 | `docs/developer/frontend/metric-display-precision.md`                          | Metric score decimal-place convention                         |
 | `docs/developer/frontend/metric-icon-display.md`                               | Metric icon rendering, theme-aware colour, stroke conventions |
+| `docs/developer/frontend/navigation-consistency-status.md`                     | Page-title/nav-card pattern status tracker                    |
+
+> `docs/developer/frontend/ant-design-docs-cache/` holds cached Ant Design component notes for offline reference. It is not canonical policy.
 
 ## 2. Language and Runtime
 

@@ -155,7 +155,7 @@ filtering — with the justification for each in
 - [Backend logging and error handling](../backend/backend-logging-and-error-handling.md) — logging policy and hygiene rules
 - [Data shapes INDEX](../data-shapes/INDEX.md) — canonical contracts, including
   [AuthCache](../data-shapes/auth-cache.md), [TriggerContext](../data-shapes/trigger-context.md),
-  [BackendConfig](../data-shapes/backend-config.md) and the
+  [AuthUsers](../data-shapes/auth-users.md), [BackendConfig](../data-shapes/backend-config.md) and the
   [transport envelope](../data-shapes/transport-envelope.md)
 - [src/backend/AGENTS.md](../../../src/backend/AGENTS.md) — sections 2.3–2.6 document the
   `AuthService` singleton, the private-by-default convention, the `webapp` deployment

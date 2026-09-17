@@ -41,40 +41,83 @@ markdown_extensions:
   - attr_list
   - md_in_html
 
+exclude_docs: |
+  developer/frontend/ant-design-docs-cache/*
+
 nav:
   - Home: README.md
   - Setup:
       - Overview: setup/README.md
       - Configuration Options: setup/configOptions.md
       - Setting Up Assessment Records: setup/settingUpAssessmentRecords.md
-      - Setting Up Overview Sheet: setup/settingUpOverviewSheet.md
   - How-Tos:
       - Overview: howTos/README.md
       - Rehydration: howTos/rehydration.md
-      - Singletons: developer/backend/singletons.md
   - Developer:
       - Backend:
-          - Agent Instructions: developer/backend/AGENT_BACKEND.md
           - API Layer: developer/backend/api-layer.md
           - Assessment Flow: developer/backend/AssessmentFlow.md
-          - Data Shapes: developer/backend/DATA_SHAPES.md
+          - Backend Logging and Error Handling: developer/backend/backend-logging-and-error-handling.md
+          - Backend Testing: developer/backend/backend-testing.md
           - OAuth Scopes: developer/backend/oauth-scopes.md
           - Rehydration: developer/backend/rehydration.md
-          - Singletons: developer/backend/singletons.md
-          - Testing: developer/backend/backend-testing.md
+          - Singleton Pattern: developer/backend/singletons.md
           - Vendoring: developer/backend/Vendoring.md
-
+      - Data Shapes:
+          - Index: developer/data-shapes/INDEX.md
+          - Transport Envelope: developer/data-shapes/transport-envelope.md
+          - ABClass: developer/data-shapes/abclass.md
+          - Assignment Definition: developer/data-shapes/assignment-definition.md
+          - Assignment: developer/data-shapes/assignment.md
+          - Auth Cache: developer/data-shapes/auth-cache.md
+          - Auth Users: developer/data-shapes/auth-users.md
+          - Backend Config: developer/data-shapes/backend-config.md
+          - Google Classrooms: developer/data-shapes/google-classrooms.md
+          - Reference Data: developer/data-shapes/reference-data.md
+          - Request Store: developer/data-shapes/request-store.md
+          - Trigger Context: developer/data-shapes/trigger-context.md
       - Frontend:
-          - Agent Instructions: developer/frontend/AGENT_FRONTEND.md
-          - Testing: developer/frontend/frontend-testing.md
+          - Frontend Testing: developer/frontend/frontend-testing.md
+          - Frontend Playwright E2E: developer/frontend/frontend-playwright-e2e.md
+          - Frontend Loading and Width Standards: developer/frontend/frontend-loading-and-width-standards.md
+          - Frontend Logging and Error Handling: developer/frontend/frontend-logging-and-error-handling.md
+          - Frontend Modal Patterns: developer/frontend/frontend-modal-patterns.md
+          - Frontend React Query and Prefetch: developer/frontend/frontend-react-query-and-prefetch.md
+          - Frontend Shared Helpers and Abstraction Standards: developer/frontend/frontend-shared-helpers-and-abstraction-standards.md
+          - Frontend Shell Navigation and Motion: developer/frontend/frontend-shell-navigation-and-motion.md
+          - Frontend Spacing and Padding Standards: developer/frontend/frontend-spacing-and-padding-standards.md
+          - Metric Display Precision: developer/frontend/metric-display-precision.md
+          - Metric Icon Display: developer/frontend/metric-icon-display.md
+          - Navigation Consistency Status: developer/frontend/navigation-consistency-status.md
       - Builder:
-          - Agent Instructions: developer/builder/AGENT_BUILDER.md
           - Builder Script: developer/builder/builder-script.md
+          - Regression Checker How-To: developer/builder/regression-checker-how-to.md
           - TypeScript and Lint Config Hierarchy: developer/builder/TypeScriptAndLintConfigHierarchy.md
+      - Security:
+          - Overview: developer/security/README.md
+          - Platform Security: developer/security/platform-security.md
+          - Application Authentication: developer/security/application-authentication.md
+          - Attack-Surface Reduction: developer/security/attack-surface-reduction.md
+          - Data-Handling Discipline: developer/security/data-handling.md
+          - Accepted Risks: developer/security/accepted-risks.md
+      - Testing:
+          - Synthetic Test Data: developer/testing/synthetic-test-data.md
+      - Templates:
+          - Specification Template: developer/SPEC_TEMPLATE.md
+          - Layout Specification Template: developer/LAYOUT_SPEC_TEMPLATE.md
+          - Action Plan Template: developer/ACTION_PLAN_TEMPLATE.md
+          - Regression CLI Spec: developer/regression-cli-spec.md
+      - Known Flaky Tests: developer/known-flaky-tests.md
+  - Architecture:
+      - YearGroupKey ADR: architecture/YearGroupKey.md
   - Pedagogy:
       - Overview: pedagogy/README.md
+      - Data Analysis and Scoring: pedagogy/data-analysis-scoring.md
   - Release Notes:
       - Releases: releaseNotes/RELEASES.md
+      - v1.0.0: releaseNotes/v1.0.0_release_notes.md
+      - v0.7.9: releaseNotes/v0.7.9_release_notes.md
+      - v0.7.8: releaseNotes/v0.7.8_release_notes.md
       - v0.7.7: releaseNotes/v0.7.7_release_notes.md
       - v0.7.6: releaseNotes/v0.7.6_release_notes.md
       - v0.7.5: releaseNotes/v0.7.5_release_notes.md

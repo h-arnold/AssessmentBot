@@ -99,6 +99,7 @@ When deciding what to update:
   - adding content to an existing doc would make it incoherent.
 - **Do not duplicate** the same guidance across multiple docs without a clear index/reference model.
 - Prefer linking related docs over repeating long sections.
+- **Keep `mkdocs.yml` in sync**: add, move, or remove the corresponding `nav` entry whenever a file under `docs/` is added, moved, or removed. Keep non-published reference caches out of `nav` via `exclude_docs`.
 
 ## 4. AGENTS and Component-Doc Update Rules
 
@@ -200,23 +201,24 @@ Provide a concise handoff summary including:
 │   │   │   ├── AssessmentFlow.md                     # Canonical: Assessment workflow and data flow
 │   │   │   ├── backend-logging-and-error-handling.md # Canonical: ABLogger usage, validation ownership, error-boundary standards, apiHandler diagnostics
 │   │   │   ├── backend-testing.md                     # Vitest setup, GAS load order, test categories, mock factories, anti-patterns
-│   │   │   │
-│   │   │   ├── data-shapes/                           # Canonical data-shape specifications (persistence, transport, validation)
-│   │   │   │   ├── INDEX.md                           # Contract registry, containment hierarchy, workflow
-│   │   │   │   ├── transport-envelope.md               # Shared apiHandler success/error envelope
-│   │   │   │   ├── abclass.md                         # Contract: ABClass (+ Teacher, Student)
-│   │   │   │   ├── assignment-definition.md           # Contract: AssignmentDefinition (+ TaskDefinition, BaseTaskArtifact)
-│   │   │   │   ├── assignment.md                      # Contract: Assignment (+ StudentSubmission, StudentSubmissionItem, Assessment, Feedback)
-│   │   │   │   ├── auth-cache.md                      # Contract: AuthCache (CacheService auth entry, 6h TTL)
-│   │   │   │   ├── backend-config.md                  # Contract: BackendConfig
-│   │   │   │   ├── google-classrooms.md               # Contract: GoogleClassrooms (upstream API passthrough)
-│   │   │   │   ├── reference-data.md                  # Contract: Reference Data (cohorts, year groups, assignment topics)
-│   │   │   │   ├── request-store.md                   # Contract: RequestStore (internal backend API request tracking)
-│   │   │   │   └── trigger-context.md                 # Contract: TriggerContext (Script Properties trigger context)
 │   │   │   ├── oauth-scopes.md                         # OAuth scopes required by the application
 │   │   │   ├── rehydration.md                         # Deserialising and reconstructing objects
 │   │   │   ├── singletons.md                           # Singleton pattern usage
 │   │   │   └── Vendoring.md                            # Management of vendored third-party assets (JsonDbApp)
+│   │   │
+│   │   ├── data-shapes/                               # Canonical data-shape specifications (persistence, transport, validation)
+│   │   │   ├── INDEX.md                               # Contract registry, containment hierarchy, workflow
+│   │   │   ├── transport-envelope.md                   # Shared apiHandler success/error envelope
+│   │   │   ├── abclass.md                             # Contract: ABClass (+ Teacher, Student)
+│   │   │   ├── assignment-definition.md               # Contract: AssignmentDefinition (+ TaskDefinition, BaseTaskArtifact)
+│   │   │   ├── assignment.md                          # Contract: Assignment (+ StudentSubmission, StudentSubmissionItem, Assessment, Feedback)
+│   │   │   ├── auth-cache.md                          # Contract: AuthCache (CacheService auth entry, 6h TTL)
+│   │   │   ├── auth-users.md                          # Contract: AuthUsers (auth fields in config blob, AuthUserEntry)
+│   │   │   ├── backend-config.md                      # Contract: BackendConfig
+│   │   │   ├── google-classrooms.md                   # Contract: GoogleClassrooms (upstream API passthrough)
+│   │   │   ├── reference-data.md                      # Contract: Reference Data (cohorts, year groups, assignment topics)
+│   │   │   ├── request-store.md                       # Contract: RequestStore (internal backend API request tracking)
+│   │   │   └── trigger-context.md                     # Contract: TriggerContext (Script Properties trigger context)
 │   │   │
 │   │   ├── builder/
 │   │   │   ├── builder-script.md                      # Canonical: 10-stage pipeline, commands, configuration, error model, mode boundaries
@@ -227,14 +229,16 @@ Provide a concise handoff summary including:
 │   │   │   ├── frontend-loading-and-width-standards.md    # Canonical: Loading states, width-token system, accessibility-semantics rules
 │   │   │   ├── frontend-logging-and-error-handling.md  # Canonical: Environment-specific logging, Ant Design feedback, error mapping, React patterns
 │   │   │   ├── frontend-modal-patterns.md               # Modal component patterns
+│   │   │   ├── frontend-playwright-e2e.md               # Playwright E2E testing patterns, runtime mock infrastructure, StrictMode
 │   │   │   ├── frontend-react-query-and-prefetch.md     # React Query and prefetch patterns
 │   │   │   ├── frontend-shared-helpers-and-abstraction-standards.md # Shared helpers and abstraction standards
 │   │   │   ├── frontend-spacing-and-padding-standards.md # Canonical: Spacing tokens, 8px grid, component defaults
 │   │   │   ├── frontend-shell-navigation-and-motion.md  # Shell navigation and motion/accessibility standards
-│   │   │   ├── frontend-playwright-e2e.md               # Playwright E2E testing patterns, runtime mock infrastructure, StrictMode
 │   │   │   ├── frontend-testing.md                      # Canonical: Vitest + Playwright split, commands, structure, helpers, patterns
 │   │   │   ├── metric-display-precision.md              # Metric score decimal-place convention (0dp individual, 2dp averages)
-│   │   │   └── metric-icon-display.md                   # Metric icon rendering, theme-aware colour, stroke conventions
+│   │   │   ├── metric-icon-display.md                   # Metric icon rendering, theme-aware colour, stroke conventions
+│   │   │   ├── navigation-consistency-status.md         # Status tracker for the shared PageTitleCard + PageNavCard pattern
+│   │   │   └── ant-design-docs-cache/                   # Local cache of Ant Design component notes (reference only, not policy)
 │   │   │
 │   │   ├── testing/
 │   │   │   └── synthetic-test-data.md                  # Canonical: synthetic analysis corpus topology, profiles/views, commands, canonical-fixture policy
@@ -266,7 +270,9 @@ Provide a concise handoff summary including:
 │   │   ├── v0.7.5_release_notes.md
 │   │   ├── v0.7.6_release_notes.md
 │   │   ├── v0.7.7_release_notes.md
-│   │   └── v0.7.8_release_notes.md
+│   │   ├── v0.7.8_release_notes.md
+│   │   ├── v0.7.9_release_notes.md
+│   │   └── v1.0.0_release_notes.md
 │   │
 │   └── setup/
 │       ├── README.md                                  # Main setup guide with prerequisites and process
@@ -307,7 +313,9 @@ Provide a concise handoff summary including:
 │
 └── skills/
     ├── agent-setup/SKILL.md                             # Configure OpenCode subagents
+    ├── deploy-gas/SKILL.md                               # Build, push, and redeploy the GAS bundle via clasp
     ├── loc-counter/SKILL.md                             # Count lines of code
+    ├── pre-pr-review/SKILL.md                           # Pre-PR review orchestrator with regression gate
     ├── regression-checker/SKILL.md                     # Regression checker CLI
     └── sonar-pr-duplication/SKILL.md                    # Fetch and expand Sonar PR duplication comments
 ```
