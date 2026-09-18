@@ -193,7 +193,7 @@ Backend model/unit tests:
   - GAS exposure: script-scope function named `compareTaskEquivalence_` (trailing underscore) to keep it out of `google.script.run` exposure guard; Node consumers use the contract name via the guarded export alias; one exposure line added to `tests/setupGlobals.js`.
   - Orphan removal: ID-only `applyStoredWeightings` removed from `AssignmentDefinitionTaskWeighting.js` (zero remaining callers, no test referenced it; 120 → 94 lines).
 - **LOC evidence:** `AssignmentDefinitionUpsertOrchestrator.js` 432 → 465 lines (< 500 projection gate); `AssignmentDefinitionTaskEquivalence.js` 234 lines (new); `AssignmentDefinitionTaskWeighting.js` 94 lines.
-- **Commit:** recorded at commit gate.
+- **Commit:** `ab94ffd` — `feat: add task-equivalence comparator and reparse weighting reconciliation`, branch `fix/301-stale-assignment-definitions`, pushed successfully (`85d447c..ab94ffd`). Pre-commit formatting/lint/type-check hooks passed. Agent-config model edits committed separately as `776e2c1` (pre-existing uncommitted changes from the prior session, committed as-is per the same authorisation pattern as the Playwright agent model change).
 
 ---
 
