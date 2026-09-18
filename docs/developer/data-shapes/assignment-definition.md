@@ -285,10 +285,17 @@ Key contract notes:
 
 #### Not implemented — stale-definition recovery (planned, Issue #301)
 
-> **Status: Not implemented.** Planned contract from `SPEC.md` (issue #301). These
-> fields and semantics do not exist in the current backend validation, controller
-> or frontend Zod schema. `UpsertAssignmentDefinitionRequestSchema` is `.strict()`,
-> so the fields below are currently **rejected** by the transport layer. Documented
+> **Status: Partially implemented.** The weighting-reconciliation semantics below
+> (task equivalence comparator, reparse weighting preservation) are **implemented**
+> in `AssignmentDefinitionTaskEquivalence.js` and
+> `AssignmentDefinitionUpsertOrchestrator._resolveTaskState` (Section 1, issue #301):
+> on a timestamp-triggered reparse, tasks with equivalent parsed content keep their
+> stored weighting (including valid zeroes), new or changed tasks default to `1`,
+> removed tasks disappear, and ordinary upserts without a document change never
+> invoke the comparator. The request-field extensions below (`forceReparse`,
+> `expectedDefinitionUpdatedAt`) and the `DEFINITION_PARSE_FAILED` envelope remain
+> **not implemented**; `UpsertAssignmentDefinitionRequestSchema` is `.strict()`,
+> so those fields are currently **rejected** by the transport layer. Documented
 > as planned shape so implementation does not drift.
 
 **Planned `upsertAssignmentDefinition` request extensions:**
@@ -577,6 +584,7 @@ Controller:                src/backend/y_controllers/AssignmentDefinition/
   ├── AssignmentDefinitionReferenceData.js   — Reference data resolution
   ├── AssignmentDefinitionTaskParser.js      — Task document parsing
   ├── AssignmentDefinitionTaskWeighting.js   — Task weighting logic
+  ├── AssignmentDefinitionTaskEquivalence.js — Task equivalence comparator (reparse reconciliation)
   ├── AssignmentDefinitionPersistence.js     — Database read/write
   ├── AssignmentDefinitionUpsertOrchestrator.js — Upsert orchestration
   └── AssignmentDefinitionResponseMapper.js  — _getFullAssignmentDefinition()

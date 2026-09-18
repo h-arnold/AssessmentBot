@@ -15,32 +15,6 @@ class AssignmentDefinitionTaskWeighting {
   }
 
   /**
-   * Applies existing task weightings to parsed task sets.
-   *
-   * @param {Object} existingTasks - Existing task map.
-   * @param {Object} parsedTasks - Parsed task map.
-   * @returns {Object} Parsed tasks with preserved matching weightings.
-   */
-  applyStoredWeightings(existingTasks, parsedTasks) {
-    const existingEntries = Object.entries(existingTasks || {});
-
-    existingEntries.forEach(([taskId, existingTask]) => {
-      const parsedTask = this._findTaskById(parsedTasks, taskId);
-      if (!parsedTask) {
-        return;
-      }
-
-      if (!Object.hasOwn(existingTask, 'taskWeighting')) {
-        return;
-      }
-
-      parsedTask.taskWeighting = existingTask.taskWeighting;
-    });
-
-    return parsedTasks;
-  }
-
-  /**
    * Ensures all parsed tasks have a taskWeighting value.
    * The TaskDefinition constructor now defaults taskWeighting to 1,
    * so this method is retained for defence-in-depth when tasks

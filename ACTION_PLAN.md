@@ -43,7 +43,7 @@ Before writing or executing this plan:
 
 ### Delivery status and baseline evidence (17 September 2026)
 
-- **Current phase:** baseline gate passed with accepted debt; prerequisite tooling repair reviewed clean, awaiting commit/push. Section 1 red phase has not started.
+- **Current phase:** Section 1 complete (red + green loops clean, regression gate passed, committed and pushed). Section 2 red phase is next.
 - **User authorisation:** existing line-count warnings are accepted technical debt (10 backend and 48 frontend `max-lines` warnings). This does not permit new warnings or waive the section-specific LOC gates.
 - **Commit/push authorisation:** the user explicitly authorised committing and pushing each completed section, superseding the no-commit scope statement in `SPEC.md` for delivery operations.
 - **Baseline:** `.ts-regression-checker/reports/session-fix-301-stale-assignment-definitions/baseline/baseline.txt`; backend/frontend/builder tests, Playwright E2E and builder compilation passed. Backend lint reported the accepted 10 warnings. Direct frontend lint reported 0 errors and the accepted 48 warnings.
@@ -51,7 +51,7 @@ Before writing or executing this plan:
 - **Repair verified:** user-approved trailing `--` added only to `lint:frontend:check` in `package.json`. Exact checker invocation reproduced exit 2 before the fix, then exit 0 with valid JSON, 0 errors and 48 accepted warnings. Independent Code Reviewer returned clean; report `.opencode/scratchpad/review-301-lint-fix.md`.
 - **Valid comparison baseline:** fresh session `fix-301-stale-assignment-definitions-verified`, created at `2026-09-17T20:23:12.483Z`; report `.ts-regression-checker/reports/session-fix-301-stale-assignment-definitions-verified/baseline/baseline.txt`. Seven checks pass; backend lint alone fails on the 10 accepted warnings (0 errors). Zero regressions and zero new failures. Use `npm run regression-checker -- fix-301-stale-assignment-definitions-verified` for all subsequent gates. Original crash baseline and comparison evidence remain untouched; its 48 reported frontend regressions were the already accepted warnings becoming observable after the wrapper fix, not source changes.
 - **Agent configuration:** user explicitly authorised committing the existing `.opencode/agents/playwright.md` model-only change unchanged. No agent-config edits were made by this delivery.
-- **Prerequisite delivery:** commit SHA and push confirmation will be recorded after successful commit/push on `fix/301-stale-assignment-definitions`.
+- **Prerequisite delivery:** `85d447cbebcf3c245aac969f1b65f674425300fa` — `fix: forward frontend lint arguments and record accepted baseline`, branch `fix/301-stale-assignment-definitions`. Pre-commit formatting and TypeScript checks passed; `git push -u origin fix/301-stale-assignment-definitions` succeeded. Includes the user-authorised unchanged Playwright agent model selection.
 
 ### Engineering constraints
 
@@ -185,8 +185,15 @@ Backend model/unit tests:
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** filled during implementation.
-- **Deviations from plan:** note parser-volatile metadata discovered and how it was excluded (justify; never exclude wholesale). Record the local-fixture deviation per the canonical-fixture policy.
+- **Implementation notes:** Red phase: 31 tests in `tests/y_controllers/AssignmentDefinitionTaskEquivalence.test.js` (5 behaviour groups + reason-precedence block pinning all 5 adjacent pairs of the documented precedence chain; contract `{ equivalent: boolean, reason: string }` with reason codes `equivalent | task-id-changed | page-id-changed | title-changed | notes-changed | task-metadata-changed | artefact-changed`). Red review found two minor findings (precedence untested; id-vs-pageId pair untested) — both fixed and reviewed clean. Green phase: comparator implemented as a pure, GAS-compatible module; reconciliation wired into both reparse branches of `_resolveTaskState` via `_applyEquivalentStoredWeightings` (matches by task ID, preserves stored weighting incl. valid 0 only when equivalent, new/changed keep constructor default 1, removed tasks disappear); ordinary-upsert `!needsRefresh` short-circuit untouched and does not invoke the comparator. Green review CLEAN. Regression gate: 0 regressions, 0 new failures (backend lint still the 10 accepted warnings only).
+- **Deviations from plan:**
+  - Parser-volatile metadata excluded (each deliberate, asserted by tests): `taskWeighting` (reconciliation input), `contentHash` (derived; content comparison subsumes), `uid`/`_uid` (generated from IDs/indexes), `index`, `taskIndex`, `artifactIndex` (positional bookkeeping). Not excluded (compared deliberately): `taskMetadata` (`{bbox, referenceLocationsMap, sheetId}`) and artefact `metadata` (Sheets `{sheetName, bbox}`, Slides IMAGE `{sourceUrl}`) — assessment-relevant per SPEC.
+  - Canonical-fixture policy deviation recorded: comparator tests use local boundary fixtures shaped like `TaskDefinition.toJSON()` / `BaseTaskArtifact.toJSON()` output (test-only in-memory persistence view; equivalence edge cases are boundary tests).
+  - Absent-optional normalisation: parser `fromJSON` canonicalises absent optionals to `null`/`{}` while stored legacy tasks omit keys, so the comparator normalises absent `pageId`/`taskNotes`/`documentId`/`content` → `null` and absent `taskMetadata`/artefact `metadata` → `{}` before comparing (discovered during green; without it the pre-existing `re-parse keeps matching task weightings` test false-failed).
+  - GAS exposure: script-scope function named `compareTaskEquivalence_` (trailing underscore) to keep it out of `google.script.run` exposure guard; Node consumers use the contract name via the guarded export alias; one exposure line added to `tests/setupGlobals.js`.
+  - Orphan removal: ID-only `applyStoredWeightings` removed from `AssignmentDefinitionTaskWeighting.js` (zero remaining callers, no test referenced it; 120 → 94 lines).
+- **LOC evidence:** `AssignmentDefinitionUpsertOrchestrator.js` 432 → 465 lines (< 500 projection gate); `AssignmentDefinitionTaskEquivalence.js` 234 lines (new); `AssignmentDefinitionTaskWeighting.js` 94 lines.
+- **Commit:** recorded at commit gate.
 
 ---
 

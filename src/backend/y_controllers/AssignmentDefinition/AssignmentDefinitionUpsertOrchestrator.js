@@ -266,7 +266,7 @@ class AssignmentDefinitionUpsertOrchestrator {
     ) {
       referenceLastModified = DriveManager.getFileModifiedTime(referenceDocumentId);
       templateLastModified = DriveManager.getFileModifiedTime(templateDocumentId);
-      const freshTasks = this.taskWeighting.applyStoredWeightings(
+      const freshTasks = this._applyEquivalentStoredWeightings(
         existingTasks,
         this.taskParser.parseTasks({
           documentType,
@@ -300,7 +300,7 @@ class AssignmentDefinitionUpsertOrchestrator {
 
     return {
       finalTasks: this.taskWeighting.defaultTaskWeightings(
-        this.taskWeighting.applyStoredWeightings(
+        this._applyEquivalentStoredWeightings(
           existingTasks,
           this.taskParser.parseTasks({
             documentType,
@@ -312,6 +312,39 @@ class AssignmentDefinitionUpsertOrchestrator {
       referenceLastModified: latestReferenceModified,
       templateLastModified: latestTemplateModified,
     };
+  }
+
+  /**
+   * Preserves stored weightings only for reparsed tasks with equivalent content.
+   *
+   * Tasks are matched by task ID. Equivalent content keeps the stored weighting
+   * (including a valid zero); new or changed tasks keep the freshly parsed
+   * weighting for the constructor default to settle; removed tasks disappear
+   * because the returned map holds only reparsed tasks. Assignment-level
+   * weighting is resolved separately and untouched here.
+   *
+   * @param {Object} existingTasks - Stored task map keyed by task ID.
+   * @param {Object} parsedTasks - Freshly parsed task map keyed by task ID.
+   * @returns {Object} Reparsed tasks with equivalent stored weightings restored.
+   * @private
+   */
+  _applyEquivalentStoredWeightings(existingTasks, parsedTasks) {
+    /* global compareTaskEquivalence_ */
+    const reconciledTasks = parsedTasks || {};
+
+    Object.entries(existingTasks || {}).forEach(([taskId, previousTask]) => {
+      const reparsedTask = reconciledTasks[taskId] || null;
+      if (!previousTask || !reparsedTask) {
+        return;
+      }
+
+      const decision = compareTaskEquivalence_(previousTask, reparsedTask);
+      if (decision.equivalent && Object.hasOwn(previousTask, 'taskWeighting')) {
+        reparsedTask.taskWeighting = previousTask.taskWeighting;
+      }
+    });
+
+    return reconciledTasks;
   }
 
   /**
