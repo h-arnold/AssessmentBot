@@ -391,7 +391,7 @@ Frontend schema tests:
    - Planned doc status: `Not implemented` (recorded via §9.23)
 2. Helper: chrome-free review-content component
    - Decision: `new` (extraction from shell)
-   - Owning module/path: `src/frontend/src/features/assignmentWizard/` (co-located with the shell; exact filename at implementation)
+   - Owning module/path: `src/frontend/src/features/assignmentWizard/AssignmentDefinitionWizardReviewContent.tsx` (filename decided during red phase; review of the natural extraction name)
    - Call-site rationale: consumed by the existing shell modal and by Sections 8–9 (converted create path and recovery surface); the one-modal rule requires body/footer content without `Modal` chrome.
    - Relevant canonical doc target: `frontend-modal-patterns.md` §3.4
    - Planned doc status: `Not implemented` (recorded)
