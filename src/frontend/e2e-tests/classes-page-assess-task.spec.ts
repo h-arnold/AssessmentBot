@@ -824,7 +824,7 @@ test.describe('Assess Task modal', () => {
       ).toBeVisible();
     });
 
-    test('DEFINITION_STALE after link opens wizard at title/topic panel (panel 1)', async ({
+    test('DEFINITION_STALE after link defers recovery — no create wizard opens (panel 1)', async ({
       page,
     }) => {
       const topicsData = [
@@ -865,18 +865,40 @@ test.describe('Assess Task modal', () => {
       await pickLinkableDefinitionE2E(dialog, page, 'Algebra HW');
       await dialog.getByRole('button', { name: 'Link' }).click();
 
-      // The wizard dialog should appear (DEFINITION_STALE recovery)
-      // Note: panel-2 stale-recovery (task-weightings) is not yet implemented;
-      // the wizard opens at panel 1 (title/topic) in create mode.
-      const wizardDialog = page.getByRole('dialog', { name: /create assignment/i });
-      await expect(wizardDialog).toBeVisible({ timeout: 8000 });
+      // Section 6 routing-only contract (see ACTION_PLAN.md): link-flow
+      // DEFINITION_STALE enters the assessment orchestration recovery state
+      // and must NOT mount the stacked create wizard. Positive
+      // recovery-prompt assertions arrive with Section 9; until then assert
+      // routing only.
+      // Settle on the committed link outcome first, so the absence check
+      // below cannot pass before the stale response has been processed.
+      await expect
+        .poll(
+          async () => {
+            const calls = await getMethodCalls(page);
+            return calls.filter((call) => call === 'upsertAssignmentDefinition').length;
+          },
+          { timeout: 8000 }
+        )
+        .toBe(1);
 
-      // Assert we are on panel 1 (title/topic), not panel 2 (task weightings):
-      // - Title textbox should be visible
-      await expect(wizardDialog.getByRole('textbox', { name: /assignment title/i })).toBeVisible();
+      // No "Create assignment" dialog appears (bounded wait gives the old
+      // stacked wizard a chance to mount incorrectly before asserting absence).
+      await expect(page.getByRole('dialog', { name: /create assignment/i })).toHaveCount(0, {
+        timeout: 8000,
+      });
 
-      // - "Parse and continue" button should be present (not "Save")
-      await expect(wizardDialog.getByRole('button', { name: /parse and continue/i })).toBeVisible();
+      // The owning AssessTaskModal remains open in the linking state — a
+      // single dialog with the link picker visible.
+      await expect(page.getByRole('dialog')).toHaveCount(1);
+      await expect(dialog).toBeVisible();
+      await expect(dialog.getByTestId('linkable-definition-select')).toBeVisible();
+
+      // Committed link outcome holds in idempotence-friendly form: the link
+      // upsert ran exactly once and the assessment start was attempted once.
+      const calls = await getMethodCalls(page);
+      expect(calls.filter((call) => call === 'upsertAssignmentDefinition')).toHaveLength(1);
+      expect(calls.filter((call) => call === 'startAssessmentRun')).toHaveLength(1);
     });
 
     test('modal state resets on reopen after linking', async ({ page }) => {

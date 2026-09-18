@@ -584,7 +584,7 @@ describe('Assessment run interaction', () => {
   // Matched-flow DEFINITION_STALE recovery
   // -----------------------------------------------------------------------
 
-  it('matched-flow DEFINITION_STALE transitions the modal to the wizard recovery state', async () => {
+  it('matched-flow DEFINITION_STALE enters recovery routing instead of the create path', async () => {
     const matchedDefinition = createDefinitionPartial();
     const staleError = new ApiTransportError({
       requestId: 'test-id',
@@ -606,20 +606,19 @@ describe('Assessment run interaction', () => {
     await selectAssignment(dialog);
     await clickStartAssessment(dialog);
 
-    // FUTURE BEHAVIOUR: Should transition to wizard stale-recovery
-    // Currently this FAILS because handleApiError only shows a warning alert
-    // instead of transitioning noMatchResolution to 'creating'.
-    const wizard = await screen.findByTestId('wizard-mock');
-    const wizardProperties = (wizard as unknown as Record<string, unknown>).__wizardProps as Record<string, unknown> | undefined || {};
-    expect(wizardProperties.open).toBe(true);
-    expect(wizardProperties.mode).toBe('create');
-
     // Cache should be invalidated on stale recovery
     await waitFor(() => {
       expect(invalidateSpy).toHaveBeenCalledWith({
         queryKey: queryKeys.assignmentDefinitionPartials(),
       });
     });
+
+    // RED: DEFINITION_STALE must enter the assessment orchestration recovery
+    // routing (assessmentRecoveryState 'stale-prompt'), never the genuine
+    // create path, so the create wizard stays unmounted. The positive
+    // 'stale-prompt' state is pinned by the orchestration contract spec.
+    // Fails now because transitionToStaleRecovery still selects 'creating'.
+    expect(screen.queryByTestId('wizard-mock')).toBeNull();
   });
 
   it('matched-flow non-DEFINITION_STALE errors still surface the existing error alert', async () => {
@@ -1436,7 +1435,7 @@ describe('No-match resolution — linking state and link flow', () => {
     expect(within(dialog).getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
   });
 
-  it('DEFINITION_STALE recovery: startAssessmentRun fails with DEFINITION_STALE after a successful upsert', async () => {
+  it('link-flow DEFINITION_STALE preserves the committed link and enters recovery routing instead of the create path', async () => {
     const staleError = new ApiTransportError({
       requestId: 'test-id',
       error: { code: 'DEFINITION_STALE', message: 'Definition is stale' },
@@ -1451,20 +1450,19 @@ describe('No-match resolution — linking state and link flow', () => {
 
     await performLinkFlow(dialog);
 
-    // Should transition to stale recovery — wizard should appear with stale definition data pre-populated
-    const wizard = await screen.findByTestId('wizard-mock');
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const wizardProperties = (wizard as any).__wizardProps || {};
-    expect(wizardProperties.open).toBe(true);
-    // In stale recovery, the wizard pre-populates from the stale definition
-    expect(wizardProperties.initialValues).toBeDefined();
-    // The initialValues should contain data from the stale definition
-    expect(wizardProperties.initialValues).toEqual(
-      expect.objectContaining({
-        title: expect.any(String),
-        yearGroup: expect.any(String),
-      })
-    );
+    // The link upsert committed before the stale rejection, so it is preserved.
+    await waitFor(() => {
+      expect(vi.mocked(upsertAssignmentDefinition)).toHaveBeenCalledTimes(1);
+    });
+    await waitFor(() => {
+      expect(vi.mocked(startAssessmentRun)).toHaveBeenCalledTimes(1);
+    });
+
+    // RED: link-flow DEFINITION_STALE must enter the assessment orchestration
+    // recovery routing, never the genuine create path, so the create wizard
+    // stays unmounted. Fails now because the link error handler still selects
+    // 'creating' via transitionToStaleRecovery.
+    expect(screen.queryByTestId('wizard-mock')).toBeNull();
   });
 
   it('hasLinkSucceeded flag management', async () => {

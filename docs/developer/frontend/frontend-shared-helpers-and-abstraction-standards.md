@@ -956,11 +956,16 @@ The builder surface surfaced two antd v6 behaviours worth recording for future s
 
 ## 9.23 Stale-definition recovery orchestration helpers (issue #301, planned)
 
-Planned-only entries for stale assignment-definition recovery. Status: partially `Implemented` — the Section 5 form-state module and chrome-free review-content component have landed (entries 3–4); the orchestrator and assessment modules remain `Not implemented`. Recorded before implementation starts per SPEC.md handoff gate; the implementing agent moves these to `Implemented` as part of the work.
+Planned-only entries for stale assignment-definition recovery. Status: partially `Implemented` — the Section 5 form-state module and chrome-free review-content component have landed (entries 3–4), as has the Section 6 assessment orchestration module (entry 2); the wizard orchestrator module and recovery entry intent remain `Not implemented`. Recorded before implementation starts per SPEC.md handoff gate; the implementing agent moves these to `Implemented` as part of the work.
 
 1. Wizard orchestrator module — dedicated, readable orchestration file under `src/frontend/src/features/assignmentWizard/` owning the wizard process end-to-end: entry modes (create, update, explicit reparse, recovery), the parse → review → save sequence, mutation calls, error mapping, query invalidation, and stage transitions. Extracted from `useAssignmentDefinitionWizard.ts` (1,378 lines) as part of the required decomposition. Rationale: async orchestration belongs in feature hooks/modules, and recovery is an additional orchestrator entry on the same process — a second mode, not a duplicate flow.
 
-2. Assessment orchestration module — feature-local module under `src/frontend/src/features/classes/AssessTaskModal/` owning matching, linking, captured assessment context, and stale-recovery transitions for `AssessTaskModal`, extracted from `AssessTaskModal.tsx` (955 lines). Rationale: moves the state machines and API flows out of the rendering component per §3.2 of `src/frontend/AGENTS.md`.
+2. Assessment orchestration module — `useAssessTaskFlow` hook owning matching, linking, captured assessment start context (`{definitionKey, assignmentId, courseId}`), and stale-recovery transitions for `AssessTaskModal`, extracted from `AssessTaskModal.tsx` (955 lines → below 500).
+
+- Decision: `new` (feature-local extraction)
+- Owning module/path: `src/frontend/src/features/classes/AssessTaskModal/useAssessTaskFlow.ts`
+- Call-site rationale: SPEC-mandated decomposition; moves both state machines and the API flows out of the rendering component per §3.2 of `src/frontend/AGENTS.md`. Exposes the Sections 7–9 stub recovery contract (`assessmentRecoveryState: 'idle' | 'stale-prompt'`, `transitionToStaleRecovery(definitionKey)` — routing only, never selects `creating`) and an obsolete-completion guard so late assessment-start/upsert completions cannot act on a different assignment after close/reopen or selection change. The link flow (`useAssessTaskLinkFlow.ts`) and create flow (`useAssessTaskCreateFlow.ts`) are composed feature-local hooks sharing a documented host contract; pure flow contracts, cache validation and derivations live in `assessTaskFlowData.ts`, with link-payload derivation in `assessTaskLinkPayload.ts` — each module below the 500-line gate.
+- Status: `Implemented` (Section 6)
 
 3. Wizard entry-contract extension — explicit recovery entry intent (existing `definitionKey` + approval-success callback; never `mode="create"`), plus the chrome-free review-content component recorded simultaneously in `docs/developer/frontend/frontend-modal-patterns.md` §3.4. Status: review-content component `Implemented` (Section 5); recovery entry intent still `Not implemented` (Section 7).
 
