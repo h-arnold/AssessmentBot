@@ -512,7 +512,7 @@ Frontend tests:
 - Green phase: orchestrator `assignmentWizardOrchestrator.ts` (283 lines) + third module `assignmentWizardMutation.ts` (417; shared `useWizardUpsertMutation`/`useWizardMutationSequence` mutation+error-mapping plumbing) + extracted `assignmentWizardFormInitialization.ts` (211) + extended pure derivations in `assignmentWizardFormState.ts` (492). Hook now thin composition: `useAssignmentDefinitionWizard.ts` 1053→439 lines. Recovery contracts wired as pinned; `isMutationBusy` busy affordance included per the red review's forward note. Registry-driven error mapping only (no feature-local strings). §9.23 entries 1+3 → implemented. Green review: two doc-accuracy findings (§9.23 wrongly claimed orchestrator-owned invalidation; stated 444 vs actual 439 hook lines) fixed doc-side with no code change; re-review CLEAN with evidence anchors verified.
 - LOC evidence (`wc -l`): orchestrator 283, mutation 417, formInit 211, formState 492, hook 439 — all < 500.
 - Verification: wizard suite 78/78; full frontend 2079/2079; lint 0 errors/46 warnings (delta = retired hook `max-lines` fingerprint — improved); `tsc -b` clean. Regression gate (`post-s6` session): 0 regressions, 0 new failures.
-- **Section 7 complete.** Commit `SECTION7-SHA` — replace with actual SHA at commit time (branch `fix/301-stale-assignment-definitions`).
+- **Section 7 complete.** Commit `543599d` — feat: add assignment wizard orchestrator with recovery entry intent (branch `fix/301-stale-assignment-definitions`, pushed; SHA recorded in the follow-up evidence commit).
 
 ### Delegation mandatory reads
 
