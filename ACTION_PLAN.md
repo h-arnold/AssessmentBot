@@ -247,7 +247,7 @@ Synthetic Node integration tests:
 - **Deviations from plan:** none material. Frontend round-trip adapter (`syntheticApiRoundTripAdapter.ts`) needed no change — verified transport-agnostic pass-through with the round-trip test green through the unmodified adapter. Manifest `generatedEntityCounts` unchanged: counts describe the persistence graph, not transport projections.
 - **Follow-up (cosmetic, out of scope):** existing test title `syntheticGraphGenerationPipeline.test.ts:253` still reads "four named transport views" (assertions count-agnostic, green); rename opportunistically when that spec is next touched.
 - **Verification evidence:** `npm run test:synthetic` 235/235 pass; `npm run lint:synthetic:check` clean; byte-reproducibility proven across three regenerations; `npm run test:frontend -- src/test` 23/23 pass; `npm run lint:frontend` 0 errors / 48 accepted warnings.
-- **Commit:** `git commit` executed at commit gate — see delivery status header for SHA once recorded.
+- **Commit:** `3aac341` — `feat: add editableDefinitions transport view to synthetic fixtures`, branch `fix/301-stale-assignment-definitions`, pushed successfully (`026119e..3aac341`). Pre-commit formatting/lint/type-check hooks passed.
 
 ### Section 2 follow-up implications (retained from plan)
 
