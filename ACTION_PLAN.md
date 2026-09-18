@@ -424,6 +424,12 @@ Frontend tests (regression-first; move existing specs, add structural tests):
 
 - **Follow-up implications:** Sections 8–9 build on the extracted modules.
 
+### Green outcomes
+
+- Extracted `assignmentWizardFormState.ts` (339 lines, the 8 pinned exports, `TaskRow` type re-exported from the hook) and chrome-free `AssignmentDefinitionWizardReviewContent.tsx` (446 lines, stages under `hasParsedTasks` gating, shared `AssignmentDefinitionWizardReviewFooter`, `@remarks` recorded). Shell renders through it (`Modal` chrome unchanged); hook shrank 1378→1053 lines. Wizard suite 66/66, full frontend 2063/2063, lint 0 errors/48 warnings, tsc clean. Green review cycles: findings (orphaned JSDoc, shell footer fallback alignment, test-only degraded `<form>` branch, stale comments) fixed and re-review CLEAN.
+- **Regression-gate note:** the compare run against the original section-1 baseline reports 1 regression/1 fix pair on `useAssignmentDefinitionWizard.ts` `max-lines` — the checker fingerprints warnings by line count, so the sanctioned shrink (1378→1053, still >500) yields a changed fingerprint although the warning class is identical and improved. Per the plan the hook's <500 gate belongs to Section 7; to avoid blocking sanctioned lint improvements, the checkpoint baseline session `fix-301-stale-assignment-definitions-post-s5` is established on the committed Section 5 tree (48 warnings incl. hook at 1053, accepted debt) and used as the standing gate for Sections 6–11, replacing session `fix-301-stale-assignment-definitions-verified`.
+- **Section 5 complete.** Commit `92f5a0a` refactor: extract assignment wizard form-state module and review-content component (branch `fix/301-stale-assignment-definitions`, pushed).
+
 ---
 
 ## Section 6 — Frontend: AssessTaskModal decomposition (assessment orchestration module)
