@@ -57,6 +57,9 @@ export function createApiHandlerRoundTripBridge(options) {
     profileName,
     'assignmentDefinitionPartials'
   );
+  const editableDefinitions = new Map(
+    Object.entries(loadSyntheticAnalysisProfile(profileName, 'editableDefinitions'))
+  );
 
   const seamBehaviours = {
     abclassMutationsBehaviour: {
@@ -64,6 +67,8 @@ export function createApiHandlerRoundTripBridge(options) {
     },
     assignmentDefinitionBehaviour: {
       getAssignmentDefinitionPartials_: () => assignmentDefinitionPartials,
+      getAssignmentDefinition_: (parameters) =>
+        editableDefinitions.get(parameters.definitionKey) ?? null,
       deleteAssignmentDefinition_: () => null,
     },
   };

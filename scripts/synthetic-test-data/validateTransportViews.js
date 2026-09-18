@@ -21,13 +21,13 @@ export function assertTransportView(view, viewName, expectedShape) {
 }
 
 /**
- * Asserts the four named transport views are present with the expected shapes.
+ * Asserts the five named transport views are present with the expected shapes.
  *
  * @param {unknown} transport Generated transport view.
  */
 export function assertTransportShape(transport) {
   if (!isRecord(transport)) {
-    fail('graph.transport must be an object carrying the four named views.');
+    fail('graph.transport must be an object carrying the five named views.');
   }
   assertTransportView(transport.classPartials, 'classPartials', 'array');
   assertTransportView(
@@ -35,6 +35,7 @@ export function assertTransportShape(transport) {
     'assignmentDefinitionPartials',
     'array'
   );
+  assertTransportView(transport.editableDefinitions, 'editableDefinitions', 'record');
   assertTransportView(transport.classesById, 'classesById', 'record');
   assertTransportView(transport.assignmentsByKey, 'assignmentsByKey', 'record');
 }

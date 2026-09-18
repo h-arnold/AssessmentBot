@@ -43,7 +43,7 @@ Before writing or executing this plan:
 
 ### Delivery status and baseline evidence (17 September 2026)
 
-- **Current phase:** Section 1 complete (red + green loops clean, regression gate passed, committed and pushed). Section 2 red phase is next.
+- **Current phase:** Sections 1–2 complete (both reviewed clean, regression gates passed, committed and pushed). Section 3 red phase is next.
 - **User authorisation:** existing line-count warnings are accepted technical debt (10 backend and 48 frontend `max-lines` warnings). This does not permit new warnings or waive the section-specific LOC gates.
 - **Commit/push authorisation:** the user explicitly authorised committing and pushing each completed section, superseding the no-commit scope statement in `SPEC.md` for delivery operations.
 - **Baseline:** `.ts-regression-checker/reports/session-fix-301-stale-assignment-definitions/baseline/baseline.txt`; backend/frontend/builder tests, Playwright E2E and builder compilation passed. Backend lint reported the accepted 10 warnings. Direct frontend lint reported 0 errors and the accepted 48 warnings.
@@ -243,7 +243,15 @@ Synthetic Node integration tests:
 
 ### Implementation notes / deviations / follow-up
 
-- **Follow-up implications:** Sections 5–11 seed mocked scenario content and fixtures from the canonical extended view; the walkthrough/E2E sections never need an ad-hoc realistic corpus.
+- **Implementation notes:** Red phase: 15 tests in `tests/synthetic-analysis/syntheticEditableDefinitionsView.test.ts` (named `.ts` per the synthetic Vitest project's include pattern; `.js` would never run). Red review found two minor items (redundant bare-JSON round-trip test bypassing the bridge path; weak non-empty-view assertion) — both fixed by removal with retained coverage, reviewed clean. Green phase: projection in `toTransportViews.js` mirrors the backend response mapper exactly (isFullDefinition guard excluding partial-only rows, lightweight task array with null-weighting filter, freshness fields omitted, `yearGroupLabel` resolved from reference data); `editableDefinitions.json` added to `PROFILE_VIEW_FILE_NAMES` (six-file contract); new `validateEditableDefinitionsView.js` wired into `validateTransportGraph.js` after `assertTransportDefinitionsMatchPersistence` so existing corruption tests still throw from their original checks; `getAssignmentDefinition_` bridge seam backed by a Map over the committed view; all committed profiles regenerated — 3 new `editableDefinitions.json` files (small 3, medium 4, large-representative 4 records), 15 existing files byte-unchanged; `docs/developer/testing/synthetic-test-data.md` updated (view table, six-file list, bridge loading steps). Green review CLEAN. Regression gate: 0 regressions, 0 new failures.
+- **Deviations from plan:** none material. Frontend round-trip adapter (`syntheticApiRoundTripAdapter.ts`) needed no change — verified transport-agnostic pass-through with the round-trip test green through the unmodified adapter. Manifest `generatedEntityCounts` unchanged: counts describe the persistence graph, not transport projections.
+- **Follow-up (cosmetic, out of scope):** existing test title `syntheticGraphGenerationPipeline.test.ts:253` still reads "four named transport views" (assertions count-agnostic, green); rename opportunistically when that spec is next touched.
+- **Verification evidence:** `npm run test:synthetic` 235/235 pass; `npm run lint:synthetic:check` clean; byte-reproducibility proven across three regenerations; `npm run test:frontend -- src/test` 23/23 pass; `npm run lint:frontend` 0 errors / 48 accepted warnings.
+- **Commit:** `git commit` executed at commit gate — see delivery status header for SHA once recorded.
+
+### Section 2 follow-up implications (retained from plan)
+
+- Sections 5–11 seed mocked scenario content and fixtures from the canonical extended view; the walkthrough/E2E sections never need an ad-hoc realistic corpus.
 
 ---
 

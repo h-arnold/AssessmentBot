@@ -29,7 +29,7 @@ Out of scope:
 | ----------------------------- | ------------------------------------------------------------------ | -------------------------------------------------------------------------------------------- |
 | Profile definitions and seeds | `scripts/synthetic-test-data/profileDefinitions.js`                | `PROFILE_NAMES`, `getProfileDefinition`, large-full constants and completion bands.          |
 | Graph generators              | `scripts/synthetic-test-data/generate*.js`                         | Deterministic reference data, definitions, rosters, assignments, submissions.                |
-| Transport projection          | `scripts/synthetic-test-data/toTransportViews.js`                  | Projects the persistence graph into the four named transport views.                          |
+| Transport projection          | `scripts/synthetic-test-data/toTransportViews.js`                  | Projects the persistence graph into the five named transport views.                          |
 | Validation                    | `scripts/synthetic-test-data/validateSyntheticAnalysisGraph.js`    | Reference integrity, redaction, serialisability, and profile-count invariants.               |
 | Staged writer                 | `scripts/synthetic-test-data/fixtureWriter.js`                     | Validates, stages, and atomically replaces committed profiles.                               |
 | Regeneration CLI              | `scripts/synthetic-test-data/generateSyntheticAnalysisFixtures.js` | Compact regeneration and the explicit full mode.                                             |
@@ -58,14 +58,16 @@ The generator returns one connected graph per profile with these logical views:
 | `persistence`                            | In-memory logical graph for every profile: full nested class, definition, assignment, submission, assessment, feedback, and task-artefact records. Never persisted; both CLI modes write only the transport/manifest files below. |
 | `transport.classPartials`                | Class partial rows.                                                                                                                                                                                                               |
 | `transport.assignmentDefinitionPartials` | Definition partials consumed by the assignment-definition service.                                                                                                                                                                |
+| `transport.editableDefinitions`          | Full editable definitions keyed by `definitionKey`, shaped by the backend response-mapper transformation (lightweight task arrays, freshness fields omitted). Full definitions only; partial-only registry rows are excluded.     |
 | `transport.classesById`                  | `ClassFull` responses keyed by class identifier, as returned by `getABClass`.                                                                                                                                                     |
 | `transport.assignmentsByKey`             | `AssignmentFull` views keyed by assignment identifier.                                                                                                                                                                            |
 
-Both compact and full CLI modes persist only five files, projected from the logical model: the manifest and four transport views. Neither mode writes the `persistence` view. File names are defined once in `fixtureWriter.js` (`PROFILE_VIEW_FILE_NAMES`) and shared by the writer and loader so they cannot drift:
+Both compact and full CLI modes persist only six files, projected from the logical model: the manifest and five transport views. Neither mode writes the `persistence` view. File names are defined once in `fixtureWriter.js` (`PROFILE_VIEW_FILE_NAMES`) and shared by the writer and loader so they cannot drift:
 
 - `manifest.json`
 - `classPartials.json`
 - `assignmentDefinitionPartials.json`
+- `editableDefinitions.json`
 - `classesById.json`
 - `assignmentsByKey.json`
 
@@ -105,7 +107,7 @@ Any generator change affecting names requires regenerating the committed profile
 ## Compact versus full lifecycle
 
 - **Compact (committed):** small, medium, and large-representative transport views plus manifests are checked in under `tests/__mocks__/data/synthetic-analysis/`. Regeneration stages and validates every profile before replacing any committed directory, and rolls every applied replacement back if a later one fails.
-- **Full (ignored):** `large-full` is generated on demand under `.opencode/scratchpad/synthetic-analysis-full/` for stress tests. It writes the same five transport/manifest files as compact mode; its nested `persistence` graph stays in memory. The CLI rejects any output root that resolves outside the permitted root, following symlinks in every existing ancestor, so a link inside the root cannot redirect a write outside it. Full mode never overwrites committed representative data.
+- **Full (ignored):** `large-full` is generated on demand under `.opencode/scratchpad/synthetic-analysis-full/` for stress tests. It writes the same six transport/manifest files as compact mode; its nested `persistence` graph stays in memory. The CLI rejects any output root that resolves outside the permitted root, following symlinks in every existing ancestor, so a link inside the root cannot redirect a write outside it. Full mode never overwrites committed representative data.
 
 ## Commands
 
@@ -131,8 +133,8 @@ The synthetic checks are wired into the aggregate commands: `lint` and `lint:che
 
 The bridge composes existing test seams rather than reimplementing envelope behaviour:
 
-1. It loads the committed `classesById` and `assignmentDefinitionPartials` views.
-2. Per call, it installs isolated `apiHandlerTestUtils` controller/transport seams that supply those transport views.
+1. It loads the committed `classesById`, `assignmentDefinitionPartials`, and `editableDefinitions` views.
+2. Per call, it installs isolated `apiHandlerTestUtils` controller/transport seams that supply those transport views (including the `getAssignmentDefinition_` seam backed by `editableDefinitions`).
 3. It dispatches once through the real `apiHandler`.
 4. It restores every seam before invoking the caller's callback.
 

@@ -58,7 +58,7 @@ function assertRequiredGraphContainers(graph) {
 }
 
 /**
- * Validates all four named transport views, reference integrity, redaction,
+ * Validates all five named transport views, reference integrity, redaction,
  * serialisability, and profile counts.
  *
  * @param {unknown} graph The generated logical graph.
