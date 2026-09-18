@@ -1,6 +1,8 @@
 import { type FormInstance } from 'antd';
 import { DEFAULT_WEIGHTING_VALUE } from '../../services/assignmentDefinition/assignmentDefinition.zod';
 import { type AssignmentDefinition } from '../../services/assignmentDefinition/assignmentDefinitionService';
+import { type useStartupWarmupState } from '../auth/startupWarmupState';
+import { sortYearGroups } from '../referenceData/yearGroupSorting';
 
 export type TaskRow = Readonly<{
   key: string;
@@ -338,4 +340,153 @@ export function buildTaskRowsFromResponse(
   }));
 
   return newTaskRows;
+}
+
+/**
+ * Form fields that must be non-empty before a stage-one parse can run.
+ */
+const REQUIRED_PARSE_FIELDS = [
+  'title',
+  'topic',
+  'yearGroup',
+  'referenceDocumentUrl',
+  'templateDocumentUrl',
+] as const;
+
+/**
+ * Builds topic options from topics array.
+ *
+ * @param {Array<{ key: string; name: string }> | null | undefined} topics - Topics array.
+ * @returns {Array<{ value: string; label: string }>} Topic options for Select component.
+ */
+export function buildTopicOptions(
+  topics: Array<{ key: string; name: string }> | null | undefined
+): Array<{ value: string; label: string }> {
+  if (!Array.isArray(topics)) return [];
+  return topics.map((topic) => ({ value: topic.key, label: topic.name }));
+}
+
+/**
+ * Builds year group options from year groups array.
+ *
+ * @param {Array<{ key: string; name: string }> | null | undefined} yearGroups - Year groups array.
+ * @returns {Array<{ value: string; label: string }>} Year group options for Select component.
+ */
+export function buildYearGroupOptions(
+  yearGroups: Array<{ key: string; name: string }> | null | undefined
+): Array<{ value: string; label: string }> {
+  if (!Array.isArray(yearGroups)) return [];
+  return sortYearGroups(yearGroups).map((yearGroup) => ({
+    value: yearGroup.key,
+    label: yearGroup.name,
+  }));
+}
+
+/**
+ * Checks if all required fields for parsing are present and non-empty.
+ *
+ * @param {Record<string, unknown>} values - Form values to check.
+ * @returns {boolean} True if all parse fields are present and non-empty.
+ */
+export function hasAllParseFields(values: Record<string, unknown>): boolean {
+  // REQUIRED_PARSE_FIELDS contains known field names that are safe to access on values
+  return REQUIRED_PARSE_FIELDS.every((field) => {
+    const value = values[field];
+    return typeof value === 'string' ? value.trim() !== '' : false;
+  });
+}
+
+/**
+ * Checks if a year group has been selected.
+ *
+ * @param {Record<string, unknown>} values - Form values to check.
+ * @returns {boolean} True if year group is selected (non-empty).
+ */
+export function hasYearGroupSelected(values: Record<string, unknown>): boolean {
+  const yearGroup = values.yearGroup;
+  return typeof yearGroup === 'string' ? yearGroup.trim() !== '' : false;
+}
+
+/**
+ * Converts a parsed create baseline to a definition record for consistent handling.
+ * Provides a fallback definition shape when query cache lookup fails in create mode.
+ *
+ * @param {ParsedCreateBaseline} baseline - The parsed baseline from stage-one create.
+ * @returns {Record<string, unknown>} The converted definition record.
+ */
+export function convertBaselineToDefinition(
+  baseline: ParsedCreateBaseline
+): Record<string, unknown> {
+  return {
+    primaryTitle: baseline.title,
+    primaryTopicKey: baseline.topic,
+    yearGroupKey: baseline.yearGroup,
+    referenceDocumentUrl: baseline.referenceDocumentUrl,
+    templateDocumentUrl: baseline.templateDocumentUrl,
+    referenceDocumentId: baseline.referenceDocumentId,
+    templateDocumentId: baseline.templateDocumentId,
+    documentType: baseline.documentType,
+  };
+}
+
+/**
+ * Derives primary action state based on parse phase and form values.
+ *
+ * @param {boolean} isCreateMode - Whether in create mode.
+ * @param {boolean} hasParsedTasks - Whether tasks have been parsed.
+ * @param {Record<string, unknown>} formValues - Current form values.
+ * @returns {{ primaryActionLabel: string; isPrimaryActionDisabled: boolean }} Primary action state.
+ */
+export function derivePrimaryActionState(
+  isCreateMode: boolean,
+  hasParsedTasks: boolean,
+  formValues: Record<string, unknown>
+): { primaryActionLabel: string; isPrimaryActionDisabled: boolean } {
+  const isParsePhase = isCreateMode && !hasParsedTasks;
+  const primaryActionLabel = isParsePhase ? 'Parse and continue' : 'Save';
+
+  const isPrimaryActionDisabled = isParsePhase
+    ? !hasAllParseFields(formValues)
+    : !hasYearGroupSelected(formValues);
+
+  return {
+    primaryActionLabel,
+    isPrimaryActionDisabled,
+  };
+}
+
+/**
+ * Derives reference data state from startup warmup state and query loading states.
+ * Determines whether reference data is trustworthy, loading, or blocked.
+ *
+ * @param {ReturnType<typeof useStartupWarmupState>} startupWarmupState - The startup warmup state.
+ * @param {boolean} isTopicsLoading - Whether topics are currently loading.
+ * @param {boolean} isYearGroupsLoading - Whether year groups are currently loading.
+ * @param {boolean} open - Whether the modal is open.
+ * @returns {{ hasTrustworthyReferenceData: boolean; isReferenceDataLoading: boolean; isReferenceDataBlocked: boolean }} Reference data state.
+ */
+export function deriveReferenceDataState(
+  startupWarmupState: ReturnType<typeof useStartupWarmupState>,
+  isTopicsLoading: boolean,
+  isYearGroupsLoading: boolean,
+  open: boolean
+): {
+  hasTrustworthyReferenceData: boolean;
+  isReferenceDataLoading: boolean;
+  isReferenceDataBlocked: boolean;
+} {
+  const hasTrustworthyReferenceData =
+    startupWarmupState.isDatasetReady('assignmentTopics') &&
+    startupWarmupState.isDatasetReady('yearGroups') &&
+    !startupWarmupState.isDatasetFailed('assignmentTopics') &&
+    !startupWarmupState.isDatasetFailed('yearGroups');
+
+  const isReferenceDataLoading = isTopicsLoading || isYearGroupsLoading;
+  const isReferenceDataBlocked = open && !hasTrustworthyReferenceData && !isReferenceDataLoading;
+
+  return {
+    hasTrustworthyReferenceData,
+    isReferenceDataLoading,
+    isReferenceDataBlocked,
+  };
 }
