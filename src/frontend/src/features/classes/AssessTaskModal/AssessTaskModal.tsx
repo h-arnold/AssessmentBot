@@ -1,6 +1,6 @@
 import { Alert, Button, Empty, Modal, Select, Space, Tooltip, Typography } from 'antd';
 import { useAssessTaskFlow } from './useAssessTaskFlow';
-import { AssignmentDefinitionWizardModal } from '../../assignmentWizard/AssignmentDefinitionWizardModal';
+import { AssessTaskCreateReview } from './AssessTaskCreateReview';
 import { LinkableDefinitionList } from './LinkableDefinitionList';
 import { AssignmentSelectSkeleton } from './AssignmentSelectSkeleton';
 
@@ -52,6 +52,11 @@ export function AssessTaskModal(properties: Readonly<AssessTaskModalProperties>)
     handleLinkSelect,
     getLoadingButtonLabel,
   } = useAssessTaskFlow({ open, classId });
+
+  // The in-modal create wizard content is active only while resolving the
+  // no-match choice. While it is active the owning footer is suppressed and
+  // the wide-data modal width token applies (STALE_RECOVERY_LAYOUT.md).
+  const isCreateContentActive = noMatchResolution === 'creating' && assessmentState === 'idle';
 
   /**
    * Renders the dropdown and assignment-selection body content.
@@ -306,7 +311,10 @@ export function AssessTaskModal(properties: Readonly<AssessTaskModalProperties>)
     );
   }
 
-  const footerContent = getFooterContent();
+  // While the in-modal create content is active the owning footer is suppressed
+  // so the review content's own footer is the only visible one.
+  const footerContent = isCreateContentActive ? null : getFooterContent();
+  const modalWidth = isCreateContentActive ? 'var(--app-modal-width-wide-data)' : undefined;
 
   return (
     <Modal
@@ -315,13 +323,11 @@ export function AssessTaskModal(properties: Readonly<AssessTaskModalProperties>)
       open={open}
       onCancel={onClose}
       footer={footerContent}
+      width={modalWidth}
     >
       {renderBody()}
-      {noMatchResolution === 'creating' && assessmentState === 'idle' && (
-        <AssignmentDefinitionWizardModal
-          open={true}
-          mode="create"
-          definitionKey={null}
+      {isCreateContentActive && (
+        <AssessTaskCreateReview
           initialValues={wizardInitialValues}
           onCreateSuccess={handleWizardCreateSuccess}
           onClose={handleWizardClose}

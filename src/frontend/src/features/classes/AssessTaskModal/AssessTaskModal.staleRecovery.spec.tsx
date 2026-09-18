@@ -33,10 +33,6 @@ vi.mock('./matchDefinitionForAssignment', () => ({
   findMatchingDefinition: vi.fn(),
 }));
 
-vi.mock('../../assignmentWizard/AssignmentDefinitionWizardModal', () => ({
-  AssignmentDefinitionWizardModal: vi.fn(() => <div data-testid="wizard-mock" />),
-}));
-
 let user: ReturnType<typeof userEvent.setup>;
 
 beforeEach(() => {

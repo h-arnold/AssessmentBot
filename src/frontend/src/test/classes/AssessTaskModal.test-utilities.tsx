@@ -248,20 +248,6 @@ export async function clickCreateNewDefinition(dialog: HTMLElement): Promise<voi
 }
 
 /**
- * Returns the props object stored on the wizard mock element by the
- * `__wizardProps` ref.  Must be called after `clickCreateNewDefinition`
- * has rendered the wizard mock.
- *
- * @returns {Promise<any>} The wizard mock properties.
- */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function getWizardProperties(): Promise<any> {
-  const wizard = await screen.findByTestId('wizard-mock');
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return (wizard as any).__wizardProps || {};
-}
-
-/**
  * Asserts that the Start Assessment button is disabled within the given dialog.
  *
  * @param {HTMLElement} dialog - The modal dialog element.

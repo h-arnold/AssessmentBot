@@ -1,6 +1,13 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { useCallback, useMemo, useState, type Dispatch, type SetStateAction } from 'react';
-import { flushSync } from 'react-dom';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type Dispatch,
+  type SetStateAction,
+} from 'react';
 import { startAssessmentRun } from '../../../services/assignmentAssessment/assignmentAssessmentService';
 import { queryKeys } from '../../../query/queryKeys';
 import type { ClassPartial } from '../../../services/googleClassrooms/classPartials.zod';
@@ -39,6 +46,21 @@ export type AssessTaskCreateHost = {
 };
 
 /**
+ * One auto-assessment start scheduled after a successful create-path save.
+ *
+ * @remarks The start is queued as state (not called inline) so the in-modal
+ * wizard content unmounts before `startAssessmentRun` is observed, preserving
+ * the sequencing contract the previous `flushSync` choreography provided.
+ */
+type PendingAutoStart = {
+  definitionKey: string;
+  assignmentId: string;
+  courseId: string;
+  assignmentTitle: string;
+  attempt: StartAttempt;
+};
+
+/**
  * Owns the create-new-definition flow: the wizard initial values, the
  * create-success auto-assessment sequence, and the wizard close routing.
  *
@@ -46,7 +68,9 @@ export type AssessTaskCreateHost = {
  * below the 500-line gate. The assessment lifecycle states themselves
  * (`assessmentState`, `noMatchResolution`) remain owned by
  * `useAssessTaskFlow` and are driven through the host contract — this module
- * never duplicates them. Section 8 converts this path to in-modal rendering.
+ * never duplicates them. Section 8 converts this path to in-modal rendering:
+ * the create-success start is queued as state so the wizard content unmounts
+ * before the auto-assessment API call begins.
  *
  * @param {AssessTaskCreateHost} host The shared flow controls owned by `useAssessTaskFlow`.
  * @returns {object} The create state and handlers consumed by `AssessTaskModal` via the orchestration hook.
@@ -70,7 +94,8 @@ export function useAssessTaskCreateFlow(host: AssessTaskCreateHost) {
   } = host;
   const queryClient = useQueryClient();
 
-  const [hasCreateSucceeded, setHasCreateSucceeded] = useState(false);
+  const [pendingAutoStart, setPendingAutoStart] = useState<PendingAutoStart | null>(null);
+  const autoStartHandledReference = useRef(false);
 
   // Read cached data for wizard pre-population
   const assignmentTopics = queryClient.getQueryData<AssignmentTopic[]>(
@@ -94,13 +119,14 @@ export function useAssessTaskCreateFlow(host: AssessTaskCreateHost) {
   );
 
   /**
-   * Resets the create success flag when the modal reopens. Stable across
+   * Resets the create-path state when the modal reopens. Stable across
    * renders so the owning flow can depend on it in its fetch effect.
    *
    * @returns {void}
    */
   const resetCreateState = useCallback((): void => {
-    setHasCreateSucceeded(false);
+    autoStartHandledReference.current = false;
+    setPendingAutoStart(null);
   }, []);
 
   /**
@@ -114,36 +140,70 @@ export function useAssessTaskCreateFlow(host: AssessTaskCreateHost) {
   }
 
   /**
-   * Handles the wizard's onCreateSuccess callback — kicks off the
-   * assessment run using the newly created definition key.
+   * Runs one queued auto-assessment start using the captured identifiers.
    *
-   * @remarks
-   * Uses `flushSync` to synchronously unmount the wizard before the
-   * auto-assessment API call begins. React 18's automatic batching would
-   * defer the `assessmentState` update to the next microtask, causing the
-   * wizard to remain mounted during the API call. `flushSync` forces
-   * the state update to flush synchronously so the wizard unmounts
-   * immediately and the body remains hidden per SPEC.md §250.
+   * @remarks Called only from the commit effect below, after the in-modal
+   * wizard content has unmounted, so `startAssessmentRun` is never observed
+   * while the review content is mounted.
    *
-   * The state transition sequence:
-   * 1. `hasCreateSucceeded = true`, `assessmentState = 'loading'` (sync flush)
-   * 2. `startAssessmentRun` API call
-   * 3a. Success: `noMatchResolution = 'idle'`, `assessmentState = 'success'`
-   * 3b. Failure: `noMatchResolution = 'idle'`, `assessmentState = 'error'`
-   *
-   * @param {string} definitionKey The key of the newly created definition.
+   * @param {PendingAutoStart} pending The queued start identifiers and attempt.
    * @returns {Promise<void>}
    */
-  async function handleWizardCreateSuccess(definitionKey: string): Promise<void> {
-    // Use flushSync so the wizard is unmounted synchronously before the
-    // auto-assessment API call begins (React 18 batching would otherwise
-    // defer the unmount to the next microtask).
-    flushSync(() => {
-      setHasCreateSucceeded(true);
-      setAssessmentState('loading');
-      setAssessmentError(undefined);
-    });
+  const performAutoStart = useCallback(
+    async (pending: PendingAutoStart): Promise<void> => {
+      try {
+        await startAssessmentRun({
+          definitionKey: pending.definitionKey,
+          assignmentId: pending.assignmentId,
+          courseId: pending.courseId,
+        });
 
+        if (isAttemptObsolete(pending.attempt)) return;
+
+        setNoMatchResolution('idle');
+        setAssessmentAlertType('success');
+        setAssessmentError(`Assessment started for '${pending.assignmentTitle}'.`);
+        setAssessmentState('success');
+      } catch (error: unknown) {
+        if (isAttemptObsolete(pending.attempt)) return;
+        setNoMatchResolution('idle');
+        handleApiError(error);
+      }
+    },
+    [
+      isAttemptObsolete,
+      handleApiError,
+      setNoMatchResolution,
+      setAssessmentAlertType,
+      setAssessmentError,
+      setAssessmentState,
+    ]
+  );
+
+  // Starts the queued auto-assessment only after the commit that unmounts the
+  // in-modal wizard content. The ref guards the React StrictMode double-effect
+  // invocation so a single save cannot start two assessment runs.
+  useEffect(() => {
+    if (pendingAutoStart === null || autoStartHandledReference.current) return;
+    autoStartHandledReference.current = true;
+    setPendingAutoStart(null);
+    void performAutoStart(pendingAutoStart);
+  }, [pendingAutoStart, performAutoStart]);
+
+  /**
+   * Handles the wizard's onCreateSuccess callback — captures the start context
+   * and queues the auto-assessment run using the newly created definition key.
+   *
+   * @remarks
+   * Setting `assessmentState = 'loading'` unmounts the in-modal wizard content
+   * in the next commit; the effect above then starts the assessment run, so the
+   * sequencing contract (start observed with wizard content unmounted) holds
+   * without the previous stacked-modal `flushSync` choreography.
+   *
+   * @param {string} definitionKey The key of the newly created definition.
+   * @returns {void}
+   */
+  function handleWizardCreateSuccess(definitionKey: string): void {
     const attemptAssignmentId = selectedAssignmentIdReference.current;
     if (attemptAssignmentId === undefined) {
       setNoMatchResolution('idle');
@@ -151,67 +211,42 @@ export function useAssessTaskCreateFlow(host: AssessTaskCreateHost) {
       return;
     }
 
-    const attempt: StartAttempt = {
-      session: sessionReference.current,
-      assignmentId: attemptAssignmentId,
-    };
-
-    try {
-      const selectedAssignment = assignments.find((a) => a.assignmentId === attemptAssignmentId);
-      if (!selectedAssignment) {
-        setNoMatchResolution('idle');
-        setAssessmentAsError('error', 'Selected assignment not found. Please try again.');
-        return;
-      }
-
-      captureStartContext({
-        definitionKey,
-        assignmentId: selectedAssignment.assignmentId,
-        courseId: classId,
-      });
-
-      await startAssessmentRun({
-        definitionKey,
-        assignmentId: selectedAssignment.assignmentId,
-        courseId: classId,
-      });
-
-      if (isAttemptObsolete(attempt)) return;
-
+    const selectedAssignment = assignments.find((a) => a.assignmentId === attemptAssignmentId);
+    if (!selectedAssignment) {
       setNoMatchResolution('idle');
-      setAssessmentAlertType('success');
-      setAssessmentError(`Assessment started for '${selectedAssignment.title}'.`);
-      setAssessmentState('success');
-    } catch (error: unknown) {
-      if (isAttemptObsolete(attempt)) return;
-      setNoMatchResolution('idle');
-      handleApiError(error);
+      setAssessmentAsError('error', 'Selected assignment not found. Please try again.');
+      return;
     }
+
+    captureStartContext({
+      definitionKey,
+      assignmentId: selectedAssignment.assignmentId,
+      courseId: classId,
+    });
+
+    autoStartHandledReference.current = false;
+    setAssessmentState('loading');
+    setAssessmentError(undefined);
+    setPendingAutoStart({
+      definitionKey,
+      assignmentId: selectedAssignment.assignmentId,
+      courseId: classId,
+      assignmentTitle: selectedAssignment.title,
+      attempt: {
+        session: sessionReference.current,
+        assignmentId: attemptAssignmentId,
+      },
+    });
   }
 
   /**
-   * Handles wizard close — if the wizard closed without onCreateSuccess
-   * having fired (i.e., user cancelled), return to the choice state.
-   *
-   * @remarks
-   * Uses the `hasCreateSucceeded` flag to distinguish the two close paths
-   * from the wizard per SPEC.md §189:
-   * - **Wizard success**: `onCreateSuccess` fires first, setting
-   *   `hasCreateSucceeded = true`; when the wizard subsequently unmounts
-   *   and `onClose` fires, this handler returns early — the assessment
-   *   state machine handles the transition.
-   * - **Wizard cancel**: `onClose` fires without `onCreateSuccess` having
-   *   been called; `hasCreateSucceeded` is still `false`, so the handler
-   *   transitions `noMatchResolution` back to `'choice'`.
+   * Handles the in-modal review cancel, returning the owning modal to the
+   * no-match choice prompt. In-modal, the wizard content only closes through
+   * this explicit user cancel, so a close always means "return to choice".
    *
    * @returns {void}
    */
   function handleWizardClose(): void {
-    if (hasCreateSucceeded) {
-      // Wizard closed after success — assessment state handles the transition
-      return;
-    }
-    // Wizard cancelled — return to choice state
     setNoMatchResolution('choice');
   }
 
