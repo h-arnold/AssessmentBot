@@ -43,7 +43,7 @@ Before writing or executing this plan:
 
 ### Delivery status and baseline evidence (17 September 2026)
 
-- **Current phase:** Sections 1–2 complete (both reviewed clean, regression gates passed, committed and pushed). Section 3 red phase is next.
+- **Current phase:** Sections 1–3 complete (all reviewed clean, regression gates passed, committed and pushed). Section 4 red phase is next.
 - **User authorisation:** existing line-count warnings are accepted technical debt (10 backend and 48 frontend `max-lines` warnings). This does not permit new warnings or waive the section-specific LOC gates.
 - **Commit/push authorisation:** the user explicitly authorised committing and pushing each completed section, superseding the no-commit scope statement in `SPEC.md` for delivery operations.
 - **Baseline:** `.ts-regression-checker/reports/session-fix-301-stale-assignment-definitions/baseline/baseline.txt`; backend/frontend/builder tests, Playwright E2E and builder compilation passed. Backend lint reported the accepted 10 warnings. Direct frontend lint reported 0 errors and the accepted 48 warnings.
@@ -304,7 +304,15 @@ API layer tests:
 
 ### Implementation notes / deviations / follow-up
 
-- **Follow-up implications:** Sections 4, 7, 9, and 10 consume these envelopes.
+- **Implementation notes:** Red phase: 11 tests across `tests/controllers/assignmentDefinitionController.upsert.recovery.test.js` (controller cases 1–6; 8 tests) and `tests/api/assignmentDefinitionUpsertRecoveryApi.test.js` (API-layer case 7; 3 tests). Red review findings (rollback message over-constraint + weak write-count proxy; misplaced transport-layer type checks; two nitpicks) fixed across two fix cycles, final review CLEAN. Green phase: `forceReparse` gating and `expectedDefinitionUpdatedAt` staleness (`ApiValidationError` with `code: 'DEFINITION_STALE'`) enforced as domain rules; parse failures (throwing parser and zero-task variants) mapped to `ApiValidationError` with `code: 'DEFINITION_PARSE_FAILED'` and SPEC safe copy; transport type checks (`validateRecoveryFieldShapes_`) added at the boundary per backend AGENTS §1.2; pass-through through `z_apiHandler` needed no change (allowlist and handler already forwarded the fields; envelope mapper already honours `.code`). Data-shape docs updated: backend contracts marked implemented in `assignment-definition.md` and `transport-envelope.md`; frontend remainder (request schema + error registry) accurately left marked for Section 4. Green review: one nitpick (doc-tree indentation) fixed and verified CLEAN. Regression gate: 0 regressions, 0 new failures.
+- **Deviations from plan:** none material. Mid-green LOC fix: the Section 3 additions projected the orchestrator over 500 (567 lines, one new lint warning); a cohesive recovery-rules extraction resolved it before the gate.
+- **LOC evidence:** `AssignmentDefinitionUpsertOrchestrator.js` 452 lines (was 465 after Section 1, peaked at 567 mid-green); NEW `AssignmentDefinitionRecoveryRules.js` 183 lines (four pure rules: `assertRecoveryPreconditions_`, `assertApprovalBaselineFresh_`, `parseTasksOrThrow_`, `applyEquivalentStoredWeightings_`); `assignmentDefinitionUpsertValidation.js` 250 → 287 lines. Lint back to exactly the 10 accepted warnings.
+- **Verification evidence:** full backend suite 2486/2486 pass (2477 pre-existing + 9 new); recovery suites 11/11 pass; `npm run lint:backend` 0 errors / exactly 10 accepted warnings.
+- **Commit:** recorded at commit gate.
+
+### Follow-up implications
+
+- Sections 4, 7, 9, and 10 consume these envelopes.
 
 ---
 

@@ -31,8 +31,8 @@ payload inside this envelope.
   error: {
     code: string,         // One of: 'RATE_LIMITED' | 'INVALID_REQUEST' |
                           //         'UNKNOWN_METHOD' | 'IN_USE' |
-                          //         'DEFINITION_STALE' | 'FORBIDDEN' |
-                          //         'INTERNAL_ERROR', or a stable
+                          //         'DEFINITION_STALE' | 'DEFINITION_PARSE_FAILED' |
+                          //         'FORBIDDEN' | 'INTERNAL_ERROR', or a stable
                           //         authentication-settings save code (see below)
     message: string,      // Human-readable error string
     retriable: boolean,   // always present; true only for RATE_LIMITED
@@ -81,13 +81,16 @@ payload or unknown field) — remain generic non-retriable `INVALID_REQUEST` cod
 The envelope mapper uses `ApiValidationError.code` when present and otherwise falls
 back to the generic `INVALID_REQUEST` mapping.
 
-### Planned error code — `DEFINITION_PARSE_FAILED` (not implemented)
+### Error code — `DEFINITION_PARSE_FAILED` (backend implemented; frontend registry planned)
 
-> **Status: Not implemented.** Planned contract from `SPEC.md` (issue #301). The code is
-> not yet mapped in `_mapErrorToFailureEnvelope` and is absent from the frontend error
-> registry (`map-error-to-ui.ts`).
+> **Status: Backend implemented (Section 3, issue #301).** The backend throws
+> `ApiValidationError` with `code: 'DEFINITION_PARSE_FAILED'` for recognised
+> document/task parsing failures, and `_mapErrorToFailureEnvelope` honours
+> `ApiValidationError.code`, so the envelope surfaces this code. The frontend
+> error registry entry (`map-error-to-ui.ts`) remains **not implemented**
+> (Section 4).
 
-Planned as a stable, non-retriable `ApiValidationError` code for recognised
+Stable, non-retriable `ApiValidationError` code for recognised
 document/task parsing failures. It maps to safe user copy: “The assignment documents
 could not be parsed. Check the reference and template documents, then try again.”
 Raw diagnostic details stay in logs, not user copy. An invalid task or a zero-task

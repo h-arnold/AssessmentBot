@@ -14,6 +14,38 @@ const WIZARD_UPSERT_REQUIRED_FIELDS = Object.freeze([
 ]);
 
 /**
+ * Validates recovery field shapes at the transport boundary.
+ *
+ * Type checks for transport/control fields live here per the validation
+ * ownership rules; the mutual-exclusion business rule is domain-owned by
+ * the upsert orchestrator.
+ *
+ * @param {*} parameters - Candidate request payload.
+ * @throws {ApiValidationError} If a recovery field has an invalid shape.
+ */
+function validateRecoveryFieldShapes_(parameters) {
+  if (
+    Object.hasOwn(parameters, 'forceReparse') &&
+    parameters.forceReparse !== undefined &&
+    typeof parameters.forceReparse !== 'boolean'
+  ) {
+    throwUpsertValidationError_('forceReparse must be a boolean when provided.', 'forceReparse');
+  }
+
+  if (
+    Object.hasOwn(parameters, 'expectedDefinitionUpdatedAt') &&
+    parameters.expectedDefinitionUpdatedAt !== undefined &&
+    parameters.expectedDefinitionUpdatedAt !== null &&
+    typeof parameters.expectedDefinitionUpdatedAt !== 'string'
+  ) {
+    throwUpsertValidationError_(
+      'expectedDefinitionUpdatedAt must be a string when provided.',
+      'expectedDefinitionUpdatedAt'
+    );
+  }
+}
+
+/**
  * Validates payload shape and required fields for assignment-definition upsert transport.
  *
  * @param {*} parameters - Candidate request payload.
@@ -23,6 +55,8 @@ function validateUpsertParameters_(parameters) {
   if (!parameters || typeof parameters !== 'object' || Array.isArray(parameters)) {
     throwUpsertValidationError_('params must be an object.', 'params');
   }
+
+  validateRecoveryFieldShapes_(parameters);
 
   const shouldTranslateDocumentUrls =
     Object.hasOwn(parameters, 'referenceDocumentUrl') ||
@@ -92,6 +126,8 @@ function validateUpsertParameters_(parameters) {
  * @throws {ApiValidationError} If the payload violates transport contract rules.
  */
 function validateWizardUpsertParameters_(parameters) {
+  validateRecoveryFieldShapes_(parameters);
+
   WIZARD_UPSERT_REQUIRED_FIELDS.forEach((fieldName) => {
     if (!Object.hasOwn(parameters, fieldName)) {
       throwUpsertValidationError_(`Missing required field: ${fieldName}.`, fieldName);
@@ -246,5 +282,6 @@ if (typeof module !== 'undefined' && module.exports) {
     validateWizardUpsertParameters_,
     validateTaskWeightingsShape_,
     validateRequiredYearGroupKey_,
+    validateRecoveryFieldShapes_,
   };
 }

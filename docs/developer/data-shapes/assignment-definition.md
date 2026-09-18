@@ -234,21 +234,23 @@ and **ID-shape** (link flow: `referenceDocumentId` + `templateDocumentId` + `doc
 
 **Request:**
 
-| Field                  | Type                             | Required  | Notes                                                                                                         |
-| ---------------------- | -------------------------------- | --------- | ------------------------------------------------------------------------------------------------------------- |
-| `definitionKey`        | `string`                         | no        | Absent/null on create. Must be already trimmed on update.                                                     |
-| `primaryTitle`         | `string`                         | yes       |                                                                                                               |
-| `primaryTopicKey`      | `string`                         | yes       | Must be non-empty, already trimmed, no unsafe characters.                                                     |
-| `yearGroupKey`         | `string`                         | yes       | Must be non-null, non-empty, already trimmed, no unsafe characters.                                           |
-| `referenceDocumentUrl` | `string`                         | URL-shape | Must be valid `docs.google.com` URL (wizard). Mutually exclusive with ID fields.                              |
-| `templateDocumentUrl`  | `string`                         | URL-shape | Must be valid `docs.google.com` URL (wizard). Mutually exclusive with ID fields.                              |
-| `referenceDocumentId`  | `string`                         | ID-shape  | Must be a string (link flow). Mutually exclusive with URL fields.                                             |
-| `templateDocumentId`   | `string`                         | ID-shape  | Must be a string (link flow). Mutually exclusive with URL fields.                                             |
-| `documentType`         | `'SLIDES'\|'SHEETS'`             | ID-shape  | Mutually exclusive with URL fields.                                                                           |
-| `alternateTitles`      | `string[]`                       | no        | Array of trimmed non-empty strings. Preserves stored value on update if omitted.                              |
-| `alternateTopics`      | `string[]`                       | no        | Same semantics as `alternateTitles`.                                                                          |
-| `assignmentWeighting`  | `number\|null`                   | no        | 0–10 range.                                                                                                   |
-| `taskWeightings`       | `Array<{taskId, taskWeighting}>` | no        | Array of `{taskId, taskWeighting}` objects. Both fields required per entry. `taskId` must be safe identifier. |
+| Field                         | Type                             | Required  | Notes                                                                                                                                                                                                                                                          |
+| ----------------------------- | -------------------------------- | --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `definitionKey`               | `string`                         | no        | Absent/null on create. Must be already trimmed on update.                                                                                                                                                                                                      |
+| `primaryTitle`                | `string`                         | yes       |                                                                                                                                                                                                                                                                |
+| `primaryTopicKey`             | `string`                         | yes       | Must be non-empty, already trimmed, no unsafe characters.                                                                                                                                                                                                      |
+| `yearGroupKey`                | `string`                         | yes       | Must be non-null, non-empty, already trimmed, no unsafe characters.                                                                                                                                                                                            |
+| `referenceDocumentUrl`        | `string`                         | URL-shape | Must be valid `docs.google.com` URL (wizard). Mutually exclusive with ID fields.                                                                                                                                                                               |
+| `templateDocumentUrl`         | `string`                         | URL-shape | Must be valid `docs.google.com` URL (wizard). Mutually exclusive with ID fields.                                                                                                                                                                               |
+| `referenceDocumentId`         | `string`                         | ID-shape  | Must be a string (link flow). Mutually exclusive with URL fields.                                                                                                                                                                                              |
+| `templateDocumentId`          | `string`                         | ID-shape  | Must be a string (link flow). Mutually exclusive with URL fields.                                                                                                                                                                                              |
+| `documentType`                | `'SLIDES'\|'SHEETS'`             | ID-shape  | Mutually exclusive with URL fields.                                                                                                                                                                                                                            |
+| `alternateTitles`             | `string[]`                       | no        | Array of trimmed non-empty strings. Preserves stored value on update if omitted.                                                                                                                                                                               |
+| `alternateTopics`             | `string[]`                       | no        | Same semantics as `alternateTitles`.                                                                                                                                                                                                                           |
+| `assignmentWeighting`         | `number\|null`                   | no        | 0–10 range.                                                                                                                                                                                                                                                    |
+| `taskWeightings`              | `Array<{taskId, taskWeighting}>` | no        | Array of `{taskId, taskWeighting}` objects. Both fields required per entry. `taskId` must be safe identifier.                                                                                                                                                  |
+| `forceReparse`                | `boolean`                        | no        | Optional. `true` forces document parsing regardless of timestamps; accepted only with an existing `definitionKey`. Never persisted or returned. Must not be combined with `taskWeightings`.                                                                    |
+| `expectedDefinitionUpdatedAt` | `string` (ISO)                   | no        | Optional approval-save baseline (the response `updatedAt` from the latest load/reparse). A mismatch returns `DEFINITION_STALE` with no writes. Requests omitting it retain ordinary upsert behaviour. No new response field — `updatedAt` is already returned. |
 
 **Forbidden request fields:** None — the request schema is flexible and controller-owned
 validation handles business rules (duplicate detection, document-ID mismatch, unknown task IDs).
@@ -283,46 +285,55 @@ Key contract notes:
 | Mismatched document types   | `INVALID_REQUEST` | Both URLs must resolve to same type                                                    |
 | Duplicate business tuple    | `INVALID_REQUEST` | Controller detects duplicate `(primaryTitle, primaryTopicKey, yearGroupKey)` on create |
 
-#### Not implemented — stale-definition recovery (planned, Issue #301)
+#### Stale-definition recovery (Issue #301)
 
-> **Status: Partially implemented.** The weighting-reconciliation semantics below
-> (task equivalence comparator, reparse weighting preservation) are **implemented**
-> in `AssignmentDefinitionTaskEquivalence.js` and
+> **Status: Backend implemented (Sections 1 and 3); frontend planned (Section 4).**
+> The weighting-reconciliation semantics below (task equivalence comparator,
+> reparse weighting preservation) are **implemented** in
+> `AssignmentDefinitionTaskEquivalence.js` and
 > `AssignmentDefinitionUpsertOrchestrator._resolveTaskState` (Section 1, issue #301):
 > on a timestamp-triggered reparse, tasks with equivalent parsed content keep their
 > stored weighting (including valid zeroes), new or changed tasks default to `1`,
 > removed tasks disappear, and ordinary upserts without a document change never
-> invoke the comparator. The request-field extensions below (`forceReparse`,
-> `expectedDefinitionUpdatedAt`) and the `DEFINITION_PARSE_FAILED` envelope remain
-> **not implemented**; `UpsertAssignmentDefinitionRequestSchema` is `.strict()`,
-> so those fields are currently **rejected** by the transport layer. Documented
-> as planned shape so implementation does not drift.
+> invoke the comparator. The request-field extensions (`forceReparse`,
+> `expectedDefinitionUpdatedAt`), the save-time `DEFINITION_STALE` baseline check,
+> and the `DEFINITION_PARSE_FAILED` envelope are **implemented** in the backend
+> (Section 3, issue #301). The frontend `UpsertAssignmentDefinitionRequestSchema`
+> extension and the shared frontend error-registry entry remain **not implemented**
+> (Section 4); the frontend request schema is `.strict()`, so those fields are
+> currently **rejected** by the frontend transport schema. Documented as planned
+> shape so implementation does not drift.
 
-**Planned `upsertAssignmentDefinition` request extensions:**
+**`upsertAssignmentDefinition` recovery request fields (backend implemented; frontend planned):**
 
 | Field                         | Type           | Required | Notes                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
 | ----------------------------- | -------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `forceReparse`                | `boolean`      | no       | Optional. `true` is accepted **only with an existing `definitionKey`**; it forces document parsing regardless of timestamps. Omission or `false` retains existing upsert behaviour; a forced create and invalid types are rejected. Transport/control information — never persisted or returned. `forceReparse: true` must be **rejected when combined with `taskWeightings`** to avoid ambiguous patch precedence (explicit forced requests omit weighting patches). |
 | `expectedDefinitionUpdatedAt` | `string` (ISO) | no       | Optional approval-save baseline; the value is the existing response `updatedAt` from the latest load/reparse. Compared against the currently stored `updatedAt` before applying edits; a mismatch returns `DEFINITION_STALE` with no writes. Requests omitting it retain ordinary upsert behaviour for existing non-wizard callers. No new response field — `updatedAt` is already returned.                                                                          |
 
-**Planned reparse, freshness and weighting semantics:**
+**Reparse, freshness and weighting semantics (backend implemented):**
 
 - Explicit reparse uses the current persisted metadata/document identifiers (or the
   existing, explicitly confirmed URL-change workflow) and omits `taskWeightings`;
-  omission preserves assignment weighting.
+  omission preserves assignment weighting. `forceReparse: true` combined with
+  `taskWeightings` is rejected before any parsing or persistence, as is a forced
+  create with no existing `definitionKey`.
 - Task weighting rules are **unchanged**: unchanged tasks keep their stored weighting;
   new or changed tasks use the `TaskDefinition` constructor default of `1`; removed
   tasks disappear; valid zero weightings are preserved.
-- On approval saves the backend rechecks Drive freshness (`referenceLastModified`/
-  `templateLastModified`) **and** the stored `updatedAt` baseline before applying
-  weighting patches or writing. Either failure returns `DEFINITION_STALE` and makes
-  no writes.
+- On approval saves the backend compares the request `expectedDefinitionUpdatedAt`
+  baseline against the stored `updatedAt` before applying weighting patches or
+  writing; a mismatch returns `DEFINITION_STALE` and makes no writes. Drive
+  freshness (`referenceLastModified`/`templateLastModified`) continues to drive
+  timestamp-triggered reparses; requests omitting the baseline retain ordinary
+  upsert behaviour for existing non-wizard callers.
 
-**Planned parse-failure semantics:**
+**Parse-failure semantics (backend implemented; frontend registry planned):**
 
 - A stable, non-retriable `DEFINITION_PARSE_FAILED` code (see
-  [`transport-envelope.md`](transport-envelope.md#planned-error-code-definition_parse_failed-not-implemented))
-  covers recognised document/task parsing failures.
+  [`transport-envelope.md`](transport-envelope.md#error-code--definition_parse_failed-backend-implemented-frontend-registry-planned))
+  covers recognised document/task parsing failures. The envelope mapper honours
+  `ApiValidationError.code`, so the backend rejection surfaces with this code.
 - An invalid task or a zero-task result blocks the refresh and persists nothing; the
   previously stored definition and freshness timestamps are left unchanged.
 - Authorisation, rate-limit and persistence errors retain their distinct codes rather
@@ -483,8 +494,9 @@ Key notes:
 **Backend transport validation:**
 
 - `src/backend/z_Api/assignmentDefinition/assignmentDefinitionUpsertValidation.js`:
-  - `validateUpsertParameters_()` — validates upsert request: `params` is object, required fields present, `primaryTitle` is string, `primaryTopicKey` is safe trimmed identifier, `referenceDocumentId`/`templateDocumentId` are strings (ID-shape) or URL-shape via `validateWizardUpsertParameters_()`, `definitionKey` is safe trimmed identifier if provided, `taskWeightings` shape validated, `yearGroupKey` validated.
-  - `validateWizardUpsertParameters_()` — validates URL-shape upsert: required URL fields, mutual exclusion, URL parsing via `extractSupportedDocumentDescriptor_()`, same-document and same-type checks.
+  - `validateUpsertParameters_()` — validates upsert request: `params` is object, recovery field shapes (`forceReparse` boolean, `expectedDefinitionUpdatedAt` string when provided), required fields present, `primaryTitle` is string, `primaryTopicKey` is safe trimmed identifier, `referenceDocumentId`/`templateDocumentId` are strings (ID-shape) or URL-shape via `validateWizardUpsertParameters_()`, `definitionKey` is safe trimmed identifier if provided, `taskWeightings` shape validated, `yearGroupKey` validated.
+  - `validateWizardUpsertParameters_()` — validates URL-shape upsert: recovery field shapes, required URL fields, mutual exclusion, URL parsing via `extractSupportedDocumentDescriptor_()`, same-document and same-type checks.
+  - `validateRecoveryFieldShapes_()` — validates transport-level shapes of the recovery control fields: `forceReparse` must be a boolean and `expectedDefinitionUpdatedAt` must be a string when provided (the `forceReparse` + `taskWeightings` mutual exclusion is domain-owned by the upsert orchestrator).
   - `validateRequiredYearGroupKey_()` — validates `yearGroupKey` is present, non-null, safe trimmed identifier.
 - `src/backend/z_Api/assignmentDefinition/assignmentDefinitionValidation.js`:
   - `validateReadParameters_()` — validates `getAssignmentDefinition` request: params object, `definitionKey` is safe trimmed identifier.
@@ -499,6 +511,9 @@ Key notes:
 - Duplicate detection: the orchestrator checks for existing definitions with matching `(primaryTitle, primaryTopicKey, yearGroupKey)` tuple on create upserts.
 - Document-ID mismatch: the orchestrator validates that `referenceDocumentId` and `templateDocumentId` refer to existing Drive files.
 - Unknown task IDs in `taskWeightings` are controller-owned validation: the orchestrator validates that each `taskId` in `taskWeightings` exists in the parsed task map.
+- `forceReparse: true` requires an existing `definitionKey` and must not be combined with `taskWeightings`; both violations are rejected before any parsing or persistence.
+- An `expectedDefinitionUpdatedAt` baseline that mismatches the stored `updatedAt` rejects the save with `DEFINITION_STALE` (`ApiValidationError` carrying that code) and no writes.
+- Recognised document/task parsing failures (throwing parser or zero-task result) reject with `DEFINITION_PARSE_FAILED` (`ApiValidationError` carrying that code) and nothing persisted.
 - The response mapper throws if `yearGroupKey` cannot be resolved to a valid year-group label.
 - The response mapper throws if any required field is `undefined` in the canonical response.
 - `deleteAssignmentDefinition` is idempotent: repeated deletes for the same key still succeed.
@@ -585,6 +600,7 @@ Controller:                src/backend/y_controllers/AssignmentDefinition/
   ├── AssignmentDefinitionTaskParser.js      — Task document parsing
   ├── AssignmentDefinitionTaskWeighting.js   — Task weighting logic
   ├── AssignmentDefinitionTaskEquivalence.js — Task equivalence comparator (reparse reconciliation)
+  ├── AssignmentDefinitionRecoveryRules.js   — Recovery and reparse rules (forced-reparse gating, approval baseline, parse-failure mapping, weighting restoration)
   ├── AssignmentDefinitionPersistence.js     — Database read/write
   ├── AssignmentDefinitionUpsertOrchestrator.js — Upsert orchestration
   └── AssignmentDefinitionResponseMapper.js  — _getFullAssignmentDefinition()
