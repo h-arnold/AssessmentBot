@@ -43,7 +43,7 @@ Before writing or executing this plan:
 
 ### Delivery status and baseline evidence (17 September 2026)
 
-- **Current phase:** Sections 1–7 complete (all reviewed clean, gates passed, committed and pushed). Section 8 red phase is next. Standing regression session: `fix-301-stale-assignment-definitions-post-s6` (baseline established on the Section 6 tree; 1 accepted-debt failing check: backend-lint max-lines warnings; the post-s6 compare also absorbed the Section 7 hook-warning retirement with 0 regressions).
+- **Current phase:** Sections 1–8 complete (all reviewed clean, gates passed, committed and pushed). Section 9 red phase is next. Standing regression session: `fix-301-stale-assignment-definitions-post-s6` (baseline established on the Section 6 tree; 1 accepted-debt failing check: backend-lint max-lines warnings; absorbs Sections 7–8 warning retirements and sanctioned test-file growth with 0 test regressions; two frontend-lint max-lines fingerprint changes — e2e spec 1069→1114 and `AssessTaskModal.spec.tsx` 1670→1718 from retargeted tests — resolve via a `post-s8` baseline refresh after the Section 8 commit).
 - **User authorisation:** existing line-count warnings are accepted technical debt (10 backend and 48 frontend `max-lines` warnings). This does not permit new warnings or waive the section-specific LOC gates.
 - **Commit/push authorisation:** the user explicitly authorised committing and pushing each completed section, superseding the no-commit scope statement in `SPEC.md` for delivery operations.
 - **Baseline:** `.ts-regression-checker/reports/session-fix-301-stale-assignment-definitions/baseline/baseline.txt`; backend/frontend/builder tests, Playwright E2E and builder compilation passed. Backend lint reported the accepted 10 warnings. Direct frontend lint reported 0 errors and the accepted 48 warnings.
@@ -601,6 +601,17 @@ Frontend tests:
 - `npm run test:frontend -- features/classes features/assignmentWizard`
 - `npm run lint:frontend`
 - Scripted MCP walkthrough check recorded.
+
+### Commit evidence
+
+- Commit: `45bed91` — `feat: render the Assess Task create path in-modal` (8 files, +934/−258). Branch `fix/301-stale-assignment-definitions`.
+- Pre-commit hooks: prettier + staged lint + builder tsc all clean.
+- Regression gate: frontend-e2e 0 regressions (one transient failure of the already-documented `classes-crud-bulk-progress.spec.ts` modal-click flake class did not recur on re-run); only 2 sanctioned frontend-lint max-lines fingerprint changes from the retargeted test files remained, resolved by a `post-s8` baseline refresh.
+
+### Implementation notes (post-green, pre-commit)
+
+- Scripted MCP walkthrough performed against the dev build (127.0.0.1:4173) using the exact `installRuntimeMock` global-gate mechanism (StrictMode double-firing preserved via two-entry queues; init script captured in scratchpad, not committed). Observed journey: choice prompt (no-match alert; Create New Definition enabled; Link disabled per mock) → Create renders stage one **in the single owning dialog** (`dialogCount: 1`, no stacked "Create assignment" dialog; owning footer absent; `--app-modal-width-wide-data` applied) with the no-match alert replaced by the parse notice and stage-one fields pre-populated → stage-one URL entry → Parse and continue → stage two rendered in-modal (Assignment Weighting spinbutton + "Task weightings" table; Save pending while upsert resolves). No contradiction observed with `@STALE_RECOVERY_LAYOUT.md` or the composition rules at any observed state. One observation noted (user-visible form behaviour, not a deviation): the walkthrough class was a Year 9 class whose pre-populated topic was unavailable for its year-group topic list, so a topic/year-group selection was required before Parse enabled — consistent with stage-one required-field rules.
+- Residual code-review note carried into Section 11: two stacked-wizard e2e helpers (`setupWizardDialog`, `openWizardFromChoicePrompt` in `classes-page-end-to-end-helpers.ts`) are now unused after the e2e rewrites.
 
 ---
 
