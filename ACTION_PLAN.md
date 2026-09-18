@@ -308,7 +308,7 @@ API layer tests:
 - **Deviations from plan:** none material. Mid-green LOC fix: the Section 3 additions projected the orchestrator over 500 (567 lines, one new lint warning); a cohesive recovery-rules extraction resolved it before the gate.
 - **LOC evidence:** `AssignmentDefinitionUpsertOrchestrator.js` 452 lines (was 465 after Section 1, peaked at 567 mid-green); NEW `AssignmentDefinitionRecoveryRules.js` 183 lines (four pure rules: `assertRecoveryPreconditions_`, `assertApprovalBaselineFresh_`, `parseTasksOrThrow_`, `applyEquivalentStoredWeightings_`); `assignmentDefinitionUpsertValidation.js` 250 → 287 lines. Lint back to exactly the 10 accepted warnings.
 - **Verification evidence:** full backend suite 2486/2486 pass (2477 pre-existing + 9 new); recovery suites 11/11 pass; `npm run lint:backend` 0 errors / exactly 10 accepted warnings.
-- **Commit:** recorded at commit gate.
+- **Commit:** `1806f63` — `feat: add forceReparse, expectedDefinitionUpdatedAt and DEFINITION_PARSE_FAILED upsert contracts`, branch `fix/301-stale-assignment-definitions`, pushed successfully (`bed5e49..1806f63`). Pre-commit formatting/lint/type-check hooks passed.
 
 ### Follow-up implications
 
