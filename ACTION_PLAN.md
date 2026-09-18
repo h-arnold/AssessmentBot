@@ -43,7 +43,7 @@ Before writing or executing this plan:
 
 ### Delivery status and baseline evidence (17 September 2026)
 
-- **Current phase:** Sections 1–4 complete (all reviewed clean, regression gates passed, committed and pushed). Section 5 red phase is next.
+- **Current phase:** Sections 1–5 complete (all reviewed clean, gates passed, committed and pushed). Section 6 red phase is next. Standing regression session: `fix-301-stale-assignment-definitions-post-s5` (baseline established on the Section 5 tree; 1 accepted-debt failing check: backend-lint max-lines warnings).
 - **User authorisation:** existing line-count warnings are accepted technical debt (10 backend and 48 frontend `max-lines` warnings). This does not permit new warnings or waive the section-specific LOC gates.
 - **Commit/push authorisation:** the user explicitly authorised committing and pushing each completed section, superseding the no-commit scope statement in `SPEC.md` for delivery operations.
 - **Baseline:** `.ts-regression-checker/reports/session-fix-301-stale-assignment-definitions/baseline/baseline.txt`; backend/frontend/builder tests, Playwright E2E and builder compilation passed. Backend lint reported the accepted 10 warnings. Direct frontend lint reported 0 errors and the accepted 48 warnings.
