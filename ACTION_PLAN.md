@@ -43,7 +43,7 @@ Before writing or executing this plan:
 
 ### Delivery status and baseline evidence (17 September 2026)
 
-- **Current phase:** Sections 1–3 complete (all reviewed clean, regression gates passed, committed and pushed). Section 4 red phase is next.
+- **Current phase:** Sections 1–4 complete (all reviewed clean, regression gates passed, committed and pushed). Section 5 red phase is next.
 - **User authorisation:** existing line-count warnings are accepted technical debt (10 backend and 48 frontend `max-lines` warnings). This does not permit new warnings or waive the section-specific LOC gates.
 - **Commit/push authorisation:** the user explicitly authorised committing and pushing each completed section, superseding the no-commit scope statement in `SPEC.md` for delivery operations.
 - **Baseline:** `.ts-regression-checker/reports/session-fix-301-stale-assignment-definitions/baseline/baseline.txt`; backend/frontend/builder tests, Playwright E2E and builder compilation passed. Backend lint reported the accepted 10 warnings. Direct frontend lint reported 0 errors and the accepted 48 warnings.
@@ -346,6 +346,13 @@ Frontend schema tests:
 2. Schema rejects `forceReparse: true` combined with `taskWeightings`.
 3. Unknown-field strictness regression (schema still rejects unexpected keys).
 4. Registry test: `DEFINITION_PARSE_FAILED` maps to the SPEC copy; `DEFINITION_STALE` mapping unchanged.
+
+### Implementation notes
+
+- Red phase: 8 tests across `src/frontend/src/services/assignmentDefinition/assignmentDefinition.zod.spec.ts` (4 recovery-field schema tests) and `src/frontend/src/errors/map-error-to-ui.spec.ts` (4 `DEFINITION_PARSE_FAILED` registry tests). Red review CLEAN.
+- Green phase: `UpsertAssignmentDefinitionRequestSchema` extended with optional `forceReparse` and `expectedDefinitionUpdatedAt` (`IsoDateTimeWithTimezoneSchema`), `superRefine` mutual exclusion with `taskWeightings` (custom issue; payload trimmed before refine so strictness holds), `.strict()` preserved. `map-error-to-ui.ts` added a `DEFINITION_PARSE_FAILED` registry entry with the SPEC copy ("The assignment documents could not be parsed. Check the reference and template documents, then try again."), ordered after `DEFINITION_UPDATED`; no feature-local matching. Data-shape docs updated (frontend markers cleared). Green review CLEAN.
+- Regression gate round 1 failed: (a) lint regression — red-phase tests grew `assignmentDefinition.zod.spec.ts` 554→626 lines, changing an accepted `max-lines` warning signature; fixed by extracting the new `stale recovery fields` describe block into co-located `assignmentDefinition.zod.recoveryFields.spec.ts` (main spec restored to its baseline 554 lines). (b) e2e flake — `select-with-add-new-workflow.spec.ts` "Clicking Add new cohort opens Manage Cohorts modal" failed on retry 0 and passed on retry 1 under full-suite load; same Ant Design v6 modal entrance-animation race documented in `docs/developer/known-flaky-tests.md`; passes 18/18 in isolation (`--repeat-each=3`) and does not recur on re-run; no UI code touched by this section; accepted as flaky technical debt, not actionable here.
+- Regression gate round 2: 0 regressions, 0 new failures (frontend-lint, frontend-e2e passing; only the 10 accepted backend `max-lines` warnings remain).
 
 ### Section checks
 

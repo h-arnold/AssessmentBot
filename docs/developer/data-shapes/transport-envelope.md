@@ -81,13 +81,13 @@ payload or unknown field) — remain generic non-retriable `INVALID_REQUEST` cod
 The envelope mapper uses `ApiValidationError.code` when present and otherwise falls
 back to the generic `INVALID_REQUEST` mapping.
 
-### Error code — `DEFINITION_PARSE_FAILED` (backend implemented; frontend registry planned)
+### Error code — `DEFINITION_PARSE_FAILED` (implemented)
 
-> **Status: Backend implemented (Section 3, issue #301).** The backend throws
+> **Status: Implemented (Sections 3 and 4, issue #301).** The backend throws
 > `ApiValidationError` with `code: 'DEFINITION_PARSE_FAILED'` for recognised
 > document/task parsing failures, and `_mapErrorToFailureEnvelope` honours
 > `ApiValidationError.code`, so the envelope surfaces this code. The frontend
-> error registry entry (`map-error-to-ui.ts`) remains **not implemented**
+> error registry entry (`map-error-to-ui.ts`) maps it to the safe user copy
 > (Section 4).
 
 Stable, non-retriable `ApiValidationError` code for recognised

@@ -266,7 +266,8 @@ Key contract notes:
   The two URLs must point to different documents of the same type.
 - The frontend `UpsertAssignmentDefinitionRequestSchema` enforces a `superRefine` mutual-exclusion
   rule between URL-shape and ID-shape fields. Payloads that include neither, only partial URL fields,
-  or only partial ID fields are rejected before reaching the backend.
+  or only partial ID fields are rejected before reaching the backend. A second schema-level
+  `superRefine` rule rejects `forceReparse: true` combined with `taskWeightings`.
 - Create upserts generate a stable metadata-derived `definitionKey` from
   `(primaryTitle, primaryTopic, yearGroupKey)`.
 - Update upserts preserve the existing `definitionKey` even when business metadata changes.
@@ -287,7 +288,7 @@ Key contract notes:
 
 #### Stale-definition recovery (Issue #301)
 
-> **Status: Backend implemented (Sections 1 and 3); frontend planned (Section 4).**
+> **Status: Implemented (Sections 1, 3 and 4, issue #301).**
 > The weighting-reconciliation semantics below (task equivalence comparator,
 > reparse weighting preservation) are **implemented** in
 > `AssignmentDefinitionTaskEquivalence.js` and
@@ -299,12 +300,11 @@ Key contract notes:
 > `expectedDefinitionUpdatedAt`), the save-time `DEFINITION_STALE` baseline check,
 > and the `DEFINITION_PARSE_FAILED` envelope are **implemented** in the backend
 > (Section 3, issue #301). The frontend `UpsertAssignmentDefinitionRequestSchema`
-> extension and the shared frontend error-registry entry remain **not implemented**
-> (Section 4); the frontend request schema is `.strict()`, so those fields are
-> currently **rejected** by the frontend transport schema. Documented as planned
-> shape so implementation does not drift.
+> extension and the shared frontend error-registry entry are **implemented**
+> (Section 4, issue #301); the frontend request schema is `.strict()` and accepts
+> the recovery fields alongside the existing URL-shape/ID-shape contract.
 
-**`upsertAssignmentDefinition` recovery request fields (backend implemented; frontend planned):**
+**`upsertAssignmentDefinition` recovery request fields (implemented):**
 
 | Field                         | Type           | Required | Notes                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
 | ----------------------------- | -------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -328,10 +328,10 @@ Key contract notes:
   timestamp-triggered reparses; requests omitting the baseline retain ordinary
   upsert behaviour for existing non-wizard callers.
 
-**Parse-failure semantics (backend implemented; frontend registry planned):**
+**Parse-failure semantics (implemented):**
 
 - A stable, non-retriable `DEFINITION_PARSE_FAILED` code (see
-  [`transport-envelope.md`](transport-envelope.md#error-code--definition_parse_failed-backend-implemented-frontend-registry-planned))
+  [`transport-envelope.md`](transport-envelope.md#error-code--definition_parse_failed-implemented))
   covers recognised document/task parsing failures. The envelope mapper honours
   `ApiValidationError.code`, so the backend rejection surfaces with this code.
 - An invalid task or a zero-task result blocks the refresh and persists nothing; the
