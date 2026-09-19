@@ -43,7 +43,7 @@ Before writing or executing this plan:
 
 ### Delivery status and baseline evidence (17 September 2026)
 
-- **Current phase:** Sections 1–8 complete (all reviewed clean, gates passed, committed and pushed). Section 9 red phase is next. Standing regression session: `fix-301-stale-assignment-definitions-post-s6` (baseline established on the Section 6 tree; 1 accepted-debt failing check: backend-lint max-lines warnings; absorbs Sections 7–8 warning retirements and sanctioned test-file growth with 0 test regressions; two frontend-lint max-lines fingerprint changes — e2e spec 1069→1114 and `AssessTaskModal.spec.tsx` 1670→1718 from retargeted tests — resolve via a `post-s8` baseline refresh after the Section 8 commit).
+- **Current phase:** Sections 1–9 complete (all reviewed clean, gates passed, Section 9 pending push at commit time of the next docs commit). Section 10 red phase is next. Standing regression session: `fix-301-stale-assignment-definitions-post-s9` (refreshed on the Section 9 tree; 1 accepted-debt failing check: backend-lint max-lines warnings; absorbs the Section 9 sanctioned e2e spec fingerprint 1112→1119 alongside the post-s8 absorptions — e2e spec 1069→1114 and `AssessTaskModal.spec.tsx` 1670→1718 from retargeted tests).
 - **User authorisation:** existing line-count warnings are accepted technical debt (10 backend and 48 frontend `max-lines` warnings). This does not permit new warnings or waive the section-specific LOC gates.
 - **Commit/push authorisation:** the user explicitly authorised committing and pushing each completed section, superseding the no-commit scope statement in `SPEC.md` for delivery operations.
 - **Baseline:** `.ts-regression-checker/reports/session-fix-301-stale-assignment-definitions/baseline/baseline.txt`; backend/frontend/builder tests, Playwright E2E and builder compilation passed. Backend lint reported the accepted 10 warnings. Direct frontend lint reported 0 errors and the accepted 48 warnings.
@@ -663,6 +663,18 @@ Frontend tests (component level):
 - `npm run test:frontend -- features/classes`
 - `npm run lint:frontend`
 - Scripted MCP walkthrough check recorded.
+
+### Implementation notes (post-green, pre-commit)
+
+- Scripted MCP walkthrough performed against the dev build (127.0.0.1:4173) with the exact `installRuntimeMock` global-gate mechanism, extended for the recovery journey (link → startAssessmentRun `DEFINITION_STALE` → recovery). Both journeys verified in the single owning dialog: (a) stale prompt with registry `DEFINITION_STALE` copy and Cancel-then-Update footer → Update → review rendered in-modal (caveat copy "Reparsing has already refreshed the stored definition…", task-weightings table, width reverted to default after success) → Save → "Assessment started for 'Algebra Homework'" success with the modal in default width; (b) first forced reparse failing with `DEFINITION_PARSE_FAILED` → blocking alert with registry copy and a Cancel-then-Retry footer → Retry re-issued the reparse and reached the review surface. No stacked modal observed at any state; no contradiction with `@STALE_RECOVERY_LAYOUT.md`. (Walkthrough scaffolding is scratchpad-only, not committed.)
+- Walkthrough scope caveat: journey (a) is verified end-to-end at browser level. Journey (b)'s copy, Cancel-then-Retry footer, and Retry-reissues-reparse behaviour are pinned by the 15 committed unit specs; the browser-level walk captured the failed alert and the post-Retry review state, but the full variant matrix was cut short by a session interruption (see below). No layout-spec contradiction was observed in either journey.
+- Environment note: the session crashed mid-walkthrough and recovered. The dev server was restarted on 127.0.0.1:4173, and the Playwright browser registry at `/ms-playwright` was re-provisioned for a different Chromium version; the `chromium-1237 → chromium-1234` symlink had to be recreated (and `chromium_headless_shell-1234` verified present) before the MCP browser would launch. Re-check these symlinks if the MCP browser fails to start in future sessions.
+
+### Commit evidence
+
+- Commit `bfc90ee` — `feat: implement stale-recovery UX in Assess Task modal` (10 files, +1798/−51) on `fix/301-stale-assignment-definitions`; pre-commit hooks clean (Prettier, staged lint, builder tsc).
+- Regression gate against `fix-301-stale-assignment-definitions-post-s8`: zero test regressions; one sanctioned frontend-lint `max-lines` fingerprint change on the e2e spec (1112→1119) from retargeting the Section 6 routing-only placeholder to the Section 9 contract, resolved via a `post-s9` baseline refresh. The retargeted e2e test asserts the in-modal recovery alert (registry `DEFINITION_STALE` copy) and the Cancel-then-Update action order per `@STALE_RECOVERY_LAYOUT.md` (owning footer suppressed via `footer={null}`). Spec suite: 34/34 passing; retargeted test stable at `--repeat-each=3`.
+- The LSP diagnostic at `classes-page-assess-task.spec.ts:234` is on committed pre-existing code (untouched by this section) and out of scope.
 
 ---
 
