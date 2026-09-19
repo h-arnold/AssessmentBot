@@ -43,7 +43,7 @@ Before writing or executing this plan:
 
 ### Delivery status and baseline evidence (17 September 2026)
 
-- **Current phase:** Sections 1–10 complete (all reviewed clean, gates passed). Section 11 red phase is next. Standing regression session: `fix-301-stale-assignment-definitions-post-s9` (refreshed on the Section 9 tree; 1 accepted-debt failing check: backend-lint max-lines warnings; absorbs the Section 9 sanctioned e2e spec fingerprint 1112→1119 alongside the post-s8 absorptions — e2e spec 1069→1114 and `AssessTaskModal.spec.tsx` 1670→1718 from retargeted tests). Section 10's full E2E gate had zero regressions and zero new failures after a one-worker rerun; the first full run exposed the already-observed `SelectWithAddNew` modal-entrance flake, which was reproduced historically and passed the focused rerun.
+- **Current phase:** Sections 1–11 complete (all reviewed clean, gates passed). Regression and contract hardening is next. Standing regression session: `fix-301-stale-assignment-definitions-post-s10` (refreshed on the Section 10 tree; 1 accepted-debt failing check: backend-lint max-lines warnings; absorbs the Section 9 sanctioned e2e spec fingerprint 1112→1119 alongside the post-s8 absorptions — e2e spec 1069→1114 and `AssessTaskModal.spec.tsx` 1670→1718 from retargeted tests). Section 10's full E2E gate had zero regressions and zero new failures after a one-worker rerun; the first full run exposed the already-observed `SelectWithAddNew` modal-entrance flake, which was reproduced historically and passed the focused rerun.
 - **User authorisation:** existing line-count warnings are accepted technical debt (10 backend and 48 frontend `max-lines` warnings). This does not permit new warnings or waive the section-specific LOC gates.
 - **Commit/push authorisation:** the user explicitly authorised committing and pushing each completed section, superseding the no-commit scope statement in `SPEC.md` for delivery operations.
 - **Baseline:** `.ts-regression-checker/reports/session-fix-301-stale-assignment-definitions/baseline/baseline.txt`; backend/frontend/builder tests, Playwright E2E and builder compilation passed. Backend lint reported the accepted 10 warnings. Direct frontend lint reported 0 errors and the accepted 48 warnings.
@@ -759,6 +759,17 @@ Frontend tests:
 ### Section checks
 
 - `npm run test:frontend:e2e -- <targets per playwright doc>`
+
+### Implementation notes / deviations / follow-up
+
+- **Consolidated MCP walkthrough:** The Playwright handoff walked all minimum journeys before finalising the specs, using `installRuntimeMock` before navigation and canonical `small` transport views (`editableDefinitions`, `assignmentDefinitionPartials`, `classPartials`). Matched stale recovery, forced-reparse parse failure with Retry and Cancel variants, converted in-modal create, and Assignments-page Reparse documents enabled/dirty-disabled/busy/in-place-refresh/failure states were all observed. The incremental Section 8–10 observations still held; no layout contradiction was found. Evidence is recorded in `.opencode/scratchpad/walkthrough-mock/section-11/WALKTHROUGH_EVIDENCE.md` with screenshots and request logs.
+- **Red phase:** Added six browser journeys in `assignment-definition-stale-recovery-section-11.spec.ts` with the canonical-fixture scenario/navigation helper `helpers/stale-recovery-page-end-to-end-helpers.ts`. The tests passed against the existing Sections 8–10 implementation (6/6; repeat 18/18), so no artificial red failure or production change was introduced. Red review found five minor test-quality findings; all were fixed and the re-review was CLEAN.
+- **Green phase:** Implementation review confirmed that Sections 8–10 already satisfy the Section 11 browser contract; no production changes were required. Green review CLEAN. Coverage includes single-modal assertions, registry copy, stale prompt action order, review/approval and resumed assessment, parse failure blocking/Retry/Cancel, in-modal create, and explicit Reparse documents gating/busy/failure/in-place refresh.
+- **Verification:** Focused Section 11 E2E 6/6; `--repeat-each=3 --workers=1` 18/18; related assessment/wizard E2E 40/40; frontend lint 0 errors / 46 accepted warnings; TypeScript clean. The post-Section 10 regression comparison completed with 0 regressions and 0 new failures; the only failing check remains the accepted backend lint `max-lines` debt (10 warnings), and the E2E check passed.
+
+### Commit evidence
+
+- Commit `f7a98a7` — `test: add stale recovery end-to-end journeys` (2 files, +757) on `fix/301-stale-assignment-definitions`; pre-commit hooks clean (Prettier, staged lint, builder tsc). `git push origin fix/301-stale-assignment-definitions` succeeded (`340a313..f7a98a7`). No production implementation changes were required for Section 11.
 
 ---
 
