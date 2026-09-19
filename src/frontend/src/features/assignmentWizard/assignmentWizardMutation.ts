@@ -5,6 +5,7 @@ import {
   extractErrorCode,
   extractRequestId,
   mapErrorToUserMessage,
+  type ErrorCode,
 } from '../../errors/map-error-to-ui';
 import { logFrontendError } from '../../logging/frontendLogger';
 import { queryKeys } from '../../query/queryKeys';
@@ -41,6 +42,7 @@ export interface WizardMutationErrorContext {
 export interface WizardUpsertResult {
   response?: UpsertAssignmentDefinitionResponse;
   errorMessage: string | null;
+  errorCode: ErrorCode | null;
 }
 
 /**
@@ -161,7 +163,7 @@ export function useWizardUpsertMutation(): {
       setIsMutationBusy(true);
       try {
         const response = await upsertMutation.mutateAsync(request);
-        return { response, errorMessage: null };
+        return { response, errorMessage: null, errorCode: null };
       } catch (caughtError) {
         return {
           response: undefined,
@@ -170,6 +172,7 @@ export function useWizardUpsertMutation(): {
             caughtError,
             context.errorContext
           ),
+          errorCode: extractErrorCode(caughtError),
         };
       } finally {
         setIsMutationBusy(false);

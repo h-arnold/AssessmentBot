@@ -1,6 +1,8 @@
 import { Alert, Button, Empty, Modal, Select, Space, Tooltip, Typography } from 'antd';
+import { useCallback, useRef } from 'react';
 import { useAssessTaskFlow } from './useAssessTaskFlow';
 import { AssessTaskCreateReview } from './AssessTaskCreateReview';
+import { AssessTaskRecoverySurface } from './AssessTaskRecoverySurface';
 import { LinkableDefinitionList } from './LinkableDefinitionList';
 import { AssignmentSelectSkeleton } from './AssignmentSelectSkeleton';
 
@@ -11,6 +13,24 @@ export type AssessTaskModalProperties = Readonly<{
   onClose: () => void;
 }>;
 
+/** Approved shared modal-width exception applied while wizard content is active. */
+const WIDE_DATA_MODAL_WIDTH = 'var(--app-modal-width-wide-data)';
+
+/**
+ * Derives the owning modal width: the wide-data exception while in-modal
+ * wizard or recovery content is active, otherwise Ant Design's default width.
+ *
+ * @param {boolean} isCreateContentActive Whether the in-modal create path is active.
+ * @param {boolean} isRecoveryActive Whether the stale-recovery surface is active.
+ * @returns {string | undefined} The width value, or undefined for the default.
+ */
+function deriveModalWidth(
+  isCreateContentActive: boolean,
+  isRecoveryActive: boolean
+): string | undefined {
+  return isCreateContentActive || isRecoveryActive ? WIDE_DATA_MODAL_WIDTH : undefined;
+}
+
 /**
  * Modal for selecting a Google Classroom assignment to assess.
  *
@@ -20,7 +40,10 @@ export type AssessTaskModalProperties = Readonly<{
  * @remarks All orchestration (the assessment and no-match state machines,
  * captured start context, and stale-recovery transitions) lives in
  * `useAssessTaskFlow`; this component only renders body and footer content
- * from the flow state. See the hook for the state-machine documentation.
+ * from the flow state. The recovery surface is owned by
+ * `AssessTaskRecoverySurface` (mounted only while the flow is on
+ * `stale-prompt`), so no recovery state stacks a second modal. See the hooks
+ * for the state-machine documentation.
  *
  * @param {Readonly<AssessTaskModalProperties>} properties Modal properties.
  * @returns {JSX.Element} The assess task modal.
@@ -38,6 +61,9 @@ export function AssessTaskModal(properties: Readonly<AssessTaskModalProperties>)
     noMatchResolution,
     selectedAssignmentForChoice,
     selectedDefinitionForLink,
+    assessmentRecoveryState,
+    recoveryDefinitionKey,
+    capturedStartContext,
     wizardInitialValues,
     linkableDefinitions,
     isStartDisabled,
@@ -51,12 +77,58 @@ export function AssessTaskModal(properties: Readonly<AssessTaskModalProperties>)
     handleAssignmentChange,
     handleLinkSelect,
     getLoadingButtonLabel,
+    endRecovery,
+    settleAssessment,
   } = useAssessTaskFlow({ open, classId });
 
+  // Registration slot for the recovery review's modal-level cancel intent. The
+  // recovery phase lives inside `AssessTaskRecoverySurface`; while that phase
+  // is `review` the surface registers its cancel handler through
+  // `registerRecoveryReviewCancel` so the owning modal's dismiss affordance
+  // runs the review cancel semantics (layout spec region 4). It is null for
+  // every other recovery phase and outside recovery.
+  const recoveryReviewCancelReference = useRef<(() => void) | null>(null);
+
+  /**
+   * Registers (or clears) the recovery review's modal-level cancel intent.
+   *
+   * @param {(() => void) | null} cancel The review cancel handler, or null to clear it.
+   * @returns {void}
+   */
+  const registerRecoveryReviewCancel = useCallback((cancel: (() => void) | null): void => {
+    recoveryReviewCancelReference.current = cancel;
+  }, []);
+
+  /**
+   * Handles the owning modal's dismiss intent (Escape, backdrop or the close
+   * affordance). While the recovery review is active it delegates to the
+   * registered review cancel path so dirty edits still require the discard
+   * confirmation and a discarded review ends recovery on the selection body
+   * instead of closing the owning modal. Every other state closes the modal,
+   * matching the active recovery state's Cancel semantics.
+   *
+   * @returns {void}
+   */
+  function handleModalCancel(): void {
+    const cancelReview = recoveryReviewCancelReference.current;
+    if (cancelReview !== null) {
+      cancelReview();
+      return;
+    }
+    onClose();
+  }
+
   // The in-modal create wizard content is active only while resolving the
-  // no-match choice. While it is active the owning footer is suppressed and
-  // the wide-data modal width token applies (STALE_RECOVERY_LAYOUT.md).
+  // no-match choice. The recovery surface owns the body while the Section 6
+  // routing stub is on `stale-prompt`.
   const isCreateContentActive = noMatchResolution === 'creating' && assessmentState === 'idle';
+  const isRecoveryActive = assessmentRecoveryState === 'stale-prompt';
+  // Exactly one footer is visible at all times: the owning footer is suppressed
+  // whenever any in-modal wizard/recovery content owns the body.
+  const isWizardContentActive = isCreateContentActive || isRecoveryActive;
+  // The approved wide-data modal width applies while wizard/recovery content is
+  // active so the task-weightings table is not horizontally compressed.
+  const modalWidth = deriveModalWidth(isCreateContentActive, isRecoveryActive);
 
   /**
    * Renders the dropdown and assignment-selection body content.
@@ -311,27 +383,40 @@ export function AssessTaskModal(properties: Readonly<AssessTaskModalProperties>)
     );
   }
 
-  // While the in-modal create content is active the owning footer is suppressed
-  // so the review content's own footer is the only visible one.
-  const footerContent = isCreateContentActive ? null : getFooterContent();
-  const modalWidth = isCreateContentActive ? 'var(--app-modal-width-wide-data)' : undefined;
+  // While in-modal wizard or recovery content is active the owning footer is
+  // suppressed so the content's own footer is the only visible one.
+  const footerContent = isWizardContentActive ? null : getFooterContent();
 
   return (
     <Modal
       key={classId}
       title={`Assess Task — ${className}`}
       open={open}
-      onCancel={onClose}
+      onCancel={handleModalCancel}
       footer={footerContent}
       width={modalWidth}
     >
-      {renderBody()}
-      {isCreateContentActive && (
-        <AssessTaskCreateReview
-          initialValues={wizardInitialValues}
-          onCreateSuccess={handleWizardCreateSuccess}
-          onClose={handleWizardClose}
+      {isRecoveryActive ? (
+        <AssessTaskRecoverySurface
+          assignments={assignments}
+          capturedStartContext={capturedStartContext}
+          definitionKey={recoveryDefinitionKey}
+          endRecovery={endRecovery}
+          onClose={onClose}
+          registerReviewCancel={registerRecoveryReviewCancel}
+          settleAssessment={settleAssessment}
         />
+      ) : (
+        <>
+          {renderBody()}
+          {isCreateContentActive && (
+            <AssessTaskCreateReview
+              initialValues={wizardInitialValues}
+              onCreateSuccess={handleWizardCreateSuccess}
+              onClose={handleWizardClose}
+            />
+          )}
+        </>
       )}
     </Modal>
   );

@@ -867,7 +867,7 @@ test.describe('Assess Task modal', () => {
       ).toBeVisible();
     });
 
-    test('DEFINITION_STALE after link defers recovery — no create wizard opens (panel 1)', async ({
+    test('DEFINITION_STALE after link defers recovery — recovery prompt opens in-modal (panel 1)', async ({
       page,
     }) => {
       const topicsData = [
@@ -908,12 +908,10 @@ test.describe('Assess Task modal', () => {
       await pickLinkableDefinitionE2E(dialog, page, 'Algebra HW');
       await dialog.getByRole('button', { name: 'Link' }).click();
 
-      // Section 6 routing-only contract (see ACTION_PLAN.md): link-flow
-      // DEFINITION_STALE enters the assessment orchestration recovery state
-      // and must NOT mount the stacked create wizard. Positive
-      // recovery-prompt assertions arrive with Section 9; until then assert
-      // routing only.
-      // Settle on the committed link outcome first, so the absence check
+      // Section 9 contract (see ACTION_PLAN.md and STALE_RECOVERY_LAYOUT.md):
+      // link-flow DEFINITION_STALE enters the in-modal recovery prompt in the
+      // single owning dialog and must NOT mount the stacked create wizard.
+      // Settle on the committed link outcome first, so the recovery assertions
       // below cannot pass before the stale response has been processed.
       await expect
         .poll(
@@ -931,11 +929,22 @@ test.describe('Assess Task modal', () => {
         timeout: 8000,
       });
 
-      // The owning AssessTaskModal remains open in the linking state — a
-      // single dialog with the link picker visible.
+      // The owning AssessTaskModal remains the only dialog and renders the
+      // recovery prompt in-modal: the stale warning alert replaces the link
+      // picker, with a Cancel-then-Update action row.
       await expect(page.getByRole('dialog')).toHaveCount(1);
       await expect(dialog).toBeVisible();
-      await expect(dialog.getByTestId('linkable-definition-select')).toBeVisible();
+      await expect(dialog.getByRole('alert')).toContainText(/out of date/i);
+      await expect(dialog.getByTestId('linkable-definition-select')).toHaveCount(0);
+
+      const actionNames = await dialog
+        .locator('button')
+        .evaluateAll((buttons) =>
+          buttons
+            .map((button) => button.textContent?.trim() ?? '')
+            .filter((name) => name === 'Cancel' || name === 'Update')
+        );
+      expect(actionNames).toEqual(['Cancel', 'Update']);
 
       // Committed link outcome holds in idempotence-friendly form: the link
       // upsert ran exactly once and the assessment start was attempted once.

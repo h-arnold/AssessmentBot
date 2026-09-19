@@ -130,17 +130,10 @@ export function useAssessTaskFlow(parameters?: AssessTaskFlowParameters) {
   }
 
   /**
-   * Transitions the flow to stale-recovery routing after a DEFINITION_STALE
-   * error from `startAssessmentRun`.
-   *
-   * @remarks
-   * Invalidates the assignment definition partials cache to ensure later
-   * recovery steps read fresh data, then moves the recovery state machine to
-   * `'stale-prompt'`. It deliberately does NOT select
-   * `noMatchResolution === 'creating'`: the stacked create wizard must not
-   * mount on DEFINITION_STALE, so the genuine create path keeps sole
-   * ownership of the `'creating'` state. No recovery UI renders yet
-   * (Section 9); the stale-prompt state only routes.
+   * Transitions to stale-recovery routing after a `DEFINITION_STALE` start
+   * rejection, invalidating the definition-partials cache and moving the
+   * recovery state to `'stale-prompt'`. It never selects `'creating'`, so the
+   * genuine create path keeps sole ownership of that state.
    *
    * @param {string} definitionKey The stale definition key to recover.
    * @returns {void}
@@ -154,6 +147,35 @@ export function useAssessTaskFlow(parameters?: AssessTaskFlowParameters) {
     setAssessmentRecoveryState('stale-prompt');
     setAssessmentState('idle');
     setAssessmentError(undefined);
+  }
+
+  /**
+   * Ends stale recovery, leaving the owning modal open on the assignment
+   * selection body in the idle state.
+   *
+   * @returns {void}
+   */
+  function endRecovery(): void {
+    setAssessmentRecoveryState('idle');
+    setRecoveryDefinitionKey(null);
+    setAssessmentState('idle');
+    setAssessmentError(undefined);
+  }
+
+  /**
+   * Settles the resumed assessment run after a successful recovery approval,
+   * returning the owning modal to the normal assessment lifecycle.
+   *
+   * @param {AssessmentAlertType} alertType The result alert type.
+   * @param {string} message The user-facing result message.
+   * @returns {void}
+   */
+  function settleAssessment(alertType: AssessmentAlertType, message: string): void {
+    setAssessmentAlertType(alertType);
+    setAssessmentError(message);
+    setAssessmentState(alertType === 'success' ? 'success' : 'error');
+    setAssessmentRecoveryState('idle');
+    setRecoveryDefinitionKey(null);
   }
 
   const linkFlow = useAssessTaskLinkFlow({
@@ -406,16 +428,10 @@ export function useAssessTaskFlow(parameters?: AssessTaskFlowParameters) {
   }
 
   /**
-   * Handles errors from the matched-flow `handleStartAssessment` catch block.
-   *
-   * @remarks
-   * Dispatches `DEFINITION_STALE` errors to the stale-recovery routing
-   * transition and all other errors to `handleApiError`. The stale definition
-   * key is read from the captured start context (via ref, since state reads
-   * would be stale inside the async catch block).
-   *
-   * Extracted from `handleStartAssessment` to keep its cyclomatic complexity
-   * within the project's lint limit.
+   * Routes a matched-flow `DEFINITION_STALE` rejection to stale recovery (the
+   * key is read from the captured start context ref, since state reads are
+   * stale inside the async catch block) and everything else to
+   * `handleApiError`.
    *
    * @param {unknown} error The caught error.
    * @returns {void}
@@ -440,11 +456,8 @@ export function useAssessTaskFlow(parameters?: AssessTaskFlowParameters) {
     fetchState !== 'ready' || selectedAssignmentId === undefined || assessmentState === 'loading';
 
   /**
-   * Determines the loading button label for the footer during assessment loading.
-   *
-   * @remarks Per the layout spec, the loading-state button label is "Link"
-   * (matching the action the user initiated) not "Start Assessment" (which
-   * is the matched-path label and would be misleading for the link flow).
+   * Determines the loading button label for the footer. Per the layout spec
+   * the label matches the action the user initiated.
    *
    * @returns {string} 'Link' when in the linking flow, 'Start Assessment' otherwise.
    */
@@ -480,5 +493,7 @@ export function useAssessTaskFlow(parameters?: AssessTaskFlowParameters) {
     handleLinkSelect,
     getLoadingButtonLabel,
     transitionToStaleRecovery,
+    endRecovery,
+    settleAssessment,
   };
 }
