@@ -103,10 +103,17 @@ function buildIdShapeFields(definition: AssignmentDefinition): {
 /**
  * Builds the explicit reparse request for an existing definition.
  *
+ * @remarks
+ * Shared by the orchestrator's recovery/explicit-reparse flow and the
+ * Assignments-page update wizard's Reparse documents action, so both force the
+ * same ID-shaped payload without a weighting patch.
+ *
  * @param {AssignmentDefinition} definition - The loaded definition.
  * @returns {UpsertAssignmentDefinitionRequest} The forced-reparse request (no weighting patch).
  */
-function buildReparseRequest(definition: AssignmentDefinition): UpsertAssignmentDefinitionRequest {
+export function buildReparseRequest(
+  definition: AssignmentDefinition
+): UpsertAssignmentDefinitionRequest {
   return {
     definitionKey: definition.definitionKey,
     primaryTitle: definition.primaryTitle,

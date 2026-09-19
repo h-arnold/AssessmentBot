@@ -36,6 +36,8 @@ export type AssignmentDefinitionWizardModalShellProperties = Readonly<{
   onFormValuesChange?: (changedValues: Record<string, unknown>, allValues: Record<string, unknown>) => void;
   onReparse?: () => Promise<void>;
   onReparseCancel?: () => void;
+  onReparseDocuments?: () => Promise<void>;
+  canReparseDocuments?: boolean;
   onTaskWeightingChange?: (taskId: string, value: number | null) => void;
   onTopicAddNew?: () => void;
   onYearGroupAddNew?: () => void;
@@ -116,6 +118,8 @@ function toReviewContentProperties(
     onFormValuesChange: properties.onFormValuesChange,
     onReparse: properties.onReparse,
     onReparseCancel: properties.onReparseCancel,
+    onReparseDocuments: properties.onReparseDocuments,
+    canReparseDocuments: properties.canReparseDocuments,
     onTaskWeightingChange: properties.onTaskWeightingChange,
     onTopicAddNew: properties.onTopicAddNew,
     onYearGroupAddNew: properties.onYearGroupAddNew,

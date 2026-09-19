@@ -1,4 +1,4 @@
-import { Alert, Button, Form, Input, InputNumber, Space, Table } from 'antd';
+import { Alert, Button, Form, Input, InputNumber, Space, Table, Typography } from 'antd';
 import { type FormInstance } from 'antd';
 import type { JSX, ReactNode } from 'react';
 import {
@@ -9,8 +9,12 @@ import {
 import { SelectWithAddNew } from '../../components/SelectWithAddNew/SelectWithAddNew';
 import { type DocumentChangeState, type TaskRow } from './assignmentWizardFormState';
 
+const { Text } = Typography;
+
 const PARSE_REQUIRED_MESSAGE = 'Parsing is required before task weightings can be edited.';
 const DOCUMENT_CHANGED_MESSAGE = 'Document changed. Re-parse to continue editing.';
+const REPARSE_DOCUMENTS_DISABLED_MESSAGE =
+  'Save or discard your edits before reparsing the documents.';
 
 export type AssignmentDefinitionWizardReviewContentProperties = Readonly<{
   hasParsedTasks?: boolean;
@@ -35,6 +39,8 @@ export type AssignmentDefinitionWizardReviewContentProperties = Readonly<{
   ) => void;
   onReparse?: () => Promise<void>;
   onReparseCancel?: () => void;
+  onReparseDocuments?: () => Promise<void>;
+  canReparseDocuments?: boolean;
   onTaskWeightingChange?: (taskId: string, value: number | null) => void;
   onTopicAddNew?: () => void;
   onYearGroupAddNew?: () => void;
@@ -276,7 +282,47 @@ function renderBaseFormFields(
           placeholder="https://docs.google.com/..."
         />
       </Form.Item>
+
+      {properties.onReparseDocuments && renderReparseDocumentsAction(properties)}
     </>
+  );
+}
+
+/**
+ * Renders the explicit Reparse documents action for the Assignments-page update
+ * wizard. Update-mode only; absent whenever the wiring omits `onReparseDocuments`.
+ *
+ * @remarks
+ * The button is disabled whenever `canReparseDocuments` is false, but the visible
+ * explanation is bound to the hook's unsaved-edits state directly rather than to
+ * that combined gating result. It therefore appears only when unsaved edits are
+ * the blocking reason; a pending URL change, a definition error or an in-flight
+ * mutation never renders this copy.
+ *
+ * @param {AssignmentDefinitionWizardReviewContentProperties} properties Review content properties.
+ * @returns {JSX.Element} The reparse documents action region.
+ */
+function renderReparseDocumentsAction(
+  properties: AssignmentDefinitionWizardReviewContentProperties
+): JSX.Element {
+  const canReparseDocuments = properties.canReparseDocuments ?? false;
+  // Bound to the unsaved-edits reason directly (hasDirtyEdits implies
+  // !canReparseDocuments), so other disabled reasons never render this copy.
+  const showDisabledExplanation = properties.hasDirtyEdits ?? false;
+
+  return (
+    <Space orientation="vertical" size="small">
+      <Button
+        disabled={!canReparseDocuments || properties.isMutationBusy}
+        loading={properties.isMutationBusy}
+        onClick={properties.onReparseDocuments}
+      >
+        Reparse documents
+      </Button>
+      {showDisabledExplanation && (
+        <Text type="secondary">{REPARSE_DOCUMENTS_DISABLED_MESSAGE}</Text>
+      )}
+    </Space>
   );
 }
 

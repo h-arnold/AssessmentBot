@@ -24,6 +24,7 @@ import {
 } from './assignmentWizardFormState';
 import { useFormInitialization } from './assignmentWizardFormInitialization';
 import { deriveWizardBlockingError, useWizardMutationSequence } from './assignmentWizardMutation';
+import { buildReparseRequest } from './assignmentWizardOrchestrator';
 
 export type { DocumentChangeState, TaskRow } from './assignmentWizardFormState';
 
@@ -69,6 +70,7 @@ export type UseAssignmentDefinitionWizardReturn = Readonly<{
   yearGroupOptions: { value: string; label: string }[];
   primaryActionLabel: string;
   isPrimaryActionDisabled: boolean;
+  canReparseDocuments: boolean;
   selectedTopicKey?: string;
   selectedYearGroupKey?: string;
   handleFormValuesChange: (
@@ -77,6 +79,7 @@ export type UseAssignmentDefinitionWizardReturn = Readonly<{
   ) => void;
   handleReparse: () => Promise<void>;
   handleReparseCancel: () => void;
+  handleReparseDocuments: () => Promise<void>;
   handleClose: () => void;
   handleDiscardConfirm: () => void;
   handleKeepEditing: () => void;
@@ -87,6 +90,40 @@ export type UseAssignmentDefinitionWizardReturn = Readonly<{
   onTopicEntityCreated: (entity: { key: string; name: string; yearGroupKeys?: string[] }) => void;
   onYearGroupEntityCreated: (entity: { key: string; name: string }) => void;
 }>;
+
+/**
+ * Enabling conditions for the explicit Reparse documents action.
+ */
+type ReparseDocumentsGating = Readonly<{
+  isCreateMode: boolean;
+  isDefinitionLoaded: boolean;
+  isDefinitionError: boolean;
+  hasDirtyEdits: boolean;
+  hasPendingDocumentChange: boolean;
+  isSubmitting: boolean;
+}>;
+
+/**
+ * Derives whether the explicit Reparse documents action is enabled.
+ *
+ * @remarks
+ * The action exists in update mode only, and only when the loaded definition is
+ * trustworthy, no mutation is pending, and there are no unsaved metadata/weighting
+ * edits or pending URL changes.
+ *
+ * @param {ReparseDocumentsGating} gating - The enabling condition inputs.
+ * @returns {boolean} True when the Reparse documents action may run.
+ */
+function deriveCanReparseDocuments(gating: ReparseDocumentsGating): boolean {
+  const hasTrustworthyDefinition = gating.isDefinitionLoaded && !gating.isDefinitionError;
+  return (
+    !gating.isCreateMode &&
+    hasTrustworthyDefinition &&
+    !gating.hasDirtyEdits &&
+    !gating.hasPendingDocumentChange &&
+    !gating.isSubmitting
+  );
+}
 
 /**
  * Custom hook for managing assignment definition wizard state and logic.
@@ -265,6 +302,15 @@ export function useAssignmentDefinitionWizard(
     setSubmitBlockingError,
   });
 
+  const canReparseDocuments = deriveCanReparseDocuments({
+    isCreateMode,
+    isDefinitionLoaded: definition !== undefined,
+    isDefinitionError,
+    hasDirtyEdits,
+    hasPendingDocumentChange: documentChange.hasPendingChange,
+    isSubmitting,
+  });
+
   // Handle parse and continue
   const handleParseAndContinue = useCallback(async () => {
     const values = await form.validateFields();
@@ -321,6 +367,16 @@ export function useAssignmentDefinitionWizard(
     };
     await runWizardMutation({ actionType: 'reparse', request, definitionKey: effectiveKey });
   }, [form, definitionKey, localDefinitionKey, runWizardMutation]);
+
+  // Handle explicit Reparse documents (update mode, unchanged URLs). Reuses the
+  // Section 7 forced-reparse request builder so the payload stays ID-shaped with
+  // `forceReparse: true` and no weighting patch.
+  const handleReparseDocuments = useCallback(async () => {
+    const effectiveKey = localDefinitionKey ?? definitionKey;
+    if (!effectiveKey || !definition) return;
+    const request = buildReparseRequest(definition);
+    await runWizardMutation({ actionType: 'reparse', request, definitionKey: effectiveKey });
+  }, [definition, definitionKey, localDefinitionKey, runWizardMutation]);
 
   // Handle re-parse cancel
   const handleReparseCancel = useCallback(() => {
@@ -421,11 +477,13 @@ export function useAssignmentDefinitionWizard(
     yearGroupOptions,
     primaryActionLabel,
     isPrimaryActionDisabled,
+    canReparseDocuments,
     selectedTopicKey,
     selectedYearGroupKey,
     handleFormValuesChange,
     handleReparse,
     handleReparseCancel,
+    handleReparseDocuments,
     handleClose,
     handleDiscardConfirm,
     handleKeepEditing,

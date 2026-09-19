@@ -48,11 +48,13 @@ export function AssignmentDefinitionWizardModal(
     yearGroupOptions,
     primaryActionLabel,
     isPrimaryActionDisabled,
+    canReparseDocuments,
     selectedTopicKey,
     selectedYearGroupKey,
     handleFormValuesChange,
     handleReparse,
     handleReparseCancel,
+    handleReparseDocuments,
     handleClose,
     handleDiscardConfirm,
     handleKeepEditing,
@@ -128,6 +130,8 @@ export function AssignmentDefinitionWizardModal(
         onFormValuesChange={handleFormValuesChange}
         onReparse={handleReparse}
         onReparseCancel={handleReparseCancel}
+        canReparseDocuments={canReparseDocuments}
+        onReparseDocuments={mode === 'update' ? handleReparseDocuments : undefined}
         onTaskWeightingChange={handleTaskWeightingChange}
         onTopicAddNew={combinedTopicAddNew}
         onYearGroupAddNew={combinedYearGroupAddNew}
