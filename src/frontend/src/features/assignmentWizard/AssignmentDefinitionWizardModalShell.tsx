@@ -20,7 +20,7 @@ export type AssignmentDefinitionWizardModalShellProperties = Readonly<{
   isHydrating: boolean;
   blockingError: string | null;
   isMutationBusy: boolean;
-  isClosable?: boolean;
+  isClosable: boolean;
   hasDirtyEdits?: boolean;
   hasParsedTasks?: boolean;
   taskRows?: TaskRow[];
@@ -138,15 +138,14 @@ function renderReadyState(
   properties: AssignmentDefinitionWizardModalShellProperties,
   modalTitle: string
 ): JSX.Element {
-  // For backward compatibility: if isClosable not provided, compute from isMutationBusy (old shell behaviour)
-  const isClosable = properties.isClosable ?? !properties.isMutationBusy;
   const reviewContentProperties = toReviewContentProperties(properties);
 
   return (
     <Modal
+      closable={properties.isClosable}
       destroyOnHidden
-      keyboard={isClosable}
-      mask={{ closable: isClosable }}
+      keyboard={properties.isClosable}
+      mask={{ closable: properties.isClosable }}
       onCancel={properties.onCancel}
       open={properties.open}
       title={modalTitle}

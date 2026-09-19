@@ -133,8 +133,8 @@ function deriveCanReparseDocuments(gating: ReparseDocumentsGating): boolean {
  * pure form-state derivations (`assignmentWizardFormState`), the form
  * initialization/baseline hook (`assignmentWizardFormInitialization`) and the
  * shared mutation/error-mapping sequence (`assignmentWizardMutation`). The
- * recovery/update parse → review → save process lives in
- * `assignmentWizardOrchestrator`.
+ * forced-reparse request builder it shares with the assessment recovery flow
+ * lives in `assignmentWizardOrchestrator`.
  *
  * @param {AssignmentDefinitionWizardModalProperties} properties - Modal properties.
  * @returns {UseAssignmentDefinitionWizardReturn} Hook return value with state and handlers.

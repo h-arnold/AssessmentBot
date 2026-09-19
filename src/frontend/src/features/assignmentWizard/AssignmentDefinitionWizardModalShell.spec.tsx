@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, render, screen, within } from '@testing-library/react';
 import { Form } from 'antd';
 import { createElement, type JSX } from 'react';
 import { describe, expect, it, vi } from 'vitest';
@@ -13,6 +13,7 @@ const baseProperties = {
   isHydrating: false,
   blockingError: null,
   isMutationBusy: false,
+  isClosable: true,
   onCancel: () => {},
   onSubmit: () => {},
 };
@@ -79,6 +80,25 @@ describe('AssignmentDefinitionWizardModalShell', () => {
     expect(screen.getByRole('button', { name: /^save$/i })).toBeInTheDocument();
     expect(screen.getByRole('table', { name: /task weightings/i })).toBeInTheDocument();
     expect(screen.getByText(SEED_FIRST_TASK_TITLE)).toBeInTheDocument();
+  });
+
+  it('gates the modal close control on isClosable so the X cannot close a locked wizard', async () => {
+    const { AssignmentDefinitionWizardModalShell } = await loadAssignmentDefinitionWizardModalShell();
+
+    render(
+      createElement(ShellHarness, { shell: AssignmentDefinitionWizardModalShell, isClosable: false })
+    );
+
+    const lockedDialog = screen.getByRole('dialog');
+    expect(within(lockedDialog).queryByRole('button', { name: /close/i })).toBeNull();
+    cleanup();
+
+    render(
+      createElement(ShellHarness, { shell: AssignmentDefinitionWizardModalShell, isClosable: true })
+    );
+
+    const closableDialog = screen.getByRole('dialog');
+    expect(within(closableDialog).getByRole('button', { name: /close/i })).toBeInTheDocument();
   });
 });
 
@@ -161,12 +181,14 @@ function ShellStateHarness(properties: Readonly<{
  * Renders the shell with a live Ant Design form instance in update
  * mode, seeded with the canonical task rows for region comparison.
  *
- * @param {Readonly<{ shell: (properties: Record<string, unknown>) => JSX.Element }>} properties Harness properties.
+ * @param {Readonly<{ shell: (properties: Record<string, unknown>) => JSX.Element; isClosable?: boolean }>} properties Harness properties.
  * @param {(properties: Record<string, unknown>) => JSX.Element} properties.shell Shell component.
+ * @param {boolean} [properties.isClosable] Whether the shell treats the wizard as closable.
  * @returns {JSX.Element} Shell harness element.
  */
 function ShellHarness(properties: Readonly<{
   shell: (properties: Record<string, unknown>) => JSX.Element;
+  isClosable?: boolean;
 }>): JSX.Element {
   const [form] = Form.useForm();
   return createElement(properties.shell, {
@@ -176,7 +198,7 @@ function ShellHarness(properties: Readonly<{
     isHydrating: false,
     blockingError: null,
     isMutationBusy: false,
-    isClosable: true,
+    isClosable: properties.isClosable ?? true,
     hasDirtyEdits: false,
     hasParsedTasks: true,
     taskRows: buildSeedTaskRows(CANONICAL_EDITABLE_DEFINITION_SEED),

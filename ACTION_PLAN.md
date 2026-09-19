@@ -515,6 +515,10 @@ Frontend tests:
 - Verification: wizard suite 78/78; full frontend 2079/2079; lint 0 errors/46 warnings (delta = retired hook `max-lines` fingerprint — improved); `tsc -b` clean. Regression gate (`post-s6` session): 0 regressions, 0 new failures.
 - **Section 7 complete.** Commit `543599d` — feat: add assignment wizard orchestrator with recovery entry intent (branch `fix/301-stale-assignment-definitions`, pushed; SHA recorded in the follow-up evidence commit).
 
+### Post-plan cleanup reconciliation
+
+- The generic `useAssignmentWizardOrchestrator` hook and its unused create/update/explicit-reparse/recovery entry-intent surface were removed during the final de-sloppification pass because no production caller consumed them. The live create/update wizard remains in `useAssignmentDefinitionWizard`; stale recovery remains in `useAssessTaskRecoveryFlow`; the shared `buildReparseRequest` helper is retained and is now used by both live flows. Canonical shared-helper and modal-pattern documentation was reconciled to record this as a superseded abstraction, without changing user-visible behaviour.
+
 ### Delegation mandatory reads
 
 - `@AGENTS.md`, `@src/frontend/AGENTS.md`, `@SPEC.md`, `@STALE_RECOVERY_LAYOUT.md`, `@docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md`, `@docs/developer/data-shapes/assignment-definition.md`, `@src/frontend/src/services/assignmentDefinition/assignmentDefinition.zod.ts`, `@src/frontend/src/services/assignmentDefinition/assignmentDefinitionService.ts`, `@src/frontend/src/errors/map-error-to-ui.ts`, `@src/frontend/src/features/assignmentWizard/useAssignmentDefinitionWizard.ts`
@@ -763,7 +767,7 @@ Frontend tests:
 ### Implementation notes / deviations / follow-up
 
 - **Consolidated MCP walkthrough:** The Playwright handoff walked all minimum journeys before finalising the specs, using `installRuntimeMock` before navigation and canonical `small` transport views (`editableDefinitions`, `assignmentDefinitionPartials`, `classPartials`). Matched stale recovery, forced-reparse parse failure with Retry and Cancel variants, converted in-modal create, and Assignments-page Reparse documents enabled/dirty-disabled/busy/in-place-refresh/failure states were all observed. The incremental Section 8–10 observations still held; no layout contradiction was found. Evidence is recorded in `.opencode/scratchpad/walkthrough-mock/section-11/WALKTHROUGH_EVIDENCE.md` with screenshots and request logs.
-- **Red phase:** Added six browser journeys in `assignment-definition-stale-recovery-section-11.spec.ts` with the canonical-fixture scenario/navigation helper `helpers/stale-recovery-page-end-to-end-helpers.ts`. The tests passed against the existing Sections 8–10 implementation (6/6; repeat 18/18), so no artificial red failure or production change was introduced. Red review found five minor test-quality findings; all were fixed and the re-review was CLEAN.
+- **Red phase:** Added six browser journeys in `assignment-definition-stale-recovery.spec.ts` with the canonical-fixture scenario/navigation helper `helpers/stale-recovery-page-end-to-end-helpers.ts`. The tests passed against the existing Sections 8–10 implementation (6/6; repeat 18/18), so no artificial red failure or production change was introduced. Red review found five minor test-quality findings; all were fixed and the re-review was CLEAN.
 - **Green phase:** Implementation review confirmed that Sections 8–10 already satisfy the Section 11 browser contract; no production changes were required. Green review CLEAN. Coverage includes single-modal assertions, registry copy, stale prompt action order, review/approval and resumed assessment, parse failure blocking/Retry/Cancel, in-modal create, and explicit Reparse documents gating/busy/failure/in-place refresh.
 - **Verification:** Focused Section 11 E2E 6/6; `--repeat-each=3 --workers=1` 18/18; related assessment/wizard E2E 40/40; frontend lint 0 errors / 46 accepted warnings; TypeScript clean. The post-Section 10 regression comparison completed with 0 regressions and 0 new failures; the only failing check remains the accepted backend lint `max-lines` debt (10 warnings), and the E2E check passed.
 
@@ -787,6 +791,12 @@ Frontend tests:
 4. Full frontend unit suite green (wizard/AssessTaskModal refactor surface area is broad).
 5. Synthetic integration suite green after the Section 2 extension: `npm run test:synthetic` (committed profiles regenerated and byte-reproducibility proven).
 6. Mandatory-read evidence complete for every delegated regression handoff.
+
+### Verification notes
+
+- Final de-sloppification found and resolved the dead generic wizard-orchestrator hook and duplicated recovery reparse builder; the surviving `buildReparseRequest` is shared by the live Assignments-page wizard and assessment recovery flow. It also corrected landed-test comments, removed action-plan numbering from E2E naming, tightened modal close gating, restored approval-baseline request coverage, and removed minor stale/unused helper details. The pre-existing no-op catch-rethrow and entity handlers were explicitly left out of scope.
+- Cleanup regression comparison against `fix-301-stale-assignment-definitions-post-s10` completed with 0 regressions and 0 new failures; the E2E check passed. One prior retry-recovered `classes-crud-mutation-summary` modal-click flake was reproduced as pre-existing (13/13 focused passes) and was not caused by this diff. Backend lint remains the accepted 10-warning `max-lines` debt only.
+- Backend contract suites: 567/567. Frontend service/error suites: 168/168. Frontend assignment-wizard/classes suites after cleanup: 382/382. Synthetic suite: 235/235; synthetic lint clean. Full regression coverage also passed frontend unit, E2E, builder tests, and builder compilation.
 
 ---
 

@@ -102,7 +102,7 @@ export function AssignmentDefinitionWizardModal(
       onYearGroupEntityCreated(entity);
       setManageYearGroupsModalOpen(false);
     },
-    [onYearGroupEntityCreated]
+    [onYearGroupEntityCreated, setManageYearGroupsModalOpen]
   );
 
   return (

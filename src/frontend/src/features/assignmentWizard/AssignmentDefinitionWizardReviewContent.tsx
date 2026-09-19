@@ -56,10 +56,12 @@ export type AssignmentDefinitionWizardReviewContentProperties = Readonly<{
  * `hasParsedTasks` gating (stage-one URL entry versus stage-two metadata and weighting
  * review) and renders no `Modal` chrome of its own.
  *
- * Expected consumers: the converted create path (Section 8), the stale-recovery review
- * surface inside `AssessTaskModal` (Section 9), and the Assignments-page wizard shell
- * `AssignmentDefinitionWizardModalShell` (Section 10), which keeps its own `Modal`
- * chrome and re-composes from this component.
+ * Expected consumers: the Assignments-page wizard shell
+ * `AssignmentDefinitionWizardModalShell`, the converted in-modal create path
+ * (`AssessTaskCreateReview`) and the stale-recovery review surface
+ * (`AssessTaskRecoverySurface`) inside `AssessTaskModal`. The latter two render
+ * this content inside the single owning assessment modal; the shell keeps its own
+ * `Modal` chrome and re-composes from this component.
  *
  * @param {AssignmentDefinitionWizardReviewContentProperties} properties Review content state and handlers.
  * @returns {JSX.Element} Assignment-definition wizard review content.
@@ -77,7 +79,7 @@ export function AssignmentDefinitionWizardReviewContent(
   return (
     <>
       {properties.hasParsedTasks !== undefined &&
-        renderAlerts(properties, documentChange, hasParsedTasks)}
+        renderAlerts(documentChange, hasParsedTasks)}
       {renderForm(properties, documentChange)}
       {properties.includeFooter !== false && (
         <AssignmentDefinitionWizardReviewFooter {...properties} />
@@ -132,13 +134,11 @@ export function AssignmentDefinitionWizardReviewFooter(
 /**
  * Renders the alert messages for document change and parse required states.
  *
- * @param {AssignmentDefinitionWizardReviewContentProperties} _properties Review content properties (unused but required for interface consistency).
  * @param {DocumentChangeState} documentChange Resolved document change state.
  * @param {boolean} hasParsedTasks Whether tasks have been parsed.
  * @returns {JSX.Element} The alert elements.
  */
 function renderAlerts(
-  _properties: AssignmentDefinitionWizardReviewContentProperties,
   documentChange: DocumentChangeState,
   hasParsedTasks: boolean
 ): JSX.Element {

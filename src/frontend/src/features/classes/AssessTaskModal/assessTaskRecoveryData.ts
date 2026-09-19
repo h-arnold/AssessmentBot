@@ -16,31 +16,6 @@ import type { TaskRow } from '../../assignmentWizard/assignmentWizardFormState';
 export type RecoveryPhase = 'idle' | 'stale-prompt' | 'reparsing' | 'review' | 'failed';
 
 /**
- * Builds the ID-shaped forced-reparse request for an existing definition.
- *
- * @remarks
- * Explicit reparses omit `taskWeightings` entirely (including an empty array),
- * so the backend reconciles stored weightings itself.
- *
- * @param {AssignmentDefinition} definition - The loaded definition to reparse.
- * @returns {UpsertAssignmentDefinitionRequest} The forced-reparse request.
- */
-export function buildRecoveryReparseRequest(
-  definition: AssignmentDefinition
-): UpsertAssignmentDefinitionRequest {
-  return {
-    definitionKey: definition.definitionKey,
-    primaryTitle: definition.primaryTitle,
-    primaryTopicKey: definition.primaryTopicKey,
-    yearGroupKey: definition.yearGroupKey,
-    referenceDocumentId: definition.referenceDocumentId,
-    templateDocumentId: definition.templateDocumentId,
-    documentType: definition.documentType,
-    forceReparse: true,
-  };
-}
-
-/**
  * Builds the approval-save request from the reviewed definition and edits.
  *
  * @remarks

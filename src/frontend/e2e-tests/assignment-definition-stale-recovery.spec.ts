@@ -31,15 +31,12 @@ import {
 } from './helpers/stale-recovery-page-end-to-end-helpers';
 
 // ============================================================================
-// Stale assignment-definition recovery — Section 11 browser journeys
+// Stale assignment-definition recovery browser journeys
 // ============================================================================
 //
-// These specs cover the Section 11 acceptance journeys in a real browser,
+// These specs cover the recovery acceptance journeys in a real browser,
 // seeded from the canonical `small` profile transport views via
-// `createStaleRecoveryScenario` (see the helper module). This is the
-// action-plan red phase: the journeys are shaped from `SPEC.md` and
-// `STALE_RECOVERY_LAYOUT.md`, and the consolidated MCP walkthrough required by
-// `ACTION_PLAN.md` is performed before these specs are finalised.
+// `createStaleRecoveryScenario` (see the helper module).
 //
 // React 19 StrictMode double-fires effects in development. The scenario factory
 // provides StrictMode-safe queue sizes; only the user-triggered event queues
@@ -74,7 +71,7 @@ const EXPECTED_RECOVERY_ATTEMPTS = 2;
 /** Failed reparse, retried reparse and approval save. */
 const EXPECTED_RETRY_UPSERTS = 3;
 
-test.describe('Stale assignment-definition recovery — Section 11 journeys', () => {
+test.describe('Stale assignment-definition recovery journeys', () => {
   test('matched stale recovery: prompt, in-modal review, approval and resumed assessment', async ({
     page,
   }) => {

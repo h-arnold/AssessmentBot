@@ -15,6 +15,7 @@ import {
   getYearGroupsQueryOptions,
 } from '../../../query/sharedQueries';
 import { useWizardUpsertMutation } from '../../assignmentWizard/assignmentWizardMutation';
+import { buildReparseRequest } from '../../assignmentWizard/assignmentWizardOrchestrator';
 import {
   buildTopicOptions,
   buildYearGroupOptions,
@@ -23,11 +24,7 @@ import {
   type DocumentChangeState,
   type TaskRow,
 } from '../../assignmentWizard/assignmentWizardFormState';
-import {
-  buildRecoveryApprovalRequest,
-  buildRecoveryReparseRequest,
-  type RecoveryPhase,
-} from './assessTaskRecoveryData';
+import { buildRecoveryApprovalRequest, type RecoveryPhase } from './assessTaskRecoveryData';
 import type {
   AssessTaskAssignment,
   AssessmentAlertType,
@@ -183,7 +180,7 @@ export function useAssessTaskRecoveryFlow(
     loaded: AssignmentDefinition,
     generation: number
   ): Promise<void> {
-    const request = buildRecoveryReparseRequest(loaded);
+    const request = buildReparseRequest(loaded);
     const result = await runUpsert(request, {
       contextName: 'AssessTaskRecoveryFlow.startUpdate',
       errorContext: {

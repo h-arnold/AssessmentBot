@@ -1,13 +1,11 @@
 /**
- * Red-phase specs for the Assignments-page update wizard's explicit
+ * Behaviour coverage for the Assignments-page update wizard's explicit
  * **Reparse documents** action.
  *
- * These tests pin the Section 10 acceptance criteria: update-mode-only
- * placement, the enabling/disabled gating with a visible explanation, the
- * forced reparse request shape (`forceReparse: true` with no weighting patch),
- * in-place task refresh, the busy affordance and the existing blocking-error
- * treatment on failure. They are expected to fail until the action lands;
- * existing update-mode suites remain untouched alongside.
+ * These tests pin its update-mode-only placement, its enabling/disabled gating
+ * with a visible explanation, the forced reparse request shape (`forceReparse:
+ * true` with no weighting patch), in-place task refresh, the busy affordance,
+ * its settled state, and the existing blocking-error treatment on failure.
  */
 
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
@@ -320,6 +318,13 @@ describe('Reparse documents action behaviour', () => {
     await act(async () => {
       resolveReparse!({ ...UPDATE_DEFINITION });
       await pendingReparse;
+    });
+
+    // Settled state: the action is no longer loading and is enabled again.
+    await waitFor(() => {
+      const action = getReparseDocumentsAction(modal);
+      expect(action).toBeEnabled();
+      expect(action).not.toHaveClass('ant-btn-loading');
     });
   });
 

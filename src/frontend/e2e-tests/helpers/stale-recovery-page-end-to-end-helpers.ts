@@ -257,7 +257,7 @@ export const REPARSE_DISABLED_EXPLANATION =
 // ============================================================================
 
 /**
- * Optional per-method queue overrides for a Section 11 journey scenario.
+ * Optional per-method queue overrides for a stale-recovery journey scenario.
  */
 export type StaleRecoveryScenarioOverrides = Readonly<{
   startAssessmentRun?: ReadonlyArray<ResponseItem>;
@@ -294,7 +294,7 @@ function repeat(entry: ResponseItem, count: number): ResponseItem[] {
 }
 
 /**
- * Builds the canonical base scenario queues shared by every Section 11 journey.
+ * Builds the canonical base scenario queues shared by every stale-recovery journey.
  *
  * @param {ReadonlyArray<unknown>} assignments The classroom assignments to return.
  * @returns {RuntimeScenario} The base scenario.
@@ -323,7 +323,7 @@ function buildCanonicalScenario(assignments: ReadonlyArray<unknown>): RuntimeSce
 }
 
 /**
- * Creates a StrictMode-safe runtime scenario for the Section 11 recovery journeys,
+ * Creates a StrictMode-safe runtime scenario for the stale-recovery journeys,
  * seeded from the canonical `small` profile transport views.
  *
  * @param {ReadonlyArray<unknown>} [assignments] Classroom assignments for the journey.
