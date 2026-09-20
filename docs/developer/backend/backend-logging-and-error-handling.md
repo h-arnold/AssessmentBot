@@ -86,7 +86,7 @@ When you touch existing backend code that contains direct `console.*` calls:
 
 The following backend error types are recognised at the transport boundary by `_mapErrorToFailureEnvelope` in `z_apiHandler.js`:
 
-- **`ApiValidationError`** (`src/backend/Utils/ErrorTypes/ApiValidationError.js`) — transport-level input validation failure. Mapped to `INVALID_REQUEST`.
+- **`ApiValidationError`** (`src/backend/Utils/ErrorTypes/ApiValidationError.js`) — transport-level input validation failure. Mapped to `INVALID_REQUEST`, unless it carries a stable `code` (for example `DEFINITION_PARSE_FAILED`, the recovery baseline `DEFINITION_STALE`, or the authentication-settings save codes), which `_mapErrorToFailureEnvelope` honours instead. See `docs/developer/data-shapes/transport-envelope.md` for the code mapping and `DEFINITION_PARSE_FAILED` classification semantics.
 - **`ApiRateLimitError`** (`src/backend/Utils/ErrorTypes/ApiRateLimitError.js`) — rate-limiting guard triggered. Mapped to `RATE_LIMITED`; retriable.
 - **`ApiDisabledError`** (`src/backend/Utils/ErrorTypes/ApiDisabledError.js`) — method or feature disabled. Mapped to `UNKNOWN_METHOD`.
 - **`DefinitionStaleError`** (`src/backend/Utils/ErrorTypes/DefinitionStaleError.js`) — an `AssignmentDefinition`'s reference or template document has been modified since the definition was created. Mapped to `DEFINITION_STALE`; non-retriable. Carries structured metadata: `definitionKey`, `referenceStale`, `templateStale`, `referenceLastModified`, `templateLastModified`. Thrown at the API boundary in `startAssessmentRun` and at trigger-execution time in `runAssignmentPipeline`.

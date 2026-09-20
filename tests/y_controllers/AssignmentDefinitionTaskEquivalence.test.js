@@ -1,7 +1,9 @@
 import { describe, it, expect } from 'vitest';
 
-// RED PHASE (issue #301, Section 1): failing tests for the task-equivalence comparator.
-// The module under test does not exist yet, so this suite fails at import time.
+// Task-equivalence comparator contract (issue #301): decides whether a
+// reparsed task carries equivalent assessment content to the stored task, so the
+// upsert orchestrator preserves stored weightings for unchanged tasks and falls
+// back to the TaskDefinition constructor default of 1 for new or changed ones.
 //
 // Contract decision: compareTaskEquivalence(previousTask, reparsedTask) returns
 // `{ equivalent: boolean, reason: string }`, consumed by
@@ -15,8 +17,10 @@ import { describe, it, expect } from 'vitest';
 // task metadata, then artefact collections. Artefact collections cover type,
 // role, source document/page identity, content and assessment-relevant metadata;
 // any count, order or content difference reports 'artefact-changed'.
-// The module must export the named function through a guarded
-// `module.exports = { compareTaskEquivalence };` block.
+// Canonical compared artefact fields are the documented BaseTaskArtifact fields
+// (taskId, role, pageId, documentId, content, metadata, type); runtime-only
+// state (contentHash, uid/_uid, taskIndex, artifactIndex, live-instance
+// internals such as TableTaskArtifact _rows) never flips the decision.
 // Weighting preservation itself lives in the orchestrator and weighting helper;
 // these tests pin the equivalence decision that drives it, including the rule
 // that differing weightings never flip the decision.
@@ -25,8 +29,8 @@ const {
 } = require('../../src/backend/y_controllers/AssignmentDefinition/AssignmentDefinitionTaskEquivalence.js');
 
 // Local boundary fixtures shaped like TaskDefinition.toJSON() output with
-// BaseTaskArtifact.toJSON() artefacts. Per the recorded policy deviation these
-// stay local; no synthetic fixtures are imported.
+// BaseTaskArtifact.toJSON() artefacts. Boundary cases stay local under the
+// canonical-fixture policy, so no synthetic fixtures are imported.
 function buildReferenceArtefact(overrides = {}) {
   return {
     taskId: 't_task_one',

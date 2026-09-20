@@ -1,12 +1,10 @@
-import { Modal, Space, Button, Typography } from 'antd';
 import { useCallback, useState, type JSX } from 'react';
 import { useAssignmentDefinitionWizard } from './useAssignmentDefinitionWizard';
+import { AssignmentDiscardConfirm } from './AssignmentDiscardConfirm';
 import { AssignmentDefinitionWizardModalShell } from './AssignmentDefinitionWizardModalShell';
 import { ManageTopicsModal } from '../referenceData/ManageTopicsModal';
 import { ManageYearGroupsModal } from '../referenceData/ManageYearGroupsModal';
 import { type AssignmentDefinitionWizardModalProperties } from './useAssignmentDefinitionWizard';
-
-const { Text } = Typography;
 
 /**
  * Renders the assignment-definition wizard modal for create and update workflows.
@@ -60,15 +58,14 @@ export function AssignmentDefinitionWizardModal(
     handleKeepEditing,
     handleTaskWeightingChange,
     handlePrimaryAction,
-    handleTopicAddNew,
-    handleYearGroupAddNew,
     onTopicEntityCreated,
     onYearGroupEntityCreated,
   } = useAssignmentDefinitionWizard({ open, mode, definitionKey, onClose, initialValues, onCreateSuccess });
 
   const isClosable = !isSubmitting && !documentChange.hasPendingChange;
 
-  // Handlers for opening modals
+  // Child-modal opening stays in this modal component, which already owns the
+  // Manage Topics and Manage Year Groups dialogs.
   const handleOpenTopicsModal = useCallback(() => {
     setManageTopicsModalOpen(true);
   }, []);
@@ -76,17 +73,6 @@ export function AssignmentDefinitionWizardModal(
   const handleOpenYearGroupsModal = useCallback(() => {
     setManageYearGroupsModalOpen(true);
   }, []);
-
-  // Combined handlers that call both the hook handler and open the modal
-  const combinedTopicAddNew = useCallback(() => {
-    handleTopicAddNew();
-    handleOpenTopicsModal();
-  }, [handleTopicAddNew, handleOpenTopicsModal]);
-
-  const combinedYearGroupAddNew = useCallback(() => {
-    handleYearGroupAddNew();
-    handleOpenYearGroupsModal();
-  }, [handleYearGroupAddNew, handleOpenYearGroupsModal]);
 
   // Enhanced entity created handlers that also close the modal
   const combinedTopicEntityCreated = useCallback(
@@ -133,8 +119,8 @@ export function AssignmentDefinitionWizardModal(
         canReparseDocuments={canReparseDocuments}
         onReparseDocuments={mode === 'update' ? handleReparseDocuments : undefined}
         onTaskWeightingChange={handleTaskWeightingChange}
-        onTopicAddNew={combinedTopicAddNew}
-        onYearGroupAddNew={combinedYearGroupAddNew}
+        onTopicAddNew={handleOpenTopicsModal}
+        onYearGroupAddNew={handleOpenYearGroupsModal}
         selectedTopicKey={selectedTopicKey}
         selectedYearGroupKey={selectedYearGroupKey}
       />
@@ -151,18 +137,11 @@ export function AssignmentDefinitionWizardModal(
         onEntityCreated={combinedYearGroupEntityCreated}
       />
 
-      <Modal
-        centered
-        destroyOnHidden
-        footer={<Space><Button onClick={handleKeepEditing}>Keep editing</Button><Button danger onClick={handleDiscardConfirm} type="primary">Discard changes</Button></Space>}
-        keyboard
-        onCancel={handleKeepEditing}
+      <AssignmentDiscardConfirm
         open={showDiscardConfirm}
-        title="Discard changes"
-        transitionName=""
-      >
-        <Text>You have unsaved changes. Discard and close?</Text>
-      </Modal>
+        onKeepEditing={handleKeepEditing}
+        onDiscard={handleDiscardConfirm}
+      />
     </>
   );
 }

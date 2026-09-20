@@ -210,7 +210,9 @@ function buildAssignmentsByKey(assignments, definitionByKey) {
     const definition = definitionByKey.get(assignment.assignmentDefinitionKey);
     // A partial-only registry row cannot hydrate into a full assignment, so it is
     // represented only in the class partial view, never as an AssignmentFull.
-    if (Array.isArray(definition.tasks)) {
+    // A keyed-task record missing document IDs is likewise not a full
+    // definition and must not hydrate.
+    if (!definition || !isFullDefinition(definition)) {
       continue;
     }
     assignmentsByKey[assignment.assignmentId] = toFullAssignment(assignment, definition);

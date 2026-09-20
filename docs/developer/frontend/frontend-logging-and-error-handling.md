@@ -34,9 +34,11 @@ Do not combine these concerns in a single string.
 Use the backend API envelope as the frontend transport contract:
 
 - Success: `{ ok: true, requestId, data, meta? }`
-- Error: `{ ok: false, requestId, error: { code, message, retriable? }, meta? }`
+- Error: `{ ok: false, requestId, error: { code, message, retriable?, details? }, meta? }`
 
 `callApi` is the only transport boundary for frontend feature code. Keep backend method wiring and envelope parsing there.
+
+`ApiTransportError` exposes the typed envelope fields (`requestId`, `code`, `retriable`, `meta`) and preserves the optional structured `error.details` block, so feature code can consume structured diagnostics without reaching back into the raw envelope.
 
 Recommended flow:
 
@@ -76,6 +78,8 @@ Default production frontend behaviour should be conservative and operationally i
 - include concise diagnostic fields (`context`, `errorMessage`, `errorCode`, `requestId`)
 - avoid stack traces by default unless explicitly enabled for incident triage
 - never log secrets, tokens, full payloads, or PII
+
+When you do include a stack trace, pass it through the logger's dedicated `stack` field (for example via `logFrontendError`). A `stack` nested inside `metadata` bypasses production suppression because only the dedicated field is gated.
 
 If richer telemetry is needed later, route structured logs to an explicit external sink instead of ad-hoc browser console output.
 

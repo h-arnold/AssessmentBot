@@ -7,7 +7,17 @@ import {
   MIN_WEIGHTING_VALUE,
 } from '../../services/assignmentDefinition/assignmentDefinition.zod';
 import { SelectWithAddNew } from '../../components/SelectWithAddNew/SelectWithAddNew';
-import { type DocumentChangeState, type TaskRow } from './assignmentWizardFormState';
+import {
+  APP_GAP_MD,
+  APP_GAP_SM,
+  APP_SPACE_SIZE_DEFAULT,
+  APP_SPACE_SIZE_TIGHT,
+} from '../../theme/spacing';
+import {
+  derivePrimaryActionState,
+  type DocumentChangeState,
+  type TaskRow,
+} from './assignmentWizardFormState';
 
 const { Text } = Typography;
 
@@ -17,6 +27,7 @@ const REPARSE_DOCUMENTS_DISABLED_MESSAGE =
   'Save or discard your edits before reparsing the documents.';
 
 export type AssignmentDefinitionWizardReviewContentProperties = Readonly<{
+  mode: 'create' | 'update';
   hasParsedTasks?: boolean;
   taskRows?: TaskRow[];
   documentChange?: DocumentChangeState;
@@ -30,6 +41,7 @@ export type AssignmentDefinitionWizardReviewContentProperties = Readonly<{
   selectedTopicKey?: string;
   selectedYearGroupKey?: string;
   includeFooter?: boolean;
+  showAlerts: boolean;
   onCancel: () => void;
   onPrimaryAction?: () => void;
   onSubmit?: () => void;
@@ -63,6 +75,9 @@ export type AssignmentDefinitionWizardReviewContentProperties = Readonly<{
  * this content inside the single owning assessment modal; the shell keeps its own
  * `Modal` chrome and re-composes from this component.
  *
+ * Alert visibility is explicit through `showAlerts`, and the label fallback
+ * uses the shared `derivePrimaryActionState` derivation.
+ *
  * @param {AssignmentDefinitionWizardReviewContentProperties} properties Review content state and handlers.
  * @returns {JSX.Element} Assignment-definition wizard review content.
  */
@@ -74,12 +89,10 @@ export function AssignmentDefinitionWizardReviewContent(
     previousReferenceUrl: '',
     previousTemplateUrl: '',
   };
-  const hasParsedTasks = properties.hasParsedTasks ?? false;
 
   return (
     <>
-      {properties.hasParsedTasks !== undefined &&
-        renderAlerts(documentChange, hasParsedTasks)}
+      {properties.showAlerts && renderAlerts(documentChange, properties.hasParsedTasks ?? false)}
       {renderForm(properties, documentChange)}
       {properties.includeFooter !== false && (
         <AssignmentDefinitionWizardReviewFooter {...properties} />
@@ -100,33 +113,30 @@ export function AssignmentDefinitionWizardReviewFooter(
   properties: AssignmentDefinitionWizardReviewContentProperties
 ): JSX.Element {
   const onPrimaryClick = properties.onPrimaryAction ?? properties.onSubmit;
-  if (!onPrimaryClick) {
-    return (
-      <Space>
-        <Button disabled={properties.isMutationBusy} onClick={properties.onCancel}>
-          Cancel
-        </Button>
-      </Space>
-    );
-  }
-
-  const primaryActionLabel =
-    properties.primaryActionLabel ?? (properties.hasParsedTasks ? 'Save' : 'Parse and continue');
+  // Falls back to the shared derivation so mode and parsed-state labels cannot diverge.
+  const { primaryActionLabel: derivedPrimaryActionLabel } = derivePrimaryActionState(
+    properties.mode === 'create',
+    properties.hasParsedTasks ?? false,
+    {}
+  );
+  const primaryActionLabel = properties.primaryActionLabel ?? derivedPrimaryActionLabel;
   const isPrimaryActionDisabled = properties.isPrimaryActionDisabled ?? false;
 
   return (
-    <Space>
+    <Space size={APP_SPACE_SIZE_DEFAULT}>
       <Button disabled={properties.isMutationBusy} onClick={properties.onCancel}>
         Cancel
       </Button>
-      <Button
-        disabled={isPrimaryActionDisabled || properties.isMutationBusy}
-        loading={properties.isMutationBusy}
-        onClick={onPrimaryClick}
-        type="primary"
-      >
-        {primaryActionLabel}
-      </Button>
+      {onPrimaryClick === undefined ? null : (
+        <Button
+          disabled={isPrimaryActionDisabled || properties.isMutationBusy}
+          loading={properties.isMutationBusy}
+          onClick={onPrimaryClick}
+          type="primary"
+        >
+          {primaryActionLabel}
+        </Button>
+      )}
     </Space>
   );
 }
@@ -152,11 +162,16 @@ function renderAlerts(
           title={DOCUMENT_CHANGED_MESSAGE}
           type="warning"
           showIcon
-          style={{ marginBottom: 16 }}
+          style={{ marginBottom: APP_GAP_MD }}
         />
       )}
       {showParseRequiredAlert && (
-        <Alert title={PARSE_REQUIRED_MESSAGE} type="info" showIcon style={{ marginBottom: 16 }} />
+        <Alert
+          title={PARSE_REQUIRED_MESSAGE}
+          type="info"
+          showIcon
+          style={{ marginBottom: APP_GAP_MD }}
+        />
       )}
     </>
   );
@@ -185,7 +200,7 @@ function renderForm(
       layout="vertical"
       onValuesChange={properties.onFormValuesChange}
     >
-      <Space orientation="vertical" size="middle" style={{ width: '100%' }}>
+      <Space orientation="vertical" size={APP_SPACE_SIZE_DEFAULT} style={{ width: '100%' }}>
         {renderBaseFormFields(
           properties,
           hasDirtyEdits,
@@ -226,7 +241,7 @@ function renderBaseFormFields(
         <Input placeholder="Enter assignment title" />
       </Form.Item>
 
-      <div style={{ display: 'flex', gap: 16 }}>
+      <div style={{ display: 'flex', gap: APP_GAP_MD }}>
         <Form.Item
           label="Assignment Topic"
           name="topic"
@@ -311,7 +326,7 @@ function renderReparseDocumentsAction(
   const showDisabledExplanation = properties.hasDirtyEdits ?? false;
 
   return (
-    <Space orientation="vertical" size="small">
+    <Space orientation="vertical" size={APP_SPACE_SIZE_TIGHT}>
       <Button
         disabled={!canReparseDocuments || properties.isMutationBusy}
         loading={properties.isMutationBusy}
@@ -383,7 +398,7 @@ function renderDocumentChangeActions(
   properties: AssignmentDefinitionWizardReviewContentProperties
 ): JSX.Element {
   return (
-    <Space style={{ marginTop: 8 }}>
+    <Space size={APP_SPACE_SIZE_DEFAULT} style={{ marginTop: APP_GAP_SM }}>
       <Button
         disabled={properties.isMutationBusy}
         loading={properties.isMutationBusy}
@@ -437,11 +452,7 @@ function renderTaskWeightingsTable(
   properties: AssignmentDefinitionWizardReviewContentProperties,
   documentChange: DocumentChangeState,
   taskRows: TaskRow[]
-): JSX.Element | null {
-  if (properties.onTaskWeightingChange === undefined) {
-    return null;
-  }
-
+): JSX.Element {
   return (
     <Form.Item label="Task weightings">
       <Table
@@ -476,10 +487,6 @@ function renderTaskWeightingInputCell(
   documentChange: DocumentChangeState,
   properties: AssignmentDefinitionWizardReviewContentProperties
 ): (value: unknown, record: TaskRow, index: number) => ReactNode {
-  if (properties.onTaskWeightingChange === undefined) {
-    return () => null;
-  }
-
   return (_: unknown, record: TaskRow) => (
     <InputNumber
       disabled={documentChange.hasPendingChange}

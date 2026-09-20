@@ -307,3 +307,17 @@ describe('useAssignmentDefinitionWizard', () => {
     expect(onCreateSuccess).not.toHaveBeenCalled();
   });
 });
+
+describe('useAssignmentDefinitionWizard presentation hygiene', () => {
+  it('does not expose the removed no-op child-dialog callback seam', async () => {
+    const { result } = await renderWizardHook({
+      open: true,
+      mode: 'create',
+      definitionKey: null,
+      onClose: vi.fn(),
+    });
+
+    expect(result.current).not.toHaveProperty('handleTopicAddNew');
+    expect(result.current).not.toHaveProperty('handleYearGroupAddNew');
+  });
+});

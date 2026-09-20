@@ -7,7 +7,6 @@ import {
   type AssignmentDefinition,
 } from '../../../services/assignmentDefinition/assignmentDefinitionService';
 import { DEFAULT_WEIGHTING_VALUE } from '../../../services/assignmentDefinition/assignmentDefinition.zod';
-import { ApiTransportError } from '../../../errors/apiTransportError';
 import { mapErrorToUserMessage } from '../../../errors/map-error-to-ui';
 import { queryKeys } from '../../../query/queryKeys';
 import {
@@ -24,7 +23,19 @@ import {
   type DocumentChangeState,
   type TaskRow,
 } from '../../assignmentWizard/assignmentWizardFormState';
-import { buildRecoveryApprovalRequest, type RecoveryPhase } from './assessTaskRecoveryData';
+import {
+  buildRecoveryApprovalRequest,
+  findResumeTitle,
+  isApprovalNotReady,
+  isGenerationObsolete,
+  isSaveBlocked,
+  readReviewFormValues,
+  settleApprovalFailure,
+  settleMissingCapture,
+  settleResumeFailure,
+  settleSaveThrow,
+  type RecoveryPhase,
+} from './assessTaskRecoveryData';
 import type {
   AssessTaskAssignment,
   AssessmentAlertType,
@@ -34,8 +45,8 @@ import type {
 /** A single selectable reference-data option. */
 type RecoverySelectOption = { value: string; label: string };
 
-/** Fallback copy when a mutation returns no registry-mapped message. */
-const REPARSE_FAILED_FALLBACK_MESSAGE = 'An error occurred. Please try again.';
+/** Fallback copy when a mutation returns no registry-mapped message. Uses the shared registry generic. */
+const REPARSE_FAILED_FALLBACK_MESSAGE = mapErrorToUserMessage(null);
 
 /**
  * Recovery state and handlers consumed by `AssessTaskRecoverySurface`.
@@ -84,16 +95,16 @@ export type AssessTaskRecoveryFlowProperties = Readonly<{
  * and the approval outcomes.
  *
  * @remarks
- * The Section 6 routing stub (`useAssessTaskFlow`'s `assessmentRecoveryState`
- * and `transitionToStaleRecovery`) remains the entry point; this hook is
- * mounted by `AssessTaskRecoverySurface` while that state is `stale-prompt`,
- * so every recovery entry starts from a fresh prompt with no reset effect. It
- * reuses the Section 7 mutation/error plumbing (`useWizardUpsertMutation`) and
- * the chrome-free review content so no recovery state stacks a second modal.
- * A forced reparse persists immediately (SPEC decision 5): cancelling review
- * discards only local edits and never starts an assessment. Approval continues
- * the original assessment run with the captured
- * `{definitionKey, assignmentId, courseId}` context.
+ * The `useAssessTaskFlow` recovery routing (`assessmentRecoveryState` and
+ * `transitionToStaleRecovery`) remains the entry point; this hook is mounted by
+ * `AssessTaskRecoverySurface` while that state is `stale-prompt`, so every
+ * recovery entry starts from a fresh prompt with no reset effect. It reuses the
+ * shared wizard mutation/error plumbing (`useWizardUpsertMutation`) and the
+ * chrome-free review content so no recovery state stacks a second modal. A
+ * forced reparse persists immediately: cancelling review discards only local
+ * edits and never starts an assessment. Approval continues the original
+ * assessment run with the captured `{definitionKey, assignmentId, courseId}`
+ * context.
  *
  * @param {AssessTaskRecoveryFlowProperties} properties Recovery inputs and flow callbacks.
  * @returns {AssessTaskRecoveryFlow} Recovery phase, review state and handlers.
@@ -148,7 +159,7 @@ export function useAssessTaskRecoveryFlow(
 
   /**
    * Loads the stale definition to reparse. A load failure never falls back to
-   * the create flow (SPEC.md feature architecture).
+   * the create flow.
    *
    * @param {string} key The stale definition key.
    * @param {number} generation The attempt generation guarding obsolete completions.
@@ -187,7 +198,6 @@ export function useAssessTaskRecoveryFlow(
         mode: 'update',
         definitionKey,
         actionType: 'reparse',
-        requestPayload: request,
       },
     });
     if (generation !== generationReference.current) return;
@@ -210,6 +220,8 @@ export function useAssessTaskRecoveryFlow(
 
   /**
    * Loads the stale definition, then issues exactly one forced reparse.
+   * Unexpected failures settle to the blocking failure treatment instead of
+   * rejecting, so the surface `void` call never produces an unhandled rejection.
    *
    * @returns {Promise<void>} Resolves when the reparse attempt settles.
    */
@@ -221,9 +233,15 @@ export function useAssessTaskRecoveryFlow(
     setErrorMessage(null);
     setSaveErrorMessage(null);
 
-    const loaded = await loadStaleDefinition(definitionKey, generation);
-    if (loaded === null) return;
-    await reparseLoadedDefinition(loaded, generation);
+    try {
+      const loaded = await loadStaleDefinition(definitionKey, generation);
+      if (loaded === null) return;
+      await reparseLoadedDefinition(loaded, generation);
+    } catch (error: unknown) {
+      if (generation !== generationReference.current) return;
+      setErrorMessage(mapErrorToUserMessage(error));
+      setPhase('failed');
+    }
   }
 
   /**
@@ -241,7 +259,7 @@ export function useAssessTaskRecoveryFlow(
 
   /**
    * Ends recovery from the review surface, discarding only unsaved edits and
-   * leaving the owning modal open on the selection body (layout region 4).
+   * leaving the owning modal open on the selection body.
    *
    * @returns {void}
    */
@@ -286,64 +304,73 @@ export function useAssessTaskRecoveryFlow(
   /**
    * Resumes the original assessment run with the captured identifiers after a
    * successful approval save. A repeated stale response returns to the prompt
-   * without an automatic recovery loop.
+   * without an automatic recovery loop. A cancelled review never settles.
    *
    * @param {string} key The approved definition key.
+   * @param {number} generation The save generation guarding obsolete completions.
    * @returns {Promise<void>}
    */
-  async function resumeAssessment(key: string): Promise<void> {
+  async function resumeAssessment(key: string, generation: number): Promise<void> {
     if (capturedStartContext === null) {
-      settleAssessment('error', 'An unexpected error occurred.');
+      settleMissingCapture(key, generation, generationReference.current, settleAssessment);
       return;
     }
+    if (isGenerationObsolete(generation, generationReference.current)) return;
+    const captured = capturedStartContext;
     try {
       await startAssessmentRun({
         definitionKey: key,
-        assignmentId: capturedStartContext.assignmentId,
-        courseId: capturedStartContext.courseId,
+        assignmentId: captured.assignmentId,
+        courseId: captured.courseId,
       });
-      const title =
-        assignments.find((a) => a.assignmentId === capturedStartContext.assignmentId)?.title ?? '';
-      settleAssessment('success', `Assessment started for '${title}'.`);
+      if (isGenerationObsolete(generation, generationReference.current)) return;
+      settleAssessment(
+        'success',
+        `Assessment started for '${findResumeTitle(assignments, captured.assignmentId)}'.`
+      );
     } catch (error: unknown) {
-      if (error instanceof ApiTransportError && error.code === 'DEFINITION_STALE') {
-        setPhase('stale-prompt');
-        return;
-      }
-      settleAssessment('error', mapErrorToUserMessage(error));
+      settleResumeFailure(
+        error,
+        generation,
+        generationReference.current,
+        setPhase,
+        settleAssessment
+      );
     }
   }
 
   /**
    * Saves the reviewed definition. A stale rejection returns to the stale
    * prompt; any other failure keeps the review edits and surfaces an error.
+   * Expected form-validation rejections settle deliberately without surfacing
+   * a save error. A cancelled review never resumes the assessment.
    *
    * @returns {Promise<void>}
    */
   async function save(): Promise<void> {
-    if (definition === null || isMutationBusy) return;
+    if (isSaveBlocked(definition, isMutationBusy)) return;
+    const generation = generationReference.current;
     setSaveErrorMessage(null);
-    const values = await form.validateFields();
-    const request = buildRecoveryApprovalRequest(definition, values, taskRows);
-    const result = await runUpsert(request, {
-      contextName: 'AssessTaskRecoveryFlow.save',
-      errorContext: {
-        mode: 'update',
-        definitionKey,
-        actionType: 'save',
-        requestPayload: request,
-      },
-    });
-    if (result.errorMessage !== null) {
-      if (result.errorCode === 'DEFINITION_STALE') {
-        setErrorMessage(null);
-        setPhase('stale-prompt');
-        return;
-      }
-      setSaveErrorMessage(result.errorMessage);
-      return;
+    const values = await readReviewFormValues(form);
+    if (isApprovalNotReady(values, generation, generationReference.current)) return;
+    try {
+      const currentDefinition = definition;
+      if (currentDefinition === null) return;
+      const request = buildRecoveryApprovalRequest(currentDefinition, values, taskRows);
+      const result = await runUpsert(request, {
+        contextName: 'AssessTaskRecoveryFlow.save',
+        errorContext: {
+          mode: 'update',
+          definitionKey,
+          actionType: 'save',
+        },
+      });
+      if (isGenerationObsolete(generation, generationReference.current)) return;
+      if (settleApprovalFailure(result, setErrorMessage, setPhase, setSaveErrorMessage)) return;
+      await resumeAssessment(currentDefinition.definitionKey, generation);
+    } catch (error: unknown) {
+      settleSaveThrow(error, generation, generationReference.current, setSaveErrorMessage);
     }
-    await resumeAssessment(definition.definitionKey);
   }
 
   /**

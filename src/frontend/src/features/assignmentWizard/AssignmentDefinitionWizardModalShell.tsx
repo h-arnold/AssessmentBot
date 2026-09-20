@@ -6,6 +6,7 @@ import {
   AssignmentDefinitionWizardReviewFooter,
   type AssignmentDefinitionWizardReviewContentProperties,
 } from './AssignmentDefinitionWizardReviewContent';
+import { derivePrimaryActionState } from './assignmentWizardFormState';
 import { type DocumentChangeState, type TaskRow } from './useAssignmentDefinitionWizard';
 
 const CREATE_TITLE = 'Create assignment';
@@ -90,7 +91,8 @@ export function AssignmentDefinitionWizardModalShell(
 
 /**
  * Maps shell properties to the chrome-free review-content contract.
- * Resolves the mode-dependent primary-action label so the shell keeps its own `Modal` chrome.
+ * Resolves the mode-dependent primary-action label through the single shared
+ * derivation so the shell keeps its own `Modal` chrome.
  *
  * @param {AssignmentDefinitionWizardModalShellProperties} properties Shell properties.
  * @returns {AssignmentDefinitionWizardReviewContentProperties} Review content properties.
@@ -98,16 +100,22 @@ export function AssignmentDefinitionWizardModalShell(
 function toReviewContentProperties(
   properties: AssignmentDefinitionWizardModalShellProperties
 ): AssignmentDefinitionWizardReviewContentProperties {
+  const { primaryActionLabel } = derivePrimaryActionState(
+    properties.mode === 'create',
+    properties.hasParsedTasks ?? false,
+    {}
+  );
   return {
+    mode: properties.mode,
     hasParsedTasks: properties.hasParsedTasks,
+    showAlerts: true,
     taskRows: properties.taskRows,
     documentChange: properties.documentChange,
     form: properties.form,
     topicOptions: properties.topicOptions,
     yearGroupOptions: properties.yearGroupOptions,
     hasDirtyEdits: properties.hasDirtyEdits,
-    primaryActionLabel:
-      properties.primaryActionLabel ?? (properties.mode === 'create' ? 'Parse and continue' : 'Save'),
+    primaryActionLabel: properties.primaryActionLabel ?? primaryActionLabel,
     isPrimaryActionDisabled: properties.isPrimaryActionDisabled,
     isMutationBusy: properties.isMutationBusy,
     selectedTopicKey: properties.selectedTopicKey,

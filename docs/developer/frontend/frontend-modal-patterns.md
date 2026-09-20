@@ -150,6 +150,34 @@ Default decision:
   - modal: `AssignmentDefinitionWizardModal.tsx` (thin presenter delegating to shell)
 - implemented (issue #301 stale-definition recovery, Section 5): chrome-free **review-content component** at `src/frontend/src/features/assignmentWizard/AssignmentDefinitionWizardReviewContent.tsx`, extracted from `AssignmentDefinitionWizardModalShell` (body form + footer content separated from the shell's `Modal` chrome; covers both wizard stages via `hasParsedTasks` gating; shared `AssignmentDefinitionWizardReviewFooter` reused by both). The existing full-shell create/update wizard keeps its own `Modal` chrome and re-composes from the extracted component with identical UI and behaviour. Current consumers: the Assignments-page shell `AssignmentDefinitionWizardModalShell` (keeps its own `Modal` chrome), and the two in-modal surfaces inside `AssessTaskModal` — the converted create path (`AssessTaskCreateReview`, both stages) and the stale-recovery review surface (`AssessTaskRecoverySurface`, stage two only). The two in-modal consumers render this content inside the single owning assessment modal and add no `Modal` chrome of their own, preserving the one-modal rule. The companion assessment-orchestration module (`useAssessTaskFlow`) is recorded in the shared-helper registry (`docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` §9.23); the generic wizard-orchestrator hook and recovery entry intent were not retained.
 
+### 3.5 In-modal discard-confirmation dialogs (assignment wizard / assess-task create and recovery)
+
+- Extracted component: one narrow feature-local discard-confirmation component shared by the assignment-definition wizard, the in-modal create review, and the stale-recovery review surface
+- Owning feature: `src/frontend/src/features/assignmentWizard/` (feature-local, delivered as `AssignmentDiscardConfirm.tsx`)
+- Approved callers (three, and only three): `src/frontend/src/features/assignmentWizard/AssignmentDefinitionWizardModal.tsx`, `src/frontend/src/features/classes/AssessTaskModal/AssessTaskCreateReview.tsx`, `src/frontend/src/features/classes/AssessTaskModal/AssessTaskRecoverySurface.tsx`
+
+Shared traits that motivated the extraction:
+
+- nested Ant Design `Modal` confirmation rendered inside an already-open owning modal, with no `Modal` chrome of its own beyond the confirmation
+- identical copy (`Discard changes` title, `You have unsaved changes. Discard and close?` body) and `Keep editing` / `Discard changes` footer actions
+- `centered`, `destroyOnHidden`, `keyboard`, `transitionName=""`, and `onCancel` routed to the keep-editing handler
+- deterministic `aria-labelledby` anchoring so the nested dialog keeps its own accessible name instead of inheriting the singleton rc-dialog id from the owning modal (the create and recovery callers duplicated this wiring)
+
+Use this family when:
+
+- an owning modal must confirm discarding dirty in-modal edits before closing or cancelling review
+
+Default decision:
+
+- extract one narrow feature-local component for these three approved callers only; do not widen it into a generic app-wide confirmation wrapper
+- helper-change status for this extraction: `Implemented`; `AssignmentDiscardConfirm.tsx` owns the shared nested confirmation copy, footer actions, dismissal wiring, and accessible-name anchoring for the three approved callers.
+- this is distinct from the one-off destructive confirmation family in Section 3.1; that family's shared-helper outcome remains local-only and is unaffected by this extraction.
+
+Owning-modal dismissal routing (assess-task modal, issue #301):
+
+- `AssessTaskModal` registers the active in-modal surface's close intent (create review or recovery review) and routes its close affordance, mask click and capture-phase Escape through that handler before falling back to closing itself, so an owning-modal dismissal cannot bypass the dirty guard.
+- The in-modal create branch delegates to `shouldPromptForCreateWizardDismissal` in `assignmentWizardDismissal.ts`: dirty stage-one values and an edited stage-two review prompt for confirmation, while an unchanged review returns to the choice prompt without one.
+
 ## 4. Keep-local rules
 
 Keep a modal implementation local to one file when any of these are true:

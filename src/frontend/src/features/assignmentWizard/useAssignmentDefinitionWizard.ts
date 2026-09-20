@@ -15,6 +15,7 @@ import {
   buildDocumentUrlsFromDefinition,
   buildTopicOptions,
   buildYearGroupOptions,
+  coerceAssignmentWeighting,
   convertBaselineToDefinition,
   derivePrimaryActionState,
   deriveReferenceDataState,
@@ -22,6 +23,10 @@ import {
   type DocumentChangeState,
   type TaskRow,
 } from './assignmentWizardFormState';
+import {
+  deriveCanReparseDocuments,
+  shouldPromptForCreateWizardDismissal,
+} from './assignmentWizardDismissal';
 import { useFormInitialization } from './assignmentWizardFormInitialization';
 import { deriveWizardBlockingError, useWizardMutationSequence } from './assignmentWizardMutation';
 import { buildReparseRequest } from './assignmentWizardOrchestrator';
@@ -85,45 +90,9 @@ export type UseAssignmentDefinitionWizardReturn = Readonly<{
   handleKeepEditing: () => void;
   handleTaskWeightingChange: (taskId: string, value: number | null) => void;
   handlePrimaryAction: () => void;
-  handleTopicAddNew: () => void;
-  handleYearGroupAddNew: () => void;
   onTopicEntityCreated: (entity: { key: string; name: string; yearGroupKeys?: string[] }) => void;
   onYearGroupEntityCreated: (entity: { key: string; name: string }) => void;
 }>;
-
-/**
- * Enabling conditions for the explicit Reparse documents action.
- */
-type ReparseDocumentsGating = Readonly<{
-  isCreateMode: boolean;
-  isDefinitionLoaded: boolean;
-  isDefinitionError: boolean;
-  hasDirtyEdits: boolean;
-  hasPendingDocumentChange: boolean;
-  isSubmitting: boolean;
-}>;
-
-/**
- * Derives whether the explicit Reparse documents action is enabled.
- *
- * @remarks
- * The action exists in update mode only, and only when the loaded definition is
- * trustworthy, no mutation is pending, and there are no unsaved metadata/weighting
- * edits or pending URL changes.
- *
- * @param {ReparseDocumentsGating} gating - The enabling condition inputs.
- * @returns {boolean} True when the Reparse documents action may run.
- */
-function deriveCanReparseDocuments(gating: ReparseDocumentsGating): boolean {
-  const hasTrustworthyDefinition = gating.isDefinitionLoaded && !gating.isDefinitionError;
-  return (
-    !gating.isCreateMode &&
-    hasTrustworthyDefinition &&
-    !gating.hasDirtyEdits &&
-    !gating.hasPendingDocumentChange &&
-    !gating.isSubmitting
-  );
-}
 
 /**
  * Custom hook for managing assignment definition wizard state and logic.
@@ -131,10 +100,11 @@ function deriveCanReparseDocuments(gating: ReparseDocumentsGating): boolean {
  * @remarks
  * This hook is a thin composition over the extracted feature-local modules: the
  * pure form-state derivations (`assignmentWizardFormState`), the form
- * initialization/baseline hook (`assignmentWizardFormInitialization`) and the
- * shared mutation/error-mapping sequence (`assignmentWizardMutation`). The
- * forced-reparse request builder it shares with the assessment recovery flow
- * lives in `assignmentWizardOrchestrator`.
+ * initialization/baseline hook (`assignmentWizardFormInitialization`), the
+ * shared mutation/error-mapping sequence (`assignmentWizardMutation`) and the
+ * close/dismissal predicates (`assignmentWizardDismissal`). The forced-reparse
+ * request builder it shares with the assessment recovery flow lives in
+ * `assignmentWizardOrchestrator`.
  *
  * @param {AssignmentDefinitionWizardModalProperties} properties - Modal properties.
  * @returns {UseAssignmentDefinitionWizardReturn} Hook return value with state and handlers.
@@ -302,14 +272,14 @@ export function useAssignmentDefinitionWizard(
     setSubmitBlockingError,
   });
 
-  const canReparseDocuments = deriveCanReparseDocuments({
+  const canReparseDocuments = deriveCanReparseDocuments(
     isCreateMode,
-    isDefinitionLoaded: definition !== undefined,
+    definition !== undefined,
     isDefinitionError,
     hasDirtyEdits,
-    hasPendingDocumentChange: documentChange.hasPendingChange,
-    isSubmitting,
-  });
+    documentChange.hasPendingChange,
+    isSubmitting
+  );
 
   // Handle parse and continue
   const handleParseAndContinue = useCallback(async () => {
@@ -334,7 +304,7 @@ export function useAssignmentDefinitionWizard(
       yearGroupKey: values.yearGroup as string,
       referenceDocumentUrl: values.referenceDocumentUrl as string,
       templateDocumentUrl: values.templateDocumentUrl as string,
-      assignmentWeighting: (values.assignmentWeighting as number) ?? DEFAULT_WEIGHTING_VALUE,
+      assignmentWeighting: coerceAssignmentWeighting(values.assignmentWeighting),
       taskWeightings: taskRows.map((row) => ({
         taskId: row.taskId,
         taskWeighting: row.taskWeighting,
@@ -362,14 +332,14 @@ export function useAssignmentDefinitionWizard(
       yearGroupKey: values.yearGroup as string,
       referenceDocumentUrl: values.referenceDocumentUrl as string,
       templateDocumentUrl: values.templateDocumentUrl as string,
-      assignmentWeighting: (values.assignmentWeighting as number) ?? DEFAULT_WEIGHTING_VALUE,
+      assignmentWeighting: coerceAssignmentWeighting(values.assignmentWeighting),
       taskWeightings: [],
     };
     await runWizardMutation({ actionType: 'reparse', request, definitionKey: effectiveKey });
   }, [form, definitionKey, localDefinitionKey, runWizardMutation]);
 
   // Handle explicit Reparse documents (update mode, unchanged URLs). Reuses the
-  // Section 7 forced-reparse request builder so the payload stays ID-shaped with
+  // shared forced-reparse request builder so the payload stays ID-shaped with
   // `forceReparse: true` and no weighting patch.
   const handleReparseDocuments = useCallback(async () => {
     const effectiveKey = localDefinitionKey ?? definitionKey;
@@ -405,13 +375,39 @@ export function useAssignmentDefinitionWizard(
       onClose();
       return;
     }
-    if (hasDirtyEdits && !documentChange.hasPendingChange) {
+    // `isFieldsTouched` keeps the stage-one create guard synchronous for
+    // owning-modal events (Escape and mask clicks) that can arrive before the
+    // watched-form dirty state has rendered. Stage-two edits are compared by
+    // the parsed-baseline dirty-state calculation, so an unchanged review can
+    // return to the choice prompt without an unnecessary confirmation.
+    const hasSynchronousDirtyCreateEdits =
+      isCreateMode &&
+      shouldPromptForCreateWizardDismissal(
+        form,
+        form.getFieldsValue(),
+        hasParsedTasks,
+        getParsedCreateBaseline(),
+        taskRows,
+        initialValues
+      );
+    if (documentChange.hasPendingChange) return;
+    if (hasDirtyEdits || hasSynchronousDirtyCreateEdits) {
       setShowDiscardConfirm(true);
       return;
     }
-    if (documentChange.hasPendingChange) return;
     onClose();
-  }, [hasDirtyEdits, documentChange.hasPendingChange, onClose, blockingError]);
+  }, [
+    hasDirtyEdits,
+    documentChange.hasPendingChange,
+    onClose,
+    blockingError,
+    isCreateMode,
+    hasParsedTasks,
+    form,
+    initialValues,
+    getParsedCreateBaseline,
+    taskRows,
+  ]);
 
   const handleDiscardConfirm = useCallback(() => {
     setShowDiscardConfirm(false);
@@ -430,19 +426,8 @@ export function useAssignmentDefinitionWizard(
 
   const handlePrimaryAction = useCallback(() => {
     const action = isCreateMode && !hasParsedTasks ? handleParseAndContinue : handleSave;
-    action().catch((error) => {
-      throw error;
-    });
+    void action();
   }, [isCreateMode, hasParsedTasks, handleParseAndContinue, handleSave]);
-
-  // Handlers for 'Add new' topic/year group workflow
-  const handleTopicAddNew = useCallback(() => {
-    // Will be handled by the modal component
-  }, []);
-
-  const handleYearGroupAddNew = useCallback(() => {
-    // Will be handled by the modal component
-  }, []);
 
   const onTopicEntityCreated = useCallback(
     (entity: { key: string; name: string; yearGroupKeys?: string[] }) => {
@@ -489,8 +474,6 @@ export function useAssignmentDefinitionWizard(
     handleKeepEditing,
     handleTaskWeightingChange,
     handlePrimaryAction,
-    handleTopicAddNew,
-    handleYearGroupAddNew,
     onTopicEntityCreated,
     onYearGroupEntityCreated,
   };

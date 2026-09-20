@@ -1,4 +1,4 @@
-/* global extractSupportedDocumentDescriptor_, throwUpsertValidationError_, validateSafeTrimmedIdentifier_ */
+/* global extractSupportedDocumentDescriptor_, isIsoDateTimeString_, throwUpsertValidationError_, validateSafeTrimmedIdentifier_ */
 
 const UPSERT_REQUIRED_FIELDS = Object.freeze([
   'primaryTitle',
@@ -18,7 +18,9 @@ const WIZARD_UPSERT_REQUIRED_FIELDS = Object.freeze([
  *
  * Type checks for transport/control fields live here per the validation
  * ownership rules; the mutual-exclusion business rule is domain-owned by
- * the upsert orchestrator.
+ * the upsert orchestrator. A supplied non-null baseline must be a strict
+ * ISO datetime string with timezone; explicit null and omission retain
+ * create-time/ordinary upsert behaviour.
  *
  * @param {*} parameters - Candidate request payload.
  * @throws {ApiValidationError} If a recovery field has an invalid shape.
@@ -33,13 +35,19 @@ function validateRecoveryFieldShapes_(parameters) {
   }
 
   if (
-    Object.hasOwn(parameters, 'expectedDefinitionUpdatedAt') &&
-    parameters.expectedDefinitionUpdatedAt !== undefined &&
-    parameters.expectedDefinitionUpdatedAt !== null &&
-    typeof parameters.expectedDefinitionUpdatedAt !== 'string'
+    !Object.hasOwn(parameters, 'expectedDefinitionUpdatedAt') ||
+    parameters.expectedDefinitionUpdatedAt === undefined ||
+    parameters.expectedDefinitionUpdatedAt === null
+  ) {
+    return;
+  }
+
+  if (
+    typeof parameters.expectedDefinitionUpdatedAt !== 'string' ||
+    !isIsoDateTimeString_(parameters.expectedDefinitionUpdatedAt)
   ) {
     throwUpsertValidationError_(
-      'expectedDefinitionUpdatedAt must be a string when provided.',
+      'expectedDefinitionUpdatedAt must be a strict ISO datetime string with timezone when provided.',
       'expectedDefinitionUpdatedAt'
     );
   }
@@ -91,13 +99,33 @@ function validateUpsertParameters_(parameters) {
     },
   });
 
-  if (typeof parameters.referenceDocumentId !== 'string') {
-    throwUpsertValidationError_('referenceDocumentId must be a string.', 'referenceDocumentId');
-  }
+  validateSafeTrimmedIdentifier_(parameters.referenceDocumentId, {
+    throwValidationError: throwUpsertValidationError_,
+    typeErrorMessage: 'referenceDocumentId must be a string.',
+    nonEmptyErrorMessage: 'referenceDocumentId must be a non-empty string.',
+    trimmedErrorMessage: 'referenceDocumentId must already be trimmed.',
+    unsafeErrorMessage: 'referenceDocumentId contains unsafe characters.',
+    fieldNames: {
+      type: 'referenceDocumentId',
+      nonEmpty: 'referenceDocumentId',
+      trimmed: 'referenceDocumentId',
+      unsafe: 'referenceDocumentId',
+    },
+  });
 
-  if (typeof parameters.templateDocumentId !== 'string') {
-    throwUpsertValidationError_('templateDocumentId must be a string.', 'templateDocumentId');
-  }
+  validateSafeTrimmedIdentifier_(parameters.templateDocumentId, {
+    throwValidationError: throwUpsertValidationError_,
+    typeErrorMessage: 'templateDocumentId must be a string.',
+    nonEmptyErrorMessage: 'templateDocumentId must be a non-empty string.',
+    trimmedErrorMessage: 'templateDocumentId must already be trimmed.',
+    unsafeErrorMessage: 'templateDocumentId contains unsafe characters.',
+    fieldNames: {
+      type: 'templateDocumentId',
+      nonEmpty: 'templateDocumentId',
+      trimmed: 'templateDocumentId',
+      unsafe: 'templateDocumentId',
+    },
+  });
 
   if (Object.hasOwn(parameters, 'definitionKey') && parameters.definitionKey !== null) {
     validateSafeTrimmedIdentifier_(parameters.definitionKey, {
@@ -122,12 +150,13 @@ function validateUpsertParameters_(parameters) {
 /**
  * Validates the wizard URL-style upsert transport payload.
  *
+ * Recovery field shapes are validated once at the transport entry
+ * (`validateUpsertParameters_`); this helper owns only the wizard shape.
+ *
  * @param {Object} parameters - Candidate upsert payload.
  * @throws {ApiValidationError} If the payload violates transport contract rules.
  */
 function validateWizardUpsertParameters_(parameters) {
-  validateRecoveryFieldShapes_(parameters);
-
   WIZARD_UPSERT_REQUIRED_FIELDS.forEach((fieldName) => {
     if (!Object.hasOwn(parameters, fieldName)) {
       throwUpsertValidationError_(`Missing required field: ${fieldName}.`, fieldName);

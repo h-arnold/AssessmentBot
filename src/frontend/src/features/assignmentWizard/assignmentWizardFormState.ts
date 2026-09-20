@@ -47,7 +47,7 @@ function buildCanonicalUrl(documentId: string, documentType: 'SLIDES' | 'SHEETS'
 
 /**
  * Builds document URL restoration data from a definition.
- * Used to restore document URLs when canceling re-parse operations.
+ * Used to restore document URLs when cancelling re-parse operations.
  *
  * @param {Record<string, unknown>} definition - The definition containing document info.
  * @returns {{ referenceUrl: string; templateUrl: string } | null} The restored URLs or null if not available.
@@ -96,6 +96,22 @@ export function applyFormInitialValues(
 }
 
 /**
+ * Coerces an assignment-weighting form value to its effective number.
+ *
+ * @remarks
+ * Shared by the active weighting callers (create/update dirty-state checks,
+ * the wizard save/re-parse request builders and the recovery approval
+ * request) so non-numeric values fall back to the model default in one place.
+ * Valid zero weightings are preserved.
+ *
+ * @param {unknown} value - The raw assignment-weighting value.
+ * @returns {number} The numeric weighting, or the default when not a number.
+ */
+export function coerceAssignmentWeighting(value: unknown): number {
+  return typeof value === 'number' ? value : DEFAULT_WEIGHTING_VALUE;
+}
+
+/**
  * Checks if metadata values differ from baseline in create mode.
  *
  * @param {Record<string, unknown>} values - Form values.
@@ -106,10 +122,7 @@ function hasCreateModeMetadataChanges(
   values: Record<string, unknown>,
   parsedCreateBaseline: ParsedCreateBaseline
 ): boolean {
-  const currentAssignmentWeighting =
-    typeof values.assignmentWeighting === 'number'
-      ? values.assignmentWeighting
-      : DEFAULT_WEIGHTING_VALUE;
+  const currentAssignmentWeighting = coerceAssignmentWeighting(values.assignmentWeighting);
 
   return (
     values.title !== parsedCreateBaseline.title ||
@@ -256,16 +269,13 @@ export function hasUpdateModeDirtyEdits(
   definition: Record<string, unknown>,
   taskRows: TaskRow[]
 ): boolean {
-  const currentAssignmentWeighting =
-    typeof values.assignmentWeighting === 'number'
-      ? values.assignmentWeighting
-      : DEFAULT_WEIGHTING_VALUE;
+  const currentAssignmentWeighting = coerceAssignmentWeighting(values.assignmentWeighting);
 
   const hasMetadataChanges =
     values.title !== definition.primaryTitle ||
     values.topic !== definition.primaryTopicKey ||
     values.yearGroup !== definition.yearGroupKey ||
-    currentAssignmentWeighting !== definition.assignmentWeighting;
+    currentAssignmentWeighting !== coerceAssignmentWeighting(definition.assignmentWeighting);
 
   const hasTaskWeightingChanges = taskRows.some((row) => {
     const tasks = definition.tasks;
@@ -457,13 +467,13 @@ export function derivePrimaryActionState(
 
 /**
  * Derives reference data state from startup warmup state and query loading states.
- * Determines whether reference data is trustworthy, loading, or blocked.
+ * Determines whether reference data is loading or blocked.
  *
  * @param {ReturnType<typeof useStartupWarmupState>} startupWarmupState - The startup warmup state.
  * @param {boolean} isTopicsLoading - Whether topics are currently loading.
  * @param {boolean} isYearGroupsLoading - Whether year groups are currently loading.
  * @param {boolean} open - Whether the modal is open.
- * @returns {{ hasTrustworthyReferenceData: boolean; isReferenceDataLoading: boolean; isReferenceDataBlocked: boolean }} Reference data state.
+ * @returns {{ isReferenceDataLoading: boolean; isReferenceDataBlocked: boolean }} Reference data state.
  */
 export function deriveReferenceDataState(
   startupWarmupState: ReturnType<typeof useStartupWarmupState>,
@@ -471,7 +481,6 @@ export function deriveReferenceDataState(
   isYearGroupsLoading: boolean,
   open: boolean
 ): {
-  hasTrustworthyReferenceData: boolean;
   isReferenceDataLoading: boolean;
   isReferenceDataBlocked: boolean;
 } {
@@ -485,7 +494,6 @@ export function deriveReferenceDataState(
   const isReferenceDataBlocked = open && !hasTrustworthyReferenceData && !isReferenceDataLoading;
 
   return {
-    hasTrustworthyReferenceData,
     isReferenceDataLoading,
     isReferenceDataBlocked,
   };

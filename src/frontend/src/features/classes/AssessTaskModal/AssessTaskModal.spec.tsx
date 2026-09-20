@@ -5,7 +5,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AssessTaskModal } from './AssessTaskModal';
 import { getGoogleClassroomAssignments } from '../../../services/googleClassrooms/googleClassroomAssignmentsService';
 import { startAssessmentRun } from '../../../services/assignmentAssessment/assignmentAssessmentService';
-import { upsertAssignmentDefinition } from '../../../services/assignmentDefinition/assignmentDefinitionService';
+import {
+  getAssignmentDefinition,
+  upsertAssignmentDefinition,
+} from '../../../services/assignmentDefinition/assignmentDefinitionService';
 import { findMatchingDefinition } from './matchDefinitionForAssignment';
 import { queryKeys } from '../../../query/queryKeys';
 import { renderWithFrontendProviders } from '../../../test/renderWithFrontendProviders';
@@ -51,6 +54,7 @@ vi.mock('../../../services/assignmentAssessment/assignmentAssessmentService', ()
 }));
 
 vi.mock('../../../services/assignmentDefinition/assignmentDefinitionService', () => ({
+  getAssignmentDefinition: vi.fn(),
   upsertAssignmentDefinition: vi.fn(),
 }));
 
@@ -104,7 +108,7 @@ describe('Loading state', () => {
     const dialog = renderAssessTaskModal(createPendingPromise());
 
     // Skeleton is visible in the modal body
-    expect(within(dialog).getByRole('status')).toBeInTheDocument();
+    expect(within(dialog).getByRole('status')).toHaveAttribute('aria-busy', 'true');
 
     // Select (combobox) is not rendered while loading
     expect(within(dialog).queryByRole('combobox')).toBeNull();
@@ -191,11 +195,14 @@ describe('Empty state', () => {
 // ---------------------------------------------------------------------------
 
 describe('Error state', () => {
-  it('shows Alert with error, Select not rendered, Start Assessment disabled', async () => {
-    const dialog = renderAssessTaskModal(new Error('Failed to fetch assignments'), 'reject');
+  it('shows mapped error copy when assignment fetching fails', async () => {
+    const rawErrorMessage = 'Assignment service implementation detail';
+    const dialog = renderAssessTaskModal(new Error(rawErrorMessage), 'reject');
 
     // Error Alert is visible
-    expect(await within(dialog).findByRole('alert')).toBeInTheDocument();
+    const alert = await within(dialog).findByRole('alert');
+    expect(alert).toHaveTextContent('An error occurred. Please try again.');
+    expect(alert).not.toHaveTextContent(rawErrorMessage);
 
     // Select (combobox) is not rendered in error state
     expect(within(dialog).queryByRole('combobox')).toBeNull();
@@ -237,7 +244,7 @@ describe('Cancel and close', () => {
     renderWithFrontendProviders(<AssessTaskModal {...defaultProperties({ onClose })} />);
 
     const dialog = screen.getByRole('dialog', { name: MODAL_TITLE });
-    await within(dialog).findByRole('combobox');
+    await within(dialog).findByTestId('assignment-select');
 
     const wrap = dialog.closest('.ant-modal-wrap');
     expect(wrap).not.toBeNull();
@@ -1132,7 +1139,8 @@ describe('No-match resolution — creating state and in-modal create path', () =
     // Error alert should appear
     const alert = await within(dialog).findByRole('alert');
     expect(alert).toBeInTheDocument();
-    expect(alert).toHaveTextContent('API failure');
+    expect(alert.textContent).not.toContain('API failure');
+    expect(alert).toHaveTextContent('An error occurred. Please try again.');
   });
 
   it('returns to the choice prompt when the in-modal create form is cancelled without edits', async () => {
@@ -1459,7 +1467,8 @@ describe('No-match resolution — linking state and link flow', () => {
     // Error Alert should appear
     const alert = await within(dialog).findByRole('alert');
     expect(alert).toBeInTheDocument();
-    expect(alert).toHaveTextContent(/Upsert failed/);
+    expect(alert.textContent).not.toContain('Upsert failed');
+    expect(alert).toHaveTextContent('An error occurred. Please try again.');
 
     // Footer should have Cancel only (modal stays open)
     expect(within(dialog).getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
@@ -1478,7 +1487,10 @@ describe('No-match resolution — linking state and link flow', () => {
     // Error Alert should appear
     const alert = await within(dialog).findByRole('alert');
     expect(alert).toBeInTheDocument();
-    expect(alert).toHaveTextContent(/assessment run failed/i);
+    expect(alert.textContent).not.toContain('Assessment run failed');
+    expect(alert).toHaveTextContent(
+      'Link was committed but assessment could not be started: An error occurred. Please try again.'
+    );
 
     // Modal does not close — Cancel button still present
     expect(within(dialog).getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
@@ -1511,6 +1523,31 @@ describe('No-match resolution — linking state and link flow', () => {
     // recovery routing, never the genuine create path, so the in-modal create
     // content stays unmounted.
     expect(within(dialog).queryByRole('textbox', { name: /reference document url/i })).toBeNull();
+  });
+
+  it('link-flow recovery cancellation returns to assignment selection rather than the link picker', async () => {
+    vi.mocked(getAssignmentDefinition).mockResolvedValue(DEFAULT_UPSERT_RESULT);
+    const staleError = new ApiTransportError({
+      requestId: 'test-id',
+      error: { code: 'DEFINITION_STALE', message: 'Definition is stale' },
+    });
+
+    const { dialog } = renderWithNoMatchCache({
+      upsertResult: DEFAULT_UPSERT_RESULT,
+      upsertType: 'resolve',
+      startRunResult: staleError,
+      startRunType: 'reject',
+    });
+
+    await performLinkFlow(dialog);
+    await within(dialog).findByRole('button', { name: 'Update' });
+    await user.click(within(dialog).getByRole('button', { name: 'Update' }));
+    await within(dialog).findByRole('button', { name: 'Cancel' });
+    await user.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+
+    await within(dialog).findByTestId('assignment-select');
+    expect(within(dialog).queryByRole('button', { name: 'Link' })).toBeNull();
+    expect(within(dialog).queryByRole('button', { name: 'Link to Existing Definition' })).toBeNull();
   });
 
   it('hasLinkSucceeded flag management', async () => {

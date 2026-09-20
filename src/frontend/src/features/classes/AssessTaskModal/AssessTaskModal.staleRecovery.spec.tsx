@@ -1,11 +1,13 @@
 import { QueryClientProvider, type QueryClient } from '@tanstack/react-query';
-import { act, render, renderHook, screen, within } from '@testing-library/react';
+import { act, render, renderHook, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { PropsWithChildren } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AssessTaskModal } from './AssessTaskModal';
+import { useAssessTaskFlow } from './useAssessTaskFlow';
 import { getGoogleClassroomAssignments } from '../../../services/googleClassrooms/googleClassroomAssignmentsService';
 import { startAssessmentRun } from '../../../services/assignmentAssessment/assignmentAssessmentService';
+import { upsertAssignmentDefinition } from '../../../services/assignmentDefinition/assignmentDefinitionService';
 import { findMatchingDefinition } from './matchDefinitionForAssignment';
 import { queryKeys } from '../../../query/queryKeys';
 import { createAppQueryClient } from '../../../query/queryClient';
@@ -29,6 +31,10 @@ vi.mock('../../../services/assignmentAssessment/assignmentAssessmentService', ()
   startAssessmentRun: vi.fn(),
 }));
 
+vi.mock('../../../services/assignmentDefinition/assignmentDefinitionService', () => ({
+  upsertAssignmentDefinition: vi.fn(),
+}));
+
 vi.mock('./matchDefinitionForAssignment', () => ({
   findMatchingDefinition: vi.fn(),
 }));
@@ -49,40 +55,7 @@ const TWO_ASSIGNMENTS: GoogleClassroomAssignmentsResponse = [
   { assignmentId: 'a1', title: 'Essay', creationTime: '2024-09-02T08:30:00.000Z', topicName: 'Writing', topicId: null },
   { assignmentId: 'a2', title: 'Report', creationTime: '2024-09-03T08:30:00.000Z', topicName: 'Writing', topicId: null },
 ];
-
-/**
- * Pinned routing surface of the assessment orchestration module. The module
- * owns matching, linking, captured start context and stale-recovery
- * transitions; these red tests pin the recovery routing slot only, not UI.
- */
-type AssessmentRecoveryContract = {
-  assessmentRecoveryState: 'idle' | 'stale-prompt';
-  transitionToStaleRecovery: (definitionKey: string) => void;
-};
-
-/**
- * Loads the assessment orchestration module that owns matching, linking,
- * captured start context and stale-recovery transitions for AssessTaskModal.
- *
- * @returns {Promise<Record<string, unknown>>} The imported module namespace.
- */
-async function loadAssessmentOrchestrationModule(): Promise<Record<string, unknown>> {
-  const modulePath = './useAssessTaskFlow';
-  return import(/* @vite-ignore */ modulePath);
-}
-
-/**
- * Creates a fresh React Query wrapper for orchestration hook tests.
- *
- * @returns {(properties: Readonly<PropsWithChildren>) => JSX.Element} The query client wrapper used by the tests.
- */
-function createOrchestrationWrapper() {
-  const queryClient = createAppQueryClient();
-
-  return function OrchestrationWrapper({ children }: Readonly<PropsWithChildren>) {
-    return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
-  };
-}
+const TWO_ASSIGNMENT_COUNT = TWO_ASSIGNMENTS.length;
 
 /**
  * A deferred assessment-start promise controllable by the calling test.
@@ -90,7 +63,20 @@ function createOrchestrationWrapper() {
 type DeferredStart = {
   pendingRun: Promise<null>;
   resolveRun: (value: null) => void;
+  rejectRun: (reason: unknown) => void;
 };
+
+/**
+ * Creates a React Query wrapper for direct assessment-flow hook assertions.
+ *
+ * @returns {(properties: Readonly<PropsWithChildren>) => JSX.Element} A query client wrapper.
+ */
+function createOrchestrationWrapper() {
+  const queryClient = createAppQueryClient();
+  return function OrchestrationWrapper({ children }: Readonly<PropsWithChildren>) {
+    return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
+  };
+}
 
 /**
  * Creates a deferred assessment-start promise controllable by the test.
@@ -99,10 +85,12 @@ type DeferredStart = {
  */
 function createDeferredStart(): DeferredStart {
   let resolveRun!: (value: null) => void;
-  const pendingRun = new Promise<null>((resolve) => {
+  let rejectRun!: (reason: unknown) => void;
+  const pendingRun = new Promise<null>((resolve, reject) => {
     resolveRun = resolve;
+    rejectRun = reject;
   });
-  return { pendingRun, resolveRun };
+  return { pendingRun, resolveRun, rejectRun };
 }
 
 /**
@@ -113,6 +101,7 @@ type MatchedModalWithDeferredStart = {
   queryClient: QueryClient;
   rerender: ReturnType<typeof render>['rerender'];
   resolveRun: (value: null) => void;
+  rejectRun: (reason: unknown) => void;
 };
 
 /**
@@ -126,7 +115,7 @@ function renderMatchedModalWithDeferredStart(
   assignments: GoogleClassroomAssignmentsResponse
 ): MatchedModalWithDeferredStart {
   const matchedDefinition = createDefinitionPartial();
-  const { pendingRun, resolveRun } = createDeferredStart();
+  const { pendingRun, resolveRun, rejectRun } = createDeferredStart();
 
   vi.mocked(getGoogleClassroomAssignments).mockResolvedValue(assignments);
   vi.mocked(findMatchingDefinition).mockReturnValue({
@@ -152,52 +141,31 @@ function renderMatchedModalWithDeferredStart(
     queryClient,
     rerender,
     resolveRun,
+    rejectRun,
   };
 }
-
-// ---------------------------------------------------------------------------
-// Assessment orchestration recovery contract (routing only, no UI)
-// ---------------------------------------------------------------------------
-
-describe('assessment orchestration recovery contract', () => {
-  it('exposes an idle recovery state before any stale transition', async () => {
-    // RED: the assessment orchestration module does not exist yet. The dynamic
-    // import fails until green extracts the module from AssessTaskModal.
-    const orchestrationModule = await loadAssessmentOrchestrationModule();
-    const useAssessTaskFlow = orchestrationModule.useAssessTaskFlow as () => AssessmentRecoveryContract;
-
-    const { result } = renderHook(() => useAssessTaskFlow(), {
-      wrapper: createOrchestrationWrapper(),
-    });
-
-    expect(result.current.assessmentRecoveryState).toBe('idle');
-  });
-
-  it('moves the recovery state to the stale prompt when transitioning with a definition key', async () => {
-    // RED: the assessment orchestration module does not exist yet. The dynamic
-    // import fails until green extracts the module from AssessTaskModal.
-    const orchestrationModule = await loadAssessmentOrchestrationModule();
-    const useAssessTaskFlow = orchestrationModule.useAssessTaskFlow as () => AssessmentRecoveryContract;
-
-    const { result } = renderHook(() => useAssessTaskFlow(), {
-      wrapper: createOrchestrationWrapper(),
-    });
-
-    await act(async () => {
-      result.current.transitionToStaleRecovery('essay-def-key');
-    });
-
-    expect(result.current.assessmentRecoveryState).toBe('stale-prompt');
-  });
-});
 
 // ---------------------------------------------------------------------------
 // Obsolete assessment completion guard
 // ---------------------------------------------------------------------------
 
 describe('obsolete assessment completion guard', () => {
-  it('ignores a matched-path assessment completion that resolves after close and reopen', async () => {
-    const { dialog, queryClient, rerender, resolveRun } =
+  it('accepts explicit modal context and does not expose a test-only stale transition handler', async () => {
+    vi.mocked(getGoogleClassroomAssignments).mockResolvedValue(MOCK_ASSIGNMENTS);
+    const { result } = renderHook(
+      () => useAssessTaskFlow({ open: true, classId: MOCK_CLASS_ID }),
+      { wrapper: createOrchestrationWrapper() }
+    );
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(result.current.assessmentRecoveryState).toBe('idle');
+    expect(result.current).not.toHaveProperty('transitionToStaleRecovery');
+  });
+
+  it('ignores a matched-path assessment rejection that arrives after close and reopen', async () => {
+    const { dialog, queryClient, rerender, rejectRun } =
       renderMatchedModalWithDeferredStart(MOCK_ASSIGNMENTS);
 
     await selectAssignment(dialog);
@@ -222,14 +190,30 @@ describe('obsolete assessment completion guard', () => {
     await within(reopenedDialog).findByRole('combobox');
 
     await act(async () => {
-      resolveRun(null);
+      rejectRun(new Error('obsolete start failed'));
     });
 
-    // RED: the obsolete completion must not mutate the reopened session, so no
-    // success alert appears and the selection surface stays idle. Fails now
-    // because completions apply unconditionally with no obsolete guard.
+    // An obsolete rejection must settle silently: no error alert and no state
+    // mutation may leak into the reopened session.
     expect(within(reopenedDialog).queryByRole('alert')).toBeNull();
     expect(within(reopenedDialog).getByRole('combobox')).toBeInTheDocument();
+  });
+
+  it('ignores a matched-path assessment rejection that arrives after the selection changed', async () => {
+    const { dialog, rejectRun } = renderMatchedModalWithDeferredStart(TWO_ASSIGNMENTS);
+
+    await selectAssignment(dialog);
+    await clickStartAssessment(dialog);
+
+    await user.click(within(dialog).getByRole('combobox'));
+    await user.click(await screen.findByText('Report'));
+
+    await act(async () => {
+      rejectRun(new Error('obsolete selection failure'));
+    });
+
+    expect(within(dialog).queryByRole('alert')).toBeNull();
+    expect(within(dialog).getByRole('combobox')).toBeInTheDocument();
   });
 
   it('ignores a matched-path assessment completion that resolves after the selection changed', async () => {
@@ -245,10 +229,180 @@ describe('obsolete assessment completion guard', () => {
       resolveRun(null);
     });
 
-    // RED: the obsolete Essay completion must not start an assessment once the
-    // selection moved to Report. Fails now because completions apply
-    // unconditionally with no obsolete guard.
+    // The obsolete Essay completion must not start an assessment once the
+    // selection moved to Report.
     expect(vi.mocked(startAssessmentRun)).toHaveBeenCalledTimes(1);
     expect(within(dialog).queryByRole('alert')).toBeNull();
+  });
+
+  it('ignores a link-path assessment rejection that arrives after close and reopen', async () => {
+    const deferred = createDeferredStart();
+    vi.mocked(getGoogleClassroomAssignments).mockResolvedValue(MOCK_ASSIGNMENTS);
+    vi.mocked(upsertAssignmentDefinition).mockResolvedValue({} as never);
+    vi.mocked(startAssessmentRun).mockReturnValue(deferred.pendingRun);
+
+    const queryClient = createAppQueryClient();
+    queryClient.setQueryData(queryKeys.classPartials(), [
+      createFixtureClassPartial({ classId: MOCK_CLASS_ID, yearGroupKey: 'year-10' }),
+    ]);
+    const definition = createDefinitionPartial();
+    queryClient.setQueryData(queryKeys.assignmentDefinitionPartials(), [definition]);
+    const { result, rerender } = renderHook(
+      ({ open }) => useAssessTaskFlow({ open, classId: MOCK_CLASS_ID }),
+      { initialProps: { open: true },
+      wrapper: ({ children }) => <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>,
+      }
+    );
+
+    await waitFor(() => expect(result.current.assignments).toHaveLength(1));
+    act(() => result.current.handleAssignmentChange('a1'));
+    vi.mocked(findMatchingDefinition).mockReturnValue({ kind: 'no-match' });
+    await act(async () => {
+      await result.current.handleStartAssessment();
+    });
+    act(() => result.current.handleLinkExistingDefinition());
+    act(() => result.current.handleLinkSelect(definition.definitionKey));
+    await act(async () => {
+      void result.current.handleLinkConfirm();
+      await Promise.resolve();
+    });
+
+    rerender({ open: false });
+    rerender({ open: true });
+    await act(async () => {
+      deferred.rejectRun(new Error('obsolete link failure'));
+      await Promise.resolve();
+    });
+
+    expect(result.current.assessmentError).toBeUndefined();
+    expect(result.current.noMatchResolution).toBe('idle');
+  });
+
+  it('ignores a link-path assessment rejection that arrives after the selection changed', async () => {
+    const deferred = createDeferredStart();
+    vi.mocked(getGoogleClassroomAssignments).mockResolvedValue(TWO_ASSIGNMENTS);
+    vi.mocked(upsertAssignmentDefinition).mockResolvedValue({} as never);
+    vi.mocked(startAssessmentRun).mockReturnValue(deferred.pendingRun);
+
+    const queryClient = createAppQueryClient();
+    queryClient.setQueryData(queryKeys.classPartials(), [
+      createFixtureClassPartial({ classId: MOCK_CLASS_ID, yearGroupKey: 'year-10' }),
+    ]);
+    const definition = createDefinitionPartial();
+    queryClient.setQueryData(queryKeys.assignmentDefinitionPartials(), [definition]);
+    const { result } = renderHook(() => useAssessTaskFlow({ open: true, classId: MOCK_CLASS_ID }), {
+      wrapper: ({ children }) => <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>,
+    });
+
+    await waitFor(() => expect(result.current.assignments).toHaveLength(TWO_ASSIGNMENT_COUNT));
+    act(() => result.current.handleAssignmentChange('a1'));
+    vi.mocked(findMatchingDefinition).mockReturnValue({ kind: 'no-match' });
+    await act(async () => {
+      await result.current.handleStartAssessment();
+    });
+    act(() => result.current.handleLinkExistingDefinition());
+    act(() => result.current.handleLinkSelect(definition.definitionKey));
+    await act(async () => {
+      void result.current.handleLinkConfirm();
+      await Promise.resolve();
+    });
+    act(() => result.current.handleAssignmentChange('a2'));
+    await act(async () => {
+      deferred.rejectRun(new Error('obsolete link selection failure'));
+      await Promise.resolve();
+    });
+
+    expect(result.current.assessmentError).toBeUndefined();
+    expect(result.current.noMatchResolution).toBe('linking');
+  });
+
+  it('ignores a link-path assessment completion that arrives after the selection changed', async () => {
+    const deferred = createDeferredStart();
+    vi.mocked(getGoogleClassroomAssignments).mockResolvedValue(TWO_ASSIGNMENTS);
+    vi.mocked(upsertAssignmentDefinition).mockResolvedValue({} as never);
+    vi.mocked(startAssessmentRun).mockReturnValue(deferred.pendingRun);
+
+    const queryClient = createAppQueryClient();
+    queryClient.setQueryData(queryKeys.classPartials(), [
+      createFixtureClassPartial({ classId: MOCK_CLASS_ID, yearGroupKey: 'year-10' }),
+    ]);
+    const definition = createDefinitionPartial();
+    queryClient.setQueryData(queryKeys.assignmentDefinitionPartials(), [definition]);
+    const { result } = renderHook(() => useAssessTaskFlow({ open: true, classId: MOCK_CLASS_ID }), {
+      wrapper: ({ children }) => <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>,
+    });
+
+    await waitFor(() => expect(result.current.assignments).toHaveLength(TWO_ASSIGNMENT_COUNT));
+    act(() => result.current.handleAssignmentChange('a1'));
+    vi.mocked(findMatchingDefinition).mockReturnValue({ kind: 'no-match' });
+    await act(async () => {
+      await result.current.handleStartAssessment();
+    });
+    act(() => result.current.handleLinkExistingDefinition());
+    act(() => result.current.handleLinkSelect(definition.definitionKey));
+    await act(async () => {
+      void result.current.handleLinkConfirm();
+      await Promise.resolve();
+    });
+    act(() => result.current.handleAssignmentChange('a2'));
+    await act(async () => {
+      deferred.resolveRun(null);
+      await Promise.resolve();
+    });
+
+    expect(result.current.assessmentError).toBeUndefined();
+    expect(result.current.noMatchResolution).toBe('linking');
+  });
+
+  it('ignores a create-path assessment rejection that arrives after close and reopen', async () => {
+    const deferred = createDeferredStart();
+    vi.mocked(getGoogleClassroomAssignments).mockResolvedValue(MOCK_ASSIGNMENTS);
+    vi.mocked(startAssessmentRun).mockReturnValue(deferred.pendingRun);
+    const queryClient = createAppQueryClient();
+    const { result, rerender } = renderHook(
+      ({ open }) => useAssessTaskFlow({ open, classId: MOCK_CLASS_ID }),
+      { initialProps: { open: true },
+      wrapper: ({ children }) => <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>,
+      }
+    );
+
+    await waitFor(() => expect(result.current.assignments).toHaveLength(1));
+    act(() => result.current.handleAssignmentChange('a1'));
+    act(() => result.current.handleCreateNewDefinition());
+    act(() => result.current.handleWizardCreateSuccess('created-definition'));
+    await waitFor(() => expect(vi.mocked(startAssessmentRun)).toHaveBeenCalledTimes(1));
+    rerender({ open: false });
+    rerender({ open: true });
+    await act(async () => {
+      deferred.rejectRun(new Error('obsolete create failure'));
+      await Promise.resolve();
+    });
+
+    expect(result.current.assessmentError).toBeUndefined();
+    expect(result.current.noMatchResolution).toBe('idle');
+  });
+
+  it('ignores a create-path assessment rejection that arrives after the selection changed', async () => {
+    const deferred = createDeferredStart();
+    vi.mocked(getGoogleClassroomAssignments).mockResolvedValue(TWO_ASSIGNMENTS);
+    vi.mocked(startAssessmentRun).mockReturnValue(deferred.pendingRun);
+    const queryClient = createAppQueryClient();
+    const { result } = renderHook(() => useAssessTaskFlow({ open: true, classId: MOCK_CLASS_ID }), {
+      wrapper: ({ children }) => <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>,
+    });
+
+    await waitFor(() => expect(result.current.assignments).toHaveLength(TWO_ASSIGNMENT_COUNT));
+    act(() => result.current.handleAssignmentChange('a1'));
+    act(() => result.current.handleCreateNewDefinition());
+    act(() => result.current.handleWizardCreateSuccess('created-definition'));
+    await waitFor(() => expect(vi.mocked(startAssessmentRun)).toHaveBeenCalledTimes(1));
+    act(() => result.current.handleAssignmentChange('a2'));
+    await act(async () => {
+      deferred.rejectRun(new Error('obsolete create selection failure'));
+      await Promise.resolve();
+    });
+
+    expect(result.current.assessmentError).toBeUndefined();
+    expect(result.current.noMatchResolution).toBe('creating');
   });
 });

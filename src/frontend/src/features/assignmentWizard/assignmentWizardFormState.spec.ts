@@ -1,6 +1,8 @@
 import { type FormInstance } from 'antd';
 import { describe, expect, it, vi } from 'vitest';
 import type { AssignmentDefinition } from '../../services/assignmentDefinition/assignmentDefinition.zod';
+import editableDefinitionsRaw from '../../../../../tests/__mocks__/data/synthetic-analysis/small/editableDefinitions.json?raw';
+import formStateSourceRaw from './assignmentWizardFormState.ts?raw';
 import {
   applyFormInitialValues,
   buildDocumentUrlsFromDefinition,
@@ -15,31 +17,18 @@ import {
 } from './assignmentWizardFormState';
 
 /**
- * Static full-definition seed copied from the canonical Section 2
- * `transport.editableDefinitions` view (small profile `definition-0-slides`
- * record in `tests/__mocks__/data/synthetic-analysis/small/editableDefinitions.json`).
- * Frontend specs keep a static copy so they never import backend or GAS modules.
+ * Canonical small-profile `transport.editableDefinitions` view, imported as raw
+ * text so this spec consumes the committed synthetic fixture instead of a
+ * hand-copied literal that can silently drift from it.
  */
-const CANONICAL_EDITABLE_DEFINITION_SEED: AssignmentDefinition = {
-  definitionKey: 'definition-0-slides',
-  primaryTitle: 'Synthetic Assignment Definition 1',
-  primaryTopicKey: 'topic-0',
-  primaryTopic: 'Synthetic Topic 1',
-  yearGroupKey: 'year-group-7',
-  yearGroupLabel: 'Year 7',
-  alternateTitles: [],
-  alternateTopics: [],
-  documentType: 'SLIDES',
-  referenceDocumentId: 'reference-document-0',
-  templateDocumentId: 'template-document-0',
-  assignmentWeighting: 1,
-  tasks: [
-    { taskId: 'task-0-0', taskTitle: 'Synthetic Task 1.1', taskWeighting: 1 },
-    { taskId: 'task-0-1', taskTitle: 'Synthetic Task 1.2', taskWeighting: 1 },
-  ],
-  createdAt: '2024-01-02T09:00:00.000Z',
-  updatedAt: '2024-01-02T09:02:00.000Z',
-};
+const CANONICAL_EDITABLE_DEFINITIONS = JSON.parse(editableDefinitionsRaw) as Record<
+  string,
+  AssignmentDefinition
+>;
+
+/** Canonical `definition-0-slides` record exercised as the form-state seed. */
+const CANONICAL_EDITABLE_DEFINITION_SEED: AssignmentDefinition =
+  CANONICAL_EDITABLE_DEFINITIONS['definition-0-slides'];
 
 const CANONICAL_REFERENCE_URL = 'https://docs.google.com/presentation/d/reference-document-0/edit';
 const CANONICAL_TEMPLATE_URL = 'https://docs.google.com/presentation/d/template-document-0/edit';
@@ -69,12 +58,11 @@ function buildSeedBaseline(): ParsedCreateBaseline {
     templateDocumentUrl: CANONICAL_TEMPLATE_URL,
     referenceDocumentId: CANONICAL_EDITABLE_DEFINITION_SEED.referenceDocumentId,
     templateDocumentId: CANONICAL_EDITABLE_DEFINITION_SEED.templateDocumentId,
-    documentType: 'SLIDES',
-    assignmentWeighting: 1,
-    taskWeightings: new Map([
-      ['task-0-0', 1],
-      ['task-0-1', 1],
-    ]),
+    documentType: CANONICAL_EDITABLE_DEFINITION_SEED.documentType,
+    assignmentWeighting: CANONICAL_EDITABLE_DEFINITION_SEED.assignmentWeighting,
+    taskWeightings: new Map(
+      CANONICAL_EDITABLE_DEFINITION_SEED.tasks.map((task) => [task.taskId, task.taskWeighting])
+    ),
   };
 }
 
@@ -90,7 +78,7 @@ function buildSeedFormValues(): Record<string, unknown> {
     yearGroup: CANONICAL_EDITABLE_DEFINITION_SEED.yearGroupKey,
     referenceDocumentUrl: CANONICAL_REFERENCE_URL,
     templateDocumentUrl: CANONICAL_TEMPLATE_URL,
-    assignmentWeighting: 1,
+    assignmentWeighting: CANONICAL_EDITABLE_DEFINITION_SEED.assignmentWeighting,
   };
 }
 
@@ -155,17 +143,14 @@ describe('hydrateFormFromDefinition', () => {
     );
 
     expect(setFieldsValue).toHaveBeenCalledWith({
-      title: 'Synthetic Assignment Definition 1',
-      topic: 'topic-0',
-      yearGroup: 'year-group-7',
+      title: CANONICAL_EDITABLE_DEFINITION_SEED.primaryTitle,
+      topic: CANONICAL_EDITABLE_DEFINITION_SEED.primaryTopicKey,
+      yearGroup: CANONICAL_EDITABLE_DEFINITION_SEED.yearGroupKey,
       referenceDocumentUrl: CANONICAL_REFERENCE_URL,
       templateDocumentUrl: CANONICAL_TEMPLATE_URL,
-      assignmentWeighting: 1,
+      assignmentWeighting: CANONICAL_EDITABLE_DEFINITION_SEED.assignmentWeighting,
     });
-    expect(setTaskRows).toHaveBeenCalledWith([
-      { key: 'task-0-0', taskId: 'task-0-0', taskTitle: 'Synthetic Task 1.1', taskWeighting: 1 },
-      { key: 'task-0-1', taskId: 'task-0-1', taskTitle: 'Synthetic Task 1.2', taskWeighting: 1 },
-    ]);
+    expect(setTaskRows).toHaveBeenCalledWith(buildSeedTaskRows());
     expect(setHasParsedTasks).toHaveBeenCalledWith(true);
     expect(setDocumentChange).toHaveBeenCalledWith({
       hasPendingChange: false,
@@ -266,8 +251,9 @@ describe('calculateDirtyState', () => {
   });
 
   it('returns true in update mode when a task weighting differs', () => {
+    const firstTaskId = CANONICAL_EDITABLE_DEFINITION_SEED.tasks[0].taskId;
     const editedRows = buildSeedTaskRows().map((row) =>
-      row.taskId === 'task-0-0' ? { ...row, taskWeighting: 3 } : row
+      row.taskId === firstTaskId ? { ...row, taskWeighting: 3 } : row
     );
 
     expect(
@@ -296,8 +282,9 @@ describe('hasCreateModeDirtyEdits', () => {
   });
 
   it('returns true when a task weighting differs from the baseline', () => {
+    const firstTaskId = CANONICAL_EDITABLE_DEFINITION_SEED.tasks[0].taskId;
     const editedRows = buildSeedTaskRows().map((row) =>
-      row.taskId === 'task-0-1' ? { ...row, taskWeighting: 2 } : row
+      row.taskId === firstTaskId ? { ...row, taskWeighting: 2 } : row
     );
 
     expect(hasCreateModeDirtyEdits(buildSeedFormValues(), buildSeedBaseline(), editedRows)).toBe(
@@ -318,16 +305,24 @@ describe('hasUpdateModeDirtyEdits', () => {
   });
 
   it('preserves valid zero weightings without reporting dirty edits', () => {
+    const [firstTask, secondTask] = CANONICAL_EDITABLE_DEFINITION_SEED.tasks;
     const definition = {
       ...CANONICAL_EDITABLE_DEFINITION_SEED,
-      tasks: [
-        { taskId: 'task-0-0', taskTitle: 'Synthetic Task 1.1', taskWeighting: 0 },
-        { taskId: 'task-0-1', taskTitle: 'Synthetic Task 1.2', taskWeighting: 1 },
-      ],
+      tasks: [{ ...firstTask, taskWeighting: 0 }, { ...secondTask }],
     };
     const rows: TaskRow[] = [
-      { key: 'task-0-0', taskId: 'task-0-0', taskTitle: 'Synthetic Task 1.1', taskWeighting: 0 },
-      { key: 'task-0-1', taskId: 'task-0-1', taskTitle: 'Synthetic Task 1.2', taskWeighting: 1 },
+      {
+        key: firstTask.taskId,
+        taskId: firstTask.taskId,
+        taskTitle: firstTask.taskTitle,
+        taskWeighting: 0,
+      },
+      {
+        key: secondTask.taskId,
+        taskId: secondTask.taskId,
+        taskTitle: secondTask.taskTitle,
+        taskWeighting: secondTask.taskWeighting,
+      },
     ];
 
     expect(hasUpdateModeDirtyEdits(buildSeedFormValues(), definition, rows)).toBe(false);
@@ -390,9 +385,10 @@ describe('detectDocumentChange', () => {
 
 describe('buildTaskRowsFromResponse', () => {
   it('maps response tasks to rows on parse without preserving weightings', () => {
+    const [firstTask] = CANONICAL_EDITABLE_DEFINITION_SEED.tasks;
     const rows = buildTaskRowsFromResponse(
       [
-        { taskId: 'task-0-0', taskTitle: 'Synthetic Task 1.1', taskWeighting: 2 },
+        { taskId: firstTask.taskId, taskTitle: firstTask.taskTitle, taskWeighting: 2 },
         { taskId: 'task-new', taskTitle: 'New task', taskWeighting: 1 },
       ],
       buildSeedTaskRows(),
@@ -400,19 +396,25 @@ describe('buildTaskRowsFromResponse', () => {
     );
 
     expect(rows).toEqual([
-      { key: 'task-0-0', taskId: 'task-0-0', taskTitle: 'Synthetic Task 1.1', taskWeighting: 2 },
+      {
+        key: firstTask.taskId,
+        taskId: firstTask.taskId,
+        taskTitle: firstTask.taskTitle,
+        taskWeighting: 2,
+      },
       { key: 'task-new', taskId: 'task-new', taskTitle: 'New task', taskWeighting: 1 },
     ]);
   });
 
   it('preserves existing weightings for matching tasks on re-parse', () => {
+    const [firstTask] = CANONICAL_EDITABLE_DEFINITION_SEED.tasks;
     const existing: TaskRow[] = [
-      { key: 'task-0-0', taskId: 'task-0-0', taskTitle: 'Old title', taskWeighting: 3 },
+      { key: firstTask.taskId, taskId: firstTask.taskId, taskTitle: 'Old title', taskWeighting: 3 },
     ];
 
     const rows = buildTaskRowsFromResponse(
       [
-        { taskId: 'task-0-0', taskTitle: 'Updated title', taskWeighting: 1 },
+        { taskId: firstTask.taskId, taskTitle: 'Updated title', taskWeighting: 1 },
         { taskId: 'task-new', taskTitle: 'New task', taskWeighting: 1 },
       ],
       existing,
@@ -420,8 +422,50 @@ describe('buildTaskRowsFromResponse', () => {
     );
 
     expect(rows).toEqual([
-      { key: 'task-0-0', taskId: 'task-0-0', taskTitle: 'Updated title', taskWeighting: 3 },
+      {
+        key: firstTask.taskId,
+        taskId: firstTask.taskId,
+        taskTitle: 'Updated title',
+        taskWeighting: 3,
+      },
       { key: 'task-new', taskId: 'task-new', taskTitle: 'New task', taskWeighting: 1 },
     ]);
+  });
+});
+
+describe('assignment wizard presentation hygiene', () => {
+  it('derives reference-data state without the unused trust field', async () => {
+    const formStateModule = await import('./assignmentWizardFormState');
+    const deriveReferenceDataState = formStateModule.deriveReferenceDataState as unknown as (
+      warmup: {
+        isDatasetReady: (datasetKey: string) => boolean;
+        isDatasetFailed: (datasetKey: string) => boolean;
+      },
+      isTopicsLoading: boolean,
+      isYearGroupsLoading: boolean,
+      open: boolean
+    ) => Record<string, unknown>;
+
+    const state = deriveReferenceDataState(
+      { isDatasetReady: () => true, isDatasetFailed: () => false },
+      false,
+      false,
+      true
+    );
+
+    expect(state).not.toHaveProperty('hasTrustworthyReferenceData');
+    expect(state).toHaveProperty('isReferenceDataLoading');
+    expect(state).toHaveProperty('isReferenceDataBlocked');
+  });
+
+  it('exposes a shared assignment-weighting coercion helper for active callers', async () => {
+    const formStateModule = await import('./assignmentWizardFormState');
+
+    expect(formStateModule).toHaveProperty('coerceAssignmentWeighting');
+  });
+
+  it('spells cancellation with British English in restoration documentation', () => {
+    expect(formStateSourceRaw).toContain('cancelling');
+    expect(formStateSourceRaw).not.toContain('canceling');
   });
 });

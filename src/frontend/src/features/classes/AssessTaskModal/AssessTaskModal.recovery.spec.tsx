@@ -1,15 +1,7 @@
 /**
  * Stale-definition recovery specs for `AssessTaskModal`.
  *
- * Red phase: the recovery UI does not exist yet. `transitionToStaleRecovery`
- * currently only routes (the Section 6 stub contract), so after a
- * `DEFINITION_STALE` start rejection the owning modal renders no prompt,
- * reparse, review or parse-failure surface. Every test below therefore fails
- * at the first recovery interaction (`Update` is absent) until the recovery
- * state machine and in-modal review wiring land.
- *
- * The assertions pin the user-visible contract in `STALE_RECOVERY_LAYOUT.md`
- * regions 1-4 and the workflow state table: stale prompt (warning alert,
+ * The assertions pin the user-visible recovery contract: stale prompt (warning alert,
  * Cancel then Update), reparsing (accessible busy skeleton, Cancel only),
  * in-modal review (owning footer suppressed, wide-data width, caveat copy),
  * parse failure (error alert, Cancel then Retry) and the approval outcomes

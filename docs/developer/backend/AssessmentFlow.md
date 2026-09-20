@@ -92,7 +92,8 @@ The backend now exposes three assignment-definition API surfaces:
    - The controller resolves `primaryTopic` from `assignment_topics`, rejects duplicate `{ primaryTitle, primaryTopicKey, yearGroup }` tuples, generates a UUID-style `definitionKey` on create, preserves the stored key on update, reparses tasks when source documents change, reapplies stored or supplied task weightings, and writes the full store before the registry.
    - Registry-write failures trigger `_rollbackFullStoreWrite()`; rollback failures surface as repair-required hard failures.
 3. **Assignment-definition partial transport**
-   - `getAssignmentDefinitionPartials` returns registry rows with `tasks: null` and requires `primaryTopicKey` to be present, trimmed, and authoritative.
+   - `getAssignmentDefinitionPartials` returns registry rows with a `tasks` array of lightweight summaries and requires `primaryTopicKey` to be present, trimmed, and authoritative.
+   - Every row is validated at the transport boundary by `validatePartialRow_()` against the strict 15-field partial contract.
    - `primaryTopic` remains a resolved display label only.
 
 ---

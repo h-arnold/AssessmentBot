@@ -24,10 +24,11 @@ vi.mock('../../src/backend/DocumentParsers/SheetsParser.js', () => ({
   },
 }));
 
-// RED phase for stale-recovery upsert contracts (issue #301): forceReparse,
-// expectedDefinitionUpdatedAt and DEFINITION_PARSE_FAILED. These tests assert
-// behaviour the orchestrator does not implement yet, so each one fails until
-// the green phase lands. Ordinary upserts stay byte-identical by design.
+// Stale-recovery upsert contracts (issue #301): forceReparse, the approval-save
+// expectedDefinitionUpdatedAt baseline with DEFINITION_STALE, and the
+// DEFINITION_PARSE_FAILED/INVALID_REQUEST recovery error classifications.
+// Ordinary upserts stay byte-identical by design: without a forced reparse,
+// document changes, or a stale baseline, unchanged documents are never reparsed.
 describe('AssignmentDefinitionController upsert — forced reparse and save-time staleness', () => {
   let controller;
   let mockRegistryCollection;
@@ -215,5 +216,83 @@ describe('AssignmentDefinitionController upsert — forced reparse and save-time
 
     expect(mockFullCollection.insertOne).not.toHaveBeenCalled();
     expect(mockRegistryCollection.insertOne).not.toHaveBeenCalled();
+  });
+
+  it('rejects a forced create without a definitionKey as INVALID_REQUEST', () => {
+    mockFullCollection.findOne.mockReturnValue(null);
+    mockRegistryCollection.findOne.mockReturnValue(null);
+    const payload = createUpsertPayload({ forceReparse: true });
+    delete payload.taskWeightings;
+
+    let thrown = null;
+    try {
+      controller.upsertDefinition(payload);
+    } catch (err) {
+      thrown = err;
+    }
+
+    // Documented request-contract violation: the API envelope must surface
+    // INVALID_REQUEST rather than INTERNAL_ERROR.
+    expect(thrown).toBeInstanceOf(ApiValidationError);
+    expect(thrown.code ?? null).toBeNull();
+    expect(mockFullCollection.insertOne).not.toHaveBeenCalled();
+    expect(mockRegistryCollection.insertOne).not.toHaveBeenCalled();
+  });
+
+  it('rejects forceReparse with taskWeightings as INVALID_REQUEST', () => {
+    seedExistingDefinition({ mockFullCollection, mockRegistryCollection });
+
+    let thrown = null;
+    try {
+      controller.upsertDefinition(
+        createUpsertPayload({ definitionKey: 'existing-stable-key', forceReparse: true })
+      );
+    } catch (err) {
+      thrown = err;
+    }
+
+    expect(thrown).toBeInstanceOf(ApiValidationError);
+    expect(thrown.code ?? null).toBeNull();
+    expect(extractSlidesTaskDefinitionsMock).not.toHaveBeenCalled();
+    expect(mockFullCollection.insertOne).not.toHaveBeenCalled();
+    expect(mockFullCollection.replaceOne).not.toHaveBeenCalled();
+  });
+
+  it('blocks persistence when parser output mixes valid and invalid tasks', () => {
+    seedExistingDefinition({ mockFullCollection, mockRegistryCollection });
+    const validTask = createParsedTaskDefinition({ id: 't_task_1', taskTitle: 'Task A', index: 0 });
+    const invalidTask = {
+      getId: () => 't_task_bad',
+      validate: () => ({ ok: false, errors: ['missing template artefact'] }),
+      toJSON: () => ({
+        id: 't_task_bad',
+        taskTitle: 'Bad task',
+        taskWeighting: null,
+        index: 1,
+        artifacts: { reference: [], template: [] },
+      }),
+    };
+    extractSlidesTaskDefinitionsMock.mockReturnValueOnce([validTask, invalidTask]);
+
+    let thrown = null;
+    try {
+      controller.upsertDefinition(
+        createUpsertPayload({
+          definitionKey: 'existing-stable-key',
+          referenceDocumentId: 'new-ref-doc-id',
+          templateDocumentId: 'new-tpl-doc-id',
+        })
+      );
+    } catch (err) {
+      thrown = err;
+    }
+
+    // All-or-nothing parse contract: any invalid task blocks the refresh.
+    expect(thrown).toBeInstanceOf(ApiValidationError);
+    expect(thrown.code).toBe('DEFINITION_PARSE_FAILED');
+    expect(mockFullCollection.insertOne).not.toHaveBeenCalled();
+    expect(mockFullCollection.replaceOne).not.toHaveBeenCalled();
+    expect(mockRegistryCollection.insertOne).not.toHaveBeenCalled();
+    expect(mockRegistryCollection.replaceOne).not.toHaveBeenCalled();
   });
 });

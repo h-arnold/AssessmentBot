@@ -9,6 +9,9 @@
  * short-circuit in the orchestrator untouched.
  */
 
+const DEFINITION_PARSE_FAILED_MESSAGE =
+  'The assignment documents could not be parsed. Check the reference and template documents, then try again.';
+
 /**
  * Asserts the forced-reparse preconditions before any parsing or persistence.
  *
@@ -18,16 +21,23 @@
  *
  * @param {Object} payload - Upsert payload.
  * @param {boolean} isUpdate - Whether this is an update of a stored definition.
- * @returns {void} Returns nothing; throws on a rejected request.
+ * @returns {void} Returns nothing.
+ * @throws {ApiValidationError} When a forced-reparse precondition is violated;
+ *   the transport envelope surfaces `INVALID_REQUEST`.
  */
 function assertRecoveryPreconditions_(payload, isUpdate) {
+  /* global ApiValidationError */
   if (payload.forceReparse === true && !isUpdate) {
-    throw new Error('forceReparse requires an existing definitionKey for recovery reparses.');
+    throw new ApiValidationError(
+      'forceReparse requires an existing definitionKey for recovery reparses.',
+      { method: 'upsertAssignmentDefinition' }
+    );
   }
 
   if (payload.forceReparse === true && Object.hasOwn(payload, 'taskWeightings')) {
-    throw new Error(
-      'forceReparse must not be combined with taskWeightings. Explicit forced requests omit weighting patches.'
+    throw new ApiValidationError(
+      'forceReparse must not be combined with taskWeightings. Explicit forced requests omit weighting patches.',
+      { method: 'upsertAssignmentDefinition' }
     );
   }
 }
@@ -43,7 +53,9 @@ function assertRecoveryPreconditions_(payload, isUpdate) {
  * @param {Object|null} existingDefinition - Stored definition when updating.
  * @param {*} expectedDefinitionUpdatedAt - Approval-save baseline from the request.
  * @param {boolean} isUpdate - Whether this is an update of a stored definition.
- * @returns {void} Returns nothing; throws DEFINITION_STALE on a stale baseline.
+ * @returns {void} Returns nothing.
+ * @throws {ApiValidationError} When the baseline predates the stored definition,
+ *   carrying `code: 'DEFINITION_STALE'`.
  */
 function assertApprovalBaselineFresh_(existingDefinition, expectedDefinitionUpdatedAt, isUpdate) {
   /* global ABLogger, ApiValidationError */
@@ -67,12 +79,13 @@ function assertApprovalBaselineFresh_(existingDefinition, expectedDefinitionUpda
 }
 
 /**
- * Parses document tasks, mapping recognised failures to DEFINITION_PARSE_FAILED.
+ * Parses document tasks, mapping recognised content failures to DEFINITION_PARSE_FAILED.
  *
- * A throwing parser and a zero-task result both block the refresh: nothing is
- * persisted and the stored definition is left unchanged by the caller, which
- * throws before reaching persistence. Raw diagnostics stay in the logs; the
- * thrown error carries only safe user copy.
+ * A throwing parser, a zero-task result, or a parse whose output is marked as
+ * containing invalid tasks all block the refresh: nothing is persisted and the
+ * stored definition is left unchanged by the caller, which throws before
+ * reaching persistence. Raw diagnostics stay in the logs; the thrown error
+ * carries only safe user copy.
  *
  * @param {Object} params - Parse parameters.
  * @param {Object} params.taskParser - Task parser sub-class instance.
@@ -80,6 +93,11 @@ function assertApprovalBaselineFresh_(existingDefinition, expectedDefinitionUpda
  * @param {string} params.referenceDocumentId - Reference document ID.
  * @param {string} params.templateDocumentId - Template document ID.
  * @returns {Object} Parsed task map keyed by task ID (never empty).
+ * @throws {ApiValidationError} When parsing throws a recognised content error,
+ *   yields zero tasks, or reports invalid tasks; carries
+ *   `code: 'DEFINITION_PARSE_FAILED'`.
+ * @throws {Error} The original parser error when it carries its own
+ *   classification (for example rate-limit, authorisation, or persistence).
  */
 function parseTasksOrThrow_({ taskParser, documentType, referenceDocumentId, templateDocumentId }) {
   /* global ABLogger, ApiValidationError */
@@ -91,20 +109,27 @@ function parseTasksOrThrow_({ taskParser, documentType, referenceDocumentId, tem
       templateDocumentId,
     });
   } catch (error) {
+    if (!isRecognisedContentParsingFailure_(error)) {
+      ABLogger.getInstance().error('Assignment definition parser failed.', {
+        documentType,
+        referenceDocumentId,
+        templateDocumentId,
+        err: error,
+      });
+      throw error;
+    }
+
     ABLogger.getInstance().error('Assignment definition documents could not be parsed.', {
       documentType,
       referenceDocumentId,
       templateDocumentId,
       err: error,
     });
-    throw new ApiValidationError(
-      'The assignment documents could not be parsed. Check the reference and template documents, then try again.',
-      {
-        method: 'upsertAssignmentDefinition',
-        code: 'DEFINITION_PARSE_FAILED',
-        cause: error,
-      }
-    );
+    throw new ApiValidationError(DEFINITION_PARSE_FAILED_MESSAGE, {
+      method: 'upsertAssignmentDefinition',
+      code: 'DEFINITION_PARSE_FAILED',
+      cause: error,
+    });
   }
 
   if (!parsedTasks || Object.keys(parsedTasks).length === 0) {
@@ -116,16 +141,40 @@ function parseTasksOrThrow_({ taskParser, documentType, referenceDocumentId, tem
         templateDocumentId,
       }
     );
-    throw new ApiValidationError(
-      'The assignment documents could not be parsed. Check the reference and template documents, then try again.',
+    throw new ApiValidationError(DEFINITION_PARSE_FAILED_MESSAGE, {
+      method: 'upsertAssignmentDefinition',
+      code: 'DEFINITION_PARSE_FAILED',
+    });
+  }
+
+  if (parsedTasks.hasInvalidTasks === true) {
+    ABLogger.getInstance().error(
+      'Assignment definition parse yielded invalid tasks; blocking refresh.',
       {
-        method: 'upsertAssignmentDefinition',
-        code: 'DEFINITION_PARSE_FAILED',
+        documentType,
+        referenceDocumentId,
+        templateDocumentId,
       }
     );
+    throw new ApiValidationError(DEFINITION_PARSE_FAILED_MESSAGE, {
+      method: 'upsertAssignmentDefinition',
+      code: 'DEFINITION_PARSE_FAILED',
+    });
   }
 
   return parsedTasks;
+}
+
+/**
+ * Returns whether an unclassified native error is a document-content failure.
+ * Typed errors carry their own transport classification and must pass through.
+ *
+ * @param {*} error - Parser error.
+ * @returns {boolean} True when the error is a recognised content failure.
+ * @private
+ */
+function isRecognisedContentParsingFailure_(error) {
+  return error instanceof Error && error.name === 'Error';
 }
 
 /**

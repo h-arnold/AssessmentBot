@@ -32,23 +32,23 @@ Stored via `AssignmentDefinition.toPartialJSON()`. Always uses the partial shape
 (tasks as an array of lightweight summaries). Each document is keyed by `definitionKey` within
 a single JsonDbApp collection.
 
-| #   | Field                 | Type                                        | Persistence | Transport | Frontend Zod                                                                         | Notes                                                                                |
-| --- | --------------------- | ------------------------------------------- | ----------- | --------- | ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------ |
-| 1   | `primaryTitle`        | `string`                                    | included    | unchanged | `AssignmentDefinitionPartialSchema.primaryTitle: z.string()`                         | Canonical assignment title. Always present.                                          |
-| 2   | `primaryTopic`        | `string`                                    | included    | unchanged | `AssignmentDefinitionPartialSchema.primaryTopic: z.string()`                         | Resolved topic display label.                                                        |
-| 3   | `primaryTopicKey`     | `string`                                    | included    | unchanged | `AssignmentDefinitionPartialSchema.primaryTopicKey: TrimmedNonEmptyStringSchema`     | Authoritative keyed reference to `assignment_topics`. Never null.                    |
-| 4   | `yearGroupKey`        | `string`                                    | included    | unchanged | `AssignmentDefinitionPartialSchema.yearGroupKey: TrimmedNonEmptyStringSchema`        | Authoritative year-group key. Never null (controller guarantees).                    |
-| 5   | `yearGroupLabel`      | `string\|null`                              | included    | unchanged | `AssignmentDefinitionPartialSchema.yearGroupLabel: TrimmedNonEmptyStringSchema`      | Resolved display label. Controller sets from reference data. `null` when unresolved. |
-| 6   | `alternateTitles`     | `string[]`                                  | included    | unchanged | `AssignmentDefinitionPartialSchema.alternateTitles: z.array(z.string())`             | Known title variants. Empty array when none.                                         |
-| 7   | `alternateTopics`     | `string[]`                                  | included    | unchanged | `AssignmentDefinitionPartialSchema.alternateTopics: z.array(z.string())`             | Known topic variants. Empty array when none.                                         |
-| 8   | `documentType`        | `string`                                    | included    | unchanged | `AssignmentDefinitionPartialSchema.documentType: z.string()`                         | `'SLIDES'` \| `'SHEETS'`. Required — used for polymorphic routing.                   |
-| 9   | `referenceDocumentId` | `string\|null`                              | included    | unchanged | `AssignmentDefinitionPartialSchema.referenceDocumentId: z.string().nullable()`       | Reference document ID. Nullable because partial definitions may not have doc IDs.    |
-| 10  | `templateDocumentId`  | `string\|null`                              | included    | unchanged | `AssignmentDefinitionPartialSchema.templateDocumentId: z.string().nullable()`        | Template document ID. Nullable for the same reason.                                  |
-| 11  | `assignmentWeighting` | `number`                                    | included    | unchanged | `AssignmentDefinitionPartialSchema.assignmentWeighting: z.number().nullable()`       | Weighting value 0–10. Defaults to 1 in constructor. Nullable on partial schema.      |
-| 12  | `definitionKey`       | `string`                                    | included    | unchanged | `AssignmentDefinitionPartialSchema.definitionKey: TrimmedNonEmptyStringSchema`       | Stable opaque identifier. Generated from metadata tuple if not provided.             |
-| 13  | `tasks`               | `Array<{taskId, taskWeighting, taskTitle}>` | included    | unchanged | `AssignmentDefinitionPartialSchema.tasks: z.array(TaskPartialSchema)`                | Array of lightweight task summaries. Empty array when no tasks.                      |
-| 14  | `createdAt`           | `string\|null`                              | included    | unchanged | `AssignmentDefinitionPartialSchema.createdAt: NullableIsoDateTimeWithTimezoneSchema` | ISO datetime string. Overridden to now when null.                                    |
-| 15  | `updatedAt`           | `string\|null`                              | included    | unchanged | `AssignmentDefinitionPartialSchema.updatedAt: NullableIsoDateTimeWithTimezoneSchema` | ISO datetime string. Defaults to `createdAt` if unset.                               |
+| #   | Field                 | Type                                        | Persistence | Transport | Frontend Zod                                                                         | Notes                                                                                                                                                                                                                             |
+| --- | --------------------- | ------------------------------------------- | ----------- | --------- | ------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | `primaryTitle`        | `string`                                    | included    | unchanged | `AssignmentDefinitionPartialSchema.primaryTitle: z.string()`                         | Canonical assignment title. Always present.                                                                                                                                                                                       |
+| 2   | `primaryTopic`        | `string`                                    | included    | unchanged | `AssignmentDefinitionPartialSchema.primaryTopic: z.string()`                         | Resolved topic display label.                                                                                                                                                                                                     |
+| 3   | `primaryTopicKey`     | `string`                                    | included    | unchanged | `AssignmentDefinitionPartialSchema.primaryTopicKey: TrimmedNonEmptyStringSchema`     | Authoritative keyed reference to `assignment_topics`. Never null.                                                                                                                                                                 |
+| 4   | `yearGroupKey`        | `string`                                    | included    | unchanged | `AssignmentDefinitionPartialSchema.yearGroupKey: TrimmedNonEmptyStringSchema`        | Authoritative year-group key. Never null (controller guarantees).                                                                                                                                                                 |
+| 5   | `yearGroupLabel`      | `string`                                    | included    | unchanged | `AssignmentDefinitionPartialSchema.yearGroupLabel: TrimmedNonEmptyStringSchema`      | Resolved display label. The controller resolves it from reference data via `requireExistingYearGroupRecord()` and guarantees a non-null label before persistence; the transport boundary rejects `null`.                          |
+| 6   | `alternateTitles`     | `string[]`                                  | included    | unchanged | `AssignmentDefinitionPartialSchema.alternateTitles: z.array(z.string())`             | Known title variants. Empty array when none.                                                                                                                                                                                      |
+| 7   | `alternateTopics`     | `string[]`                                  | included    | unchanged | `AssignmentDefinitionPartialSchema.alternateTopics: z.array(z.string())`             | Known topic variants. Empty array when none.                                                                                                                                                                                      |
+| 8   | `documentType`        | `string`                                    | included    | unchanged | `AssignmentDefinitionPartialSchema.documentType: z.string()`                         | `'SLIDES'` \| `'SHEETS'`. Required — used for polymorphic routing.                                                                                                                                                                |
+| 9   | `referenceDocumentId` | `string\|null`                              | included    | unchanged | `AssignmentDefinitionPartialSchema.referenceDocumentId: z.string().nullable()`       | Reference document ID. Nullable because partial definitions may not have doc IDs.                                                                                                                                                 |
+| 10  | `templateDocumentId`  | `string\|null`                              | included    | unchanged | `AssignmentDefinitionPartialSchema.templateDocumentId: z.string().nullable()`        | Template document ID. Nullable for the same reason.                                                                                                                                                                               |
+| 11  | `assignmentWeighting` | `number`                                    | included    | unchanged | `AssignmentDefinitionPartialSchema.assignmentWeighting: z.number().nullable()`       | Weighting value 0–10. Defaults to 1 in constructor. Nullable on partial schema.                                                                                                                                                   |
+| 12  | `definitionKey`       | `string`                                    | included    | unchanged | `AssignmentDefinitionPartialSchema.definitionKey: TrimmedNonEmptyStringSchema`       | Stable opaque identifier. Created from an opaque `Utilities.getUuid()` value by the controller and preserved on update; the model constructor fallback (`buildDefinitionKey()`) is metadata-derived only when no key is supplied. |
+| 13  | `tasks`               | `Array<{taskId, taskWeighting, taskTitle}>` | included    | unchanged | `AssignmentDefinitionPartialSchema.tasks: z.array(TaskPartialSchema)`                | Array of lightweight task summaries. Empty array when no tasks.                                                                                                                                                                   |
+| 14  | `createdAt`           | `string\|null`                              | included    | unchanged | `AssignmentDefinitionPartialSchema.createdAt: NullableIsoDateTimeWithTimezoneSchema` | ISO datetime string. Overridden to now when null.                                                                                                                                                                                 |
+| 15  | `updatedAt`           | `string\|null`                              | included    | unchanged | `AssignmentDefinitionPartialSchema.updatedAt: NullableIsoDateTimeWithTimezoneSchema` | ISO datetime string. Defaults to `createdAt` if unset.                                                                                                                                                                            |
 
 Key notes:
 
@@ -66,25 +66,25 @@ Key notes:
 
 Stored via `AssignmentDefinition.toJSON()`. Keyed by `definitionKey` as a dedicated collection.
 
-| #   | Field                   | Type                             | Persistence | Transport       | Frontend Zod                                                                                                          | Notes                                                                                     |
-| --- | ----------------------- | -------------------------------- | ----------- | --------------- | --------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
-| 1   | `primaryTitle`          | `string`                         | included    | unchanged       | `AssignmentDefinitionSchema.primaryTitle: TrimmedNonEmptyStringSchema`                                                |                                                                                           |
-| 2   | `primaryTopic`          | `string`                         | included    | unchanged       | `AssignmentDefinitionSchema.primaryTopic: TrimmedNonEmptyStringSchema`                                                |                                                                                           |
-| 3   | `primaryTopicKey`       | `string`                         | included    | unchanged       | `AssignmentDefinitionSchema.primaryTopicKey: TrimmedNonEmptyStringSchema`                                             |                                                                                           |
-| 4   | `yearGroupKey`          | `string`                         | included    | unchanged       | `AssignmentDefinitionSchema.yearGroupKey: TrimmedNonEmptyStringSchema`                                                |                                                                                           |
-| 5   | `yearGroupLabel`        | `string\|null`                   | included    | unchanged       | `AssignmentDefinitionSchema.yearGroupLabel: TrimmedNonEmptyStringSchema`                                              |                                                                                           |
-| 6   | `alternateTitles`       | `string[]`                       | included    | unchanged       | `AssignmentDefinitionSchema.alternateTitles: z.array(TrimmedNonEmptyStringSchema)`                                    |                                                                                           |
-| 7   | `alternateTopics`       | `string[]`                       | included    | unchanged       | `AssignmentDefinitionSchema.alternateTopics: z.array(TrimmedNonEmptyStringSchema)`                                    |                                                                                           |
-| 8   | `documentType`          | `string`                         | included    | unchanged       | `AssignmentDefinitionSchema.documentType: DocumentTypeSchema` (`z.enum(['SLIDES', 'SHEETS'])`)                        |                                                                                           |
-| 9   | `referenceDocumentId`   | `string`                         | included    | unchanged       | `AssignmentDefinitionSchema.referenceDocumentId: TrimmedNonEmptyStringSchema`                                         | Required on full definitions (validated by `_validateFull()`).                            |
-| 10  | `templateDocumentId`    | `string`                         | included    | unchanged       | `AssignmentDefinitionSchema.templateDocumentId: TrimmedNonEmptyStringSchema`                                          | Required on full definitions.                                                             |
-| 11  | `referenceLastModified` | `string\|null`                   | included    | **omitted**     | —                                                                                                                     | Stored in full cache for lazy-refresh decisions. Not included in transport response.      |
-| 12  | `templateLastModified`  | `string\|null`                   | included    | **omitted**     | —                                                                                                                     | Same as above.                                                                            |
-| 13  | `assignmentWeighting`   | `number`                         | included    | unchanged       | `AssignmentDefinitionSchema.assignmentWeighting: WeightingSchema.nullable()` (`z.number().min(0).max(10).nullable()`) | Defaults to 1 in constructor.                                                             |
-| 14  | `definitionKey`         | `string`                         | included    | unchanged       | `AssignmentDefinitionSchema.definitionKey: TrimmedNonEmptyStringSchema`                                               |                                                                                           |
-| 15  | `tasks`                 | `Record<string, TaskDefinition>` | included    | **transformed** | `AssignmentDefinitionSchema.tasks: z.array(AssignmentDefinitionTaskSchema)`                                           | Persisted as keyed object. Transport transforms to lightweight array via response mapper. |
-| 16  | `createdAt`             | `string\|null`                   | included    | unchanged       | `AssignmentDefinitionSchema.createdAt: NullableIsoDateTimeWithTimezoneSchema`                                         |                                                                                           |
-| 17  | `updatedAt`             | `string\|null`                   | included    | unchanged       | `AssignmentDefinitionSchema.updatedAt: NullableIsoDateTimeWithTimezoneSchema`                                         |                                                                                           |
+| #   | Field                   | Type                             | Persistence | Transport       | Frontend Zod                                                                                                          | Notes                                                                                                                                                                                   |
+| --- | ----------------------- | -------------------------------- | ----------- | --------------- | --------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | `primaryTitle`          | `string`                         | included    | unchanged       | `AssignmentDefinitionSchema.primaryTitle: TrimmedNonEmptyStringSchema`                                                |                                                                                                                                                                                         |
+| 2   | `primaryTopic`          | `string`                         | included    | unchanged       | `AssignmentDefinitionSchema.primaryTopic: TrimmedNonEmptyStringSchema`                                                |                                                                                                                                                                                         |
+| 3   | `primaryTopicKey`       | `string`                         | included    | unchanged       | `AssignmentDefinitionSchema.primaryTopicKey: TrimmedNonEmptyStringSchema`                                             |                                                                                                                                                                                         |
+| 4   | `yearGroupKey`          | `string`                         | included    | unchanged       | `AssignmentDefinitionSchema.yearGroupKey: TrimmedNonEmptyStringSchema`                                                |                                                                                                                                                                                         |
+| 5   | `yearGroupLabel`        | `string`                         | included    | unchanged       | `AssignmentDefinitionSchema.yearGroupLabel: TrimmedNonEmptyStringSchema`                                              | Non-null resolved display label. The model constructor defaults to `null`, but the controller resolves a value before persistence and the response mapper throws when resolution fails. |
+| 6   | `alternateTitles`       | `string[]`                       | included    | unchanged       | `AssignmentDefinitionSchema.alternateTitles: z.array(TrimmedNonEmptyStringSchema)`                                    |                                                                                                                                                                                         |
+| 7   | `alternateTopics`       | `string[]`                       | included    | unchanged       | `AssignmentDefinitionSchema.alternateTopics: z.array(TrimmedNonEmptyStringSchema)`                                    |                                                                                                                                                                                         |
+| 8   | `documentType`          | `string`                         | included    | unchanged       | `AssignmentDefinitionSchema.documentType: DocumentTypeSchema` (`z.enum(['SLIDES', 'SHEETS'])`)                        |                                                                                                                                                                                         |
+| 9   | `referenceDocumentId`   | `string`                         | included    | unchanged       | `AssignmentDefinitionSchema.referenceDocumentId: TrimmedNonEmptyStringSchema`                                         | Required on full definitions (validated by `_validateFull()`).                                                                                                                          |
+| 10  | `templateDocumentId`    | `string`                         | included    | unchanged       | `AssignmentDefinitionSchema.templateDocumentId: TrimmedNonEmptyStringSchema`                                          | Required on full definitions.                                                                                                                                                           |
+| 11  | `referenceLastModified` | `string\|null`                   | included    | **omitted**     | —                                                                                                                     | Stored in full cache for lazy-refresh decisions. Not included in transport response.                                                                                                    |
+| 12  | `templateLastModified`  | `string\|null`                   | included    | **omitted**     | —                                                                                                                     | Same as above.                                                                                                                                                                          |
+| 13  | `assignmentWeighting`   | `number`                         | included    | unchanged       | `AssignmentDefinitionSchema.assignmentWeighting: WeightingSchema.nullable()` (`z.number().min(0).max(10).nullable()`) | Defaults to 1 in constructor.                                                                                                                                                           |
+| 14  | `definitionKey`         | `string`                         | included    | unchanged       | `AssignmentDefinitionSchema.definitionKey: TrimmedNonEmptyStringSchema`                                               |                                                                                                                                                                                         |
+| 15  | `tasks`                 | `Record<string, TaskDefinition>` | included    | **transformed** | `AssignmentDefinitionSchema.tasks: z.array(AssignmentDefinitionTaskSchema)`                                           | Persisted as keyed object. Transport transforms to lightweight array via response mapper.                                                                                               |
+| 16  | `createdAt`             | `string\|null`                   | included    | unchanged       | `AssignmentDefinitionSchema.createdAt: NullableIsoDateTimeWithTimezoneSchema`                                         |                                                                                                                                                                                         |
+| 17  | `updatedAt`             | `string\|null`                   | included    | unchanged       | `AssignmentDefinitionSchema.updatedAt: NullableIsoDateTimeWithTimezoneSchema`                                         |                                                                                                                                                                                         |
 
 Key notes:
 
@@ -94,6 +94,11 @@ Key notes:
   the frontend as a `Array<{taskId, taskTitle, taskWeighting}>` lightweight array after
   response-mapper transformation.
 - `toJSON()` throws `TypeError` if called on a partial instance (where `tasks` is an array).
+- Full-definition eligibility is a single predicate: keyed (non-array) `tasks` **and** non-null
+  `referenceDocumentId`/`templateDocumentId`. The synthetic transport projection
+  (`scripts/synthetic-test-data/toTransportViews.js`) reuses its `isFullDefinition()` helper in
+  both `buildEditableDefinitions()` and `buildAssignmentsByKey()`, so a keyed-task registry row
+  missing either document ID never hydrates into an editable or full assignment view.
 - The `assignment_definitions` registry row is re-written on every upsert to keep it in sync.
 
 ---
@@ -234,23 +239,23 @@ and **ID-shape** (link flow: `referenceDocumentId` + `templateDocumentId` + `doc
 
 **Request:**
 
-| Field                         | Type                             | Required  | Notes                                                                                                                                                                                                                                                          |
-| ----------------------------- | -------------------------------- | --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `definitionKey`               | `string`                         | no        | Absent/null on create. Must be already trimmed on update.                                                                                                                                                                                                      |
-| `primaryTitle`                | `string`                         | yes       |                                                                                                                                                                                                                                                                |
-| `primaryTopicKey`             | `string`                         | yes       | Must be non-empty, already trimmed, no unsafe characters.                                                                                                                                                                                                      |
-| `yearGroupKey`                | `string`                         | yes       | Must be non-null, non-empty, already trimmed, no unsafe characters.                                                                                                                                                                                            |
-| `referenceDocumentUrl`        | `string`                         | URL-shape | Must be valid `docs.google.com` URL (wizard). Mutually exclusive with ID fields.                                                                                                                                                                               |
-| `templateDocumentUrl`         | `string`                         | URL-shape | Must be valid `docs.google.com` URL (wizard). Mutually exclusive with ID fields.                                                                                                                                                                               |
-| `referenceDocumentId`         | `string`                         | ID-shape  | Must be a string (link flow). Mutually exclusive with URL fields.                                                                                                                                                                                              |
-| `templateDocumentId`          | `string`                         | ID-shape  | Must be a string (link flow). Mutually exclusive with URL fields.                                                                                                                                                                                              |
-| `documentType`                | `'SLIDES'\|'SHEETS'`             | ID-shape  | Mutually exclusive with URL fields.                                                                                                                                                                                                                            |
-| `alternateTitles`             | `string[]`                       | no        | Array of trimmed non-empty strings. Preserves stored value on update if omitted.                                                                                                                                                                               |
-| `alternateTopics`             | `string[]`                       | no        | Same semantics as `alternateTitles`.                                                                                                                                                                                                                           |
-| `assignmentWeighting`         | `number\|null`                   | no        | 0–10 range.                                                                                                                                                                                                                                                    |
-| `taskWeightings`              | `Array<{taskId, taskWeighting}>` | no        | Array of `{taskId, taskWeighting}` objects. Both fields required per entry. `taskId` must be safe identifier.                                                                                                                                                  |
-| `forceReparse`                | `boolean`                        | no        | Optional. `true` forces document parsing regardless of timestamps; accepted only with an existing `definitionKey`. Never persisted or returned. Must not be combined with `taskWeightings`.                                                                    |
-| `expectedDefinitionUpdatedAt` | `string` (ISO)                   | no        | Optional approval-save baseline (the response `updatedAt` from the latest load/reparse). A mismatch returns `DEFINITION_STALE` with no writes. Requests omitting it retain ordinary upsert behaviour. No new response field — `updatedAt` is already returned. |
+| Field                         | Type                             | Required  | Notes                                                                                                                                                                                                                                                                                                                                                                                           |
+| ----------------------------- | -------------------------------- | --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `definitionKey`               | `string`                         | no        | Absent/null on create. Must be already trimmed on update.                                                                                                                                                                                                                                                                                                                                       |
+| `primaryTitle`                | `string`                         | yes       |                                                                                                                                                                                                                                                                                                                                                                                                 |
+| `primaryTopicKey`             | `string`                         | yes       | Must be non-empty, already trimmed, no unsafe characters.                                                                                                                                                                                                                                                                                                                                       |
+| `yearGroupKey`                | `string`                         | yes       | Must be non-null, non-empty, already trimmed, no unsafe characters.                                                                                                                                                                                                                                                                                                                             |
+| `referenceDocumentUrl`        | `string`                         | URL-shape | Must be valid `docs.google.com` URL (wizard). The extracted document-ID path segment is validated as a safe trimmed identifier. Mutually exclusive with ID fields.                                                                                                                                                                                                                              |
+| `templateDocumentUrl`         | `string`                         | URL-shape | Must be valid `docs.google.com` URL (wizard). The extracted document-ID path segment is validated as a safe trimmed identifier. Mutually exclusive with ID fields.                                                                                                                                                                                                                              |
+| `referenceDocumentId`         | `string`                         | ID-shape  | Must be a safe, non-empty, already-trimmed identifier without `/`, `\`, `..`, or control characters (link flow). Mutually exclusive with URL fields.                                                                                                                                                                                                                                            |
+| `templateDocumentId`          | `string`                         | ID-shape  | Must be a safe, non-empty, already-trimmed identifier without `/`, `\`, `..`, or control characters (link flow). Mutually exclusive with URL fields.                                                                                                                                                                                                                                            |
+| `documentType`                | `'SLIDES'\|'SHEETS'`             | ID-shape  | Mutually exclusive with URL fields.                                                                                                                                                                                                                                                                                                                                                             |
+| `alternateTitles`             | `string[]`                       | no        | Array of trimmed non-empty strings. Preserves stored value on update if omitted.                                                                                                                                                                                                                                                                                                                |
+| `alternateTopics`             | `string[]`                       | no        | Same semantics as `alternateTitles`.                                                                                                                                                                                                                                                                                                                                                            |
+| `assignmentWeighting`         | `number\|null`                   | no        | 0–10 range.                                                                                                                                                                                                                                                                                                                                                                                     |
+| `taskWeightings`              | `Array<{taskId, taskWeighting}>` | no        | Array of `{taskId, taskWeighting}` objects. Both fields required per entry. `taskId` must be safe identifier.                                                                                                                                                                                                                                                                                   |
+| `forceReparse`                | `boolean`                        | no        | Optional. `true` forces document parsing regardless of timestamps; accepted only with an existing `definitionKey`. Never persisted or returned. Must not be combined with `taskWeightings`.                                                                                                                                                                                                     |
+| `expectedDefinitionUpdatedAt` | `string` (ISO)                   | no        | Optional approval-save baseline (the response `updatedAt` from the latest load/reparse). When supplied non-null it must be a strict ISO datetime string with timezone info; a mismatch returns `DEFINITION_STALE` with no writes. Explicit `null` is accepted for create-time requests and omission retains ordinary upsert behaviour. No new response field — `updatedAt` is already returned. |
 
 **Forbidden request fields:** None — the request schema is flexible and controller-owned
 validation handles business rules (duplicate detection, document-ID mismatch, unknown task IDs).
@@ -268,9 +273,12 @@ Key contract notes:
   rule between URL-shape and ID-shape fields. Payloads that include neither, only partial URL fields,
   or only partial ID fields are rejected before reaching the backend. A second schema-level
   `superRefine` rule rejects `forceReparse: true` combined with `taskWeightings`.
-- Create upserts generate a stable metadata-derived `definitionKey` from
+- Create upserts generate an opaque `definitionKey` from `Utilities.getUuid()` via
+  `AssignmentDefinitionUpsertOrchestrator._generateStableKey()`. It is **not** derived from
   `(primaryTitle, primaryTopic, yearGroupKey)`.
 - Update upserts preserve the existing `definitionKey` even when business metadata changes.
+- `AssignmentDefinition.buildDefinitionKey()` remains only the model constructor fallback used
+  when no `definitionKey` is supplied; the orchestrator always supplies one.
 - `documentType` is required by the controller for create upserts; updates may omit it and
   reuse the stored `documentType`.
 - `taskWeightings` shape is validated at the transport boundary; numeric weighting semantics
@@ -286,32 +294,143 @@ Key contract notes:
 | Mismatched document types   | `INVALID_REQUEST` | Both URLs must resolve to same type                                                    |
 | Duplicate business tuple    | `INVALID_REQUEST` | Controller detects duplicate `(primaryTitle, primaryTopicKey, yearGroupKey)` on create |
 
+#### Link-flow alternate metadata normalisation
+
+> **Status: Implemented.** Delivered as Batch 5 (Assessment-Flow State and Payload
+> Correctness) of the PR-review remediation (`ACTION_PLAN.md`). The landed frontend
+> code and regression tests now match the canonical request contract below. The
+> originating finding is the PR-review discrepancy
+> "Link-flow alternate metadata can violate the canonical trimmed-string contract"
+> (`PR_REVIEW.md` → "Data-shape docs consistency").
+
+The `upsertAssignmentDefinition` request contract requires `alternateTitles` and
+`alternateTopics` to be arrays of **trimmed non-empty strings** (see the
+[request table](#upsertassignmentdefinition-write) above and
+`UpsertAssignmentDefinitionRequestSchema` at `assignmentDefinition.zod.ts:136-137`).
+
+The link flow builds these arrays in
+`src/frontend/src/features/classes/AssessTaskModal/assessTaskLinkPayload.ts`, which
+now enforces the canonical contract before payload construction:
+
+| Field             | Link-flow construction (implemented)                                                                                                                                                                      | Frontend Zod                                    |
+| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
+| `alternateTitles` | The candidate is trimmed; a blank (empty or whitespace-only) candidate returns the existing array unchanged. The trimmed candidate is then deduplicated case-insensitively and appended only when absent. | `z.array(TrimmedNonEmptyStringSchema)` (`:136`) |
+| `alternateTopics` | A `null` candidate returns the existing array unchanged; otherwise the candidate is trimmed and blank candidates are rejected exactly as for `alternateTitles`.                                           | `z.array(TrimmedNonEmptyStringSchema)` (`:137`) |
+
+- Both call sites in `useAssessTaskLinkFlow.ts:259-267` still pass the raw picker
+  values (`selectedAssignmentForChoice.title` and `.topicName`); the helpers normalise
+  and filter them, so only trimmed non-empty entries are emitted into the request
+  payload and the service-side `UpsertAssignmentDefinitionRequestSchema` parse always
+  satisfies the trimmed non-empty string contract.
+- The existing case-insensitive trimmed dedupe basis
+  (`caseInsensitiveTrimmedEquals`) is unchanged; the correction only normalises and
+  filters the candidate before it is considered for inclusion.
+- This is a frontend request-construction correction only. It does not change
+  persistence, the backend transport, the response shape, or any schema. No new
+  field, endpoint, or helper abstraction is introduced.
+
+Regression coverage:
+`src/frontend/src/features/classes/AssessTaskModal/assessTaskLinkPayload.spec.ts`
+asserts that a non-empty alternate title and topic are trimmed before being added,
+and that blank candidates (`''`, `'   '`, `'\t\n'`) are rejected for both collections
+before payload construction.
+
 #### Stale-definition recovery (Issue #301)
 
-> **Status: Implemented (Sections 1, 3 and 4, issue #301).**
-> The weighting-reconciliation semantics below (task equivalence comparator,
-> reparse weighting preservation) are **implemented** in
+> **Status: Implemented.** The weighting-reconciliation semantics below (task
+> equivalence comparator, reparse weighting preservation) are implemented in
 > `AssignmentDefinitionTaskEquivalence.js` and
-> `AssignmentDefinitionUpsertOrchestrator._resolveTaskState` (Section 1, issue #301):
+> `AssignmentDefinitionUpsertOrchestrator._resolveTaskState` (issue #301):
 > on a timestamp-triggered reparse, tasks with equivalent parsed content keep their
 > stored weighting (including valid zeroes), new or changed tasks default to `1`,
 > removed tasks disappear, and ordinary upserts without a document change never
 > invoke the comparator. The request-field extensions (`forceReparse`,
 > `expectedDefinitionUpdatedAt`), the save-time `DEFINITION_STALE` baseline check,
-> and the `DEFINITION_PARSE_FAILED` envelope are **implemented** in the backend
-> (Section 3, issue #301). The frontend `UpsertAssignmentDefinitionRequestSchema`
-> extension and the shared frontend error-registry entry are **implemented**
-> (Section 4, issue #301); the frontend request schema is `.strict()` and accepts
-> the recovery fields alongside the existing URL-shape/ID-shape contract.
+> and the `DEFINITION_PARSE_FAILED` envelope are implemented in the backend. The
+> frontend `UpsertAssignmentDefinitionRequestSchema` extension and the shared frontend
+> error-registry entry are implemented; the frontend request schema is `.strict()` and
+> accepts the recovery fields alongside the existing URL-shape/ID-shape contract. The
+> equivalence, all-or-nothing parsing, invalid-request precondition, and
+> error-classification semantics in
+> [Equivalence, parsing and recovery corrections](#equivalence-parsing-and-recovery-corrections)
+> are implemented and covered by regression tests.
+
+#### Equivalence, parsing and recovery corrections
+
+The following semantics are the canonical implemented behaviour. They were delivered
+as Batch 1 of the PR-review remediation (`ACTION_PLAN.md` → "Batch 1 - Backend
+Recovery Correctness"). Wontfix and Exclude decisions are out of scope.
+
+1. **Artefact equivalence canonicalisation / runtime exclusions (implemented).**
+   `compareTaskEquivalence_` compares canonical serialised artefact fields and
+   excludes runtime-only state, so persisted artefact JSON and a rehydrated artefact
+   model instance carrying identical assessment content compare equivalent. Model
+   instances are serialised via `BaseTaskArtifact.toJSON()` before comparison.
+   Canonical compared artefact fields are the documented
+   [BaseTaskArtifact](#sub-entity-basetaskartifact) fields (`taskId`, `role`, `pageId`,
+   `documentId`, `content`, `metadata`, `type`). Excluded runtime-only fields are
+   `contentHash`, `uid`/`_uid`, `taskIndex`, `artifactIndex`, and any non-serialised
+   live-instance internals (e.g. `TableTaskArtifact._rows`). Task-level fields compared
+   are `id`, `pageId`, `taskTitle`, `taskNotes`, `taskMetadata` (absent → `{}`), and the
+   ordered `artifacts.reference`/`artifacts.template` collections; `taskWeighting` and
+   `index` never affect the decision. Absent optional scalars normalise to `null` and
+   absent metadata to `{}`, so persisted omissions and parser-produced nulls compare
+   equal.
+   Regression coverage:
+   `tests/y_controllers/AssignmentDefinitionTaskEquivalence.test.js` (canonical
+   fields, exclusions, key/array order, reason precedence) and
+   `tests/y_controllers/AssignmentDefinitionTaskEquivalenceBoundary.test.js`
+   (persisted plain artefact JSON versus a rehydrated `TaskDefinition` via `fromJSON`,
+   reversed direction, TABLE artefacts with live `_rows`, changed content).
+   Source: `AssignmentDefinitionTaskEquivalence.js`.
+
+2. **All-or-nothing parser result rule (implemented).**
+   Any invalid task in parser output, or a zero-task parse, blocks persistence of the
+   refreshed definition; only a fully valid, non-empty parse may persist. The Slides
+   parser path validates each candidate task and records invalid-task presence on the
+   non-enumerable `hasInvalidTasks` marker of the returned task map instead of silently
+   returning the valid remainder. `parseTasksOrThrow_` rejects a marked parse and a
+   zero-task parse with `DEFINITION_PARSE_FAILED` before the orchestrator reaches
+   persistence, leaving the stored definition and freshness timestamps unchanged.
+   Regression coverage:
+   `tests/controllers/assignmentDefinitionController.upsert.recoveryDiagnostics.test.js`
+   (zero-task and mixed valid/invalid outcomes with zero writes).
+   Source: `AssignmentDefinitionTaskParser.js`; `AssignmentDefinitionRecoveryRules.js`.
+
+3. **Recovery invalid-request preconditions (implemented).**
+   A forced reparse without an existing `definitionKey`, and `forceReparse: true`
+   combined with `taskWeightings`, are documented request-contract violations and
+   surface as `INVALID_REQUEST` (`ApiValidationError` without a custom `code`, asserted
+   at the API envelope). `DEFINITION_STALE` and `DEFINITION_PARSE_FAILED` codes are
+   unchanged, and the create-time `expectedDefinitionUpdatedAt` null/omission behaviour
+   (Wontfix) is not altered.
+   Regression coverage:
+   `tests/controllers/assignmentDefinitionController.upsert.recoveryDiagnostics.test.js`
+   (envelope assertion for the precondition failure).
+   Source: `AssignmentDefinitionRecoveryRules.js` (`assertRecoveryPreconditions_`).
+
+4. **Non-content error classification preservation (implemented).**
+   Only recognised content parsing failures map to `DEFINITION_PARSE_FAILED`.
+   `parseTasksOrThrow_` classifies an unclassified native `Error` (name `'Error'`) as a
+   content failure and wraps it with `DEFINITION_PARSE_FAILED`. Typed/named errors —
+   authorisation, rate-limit (`ApiRateLimitError`), and persistence (`PersistError`) —
+   are rethrown unchanged, so their own error type drives the envelope mapping rather
+   than being reclassified as a parse failure (see
+   [`transport-envelope.md`](transport-envelope.md#recovery-classification-semantics)).
+   Regression coverage:
+   `tests/controllers/assignmentDefinitionController.upsert.recoveryDiagnostics.test.js`
+   (rate-limit, persistence, and authorisation classifications preserved; logger seam
+   asserts safe context and the original parser error).
+   Source: `AssignmentDefinitionRecoveryRules.js` (`isRecognisedContentParsingFailure_`).
 
 **`upsertAssignmentDefinition` recovery request fields (implemented):**
 
-| Field                         | Type           | Required | Notes                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
-| ----------------------------- | -------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `forceReparse`                | `boolean`      | no       | Optional. `true` is accepted **only with an existing `definitionKey`**; it forces document parsing regardless of timestamps. Omission or `false` retains existing upsert behaviour; a forced create and invalid types are rejected. Transport/control information — never persisted or returned. `forceReparse: true` must be **rejected when combined with `taskWeightings`** to avoid ambiguous patch precedence (explicit forced requests omit weighting patches). |
-| `expectedDefinitionUpdatedAt` | `string` (ISO) | no       | Optional approval-save baseline; the value is the existing response `updatedAt` from the latest load/reparse. Compared against the currently stored `updatedAt` before applying edits; a mismatch returns `DEFINITION_STALE` with no writes. Requests omitting it retain ordinary upsert behaviour for existing non-wizard callers. No new response field — `updatedAt` is already returned.                                                                          |
+| Field                         | Type           | Required | Notes                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| ----------------------------- | -------------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `forceReparse`                | `boolean`      | no       | Optional. `true` is accepted **only with an existing `definitionKey`**; it forces document parsing regardless of timestamps. Omission or `false` retains existing upsert behaviour; a forced create and invalid types are rejected. Transport/control information — never persisted or returned. `forceReparse: true` must be **rejected when combined with `taskWeightings`** to avoid ambiguous patch precedence (explicit forced requests omit weighting patches).                                                         |
+| `expectedDefinitionUpdatedAt` | `string` (ISO) | no       | Optional approval-save baseline; the value is the existing response `updatedAt` from the latest load/reparse. When supplied non-null it must be a strict ISO datetime string with timezone info. Compared against the currently stored `updatedAt` before applying edits; a mismatch returns `DEFINITION_STALE` with no writes. Explicit `null` is accepted for create-time requests and omission retains ordinary upsert behaviour for existing non-wizard callers. No new response field — `updatedAt` is already returned. |
 
-**Reparse, freshness and weighting semantics (backend implemented):**
+**Reparse, freshness and weighting semantics (implemented):**
 
 - Explicit reparse uses the current persisted metadata/document identifiers (or the
   existing, explicitly confirmed URL-change workflow) and omits `taskWeightings`;
@@ -331,7 +450,7 @@ Key contract notes:
 **Parse-failure semantics (implemented):**
 
 - A stable, non-retriable `DEFINITION_PARSE_FAILED` code (see
-  [`transport-envelope.md`](transport-envelope.md#error-code--definition_parse_failed-implemented))
+  [`transport-envelope.md`](transport-envelope.md#error-code--definition_parse_failed))
   covers recognised document/task parsing failures. The envelope mapper honours
   `ApiValidationError.code`, so the backend rejection surfaces with this code.
 - An invalid task or a zero-task result blocks the refresh and persists nothing; the
@@ -384,16 +503,16 @@ Frontend Zod:
 
 `TaskDefinition.toJSON()` emits:
 
-| Field           | Type           | Backend toJSON() | Frontend Zod (full)                                                                           | Frontend Zod (partial)                               | Notes                                                                                                                                                  |
-| --------------- | -------------- | ---------------- | --------------------------------------------------------------------------------------------- | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `id`            | `string`       | Always emitted   | `AssignmentDefinitionTaskSchema.taskId: TrimmedNonEmptyStringSchema`                          | `TaskPartialSchema.taskId: z.string().min(1)`        | Stable ID derived from `taskTitle`+`pageId` hash (`t_`-prefixed).                                                                                      |
-| `taskTitle`     | `string`       | Always emitted   | `AssignmentDefinitionTaskSchema.taskTitle: TrimmedNonEmptyStringSchema`                       | `TaskPartialSchema.taskTitle: z.string().nullable()` | Task title. Nullable in partial shape for legacy/missing titles.                                                                                       |
-| `pageId`        | `string\|null` | Always emitted   | — (not in transport schema)                                                                   | —                                                    | Source page ID for the task. Omitted from both frontend schemas.                                                                                       |
-| `taskNotes`     | `string\|null` | Always emitted   | —                                                                                             | —                                                    | Optional task notes. Omitted from frontend transport schemas.                                                                                          |
-| `taskMetadata`  | `object`       | Always emitted   | —                                                                                             | —                                                    | Optional metadata object. Omitted from frontend transport schemas.                                                                                     |
-| `taskWeighting` | `number`       | Always emitted   | `AssignmentDefinitionTaskSchema.taskWeighting: WeightingSchema` (`z.number().min(0).max(10)`) | `TaskPartialSchema.taskWeighting: z.number()`        | Defaults to 1 in constructor. Full schema enforces 0–10 range. Partial schema expects `number` — `null` from legacy records would be rejected.         |
-| `index`         | `number\|null` | Always emitted   | —                                                                                             | —                                                    | Positional index. Omitted from frontend transport schemas.                                                                                             |
-| `artifacts`     | `Object`       | Always emitted   | —                                                                                             | —                                                    | `{ reference: BaseTaskArtifact[], template: BaseTaskArtifact[] }`. Omitted from frontend transport schemas — only present in full backend persistence. |
+| Field           | Type           | Backend toJSON() | Frontend Zod (full)                                                                           | Frontend Zod (partial)                               | Notes                                                                                                                                                                                         |
+| --------------- | -------------- | ---------------- | --------------------------------------------------------------------------------------------- | ---------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `id`            | `string`       | Always emitted   | `AssignmentDefinitionTaskSchema.taskId: TrimmedNonEmptyStringSchema`                          | `TaskPartialSchema.taskId: z.string().min(1)`        | Stable ID derived from `taskTitle`+`pageId` hash (`t_`-prefixed).                                                                                                                             |
+| `taskTitle`     | `string`       | Always emitted   | `AssignmentDefinitionTaskSchema.taskTitle: TrimmedNonEmptyStringSchema`                       | `TaskPartialSchema.taskTitle: z.string().nullable()` | Task title. Nullable in partial shape for legacy/missing titles.                                                                                                                              |
+| `pageId`        | `string\|null` | Always emitted   | — (not in transport schema)                                                                   | —                                                    | Source page ID for the task. Omitted from both frontend schemas.                                                                                                                              |
+| `taskNotes`     | `string\|null` | Always emitted   | —                                                                                             | —                                                    | Optional task notes. Omitted from frontend transport schemas.                                                                                                                                 |
+| `taskMetadata`  | `object`       | Always emitted   | —                                                                                             | —                                                    | Optional metadata object. Omitted from frontend transport schemas.                                                                                                                            |
+| `taskWeighting` | `number`       | Always emitted   | `AssignmentDefinitionTaskSchema.taskWeighting: WeightingSchema` (`z.number().min(0).max(10)`) | `TaskPartialSchema.taskWeighting: z.number()`        | Defaults to `1` in the constructor; hydration keeps that default when a stored value is null. Full schema enforces 0–10 range; the partial schema expects a number and rejects legacy `null`. |
+| `index`         | `number\|null` | Always emitted   | —                                                                                             | —                                                    | Positional index. Omitted from frontend transport schemas.                                                                                                                                    |
+| `artifacts`     | `Object`       | Always emitted   | —                                                                                             | —                                                    | `{ reference: BaseTaskArtifact[], template: BaseTaskArtifact[] }`. Omitted from frontend transport schemas — only present in full backend persistence.                                        |
 
 `TaskDefinition.toPartialJSON()` emits the same shape as `toJSON()` but with
 `artifacts.reference` and `artifacts.template` mapped through `BaseTaskArtifact.toPartialJSON()`
@@ -407,9 +526,11 @@ Key notes:
   `AssignmentDefinitionPartialSchema.tasks` (the registry transport).
 - `taskTitle` is nullable in `TaskPartialSchema` to carry legacy or missing titles through
   to the heatmap column (where the table header falls back to `taskId` for display).
-- `taskWeighting` is nullable in `TaskPartialSchema` because the backend
-  `_computePartialTasks()` may emit `null` when a TaskDefinition has null weighting
-  (see [Known discrepancies](#known-discrepancies-between-backend-and-frontend)).
+- `taskWeighting` is numeric in `TaskPartialSchema` (`z.number()`). The runtime-supported shape
+  is numeric: the `TaskDefinition` constructor defaults it to `1` and hydration keeps that default
+  when a stored value is null, so `toPartialJSON()` emits a number for hydrated full definitions.
+  A legacy partial-wire-format row that persisted `null` would still fail the frontend parse —
+  tracked as Known discrepancy 1 below.
 
 ### Sub-entity: BaseTaskArtifact
 
@@ -491,13 +612,28 @@ Key notes:
 - `src/frontend/src/services/assignmentDefinition/assignmentTopics.zod.ts`:
   - `AssignmentTopicSchema` — validates topic reference data entries (`key: TrimmedNonEmptyStringSchema`, `name: TrimmedNonEmptyStringSchema`). Note: this schema does **not** include `yearGroupKeys`; see Reference Data contract for the authoritative 3-field schema.
 
+**Service response diagnostics (implemented):**
+
+- `src/frontend/src/services/assignmentDefinition/assignmentDefinitionService.ts` →
+  `getAssignmentDefinition()` and `upsertAssignmentDefinition()` both route response
+  validation through the shared `parseApiResponse()` helper in
+  `src/frontend/src/services/apiService.ts`. Schema-validation failures therefore emit
+  the shared bounded diagnostics (`method`, structured `zodIssues`, truncated
+  `responsePreview`) before the `ZodError` is rethrown. The validated response shapes
+  (`AssignmentDefinitionSchema`) and all field tables above are unchanged — only the
+  service-boundary parse call and its diagnostics changed. Regression coverage:
+  `src/frontend/src/services/assignmentDefinition/assignmentDefinitionService.parseApiResponse.spec.ts`
+  (delivered as Batch 3 of the PR-review remediation).
+
 **Backend transport validation:**
 
 - `src/backend/z_Api/assignmentDefinition/assignmentDefinitionUpsertValidation.js`:
-  - `validateUpsertParameters_()` — validates upsert request: `params` is object, recovery field shapes (`forceReparse` boolean, `expectedDefinitionUpdatedAt` string when provided), required fields present, `primaryTitle` is string, `primaryTopicKey` is safe trimmed identifier, `referenceDocumentId`/`templateDocumentId` are strings (ID-shape) or URL-shape via `validateWizardUpsertParameters_()`, `definitionKey` is safe trimmed identifier if provided, `taskWeightings` shape validated, `yearGroupKey` validated.
-  - `validateWizardUpsertParameters_()` — validates URL-shape upsert: recovery field shapes, required URL fields, mutual exclusion, URL parsing via `extractSupportedDocumentDescriptor_()`, same-document and same-type checks.
-  - `validateRecoveryFieldShapes_()` — validates transport-level shapes of the recovery control fields: `forceReparse` must be a boolean and `expectedDefinitionUpdatedAt` must be a string when provided (the `forceReparse` + `taskWeightings` mutual exclusion is domain-owned by the upsert orchestrator).
+  - `validateUpsertParameters_()` — validates the upsert request once at the transport entry: `params` is object; recovery field shapes via a single `validateRecoveryFieldShapes_()` call; required fields present; `primaryTitle` is string; `primaryTopicKey`, `referenceDocumentId` (ID-shape), `templateDocumentId` (ID-shape), and `definitionKey` (when provided) are safe trimmed identifiers; URL-shape via `validateWizardUpsertParameters_()`; `taskWeightings` shape validated; `yearGroupKey` validated.
+  - `validateWizardUpsertParameters_()` — validates only the URL-shape upsert: required URL fields, `primaryTopicKey`/`definitionKey` safety, `yearGroupKey`, `taskWeightings` shape, URL parsing via `extractSupportedDocumentDescriptor_()`, and same-document/same-type checks. It does **not** re-validate recovery field shapes.
+  - `validateRecoveryFieldShapes_()` — validates transport-level shapes of the recovery control fields exactly once per request: `forceReparse` must be a boolean when provided; a supplied non-null `expectedDefinitionUpdatedAt` must be a strict ISO datetime string with timezone info, with explicit `null` and omission accepted. The `forceReparse` + `taskWeightings` mutual exclusion is domain-owned by the upsert orchestrator.
   - `validateRequiredYearGroupKey_()` — validates `yearGroupKey` is present, non-null, safe trimmed identifier.
+- `src/backend/z_Api/assignmentDefinitionTransport.js`:
+  - `extractSupportedDocumentDescriptor_()` — parses `referenceDocumentUrl`/`templateDocumentUrl` and applies `validateSafeTrimmedIdentifier_()` to the extracted document-ID path segment, rejecting `/`, `\`, `..`, untrimmed values, and control characters before any controller or Drive access.
 - `src/backend/z_Api/assignmentDefinition/assignmentDefinitionValidation.js`:
   - `validateReadParameters_()` — validates `getAssignmentDefinition` request: params object, `definitionKey` is safe trimmed identifier.
   - `validateDeleteParameters_()` — validates `deleteAssignmentDefinition` request: params object, `definitionKey` is safe trimmed identifier.
@@ -523,14 +659,17 @@ Key notes:
 
 1. **`toPartialJSON()` may emit `taskWeighting: null` but `TaskPartialSchema` expects `z.number()`.**
    Backend `AssignmentDefinition._computePartialTasks()` returns `taskWeighting: task.taskWeighting`
-   for each task, which can be `null` if a stored TaskDefinition has a null weighting (possible
-   from legacy records or `fromJSON` deserialisation). Frontend `TaskPartialSchema` declares
-   `taskWeighting: z.number()` which rejects `null`.
+   for each task. For the keyed-object (full-definition) path the value is numeric because
+   `TaskDefinition` hydration defaults a null weighting to `1`; the partial-wire-format array path
+   passes the stored value through verbatim, so a legacy persisted partial row carrying `null`
+   would be emitted as `null`. Frontend `TaskPartialSchema` declares `taskWeighting: z.number()`
+   which rejects `null`.
    **Classification: Fragile** — currently works because all newly created TaskDefinitions
-   default weighting to 1, but legacy records with null weighting would cause a Zod parse error
-   in `getAssignmentDefinitionPartials`. The response mapper `_getFullAssignmentDefinition()`
-   (used by `getAssignmentDefinition` and `upsertAssignmentDefinition`) filters out null-weighting
-   tasks, so the full-definition path is safe. Only the partial path is affected.
+   default weighting to 1, but a legacy partial-wire-format record with null weighting would cause
+   a Zod parse error in `getAssignmentDefinitionPartials`. The response mapper
+   `_getFullAssignmentDefinition()` (used by `getAssignmentDefinition` and
+   `upsertAssignmentDefinition`) filters out null-weighting tasks, so the full-definition path is
+   safe. Only the partial path is affected.
 
 2. **`referenceLastModified` and `templateLastModified` exist in persistence but are omitted from transport.**
    Both `toJSON()` and the full cache store these timestamps for lazy-refresh decisions, but
@@ -575,7 +714,7 @@ Persistence model:         src/backend/Models/AssignmentDefinition.js
   └── AssignmentDefinition.toJSON()          — full definition shape (tasks as keyed object)
   └── AssignmentDefinition.toPartialJSON()   — partial registry shape (tasks as array)
   └── AssignmentDefinition.fromJSON()        — deserialisation (coerces tasks: null → [])
-  └── AssignmentDefinition.buildDefinitionKey() — metadata-derived key generation
+  └── AssignmentDefinition.buildDefinitionKey() — constructor-fallback metadata key (production create uses the orchestrator's opaque UUID)
   └── AssignmentDefinition._computePartialTasks() — partial tasks array computation
 
 TaskDefinition model:      src/backend/Models/TaskDefinition.js
@@ -602,7 +741,7 @@ Controller:                src/backend/y_controllers/AssignmentDefinition/
   ├── AssignmentDefinitionTaskEquivalence.js — Task equivalence comparator (reparse reconciliation)
   ├── AssignmentDefinitionRecoveryRules.js   — Recovery and reparse rules (forced-reparse gating, approval baseline, parse-failure mapping, weighting restoration)
   ├── AssignmentDefinitionPersistence.js     — Database read/write
-  ├── AssignmentDefinitionUpsertOrchestrator.js — Upsert orchestration
+  ├── AssignmentDefinitionUpsertOrchestrator.js — Upsert orchestration (_generateStableKey() = opaque Utilities.getUuid())
   └── AssignmentDefinitionResponseMapper.js  — _getFullAssignmentDefinition()
 
 API handlers:              src/backend/z_Api/

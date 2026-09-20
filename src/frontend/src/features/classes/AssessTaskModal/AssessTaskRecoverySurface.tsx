@@ -1,6 +1,11 @@
-import { Alert, Button, Modal, Space, Typography } from 'antd';
-import { useCallback, useEffect, useState, type JSX } from 'react';
-import { mapErrorCodeToUserMessage } from '../../../errors/map-error-to-ui';
+import { Alert, Button, Space } from 'antd';
+import { useEffect, useState, type JSX } from 'react';
+import { mapErrorCodeToUserMessage, mapErrorToUserMessage } from '../../../errors/map-error-to-ui';
+import {
+  APP_GAP_MD,
+  APP_SPACE_SIZE_DEFAULT,
+} from '../../../theme/spacing';
+import { AssignmentDiscardConfirm } from '../../assignmentWizard/AssignmentDiscardConfirm';
 import { AssignmentDefinitionWizardReviewContent } from '../../assignmentWizard/AssignmentDefinitionWizardReviewContent';
 import { ManageTopicsModal } from '../../referenceData/ManageTopicsModal';
 import { ManageYearGroupsModal } from '../../referenceData/ManageYearGroupsModal';
@@ -15,19 +20,12 @@ import type {
   CapturedStartContext,
 } from './assessTaskFlowData';
 
-const { Text } = Typography;
-
 const STALE_PROMPT_MESSAGE = mapErrorCodeToUserMessage('DEFINITION_STALE');
 const REPARSING_MESSAGE = 'The definition is being refreshed from its current documents.';
 const REVIEW_CAVEAT_MESSAGE =
   'Reparsing has already refreshed the stored definition. Cancelling review discards only unsaved edits.';
-const FAILED_FALLBACK_MESSAGE = 'An error occurred. Please try again.';
-
-/**
- * Deterministic accessible-name id for the in-modal recovery discard
- * confirmation, mirroring the create-path discard dialog.
- */
-const DISCARD_CONFIRM_TITLE_ID = 'assess-task-recovery-discard-confirm-title';
+/** Generic failure copy sourced from the shared error registry (single source of truth). */
+const FAILED_FALLBACK_MESSAGE = mapErrorToUserMessage(null);
 
 /**
  * Registers (or clears) the recovery review's modal-level cancel intent.
@@ -78,13 +76,6 @@ export function AssessTaskRecoverySurface(
     };
   }, [registerReviewCancel, recovery.cancelReview, recovery.phase]);
 
-  // Re-anchors the nested discard dialog's accessible name to its own title.
-  // rc-dialog labels every dialog with the same auto-generated id, so without
-  // this the confirmation would inherit the owning modal's name.
-  const labelDiscardDialog = useCallback((node: HTMLDivElement | null): void => {
-    node?.setAttribute('aria-labelledby', DISCARD_CONFIRM_TITLE_ID);
-  }, []);
-
   return (
     <>
       {renderRecoveryPhase(recovery, () => setManageTopicsModalOpen(true), () =>
@@ -106,26 +97,11 @@ export function AssessTaskRecoverySurface(
         }}
         open={manageYearGroupsModalOpen}
       />
-      <Modal
-        centered
-        destroyOnHidden
-        footer={
-          <Space>
-            <Button onClick={recovery.handleKeepEditing}>Keep editing</Button>
-            <Button danger onClick={recovery.handleDiscardConfirm} type="primary">
-              Discard changes
-            </Button>
-          </Space>
-        }
-        keyboard
-        onCancel={recovery.handleKeepEditing}
+      <AssignmentDiscardConfirm
         open={recovery.showDiscardConfirm}
-        panelRef={labelDiscardDialog}
-        title={<span id={DISCARD_CONFIRM_TITLE_ID}>Discard changes</span>}
-        transitionName=""
-      >
-        <Text>You have unsaved changes. Discard and close?</Text>
-      </Modal>
+        onKeepEditing={recovery.handleKeepEditing}
+        onDiscard={recovery.handleDiscardConfirm}
+      />
     </>
   );
 }
@@ -163,18 +139,17 @@ function renderRecoveryPhase(
 }
 
 /**
- * Renders the body content and action row for the active recovery phase.
+ * Renders the stale-definition prompt: warning alert plus the Cancel and
+ * Update actions.
  *
  * @param {AssessTaskRecoveryFlow} recovery The recovery flow state and handlers.
- * @param {() => void} onTopicAddNew Opens the Manage Topics child dialog.
- * @param {() => void} onYearGroupAddNew Opens the Manage Year Groups child dialog.
- * @returns {JSX.Element | null} The phase content, or null while idle.
+ * @returns {JSX.Element} The stale-prompt region.
  */
 function renderStalePrompt(recovery: AssessTaskRecoveryFlow): JSX.Element {
   return (
-    <Space orientation="vertical" size="middle" style={{ width: '100%' }}>
+    <Space orientation="vertical" size={APP_SPACE_SIZE_DEFAULT} style={{ width: '100%' }}>
       <Alert showIcon title={STALE_PROMPT_MESSAGE} type="warning" />
-      <Space>
+      <Space size={APP_SPACE_SIZE_DEFAULT}>
         <Button onClick={recovery.cancelFlow}>Cancel</Button>
         <Button
           onClick={() => {
@@ -194,16 +169,14 @@ function renderStalePrompt(recovery: AssessTaskRecoveryFlow): JSX.Element {
  * Cancel-only footer.
  *
  * @param {AssessTaskRecoveryFlow} recovery The recovery flow state and handlers.
- * @param {() => void} onTopicAddNew Opens the Manage Topics child dialog.
- * @param {() => void} onYearGroupAddNew Opens the Manage Year Groups child dialog.
- * @returns {JSX.Element} The review surface.
+ * @returns {JSX.Element} The reparsing region.
  */
 function renderReparsing(recovery: AssessTaskRecoveryFlow): JSX.Element {
   return (
-    <Space orientation="vertical" size="middle" style={{ width: '100%' }}>
+    <Space orientation="vertical" size={APP_SPACE_SIZE_DEFAULT} style={{ width: '100%' }}>
       <Alert showIcon title={REPARSING_MESSAGE} type="warning" />
       <RecoveryReviewSkeleton />
-      <Space>
+      <Space size={APP_SPACE_SIZE_DEFAULT}>
         <Button onClick={recovery.cancelFlow}>Cancel</Button>
       </Space>
     </Space>
@@ -219,9 +192,9 @@ function renderReparsing(recovery: AssessTaskRecoveryFlow): JSX.Element {
  */
 function renderFailure(recovery: AssessTaskRecoveryFlow): JSX.Element {
   return (
-    <Space orientation="vertical" size="middle" style={{ width: '100%' }}>
+    <Space orientation="vertical" size={APP_SPACE_SIZE_DEFAULT} style={{ width: '100%' }}>
       <Alert showIcon title={recovery.errorMessage ?? FAILED_FALLBACK_MESSAGE} type="error" />
-      <Space>
+      <Space size={APP_SPACE_SIZE_DEFAULT}>
         <Button onClick={recovery.cancelFlow}>Cancel</Button>
         <Button
           onClick={() => {
@@ -253,15 +226,27 @@ function renderReview(
 ): JSX.Element {
   return (
     <>
-      <Alert showIcon title={REVIEW_CAVEAT_MESSAGE} type="info" style={{ marginBottom: 16 }} />
+      <Alert
+        showIcon
+        title={REVIEW_CAVEAT_MESSAGE}
+        type="info"
+        style={{ marginBottom: APP_GAP_MD }}
+      />
       {recovery.saveErrorMessage === null ? null : (
-        <Alert showIcon title={recovery.saveErrorMessage} type="error" style={{ marginBottom: 16 }} />
+        <Alert
+          showIcon
+          title={recovery.saveErrorMessage}
+          type="error"
+          style={{ marginBottom: APP_GAP_MD }}
+        />
       )}
       <AssignmentDefinitionWizardReviewContent
+        mode="update"
         documentChange={recovery.documentChange}
         form={recovery.form}
         hasDirtyEdits={recovery.hasDirtyEdits}
         hasParsedTasks={recovery.hasParsedTasks}
+        showAlerts
         isMutationBusy={recovery.isMutationBusy}
         isPrimaryActionDisabled={false}
         onCancel={recovery.cancelReview}

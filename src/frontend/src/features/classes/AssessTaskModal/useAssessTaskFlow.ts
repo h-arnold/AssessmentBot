@@ -4,6 +4,7 @@ import { getGoogleClassroomAssignments } from '../../../services/googleClassroom
 import { findMatchingDefinition } from './matchDefinitionForAssignment';
 import { startAssessmentRun } from '../../../services/assignmentAssessment/assignmentAssessmentService';
 import { ApiTransportError } from '../../../errors/apiTransportError';
+import { mapErrorToUserMessage } from '../../../errors/map-error-to-ui';
 import { queryKeys } from '../../../query/queryKeys';
 import { useAssessTaskLinkFlow } from './useAssessTaskLinkFlow';
 import { useAssessTaskCreateFlow } from './useAssessTaskCreateFlow';
@@ -30,16 +31,14 @@ export type AssessmentRecoveryState = 'idle' | 'stale-prompt';
  * the assessment lifecycle, the no-match choice/create resolution, the
  * captured assessment-start context, and the stale-recovery transitions.
  *
- * @remarks This hook exists because SPEC.md mandates decomposing the 955-line
- * `AssessTaskModal.tsx` before recovery behaviour lands: the rendering
+ * @remarks This hook decomposes `AssessTaskModal.tsx` so the rendering
  * component stays declarative while this module owns both state machines
  * (matching/linking flow plus the captured start context) and the
- * stale-recovery transitions. Sections 7–9 consume the stub recovery
- * contract (`assessmentRecoveryState` / `transitionToStaleRecovery`) and the
- * captured start context (`{definitionKey, assignmentId, courseId}`) without
- * rematching cached titles or relying on error details surviving the generic
- * envelope schema. The stale-prompt state currently renders nothing of
- * itself (Section 9 adds the recovery UI); it only routes.
+ * stale-recovery transitions. Downstream consumers use
+ * the recovery state and the captured start context (`{definitionKey, assignmentId, courseId}`)
+ * rather than rematching cached titles. While `assessmentRecoveryState` is
+ * `stale-prompt`, `AssessTaskRecoverySurface` renders the recovery UI; this
+ * hook only routes to that state.
  *
  * The link-to-existing-definition flow lives in `useAssessTaskLinkFlow` and
  * the create-new-definition flow in `useAssessTaskCreateFlow` (both composed
@@ -50,8 +49,8 @@ export type AssessmentRecoveryState = 'idle' | 'stale-prompt';
  * @param {AssessTaskFlowParameters} parameters The modal open flag and class identifier.
  * @returns {object} The flow state and handlers consumed by `AssessTaskModal`.
  */
-export function useAssessTaskFlow(parameters?: AssessTaskFlowParameters) {
-  const { open = false, classId = '' } = parameters ?? {};
+export function useAssessTaskFlow(parameters: AssessTaskFlowParameters) {
+  const { open, classId } = parameters;
   const queryClient = useQueryClient();
 
   const [assignments, setAssignments] = useState<AssessTaskAssignment[]>([]);
@@ -79,8 +78,8 @@ export function useAssessTaskFlow(parameters?: AssessTaskFlowParameters) {
   const pendingStartContextReference = useRef<CapturedStartContext | null>(null);
 
   /**
-   * Records the attempted start context in state (for Sections 7–9 consumers)
-   * and in a ref (for stale-routing inside async catch blocks, where state
+   * Records the attempted start context in state for recovery and assessment
+   * resumption, and in a ref (for stale-routing inside async catch blocks, where state
    * reads would be stale).
    *
    * @param {CapturedStartContext} context The attempted definition, assignment and course identifiers.
@@ -131,15 +130,17 @@ export function useAssessTaskFlow(parameters?: AssessTaskFlowParameters) {
 
   /**
    * Transitions to stale-recovery routing after a `DEFINITION_STALE` start
-   * rejection, invalidating the definition-partials cache and moving the
-   * recovery state to `'stale-prompt'`. It never selects `'creating'`, so the
-   * genuine create path keeps sole ownership of that state.
+   * rejection, invalidating the definition-partials cache, clearing the
+   * no-match resolution and moving the recovery state to `'stale-prompt'`. It
+   * never selects `'creating'`, so the genuine create path keeps sole ownership
+   * of that state.
    *
    * @param {string} definitionKey The stale definition key to recover.
    * @returns {void}
    */
   function transitionToStaleRecovery(definitionKey: string): void {
     queryClient.invalidateQueries({ queryKey: queryKeys.assignmentDefinitionPartials() });
+    setNoMatchResolution('idle');
     setRecoveryDefinitionKey(definitionKey);
     setCapturedStartContext((previous) =>
       previous === null ? previous : { ...previous, definitionKey }
@@ -158,6 +159,7 @@ export function useAssessTaskFlow(parameters?: AssessTaskFlowParameters) {
   function endRecovery(): void {
     setAssessmentRecoveryState('idle');
     setRecoveryDefinitionKey(null);
+    setNoMatchResolution('idle');
     setAssessmentState('idle');
     setAssessmentError(undefined);
   }
@@ -249,39 +251,32 @@ export function useAssessTaskFlow(parameters?: AssessTaskFlowParameters) {
     selectedAssignmentIdReference.current = undefined;
     pendingStartContextReference.current = null;
 
+    // Reset both state machines on modal open, regardless of fetch outcome.
+    const resetModalState = (): void => {
+      setNoMatchResolution('idle');
+      setSelectedAssignmentForChoice(null);
+      resetCreateState();
+      resetLinkSelection();
+      setAssessmentState('idle');
+      setAssessmentError(undefined);
+      setAssessmentRecoveryState('idle');
+      setRecoveryDefinitionKey(null);
+      setCapturedStartContext(null);
+      setSelectedAssignmentId(undefined);
+    };
+
     getGoogleClassroomAssignments(classId)
       .then((data) => {
         if (!cancelled) {
-          // Reset both state machines on modal open (SPEC.md transition rule 0)
-          setNoMatchResolution('idle');
-          setSelectedAssignmentForChoice(null);
-          resetCreateState();
-          resetLinkSelection();
-          setAssessmentState('idle');
-          setAssessmentError(undefined);
-          setAssessmentRecoveryState('idle');
-          setRecoveryDefinitionKey(null);
-          setCapturedStartContext(null);
-          setSelectedAssignmentId(undefined);
+          resetModalState();
           setAssignments(data);
           setFetchState('ready');
         }
       })
       .catch((error: unknown) => {
         if (!cancelled) {
-          // Reset state machines even on fetch failure
-          setNoMatchResolution('idle');
-          setSelectedAssignmentForChoice(null);
-          resetCreateState();
-          resetLinkSelection();
-          setAssessmentState('idle');
-          setAssessmentError(undefined);
-          setAssessmentRecoveryState('idle');
-          setRecoveryDefinitionKey(null);
-          setCapturedStartContext(null);
-          setSelectedAssignmentId(undefined);
-          const message = error instanceof Error ? error.message : 'Failed to fetch assignments';
-          setErrorMessage(message);
+          resetModalState();
+          setErrorMessage(mapErrorToUserMessage(error));
           setFetchState('error');
         }
       });
@@ -419,11 +414,9 @@ export function useAssessTaskFlow(parameters?: AssessTaskFlowParameters) {
    */
   function handleApiError(error: unknown): void {
     if (error instanceof ApiTransportError && error.code === 'DEFINITION_STALE') {
-      setAssessmentAsError('warning', error.message);
-    } else if (error instanceof Error) {
-      setAssessmentAsError('error', error.message);
+      setAssessmentAsError('warning', mapErrorToUserMessage(error));
     } else {
-      setAssessmentAsError('error', 'An unexpected error occurred.');
+      setAssessmentAsError('error', mapErrorToUserMessage(error));
     }
   }
 
@@ -492,7 +485,6 @@ export function useAssessTaskFlow(parameters?: AssessTaskFlowParameters) {
     handleAssignmentChange,
     handleLinkSelect,
     getLoadingButtonLabel,
-    transitionToStaleRecovery,
     endRecovery,
     settleAssessment,
   };

@@ -8,7 +8,6 @@ import {
 } from './shared/endToEndRuntimeMocks';
 import {
   ALGEBRA_HOMEWORK_DATA,
-  MOCK_COURSEWORK_ASSIGNMENTS,
   algebraHomeworkEntry,
   createAssessTaskScenario,
   createLinkableScenario,
@@ -39,6 +38,36 @@ import {
 // ---------------------------------------------------------------------------
 // Shared constants and helpers
 // ---------------------------------------------------------------------------
+
+/**
+ * Opens the in-modal create review and changes its title so the wizard is dirty.
+ *
+ * @param {Page} page - Playwright page under test.
+ * @returns {Promise<import('@playwright/test').Locator>} The owning modal dialog.
+ */
+async function openDirtyCreateReview(page: Page) {
+  const scenario = createAssessTaskScenario({
+    getGoogleClassroomAssignments: [algebraHomeworkEntry(), algebraHomeworkEntry()],
+  });
+  await installRuntimeMock(page, scenario);
+  const dialog = await openAssessTaskModal(page);
+
+  await selectAssignmentAndStart(dialog, page);
+  await dialog.getByRole('button', { name: 'Create New Definition' }).click();
+  const title = dialog.getByRole('textbox', { name: /assignment title/i });
+  await title.fill('Edited Algebra Homework');
+  return page.getByRole('dialog', { name: /Assess Task —/ });
+}
+
+/**
+ * Locates the nested discard confirmation without matching the owning modal.
+ *
+ * @param {Page} page - Playwright page under test.
+ * @returns {import('@playwright/test').Locator} The discard confirmation dialog.
+ */
+function getDiscardConfirmationDialog(page: Page) {
+  return page.locator('[role="dialog"][aria-labelledby="assignment-discard-confirm-title"]');
+}
 
 test.describe('Assess Task modal', () => {
   test('opens with correct title, Select dropdown, and disabled Start Assessment', async ({
@@ -192,7 +221,9 @@ test.describe('Assess Task modal', () => {
     // Verify Alert with error message is shown
     const alert = dialog.getByRole('alert');
     await expect(alert).toBeVisible();
-    await expect(alert).toContainText('Classroom API error');
+    await expect(alert).toContainText(
+      'An internal error occurred. Please try again or contact support if the issue persists.'
+    );
 
     // Verify Start Assessment is disabled
     await expect(dialog.getByRole('button', { name: 'Start Assessment' })).toBeDisabled();
@@ -231,7 +262,7 @@ test.describe('Assess Task modal', () => {
     // component's state update.
     const deferredEntry = {
       kind: 'deferredSuccess' as const,
-      data: MOCK_COURSEWORK_ASSIGNMENTS[0].data,
+      data: [{ assignmentId: 'cw-1', title: 'Algebra Homework' }],
     };
 
     const scenario = createAssessTaskScenario({
@@ -242,6 +273,7 @@ test.describe('Assess Task modal', () => {
 
     // Verify loading spinner is visible
     await expect(dialog.getByRole('status')).toBeVisible();
+    await expect(dialog.getByRole('status')).toHaveAttribute('aria-busy', 'true');
 
     // Verify Start Assessment is disabled while loading
     await expect(dialog.getByRole('button', { name: 'Start Assessment' })).toBeDisabled();
@@ -488,7 +520,9 @@ test.describe('Assess Task modal', () => {
     ).toBeVisible();
   });
 
-  test('outer Cancel during in-modal creation returns to the choice prompt', async ({ page }) => {
+  test('review-content Cancel during in-modal creation returns to the choice prompt', async ({
+    page,
+  }) => {
     const scenario = createAssessTaskScenario({
       getGoogleClassroomAssignments: [algebraHomeworkEntry(), algebraHomeworkEntry()],
     });
@@ -515,6 +549,70 @@ test.describe('Assess Task modal', () => {
 
     await expect(dialog.getByRole('button', { name: 'Create New Definition' })).toBeVisible();
     await expect(page.getByRole('dialog')).toHaveCount(1);
+  });
+
+  test('owning-modal close button confirms before dismissing dirty in-modal create edits', async ({
+    page,
+  }) => {
+    const dialog = await openDirtyCreateReview(page);
+
+    await dialog.getByRole('button', { name: 'Close' }).click();
+
+    const discardDialog = getDiscardConfirmationDialog(page);
+    await expect(discardDialog).toBeVisible();
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByRole('textbox', { name: /assignment title/i })).toHaveValue(
+      'Edited Algebra Homework'
+    );
+
+    await discardDialog.getByRole('button', { name: 'Keep editing' }).click();
+    await expect(discardDialog).toHaveCount(0);
+    await expect(dialog.getByRole('textbox', { name: /assignment title/i })).toHaveValue(
+      'Edited Algebra Homework'
+    );
+
+    await dialog.getByRole('button', { name: 'Close' }).click();
+    await expect(getDiscardConfirmationDialog(page)).toBeVisible();
+    await getDiscardConfirmationDialog(page)
+      .getByRole('button', { name: 'Discard changes' })
+      .click();
+    await expect(getDiscardConfirmationDialog(page)).toHaveCount(0);
+    await expect(dialog.getByRole('button', { name: 'Create New Definition' })).toBeVisible();
+    await expect(dialog).toBeVisible();
+  });
+
+  test('Escape confirms before dismissing dirty in-modal create edits', async ({ page }) => {
+    const dialog = await openDirtyCreateReview(page);
+
+    await page.keyboard.press('Escape');
+
+    const discardDialog = getDiscardConfirmationDialog(page);
+    await expect(discardDialog).toBeVisible();
+    await expect(dialog).toBeVisible();
+
+    await discardDialog.getByRole('button', { name: 'Keep editing' }).click();
+    await expect(discardDialog).toHaveCount(0);
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByRole('textbox', { name: /assignment title/i })).toHaveValue(
+      'Edited Algebra Homework'
+    );
+  });
+
+  test('owning-modal mask click confirms before dismissing dirty in-modal create edits', async ({
+    page,
+  }) => {
+    const dialog = await openDirtyCreateReview(page);
+
+    await page.locator('.ant-modal-wrap').click({ position: { x: 10, y: 10 } });
+
+    const discardDialog = getDiscardConfirmationDialog(page);
+    await expect(discardDialog).toBeVisible();
+    await expect(dialog).toBeVisible();
+
+    await discardDialog.getByRole('button', { name: 'Discard changes' }).click();
+    await expect(discardDialog).toHaveCount(0);
+    await expect(dialog.getByRole('button', { name: 'Create New Definition' })).toBeVisible();
+    await expect(dialog).toBeVisible();
   });
 
   // ==========================================================================
@@ -838,7 +936,9 @@ test.describe('Assess Task modal', () => {
 
       // Verify error Alert
       await expect(dialog.getByRole('alert')).toBeVisible();
-      await expect(dialog.getByRole('alert')).toContainText('Failed to upsert definition');
+      await expect(dialog.getByRole('alert')).toContainText(
+        'An internal error occurred. Please try again or contact support if the issue persists.'
+      );
 
       // Cancel closes the modal
       await dialog.getByRole('button', { name: 'Cancel' }).click();

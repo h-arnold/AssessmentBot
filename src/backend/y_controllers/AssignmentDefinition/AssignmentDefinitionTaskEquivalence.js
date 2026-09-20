@@ -6,15 +6,15 @@
  * stored task, so the upsert orchestrator preserves stored weightings for
  * unchanged tasks and falls back to the default weighting for new or changed ones.
  *
- * Equivalence rule (SPEC section "Task equivalence"): same task identity and
- * equivalent parsed content (title, notes, task metadata, ordered
- * reference/template artefact collections). Object keys compare independent of
- * insertion order; array order is preserved. Weighting, derived content hashes,
- * generated UIDs and positional bookkeeping are excluded. No hash-equality-only
- * shortcuts and no fuzzy matching: any task/page identity difference is a change.
+ * Equivalence rule: same task identity and equivalent parsed content (title,
+ * notes, task metadata, ordered reference/template artefact collections).
+ * Object keys compare independent of insertion order; array order is preserved.
+ * Weighting, derived content hashes, generated UIDs and positional bookkeeping
+ * are excluded. No hash-equality-only shortcuts and no fuzzy matching: any
+ * task/page identity difference is a change.
  *
- * Parser-volatile fields identified before implementation (excluded wherever
- * carried): `taskWeighting` (operator-owned, never parsed content),
+ * Parser-volatile fields are excluded wherever carried: `taskWeighting`
+ * (operator-owned, never parsed content),
  * `contentHash` (derived from content, recomputed on every parse), `uid` on
  * serialised artefacts and `_uid` on live artefact instances (regenerated per
  * parse), `index` on tasks, `taskIndex` and `artifactIndex` bookkeeping.
@@ -130,27 +130,27 @@ function artefactListsEqual_(previousList, reparsedList) {
 }
 
 /**
- * Copies an artefact without volatile derived fields. Covers type, role,
- * source document/page identity, content and assessment-relevant metadata;
- * drops derived content hashes, generated UIDs and positional bookkeeping.
+ * Canonicalises an artefact to its persisted assessment content. Model instances
+ * serialise before comparison so runtime internals cannot make unchanged content
+ * appear different from persisted JSON.
  * Absent optional fields take their canonical parsed form for the same reason
  * as task-level fields.
  *
  * @param {Object} artefact - Artefact instance or plain JSON.
- * @returns {Object} Plain copy without volatile fields.
+ * @returns {Object} Canonical persisted artefact fields.
  */
 function normaliseArtefact_(artefact) {
-  const copy = { ...artefact };
-  delete copy.contentHash;
-  delete copy.uid;
-  delete copy._uid;
-  delete copy.taskIndex;
-  delete copy.artifactIndex;
-  copy.pageId = absentToNull_(copy.pageId);
-  copy.documentId = absentToNull_(copy.documentId);
-  copy.content = absentToNull_(copy.content);
-  copy.metadata = absentToEmptyObject_(copy.metadata);
-  return copy;
+  const source =
+    artefact && typeof artefact.toJSON === 'function' ? artefact.toJSON() : artefact || {};
+  return {
+    taskId: absentToNull_(source.taskId),
+    role: absentToNull_(source.role),
+    pageId: absentToNull_(source.pageId),
+    documentId: absentToNull_(source.documentId),
+    content: absentToNull_(source.content),
+    metadata: absentToEmptyObject_(source.metadata),
+    type: absentToNull_(source.type),
+  };
 }
 
 /**

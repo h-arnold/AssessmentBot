@@ -3,6 +3,7 @@ import { useCallback, useMemo, useState, type Dispatch, type SetStateAction } fr
 import { startAssessmentRun } from '../../../services/assignmentAssessment/assignmentAssessmentService';
 import { upsertAssignmentDefinition } from '../../../services/assignmentDefinition/assignmentDefinitionService';
 import { ApiTransportError } from '../../../errors/apiTransportError';
+import { mapErrorToUserMessage } from '../../../errors/map-error-to-ui';
 import { queryKeys } from '../../../query/queryKeys';
 import type { ClassPartial } from '../../../services/googleClassrooms/classPartials.zod';
 import type { AssignmentDefinitionPartial } from '../../../services/assignmentDefinition/assignmentDefinitionPartials.zod';
@@ -157,14 +158,11 @@ export function useAssessTaskLinkFlow(host: AssessTaskLinkHost) {
     if (linkWasCommitted) {
       setAssessmentAsError(
         'error',
-        `Link was committed but assessment could not be started: ${error instanceof Error ? error.message : 'Unknown error'}.`
+        `Link was committed but assessment could not be started: ${mapErrorToUserMessage(error)}`
       );
       return;
     }
-    setAssessmentAsError(
-      'error',
-      error instanceof Error ? error.message : 'An unexpected error occurred.'
-    );
+    setAssessmentAsError('error', mapErrorToUserMessage(error));
   }
 
   /**
@@ -173,7 +171,7 @@ export function useAssessTaskLinkFlow(host: AssessTaskLinkHost) {
    * unavailable so the caller can return early.
    *
    * @returns {AssignmentDefinitionPartial | undefined} The matching definition
-   *          partial, or `undefined` when the cache encounteres an error or the
+   *          partial, or `undefined` when the cache encounters an error or the
    *          partial is not found.
    */
   function resolveCachedDefinitionPartialForLink(): AssignmentDefinitionPartial | undefined {

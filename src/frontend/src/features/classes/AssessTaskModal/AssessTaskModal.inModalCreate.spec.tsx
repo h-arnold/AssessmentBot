@@ -14,7 +14,7 @@
  * extracted chrome-free review content renders in-modal.
  */
 
-import { screen, waitFor, within } from '@testing-library/react';
+import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { QueryClient } from '@tanstack/react-query';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -124,6 +124,7 @@ const TEMPLATE_URL_PATTERN = /template document url/i;
 const PARSE_BUTTON_PATTERN = /parse and continue/i;
 const TASK_TABLE_PATTERN = /task weightings/i;
 const DISCARD_DIALOG_PATTERN = /discard changes/i;
+const OWNING_AND_DISCARD_DIALOG_COUNT = 2;
 
 /**
  * Assignment chosen in the no-match flow. The topic ID matches the cached topics so
@@ -220,6 +221,39 @@ async function parseStageOne(dialog: HTMLElement): Promise<void> {
   });
 }
 
+/**
+ * Enters the dirty stage-two create review used by owning-modal dismissal tests.
+ *
+ * @param {HTMLElement} dialog - The owning assessment modal.
+ * @returns {Promise<void>} Resolves when the review contains unsaved edits.
+ */
+async function openDirtyCreateReview(dialog: HTMLElement): Promise<void> {
+  await fillStageOneUrls(dialog);
+  await parseStageOne(dialog);
+
+  setTextboxValue(
+    within(dialog).getByRole('textbox', { name: /assignment title/i }),
+    'Changed title'
+  );
+}
+
+/**
+ * Asserts that a dirty owning-modal dismissal opens the existing discard prompt
+ * and leaves the assessment modal open.
+ *
+ * @param {() => Promise<void>} dismiss - The dismissal interaction to exercise.
+ * @returns {Promise<void>} Resolves after the prompt is verified.
+ */
+async function expectDirtyDismissalToPrompt(
+  dismiss: () => Promise<void>
+): Promise<void> {
+  await dismiss();
+
+  const discardDialog = await screen.findByRole('dialog', { name: DISCARD_DIALOG_PATTERN });
+  expect(within(discardDialog).getByText(/unsaved changes/i)).toBeInTheDocument();
+  expect(screen.queryAllByRole('dialog')).toHaveLength(OWNING_AND_DISCARD_DIALOG_COUNT);
+}
+
 describe('AssessTaskModal in-modal create path', () => {
   beforeEach(() => {
     user = userEvent.setup();
@@ -277,6 +311,19 @@ describe('AssessTaskModal in-modal create path', () => {
     expect(dialog.style.width).toBe(WIDE_DATA_WIDTH);
   });
 
+  it('returns to the choice prompt from an unchanged stage-two review without confirmation', async () => {
+    const { dialog } = await openInModalCreate();
+
+    await fillStageOneUrls(dialog);
+    await parseStageOne(dialog);
+    await user.click(within(dialog).getByRole('button', { name: CANCEL_BUTTON_NAME }));
+
+    await waitFor(() => {
+      expect(within(dialog).getByRole('button', { name: CREATE_BUTTON_NAME })).toBeInTheDocument();
+    });
+    expect(screen.queryByRole('dialog', { name: DISCARD_DIALOG_PATTERN })).toBeNull();
+  });
+
   it('returns to the choice prompt when the in-modal review is cancelled without edits', async () => {
     const { dialog } = await openInModalCreate();
 
@@ -326,6 +373,40 @@ describe('AssessTaskModal in-modal create path', () => {
       expect(
         within(dialog).getByRole('button', { name: CREATE_BUTTON_NAME })
       ).toBeInTheDocument();
+    });
+  });
+
+  it('routes the owning close button through discard confirmation for dirty create edits', async () => {
+    const { dialog } = await openInModalCreate();
+
+    await openDirtyCreateReview(dialog);
+    await expectDirtyDismissalToPrompt(async () => {
+      await user.click(within(dialog).getByRole('button', { name: 'Close' }));
+    });
+  });
+
+  it('routes Escape through discard confirmation for dirty create edits', async () => {
+    const { dialog } = await openInModalCreate();
+
+    await openDirtyCreateReview(dialog);
+    await expectDirtyDismissalToPrompt(async () => {
+      await user.keyboard('{Escape}');
+    });
+  });
+
+  it('routes an owning mask click through discard confirmation for dirty create edits', async () => {
+    const { dialog } = await openInModalCreate();
+
+    await openDirtyCreateReview(dialog);
+    await expectDirtyDismissalToPrompt(async () => {
+      const wrap = dialog.closest('.ant-modal-wrap');
+      expect(wrap).not.toBeNull();
+
+      await act(async () => {
+        wrap!.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+        wrap!.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+        wrap!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      });
     });
   });
 

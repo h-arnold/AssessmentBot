@@ -3,6 +3,8 @@ import { Form } from 'antd';
 import { createElement, type JSX } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import type { AssignmentDefinition } from '../../services/assignmentDefinition/assignmentDefinition.zod';
+import editableDefinitionsRaw from '../../../../../tests/__mocks__/data/synthetic-analysis/small/editableDefinitions.json?raw';
+import shellSourceRaw from './AssignmentDefinitionWizardModalShell.tsx?raw';
 import { AssignmentDefinitionWizardReviewContent } from './AssignmentDefinitionWizardReviewContent';
 import type { TaskRow } from './useAssignmentDefinitionWizard';
 
@@ -29,7 +31,8 @@ async function loadAssignmentDefinitionWizardModalShell() {
 }
 
 describe('AssignmentDefinitionWizardModalShell', () => {
-  it('renders hydrated, loading, and blocking-error shell states for the assignment-definition wizard modal', async () => {    const { AssignmentDefinitionWizardModalShell } = await loadAssignmentDefinitionWizardModalShell();
+  it('renders hydrated, loading, and blocking-error shell states for the assignment-definition wizard modal', async () => {
+    const { AssignmentDefinitionWizardModalShell } = await loadAssignmentDefinitionWizardModalShell();
 
     const { rerender } = render(
       createElement(ShellStateHarness, { shell: AssignmentDefinitionWizardModalShell, mode: 'create' })
@@ -102,37 +105,33 @@ describe('AssignmentDefinitionWizardModalShell', () => {
   });
 });
 
+describe('AssignmentDefinitionWizardModalShell presentation hygiene', () => {
+  it('derives the primary-action label from the single shared derivation', () => {
+    const source = shellSourceRaw as unknown as string;
+
+    expect(source).toContain('derivePrimaryActionState');
+    expect(source).not.toMatch(/mode === 'create' \? 'Parse and continue' : 'Save'/);
+  });
+});
+
 /**
- * Static full-definition seed copied from the canonical Section 2
- * `transport.editableDefinitions` view (small profile `definition-0-slides`
- * record in `tests/__mocks__/data/synthetic-analysis/small/editableDefinitions.json`).
- * Frontend specs keep a static copy so they never import backend or GAS modules.
+ * Canonical small-profile `transport.editableDefinitions` view, imported as raw
+ * text so this spec consumes the committed synthetic fixture instead of a
+ * hand-copied literal that can silently drift from it.
  */
-const CANONICAL_EDITABLE_DEFINITION_SEED: AssignmentDefinition = {
-  definitionKey: 'definition-0-slides',
-  primaryTitle: 'Synthetic Assignment Definition 1',
-  primaryTopicKey: 'topic-0',
-  primaryTopic: 'Synthetic Topic 1',
-  yearGroupKey: 'year-group-7',
-  yearGroupLabel: 'Year 7',
-  alternateTitles: [],
-  alternateTopics: [],
-  documentType: 'SLIDES',
-  referenceDocumentId: 'reference-document-0',
-  templateDocumentId: 'template-document-0',
-  assignmentWeighting: 1,
-  tasks: [
-    { taskId: 'task-0-0', taskTitle: 'Synthetic Task 1.1', taskWeighting: 1 },
-    { taskId: 'task-0-1', taskTitle: 'Synthetic Task 1.2', taskWeighting: 1 },
-  ],
-  createdAt: '2024-01-02T09:00:00.000Z',
-  updatedAt: '2024-01-02T09:02:00.000Z',
-};
+const CANONICAL_EDITABLE_DEFINITIONS = JSON.parse(editableDefinitionsRaw) as Record<
+  string,
+  AssignmentDefinition
+>;
+
+/** Canonical `definition-0-slides` record exercised as the shell seed. */
+const CANONICAL_EDITABLE_DEFINITION_SEED: AssignmentDefinition =
+  CANONICAL_EDITABLE_DEFINITIONS['definition-0-slides'];
 
 /**
  * First task title from the canonical seed, reused by the task-row assertions.
  */
-const SEED_FIRST_TASK_TITLE = 'Synthetic Task 1.1';
+const SEED_FIRST_TASK_TITLE = CANONICAL_EDITABLE_DEFINITION_SEED.tasks[0].taskTitle;
 
 /**
  * Builds shell-shaped task rows from the canonical seed definition.
@@ -228,6 +227,7 @@ function ShellHarness(properties: Readonly<{
 function ReviewContentHarness(): JSX.Element {
   const [form] = Form.useForm();
   return createElement(AssignmentDefinitionWizardReviewContent, {
+    mode: 'update',
     hasParsedTasks: true,
     taskRows: buildSeedTaskRows(CANONICAL_EDITABLE_DEFINITION_SEED),
     documentChange: {
@@ -241,6 +241,7 @@ function ReviewContentHarness(): JSX.Element {
     primaryActionLabel: 'Save',
     isPrimaryActionDisabled: false,
     isMutationBusy: false,
+    showAlerts: true,
     onCancel: vi.fn(),
     onPrimaryAction: vi.fn(),
     onFormValuesChange: vi.fn(),

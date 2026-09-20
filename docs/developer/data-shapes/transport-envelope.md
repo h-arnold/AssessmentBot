@@ -81,14 +81,13 @@ payload or unknown field) — remain generic non-retriable `INVALID_REQUEST` cod
 The envelope mapper uses `ApiValidationError.code` when present and otherwise falls
 back to the generic `INVALID_REQUEST` mapping.
 
-### Error code — `DEFINITION_PARSE_FAILED` (implemented)
+### Error code — `DEFINITION_PARSE_FAILED`
 
-> **Status: Implemented (Sections 3 and 4, issue #301).** The backend throws
-> `ApiValidationError` with `code: 'DEFINITION_PARSE_FAILED'` for recognised
-> document/task parsing failures, and `_mapErrorToFailureEnvelope` honours
-> `ApiValidationError.code`, so the envelope surfaces this code. The frontend
-> error registry entry (`map-error-to-ui.ts`) maps it to the safe user copy
-> (Section 4).
+> **Status: Implemented.** The backend throws `ApiValidationError` with
+> `code: 'DEFINITION_PARSE_FAILED'` for recognised document/task parsing failures, and
+> `_mapErrorToFailureEnvelope` honours `ApiValidationError.code`, so the envelope
+> surfaces this code. The frontend error registry entry (`map-error-to-ui.ts`) maps it
+> to the safe user copy below.
 
 Stable, non-retriable `ApiValidationError` code for recognised
 document/task parsing failures. It maps to safe user copy: “The assignment documents
@@ -97,6 +96,37 @@ Raw diagnostic details stay in logs, not user copy. An invalid task or a zero-ta
 result must not persist a partial definition or start an assessment. Authorisation,
 rate-limit and persistence errors keep their distinct codes rather than being
 classified as parse failures.
+
+#### Recovery classification semantics
+
+The following semantics are the canonical implemented behaviour, delivered as Batch 1
+of the PR-review remediation (`ACTION_PLAN.md` → "Batch 1 - Backend Recovery
+Correctness").
+
+1. **Recovery invalid-request preconditions map to `INVALID_REQUEST`.**
+   A forced reparse without an existing `definitionKey`, and `forceReparse: true`
+   combined with `taskWeightings`, are documented request-contract violations.
+   `AssignmentDefinitionRecoveryRules.assertRecoveryPreconditions_` throws
+   `ApiValidationError` without a custom `code`, so `_mapErrorToFailureEnvelope` maps
+   it to `INVALID_REQUEST` (`ok: false`, `error.code === 'INVALID_REQUEST'`,
+   `retriable: false`).
+
+2. **Only recognised content failures map to `DEFINITION_PARSE_FAILED`.**
+   `AssignmentDefinitionRecoveryRules.parseTasksOrThrow_` classifies an unclassified
+   native `Error` (name `'Error'`) as a content failure and wraps it with
+   `DEFINITION_PARSE_FAILED`. Typed/named errors thrown during parsing —
+   authorisation, rate-limit (`ApiRateLimitError`), and persistence (`PersistError`) —
+   are rethrown unchanged, so their own error type drives the envelope mapping (for
+   example `RATE_LIMITED` for rate-limit) rather than being reclassified as
+   `DEFINITION_PARSE_FAILED`. `FORBIDDEN` remains an auth-gate code, not a
+   parser-error code.
+
+3. **An invalid task or zero-task result persists nothing.**
+   `AssignmentDefinitionTaskParser` marks invalid-task presence on the parsed task map
+   (non-enumerable `hasInvalidTasks`) rather than returning a partial valid remainder,
+   and `parseTasksOrThrow_` rejects a marked parse or a zero-task parse with
+   `DEFINITION_PARSE_FAILED` before the orchestrator reaches persistence. See
+   [Contract: AssignmentDefinition §Equivalence, parsing and recovery corrections](assignment-definition.md#equivalence-parsing-and-recovery-corrections).
 
 `FORBIDDEN` is produced directly by the `ApiDispatcher` auth gate in
 `z_apiHandler.js` — it is not thrown by a dedicated exception type. It covers both
@@ -132,6 +162,7 @@ z.object({
     code: z.string(),
     message: z.string(),
     retriable: z.boolean().optional(),
+    details: z.record(z.string(), z.unknown()).optional(),
   }),
   meta: z.record(z.string(), z.unknown()).optional(),
 });
@@ -156,6 +187,36 @@ z.object({
   exposing raw exception details.
 - **Request validation** checks `request.method` is a non-empty string and
   `request.params` is optional. Handlers validate their own parameters.
+
+## Error `details` block
+
+> **Status: Implemented.** The typed frontend preservation below was delivered as
+> Batch 3 of the PR-review remediation (`ACTION_PLAN.md` → "Batch 3 - Frontend
+> Transport and Safe Diagnostics") and is reconciled here from the previously
+> recorded planned-only entry.
+
+The backend error envelope may carry a structured `error.details` block: `_failure()`
+attaches it when non-null, and `_mapErrorToFailureEnvelope()` populates it for
+`DEFINITION_STALE` (`z_apiHandler.js`).
+
+Canonical frontend contract:
+
+- `ApiErrorResponseSchema.error` declares `details` as an optional open record
+  (`z.record(z.string(), z.unknown()).optional()`), so the backend block survives
+  envelope parsing instead of being stripped.
+- `ApiErrorEnvelope` (`apiTransportError.ts`) declares
+  `details?: Record<string, unknown>`, and `ApiTransportError` exposes
+  `public readonly details: Record<string, unknown> | undefined`.
+- `DEFINITION_STALE` remains the only code that populates `details` today, with the
+  documented shape `{ definitionKey, referenceStale, templateStale,
+referenceLastModified, templateLastModified }`. The field stays optional and open
+  because the envelope contract permits future codes to attach their own structured
+  metadata.
+- Absent details stay `undefined`; consumers must not default them.
+
+Source: `ACTION_PLAN.md` → "Batch 3 - Frontend Transport and Safe Diagnostics"
+("Typed `error.details` preservation through `ApiTransportError`") and `PR_REVIEW.md`
+→ Logging rules compliance / Data-shape docs consistency.
 
 ## Backend source
 

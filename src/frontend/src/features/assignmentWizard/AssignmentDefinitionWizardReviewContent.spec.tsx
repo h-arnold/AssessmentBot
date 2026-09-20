@@ -11,39 +11,28 @@ import { Form } from 'antd';
 import { createElement, type ComponentType, type JSX } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import type { AssignmentDefinition } from '../../services/assignmentDefinition/assignmentDefinition.zod';
+import editableDefinitionsRaw from '../../../../../tests/__mocks__/data/synthetic-analysis/small/editableDefinitions.json?raw';
+import reviewContentSourceRaw from './AssignmentDefinitionWizardReviewContent.tsx?raw';
 import type { TaskRow } from './useAssignmentDefinitionWizard';
 
 /**
- * Static full-definition seed copied from the canonical Section 2
- * `transport.editableDefinitions` view (small profile `definition-0-slides`
- * record in `tests/__mocks__/data/synthetic-analysis/small/editableDefinitions.json`).
- * Frontend specs keep a static copy so they never import backend or GAS modules.
+ * Canonical small-profile `transport.editableDefinitions` view, imported as raw
+ * text so this spec consumes the committed synthetic fixture instead of a
+ * hand-copied literal that can silently drift from it.
  */
-const CANONICAL_EDITABLE_DEFINITION_SEED: AssignmentDefinition = {
-  definitionKey: 'definition-0-slides',
-  primaryTitle: 'Synthetic Assignment Definition 1',
-  primaryTopicKey: 'topic-0',
-  primaryTopic: 'Synthetic Topic 1',
-  yearGroupKey: 'year-group-7',
-  yearGroupLabel: 'Year 7',
-  alternateTitles: [],
-  alternateTopics: [],
-  documentType: 'SLIDES',
-  referenceDocumentId: 'reference-document-0',
-  templateDocumentId: 'template-document-0',
-  assignmentWeighting: 1,
-  tasks: [
-    { taskId: 'task-0-0', taskTitle: 'Synthetic Task 1.1', taskWeighting: 1 },
-    { taskId: 'task-0-1', taskTitle: 'Synthetic Task 1.2', taskWeighting: 1 },
-  ],
-  createdAt: '2024-01-02T09:00:00.000Z',
-  updatedAt: '2024-01-02T09:02:00.000Z',
-};
+const CANONICAL_EDITABLE_DEFINITIONS = JSON.parse(editableDefinitionsRaw) as Record<
+  string,
+  AssignmentDefinition
+>;
+
+/** Canonical `definition-0-slides` record exercised as the review-content seed. */
+const CANONICAL_EDITABLE_DEFINITION_SEED: AssignmentDefinition =
+  CANONICAL_EDITABLE_DEFINITIONS['definition-0-slides'];
 
 /**
  * First task title from the canonical seed, reused by the task-row assertions.
  */
-const SEED_FIRST_TASK_TITLE = 'Synthetic Task 1.1';
+const SEED_FIRST_TASK_TITLE = CANONICAL_EDITABLE_DEFINITION_SEED.tasks[0].taskTitle;
 
 /**
  * Dynamically imports the wizard form-state module under test.
@@ -257,5 +246,34 @@ describe('AssignmentDefinitionWizardReviewContent', () => {
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     expect(document.querySelector('.ant-modal')).toBeNull();
+  });
+});
+
+describe('AssignmentDefinitionWizardReviewContent presentation hygiene', () => {
+  it('exposes an explicit alert-visibility contract instead of the optional-prop sentinel', async () => {
+    const reviewModule = await loadReviewContentModule();
+
+    expect(reviewModule).toHaveProperty('AssignmentDefinitionWizardReviewContent');
+    const source = reviewContentSourceRaw as unknown as string;
+
+    expect(source).toContain('showAlerts');
+    expect(source).not.toContain('hasParsedTasks !== undefined');
+  });
+
+  it('derives the primary-action label from the single shared derivation', async () => {
+    const source = reviewContentSourceRaw as unknown as string;
+
+    expect(source).toContain('derivePrimaryActionState');
+    expect(source).not.toMatch(/hasParsedTasks \? 'Save' : 'Parse and continue'/);
+  });
+
+  it('spaces alerts, rows, and actions with canonical spacing constants', () => {
+    const source = reviewContentSourceRaw as unknown as string;
+
+    expect(source).toContain('APP_GAP_MD');
+    expect(source).toContain('APP_SPACE_SIZE');
+    expect(source).not.toContain('marginBottom: 16');
+    expect(source).not.toContain('gap: 16');
+    expect(source).not.toContain('marginTop: 8');
   });
 });

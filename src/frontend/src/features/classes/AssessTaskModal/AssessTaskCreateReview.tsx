@@ -1,30 +1,18 @@
-import { Alert, Button, Modal, Space, Typography } from 'antd';
-import { useCallback, useState, type JSX } from 'react';
+import { Alert } from 'antd';
+import { useLayoutEffect, useRef, useState, type JSX } from 'react';
 import { useAssignmentDefinitionWizard } from '../../assignmentWizard/useAssignmentDefinitionWizard';
+import { AssignmentDiscardConfirm } from '../../assignmentWizard/AssignmentDiscardConfirm';
 import { AssignmentDefinitionWizardReviewContent } from '../../assignmentWizard/AssignmentDefinitionWizardReviewContent';
 import { ManageTopicsModal } from '../../referenceData/ManageTopicsModal';
 import { ManageYearGroupsModal } from '../../referenceData/ManageYearGroupsModal';
 
-const { Text } = Typography;
-
 const BLOCKING_ERROR_MESSAGE = 'Required reference data could not be trusted or loaded.';
-
-/**
- * Deterministic accessible-name id for the in-modal discard confirmation.
- *
- * @remarks
- * The confirmation is a nested Ant Design `Modal`, mirroring the wizard's
- * existing dirty-discard pattern. rc-dialog labels its dialog element with a
- * singleton auto-generated id, so a nested dialog would otherwise share the
- * owning modal's accessible name. Anchoring the confirmation to its own title
- * keeps the two dialogs distinctly labelled for assistive technology.
- */
-const DISCARD_CONFIRM_TITLE_ID = 'assess-task-create-discard-confirm-title';
 
 export type AssessTaskCreateReviewProperties = Readonly<{
   initialValues?: Readonly<{ title?: string; topic?: string; yearGroup?: string }>;
   onCreateSuccess: (definitionKey: string) => void;
   onClose: () => void;
+  registerModalCancel: (cancel: (() => void) | null) => void;
 }>;
 
 /**
@@ -43,22 +31,15 @@ export type AssessTaskCreateReviewProperties = Readonly<{
  * confirm) keep their existing modal behaviour; they are pickers rendered by this
  * wiring, not stacked workflow surfaces.
  *
- * @param {AssessTaskCreateReviewProperties} properties Initial values, create-success and cancel handlers.
+ * @param {AssessTaskCreateReviewProperties} properties Initial values, create-success, cancel and modal-cancel registration handlers.
  * @returns {JSX.Element} The in-modal create wizard content.
  */
 export function AssessTaskCreateReview(
   properties: AssessTaskCreateReviewProperties
 ): JSX.Element {
-  const { initialValues, onCreateSuccess, onClose } = properties;
+  const { initialValues, onCreateSuccess, onClose, registerModalCancel } = properties;
   const [manageTopicsModalOpen, setManageTopicsModalOpen] = useState(false);
   const [manageYearGroupsModalOpen, setManageYearGroupsModalOpen] = useState(false);
-
-  // Re-anchors the nested discard dialog's accessible name to its own title.
-  // rc-dialog labels every dialog with the same auto-generated id, so without
-  // this the confirmation would inherit the owning modal's name.
-  const labelDiscardDialog = useCallback((node: HTMLDivElement | null): void => {
-    node?.setAttribute('aria-labelledby', DISCARD_CONFIRM_TITLE_ID);
-  }, []);
 
   const {
     form,
@@ -84,8 +65,6 @@ export function AssessTaskCreateReview(
     handleKeepEditing,
     handleTaskWeightingChange,
     handlePrimaryAction,
-    handleTopicAddNew,
-    handleYearGroupAddNew,
     onTopicEntityCreated,
     onYearGroupEntityCreated,
   } = useAssignmentDefinitionWizard({
@@ -96,6 +75,17 @@ export function AssessTaskCreateReview(
     onCreateSuccess,
     onClose,
   });
+
+  const handleCloseReference = useRef(handleClose);
+
+  useLayoutEffect(() => {
+    handleCloseReference.current = handleClose;
+  }, [handleClose]);
+
+  useLayoutEffect(() => {
+    registerModalCancel(() => handleCloseReference.current());
+    return () => registerModalCancel(null);
+  }, [registerModalCancel]);
 
   if (isReferenceDataBlocked) {
     return <Alert showIcon title={BLOCKING_ERROR_MESSAGE} type="error" />;
@@ -108,10 +98,12 @@ export function AssessTaskCreateReview(
   return (
     <>
       <AssignmentDefinitionWizardReviewContent
+        mode="create"
         documentChange={documentChange}
         form={form}
         hasDirtyEdits={hasDirtyEdits}
         hasParsedTasks={hasParsedTasks}
+        showAlerts
         isMutationBusy={isSubmitting}
         isPrimaryActionDisabled={isPrimaryActionDisabled}
         onCancel={handleClose}
@@ -121,11 +113,9 @@ export function AssessTaskCreateReview(
         onReparseCancel={handleReparseCancel}
         onTaskWeightingChange={handleTaskWeightingChange}
         onTopicAddNew={() => {
-          handleTopicAddNew();
           setManageTopicsModalOpen(true);
         }}
         onYearGroupAddNew={() => {
-          handleYearGroupAddNew();
           setManageYearGroupsModalOpen(true);
         }}
         primaryActionLabel={primaryActionLabel}
@@ -154,26 +144,11 @@ export function AssessTaskCreateReview(
         open={manageYearGroupsModalOpen}
       />
 
-      <Modal
-        centered
-        destroyOnHidden
-        footer={
-          <Space>
-            <Button onClick={handleKeepEditing}>Keep editing</Button>
-            <Button danger onClick={handleDiscardConfirm} type="primary">
-              Discard changes
-            </Button>
-          </Space>
-        }
-        keyboard
-        onCancel={handleKeepEditing}
+      <AssignmentDiscardConfirm
         open={showDiscardConfirm}
-        panelRef={labelDiscardDialog}
-        title={<span id={DISCARD_CONFIRM_TITLE_ID}>Discard changes</span>}
-        transitionName=""
-      >
-        <Text>You have unsaved changes. Discard and close?</Text>
-      </Modal>
+        onKeepEditing={handleKeepEditing}
+        onDiscard={handleDiscardConfirm}
+      />
     </>
   );
 }

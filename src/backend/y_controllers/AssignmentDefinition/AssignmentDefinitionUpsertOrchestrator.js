@@ -280,18 +280,13 @@ class AssignmentDefinitionUpsertOrchestrator {
     ) {
       referenceLastModified = DriveManager.getFileModifiedTime(referenceDocumentId);
       templateLastModified = DriveManager.getFileModifiedTime(templateDocumentId);
-      const freshTasks = applyEquivalentStoredWeightings_(
-        existingTasks,
-        parseTasksOrThrow_({
-          taskParser: this.taskParser,
+      return {
+        finalTasks: this._parseAndReconcileTasks({
+          existingTasks,
           documentType,
           referenceDocumentId,
           templateDocumentId,
-        })
-      );
-
-      return {
-        finalTasks: this.taskWeighting.defaultTaskWeightings(freshTasks),
+        }),
         referenceLastModified,
         templateLastModified,
       };
@@ -314,20 +309,45 @@ class AssignmentDefinitionUpsertOrchestrator {
     }
 
     return {
-      finalTasks: this.taskWeighting.defaultTaskWeightings(
-        applyEquivalentStoredWeightings_(
-          existingTasks,
-          parseTasksOrThrow_({
-            taskParser: this.taskParser,
-            documentType,
-            referenceDocumentId,
-            templateDocumentId,
-          })
-        )
-      ),
+      finalTasks: this._parseAndReconcileTasks({
+        existingTasks,
+        documentType,
+        referenceDocumentId,
+        templateDocumentId,
+      }),
       referenceLastModified: latestReferenceModified,
       templateLastModified: latestTemplateModified,
     };
+  }
+
+  /**
+   * Parses fresh tasks, restores equivalent stored weightings, and applies
+   * constructor-owned defaults for new or changed tasks.
+   *
+   * @param {Object} params - Parse and reconciliation parameters.
+   * @param {Object} params.existingTasks - Stored task map.
+   * @param {string} params.documentType - Document type.
+   * @param {string} params.referenceDocumentId - Reference document ID.
+   * @param {string} params.templateDocumentId - Template document ID.
+   * @returns {Object} Reconciled task map.
+   * @private
+   */
+  _parseAndReconcileTasks({
+    existingTasks,
+    documentType,
+    referenceDocumentId,
+    templateDocumentId,
+  }) {
+    /* global parseTasksOrThrow_, applyEquivalentStoredWeightings_ */
+    const parsedTasks = parseTasksOrThrow_({
+      taskParser: this.taskParser,
+      documentType,
+      referenceDocumentId,
+      templateDocumentId,
+    });
+    return this.taskWeighting.defaultTaskWeightings(
+      applyEquivalentStoredWeightings_(existingTasks, parsedTasks)
+    );
   }
 
   /**

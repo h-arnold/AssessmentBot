@@ -1,5 +1,5 @@
 import { Alert, Button, Empty, Modal, Select, Space, Tooltip, Typography } from 'antd';
-import { useCallback, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { useAssessTaskFlow } from './useAssessTaskFlow';
 import { AssessTaskCreateReview } from './AssessTaskCreateReview';
 import { AssessTaskRecoverySurface } from './AssessTaskRecoverySurface';
@@ -16,20 +16,7 @@ export type AssessTaskModalProperties = Readonly<{
 /** Approved shared modal-width exception applied while wizard content is active. */
 const WIDE_DATA_MODAL_WIDTH = 'var(--app-modal-width-wide-data)';
 
-/**
- * Derives the owning modal width: the wide-data exception while in-modal
- * wizard or recovery content is active, otherwise Ant Design's default width.
- *
- * @param {boolean} isCreateContentActive Whether the in-modal create path is active.
- * @param {boolean} isRecoveryActive Whether the stale-recovery surface is active.
- * @returns {string | undefined} The width value, or undefined for the default.
- */
-function deriveModalWidth(
-  isCreateContentActive: boolean,
-  isRecoveryActive: boolean
-): string | undefined {
-  return isCreateContentActive || isRecoveryActive ? WIDE_DATA_MODAL_WIDTH : undefined;
-}
+type ModalDismissEvent = Readonly<{ stopPropagation: () => void }>;
 
 /**
  * Modal for selecting a Google Classroom assignment to assess.
@@ -85,9 +72,10 @@ export function AssessTaskModal(properties: Readonly<AssessTaskModalProperties>)
   // recovery phase lives inside `AssessTaskRecoverySurface`; while that phase
   // is `review` the surface registers its cancel handler through
   // `registerRecoveryReviewCancel` so the owning modal's dismiss affordance
-  // runs the review cancel semantics (layout spec region 4). It is null for
-  // every other recovery phase and outside recovery.
+  // runs the review cancel semantics. It is null for every other recovery
+  // phase and outside recovery.
   const recoveryReviewCancelReference = useRef<(() => void) | null>(null);
+  const createWizardCancelReference = useRef<(() => void) | null>(null);
 
   /**
    * Registers (or clears) the recovery review's modal-level cancel intent.
@@ -100,35 +88,76 @@ export function AssessTaskModal(properties: Readonly<AssessTaskModalProperties>)
   }, []);
 
   /**
-   * Handles the owning modal's dismiss intent (Escape, backdrop or the close
-   * affordance). While the recovery review is active it delegates to the
-   * registered review cancel path so dirty edits still require the discard
-   * confirmation and a discarded review ends recovery on the selection body
-   * instead of closing the owning modal. Every other state closes the modal,
-   * matching the active recovery state's Cancel semantics.
+   * Registers (or clears) the in-modal create wizard's close intent.
    *
+   * @param {(() => void) | null} cancel The wizard close handler, or null to clear it.
    * @returns {void}
    */
-  function handleModalCancel(): void {
+  const registerCreateWizardCancel = useCallback((cancel: (() => void) | null): void => {
+    createWizardCancelReference.current = cancel;
+  }, []);
+
+  /**
+   * Handles the owning modal's dismiss intent (Escape, backdrop or the close
+   * affordance). While the recovery review is active it delegates to the
+   * registered review cancel path, and while the in-modal create wizard is
+   * active it delegates to the registered wizard close handler. Dirty edits in
+   * either surface therefore still require the discard confirmation, and a
+   * discarded surface returns to its own state instead of closing the owning
+   * modal. When no cancel intent is registered it closes the modal.
+   *
+   * @param {ModalDismissEvent} [event] The dismissal event, when supplied by Ant Design.
+   * @returns {void}
+   */
+  const handleModalCancel = useCallback((event?: ModalDismissEvent): void => {
     const cancelReview = recoveryReviewCancelReference.current;
     if (cancelReview !== null) {
+      event?.stopPropagation();
       cancelReview();
       return;
     }
+    const cancelCreateWizard = createWizardCancelReference.current;
+    if (cancelCreateWizard !== null) {
+      event?.stopPropagation();
+      cancelCreateWizard();
+      return;
+    }
     onClose();
-  }
+  }, [onClose]);
 
   // The in-modal create wizard content is active only while resolving the
-  // no-match choice. The recovery surface owns the body while the Section 6
-  // routing stub is on `stale-prompt`.
+  // no-match choice. The recovery surface owns the body while the recovery
+  // state is `stale-prompt`.
   const isCreateContentActive = noMatchResolution === 'creating' && assessmentState === 'idle';
   const isRecoveryActive = assessmentRecoveryState === 'stale-prompt';
   // Exactly one footer is visible at all times: the owning footer is suppressed
   // whenever any in-modal wizard/recovery content owns the body.
   const isWizardContentActive = isCreateContentActive || isRecoveryActive;
   // The approved wide-data modal width applies while wizard/recovery content is
-  // active so the task-weightings table is not horizontally compressed.
-  const modalWidth = deriveModalWidth(isCreateContentActive, isRecoveryActive);
+  // active so the task-weightings table is not horizontally compressed; otherwise
+  // Ant Design's default width is retained.
+  const modalWidth = isWizardContentActive ? WIDE_DATA_MODAL_WIDTH : undefined;
+
+  useEffect(() => {
+    if (!isCreateContentActive) return;
+
+    /**
+     * Routes Escape through the create wizard before Ant Design closes the
+     * owning modal.
+     *
+     * @param {KeyboardEvent} event The keyboard event to consume.
+     * @returns {void}
+     */
+    function handleCreateWizardEscape(event: KeyboardEvent): void {
+      if (event.key !== 'Escape') return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      handleModalCancel(event);
+    }
+
+    document.addEventListener('keydown', handleCreateWizardEscape, true);
+    return () => document.removeEventListener('keydown', handleCreateWizardEscape, true);
+  }, [isCreateContentActive, handleModalCancel]);
 
   /**
    * Renders the dropdown and assignment-selection body content.
@@ -414,6 +443,7 @@ export function AssessTaskModal(properties: Readonly<AssessTaskModalProperties>)
               initialValues={wizardInitialValues}
               onCreateSuccess={handleWizardCreateSuccess}
               onClose={handleWizardClose}
+              registerModalCancel={registerCreateWizardCancel}
             />
           )}
         </>

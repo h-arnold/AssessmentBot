@@ -33,7 +33,6 @@ export interface WizardMutationErrorContext {
   mode: 'create' | 'update';
   definitionKey: string | null;
   actionType: WizardActionType;
-  requestPayload: UpsertAssignmentDefinitionRequest;
 }
 
 /**
@@ -49,6 +48,12 @@ export interface WizardUpsertResult {
  * Logs a wizard mutation failure with correlation identifiers and maps it to
  * user-safe copy through the shared error registry.
  *
+ * @remarks
+ * Logs only the allow-listed `mode`, `definitionKey`, `actionType`, `requestId`,
+ * and `errorCode` fields. Do not add request payloads, task data, or document
+ * content. Stack traces flow through the logger's dedicated `stack` field so
+ * production stack policy applies.
+ *
  * @param {string} contextName - Logger context name.
  * @param {unknown} error - The caught mutation error.
  * @param {WizardMutationErrorContext} context - Structured wizard mutation context.
@@ -59,14 +64,14 @@ export function logAndMapWizardMutationError(
   error: unknown,
   context: WizardMutationErrorContext
 ): string {
+  const requestId = extractRequestId(error);
+  const errorCode = extractErrorCode(error);
   logFrontendError(contextName, error, {
     mode: context.mode,
     definitionKey: context.definitionKey,
     actionType: context.actionType,
-    requestId: extractRequestId(error) ?? undefined,
-    errorCode: extractErrorCode(error) ?? undefined,
-    requestPayload: context.requestPayload,
-    stack: error instanceof Error ? error.stack : undefined,
+    ...(requestId === null ? {} : { requestId }),
+    ...(errorCode === null ? {} : { errorCode }),
   });
   return mapErrorToUserMessage(error);
 }
@@ -376,7 +381,6 @@ export function useWizardMutationSequence(options: WizardMutationSequenceOptions
           mode,
           definitionKey: mutationOptions.definitionKey,
           actionType: mutationOptions.actionType,
-          requestPayload: mutationOptions.request,
         },
       });
 
