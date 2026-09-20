@@ -55,13 +55,15 @@ Sub-agents are stateless. Provide explicit context in prompts:
 - error/output details
 - exact changes already made
 - mandatory documentation that must be read for the task, written as `@`-prefixed
-  worktree-relative paths (e.g. `@AGENTS.md`, `@src/backend/Services/AssessmentService.js`)
+  worktree-relative paths (e.g. `@SPEC.md`, `@src/backend/Services/AssessmentService.js`)
   so opencode injects the line-numbered file contents into the sub-agent's context.
   Bare paths in prose are not injected; only `@path` tokens are, and they must not be
   immediately preceded by a word character or backtick.
+- Do not attach agent definition files (`.opencode/agents/*.md`) or agent instruction files (`AGENTS.md`).
+  Sub-agents already have their own instructions injected.
 
-Sub-agent handoffs must include a `Mandatory Reading` section listing mandatory files as
-`@`-prefixed paths.
+Sub-agent handoffs must include a `Mandatory Reading` section listing mandatory task-specific files as
+`@`-prefixed paths. Do not re-list documentation the sub-agent is already required to read per its own instructions.
 If mandatory documentation is missing from `Files read`, return the work to the same sub-agent and do not proceed.
 
 ### 5. Shared Config Rule
