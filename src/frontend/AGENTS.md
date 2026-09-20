@@ -293,3 +293,25 @@ Rules:
 - Do not move files outside `services/` — only reorganise within it.
 - Barrel (`index.ts`) exports are optional; prefer direct imports for clarity unless a
   service domain exports many unrelated symbols.
+
+## 15. Large File Decomposition
+
+When a frontend source file under `src/frontend/src/**` exceeds **550 lines**, decomposition is
+mandatory when the file is in scope for the change. Do not leave an over-threshold file intact
+because the current change did not create the excess; decompose it in the same change. Split the
+file into focused, coherent modules that follow the existing feature, component, hook, service,
+and helper boundaries. Preserve the public behaviour and contracts of the original module.
+
+Rules:
+
+- Treat 550 lines as a hard decomposition trigger for every frontend file being worked on. Do
+  not defer the split or merely move additional logic elsewhere while leaving the over-threshold
+  file without a justified responsibility boundary.
+- Never reduce the line count using formatting tricks: do not remove blank lines, join statements,
+  compress JSX or TypeScript, shorten names, or condense, delete, or weaken comments, JSDoc, or
+  documentation. A smaller file is not decomposed unless its responsibilities are actually split
+  into maintainable modules.
+- Do not create speculative one-caller helpers solely to hide lines. Each extracted module must
+  own a coherent responsibility and follow the shared-helper and abstraction rules.
+- Keep imports, exports, tests, accessibility behaviour, and runtime contracts correct after the
+  split. Update co-located tests and imports when module paths change.
