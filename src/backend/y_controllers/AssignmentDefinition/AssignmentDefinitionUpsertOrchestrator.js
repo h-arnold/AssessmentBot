@@ -40,7 +40,7 @@ class AssignmentDefinitionUpsertOrchestrator {
    * @returns {AssignmentDefinition} Persisted full definition.
    */
   upsert(payload) {
-    /* global Validate, AssignmentDefinition */
+    /* global Validate, AssignmentDefinition, assertRecoveryPreconditions_, assertApprovalBaselineFresh_ */
     Validate.requireParams({ payload }, 'AssignmentDefinitionController.upsertDefinition');
 
     // Inlined validation logic from _buildUpsertContext
@@ -48,14 +48,19 @@ class AssignmentDefinitionUpsertOrchestrator {
       throw new TypeError('upsertDefinition payload must be an object.');
     }
 
+    const isForceReparse = payload.forceReparse === true;
     const isUpdate = this.validation.isNonEmptyString(payload.definitionKey);
     const existingDefinition = isUpdate
       ? this.persistence._getStoredFullDocument(payload.definitionKey.trim())
       : null;
 
+    assertRecoveryPreconditions_(payload, isUpdate);
+
     if (isUpdate && !existingDefinition) {
       throw new Error(`Unknown definitionKey for update: ${payload.definitionKey}`);
     }
+
+    assertApprovalBaselineFresh_(existingDefinition, payload.updatedAt, isUpdate);
 
     const primaryTitle = this.validation.requireTrimmedString(payload.primaryTitle, 'primaryTitle');
     const primaryTopicKey = this.validation.requireTrimmedString(
@@ -92,6 +97,7 @@ class AssignmentDefinitionUpsertOrchestrator {
       documentType: this._resolveDocumentType({ payload, existingDefinition }),
       referenceDocumentId,
       templateDocumentId,
+      forceReparse: isForceReparse,
     });
 
     const finalTasks = this._applyTaskWeightingsIfProvided({
@@ -239,12 +245,18 @@ class AssignmentDefinitionUpsertOrchestrator {
   /**
    * Resolves task state and timestamp updates for upsert operations.
    *
+   * A forced reparse bypasses the timestamp short-circuit so the explicit
+   * recovery/manual-reparse path always parses the current documents.
+   * Ordinary upserts without document changes keep the short-circuit and
+   * never parse.
+   *
    * @param {Object} params - Resolution parameters.
    * @param {boolean} params.isUpdate - Whether this is an update.
    * @param {Object|null} params.existingDefinition - Existing definition when updating.
    * @param {string} params.documentType - Document type.
    * @param {string} params.referenceDocumentId - Reference document ID.
    * @param {string} params.templateDocumentId - Template document ID.
+   * @param {boolean} [params.forceReparse=false] - Whether to force full parsing.
    * @returns {{finalTasks: Object, referenceLastModified: string|null, templateLastModified: string|null}} Task state.
    * @private
    */
@@ -254,29 +266,27 @@ class AssignmentDefinitionUpsertOrchestrator {
     documentType,
     referenceDocumentId,
     templateDocumentId,
+    forceReparse = false,
   }) {
-    /* global DriveManager, DateUtils */
+    /* global DriveManager, DateUtils, parseTasksOrThrow_, applyEquivalentStoredWeightings_ */
     const existingTasks = isUpdate ? existingDefinition.tasks || {} : {};
     let referenceLastModified = isUpdate ? existingDefinition.referenceLastModified : null;
     let templateLastModified = isUpdate ? existingDefinition.templateLastModified : null;
 
     if (
       !isUpdate ||
+      forceReparse ||
       this._hasDocumentIdChanges(existingDefinition, referenceDocumentId, templateDocumentId)
     ) {
       referenceLastModified = DriveManager.getFileModifiedTime(referenceDocumentId);
       templateLastModified = DriveManager.getFileModifiedTime(templateDocumentId);
-      const freshTasks = this.taskWeighting.applyStoredWeightings(
-        existingTasks,
-        this.taskParser.parseTasks({
+      return {
+        finalTasks: this._parseAndReconcileTasks({
+          existingTasks,
           documentType,
           referenceDocumentId,
           templateDocumentId,
-        })
-      );
-
-      return {
-        finalTasks: this.taskWeighting.defaultTaskWeightings(freshTasks),
+        }),
         referenceLastModified,
         templateLastModified,
       };
@@ -299,19 +309,45 @@ class AssignmentDefinitionUpsertOrchestrator {
     }
 
     return {
-      finalTasks: this.taskWeighting.defaultTaskWeightings(
-        this.taskWeighting.applyStoredWeightings(
-          existingTasks,
-          this.taskParser.parseTasks({
-            documentType,
-            referenceDocumentId,
-            templateDocumentId,
-          })
-        )
-      ),
+      finalTasks: this._parseAndReconcileTasks({
+        existingTasks,
+        documentType,
+        referenceDocumentId,
+        templateDocumentId,
+      }),
       referenceLastModified: latestReferenceModified,
       templateLastModified: latestTemplateModified,
     };
+  }
+
+  /**
+   * Parses fresh tasks, restores equivalent stored weightings, and applies
+   * constructor-owned defaults for new or changed tasks.
+   *
+   * @param {Object} params - Parse and reconciliation parameters.
+   * @param {Object} params.existingTasks - Stored task map.
+   * @param {string} params.documentType - Document type.
+   * @param {string} params.referenceDocumentId - Reference document ID.
+   * @param {string} params.templateDocumentId - Template document ID.
+   * @returns {Object} Reconciled task map.
+   * @private
+   */
+  _parseAndReconcileTasks({
+    existingTasks,
+    documentType,
+    referenceDocumentId,
+    templateDocumentId,
+  }) {
+    /* global parseTasksOrThrow_, applyEquivalentStoredWeightings_ */
+    const parsedTasks = parseTasksOrThrow_({
+      taskParser: this.taskParser,
+      documentType,
+      referenceDocumentId,
+      templateDocumentId,
+    });
+    return this.taskWeighting.defaultTaskWeightings(
+      applyEquivalentStoredWeightings_(existingTasks, parsedTasks)
+    );
   }
 
   /**

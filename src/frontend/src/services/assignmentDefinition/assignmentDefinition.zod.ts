@@ -1,5 +1,8 @@
 import { z } from 'zod';
-import { NullableIsoDateTimeWithTimezoneSchema } from './assignmentDefinitionPartials.zod';
+import {
+  IsoDateTimeWithTimezoneSchema,
+  NullableIsoDateTimeWithTimezoneSchema,
+} from './assignmentDefinitionPartials.zod';
 
 export const MIN_WEIGHTING_VALUE = 0;
 export const MAX_WEIGHTING_VALUE = 10;
@@ -116,7 +119,8 @@ function hasAllIdFields(
  * Upsert request schema supporting two mutually exclusive shapes:
  * - URL-shape (wizard): `referenceDocumentUrl` + `templateDocumentUrl` (both required, no ID fields)
  * - ID-shape (link flow): `referenceDocumentId` + `templateDocumentId` + `documentType` (all three required, no URL fields)
- * The `.superRefine()` delegates to `validateUpsertShape` for enforcement.
+ * The `.superRefine()` delegates to `validateUpsertShape` for enforcement, and rejects
+ * `forceReparse: true` combined with `taskWeightings` to avoid ambiguous patch precedence.
  */
 export const UpsertAssignmentDefinitionRequestSchema = z
   .object({
@@ -133,6 +137,8 @@ export const UpsertAssignmentDefinitionRequestSchema = z
     alternateTopics: z.array(TrimmedNonEmptyStringSchema).optional(),
     assignmentWeighting: WeightingSchema.optional().nullable(),
     taskWeightings: z.array(TaskWeightingInputSchema).optional(),
+    forceReparse: z.boolean().optional(),
+    updatedAt: IsoDateTimeWithTimezoneSchema.optional().nullable(),
   })
   .strict()
   .superRefine((value, context) => {
@@ -142,6 +148,14 @@ export const UpsertAssignmentDefinitionRequestSchema = z
         code: 'custom',
         message: errorMessage,
         path: ['__root__'],
+      });
+    }
+    if (value.forceReparse === true && value.taskWeightings !== undefined) {
+      context.addIssue({
+        code: 'custom',
+        message:
+          'forceReparse must not be combined with taskWeightings. Omit weighting patches on explicit reparse requests.',
+        path: ['taskWeightings'],
       });
     }
   });

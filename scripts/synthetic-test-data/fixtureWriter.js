@@ -41,6 +41,7 @@ export const PROFILE_VIEW_FILE_NAMES = new Map([
   ['manifest', 'manifest.json'],
   ['classPartials', 'classPartials.json'],
   ['assignmentDefinitionPartials', 'assignmentDefinitionPartials.json'],
+  ['editableDefinitions', 'editableDefinitions.json'],
   ['classesById', 'classesById.json'],
   ['assignmentsByKey', 'assignmentsByKey.json'],
 ]);
@@ -68,6 +69,7 @@ function buildProfileViewContents(graph) {
     ['manifest', graph.manifest],
     ['classPartials', graph.transport.classPartials],
     ['assignmentDefinitionPartials', graph.transport.assignmentDefinitionPartials],
+    ['editableDefinitions', graph.transport.editableDefinitions],
     ['classesById', graph.transport.classesById],
     ['assignmentsByKey', graph.transport.assignmentsByKey],
   ]);

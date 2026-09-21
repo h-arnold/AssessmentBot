@@ -1,5 +1,4 @@
-import { callApi } from '../apiService';
-import { logFrontendEvent } from '../../logging/frontendLogger';
+import { callApi, parseApiResponse } from '../apiService';
 import {
   GetAssignmentDefinitionRequestSchema,
   GetAssignmentDefinitionResponseSchema,
@@ -41,17 +40,11 @@ export async function getAssignmentDefinition(
 
   const responseData = await callApi(GET_ASSIGNMENT_DEFINITION_METHOD, parsedRequest);
 
-  // Debug logging: check the raw response data before parsing
-  logFrontendEvent('debug', {
-    context: 'services/assignmentDefinitionService.getAssignmentDefinition',
-    metadata: {
-      definitionKey: parsedRequest.definitionKey,
-      responseData: JSON.stringify(responseData),
-      responseDataType: typeof responseData,
-    },
-  });
-
-  return GetAssignmentDefinitionResponseSchema.parse(responseData);
+  return parseApiResponse(
+    GetAssignmentDefinitionResponseSchema,
+    GET_ASSIGNMENT_DEFINITION_METHOD,
+    responseData
+  );
 }
 
 /**
@@ -65,7 +58,7 @@ export async function getAssignmentDefinition(
  *
  * @param {UpsertAssignmentDefinitionRequest} request Upsert payload with primaryTitle, primaryTopicKey,
  *   referenceDocumentUrl, templateDocumentUrl (or IDs for non-wizard transport), optional definitionKey,
- *   yearGroupKey, assignmentWeighting, and taskWeightings.
+ *   yearGroupKey, assignmentWeighting, taskWeightings, forceReparse, and updatedAt.
  * @returns {Promise<UpsertAssignmentDefinitionResponse>} Promise resolving to validated full definition
  *   using the canonical response shape shared with getAssignmentDefinition.
  */
@@ -76,15 +69,9 @@ export async function upsertAssignmentDefinition(
 
   const responseData = await callApi(UPSERT_ASSIGNMENT_DEFINITION_METHOD, parsedRequest);
 
-  // Debug logging: check the raw response data before parsing
-  logFrontendEvent('debug', {
-    context: 'services/assignmentDefinitionService.upsertAssignmentDefinition',
-    metadata: {
-      requestPayload: JSON.stringify(parsedRequest),
-      responseData: JSON.stringify(responseData),
-      responseDataType: typeof responseData,
-    },
-  });
-
-  return UpsertAssignmentDefinitionResponseSchema.parse(responseData);
+  return parseApiResponse(
+    UpsertAssignmentDefinitionResponseSchema,
+    UPSERT_ASSIGNMENT_DEFINITION_METHOD,
+    responseData
+  );
 }

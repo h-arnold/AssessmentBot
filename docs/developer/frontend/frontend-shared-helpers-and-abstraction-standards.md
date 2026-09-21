@@ -83,8 +83,8 @@ Test helper placement rules remain governed by `docs/developer/frontend/frontend
 
 ### 3.5 Shared presentational components (planned)
 
-- `ImageRenderer` (planned → implemented, status: Implemented): shared presentational component at `src/frontend/src/components/ImageRenderer/ImageRenderer.tsx`. Renders a base64 data URL as a constrained `<img>` (maxWidth 100%, height auto, maxHeight 400, default alt "Student response image"). Introduced for the Task Preview Card; expected to be reused across the project. Implemented in ACTION_PLAN.md Section 2 (and reused by TaskPreviewCard Section 4).
-- `MarkdownRenderer` (planned → implemented, status: Implemented): shared presentational component at `src/frontend/src/components/MarkdownRenderer/MarkdownRenderer.tsx`. Renders markdown text and tables via `react-markdown` + `remark-gfm` (no `rehype-raw`, for XSS safety). Co-located CSS for basic table styling. Introduced for the Task Preview Card; expected to be reused across the project. Implemented in ACTION_PLAN.md Section 3 (react-markdown + remark-gfm, no rehype-raw; co-located MarkdownRenderer.module.css).
+- `ImageRenderer` (planned → implemented, status: Implemented): shared presentational component at `src/frontend/src/components/ImageRenderer/ImageRenderer.tsx`. Renders a base64 data URL as a constrained `<img>` (maxWidth 100%, height auto, maxHeight 400, default alt "Student response image"). Introduced for the Task Preview Card; expected to be reused across the project. Reused by the Task Preview Card.
+- `MarkdownRenderer` (planned → implemented, status: Implemented): shared presentational component at `src/frontend/src/components/MarkdownRenderer/MarkdownRenderer.tsx`. Renders markdown text and tables via `react-markdown` + `remark-gfm` (no `rehype-raw`, for XSS safety). Co-located CSS for basic table styling. Introduced for the Task Preview Card; expected to be reused across the project. Implemented with `react-markdown` + `remark-gfm`, no `rehype-raw`, and a co-located `MarkdownRenderer.module.css`.
 
 ### 3.6 Student-name splitting helper
 
@@ -473,7 +473,7 @@ This section supersedes the earlier Section 9.7 defer decision for the specific 
 - Owning module/path: `src/frontend/src/features/classes/AssessTaskModal/AssignmentSelectSkeleton.tsx`
 - Call-site rationale: renders the shape-matched loading skeleton for the assignment selection panel — a label skeleton (`Skeleton active title={{ width: '30%' }} paragraph={false}`) and a full-width input skeleton (`Skeleton.Input active style={{ width: '100%' }}`) wrapped in an accessible `<output>` element with an `ariaLabel`. The component is presentational (no state, no side effects); it accepts an `ariaLabel` prop for accessibility. Extracted from two identical inline JSX blocks in `renderFetchBody` and `renderLinkingBody` within `AssessTaskModal.tsx`, eliminating duplicated skeleton markup. The component is feature-local (not promoted to a shared component) because it has exactly two callers within the same modal and the skeleton shape is specific to the assignment selection panel.
 - Status: `Implemented`
-- Rationale: satisfies §4.3 (two active call sites need the same behaviour now); the `<output>` element's implicit `status` role satisfies the accessibility requirement in `frontend-loading-and-width-standards.md` §8 without an explicit `role="status"` attribute, which also resolved two SonarCloud `typescript:S6822` code smells (redundant implicit role)
+- Rationale: satisfies §4.3 (two active call sites need the same behaviour now); the `<output>` element's implicit `status` role and `aria-busy="true"` satisfy the accessibility requirement in `frontend-loading-and-width-standards.md` §8 without an explicit `role="status"` attribute, which also resolved two SonarCloud `typescript:S6822` code smells (redundant implicit role)
 
 ### 9.17 Shared data analysis display helpers
 
@@ -486,7 +486,7 @@ These entries record the shared data analysis display helpers for the Class page
 - Call-site rationale: maps the data analysis service's `MetricResult` discriminated union (`state: 'computed' | 'notAttempted' | 'error'`) to a `{ color, cellStyle, displayValue, muted }` resolution that the Ant Design `Tag` (and table cells) consume. For `computed` values the colour is a **continuous gradient**: the normalised position `t = (value - lower) / (upper - lower)` (clamped to `[0, 1]`) maps to an `hsl` colour whose hue sweeps red (`0`) → amber (`60`) → green (`120`), with lightness darker at the range ends (darkest red at the floor, darkest green at the ceiling) and lighter in the middle. `cellStyle` carries the matching light-background / dark-text pair for table cells. `notAttempted` returns `'#434343'` (dark grey with light grey cell background) and `error` returns the `errorColor` token (default `'volcano'`), both with their preset `cellStyle`. Pure function, no React or antd imports. Validates `range.upper > range.lower` and throws on violation.
 - Status: `Implemented`
 - Implementation notes:
-  - Added `errorColor: MetricToneColor` parameter (not in the planning-time signature) per the spec reconciliation in Section 1 and `SPEC_CLASS_PAGE_PREPARATION.md`. The default (`'volcano'`) lives in `resolveMetricTone`; `MetricPill` is a pass-through with no `errorColor`-level default.
+  - Added `errorColor: MetricToneColor` parameter (not in the planning-time signature) per the spec reconciliation. The default (`'volcano'`) lives in `resolveMetricTone`; `MetricPill` is a pass-through with no `errorColor`-level default.
   - Computed values use a continuous gradient (no fixed band boundaries), so adjacent integer scores such as `4` and `5` or `2` and `3` now render with visibly different colours. Discrete states keep their fixed `Tag` colour tokens and cell styles.
   - Exported types: `MetricToneColor`, `MetricToneRange`, `MetricToneResolution`.
   - `MetricToneColor = 'red' | 'gold' | 'green' | 'default' | 'volcano'` remains the union for discrete `notAttempted` (`'default'`) and `error` (`errorColor`) states; the column **score-range filter** (see helper 4) is the consumer of filter values, not the continuous gradient. Any future revision to `MetricToneColor` is a cross-spec breaking change.
@@ -504,7 +504,7 @@ These entries record the shared data analysis display helpers for the Class page
   - Renders Ant Design `Tag` with the resolved color. No explicit `variant="filled"` prop — the default filled variant is used. The `bordered` prop is left at its default (`true`).
   - The `emphasised` flag applies `fontSize: '17.5px'` (1.25× default) and `fontWeight: 600` via the `style` prop, merged with the muted opacity (`0.55`) when both are active.
   - The `precision` prop is ignored for `notAttempted` and `error` (the literal `'N'` and `'E'` are rendered as-is).
-  - No `Tooltip` or `aria-label` in v1 (signed-off accessibility gap per `SPEC_CLASS_PAGE_PREPARATION.md`).
+  - No `Tooltip` or `aria-label` in v1 (signed-off accessibility gap).
   - No interactivity: no `onClick`, no `cursor: pointer`, no focus ring.
   - File size: 125 lines (under 550; no separation needed).
 - Planned doc reconciliation: confirmed the Tag color choices: `computed` uses `red` / `gold` / `green` bands; `notAttempted` uses `default` (grey); `error` uses `volcano` (default) with `errorColor` pass-through. The `error` color (`volcano`) is agreed and closed per Section 1 spec reconciliation — `red` is reserved for the lowest band of `computed` values to keep visual hierarchy clear.
@@ -528,12 +528,12 @@ These entries record the shared data analysis display helpers for the Class page
 - Call-site rationale: called by both `buildPerStudentRows` and `buildPerTaskRows` in `averagingAnalyser.rows.ts`, and by the Class page's `classPageAdapter`, applying the same three-way rollup precedence across all aggregation levels. The function operates on the public `MetricResult` discriminated union (not internal `MetricAccumulator` values) and takes a metric discriminator to apply per-metric `notAttempted` handling (for accuracy and completeness, `notAttempted` contributes 0; for SPaG, `notAttempted` is excluded). The `RollupMetric` type is `'completeness' | 'accuracy' | 'spag'` only — `'average'` is intentionally excluded because the average is a composite of the three per-criterion rollups at the consumer level, not a fourth independent weighted average. Pure function, no React or antd imports.
 - Status: `Implemented`
 - Implementation notes:
-  - Implemented in Section 3 of the action plan as part of the MetricResult discriminated-union refactor.
+  - Implemented as part of the MetricResult discriminated-union refactor.
   - At aggregation levels above the per-(student, task) cell, `error` entries are **excluded** from the rollup. The result is `error` only when **every** input is `error`; otherwise it is `computed` (over non-error entries) or `notAttempted` (when no computed entries remain). Error entries are excluded from both numerator and denominator.
   - Per-metric `notAttempted` handling: for accuracy and completeness, `notAttempted` contributes 0; for SPaG, `notAttempted` is excluded from numerator/denominator.
   - The function is called from `averagingAnalyser.rows.ts` row builders and will be consumed by the Class page adapter.
   - Standalone file (not in `accumulation/` subfolder) per the spec reconciliation; the facade decomposition of `averagingAnalyser.accumulation.ts` is deferred to a future pass (see §9.18 item 3).
-- Planned doc reconciliation: confirmed the rollup is called from both analyser row builders, errors are **excluded** at aggregation levels above the per-(student, task) cell (the result is `error` only when every input is `error`), and per-metric `notAttempted` handling matches the `SPEC_CLASS_PAGE_PREPARATION.md` contract.
+- Planned doc reconciliation: confirmed the rollup is called from both analyser row builders, errors are **excluded** at aggregation levels above the per-(student, task) cell (the result is `error` only when every input is `error`), and per-metric `notAttempted` handling matches the canonical contract.
 
 5. Helper: metric-state rank module (`METRIC_STATE_RANK_ASC`, `METRIC_STATE_RANK_DESC`, `getMetricStateRank`) — shared state-aware metric sorting
 
@@ -761,7 +761,7 @@ These entries record the feature-local helpers for the Class page. Per `frontend
 
 - Decision: `keep local`
 - Owning module/path: `src/frontend/src/features/taskHeatmap/TaskHeatmapTable.tsx` (moved from `features/classPage/` by the TaskHeatmap extraction; the single student-name column was later split into sticky Forename/Surname columns)
-- Call-site rationale: pure presentational table built from a `TaskHeatmapData` view model. The Ant Design `Table<TaskHeatmapRow>` column tree is assembled inside a component-level `useMemo`: two sticky top-level columns, `Forename` (`fixed: 'start'`, `width: APP_COL_WIDTH_FORENAME`) and `Surname` (`fixed: 'start'`, `width: APP_COL_WIDTH_SURNAME`), whose renderers derive their text via the shared `splitStudentName` helper and whose sorters call `compareStudentNamePart('forename' | 'surname', a, b)`. Neither column sets `defaultSortOrder`; the initial full-name ascending order comes from a `rows.toSorted(compareStudentNames)` pre-sort. Then one grouped column per `taskColumn` (title = `taskColumn.taskTitle ?? taskColumn.taskId`) with `Completeness`/`Accuracy`/`SPaG` children produced by `buildTaskMetricSubColumns`. Each metric sub-column uses `buildMetricRangeFilter` (a numeric score-range `filterDropdown` + `onFilter` over a two-thumb `Slider` bounded by the fixed default tone range `0–5`), a SPEC-ordered `sorter` delegating through the local `buildMetricSorter` wrappers to the shared `compareMetricsByStateRank` (state rank computed → `notAttempted` → `error`, numeric value ascending within the computed band, ascending `studentId` tie-break; the heatmap always sorts ascending), and renders the formatted score (`renderScore`: integer for computed scores, `N` for `notAttempted`, `E` for `error`) inside a gradient-coloured cell (`resolveMetricTone(...).cellStyle` applied via `onCell`) whose `aria-label` keeps the full stored name string in the form `"[Student Name], [Task ID], [Metric]: [Score]"`. Each score sits in a keyboard-operable `role="button"` span (`aria-haspopup="dialog"`, Enter/Space activation) that opens a `Popover` whose content is deferred to `CellPopoverContent` (loading `<output>` skeleton while the assignment query is pending → error `Alert` → `TaskPreviewCard`). `pagination={{ pageSize: 50, showSizeChanger: true }}`, `bordered`, `scroll={{ x: 'max-content' }}`, `aria-label="Task Heatmap"`.
+- Call-site rationale: pure presentational table built from a `TaskHeatmapData` view model. The Ant Design `Table<TaskHeatmapRow>` column tree is assembled inside a component-level `useMemo`: two sticky top-level columns, `Forename` (`fixed: 'start'`, `width: APP_COL_WIDTH_FORENAME`) and `Surname` (`fixed: 'start'`, `width: APP_COL_WIDTH_SURNAME`), whose renderers derive their text via the shared `splitStudentName` helper and whose sorters call `compareStudentNamePart('forename' | 'surname', a, b)`. Neither column sets `defaultSortOrder`; the initial full-name ascending order comes from a `rows.toSorted(compareStudentNames)` pre-sort. Then one grouped column per `taskColumn` (title = `taskColumn.taskTitle ?? taskColumn.taskId`) with `Completeness`/`Accuracy`/`SPaG` children produced by `buildTaskMetricSubColumns`. Each metric sub-column uses `buildMetricRangeFilter` (a numeric score-range `filterDropdown` + `onFilter` over a two-thumb `Slider` bounded by the fixed default tone range `0–5`), a canonically ordered `sorter` delegating through the local `buildMetricSorter` wrappers to the shared `compareMetricsByStateRank` (state rank computed → `notAttempted` → `error`, numeric value ascending within the computed band, ascending `studentId` tie-break; the heatmap always sorts ascending), and renders the formatted score (`renderScore`: integer for computed scores, `N` for `notAttempted`, `E` for `error`) inside a gradient-coloured cell (`resolveMetricTone(...).cellStyle` applied via `onCell`) whose `aria-label` keeps the full stored name string in the form `"[Student Name], [Task ID], [Metric]: [Score]"`. Each score sits in a keyboard-operable `role="button"` span (`aria-haspopup="dialog"`, Enter/Space activation) that opens a `Popover` whose content is deferred to `CellPopoverContent` (loading `<output>` skeleton while the assignment query is pending → error `Alert` → `TaskPreviewCard`). `pagination={{ pageSize: 50, showSizeChanger: true }}`, `bordered`, `scroll={{ x: 'max-content' }}`, `aria-label="Task Heatmap"`.
 - Status: `Implemented`
 - Implementation notes:
   - Reuses `compareStudentNames` directly from `services/dataAnalysis/compareStudentNames.ts`, `compareStudentNamePart` from the shared `utils/splitStudentName.ts`, `compareMetricsByStateRank` from the shared `metricDisplay/metricComparator.ts`, and the shared `buildMetricRangeFilter` (with its `MetricRangeFilterDropdown` UI and `metricRangeKey` encode/decode helpers) from `metricDisplay/` — no second copy of the filter predicate. The local `TaskHeatmapRow`-typed sorter builders (`buildMetricSorter`) pass each cell's metric result plus the row `studentId`s to the shared comparator so the heatmap and averages tables share one ordering definition.
@@ -779,7 +779,7 @@ These entries record the feature-local helpers for the Class page. Per `frontend
 - Call-site rationale: rendered by `ClassPageContent` when `selectedView.view === 'heatmap'`. It is a pure presentational view that receives the already-computed `analyserResult` + `classFull` (it must NOT call `useClassPageData` — a second hook instance would re-run the analyser, violating the "no new analysis call" contract). It projects the view model via `adaptMetricsToHeatmap(analyserResult, classFull, assignmentId)`.
 - Status: `Implemented`
 - Implementation notes:
-  - `adaptMetricsToHeatmap` is computed exactly once via a `useState` lazy initializer (not re-run on every render). On throw (unknown `assignmentId`), it logs via `logFrontendError('TaskHeatmapPage', error)` inside a `useEffect` and then calls `onBack()` — auto-navigating back to the overview with NO in-view `Alert`/error UI (per `SPEC.md`). The error is logged, never silently ignored, and never via `console.*`.
+  - `adaptMetricsToHeatmap` is computed exactly once via a `useState` lazy initializer (not re-run on every render). On throw (unknown `assignmentId`), it logs via `logFrontendError('TaskHeatmapPage', error)` inside a `useEffect` and then calls `onBack()` — auto-navigating back to the overview with NO in-view `Alert`/error UI. The error is logged, never silently ignored, and never via `console.*`.
   - Renders a `Flex` (`vertical`, `gap=16`) with three `Card`s (`size="small"`): a header `Card` (`Typography.Title` assignment name + back `Button` `aria-label="Back to Class overview"` + secondary class name), a control `Card` (refresh `Button` → `refetch`), and the table `Card` (`TaskHeatmapTable`). The breadcrumb (with the `Task Heatmap` segment) is owned by `ClassPage`, not duplicated here.
   - Co-located integration spec: `ClassPageHeatmapView.spec.tsx` (3 tests: card click opens heatmap; Back returns to overview; unknown `assignmentId` auto-navigates back via `logFrontendError` + `onBack`, no in-view error).
 
@@ -790,14 +790,14 @@ These entries record the feature-local helpers for the Class page. Per `frontend
 - Decision: `new` (test-only helper, co-located with the E2E spec)
 - Owning module/path: `src/frontend/e2e-tests/helpers/task-heatmap-end-to-end-helpers.ts`
 - Call-site rationale: builds the `RuntimeScenario` (auth + reference data + `getAssignmentDefinitionPartials` warm-up + two identical `getABClass` StrictMode entries + a real `getABClassPartials` so the class card renders) that drives the full journey in `task-heatmap.spec.ts`. It self-builds the `ClassFull` fixture from `anon-test-data.json` via an internal `buildClassFullDocument` (deriving `assignmentDefinition.tasks` from submission item keys), keeping the E2E independent of the unit fixture builders. `HEATMAP_ASSIGNMENT_NAME` (`'4. …'`) is the fixture `assignmentName`; `HEATMAP_ASSIGNMENT_DISPLAY_TITLE` (`'7. Video Plan'`) is the `primaryTitle` the UI actually renders and must be used for card-click + header locators.
-- Status: `Implemented` (ACTION_PLAN.md Section 6 — `task-heatmap.spec.ts` + `task-heatmap-end-to-end-helpers.ts` added; 6 required cases, 7 passing tests).
+- Status: `Implemented` (`task-heatmap.spec.ts` + `task-heatmap-end-to-end-helpers.ts` added; 6 required cases, 7 passing tests).
 - Implementation notes:
   - `createHeatmapScenario` exposes `deferredClass` (via `deferredSuccess`/`releaseNextDeferredSuccess`) for the loading-skeleton test, while always keeping two `getABClass` queue entries for StrictMode safety.
   - A scoped-parent overload was added to `applyColumnFilterOption` in `src/frontend/e2e-tests/shared/endToEndRuntimeMocks.ts` so the band-filter test can target the first task group's `Completeness` columnheader without tripping Playwright strict mode (string callers are unchanged).
 
 #### 9.18.15 ClassPage assignment prefetch support helpers
 
-These entries record the helpers introduced to support the ClassPage assignment prefetch feature (see `ACTION_PLAN.md`). All entries delivered in the ClassPage Assignment Prefetch cycle.
+These entries record the helpers introduced to support the ClassPage assignment prefetch feature. All entries delivered in the ClassPage Assignment Prefetch cycle.
 
 18. Helper: `getAssignment` service function
 
@@ -868,7 +868,7 @@ These entries record the helpers introduced to support the ClassPage assignment 
 ### 9.19 Frontend pure formatting helpers
 
 These entries record the planned pure formatting helpers extracted from feature code into shared utility modules.
-Per `SPEC_CLASS_PAGE_PREPARATION.md` line 382, the canonical home for these helpers is `src/frontend/src/utils/` — a new top-level folder for pure formatting / utility functions shared across the frontend. The folder is not governed by `src/frontend/AGENTS.md` §13 (which covers `services/` subfolders only); this is a separate convention for helpers that have no React, Ant Design, I/O, or state dependencies.
+The canonical home for these helpers is `src/frontend/src/utils/` — a new top-level folder for pure formatting / utility functions shared across the frontend. The folder is not governed by `src/frontend/AGENTS.md` §13 (which covers `services/` subfolders only); this is a separate convention for helpers that have no React, Ant Design, I/O, or state dependencies.
 
 1. Helper: `formatUpdatedAtLabel(updatedAt: string | null): string` — date formatting helper
 
@@ -877,7 +877,7 @@ Per `SPEC_CLASS_PAGE_PREPARATION.md` line 382, the canonical home for these help
 - Call-site rationale: extracted from `AssignmentsPage.tsx` as part of the rename deliverable because the Class page's `classPageAdapter` needs the same formatter. `en-GB` locale, date-only, rendered in UTC. The em-dash fallback (`UNAVAILABLE_VALUE = '—'`) is defined locally in the new module (does not import from `AssignmentsPage.tsx`). Pure formatting function, no React / antd / I/O / state. The Class page adapter does not use the fallback; it throws upstream on null or unparseable input. The helper preserves the fallback for the `AssignmentsPage` caller.
 - Status: `Implemented`
 - Implementation notes:
-  - Implemented in Section 2 of the action plan alongside the `lastUpdated` → `updatedAt` rename.
+  - Implemented alongside the `lastUpdated` → `updatedAt` rename.
   - The helper lives at `src/frontend/src/utils/dateFormatting.ts` (first entry in the new `utils/` folder).
   - `UNAVAILABLE_VALUE = '—'` is defined locally in `dateFormatting.ts`.
   - The helper preserves the existing `AssignmentsPage` behaviour (em-dash fallback for null/unparseable) while the Class page adapter (`classPageAdapter`) throws upstream on null.
@@ -898,18 +898,18 @@ Per `SPEC_CLASS_PAGE_PREPARATION.md` line 382, the canonical home for these help
 - Decision: `new` (feature-local helper, kept inside the analyser package)
 - Owning module/path: `src/frontend/src/services/dataAnalysis/analysers/averagingAnalyser.accumulation.ts` (or `averagingAnalyser.perStudentTaskMetrics.ts` if `accumulation.ts` crosses the 500-LOC threshold)
 - Call-site rationale: converts `perStudentTaskAccums` (`Map<string, Map<string, DataPointAccumulator>>`) into the validated `PerStudentTaskMetric[]` array on `AveragingResult`, calling the existing `accumToMetric` path for each criterion (`completeness`, `accuracy`, `spag`, `overall`). Consumed by `analyseClass` in `averagingAnalyser.ts`. `taskKey` is `\`${definitionKey}::${taskId}\``; `classId` is echoed from the input class.
-- Status: `Implemented` (ACTION_PLAN.md Section 1 — `buildPerStudentTaskMetrics` added to `averagingAnalyser.accumulation.ts`, called by `analyseClass`; `PerStudentTaskMetricSchema` added to `dataAnalysis.zod.ts`).
+- Status: `Implemented` (`buildPerStudentTaskMetrics` added to `averagingAnalyser.accumulation.ts`, called by `analyseClass`; `PerStudentTaskMetricSchema` added to `dataAnalysis.zod.ts`).
 
 3. Helper: `adaptMetricsToHeatmap` — pure projection adapter (`AveragingResult` + `ClassFull` + `assignmentId` → `HeatmapResult`)
 
 - Decision: `new` (single-file service module; flat under `services/dataAnalysis/`)
 - Owning module/path: `src/frontend/src/services/dataAnalysis/heatmapAdapter.ts`
 - Call-site rationale: the single projection boundary consumed by `TaskHeatmapPage`. Reads `assignment.assignmentDefinitionKey` from the class-full assignment, resolves the definition partial from the warm-up `assignmentDefinitionPartials` registry, and derives `taskKey`s and `taskColumns` from the resolved partial's `tasks` array (no longer reads tasks from an embedded `assignment.assignmentDefinition` object, which was removed from the transport shape). `assignmentName` from `primaryTitle`, `className` from `classFull.className` (fallback `'Class Overview'`). Throws `TaskTitlesUnavailableError` when the definition partial is missing, and throws on unknown `assignmentId` (fail fast).
-- Status: `Implemented` (ACTION_PLAN.md Section 2 — `adaptMetricsToHeatmap` added to `heatmapAdapter.ts`; `HeatmapResult`/`HeatmapRow`/`HeatmapCell`/`HeatmapTaskColumn` interfaces exported).
+- Status: `Implemented` (`adaptMetricsToHeatmap` added to `heatmapAdapter.ts`; `HeatmapResult`/`HeatmapRow`/`HeatmapCell`/`HeatmapTaskColumn` interfaces exported).
 
 ### 9.21 Backend settings `helperText` descriptor extension
 
-This entry records the descriptor-type extension for the Auth Service feature (source: repository-root `SPEC.md` and `ACTION_PLAN.md`).
+This entry records the descriptor-type extension for the Auth Service feature.
 
 1. Helper or contract: `helperText?: string` field on `BackendSettingsFieldDescriptor`
 
@@ -917,7 +917,6 @@ This entry records the descriptor-type extension for the Auth Service feature (s
 - Owning module/path: `src/frontend/src/features/settings/backend/BackendSettingsPanel.tsx`
 - Status: `Implemented`
 - Call-site rationale: supports declarative static helper text for the `authGroupEmail` field without adding special-case rendering branches. The existing `apiKey` dynamic helper case (`getApiKeyHelperCopy()`) is preserved as-is. The render logic checks `descriptor.helperText` first; if present, renders static helper; otherwise falls through to the existing `apiKey` dynamic case.
-- References: SPEC.md §Frontend changes (4); ACTION_PLAN.md §11.
 
 ## 9.22 Heatmaps builder surface helpers
 
@@ -935,7 +934,7 @@ Delivered helpers for the standalone Heatmaps page. All three planned entries ar
 
 - Decision: `new` (feature-local; promote to shared only if a second consumer surface emerges)
 - Owning module/path: `src/frontend/src/features/taskHeatmap/assembleMergedPreviewData.ts`
-- Call-site rationale: combines N per-assignment lookups into one `studentId → taskKey → CellPreviewData` map (first-wins in stable column order for duplicate keys) and produces the complete per-task-key preview-status map (`{ isLoading, hasError }`) consumed by `TaskHeatmapTable`'s `previewStatusByTaskKey` prop. Depends on `buildCellPreviewLookup`'s composite-key widening (Section 1 of the action plan).
+- Call-site rationale: combines N per-assignment lookups into one `studentId → taskKey → CellPreviewData` map (first-wins in stable column order for duplicate keys) and produces the complete per-task-key preview-status map (`{ isLoading, hasError }`) consumed by `TaskHeatmapTable`'s `previewStatusByTaskKey` prop. Depends on `buildCellPreviewLookup`'s composite-key widening.
 - Relevant canonical doc target: this section (§9.22).
 - Planned doc status: `Implemented`
 
@@ -953,6 +952,37 @@ The builder surface surfaced two antd v6 behaviours worth recording for future s
 
 - **Checkbox options via `optionRender`.** antd v6's `Select` `optionRender` callback exposes no `selected` flag (older v5 examples show one). The checked state of each checkbox option must be derived from controlled-value membership (`value` ∈ current selection), not from a `selected` argument. Search narrows options client-side only.
 - **Disabled-reason accessibility.** Dependent selectors disabled until a class is chosen expose their reason both as a sighted hover `Tooltip` and as an sr-only `aria-describedby` node bound to the control, so the reason is discoverable by assistive technology and not conveyed by colour alone. The antd `Tooltip` `cloneElement` wrapper is mediated via an intermediate `<span>` to avoid clobbering the described-by binding.
+
+## 9.23 Stale-definition recovery orchestration helpers (issue #301)
+
+Entries for stale assignment-definition recovery. The delivered items are the assessment orchestration module (entry 2), the chrome-free review-content component (entry 3), the form-state module (entry 4), and the feature-local discard-confirmation component (entry 5). The planned generic wizard orchestrator hook and its entry-intent taxonomy were not retained (entry 1): once the assessment-side recovery flow owned stale recovery, the orchestrator hook had no live consumer, so the cleanup removed `resolveWizardEntryMode`, `useAssignmentWizardOrchestrator` and the generic `{kind: ...}` recovery entry intent. The delivered entries below reflect the current implementation.
+
+1. Wizard orchestrator module — not retained as a standalone orchestration hook. The live create/update wizard remains owned end-to-end by `useAssignmentDefinitionWizard`, which composes the pure form-state derivations (`assignmentWizardFormState`), the form-initialization/baseline hook (`assignmentWizardFormInitialization`), the shared mutation/error-mapping sequence (`assignmentWizardMutation`) and the close/dismissal predicates (`assignmentWizardDismissal`). Stale recovery is owned separately by `useAssessTaskRecoveryFlow` (entry 2 covers the assessment-side orchestration). The only helper retained in `assignmentWizardOrchestrator.ts` is `buildReparseRequest`.
+
+- Decision: `superseded` (the generic orchestrator hook and entry-intent surface were removed; the shared forced-reparse request builder was retained)
+- Owning module/path: `src/frontend/src/features/assignmentWizard/assignmentWizardOrchestrator.ts` (exports `buildReparseRequest` only)
+- Call-site rationale: `buildReparseRequest` keeps the forced-reparse payload in one place. It is consumed by both the Assignments-page update wizard (`useAssignmentDefinitionWizard.handleReparseDocuments`) and the recovery flow (`useAssessTaskRecoveryFlow.reparseLoadedDefinition`), so both send the same ID-shaped `forceReparse: true` request with no weighting patch and let the backend reconcile the stored task weightings.
+- Status: `Superseded`
+
+2. Assessment orchestration module — `useAssessTaskFlow` hook owning matching, linking, captured assessment start context (`{definitionKey, assignmentId, courseId}`), and stale-recovery transitions for `AssessTaskModal`, extracted from `AssessTaskModal.tsx` (955 lines → below 500).
+
+- Decision: `new` (feature-local extraction)
+- Owning module/path: `src/frontend/src/features/classes/AssessTaskModal/useAssessTaskFlow.ts`
+- Call-site rationale: Decomposition required by the frontend standards; moves both state machines and the API flows out of the rendering component per §3.2 of `src/frontend/AGENTS.md`. Exposes the recovery state (`assessmentRecoveryState: 'idle' | 'stale-prompt'`) with the `endRecovery` and `settleAssessment` handlers; the internal `transitionToStaleRecovery(definitionKey)` — invalidates the definition-partials cache, clears the no-match resolution, captures the stale key and never selects `creating` — is driven by matched/link `DEFINITION_STALE` rejections and is not returned to consumers. It also applies an obsolete-completion guard so late assessment-start/upsert completions cannot act on a different assignment after close/reopen or selection change. The link flow (`useAssessTaskLinkFlow.ts`) and create flow (`useAssessTaskCreateFlow.ts`) are composed feature-local hooks sharing a documented host contract; pure flow contracts, cache validation and derivations live in `assessTaskFlowData.ts`, with link-payload derivation in `assessTaskLinkPayload.ts` — each module below the 500-line gate.
+- Status: `Implemented`
+
+3. Chrome-free review-content component and wizard entry-contract extension. The review-content component is `Implemented` at `src/frontend/src/features/assignmentWizard/AssignmentDefinitionWizardReviewContent.tsx`, and is recorded simultaneously in `docs/developer/frontend/frontend-modal-patterns.md` §3.4. It extracts the shell's body form and footer content from `AssignmentDefinitionWizardModalShell`'s `Modal` chrome so recovery and in-modal create can render wizard content inside a single owning modal. The planned explicit recovery entry intent on the wizard entry contract was not retained: stale recovery is owned directly by `useAssessTaskRecoveryFlow`, which reuses the form-state module and `buildReparseRequest` rather than routing through a wizard entry mode.
+
+4. Wizard form-state module — pure form-state derivation (form hydration, dirty-state rules, document-change state, task-row building) at `src/frontend/src/features/assignmentWizard/assignmentWizardFormState.ts`. Status: `Implemented`. Extracted from `useAssignmentDefinitionWizard.ts` with no behavioural change; consumed by the create/update wizard (`useAssignmentDefinitionWizard`) and by the assessment-side recovery flow (`useAssessTaskRecoveryFlow`, which reuses `hydrateFormFromDefinition`, the topic/year-group option builders, `calculateDirtyState` and the `TaskRow`/`DocumentChangeState` contracts). Rationale: deterministically testable state derivation shared by both flows.
+
+5. Discard-confirmation component — feature-local component shared by the assignment-definition wizard, the in-modal create review, and the stale-recovery review surface.
+
+- Decision: `new` (feature-local extraction)
+- Owning module/path: `src/frontend/src/features/assignmentWizard/AssignmentDiscardConfirm.tsx` (feature-local)
+- Approved callers (three, and only three): `src/frontend/src/features/assignmentWizard/AssignmentDefinitionWizardModal.tsx`, `src/frontend/src/features/classes/AssessTaskModal/AssessTaskCreateReview.tsx`, `src/frontend/src/features/classes/AssessTaskModal/AssessTaskRecoverySurface.tsx`
+- Call-site rationale: the nested `Discard changes` confirmation was duplicated across the three callers, including its `Keep editing` / `Discard changes` footer semantics and the `aria-labelledby` re-anchoring that keeps the nested dialog's accessible name distinct from the owning modal. One narrow component removes the copy/accessibility drift risk without becoming a generic confirmation wrapper.
+- Status: `Implemented` — `AssignmentDiscardConfirm.tsx` is the narrow feature-local shared component for the wizard, in-modal create review, and stale-recovery review surfaces.
+- Cross-reference: `docs/developer/frontend/frontend-modal-patterns.md` §3.5 records the same extraction.
 
 ## 10. Frontend utils folder convention
 

@@ -1,4 +1,4 @@
-/* global AssignmentDefinitionController, ApiValidationError, DateUtils, Validate, RESPONSE_FIELD_NAME, getAssignmentDefinitionController_, throwValidationError_, throwUpsertValidationError_, validateUpsertParameters_, validateDeleteParameters_, validateReadParameters_ */
+/* global AssignmentDefinitionController, ApiValidationError, DateUtils, Validate, RESPONSE_FIELD_NAME, getAssignmentDefinitionController_, throwValidationError_, throwUpsertValidationError_, validatePartialRow_, validateSafeTrimmedIdentifier_, validateUpsertParameters_, validateDeleteParameters_, validateReadParameters_ */
 
 const DOCS_URL_HOST = 'docs.google.com';
 const DOCUMENT_TYPE_BY_PATH_PREFIX = Object.freeze({
@@ -64,6 +64,23 @@ function extractSupportedDocumentDescriptor_(urlValue, fieldName) {
     throwUpsertValidationError_(`${fieldName} must include a document id segment.`, fieldName);
   }
 
+  // Reject transport-unsafe identifiers before any Drive access. The URL path
+  // segment is untrusted input; `..`, slashes, backslashes, untrimmed values,
+  // and control characters must not reach the controller.
+  validateSafeTrimmedIdentifier_(documentId, {
+    throwValidationError: throwUpsertValidationError_,
+    typeErrorMessage: `${fieldName} must include a document id segment.`,
+    nonEmptyErrorMessage: `${fieldName} must include a document id segment.`,
+    trimmedErrorMessage: `${fieldName} contains an unsafe document identifier.`,
+    unsafeErrorMessage: `${fieldName} contains an unsafe document identifier.`,
+    fieldNames: {
+      type: fieldName,
+      nonEmpty: fieldName,
+      trimmed: fieldName,
+      unsafe: fieldName,
+    },
+  });
+
   let documentType = null;
   if (matchingPrefix === '/presentation/d/') {
     documentType = 'SLIDES';
@@ -84,10 +101,10 @@ function extractSupportedDocumentDescriptor_(urlValue, fieldName) {
  *
  * @param {Object} definition - AssignmentDefinition model instance or plain partial object.
  * @returns {Object} Plain transport partial row without yearGroup.
- * @remarks NEW helper per SPEC.md v1.9.0 Section 5, replacing the removed `toPlainPartialRow_`.
- * Provides defensive safety net by stripping `yearGroup` field (in addition to model-level removal in Section 1).
- * Normalises Date fields to ISO strings at the transport boundary. Works with both model instances
- * (calling `toPartialJSON()`) and plain objects. Exported for test accessibility.
+ * @remarks Calls `toPartialJSON()` on model instances so both model instances and plain objects are
+ * accepted. Stripping `yearGroup` is a defensive safety net on top of the model-level removal in
+ * favour of `yearGroupKey`. Date fields are normalised to ISO strings because `google.script.run`
+ * prohibits live `Date` objects in return values.
  */
 function toTransportPartialRow_(definition) {
   // If definition has toPartialJSON method, use it (model instance)
@@ -105,10 +122,11 @@ function toTransportPartialRow_(definition) {
  * Returns assignment-definition partial rows for API transport.
  *
  * @returns {Array<Object>} Plain assignment-definition partial rows.
- * @throws {ApiValidationError} If controller response is not an array.
- * @remarks Updated per SPEC.md v1.9.0 Section 5: now uses `toTransportPartialRow_` helper instead of
- * the removed `toPlainPartialRow_`. Returned objects will NO LONGER include the `yearGroup` field;
- * Date fields are normalised as ISO strings. Partial definitions carry a `tasks` array of lightweight summaries.
+ * @throws {ApiValidationError} If the controller response is not an array, or if any row violates
+ *   the strict partial-row contract enforced by `validatePartialRow_`.
+ * @remarks Returned rows omit `yearGroup`, normalise Date fields to ISO strings, and carry a `tasks`
+ * array of lightweight summaries. Every row is validated at the transport boundary so corrupt
+ * registry data is rejected in production, not only in tests.
  */
 function getAssignmentDefinitionPartials_() {
   const definitions = getAssignmentDefinitionController_().getAllPartialDefinitions();
@@ -119,12 +137,10 @@ function getAssignmentDefinitionPartials_() {
 
   const rows = definitions.map((definition) => toTransportPartialRow_(definition));
 
-  // Enforce the array-tasks contract at the transport boundary so that
+  // Enforce the strict partial-row contract at the transport boundary so that
   // corrupt partial rows are caught in production, not just in tests.
   rows.forEach((row, index) => {
-    if (!Array.isArray(row.tasks)) {
-      throwValidationError_('tasks must be an array.', 'tasks', index);
-    }
+    validatePartialRow_(row, index);
   });
 
   return rows;
@@ -150,14 +166,14 @@ function deleteAssignmentDefinition_(parameters) {
  *
  * @param {Object} parameters - Assignment-definition upsert payload with primaryTitle, primaryTopicKey,
  *   referenceDocumentId/templateDocumentId (or referenceDocumentUrl/templateDocumentUrl for URL-based transport),
- *   optional definitionKey, yearGroupKey, assignmentWeighting, and taskWeightings.
+ *   optional definitionKey, yearGroupKey, assignmentWeighting, and taskWeightings. Recovery control
+ *   fields `forceReparse` and `updatedAt` are accepted and validated at the transport boundary.
  * @returns {Object} Canonical full-definition response shape including resolved
  *   primaryTopic, primaryTopicKey, yearGroupKey, yearGroupLabel, full tasks array, and all metadata.
  *   This same shape is returned for stage-one create, final save, and document-change re-parse.
- * @remarks Updated per SPEC.md v1.9.0 Section 5: URL-to-ID translation logic inlined from the removed
- * `buildControllerUpsertPayload_` helper. CRITICALLY, the inlined code does NOT apply `assignmentWeighting: 1`
- * defaulting (per validation ownership rules: model owns defaults, not API layer). Uses
- * `controller.getFullAssignmentDefinition(definition)` directly for response shaping.
+ * @remarks URL-shaped payloads are translated to document IDs before delegation. `assignmentWeighting`
+ * is not defaulted here because the model owns that default. Response shaping delegates to
+ * `controller.getFullAssignmentDefinition(definition)`.
  */
 function upsertAssignmentDefinition_(parameters) {
   validateUpsertParameters_(parameters);

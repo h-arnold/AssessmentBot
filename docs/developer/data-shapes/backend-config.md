@@ -17,10 +17,10 @@ Sibling contracts:
 - [Contract: Assignment](assignment.md) — No direct relationship.
 - [Contract: Reference Data](reference-data.md) — No direct relationship.
 
-> **Planned changes — all implemented** (SPEC.md v1.3, Application Authentication &
-> Minimal Role Administration). The auth fields left the BackendConfig contract in
-> lockstep across backend transport (Sections 2/6), frontend Zod schemas (Section 7),
-> and the form schema/mapper/settings panel (Section 8). The contract below documents
+> **Planned changes — all implemented** (Application Authentication & Minimal Role
+> Administration). The auth fields left the BackendConfig contract in
+> lockstep across backend transport, frontend Zod schemas, and the form
+> schema/mapper/settings panel. The contract below documents
 > the reconciled 12 non-auth field shape; auth state is owned by the dedicated auth
 > endpoints — see [Contract: AuthUsers](auth-users.md).
 
@@ -38,7 +38,7 @@ written into the JSON blob. When read back, typed getter methods (e.g.
 layer calls these typed getters and returns properly-typed values.
 
 All persistent writes now serialise through `ConfigurationManager.writeConfigurationLocked(mutator)`
-(implemented in ACTION_PLAN.md Section 2). The facade's
+(implemented). The facade's
 `setProperty()` and every typed `set*` method delegate to this single path. Under the shared
 script-wide `LockService.getScriptLock()` — the **same** lock the vendored JsonDbApp
 `DbLockService` uses (GAS script locks are **not reentrant**) — the path re-reads the raw
@@ -86,7 +86,7 @@ Key notes:
   supplied ordinary field through the manager-owned `preparePropertyValue` seam and commits the whole
   patch through one `writeConfigurationLocked` call — under the lock the raw blob is re-read, merged,
   and written once, so a concurrent writer's changes are preserved (no clobber). The former per-field
-  unlocked write loop is removed (ACTION_PLAN.md Section 6).
+  unlocked write loop is removed.
 - Locked-write contention is mapped to the typed retriable transport envelope (remediation batch):
   `commitBackendConfigPatch_()` catches `code: 'CONFIG_LOCK_CONTENTION'` and rethrows it as an
   `ApiRateLimitError`, which the dispatcher maps to the retriable `RATE_LIMITED` code. A locked write
@@ -276,8 +276,8 @@ Key contract notes:
   set."), but no transport reaches it: `setBackendConfig` rejects the field outright, and
   `setAuthenticationSettings` validates/writes through the strict resolver + locked raw write above.
   It is reached only by a direct internal `setAuthGroupEmail()` / `setProperty()` call. Recovery for a
-  lockout remains hand-editing Script Properties (SPEC Admin lockout recovery).
-- **Form-schema reconciliation (implemented, Section 8):** the frontend
+  lockout remains hand-editing Script Properties (admin lockout recovery).
+- **Form-schema reconciliation (implemented):** the frontend
   `BackendSettingsFormSchema` no longer declares `authGroupEmail`/`authMode`, and the
   form-level compulsory-once-set guard was removed from
   `BackendSettingsPanel.handleFinish`. Auth state is owned by the dedicated
@@ -427,7 +427,7 @@ None. BackendConfig is a standalone contract with no embedded sub-entities.
     surfaces through the aggregate `{ success: false, error }` string, which carries no
     `code`/`retriable`; it is non-retriable by nature (the payload must shrink) and the write is
     rejected with storage unchanged.
-    **Classification: Aligned** — SPEC decision 12 requires contention to yield a retriable
+    **Classification: Aligned** — the contract requires contention to yield a retriable
     envelope, which the remediation batch implements. Flattening the non-retriable cap into the
     aggregate is acceptable because the aggregate already communicates a permanent failure.
 

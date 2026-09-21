@@ -166,3 +166,37 @@ describe('mapErrorToUserMessage', () => {
     );
   });
 });
+
+describe('mapErrorCodeToUserMessage stale recovery codes', () => {
+  it('declares DEFINITION_PARSE_FAILED in the shared error registry', () => {
+    // Planned recovery contract: the code lives in the shared registry, never feature-local.
+    expect(errorCodes).toHaveProperty('DEFINITION_PARSE_FAILED');
+  });
+
+  it('maps DEFINITION_PARSE_FAILED to the safe parse-failure copy', () => {
+    expect(mapErrorCodeToUserMessage('DEFINITION_PARSE_FAILED' as never)).toBe(
+      'The assignment documents could not be parsed. Check the reference and template documents, then try again.'
+    );
+  });
+
+  it('routes a DEFINITION_PARSE_FAILED transport error through the shared registry', () => {
+    const error = new ApiTransportError({
+      requestId: 'req-parse-failed',
+      error: {
+        code: 'DEFINITION_PARSE_FAILED',
+        message: 'Parser diagnostic detail.',
+        retriable: false,
+      },
+    });
+
+    expect(mapErrorToUserMessage(error)).toBe(
+      'The assignment documents could not be parsed. Check the reference and template documents, then try again.'
+    );
+  });
+
+  it('pins the DEFINITION_STALE mapping unchanged', () => {
+    expect(mapErrorCodeToUserMessage(errorCodes.DEFINITION_STALE)).toBe(
+      'This assessment definition is out of date. Please review the linked documents and try again.'
+    );
+  });
+});

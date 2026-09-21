@@ -5,7 +5,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AssessTaskModal } from './AssessTaskModal';
 import { getGoogleClassroomAssignments } from '../../../services/googleClassrooms/googleClassroomAssignmentsService';
 import { startAssessmentRun } from '../../../services/assignmentAssessment/assignmentAssessmentService';
-import { upsertAssignmentDefinition } from '../../../services/assignmentDefinition/assignmentDefinitionService';
+import {
+  getAssignmentDefinition,
+  upsertAssignmentDefinition,
+} from '../../../services/assignmentDefinition/assignmentDefinitionService';
 import { findMatchingDefinition } from './matchDefinitionForAssignment';
 import { queryKeys } from '../../../query/queryKeys';
 import { renderWithFrontendProviders } from '../../../test/renderWithFrontendProviders';
@@ -30,7 +33,6 @@ import {
   clickCreateNewDefinition,
   clickLinkToExisting,
   expectLinkButtonDisabled,
-  getWizardProperties,
   expectStartAssessmentDisabled,
   expectCancelButtonPresent,
 } from '../../../test/classes/AssessTaskModal.test-utilities';
@@ -39,6 +41,9 @@ import {
   performLinkFlow,
 } from '../../../test/classes/AssessTaskModal.link-flow-helpers';
 import { createDefinitionPartial } from '../../../test/classes/matchDefinitionForAssignment.test-utilities';
+import { setTextboxValue } from '../../../test/assignmentDefinition/wizardTestHelpers';
+import { getAssignmentTopics } from '../../../services/assignmentDefinition/assignmentTopicsService';
+import { getYearGroups } from '../../../services/referenceData/referenceDataService';
 
 vi.mock('../../../services/googleClassrooms/googleClassroomAssignmentsService', () => ({
   getGoogleClassroomAssignments: vi.fn(),
@@ -49,49 +54,21 @@ vi.mock('../../../services/assignmentAssessment/assignmentAssessmentService', ()
 }));
 
 vi.mock('../../../services/assignmentDefinition/assignmentDefinitionService', () => ({
+  getAssignmentDefinition: vi.fn(),
   upsertAssignmentDefinition: vi.fn(),
+}));
+
+vi.mock('../../../services/assignmentDefinition/assignmentTopicsService', () => ({
+  getAssignmentTopics: vi.fn(),
+}));
+
+vi.mock('../../../services/referenceData/referenceDataService', () => ({
+  getCohorts: vi.fn(),
+  getYearGroups: vi.fn(),
 }));
 
 vi.mock('./matchDefinitionForAssignment', () => ({
   findMatchingDefinition: vi.fn(),
-}));
-
-/**
- * Removes function values from an object, replacing them with a marker,
- * so the remaining object can be safely JSON-serialized.
- *
- * @param {Record<string, unknown>} object The object to clean.
- * @returns {Record<string, unknown>} A new object with functions removed.
- */
-function stripFunctions(object: Record<string, unknown>): Record<string, unknown> {
-  const cleaned: Record<string, unknown> = {};
-  for (const [key, value] of Object.entries(object)) {
-    if (typeof value !== 'function') {
-      cleaned[key] = value;
-    }
-  }
-  return cleaned;
-}
-
-vi.mock('../../assignmentWizard/AssignmentDefinitionWizardModal', () => ({
-  AssignmentDefinitionWizardModal: vi.fn((properties: Record<string, unknown>) => {
-    // Store ALL props (including functions) on the element via ref
-    // so tests can access function references directly.
-    const elementReference = (element: HTMLDivElement | null) => {
-      if (element) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (element as any).__wizardProps = properties;
-      }
-    };
-
-    return (
-      <div
-        ref={elementReference}
-        data-testid="wizard-mock"
-        data-props={JSON.stringify(stripFunctions(properties))}
-      />
-    );
-  }),
 }));
 
 let user: ReturnType<typeof userEvent.setup>;
@@ -99,6 +76,8 @@ let user: ReturnType<typeof userEvent.setup>;
 beforeEach(() => {
   user = userEvent.setup();
   vi.clearAllMocks();
+  vi.mocked(getAssignmentTopics).mockResolvedValue([]);
+  vi.mocked(getYearGroups).mockResolvedValue([]);
 });
 
 afterEach(() => {
@@ -129,7 +108,7 @@ describe('Loading state', () => {
     const dialog = renderAssessTaskModal(createPendingPromise());
 
     // Skeleton is visible in the modal body
-    expect(within(dialog).getByRole('status')).toBeInTheDocument();
+    expect(within(dialog).getByRole('status')).toHaveAttribute('aria-busy', 'true');
 
     // Select (combobox) is not rendered while loading
     expect(within(dialog).queryByRole('combobox')).toBeNull();
@@ -216,11 +195,14 @@ describe('Empty state', () => {
 // ---------------------------------------------------------------------------
 
 describe('Error state', () => {
-  it('shows Alert with error, Select not rendered, Start Assessment disabled', async () => {
-    const dialog = renderAssessTaskModal(new Error('Failed to fetch assignments'), 'reject');
+  it('shows mapped error copy when assignment fetching fails', async () => {
+    const rawErrorMessage = 'Assignment service implementation detail';
+    const dialog = renderAssessTaskModal(new Error(rawErrorMessage), 'reject');
 
     // Error Alert is visible
-    expect(await within(dialog).findByRole('alert')).toBeInTheDocument();
+    const alert = await within(dialog).findByRole('alert');
+    expect(alert).toHaveTextContent('An error occurred. Please try again.');
+    expect(alert).not.toHaveTextContent(rawErrorMessage);
 
     // Select (combobox) is not rendered in error state
     expect(within(dialog).queryByRole('combobox')).toBeNull();
@@ -262,7 +244,7 @@ describe('Cancel and close', () => {
     renderWithFrontendProviders(<AssessTaskModal {...defaultProperties({ onClose })} />);
 
     const dialog = screen.getByRole('dialog', { name: MODAL_TITLE });
-    await within(dialog).findByRole('combobox');
+    await within(dialog).findByTestId('assignment-select');
 
     const wrap = dialog.closest('.ant-modal-wrap');
     expect(wrap).not.toBeNull();
@@ -584,7 +566,7 @@ describe('Assessment run interaction', () => {
   // Matched-flow DEFINITION_STALE recovery
   // -----------------------------------------------------------------------
 
-  it('matched-flow DEFINITION_STALE transitions the modal to the wizard recovery state', async () => {
+  it('matched-flow DEFINITION_STALE enters recovery routing instead of the create path', async () => {
     const matchedDefinition = createDefinitionPartial();
     const staleError = new ApiTransportError({
       requestId: 'test-id',
@@ -606,20 +588,18 @@ describe('Assessment run interaction', () => {
     await selectAssignment(dialog);
     await clickStartAssessment(dialog);
 
-    // FUTURE BEHAVIOUR: Should transition to wizard stale-recovery
-    // Currently this FAILS because handleApiError only shows a warning alert
-    // instead of transitioning noMatchResolution to 'creating'.
-    const wizard = await screen.findByTestId('wizard-mock');
-    const wizardProperties = (wizard as unknown as Record<string, unknown>).__wizardProps as Record<string, unknown> | undefined || {};
-    expect(wizardProperties.open).toBe(true);
-    expect(wizardProperties.mode).toBe('create');
-
     // Cache should be invalidated on stale recovery
     await waitFor(() => {
       expect(invalidateSpy).toHaveBeenCalledWith({
         queryKey: queryKeys.assignmentDefinitionPartials(),
       });
     });
+
+    // RED: DEFINITION_STALE must enter the assessment orchestration recovery
+    // routing (assessmentRecoveryState 'stale-prompt'), never the genuine
+    // create path, so the in-modal create content stays unmounted. The positive
+    // 'stale-prompt' state is pinned by the orchestration contract spec.
+    expect(within(dialog).queryByRole('textbox', { name: /reference document url/i })).toBeNull();
   });
 
   it('matched-flow non-DEFINITION_STALE errors still surface the existing error alert', async () => {
@@ -642,8 +622,8 @@ describe('Assessment run interaction', () => {
     // Error alert should appear (existing behaviour)
     await expect(within(dialog).findByRole('alert')).resolves.toBeInTheDocument();
 
-    // Wizard should NOT appear (no stale recovery for generic errors)
-    expect(screen.queryByTestId('wizard-mock')).toBeNull();
+    // In-modal create content should NOT appear (no stale recovery for generic errors)
+    expect(within(dialog).queryByRole('textbox', { name: /reference document url/i })).toBeNull();
   });
 
   // -----------------------------------------------------------------------
@@ -783,8 +763,12 @@ describe('No-match resolution — choice state', () => {
     // The choice prompt Alert should also be gone — body content changed from choice to creating
     expect(within(dialog).queryByText(/no matching assignment definition found/i)).toBeNull();
 
-    // The assignment Select remains hidden (was hidden in choice, stays hidden in creating)
-    expect(within(dialog).queryByRole('combobox')).toBeNull();
+    // The assignment Select remains hidden (was hidden in choice, stays hidden in creating).
+    // The stage-one wizard content renders in-modal instead.
+    expect(within(dialog).queryByTestId('assignment-select')).toBeNull();
+    expect(
+      await within(dialog).findByRole('textbox', { name: /reference document url/i })
+    ).toBeInTheDocument();
   });
 
   it('shows Link to Existing button disabled with Tooltip when no linkable definitions exist', async () => {
@@ -967,12 +951,74 @@ async function setupWizardTest(options: Partial<RenderWithCacheOptions> = {}) {
   return { dialog, queryClient };
 }
 
+/**
+ * Assignment used by the in-modal create-path flow tests, carrying a topic that
+ * the cached topic list can resolve so stage-one parse validation passes.
+ */
+const CREATE_PATH_ASSIGNMENTS: GoogleClassroomAssignmentsResponse = [
+  {
+    assignmentId: 'a1',
+    title: 'Essay',
+    creationTime: '2024-09-02T08:30:00.000Z',
+    topicName: 'Writing',
+    topicId: 'topic-writing',
+  },
+];
+
+/**
+ * Topic pre-populated into the cache before entering the in-modal create path.
+ */
+const CREATE_PATH_TOPIC: AssignmentTopic = {
+  key: 'topic-writing',
+  name: 'Writing',
+  yearGroupKeys: ['year-10'],
+};
+
+/**
+ * Complete parse/save response used by the in-modal create-path flow tests: a
+ * numeric assignment weighting and one task row are required for stage-two
+ * validation and the task-weightings table.
+ */
+const CREATE_PATH_UPSERT_RESULT = {
+  ...DEFAULT_UPSERT_RESULT,
+  assignmentWeighting: 1,
+  tasks: [{ taskId: 'task-1', taskTitle: 'Solve equations', taskWeighting: 1 }],
+};
+
+/**
+ * Fills the stage-one document URLs in the in-modal create form and submits a parse.
+ *
+ * @param {HTMLElement} dialog The owning modal dialog element.
+ * @returns {Promise<void>} Resolves once stage two (task weightings) is visible.
+ */
+async function parseStageOneInModal(dialog: HTMLElement): Promise<void> {
+  const referenceInput = await within(dialog).findByRole('textbox', {
+    name: /reference document url/i,
+  });
+  const templateInput = within(dialog).getByRole('textbox', {
+    name: /template document url/i,
+  });
+
+  setTextboxValue(referenceInput, 'https://docs.google.com/presentation/d/ref-001');
+  setTextboxValue(templateInput, 'https://docs.google.com/presentation/d/tpl-001');
+
+  await waitFor(() => {
+    expect(within(dialog).getByRole('button', { name: /parse and continue/i })).toBeEnabled();
+  });
+
+  await user.click(within(dialog).getByRole('button', { name: /parse and continue/i }));
+
+  await waitFor(() => {
+    expect(within(dialog).getByRole('table', { name: /task weightings/i })).toBeInTheDocument();
+  });
+}
+
 // ---------------------------------------------------------------------------
 // No-match resolution — creating state and wizard integration
 // ---------------------------------------------------------------------------
 
-describe('No-match resolution — creating state and wizard integration', () => {
-  it('renders wizard with mode="create" and correct initialValues when topicId matches cache', async () => {
+describe('No-match resolution — creating state and in-modal create path', () => {
+  it('renders the stage-one in-modal create form and pre-populates the assignment title when topicId matches cache', async () => {
     const { dialog, queryClient } = await setupWizardTest({
       assignments: [
         { assignmentId: 'a1', title: 'Essay', creationTime: '2024-09-02T08:30:00.000Z', topicName: 'Writing', topicId: 'topic-writing' },
@@ -985,21 +1031,17 @@ describe('No-match resolution — creating state and wizard integration', () => 
     ]);
 
     await clickCreateNewDefinition(dialog);
-    const properties = await getWizardProperties();
 
-    expect(properties.mode).toBe('create');
-    expect(properties.open).toBe(true);
-    expect(properties.definitionKey).toBeNull();
-    expect(properties.initialValues).toEqual({
-      title: 'Essay',
-      topic: 'topic-writing',
-      yearGroup: 'year-10',
-    });
-    expect(typeof properties.onCreateSuccess).toBe('function');
-    expect(typeof properties.onClose).toBe('function');
+    // The single owning dialog renders the stage-one create form in-modal.
+    expect(screen.queryAllByRole('dialog')).toHaveLength(1);
+    expect(within(dialog).getByRole('textbox', { name: /assignment title/i })).toHaveValue(
+      'Essay'
+    );
+    expect(within(dialog).getByRole('textbox', { name: /reference document url/i })).toBeInTheDocument();
+    expect(within(dialog).getByRole('textbox', { name: /template document url/i })).toBeInTheDocument();
   });
 
-  it('leaves topic field empty when topicId is not in the assignmentTopics cache', async () => {
+  it('leaves the topic field empty when topicId is not in the assignmentTopics cache', async () => {
     const { dialog, queryClient } = await setupWizardTest({
       assignments: [
         { assignmentId: 'a1', title: 'Essay', creationTime: '2024-09-02T08:30:00.000Z', topicName: 'Writing', topicId: 'unknown-topic' },
@@ -1013,17 +1055,16 @@ describe('No-match resolution — creating state and wizard integration', () => 
     ]);
 
     await clickCreateNewDefinition(dialog);
-    const properties = await getWizardProperties();
 
-    // Topic should NOT be present in initialValues when not found in cache
-    expect(properties.initialValues).toEqual({
-      title: 'Essay',
-      yearGroup: 'year-10',
-    });
-    expect(properties.initialValues.topic).toBeUndefined();
+    // Topic should remain blank because it is not found in the cache.
+    expect(within(dialog).getByRole('textbox', { name: /assignment title/i })).toHaveValue(
+      'Essay'
+    );
+    expect(within(dialog).getByText('Select topic')).toBeInTheDocument();
+    expect(within(dialog).queryByText('Writing')).toBeNull();
   });
 
-  it('leaves topic field empty when topicId is null', async () => {
+  it('leaves the topic field empty when topicId is null', async () => {
     const { dialog, queryClient } = await setupWizardTest({
       assignments: [{ assignmentId: 'a1', title: 'Essay', creationTime: '2024-09-02T08:30:00.000Z', topicName: 'Writing', topicId: null }],
     });
@@ -1035,32 +1076,34 @@ describe('No-match resolution — creating state and wizard integration', () => 
     ]);
 
     await clickCreateNewDefinition(dialog);
-    const properties = await getWizardProperties();
 
-    // Topic should NOT be in initialValues when topicId is null
-    expect(properties.initialValues).toEqual({
-      title: 'Essay',
-      yearGroup: 'year-10',
-    });
-    expect(properties.initialValues.topic).toBeUndefined();
+    // Topic should remain blank because the assignment has no topicId.
+    expect(within(dialog).getByRole('textbox', { name: /assignment title/i })).toHaveValue(
+      'Essay'
+    );
+    expect(within(dialog).getByText('Select topic')).toBeInTheDocument();
+    expect(within(dialog).queryByText('Writing')).toBeNull();
   });
 
-  it('calls startAssessmentRun and shows success state when wizard saves successfully', async () => {
-    const { dialog } = await setupWizardTest({
+  it('calls startAssessmentRun and shows the success state when the in-modal create form saves successfully', async () => {
+    const { dialog, queryClient } = await setupWizardTest({
+      assignments: CREATE_PATH_ASSIGNMENTS,
       startRunResult: null,
       startRunType: 'resolve',
+      upsertResult: CREATE_PATH_UPSERT_RESULT,
+      upsertType: 'resolve',
     });
+    queryClient.setQueryData<AssignmentTopic[]>(queryKeys.assignmentTopics(), [CREATE_PATH_TOPIC]);
 
     await clickCreateNewDefinition(dialog);
-    const properties = await getWizardProperties();
-    await act(async () => {
-      properties.onCreateSuccess('new-def-key');
-    });
+    await parseStageOneInModal(dialog);
 
-    // startAssessmentRun should have been called with the new definition key
+    await user.click(within(dialog).getByRole('button', { name: 'Save' }));
+
+    // startAssessmentRun should have been called with the created definition key
     await waitFor(() => {
       expect(vi.mocked(startAssessmentRun)).toHaveBeenCalledWith({
-        definitionKey: 'new-def-key',
+        definitionKey: CREATE_PATH_UPSERT_RESULT.definitionKey,
         assignmentId: 'a1',
         courseId: MOCK_CLASS_ID,
       });
@@ -1077,57 +1120,61 @@ describe('No-match resolution — creating state and wizard integration', () => 
     expect(within(footer!).getByRole('button', { name: 'Close' })).toBeInTheDocument();
   });
 
-  it('shows error state when startAssessmentRun fails after wizard creates definition', async () => {
+  it('shows the error state when startAssessmentRun fails after the in-modal create form saves', async () => {
     const apiError = new Error('API failure');
-    const { dialog } = await setupWizardTest({
+    const { dialog, queryClient } = await setupWizardTest({
+      assignments: CREATE_PATH_ASSIGNMENTS,
       startRunResult: apiError,
       startRunType: 'reject',
+      upsertResult: CREATE_PATH_UPSERT_RESULT,
+      upsertType: 'resolve',
     });
+    queryClient.setQueryData<AssignmentTopic[]>(queryKeys.assignmentTopics(), [CREATE_PATH_TOPIC]);
 
     await clickCreateNewDefinition(dialog);
-    const properties = await getWizardProperties();
-    await act(async () => {
-      properties.onCreateSuccess('new-def-key');
-    });
+    await parseStageOneInModal(dialog);
+
+    await user.click(within(dialog).getByRole('button', { name: 'Save' }));
 
     // Error alert should appear
     const alert = await within(dialog).findByRole('alert');
     expect(alert).toBeInTheDocument();
-    expect(alert).toHaveTextContent('API failure');
+    expect(alert.textContent).not.toContain('API failure');
+    expect(alert).toHaveTextContent('An error occurred. Please try again.');
   });
 
-  it('returns to choice state when wizard is cancelled', async () => {
+  it('returns to the choice prompt when the in-modal create form is cancelled without edits', async () => {
     const { dialog } = await setupWizardTest();
 
     await clickCreateNewDefinition(dialog);
-    const properties = await getWizardProperties();
 
-    // Simulate wizard cancel (onClose fires without onCreateSuccess having been called)
-    await act(async () => {
-      properties.onClose();
-    });
+    // Cancel from the in-modal create form returns to the choice prompt.
+    await user.click(within(dialog).getByRole('button', { name: 'Cancel' }));
 
-    // Should return to choice state — choice buttons appear again
     await waitFor(() => {
       expect(
         within(dialog).getByRole('button', { name: 'Create New Definition' })
       ).toBeInTheDocument();
     });
 
-    // The wizard mock should be unmounted
-    expect(screen.queryByTestId('wizard-mock')).toBeNull();
+    // The in-modal create form is unmounted.
+    expect(within(dialog).queryByRole('textbox', { name: /reference document url/i })).toBeNull();
   });
 
-  it('calls modal onClose when Cancel is clicked during creating state', async () => {
+  it('keeps the assignment Select hidden while the in-modal create content is active', async () => {
     const onClose = vi.fn();
     const { dialog } = await setupWizardTest({ onClose });
 
     await clickCreateNewDefinition(dialog);
 
-    // Now in creating state — click Cancel in the AssessTaskModal footer
-    await user.click(within(dialog).getByRole('button', { name: 'Cancel' }));
-
-    expect(onClose).toHaveBeenCalledTimes(1);
+    // The owning footer is suppressed while the create content is active, so the
+    // assignment Select stays hidden and the stage-one form is the active surface.
+    expect(within(dialog).queryByTestId('assignment-select')).toBeNull();
+    expect(within(dialog).queryByRole('button', { name: 'Start Assessment' })).toBeNull();
+    expect(
+      within(dialog).getByRole('textbox', { name: /reference document url/i })
+    ).toBeInTheDocument();
+    expect(onClose).not.toHaveBeenCalled();
   });
 
   it('shows correct UI during auto-assessment loading and final state after resolution', async () => {
@@ -1137,19 +1184,23 @@ describe('No-match resolution — creating state and wizard integration', () => 
     });
     vi.mocked(startAssessmentRun).mockReturnValue(pendingRun);
 
-    const { dialog } = await setupWizardTest();
+    const { dialog, queryClient } = await setupWizardTest({
+      assignments: CREATE_PATH_ASSIGNMENTS,
+      upsertResult: CREATE_PATH_UPSERT_RESULT,
+      upsertType: 'resolve',
+    });
+    queryClient.setQueryData<AssignmentTopic[]>(queryKeys.assignmentTopics(), [CREATE_PATH_TOPIC]);
 
     await clickCreateNewDefinition(dialog);
-    const properties = await getWizardProperties();
-    await act(async () => {
-      properties.onCreateSuccess('new-def-key');
-    });
+    await parseStageOneInModal(dialog);
 
-    // During loading: the wizard mock should be unmounted
-    expect(screen.queryByTestId('wizard-mock')).toBeNull();
+    await user.click(within(dialog).getByRole('button', { name: 'Save' }));
+
+    // During loading: the in-modal create form should be unmounted
+    expect(within(dialog).queryByRole('textbox', { name: /reference document url/i })).toBeNull();
 
     // During loading: assignment Select NOT visible
-    expect(within(dialog).queryByRole('combobox')).toBeNull();
+    expect(within(dialog).queryByTestId('assignment-select')).toBeNull();
 
     // During loading: footer shows Cancel + disabled Start Assessment
     expect(within(dialog).getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
@@ -1180,13 +1231,18 @@ describe('No-match resolution — creating state and wizard integration', () => 
     const pendingRun = new Promise<null>(() => {});
     vi.mocked(startAssessmentRun).mockReturnValue(pendingRun);
 
-    const { dialog } = await setupWizardTest({ onClose });
+    const { dialog, queryClient } = await setupWizardTest({
+      assignments: CREATE_PATH_ASSIGNMENTS,
+      onClose,
+      upsertResult: CREATE_PATH_UPSERT_RESULT,
+      upsertType: 'resolve',
+    });
+    queryClient.setQueryData<AssignmentTopic[]>(queryKeys.assignmentTopics(), [CREATE_PATH_TOPIC]);
 
     await clickCreateNewDefinition(dialog);
-    const properties = await getWizardProperties();
-    await act(async () => {
-      properties.onCreateSuccess('test-key');
-    });
+    await parseStageOneInModal(dialog);
+
+    await user.click(within(dialog).getByRole('button', { name: 'Save' }));
 
     // During auto-assessment loading, Cancel should be in the footer
     expect(within(dialog).getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
@@ -1411,7 +1467,8 @@ describe('No-match resolution — linking state and link flow', () => {
     // Error Alert should appear
     const alert = await within(dialog).findByRole('alert');
     expect(alert).toBeInTheDocument();
-    expect(alert).toHaveTextContent(/Upsert failed/);
+    expect(alert.textContent).not.toContain('Upsert failed');
+    expect(alert).toHaveTextContent('An error occurred. Please try again.');
 
     // Footer should have Cancel only (modal stays open)
     expect(within(dialog).getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
@@ -1430,13 +1487,16 @@ describe('No-match resolution — linking state and link flow', () => {
     // Error Alert should appear
     const alert = await within(dialog).findByRole('alert');
     expect(alert).toBeInTheDocument();
-    expect(alert).toHaveTextContent(/assessment run failed/i);
+    expect(alert.textContent).not.toContain('Assessment run failed');
+    expect(alert).toHaveTextContent(
+      'Link was committed but assessment could not be started: An error occurred. Please try again.'
+    );
 
     // Modal does not close — Cancel button still present
     expect(within(dialog).getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
   });
 
-  it('DEFINITION_STALE recovery: startAssessmentRun fails with DEFINITION_STALE after a successful upsert', async () => {
+  it('link-flow DEFINITION_STALE preserves the committed link and enters recovery routing instead of the create path', async () => {
     const staleError = new ApiTransportError({
       requestId: 'test-id',
       error: { code: 'DEFINITION_STALE', message: 'Definition is stale' },
@@ -1451,20 +1511,43 @@ describe('No-match resolution — linking state and link flow', () => {
 
     await performLinkFlow(dialog);
 
-    // Should transition to stale recovery — wizard should appear with stale definition data pre-populated
-    const wizard = await screen.findByTestId('wizard-mock');
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const wizardProperties = (wizard as any).__wizardProps || {};
-    expect(wizardProperties.open).toBe(true);
-    // In stale recovery, the wizard pre-populates from the stale definition
-    expect(wizardProperties.initialValues).toBeDefined();
-    // The initialValues should contain data from the stale definition
-    expect(wizardProperties.initialValues).toEqual(
-      expect.objectContaining({
-        title: expect.any(String),
-        yearGroup: expect.any(String),
-      })
-    );
+    // The link upsert committed before the stale rejection, so it is preserved.
+    await waitFor(() => {
+      expect(vi.mocked(upsertAssignmentDefinition)).toHaveBeenCalledTimes(1);
+    });
+    await waitFor(() => {
+      expect(vi.mocked(startAssessmentRun)).toHaveBeenCalledTimes(1);
+    });
+
+    // RED: link-flow DEFINITION_STALE must enter the assessment orchestration
+    // recovery routing, never the genuine create path, so the in-modal create
+    // content stays unmounted.
+    expect(within(dialog).queryByRole('textbox', { name: /reference document url/i })).toBeNull();
+  });
+
+  it('link-flow recovery cancellation returns to assignment selection rather than the link picker', async () => {
+    vi.mocked(getAssignmentDefinition).mockResolvedValue(DEFAULT_UPSERT_RESULT);
+    const staleError = new ApiTransportError({
+      requestId: 'test-id',
+      error: { code: 'DEFINITION_STALE', message: 'Definition is stale' },
+    });
+
+    const { dialog } = renderWithNoMatchCache({
+      upsertResult: DEFAULT_UPSERT_RESULT,
+      upsertType: 'resolve',
+      startRunResult: staleError,
+      startRunType: 'reject',
+    });
+
+    await performLinkFlow(dialog);
+    await within(dialog).findByRole('button', { name: 'Update' });
+    await user.click(within(dialog).getByRole('button', { name: 'Update' }));
+    await within(dialog).findByRole('button', { name: 'Cancel' });
+    await user.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+
+    await within(dialog).findByTestId('assignment-select');
+    expect(within(dialog).queryByRole('button', { name: 'Link' })).toBeNull();
+    expect(within(dialog).queryByRole('button', { name: 'Link to Existing Definition' })).toBeNull();
   });
 
   it('hasLinkSucceeded flag management', async () => {

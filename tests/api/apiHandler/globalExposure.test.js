@@ -76,6 +76,18 @@ function scanForExposedPublicFunctions(files, { allowlist, excludedPathSegments 
   return exposed;
 }
 
+function findTopLevelFunctionNames(files) {
+  const declarations = {};
+  for (const [file, source] of Object.entries(files)) {
+    if (isExcludedPath(file, DEFAULT_EXCLUDED_PATH_SEGMENTS)) continue;
+    declarations[file] = source
+      .split('\n')
+      .map((line) => line.match(/^function\s+([A-Za-z0-9_$]+)\s*\(/)?.[1])
+      .filter(Boolean);
+  }
+  return declarations;
+}
+
 /** Builds the real source map by globbing and reading every backend source file. */
 function readAllBackendSourceFiles() {
   const files = {};
@@ -154,5 +166,17 @@ describe('Backend global-exposure guardrail (static source scan)', () => {
 
     // `safeSet` is indented (nested) so it must not be flagged.
     expect(exposed).toEqual([]);
+  });
+
+  it('keeps assignment-definition upsert helpers distinct from partial-row helpers', () => {
+    const files = readAllBackendSourceFiles();
+    const declarations = findTopLevelFunctionNames(files);
+    const partialNames = new Set(
+      declarations['z_Api/assignmentDefinition/assignmentDefinitionPartialRowValidation.js']
+    );
+    const upsertNames =
+      declarations['z_Api/assignmentDefinition/assignmentDefinitionUpsertValidation.js'];
+
+    expect(upsertNames.filter((name) => partialNames.has(name))).toEqual([]);
   });
 });

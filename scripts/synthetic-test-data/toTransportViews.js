@@ -2,7 +2,7 @@ import { toFullSubmission } from './projectSubmissionViews.js';
 import { buildClassTransportViews } from './projectClassTransportViews.js';
 
 /**
- * Projects the persistence graph into the four named transport views.
+ * Projects the persistence graph into the five named transport views.
  *
  * @remarks
  * This is the composition point for partial and full transport views. Class
@@ -91,6 +91,88 @@ function toFullDefinition(definition) {
 }
 
 /**
+ * Reports whether a persistence definition carries a full definition that can
+ * hydrate into an editable transport record.
+ *
+ * @param {object} definition Persistence assignment definition.
+ * @returns {boolean} True for full definitions with document identifiers and keyed tasks.
+ */
+function isFullDefinition(definition) {
+  return (
+    !Array.isArray(definition.tasks) &&
+    definition.referenceDocumentId !== null &&
+    definition.templateDocumentId !== null
+  );
+}
+
+/**
+ * Projects a persistence definition into an editable full-definition transport
+ * record, applying the backend response-mapper transformation.
+ *
+ * @remarks
+ * Keyed tasks become a lightweight `{taskId, taskTitle, taskWeighting}` array
+ * with null-weighting tasks filtered out, and the `referenceLastModified` and
+ * `templateLastModified` freshness fields are omitted, matching
+ * `AssignmentDefinitionResponseMapper._getFullAssignmentDefinition`.
+ *
+ * @param {object} definition Persistence assignment definition.
+ * @param {Map<string, string>} yearGroupNameByKey Year-group display names keyed by key.
+ * @returns {object} Editable AssignmentDefinition transport record.
+ */
+function toEditableDefinition(definition, yearGroupNameByKey) {
+  const tasks = Object.entries(definition.tasks)
+    .filter(([, task]) => task?.taskWeighting !== null && task?.taskWeighting !== undefined)
+    .map(([taskId, task]) => ({
+      taskId,
+      taskTitle: task.taskTitle,
+      taskWeighting: task.taskWeighting,
+    }));
+
+  return {
+    primaryTitle: definition.primaryTitle,
+    primaryTopic: definition.primaryTopic,
+    primaryTopicKey: definition.primaryTopicKey,
+    yearGroupKey: definition.yearGroupKey,
+    yearGroupLabel: yearGroupNameByKey.get(definition.yearGroupKey) ?? definition.yearGroupLabel,
+    alternateTitles: definition.alternateTitles,
+    alternateTopics: definition.alternateTopics,
+    documentType: definition.documentType,
+    referenceDocumentId: definition.referenceDocumentId,
+    templateDocumentId: definition.templateDocumentId,
+    assignmentWeighting: definition.assignmentWeighting,
+    definitionKey: definition.definitionKey,
+    tasks,
+    createdAt: definition.createdAt,
+    updatedAt: definition.updatedAt,
+  };
+}
+
+/**
+ * Builds the editable full-definition transport view keyed by definition key.
+ *
+ * @param {Array<object>} assignmentDefinitions Persistence assignment definitions.
+ * @param {Map<string, string>} yearGroupNameByKey Year-group display names keyed by key.
+ * @returns {Record<string, object>} Editable full-definition records keyed by definition key.
+ */
+function buildEditableDefinitions(assignmentDefinitions, yearGroupNameByKey) {
+  const editableDefinitions = {};
+
+  for (const definition of assignmentDefinitions) {
+    // A partial-only registry row cannot hydrate into an editable definition, so
+    // it is represented only in the partial views, never here.
+    if (!isFullDefinition(definition)) {
+      continue;
+    }
+    editableDefinitions[definition.definitionKey] = toEditableDefinition(
+      definition,
+      yearGroupNameByKey
+    );
+  }
+
+  return editableDefinitions;
+}
+
+/**
  * Projects a persistence assignment into a full assignment view.
  *
  * @param {object} assignment Persistence assignment record.
@@ -128,7 +210,9 @@ function buildAssignmentsByKey(assignments, definitionByKey) {
     const definition = definitionByKey.get(assignment.assignmentDefinitionKey);
     // A partial-only registry row cannot hydrate into a full assignment, so it is
     // represented only in the class partial view, never as an AssignmentFull.
-    if (Array.isArray(definition.tasks)) {
+    // A keyed-task record missing document IDs is likewise not a full
+    // definition and must not hydrate.
+    if (!definition || !isFullDefinition(definition)) {
       continue;
     }
     assignmentsByKey[assignment.assignmentId] = toFullAssignment(assignment, definition);
@@ -145,7 +229,7 @@ function buildAssignmentsByKey(assignments, definitionByKey) {
  * @param {Array<object>} inputs.classes Persistence class documents.
  * @param {Array<object>} inputs.assignmentDefinitions Persistence assignment definitions.
  * @param {Array<object>} inputs.assignments Persistence assignment records.
- * @returns {{classPartials: Array<object>, assignmentDefinitionPartials: Array<object>, classesById: Record<string, object>, assignmentsByKey: Record<string, object>}} The four named transport views.
+ * @returns {{classPartials: Array<object>, assignmentDefinitionPartials: Array<object>, editableDefinitions: Record<string, object>, classesById: Record<string, object>, assignmentsByKey: Record<string, object>}} The five named transport views.
  */
 export function toTransportViews({ referenceData, classes, assignmentDefinitions, assignments }) {
   const definitionByKey = new Map(
@@ -162,11 +246,13 @@ export function toTransportViews({ referenceData, classes, assignmentDefinitions
   const assignmentDefinitionPartials = assignmentDefinitions.map((definition) =>
     toDefinitionPartial(definition, yearGroupNameByKey)
   );
+  const editableDefinitions = buildEditableDefinitions(assignmentDefinitions, yearGroupNameByKey);
   const assignmentsByKey = buildAssignmentsByKey(assignments, definitionByKey);
 
   return {
     classPartials,
     assignmentDefinitionPartials,
+    editableDefinitions,
     classesById,
     assignmentsByKey,
   };

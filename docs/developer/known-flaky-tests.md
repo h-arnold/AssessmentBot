@@ -121,5 +121,4 @@ Full investigation documented at: `/tmp/vibe-scratchpad-b0dce62f-pvx7t902/flaky-
 - `src/frontend/e2e-tests/classes-crud-manage-year-groups.spec.ts` - The flaky test file (section 1)
 - `src/frontend/e2e-tests/classes-crud-bulk-progress.spec.ts` - Bulk progress modal flaky tests (section 2)
 - commit `feb046a` - modal-confirmation click-stabilisation helper
-- `ACTION_PLAN.md` - Section 1 delivery plan
 - `/tmp/vibe-scratchpad-b0dce62f-pvx7t902/flaky-tests-investigation.md` - Full investigation report

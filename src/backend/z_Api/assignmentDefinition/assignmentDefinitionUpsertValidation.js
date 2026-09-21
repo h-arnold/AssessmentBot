@@ -1,4 +1,4 @@
-/* global extractSupportedDocumentDescriptor_, throwUpsertValidationError_, validateSafeTrimmedIdentifier_ */
+/* global extractSupportedDocumentDescriptor_, isIsoDateTimeString_, throwUpsertValidationError_, validateSafeTrimmedIdentifier_ */
 
 const UPSERT_REQUIRED_FIELDS = Object.freeze([
   'primaryTitle',
@@ -13,6 +13,94 @@ const WIZARD_UPSERT_REQUIRED_FIELDS = Object.freeze([
   'templateDocumentUrl',
 ]);
 
+const PRIMARY_TOPIC_KEY_VALIDATION_MESSAGES = Object.freeze({
+  typeErrorMessage: 'primaryTopicKey must be a string.',
+  nonEmptyErrorMessage: 'primaryTopicKey must be a non-empty string.',
+  trimmedErrorMessage: 'primaryTopicKey must already be trimmed.',
+  unsafeErrorMessage: 'primaryTopicKey contains unsafe characters.',
+});
+const DEFINITION_KEY_VALIDATION_MESSAGES = Object.freeze({
+  typeErrorMessage: 'definitionKey must be a string when provided.',
+  nonEmptyErrorMessage: 'definitionKey must be a non-empty string.',
+  trimmedErrorMessage: 'definitionKey must already be trimmed.',
+  unsafeErrorMessage: 'definitionKey contains unsafe characters.',
+});
+
+/**
+ * Validates the primary-topic identifier for an upsert payload.
+ *
+ * @param {Object} parameters - Candidate upsert payload.
+ */
+function validateUpsertPrimaryTopicKey_(parameters) {
+  validateSafeTrimmedIdentifier_(parameters.primaryTopicKey, {
+    throwValidationError: throwUpsertValidationError_,
+    ...PRIMARY_TOPIC_KEY_VALIDATION_MESSAGES,
+    fieldNames: {
+      type: 'primaryTopicKey',
+      nonEmpty: 'primaryTopicKey',
+      trimmed: 'primaryTopicKey',
+      unsafe: 'primaryTopicKey',
+    },
+  });
+}
+
+/**
+ * Validates the optional definition identifier for an upsert payload.
+ *
+ * @param {Object} parameters - Candidate upsert payload.
+ */
+function validateUpsertOptionalDefinitionKey_(parameters) {
+  if (Object.hasOwn(parameters, 'definitionKey') && parameters.definitionKey !== null) {
+    validateSafeTrimmedIdentifier_(parameters.definitionKey, {
+      throwValidationError: throwUpsertValidationError_,
+      ...DEFINITION_KEY_VALIDATION_MESSAGES,
+      fieldNames: {
+        type: 'definitionKey',
+        nonEmpty: 'definitionKey',
+        trimmed: 'definitionKey',
+        unsafe: 'definitionKey',
+      },
+    });
+  }
+}
+
+/**
+ * Validates recovery field shapes at the transport boundary.
+ *
+ * Type checks for transport/control fields live here per the validation
+ * ownership rules; the mutual-exclusion business rule is domain-owned by
+ * the upsert orchestrator. A supplied non-null baseline must be a strict
+ * ISO datetime string with timezone; explicit null and omission retain
+ * create-time/ordinary upsert behaviour.
+ *
+ * @param {*} parameters - Candidate request payload.
+ * @throws {ApiValidationError} If a recovery field has an invalid shape.
+ */
+function validateRecoveryFieldShapes_(parameters) {
+  if (
+    Object.hasOwn(parameters, 'forceReparse') &&
+    parameters.forceReparse !== undefined &&
+    typeof parameters.forceReparse !== 'boolean'
+  ) {
+    throwUpsertValidationError_('forceReparse must be a boolean when provided.', 'forceReparse');
+  }
+
+  if (
+    !Object.hasOwn(parameters, 'updatedAt') ||
+    parameters.updatedAt === undefined ||
+    parameters.updatedAt === null
+  ) {
+    return;
+  }
+
+  if (typeof parameters.updatedAt !== 'string' || !isIsoDateTimeString_(parameters.updatedAt)) {
+    throwUpsertValidationError_(
+      'updatedAt must be a strict ISO datetime string with timezone when provided.',
+      'updatedAt'
+    );
+  }
+}
+
 /**
  * Validates payload shape and required fields for assignment-definition upsert transport.
  *
@@ -23,6 +111,8 @@ function validateUpsertParameters_(parameters) {
   if (!parameters || typeof parameters !== 'object' || Array.isArray(parameters)) {
     throwUpsertValidationError_('params must be an object.', 'params');
   }
+
+  validateRecoveryFieldShapes_(parameters);
 
   const shouldTranslateDocumentUrls =
     Object.hasOwn(parameters, 'referenceDocumentUrl') ||
@@ -43,43 +133,37 @@ function validateUpsertParameters_(parameters) {
     throwUpsertValidationError_('primaryTitle must be a string.', 'primaryTitle');
   }
 
-  validateSafeTrimmedIdentifier_(parameters.primaryTopicKey, {
+  validateUpsertPrimaryTopicKey_(parameters);
+
+  validateSafeTrimmedIdentifier_(parameters.referenceDocumentId, {
     throwValidationError: throwUpsertValidationError_,
-    typeErrorMessage: 'primaryTopicKey must be a string.',
-    nonEmptyErrorMessage: 'primaryTopicKey must be a non-empty string.',
-    trimmedErrorMessage: 'primaryTopicKey must already be trimmed.',
-    unsafeErrorMessage: 'primaryTopicKey contains unsafe characters.',
+    typeErrorMessage: 'referenceDocumentId must be a string.',
+    nonEmptyErrorMessage: 'referenceDocumentId must be a non-empty string.',
+    trimmedErrorMessage: 'referenceDocumentId must already be trimmed.',
+    unsafeErrorMessage: 'referenceDocumentId contains unsafe characters.',
     fieldNames: {
-      type: 'primaryTopicKey',
-      nonEmpty: 'primaryTopicKey',
-      trimmed: 'primaryTopicKey',
-      unsafe: 'primaryTopicKey',
+      type: 'referenceDocumentId',
+      nonEmpty: 'referenceDocumentId',
+      trimmed: 'referenceDocumentId',
+      unsafe: 'referenceDocumentId',
     },
   });
 
-  if (typeof parameters.referenceDocumentId !== 'string') {
-    throwUpsertValidationError_('referenceDocumentId must be a string.', 'referenceDocumentId');
-  }
+  validateSafeTrimmedIdentifier_(parameters.templateDocumentId, {
+    throwValidationError: throwUpsertValidationError_,
+    typeErrorMessage: 'templateDocumentId must be a string.',
+    nonEmptyErrorMessage: 'templateDocumentId must be a non-empty string.',
+    trimmedErrorMessage: 'templateDocumentId must already be trimmed.',
+    unsafeErrorMessage: 'templateDocumentId contains unsafe characters.',
+    fieldNames: {
+      type: 'templateDocumentId',
+      nonEmpty: 'templateDocumentId',
+      trimmed: 'templateDocumentId',
+      unsafe: 'templateDocumentId',
+    },
+  });
 
-  if (typeof parameters.templateDocumentId !== 'string') {
-    throwUpsertValidationError_('templateDocumentId must be a string.', 'templateDocumentId');
-  }
-
-  if (Object.hasOwn(parameters, 'definitionKey') && parameters.definitionKey !== null) {
-    validateSafeTrimmedIdentifier_(parameters.definitionKey, {
-      throwValidationError: throwUpsertValidationError_,
-      typeErrorMessage: 'definitionKey must be a string when provided.',
-      nonEmptyErrorMessage: 'definitionKey must be a non-empty string.',
-      trimmedErrorMessage: 'definitionKey must already be trimmed.',
-      unsafeErrorMessage: 'definitionKey contains unsafe characters.',
-      fieldNames: {
-        type: 'definitionKey',
-        nonEmpty: 'definitionKey',
-        trimmed: 'definitionKey',
-        unsafe: 'definitionKey',
-      },
-    });
-  }
+  validateUpsertOptionalDefinitionKey_(parameters);
 
   validateTaskWeightingsShape_(parameters.taskWeightings);
   validateRequiredYearGroupKey_(parameters);
@@ -87,6 +171,9 @@ function validateUpsertParameters_(parameters) {
 
 /**
  * Validates the wizard URL-style upsert transport payload.
+ *
+ * Recovery field shapes are validated once at the transport entry
+ * (`validateUpsertParameters_`); this helper owns only the wizard shape.
  *
  * @param {Object} parameters - Candidate upsert payload.
  * @throws {ApiValidationError} If the payload violates transport contract rules.
@@ -102,35 +189,8 @@ function validateWizardUpsertParameters_(parameters) {
     throwUpsertValidationError_('primaryTitle must be a string.', 'primaryTitle');
   }
 
-  validateSafeTrimmedIdentifier_(parameters.primaryTopicKey, {
-    throwValidationError: throwUpsertValidationError_,
-    typeErrorMessage: 'primaryTopicKey must be a string.',
-    nonEmptyErrorMessage: 'primaryTopicKey must be a non-empty string.',
-    trimmedErrorMessage: 'primaryTopicKey must already be trimmed.',
-    unsafeErrorMessage: 'primaryTopicKey contains unsafe characters.',
-    fieldNames: {
-      type: 'primaryTopicKey',
-      nonEmpty: 'primaryTopicKey',
-      trimmed: 'primaryTopicKey',
-      unsafe: 'primaryTopicKey',
-    },
-  });
-
-  if (Object.hasOwn(parameters, 'definitionKey') && parameters.definitionKey !== null) {
-    validateSafeTrimmedIdentifier_(parameters.definitionKey, {
-      throwValidationError: throwUpsertValidationError_,
-      typeErrorMessage: 'definitionKey must be a string when provided.',
-      nonEmptyErrorMessage: 'definitionKey must be a non-empty string.',
-      trimmedErrorMessage: 'definitionKey must already be trimmed.',
-      unsafeErrorMessage: 'definitionKey contains unsafe characters.',
-      fieldNames: {
-        type: 'definitionKey',
-        nonEmpty: 'definitionKey',
-        trimmed: 'definitionKey',
-        unsafe: 'definitionKey',
-      },
-    });
-  }
+  validateUpsertPrimaryTopicKey_(parameters);
+  validateUpsertOptionalDefinitionKey_(parameters);
 
   validateRequiredYearGroupKey_(parameters);
   validateTaskWeightingsShape_(parameters.taskWeightings);
@@ -246,5 +306,6 @@ if (typeof module !== 'undefined' && module.exports) {
     validateWizardUpsertParameters_,
     validateTaskWeightingsShape_,
     validateRequiredYearGroupKey_,
+    validateRecoveryFieldShapes_,
   };
 }

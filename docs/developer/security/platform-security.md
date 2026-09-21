@@ -40,15 +40,15 @@ the signed-in user's email — the identity used by Layer 2's `AuthService` gate
 web app runs "as the user accessing" it and only domain members can reach it, GAS
 resolves the active user to the signed-in domain account rather than the deployer or an
 empty string. This was verified against the official Apps Script `Session` reference
-during planning (see `SPEC.md`, decision 2): a deployment that used `USER_DEPLOYING`, or
+during planning: a deployment that used `USER_DEPLOYING`, or
 allowed anonymous access, could yield the deployer's identity or a blank email and would
 break the entire application authentication model.
 
 The identity model has one hard prerequisite: **`access: DOMAIN` is only valid within a
 Google Workspace domain**. A deployment on a personal (Gmail) identity cannot use `DOMAIN`
 access; in that case the appropriate `access` value must be confirmed with the deploying
-administrator before rollout (recorded as an explicit assumption in `SPEC.md`, decision
-R5, and in `src/backend/AGENTS.md` §2.5).
+administrator before rollout (an explicit assumption also recorded in
+`src/backend/AGENTS.md` §2.5).
 
 The builder's manifest merge uses `src/backend/appsscript.json` as its base, so the
 `webapp` block (and the OAuth scopes below) flow unchanged into the deployed
@@ -101,7 +101,7 @@ it.
 **Users must re-authorise the app when scopes change.** Google requires a fresh consent
 for newly added scopes; until then the affected services are unavailable. The auth-service
 rollout required exactly this: redeploying after the `groups` and `userinfo.email` scopes
-were added, with users re-authorising on next access (see the rollout steps in `SPEC.md`).
+were added, with users re-authorising on next access.
 
 > **Recommended operational practice.** Keep scope additions minimal and justified — add a
 > scope only when the code genuinely requires it, and prefer readonly variants wherever
@@ -174,8 +174,8 @@ Two mechanisms tie trigger execution back to the rest of the security model:
 > **Recommended operational practice.** When the trigger handler model changes, drain and
 > replace old triggers before deploying: triggers installed by previous versions point at
 > the old entrypoint (`triggerProcessSelectedAssignment`) and will fail or run stale code
-> once it is removed. This migration is documented in the v0.7.6/v0.7.7 rollout steps in
-> `SPEC.md`. Because triggers inherit their creator's identity, an operator who leaves the
+> once it is removed. This migration is documented in the v0.7.6/v0.7.7 rollout steps.
+> Because triggers inherit their creator's identity, an operator who leaves the
 > organisation should have their scheduled triggers reviewed and re-created under a
 > remaining authorised user.
 

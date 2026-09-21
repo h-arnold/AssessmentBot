@@ -5,7 +5,7 @@ through `AuthService.checkAccess()`) to memoise Google Group membership results 
 requests. Stored via the generic `CacheManager` methods (extended with `get`/`put`).
 
 > **Status: Implemented** — the generic `CacheManager` methods and the `AuthService`
-> provider hierarchy (ACTION_PLAN §3) have landed, so both the cache access and its
+> provider hierarchy have landed, so both the cache access and its
 > sole producer/consumer (`GoogleGroupsAuthService`) exist.
 
 Backend implementation: `src/backend/Utils/GoogleGroupsAuthService.js` (`_resolveAccess()`)
@@ -25,7 +25,7 @@ Sibling contracts:
 - No other sibling contracts — AuthCache is an internal backend cache entry with no
   frontend-facing transport.
 
-> **Implemented (ACTION_PLAN §3)** — the cache policy recorded below previously as
+> **Implemented** — the cache policy recorded below previously as
 > The previously pending cache policy has now landed; the points restate the delivered contract:
 >
 > 1. The Google Groups cache entry keeps the unchanged key format
@@ -43,9 +43,9 @@ Sibling contracts:
 >    The management/provider-switch endpoints (`getAuthenticationSettings` /
 >    `setAuthenticationSettings`) reuse the same `bypassCache: true` option: the dispatcher's
 >    `ADMIN_REQUIRED_METHOD_NAMES` admission phase resolves access fresh (cache bypassed) for
->    those methods (Section 5 transport is now delivered — ACTION_PLAN §5).
+>    those methods.
 >
-> The cache policy above is delivered, and the Section 5 transport has confirmed the shared
+> The cache policy above is delivered, and the management transport confirms the shared
 > `bypassCache` semantics for management endpoints; this restatement block is retained for
 > traceability.
 

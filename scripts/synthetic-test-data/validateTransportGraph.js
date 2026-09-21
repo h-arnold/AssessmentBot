@@ -4,6 +4,7 @@ import { collectRosterIds } from './validationContext.js';
 import { assertAssignmentsByKeyView } from './validateAssignmentsByKeyView.js';
 import { assertClassPartialsView } from './validateClassPartialsView.js';
 import { assertCompletionBands } from './validateProfileInvariants.js';
+import { assertEditableDefinitionsView } from './validateEditableDefinitionsView.js';
 
 /**
  * Asserts a transport class view carries the profile's roster and assignment counts
@@ -295,8 +296,9 @@ function assertTransportDefinitionsMatchPersistence(transport, definitionByKey) 
 }
 
 /**
- * Validates the four named transport views: class partials, class and assignment
- * references, partial redaction, completion bands, and definition coverage.
+ * Validates the five named transport views: class partials, class and assignment
+ * references, editable full definitions, partial redaction, completion bands,
+ * and definition coverage.
  *
  * @param {object} options Validation inputs.
  * @param {object} options.transport Generated transport view.
@@ -326,4 +328,9 @@ export function validateTransportGraph({ transport, assignments, context }) {
   });
 
   assertTransportDefinitionsMatchPersistence(transport, context.definitionByKey);
+
+  assertEditableDefinitionsView({
+    editableDefinitions: transport.editableDefinitions,
+    assignmentDefinitionPartials: transport.assignmentDefinitionPartials,
+  });
 }

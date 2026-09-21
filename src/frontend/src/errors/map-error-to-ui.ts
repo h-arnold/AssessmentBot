@@ -17,6 +17,7 @@ export const errorCodes = {
   UNTRUSTED_DATA: 'UNTRUSTED_DATA',
   IN_USE: 'IN_USE',
   DEFINITION_STALE: 'DEFINITION_STALE',
+  DEFINITION_PARSE_FAILED: 'DEFINITION_PARSE_FAILED',
 } as const;
 
 /**
@@ -47,6 +48,8 @@ const errorCodeToMessageMap: Record<ErrorCode, string> = {
   IN_USE: 'This item is currently in use and cannot be deleted.',
   DEFINITION_STALE:
     'This assessment definition is out of date. Please review the linked documents and try again.',
+  DEFINITION_PARSE_FAILED:
+    'The assignment documents could not be parsed. Check the reference and template documents, then try again.',
 };
 
 /**

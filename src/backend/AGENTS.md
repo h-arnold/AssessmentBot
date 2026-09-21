@@ -345,9 +345,10 @@ before returning data.
 ## 11. Large File Decomposition (Non-API Files)
 
 When a non-API backend file (`y_controllers/`, `Models/`, `DocumentParsers/`, `Assessors/`,
-`RequestHandlers/`, `GoogleDriveManager/`, etc.) exceeds **550 lines** and can be meaningfully
-split into distinct responsibilities, decompose it using the **facade-pattern** established by
-`AssignmentDefinitionController`:
+`RequestHandlers/`, `GoogleDriveManager/`, etc.) exceeds **550 lines**, decomposition is
+mandatory. Do not leave a file above this threshold merely because the current change did not
+create the excess, or because the file is inconvenient to split. Decompose it using the
+**facade-pattern** established by `AssignmentDefinitionController`:
 
 1. **Create a folder** named after the original file/class (e.g. `ABClassController/`).
 2. **Create `index.js`** as the facade — it exports the original public class, which delegates
@@ -373,6 +374,12 @@ y_controllers/AssignmentDefinition/
 Rules:
 
 - Do not split files under 550 lines unless there is a clear maintainability reason.
+- Treat 550 lines as a hard decomposition trigger for files in scope. If work touches a file
+  already above the threshold, decompose that file in the same change.
+- Never game the threshold by reformatting code, removing blank lines, joining statements,
+  shortening names, or condensing, deleting, or otherwise weakening documentation and JSDoc.
+  A lower line count is not decomposition; the file must be split into coherent responsibility
+  modules according to the rules above.
 - Keep the public API surface (method names and signatures) identical after decomposition;
   the facade must preserve backward compatibility.
 - Do not pre-emptively split files that are approaching 550 lines; wait until the threshold

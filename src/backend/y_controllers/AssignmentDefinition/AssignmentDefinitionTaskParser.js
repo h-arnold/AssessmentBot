@@ -45,7 +45,9 @@ class AssignmentDefinitionTaskParser {
    *
    * @param {string} referenceDocumentId - Reference slides Google ID.
    * @param {string} templateDocumentId - Template slides Google ID.
-   * @returns {Object} Map of valid task definitions indexed by task ID.
+   * @returns {Object} Map of valid task definitions indexed by task ID. When
+   *   invalid source tasks are skipped, a non-enumerable marker preserves that
+   *   state for the recovery boundary to reject the entire parse.
    * @private
    */
   _parseSlidesTasks(referenceDocumentId, templateDocumentId) {
@@ -71,18 +73,21 @@ class AssignmentDefinitionTaskParser {
       valid: validDefs.length,
     });
 
-    return Object.fromEntries(
+    const tasks = Object.fromEntries(
       validDefs.map((td) => [td.getId(), TaskDefinition.fromJSON(td.toJSON())])
     );
+    Object.defineProperty(tasks, 'hasInvalidTasks', {
+      value: validDefs.length !== definitions.length,
+    });
+    return tasks;
   }
 
   /**
    * Parses task definitions from Google Sheets documents.
-   * Validates each task definition and logs errors for invalid tasks.
    *
    * @param {string} referenceDocumentId - Reference spreadsheet Google ID.
    * @param {string} templateDocumentId - Template spreadsheet Google ID.
-   * @returns {Object} Map of valid task definitions indexed by task ID.
+   * @returns {Object} Map of task definitions indexed by task ID.
    * @private
    */
   _parseSheetsTasks(referenceDocumentId, templateDocumentId) {

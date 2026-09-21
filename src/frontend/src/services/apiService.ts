@@ -34,6 +34,7 @@ const ApiErrorResponseSchema = z.object({
     code: z.string(),
     message: z.string(),
     retriable: z.boolean().optional(),
+    details: z.record(z.string(), z.unknown()).optional(),
   }),
   meta: z.record(z.string(), z.unknown()).optional(),
 });

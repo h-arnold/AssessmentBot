@@ -388,6 +388,12 @@ g.AssignmentDefinitionValidation = require('../src/backend/y_controllers/Assignm
 g.AssignmentDefinitionReferenceData = require('../src/backend/y_controllers/AssignmentDefinition/AssignmentDefinitionReferenceData.js');
 g.AssignmentDefinitionTaskParser = require('../src/backend/y_controllers/AssignmentDefinition/AssignmentDefinitionTaskParser.js');
 g.AssignmentDefinitionTaskWeighting = require('../src/backend/y_controllers/AssignmentDefinition/AssignmentDefinitionTaskWeighting.js');
+g.compareTaskEquivalence_ =
+  require('../src/backend/y_controllers/AssignmentDefinition/AssignmentDefinitionTaskEquivalence.js').compareTaskEquivalence;
+Object.assign(
+  g,
+  require('../src/backend/y_controllers/AssignmentDefinition/AssignmentDefinitionRecoveryRules.js')
+);
 g.AssignmentDefinitionPersistence = require('../src/backend/y_controllers/AssignmentDefinition/AssignmentDefinitionPersistence.js');
 g.AssignmentDefinitionUpsertOrchestrator = require('../src/backend/y_controllers/AssignmentDefinition/AssignmentDefinitionUpsertOrchestrator.js');
 g.AssignmentDefinitionResponseMapper = require('../src/backend/y_controllers/AssignmentDefinition/AssignmentDefinitionResponseMapper.js');

@@ -64,6 +64,33 @@ export function createUpsertPayload(overrides = {}) {
   };
 }
 
+/** Creates an existing-definition payload for an explicit forced reparse. */
+export function createForcedReparsePayload(overrides = {}) {
+  const payload = createUpsertPayload({ definitionKey: 'existing-stable-key', ...overrides });
+  delete payload.taskWeightings;
+  return payload;
+}
+
+/** Creates an existing-definition payload that changes both source documents. */
+export function createDocumentChangePayload(overrides = {}) {
+  return createUpsertPayload({
+    definitionKey: 'existing-stable-key',
+    referenceDocumentId: 'new-ref-doc-id',
+    templateDocumentId: 'new-tpl-doc-id',
+    ...overrides,
+  });
+}
+
+/** Captures a synchronous controller failure so tests can inspect its classification. */
+export function captureThrownError(callback) {
+  try {
+    callback();
+    return null;
+  } catch (error) {
+    return error;
+  }
+}
+
 /**
  * Creates an upsert payload for wizard-based (taskWeightings) tests
  * @param {Object} [overrides] - Properties to override on the returned payload

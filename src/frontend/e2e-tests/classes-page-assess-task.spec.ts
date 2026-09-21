@@ -8,7 +8,6 @@ import {
 } from './shared/endToEndRuntimeMocks';
 import {
   ALGEBRA_HOMEWORK_DATA,
-  MOCK_COURSEWORK_ASSIGNMENTS,
   algebraHomeworkEntry,
   createAssessTaskScenario,
   createLinkableScenario,
@@ -18,7 +17,6 @@ import {
   pickLinkableDefinitionE2E,
   selectAssignmentAndStart,
   setupLinkableDialog,
-  setupWizardDialog,
 } from './helpers/classes-page-end-to-end-helpers';
 
 // ============================================================================
@@ -40,6 +38,36 @@ import {
 // ---------------------------------------------------------------------------
 // Shared constants and helpers
 // ---------------------------------------------------------------------------
+
+/**
+ * Opens the in-modal create review and changes its title so the wizard is dirty.
+ *
+ * @param {Page} page - Playwright page under test.
+ * @returns {Promise<import('@playwright/test').Locator>} The owning modal dialog.
+ */
+async function openDirtyCreateReview(page: Page) {
+  const scenario = createAssessTaskScenario({
+    getGoogleClassroomAssignments: [algebraHomeworkEntry(), algebraHomeworkEntry()],
+  });
+  await installRuntimeMock(page, scenario);
+  const dialog = await openAssessTaskModal(page);
+
+  await selectAssignmentAndStart(dialog, page);
+  await dialog.getByRole('button', { name: 'Create New Definition' }).click();
+  const title = dialog.getByRole('textbox', { name: /assignment title/i });
+  await title.fill('Edited Algebra Homework');
+  return page.getByRole('dialog', { name: /Assess Task —/ });
+}
+
+/**
+ * Locates the nested discard confirmation without matching the owning modal.
+ *
+ * @param {Page} page - Playwright page under test.
+ * @returns {import('@playwright/test').Locator} The discard confirmation dialog.
+ */
+function getDiscardConfirmationDialog(page: Page) {
+  return page.locator('[role="dialog"][aria-labelledby="assignment-discard-confirm-title"]');
+}
 
 test.describe('Assess Task modal', () => {
   test('opens with correct title, Select dropdown, and disabled Start Assessment', async ({
@@ -193,7 +221,9 @@ test.describe('Assess Task modal', () => {
     // Verify Alert with error message is shown
     const alert = dialog.getByRole('alert');
     await expect(alert).toBeVisible();
-    await expect(alert).toContainText('Classroom API error');
+    await expect(alert).toContainText(
+      'An internal error occurred. Please try again or contact support if the issue persists.'
+    );
 
     // Verify Start Assessment is disabled
     await expect(dialog.getByRole('button', { name: 'Start Assessment' })).toBeDisabled();
@@ -232,7 +262,7 @@ test.describe('Assess Task modal', () => {
     // component's state update.
     const deferredEntry = {
       kind: 'deferredSuccess' as const,
-      data: MOCK_COURSEWORK_ASSIGNMENTS[0].data,
+      data: [{ assignmentId: 'cw-1', title: 'Algebra Homework' }],
     };
 
     const scenario = createAssessTaskScenario({
@@ -243,6 +273,7 @@ test.describe('Assess Task modal', () => {
 
     // Verify loading spinner is visible
     await expect(dialog.getByRole('status')).toBeVisible();
+    await expect(dialog.getByRole('status')).toHaveAttribute('aria-busy', 'true');
 
     // Verify Start Assessment is disabled while loading
     await expect(dialog.getByRole('button', { name: 'Start Assessment' })).toBeDisabled();
@@ -328,7 +359,7 @@ test.describe('Assess Task modal', () => {
     await expect(page.getByRole('dialog')).toHaveCount(0);
   });
 
-  test('"Create New Definition" opens wizard with pre-populated title and year group', async ({
+  test('"Create New Definition" opens in-modal create content with pre-populated title and year group', async ({
     page,
   }) => {
     // Mock data for topics
@@ -354,27 +385,53 @@ test.describe('Assess Task modal', () => {
     // Click Create New Definition
     await dialog.getByRole('button', { name: 'Create New Definition' }).click();
 
-    // Assert wizard opens
-    const wizardDialog = page.getByRole('dialog', { name: /create assignment/i });
-    await expect(wizardDialog).toBeVisible();
+    // In-modal composition: the create content renders inside the single owning
+    // dialog, so no stacked "Create assignment" modal appears.
+    await expect(page.getByRole('dialog')).toHaveCount(1);
+    await expect(page.getByRole('dialog', { name: /create assignment/i })).toHaveCount(0);
 
-    // Assert title pre-populated
-    await expect(wizardDialog.getByRole('textbox', { name: /assignment title/i })).toHaveValue(
+    // Stage-one create content renders in the owning dialog with the assignment
+    // title, topic and year group pre-populated from the selected assignment.
+    await expect(dialog.getByRole('textbox', { name: /assignment title/i })).toHaveValue(
       'Algebra Homework'
     );
+    await expect(dialog.getByRole('combobox', { name: /assignment topic/i })).toBeVisible();
+    await expect(dialog.getByRole('combobox', { name: /assignment year group/i })).toBeVisible();
+    // The selected values render as the option labels in the form region.
+    await expect(dialog.getByText('Year 10', { exact: true })).toHaveCount(1);
+    await expect(dialog.getByText('Algebra', { exact: true })).toHaveCount(1);
+    await expect(dialog.getByRole('textbox', { name: /reference document url/i })).toBeVisible();
+    await expect(dialog.getByRole('textbox', { name: /template document url/i })).toBeVisible();
+
+    // The owning modal adopts the wide-data width token while create content is active.
+    await expect(dialog).toHaveAttribute('style', /--app-modal-width-wide-data/);
   });
 
-  test('cancelling wizard returns to choice prompt', async ({ page }) => {
-    const { dialog, wizardDialog } = await setupWizardDialog({ page });
+  test('cancelling in-modal create returns to the choice prompt', async ({ page }) => {
+    const scenario = createAssessTaskScenario({
+      getGoogleClassroomAssignments: [algebraHomeworkEntry(), algebraHomeworkEntry()],
+    });
+    await installRuntimeMock(page, scenario);
+    const dialog = await openAssessTaskModal(page);
 
-    // Cancel wizard (no dirty state — wizard closes without discard confirmation)
-    await wizardDialog.getByRole('button', { name: 'Cancel' }).click();
+    await selectAssignmentAndStart(dialog, page);
+    await dialog.getByRole('button', { name: 'Create New Definition' }).click();
 
-    // Should return to choice prompt
+    // Stage-one create content is active inside the owning dialog.
+    await expect(dialog.getByRole('textbox', { name: /reference document url/i })).toBeVisible();
+
+    // Cancel the in-modal create content. No dirty state exists before parsing, so
+    // the wizard closes without a discard confirmation.
+    await dialog.getByRole('button', { name: 'Cancel' }).click();
+
+    // Semantics changed with SPEC decision 9: cancelling the in-modal create content
+    // returns to the choice prompt and leaves the owning modal open.
     await expect(dialog.getByRole('button', { name: 'Create New Definition' })).toBeVisible();
+    await expect(dialog.getByRole('button', { name: 'Link to Existing Definition' })).toBeVisible();
+    await expect(page.getByRole('dialog')).toHaveCount(1);
   });
 
-  test('full wizard flow triggers auto-assessment and shows success', async ({ page }) => {
+  test('full in-modal create flow triggers auto-assessment and shows success', async ({ page }) => {
     const topicsData = [
       { key: 'topic-algebra', name: 'Algebra', yearGroupKeys: ['year-group-10'] },
     ];
@@ -426,24 +483,29 @@ test.describe('Assess Task modal', () => {
     await selectAssignmentAndStart(dialog, page);
     await dialog.getByRole('button', { name: 'Create New Definition' }).click();
 
-    // Wizard appears
-    const wizardDialog = page.getByRole('dialog', { name: /create assignment/i });
-    await expect(wizardDialog).toBeVisible();
+    // In-modal composition: create content renders inside the single owning dialog,
+    // so no stacked "Create assignment" modal appears.
+    await expect(page.getByRole('dialog')).toHaveCount(1);
+    await expect(page.getByRole('dialog', { name: /create assignment/i })).toHaveCount(0);
 
     // Fill required fields: reference and template document URLs
-    await wizardDialog
+    await dialog
       .getByRole('textbox', { name: /reference document url/i })
       .fill('https://docs.google.com/presentation/d/ref-123/edit');
-    await wizardDialog
+    await dialog
       .getByRole('textbox', { name: /template document url/i })
       .fill('https://docs.google.com/presentation/d/tpl-456/edit');
 
     // Click Parse and continue
-    await wizardDialog.getByRole('button', { name: /parse and continue/i }).click();
+    await dialog.getByRole('button', { name: /parse and continue/i }).click();
+
+    // Stage two renders in-modal: the task table and assignment weighting field.
+    await expect(dialog.getByRole('table', { name: 'Task weightings' })).toBeVisible();
+    await expect(dialog.getByRole('spinbutton', { name: /assignment weighting/i })).toBeVisible();
 
     // Wait for parse to complete then click Save
-    await expect(wizardDialog.getByRole('button', { name: /save/i })).toBeEnabled();
-    await wizardDialog.getByRole('button', { name: /save/i }).click();
+    await expect(dialog.getByRole('button', { name: /save/i })).toBeEnabled();
+    await dialog.getByRole('button', { name: /save/i }).click();
 
     // Verify startAssessmentRun was called
     const calls = await getMethodCalls(page);
@@ -458,20 +520,99 @@ test.describe('Assess Task modal', () => {
     ).toBeVisible();
   });
 
-  test('outer Cancel during wizard creation closes both modals', async ({ page }) => {
-    const { dialog, wizardDialog } = await setupWizardDialog({ page });
+  test('review-content Cancel during in-modal creation returns to the choice prompt', async ({
+    page,
+  }) => {
+    const scenario = createAssessTaskScenario({
+      getGoogleClassroomAssignments: [algebraHomeworkEntry(), algebraHomeworkEntry()],
+    });
+    await installRuntimeMock(page, scenario);
+    const dialog = await openAssessTaskModal(page);
 
-    // Close the wizard first (returns to choice prompt), then dismiss the choice prompt
-    await wizardDialog.getByRole('button', { name: 'Cancel' }).click();
+    await selectAssignmentAndStart(dialog, page);
+    await dialog.getByRole('button', { name: 'Create New Definition' }).click();
 
-    // Should return to choice prompt
-    await expect(dialog.getByRole('button', { name: 'Create New Definition' })).toBeVisible();
+    // Stage-one create content is active inside the owning dialog.
+    await expect(dialog.getByRole('textbox', { name: /reference document url/i })).toBeVisible();
 
-    // Now click Cancel on the choice prompt to close everything
+    // The owning footer is suppressed while create content is active: no footer
+    // buttons render, so the outer actions are absent and the review content's
+    // own footer carries the only Cancel action.
+    await expect(dialog.locator('.ant-modal-footer').getByRole('button')).toHaveCount(0);
+    await expect(dialog.getByRole('button', { name: 'Start Assessment' })).toHaveCount(0);
+    await expect(dialog.getByRole('button', { name: 'Cancel' })).toHaveCount(1);
+
+    // Semantics changed with SPEC decision 9: cancelling the in-modal create content
+    // returns to the choice prompt and leaves the owning modal open (the previous
+    // stacked composition closed both modals through the outer Cancel).
     await dialog.getByRole('button', { name: 'Cancel' }).click();
 
-    // Both modals should close — no dialogs visible
-    await expect(page.getByRole('dialog')).toHaveCount(0);
+    await expect(dialog.getByRole('button', { name: 'Create New Definition' })).toBeVisible();
+    await expect(page.getByRole('dialog')).toHaveCount(1);
+  });
+
+  test('owning-modal close button confirms before dismissing dirty in-modal create edits', async ({
+    page,
+  }) => {
+    const dialog = await openDirtyCreateReview(page);
+
+    await dialog.getByRole('button', { name: 'Close' }).click();
+
+    const discardDialog = getDiscardConfirmationDialog(page);
+    await expect(discardDialog).toBeVisible();
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByRole('textbox', { name: /assignment title/i })).toHaveValue(
+      'Edited Algebra Homework'
+    );
+
+    await discardDialog.getByRole('button', { name: 'Keep editing' }).click();
+    await expect(discardDialog).toHaveCount(0);
+    await expect(dialog.getByRole('textbox', { name: /assignment title/i })).toHaveValue(
+      'Edited Algebra Homework'
+    );
+
+    await dialog.getByRole('button', { name: 'Close' }).click();
+    await expect(getDiscardConfirmationDialog(page)).toBeVisible();
+    await getDiscardConfirmationDialog(page)
+      .getByRole('button', { name: 'Discard changes' })
+      .click();
+    await expect(getDiscardConfirmationDialog(page)).toHaveCount(0);
+    await expect(dialog.getByRole('button', { name: 'Create New Definition' })).toBeVisible();
+    await expect(dialog).toBeVisible();
+  });
+
+  test('Escape confirms before dismissing dirty in-modal create edits', async ({ page }) => {
+    const dialog = await openDirtyCreateReview(page);
+
+    await page.keyboard.press('Escape');
+
+    const discardDialog = getDiscardConfirmationDialog(page);
+    await expect(discardDialog).toBeVisible();
+    await expect(dialog).toBeVisible();
+
+    await discardDialog.getByRole('button', { name: 'Keep editing' }).click();
+    await expect(discardDialog).toHaveCount(0);
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByRole('textbox', { name: /assignment title/i })).toHaveValue(
+      'Edited Algebra Homework'
+    );
+  });
+
+  test('owning-modal mask click confirms before dismissing dirty in-modal create edits', async ({
+    page,
+  }) => {
+    const dialog = await openDirtyCreateReview(page);
+
+    await page.locator('.ant-modal-wrap').click({ position: { x: 10, y: 10 } });
+
+    const discardDialog = getDiscardConfirmationDialog(page);
+    await expect(discardDialog).toBeVisible();
+    await expect(dialog).toBeVisible();
+
+    await discardDialog.getByRole('button', { name: 'Discard changes' }).click();
+    await expect(discardDialog).toHaveCount(0);
+    await expect(dialog.getByRole('button', { name: 'Create New Definition' })).toBeVisible();
+    await expect(dialog).toBeVisible();
   });
 
   // ==========================================================================
@@ -795,7 +936,9 @@ test.describe('Assess Task modal', () => {
 
       // Verify error Alert
       await expect(dialog.getByRole('alert')).toBeVisible();
-      await expect(dialog.getByRole('alert')).toContainText('Failed to upsert definition');
+      await expect(dialog.getByRole('alert')).toContainText(
+        'An internal error occurred. Please try again or contact support if the issue persists.'
+      );
 
       // Cancel closes the modal
       await dialog.getByRole('button', { name: 'Cancel' }).click();
@@ -824,7 +967,7 @@ test.describe('Assess Task modal', () => {
       ).toBeVisible();
     });
 
-    test('DEFINITION_STALE after link opens wizard at title/topic panel (panel 1)', async ({
+    test('DEFINITION_STALE after link defers recovery — recovery prompt opens in-modal (panel 1)', async ({
       page,
     }) => {
       const topicsData = [
@@ -865,18 +1008,49 @@ test.describe('Assess Task modal', () => {
       await pickLinkableDefinitionE2E(dialog, page, 'Algebra HW');
       await dialog.getByRole('button', { name: 'Link' }).click();
 
-      // The wizard dialog should appear (DEFINITION_STALE recovery)
-      // Note: panel-2 stale-recovery (task-weightings) is not yet implemented;
-      // the wizard opens at panel 1 (title/topic) in create mode.
-      const wizardDialog = page.getByRole('dialog', { name: /create assignment/i });
-      await expect(wizardDialog).toBeVisible({ timeout: 8000 });
+      // Section 9 contract (see ACTION_PLAN.md and STALE_RECOVERY_LAYOUT.md):
+      // link-flow DEFINITION_STALE enters the in-modal recovery prompt in the
+      // single owning dialog and must NOT mount the stacked create wizard.
+      // Settle on the committed link outcome first, so the recovery assertions
+      // below cannot pass before the stale response has been processed.
+      await expect
+        .poll(
+          async () => {
+            const calls = await getMethodCalls(page);
+            return calls.filter((call) => call === 'upsertAssignmentDefinition').length;
+          },
+          { timeout: 8000 }
+        )
+        .toBe(1);
 
-      // Assert we are on panel 1 (title/topic), not panel 2 (task weightings):
-      // - Title textbox should be visible
-      await expect(wizardDialog.getByRole('textbox', { name: /assignment title/i })).toBeVisible();
+      // No "Create assignment" dialog appears (bounded wait gives the old
+      // stacked wizard a chance to mount incorrectly before asserting absence).
+      await expect(page.getByRole('dialog', { name: /create assignment/i })).toHaveCount(0, {
+        timeout: 8000,
+      });
 
-      // - "Parse and continue" button should be present (not "Save")
-      await expect(wizardDialog.getByRole('button', { name: /parse and continue/i })).toBeVisible();
+      // The owning AssessTaskModal remains the only dialog and renders the
+      // recovery prompt in-modal: the stale warning alert replaces the link
+      // picker, with a Cancel-then-Update action row.
+      await expect(page.getByRole('dialog')).toHaveCount(1);
+      await expect(dialog).toBeVisible();
+      await expect(dialog.getByRole('alert')).toContainText(/out of date/i);
+      await expect(dialog.getByTestId('linkable-definition-select')).toHaveCount(0);
+
+      const actionNames = await dialog
+        .locator('button')
+        .evaluateAll((buttons) =>
+          buttons
+            .map((button) => button.textContent?.trim() ?? '')
+            .filter((name) => name === 'Cancel' || name === 'Update')
+        );
+      expect(actionNames).toEqual(['Cancel', 'Update']);
+
+      // Committed link outcome holds in idempotence-friendly form: the link
+      // upsert ran exactly once and the assessment start was attempted once.
+      const calls = await getMethodCalls(page);
+      expect(calls.filter((call) => call === 'upsertAssignmentDefinition')).toHaveLength(1);
+      expect(calls.filter((call) => call === 'startAssessmentRun')).toHaveLength(1);
     });
 
     test('modal state resets on reopen after linking', async ({ page }) => {

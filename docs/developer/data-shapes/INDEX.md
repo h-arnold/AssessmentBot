@@ -31,14 +31,13 @@ reference.
 > **Status: Implemented** — the `AuthCache`, `TriggerContext`, and the `AuthUsers` backend
 > transport contracts are delivered and documented above.
 >
-> **Status: AuthUsers — backend transport + frontend Zod/services implemented** — recorded from
-> `SPEC.md` v1.3 (Application Authentication & Minimal Role Administration). The
-> persistence/validation layer (Section 1), the AuthService provider resolution, strict deny,
-> cache policy, and never-claim trigger context (Section 3), the fresh-install bootstrap claim
-> (Section 4), the three `apiAuth.js` transport endpoints (Section 5), and the frontend
-> Zod/service layer (Section 7 — including the `BackendConfig` frontend schema/transport lockstep
-> that drops `authMode`/`authGroupEmail`) have all landed and conform to this contract. The
-> Section 8 UI/form/panel slimming has also landed, consistent with `auth-users.md` and
+> **Status: AuthUsers — backend transport + frontend Zod/services implemented.** The
+> persistence/validation layer, the AuthService provider resolution, strict deny, cache
+> policy, and never-claim trigger context, the fresh-install bootstrap claim, the three
+> `apiAuth.js` transport endpoints, and the frontend Zod/service layer (including the
+> `BackendConfig` frontend schema/transport lockstep that drops
+> `authMode`/`authGroupEmail`) have all landed and conform to this contract. The
+> settings UI/form/panel slimming has also landed, consistent with `auth-users.md` and
 > `backend-config.md`.
 
 ## Containment Hierarchy
