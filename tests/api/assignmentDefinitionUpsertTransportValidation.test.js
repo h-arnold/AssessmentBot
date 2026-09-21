@@ -264,7 +264,7 @@ describe('upsert extracted document identifier safety', () => {
   });
 });
 
-describe('upsert baseline timestamp strictness', () => {
+describe('upsert updatedAt timestamp strictness', () => {
   let originalController;
 
   beforeEach(() => {
@@ -288,31 +288,31 @@ describe('upsert baseline timestamp strictness', () => {
     { caseName: 'missing milliseconds', value: '2026-01-05T10:00:00Z' },
     { caseName: 'impossible date', value: '2026-13-40T99:99:99.000Z' },
     { caseName: 'offset beyond range', value: '2026-01-05T10:00:00.000+24:00' },
-  ])('rejects malformed non-null baseline before controller access: $caseName', ({ value }) => {
+  ])('rejects malformed non-null updatedAt before controller access: $caseName', ({ value }) => {
     const { upsertDefinition } = installUpsertControllerStub();
     const { upsertAssignmentDefinition_ } = loadUpsertTransport();
-    expect(() =>
-      upsertAssignmentDefinition_(buildValidIdPayload({ expectedDefinitionUpdatedAt: value }))
-    ).toThrow(ApiValidationError);
+    expect(() => upsertAssignmentDefinition_(buildValidIdPayload({ updatedAt: value }))).toThrow(
+      ApiValidationError
+    );
     expect(upsertDefinition).not.toHaveBeenCalled();
   });
 
-  it('allows explicit null baseline for create-time requests', () => {
+  it('allows explicit null updatedAt for create-time requests', () => {
     const { upsertDefinition } = installUpsertControllerStub();
     upsertDefinition.mockReturnValue(buildFullDefinition());
     const { upsertAssignmentDefinition_ } = loadUpsertTransport();
     expect(() =>
-      upsertAssignmentDefinition_(buildValidIdPayload({ expectedDefinitionUpdatedAt: null }))
+      upsertAssignmentDefinition_(buildValidIdPayload({ updatedAt: null }))
     ).not.toThrow();
     expect(upsertDefinition).toHaveBeenCalledTimes(1);
   });
 
-  it('allows omitted baseline to retain ordinary upsert behaviour', () => {
+  it('allows omitted updatedAt to retain ordinary upsert behaviour', () => {
     const { upsertDefinition } = installUpsertControllerStub();
     upsertDefinition.mockReturnValue(buildFullDefinition());
     const { upsertAssignmentDefinition_ } = loadUpsertTransport();
     const payload = buildValidIdPayload();
-    delete payload.expectedDefinitionUpdatedAt;
+    delete payload.updatedAt;
     expect(() => upsertAssignmentDefinition_(payload)).not.toThrow();
     expect(upsertDefinition).toHaveBeenCalledTimes(1);
   });
@@ -320,12 +320,12 @@ describe('upsert baseline timestamp strictness', () => {
   it.each([
     { caseName: 'UTC suffix', value: '2026-01-06T12:30:00.000Z' },
     { caseName: 'positive offset', value: '2026-01-06T12:30:00.000+01:00' },
-  ])('accepts strict ISO baseline with timezone: $caseName', ({ value }) => {
+  ])('accepts strict ISO updatedAt with timezone: $caseName', ({ value }) => {
     const { upsertDefinition } = installUpsertControllerStub();
     upsertDefinition.mockReturnValue(buildFullDefinition());
     const { upsertAssignmentDefinition_ } = loadUpsertTransport();
     expect(() =>
-      upsertAssignmentDefinition_(buildValidIdPayload({ expectedDefinitionUpdatedAt: value }))
+      upsertAssignmentDefinition_(buildValidIdPayload({ updatedAt: value }))
     ).not.toThrow();
     expect(upsertDefinition).toHaveBeenCalledTimes(1);
   });

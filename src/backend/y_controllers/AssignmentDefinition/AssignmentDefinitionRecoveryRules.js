@@ -43,7 +43,7 @@ function assertRecoveryPreconditions_(payload, isUpdate) {
 }
 
 /**
- * Rejects an approval save whose baseline predates the stored definition.
+ * Rejects an approval save whose baseline does not match the stored definition.
  *
  * The frontend sends the response `updatedAt` from its latest load or reparse;
  * a mismatch means the definition changed since review, so the save is refused
@@ -51,19 +51,15 @@ function assertRecoveryPreconditions_(payload, isUpdate) {
  * baseline retain ordinary upsert behaviour.
  *
  * @param {Object|null} existingDefinition - Stored definition when updating.
- * @param {*} expectedDefinitionUpdatedAt - Approval-save baseline from the request.
+ * @param {*} updatedAt - Approval-save baseline from the request.
  * @param {boolean} isUpdate - Whether this is an update of a stored definition.
  * @returns {void} Returns nothing.
- * @throws {ApiValidationError} When the baseline predates the stored definition,
+ * @throws {ApiValidationError} When the baseline does not match the stored definition,
  *   carrying `code: 'DEFINITION_STALE'`.
  */
-function assertApprovalBaselineFresh_(existingDefinition, expectedDefinitionUpdatedAt, isUpdate) {
+function assertApprovalBaselineFresh_(existingDefinition, updatedAt, isUpdate) {
   /* global ABLogger, ApiValidationError */
-  if (
-    isUpdate &&
-    typeof expectedDefinitionUpdatedAt === 'string' &&
-    expectedDefinitionUpdatedAt !== existingDefinition.updatedAt
-  ) {
+  if (isUpdate && typeof updatedAt === 'string' && updatedAt !== existingDefinition.updatedAt) {
     ABLogger.getInstance().warn('Upsert rejected as stale approval baseline.', {
       definitionKey: existingDefinition.definitionKey,
     });
@@ -71,7 +67,7 @@ function assertApprovalBaselineFresh_(existingDefinition, expectedDefinitionUpda
       'The assignment definition changed since it was reviewed. Reparse the documents and try again.',
       {
         method: 'upsertAssignmentDefinition',
-        fieldName: 'expectedDefinitionUpdatedAt',
+        fieldName: 'updatedAt',
         code: 'DEFINITION_STALE',
       }
     );

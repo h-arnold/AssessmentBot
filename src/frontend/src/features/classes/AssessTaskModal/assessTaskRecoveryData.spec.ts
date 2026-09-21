@@ -63,7 +63,7 @@ describe('buildRecoveryApprovalRequest', () => {
     );
 
     expect(request.definitionKey).toBe(REVIEWED_DEFINITION.definitionKey);
-    expect(request.expectedDefinitionUpdatedAt).toBe(REVIEWED_DEFINITION.updatedAt);
+    expect(request.updatedAt).toBe(REVIEWED_DEFINITION.updatedAt);
   });
 
   it('preserves the reviewed assignment weighting and task-row weightings including zero', () => {
@@ -97,6 +97,6 @@ describe('buildRecoveryApprovalRequest', () => {
       REVIEW_TASK_ROWS
     );
 
-    expect(request).not.toHaveProperty('expectedDefinitionUpdatedAt');
+    expect(request).not.toHaveProperty('updatedAt');
   });
 });

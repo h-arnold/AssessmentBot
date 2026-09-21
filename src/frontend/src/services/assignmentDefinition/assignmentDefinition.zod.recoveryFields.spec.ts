@@ -42,15 +42,24 @@ describe('UpsertAssignmentDefinitionRequestSchema stale recovery fields', () => 
     expect(upsertRequestSchema.parse(input)).toEqual(input);
   });
 
-  it('accepts forceReparse together with expectedDefinitionUpdatedAt', async () => {
+  it('accepts forceReparse together with updatedAt', async () => {
     const schemas = await loadAssignmentDefinitionSchemas();
     const upsertRequestSchema = asParserSchema(schemas.UpsertAssignmentDefinitionRequestSchema);
 
     const input = {
       ...recoveryBase,
       forceReparse: true,
-      expectedDefinitionUpdatedAt: REVIEW_BASELINE_TIMESTAMP,
+      updatedAt: REVIEW_BASELINE_TIMESTAMP,
     };
+
+    expect(upsertRequestSchema.parse(input)).toEqual(input);
+  });
+
+  it('accepts null updatedAt on an ID-shape payload', async () => {
+    const schemas = await loadAssignmentDefinitionSchemas();
+    const upsertRequestSchema = asParserSchema(schemas.UpsertAssignmentDefinitionRequestSchema);
+
+    const input = { ...recoveryBase, updatedAt: null };
 
     expect(upsertRequestSchema.parse(input)).toEqual(input);
   });

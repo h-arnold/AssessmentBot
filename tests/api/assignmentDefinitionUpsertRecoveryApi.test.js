@@ -95,12 +95,12 @@ describe('Api/upsertAssignmentDefinition — recovery parameter transport throug
     teardownApiHandlerTestContext(vi, context);
   });
 
-  it('passes forceReparse and expectedDefinitionUpdatedAt through to the controller', () => {
+  it('passes forceReparse and updatedAt through to the controller', () => {
     const expectedDefinition = buildFullDefinition();
     upsertDefinition.mockReturnValue(expectedDefinition);
     const params = buildRecoveryPayload({
       forceReparse: true,
-      expectedDefinitionUpdatedAt: '2026-01-06T12:30:00.000Z',
+      updatedAt: '2026-01-06T12:30:00.000Z',
     });
 
     const { ApiDispatcher } = loadApiHandlerModule();
@@ -115,7 +115,7 @@ describe('Api/upsertAssignmentDefinition — recovery parameter transport throug
     expect(upsertDefinition).toHaveBeenCalledWith(
       expect.objectContaining({
         forceReparse: true,
-        expectedDefinitionUpdatedAt: '2026-01-06T12:30:00.000Z',
+        updatedAt: '2026-01-06T12:30:00.000Z',
       })
     );
   });
@@ -133,16 +133,16 @@ describe('Api/upsertAssignmentDefinition — recovery parameter transport throug
     expect(upsertDefinition).not.toHaveBeenCalled();
   });
 
-  it('rejects a non-string expectedDefinitionUpdatedAt baseline without reaching the controller', () => {
+  it('rejects a non-string updatedAt baseline without reaching the controller', () => {
     const { ApiDispatcher } = loadApiHandlerModule();
     const response = ApiDispatcher.getInstance().handle({
       method: 'upsertAssignmentDefinition',
-      params: buildRecoveryPayload({ expectedDefinitionUpdatedAt: 12345 }),
+      params: buildRecoveryPayload({ updatedAt: 12345 }),
     });
 
     expect(response.ok).toBe(false);
     expect(response.error.code).toBe('INVALID_REQUEST');
-    expect(response.error.message).toMatch(/expectedDefinitionUpdatedAt/i);
+    expect(response.error.message).toMatch(/updatedAt/i);
     expect(upsertDefinition).not.toHaveBeenCalled();
   });
 });

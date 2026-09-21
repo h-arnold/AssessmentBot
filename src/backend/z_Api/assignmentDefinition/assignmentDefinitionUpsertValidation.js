@@ -86,20 +86,17 @@ function validateRecoveryFieldShapes_(parameters) {
   }
 
   if (
-    !Object.hasOwn(parameters, 'expectedDefinitionUpdatedAt') ||
-    parameters.expectedDefinitionUpdatedAt === undefined ||
-    parameters.expectedDefinitionUpdatedAt === null
+    !Object.hasOwn(parameters, 'updatedAt') ||
+    parameters.updatedAt === undefined ||
+    parameters.updatedAt === null
   ) {
     return;
   }
 
-  if (
-    typeof parameters.expectedDefinitionUpdatedAt !== 'string' ||
-    !isIsoDateTimeString_(parameters.expectedDefinitionUpdatedAt)
-  ) {
+  if (typeof parameters.updatedAt !== 'string' || !isIsoDateTimeString_(parameters.updatedAt)) {
     throwUpsertValidationError_(
-      'expectedDefinitionUpdatedAt must be a strict ISO datetime string with timezone when provided.',
-      'expectedDefinitionUpdatedAt'
+      'updatedAt must be a strict ISO datetime string with timezone when provided.',
+      'updatedAt'
     );
   }
 }

@@ -28,7 +28,7 @@ vi.mock('../../src/backend/DocumentParsers/SheetsParser.js', () => ({
 }));
 
 // Stale-recovery upsert contracts (issue #301): forceReparse, the approval-save
-// expectedDefinitionUpdatedAt baseline with DEFINITION_STALE, and the
+// updatedAt baseline with DEFINITION_STALE, and the
 // DEFINITION_PARSE_FAILED/INVALID_REQUEST recovery error classifications.
 // Ordinary upserts stay byte-identical by design: without a forced reparse,
 // document changes, or a stale baseline, unchanged documents are never reparsed.
@@ -89,7 +89,7 @@ describe('AssignmentDefinitionController upsert — forced reparse and save-time
       controller.upsertDefinition(
         createUpsertPayload({
           definitionKey: 'existing-stable-key',
-          expectedDefinitionUpdatedAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
         })
       )
     );

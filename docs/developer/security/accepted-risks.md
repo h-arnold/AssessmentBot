@@ -109,8 +109,8 @@ script-property repair wizard) would remove the need to hand-edit Script Propert
 
 ### 7. The apiAuth transport and the dispatcher admission phase ship as one locked contract
 
-The `apiAuth.js` request/response shapes (ACTION_PLAN Section 5) and the dispatcher's admin-status
-admission payload — which resolves access fresh from a `getApplicationAccess` call (also Section 5)
+The `apiAuth.js` request/response shapes and the dispatcher's admin-status
+admission payload — which resolves access fresh from a `getApplicationAccess` call
 — form one locked contract: the transport handlers shape the response exactly as the frontend Zod
 schemas expect, and the admin-required gate consumes the fresh role. A partial deploy that updates
 one without the other breaks the transport contract — clients would send or receive mismatched

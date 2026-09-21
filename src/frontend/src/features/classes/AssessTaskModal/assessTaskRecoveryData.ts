@@ -25,7 +25,7 @@ export type RecoveryPhase = 'idle' | 'stale-prompt' | 'reparsing' | 'review' | '
  *
  * @remarks
  * The reviewed definition's `updatedAt` is the stale-protection baseline: it is
- * resent as `expectedDefinitionUpdatedAt` so a concurrent document change is
+ * resent as `updatedAt` so a concurrent document change is
  * rejected as `DEFINITION_STALE` before any write.
  *
  * @param {AssignmentDefinition} definition - The reviewed/reparsed definition.
@@ -55,7 +55,7 @@ export function buildRecoveryApprovalRequest(
     })),
   };
   if (definition.updatedAt) {
-    request.expectedDefinitionUpdatedAt = definition.updatedAt;
+    request.updatedAt = definition.updatedAt;
   }
   return request;
 }

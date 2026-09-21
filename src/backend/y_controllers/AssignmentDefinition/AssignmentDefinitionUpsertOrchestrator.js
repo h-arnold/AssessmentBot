@@ -60,7 +60,7 @@ class AssignmentDefinitionUpsertOrchestrator {
       throw new Error(`Unknown definitionKey for update: ${payload.definitionKey}`);
     }
 
-    assertApprovalBaselineFresh_(existingDefinition, payload.expectedDefinitionUpdatedAt, isUpdate);
+    assertApprovalBaselineFresh_(existingDefinition, payload.updatedAt, isUpdate);
 
     const primaryTitle = this.validation.requireTrimmedString(payload.primaryTitle, 'primaryTitle');
     const primaryTopicKey = this.validation.requireTrimmedString(

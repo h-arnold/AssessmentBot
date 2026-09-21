@@ -33,7 +33,7 @@ Sibling contracts:
 The store is a pair of Script Properties keys per triggerUid. Each key embeds the
 `triggerUid` — an opaque `String` returned by `Trigger.getUniqueId()` (via
 `TriggerController.createTimeBasedTrigger()`), assumed to equal the GAS `event.triggerUid`
-at fire time (ACTION_PLAN Assumption 2, pending staging verification) — so concurrent
+at fire time (pending staging verification) — so concurrent
 triggers never collide.
 
 | Key                    | Type     | Value                                                                                               | Notes                                                                                   |

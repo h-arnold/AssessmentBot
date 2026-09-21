@@ -167,8 +167,7 @@ The return value is now `{ store, prunedIds }` instead of the store object itsel
 previously performed (lines 256-266) has been removed. The only caller ignored the return
 value before, so changing the return shape was non-breaking.
 
-Source: `ACTION_PLAN.md` Section 4 ("Shared helper plan" — decision `extend`). This entry
-was reconciled to implemented during the Section 4 documentation pass.
+This entry records the delivered shared-helper decision (`extend`).
 
 ---
 

@@ -99,9 +99,7 @@ classified as parse failures.
 
 #### Recovery classification semantics
 
-The following semantics are the canonical implemented behaviour, delivered as Batch 1
-of the PR-review remediation (`ACTION_PLAN.md` → "Batch 1 - Backend Recovery
-Correctness").
+The following semantics are the canonical implemented behaviour.
 
 1. **Recovery invalid-request preconditions map to `INVALID_REQUEST`.**
    A forced reparse without an existing `definitionKey`, and `forceReparse: true`
@@ -190,10 +188,9 @@ z.object({
 
 ## Error `details` block
 
-> **Status: Implemented.** The typed frontend preservation below was delivered as
-> Batch 3 of the PR-review remediation (`ACTION_PLAN.md` → "Batch 3 - Frontend
-> Transport and Safe Diagnostics") and is reconciled here from the previously
-> recorded planned-only entry.
+> **Status: Implemented.** The typed frontend preservation below is the canonical
+> implemented behaviour, reconciled here from the previously recorded planned-only
+> entry.
 
 The backend error envelope may carry a structured `error.details` block: `_failure()`
 attaches it when non-null, and `_mapErrorToFailureEnvelope()` populates it for
@@ -214,9 +211,10 @@ referenceLastModified, templateLastModified }`. The field stays optional and ope
   metadata.
 - Absent details stay `undefined`; consumers must not default them.
 
-Source: `ACTION_PLAN.md` → "Batch 3 - Frontend Transport and Safe Diagnostics"
-("Typed `error.details` preservation through `ApiTransportError`") and `PR_REVIEW.md`
-→ Logging rules compliance / Data-shape docs consistency.
+Sources: `src/backend/z_Api/z_apiHandler.js` (`_failure()`,
+`_mapErrorToFailureEnvelope()`), `src/frontend/src/services/apiService.ts`
+(`ApiResponseSchema`), and `src/frontend/src/errors/apiTransportError.ts`
+(`ApiErrorEnvelope`, `ApiTransportError`).
 
 ## Backend source
 

@@ -27,7 +27,7 @@ This document covers:
 
 This document does **not** redefine:
 
-- backend contracts already settled in `SPEC.md` (`forceReparse`, `expectedDefinitionUpdatedAt`, `DEFINITION_STALE`, `DEFINITION_PARSE_FAILED`)
+- backend contracts already settled in `docs/developer/data-shapes/assignment-definition.md` (`forceReparse`, request-side `updatedAt`, `DEFINITION_STALE`, `DEFINITION_PARSE_FAILED`)
 - rollout or sequencing decisions (those belong in `ACTION_PLAN.md`)
 - the wizard's existing two-stage form structure beyond what recovery touches
 

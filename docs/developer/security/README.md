@@ -160,5 +160,3 @@ filtering — with the justification for each in
 - [src/backend/AGENTS.md](../../../src/backend/AGENTS.md) — sections 2.3–2.6 document the
   `AuthService` singleton, the private-by-default convention, the `webapp` deployment
   block and the trigger handler architecture
-- `SPEC.md` — the planning specification for the auth service (may be superseded; treat
-  as historical)

@@ -2,7 +2,7 @@
 
 ## Status
 
-✅ **Accepted** - Implemented in SPEC.md v1.9.0 and ACTION_PLAN.md
+✅ **Accepted** - Implemented (2025-05-19)
 
 ## Context
 
@@ -53,7 +53,7 @@ The assignment definition creation path contained significant technical debt:
 1. **Breaking Change**: Existing stored definitions with `yearGroup` fields become inaccessible
    - **Mitigation**: No legacy data to preserve; existing definitions must be re-created through new flow
 2. **No Backwards Compatibility**: Legacy code using `yearGroup` will break
-   - **Mitigation**: Explicit per SPEC.md; the `src/AdminSheet` directory has been fully removed from the repository.
+   - **Mitigation**: Explicitly accepted; the `src/AdminSheet` directory has been fully removed from the repository.
 3. **Definition Key Format Change**: Old keys (e.g., `Math_Algebra_10`) won't match new keys (e.g., `Math_Algebra_year-group-10`)
    - **Mitigation**: Acceptable as part of architectural cleanup
 
@@ -89,10 +89,12 @@ This approach was selected because it:
 
 ## Implementation References
 
-- **SPEC.md v1.9.0**: Full specification of architectural decision
-- **ACTION_PLAN.md**: Complete delivery plan with TDD-first approach
-- **CODE_REVIEW.md**: Comprehensive review documenting 100% compliance
-- **Commit Range**: Multiple commits implementing Sections 0-5
+The original specification, delivery plan and code review for this decision were
+transient planning artefacts and are no longer tracked in the repository. The decision
+is recorded in the implementation commits and the current `yearGroupKey` contracts in
+`docs/developer/data-shapes/`.
+
+- **Commit Range**: multiple commits implementing the `yearGroupKey` migration
 
 ## Related Documents
 
@@ -102,7 +104,7 @@ This approach was selected because it:
 
 ## Decision Date
 
-2025-05-19 (SPEC.md v1.9.0)
+2025-05-19
 
 ## Supersedes
 

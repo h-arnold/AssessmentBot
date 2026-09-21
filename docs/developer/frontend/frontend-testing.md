@@ -151,8 +151,8 @@ When adding test scenarios, prefer extending an existing helper before copying s
 
 Shared frontend test helpers belong under `src/frontend/src/test/**`. Feature-scoped subfolders are allowed when they keep related fixtures together, but production feature folders should stay free of shared test helpers.
 
-- Data-analysis test fixtures: `src/frontend/src/test/dataAnalysis/fixtures.ts` — moved from `src/frontend/src/services/dataAnalysis/test/fixtures.ts` to the canonical shared-helpers location. Status: **Implemented** (ACTION_PLAN.md Section 8).
-- Data-analysis assertion helpers: `src/frontend/src/test/dataAnalysis/averagingAnalyserAssertions.ts` — shared module exporting `expectMetricResult` and `checkMetricInvariant` (extracted from `averagingAnalyser.spec.ts`). Status: **Implemented** (ACTION_PLAN.md Section 9).
+- Data-analysis test fixtures: `src/frontend/src/test/dataAnalysis/fixtures.ts` — moved from `src/frontend/src/services/dataAnalysis/test/fixtures.ts` to the canonical shared-helpers location. Status: **Implemented**.
+- Data-analysis assertion helpers: `src/frontend/src/test/dataAnalysis/averagingAnalyserAssertions.ts` — shared module exporting `expectMetricResult` and `checkMetricInvariant` (extracted from `averagingAnalyser.spec.ts`). Status: **Implemented**.
 - Synthetic analysis API round-trip adapter: `src/frontend/src/test/syntheticApiRoundTripAdapter.ts` — exports `createSyntheticApiRoundTripRunner(invokeRequest)`, a thin test-only adapter that composes the script-owned synthetic `apiHandler` bridge with `googleScriptRunHarness`. It preserves the harness's single success JSON serialisation, raw failures, and per-request callback isolation, and it imports no `scripts/` code. Status: **Implemented** (synthetic analysis test-data delivery). See [Synthetic Test Data](../testing/synthetic-test-data.md).
 
 ### Classes Modal Test Helpers

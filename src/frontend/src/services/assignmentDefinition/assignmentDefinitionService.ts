@@ -58,7 +58,7 @@ export async function getAssignmentDefinition(
  *
  * @param {UpsertAssignmentDefinitionRequest} request Upsert payload with primaryTitle, primaryTopicKey,
  *   referenceDocumentUrl, templateDocumentUrl (or IDs for non-wizard transport), optional definitionKey,
- *   yearGroupKey, assignmentWeighting, taskWeightings, forceReparse, and expectedDefinitionUpdatedAt.
+ *   yearGroupKey, assignmentWeighting, taskWeightings, forceReparse, and updatedAt.
  * @returns {Promise<UpsertAssignmentDefinitionResponse>} Promise resolving to validated full definition
  *   using the canonical response shape shared with getAssignmentDefinition.
  */

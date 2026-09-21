@@ -226,11 +226,11 @@ Prefer small composable helpers over one generic modal wrapper with many configu
 - Keep blocking and submission errors visible inside the owned modal surface unless a stronger documented UX case exists.
 - Expose accessible busy or status semantics whenever modal content is refreshing or blocked.
 
-### Modal Error Handling Pattern (SPEC.md §20)
+### Modal Error Handling Pattern
 
 **Preferred Pattern:** Keep modal open on failure and display error inside modal.
 
-For destructive confirmation modals (e.g., delete confirmation), errors should stay local to the modal and not close it. This follows SPEC.md §20: "Validation failures stay local to the modal and do not close it".
+For destructive confirmation modals (e.g., delete confirmation), errors should stay local to the modal and not close it. Validation failures stay local to the modal and do not close it.
 
 **Implementation Pattern:**
 

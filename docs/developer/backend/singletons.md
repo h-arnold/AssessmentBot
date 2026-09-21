@@ -395,20 +395,17 @@ const apiKey = config.getApiKey();
 
 ## 📋 Delivered feature entries
 
-Entries below record the delivered Auth Service singleton and CacheManager extension (source:
-repository-root `SPEC.md` and `ACTION_PLAN.md`).
+Entries below record the delivered Auth Service singleton and CacheManager extension.
 
 ### AuthService (new singleton)
 
 - Status: `Implemented`
 - Owning path: `src/backend/Utils/AuthService.js`
 - Decision: new singleton extending `BaseSingleton`.
-- Contract: `checkAccess({ bypassCache?, neverClaim?, method? })` resolves the caller's email via `Session.getActiveUser().getEmail()`, denies a blank identity, and — on a genuinely fresh install (no `__CONFIG_STORE_KEY__` blob) — performs the Section 4 atomic first-admin bootstrap claim for the first eligible interactive caller with a non-blank identity (single locked write of auth fields only; trigger execution passes `neverClaim: true` and `bypassCache: true` so it never claims and fails closed). Otherwise it resolves the configured provider (`GoogleGroupsAuthService` in `googleGroups` mode via `GroupsApp.getGroupByEmail(groupEmail).hasUser(email)`, or `ScriptPropertiesAuthService` reading the stored user list in `scriptProperties` mode), maps roles (`OWNER`/`MANAGER` → `admin`, `MEMBER` → `user`, others → deny), caches successful Google Group results via `CacheManager` (6-hour TTL, key `auth:<groupEmail>:<email>`), and audits all attempts via `ABLogger` (including the provided `method` when supplied). Denials are never cached.
-- References: SPEC.md §Backend changes (1); ACTION_PLAN.md §4.
+- Contract: `checkAccess({ bypassCache?, neverClaim?, method? })` resolves the caller's email via `Session.getActiveUser().getEmail()`, denies a blank identity, and — on a genuinely fresh install (no `__CONFIG_STORE_KEY__` blob) — performs the atomic first-admin bootstrap claim for the first eligible interactive caller with a non-blank identity (single locked write of auth fields only; trigger execution passes `neverClaim: true` and `bypassCache: true` so it never claims and fails closed). Otherwise it resolves the configured provider (`GoogleGroupsAuthService` in `googleGroups` mode via `GroupsApp.getGroupByEmail(groupEmail).hasUser(email)`, or `ScriptPropertiesAuthService` reading the stored user list in `scriptProperties` mode), maps roles (`OWNER`/`MANAGER` → `admin`, `MEMBER` → `user`, others → deny), caches successful Google Group results via `CacheManager` (6-hour TTL, key `auth:<groupEmail>:<email>`), and audits all attempts via `ABLogger` (including the provided `method` when supplied). Denials are never cached.
 
 ### CacheManager generic methods (extended)
 
 - Status: `Implemented`
 - Owning path: `src/backend/RequestHandlers/CacheManager.js`
 - Decision: extend the existing class with generic `get(key)`, `put(key, value, ttlSeconds)`, `remove(key)` methods. Generic methods handle JSON serialisation/deserialisation internally; `put()` requires an explicit TTL (no default — the AuthService passes its 6-hour TTL at the call site). Existing assessment-specific methods stay unchanged; existing `console.error` calls convert to `ABLogger`.
-- References: SPEC.md §Backend changes (2); ACTION_PLAN.md §3.

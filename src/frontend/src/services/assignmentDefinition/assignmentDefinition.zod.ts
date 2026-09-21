@@ -138,7 +138,7 @@ export const UpsertAssignmentDefinitionRequestSchema = z
     assignmentWeighting: WeightingSchema.optional().nullable(),
     taskWeightings: z.array(TaskWeightingInputSchema).optional(),
     forceReparse: z.boolean().optional(),
-    expectedDefinitionUpdatedAt: IsoDateTimeWithTimezoneSchema.optional(),
+    updatedAt: IsoDateTimeWithTimezoneSchema.optional().nullable(),
   })
   .strict()
   .superRefine((value, context) => {

@@ -167,7 +167,7 @@ function deleteAssignmentDefinition_(parameters) {
  * @param {Object} parameters - Assignment-definition upsert payload with primaryTitle, primaryTopicKey,
  *   referenceDocumentId/templateDocumentId (or referenceDocumentUrl/templateDocumentUrl for URL-based transport),
  *   optional definitionKey, yearGroupKey, assignmentWeighting, and taskWeightings. Recovery control
- *   fields `forceReparse` and `expectedDefinitionUpdatedAt` are accepted and validated at the transport boundary.
+ *   fields `forceReparse` and `updatedAt` are accepted and validated at the transport boundary.
  * @returns {Object} Canonical full-definition response shape including resolved
  *   primaryTopic, primaryTopicKey, yearGroupKey, yearGroupLabel, full tasks array, and all metadata.
  *   This same shape is returned for stage-one create, final save, and document-change re-parse.
