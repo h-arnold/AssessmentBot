@@ -156,9 +156,7 @@ describe('AssignmentDefinitionWizardModal create and update flows', () => {
 
     // Click cancel on re-parse prompt
     const cancelButton = getReparseCancelButton({ modal });
-    await act(async () => {
-      fireEvent.click(cancelButton);
-    });
+    fireEvent.click(cancelButton);
 
     // URLs should be restored
     await waitFor(() => {
@@ -199,12 +197,12 @@ describe('AssignmentDefinitionWizardModal create and update flows', () => {
 
     // Click re-parse
     const reparseButton = getReparseButton({ modal });
-    await act(async () => {
-      fireEvent.click(reparseButton);
-    });
+    fireEvent.click(reparseButton);
 
     // Re-parse should have been called
-    expect(upsertAssignmentDefinitionMock).toHaveBeenCalled();
+    await waitFor(() => {
+      expect(upsertAssignmentDefinitionMock).toHaveBeenCalled();
+    });
 
     // Verify the re-parse was called with the definitionKey and updated URL
     expect(upsertAssignmentDefinitionMock.mock.calls[0][0]).toMatchObject({

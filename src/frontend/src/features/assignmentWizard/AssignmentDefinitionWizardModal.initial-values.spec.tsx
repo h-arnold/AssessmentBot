@@ -1,5 +1,5 @@
 import { mockFullAssignmentDefinition } from '../../test/assignmentDefinition/assignmentDefinitionTestFixtures';
-import { act, fireEvent, screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   setupAssignmentDefinitionWizardMocks,
@@ -151,9 +151,7 @@ describe('initialValues and onCreateSuccess', () => {
     upsertAssignmentDefinitionMock.mockRejectedValueOnce(new Error('Save failed'));
 
     const saveButton = getSaveButton({ modal });
-    await act(async () => {
-      fireEvent.click(saveButton);
-    });
+    fireEvent.click(saveButton);
 
     await waitFor(() => {
       expect(screen.getByRole('alert')).toBeInTheDocument();

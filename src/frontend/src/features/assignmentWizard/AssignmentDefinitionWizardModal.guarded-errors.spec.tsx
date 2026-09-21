@@ -128,10 +128,8 @@ describe('AssignmentDefinitionWizardModal guarded close and errors', () => {
     // Mask click should be blocked
     const mask = screen.getByRole('dialog', { name: /update assignment/i }).parentElement;
     if (mask) {
-      await act(async () => {
-        fireEvent.mouseDown(mask);
-        fireEvent.mouseUp(mask);
-      });
+      fireEvent.mouseDown(mask);
+      fireEvent.mouseUp(mask);
 
       // Modal should still be open, onClose should not have been called
       expect(screen.getByRole('dialog', { name: /update assignment/i })).toBeInTheDocument();
@@ -162,9 +160,7 @@ describe('AssignmentDefinitionWizardModal guarded close and errors', () => {
     });
 
     // Escape key should be blocked
-    await act(async () => {
-      fireEvent.keyDown(modal, { key: 'Escape' });
-    });
+    fireEvent.keyDown(modal, { key: 'Escape' });
 
     // Modal should still be open
     expect(screen.getByRole('dialog', { name: /update assignment/i })).toBeInTheDocument();
@@ -213,15 +209,16 @@ describe('AssignmentDefinitionWizardModal guarded close and errors', () => {
       expect(parseButton).toBeEnabled();
     });
 
-    await act(async () => {
-      fireEvent.click(parseButton);
+    fireEvent.click(parseButton);
+
+    // Wait for the parse mutation to enter its submitting state before testing guarded close.
+    const footerCancelButton = within(modal).getByRole('button', { name: 'Cancel' });
+    await waitFor(() => {
+      expect(footerCancelButton).toBeDisabled();
     });
 
-    // At this point, isSubmitting should be true
-    // Escape key should be blocked
-    await act(async () => {
-      fireEvent.keyDown(modal, { key: 'Escape' });
-    });
+    // Escape key should be blocked while the parse mutation is submitting.
+    fireEvent.keyDown(modal, { key: 'Escape' });
 
     // Modal should still be open
     expect(screen.getByRole('dialog', { name: /create assignment/i })).toBeInTheDocument();
@@ -230,19 +227,13 @@ describe('AssignmentDefinitionWizardModal guarded close and errors', () => {
     // Mask click should also be blocked
     const mask = screen.getByRole('dialog', { name: /create assignment/i }).parentElement;
     if (mask) {
-      await act(async () => {
-        fireEvent.mouseDown(mask);
-        fireEvent.mouseUp(mask);
-      });
+      fireEvent.mouseDown(mask);
+      fireEvent.mouseUp(mask);
 
       // Modal should still be open
       expect(screen.getByRole('dialog', { name: /create assignment/i })).toBeInTheDocument();
       expect(onCloseSpy).not.toHaveBeenCalled();
     }
-
-    // Footer cancel button should also be disabled
-    const footerCancelButton = within(modal).getByRole('button', { name: 'Cancel' });
-    expect(footerCancelButton).toBeDisabled();
 
     // Now resolve the parse to let it complete
     await act(async () => {
@@ -295,9 +286,7 @@ describe('AssignmentDefinitionWizardModal guarded close and errors', () => {
 
     // Error should be dismissible via Escape key
     const blockingDialog = screen.getByRole('dialog', { name: /update assignment/i });
-    await act(async () => {
-      fireEvent.keyDown(blockingDialog, { key: 'Escape' });
-    });
+    fireEvent.keyDown(blockingDialog, { key: 'Escape' });
 
     await waitFor(() => {
       expect(onCloseSpy).toHaveBeenCalled();
@@ -325,18 +314,14 @@ describe('AssignmentDefinitionWizardModal guarded close and errors', () => {
 
     // Click Save button
     const saveButton = getSaveButton({ modal });
-    await act(async () => {
-      fireEvent.click(saveButton);
-    });
+    fireEvent.click(saveButton);
 
     await waitFor(() => {
       expect(screen.getByRole('alert')).toBeInTheDocument();
     });
 
     const blockingDialog = screen.getByRole('dialog', { name: /update assignment/i });
-    await act(async () => {
-      fireEvent.keyDown(blockingDialog, { key: 'Escape' });
-    });
+    fireEvent.keyDown(blockingDialog, { key: 'Escape' });
 
     await waitFor(() => {
       expect(onCloseSpy).toHaveBeenCalled();

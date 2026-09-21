@@ -1,6 +1,6 @@
 import { queryKeys } from '../../query/queryKeys';
 import { mockFullAssignmentDefinition } from '../../test/assignmentDefinition/assignmentDefinitionTestFixtures';
-import { act, fireEvent, screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   setupAssignmentDefinitionWizardMocks,
@@ -162,9 +162,7 @@ describe('AssignmentDefinitionWizardModal persistence and callbacks', () => {
 
     // Clicking cancel should restore the previous URL
     const cancelButton = getReparseCancelButton({ modal });
-    await act(async () => {
-      fireEvent.click(cancelButton);
-    });
+    fireEvent.click(cancelButton);
 
     // URL should be restored
     await waitFor(() => {
@@ -233,9 +231,7 @@ describe('AssignmentDefinitionWizardModal persistence and callbacks', () => {
 
     // Click re-parse
     const reparseButton = getReparseButton({ modal });
-    await act(async () => {
-      fireEvent.click(reparseButton);
-    });
+    fireEvent.click(reparseButton);
 
     // Verify upsert was called for re-parse with updated document URL
     await waitFor(() => {
@@ -301,9 +297,7 @@ describe('AssignmentDefinitionWizardModal persistence and callbacks', () => {
     await waitFor(() => {
       expect(parseButton).toBeEnabled();
     });
-    await act(async () => {
-      fireEvent.click(parseButton);
-    });
+    fireEvent.click(parseButton);
 
     // Wait for parse to complete and tasks to appear (shared edit surface)
     await waitFor(() => {
@@ -346,9 +340,7 @@ describe('AssignmentDefinitionWizardModal persistence and callbacks', () => {
     await waitFor(() => {
       expect(parseButton).toBeEnabled();
     });
-    await act(async () => {
-      fireEvent.click(parseButton);
-    });
+    fireEvent.click(parseButton);
 
     // Wait for parse to complete and tasks to appear
     await waitFor(() => {
