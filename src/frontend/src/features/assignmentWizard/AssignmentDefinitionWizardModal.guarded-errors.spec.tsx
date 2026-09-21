@@ -236,11 +236,9 @@ describe('AssignmentDefinitionWizardModal guarded close and errors', () => {
     }
 
     // Now resolve the parse to let it complete
-    await act(async () => {
-      resolveParse!(parseResponseForSubmittingTest);
-      await waitFor(() => {
-        expect(parseButton).not.toBeDisabled();
-      });
+    resolveParse!(parseResponseForSubmittingTest);
+    await waitFor(() => {
+      expect(parseButton).not.toBeDisabled();
     });
 
     // After parse completes, modal should still be open
