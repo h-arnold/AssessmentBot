@@ -26,6 +26,7 @@ import {
   assertTaskVisible,
   changeReferenceUrl,
   getFormElements,
+  createUpdateWizardOptions,
   renderWizardModal,
 } from '../../test/assignmentDefinition/wizardModalTestHelpers';
 import type { RenderWizardModalOptions } from '../../test/assignmentDefinition/wizardModalTestHelpers';
@@ -127,17 +128,7 @@ function createUpdateOptions(
   definition: AssignmentDefinition = UPDATE_DEFINITION,
   overrides: Partial<RenderWizardModalOptions> = {}
 ): RenderWizardModalOptions {
-  return {
-    mode: 'update',
-    definitionKey: definition.definitionKey,
-    assignmentDefinition: definition,
-    open: true,
-    topics: [...mockTopics],
-    yearGroups: [...mockYearGroups],
-    cohorts: [...mockCohorts],
-    mockInvalidateQueries: true,
-    ...overrides,
-  };
+  return createUpdateWizardOptions(definition, { cohorts: [...mockCohorts], ...overrides });
 }
 
 /**
@@ -275,9 +266,7 @@ describe('Reparse documents action behaviour', () => {
     };
     upsertAssignmentDefinitionMock.mockResolvedValueOnce(reparseResponse);
 
-    await act(async () => {
-      fireEvent.click(getReparseDocumentsAction(modal));
-    });
+    fireEvent.click(getReparseDocumentsAction(modal));
 
     await waitFor(() => {
       expect(upsertAssignmentDefinitionMock).toHaveBeenCalledTimes(1);
@@ -307,9 +296,7 @@ describe('Reparse documents action behaviour', () => {
     });
     upsertAssignmentDefinitionMock.mockImplementationOnce(() => pendingReparse);
 
-    await act(async () => {
-      fireEvent.click(getReparseDocumentsAction(modal));
-    });
+    fireEvent.click(getReparseDocumentsAction(modal));
 
     await waitFor(() => {
       expect(getReparseDocumentsAction(modal)).toHaveClass('ant-btn-loading');
@@ -336,9 +323,7 @@ describe('Reparse documents action behaviour', () => {
       Object.assign(new Error('parse failed'), { code: 'DEFINITION_PARSE_FAILED' })
     );
 
-    await act(async () => {
-      fireEvent.click(getReparseDocumentsAction(modal));
-    });
+    fireEvent.click(getReparseDocumentsAction(modal));
 
     await waitFor(() => {
       expect(upsertAssignmentDefinitionMock).toHaveBeenCalledTimes(1);

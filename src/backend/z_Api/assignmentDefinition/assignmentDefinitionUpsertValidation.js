@@ -13,6 +13,57 @@ const WIZARD_UPSERT_REQUIRED_FIELDS = Object.freeze([
   'templateDocumentUrl',
 ]);
 
+const PRIMARY_TOPIC_KEY_VALIDATION_MESSAGES = Object.freeze({
+  typeErrorMessage: 'primaryTopicKey must be a string.',
+  nonEmptyErrorMessage: 'primaryTopicKey must be a non-empty string.',
+  trimmedErrorMessage: 'primaryTopicKey must already be trimmed.',
+  unsafeErrorMessage: 'primaryTopicKey contains unsafe characters.',
+});
+const DEFINITION_KEY_VALIDATION_MESSAGES = Object.freeze({
+  typeErrorMessage: 'definitionKey must be a string when provided.',
+  nonEmptyErrorMessage: 'definitionKey must be a non-empty string.',
+  trimmedErrorMessage: 'definitionKey must already be trimmed.',
+  unsafeErrorMessage: 'definitionKey contains unsafe characters.',
+});
+
+/**
+ * Validates the primary-topic identifier for an upsert payload.
+ *
+ * @param {Object} parameters - Candidate upsert payload.
+ */
+function validateUpsertPrimaryTopicKey_(parameters) {
+  validateSafeTrimmedIdentifier_(parameters.primaryTopicKey, {
+    throwValidationError: throwUpsertValidationError_,
+    ...PRIMARY_TOPIC_KEY_VALIDATION_MESSAGES,
+    fieldNames: {
+      type: 'primaryTopicKey',
+      nonEmpty: 'primaryTopicKey',
+      trimmed: 'primaryTopicKey',
+      unsafe: 'primaryTopicKey',
+    },
+  });
+}
+
+/**
+ * Validates the optional definition identifier for an upsert payload.
+ *
+ * @param {Object} parameters - Candidate upsert payload.
+ */
+function validateUpsertOptionalDefinitionKey_(parameters) {
+  if (Object.hasOwn(parameters, 'definitionKey') && parameters.definitionKey !== null) {
+    validateSafeTrimmedIdentifier_(parameters.definitionKey, {
+      throwValidationError: throwUpsertValidationError_,
+      ...DEFINITION_KEY_VALIDATION_MESSAGES,
+      fieldNames: {
+        type: 'definitionKey',
+        nonEmpty: 'definitionKey',
+        trimmed: 'definitionKey',
+        unsafe: 'definitionKey',
+      },
+    });
+  }
+}
+
 /**
  * Validates recovery field shapes at the transport boundary.
  *
@@ -85,19 +136,7 @@ function validateUpsertParameters_(parameters) {
     throwUpsertValidationError_('primaryTitle must be a string.', 'primaryTitle');
   }
 
-  validateSafeTrimmedIdentifier_(parameters.primaryTopicKey, {
-    throwValidationError: throwUpsertValidationError_,
-    typeErrorMessage: 'primaryTopicKey must be a string.',
-    nonEmptyErrorMessage: 'primaryTopicKey must be a non-empty string.',
-    trimmedErrorMessage: 'primaryTopicKey must already be trimmed.',
-    unsafeErrorMessage: 'primaryTopicKey contains unsafe characters.',
-    fieldNames: {
-      type: 'primaryTopicKey',
-      nonEmpty: 'primaryTopicKey',
-      trimmed: 'primaryTopicKey',
-      unsafe: 'primaryTopicKey',
-    },
-  });
+  validateUpsertPrimaryTopicKey_(parameters);
 
   validateSafeTrimmedIdentifier_(parameters.referenceDocumentId, {
     throwValidationError: throwUpsertValidationError_,
@@ -127,21 +166,7 @@ function validateUpsertParameters_(parameters) {
     },
   });
 
-  if (Object.hasOwn(parameters, 'definitionKey') && parameters.definitionKey !== null) {
-    validateSafeTrimmedIdentifier_(parameters.definitionKey, {
-      throwValidationError: throwUpsertValidationError_,
-      typeErrorMessage: 'definitionKey must be a string when provided.',
-      nonEmptyErrorMessage: 'definitionKey must be a non-empty string.',
-      trimmedErrorMessage: 'definitionKey must already be trimmed.',
-      unsafeErrorMessage: 'definitionKey contains unsafe characters.',
-      fieldNames: {
-        type: 'definitionKey',
-        nonEmpty: 'definitionKey',
-        trimmed: 'definitionKey',
-        unsafe: 'definitionKey',
-      },
-    });
-  }
+  validateUpsertOptionalDefinitionKey_(parameters);
 
   validateTaskWeightingsShape_(parameters.taskWeightings);
   validateRequiredYearGroupKey_(parameters);
@@ -167,35 +192,8 @@ function validateWizardUpsertParameters_(parameters) {
     throwUpsertValidationError_('primaryTitle must be a string.', 'primaryTitle');
   }
 
-  validateSafeTrimmedIdentifier_(parameters.primaryTopicKey, {
-    throwValidationError: throwUpsertValidationError_,
-    typeErrorMessage: 'primaryTopicKey must be a string.',
-    nonEmptyErrorMessage: 'primaryTopicKey must be a non-empty string.',
-    trimmedErrorMessage: 'primaryTopicKey must already be trimmed.',
-    unsafeErrorMessage: 'primaryTopicKey contains unsafe characters.',
-    fieldNames: {
-      type: 'primaryTopicKey',
-      nonEmpty: 'primaryTopicKey',
-      trimmed: 'primaryTopicKey',
-      unsafe: 'primaryTopicKey',
-    },
-  });
-
-  if (Object.hasOwn(parameters, 'definitionKey') && parameters.definitionKey !== null) {
-    validateSafeTrimmedIdentifier_(parameters.definitionKey, {
-      throwValidationError: throwUpsertValidationError_,
-      typeErrorMessage: 'definitionKey must be a string when provided.',
-      nonEmptyErrorMessage: 'definitionKey must be a non-empty string.',
-      trimmedErrorMessage: 'definitionKey must already be trimmed.',
-      unsafeErrorMessage: 'definitionKey contains unsafe characters.',
-      fieldNames: {
-        type: 'definitionKey',
-        nonEmpty: 'definitionKey',
-        trimmed: 'definitionKey',
-        unsafe: 'definitionKey',
-      },
-    });
-  }
+  validateUpsertPrimaryTopicKey_(parameters);
+  validateUpsertOptionalDefinitionKey_(parameters);
 
   validateRequiredYearGroupKey_(parameters);
   validateTaskWeightingsShape_(parameters.taskWeightings);

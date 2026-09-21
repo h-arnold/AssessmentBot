@@ -7,9 +7,11 @@ const ApiValidationError = require('../../src/backend/Utils/ErrorTypes/ApiValida
 const TRANSPORT_PATH = '../../src/backend/z_Api/assignmentDefinitionTransport.js';
 const UPSERT_VALIDATION_PATH =
   '../../src/backend/z_Api/assignmentDefinition/assignmentDefinitionUpsertValidation.js';
+const PARTIAL_ROW_VALIDATION_PATH =
+  '../../src/backend/z_Api/assignmentDefinition/assignmentDefinitionPartialRowValidation.js';
 
 function clearTransportCaches() {
-  for (const modulePath of [TRANSPORT_PATH, UPSERT_VALIDATION_PATH]) {
+  for (const modulePath of [TRANSPORT_PATH, UPSERT_VALIDATION_PATH, PARTIAL_ROW_VALIDATION_PATH]) {
     try {
       delete require.cache[require.resolve(modulePath)];
     } catch (error) {
@@ -45,6 +47,11 @@ function buildValidWizardPayload(overrides = {}) {
     templateDocumentUrl: 'https://docs.google.com/presentation/d/tpl-doc-001/edit',
     ...overrides,
   };
+}
+
+function loadUpsertValidation() {
+  clearTransportCaches();
+  return require(UPSERT_VALIDATION_PATH);
 }
 
 function buildFullDefinition(overrides = {}) {
@@ -146,6 +153,34 @@ describe('upsert recovery field-shape single validation', () => {
       upsertAssignmentDefinition_(buildValidWizardPayload({ forceReparse: 'yes' }))
     ).toThrow(ApiValidationError);
     expect(upsertDefinition).not.toHaveBeenCalled();
+  });
+});
+
+describe('shared upsert identifier validation contracts', () => {
+  it.each([
+    [null, 'primaryTopicKey must be a string.'],
+    ['   ', 'primaryTopicKey must be a non-empty string.'],
+    [' topic-algebra', 'primaryTopicKey must already be trimmed.'],
+    ['topic/algebra', 'primaryTopicKey contains unsafe characters.'],
+  ])('pins primaryTopicKey error for %p', (value, message) => {
+    const { validateUpsertParameters_ } = loadUpsertValidation();
+
+    expect(() =>
+      validateUpsertParameters_(buildValidIdPayload({ primaryTopicKey: value }))
+    ).toThrow(expect.objectContaining({ message, fieldName: 'primaryTopicKey' }));
+  });
+
+  it.each([
+    [1, 'definitionKey must be a string when provided.'],
+    ['   ', 'definitionKey must be a non-empty string.'],
+    [' definition-001', 'definitionKey must already be trimmed.'],
+    ['definition/001', 'definitionKey contains unsafe characters.'],
+  ])('pins optional definitionKey error for %p', (value, message) => {
+    const { validateUpsertParameters_ } = loadUpsertValidation();
+
+    expect(() => validateUpsertParameters_(buildValidIdPayload({ definitionKey: value }))).toThrow(
+      expect.objectContaining({ message, fieldName: 'definitionKey' })
+    );
   });
 });
 

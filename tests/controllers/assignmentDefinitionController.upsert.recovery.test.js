@@ -2,6 +2,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   createParsedTaskDefinition,
   createUpsertPayload,
+  createForcedReparsePayload,
+  createDocumentChangePayload,
+  captureThrownError,
   seedExistingDefinition,
   setupUpsertControllerTestBed,
 } from './assignmentDefinitionUpsertTestHelpers.js';
@@ -44,14 +47,6 @@ describe('AssignmentDefinitionController upsert — forced reparse and save-time
     mockFullCollection = ctx.mockFullCollection;
   });
 
-  // Builds an update payload that mirrors an explicit reparse request: the
-  // persisted document identifiers are reused and no weighting patch is sent.
-  function createForcedReparsePayload(overrides = {}) {
-    const payload = createUpsertPayload({ definitionKey: 'existing-stable-key', ...overrides });
-    delete payload.taskWeightings;
-    return payload;
-  }
-
   it('reparses unchanged documents when forceReparse is true', () => {
     seedExistingDefinition({
       mockFullCollection,
@@ -90,17 +85,14 @@ describe('AssignmentDefinitionController upsert — forced reparse and save-time
       overrides: { updatedAt: '2026-01-06T12:30:00.000Z' },
     });
 
-    let thrown = null;
-    try {
+    const thrown = captureThrownError(() =>
       controller.upsertDefinition(
         createUpsertPayload({
           definitionKey: 'existing-stable-key',
           expectedDefinitionUpdatedAt: '2026-01-01T00:00:00.000Z',
         })
-      );
-    } catch (err) {
-      thrown = err;
-    }
+      )
+    );
 
     // The stable error code contract lets the frontend map user-safe copy
     // without feature-local string matching.
@@ -118,18 +110,9 @@ describe('AssignmentDefinitionController upsert — forced reparse and save-time
       throw new Error('Slides read failed');
     });
 
-    let thrown = null;
-    try {
-      controller.upsertDefinition(
-        createUpsertPayload({
-          definitionKey: 'existing-stable-key',
-          referenceDocumentId: 'new-ref-doc-id',
-          templateDocumentId: 'new-tpl-doc-id',
-        })
-      );
-    } catch (err) {
-      thrown = err;
-    }
+    const thrown = captureThrownError(() =>
+      controller.upsertDefinition(createDocumentChangePayload())
+    );
 
     expect(thrown).toBeInstanceOf(ApiValidationError);
     expect(thrown.code).toBe('DEFINITION_PARSE_FAILED');
@@ -144,18 +127,9 @@ describe('AssignmentDefinitionController upsert — forced reparse and save-time
     seedExistingDefinition({ mockFullCollection, mockRegistryCollection });
     extractSlidesTaskDefinitionsMock.mockReturnValueOnce([]);
 
-    let thrown = null;
-    try {
-      controller.upsertDefinition(
-        createUpsertPayload({
-          definitionKey: 'existing-stable-key',
-          referenceDocumentId: 'new-ref-doc-id',
-          templateDocumentId: 'new-tpl-doc-id',
-        })
-      );
-    } catch (err) {
-      thrown = err;
-    }
+    const thrown = captureThrownError(() =>
+      controller.upsertDefinition(createDocumentChangePayload())
+    );
 
     expect(thrown).toBeInstanceOf(ApiValidationError);
     expect(thrown.code).toBe('DEFINITION_PARSE_FAILED');
@@ -224,12 +198,7 @@ describe('AssignmentDefinitionController upsert — forced reparse and save-time
     const payload = createUpsertPayload({ forceReparse: true });
     delete payload.taskWeightings;
 
-    let thrown = null;
-    try {
-      controller.upsertDefinition(payload);
-    } catch (err) {
-      thrown = err;
-    }
+    const thrown = captureThrownError(() => controller.upsertDefinition(payload));
 
     // Documented request-contract violation: the API envelope must surface
     // INVALID_REQUEST rather than INTERNAL_ERROR.
@@ -242,14 +211,11 @@ describe('AssignmentDefinitionController upsert — forced reparse and save-time
   it('rejects forceReparse with taskWeightings as INVALID_REQUEST', () => {
     seedExistingDefinition({ mockFullCollection, mockRegistryCollection });
 
-    let thrown = null;
-    try {
+    const thrown = captureThrownError(() =>
       controller.upsertDefinition(
         createUpsertPayload({ definitionKey: 'existing-stable-key', forceReparse: true })
-      );
-    } catch (err) {
-      thrown = err;
-    }
+      )
+    );
 
     expect(thrown).toBeInstanceOf(ApiValidationError);
     expect(thrown.code ?? null).toBeNull();
@@ -274,18 +240,9 @@ describe('AssignmentDefinitionController upsert — forced reparse and save-time
     };
     extractSlidesTaskDefinitionsMock.mockReturnValueOnce([validTask, invalidTask]);
 
-    let thrown = null;
-    try {
-      controller.upsertDefinition(
-        createUpsertPayload({
-          definitionKey: 'existing-stable-key',
-          referenceDocumentId: 'new-ref-doc-id',
-          templateDocumentId: 'new-tpl-doc-id',
-        })
-      );
-    } catch (err) {
-      thrown = err;
-    }
+    const thrown = captureThrownError(() =>
+      controller.upsertDefinition(createDocumentChangePayload())
+    );
 
     // All-or-nothing parse contract: any invalid task blocks the refresh.
     expect(thrown).toBeInstanceOf(ApiValidationError);

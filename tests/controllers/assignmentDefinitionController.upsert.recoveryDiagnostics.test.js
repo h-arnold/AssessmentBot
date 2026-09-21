@@ -2,6 +2,8 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   createParsedTaskDefinition,
   createUpsertPayload,
+  createDocumentChangePayload,
+  captureThrownError,
   seedExistingDefinition,
   setupUpsertControllerTestBed,
 } from './assignmentDefinitionUpsertTestHelpers.js';
@@ -59,13 +61,7 @@ describe('AssignmentDefinitionController upsert — recovery error classificatio
   });
 
   function runDocumentChangeUpsert() {
-    return controller.upsertDefinition(
-      createUpsertPayload({
-        definitionKey: 'existing-stable-key',
-        referenceDocumentId: 'new-ref-doc-id',
-        templateDocumentId: 'new-tpl-doc-id',
-      })
-    );
+    return controller.upsertDefinition(createDocumentChangePayload());
   }
 
   it('maps a recognised document parsing failure to DEFINITION_PARSE_FAILED', () => {
@@ -75,12 +71,7 @@ describe('AssignmentDefinitionController upsert — recovery error classificatio
       throw parserError;
     });
 
-    let thrown = null;
-    try {
-      runDocumentChangeUpsert();
-    } catch (err) {
-      thrown = err;
-    }
+    const thrown = captureThrownError(runDocumentChangeUpsert);
 
     expect(thrown).toBeInstanceOf(ApiValidationError);
     expect(thrown.code).toBe('DEFINITION_PARSE_FAILED');
@@ -93,12 +84,7 @@ describe('AssignmentDefinitionController upsert — recovery error classificatio
       throw rateError;
     });
 
-    let thrown = null;
-    try {
-      runDocumentChangeUpsert();
-    } catch (err) {
-      thrown = err;
-    }
+    const thrown = captureThrownError(runDocumentChangeUpsert);
 
     expect(thrown).toBe(rateError);
     expect(mockFullCollection.insertOne).not.toHaveBeenCalled();
@@ -112,12 +98,7 @@ describe('AssignmentDefinitionController upsert — recovery error classificatio
       throw persistError;
     });
 
-    let thrown = null;
-    try {
-      runDocumentChangeUpsert();
-    } catch (err) {
-      thrown = err;
-    }
+    const thrown = captureThrownError(runDocumentChangeUpsert);
 
     expect(thrown).toBe(persistError);
     expect(mockFullCollection.insertOne).not.toHaveBeenCalled();
@@ -132,12 +113,7 @@ describe('AssignmentDefinitionController upsert — recovery error classificatio
       throw authError;
     });
 
-    let thrown = null;
-    try {
-      runDocumentChangeUpsert();
-    } catch (err) {
-      thrown = err;
-    }
+    const thrown = captureThrownError(runDocumentChangeUpsert);
 
     expect(thrown).toBe(authError);
     expect(mockFullCollection.insertOne).not.toHaveBeenCalled();
@@ -151,12 +127,7 @@ describe('AssignmentDefinitionController upsert — recovery error classificatio
       throw parserError;
     });
 
-    let thrown = null;
-    try {
-      runDocumentChangeUpsert();
-    } catch (err) {
-      thrown = err;
-    }
+    const thrown = captureThrownError(runDocumentChangeUpsert);
 
     expect(thrown).toBeInstanceOf(ApiValidationError);
     expect(mockLogger.error).toHaveBeenCalledTimes(1);
@@ -179,12 +150,7 @@ describe('AssignmentDefinitionController upsert — recovery error classificatio
     seedExistingDefinition({ mockFullCollection, mockRegistryCollection });
     extractSlidesTaskDefinitionsMock.mockReturnValueOnce([]);
 
-    let thrown = null;
-    try {
-      runDocumentChangeUpsert();
-    } catch (err) {
-      thrown = err;
-    }
+    const thrown = captureThrownError(runDocumentChangeUpsert);
 
     expect(thrown).toBeInstanceOf(ApiValidationError);
     expect(thrown.code).toBe('DEFINITION_PARSE_FAILED');
@@ -216,12 +182,7 @@ describe('AssignmentDefinitionController upsert — recovery error classificatio
     };
     extractSlidesTaskDefinitionsMock.mockReturnValueOnce([validTask, invalidTask]);
 
-    let thrown = null;
-    try {
-      runDocumentChangeUpsert();
-    } catch (err) {
-      thrown = err;
-    }
+    const thrown = captureThrownError(runDocumentChangeUpsert);
 
     expect(thrown).toBeInstanceOf(ApiValidationError);
     expect(thrown.code).toBe('DEFINITION_PARSE_FAILED');
@@ -243,17 +204,14 @@ describe('AssignmentDefinitionController upsert — recovery error classificatio
       overrides: { updatedAt: '2026-01-06T12:30:00.000Z' },
     });
 
-    let thrown = null;
-    try {
+    const thrown = captureThrownError(() =>
       controller.upsertDefinition(
         createUpsertPayload({
           definitionKey: 'existing-stable-key',
           expectedDefinitionUpdatedAt: '2026-01-01T00:00:00.000Z',
         })
-      );
-    } catch (err) {
-      thrown = err;
-    }
+      )
+    );
 
     expect(thrown).not.toBeNull();
     expect(thrown.code).toBe('DEFINITION_STALE');

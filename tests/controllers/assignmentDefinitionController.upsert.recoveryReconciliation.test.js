@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   createParsedTaskDefinition,
   createUpsertPayload,
+  createForcedReparsePayload,
   seedExistingDefinition,
   setupUpsertControllerTestBed,
 } from './assignmentDefinitionUpsertTestHelpers.js';
@@ -41,12 +42,6 @@ describe('AssignmentDefinitionController upsert — reparse weighting reconcilia
     mockRegistryCollection = ctx.mockRegistryCollection;
     mockFullCollection = ctx.mockFullCollection;
   });
-
-  function createForcedReparsePayload(overrides = {}) {
-    const payload = createUpsertPayload({ definitionKey: 'existing-stable-key', ...overrides });
-    delete payload.taskWeightings;
-    return payload;
-  }
 
   function createTimestampPayload(overrides = {}) {
     const payload = createUpsertPayload({ definitionKey: 'existing-stable-key', ...overrides });

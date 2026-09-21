@@ -17,6 +17,7 @@ import type { GoogleClassroomAssignmentsResponse } from '../../services/googleCl
 import type { AssignmentDefinitionPartial } from '../../services/assignmentDefinition/assignmentDefinitionPartials.zod';
 import type { UpsertAssignmentDefinitionResponse } from '../../services/assignmentDefinition/assignmentDefinition.zod';
 import type { QueryClient } from '@tanstack/react-query';
+import { createFixtureClassPartial } from './classesPageTestHelpers';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -85,6 +86,26 @@ export function defaultProperties(overrides: DefaultPropertiesOverrides = {}) {
 /** Returns a promise that never resolves — used for loading-state tests. */
 export function createPendingPromise<T>(): Promise<T> {
   return new Promise<T>(() => {});
+}
+
+/**
+ * Seeds the common class and definition caches used by matched assessment flows.
+ * @param {QueryClient} queryClient Client whose cache should be seeded.
+ * @param {AssignmentDefinitionPartial} definition Definition partial to cache.
+ * @param {string} [classId=MOCK_CLASS_ID] Class identifier.
+ * @param {string} [yearGroupKey='year-10'] Class year-group key.
+ * @returns {void}
+ */
+export function seedAssessmentFlowQueryData(
+  queryClient: QueryClient,
+  definition: AssignmentDefinitionPartial,
+  classId: string = MOCK_CLASS_ID,
+  yearGroupKey: string = 'year-10'
+): void {
+  queryClient.setQueryData(queryKeys.classPartials(), [
+    createFixtureClassPartial({ classId, yearGroupKey }),
+  ]);
+  queryClient.setQueryData(queryKeys.assignmentDefinitionPartials(), [definition]);
 }
 
 // ---------------------------------------------------------------------------

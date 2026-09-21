@@ -13,6 +13,7 @@ import { queryKeys } from '../../../query/queryKeys';
 import { createAppQueryClient } from '../../../query/queryClient';
 import { createFixtureClassPartial } from '../../../test/classes/classesPageTestHelpers';
 import { createDefinitionPartial } from '../../../test/classes/matchDefinitionForAssignment.test-utilities';
+import { createDeferredPromise } from '../../../test/shared/testDeferredPromise';
 import type { GoogleClassroomAssignmentsResponse } from '../../../services/googleClassrooms/googleClassroomAssignments.zod';
 import {
   MOCK_ASSIGNMENTS,
@@ -20,6 +21,7 @@ import {
   MODAL_TITLE,
   clickStartAssessment,
   defaultProperties,
+  seedAssessmentFlowQueryData,
   selectAssignment,
 } from '../../../test/classes/AssessTaskModal.test-utilities';
 
@@ -84,13 +86,12 @@ function createOrchestrationWrapper() {
  * @returns {DeferredStart} The pending promise and its resolver.
  */
 function createDeferredStart(): DeferredStart {
-  let resolveRun!: (value: null) => void;
-  let rejectRun!: (reason: unknown) => void;
-  const pendingRun = new Promise<null>((resolve, reject) => {
-    resolveRun = resolve;
-    rejectRun = reject;
-  });
-  return { pendingRun, resolveRun, rejectRun };
+  const deferred = createDeferredPromise<null>();
+  return {
+    pendingRun: deferred.promise,
+    resolveRun: deferred.resolvePromise,
+    rejectRun: deferred.rejectPromise,
+  };
 }
 
 /**
@@ -242,11 +243,8 @@ describe('obsolete assessment completion guard', () => {
     vi.mocked(startAssessmentRun).mockReturnValue(deferred.pendingRun);
 
     const queryClient = createAppQueryClient();
-    queryClient.setQueryData(queryKeys.classPartials(), [
-      createFixtureClassPartial({ classId: MOCK_CLASS_ID, yearGroupKey: 'year-10' }),
-    ]);
     const definition = createDefinitionPartial();
-    queryClient.setQueryData(queryKeys.assignmentDefinitionPartials(), [definition]);
+    seedAssessmentFlowQueryData(queryClient, definition);
     const { result, rerender } = renderHook(
       ({ open }) => useAssessTaskFlow({ open, classId: MOCK_CLASS_ID }),
       { initialProps: { open: true },
@@ -285,11 +283,8 @@ describe('obsolete assessment completion guard', () => {
     vi.mocked(startAssessmentRun).mockReturnValue(deferred.pendingRun);
 
     const queryClient = createAppQueryClient();
-    queryClient.setQueryData(queryKeys.classPartials(), [
-      createFixtureClassPartial({ classId: MOCK_CLASS_ID, yearGroupKey: 'year-10' }),
-    ]);
     const definition = createDefinitionPartial();
-    queryClient.setQueryData(queryKeys.assignmentDefinitionPartials(), [definition]);
+    seedAssessmentFlowQueryData(queryClient, definition);
     const { result } = renderHook(() => useAssessTaskFlow({ open: true, classId: MOCK_CLASS_ID }), {
       wrapper: ({ children }) => <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>,
     });
@@ -323,11 +318,8 @@ describe('obsolete assessment completion guard', () => {
     vi.mocked(startAssessmentRun).mockReturnValue(deferred.pendingRun);
 
     const queryClient = createAppQueryClient();
-    queryClient.setQueryData(queryKeys.classPartials(), [
-      createFixtureClassPartial({ classId: MOCK_CLASS_ID, yearGroupKey: 'year-10' }),
-    ]);
     const definition = createDefinitionPartial();
-    queryClient.setQueryData(queryKeys.assignmentDefinitionPartials(), [definition]);
+    seedAssessmentFlowQueryData(queryClient, definition);
     const { result } = renderHook(() => useAssessTaskFlow({ open: true, classId: MOCK_CLASS_ID }), {
       wrapper: ({ children }) => <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>,
     });
