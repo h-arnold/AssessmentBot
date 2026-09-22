@@ -37,6 +37,24 @@ Each **assignment** has an assignment weighting (default: 1). Each **task within
 
 So a major assignment with weighting 2 counts twice as much as a routine assignment with weighting 1. Similarly, a long task within an assignment might have weighting 3, making it three times more influential than a short task with weighting 1.
 
+### Planned clarification: work with zero weighting
+
+**This behaviour is planned and is not yet live.** A task or assignment can be
+given a weighting of zero when you want to keep its assessed scores visible but
+do not want them to influence an average. When this update is available:
+
+- a numeric score of 0–5 will still be shown exactly as assessed;
+- a genuine **N** will still mean the work was not attempted or was not
+  applicable; it will not be created merely because a weighting is zero;
+- zero-weight work will add nothing to an average's numerator or denominator;
+  and
+- when all available work for an average has zero weighting, the result will
+  show **Excluded** rather than a number, **N**, or **E**.
+
+In the task heatmap, zero-weight task headings will explain that scores are
+shown but do not contribute to averages. This helps distinguish intentional
+practice, diagnostic, or display-only work from missing assessment data.
+
 ## How the Overall score is calculated
 
 For each student response, Assessment Bot first checks which criteria are available:

@@ -569,7 +569,61 @@ These entries record the shared data analysis display helpers for the Class page
   - Folder placement follows the existing `metricDisplay/` subfolder convention (§9.17 entry 3); consumers import directly (no barrel).
   - Co-located spec: `metricComparator.spec.ts` (state-rank ordering in both directions, computed-band value ordering, direction-neutral row-id tie-break, unknown-state fallback).
 
-### 9.18 Class page feature-local helpers
+### 9.18 Planned issue #307 shared data-analysis extensions
+
+**Status: Planned — Not implemented.** These entries record the agreed reuse
+and ownership decisions for the zero-weight assessment remediation. The
+implementation agent must replace this status with `Implemented` only after
+the relevant code and tests land.
+
+1. Helper group: `metricDisplay/` state consumers
+
+- Decision: **extend existing shared helpers**; do not create a feature-local
+  `excluded` renderer, filter, comparator, or tone resolver.
+- Owning modules: `metricTone.ts`, `MetricPill.tsx`, `metricStateRank.ts`,
+  `metricComparator.ts`, `metricRangeKey.ts`, `metricRangeFilter.tsx`, and
+  `metricRangeFilterDropdown.tsx` under
+  `src/frontend/src/services/dataAnalysis/metricDisplay/`.
+- Call-site rationale: the Class page and task heatmap already share the
+  `MetricResult` presentation vocabulary. `excluded` is another domain state,
+  not a heatmap-only status; its label, accessible name, neutral tone, filter
+  encoding, and ordering must remain one shared definition.
+
+2. Helper group: average-contribution validation
+
+- Decision: **extend existing shared schema module**; define one strict
+  `AverageContributionSchema` in
+  `src/frontend/src/services/dataAnalysis/dataAnalysis.zod.ts` and derive its
+  TypeScript type from Zod.
+- Call-site rationale: both analyser result rows and both heatmap adapters use
+  the same invariant (`includedInAverage === effectiveWeight > 0`). A duplicate
+  feature-owned interface would weaken the public data-analysis contract.
+
+3. Helper group: heatmap zero-weight header construction
+
+- Decision: **extract feature-local at the repository's 500-line planning
+  threshold**, before the 550-line hard limit is reached.
+- Owning path if extraction is required:
+  `src/frontend/src/features/taskHeatmap/taskHeatmapZeroWeightHeader.tsx` (or a
+  coherent adjacent feature-local name).
+- Call-site rationale: the Tooltip target and group-edge class construction are
+  specific to the task heatmap's grouped Table columns. They have no second
+  feature consumer. The extractor exists to maintain a coherent responsibility
+  boundary in `taskHeatmapTableColumns.tsx`, not to promote premature sharing.
+
+4. Helper: `rollupMetric(subTasks, metric)` contribution-aware state resolution
+
+- Decision: **extend existing shared helper**.
+- Owning module/path:
+  `src/frontend/src/services/dataAnalysis/analysers/rollupMetric.ts`.
+- Call-site rationale: analyser row builders and the Class-page
+  `classPageAdapter` both roll task display metrics into aggregate scopes. One
+  shared resolver must recognise `totalWeight: 0` display evidence, genuine
+  positive-weight `N`, all-error inputs, and `excluded` consistently; neither
+  caller may recreate those precedence rules.
+- Status: **Not implemented**.
+
+### 9.19 Class page feature-local helpers
 
 These entries record the feature-local helpers for the Class page. Per `frontend-shared-helpers-and-abstraction-standards.md` §4.4 ("Keep feature-specific helpers inside the owning feature folder"), these stay in `src/frontend/src/features/classPage/` and are not promoted to shared scope unless a documented cross-feature reuse emerges. All entries in this section are now `Implemented` as part of the Class page v1 deliverable. Following the TaskHeatmap extraction, entries for the Task Heatmap presentation chain live under `features/taskHeatmap/` (owning paths updated in place), and the two documented cross-feature reuse cases were promoted to §9.17 (`metricStateRank`, `compareStudentNames`).
 
