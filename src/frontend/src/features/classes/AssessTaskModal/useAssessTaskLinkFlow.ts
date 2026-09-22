@@ -1,10 +1,11 @@
-import { skipToken, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useMemo, useState, type Dispatch, type SetStateAction } from 'react';
 import { startAssessmentRun } from '../../../services/assignmentAssessment/assignmentAssessmentService';
 import { upsertAssignmentDefinition } from '../../../services/assignmentDefinition/assignmentDefinitionService';
 import { ApiTransportError } from '../../../errors/apiTransportError';
 import { mapErrorToUserMessage } from '../../../errors/map-error-to-ui';
 import { queryKeys } from '../../../query/queryKeys';
+import { getAssignmentDefinitionPartialsQueryOptions } from '../../../query/sharedQueries';
 import type { ClassPartial } from '../../../services/googleClassrooms/classPartials.zod';
 import type { AssignmentDefinitionPartial } from '../../../services/assignmentDefinition/assignmentDefinitionPartials.zod';
 import type { LinkableDefinition } from './getLinkableDefinitionsForModal';
@@ -85,9 +86,11 @@ export function useAssessTaskLinkFlow(host: AssessTaskLinkHost) {
   );
   const yearGroupKey = classPartialsFromCache?.find((cp) => cp.classId === classId)?.yearGroupKey;
 
-  const { data: definitionPartialsFromCache } = useQuery<AssignmentDefinitionPartial[]>({
-    queryKey: queryKeys.assignmentDefinitionPartials(),
-    queryFn: skipToken,
+  const { data: definitionPartialsFromCache } = useQuery({
+    ...getAssignmentDefinitionPartialsQueryOptions(),
+    // Subscribe to cache updates without starting a second partials fetch.
+    // The canonical query function remains available for explicit refetches.
+    enabled: false,
   });
 
   const linkableDefinitions = useMemo(
