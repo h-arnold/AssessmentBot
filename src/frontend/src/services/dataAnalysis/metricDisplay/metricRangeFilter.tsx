@@ -2,8 +2,8 @@
  * Shared numeric range-filter support for metric columns.
  *
  * Provides a custom Ant Design `filterDropdown` (a two-thumb `Slider` bounded by
- * the metric's scoring range, with `N` / `E` include toggles) plus the matching
- * `onFilter` predicate, so the Student Averages table and the Task Heatmap can
+ * the metric's scoring range, with independent `N`, `E`, and `Excluded` include
+ * toggles) plus the matching `onFilter` predicate, so the Student Averages table and the Task Heatmap can
  * filter by score range instead of a fixed colour band. The dropdown UI itself
  * lives in `metricRangeFilterDropdown.tsx` (kept separate so fast-refresh is
  * satisfied).
@@ -24,13 +24,16 @@ import { MetricRangeFilterDropdown } from './metricRangeFilterDropdown';
  *
  * Computed values must fall inside the `[min, max]` range. The `N` (`notAttempted`)
  * and `E` (`error`) states are included only when their respective toggle is
- * enabled; otherwise they are hidden while a filter is applied.
+ * enabled; otherwise they are hidden while a filter is applied. Aggregate-only
+ * `excluded` metrics pass only when their independent `includeExcluded` flag is
+ * enabled; they never pass by numeric range.
  *
  * @param {MetricResult} metric - The metric to test.
  * @param {number} min - The inclusive lower bound.
  * @param {number} max - The inclusive upper bound.
  * @param {boolean} [includeNotAttempted=false] - Keep `notAttempted` rows.
  * @param {boolean} [includeError=false] - Keep `error` rows.
+ * @param {boolean} [includeExcluded=false] - Keep aggregate `excluded` rows.
  * @returns {boolean} `true` when the metric passes the filter.
  */
 export function metricInRange(
@@ -38,15 +41,29 @@ export function metricInRange(
   min: number,
   max: number,
   includeNotAttempted = false,
-  includeError = false
+  includeError = false,
+  includeExcluded = false
 ): boolean {
-  if (metric.state === 'notAttempted') {
-    return includeNotAttempted;
+  if (metric.state === 'computed') {
+    return isComputedMetricInRange(metric.value, min, max);
   }
-  if (metric.state === 'error') {
-    return includeError;
-  }
-  return metric.value >= min && metric.value <= max;
+  const includeByState: Record<Exclude<MetricResult['state'], 'computed'>, boolean> = {
+    notAttempted: includeNotAttempted,
+    error: includeError,
+    excluded: includeExcluded,
+  };
+  return includeByState[metric.state];
+}
+
+/**
+ * Test whether a computed score falls within the inclusive numeric bounds.
+ * @param {number} value - The computed score.
+ * @param {number} min - Inclusive lower bound.
+ * @param {number} max - Inclusive upper bound.
+ * @returns {boolean} Whether the score is within the bounds.
+ */
+function isComputedMetricInRange(value: number, min: number, max: number): boolean {
+  return value >= min && value <= max;
 }
 
 /** Options for {@link buildMetricRangeFilter}. */
@@ -67,7 +84,7 @@ export type MetricRangeFilterOptions<RecordType> = {
   /**
    * Optional raw encoded filter key from the parent's filter state. When provided,
    * used directly as `filteredValue` instead of re-encoding from `activeRange`,
-   * preserving the N/E toggle state from the dropdown.
+   * preserving the N/E/Excluded toggle state from the dropdown.
    */
   activeFilterKey?: string;
   /** `Slider` step. Defaults to {@link RANGE_SLIDER_STEP}. */
@@ -93,8 +110,9 @@ export type MetricRangeFilterProperties = {
  *
  * @remarks
  * The `filterDropdown` renders a two-thumb `Slider` over `range.lower..range.upper`
- * plus `N` / `E` include toggles. Selecting a range (or toggling `N`/`E`) writes a
- * single encoded filter key into `selectedKeys` and confirms; **Reset** clears it.
+ * plus independent `N`, `E`, and `Excluded` include toggles. Selecting a range
+ * (or toggling one of these states) writes a single encoded filter key into
+ * `selectedKeys` and confirms; **Reset** clears it.
  * `onFilter` decodes that key and applies {@link metricInRange} to each row.
  *
  * @param {MetricRangeFilterOptions<RecordType>} options - Range filter options.
@@ -115,6 +133,7 @@ export function buildMetricRangeFilter<RecordType>(
         max: activeRange[1],
         includeNotAttempted: false,
         includeError: false,
+        includeExcluded: false,
       }),
     ];
   }
@@ -133,7 +152,8 @@ export function buildMetricRangeFilter<RecordType>(
       decoded.min,
       decoded.max,
       decoded.includeNotAttempted,
-      decoded.includeError
+      decoded.includeError,
+      decoded.includeExcluded
     );
   };
 

@@ -40,8 +40,8 @@ export interface TaskPreviewData {
   readonly artifactType: 'IMAGE' | 'TEXT' | 'TABLE';
   readonly artifactContent: string;
   readonly metricKey: 'completeness' | 'accuracy' | 'spag';
-  readonly metricScore: number | 'N' | 'E';
-  readonly metricState: 'computed' | 'notAttempted' | 'error';
+  readonly metricScore: number | 'N' | 'E' | null;
+  readonly metricState: 'computed' | 'notAttempted' | 'error' | 'excluded';
   readonly reasoning: string;
 }
 
@@ -110,12 +110,41 @@ function buildMetricResult(
         totalDataPoints: 0,
       };
     }
+    case 'excluded': {
+      return {
+        state: 'excluded' as const,
+        value: null,
+        totalWeight: 0,
+        applicableDataPoints: 0,
+        totalDataPoints: 1,
+      };
+    }
   }
 }
 
 // ---------------------------------------------------------------------------
 // Artifact renderer
 // ---------------------------------------------------------------------------
+
+/**
+ * Placeholder copy for an empty student-response artifact, keyed by metric state.
+ *
+ * @param {TaskPreviewData['metricState']} metricState - The metric state discriminator.
+ * @returns {JSX.Element} A placeholder text element.
+ */
+function renderEmptyArtifactPlaceholder(metricState: TaskPreviewData['metricState']): JSX.Element {
+  if (metricState === 'notAttempted') {
+    return <Typography.Text>No submission available</Typography.Text>;
+  }
+  if (metricState === 'error') {
+    return <Typography.Text>Error loading response</Typography.Text>;
+  }
+  if (metricState === 'excluded') {
+    return <Typography.Text>Excluded from average (zero weight)</Typography.Text>;
+  }
+  // Catch-all for computed state with empty content
+  return <Typography.Text>No content available</Typography.Text>;
+}
 
 /**
  * Render the student response artifact based on its type and metric state.
@@ -135,14 +164,7 @@ function renderArtifact(
   metricState: TaskPreviewData['metricState']
 ): JSX.Element {
   if (artifactContent === '') {
-    if (metricState === 'notAttempted') {
-      return <Typography.Text>No submission available</Typography.Text>;
-    }
-    if (metricState === 'error') {
-      return <Typography.Text>Error loading response</Typography.Text>;
-    }
-    // Catch-all for computed state with empty content
-    return <Typography.Text>No content available</Typography.Text>;
+    return renderEmptyArtifactPlaceholder(metricState);
   }
 
   switch (artifactType) {

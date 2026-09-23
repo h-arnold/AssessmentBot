@@ -40,6 +40,7 @@ import {
 import type { CellPreviewLookup } from './buildCellPreviewLookup';
 import type { PreviewStatus } from './assembleMergedPreviewData';
 import { APP_COL_WIDTH_FORENAME, APP_COL_WIDTH_SURNAME } from '../../theme/spacing';
+import { buildTaskHeaderPresentation } from './taskHeatmapZeroWeightHeader';
 
 // ---------------------------------------------------------------------------
 // Component
@@ -166,9 +167,10 @@ export function TaskHeatmapTable({
         isAssignmentLoading,
         showAssignmentError
       );
+      const title = taskColumn.taskTitle ?? taskColumn.taskId;
       return {
         key: taskColumn.taskKey,
-        title: taskColumn.taskTitle ?? taskColumn.taskId,
+        ...buildTaskHeaderPresentation(title, taskColumn.averageContribution),
         children: buildTaskMetricSubColumns(
           taskColumn,
           taskIndex,

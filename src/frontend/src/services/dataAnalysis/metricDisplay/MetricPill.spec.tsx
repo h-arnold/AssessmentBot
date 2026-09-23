@@ -11,6 +11,7 @@ import {
   createComputedMetricResult,
   createNotAttemptedMetricResult,
   createErrorMetricResult,
+  createExcludedMetricResult,
 } from '../../../test/dataAnalysis/fixtures';
 import { MetricPill } from './MetricPill';
 import { resolveMetricTone } from './metricTone';
@@ -82,6 +83,24 @@ describe('MetricPill', () => {
     const tag = container.querySelector('.ant-tag');
     expect(tag).not.toBeNull();
     expect(tag!.className).toContain('ant-tag-volcano');
+  });
+
+  it('renders excluded with its exact visible and accessible meaning, without a score', () => {
+    const metric = createExcludedMetricResult();
+    const { container } = render(<MetricPill metric={metric} precision={4} />);
+
+    const pill = screen.getByRole('img', {
+      name: 'Excluded from average: displayed work had zero weighting.',
+    });
+    expect(pill).toHaveTextContent(/^Excluded$/);
+    expect(pill).not.toHaveStyle({ opacity: '0.55' });
+    expect(container.textContent).not.toContain('null');
+    expect(container.textContent).not.toContain('0.0000');
+  });
+
+  it('preserves numeric formatting for computed metrics', () => {
+    render(<MetricPill metric={createComputedMetricResult({ value: 2.5 })} precision={1} />);
+    expect(screen.getByText('2.5')).toBeInTheDocument();
   });
 
   // -------------------------------------------------------------------------

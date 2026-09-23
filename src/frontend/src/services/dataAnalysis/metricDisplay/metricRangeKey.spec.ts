@@ -9,24 +9,26 @@ import { describe, it, expect } from 'vitest';
 import { encodeMetricFilter, decodeMetricFilter, decodeFilterToRange } from './metricRangeKey';
 
 describe('encodeMetricFilter', () => {
-  it('encodes both flags as 0 when false', () => {
+  it('encodes all three flags when the excluded flag is true', () => {
     const result = encodeMetricFilter({
       min: 0,
       max: 5,
       includeNotAttempted: false,
       includeError: false,
+      includeExcluded: true,
     });
-    expect(result).toBe('0|5|0|0');
+    expect(result).toBe('0|5|0|0|1');
   });
 
-  it('encodes both flags as 1 when true', () => {
+  it('encodes all three flags as 1 when true', () => {
     const result = encodeMetricFilter({
       min: 1,
       max: 4,
       includeNotAttempted: true,
       includeError: true,
+      includeExcluded: true,
     });
-    expect(result).toBe('1|4|1|1');
+    expect(result).toBe('1|4|1|1|1');
   });
 
   it('encodes includeNotAttempted as 1 and includeError as 0', () => {
@@ -35,8 +37,9 @@ describe('encodeMetricFilter', () => {
       max: 5,
       includeNotAttempted: true,
       includeError: false,
+      includeExcluded: false,
     });
-    expect(result).toBe('0|5|1|0');
+    expect(result).toBe('0|5|1|0|0');
   });
 
   it('encodes includeNotAttempted as 0 and includeError as 1', () => {
@@ -45,8 +48,9 @@ describe('encodeMetricFilter', () => {
       max: 5,
       includeNotAttempted: false,
       includeError: true,
+      includeExcluded: false,
     });
-    expect(result).toBe('0|5|0|1');
+    expect(result).toBe('0|5|0|1|0');
   });
 });
 
@@ -55,33 +59,36 @@ describe('decodeMetricFilter', () => {
   // Valid keys
   // -------------------------------------------------------------------------
 
-  it('decodes a valid 4-part key with both flags false', () => {
+  it('decodes a valid 4-part key with all three flags defaulting to false', () => {
     expect(decodeMetricFilter('0|5|0|0')).toEqual({
       min: 0,
       max: 5,
       includeNotAttempted: false,
       includeError: false,
+      includeExcluded: false,
     });
   });
 
-  it('decodes a valid 4-part key with both flags true', () => {
+  it('decodes a valid 4-part key with all three flags, defaulting excluded to false', () => {
     expect(decodeMetricFilter('1|4|1|1')).toEqual({
       min: 1,
       max: 4,
       includeNotAttempted: true,
       includeError: true,
+      includeExcluded: false,
     });
   });
 
-  it('decodes a 2-part key (no flags) with both flags defaulting to false', () => {
+  it('decodes a 2-part key (no flags) with all three flags defaulting to false', () => {
     // A 2-part key has parts.length === RANGE_KEY_PART_COUNT (2), so it passes
-    // the length check, then parseFlag(undefined) returns false for both flags.
+    // the length check, then parseFlag(undefined) returns false for all three flags.
     const result = decodeMetricFilter('0|5');
     expect(result).toEqual({
       min: 0,
       max: 5,
       includeNotAttempted: false,
       includeError: false,
+      includeExcluded: false,
     });
   });
 
@@ -138,6 +145,7 @@ describe('decodeMetricFilter', () => {
       max: 4,
       includeNotAttempted: true,
       includeError: false,
+      includeExcluded: false,
     };
     const encoded = encodeMetricFilter(state);
     const decoded = decodeMetricFilter(encoded);

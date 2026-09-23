@@ -25,6 +25,7 @@ function column(definitionKey: string, taskId: string): TaskHeatmapColumn {
     taskKey: `${definitionKey}::${taskId}`,
     taskId,
     taskTitle: `Task ${taskId}`,
+    averageContribution: { effectiveWeight: 1, includedInAverage: true },
     assignmentId: `a-${definitionKey}`,
     assignmentName: `Assignment ${definitionKey}`,
     definitionKey,

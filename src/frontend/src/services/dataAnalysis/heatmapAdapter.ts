@@ -1,4 +1,9 @@
-import type { AveragingResult, MetricResult, PerStudentTaskMetric } from './dataAnalysis.zod';
+import type {
+  AverageContribution,
+  AveragingResult,
+  MetricResult,
+  PerStudentTaskMetric,
+} from './dataAnalysis.zod';
 import type { ClassFull } from '../googleClassrooms/classDetail/classDetailService.zod';
 import type {
   AssignmentDefinitionPartial,
@@ -59,6 +64,7 @@ export interface HeatmapTaskColumn {
   taskKey: string;
   taskId: string;
   taskTitle: string | null;
+  averageContribution: AverageContribution;
 }
 
 /**
@@ -102,11 +108,19 @@ const NOT_ATTEMPTED_METRIC: Readonly<MetricResult> = Object.freeze({
  *   `taskId`, and `taskTitle` read directly from the partial.
  */
 export function buildTaskColumns(partial: AssignmentDefinitionPartial): HeatmapTaskColumn[] {
-  return partial.tasks.map((task) => ({
-    taskKey: `${partial.definitionKey}::${task.taskId}`,
-    taskId: task.taskId,
-    taskTitle: task.taskTitle,
-  }));
+  const assignmentWeighting = partial.assignmentWeighting ?? 1;
+  return partial.tasks.map((task) => {
+    const effectiveWeight = assignmentWeighting * (task.taskWeighting ?? 1);
+    return {
+      taskKey: `${partial.definitionKey}::${task.taskId}`,
+      taskId: task.taskId,
+      taskTitle: task.taskTitle,
+      averageContribution: {
+        effectiveWeight,
+        includedInAverage: effectiveWeight > 0,
+      },
+    };
+  });
 }
 
 /**

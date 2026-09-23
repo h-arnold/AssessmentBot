@@ -2,7 +2,7 @@
 
 ## Status
 
-- Draft v1.0
+- v1.0 — implemented for GitHub issue #307.
 - Defines the agreed remediation for GitHub issue #307.
 
 ## Purpose

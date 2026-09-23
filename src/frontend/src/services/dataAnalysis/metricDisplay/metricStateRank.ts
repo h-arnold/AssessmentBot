@@ -11,20 +11,25 @@
 
 import type { MetricResult } from '../dataAnalysis.zod';
 
-const HIGHEST_METRIC_STATE_RANK = 2;
+const FIRST_METRIC_STATE_RANK = 0;
+const SECOND_METRIC_STATE_RANK = 1;
+const THIRD_METRIC_STATE_RANK = 2;
+const FOURTH_METRIC_STATE_RANK = 3;
 
-/** Rank lookup for ascending metric column sort: computed → notAttempted → error. */
+/** Rank lookup for ascending metric column sort: computed → notAttempted → excluded → error. */
 export const METRIC_STATE_RANK_ASC: ReadonlyMap<MetricResult['state'], number> = new Map([
-  ['computed', 0],
-  ['notAttempted', 1],
-  ['error', HIGHEST_METRIC_STATE_RANK],
+  ['computed', FIRST_METRIC_STATE_RANK],
+  ['notAttempted', SECOND_METRIC_STATE_RANK],
+  ['excluded', THIRD_METRIC_STATE_RANK],
+  ['error', FOURTH_METRIC_STATE_RANK],
 ]);
 
-/** Rank lookup for descending metric column sort: error → notAttempted → computed. */
+/** Rank lookup for descending metric column sort: error → excluded → notAttempted → computed. */
 export const METRIC_STATE_RANK_DESC: ReadonlyMap<MetricResult['state'], number> = new Map([
-  ['error', 0],
-  ['notAttempted', 1],
-  ['computed', HIGHEST_METRIC_STATE_RANK],
+  ['error', FIRST_METRIC_STATE_RANK],
+  ['excluded', SECOND_METRIC_STATE_RANK],
+  ['notAttempted', THIRD_METRIC_STATE_RANK],
+  ['computed', FOURTH_METRIC_STATE_RANK],
 ]);
 
 /**
@@ -32,8 +37,8 @@ export const METRIC_STATE_RANK_DESC: ReadonlyMap<MetricResult['state'], number> 
  * metric column sorting.
  *
  * The rank order flips with direction:
- * - `asc`:  computed (0) → notAttempted (1) → error (2)
- * - `desc`: error (0) → notAttempted (1) → computed (2)
+ * - `asc`:  computed (0) → notAttempted (1) → excluded (2) → error (3)
+ * - `desc`: error (0) → excluded (1) → notAttempted (2) → computed (3)
  *
  * @param {MetricResult} metric - The metric result to rank.
  * @param {'asc' | 'desc'} direction - Sort direction.

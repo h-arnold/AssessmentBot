@@ -11,6 +11,8 @@ import userEvent from '@testing-library/user-event';
 import type { FilterDropdownProps } from 'antd/es/table/interface';
 
 import { MetricRangeFilterDropdown } from './metricRangeFilterDropdown';
+import { buildMetricRangeFilter, metricInRange } from './metricRangeFilter';
+import { createExcludedMetricResult, createNotAttemptedMetricResult, createErrorMetricResult } from '../../../test/dataAnalysis/fixtures';
 
 /** Default scoring range used in tests. */
 const DEFAULT_RANGE = { lower: 0, upper: 5 };
@@ -28,6 +30,8 @@ const DOUBLE_TOGGLE_CALL_COUNT = 2;
 const FIRST_INVOCATION = 1;
 /** Second mock invocation index (1-based). */
 const SECOND_INVOCATION = 2;
+const FILTER_TEST_MINIMUM = 2;
+const FILTER_TEST_MAXIMUM = 3;
 
 /**
  * Create a mock `FilterDropdownProps` object with sensible defaults for
@@ -85,6 +89,7 @@ describe('MetricRangeFilterDropdown', () => {
     // Checkboxes
     expect(screen.getByText('Include Not Attempted (N)')).toBeInTheDocument();
     expect(screen.getByText('Include Error (E)')).toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: 'Include Excluded' })).not.toBeChecked();
 
     // Reset button
     expect(screen.getByRole('button', { name: /reset/i })).toBeInTheDocument();
@@ -157,7 +162,7 @@ describe('MetricRangeFilterDropdown', () => {
 
     // The encoded key must have includeNotAttempted set to 1
     const key = setSelectedKeys.mock.calls[0][0][0] as string;
-    expect(key.endsWith('|1|0') || key.endsWith('|1|1')).toBe(true);
+    expect(key.endsWith('|1|0|0') || key.endsWith('|1|1|0')).toBe(true);
   });
 
   // ---------------------------------------------------------------------------
@@ -183,7 +188,7 @@ describe('MetricRangeFilterDropdown', () => {
 
     // The encoded key must have includeError set to 1
     const key = setSelectedKeys.mock.calls[0][0][0] as string;
-    expect(key.endsWith('|0|1') || key.endsWith('|1|1')).toBe(true);
+    expect(key.endsWith('|0|1|0') || key.endsWith('|1|1|0')).toBe(true);
   });
 
   // ---------------------------------------------------------------------------
@@ -263,6 +268,28 @@ describe('MetricRangeFilterDropdown', () => {
     // Even without prior interaction, reset should clear and confirm
     expect(setSelectedKeys).toHaveBeenCalledWith([]);
     expect(confirm).toHaveBeenCalledWith({ closeDropdown: true });
+  });
+
+  it('encodes only the excluded toggle as the fifth field and clears it on Reset', async () => {
+    const user = userEvent.setup();
+    const setSelectedKeys = vi.fn();
+    const confirm = vi.fn();
+    render(<MetricRangeFilterDropdown {...createMockDropdownProperties({ setSelectedKeys, confirm })} range={DEFAULT_RANGE} />);
+    await user.click(screen.getByRole('checkbox', { name: 'Include Excluded' }));
+    expect(setSelectedKeys).toHaveBeenLastCalledWith(['0|5|0|0|1']);
+    await user.click(screen.getByRole('button', { name: /reset/i }));
+    expect(screen.getByRole('checkbox', { name: 'Include Excluded' })).not.toBeChecked();
+  });
+
+  it('includes excluded only when its fifth toggle is enabled, independently of other states and range', () => {
+    const excluded = createExcludedMetricResult();
+    expect(metricInRange(excluded, FILTER_TEST_MINIMUM, FILTER_TEST_MAXIMUM, false, false, false)).toBe(false);
+    expect(metricInRange(excluded, FILTER_TEST_MINIMUM, FILTER_TEST_MAXIMUM, false, false, true)).toBe(true);
+    const filter = buildMetricRangeFilter({ range: DEFAULT_RANGE, activeRange: [], getMetric: (row: { metric: typeof excluded }) => row.metric });
+    expect(filter.onFilter('2|3|0|0|1', { metric: excluded })).toBe(true);
+    expect(filter.onFilter('2|3|0|0|0', { metric: excluded })).toBe(false);
+    expect(metricInRange(createNotAttemptedMetricResult(), FILTER_TEST_MINIMUM, FILTER_TEST_MAXIMUM, true, false)).toBe(true);
+    expect(metricInRange(createErrorMetricResult(), FILTER_TEST_MINIMUM, FILTER_TEST_MAXIMUM, false, true)).toBe(true);
   });
 
   // ---------------------------------------------------------------------------

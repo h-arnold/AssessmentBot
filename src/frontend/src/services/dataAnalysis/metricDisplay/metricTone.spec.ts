@@ -10,6 +10,7 @@ import {
   createComputedMetricResult,
   createNotAttemptedMetricResult,
   createErrorMetricResult,
+  createExcludedMetricResult,
 } from '../../../test/dataAnalysis/fixtures';
 import { resolveMetricTone } from './metricTone';
 import type { MetricToneResolution } from './metricTone';
@@ -113,6 +114,19 @@ describe('resolveMetricTone', () => {
       displayValue: 'E',
       muted: false,
     });
+  });
+
+  it('resolves excluded to a distinct neutral tone and a null non-score value', () => {
+    const excluded = resolveMetricTone(createExcludedMetricResult());
+    const notAttempted = resolveMetricTone(createNotAttemptedMetricResult());
+    const error = resolveMetricTone(createErrorMetricResult());
+
+    expect(excluded.displayValue).toBeNull();
+    expect(excluded.color).toBe('default');
+    expect(excluded.color).not.toBe('#434343');
+    expect(excluded.color).not.toBe(error.color);
+    expect(excluded.cellStyle).not.toEqual(notAttempted.cellStyle);
+    expect(excluded.muted).toBe(false);
   });
 
   it('returns custom errorColor for error metric when supplied', () => {

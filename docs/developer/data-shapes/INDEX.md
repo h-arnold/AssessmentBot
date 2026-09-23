@@ -67,10 +67,11 @@ reference.
 ## Documented Contracts
 
 All eleven contracts are documented in this directory. `frontend-data-analysis-response.md`
-is **planned — not implemented** for issue #307; the remaining implemented contracts,
-including `AuthUsers`, conform to their documented contracts. The legacy
-`docs/developer/backend/DATA_SHAPES.md` has been deleted; all content has been
-migrated to the individual contract files listed below.
+is **implemented** for issue #307 as an in-memory frontend validation and service
+contract with no persistence, API endpoint, or transport boundary; the remaining
+implemented contracts, including `AuthUsers`, conform to their documented
+contracts. The legacy `docs/developer/backend/DATA_SHAPES.md` has been deleted;
+all content has been migrated to the individual contract files listed below.
 
 ## Transport Envelope
 

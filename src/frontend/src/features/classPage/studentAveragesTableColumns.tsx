@@ -11,13 +11,12 @@
  * `buildMetricRangeFilter`.
  *
  * @remarks
- * The `MetricToneColor` token set covers discrete `notAttempted` (`'default'`)
- * and `error` (`errorColor`) states only. Computed values render on a
- * continuous gradient (no fixed colour bands). Each metric column exposes a
- * numeric score-range filter (`filterDropdown` with a range slider, Reset,
- * and include-N/include-E toggles) whose `onFilter` matches computed scores
- * inside the encoded range and honours the toggles for `notAttempted` and
- * `error` states.
+ * Computed values render on a continuous gradient (no fixed colour bands);
+ * `notAttempted` uses dark grey (`#434343`), `error` uses `errorColor`, and
+ * aggregate `excluded` uses the separate neutral default Tag tone and its own
+ * cell style. Each metric column exposes a numeric score-range filter with
+ * independent N, E, and Excluded toggles; `excluded` matches only when its
+ * dedicated toggle is enabled, never by numeric range.
  *
  * **No React hooks.** The function is pure and called at render time by
  * `StudentAveragesTableCard` inside a `useMemo`.
@@ -45,6 +44,7 @@ import { buildMetricRangeFilter } from '../../services/dataAnalysis/metricDispla
 import { decodeFilterToRange } from '../../services/dataAnalysis/metricDisplay/metricRangeKey';
 import { MetricIconLabel } from '../../components/MetricIconLabel/MetricIconLabel';
 import { APP_COL_WIDTH_FORENAME, APP_COL_WIDTH_SURNAME, APP_COL_WIDTH_METRIC_PILL } from '../../theme/spacing';
+import { EXCLUDED_METRIC_ACCESSIBLE_LABEL } from '../../services/dataAnalysis/metricDisplay/metricTone';
 
 // ---------------------------------------------------------------------------
 // Exported types
@@ -55,7 +55,7 @@ import { APP_COL_WIDTH_FORENAME, APP_COL_WIDTH_SURNAME, APP_COL_WIDTH_METRIC_PIL
  *
  * Each key stores the raw encoded filter key from Ant Design's filter state,
  * or an empty array when the column is unfiltered (all rows pass). The encoded
- * key preserves the N/E toggle state set by the dropdown.
+ * key preserves the independent N/E/Excluded toggle state set by the dropdown.
  */
 export type StudentAveragesTableFilters = Readonly<{
   completeness: readonly string[];
@@ -79,7 +79,7 @@ const CLASS_PAGE_SCORE_PRECISION = 2;
  * Render a metric score as plain text at {@link CLASS_PAGE_SCORE_PRECISION}.
  *
  * @param {MetricResult} metric - The metric result to render.
- * @returns {string} The formatted score, or `N`/`E` for non-computed states.
+ * @returns {string} The formatted computed score, raw `N`, error `E`, or `Excluded` label.
  */
 function renderClassPageScore(metric: MetricResult): string {
   if (metric.state === 'computed') {
@@ -87,6 +87,9 @@ function renderClassPageScore(metric: MetricResult): string {
   }
   if (metric.state === 'notAttempted') {
     return 'N';
+  }
+  if (metric.state === 'excluded') {
+    return 'Excluded';
   }
   return 'E';
 }
@@ -128,7 +131,9 @@ function buildMetricColumn(
       const metric = getStudentMetric(record.metrics, key);
       const { cellStyle } = resolveMetricTone(metric, DEFAULT_TONE_RANGE);
       const score = renderClassPageScore(metric);
-      const ariaLabel = `${record.studentName}, ${meta.label}: ${score}`;
+      const ariaLabel = metric.state === 'excluded'
+        ? EXCLUDED_METRIC_ACCESSIBLE_LABEL
+        : `${record.studentName}, ${meta.label}: ${score}`;
       return {
         style: cellStyle,
         'aria-label': ariaLabel,

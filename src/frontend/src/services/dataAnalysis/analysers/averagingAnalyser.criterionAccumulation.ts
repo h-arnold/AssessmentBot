@@ -8,8 +8,8 @@ import type {
 
 /**
  * Criterion-level accumulation logic extracted from
- * `averagingAnalyser.accumulation.ts` to bring that file under the 550-line
- * threshold (MAJOR-4).
+ * `averagingAnalyser.accumulation.ts` so assignment orchestration and
+ * criterion-level score handling have separate responsibilities.
  *
  * All criterion-level accumulation helpers live here:
  * `accumulateCriterion`, `accumulateMetricsToTarget`, `computeOverall`,
@@ -29,14 +29,23 @@ export function accumulateCriterion(
   weight: number
 ): void {
   if (typeof score === 'number') {
-    accum.totalDataPoints++;
-    accum.weightedSum += score * weight;
-    accum.totalWeight += weight;
-    accum.applicableDataPoints++;
+    accum.displaySum += score;
+    accum.displayCount++;
+    accum.displayTotalDataPoints++;
+    if (weight > 0) {
+      accum.totalDataPoints++;
+      accum.weightedSum += score * weight;
+      accum.totalWeight += weight;
+      accum.applicableDataPoints++;
+    }
   } else if (score === 'N') {
-    accum.totalDataPoints++;
-    accum.totalWeight += weight;
-    accum.nCount++;
+    accum.displayNCount++;
+    accum.displayTotalDataPoints++;
+    if (weight > 0) {
+      accum.totalDataPoints++;
+      accum.totalWeight += weight;
+      accum.nCount++;
+    }
   }
 }
 
@@ -64,13 +73,22 @@ export function accumulateMetricsToTarget(
   accumulateCriterion(target.spag, spagScore, weight);
 
   if (overallValue !== null) {
-    target.overall.totalDataPoints++;
-    target.overall.weightedSum += overallValue * weight;
-    target.overall.totalWeight += weight;
-    target.overall.applicableDataPoints++;
+    target.overall.displaySum += overallValue;
+    target.overall.displayCount++;
+    target.overall.displayTotalDataPoints++;
+    if (weight > 0) {
+      target.overall.totalDataPoints++;
+      target.overall.weightedSum += overallValue * weight;
+      target.overall.totalWeight += weight;
+      target.overall.applicableDataPoints++;
+    }
   } else if (completenessScore === 'N' || accuracyScore === 'N' || spagScore === 'N') {
-    target.overall.totalDataPoints++;
-    target.overall.nCount++;
+    target.overall.displayNCount++;
+    target.overall.displayTotalDataPoints++;
+    if (weight > 0) {
+      target.overall.totalDataPoints++;
+      target.overall.nCount++;
+    }
   }
 }
 

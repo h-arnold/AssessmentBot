@@ -16,6 +16,7 @@ import {
   createComputedMetricResult,
   createNotAttemptedMetricResult,
   createErrorMetricResult,
+  createExcludedMetricResult,
 } from '../../../test/dataAnalysis/fixtures';
 import { compareMetricsByStateRank } from './metricComparator';
 
@@ -64,6 +65,20 @@ describe('compareMetricsByStateRank', () => {
     expect(
       compareMetricsByStateRank(computed, notAttempted, ID_AAA, ID_AAA, 'desc')
     ).toBeGreaterThan(0);
+  });
+
+  it('places excluded between N and E in both directions', () => {
+    const notAttempted = createNotAttemptedMetricResult();
+    const excluded = createExcludedMetricResult();
+    const error = createErrorMetricResult();
+    expect(compareMetricsByStateRank(notAttempted, excluded, ID_AAA, ID_AAA, 'asc')).toBeLessThan(
+      0
+    );
+    expect(compareMetricsByStateRank(excluded, error, ID_AAA, ID_AAA, 'asc')).toBeLessThan(0);
+    expect(compareMetricsByStateRank(error, excluded, ID_AAA, ID_AAA, 'desc')).toBeLessThan(0);
+    expect(compareMetricsByStateRank(excluded, notAttempted, ID_AAA, ID_AAA, 'desc')).toBeLessThan(
+      0
+    );
   });
 
   // -------------------------------------------------------------------------

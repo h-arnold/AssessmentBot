@@ -153,6 +153,7 @@ export function perTaskRow(overrides: {
     definitionKey: overrides.definitionKey,
     taskId: overrides.taskId,
     taskTitle: null,
+    averageContribution: { effectiveWeight: 1, includedInAverage: true },
     completeness: overrides.completeness,
     accuracy: overrides.accuracy,
     spag: overrides.spag,

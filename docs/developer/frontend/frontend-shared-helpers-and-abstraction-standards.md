@@ -483,13 +483,13 @@ These entries record the shared data analysis display helpers for the Class page
 
 - Decision: `new`
 - Owning module/path: `src/frontend/src/services/dataAnalysis/metricDisplay/metricTone.ts`
-- Call-site rationale: maps the data analysis service's `MetricResult` discriminated union (`state: 'computed' | 'notAttempted' | 'error'`) to a `{ color, cellStyle, displayValue, muted }` resolution that the Ant Design `Tag` (and table cells) consume. For `computed` values the colour is a **continuous gradient**: the normalised position `t = (value - lower) / (upper - lower)` (clamped to `[0, 1]`) maps to an `hsl` colour whose hue sweeps red (`0`) → amber (`60`) → green (`120`), with lightness darker at the range ends (darkest red at the floor, darkest green at the ceiling) and lighter in the middle. `cellStyle` carries the matching light-background / dark-text pair for table cells. `notAttempted` returns `'#434343'` (dark grey with light grey cell background) and `error` returns the `errorColor` token (default `'volcano'`), both with their preset `cellStyle`. Pure function, no React or antd imports. Validates `range.upper > range.lower` and throws on violation.
+- Call-site rationale: maps the data analysis service's `MetricResult` discriminated union to a `{ color, cellStyle, displayValue, muted }` resolution that the Ant Design `Tag` (and table cells) consume. The shared union has four states (`computed`, `notAttempted`, `excluded`, `error`); task-level display shapes use the narrower private three-state union (`computed`, `notAttempted`, `error`), which omits the aggregate-only `excluded`. For `computed` values the colour is a **continuous gradient**: the normalised position `t = (value - lower) / (upper - lower)` (clamped to `[0, 1]`) maps to an `hsl` colour whose hue sweeps red (`0`) → amber (`60`) → green (`120`), with lightness darker at the range ends (darkest red at the floor, darkest green at the ceiling) and lighter in the middle. `cellStyle` carries the matching light-background / dark-text pair for table cells. `notAttempted` returns `'#434343'` (dark grey with light grey cell background), `error` returns the `errorColor` token (default `'volcano'`), and `excluded` returns the neutral `default` colour with its own distinct neutral cell style; each with its preset `cellStyle`. Pure function, no React or antd imports. Validates `range.upper > range.lower` and throws on violation.
 - Status: `Implemented`
 - Implementation notes:
   - Added `errorColor: MetricToneColor` parameter (not in the planning-time signature) per the spec reconciliation. The default (`'volcano'`) lives in `resolveMetricTone`; `MetricPill` is a pass-through with no `errorColor`-level default.
   - Computed values use a continuous gradient (no fixed band boundaries), so adjacent integer scores such as `4` and `5` or `2` and `3` now render with visibly different colours. Discrete states keep their fixed `Tag` colour tokens and cell styles.
   - Exported types: `MetricToneColor`, `MetricToneRange`, `MetricToneResolution`.
-  - `MetricToneColor = 'red' | 'gold' | 'green' | 'default' | 'volcano'` remains the union for discrete `notAttempted` (`'default'`) and `error` (`errorColor`) states; the column **score-range filter** (see helper 4) is the consumer of filter values, not the continuous gradient. Any future revision to `MetricToneColor` is a cross-spec breaking change.
+  - `MetricToneColor = 'red' | 'gold' | 'green' | 'default' | 'volcano'` is the union for the discrete Tag colours: `excluded` returns the neutral `'default'` Tag colour with a separate neutral cell style, and `error` returns `errorColor` (default `'volcano'`). `notAttempted` returns dark grey `'#434343'` with its own light-grey cell background (not a `MetricToneColor` member). The column **score-range filter** (see helper 4) is the consumer of filter values, not the continuous gradient. Any future revision to `MetricToneColor` is a cross-spec breaking change.
   - The `error` color (`volcano`) is the existing Ant Design preset for "important but not fatal" — `red` is reserved for the lowest end of the `computed` gradient to keep visual hierarchy clear.
   - File size: ~223 lines (under 550; no separation needed).
 - Planned doc reconciliation: confirmed the resolver remains pure (no antd imports), the range parameter is honoured, and the `errorColor` default is set in `resolveMetricTone` (not in `MetricPill`) per the spec contract — the default-value rule "defaults must be set in a module's constructor only" is moot here because `resolveMetricTone` is a pure function, not a module constructor, and the default is set in the function parameter signature.
@@ -503,11 +503,11 @@ These entries record the shared data analysis display helpers for the Class page
 - Implementation notes:
   - Renders Ant Design `Tag` with the resolved color. No explicit `variant="filled"` prop — the default filled variant is used. The `bordered` prop is left at its default (`true`).
   - The `emphasised` flag applies `fontSize: '17.5px'` (1.25× default) and `fontWeight: 600` via the `style` prop, merged with the muted opacity (`0.55`) when both are active.
-  - The `precision` prop is ignored for `notAttempted` and `error` (the literal `'N'` and `'E'` are rendered as-is).
-  - No `Tooltip` or `aria-label` in v1 (signed-off accessibility gap).
+  - The `precision` prop is ignored for `notAttempted`, `excluded`, and `error` (the literal `'N'` and `'E'`, and the visible label **Excluded**, are rendered as-is).
+  - `excluded` is rendered with `role="img"` and the shared accessible name; `notAttempted` and `error` remain unchanged (still no `Tooltip` or `aria-label`).
   - No interactivity: no `onClick`, no `cursor: pointer`, no focus ring.
   - File size: 125 lines (under 550; no separation needed).
-- Planned doc reconciliation: confirmed the Tag color choices: `computed` uses `red` / `gold` / `green` bands; `notAttempted` uses `default` (grey); `error` uses `volcano` (default) with `errorColor` pass-through. The `error` color (`volcano`) is agreed and closed per Section 1 spec reconciliation — `red` is reserved for the lowest band of `computed` values to keep visual hierarchy clear.
+- Planned doc reconciliation: confirmed the Tag color choices: `computed` uses the continuous gradient; `notAttempted` uses dark grey `'#434343'`; `excluded` uses the neutral `default` Tag colour with a separate neutral cell style; `error` uses `volcano` (default) with `errorColor` pass-through. The `error` color (`volcano`) is agreed and closed per Section 1 spec reconciliation — `red` is reserved for the lowest end of the `computed` gradient to keep visual hierarchy clear.
 
 3. Helper: `metricDisplay/` subfolder under `services/dataAnalysis/`
 
@@ -525,15 +525,15 @@ These entries record the shared data analysis display helpers for the Class page
 
 - Decision: `new`
 - Owning module/path: `src/frontend/src/services/dataAnalysis/analysers/rollupMetric.ts` (standalone; not in `accumulation/` subfolder)
-- Call-site rationale: called by both `buildPerStudentRows` and `buildPerTaskRows` in `averagingAnalyser.rows.ts`, and by the Class page's `classPageAdapter`, applying the same three-way rollup precedence across all aggregation levels. The function operates on the public `MetricResult` discriminated union (not internal `MetricAccumulator` values) and takes a metric discriminator to apply per-metric `notAttempted` handling (for accuracy and completeness, `notAttempted` contributes 0; for SPaG, `notAttempted` is excluded). The `RollupMetric` type is `'completeness' | 'accuracy' | 'spag'` only — `'average'` is intentionally excluded because the average is a composite of the three per-criterion rollups at the consumer level, not a fourth independent weighted average. Pure function, no React or antd imports.
+- Call-site rationale: called by both `buildPerStudentRows` and `buildPerTaskRows` in `averagingAnalyser.rows.ts`, and by the Class page's `classPageAdapter`, applying the same four-state rollup precedence across all aggregation levels. The function operates on the public `MetricResult` discriminated union (not internal `MetricAccumulator` values) and takes a metric discriminator to apply per-metric `notAttempted` handling (for accuracy and completeness, `notAttempted` contributes 0; for SPaG, `notAttempted` is excluded). The `RollupMetric` type is `'completeness' | 'accuracy' | 'spag'` only — `'average'` is intentionally excluded because the average is a composite of the three per-criterion rollups at the consumer level, not a fourth independent weighted average. Pure function, no React or antd imports.
 - Status: `Implemented`
 - Implementation notes:
   - Implemented as part of the MetricResult discriminated-union refactor.
-  - At aggregation levels above the per-(student, task) cell, `error` entries are **excluded** from the rollup. The result is `error` only when **every** input is `error`; otherwise it is `computed` (over non-error entries) or `notAttempted` (when no computed entries remain). Error entries are excluded from both numerator and denominator.
+  - At aggregation levels above the per-(student, task) cell, the rollup resolves the four states in precedence order: all inputs `error` → `error`; at least one `computed` input with positive `totalWeight` → `computed` (over the contributing entries); otherwise a positive-weight raw `notAttempted` input with no numeric contribution → `notAttempted`; otherwise observed non-error evidence with no contribution (for example every observation had zero effective weight) → `excluded`. `error` entries are excluded from both numerator and denominator.
   - Per-metric `notAttempted` handling: for accuracy and completeness, `notAttempted` contributes 0; for SPaG, `notAttempted` is excluded from numerator/denominator.
-  - The function is called from `averagingAnalyser.rows.ts` row builders and will be consumed by the Class page adapter.
-  - Standalone file (not in `accumulation/` subfolder) per the spec reconciliation; the facade decomposition of `averagingAnalyser.accumulation.ts` is deferred to a future pass (see §9.18 item 3).
-- Planned doc reconciliation: confirmed the rollup is called from both analyser row builders, errors are **excluded** at aggregation levels above the per-(student, task) cell (the result is `error` only when every input is `error`), and per-metric `notAttempted` handling matches the canonical contract.
+  - The function is called from the `averagingAnalyser.rows.ts` row builders and from the Class-page `classPageAdapter`.
+  - Standalone file (not in an `accumulation/` subfolder); the facade decomposition of `averagingAnalyser.accumulation.ts` has since been delivered (see §9.18 item 3).
+- Planned doc reconciliation: confirmed the rollup is called from both analyser row builders and the Class-page adapter, resolves `error` only when every input is `error`, and otherwise follows the four-state precedence (including the aggregate-only `excluded`) with per-metric `notAttempted` handling matching the canonical contract.
 
 5. Helper: metric-state rank module (`METRIC_STATE_RANK_ASC`, `METRIC_STATE_RANK_DESC`, `getMetricStateRank`) — shared state-aware metric sorting
 
@@ -542,7 +542,7 @@ These entries record the shared data analysis display helpers for the Class page
 - Call-site rationale: ranks `MetricResult['state']` for state-aware metric column sorting — generic metric-domain semantics consumed by both features and owned by neither. Both call sites reach it indirectly through the shared comparator module: the Class page overview table via `classPageModel.ts`'s private `buildMetricComparator` wrapper, and the Task Heatmap table (`features/taskHeatmap/TaskHeatmapTable.tsx`) via its local `buildMetricSorter` sorters — each delegates to `compareMetricsByStateRank` in `metricDisplay/metricComparator.ts` (see entry 7), so neither feature reads the rank maps directly any more. Relocated from `classPageModel.ts` by the TaskHeatmap extraction.
 - Status: `Implemented`
 - Implementation notes:
-  - Exports: `METRIC_STATE_RANK_ASC` (`asc`: computed → notAttempted → error), `METRIC_STATE_RANK_DESC` (`desc`: error → notAttempted → computed), and `getMetricStateRank(metric, direction)` with an unknown-state fallback of rank 0. Within the computed band, value ordering and the `studentId` tie-break are applied by the shared `compareMetricsByStateRank` comparator (see entry 7).
+  - Exports: `METRIC_STATE_RANK_ASC` (`asc`: computed → notAttempted → excluded → error), `METRIC_STATE_RANK_DESC` (`desc`: error → excluded → notAttempted → computed), and `getMetricStateRank(metric, direction)` with an unknown-state fallback of rank 0. Within the computed band, value ordering and the `studentId` tie-break are applied by the shared `compareMetricsByStateRank` comparator (see entry 7).
   - Module-header `@remarks` records `./metricComparator` as the sole direct consumer, keeping the ranking semantics out of feature folders.
   - Co-located spec: `metricStateRank.spec.ts`.
 
@@ -565,63 +565,88 @@ These entries record the shared data analysis display helpers for the Class page
 - Status: `Implemented`
 - Implementation notes:
   - Signature: `export function compareMetricsByStateRank(aMetric: MetricResult, bMetric: MetricResult, aId: string, bId: string, direction: 'asc' | 'desc'): number`
-  - Ordering precedence: state rank (`asc`: computed → notAttempted → error; `desc`: error → notAttempted → computed), then numeric value within the computed band honouring `direction`, then `aId.localeCompare(bId)` ascending as the ultimate tie-break (zero only when both metrics and identifiers are equal).
+  - Ordering precedence: state rank (`asc`: computed → notAttempted → excluded → error; `desc`: error → excluded → notAttempted → computed), then numeric value within the computed band honouring `direction`, then `aId.localeCompare(bId)` ascending as the ultimate tie-break (zero only when both metrics and identifiers are equal).
   - Folder placement follows the existing `metricDisplay/` subfolder convention (§9.17 entry 3); consumers import directly (no barrel).
   - Co-located spec: `metricComparator.spec.ts` (state-rank ordering in both directions, computed-band value ordering, direction-neutral row-id tie-break, unknown-state fallback).
 
-### 9.18 Planned issue #307 shared data-analysis extensions
+### 9.18 Issue #307 shared data-analysis extensions
 
-**Status: Planned — Not implemented.** These entries record the agreed reuse
-and ownership decisions for the zero-weight assessment remediation. The
-implementation agent must replace this status with `Implemented` only after
-the relevant code and tests land.
+**Status: Implemented.** These entries record the delivered reuse and ownership
+decisions for the zero-weight assessment remediation. The shared-vs-feature-local
+boundary agreed at planning time was preserved: state presentation stayed shared
+under `metricDisplay/`, contribution validation stayed in the shared schema
+module, and heatmap header construction stayed feature-local.
 
 1. Helper group: `metricDisplay/` state consumers
 
-- Decision: **extend existing shared helpers**; do not create a feature-local
-  `excluded` renderer, filter, comparator, or tone resolver.
-- Owning modules: `metricTone.ts`, `MetricPill.tsx`, `metricStateRank.ts`,
-  `metricComparator.ts`, `metricRangeKey.ts`, `metricRangeFilter.tsx`, and
-  `metricRangeFilterDropdown.tsx` under
-  `src/frontend/src/services/dataAnalysis/metricDisplay/`.
+- Decision: **extended existing shared helpers**; no feature-local `excluded`
+  renderer, filter, comparator, or tone resolver was created.
+- Owning modules: `metricTone.ts` (adds `EXCLUDED_METRIC_ACCESSIBLE_LABEL` and
+  the distinct neutral `excluded` cell style), `MetricPill.tsx` (renders the
+  **Excluded** label with `role="img"` and the shared accessible name),
+  `metricStateRank.ts` (ranks `excluded` between `notAttempted` and `error` in
+  both directions), `metricComparator.ts`, `metricRangeKey.ts` (appends the
+  fifth `includeExcluded` field), `metricRangeFilter.tsx` (independent
+  `excluded` predicate), and `metricRangeFilterDropdown.tsx` (its own toggle)
+  under `src/frontend/src/services/dataAnalysis/metricDisplay/`.
+- Callers: the Class page (`features/classPage/classPageModel.ts`,
+  `studentAveragesTableColumns.tsx`, `RecentAssignmentCard.tsx`) and the task
+  heatmap (`features/taskHeatmap/taskHeatmapTableColumns.tsx`).
 - Call-site rationale: the Class page and task heatmap already share the
   `MetricResult` presentation vocabulary. `excluded` is another domain state,
   not a heatmap-only status; its label, accessible name, neutral tone, filter
-  encoding, and ordering must remain one shared definition.
+  encoding, and ordering remain one shared definition.
+- Status: **Implemented**.
 
 2. Helper group: average-contribution validation
 
-- Decision: **extend existing shared schema module**; define one strict
+- Decision: **extended the existing shared schema module** with one strict
   `AverageContributionSchema` in
-  `src/frontend/src/services/dataAnalysis/dataAnalysis.zod.ts` and derive its
-  TypeScript type from Zod.
-- Call-site rationale: both analyser result rows and both heatmap adapters use
-  the same invariant (`includedInAverage === effectiveWeight > 0`). A duplicate
-  feature-owned interface would weaken the public data-analysis contract.
+  `src/frontend/src/services/dataAnalysis/dataAnalysis.zod.ts`, with its
+  TypeScript type derived from Zod.
+- Call-site rationale: both analyser result rows (`PerTaskRow`,
+  `PerStudentTaskMetric`) and both heatmap adapters (`heatmapAdapter.ts`,
+  `heatmapAdapter.merged.ts`) use the same invariant
+  (`includedInAverage === effectiveWeight > 0`). The same module also exports
+  the four-state `MetricResultSchema` (including the aggregate-only `excluded`
+  member) and keeps the private three-state `TaskDisplayMetricSchema` for
+  task-level displays.
+- Status: **Implemented**.
 
 3. Helper group: heatmap zero-weight header construction
 
-- Decision: **extract feature-local at the repository's 500-line planning
-  threshold**, before the 550-line hard limit is reached.
-- Owning path if extraction is required:
-  `src/frontend/src/features/taskHeatmap/taskHeatmapZeroWeightHeader.tsx` (or a
-  coherent adjacent feature-local name).
+- Decision: **extracted feature-local** at the repository's 500-line planning
+  threshold, before the 550-line hard limit was reached.
+- Owning path:
+  `src/frontend/src/features/taskHeatmap/taskHeatmapZeroWeightHeader.tsx`.
+  It exports `buildTaskHeaderPresentation`, `getZeroWeightMetricEdgeClass`, and
+  the `ZERO_WEIGHT_*` class/explanation constants; the edge classes are defined
+  in `src/frontend/src/index.css`.
+- Caller: `src/frontend/src/features/taskHeatmap/taskHeatmapTableColumns.tsx`
+  (`buildTaskHeaderPresentation` for grouped headers,
+  `getZeroWeightMetricEdgeClass` for the first/last metric sub-columns).
 - Call-site rationale: the Tooltip target and group-edge class construction are
   specific to the task heatmap's grouped Table columns. They have no second
-  feature consumer. The extractor exists to maintain a coherent responsibility
-  boundary in `taskHeatmapTableColumns.tsx`, not to promote premature sharing.
+  feature consumer. The extractor maintains a coherent responsibility boundary
+  in `taskHeatmapTableColumns.tsx` rather than promoting premature sharing.
+- Status: **Implemented**.
 
 4. Helper: `rollupMetric(subTasks, metric)` contribution-aware state resolution
 
-- Decision: **extend existing shared helper**.
+- Decision: **extended the existing shared helper**.
 - Owning module/path:
   `src/frontend/src/services/dataAnalysis/analysers/rollupMetric.ts`.
-- Call-site rationale: analyser row builders and the Class-page
-  `classPageAdapter` both roll task display metrics into aggregate scopes. One
-  shared resolver must recognise `totalWeight: 0` display evidence, genuine
-  positive-weight `N`, all-error inputs, and `excluded` consistently; neither
-  caller may recreate those precedence rules.
-- Status: **Not implemented**.
+- Callers: the analyser row builders (`averagingAnalyser.rows.ts`) and the
+  Class-page `classPageAdapter.ts` both roll task display metrics into aggregate
+  scopes. The per-task overall composite additionally delegates to
+  `averagingAnalyser.composite.ts`.
+- Behaviour: one shared resolver recognises `totalWeight: 0` display evidence,
+  genuine positive-weight `N`, all-error inputs, and `excluded`. Precedence is:
+  all-error → `error`; positive-weight numeric contribution → `computed`;
+  positive-weight raw `N` with no numeric contribution → `notAttempted`;
+  otherwise observed non-error evidence → `excluded`. Neither caller recreates
+  those precedence rules.
+- Status: **Implemented**.
 
 ### 9.19 Class page feature-local helpers
 
@@ -636,13 +661,13 @@ These entries record the feature-local helpers for the Class page. Per `frontend
 - Call-site rationale: the only module that knows how to translate the data analysis service's `AveragingResult` (with the new `MetricResult` discriminated union) plus the raw `ClassFull` into the view-model shapes the Class page consumes (`RecentAssignmentCardModel[]`, `StudentAverageRowModel[]`, `classMetrics`). Rolls up each criterion via the shared `rollupMetric` helper (which excludes errors at aggregation levels above the per-cell level) and computes the per-assignment `average` by delegating to the shared `computeOverallComposite` helper (40/40/20 weighting with SPaG renormalisation; also excludes error criteria). Also handles the `updatedAt`-based recent-assignment selection (top 3, sorted descending via the shared `compareAssignmentUpdatedAtDesc` comparator — replaced the previous inline stable sort), the no-data row synthesis for unassessed students, and trust validation (null `updatedAt` throws, duplicate `studentId`/`assignmentId` throws, unparseable `updatedAt` throws). Has exactly one caller (`useClassPageData`); promotion to a shared adapter would only make sense if a second consumer surface appears.
 - Status: `Implemented`
 - Implementation notes:
-  - 495 lines (well under the 500-line threshold; no file separation required).
+  - Single pure module; no file separation required.
   - Pure function — no I/O, no React imports, no Ant Design imports. The only side effect is throwing on data integrity violations.
   - Calls `rollupMetric` (shared helper at `src/frontend/src/services/dataAnalysis/analysers/rollupMetric.ts`) for each of the three criteria.
   - Calls `formatUpdatedAtLabel` (shared helper at `src/frontend/src/utils/dateFormatting.ts`) for date formatting.
   - Per-assignment `average` is computed by delegating to the shared `computeOverallComposite` helper (40/40/20 weighting with SPaG renormalisation); that helper excludes `error` and `notAttempted` criteria, matching the analyser's per-student and per-task overall behaviour. The average is a composite of three per-criterion rollups, not a fourth independent weighted average.
-  - Trust validation: `validateUpdatedAt` throws `TypeError` on null or unparseable `updatedAt`; `findDuplicateStudentId` / `findDuplicateAssignmentId` check uniqueness.
-  - Co-located spec: `classPageAdapter.spec.ts` (15 tests covering all contract behaviours).
+  - Trust validation: `validateUpdatedAt` throws `TypeError` on null or unparseable `updatedAt`; the generic `findFirstDuplicate` scanner checks student and assignment uniqueness.
+  - Co-located spec coverage is split by contract concern (aggregation, per-assignment average, recent assignments, trust validation, and the adapter Zod schema).
 - Planned doc reconciliation: confirmed the rollup precedence is documented inline in the adapter JSDoc (`@remarks` blocks); `MetricResult` discriminated union is consumed via `.state` property checks (not nullable checks, consistent with the discriminated union contract).
 
 #### 9.18.2 Pure view-model builder: `classPageModel`
@@ -657,11 +682,11 @@ These entries record the feature-local helpers for the Class page. Per `frontend
   - 151 lines. Pure function — no React imports, no Ant Design imports, no I/O.
   - Search filter: case-insensitive substring on `studentName`; empty `searchTerm` → no filter.
   - Derived name sort: an explicit `forename` or `surname` sort key orders by that derived value via the shared `compareStudentNamePart` comparator, with direction applied by the model and a `studentId` tie-break.
-  - State-aware metric sort ordering: `asc`: computed (by value) → notAttempted → error. `desc`: error → notAttempted → computed (by value). Ultimate tie-break by `studentId` ascending regardless of direction.
+  - State-aware metric sort ordering: `asc`: computed (by value) → notAttempted → excluded → error. `desc`: error → excluded → notAttempted → computed (by value). Ultimate tie-break by `studentId` ascending regardless of direction.
   - State-aware metric column sorting delegates to the shared comparator `compareMetricsByStateRank` (`services/dataAnalysis/metricDisplay/metricComparator.ts`), which composes the shared rank accessor (`getMetricStateRank`) — see §9.17 entries 5 and 7. The model's private `buildMetricComparator` wrapper only resolves which metric each row is compared by; neither rank map is referenced directly here.
   - Passes through `recentAssignments` and `classMetrics` unchanged.
   - Default and cleared sort: full-name ascending via the unchanged `compareStudentNames` comparator; a missing or `null` `sort` resolves here, so the initial order is unchanged by the column split.
-  - Co-located spec: `classPageModel.spec.ts` (12 test cases).
+  - Co-located spec coverage is split by concern (view-model construction, sorting, and the `excluded` state).
 - Planned doc reconciliation: confirmed the model is a pure function with no React or React Query imports. The `viewing` field is absent from v1 (static `Typography.Text` label instead of a `Select`).
 
 #### 9.18.3 Data orchestrator hook: `useClassPageData`
@@ -759,7 +784,7 @@ These entries record the feature-local helpers for the Class page. Per `frontend
 - Decision: `keep local`
 - Owning module/path: `src/frontend/src/features/classPage/classPageAdapter.zod.ts`
 - Status: `Implemented`
-- Implementation notes: Defines `RecentAssignmentCardModelSchema`, `StudentAverageRowModelSchema`, and `ClassPageAdapterResultSchema`. All types derived via `z.infer`. Reuses `MetricResult` from `src/frontend/src/services/dataAnalysis/dataAnalysis.zod`. Co-located spec: `classPageAdapter.zod.spec.ts`.
+- Implementation notes: Defines `RecentAssignmentCardModelSchema`, `StudentAverageRowModelSchema`, and `ClassPageAdapterResultSchema`. Added for issue #307: `ClassPageNoDataMetricSchema` and the adapter-local `ClassPageDisplayMetricSchema` union (shared four-state `MetricResultSchema` plus the zero-data placeholder). All types derived via `z.infer`. Reuses `MetricResult` from `src/frontend/src/services/dataAnalysis/dataAnalysis.zod`. Co-located spec: `classPageAdapter.zod.spec.ts`.
 
 3. Structural change: extraction of `averagingAnalyser.criterionAccumulation.ts`
 
@@ -815,7 +840,7 @@ These entries record the feature-local helpers for the Class page. Per `frontend
 
 - Decision: `keep local`
 - Owning module/path: `src/frontend/src/features/taskHeatmap/TaskHeatmapTable.tsx` (moved from `features/classPage/` by the TaskHeatmap extraction; the single student-name column was later split into sticky Forename/Surname columns)
-- Call-site rationale: pure presentational table built from a `TaskHeatmapData` view model. The Ant Design `Table<TaskHeatmapRow>` column tree is assembled inside a component-level `useMemo`: two sticky top-level columns, `Forename` (`fixed: 'start'`, `width: APP_COL_WIDTH_FORENAME`) and `Surname` (`fixed: 'start'`, `width: APP_COL_WIDTH_SURNAME`), whose renderers derive their text via the shared `splitStudentName` helper and whose sorters call `compareStudentNamePart('forename' | 'surname', a, b)`. Neither column sets `defaultSortOrder`; the initial full-name ascending order comes from a `rows.toSorted(compareStudentNames)` pre-sort. Then one grouped column per `taskColumn` (title = `taskColumn.taskTitle ?? taskColumn.taskId`) with `Completeness`/`Accuracy`/`SPaG` children produced by `buildTaskMetricSubColumns`. Each metric sub-column uses `buildMetricRangeFilter` (a numeric score-range `filterDropdown` + `onFilter` over a two-thumb `Slider` bounded by the fixed default tone range `0–5`), a canonically ordered `sorter` delegating through the local `buildMetricSorter` wrappers to the shared `compareMetricsByStateRank` (state rank computed → `notAttempted` → `error`, numeric value ascending within the computed band, ascending `studentId` tie-break; the heatmap always sorts ascending), and renders the formatted score (`renderScore`: integer for computed scores, `N` for `notAttempted`, `E` for `error`) inside a gradient-coloured cell (`resolveMetricTone(...).cellStyle` applied via `onCell`) whose `aria-label` keeps the full stored name string in the form `"[Student Name], [Task ID], [Metric]: [Score]"`. Each score sits in a keyboard-operable `role="button"` span (`aria-haspopup="dialog"`, Enter/Space activation) that opens a `Popover` whose content is deferred to `CellPopoverContent` (loading `<output>` skeleton while the assignment query is pending → error `Alert` → `TaskPreviewCard`). `pagination={{ pageSize: 50, showSizeChanger: true }}`, `bordered`, `scroll={{ x: 'max-content' }}`, `aria-label="Task Heatmap"`.
+- Call-site rationale: pure presentational table built from a `TaskHeatmapData` view model. The Ant Design `Table<TaskHeatmapRow>` column tree is assembled inside a component-level `useMemo`: two sticky top-level columns, `Forename` (`fixed: 'start'`, `width: APP_COL_WIDTH_FORENAME`) and `Surname` (`fixed: 'start'`, `width: APP_COL_WIDTH_SURNAME`), whose renderers derive their text via the shared `splitStudentName` helper and whose sorters call `compareStudentNamePart('forename' | 'surname', a, b)`. Neither column sets `defaultSortOrder`; the initial full-name ascending order comes from a `rows.toSorted(compareStudentNames)` pre-sort. Then one grouped column per `taskColumn` (title = `taskColumn.taskTitle ?? taskColumn.taskId`) with `Completeness`/`Accuracy`/`SPaG` children produced by `buildTaskMetricSubColumns`. Each metric sub-column uses `buildMetricRangeFilter` (a numeric score-range `filterDropdown` + `onFilter` over a two-thumb `Slider` bounded by the fixed default tone range `0–5`), a canonically ordered `sorter` delegating through the local `buildMetricSorter` wrappers to the shared `compareMetricsByStateRank` (state rank computed → `notAttempted` → `excluded` → `error`, numeric value ascending within the computed band, ascending `studentId` tie-break; the heatmap always sorts ascending), and renders the formatted score (`renderScore`: integer for computed scores, `N` for `notAttempted`, `E` for `error`) inside a gradient-coloured cell (`resolveMetricTone(...).cellStyle` applied via `onCell`) whose `aria-label` keeps the full stored name string in the form `"[Student Name], [Task ID], [Metric]: [Score]"`. Each score sits in a keyboard-operable `role="button"` span (`aria-haspopup="dialog"`, Enter/Space activation) that opens a `Popover` whose content is deferred to `CellPopoverContent` (loading `<output>` skeleton while the assignment query is pending → error `Alert` → `TaskPreviewCard`). `pagination={{ pageSize: 50, showSizeChanger: true }}`, `bordered`, `scroll={{ x: 'max-content' }}`, `aria-label="Task Heatmap"`.
 - Status: `Implemented`
 - Implementation notes:
   - Reuses `compareStudentNames` directly from `services/dataAnalysis/compareStudentNames.ts`, `compareStudentNamePart` from the shared `utils/splitStudentName.ts`, `compareMetricsByStateRank` from the shared `metricDisplay/metricComparator.ts`, and the shared `buildMetricRangeFilter` (with its `MetricRangeFilterDropdown` UI and `metricRangeKey` encode/decode helpers) from `metricDisplay/` — no second copy of the filter predicate. The local `TaskHeatmapRow`-typed sorter builders (`buildMetricSorter`) pass each cell's metric result plus the row `studentId`s to the shared comparator so the heatmap and averages tables share one ordering definition.
@@ -843,8 +868,8 @@ These entries record the feature-local helpers for the Class page. Per `frontend
 
 - Decision: `new` (test-only helper, co-located with the E2E spec)
 - Owning module/path: `src/frontend/e2e-tests/helpers/task-heatmap-end-to-end-helpers.ts`
-- Call-site rationale: builds the `RuntimeScenario` (auth + reference data + `getAssignmentDefinitionPartials` warm-up + two identical `getABClass` StrictMode entries + a real `getABClassPartials` so the class card renders) that drives the full journey in `task-heatmap.spec.ts`. It self-builds the `ClassFull` fixture from `anon-test-data.json` via an internal `buildClassFullDocument` (deriving `assignmentDefinition.tasks` from submission item keys), keeping the E2E independent of the unit fixture builders. `HEATMAP_ASSIGNMENT_NAME` (`'4. …'`) is the fixture `assignmentName`; `HEATMAP_ASSIGNMENT_DISPLAY_TITLE` (`'7. Video Plan'`) is the `primaryTitle` the UI actually renders and must be used for card-click + header locators.
-- Status: `Implemented` (`task-heatmap.spec.ts` + `task-heatmap-end-to-end-helpers.ts` added; 6 required cases, 7 passing tests).
+- Call-site rationale: builds the `RuntimeScenario` (auth + reference data + `getAssignmentDefinitionPartials` warm-up + two identical `getABClass` StrictMode entries + a real `getABClassPartials` so the class card renders) that drives the full journey in `task-heatmap.spec.ts`, and exposes scenario options including `zeroWeightAssignment` (which sets only the live partial's `assignmentWeighting` to zero). The fixture and payload builders were split into the sibling `src/frontend/e2e-tests/helpers/task-heatmap-fixtures.ts`: `buildClassFullDocument` there mirrors the relevant `anon-test-data.json` shape (class "7C2 Digital Technology 2025-2026") while keeping the live assignment-definition partial separate from the class snapshot, so the class snapshot carries `assignmentDefinitionKey` only and the tasks (including `taskTitle`) are declared explicitly in the live partial via `buildAssignmentDefinitionPartial`. `HEATMAP_ASSIGNMENT_NAME` (`'4. …'`) is the fixture `assignmentName`; `HEATMAP_ASSIGNMENT_DISPLAY_TITLE` (`'7. Video Plan'`) is the `primaryTitle` the UI actually renders and must be used for card-click + header locators.
+- Status: `Implemented` (`task-heatmap.spec.ts` plus the split `task-heatmap-end-to-end-helpers.ts` / `task-heatmap-fixtures.ts` helpers; 10 passing tests).
 - Implementation notes:
   - `createHeatmapScenario` exposes `deferredClass` (via `deferredSuccess`/`releaseNextDeferredSuccess`) for the loading-skeleton test, while always keeping two `getABClass` queue entries for StrictMode safety.
   - A scoped-parent overload was added to `applyColumnFilterOption` in `src/frontend/e2e-tests/shared/endToEndRuntimeMocks.ts` so the band-filter test can target the first task group's `Completeness` columnheader without tripping Playwright strict mode (string callers are unchanged).

@@ -21,6 +21,7 @@ import {
   createComputedMetricResult,
   createNotAttemptedMetricResult,
   createErrorMetricResult,
+  createExcludedMetricResult,
 } from '../../test/dataAnalysis/fixtures';
 import { RecentAssignmentCard } from './RecentAssignmentCard';
 
@@ -30,6 +31,7 @@ import { RecentAssignmentCard } from './RecentAssignmentCard';
 
 /** A RecentAssignmentCard renders exactly four MetricPill instances. */
 const EXPECTED_METRIC_PILL_COUNT = 4;
+const EXPECTED_EXCLUDED_METRIC_COUNT = 2;
 
 // ---------------------------------------------------------------------------
 // Fixture helpers
@@ -155,6 +157,26 @@ describe('RecentAssignmentCard', () => {
     tags.forEach((tag) => {
       expect(tag).toHaveTextContent('E');
     });
+  });
+
+  it('renders excluded criterion and overall metrics with the agreed accessible name', () => {
+    const accessibleText = 'Excluded from average: displayed work had zero weighting.';
+    const excluded = createExcludedMetricResult();
+    const card = makeCard({
+      metrics: {
+        completeness: excluded,
+        accuracy: createComputedMetricResult({ value: 3.8 }),
+        spag: createNotAttemptedMetricResult(),
+        average: excluded,
+      },
+    });
+    const { container } = render(<RecentAssignmentCard card={card} />);
+
+    expect(screen.getAllByText('Excluded')).toHaveLength(EXPECTED_EXCLUDED_METRIC_COUNT);
+    expect(screen.getAllByLabelText(accessibleText)).toHaveLength(EXPECTED_EXCLUDED_METRIC_COUNT);
+    expect(screen.getByText('3.80')).toBeInTheDocument();
+    expect(screen.getByText('N')).toBeInTheDocument();
+    expect(container.querySelectorAll('.ant-tag')).toHaveLength(EXPECTED_METRIC_PILL_COUNT);
   });
 
   it('invokes onOpenHeatmap with the card assignmentId when clicked', async () => {

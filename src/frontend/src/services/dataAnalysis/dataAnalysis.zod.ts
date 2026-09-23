@@ -66,10 +66,15 @@ export type AveragingAnalyserInput = z.infer<typeof AveragingAnalyserInputSchema
  * Result for a single metric (completeness, accuracy, spag, or overall).
  *
  * @remarks
- * `MetricResult` is a discriminated union with three states:
+ * `MetricResult` is a discriminated union with four states:
  * - `computed`: at least one numeric data point contributed. `value` is a number.
  * - `notAttempted`: no numeric data points, but at least one raw `'N'` score was
  *   seen. `value` is `'N'`.
+ * - `excluded`: aggregate-only — observations exist but none contributed to the
+ *   average (for example, every observation had zero effective weight).
+ *   `value` is `null`, `totalWeight` is `0`, and there is at least one total data
+ *   point. Task-level display shapes use a narrower three-state union and never
+ *   accept this member.
  * - `error`: no data points at all — no numeric scores and no `'N'` scores.
  *   `value` is `'E'`.
  *
@@ -77,7 +82,7 @@ export type AveragingAnalyserInput = z.infer<typeof AveragingAnalyserInputSchema
  * `value === null ⇔ applicableDataPoints === 0`.
  *
  * Display/sort precedence for a single MetricResult (not enforced at the schema
- * level): `error` > `notAttempted` > `computed`.
+ * level): `error` > `excluded` > `notAttempted` > `computed`.
  * At rollup levels, `error` entries/criteria are **excluded** from averages rather
  * than escalating the result — the rollup is `error` only when every input is `error`.
  */
@@ -97,6 +102,23 @@ const NotAttemptedMetricSchema = z.strictObject({
   totalDataPoints: z.number().int().min(1),
 });
 
+/**
+ * Aggregate-only metric state: observations exist, none contributed to the
+ * average, and the inputs are not entirely errors.
+ *
+ * @remarks
+ * Valid only where aggregate output permits it (`PerStudentRow`,
+ * `PerClassResult`, and other parent scopes). It is not a substitute for a
+ * numeric or raw-`N` task-level display result.
+ */
+const ExcludedMetricSchema = z.strictObject({
+  state: z.literal('excluded'),
+  value: z.null(),
+  totalWeight: z.literal(0),
+  applicableDataPoints: z.literal(0),
+  totalDataPoints: z.number().int().min(1),
+});
+
 const ErrorMetricSchema = z.strictObject({
   state: z.literal('error'),
   value: z.literal('E'),
@@ -105,13 +127,49 @@ const ErrorMetricSchema = z.strictObject({
   totalDataPoints: z.number().int().min(0),
 });
 
-export const MetricResultSchema = z.discriminatedUnion('state', [
+/**
+ * Narrow display-scope metric union for task-level rows and cells.
+ *
+ * @remarks
+ * Deliberately omits the aggregate-only `excluded` state so task displays keep
+ * numeric zero-weight scores and genuine raw `N` values visible.
+ */
+const TaskDisplayMetricSchema = z.discriminatedUnion('state', [
   ComputedMetricSchema,
   NotAttemptedMetricSchema,
   ErrorMetricSchema,
 ]);
 
+/** Shared four-state metric union used by aggregate result shapes. */
+export const MetricResultSchema = z.discriminatedUnion('state', [
+  ComputedMetricSchema,
+  NotAttemptedMetricSchema,
+  ExcludedMetricSchema,
+  ErrorMetricSchema,
+]);
+
 export type MetricResult = z.infer<typeof MetricResultSchema>;
+
+/**
+ * Task-level average-contribution metadata.
+ *
+ * @remarks
+ * `effectiveWeight` is the live assignment weighting multiplied by the live
+ * task weighting. `includedInAverage` must be `true` exactly when
+ * `effectiveWeight > 0`; a contradictory pair is invalid. This metadata is
+ * validated separately from display evidence so a zero-weight numeric score can
+ * remain visible while being excluded from parent averages.
+ */
+export const AverageContributionSchema = z
+  .strictObject({
+    effectiveWeight: z.number().min(0),
+    includedInAverage: z.boolean(),
+  })
+  .refine((c) => c.includedInAverage === c.effectiveWeight > 0, {
+    message: 'includedInAverage must be true exactly when effectiveWeight > 0',
+  });
+
+export type AverageContribution = z.infer<typeof AverageContributionSchema>;
 
 /**
  * Per-student analysis row with flat metric fields.
@@ -134,24 +192,36 @@ export type PerStudentRow = z.infer<typeof PerStudentRowSchema>;
  * Per-task analysis row with flat metric fields.
  *
  * @remarks
- * `taskTitle` is always `null` in v1 (the post-extension partial only carries
- * `{ id, taskWeighting }` per task). The field is reserved for future
- * cross-reference resolution.
+ * `taskTitle` is always `null` in v1 because `buildPerTaskRows` does not project
+ * or cross-reference titles. The live `TaskPartial` carries
+ * `{ taskId, taskWeighting, taskTitle }` (with a nullable title), which heatmap
+ * adapters read directly; this field is reserved for future cross-reference
+ * resolution.
+ *
+ * Metrics use the narrow task-level display union (no `excluded`), and
+ * `averageContribution` records whether the represented task's effective
+ * weighting allowed its scores into parent averages.
  */
 export const PerTaskRowSchema = z.strictObject({
   definitionKey: z.string(),
   taskId: z.string(),
   taskTitle: z.string().nullable(),
-  completeness: MetricResultSchema,
-  accuracy: MetricResultSchema,
-  spag: MetricResultSchema,
-  overall: MetricResultSchema,
+  averageContribution: AverageContributionSchema,
+  completeness: TaskDisplayMetricSchema,
+  accuracy: TaskDisplayMetricSchema,
+  spag: TaskDisplayMetricSchema,
+  overall: TaskDisplayMetricSchema,
 });
 
 export type PerTaskRow = z.infer<typeof PerTaskRowSchema>;
 
 /**
  * Aggregate metrics for an entire class across all students and tasks.
+ *
+ * @remarks
+ * Aggregate scope uses the shared four-state `MetricResultSchema`, so
+ * `excluded` is valid here when observations exist with no positive-weight
+ * contribution.
  */
 export const PerClassResultSchema = z.strictObject({
   completeness: MetricResultSchema,
@@ -184,15 +254,20 @@ export type AppliedCriterionWeightings = z.infer<typeof AppliedCriterionWeightin
  * @remarks
  * `taskKey` omits `assignmentId` in v1 (deferred multi-assignment re-keying).
  * See SPEC.md §Deferrals.
+ *
+ * Metrics use the narrow task-level display union (no `excluded`) so heatmap
+ * cells keep numeric zero-weight scores and raw `N` values; contribution is
+ * carried explicitly on `averageContribution` rather than inferred from a score.
  */
 export const PerStudentTaskMetricSchema = z.strictObject({
   classId: z.string(),
   studentId: z.string(),
   taskKey: z.string(),
-  completeness: MetricResultSchema,
-  accuracy: MetricResultSchema,
-  spag: MetricResultSchema,
-  overall: MetricResultSchema,
+  averageContribution: AverageContributionSchema,
+  completeness: TaskDisplayMetricSchema,
+  accuracy: TaskDisplayMetricSchema,
+  spag: TaskDisplayMetricSchema,
+  overall: TaskDisplayMetricSchema,
 });
 
 export type PerStudentTaskMetric = z.infer<typeof PerStudentTaskMetricSchema>;

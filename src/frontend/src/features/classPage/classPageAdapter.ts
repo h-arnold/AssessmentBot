@@ -11,7 +11,7 @@
  * @see SPEC_CLASS_PAGE.md §"classPageAdapter — pure adapter"
  */
 
-import { computeOverallComposite } from '../../services/dataAnalysis/analysers/averagingAnalyser.accumulation';
+import { computeOverallComposite } from '../../services/dataAnalysis/analysers/averagingAnalyser.composite';
 import { rollupMetric } from '../../services/dataAnalysis/analysers/rollupMetric';
 import { formatUpdatedAtLabel } from '../../utils/dateFormatting';
 import type {

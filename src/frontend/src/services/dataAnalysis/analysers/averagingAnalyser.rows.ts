@@ -1,5 +1,12 @@
-import type { MetricResult, PerStudentRow, PerTaskRow } from '../dataAnalysis.zod';
-import { accumToMetric, computeOverallComposite } from './averagingAnalyser.accumulation';
+import type {
+  AverageContribution,
+  MetricResult,
+  PerStudentRow,
+  PerTaskRow,
+} from '../dataAnalysis.zod';
+import { accumToMetric, toTaskDisplayMetric } from './averagingAnalyser.accumulation';
+import { resolveDisplayMetric } from './averagingAnalyser.metricResolution';
+import { computeOverallComposite } from './averagingAnalyser.composite';
 import type { CriterionWeightings } from './averagingAnalyser';
 import { rollupMetric } from './rollupMetric';
 import type { DataPointAccumulator } from './averagingAnalyser.types';
@@ -112,6 +119,26 @@ export function buildPerStudentRows(
 }
 
 /**
+ * Look up the contribution metadata for a task, failing fast when missing.
+ *
+ * @param {ReadonlyMap<string, AverageContribution>} averageContributionByTaskKey -
+ *   Authoritative contribution metadata keyed by taskKey.
+ * @param {string} taskKey - The task key to resolve.
+ * @returns {AverageContribution} The contribution for `taskKey`.
+ * @throws {Error} When the map has no entry for `taskKey` (a producer bug).
+ */
+function requireAverageContribution(
+  averageContributionByTaskKey: ReadonlyMap<string, AverageContribution>,
+  taskKey: string
+): AverageContribution {
+  const averageContribution = averageContributionByTaskKey.get(taskKey);
+  if (!averageContribution) {
+    throw new Error(`buildPerTaskRows: missing averageContribution for taskKey '${taskKey}'`);
+  }
+  return averageContribution;
+}
+
+/**
  * Build sorted per-task rows from accumulators.
  *
  * @remarks
@@ -127,58 +154,37 @@ export function buildPerStudentRows(
  * @param {Map<string, Map<string, DataPointAccumulator>>} perStudentTaskAccums -
  *   Per-(student, task) accumulators for rollup input building.
  * @param {CriterionWeightings} criterionWeightings - The criterion weightings.
+ * @param {ReadonlyMap<string, AverageContribution>} averageContributionByTaskKey -
+ *   Authoritative contribution metadata keyed by taskKey. Every key present in
+ *   `taskAccums` must have an entry; a missing entry is a producer bug.
  * @returns {PerTaskRow[]} Sorted per-task result rows.
  */
 export function buildPerTaskRows(
   taskAccums: Map<string, { definitionKey: string; taskId: string } & DataPointAccumulator>,
-  perStudentTaskAccums: Map<string, Map<string, DataPointAccumulator>>,
-  criterionWeightings: CriterionWeightings
+  criterionWeightings: CriterionWeightings,
+  averageContributionByTaskKey: ReadonlyMap<string, AverageContribution>
 ): PerTaskRow[] {
   const rows: PerTaskRow[] = [];
 
-  // Build inverted index: taskKey → accumulators[] with a single O(S·T) pass,
-  // avoiding the previous O(T·S) rescans that re-scanned all students per task.
-  const taskKeyToAccumulators = new Map<string, DataPointAccumulator[]>();
-  for (const taskMap of perStudentTaskAccums.values()) {
-    for (const [taskKey, accum] of taskMap) {
-      let list = taskKeyToAccumulators.get(taskKey);
-      if (!list) {
-        list = [];
-        taskKeyToAccumulators.set(taskKey, list);
-      }
-      list.push(accum);
-    }
-  }
-
   for (const [taskKey, accumulator] of taskAccums) {
-    const studentAccumsForTask = taskKeyToAccumulators.get(taskKey) ?? [];
+    const averageContribution = requireAverageContribution(averageContributionByTaskKey, taskKey);
 
-    if (studentAccumsForTask.length === 0) {
-      rows.push({
-        definitionKey: accumulator.definitionKey,
-        taskId: accumulator.taskId,
-        taskTitle: null,
-        completeness: accumToMetric(accumulator.completeness),
-        accuracy: accumToMetric(accumulator.accuracy),
-        spag: accumToMetric(accumulator.spag),
-        overall: accumToMetric(accumulator.overall),
-      });
-      continue;
-    }
-
-    const { completeness, accuracy, spag, overall } = rollupAccumulators(
-      studentAccumsForTask,
-      criterionWeightings
-    );
+    const completeness = resolveDisplayMetric(accumulator.completeness);
+    const accuracy = resolveDisplayMetric(accumulator.accuracy);
+    const spag = resolveDisplayMetric(accumulator.spag);
+    const composite = computeOverallComposite(completeness, accuracy, spag, criterionWeightings);
+    const displayOverall = resolveDisplayMetric(accumulator.overall);
+    const overall = composite.state === 'excluded' ? displayOverall : composite;
 
     rows.push({
       definitionKey: accumulator.definitionKey,
       taskId: accumulator.taskId,
       taskTitle: null,
-      completeness,
-      accuracy,
-      spag,
-      overall,
+      averageContribution,
+      completeness: toTaskDisplayMetric(completeness),
+      accuracy: toTaskDisplayMetric(accuracy),
+      spag: toTaskDisplayMetric(spag),
+      overall: toTaskDisplayMetric(overall),
     });
   }
 

@@ -5,10 +5,11 @@
  * non-component exports) so it satisfies the fast-refresh rule. Renders a
  * two-thumb Ant Design `Slider` bounded by the metric's scoring range, with
  * the range endpoints labelled on the slider and the active `[min, max]`
- * selection shown as text. **Include Not Attempted (N)** and **Include Error
- * (E)** checkboxes let the user keep those non-computed rows while a filter is
- * active. Confirming writes an encoded filter key into `selectedKeys`;
- * **Reset** clears the selection.
+ * selection shown as text. **Include Not Attempted (N)**, **Include Error
+ * (E)**, and **Include Excluded** checkboxes independently let the user keep
+ * those non-computed rows while a filter is active. Confirming writes an
+ * encoded filter key (with `includeExcluded` appended as its fifth field) into
+ * `selectedKeys`; **Reset** clears the selection and all three toggles.
  *
  * @module metricRangeFilterDropdown
  */
@@ -51,6 +52,7 @@ export function MetricRangeFilterDropdown(
     max: range.upper,
     includeNotAttempted: false,
     includeError: false,
+    includeExcluded: false,
   };
   const initial: MetricRangeFilterState = selectedKeys[0]
     ? decodeMetricFilter(selectedKeys[0]) ?? fallback
@@ -59,11 +61,13 @@ export function MetricRangeFilterDropdown(
   const [bounds, setBounds] = useState<[number, number]>([initial.min, initial.max]);
   const [includeN, setIncludeN] = useState<boolean>(initial.includeNotAttempted);
   const [includeE, setIncludeE] = useState<boolean>(initial.includeError);
+  const [includeExcluded, setIncludeExcluded] = useState<boolean>(initial.includeExcluded);
 
   const applyFilter = (
     nextBounds: [number, number],
     nextN: boolean,
     nextE: boolean,
+    nextExcluded: boolean,
     closeDropdown: boolean
   ): void => {
     setSelectedKeys([
@@ -72,6 +76,7 @@ export function MetricRangeFilterDropdown(
         max: nextBounds[1],
         includeNotAttempted: nextN,
         includeError: nextE,
+        includeExcluded: nextExcluded,
       }),
     ]);
     confirm({ closeDropdown });
@@ -106,7 +111,7 @@ export function MetricRangeFilterDropdown(
           onChangeComplete={(value): void => {
             const next = value as [number, number];
             setBounds(next);
-            applyFilter(next, includeN, includeE, true);
+            applyFilter(next, includeN, includeE, includeExcluded, true);
           }}
         />
         <Checkbox
@@ -114,7 +119,7 @@ export function MetricRangeFilterDropdown(
           onChange={(event): void => {
             const next = event.target.checked;
             setIncludeN(next);
-            applyFilter(bounds, next, includeE, false);
+            applyFilter(bounds, next, includeE, includeExcluded, false);
           }}
         >
           Include Not Attempted (N)
@@ -124,10 +129,20 @@ export function MetricRangeFilterDropdown(
           onChange={(event): void => {
             const next = event.target.checked;
             setIncludeE(next);
-            applyFilter(bounds, includeN, next, false);
+            applyFilter(bounds, includeN, next, includeExcluded, false);
           }}
         >
           Include Error (E)
+        </Checkbox>
+        <Checkbox
+          checked={includeExcluded}
+          onChange={(event): void => {
+            const next = event.target.checked;
+            setIncludeExcluded(next);
+            applyFilter(bounds, includeN, includeE, next, false);
+          }}
+        >
+          Include Excluded
         </Checkbox>
         <Button
           size="small"
@@ -135,6 +150,7 @@ export function MetricRangeFilterDropdown(
             setBounds([range.lower, range.upper]);
             setIncludeN(false);
             setIncludeE(false);
+            setIncludeExcluded(false);
             setSelectedKeys([]);
             confirm({ closeDropdown: true });
           }}

@@ -16,6 +16,7 @@ import {
   createComputedMetricResult,
   createNotAttemptedMetricResult,
   createErrorMetricResult,
+  createExcludedMetricResult,
 } from '../../../test/dataAnalysis/fixtures';
 import {
   METRIC_STATE_RANK_ASC,
@@ -25,18 +26,22 @@ import {
 
 // Highest rank asserted against either rank map; hoisted into a named constant
 // so assertions do not trip the no-magic-numbers gate.
-const HIGHEST_METRIC_STATE_RANK = 2;
+const HIGHEST_METRIC_STATE_RANK = 3;
+const EXCLUDED_ASCENDING_RANK = 2;
+const EXCLUDED_DESCENDING_RANK = 1;
+const NOT_ATTEMPTED_DESCENDING_RANK = 2;
 
 describe('metricStateRank', () => {
   // -------------------------------------------------------------------------
   // METRIC_STATE_RANK_ASC — ascending state ordering
   // -------------------------------------------------------------------------
 
-  it('maps ascending ranks: computed 0, notAttempted 1, error 2', () => {
+  it('maps ascending ranks: computed, notAttempted, excluded, error', () => {
     expect(Object.fromEntries(METRIC_STATE_RANK_ASC)).toStrictEqual({
       computed: 0,
       notAttempted: 1,
-      error: 2,
+      excluded: 2,
+      error: 3,
     });
   });
 
@@ -44,11 +49,12 @@ describe('metricStateRank', () => {
   // METRIC_STATE_RANK_DESC — descending state ordering
   // -------------------------------------------------------------------------
 
-  it('maps descending ranks: error 0, notAttempted 1, computed 2', () => {
+  it('maps descending ranks: error, excluded, notAttempted, computed', () => {
     expect(Object.fromEntries(METRIC_STATE_RANK_DESC)).toStrictEqual({
       error: 0,
-      notAttempted: 1,
-      computed: 2,
+      excluded: 1,
+      notAttempted: 2,
+      computed: 3,
     });
   });
 
@@ -60,15 +66,18 @@ describe('metricStateRank', () => {
     const computed: MetricResult = createComputedMetricResult();
     const notAttempted: MetricResult = createNotAttemptedMetricResult();
     const error: MetricResult = createErrorMetricResult();
+    const excluded: MetricResult = createExcludedMetricResult();
 
-    // Ascending: computed (0) -> notAttempted (1) -> error (HIGHEST_METRIC_STATE_RANK)
+    // Ascending: computed -> notAttempted -> excluded -> error.
     expect(getMetricStateRank(computed, 'asc')).toBe(0);
     expect(getMetricStateRank(notAttempted, 'asc')).toBe(1);
+    expect(getMetricStateRank(excluded, 'asc')).toBe(EXCLUDED_ASCENDING_RANK);
     expect(getMetricStateRank(error, 'asc')).toBe(HIGHEST_METRIC_STATE_RANK);
 
-    // Descending: error (0) -> notAttempted (1) -> computed (HIGHEST_METRIC_STATE_RANK)
+    // Descending: error -> excluded -> notAttempted -> computed.
     expect(getMetricStateRank(error, 'desc')).toBe(0);
-    expect(getMetricStateRank(notAttempted, 'desc')).toBe(1);
+    expect(getMetricStateRank(excluded, 'desc')).toBe(EXCLUDED_DESCENDING_RANK);
+    expect(getMetricStateRank(notAttempted, 'desc')).toBe(NOT_ATTEMPTED_DESCENDING_RANK);
     expect(getMetricStateRank(computed, 'desc')).toBe(HIGHEST_METRIC_STATE_RANK);
   });
 

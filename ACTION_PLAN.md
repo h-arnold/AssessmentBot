@@ -1,5 +1,18 @@
 # Zero-Weight Assessment Display and Aggregation — Delivery Plan (TDD-First)
 
+## Execution status
+
+- Delivery complete: Sections 1–5, the zero-weight browser journey, canonical
+  contract, architecture, shared-helper and teacher-facing documentation have
+  clean reviewer passes. Final frontend tests: 204 files / 2,209 tests passed;
+  browser tests: 249 passed; frontend type-check and lint passed. Every modified
+  frontend source module meets its planned size limit.
+- Baseline session: `planning-issue-307-zero-weight-assessment`.
+- Final regression comparison: seven of eight checks passed, with zero
+  regressions and zero new failures. The remaining backend ESLint failure is
+  the same ten pre-existing max-lines warnings present in the baseline and is
+  outside this frontend-only plan.
+
 ## Read-first context
 
 Before executing any section, read:

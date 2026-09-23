@@ -1,4 +1,4 @@
-import type { AveragingResult, MetricResult } from './dataAnalysis.zod';
+import type { AverageContribution, AveragingResult, MetricResult } from './dataAnalysis.zod';
 import type { ClassFull } from '../googleClassrooms/classDetail/classDetailService.zod';
 import type {
   AssignmentDefinitionPartial,
@@ -29,6 +29,7 @@ export interface MergedHeatmapTaskColumn {
   taskKey: string;
   taskId: string;
   taskTitle: string | null;
+  averageContribution: AverageContribution;
   assignmentId: string;
   definitionKey: string;
   assignmentName: string;
@@ -81,12 +82,10 @@ function buildMergedTaskColumns(
   assignmentId: string,
   assignmentName: string
 ): MergedHeatmapTaskColumn[] {
-  // Reuse the shared base projection for the `{ taskKey, taskId, taskTitle }`
+  // Reuse the complete shared base projection
   // mapping, then augment each entry with the full assignment identity.
   return buildTaskColumns(partial).map((column) => ({
-    taskKey: column.taskKey,
-    taskId: column.taskId,
-    taskTitle: column.taskTitle,
+    ...column,
     assignmentId,
     definitionKey: partial.definitionKey,
     assignmentName,

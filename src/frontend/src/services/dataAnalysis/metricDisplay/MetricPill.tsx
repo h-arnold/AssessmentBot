@@ -1,7 +1,7 @@
 import type { CSSProperties, JSX } from 'react';
 import { Tag } from 'antd';
 import type { MetricResult } from '../dataAnalysis.zod';
-import { resolveMetricTone } from './metricTone';
+import { EXCLUDED_METRIC_ACCESSIBLE_LABEL, resolveMetricTone } from './metricTone';
 import type { MetricToneColor } from './metricTone';
 
 /** Default number of decimal places for computed values. */
@@ -47,8 +47,8 @@ type MetricPillProperties = {
   readonly compact?: boolean;
   /**
    * Number of decimal places for `computed` values. Ignored for
-   * `notAttempted` and `error` (the literal `'N'` and `'E'` are rendered
-   * as-is).
+   * `notAttempted`, `error`, and `excluded` (the literal `'N'` and `'E'` and
+   * the visible label **Excluded** are rendered without numeric formatting).
    *
    * @default 2
    */
@@ -94,6 +94,28 @@ function buildPillStyle(muted: boolean, emphasised: boolean, compact: boolean): 
 }
 
 /**
+ * Format the pill's display text for a resolved metric tone.
+ *
+ * @param {MetricResult} metric - The metric being rendered.
+ * @param {number | 'N' | 'E' | null} displayValue - Resolved raw display value.
+ * @param {number} precision - Decimal places for computed values.
+ * @returns {string} The text shown inside the Tag.
+ */
+function formatDisplayText(
+  metric: MetricResult,
+  displayValue: number | 'N' | 'E' | null,
+  precision: number
+): string {
+  if (metric.state === 'computed') {
+    return metric.value.toFixed(precision);
+  }
+  if (metric.state === 'excluded') {
+    return 'Excluded';
+  }
+  return String(displayValue);
+}
+
+/**
  * Render a `MetricResult` as an Ant Design `Tag` pill.
  *
  * @remarks
@@ -101,9 +123,11 @@ function buildPillStyle(muted: boolean, emphasised: boolean, compact: boolean): 
  * - Calls `resolveMetricTone(metric, range, errorColor)` to obtain the colour,
  *   display value, and muted flag.
  * - Formats `computed` values via `metric.value.toFixed(precision)`.
- *   `notAttempted` and `error` states produce the literal `'N'` and `'E'`.
- * - Applies `opacity: 0.55` when the resolution's `muted` flag is `true`
- *   (only `notAttempted` sets muted).
+ *   `notAttempted` and `error` states produce the literal `'N'` and `'E'`;
+ *   `excluded` produces the visible label **Excluded**.
+ * - Applies `opacity: 0.55` only when the resolution's `muted` flag is `true`
+ *   (`notAttempted`). Only `excluded` receives the accessible name and `img`
+ *   role; `notAttempted` and `error` remain unchanged.
  * - Applies `fontSize: '17.5px'` and `fontWeight: 600` when `emphasised` is
  *   `true`. Merges with the muted opacity style if both are active.
  *
@@ -115,10 +139,9 @@ function buildPillStyle(muted: boolean, emphasised: boolean, compact: boolean): 
  * defaults to `resolveMetricTone` (no `MetricPill`-level default for
  * `errorColor`).
  *
- * **v1 accessibility gap (signed off).** No `Tooltip` or `aria-label` is
- * rendered in v1. A future iteration may add a `Tooltip` wrapper with
- * screen-reader-friendly copy. See the Class page spec's accessibility notes
- * for the product sign-off on the v1 gap.
+ * **Accessibility.** Excluded receives an `img` role and the shared accessible
+ * name explaining that the displayed work did not contribute to the average.
+ * `notAttempted` and `error` retain their existing literal labels and semantics.
  *
  * @param {MetricPillProperties} root0 - Component properties.
  * @param {MetricResult} root0.metric - The metric value to render.
@@ -137,15 +160,17 @@ export function MetricPill({
   errorColor,
 }: MetricPillProperties): JSX.Element {
   const resolution = resolveMetricTone(metric, range, errorColor);
-
-  const displayText: string = metric.state === 'computed'
-    ? metric.value.toFixed(precision)
-    : (resolution.displayValue as string);
+  const displayText = formatDisplayText(metric, resolution.displayValue, precision);
 
   const tagStyle: CSSProperties = buildPillStyle(resolution.muted, emphasised, compact);
 
   return (
-    <Tag color={resolution.color} style={tagStyle}>
+    <Tag
+      color={resolution.color}
+      style={tagStyle}
+      role={metric.state === 'excluded' ? 'img' : undefined}
+      aria-label={metric.state === 'excluded' ? EXCLUDED_METRIC_ACCESSIBLE_LABEL : undefined}
+    >
       {displayText}
     </Tag>
   );

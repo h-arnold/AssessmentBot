@@ -36,6 +36,7 @@ const TASK_IDS = ['task_001', 'task_002', 'task_003'];
 
 const expectedStudentCount = STUDENT_IDS.length;
 const expectedTaskColumnCount = TASK_IDS.length;
+const EXPECTED_ZERO_WEIGHT_SCORE = 4;
 
 /**
  * Build a taskKey in the canonical `${definitionKey}::${taskId}` format.
@@ -187,6 +188,7 @@ function buildPerStudentTaskMetric(studentId: string, taskId: string) {
     classId: CLASS_ID,
     studentId,
     taskKey: taskKey(taskId),
+    averageContribution: { effectiveWeight: 1, includedInAverage: true },
     completeness: createComputedMetricResult({ value: 4 }),
     accuracy: createComputedMetricResult({ value: 3 }),
     spag: createComputedMetricResult({ value: 5 }),
@@ -248,16 +250,19 @@ describe('adaptMetricsToHeatmap — 4-parameter warm-up partial sourcing', () =>
       taskKey: taskKey('task_001'),
       taskId: 'task_001',
       taskTitle: 'task_001',
+      averageContribution: { effectiveWeight: 1, includedInAverage: true },
     });
     expect(result.taskColumns[1]).toEqual({
       taskKey: taskKey('task_002'),
       taskId: 'task_002',
       taskTitle: 'task_002',
+      averageContribution: { effectiveWeight: 1, includedInAverage: true },
     });
     expect(result.taskColumns[2]).toEqual({
       taskKey: taskKey('task_003'),
       taskId: 'task_003',
       taskTitle: 'task_003',
+      averageContribution: { effectiveWeight: 1, includedInAverage: true },
     });
 
     // Rows — one per student in roster order
@@ -438,5 +443,47 @@ describe('adaptMetricsToHeatmap — 4-parameter warm-up partial sourcing', () =>
     expect(() =>
       adaptMetricsToHeatmap(analyserResult, classFull, ASSIGNMENT_ID, emptyPartials)
     ).toThrow(TaskTitlesUnavailableError);
+  });
+
+  it('projects effective contribution from the live partial, preserving zero weights and defaults', () => {
+    const classFull = buildClassFull();
+    const analyserResult = minimalAveragingResult([buildPerStudentTaskMetric('s_001', 'task_001')]);
+    const partials = buildPartials();
+    const livePartial = partials[0] as unknown as {
+      assignmentWeighting?: number | null;
+      tasks: Array<{ taskId: string; taskWeighting?: number }>;
+    };
+    livePartial.assignmentWeighting = 0.5;
+    livePartial.tasks[0].taskWeighting = 0.4;
+    livePartial.tasks[1].taskWeighting = 0;
+    delete livePartial.tasks[2].taskWeighting;
+
+    const result = adaptMetricsToHeatmap(analyserResult, classFull, ASSIGNMENT_ID, partials);
+
+    expect(result.taskColumns.map((column) => column.averageContribution)).toEqual([
+      { effectiveWeight: 0.2, includedInAverage: true },
+      { effectiveWeight: 0, includedInAverage: false },
+      { effectiveWeight: 0.5, includedInAverage: true },
+    ]);
+    expect(result.rows[0].cells[0].completeness).toEqual(
+      analyserResult.perStudentTaskMetrics![0].completeness
+    );
+  });
+
+  it('uses the live partial assignment weighting of zero without inferring metadata from scores', () => {
+    const partials = buildPartials();
+    (partials[0] as unknown as { assignmentWeighting: number }).assignmentWeighting = 0;
+    const result = adaptMetricsToHeatmap(
+      minimalAveragingResult([buildPerStudentTaskMetric('s_001', 'task_001')]),
+      buildClassFull(),
+      ASSIGNMENT_ID,
+      partials
+    );
+
+    expect(result.taskColumns[0].averageContribution).toEqual({
+      effectiveWeight: 0,
+      includedInAverage: false,
+    });
+    expect(result.rows[0].cells[0].completeness.value).toBe(EXPECTED_ZERO_WEIGHT_SCORE);
   });
 });

@@ -5,9 +5,11 @@
  * the dropdown component can share them without violating the fast-refresh
  * "only export components" rule.
  *
- * The full filter state (range bounds plus the `N` / `E` include toggles) is
- * packed into a single string key because Ant Design's `filteredValue` /
- * `selectedKeys` only carry flat keys.
+ * The full filter state (range bounds plus independent `N`, `E`, and `Excluded`
+ * include toggles) is packed into a single string key because Ant Design's
+ * `filteredValue` / `selectedKeys` only carry flat keys. The Excluded flag is
+ * appended after the existing `N` and `E` flags; legacy four-field keys decode
+ * with Excluded disabled.
  *
  * @module metricRangeKey
  */
@@ -30,6 +32,8 @@ export type MetricRangeFilterState = {
   includeNotAttempted: boolean;
   /** When `true`, `error` (`E`) rows are kept while a filter is active. */
   includeError: boolean;
+  /** When true, aggregate `excluded` rows pass an active filter. */
+  includeExcluded: boolean;
 };
 
 /**
@@ -40,9 +44,13 @@ export type MetricRangeFilterState = {
  * @returns {string} The encoded filter key.
  */
 export function encodeMetricFilter(state: MetricRangeFilterState): string {
-  return [state.min, state.max, state.includeNotAttempted ? 1 : 0, state.includeError ? 1 : 0].join(
-    RANGE_KEY_SEPARATOR
-  );
+  return [
+    state.min,
+    state.max,
+    state.includeNotAttempted ? 1 : 0,
+    state.includeError ? 1 : 0,
+    state.includeExcluded ? 1 : 0,
+  ].join(RANGE_KEY_SEPARATOR);
 }
 
 /**
@@ -93,5 +101,6 @@ export function decodeMetricFilter(key?: unknown): MetricRangeFilterState | null
     max,
     includeNotAttempted: parseFlag(parts[2]),
     includeError: parseFlag(parts[3]),
+    includeExcluded: parseFlag(parts[4]),
   };
 }

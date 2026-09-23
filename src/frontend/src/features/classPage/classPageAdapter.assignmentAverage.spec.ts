@@ -21,7 +21,102 @@ import { adaptClassPageToViewModel } from './classPageAdapter';
 import type { PerTaskRow } from '../../services/dataAnalysis/dataAnalysis.zod';
 
 describe('adaptClassPageToViewModel', () => {
+  const CRITERION_COUNT = 3;
+  const EXPECTED_MIXED_OVERALL = 3;
   describe('recentAssignments', () => {
+    it('excludes observed all-zero-weight numeric task metrics without changing their task display values', () => {
+      const zeroWeightedRow: PerTaskRow = {
+        ...perTaskRow({
+          definitionKey: 'dk1',
+          taskId: 't1',
+          completeness: createMetricResult('computed', { value: 4, totalWeight: 0 }),
+          accuracy: createMetricResult('computed', { value: 3, totalWeight: 0 }),
+          spag: createMetricResult('computed', { value: 2, totalWeight: 0 }),
+        }),
+        averageContribution: { effectiveWeight: 0, includedInAverage: false },
+      };
+      const result = adaptClassPageToViewModel(
+        singleAssignmentAdapterInput([zeroWeightedRow], ['t1'])
+      );
+
+      for (const metric of Object.values(result.recentAssignments[0].metrics)) {
+        expect(metric).toMatchObject({
+          state: 'excluded',
+          value: null,
+          totalWeight: 0,
+          applicableDataPoints: 0,
+        });
+        expect(metric.totalDataPoints).toBeGreaterThanOrEqual(1);
+      }
+      expect(zeroWeightedRow.completeness).toMatchObject({ state: 'computed', value: 4 });
+    });
+
+    it('excludes zero-weight raw N in the assignment aggregate while retaining raw N in the per-task row', () => {
+      const zeroWeightedN: PerTaskRow = {
+        ...perTaskRow({
+          definitionKey: 'dk1',
+          taskId: 't1',
+          completeness: createMetricResult('notAttempted'),
+          accuracy: createMetricResult('notAttempted'),
+          spag: createMetricResult('notAttempted'),
+        }),
+        averageContribution: { effectiveWeight: 0, includedInAverage: false },
+      };
+      const result = adaptClassPageToViewModel(
+        singleAssignmentAdapterInput([zeroWeightedN], ['t1'])
+      );
+
+      expect(zeroWeightedN.completeness).toMatchObject({ state: 'notAttempted', value: 'N' });
+      expect(result.recentAssignments[0].metrics.completeness.state).toBe('excluded');
+      expect(result.recentAssignments[0].metrics.average.state).toBe('excluded');
+    });
+
+    it('keeps an all-error assignment as error', () => {
+      const errors = perTaskRow({
+        definitionKey: 'dk1',
+        taskId: 't1',
+        completeness: createMetricResult('error'),
+        accuracy: createMetricResult('error'),
+        spag: createMetricResult('error'),
+      });
+      const result = adaptClassPageToViewModel(singleAssignmentAdapterInput([errors], ['t1']));
+
+      expect(result.recentAssignments[0].metrics.completeness.state).toBe('error');
+      expect(result.recentAssignments[0].metrics.average.state).toBe('error');
+    });
+
+    it('uses only positive-weight numeric evidence for mixed-weight criterion and overall averages', () => {
+      const positiveRow = perTaskRow({
+        definitionKey: 'dk1',
+        taskId: 't-positive',
+        completeness: createMetricResult('computed', { value: 4, totalWeight: 2 }),
+        accuracy: createMetricResult('computed', { value: 2, totalWeight: 2 }),
+        spag: createMetricResult('computed', { value: 3, totalWeight: 2 }),
+      });
+      const zeroRow: PerTaskRow = {
+        ...perTaskRow({
+          definitionKey: 'dk1',
+          taskId: 't-zero',
+          completeness: createMetricResult('computed', { value: 0, totalWeight: 0 }),
+          accuracy: createMetricResult('computed', { value: 0, totalWeight: 0 }),
+          spag: createMetricResult('computed', { value: 0, totalWeight: 0 }),
+        }),
+        averageContribution: { effectiveWeight: 0, includedInAverage: false },
+      };
+      const result = adaptClassPageToViewModel(
+        singleAssignmentAdapterInput([positiveRow, zeroRow], ['t-positive', 't-zero'])
+      );
+      const metrics = result.recentAssignments[0].metrics;
+
+      expect(metrics.completeness).toMatchObject({ state: 'computed', value: 4, totalWeight: 2 });
+      expect(metrics.accuracy).toMatchObject({ state: 'computed', value: 2, totalWeight: 2 });
+      expect(metrics.spag).toMatchObject({ state: 'computed', value: 3, totalWeight: 2 });
+      expect(metrics.average.state).toBe('computed');
+      if (metrics.average.state === 'computed') {
+        expect(metrics.average.value).toBeCloseTo(EXPECTED_MIXED_OVERALL);
+      }
+    });
+
     it('rolls up per-task metrics into per-assignment values using rollupMetric', () => {
       // One assignment with 2 tasks.  PerTask rows for definitionKey 'dk1':
       //   Task t1: completeness=4, accuracy=3, spag=2
@@ -137,7 +232,7 @@ describe('adaptClassPageToViewModel', () => {
       expect(result.recentAssignments[0].metrics.average.state).toBe('error');
     });
 
-    it('sets per-assignment average to notAttempted when all three criteria are notAttempted and none is computed', () => {
+    it('sets per-assignment average to excluded for zero-weight observed raw N criteria', () => {
       const perTaskRows: PerTaskRow[] = [
         perTaskRow({
           definitionKey: 'dk1',
@@ -150,7 +245,32 @@ describe('adaptClassPageToViewModel', () => {
 
       const result = adaptClassPageToViewModel(singleAssignmentAdapterInput(perTaskRows, ['t1']));
 
-      expect(result.recentAssignments[0].metrics.average.state).toBe('notAttempted');
+      expect(result.recentAssignments[0].metrics.average).toMatchObject({
+        state: 'excluded',
+        value: null,
+      });
+      expect(result.recentAssignments[0].metrics.average.totalDataPoints).toBeGreaterThan(0);
+    });
+
+    it('sets per-assignment average to notAttempted when raw N criteria have positive weight', () => {
+      const positiveWeight = 1;
+      const perTaskRows: PerTaskRow[] = [
+        perTaskRow({
+          definitionKey: 'dk1',
+          taskId: 't1',
+          completeness: createMetricResult('notAttempted', { totalWeight: positiveWeight }),
+          accuracy: createMetricResult('notAttempted', { totalWeight: positiveWeight }),
+          spag: createMetricResult('notAttempted', { totalWeight: positiveWeight }),
+        }),
+      ];
+
+      const result = adaptClassPageToViewModel(singleAssignmentAdapterInput(perTaskRows, ['t1']));
+
+      const expectedTotalWeight = positiveWeight * CRITERION_COUNT;
+      expect(result.recentAssignments[0].metrics.average).toMatchObject({
+        state: 'notAttempted',
+        totalWeight: expectedTotalWeight,
+      });
     });
 
     it('renormalises the composite when SPaG is notAttempted (completeness + accuracy over 0.8)', () => {

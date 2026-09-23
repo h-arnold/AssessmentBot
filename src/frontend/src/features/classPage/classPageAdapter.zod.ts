@@ -7,15 +7,39 @@
  * are derived via `z.infer<typeof ...>`.
  *
  * @remarks
- * `RecentAssignmentCardMetricSchema` reuses the data analysis service's
- * `MetricResult` discriminated union. The per-assignment `average` metric
- * is a composite computed by the adapter (not a raw rollup); it is still
- * validated against the same discriminated union at rest.
+ * `ClassPageDisplayMetricSchema` combines the shared `MetricResult` union with
+ * the adapter-local zero-data presentation shape. The recent-assignment and
+ * student metric aliases use this display union; it is not itself the shared
+ * `MetricResult` discriminated union. The per-assignment `average` metric is a
+ * composite computed by the adapter (not a raw rollup).
  */
 
 import { z } from 'zod';
 import type { MetricResult } from '../../services/dataAnalysis/dataAnalysis.zod';
 import { MetricResultSchema } from '../../services/dataAnalysis/dataAnalysis.zod';
+
+/**
+ * Exact zero-data `N` placeholder used only for empty student/recent-assignment
+ * presentation on the Class page.
+ *
+ * @remarks
+ * This presentation-only shape is neither a raw `N` nor an excluded aggregate.
+ * It must not leak to the analyser or `classMetrics`; shared
+ * `MetricResultSchema` remains strict and does not accept this zero-data shape.
+ */
+export const ClassPageNoDataMetricSchema = z.strictObject({
+  state: z.literal('notAttempted'),
+  value: z.literal('N'),
+  totalWeight: z.literal(0),
+  applicableDataPoints: z.literal(0),
+  totalDataPoints: z.literal(0),
+});
+
+/** Metric validation for display-only Class-page aggregates, including no-work placeholders. */
+export const ClassPageDisplayMetricSchema = z.union([
+  MetricResultSchema,
+  ClassPageNoDataMetricSchema,
+]);
 
 /**
  * Access a metric result from a student's metrics by key.
@@ -59,8 +83,8 @@ export function getStudentMetric(
   }
 }
 
-/** Alias documenting that recent-assignment card metric fields reuse the dataAnalysis.zod MetricResultSchema. */
-const RecentAssignmentCardMetricSchema = MetricResultSchema;
+/** Recent-assignment metric fields use the adapter-local Class-page display union. */
+const RecentAssignmentCardMetricSchema = ClassPageDisplayMetricSchema;
 
 /**
  * Schema for a single recent-assignment card model.
@@ -119,10 +143,10 @@ export const ClassPageAdapterResultSchema = z.strictObject({
   recentAssignments: z.array(RecentAssignmentCardModelSchema),
   studentAverages: z.array(StudentAverageRowModelSchema),
   classMetrics: z.strictObject({
-    completeness: RecentAssignmentCardMetricSchema,
-    accuracy: RecentAssignmentCardMetricSchema,
-    spag: RecentAssignmentCardMetricSchema,
-    overall: RecentAssignmentCardMetricSchema,
+    completeness: MetricResultSchema,
+    accuracy: MetricResultSchema,
+    spag: MetricResultSchema,
+    overall: MetricResultSchema,
   }),
 });
 

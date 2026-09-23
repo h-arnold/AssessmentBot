@@ -17,6 +17,7 @@ import type { TableColumnsType } from 'antd';
 import type { FilterValue } from 'antd/es/table/interface';
 
 import type { MetricResult } from '../../services/dataAnalysis/dataAnalysis.zod';
+import type { AverageContribution } from '../../services/dataAnalysis/dataAnalysis.zod';
 import { compareMetricsByStateRank } from '../../services/dataAnalysis/metricDisplay/metricComparator';
 import {
   METRIC_DISPLAY_META,
@@ -35,6 +36,7 @@ import { assembleTaskPreviewData } from './assembleTaskPreviewData';
 import type { CellPreviewData, CellPreviewLookup } from './buildCellPreviewLookup';
 import type { PreviewStatus } from './assembleMergedPreviewData';
 import { APP_COL_WIDTH_METRIC, APP_GAP_MD, APP_GAP_XS } from '../../theme/spacing';
+import { getZeroWeightMetricEdgeClass } from './taskHeatmapZeroWeightHeader';
 
 // ---------------------------------------------------------------------------
 // Structural view-model contract (read, never asserted)
@@ -53,6 +55,7 @@ export interface TaskHeatmapColumn {
   taskKey: string;
   taskId: string;
   taskTitle: string | null;
+  averageContribution: AverageContribution;
   assignmentId?: string;
   assignmentName?: string;
   definitionKey?: string;
@@ -308,7 +311,7 @@ export function buildTaskMetricSubColumns(
   columnIsLoading: boolean,
   columnHasError: boolean
 ): TableColumnsType<TaskHeatmapRow> {
-  return HEATMAP_METRIC_KEYS.map((metric) => {
+  return HEATMAP_METRIC_KEYS.map((metric, metricIndex) => {
     const meta = METRIC_DISPLAY_META.get(metric)!;
     const columnKey = `${taskColumn.taskKey}::${metric}`;
     const filterValue = tableFilters[columnKey];
@@ -323,6 +326,11 @@ export function buildTaskMetricSubColumns(
     });
     return {
       key: columnKey,
+      className: getZeroWeightMetricEdgeClass(
+        metricIndex,
+        HEATMAP_METRIC_KEYS.length,
+        taskColumn.averageContribution
+      ),
       title: <MetricIconLabel icon={meta.icon} label={meta.label} />,
       align: 'center' as const,
       width: APP_COL_WIDTH_METRIC,

@@ -186,6 +186,7 @@ const analyserResultFixture: AveragingResult = {
       classId: 'class-1',
       studentId: 's-1',
       taskKey: 'def-1::t-1',
+      averageContribution: { effectiveWeight: 1, includedInAverage: true },
       completeness: COMPUTED_5,
       accuracy: COMPUTED_4,
       spag: COMPUTED_3,

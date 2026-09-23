@@ -10,6 +10,7 @@ const CLASSES_LABEL = 'Classes';
 const HEATMAP_TABLE_NAME = 'Task Heatmap';
 /** Number of metric sub-columns per task group (Completeness, Accuracy, SPaG). */
 const METRIC_SUBCOLUMN_COUNT = 3;
+const EXCLUDED_AGGREGATE_COUNT = 4;
 /** Number of keyboard steps to nudge the lower band-filter handle up past zero. */
 const LOWER_HANDLE_NUDGE_STEPS = 3;
 /** Human-readable task titles sourced from the warm-up partial (taskColumn.taskTitle). */
@@ -75,6 +76,71 @@ test.describe('Task Heatmap E2E journey', () => {
       `[role="button"][aria-label="Student Two, task_001, Completeness: 5"]`
     );
     await expect(cell).toHaveCount(1);
+  });
+
+  test('preserves zero-weight scores while excluding assignment aggregates', async ({ page }) => {
+    const scenario = createHeatmapScenario({ zeroWeightAssignment: true });
+    await installRuntimeMock(page, scenario);
+    await openHeatmapClass(page);
+
+    const excludedName = 'Excluded from average: displayed work had zero weighting.';
+    const assignmentCard = page
+      .getByRole('button')
+      .filter({ hasText: HEATMAP_ASSIGNMENT_DISPLAY_TITLE })
+      .first();
+    const excludedMetrics = assignmentCard.locator(`[aria-label="${excludedName}"]:visible`);
+    // The card exposes the three criteria and the overall aggregate; each
+    // aggregate carries the same explicit accessible excluded state.
+    await expect(excludedMetrics).toHaveCount(EXCLUDED_AGGREGATE_COUNT);
+    await excludedMetrics.first().focus();
+    await expect(excludedMetrics.first()).toHaveAttribute('aria-label', excludedName);
+
+    await assignmentCard.click();
+    const table = page.getByRole('table', { name: HEATMAP_TABLE_NAME });
+    await expect(table).toBeVisible();
+
+    const zeroWeightLabel =
+      'Task 1 Zero weighting — scores are shown but do not contribute to averages.';
+    const taskHeaderLabel = page.getByLabel(zeroWeightLabel, { exact: true });
+    await expect(taskHeaderLabel).toHaveCount(1);
+    await taskHeaderLabel.hover();
+    await expect(page.getByRole('tooltip')).toHaveText(
+      'Zero weighting — scores are shown but do not contribute to averages.'
+    );
+    await taskHeaderLabel.focus();
+    await expect(page.getByRole('tooltip')).toHaveText(
+      'Zero weighting — scores are shown but do not contribute to averages.'
+    );
+    await page.keyboard.press('Enter');
+    await page.keyboard.press('Space');
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+
+    const studentTwoScore = table.locator(
+      '[role="button"][aria-label="Student Two, task_001, Completeness: 5"]'
+    );
+    await expect(studentTwoScore).toHaveCount(1);
+    await expect(
+      table.locator('[role="button"][aria-label="Student One, task_001, Completeness: N"]')
+    ).toHaveCount(1);
+
+    const scoreBackground = await studentTwoScore.evaluate((element) => {
+      const cell = element.closest('td');
+      return cell ? getComputedStyle(cell).backgroundColor : '';
+    });
+    expect(scoreBackground).not.toBe('rgba(0, 0, 0, 0)');
+    expect(scoreBackground).not.toBe('transparent');
+
+    await expect(table.locator('.task-heatmap-zero-weight-group')).toHaveCount(
+      METRIC_SUBCOLUMN_COUNT
+    );
+    await expect(table.locator('.task-heatmap-zero-weight-first').first()).toHaveCount(1);
+    await expect(table.locator('.task-heatmap-zero-weight-last').first()).toHaveCount(1);
+    await expect(table.getByRole('columnheader', { name: 'Forename' })).not.toHaveClass(
+      /task-heatmap-zero-weight/
+    );
+    await expect(table.getByRole('columnheader', { name: 'Surname' })).not.toHaveClass(
+      /task-heatmap-zero-weight/
+    );
   });
 
   test('band filter hides non-matching rows', async ({ page }) => {

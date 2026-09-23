@@ -78,6 +78,7 @@ function col(
     taskKey: `${definitionKey}::${taskId}`,
     taskId,
     taskTitle,
+    averageContribution: { effectiveWeight: 1, includedInAverage: true },
     assignmentId,
     definitionKey,
     assignmentName: assignmentId,

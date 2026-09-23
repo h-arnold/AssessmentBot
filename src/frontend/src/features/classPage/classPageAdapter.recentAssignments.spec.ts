@@ -228,6 +228,8 @@ describe('adaptClassPageToViewModel', () => {
     expect(card.metrics.accuracy).toMatchObject({ state: 'notAttempted' });
     expect(card.metrics.spag).toMatchObject({ state: 'notAttempted' });
     expect(card.metrics.average).toMatchObject({ state: 'notAttempted' });
+    expect(card.metrics.completeness.totalDataPoints).toBe(0);
+    expect(card.metrics.average.totalDataPoints).toBe(0);
   });
 
   it('throws TaskTitlesUnavailableError when assignmentDefinitionPartials has no matching entry for the assignment definitionKey', () => {
