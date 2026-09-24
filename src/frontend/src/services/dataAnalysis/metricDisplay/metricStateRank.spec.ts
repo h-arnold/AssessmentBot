@@ -5,7 +5,7 @@
  * Covers the ascending and descending rank lookups over
  * `MetricResult['state']`, the direction-selecting rank resolver consumed by
  * state-aware metric column sorting in both the Class overview table and the
- * heatmap table, and the fallback rank applied to an unknown state.
+ * heatmap table, and fail-fast handling for an unknown state.
  *
  * @see SPEC.md decisions 3-4 — shared services-layer placement
  */
@@ -82,18 +82,18 @@ describe('metricStateRank', () => {
   });
 
   // -------------------------------------------------------------------------
-  // Unknown-state fallback
+  // Unknown-state fail-fast behaviour
   // -------------------------------------------------------------------------
 
-  it('falls back to rank 0 for an unknown metric state', () => {
+  it('throws instead of assigning a fallback rank to an unknown metric state', () => {
     // The MetricResult union is closed, so an out-of-union state needs a
-    // minimal local cast to exercise the `?? 0` fallback branch.
+    // minimal local cast to exercise the fail-fast boundary.
     const unknownStateMetric = {
       ...createComputedMetricResult(),
       state: 'unknown',
     } as unknown as MetricResult;
 
-    expect(getMetricStateRank(unknownStateMetric, 'asc')).toBe(0);
-    expect(getMetricStateRank(unknownStateMetric, 'desc')).toBe(0);
+    expect(() => getMetricStateRank(unknownStateMetric, 'asc')).toThrow();
+    expect(() => getMetricStateRank(unknownStateMetric, 'desc')).toThrow();
   });
 });

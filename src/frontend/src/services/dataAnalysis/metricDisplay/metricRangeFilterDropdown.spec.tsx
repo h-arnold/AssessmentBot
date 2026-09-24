@@ -12,10 +12,39 @@ import type { FilterDropdownProps } from 'antd/es/table/interface';
 
 import { MetricRangeFilterDropdown } from './metricRangeFilterDropdown';
 import { buildMetricRangeFilter, metricInRange } from './metricRangeFilter';
+import type { MetricRangeFilterFlags } from './metricRangeKey';
 import { createExcludedMetricResult, createNotAttemptedMetricResult, createErrorMetricResult } from '../../../test/dataAnalysis/fixtures';
 
 /** Default scoring range used in tests. */
 const DEFAULT_RANGE = { lower: 0, upper: 5 };
+
+/** Named flags that keep no non-computed metric states. */
+const NO_NON_COMPUTED_FLAGS: MetricRangeFilterFlags = {
+  includeNotAttempted: false,
+  includeError: false,
+  includeExcluded: false,
+};
+
+/** Named flags that keep not-attempted metrics. */
+const INCLUDE_NOT_ATTEMPTED_FLAGS: MetricRangeFilterFlags = {
+  includeNotAttempted: true,
+  includeError: false,
+  includeExcluded: false,
+};
+
+/** Named flags that keep error metrics. */
+const INCLUDE_ERROR_FLAGS: MetricRangeFilterFlags = {
+  includeNotAttempted: false,
+  includeError: true,
+  includeExcluded: false,
+};
+
+/** Named flags that keep aggregate excluded metrics. */
+const INCLUDE_EXCLUDED_FLAGS: MetricRangeFilterFlags = {
+  includeNotAttempted: false,
+  includeError: false,
+  includeExcluded: true,
+};
 
 /** Number of slider handles (two-thumb slider). */
 const SLIDER_HANDLE_COUNT = 2;
@@ -117,6 +146,8 @@ describe('MetricRangeFilterDropdown', () => {
       name: /include not attempted/i,
     });
     expect(nCheckbox.checked).toBe(true);
+    expect(screen.getByRole('checkbox', { name: /include error/i })).not.toBeChecked();
+    expect(screen.getByRole('checkbox', { name: 'Include Excluded' })).not.toBeChecked();
   });
 
   it('falls back to default state when selectedKeys contains an invalid key', () => {
@@ -137,6 +168,22 @@ describe('MetricRangeFilterDropdown', () => {
       name: /include not attempted/i,
     });
     expect(nCheckbox.checked).toBe(false);
+  });
+
+  it('hydrates the range and all three state toggles from a five-part encoded key', () => {
+    const selectedKeys = ['1|4|1|1|1'];
+
+    render(
+      <MetricRangeFilterDropdown
+        {...createMockDropdownProperties({ selectedKeys })}
+        range={DEFAULT_RANGE}
+      />
+    );
+
+    expect(screen.getByText(/Showing 1 – 4/)).toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: /include not attempted/i })).toBeChecked();
+    expect(screen.getByRole('checkbox', { name: /include error/i })).toBeChecked();
+    expect(screen.getByRole('checkbox', { name: 'Include Excluded' })).toBeChecked();
   });
 
   // ---------------------------------------------------------------------------
@@ -283,13 +330,13 @@ describe('MetricRangeFilterDropdown', () => {
 
   it('includes excluded only when its fifth toggle is enabled, independently of other states and range', () => {
     const excluded = createExcludedMetricResult();
-    expect(metricInRange(excluded, FILTER_TEST_MINIMUM, FILTER_TEST_MAXIMUM, false, false, false)).toBe(false);
-    expect(metricInRange(excluded, FILTER_TEST_MINIMUM, FILTER_TEST_MAXIMUM, false, false, true)).toBe(true);
+    expect(metricInRange(excluded, FILTER_TEST_MINIMUM, FILTER_TEST_MAXIMUM, NO_NON_COMPUTED_FLAGS)).toBe(false);
+    expect(metricInRange(excluded, FILTER_TEST_MINIMUM, FILTER_TEST_MAXIMUM, INCLUDE_EXCLUDED_FLAGS)).toBe(true);
     const filter = buildMetricRangeFilter({ range: DEFAULT_RANGE, activeRange: [], getMetric: (row: { metric: typeof excluded }) => row.metric });
     expect(filter.onFilter('2|3|0|0|1', { metric: excluded })).toBe(true);
     expect(filter.onFilter('2|3|0|0|0', { metric: excluded })).toBe(false);
-    expect(metricInRange(createNotAttemptedMetricResult(), FILTER_TEST_MINIMUM, FILTER_TEST_MAXIMUM, true, false)).toBe(true);
-    expect(metricInRange(createErrorMetricResult(), FILTER_TEST_MINIMUM, FILTER_TEST_MAXIMUM, false, true)).toBe(true);
+    expect(metricInRange(createNotAttemptedMetricResult(), FILTER_TEST_MINIMUM, FILTER_TEST_MAXIMUM, INCLUDE_NOT_ATTEMPTED_FLAGS)).toBe(true);
+    expect(metricInRange(createErrorMetricResult(), FILTER_TEST_MINIMUM, FILTER_TEST_MAXIMUM, INCLUDE_ERROR_FLAGS)).toBe(true);
   });
 
   // ---------------------------------------------------------------------------

@@ -2,8 +2,8 @@
  * Pure tone resolver for `MetricResult` values.
  *
  * Maps a `MetricResult` plus an optional scoring range to a
- * `MetricToneResolution` describing the Ant Design `Tag` colour, the raw display
- * value, and a muted flag. No React / antd / I/O / state imports.
+ * `MetricToneResolution` describing the Ant Design `Tag` colour, cell style,
+ * and a muted flag. No React / antd / I/O / state imports.
  *
  * @module metricTone
  */
@@ -48,14 +48,6 @@ export type MetricToneResolution = {
    * pairs in {@link METRIC_TONE_CELL_STYLE}.
    */
   cellStyle: CSSProperties;
-  /**
-   * Raw display value:
-   * - `computed` -> the numeric `metric.value`
-   * - `notAttempted` -> `'N'`
-   * - `error` -> `'E'`
-   * - `excluded` -> `null` (no score contributed to any average)
-   */
-  displayValue: number | 'N' | 'E' | null;
   /** `true` only for `notAttempted`; `excluded` is not muted. */
   muted: boolean;
 };
@@ -84,8 +76,11 @@ export const METRIC_TONE_CELL_STYLE: Readonly<Record<MetricToneColor, CSSPropert
   default: {},
 };
 
-/** Distinct neutral cell treatment for aggregate-only excluded metrics. */
-const EXCLUDED_CELL_STYLE: CSSProperties = { backgroundColor: '#f0f0f0', color: '#595959' };
+/** Distinct theme-aware neutral treatment for aggregate-only excluded metrics. */
+const EXCLUDED_CELL_STYLE: CSSProperties = {
+  backgroundColor: 'var(--ant-color-fill-quaternary)',
+  color: 'var(--ant-color-text-secondary)',
+};
 
 /**
  * Dark grey used for the `notAttempted` (`N`) state. Chosen deliberately darker
@@ -219,8 +214,7 @@ function assertValidRange(range: MetricToneRange): void {
  * — only `computed` values participate in the gradient. `notAttempted` uses
  * dark-grey text (`#434343`) and its own cell background. Excluded uses the
  * valid `'default'` Tag preset and a separate neutral cell style, and is not
- * muted. Its null display value is rendered visibly as **Excluded** by
- * `MetricPill`.
+ * muted. The shared display formatter renders the visible **Excluded** label.
  *
  * | `value` condition              | Colour (computed)        |
  * | ------------------------------ | ------------------------ |
@@ -252,7 +246,6 @@ export function resolveMetricTone(
       return {
         color: resolveGradientFill(t),
         cellStyle: resolveGradientCellStyle(t),
-        displayValue: metric.value,
         muted: false,
       };
     }
@@ -261,7 +254,6 @@ export function resolveMetricTone(
       return {
         color: NOT_ATTEMPTED_GREY,
         cellStyle: NOT_ATTEMPTED_CELL_STYLE,
-        displayValue: 'N',
         muted: true,
       };
     }
@@ -270,7 +262,6 @@ export function resolveMetricTone(
       return {
         color: errorColor,
         cellStyle: resolveDiscreteCellStyle(errorColor),
-        displayValue: 'E',
         muted: false,
       };
     }
@@ -279,7 +270,6 @@ export function resolveMetricTone(
       return {
         color: 'default',
         cellStyle: EXCLUDED_CELL_STYLE,
-        displayValue: null,
         muted: false,
       };
     }

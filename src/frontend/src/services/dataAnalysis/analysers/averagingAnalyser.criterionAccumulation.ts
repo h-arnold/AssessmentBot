@@ -1,3 +1,4 @@
+import { logFrontendEvent } from '../../../logging/frontendLogger';
 import type { AveragingAnalyserInput } from '../dataAnalysis.zod';
 import type { CriterionWeightings } from './averagingAnalyser';
 import type {
@@ -15,6 +16,16 @@ import type {
  * `accumulateCriterion`, `accumulateMetricsToTarget`, `computeOverall`,
  * `processSubmissionItem`, and `processItemAssessments`.
  */
+
+/**
+ * Narrow a raw criterion score to the analyser's assessment-score contract.
+ * @param {unknown} score - Raw score value from a submission item.
+ * @returns {AssessmentScore} The supported score, or undefined when invalid.
+ */
+function toAssessmentScore(score: unknown): AssessmentScore {
+  if (typeof score === 'number' || score === 'N') return score;
+  return undefined;
+}
 
 /**
  * Accumulate a single criterion score into its metric accumulator.
@@ -138,7 +149,6 @@ export function computeOverall(
  * @param {AssessmentScore} spagScore - The SPaG score.
  * @param {number} weight - The per-data-point weight.
  * @param {DataPointAccumulator} studentAccum - Per-student accumulator.
- * @param {DataPointAccumulator} classAccum - Per-class accumulator.
  * @param {DataPointAccumulator} taskAccum - Per-task accumulator.
  * @param {CriterionWeightings} criterionWeightings - The criterion weightings.
  * @param {DataPointAccumulator} [perStudentTaskAccum] - Optional per-(student, task)
@@ -150,7 +160,6 @@ export function processSubmissionItem(
   spagScore: AssessmentScore,
   weight: number,
   studentAccum: DataPointAccumulator,
-  classAccum: DataPointAccumulator,
   taskAccum: DataPointAccumulator,
   criterionWeightings: CriterionWeightings,
   perStudentTaskAccum?: DataPointAccumulator
@@ -164,14 +173,6 @@ export function processSubmissionItem(
 
   accumulateMetricsToTarget(
     studentAccum,
-    completenessScore,
-    accuracyScore,
-    spagScore,
-    overallValue,
-    weight
-  );
-  accumulateMetricsToTarget(
-    classAccum,
     completenessScore,
     accuracyScore,
     spagScore,
@@ -207,7 +208,6 @@ export function processSubmissionItem(
  *   item - The submission item.
  * @param {number} weight - The per-data-point weight.
  * @param {DataPointAccumulator} studentAccum - Per-student accumulator.
- * @param {DataPointAccumulator} classAccum - Per-class accumulator.
  * @param {DataPointAccumulator} taskAccum - Per-task accumulator.
  * @param {CriterionWeightings} criterionWeightings - The criterion weightings.
  * @param {DataPointAccumulator} [perStudentTaskAccum] - Optional per-(student, task)
@@ -217,16 +217,36 @@ export function processItemAssessments(
   item: AveragingAnalyserInput['classes'][number]['assignments'][number]['submissions'][number]['items'][string],
   weight: number,
   studentAccum: DataPointAccumulator,
-  classAccum: DataPointAccumulator,
   taskAccum: DataPointAccumulator,
   criterionWeightings: CriterionWeightings,
   perStudentTaskAccum?: DataPointAccumulator
 ): void {
-  const { assessments } = item;
+  const { assessments, taskId } = item;
   const assessmentsOrEmpty = assessments ?? {};
-  const completenessScore: AssessmentScore = assessmentsOrEmpty.completeness?.score;
-  const accuracyScore: AssessmentScore = assessmentsOrEmpty.accuracy?.score;
-  const spagScore: AssessmentScore = assessmentsOrEmpty.spag?.score;
+  const rawCriterionScores = [
+    ['completeness', assessmentsOrEmpty.completeness?.score],
+    ['accuracy', assessmentsOrEmpty.accuracy?.score],
+    ['spag', assessmentsOrEmpty.spag?.score],
+  ] as const;
+  const criterionScores = rawCriterionScores.map(([criterion, score]) => ({
+    criterion,
+    score: toAssessmentScore(score),
+    scoreType: typeof score,
+  }));
+
+  for (const { criterion, score, scoreType } of criterionScores) {
+    if (score !== undefined) continue;
+
+    logFrontendEvent('warn', {
+      context: 'processItemAssessments',
+      errorMessage: `Invalid ${criterion} score for task '${taskId}'; dropping the score`,
+      metadata: { criterion, taskId, scoreType },
+    });
+  }
+
+  const completenessScore = criterionScores[0].score;
+  const accuracyScore = criterionScores[1].score;
+  const spagScore = criterionScores[2].score;
 
   processSubmissionItem(
     completenessScore,
@@ -234,7 +254,6 @@ export function processItemAssessments(
     spagScore,
     weight,
     studentAccum,
-    classAccum,
     taskAccum,
     criterionWeightings,
     perStudentTaskAccum

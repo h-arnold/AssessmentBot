@@ -147,6 +147,30 @@ describe('TaskHeatmapTable', () => {
     expect(screen.queryByText('Red (low)')).not.toBeInTheDocument();
   });
 
+  it('does not show the aggregate Include Excluded toggle in a task metric filter', async () => {
+    const result = buildHeatmapResult();
+    render(
+      <TaskHeatmapTable
+        heatmapResult={result}
+        cellPreviewLookup={null}
+        isAssignmentLoading={false}
+        showAssignmentError={false}
+      />
+    );
+
+    const task1CompletenessHeader = screen.getAllByRole('columnheader', {
+      name: /completeness/i,
+    })[0];
+    const filterButton = within(task1CompletenessHeader).getByRole('button');
+
+    await user.click(filterButton);
+    await screen.findAllByRole('slider');
+
+    expect(screen.getByRole('checkbox', { name: /include not attempted/i })).toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: /include error/i })).toBeInTheDocument();
+    expect(screen.queryByRole('checkbox', { name: 'Include Excluded' })).not.toBeInTheDocument();
+  });
+
   // -------------------------------------------------------------------------
   // 3. Forename/Surname sort — click each split column sorter and assert
   //    the row order follows that column's derived value.

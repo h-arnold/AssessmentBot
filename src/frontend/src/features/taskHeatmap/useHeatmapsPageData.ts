@@ -13,7 +13,8 @@
  * (per `src/frontend/AGENTS.md` §3.3)):
  *
  * - `heatmapsSurfaceState.ts` — pure surface-state / blocking-error derivation.
- * - `heatmapsPipeline.ts` — pure analyser + merged-adapter pipeline.
+ * - `heatmapsPipeline.ts` — synchronous analyser + merged-adapter pipeline
+ *   with boundary diagnostics.
  * - `assembleMergedPreviewData.ts` — merged preview lookup / status assembly.
  * - `selectionCascade.ts` — pure selection-cascade reducer.
  *

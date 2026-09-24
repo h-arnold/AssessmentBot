@@ -142,17 +142,8 @@ function determineRollupState(
 ): 'error' | 'notAttempted' | 'computed' | 'excluded' {
   if (accumulator.hasError && !accumulator.hasObservedNonError) return 'error';
   if (accumulator.hasComputed) return 'computed';
-  if (hasTerminalNotAttempted(accumulator)) return 'notAttempted';
+  if (accumulator.hasPositiveNotAttempted) return 'notAttempted';
   return accumulator.hasObservedNonError ? 'excluded' : 'error';
-}
-
-/**
- * Determine whether the terminal not-attempted state applies.
- * @param {AccumulatedState} accumulator - Running state.
- * @returns {boolean} Whether not-attempted is terminal.
- */
-function hasTerminalNotAttempted(accumulator: AccumulatedState): boolean {
-  return accumulator.hasPositiveNotAttempted && !accumulator.hasComputed;
 }
 
 /**
@@ -236,6 +227,8 @@ function terminalRollup(
  * - Pure function. No side effects, no React / antd / I/O / state.
  * - Throws on empty `subTasks` array.
  * - Zero-weight observations do not contribute to the computed path.
+ * - Computed results report the maximum of contributing and all observed
+ *   non-error data-point counts, so excluded display evidence remains counted.
  * - Input structural validation is assumed to have been performed by Zod at the
  *   analyser boundary; no runtime field validation is performed.
  *
@@ -296,16 +289,11 @@ function resolveRollupResult(accumulator: AccumulatedState, metric: RollupMetric
     finalTotalDataPoints = accumulator.computedTd + accumulator.naTotalDataPoints;
   }
 
-  if (finalTotalWeight === 0) {
-    throw new Error('rollupMetric: all sub-task weights are zero');
-  }
-
   return {
     state: 'computed',
     value: accumulator.totalWeightedSum / finalTotalWeight,
     totalWeight: finalTotalWeight,
     applicableDataPoints: Math.min(accumulator.computedAp, finalTotalDataPoints),
-    totalDataPoints:
-      finalTotalDataPoints + Math.max(0, accumulator.observedDataPoints - finalTotalDataPoints),
+    totalDataPoints: Math.max(finalTotalDataPoints, accumulator.observedDataPoints),
   };
 }

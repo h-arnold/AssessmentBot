@@ -21,8 +21,8 @@ import {
   analyserResultFixture,
   buildDefaultAssignmentFixture,
   classFullFixture,
-  createTestQueryClient,
 } from '../../test/taskHeatmapPageFixtures';
+import { createTestQueryClient } from '../../test/dataAnalysis/heatmapFixtures';
 
 // ===========================================================================
 // Helpers

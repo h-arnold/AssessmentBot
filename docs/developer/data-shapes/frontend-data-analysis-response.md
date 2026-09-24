@@ -49,17 +49,20 @@ None. There is no `z_Api` handler, controller, response mapper, API endpoint, or
 
 ## Effective weighting
 
-For each task observation:
+For each task observation whose `taskId` exists in the live partial:
 
 ```text
 effectiveWeight = live assignment weighting × live task weighting
 includedInAverage = effectiveWeight > 0
 ```
 
-The live assignment-definition partial is the sole weighting source. Absent
-assignment or task weighting resolves to `1` before the product is calculated
-(`resolveAssignmentDefinitionData`, `buildTaskColumns`, and `resolveEffectiveWeight`
-all apply the same `?? 1` default).
+The live assignment-definition partial is the sole weighting source. A `null`
+`assignmentWeighting` intentionally resolves to `1` before the product is
+calculated. `TaskPartial.taskWeighting` is required, so a missing task ID is not
+treated as a missing-weight default: `computeEffectiveWeight` returns
+`undefined`, and the analyser emits a structured warn and drops that submission
+item before any display or average accumulator is updated. The shared helper is
+used by both analyser accumulation and heatmap column projection.
 
 The partial wire schemas deliberately do not enforce a weighting range
 (`TaskPartialSchema.taskWeighting` is `z.number()`;
@@ -93,14 +96,14 @@ validation rather than producing a negative `totalWeight`.
 Aggregate scope. Uses the shared four-state `MetricResultSchema`; it does **not**
 carry `averageContribution`.
 
-| #   | Field          | Type           | Frontend Zod            | Notes                                                             |
-| --- | -------------- | -------------- | ----------------------- | ----------------------------------------------------------------- |
-| 1   | `studentId`    | `string`       | `z.string()`            |                                                                   |
-| 2   | `studentName`  | `string\|null` | `z.string().nullable()` | A `null` name is a data-source bug; the row builder throws on it. |
-| 3   | `completeness` | `MetricResult` | `MetricResultSchema`    | Contribution roll-up over the student's per-task accumulators.    |
-| 4   | `accuracy`     | `MetricResult` | `MetricResultSchema`    | Contribution roll-up.                                             |
-| 5   | `spag`         | `MetricResult` | `MetricResultSchema`    | Contribution roll-up.                                             |
-| 6   | `overall`      | `MetricResult` | `MetricResultSchema`    | Composite of the three criterion roll-ups.                        |
+| #   | Field          | Type           | Frontend Zod            | Notes                                                                                                      |
+| --- | -------------- | -------------- | ----------------------- | ---------------------------------------------------------------------------------------------------------- |
+| 1   | `studentId`    | `string`       | `z.string()`            |                                                                                                            |
+| 2   | `studentName`  | `string\|null` | `z.string().nullable()` | A `null` name is a data-source bug; the row builder throws immediately and names the offending student ID. |
+| 3   | `completeness` | `MetricResult` | `MetricResultSchema`    | Contribution roll-up over the student's per-task accumulators.                                             |
+| 4   | `accuracy`     | `MetricResult` | `MetricResultSchema`    | Contribution roll-up.                                                                                      |
+| 5   | `spag`         | `MetricResult` | `MetricResultSchema`    | Contribution roll-up.                                                                                      |
+| 6   | `overall`      | `MetricResult` | `MetricResultSchema`    | Composite of the three criterion roll-ups.                                                                 |
 
 ### `PerTaskRow`
 
@@ -142,16 +145,16 @@ Aggregate scope. Uses the shared four-state `MetricResultSchema`.
 Task display scope. Uses the narrow three-state `TaskDisplayMetricSchema` and
 carries `averageContribution`.
 
-| #   | Field                 | Type                  | Frontend Zod                | Notes                                                                  |
-| --- | --------------------- | --------------------- | --------------------------- | ---------------------------------------------------------------------- |
-| 1   | `classId`             | `string`              | `z.string()`                | Echoed from the input class.                                           |
-| 2   | `studentId`           | `string`              | `z.string()`                |                                                                        |
-| 3   | `taskKey`             | `string`              | `z.string()`                | `${definitionKey}::${taskId}`; no assignment-instance component in v1. |
-| 4   | `averageContribution` | `AverageContribution` | `AverageContributionSchema` | Derived from live definition weights.                                  |
-| 5   | `completeness`        | task display metric   | `TaskDisplayMetricSchema`   | Display accumulation.                                                  |
-| 6   | `accuracy`            | task display metric   | `TaskDisplayMetricSchema`   | Display accumulation.                                                  |
-| 7   | `spag`                | task display metric   | `TaskDisplayMetricSchema`   | Display accumulation.                                                  |
-| 8   | `overall`             | task display metric   | `TaskDisplayMetricSchema`   | Display accumulation.                                                  |
+| #   | Field                 | Type                  | Frontend Zod                | Notes                                                                                   |
+| --- | --------------------- | --------------------- | --------------------------- | --------------------------------------------------------------------------------------- |
+| 1   | `classId`             | `string`              | `z.string()`                | Echoed from the input class.                                                            |
+| 2   | `studentId`           | `string`              | `z.string()`                |                                                                                         |
+| 3   | `taskKey`             | `string`              | `z.string()`                | Built by `buildTaskKey(definitionKey, taskId)`; no assignment-instance component in v1. |
+| 4   | `averageContribution` | `AverageContribution` | `AverageContributionSchema` | Derived from live definition weights.                                                   |
+| 5   | `completeness`        | task display metric   | `TaskDisplayMetricSchema`   | Display accumulation.                                                                   |
+| 6   | `accuracy`            | task display metric   | `TaskDisplayMetricSchema`   | Display accumulation.                                                                   |
+| 7   | `spag`                | task display metric   | `TaskDisplayMetricSchema`   | Display accumulation.                                                                   |
+| 8   | `overall`             | task display metric   | `TaskDisplayMetricSchema`   | Display accumulation.                                                                   |
 
 ### Input shapes
 
@@ -207,7 +210,7 @@ task-level contribution metadata.
 
 Backend model: none (frontend schema only).
 Frontend Zod: `MetricResultSchema` (exported, four states) and
-`TaskDisplayMetricSchema` (private, three states) in
+`TaskDisplayMetricSchema` (exported, three states) in
 `src/frontend/src/services/dataAnalysis/dataAnalysis.zod.ts`.
 
 ```ts
@@ -267,8 +270,10 @@ adapter-local union described below.
 
 #### Narrow task display union
 
-`TaskDisplayMetricSchema` is a private discriminated union of `computed`,
-`notAttempted`, and `error`. It deliberately omits `excluded` so task displays
+`TaskDisplayMetricSchema` is an exported discriminated union of `computed`,
+`notAttempted`, and `error`. Its inferred `TaskDisplayMetric` type is propagated
+through analyser task projection, both heatmap adapters, heatmap table cells,
+and task-preview assembly. It deliberately omits `excluded` so task displays
 keep numeric zero-weight scores and genuine raw `N` values visible.
 
 | Shape                  | Metric field schema       |
@@ -278,9 +283,11 @@ keep numeric zero-weight scores and genuine raw `N` values visible.
 | `PerStudentRow`        | `MetricResultSchema`      |
 | `PerClassResult`       | `MetricResultSchema`      |
 
-The analyser's `toTaskDisplayMetric` runtime guard throws if an `excluded` metric
-ever reaches task projection, so a task-level `excluded` is both schema-invalid
-and fail-fast at runtime.
+The analyser's `resolveDisplayMetric` return type is the schema-derived
+`TaskDisplayMetric`, so task projection cannot emit `excluded`; the output
+schemas reject it at runtime as a second boundary. Task-preview state/score
+properties are also a discriminated pairing, so `computed` with `null` is not
+representable.
 
 ### `ClassPageDisplayMetric` (adapter-local exception)
 
@@ -399,7 +406,7 @@ The `excluded` state is displayed as **Excluded** with accessible text:
 
 - `src/frontend/src/services/dataAnalysis/dataAnalysis.zod.ts` →
   `AverageContributionSchema`, `MetricResultSchema` (four states),
-  `TaskDisplayMetricSchema` (private, three states), `PerStudentRowSchema`,
+  `TaskDisplayMetricSchema` (exported, three states), `PerStudentRowSchema`,
   `PerTaskRowSchema`, `PerClassResultSchema`, `PerStudentTaskMetricSchema`,
   `AveragingResultSchema`, `DataAnalysisResponseSchema`,
   `AveragingAnalyserInputSchema`, `AnalysisFilterSchema`,
@@ -418,8 +425,11 @@ The `excluded` state is displayed as **Excluded** with accessible text:
 from the schemas alone):
 
 - `includedInAverage` must equal `effectiveWeight > 0`.
+- A submission task ID absent from the live partial is warned and dropped; it
+  never receives a default task weight or contributes to any accumulator.
 - `excluded` is valid for aggregate scopes only; task display shapes use the
-  narrow union and the analyser throws if `excluded` reaches task projection.
+  exported narrow union, and task-preview state/score pairs are correlated by
+  their schema-derived discriminator.
 - A zero-weight raw `N` remains `notAttempted`, not `excluded`, at task level.
 - A zero-weight numeric result remains numeric at task level, with
   `totalWeight: 0` and `includedInAverage: false`.
@@ -454,6 +464,8 @@ Persistence model: none (frontend-only contract).
 
 Frontend schema: `src/frontend/src/services/dataAnalysis/dataAnalysis.zod.ts`
 Frontend service: `src/frontend/src/services/dataAnalysis/dataAnalysisService.ts`
+Effective-weight helper: `src/frontend/src/services/assignmentDefinition/assignmentDefinitionUtilities.ts`
+Task-key helper: `src/frontend/src/services/dataAnalysis/taskKey.ts`
 Analyser: `src/frontend/src/services/dataAnalysis/analysers/`
 ├── `averagingAnalyser.ts`
 ├── `averagingAnalyser.accumulation.ts`

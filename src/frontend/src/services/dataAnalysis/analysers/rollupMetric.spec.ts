@@ -174,6 +174,24 @@ describe('rollupMetric established aggregation', () => {
     });
   });
 
+  it('resolves zero-weight computed evidence alongside an error as excluded', () => {
+    const result = rollupMetric(
+      [
+        createComputedMetricResult({ value: 10, totalWeight: 0 }),
+        createErrorMetricResult({ totalDataPoints: 1 }),
+      ],
+      'accuracy'
+    );
+
+    expect(result).toMatchObject({
+      state: 'excluded',
+      value: null,
+      totalWeight: 0,
+      applicableDataPoints: 0,
+      totalDataPoints: 2,
+    });
+  });
+
   it('throws when no sub-tasks are supplied', () => {
     expect(() => rollupMetric([], 'completeness')).toThrow();
   });

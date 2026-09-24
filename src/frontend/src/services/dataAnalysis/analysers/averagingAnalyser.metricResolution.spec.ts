@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { computeOverallComposite } from './averagingAnalyser.composite';
+import { createAccumulator } from './averagingAnalyser.accumulatorRegistry';
+import { resolveAggregateMetric, resolveDisplayMetric } from './averagingAnalyser.metricResolution';
 import { AveragingAnalyser } from './averagingAnalyser';
 import smallManifestRaw from '../../../../../../tests/__mocks__/data/synthetic-analysis/small/manifest.json?raw';
 import smallPartialsRaw from '../../../../../../tests/__mocks__/data/synthetic-analysis/small/assignmentDefinitionPartials.json?raw';
@@ -42,6 +44,156 @@ type CanonicalPartial = {
   assignmentWeighting: number | null;
   tasks: Array<{ taskId: string; taskWeighting: number }>;
 } & Record<string, unknown>;
+/**
+ * Create a metric accumulator with optional boundary fields.
+ * @param {Partial<ReturnType<typeof createAccumulator>>} [overrides] - Fields to replace.
+ * @returns {ReturnType<typeof createAccumulator>} The configured accumulator.
+ */
+function createMetricAccumulator(
+  overrides: Partial<ReturnType<typeof createAccumulator>> = {}
+): ReturnType<typeof createAccumulator> {
+  return { ...createAccumulator(), ...overrides };
+}
+
+describe('metric resolution boundaries', () => {
+  it('resolves aggregate numeric contribution before other evidence', () => {
+    const result = resolveAggregateMetric(
+      createMetricAccumulator({
+        weightedSum: 8,
+        totalWeight: 2,
+        applicableDataPoints: 2,
+        totalDataPoints: 3,
+        nCount: 1,
+        displaySum: 8,
+        displayCount: 2,
+        displayNCount: 1,
+        displayTotalDataPoints: 3,
+      })
+    );
+
+    expect(result).toEqual({
+      state: 'computed',
+      value: 4,
+      totalWeight: 2,
+      applicableDataPoints: 2,
+      totalDataPoints: 3,
+    });
+  });
+
+  it('resolves positive-weight raw N as notAttempted when no numeric contribution exists', () => {
+    const result = resolveAggregateMetric(
+      createMetricAccumulator({
+        nCount: 1,
+        totalWeight: 1,
+        totalDataPoints: 1,
+        displayNCount: 1,
+        displayTotalDataPoints: 1,
+      })
+    );
+
+    expect(result).toEqual({
+      state: 'notAttempted',
+      value: 'N',
+      totalWeight: 1,
+      applicableDataPoints: 0,
+      totalDataPoints: 1,
+    });
+  });
+
+  it('resolves observed non-contributing evidence as excluded', () => {
+    const result = resolveAggregateMetric(
+      createMetricAccumulator({
+        displaySum: 5,
+        displayCount: 1,
+        displayTotalDataPoints: 1,
+      })
+    );
+
+    expect(result).toEqual({
+      state: 'excluded',
+      value: null,
+      totalWeight: 0,
+      applicableDataPoints: 0,
+      totalDataPoints: 1,
+    });
+  });
+
+  it('resolves no aggregate evidence as error', () => {
+    expect(resolveAggregateMetric(createMetricAccumulator())).toEqual({
+      state: 'error',
+      value: 'E',
+      totalWeight: 0,
+      applicableDataPoints: 0,
+      totalDataPoints: 0,
+    });
+  });
+
+  it('resolves display numeric evidence without applying contribution weight', () => {
+    const result = resolveDisplayMetric(
+      createMetricAccumulator({
+        displaySum: 7,
+        displayCount: 2,
+        displayTotalDataPoints: 2,
+        totalWeight: 0,
+      })
+    );
+
+    expect(result).toEqual({
+      state: 'computed',
+      value: 3.5,
+      totalWeight: 0,
+      applicableDataPoints: 2,
+      totalDataPoints: 2,
+    });
+  });
+
+  it('resolves display raw N before no display evidence', () => {
+    const result = resolveDisplayMetric(
+      createMetricAccumulator({
+        displayNCount: 1,
+        displayTotalDataPoints: 1,
+        totalWeight: 0,
+      })
+    );
+
+    expect(result).toEqual({
+      state: 'notAttempted',
+      value: 'N',
+      totalWeight: 0,
+      applicableDataPoints: 0,
+      totalDataPoints: 1,
+    });
+  });
+
+  it('prefers display numeric evidence over display raw N', () => {
+    const result = resolveDisplayMetric(
+      createMetricAccumulator({
+        displaySum: 4,
+        displayCount: 1,
+        displayNCount: 1,
+        displayTotalDataPoints: 2,
+        totalWeight: 0,
+      })
+    );
+
+    expect(result).toMatchObject({
+      state: 'computed',
+      value: 4,
+      totalDataPoints: 2,
+    });
+  });
+
+  it('resolves no display evidence as error', () => {
+    expect(resolveDisplayMetric(createMetricAccumulator())).toEqual({
+      state: 'error',
+      value: 'E',
+      totalWeight: 0,
+      applicableDataPoints: 0,
+      totalDataPoints: 0,
+    });
+  });
+});
+
 describe('aggregate metric state resolution', () => {
   it('resolves overall all-excluded criteria to excluded', () => {
     const result = computeOverallComposite(
@@ -76,6 +228,28 @@ describe('aggregate metric state resolution', () => {
     expect(result.state).toBe('computed');
     expect(result.value).toBeCloseTo(EXPECTED_SCORE, FLOAT_TOLERANCE);
     expect(result.totalWeight).toBe(1);
+  });
+
+  it('renormalises a positive criterion when other criteria have zero weighting', () => {
+    const result = computeOverallComposite(
+      createComputedMetricResult({
+        value: 4,
+        totalWeight: 2,
+        applicableDataPoints: 2,
+        totalDataPoints: 2,
+      }),
+      createErrorMetricResult({ totalDataPoints: 1 }),
+      createNotAttemptedMetricResult({ totalWeight: 0, totalDataPoints: 1 }),
+      { completeness: 1, accuracy: 0, spag: 0 }
+    );
+
+    expect(result).toMatchObject({
+      state: 'computed',
+      value: 4,
+      totalWeight: 2,
+      applicableDataPoints: 2,
+      totalDataPoints: 2,
+    });
   });
 
   it('resolves all-error criteria to error', () => {

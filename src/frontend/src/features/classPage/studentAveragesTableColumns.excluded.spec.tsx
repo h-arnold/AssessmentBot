@@ -1,5 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import type { FilterDropdownProps } from 'antd/es/table/interface';
 import { buildStudentAveragesTableColumns } from './studentAveragesTableColumns';
 import { createComputedMetricResult, createNotAttemptedMetricResult, createErrorMetricResult, createMetricResult } from '../../test/dataAnalysis/fixtures';
 import type { StudentAverageRowModel } from './classPageAdapter.zod';
@@ -56,5 +57,42 @@ describe('student averages excluded metric display and filtering', () => {
     expect(average.onFilter!(includeExcludedKey, excluded)).toBe(true);
     expect(average.onFilter!(includeExcludedKey, notAttempted)).toBe(false);
     expect(average.onFilter!(includeExcludedKey, error)).toBe(false);
+  });
+
+  it('preserves a five-part excluded filter key on the aggregate column', () => {
+    const includeExcludedKey = '2|4|0|0|1';
+    const columns = buildStudentAveragesTableColumns({
+      ...EMPTY_FILTERS,
+      average: [includeExcludedKey],
+    });
+    const average = columns.find((column) => column.key === 'average')!;
+
+    expect(average.filteredValue).toEqual([includeExcludedKey]);
+  });
+
+  it('keeps the Include Excluded checkbox on aggregate metric filters', () => {
+    const columns = buildStudentAveragesTableColumns(EMPTY_FILTERS);
+    const average = columns.find((column) => column.key === 'average')!;
+    const filterDropdown = average.filterDropdown;
+
+    expect(filterDropdown).toBeDefined();
+    if (typeof filterDropdown !== 'function') {
+      throw new TypeError('Expected a filterDropdown callback for the aggregate metric column');
+    }
+
+    render(
+      <>
+        {filterDropdown({
+          selectedKeys: ['2|4|0|0|1'],
+          setSelectedKeys: vi.fn(),
+          confirm: vi.fn(),
+          clearFilters: vi.fn(),
+          filters: undefined,
+          visible: true,
+        } as unknown as FilterDropdownProps)}
+      </>
+    );
+
+    expect(screen.getByRole('checkbox', { name: 'Include Excluded' })).toBeChecked();
   });
 });

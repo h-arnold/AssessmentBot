@@ -1,21 +1,11 @@
-import { QueryClient } from '@tanstack/react-query';
 import type { AveragingResult } from '../services/dataAnalysis/dataAnalysis.zod';
 import type { AssignmentFull } from '../services/assignmentAssessment/assignmentAssessment.zod';
 import type { ClassFull } from '../services/googleClassrooms/classDetail/classDetailService.zod';
-import { createComputedMetricResult } from './dataAnalysis/fixtures';
-
-/**
- * Creates a fresh QueryClient for TaskHeatmapPage test isolation.
- *
- * @returns {QueryClient} A test QueryClient with retries disabled.
- */
-export function createTestQueryClient(): QueryClient {
-  return new QueryClient({
-    defaultOptions: {
-      queries: { retry: false },
-    },
-  });
-}
+import { createAssignmentPartial, createComputedMetricResult } from './dataAnalysis/fixtures';
+import {
+  createHeatmapClassFull,
+  createHeatmapDefinitionPartial,
+} from './dataAnalysis/heatmapFixtures';
 
 /**
  * Builds a minimal schema-valid `AssignmentFull` fixture for the default mock value.
@@ -65,47 +55,27 @@ export const COMPUTED_3 = createComputedMetricResult({ value: 3 });
 /**
  * A valid assignment-definition partial matching 'def-1' for heatmap task titles.
  */
-export const VALID_ASSIGNMENT_PARTIAL = {
-  primaryTitle: 'Assignment One',
-  primaryTopic: 'Algebra',
-  primaryTopicKey: 'algebra',
-  yearGroupKey: 'yg-10',
-  yearGroupLabel: 'Year 10',
-  alternateTitles: [] as string[],
-  alternateTopics: [] as string[],
-  documentType: 'assignment',
-  referenceDocumentId: null,
-  templateDocumentId: null,
-  assignmentWeighting: 1,
+export const VALID_ASSIGNMENT_PARTIAL = createHeatmapDefinitionPartial({
   definitionKey: 'def-1',
-  tasks: [{ taskId: 't-1', taskWeighting: 1, taskTitle: 'Task One' }],
-  createdAt: '2026-01-01T00:00:00.000Z',
-  updatedAt: null,
-};
+  primaryTitle: 'Assignment One',
+  taskId: 't-1',
+  taskTitle: 'Task One',
+});
 
 /** A ClassFull fixture with one student and one assignment (definitionKey 'def-1'). */
-export const classFullFixture: ClassFull = {
+export const classFullFixture: ClassFull = createHeatmapClassFull({
   classId: 'class-1',
   className: 'Class A',
-  cohortKey: null,
-  courseLength: 1,
   yearGroupKey: null,
-  classOwner: null,
-  teachers: [],
-  students: [{ id: 's-1', name: 'Student One', email: 's1@test.com' }],
   assignments: [
-    {
+    createAssignmentPartial({
       assignmentId: 'a-1',
-      dueDate: null,
-      updatedAt: null,
-      createdAt: '2026-01-01T00:00:00.000Z',
-      documentType: 'assessment',
+      definitionKey: 'def-1',
       submissions: [],
-      assignmentDefinitionKey: 'def-1',
-    },
+    }),
   ],
   active: null,
-};
+});
 
 /** An AveragingResult fixture with one perStudentTaskMetric. */
 export const analyserResultFixture: AveragingResult = {

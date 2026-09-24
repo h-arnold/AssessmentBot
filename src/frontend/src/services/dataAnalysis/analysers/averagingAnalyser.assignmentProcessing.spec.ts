@@ -1,5 +1,6 @@
-import { describe, it, expect } from 'vitest';
+import { afterEach, describe, it, expect, vi } from 'vitest';
 import { AveragingAnalyser } from './averagingAnalyser';
+import { buildTaskColumns } from '../heatmapAdapter';
 import {
   buildInput,
   createAssignmentPartial,
@@ -9,6 +10,10 @@ import {
   createTaskPartial,
 } from '../../../test/dataAnalysis/fixtures';
 import { expectMetricResultStateAware } from '../../../test/dataAnalysis/averagingAnalyserAssertions';
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 describe('AveragingAnalyser assignment processing', () => {
   describe('positive-weight accumulation', () => {
@@ -128,6 +133,47 @@ describe('AveragingAnalyser assignment processing', () => {
       });
     });
 
+    it('keeps analyser and heatmap adapter effective contribution metadata aligned', () => {
+      const definitionKey = 'dk_shared_weighting';
+      const fractionalTaskWeighting = 0.4;
+      const partial = createDefinitionPartial({
+        definitionKey,
+        assignmentWeighting: 0.5,
+        tasks: [createTaskPartial('t_001', fractionalTaskWeighting), createTaskPartial('t_002', 0)],
+      });
+      const input = buildInput(
+        [
+          {
+            classId: 'c_001',
+            studentIds: ['s_001'],
+            assignments: [
+              createAssignmentPartial({
+                assignmentId: 'a_001',
+                definitionKey,
+                submissions: [
+                  createSubmission('s_001', 'Alice', 'a_001', {
+                    t_001: createSubmissionItem('t_001', { completeness: { score: 4 } }),
+                    t_002: createSubmissionItem('t_002', { completeness: { score: 5 } }),
+                  }),
+                ],
+              }),
+            ],
+          },
+        ],
+        { assignmentDefinitionPartials: [partial] }
+      );
+
+      const analyserResult = new AveragingAnalyser().analyse(input)[0];
+      const adapterColumns = buildTaskColumns(partial);
+      const analyserTasks = new Map(analyserResult.perTask.map((task) => [task.taskId, task]));
+
+      for (const column of adapterColumns) {
+        expect(column.averageContribution).toEqual(
+          analyserTasks.get(column.taskId)?.averageContribution
+        );
+      }
+    });
+
     it('resolves taskWeighting from pre-fetched assignmentDefinitionPartials cross-reference', () => {
       const preFetchedTaskWeighting = 5;
       const input = buildInput(
@@ -172,7 +218,9 @@ describe('AveragingAnalyser assignment processing', () => {
       });
     });
 
-    it('falls back to taskWeighting 1 when no matching task entry is found in assignmentDefinitionPartials', () => {
+    it('drops and warns when a submission task is absent from the live partial', () => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const unknownTaskId = 't_stale';
       const input = buildInput(
         [
           {
@@ -182,10 +230,12 @@ describe('AveragingAnalyser assignment processing', () => {
               createAssignmentPartial({
                 assignmentId: 'a_001',
                 definitionKey: 'dk_algebra',
-                tasks: [createTaskPartial('t_001')],
                 submissions: [
                   createSubmission('s_001', 'Alice', 'a_001', {
                     t_001: createSubmissionItem('t_001', { accuracy: { score: 4 } }),
+                    [unknownTaskId]: createSubmissionItem(unknownTaskId, {
+                      accuracy: { score: 5 },
+                    }),
                   }),
                 ],
               }),
@@ -196,26 +246,38 @@ describe('AveragingAnalyser assignment processing', () => {
           assignmentDefinitionPartials: [
             createDefinitionPartial({
               definitionKey: 'dk_algebra',
-              tasks: [],
+              tasks: [createTaskPartial('t_001')],
             }),
           ],
         }
       );
 
-      const analyser = new AveragingAnalyser();
-      const results = analyser.analyse(input);
+      const results = new AveragingAnalyser().analyse(input);
 
       expect(results).toHaveLength(1);
-      expectMetricResultStateAware(results[0].perClass.accuracy, {
+      expectMetricResultStateAware(results[0].perStudent[0].accuracy, {
         state: 'computed',
         value: 4,
         totalWeight: 1,
         applicableDataPoints: 1,
         totalDataPoints: 1,
       });
+      expect(results[0].perTask.map((task) => task.taskId)).toEqual(['t_001']);
+      expect(results[0].perStudentTaskMetrics?.map((metric) => metric.taskKey)).toEqual([
+        'dk_algebra::t_001',
+      ]);
+      expect(warnSpy).toHaveBeenCalledWith(
+        'processAssignment',
+        expect.objectContaining({
+          context: 'processAssignment',
+          errorMessage: `Submission task '${unknownTaskId}' is absent from the live assignment definition; dropping the item`,
+          metadata: { definitionKey: 'dk_algebra', taskId: unknownTaskId },
+          level: 'warn',
+        })
+      );
     });
 
-    it('resolveTaskWeight uses the pre-built Map (O(1) lookup)', () => {
+    it('applies the live task weighting from the matching definition partial', () => {
       const preFetchedTaskWeighting = 5;
       const input = buildInput(
         [
@@ -259,7 +321,7 @@ describe('AveragingAnalyser assignment processing', () => {
       });
     });
 
-    it('resolveTaskWeight falls back to 1 when the definitionKey is not in the pre-fetched partials', () => {
+    it('skips an assignment when its definitionKey is absent from the live partials', () => {
       const unusedTaskWeighting = 5;
       const input = buildInput(
         [

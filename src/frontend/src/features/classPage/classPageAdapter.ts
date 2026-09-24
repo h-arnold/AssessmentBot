@@ -1,17 +1,19 @@
 /**
- * Pure adapter that translates `AveragingResult` + `ClassFull` into
+ * Adapter that translates `AveragingResult` + `ClassFull` into
  * the canonical `ClassPageAdapterResult` view-model shape.
  *
  * @remarks
- * This is a pure synchronous function with no I/O, no React imports,
- * and no Ant Design imports. The only side effect is throwing on data
- * integrity violations (null `updatedAt`, duplicate IDs, unparseable
- * `updatedAt`).
+ * This is a synchronous function with no data/network I/O, no React imports,
+ * and no Ant Design imports. It emits structured frontend warnings for
+ * recoverable analyser/data gaps and throws on data-integrity violations such as a null
+ * `updatedAt`, duplicate IDs, or an unparseable `updatedAt`.
  *
- * @see SPEC_CLASS_PAGE.md §"classPageAdapter — pure adapter"
+ * @see SPEC_CLASS_PAGE.md §"classPageAdapter"
  */
 
+import { logFrontendEvent } from '../../logging/frontendLogger';
 import { computeOverallComposite } from '../../services/dataAnalysis/analysers/averagingAnalyser.composite';
+import { DEFAULT_CRITERION_WEIGHTINGS } from '../../services/dataAnalysis/analysers/averagingAnalyser';
 import { rollupMetric } from '../../services/dataAnalysis/analysers/rollupMetric';
 import { formatUpdatedAtLabel } from '../../utils/dateFormatting';
 import type {
@@ -37,13 +39,6 @@ import { getAssignmentDefinitionPartial } from '../../services/assignmentDefinit
 
 /** Maximum number of recent assignment cards to return. */
 const MAX_RECENT_ASSIGNMENTS = 3;
-
-/** Default criterion weightings for the per-assignment average composite. */
-const WEIGHTS = {
-  completeness: 0.4,
-  accuracy: 0.4,
-  spag: 0.2,
-};
 
 // ---------------------------------------------------------------------------
 // Trust validation helpers
@@ -99,10 +94,17 @@ function findFirstDuplicate<T>(
 // ---------------------------------------------------------------------------
 
 /**
- * Build a `MetricResult` in the `notAttempted` state with zero weights.
- * Used for synthesised no-data rows and empty-per-task fallbacks.
+ * Build the adapter-local `notAttempted` placeholder used for empty Class-page
+ * rows and recent assignments.
  *
- * @returns {MetricResult} A `notAttempted` MetricResult with all weights set to zero.
+ * @returns {MetricResult} A `notAttempted` value with zero weights and zero data points.
+ *
+ * @remarks
+ * This `totalDataPoints: 0` shape is intentionally distinct from the task
+ * heatmap's schema-valid `NOT_ATTEMPTED_METRIC` fallback, which uses one data
+ * point. The Class-page union permits this presentation-only value, while the
+ * analyser and task-display schemas require raw `N` results to have at least
+ * one observed data point.
  */
 function noDataMetric(): MetricResult {
   return {
@@ -130,8 +132,8 @@ function noDataMetric(): MetricResult {
  * the analyser's per-student and per-task overall composite.
  *
  * The average is NOT computed by `rollupMetric` — it is a composite of the
- * three per-criterion values using the 40/40/20 weighting with SPaG
- * renormalisation.
+ * three per-criterion values using the shared 40/40/20 default weighting with
+ * SPaG renormalisation.
  *
  * @param {MetricResult} completeness - The rolled-up completeness metric.
  * @param {MetricResult} accuracy - The rolled-up accuracy metric.
@@ -143,7 +145,7 @@ function computeAverageMetric(
   accuracy: MetricResult,
   spag: MetricResult
 ): MetricResult {
-  return computeOverallComposite(completeness, accuracy, spag, WEIGHTS);
+  return computeOverallComposite(completeness, accuracy, spag, DEFAULT_CRITERION_WEIGHTINGS);
 }
 
 // ---------------------------------------------------------------------------
@@ -322,6 +324,7 @@ export function adaptClassPageToViewModel(input: {
     )
     .slice(0, MAX_RECENT_ASSIGNMENTS);
 
+  const warnedDefinitionKeys = new Set<string>();
   const recentAssignments: RecentAssignmentCardModel[] = topAssignments.map(
     ({ assignment, validatedUpdatedAt }) => {
       const definitionKey = assignment.assignmentDefinitionKey;
@@ -330,10 +333,27 @@ export function adaptClassPageToViewModel(input: {
         throw new TaskTitlesUnavailableError(definitionKey);
       }
       const assignmentName = partial.primaryTitle;
+      const matchingPerTask = perTaskLookup.get(definitionKey);
+      if (
+        matchingPerTask === undefined &&
+        assignment.submissions.length > 0 &&
+        !warnedDefinitionKeys.has(definitionKey)
+      ) {
+        logFrontendEvent('warn', {
+          context: 'adaptClassPageToViewModel',
+          errorMessage: `No analyser per-task rows found for assignment '${assignment.assignmentId}' despite ${assignment.submissions.length} submission(s)`,
+          metadata: {
+            assignmentId: assignment.assignmentId,
+            definitionKey,
+            submissionCount: assignment.submissions.length,
+          },
+        });
+        warnedDefinitionKeys.add(definitionKey);
+      }
       return buildRecentAssignment(
         assignment.assignmentId,
         assignmentName,
-        perTaskLookup.get(definitionKey),
+        matchingPerTask,
         validatedUpdatedAt
       );
     }

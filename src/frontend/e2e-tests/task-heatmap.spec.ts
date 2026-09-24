@@ -8,6 +8,7 @@ import {
 
 const CLASSES_LABEL = 'Classes';
 const HEATMAP_TABLE_NAME = 'Task Heatmap';
+const EXCLUDED_METRIC_ACCESSIBLE_NAME = 'Excluded from average: displayed work had zero weighting.';
 /** Number of metric sub-columns per task group (Completeness, Accuracy, SPaG). */
 const METRIC_SUBCOLUMN_COUNT = 3;
 const EXCLUDED_AGGREGATE_COUNT = 4;
@@ -83,17 +84,21 @@ test.describe('Task Heatmap E2E journey', () => {
     await installRuntimeMock(page, scenario);
     await openHeatmapClass(page);
 
-    const excludedName = 'Excluded from average: displayed work had zero weighting.';
     const assignmentCard = page
       .getByRole('button')
       .filter({ hasText: HEATMAP_ASSIGNMENT_DISPLAY_TITLE })
       .first();
-    const excludedMetrics = assignmentCard.locator(`[aria-label="${excludedName}"]:visible`);
+    const excludedMetrics = assignmentCard.locator(
+      `[aria-label="${EXCLUDED_METRIC_ACCESSIBLE_NAME}"]:visible`
+    );
     // The card exposes the three criteria and the overall aggregate; each
     // aggregate carries the same explicit accessible excluded state.
     await expect(excludedMetrics).toHaveCount(EXCLUDED_AGGREGATE_COUNT);
     await excludedMetrics.first().focus();
-    await expect(excludedMetrics.first()).toHaveAttribute('aria-label', excludedName);
+    await expect(excludedMetrics.first()).toHaveAttribute(
+      'aria-label',
+      EXCLUDED_METRIC_ACCESSIBLE_NAME
+    );
 
     await assignmentCard.click();
     const table = page.getByRole('table', { name: HEATMAP_TABLE_NAME });
@@ -141,6 +146,62 @@ test.describe('Task Heatmap E2E journey', () => {
     await expect(table.getByRole('columnheader', { name: 'Surname' })).not.toHaveClass(
       /task-heatmap-zero-weight/
     );
+  });
+
+  test('resolves excluded aggregate cell colours in light and dark themes', async ({ page }) => {
+    const scenario = createHeatmapScenario({ zeroWeightAssignment: true });
+    await installRuntimeMock(page, scenario);
+    await openHeatmapClass(page);
+
+    await expect(page.getByText('Student Averages')).toBeVisible();
+    const averagesTable = page.getByRole('table').last();
+    await expect(averagesTable).toBeVisible();
+
+    const excludedCell = averagesTable
+      .locator(`[aria-label="${EXCLUDED_METRIC_ACCESSIBLE_NAME}"]`)
+      .first();
+    await expect(excludedCell).toHaveCount(1);
+
+    const readResolvedColours = async (cell: typeof excludedCell) =>
+      cell.evaluate((element) => {
+        const style = getComputedStyle(element);
+        const originalComputedBackground = style.backgroundColor;
+        const originalComputedText = style.color;
+        const originalBackground = element.style.backgroundColor;
+        const originalText = element.style.color;
+        element.style.backgroundColor = 'var(--ant-color-fill-quaternary)';
+        element.style.color = 'var(--ant-color-text-secondary)';
+        const tokenStyle = getComputedStyle(element);
+        const colours = {
+          background: originalComputedBackground,
+          text: originalComputedText,
+          tokenBackground: tokenStyle.backgroundColor,
+          tokenText: tokenStyle.color,
+          tokenBackgroundValue: style.getPropertyValue('--ant-color-fill-quaternary').trim(),
+          tokenTextValue: style.getPropertyValue('--ant-color-text-secondary').trim(),
+        };
+        element.style.backgroundColor = originalBackground;
+        element.style.color = originalText;
+        return colours;
+      });
+
+    const lightColours = await readResolvedColours(excludedCell);
+    expect(lightColours.tokenBackgroundValue).not.toBe('');
+    expect(lightColours.tokenTextValue).not.toBe('');
+    expect(lightColours.background).toBe(lightColours.tokenBackground);
+    expect(lightColours.text).toBe(lightColours.tokenText);
+
+    const themeSwitch = page.getByRole('switch', { name: 'Dark mode' });
+    await themeSwitch.click();
+    await expect(themeSwitch).toBeChecked();
+
+    const darkColours = await readResolvedColours(excludedCell);
+    expect(darkColours.tokenBackgroundValue).not.toBe('');
+    expect(darkColours.tokenTextValue).not.toBe('');
+    expect(darkColours.background).toBe(darkColours.tokenBackground);
+    expect(darkColours.text).toBe(darkColours.tokenText);
+    expect(darkColours.background).not.toBe(lightColours.background);
+    expect(darkColours.text).not.toBe(lightColours.text);
   });
 
   test('band filter hides non-matching rows', async ({ page }) => {

@@ -12,6 +12,7 @@ import type {
   AveragingAnalyserInput,
   MetricResult,
 } from '../../services/dataAnalysis/dataAnalysis.zod';
+import type { AssignmentDefinitionPartial } from '../../services/assignmentDefinition/assignmentDefinitionPartials.zod';
 import type { AssignmentPartial } from '../../services/googleClassrooms/classDetail/classDetailService.zod';
 
 // ---------------------------------------------------------------------------
@@ -360,6 +361,45 @@ export function createClassFull(overrides: {
 }
 
 /**
+ * Build one live definition partial per assignment-definition key.
+ *
+ * Every submitted task receives an explicit task weighting in the partial.
+ * This keeps ordinary analysis fixtures valid while deliberate missing-task
+ * tests can continue to provide their own boundary partial explicitly.
+ *
+ * @param {Array<ReturnType<typeof createClassFull>>} classes - Class fixtures.
+ * @returns {AssignmentDefinitionPartial[]} One inferred partial per definition key.
+ */
+function buildLiveDefinitionPartials(
+  classes: Array<ReturnType<typeof createClassFull>>
+): AssignmentDefinitionPartial[] {
+  const taskIdsByDefinitionKey = new Map<string, Set<string>>();
+
+  for (const classFixture of classes) {
+    for (const assignment of classFixture.assignments) {
+      const definitionKey = assignment.assignmentDefinitionKey;
+      let taskIds = taskIdsByDefinitionKey.get(definitionKey);
+      if (!taskIds) {
+        taskIds = new Set<string>();
+        taskIdsByDefinitionKey.set(definitionKey, taskIds);
+      }
+      for (const submission of assignment.submissions) {
+        for (const item of Object.values(submission.items)) {
+          taskIds.add(item.taskId);
+        }
+      }
+    }
+  }
+
+  return [...taskIdsByDefinitionKey].map(([definitionKey, taskIds]) =>
+    createDefinitionPartial({
+      definitionKey,
+      tasks: [...taskIds].map((taskId) => createTaskPartial(taskId)),
+    })
+  );
+}
+
+/**
  * Build a minimal `AveragingAnalyserInput` from partial overrides.
  *
  * @param {Array<Object>} classOverrides - Per-class override entries.
@@ -378,16 +418,7 @@ export function buildInput(
   const classIds = classOverrides.map((c) => c.classId);
   const classes = classOverrides.map((c) => createClassFull(c));
 
-  // Collect unique definitionKeys from assignments and build a partial per key
-  const seenKeys = new Set<string>();
-  const uniqueDefinitionPartials = classes.flatMap((c) =>
-    (c.assignments as Array<{ assignmentDefinitionKey: string | null }>)
-      .filter((a) => a.assignmentDefinitionKey != null && !seenKeys.has(a.assignmentDefinitionKey!))
-      .map((a) => {
-        seenKeys.add(a.assignmentDefinitionKey!);
-        return createDefinitionPartial({ definitionKey: a.assignmentDefinitionKey! });
-      })
-  );
+  const uniqueDefinitionPartials = buildLiveDefinitionPartials(classes);
 
   return {
     filter: {

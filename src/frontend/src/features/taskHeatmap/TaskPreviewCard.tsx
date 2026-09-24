@@ -5,11 +5,11 @@
  * response sections inside a popover triggered from the heatmap table.
  *
  * @remarks
- * **MetricResult reassembly (local concern).** The component reassembles a
- * schema-valid `MetricResult` from the flat `metricState` + `metricScore`
- * props to reuse the existing `MetricPill` component. The reassembly values
- * are:
- * - `computed` → `{ state: 'computed', value: Number(metricScore),
+ * **Task-display metric reassembly (local concern).** The component reassembles
+ * a schema-valid `TaskDisplayMetric` from the discriminated `metricState` +
+ * `metricScore` pair to reuse the existing `MetricPill` component. The
+ * reassembly values are:
+ * - `computed` → `{ state: 'computed', value: metricScore,
  *   totalWeight: 0, applicableDataPoints: 1, totalDataPoints: 1 }`
  * - `notAttempted` → `{ state: 'notAttempted', value: 'N', totalWeight: 0,
  *   applicableDataPoints: 0, totalDataPoints: 1 }`
@@ -17,7 +17,7 @@
  *   applicableDataPoints: 0, totalDataPoints: 0 }`
  *
  * These weight/data-point fields are inert for display (`MetricPill` ignores
- * them) but must satisfy the `MetricResult` discriminated-union constraints
+ * them) but must satisfy the `TaskDisplayMetric` discriminated-union constraints
  * per SPEC §"MetricPill reuse".
  */
 
@@ -25,7 +25,7 @@ import type { JSX } from 'react';
 import { Card, Typography, Divider, Flex } from 'antd';
 import { MetricPill } from '../../services/dataAnalysis/metricDisplay/MetricPill';
 import { METRIC_DISPLAY_META } from '../../services/dataAnalysis/metricDisplay/metricDisplayMeta';
-import type { MetricResult } from '../../services/dataAnalysis/dataAnalysis.zod';
+import type { TaskDisplayMetric } from '../../services/dataAnalysis/dataAnalysis.zod';
 import { ImageRenderer } from '../../components/ImageRenderer/ImageRenderer';
 import { MarkdownRenderer } from '../../components/MarkdownRenderer/MarkdownRenderer';
 import { APP_GAP_SM } from '../../theme/spacing';
@@ -34,16 +34,25 @@ import { APP_GAP_SM } from '../../theme/spacing';
 // Public types
 // ---------------------------------------------------------------------------
 
-/** Flat props contract for the TaskPreviewCard component. */
-export interface TaskPreviewData {
+/** Common task-preview fields that do not depend on metric state. */
+interface TaskPreviewDataBase {
   readonly taskId: string;
   readonly artifactType: 'IMAGE' | 'TEXT' | 'TABLE';
   readonly artifactContent: string;
   readonly metricKey: 'completeness' | 'accuracy' | 'spag';
-  readonly metricScore: number | 'N' | 'E' | null;
-  readonly metricState: 'computed' | 'notAttempted' | 'error' | 'excluded';
   readonly reasoning: string;
 }
+
+/** Schema-derived state/score pairs valid for task-level display metrics. */
+export type TaskPreviewMetric = {
+  [Metric in TaskDisplayMetric as Metric['state']]: {
+    readonly metricState: Metric['state'];
+    readonly metricScore: Metric['value'];
+  };
+}[TaskDisplayMetric['state']];
+
+/** Discriminated props contract for the TaskPreviewCard component. */
+export type TaskPreviewData = TaskPreviewDataBase & TaskPreviewMetric;
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -67,26 +76,21 @@ const CARD_BODY_MAX_HEIGHT = 480;
 export const CARD_MAX_WIDTH = 400;
 
 // ---------------------------------------------------------------------------
-// MetricResult reassembly (local concern)
+// Task-display metric reassembly (local concern)
 // ---------------------------------------------------------------------------
 
 /**
- * Build a schema-valid `MetricResult` from flat metricState + metricScore.
+ * Build a schema-valid task-display metric from its discriminated preview pair.
  *
- * @param {TaskPreviewData['metricState']} state - The metric state discriminator.
- * @param {TaskPreviewData['metricScore']} score - The raw score value (number for computed, 'N' or 'E').
- * @returns {MetricResult} A schema-valid MetricResult matching the discriminated union in
- * `dataAnalysis.zod.ts`.
+ * @param {TaskPreviewMetric} metric - The state and schema-correlated score.
+ * @returns {TaskDisplayMetric} A valid task-level display metric.
  */
-function buildMetricResult(
-  state: TaskPreviewData['metricState'],
-  score: TaskPreviewData['metricScore']
-): MetricResult {
-  switch (state) {
+function buildMetricResult(metric: TaskPreviewMetric): TaskDisplayMetric {
+  switch (metric.metricState) {
     case 'computed': {
       return {
-        state: 'computed' as const,
-        value: Number(score),
+        state: 'computed',
+        value: metric.metricScore,
         totalWeight: 0,
         applicableDataPoints: 1,
         totalDataPoints: 1,
@@ -94,8 +98,8 @@ function buildMetricResult(
     }
     case 'notAttempted': {
       return {
-        state: 'notAttempted' as const,
-        value: 'N' as const,
+        state: 'notAttempted',
+        value: 'N',
         totalWeight: 0,
         applicableDataPoints: 0,
         totalDataPoints: 1,
@@ -103,20 +107,11 @@ function buildMetricResult(
     }
     case 'error': {
       return {
-        state: 'error' as const,
-        value: 'E' as const,
+        state: 'error',
+        value: 'E',
         totalWeight: 0,
         applicableDataPoints: 0,
         totalDataPoints: 0,
-      };
-    }
-    case 'excluded': {
-      return {
-        state: 'excluded' as const,
-        value: null,
-        totalWeight: 0,
-        applicableDataPoints: 0,
-        totalDataPoints: 1,
       };
     }
   }
@@ -138,9 +133,6 @@ function renderEmptyArtifactPlaceholder(metricState: TaskPreviewData['metricStat
   }
   if (metricState === 'error') {
     return <Typography.Text>Error loading response</Typography.Text>;
-  }
-  if (metricState === 'excluded') {
-    return <Typography.Text>Excluded from average (zero weight)</Typography.Text>;
   }
   // Catch-all for computed state with empty content
   return <Typography.Text>No content available</Typography.Text>;
@@ -202,7 +194,7 @@ export function TaskPreviewCard({ data }: { readonly data: TaskPreviewData }): J
   const meta = METRIC_DISPLAY_META.get(metricKey)!;
   const label = meta.label;
 
-  const metricResult = buildMetricResult(metricState, metricScore);
+  const metricResult = buildMetricResult(data);
 
   return (
     <Card

@@ -1,6 +1,11 @@
 import type { MetricResult } from '../dataAnalysis.zod';
 import type { CriterionWeightings } from './averagingAnalyser';
 
+interface WeightedCriterion {
+  readonly metric: MetricResult;
+  readonly weighting: number;
+}
+
 /**
  * Compute the `overall` MetricResult as a composite of the three per-criterion
  * rollups using the 40/40/20 weighting with SPaG-renormalisation.
@@ -38,8 +43,13 @@ export function computeOverallComposite(
   spag: MetricResult,
   criterionWeightings: CriterionWeightings
 ): MetricResult {
-  const criteria = [completeness, accuracy, spag];
-  const terminal = resolveTerminalComposite(criteria, criterionWeightings);
+  const criteriaByName = {
+    completeness: { metric: completeness, weighting: criterionWeightings.completeness },
+    accuracy: { metric: accuracy, weighting: criterionWeightings.accuracy },
+    spag: { metric: spag, weighting: criterionWeightings.spag },
+  } satisfies Record<keyof CriterionWeightings, WeightedCriterion>;
+  const criteria = Object.values(criteriaByName);
+  const terminal = resolveTerminalComposite(criteria);
   if (terminal) return terminal;
 
   // Only computed criteria with positive contribution and criterion weighting
@@ -64,11 +74,9 @@ export function computeOverallComposite(
     };
   };
 
-  const entries = [
-    toComputedEntry(completeness, criterionWeightings.completeness),
-    toComputedEntry(accuracy, criterionWeightings.accuracy),
-    toComputedEntry(spag, criterionWeightings.spag),
-  ].filter((entry): entry is NonNullable<typeof entry> => entry !== null);
+  const entries = criteria
+    .map(({ metric, weighting }) => toComputedEntry(metric, weighting))
+    .filter((entry): entry is NonNullable<typeof entry> => entry !== null);
 
   let numerator = 0;
   let denominator = 0;
@@ -84,8 +92,6 @@ export function computeOverallComposite(
     totalDataPoints += entry.totalDataPoints;
   }
 
-  if (denominator === 0) return resolveTerminalComposite(criteria, criterionWeightings)!;
-
   return {
     state: 'computed',
     value: numerator / denominator,
@@ -97,17 +103,13 @@ export function computeOverallComposite(
 
 /**
  * Resolve terminal composite states before numeric composition.
- * @param {ReadonlyArray<MetricResult>} criteria - Criterion results.
- * @param {CriterionWeightings} criterionWeightings - The configured criterion weights.
+ * @param {ReadonlyArray<WeightedCriterion>} criteria - Criterion results paired with their configured weights.
  * @returns {MetricResult | null} A terminal result, or null for numeric composition.
  */
-function resolveTerminalComposite(
-  criteria: readonly MetricResult[],
-  criterionWeightings: CriterionWeightings
-): MetricResult | null {
-  const totalWeight = criteria.reduce((sum, metric) => sum + metric.totalWeight, 0);
-  const totalDataPoints = criteria.reduce((sum, metric) => sum + metric.totalDataPoints, 0);
-  if (criteria.every((metric) => metric.state === 'error')) {
+function resolveTerminalComposite(criteria: ReadonlyArray<WeightedCriterion>): MetricResult | null {
+  const totalWeight = criteria.reduce((sum, { metric }) => sum + metric.totalWeight, 0);
+  const totalDataPoints = criteria.reduce((sum, { metric }) => sum + metric.totalDataPoints, 0);
+  if (criteria.every(({ metric }) => metric.state === 'error')) {
     return {
       state: 'error',
       value: 'E',
@@ -117,15 +119,11 @@ function resolveTerminalComposite(
     };
   }
   const hasComputed = criteria.some(
-    (metric, index) =>
-      metric.state === 'computed' &&
-      metric.totalWeight > 0 &&
-      [criterionWeightings.completeness, criterionWeightings.accuracy, criterionWeightings.spag][
-        index
-      ] > 0
+    ({ metric, weighting }) =>
+      metric.state === 'computed' && metric.totalWeight > 0 && weighting > 0
   );
   const hasPositiveNotAttempted = criteria.some(
-    (metric) => metric.state === 'notAttempted' && metric.totalWeight > 0
+    ({ metric }) => metric.state === 'notAttempted' && metric.totalWeight > 0
   );
   if (!hasComputed && hasPositiveNotAttempted) {
     return {

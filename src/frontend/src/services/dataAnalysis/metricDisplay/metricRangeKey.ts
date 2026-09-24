@@ -22,19 +22,46 @@ const RANGE_KEY_SEPARATOR = '|';
 /** Expected number of range parts when parsing a range key. */
 const RANGE_KEY_PART_COUNT = 2;
 
-/** Full filter state stored in a single Ant Design filter key. */
-export type MetricRangeFilterState = {
-  /** Inclusive lower bound of the score range. */
-  min: number;
-  /** Inclusive upper bound of the score range. */
-  max: number;
+/** Independent non-computed-state flags stored in a metric filter key. */
+export type MetricRangeFilterFlags = {
   /** When `true`, `notAttempted` (`N`) rows are kept while a filter is active. */
   includeNotAttempted: boolean;
   /** When `true`, `error` (`E`) rows are kept while a filter is active. */
   includeError: boolean;
-  /** When true, aggregate `excluded` rows pass an active filter. */
+  /** When `true`, aggregate `excluded` rows pass an active filter. */
   includeExcluded: boolean;
 };
+
+/** Full filter state stored in a single Ant Design filter key. */
+export type MetricRangeFilterState = MetricRangeFilterFlags & {
+  /** Inclusive lower bound of the score range. */
+  min: number;
+  /** Inclusive upper bound of the score range. */
+  max: number;
+};
+
+/**
+ * Build the default filter state for a range.
+ *
+ * Both the malformed-dropdown fallback and legacy range-only filter encoding
+ * use this factory so their three non-computed-state flags cannot drift.
+ *
+ * @param {number} min - Inclusive lower bound.
+ * @param {number} max - Inclusive upper bound.
+ * @returns {MetricRangeFilterState} The range with every state toggle disabled.
+ */
+export function createDefaultMetricRangeFilterState(
+  min: number,
+  max: number
+): MetricRangeFilterState {
+  return {
+    min,
+    max,
+    includeNotAttempted: false,
+    includeError: false,
+    includeExcluded: false,
+  };
+}
 
 /**
  * Encode a filter state into a single string key for Ant Design's

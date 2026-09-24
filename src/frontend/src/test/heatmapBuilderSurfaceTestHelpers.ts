@@ -7,13 +7,16 @@ import { useHeatmapsPageData } from '../features/taskHeatmap/useHeatmapsPageData
 import type { HeatmapsPageData } from '../features/taskHeatmap/useHeatmapsPageData';
 import type { HeatmapsSurfaceState } from '../features/taskHeatmap/heatmapsSurfaceState';
 import type { SelectionState } from '../features/taskHeatmap/selectionCascade';
-import type {
-  MergedHeatmapResult,
-  MergedHeatmapTaskColumn,
-} from '../services/dataAnalysis/heatmapAdapter.merged';
+import type { MergedHeatmapResult } from '../services/dataAnalysis/heatmapAdapter.merged';
 import type { AssignmentDefinitionPartialsResponse } from '../services/assignmentDefinition/assignmentDefinitionPartials.zod';
 import type { ClassFull } from '../services/googleClassrooms/classDetail/classDetailService.zod';
 import type { UseQueryResult } from '@tanstack/react-query';
+import { createNotAttemptedMetricResult } from './dataAnalysis/fixtures';
+import {
+  createHeatmapClassFull,
+  createHeatmapDefinitionPartial,
+  createHeatmapMergedResult,
+} from './dataAnalysis/heatmapFixtures';
 
 export const PAGE_TITLE = pageContent.heatmaps.heading;
 export const NO_CLASS_EMPTY_COPY = pageContent.heatmaps.noClassEmpty;
@@ -25,27 +28,9 @@ export const TOPICS_PLACEHOLDER = 'Select topics';
 export const ASSIGNMENTS_PLACEHOLDER = 'Select assignments';
 
 export const NOT_ATTEMPTED_CELL = {
-  completeness: {
-    state: 'notAttempted',
-    value: 'N',
-    totalWeight: 0,
-    applicableDataPoints: 0,
-    totalDataPoints: 1,
-  },
-  accuracy: {
-    state: 'notAttempted',
-    value: 'N',
-    totalWeight: 0,
-    applicableDataPoints: 0,
-    totalDataPoints: 1,
-  },
-  spag: {
-    state: 'notAttempted',
-    value: 'N',
-    totalWeight: 0,
-    applicableDataPoints: 0,
-    totalDataPoints: 1,
-  },
+  completeness: createNotAttemptedMetricResult(),
+  accuracy: createNotAttemptedMetricResult(),
+  spag: createNotAttemptedMetricResult(),
 } as const;
 
 /**
@@ -54,26 +39,11 @@ export const NOT_ATTEMPTED_CELL = {
  * @returns {MergedHeatmapResult} A small merged heatmap view-model fixture.
  */
 export function buildMergedResult(): MergedHeatmapResult {
-  const taskColumns: ReadonlyArray<MergedHeatmapTaskColumn> = [
-    {
-      taskKey: 'def1::tA',
-      taskId: 'tA',
-      taskTitle: 'Task A',
-      averageContribution: { effectiveWeight: 1, includedInAverage: true },
-      assignmentId: 'a1',
-      definitionKey: 'def1',
-      assignmentName: 'Title def1',
-    },
-  ];
-  return {
+  return createHeatmapMergedResult({
     classId: 'class-1',
     className: 'Test Class 7A',
-    sourceAssignments: [
-      { assignmentId: 'a1', definitionKey: 'def1', assignmentName: 'Title def1' },
-    ],
-    taskColumns,
     rows: [{ studentId: 's-1', studentName: 'Student One', cells: [NOT_ATTEMPTED_CELL] }],
-  } as MergedHeatmapResult;
+  });
 }
 
 const MOCK_CLASS_QUERY = {
@@ -94,66 +64,24 @@ export const READY_CLASS_QUERY = {
 
 /** Definition partials used to provide realistic assignment labels in selectors. */
 export const ASSIGNMENT_DEFINITION_PARTIALS: AssignmentDefinitionPartialsResponse = [
-  {
-    primaryTitle: 'Title def1',
-    primaryTopic: 'Topic One',
-    primaryTopicKey: 'topic-1',
-    yearGroupKey: 'yg-7',
-    yearGroupLabel: 'Year 7',
-    alternateTitles: [],
-    alternateTopics: [],
-    documentType: 'doc',
-    referenceDocumentId: null,
-    templateDocumentId: null,
-    assignmentWeighting: 1,
+  createHeatmapDefinitionPartial({
     definitionKey: 'def1',
-    tasks: [{ taskId: 'tA', taskWeighting: 1, taskTitle: 'Task A' }],
-    createdAt: null,
-    updatedAt: null,
-  },
-  {
-    primaryTitle: 'Title def2',
-    primaryTopic: 'Topic Two',
-    primaryTopicKey: 'topic-2',
-    yearGroupKey: 'yg-7',
-    yearGroupLabel: 'Year 7',
-    alternateTitles: [],
-    alternateTopics: [],
-    documentType: 'doc',
-    referenceDocumentId: null,
-    templateDocumentId: null,
-    assignmentWeighting: 1,
+    primaryTitle: 'Title def1',
+    taskId: 'tA',
+    taskTitle: 'Task A',
+  }),
+  createHeatmapDefinitionPartial({
     definitionKey: 'def2',
-    tasks: [{ taskId: 'tB', taskWeighting: 1, taskTitle: 'Task B' }],
-    createdAt: null,
-    updatedAt: null,
-  },
+    primaryTitle: 'Title def2',
+    taskId: 'tB',
+    taskTitle: 'Task B',
+  }),
 ];
 
 /** Default class fixture used by the selected-class states. */
-export const CLASS_FULL: ClassFull = {
+export const CLASS_FULL: ClassFull = createHeatmapClassFull({
   classId: 'class-1',
-  className: 'Test Class 7A',
-  cohortKey: null,
-  courseLength: 1,
-  yearGroupKey: 'yg-7',
-  classOwner: null,
-  teachers: [],
-  students: [{ id: 's-1', name: 'Student One', email: 's1@test.com' }],
-  assignments: [
-    {
-      assignmentId: 'a1',
-      assignmentDefinitionKey: 'def1',
-      updatedAt: '2025-01-01T00:00:00.000Z',
-    },
-    {
-      assignmentId: 'a2',
-      assignmentDefinitionKey: 'def2',
-      updatedAt: '2025-02-01T00:00:00.000Z',
-    },
-  ],
-  active: true,
-} as unknown as ClassFull;
+});
 
 /**
  * Create a complete page-data fixture with the supplied field overrides.

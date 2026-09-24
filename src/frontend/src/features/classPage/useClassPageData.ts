@@ -43,6 +43,7 @@ import { getABClassQueryOptions, getAssignmentQueryOptions } from '../../query/s
 import { usePageDataset } from '../../hooks/usePageDataset';
 import { DataAnalysisService } from '../../services/dataAnalysis/dataAnalysisService';
 import { adaptClassPageToViewModel } from './classPageAdapter';
+import { useClassPagePipelineDiagnostics } from './useClassPagePipelineDiagnostics';
 import { compareAssignmentUpdatedAtDesc } from './classPageModel';
 import { logFrontendError } from '../../logging/frontendLogger';
 import type { ClassFull } from '../../services/googleClassrooms/classDetail/classDetailService.zod';
@@ -147,7 +148,6 @@ function runAnalyserStep(
     }
     return [response[0] ?? null, null];
   } catch (error_: unknown) {
-    logFrontendError('useClassPageData.runAnalyserStep', error_, { classId });
     return [null, error_ instanceof Error ? error_ : new Error(String(error_))];
   }
 }
@@ -191,7 +191,6 @@ function runAdapterStep(
     });
     return [result, null];
   } catch (error_: unknown) {
-    logFrontendError('useClassPageData.runAdapterStep', error_);
     return [null, error_ instanceof Error ? error_ : new Error(String(error_))];
   }
 }
@@ -329,6 +328,8 @@ export function useClassPageData(classId: string): ClassPageData {
 
     return [aResult, null, adResult, null];
   }, [shouldRunPipeline, classFull, assignmentDefinitionPartials, classId]);
+
+  useClassPagePipelineDiagnostics(classId, analyserError, adapterError);
 
   // -----------------------------------------------------------------------
   // 6. Surface state — error precedence, then loading, then ready

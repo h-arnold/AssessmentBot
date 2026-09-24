@@ -11,26 +11,24 @@
 
 import type { MetricResult } from '../dataAnalysis.zod';
 
-const FIRST_METRIC_STATE_RANK = 0;
-const SECOND_METRIC_STATE_RANK = 1;
-const THIRD_METRIC_STATE_RANK = 2;
-const FOURTH_METRIC_STATE_RANK = 3;
+const ASCENDING_METRIC_STATES = [
+  'computed',
+  'notAttempted',
+  'excluded',
+  'error',
+] as const satisfies readonly MetricResult['state'][];
+
+const DESCENDING_METRIC_STATES = ASCENDING_METRIC_STATES.toReversed();
 
 /** Rank lookup for ascending metric column sort: computed → notAttempted → excluded → error. */
-export const METRIC_STATE_RANK_ASC: ReadonlyMap<MetricResult['state'], number> = new Map([
-  ['computed', FIRST_METRIC_STATE_RANK],
-  ['notAttempted', SECOND_METRIC_STATE_RANK],
-  ['excluded', THIRD_METRIC_STATE_RANK],
-  ['error', FOURTH_METRIC_STATE_RANK],
-]);
+export const METRIC_STATE_RANK_ASC: ReadonlyMap<MetricResult['state'], number> = new Map(
+  ASCENDING_METRIC_STATES.map((state, rank) => [state, rank])
+);
 
 /** Rank lookup for descending metric column sort: error → excluded → notAttempted → computed. */
-export const METRIC_STATE_RANK_DESC: ReadonlyMap<MetricResult['state'], number> = new Map([
-  ['error', FIRST_METRIC_STATE_RANK],
-  ['excluded', SECOND_METRIC_STATE_RANK],
-  ['notAttempted', THIRD_METRIC_STATE_RANK],
-  ['computed', FOURTH_METRIC_STATE_RANK],
-]);
+export const METRIC_STATE_RANK_DESC: ReadonlyMap<MetricResult['state'], number> = new Map(
+  DESCENDING_METRIC_STATES.map((state, rank) => [state, rank])
+);
 
 /**
  * Return a numeric rank for a `MetricResult` state, used for state-aware
@@ -43,8 +41,13 @@ export const METRIC_STATE_RANK_DESC: ReadonlyMap<MetricResult['state'], number> 
  * @param {MetricResult} metric - The metric result to rank.
  * @param {'asc' | 'desc'} direction - Sort direction.
  * @returns {number} A numeric rank (lower = earlier in sort order).
+ * @throws {Error} When the metric carries a state outside the known union.
  */
 export function getMetricStateRank(metric: MetricResult, direction: 'asc' | 'desc'): number {
   const rankMap = direction === 'asc' ? METRIC_STATE_RANK_ASC : METRIC_STATE_RANK_DESC;
-  return rankMap.get(metric.state) ?? 0;
+  const rank = rankMap.get(metric.state);
+  if (rank === undefined) {
+    throw new Error(`getMetricStateRank: unknown metric state "${metric.state}"`);
+  }
+  return rank;
 }

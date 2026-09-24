@@ -13,8 +13,9 @@ import type { AveragingAnalyserInput, DataAnalysisResponse } from './dataAnalysi
  * New analysers are added by registering an instance under a string key in
  * the constructor. The v1 analyser is registered as `'averaging'`.
  *
- * The orchestrator is pure — no I/O, no `callApi`, no React Query, no Ant
- * Design imports.
+ * The orchestrator itself performs no I/O or logging. Validation failures are
+ * rethrown for the selected consumer boundary to log with contextual metadata,
+ * including `zodIssues` for Zod validation failures.
  */
 export class DataAnalysisService {
   /** Internal registry of analyser key → analyser instance. */
@@ -42,13 +43,15 @@ export class DataAnalysisService {
    * @param {string} [analyserKey='averaging'] - Key identifying which
    *   registered analyser to dispatch to.
    * @returns {DataAnalysisResponse} An array of per-class averaging results.
-   * @throws {ZodError} When the input fails Zod validation.
+   * @throws {ZodError} When the input or analyser output fails Zod validation.
    * @throws {Error} When {@link analyserKey} is not a registered analyser,
    *   or when the analyser encounters an unrecoverable invariant violation
    *   (e.g. missing `assignmentDefinition`).
    *
    * @remarks
-   * Pure frontend orchestrator — no I/O, no `callApi`.
+   * The service performs synchronous validation and dispatch only. It does not
+   * log or catch validation failures; consumer boundaries add their contextual
+   * diagnostics and, where applicable, repeat-run policy.
    */
   analyse(input: AveragingAnalyserInput, analyserKey: string = 'averaging'): DataAnalysisResponse {
     const validated = AveragingAnalyserInputSchema.parse(input);

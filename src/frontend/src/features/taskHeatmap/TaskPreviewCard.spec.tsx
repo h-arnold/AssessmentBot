@@ -5,7 +5,11 @@
 import { describe, it, expect } from 'vitest';
 import { screen } from '@testing-library/react';
 import { renderWithFrontendProviders } from '../../test/renderWithFrontendProviders';
-import { TaskPreviewCard, type TaskPreviewData } from './TaskPreviewCard';
+import {
+  TaskPreviewCard,
+  type TaskPreviewData,
+  type TaskPreviewMetric,
+} from './TaskPreviewCard';
 
 // ---------------------------------------------------------------------------
 // Fixture constants
@@ -17,20 +21,33 @@ const TEXT_CONTENT = 'Hello world';
 const REASONING_TEXT =
   'The student demonstrates a solid understanding of the core concepts.';
 
+/** Valid task-display state and score pairs that must remain renderable. */
+const VALID_PREVIEW_METRIC_PAIRS = [
+  { metricState: 'computed', metricScore: 0 },
+  { metricState: 'notAttempted', metricScore: 'N' },
+  { metricState: 'error', metricScore: 'E' },
+] as const;
+
 // ---------------------------------------------------------------------------
 // Helper factory for test data
 // ---------------------------------------------------------------------------
 
+type TaskPreviewDataOverrides =
+  | Partial<Omit<TaskPreviewData, keyof TaskPreviewMetric>>
+  | (Partial<Omit<TaskPreviewData, keyof TaskPreviewMetric>> & TaskPreviewMetric);
+
 /**
  * Build a `TaskPreviewData` fixture for tests with sensible defaults.
  *
- * @param {Partial<TaskPreviewData>} overrides - Fields to override on the default fixture.
+ * Metric state and score may only be overridden together as one valid
+ * discriminated pair; widening both fields independently would make invalid
+ * pairings such as `computed` with `null` legal in this test helper.
+ *
+ * @param {TaskPreviewDataOverrides} overrides - Fields to override on the default fixture.
  * @returns {TaskPreviewData} A fully-formed preview data object for rendering.
  */
-function createPreviewData(
-  overrides: Partial<TaskPreviewData> = {},
-): TaskPreviewData {
-  return {
+function createPreviewData(overrides: TaskPreviewDataOverrides = {}): TaskPreviewData {
+  const baseData = {
     taskId: 'test-task-1',
     artifactType: 'IMAGE',
     artifactContent: IMAGE_CONTENT,
@@ -38,8 +55,9 @@ function createPreviewData(
     metricScore: 5,
     metricState: 'computed',
     reasoning: REASONING_TEXT,
-    ...overrides,
-  };
+  } satisfies TaskPreviewData;
+
+  return { ...baseData, ...overrides };
 }
 
 // ---------------------------------------------------------------------------
@@ -95,6 +113,17 @@ describe('TaskPreviewCard', () => {
 
     expect(screen.getByText('E')).toBeInTheDocument();
   });
+
+  it.each(VALID_PREVIEW_METRIC_PAIRS)(
+    'renders the valid $metricState state and $metricScore score pair',
+    (metric) => {
+      const data = { ...createPreviewData(), ...metric } satisfies TaskPreviewData;
+
+      renderWithFrontendProviders(<TaskPreviewCard data={data} />);
+
+      expect(screen.getByText(String(metric.metricScore))).toBeInTheDocument();
+    }
+  );
 
   // --- Reasoning: provided text ---
   it('renders reasoning section with the provided reasoning text', () => {

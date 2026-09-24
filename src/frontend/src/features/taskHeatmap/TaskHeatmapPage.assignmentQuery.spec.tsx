@@ -9,9 +9,9 @@ import {
   analyserResultFixture,
   buildDefaultAssignmentFixture,
   classFullFixture,
-  createTestQueryClient,
   VALID_ASSIGNMENT_PARTIAL,
 } from '../../test/taskHeatmapPageFixtures';
+import { createTestQueryClient } from '../../test/dataAnalysis/heatmapFixtures';
 
 const { mockGetAssignment, mockLogFrontendError, mockLogFrontendEvent, mockTaskHeatmapTable } =
   vi.hoisted(() => ({

@@ -1,6 +1,7 @@
 import type { AverageContribution } from '../dataAnalysis.zod';
 import type { TaskPartial } from '../../assignmentDefinition/taskPartial.zod';
 import type { DataPointAccumulator, MetricAccumulator } from './averagingAnalyser.types';
+import { buildTaskKey } from '../taskKey';
 
 /**
  * Create an empty metric accumulator.
@@ -44,7 +45,7 @@ export function preRegisterTasks(
   taskAccums: Map<string, { definitionKey: string; taskId: string } & DataPointAccumulator>
 ): void {
   for (const task of tasks) {
-    const taskKey = `${definitionKey}::${task.taskId}`;
+    const taskKey = buildTaskKey(definitionKey, task.taskId);
     if (!taskAccums.has(taskKey)) {
       taskAccums.set(taskKey, {
         definitionKey,
@@ -83,7 +84,7 @@ export function getOrCreateTaskAccum(
   definitionKey: string,
   taskId: string
 ): DataPointAccumulator {
-  const taskKey = `${definitionKey}::${taskId}`;
+  const taskKey = buildTaskKey(definitionKey, taskId);
   if (!taskAccums.has(taskKey)) {
     taskAccums.set(taskKey, { definitionKey, taskId, ...createDataPointAccumulator() });
   }
@@ -112,6 +113,8 @@ export function getOrCreatePerStudentTaskAccum(
  * @param {string} definitionKey - Definition identifier.
  * @param {string} taskId - Task identifier.
  * @param {number} effectiveWeight - Resolved live assignment and task weighting product.
+ * @throws {Error} If the same task key is registered with a conflicting
+ *   effective weight.
  */
 export function ensureAverageContribution(
   contributions: Map<string, AverageContribution>,
@@ -119,7 +122,34 @@ export function ensureAverageContribution(
   taskId: string,
   effectiveWeight: number
 ): void {
-  const taskKey = `${definitionKey}::${taskId}`;
-  if (contributions.has(taskKey)) return;
+  const taskKey = buildTaskKey(definitionKey, taskId);
+  const existing = contributions.get(taskKey);
+  if (existing) {
+    if (existing.effectiveWeight !== effectiveWeight) {
+      throw new Error(
+        `ensureAverageContribution: conflicting effective weights for taskKey '${taskKey}': ${existing.effectiveWeight} and ${effectiveWeight}`
+      );
+    }
+    return;
+  }
   contributions.set(taskKey, { effectiveWeight, includedInAverage: effectiveWeight > 0 });
+}
+
+/** Look up task contribution metadata and fail fast when a producer invariant is broken.
+ * @param {ReadonlyMap<string, AverageContribution>} contributions - Contribution metadata registry.
+ * @param {string} taskKey - Definition-scoped task key.
+ * @param {'buildPerStudentTaskMetrics' | 'buildPerTaskRows'} consumer - Calling projection boundary.
+ * @returns {AverageContribution} The registered contribution metadata.
+ * @throws {Error} When no contribution is registered for `taskKey`.
+ */
+export function requireAverageContribution(
+  contributions: ReadonlyMap<string, AverageContribution>,
+  taskKey: string,
+  consumer: 'buildPerStudentTaskMetrics' | 'buildPerTaskRows'
+): AverageContribution {
+  const contribution = contributions.get(taskKey);
+  if (!contribution) {
+    throw new Error(`${consumer}: missing averageContribution for taskKey '${taskKey}'`);
+  }
+  return contribution;
 }

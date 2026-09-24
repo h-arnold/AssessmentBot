@@ -609,8 +609,8 @@ module, and heatmap header construction stayed feature-local.
   `heatmapAdapter.merged.ts`) use the same invariant
   (`includedInAverage === effectiveWeight > 0`). The same module also exports
   the four-state `MetricResultSchema` (including the aggregate-only `excluded`
-  member) and keeps the private three-state `TaskDisplayMetricSchema` for
-  task-level displays.
+  member) and exports the narrow three-state `TaskDisplayMetricSchema` plus its
+  inferred `TaskDisplayMetric` type for task-level displays.
 - Status: **Implemented**.
 
 3. Helper group: heatmap zero-weight header construction
@@ -646,6 +646,36 @@ module, and heatmap header construction stayed feature-local.
   positive-weight raw `N` with no numeric contribution → `notAttempted`;
   otherwise observed non-error evidence → `excluded`. Neither caller recreates
   those precedence rules.
+- Status: **Implemented**.
+
+5. Helper group: `TaskWeightingIndex` effective-weight resolution
+   (`createTaskWeightingIndex`, `computeEffectiveWeight`)
+
+- Decision: **extended the existing assignment-definition utility module**.
+- Owning module/path:
+  `src/frontend/src/services/assignmentDefinition/assignmentDefinitionUtilities.ts`.
+- Signatures: `createTaskWeightingIndex(partial): TaskWeightingIndex` pre-indexes
+  the live partial's `assignmentWeighting` and `tasks`;
+  `computeEffectiveWeight(weightingIndex: TaskWeightingIndex, taskId: string): number | undefined`
+  resolves one task's effective weight from that index.
+- Call-site rationale: analyser accumulation and heatmap column projection
+  (`buildTaskColumns`, shared by the embedded and merged adapters) consume one
+  live-partial weighting resolver. `resolveAssignmentDefinitionData` supplies the
+  resolved definition; accumulation builds a `TaskWeightingIndex` once per
+  definition before calling `computeEffectiveWeight`. A `null` assignment
+  weighting retains the established default of `1`; task weighting is required.
+  A task ID absent from the partial returns `undefined`, which the analyser logs
+  and drops instead of assigning a silent full-weight contribution.
+- Status: **Implemented**.
+
+6. Helper: `buildTaskKey(definitionKey, taskId)`
+
+- Decision: **new standalone shared helper**.
+- Owning module/path: `src/frontend/src/services/dataAnalysis/taskKey.ts`.
+- Call-site rationale: analyser accumulator registries, heatmap task columns,
+  and cell-preview lookup must use the same definition-scoped key contract.
+  The helper removes ad-hoc `${definitionKey}::${taskId}` construction while
+  preserving that wire-visible format.
 - Status: **Implemented**.
 
 ### 9.19 Class page feature-local helpers
@@ -975,9 +1005,9 @@ The canonical home for these helpers is `src/frontend/src/utils/` — a new top-
 2. Helper: `buildPerStudentTaskMetrics` — convert per-(student, task) accumulators to `PerStudentTaskMetric[]`
 
 - Decision: `new` (feature-local helper, kept inside the analyser package)
-- Owning module/path: `src/frontend/src/services/dataAnalysis/analysers/averagingAnalyser.accumulation.ts` (or `averagingAnalyser.perStudentTaskMetrics.ts` if `accumulation.ts` crosses the 500-LOC threshold)
-- Call-site rationale: converts `perStudentTaskAccums` (`Map<string, Map<string, DataPointAccumulator>>`) into the validated `PerStudentTaskMetric[]` array on `AveragingResult`, calling the existing `accumToMetric` path for each criterion (`completeness`, `accuracy`, `spag`, `overall`). Consumed by `analyseClass` in `averagingAnalyser.ts`. `taskKey` is `\`${definitionKey}::${taskId}\``; `classId` is echoed from the input class.
-- Status: `Implemented` (`buildPerStudentTaskMetrics` added to `averagingAnalyser.accumulation.ts`, called by `analyseClass`; `PerStudentTaskMetricSchema` added to `dataAnalysis.zod.ts`).
+- Owning module/path: `src/frontend/src/services/dataAnalysis/analysers/averagingAnalyser.taskProjection.ts`
+- Call-site rationale: converts `perStudentTaskAccums` (`Map<string, Map<string, DataPointAccumulator>>`) into the validated `PerStudentTaskMetric[]` array on `AveragingResult`, resolving each criterion (`completeness`, `accuracy`, `spag`, `overall`) through `resolveDisplayMetric`. The narrow display path replaces the removed `accumToMetric` compatibility wrapper and the former accumulation-module re-export, so a task-level record cannot carry the aggregate-only `excluded` state. Contribution metadata is resolved per entry via `requireAverageContribution`. Consumed by `analyseClass` in `averagingAnalyser.ts`, which imports it from this module. `taskKey` is the definition-scoped key produced upstream by `buildTaskKey(definitionKey, taskId)`; `classId` is echoed from the input class.
+- Status: `Implemented` (`buildPerStudentTaskMetrics` lives in `averagingAnalyser.taskProjection.ts`, called by `analyseClass`; `PerStudentTaskMetricSchema` added to `dataAnalysis.zod.ts`).
 
 3. Helper: `adaptMetricsToHeatmap` — pure projection adapter (`AveragingResult` + `ClassFull` + `assignmentId` → `HeatmapResult`)
 

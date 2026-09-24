@@ -10,8 +10,18 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { buildAdaptiveTierGroups } from './taskHeatmapTableColumns';
-import type { TaskHeatmapColumn } from './taskHeatmapTableColumns';
+import {
+  createComputedMetricResult,
+  createNotAttemptedMetricResult,
+  createErrorMetricResult,
+  createExcludedMetricResult,
+} from '../../test/dataAnalysis/fixtures';
+import {
+  TaskDisplayMetricSchema,
+  type TaskDisplayMetric,
+} from '../../services/dataAnalysis/dataAnalysis.zod';
+import { buildAdaptiveTierGroups, buildTaskMetricSubColumns } from './taskHeatmapTableColumns';
+import type { TaskHeatmapColumn, TaskHeatmapRow } from './taskHeatmapTableColumns';
 
 /**
  * Build a `TaskHeatmapColumn` fixture.
@@ -72,5 +82,32 @@ describe('buildAdaptiveTierGroups — degenerate definitionKey (T-N1)', () => {
     expect(groups[0]?.key).toBe('defShared');
     expect(groups[0]?.title).toBe('Assignment One (shared definition)');
     expect(groups[0]?.columnIndices).toEqual([0, 1]);
+  });
+});
+
+describe('task metric display text', () => {
+  const taskStateTextCases: ReadonlyArray<{ metric: TaskDisplayMetric; expected: string }> = [
+    { metric: createComputedMetricResult({ value: 4 }), expected: '4' },
+    { metric: createNotAttemptedMetricResult(), expected: 'N' },
+    { metric: createErrorMetricResult(), expected: 'E' },
+  ];
+
+  it.each(taskStateTextCases)('formats a $expected task score', ({ metric, expected }) => {
+    const taskColumn = column('definition', 'task');
+    const taskRow: TaskHeatmapRow = {
+      studentId: 'student-1',
+      studentName: 'Student One',
+      cells: [{ completeness: metric, accuracy: metric, spag: metric }],
+    };
+    const columns = buildTaskMetricSubColumns(taskColumn, 0, {}, null, false, false);
+    const cellProperties = columns[0]!.onCell!(taskRow, 0);
+
+    expect(cellProperties).toMatchObject({
+      'aria-label': `Student One, task, Completeness: ${expected}`,
+    });
+  });
+
+  it('keeps task display metrics within the narrow three-state contract', () => {
+    expect(TaskDisplayMetricSchema.safeParse(createExcludedMetricResult()).success).toBe(false);
   });
 });

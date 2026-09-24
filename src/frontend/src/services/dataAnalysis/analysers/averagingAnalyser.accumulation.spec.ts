@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { AveragingAnalyser } from './averagingAnalyser';
 import {
   buildInput,
@@ -8,9 +8,14 @@ import {
   createSubmissionItem,
   createTaskPartial,
 } from '../../../test/dataAnalysis/fixtures';
-import { accumToMetric, createAccumulator } from './averagingAnalyser.accumulation';
+import { createAccumulator } from './averagingAnalyser.accumulatorRegistry';
+import { resolveAggregateMetric } from './averagingAnalyser.metricResolution';
 import { accumulateMetricsToTarget } from './averagingAnalyser.criterionAccumulation';
 import { expectMetricResultStateAware } from '../../../test/dataAnalysis/averagingAnalyserAssertions';
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 /**
  * Analyse a minimal single-task fixture with the requested live weights.
@@ -66,7 +71,54 @@ function analyseSingleTask(options: {
   )[0];
 }
 
-describe('accumToMetric', () => {
+/**
+ * Analyse a submission containing a known task and a task absent from the
+ * live assignment-definition partial.
+ *
+ * @returns {ReturnType<AveragingAnalyser['analyse']>[number]} The analysed class result.
+ */
+function analyseWithUnknownSubmissionTask() {
+  const input = buildInput(
+    [
+      {
+        classId: 'c_001',
+        studentIds: ['s_001'],
+        assignments: [
+          createAssignmentPartial({
+            assignmentId: 'a_001',
+            definitionKey: 'dk_unknown_task',
+            submissions: [
+              createSubmission('s_001', 'Alice', 'a_001', {
+                t_known: createSubmissionItem('t_known', {
+                  completeness: { score: 2 },
+                  accuracy: { score: 2 },
+                  spag: { score: 2 },
+                }),
+                t_unknown: createSubmissionItem('t_unknown', {
+                  completeness: { score: 10 },
+                  accuracy: { score: 10 },
+                  spag: { score: 10 },
+                }),
+              }),
+            ],
+          }),
+        ],
+      },
+    ],
+    {
+      assignmentDefinitionPartials: [
+        createDefinitionPartial({
+          definitionKey: 'dk_unknown_task',
+          tasks: [createTaskPartial('t_known')],
+        }),
+      ],
+    }
+  );
+
+  return new AveragingAnalyser().analyse(input)[0];
+}
+
+describe('resolveAggregateMetric', () => {
   it('returns computed for an applicable numeric accumulation', () => {
     const accumulator = createAccumulator();
     accumulator.weightedSum = 5;
@@ -74,7 +126,7 @@ describe('accumToMetric', () => {
     accumulator.applicableDataPoints = 1;
     accumulator.totalDataPoints = 1;
 
-    expectMetricResultStateAware(accumToMetric(accumulator), {
+    expectMetricResultStateAware(resolveAggregateMetric(accumulator), {
       state: 'computed',
       value: 5,
       totalWeight: 1,
@@ -89,7 +141,7 @@ describe('accumToMetric', () => {
     accumulator.totalWeight = 1;
     accumulator.totalDataPoints = 1;
 
-    expectMetricResultStateAware(accumToMetric(accumulator), {
+    expectMetricResultStateAware(resolveAggregateMetric(accumulator), {
       state: 'notAttempted',
       totalWeight: 1,
       totalDataPoints: 1,
@@ -97,7 +149,7 @@ describe('accumToMetric', () => {
   });
 
   it('returns error when there is no numeric or not-attempted evidence', () => {
-    expectMetricResultStateAware(accumToMetric(createAccumulator()), {
+    expectMetricResultStateAware(resolveAggregateMetric(createAccumulator()), {
       state: 'error',
       totalWeight: 0,
       totalDataPoints: 0,
@@ -112,7 +164,7 @@ describe('accumToMetric', () => {
     accumulator.totalDataPoints = 2;
     accumulator.nCount = 1;
 
-    expectMetricResultStateAware(accumToMetric(accumulator), {
+    expectMetricResultStateAware(resolveAggregateMetric(accumulator), {
       state: 'computed',
       value: 3,
       totalWeight: 1,
@@ -132,22 +184,22 @@ describe('accumulateMetricsToTarget nCount tracking', () => {
     };
     accumulateMetricsToTarget(target, 'N', 'N', 'N', null, 1);
 
-    expectMetricResultStateAware(accumToMetric(target.completeness), {
+    expectMetricResultStateAware(resolveAggregateMetric(target.completeness), {
       state: 'notAttempted',
       totalWeight: 1,
       totalDataPoints: 1,
     });
-    expectMetricResultStateAware(accumToMetric(target.accuracy), {
+    expectMetricResultStateAware(resolveAggregateMetric(target.accuracy), {
       state: 'notAttempted',
       totalWeight: 1,
       totalDataPoints: 1,
     });
-    expectMetricResultStateAware(accumToMetric(target.spag), {
+    expectMetricResultStateAware(resolveAggregateMetric(target.spag), {
       state: 'notAttempted',
       totalWeight: 1,
       totalDataPoints: 1,
     });
-    expectMetricResultStateAware(accumToMetric(target.overall), {
+    expectMetricResultStateAware(resolveAggregateMetric(target.overall), {
       state: 'notAttempted',
       totalWeight: 0,
       totalDataPoints: 1,
@@ -163,19 +215,19 @@ describe('accumulateMetricsToTarget nCount tracking', () => {
     };
     accumulateMetricsToTarget(target, 4, 'N', 'N', null, 1);
 
-    expectMetricResultStateAware(accumToMetric(target.completeness), {
+    expectMetricResultStateAware(resolveAggregateMetric(target.completeness), {
       state: 'computed',
       value: 4,
       totalWeight: 1,
       applicableDataPoints: 1,
       totalDataPoints: 1,
     });
-    expectMetricResultStateAware(accumToMetric(target.accuracy), {
+    expectMetricResultStateAware(resolveAggregateMetric(target.accuracy), {
       state: 'notAttempted',
       totalWeight: 1,
       totalDataPoints: 1,
     });
-    expectMetricResultStateAware(accumToMetric(target.overall), {
+    expectMetricResultStateAware(resolveAggregateMetric(target.overall), {
       state: 'notAttempted',
       totalWeight: 0,
       totalDataPoints: 1,
@@ -284,5 +336,41 @@ describe('AveragingAnalyser zero-weight display and contribution boundaries', ()
     expect(result.perStudentTaskMetrics).toHaveLength(2);
     expect(result.perTask[0].completeness).toMatchObject({ state: 'computed', value: 5 });
     expect(result.perClass.completeness).toMatchObject({ state: 'excluded', totalDataPoints: 2 });
+  });
+});
+
+describe('unknown submission task IDs', () => {
+  it('drops a task absent from the live partial without inflating the class average', () => {
+    const result = analyseWithUnknownSubmissionTask();
+
+    expect(result.perClass.completeness).toMatchObject({
+      state: 'computed',
+      value: 2,
+      totalWeight: 1,
+      totalDataPoints: 1,
+    });
+    expect(result.perTask.map((task) => task.taskId)).toEqual(['t_known']);
+    expect(result.perStudentTaskMetrics?.map((metric) => metric.taskKey)).toEqual([
+      'dk_unknown_task::t_known',
+    ]);
+  });
+
+  it('logs a warn with the unknown task identity before dropping the item', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    analyseWithUnknownSubmissionTask();
+
+    expect(warnSpy).toHaveBeenCalledWith(
+      'processAssignment',
+      expect.objectContaining({
+        level: 'warn',
+        context: 'processAssignment',
+        errorMessage: expect.stringContaining('t_unknown'),
+        metadata: expect.objectContaining({
+          definitionKey: 'dk_unknown_task',
+          taskId: 't_unknown',
+        }),
+      })
+    );
   });
 });

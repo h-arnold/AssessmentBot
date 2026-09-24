@@ -24,16 +24,16 @@ The canonical contract is
 
 ## Boundaries and ownership
 
-| Layer                                                                                                                                                                                       | Owned responsibility                                                              | Must not own                                   |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- | ---------------------------------------------- |
-| Assignment-definition partials                                                                                                                                                              | Authoritative live assignment and task weightings                                 | Analysis display state                         |
-| `resolveAssignmentDefinition.ts`                                                                                                                                                            | Resolve live assignment/task weighting inputs                                     | UI metadata or metric-state presentation       |
-| `averagingAnalyser.accumulation.ts` (orchestration facade) plus the extracted `accumulatorRegistry`, `criterionAccumulation`, `metricResolution`, `taskProjection`, and `composite` modules | Preserve display evidence and accumulate positive-weight contributions separately | React, Ant Design, persistence, or transport   |
-| `averagingAnalyser.rows.ts` / `rollupMetric.ts`                                                                                                                                             | Build task, student, and class rows; apply aggregate-state precedence             | Re-resolving assignment-definition data        |
-| `dataAnalysis.zod.ts`                                                                                                                                                                       | Validate public analyser input and output                                         | Heatmap layout decisions                       |
-| `heatmapAdapter*.ts`                                                                                                                                                                        | Project analyser results and live definitions into heatmap view models            | Duplicate accumulation or weighting resolution |
-| `metricDisplay/`                                                                                                                                                                            | Shared metric state labels, tones, filtering, and ordering                        | Feature-specific table layout                  |
-| `features/taskHeatmap/`                                                                                                                                                                     | Render adapter-provided data, including zero-weight explanation and marker        | Infer contribution from a displayed score      |
+| Layer                                                                                                                                                                                       | Owned responsibility                                                                                                                                | Must not own                                   |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------- |
+| Assignment-definition partials                                                                                                                                                              | Authoritative live assignment and task weightings                                                                                                   | Analysis display state                         |
+| `resolveAssignmentDefinition.ts`                                                                                                                                                            | Active production resolver for live assignment/task weighting inputs                                                                                | UI metadata or metric-state presentation       |
+| `averagingAnalyser.accumulation.ts` (orchestration facade) plus the extracted `accumulatorRegistry`, `criterionAccumulation`, `metricResolution`, `taskProjection`, and `composite` modules | Resolve definitions via `resolveAssignmentDefinitionData`, build each `TaskWeightingIndex`, and accumulate positive-weight contributions separately | React, Ant Design, persistence, or transport   |
+| `averagingAnalyser.rows.ts` / `rollupMetric.ts`                                                                                                                                             | Build task, student, and class rows; apply aggregate-state precedence                                                                               | Re-resolving assignment-definition data        |
+| `dataAnalysis.zod.ts`                                                                                                                                                                       | Validate public analyser input and output                                                                                                           | Heatmap layout decisions                       |
+| `heatmapAdapter*.ts`                                                                                                                                                                        | Project analyser results and live definitions into heatmap view models                                                                              | Duplicate accumulation or weighting resolution |
+| `metricDisplay/`                                                                                                                                                                            | Shared metric state labels, tones, filtering, and ordering                                                                                          | Feature-specific table layout                  |
+| `features/taskHeatmap/`                                                                                                                                                                     | Render adapter-provided data, including zero-weight explanation and marker                                                                          | Infer contribution from a displayed score      |
 
 ## Effective weighting and dual accumulation
 
@@ -44,9 +44,19 @@ effectiveWeight = live assignment weighting × live task weighting
 includedInAverage = effectiveWeight > 0
 ```
 
-`resolveAssignmentDefinition.ts` supplies the live assignment weighting, and a
-missing assignment or task weighting resolves to `1` before the product is
-calculated.
+`resolveAssignmentDefinitionData` in `resolveAssignmentDefinition.ts` is the
+active production resolver. It reads the live partial, normalises a `null`
+assignment weighting to `1`, and returns the live task list; task weighting is
+required by `TaskPartial`, so it never supplies a task-weight default.
+
+`createTaskWeightingIndex` pre-indexes that resolved definition into a
+`TaskWeightingIndex`. Both analyser accumulation and heatmap column projection
+(`buildTaskColumns`, shared by the embedded and merged adapters) then call the
+shared `computeEffectiveWeight(weightingIndex, taskId)` in
+`services/assignmentDefinition/assignmentDefinitionUtilities.ts`, which returns
+the effective-weight product or `undefined` when the task is absent. The
+analyser warns and drops a submission `taskId` that is absent from the live
+partial rather than granting it a task-weight default.
 
 Each criterion's `MetricAccumulator` (defined in `averagingAnalyser.types.ts`,
 created by `averagingAnalyser.accumulatorRegistry.ts`) retains two accumulators:
@@ -62,8 +72,11 @@ created by `averagingAnalyser.accumulatorRegistry.ts`) retains two accumulators:
 
 `averagingAnalyser.criterionAccumulation.ts` updates both accumulators.
 `averagingAnalyser.accumulation.ts` is the thin assignment-processing facade; it
-resolves each task's effective weight and records the definition-scoped
-`averageContribution` metadata via `ensureAverageContribution`.
+resolves each live partial through `resolveAssignmentDefinitionData`, builds its
+`TaskWeightingIndex` once per definition, calls the shared
+`computeEffectiveWeight` helper, and records the definition-scoped
+`averageContribution` metadata via `ensureAverageContribution`. Unknown
+submission task IDs are warned and dropped before contribution processing.
 
 Raw `N` remains a property of the source assessment. It retains its existing
 positive-weight aggregation semantics and is never manufactured because a
@@ -74,8 +87,9 @@ numerator nor denominator and cannot create a not-attempted penalty.
 
 `MetricResult` has four states: `computed`, `notAttempted`, `excluded`, and
 `error`. The shared four-state union is `MetricResultSchema`; task-level shapes
-use the narrower, private `TaskDisplayMetricSchema` (computed, notAttempted,
-error), both in `dataAnalysis.zod.ts`.
+use the narrower, exported `TaskDisplayMetricSchema` and its inferred
+`TaskDisplayMetric` type (computed, notAttempted, error), both in
+`dataAnalysis.zod.ts`.
 
 - Task-level displays use their display evidence and therefore keep numeric
   zero-weight scores and genuine raw `N` values visible.
@@ -88,9 +102,9 @@ error), both in `dataAnalysis.zod.ts`.
 
 `resolveAggregateMetric` (`averagingAnalyser.metricResolution.ts`) applies this
 precedence to accumulator state. `resolveDisplayMetric` in the same module
-produces the task-level display metric and never returns `excluded`;
-`averagingAnalyser.taskProjection.ts` additionally throws if `excluded` ever
-reaches task projection.
+returns the schema-derived `TaskDisplayMetric`, so task projection and heatmap
+cells cannot carry aggregate-only `excluded`. Task-preview state/score pairs
+use the same narrow discriminator.
 
 Task-level shapes (`PerStudentTaskMetric` and `PerTaskRow`) and heatmap task
 column descriptors expose:
@@ -138,19 +152,23 @@ Dual accumulation was added after extracting coherent, analyser-local
 responsibilities out of the former 509-line `averagingAnalyser.accumulation.ts`.
 The delivered analyser package is:
 
-| Module                                       | Responsibility                                                                                                                         |
-| -------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| `averagingAnalyser.accumulation.ts`          | Assignment-processing orchestration facade; resolves effective weights and records definition-scoped contribution metadata.            |
-| `averagingAnalyser.accumulatorRegistry.ts`   | Accumulator factories and registry accessors, including `ensureAverageContribution`.                                                   |
-| `averagingAnalyser.criterionAccumulation.ts` | Criterion-level display/contribution accumulation and per-item overall computation.                                                    |
-| `averagingAnalyser.metricResolution.ts`      | `resolveAggregateMetric` (contribution precedence) and `resolveDisplayMetric` (display evidence).                                      |
-| `averagingAnalyser.taskProjection.ts`        | `buildPerStudentTaskMetrics` and the `toTaskDisplayMetric` guard that rejects `excluded` at task level.                                |
-| `averagingAnalyser.composite.ts`             | `computeOverallComposite` (40/40/20 weighting with SPaG renormalisation and overall aggregate precedence).                             |
-| `rollupMetric.ts`                            | Single shared roll-up precedence for task-display `MetricResult` values.                                                               |
-| `averagingAnalyser.rows.ts`                  | Per-student and per-task row builders; a per-task composite that would resolve to `excluded` falls back to the task's display overall. |
-| `averagingAnalyser.types.ts`                 | Shared accumulator and assessment-score types.                                                                                         |
-| `averagingAnalyser.ts`                       | Public analyser entry point.                                                                                                           |
-| `resolveAssignmentDefinition.ts`             | Live assignment/task weighting resolution from the partial registry.                                                                   |
+| Module                                       | Responsibility                                                                                                                                                                                                                          |
+| -------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `averagingAnalyser.accumulation.ts`          | Assignment-processing orchestration facade; resolves definitions via `resolveAssignmentDefinitionData`, builds each `TaskWeightingIndex`, consumes shared effective weights, warns on unknown tasks, and records contribution metadata. |
+| `averagingAnalyser.accumulatorRegistry.ts`   | Accumulator factories and registry accessors, including the conflicting-weight invariant in `ensureAverageContribution`.                                                                                                                |
+| `averagingAnalyser.criterionAccumulation.ts` | Criterion-level display/contribution accumulation and per-item overall computation.                                                                                                                                                     |
+| `averagingAnalyser.metricResolution.ts`      | `resolveAggregateMetric` (contribution precedence) and `resolveDisplayMetric` (display evidence).                                                                                                                                       |
+| `averagingAnalyser.taskProjection.ts`        | `buildPerStudentTaskMetrics`, using the narrow schema-derived task-display metric type.                                                                                                                                                 |
+| `averagingAnalyser.composite.ts`             | `computeOverallComposite` (40/40/20 weighting with SPaG renormalisation and overall aggregate precedence).                                                                                                                              |
+| `rollupMetric.ts`                            | Single shared roll-up precedence for task-display `MetricResult` values.                                                                                                                                                                |
+| `averagingAnalyser.rows.ts`                  | Per-student and per-task row builders; a per-task composite that would resolve to `excluded` falls back to the task's display overall.                                                                                                  |
+| `averagingAnalyser.types.ts`                 | Shared accumulator and assessment-score types.                                                                                                                                                                                          |
+| `averagingAnalyser.ts`                       | Public analyser entry point.                                                                                                                                                                                                            |
+| `resolveAssignmentDefinition.ts`             | Active production resolver for live assignment/task weighting inputs; supplies the resolved definition consumed by createTaskWeightingIndex.                                                                                            |
+
+Definition-scoped task identities are built only by
+`services/dataAnalysis/taskKey.ts`; analyser registries, heatmap projection,
+and cell-preview lookup all consume `buildTaskKey(definitionKey, taskId)`.
 
 The task-heatmap presentation was kept feature-local. Zero-weight header
 rendering and group-edge class construction live in

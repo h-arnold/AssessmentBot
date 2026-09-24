@@ -28,6 +28,12 @@ const COMPACT_TAG_FONT_SIZE_PX = 12;
 /** Font size (px) for an emphasised Tag. */
 const EMPHASISED_TAG_FONT_SIZE_PX = 17.5;
 
+/** Computed value used by the state-to-text consistency table. */
+const STATE_TEXT_COMPUTED_VALUE = 3.14;
+
+/** Expected computed text at the default precision. */
+const STATE_TEXT_COMPUTED_OUTPUT = '3.14';
+
 describe('MetricPill', () => {
   // -------------------------------------------------------------------------
   // Computed state rendering
@@ -96,6 +102,21 @@ describe('MetricPill', () => {
     expect(pill).not.toHaveStyle({ opacity: '0.55' });
     expect(container.textContent).not.toContain('null');
     expect(container.textContent).not.toContain('0.0000');
+  });
+
+  it.each([
+    {
+      state: 'computed' as const,
+      metric: createComputedMetricResult({ value: STATE_TEXT_COMPUTED_VALUE }),
+      expectedText: STATE_TEXT_COMPUTED_OUTPUT,
+    },
+    { state: 'notAttempted' as const, metric: createNotAttemptedMetricResult(), expectedText: 'N' },
+    { state: 'error' as const, metric: createErrorMetricResult(), expectedText: 'E' },
+    { state: 'excluded' as const, metric: createExcludedMetricResult(), expectedText: 'Excluded' },
+  ])('formats the $state state as its shared display text', ({ metric, expectedText }) => {
+    render(<MetricPill metric={metric} />);
+
+    expect(screen.getByText(expectedText)).toBeInTheDocument();
   });
 
   it('preserves numeric formatting for computed metrics', () => {

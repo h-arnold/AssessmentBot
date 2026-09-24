@@ -1,4 +1,9 @@
-import type { AverageContribution, AveragingResult, MetricResult } from './dataAnalysis.zod';
+import type {
+  AverageContribution,
+  AveragingResult,
+  PerStudentTaskMetric,
+  TaskDisplayMetric,
+} from './dataAnalysis.zod';
 import type { ClassFull } from '../googleClassrooms/classDetail/classDetailService.zod';
 import type {
   AssignmentDefinitionPartial,
@@ -10,6 +15,7 @@ import {
   groupMetricsByStudent,
   DEFAULT_CLASS_NAME_LABEL,
   resolveAssignmentPartial,
+  warnForMissingTaskMetrics,
 } from './heatmapAdapter';
 
 /**
@@ -58,9 +64,9 @@ export interface MergedHeatmapResult {
     studentId: string;
     studentName: string;
     cells: ReadonlyArray<{
-      completeness: MetricResult;
-      accuracy: MetricResult;
-      spag: MetricResult;
+      completeness: TaskDisplayMetric;
+      accuracy: TaskDisplayMetric;
+      spag: TaskDisplayMetric;
     }>;
   }>;
 }
@@ -163,12 +169,20 @@ export function adaptMetricsToMergedHeatmap(
 
   const columnTaskKeys = new Set(taskColumns.map((column) => column.taskKey));
   const metricsByStudent = groupMetricsByStudent(analyserResult, classFull.classId, columnTaskKeys);
+  if (analyserResult.perStudentTaskMetrics !== undefined) {
+    warnForMissingTaskMetrics(
+      'adaptMetricsToMergedHeatmap',
+      classFull.classId,
+      taskColumns,
+      metricsByStudent
+    );
+  }
 
   const rows = classFull.students.map((student) =>
     buildCellsForStudent(
       student.id,
       student.name,
-      metricsByStudent.get(student.id) ?? [],
+      metricsByStudent.get(student.id) ?? new Map<string, PerStudentTaskMetric>(),
       taskColumns
     )
   );

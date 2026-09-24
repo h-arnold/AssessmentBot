@@ -37,14 +37,15 @@ import { compareStudentNamePart, splitStudentName } from '../../utils/splitStude
 import { METRIC_DISPLAY_META } from '../../services/dataAnalysis/metricDisplay/metricDisplayMeta';
 import type { MetricColumnKey } from '../../services/dataAnalysis/metricDisplay/metricDisplayMeta';
 import {
-  resolveMetricTone,
   DEFAULT_TONE_RANGE,
+  EXCLUDED_METRIC_ACCESSIBLE_LABEL,
+  resolveMetricTone,
 } from '../../services/dataAnalysis/metricDisplay/metricTone';
 import { buildMetricRangeFilter } from '../../services/dataAnalysis/metricDisplay/metricRangeFilter';
 import { decodeFilterToRange } from '../../services/dataAnalysis/metricDisplay/metricRangeKey';
+import { formatMetricDisplayText } from '../../services/dataAnalysis/metricDisplay/metricDisplayText';
 import { MetricIconLabel } from '../../components/MetricIconLabel/MetricIconLabel';
 import { APP_COL_WIDTH_FORENAME, APP_COL_WIDTH_SURNAME, APP_COL_WIDTH_METRIC_PILL } from '../../theme/spacing';
-import { EXCLUDED_METRIC_ACCESSIBLE_LABEL } from '../../services/dataAnalysis/metricDisplay/metricTone';
 
 // ---------------------------------------------------------------------------
 // Exported types
@@ -74,25 +75,6 @@ export type StudentAveragesTableFilters = Readonly<{
  * (matching the heatmap's coloured-cell rendering but with higher precision).
  */
 const CLASS_PAGE_SCORE_PRECISION = 2;
-
-/**
- * Render a metric score as plain text at {@link CLASS_PAGE_SCORE_PRECISION}.
- *
- * @param {MetricResult} metric - The metric result to render.
- * @returns {string} The formatted computed score, raw `N`, error `E`, or `Excluded` label.
- */
-function renderClassPageScore(metric: MetricResult): string {
-  if (metric.state === 'computed') {
-    return metric.value.toFixed(CLASS_PAGE_SCORE_PRECISION);
-  }
-  if (metric.state === 'notAttempted') {
-    return 'N';
-  }
-  if (metric.state === 'excluded') {
-    return 'Excluded';
-  }
-  return 'E';
-}
 
 /**
  * Build a single metric column definition.
@@ -130,7 +112,7 @@ function buildMetricColumn(
     onCell: (record: StudentAverageRowModel): { style: CSSProperties; 'aria-label': string } => {
       const metric = getStudentMetric(record.metrics, key);
       const { cellStyle } = resolveMetricTone(metric, DEFAULT_TONE_RANGE);
-      const score = renderClassPageScore(metric);
+      const score = formatMetricDisplayText(metric, CLASS_PAGE_SCORE_PRECISION);
       const ariaLabel = metric.state === 'excluded'
         ? EXCLUDED_METRIC_ACCESSIBLE_LABEL
         : `${record.studentName}, ${meta.label}: ${score}`;
@@ -140,7 +122,12 @@ function buildMetricColumn(
       };
     },
     render: (_: unknown, record: StudentAverageRowModel): JSX.Element => (
-      <span>{renderClassPageScore(getStudentMetric(record.metrics, key))}</span>
+      <span>
+        {formatMetricDisplayText(
+          getStudentMetric(record.metrics, key),
+          CLASS_PAGE_SCORE_PRECISION
+        )}
+      </span>
     ),
   };
 }

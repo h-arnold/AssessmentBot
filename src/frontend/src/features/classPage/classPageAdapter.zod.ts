@@ -15,7 +15,6 @@
  */
 
 import { z } from 'zod';
-import type { MetricResult } from '../../services/dataAnalysis/dataAnalysis.zod';
 import { MetricResultSchema } from '../../services/dataAnalysis/dataAnalysis.zod';
 
 /**
@@ -41,6 +40,9 @@ export const ClassPageDisplayMetricSchema = z.union([
   ClassPageNoDataMetricSchema,
 ]);
 
+/** Metric shape accepted by Class-page student and recent-assignment displays. */
+export type ClassPageDisplayMetric = z.infer<typeof ClassPageDisplayMetricSchema>;
+
 /**
  * Access a metric result from a student's metrics by key.
  *
@@ -61,12 +63,12 @@ export const ClassPageDisplayMetricSchema = z.union([
  *
  * @param {StudentAverageRowModel['metrics']} metrics - The student's metrics object.
  * @param {'completeness' | 'accuracy' | 'spag' | 'average'} key - The metric key to access.
- * @returns {MetricResult} The metric result for the given key.
+ * @returns {ClassPageDisplayMetric} The metric result for the given key.
  */
 export function getStudentMetric(
   metrics: StudentAverageRowModel['metrics'],
   key: 'completeness' | 'accuracy' | 'spag' | 'average'
-): MetricResult {
+): ClassPageDisplayMetric {
   switch (key) {
     case 'completeness': {
       return metrics.completeness;

@@ -1,13 +1,17 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { AveragingResult, AverageContribution } from './dataAnalysis.zod';
-import type { ClassFull } from '../googleClassrooms/classDetail/classDetailService.zod';
 import type { AssignmentDefinitionPartialsResponse } from '../assignmentDefinition/assignmentDefinitionPartials.zod';
 import { adaptMetricsToMergedHeatmap } from './heatmapAdapter.merged';
+import { buildTaskKey } from './taskKey';
 import {
+  createAssignmentPartial,
   createComputedMetricResult,
-  createDefinitionPartial,
-  createTaskPartial,
+  createNotAttemptedMetricResult,
 } from '../../test/dataAnalysis/fixtures';
+import {
+  createHeatmapClassFull,
+  createHeatmapDefinitionPartial,
+} from '../../test/dataAnalysis/heatmapFixtures';
 
 const DEFINITION = 'shared-definition';
 const FIRST_ASSIGNMENT = 'assignment-first';
@@ -22,38 +26,31 @@ const EXPECTED_POSITIVE_PRODUCT = 0.2;
  * @returns {object} Fixture inputs for one class, two assignment instances, and one task.
  */
 function fixtures() {
-  const classFull: ClassFull = {
+  const classFull = createHeatmapClassFull({
     classId: 'class-1',
     className: 'Class',
-    cohortKey: null,
-    courseLength: 1,
     yearGroupKey: 'year-10',
-    classOwner: null,
-    teachers: [],
     active: null,
     students: [{ id: 'student-1', name: 'Student', email: 'student@example.test' }],
-    assignments: [FIRST_ASSIGNMENT, SECOND_ASSIGNMENT].map((assignmentId) => ({
-      assignmentId,
-      dueDate: null,
-      updatedAt: null,
-      createdAt: '2026-01-01T00:00:00.000Z',
-      documentType: 'assessment' as const,
-      submissions: [],
-      assignmentDefinitionKey: DEFINITION,
-    })),
-  };
-  const partial = {
-    ...createDefinitionPartial({
-      definitionKey: DEFINITION,
-      tasks: [createTaskPartial(TASK, 1, 'Task')],
-    }),
+    assignments: [FIRST_ASSIGNMENT, SECOND_ASSIGNMENT].map((assignmentId) =>
+      createAssignmentPartial({
+        assignmentId,
+        definitionKey: DEFINITION,
+        submissions: [],
+      })
+    ),
+  });
+  const partial = createHeatmapDefinitionPartial({
+    definitionKey: DEFINITION,
     primaryTitle: 'Live title',
-  };
+    taskId: TASK,
+    taskTitle: 'Task',
+  });
   const partials: AssignmentDefinitionPartialsResponse = [partial];
   const metric = {
     classId: 'class-1',
     studentId: 'student-1',
-    taskKey: `${DEFINITION}::${TASK}`,
+    taskKey: buildTaskKey(DEFINITION, TASK),
     averageContribution: {
       effectiveWeight: 1,
       includedInAverage: true,
@@ -80,6 +77,10 @@ function fixtures() {
   return { classFull, partial, partials, analyserResult, metric };
 }
 
+afterEach(() => {
+  vi.restoreAllMocks();
+});
+
 describe('merged heatmap contribution projection', () => {
   it('resolves merged assignmentName from the partial primaryTitle and carries taskTitle', () => {
     const { classFull, partials, analyserResult } = fixtures();
@@ -96,7 +97,7 @@ describe('merged heatmap contribution projection', () => {
 
   it('falls back to Class Overview when classFull.className is null', () => {
     const { classFull, partials, analyserResult } = fixtures();
-    const classWithNullName: ClassFull = { ...classFull, className: null };
+    const classWithNullName = { ...classFull, className: null };
     const result = adaptMetricsToMergedHeatmap(
       analyserResult,
       classWithNullName,
@@ -106,7 +107,35 @@ describe('merged heatmap contribution projection', () => {
     expect(result.className).toBe('Class Overview');
   });
 
-  it('keeps one definition-scoped contribution from class order when selected order is reversed', () => {
+  it('warns for a merged column with no metric for any student and returns the notAttempted placeholder', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const { classFull, partials, analyserResult } = fixtures();
+    const taskKey = buildTaskKey(DEFINITION, TASK);
+    const result = adaptMetricsToMergedHeatmap(
+      { ...analyserResult, perStudentTaskMetrics: [] },
+      classFull,
+      [FIRST_ASSIGNMENT],
+      partials
+    );
+
+    expect(warnSpy).toHaveBeenCalledTimes(1);
+    expect(warnSpy).toHaveBeenCalledWith(
+      'adaptMetricsToMergedHeatmap',
+      expect.objectContaining({
+        context: 'adaptMetricsToMergedHeatmap',
+        errorMessage: `No analyser metric exists for any student for heatmap column '${taskKey}'`,
+        level: 'warn',
+        metadata: { classId: 'class-1', taskKey },
+      })
+    );
+    expect(result.rows[0].cells[0]).toEqual({
+      completeness: createNotAttemptedMetricResult(),
+      accuracy: createNotAttemptedMetricResult(),
+      spag: createNotAttemptedMetricResult(),
+    });
+  });
+
+  it('collapses duplicate definition instances to the first classFull assignment identity', () => {
     const { classFull, partials, analyserResult } = fixtures();
     const result = adaptMetricsToMergedHeatmap(
       analyserResult,
@@ -114,12 +143,75 @@ describe('merged heatmap contribution projection', () => {
       [SECOND_ASSIGNMENT, FIRST_ASSIGNMENT],
       partials
     );
+
+    expect(result.taskColumns).toEqual([
+      {
+        taskKey: buildTaskKey(DEFINITION, TASK),
+        taskId: TASK,
+        taskTitle: 'Task',
+        averageContribution: { effectiveWeight: 1, includedInAverage: true },
+        assignmentId: FIRST_ASSIGNMENT,
+        definitionKey: DEFINITION,
+        assignmentName: 'Live title',
+      },
+    ]);
+    expect(result.sourceAssignments).toEqual([
+      {
+        assignmentId: SECOND_ASSIGNMENT,
+        definitionKey: DEFINITION,
+        assignmentName: 'Live title',
+      },
+      {
+        assignmentId: FIRST_ASSIGNMENT,
+        definitionKey: DEFINITION,
+        assignmentName: 'Live title',
+      },
+    ]);
+  });
+
+  it('feeds accumulated analyser metrics into the single collapsed column for a shared taskKey', () => {
+    const { classFull, partials, analyserResult, metric } = fixtures();
+    const accumulatedMetric = {
+      ...metric,
+      completeness: createComputedMetricResult({
+        value: EXPECTED_ZERO_SCORE,
+        totalWeight: 2,
+        applicableDataPoints: 2,
+        totalDataPoints: 2,
+      }),
+    };
+    const result = adaptMetricsToMergedHeatmap(
+      { ...analyserResult, perStudentTaskMetrics: [accumulatedMetric] },
+      classFull,
+      [FIRST_ASSIGNMENT, SECOND_ASSIGNMENT],
+      partials
+    );
+
     expect(result.taskColumns).toHaveLength(1);
-    expect(result.taskColumns[0].assignmentId).toBe(FIRST_ASSIGNMENT);
-    expect(result.taskColumns[0].averageContribution).toEqual({
-      effectiveWeight: 1,
-      includedInAverage: true,
+    expect(result.rows[0].cells[0]).toEqual({
+      completeness: accumulatedMetric.completeness,
+      accuracy: accumulatedMetric.accuracy,
+      spag: accumulatedMetric.spag,
     });
+  });
+
+  it('keeps shared-task cells identical whether one or both duplicate instances are selected', () => {
+    const { classFull, partials, analyserResult } = fixtures();
+    const single = adaptMetricsToMergedHeatmap(
+      analyserResult,
+      classFull,
+      [FIRST_ASSIGNMENT],
+      partials
+    );
+    const both = adaptMetricsToMergedHeatmap(
+      analyserResult,
+      classFull,
+      [FIRST_ASSIGNMENT, SECOND_ASSIGNMENT],
+      partials
+    );
+
+    expect(both.taskColumns).toEqual(single.taskColumns);
+    expect(both.rows).toEqual(single.rows);
   });
 
   it.each([

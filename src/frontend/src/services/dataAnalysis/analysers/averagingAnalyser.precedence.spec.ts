@@ -96,7 +96,7 @@ describe('contribution-aware parent precedence', () => {
 });
 
 describe('live assignment-definition weight resolution boundaries', () => {
-  it('defaults a null live assignment weighting and missing task weighting', () => {
+  it('resolves a null assignment weighting to one and preserves an empty task list', () => {
     const definition = createDefinitionPartial({
       definitionKey: 'dk_live',
       assignmentWeighting: null,

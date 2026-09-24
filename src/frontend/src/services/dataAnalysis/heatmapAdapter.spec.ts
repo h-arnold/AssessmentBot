@@ -1,17 +1,11 @@
 /**
- * Tests for `adaptMetricsToHeatmap` — the 4-parameter rewrite.
+ * Tests for `adaptMetricsToHeatmap` and its live-partial task projection.
  *
  * @remarks
- * The adapter now takes a 4th parameter (`assignmentDefinitionPartials`) and
- * sources task columns from the warm-up partial located via
- * `getAssignmentDefinitionPartial`. It throws `TaskTitlesUnavailableError`
- * when the partial is missing or a task has null `taskTitle`.
- *
- * These tests are expected to FAIL because:
- *   - `TaskTitlesUnavailableError` does not exist yet
- *   - `getAssignmentDefinitionPartial` does not exist yet
- *   - `adaptMetricsToHeatmap` still has the old 3-arg signature
- *   - `taskPartial.zod.ts` still uses `id` not `taskId`
+ * The adapter takes `assignmentDefinitionPartials` as its fourth argument and
+ * sources task columns from the matching warm-up definition. It throws
+ * `TaskTitlesUnavailableError` when that definition is absent and fails fast
+ * when a task lacks its required weighting.
  */
 
 import { describe, expect, it } from 'vitest';
@@ -445,34 +439,44 @@ describe('adaptMetricsToHeatmap — 4-parameter warm-up partial sourcing', () =>
     ).toThrow(TaskTitlesUnavailableError);
   });
 
-  it('projects effective contribution from the live partial, preserving zero weights and defaults', () => {
+  it('projects live task weights and defaults a null assignment weighting to full weight', () => {
     const classFull = buildClassFull();
     const analyserResult = minimalAveragingResult([buildPerStudentTaskMetric('s_001', 'task_001')]);
     const partials = buildPartials();
-    const livePartial = partials[0] as unknown as {
-      assignmentWeighting?: number | null;
-      tasks: Array<{ taskId: string; taskWeighting?: number }>;
-    };
-    livePartial.assignmentWeighting = 0.5;
+    const livePartial = partials[0];
+    livePartial.assignmentWeighting = null;
     livePartial.tasks[0].taskWeighting = 0.4;
     livePartial.tasks[1].taskWeighting = 0;
-    delete livePartial.tasks[2].taskWeighting;
 
     const result = adaptMetricsToHeatmap(analyserResult, classFull, ASSIGNMENT_ID, partials);
 
     expect(result.taskColumns.map((column) => column.averageContribution)).toEqual([
-      { effectiveWeight: 0.2, includedInAverage: true },
+      { effectiveWeight: 0.4, includedInAverage: true },
       { effectiveWeight: 0, includedInAverage: false },
-      { effectiveWeight: 0.5, includedInAverage: true },
+      { effectiveWeight: 1, includedInAverage: true },
     ]);
     expect(result.rows[0].cells[0].completeness).toEqual(
       analyserResult.perStudentTaskMetrics![0].completeness
     );
   });
 
+  it('fails fast instead of defaulting when a live task omits required taskWeighting', () => {
+    const partials = buildPartials();
+    const invalidTask = partials[0].tasks[0] as {
+      taskId: string;
+      taskWeighting?: number;
+      taskTitle: string | null;
+    };
+    delete invalidTask.taskWeighting;
+
+    expect(() =>
+      adaptMetricsToHeatmap(minimalAveragingResult([]), buildClassFull(), ASSIGNMENT_ID, partials)
+    ).toThrow("buildTaskColumns: task 'task_001' is missing from partial 'dk_quadratics'");
+  });
+
   it('uses the live partial assignment weighting of zero without inferring metadata from scores', () => {
     const partials = buildPartials();
-    (partials[0] as unknown as { assignmentWeighting: number }).assignmentWeighting = 0;
+    partials[0].assignmentWeighting = 0;
     const result = adaptMetricsToHeatmap(
       minimalAveragingResult([buildPerStudentTaskMetric('s_001', 'task_001')]),
       buildClassFull(),

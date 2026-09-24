@@ -75,8 +75,10 @@ export type AveragingAnalyserInput = z.infer<typeof AveragingAnalyserInputSchema
  *   `value` is `null`, `totalWeight` is `0`, and there is at least one total data
  *   point. Task-level display shapes use a narrower three-state union and never
  *   accept this member.
- * - `error`: no data points at all — no numeric scores and no `'N'` scores.
- *   `value` is `'E'`.
+ * - `error`: all observed inputs are errors, or there is no usable data point
+ *   to resolve. `value` is `'E'`. At aggregate scopes, `totalWeight` and
+ *   `totalDataPoints` may retain summed evidence from those inputs; this state
+ *   does not imply that those metadata fields are zero.
  *
  * The discriminated union replaces the earlier invariant
  * `value === null ⇔ applicableDataPoints === 0`.
@@ -94,6 +96,15 @@ const ComputedMetricSchema = z.strictObject({
   totalDataPoints: z.number().int().min(0),
 });
 
+/**
+ * Raw not-attempted metric, including a raw `N` observed at zero effective
+ * weight.
+ *
+ * @remarks
+ * `totalWeight` is deliberately unconstrained by positivity. A zero-weight raw
+ * `N` remains `notAttempted` as display evidence and carries `totalWeight: 0`;
+ * only `totalWeight > 0` makes a raw `N` contribute to an aggregate.
+ */
 const NotAttemptedMetricSchema = z.strictObject({
   state: z.literal('notAttempted'),
   value: z.literal('N'),
@@ -119,6 +130,14 @@ const ExcludedMetricSchema = z.strictObject({
   totalDataPoints: z.number().int().min(1),
 });
 
+/**
+ * Error metric used when no usable input can resolve to another state.
+ *
+ * @remarks
+ * Aggregate error results may retain summed positive `totalWeight` and
+ * `totalDataPoints` from error inputs. `error` therefore describes the
+ * resolution state, not an absence of observed data.
+ */
 const ErrorMetricSchema = z.strictObject({
   state: z.literal('error'),
   value: z.literal('E'),
@@ -128,17 +147,19 @@ const ErrorMetricSchema = z.strictObject({
 });
 
 /**
- * Narrow display-scope metric union for task-level rows and cells.
+ * Exported narrow display-scope metric union for task-level rows and cells.
  *
  * @remarks
  * Deliberately omits the aggregate-only `excluded` state so task displays keep
  * numeric zero-weight scores and genuine raw `N` values visible.
  */
-const TaskDisplayMetricSchema = z.discriminatedUnion('state', [
+export const TaskDisplayMetricSchema = z.discriminatedUnion('state', [
   ComputedMetricSchema,
   NotAttemptedMetricSchema,
   ErrorMetricSchema,
 ]);
+
+export type TaskDisplayMetric = z.infer<typeof TaskDisplayMetricSchema>;
 
 /** Shared four-state metric union used by aggregate result shapes. */
 export const MetricResultSchema = z.discriminatedUnion('state', [

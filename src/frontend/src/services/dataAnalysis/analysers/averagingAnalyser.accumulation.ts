@@ -1,22 +1,19 @@
 import { logFrontendEvent } from '../../../logging/frontendLogger';
-import type {
-  AveragingAnalyserInput,
-  AverageContribution,
-  MetricResult,
-} from '../dataAnalysis.zod';
+import type { AveragingAnalyserInput, AverageContribution } from '../dataAnalysis.zod';
 import type { CriterionWeightings } from './averagingAnalyser';
-import type { DataPointAccumulator, MetricAccumulator } from './averagingAnalyser.types';
+import type { DataPointAccumulator } from './averagingAnalyser.types';
 import { processItemAssessments } from './averagingAnalyser.criterionAccumulation';
-import { resolveAssignmentDefinitionData } from './resolveAssignmentDefinition';
-import { resolveAggregateMetric } from './averagingAnalyser.metricResolution';
 import type { AssignmentDefinitionPartial } from '../../assignmentDefinition/assignmentDefinitionPartials.zod';
-export {
-  createAccumulator,
-  createDataPointAccumulator,
-} from './averagingAnalyser.accumulatorRegistry';
-export { buildPerStudentTaskMetrics } from './averagingAnalyser.taskProjection';
-export { toTaskDisplayMetric } from './averagingAnalyser.taskProjection';
-import { createDataPointAccumulator } from './averagingAnalyser.accumulatorRegistry';
+import {
+  computeEffectiveWeight,
+  createTaskWeightingIndex,
+  type TaskWeightingIndex,
+} from '../../assignmentDefinition/assignmentDefinitionUtilities';
+import { buildTaskKey } from '../taskKey';
+import {
+  resolveAssignmentDefinitionData,
+  type ResolvedAssignmentDefinition,
+} from './resolveAssignmentDefinition';
 import {
   ensureAverageContribution,
   getOrCreatePerStudentTaskAccum,
@@ -26,46 +23,16 @@ import {
 } from './averagingAnalyser.accumulatorRegistry';
 
 /**
- * Convert contribution accumulator state into a public metric result.
- * @param {MetricAccumulator} accumulator - The accumulator to resolve.
- * @returns {MetricResult} The resolved metric.
- */
-export function accumToMetric(accumulator: MetricAccumulator): MetricResult {
-  return resolveAggregateMetric(accumulator);
-}
-
-/**
- * Resolve effective weight from live definition task weights.
- * @param {string} definitionKey - Assignment definition identifier.
- * @param {string} taskId - Task identifier.
- * @param {number} assignmentWeighting - Resolved live assignment weighting.
- * @param {ReadonlyMap<string, ReadonlyMap<string, number>>} taskWeightByDefinitionKey - Live task weights.
- * @returns {number} The effective assignment-task weight.
- */
-function resolveEffectiveWeight(
-  definitionKey: string,
-  taskId: string,
-  assignmentWeighting: number,
-  taskWeightByDefinitionKey: ReadonlyMap<string, ReadonlyMap<string, number>>
-): number {
-  const taskWeighting = taskWeightByDefinitionKey.get(definitionKey)?.get(taskId) ?? 1;
-  return assignmentWeighting * taskWeighting;
-}
-
-/**
  * Process a single assignment, accumulating its submission data.
  *
  * @param {AveragingAnalyserInput['classes'][number]['assignments'][number]}
  *   assignment - The assignment to process.
- * @param {number} assignmentWeighting - The resolved assignment weighting.
+ * @param {TaskWeightingIndex} weightingIndex - Pre-indexed live weighting data.
  * @param {string} definitionKey - The assignment definition key.
- * @param {Map<string, Map<string, number>>} taskWeightByDefinitionKey - Two-level
- *   Map for O(1) task-weighting lookups (built once per analysis run).
  * @param {Map<string, { studentName: string | null } & DataPointAccumulator>}
  *   studentAccums - Per-student accumulators (mutated).
  * @param {Map<string, { definitionKey: string; taskId: string } & DataPointAccumulator>}
  *   taskAccums - Per-task accumulators (mutated).
- * @param {DataPointAccumulator} classAccum - Per-class accumulator (mutated).
  * @param {CriterionWeightings} criterionWeightings - The criterion weightings.
  * @param {Map<string, Map<string, DataPointAccumulator>>}
  *   perStudentTaskAccums - Per-(student, task) accumulators (mutated).
@@ -74,12 +41,10 @@ function resolveEffectiveWeight(
  */
 export function processAssignment(
   assignment: AveragingAnalyserInput['classes'][number]['assignments'][number],
-  assignmentWeighting: number,
+  weightingIndex: TaskWeightingIndex,
   definitionKey: string,
-  taskWeightByDefinitionKey: Map<string, Map<string, number>>,
   studentAccums: Map<string, { studentName: string | null } & DataPointAccumulator>,
   taskAccums: Map<string, { definitionKey: string; taskId: string } & DataPointAccumulator>,
-  classAccum: DataPointAccumulator,
   criterionWeightings: CriterionWeightings,
   perStudentTaskAccums: Map<string, Map<string, DataPointAccumulator>>,
   averageContributionByTaskKey: Map<string, AverageContribution>
@@ -89,12 +54,16 @@ export function processAssignment(
     const studentAccum = getOrCreateStudentAccum(studentAccums, studentId, studentName);
 
     for (const [taskId, item] of Object.entries(items)) {
-      const effectiveWeight = resolveEffectiveWeight(
-        definitionKey,
-        taskId,
-        assignmentWeighting,
-        taskWeightByDefinitionKey
-      );
+      const effectiveWeight = computeEffectiveWeight(weightingIndex, taskId);
+      if (effectiveWeight === undefined) {
+        logFrontendEvent('warn', {
+          context: 'processAssignment',
+          errorMessage: `Submission task '${taskId}' is absent from the live assignment definition; dropping the item`,
+          metadata: { definitionKey, taskId },
+        });
+        continue;
+      }
+
       ensureAverageContribution(
         averageContributionByTaskKey,
         definitionKey,
@@ -102,7 +71,7 @@ export function processAssignment(
         effectiveWeight
       );
 
-      const taskKey = `${definitionKey}::${taskId}`;
+      const taskKey = buildTaskKey(definitionKey, taskId);
       const taskAccum = getOrCreateTaskAccum(taskAccums, definitionKey, taskId);
       const perStudentTaskAccum = getOrCreatePerStudentTaskAccum(
         perStudentTaskAccums,
@@ -114,7 +83,6 @@ export function processAssignment(
         item,
         effectiveWeight,
         studentAccum,
-        classAccum,
         taskAccum,
         criterionWeightings,
         perStudentTaskAccum
@@ -123,26 +91,10 @@ export function processAssignment(
   }
 }
 
-/**
- * Build O(1) lookups from live assignment-definition partials.
- * @param {AveragingAnalyserInput['assignmentDefinitionPartials']} partials - Live partials.
- * @returns {{ partialsByDefinitionKey: Map<string, AssignmentDefinitionPartial>; taskWeightByDefinitionKey: Map<string, Map<string, number>> }} The lookup maps.
- */
-function buildDefinitionLookups(partials: AveragingAnalyserInput['assignmentDefinitionPartials']): {
-  partialsByDefinitionKey: Map<string, AssignmentDefinitionPartial>;
-  taskWeightByDefinitionKey: Map<string, Map<string, number>>;
-} {
-  const partialsByDefinitionKey = new Map<string, AssignmentDefinitionPartial>();
-  const taskWeightByDefinitionKey = new Map<string, Map<string, number>>();
-  for (const partial of partials) {
-    partialsByDefinitionKey.set(partial.definitionKey, partial);
-    taskWeightByDefinitionKey.set(
-      partial.definitionKey,
-      new Map((partial.tasks ?? []).map((task) => [task.taskId, task.taskWeighting]))
-    );
-  }
-  return { partialsByDefinitionKey, taskWeightByDefinitionKey };
-}
+type DefinitionLookup = {
+  readonly tasks: ResolvedAssignmentDefinition['tasks'];
+  readonly taskWeightingIndex: TaskWeightingIndex;
+};
 
 /**
  * Accumulate data points across all filtered assignments.
@@ -154,17 +106,16 @@ function buildDefinitionLookups(partials: AveragingAnalyserInput['assignmentDefi
  * @returns {{
  *   studentAccums: Map<string, { studentName: string | null } & DataPointAccumulator>,
  *   taskAccums: Map<string, { definitionKey: string; taskId: string } & DataPointAccumulator>,
- *   classAccum: DataPointAccumulator,
  *   perStudentTaskAccums: Map<string, Map<string, DataPointAccumulator>>,
  *   averageContributionByTaskKey: Map<string, AverageContribution>
  * }} The accumulator containers plus definition-scoped contribution metadata.
  *   `perStudentTaskAccums` feeds `rollupMetric` in the row builders;
  *   `averageContributionByTaskKey` supplies the required task-level
  *   `averageContribution` field for `PerTaskRow` and `PerStudentTaskMetric`.
- * @remarks A two-level Map (`definitionKey → taskId → taskWeighting`) is built
- *   once per analysis run from `input.assignmentDefinitionPartials`, giving O(1)
- *   task-weighting lookup per submission item instead of O(P × T) linear
- *   searches.
+ * @remarks Live partial lookup and nullable assignment-weight normalisation are
+ *   delegated to `resolveAssignmentDefinitionData`. The resulting
+ *   definition-scoped index feeds `computeEffectiveWeight`, shared with heatmap
+ *   projection.
  */
 export function accumulateDataPoints(
   filteredAssignments: AveragingAnalyserInput['classes'][number]['assignments'],
@@ -173,7 +124,6 @@ export function accumulateDataPoints(
 ): {
   studentAccums: Map<string, { studentName: string | null } & DataPointAccumulator>;
   taskAccums: Map<string, { definitionKey: string; taskId: string } & DataPointAccumulator>;
-  classAccum: DataPointAccumulator;
   perStudentTaskAccums: Map<string, Map<string, DataPointAccumulator>>;
   averageContributionByTaskKey: Map<string, AverageContribution>;
 } {
@@ -184,39 +134,51 @@ export function accumulateDataPoints(
     { definitionKey: string; taskId: string } & DataPointAccumulator
   >();
 
-  const classAccum = createDataPointAccumulator();
-
   const perStudentTaskAccums = new Map<string, Map<string, DataPointAccumulator>>();
 
   const averageContributionByTaskKey = new Map<string, AverageContribution>();
 
-  // Build lookup Maps for O(1) resolution.
-  const { partialsByDefinitionKey, taskWeightByDefinitionKey } = buildDefinitionLookups(
-    input.assignmentDefinitionPartials
-  );
+  const partialsByDefinitionKey = new Map<string, AssignmentDefinitionPartial>();
+  for (const partial of input.assignmentDefinitionPartials) {
+    partialsByDefinitionKey.set(partial.definitionKey, partial);
+  }
+  const definitionLookups = new Map<string, DefinitionLookup>();
 
   for (const assignment of filteredAssignments) {
     const definitionKey = assignment.assignmentDefinitionKey;
+    let definitionLookup = definitionLookups.get(definitionKey);
 
-    const resolved = resolveAssignmentDefinitionData(definitionKey, partialsByDefinitionKey);
+    if (!definitionLookup) {
+      const resolvedDefinition = resolveAssignmentDefinitionData(
+        definitionKey,
+        partialsByDefinitionKey
+      );
 
-    if (!resolved) {
-      logFrontendEvent('warn', {
-        context: 'accumulateDataPoints',
-        errorMessage: `No assignment definition partial found for definitionKey '${definitionKey}'`,
-        metadata: { definitionKey },
-      });
-      continue;
+      if (!resolvedDefinition) {
+        logFrontendEvent('warn', {
+          context: 'accumulateDataPoints',
+          errorMessage: `No assignment definition partial found for definitionKey '${definitionKey}'`,
+          metadata: { definitionKey },
+        });
+        continue;
+      }
+
+      definitionLookup = {
+        tasks: resolvedDefinition.tasks,
+        taskWeightingIndex: createTaskWeightingIndex(resolvedDefinition),
+      };
+      definitionLookups.set(definitionKey, definitionLookup);
     }
 
-    preRegisterTasks(resolved.tasks, definitionKey, taskAccums);
-    for (const task of resolved.tasks) {
-      const effectiveWeight = resolveEffectiveWeight(
-        definitionKey,
-        task.taskId,
-        resolved.assignmentWeighting,
-        taskWeightByDefinitionKey
-      );
+    const { tasks, taskWeightingIndex } = definitionLookup;
+    preRegisterTasks(tasks, definitionKey, taskAccums);
+    for (const task of tasks) {
+      const effectiveWeight = computeEffectiveWeight(taskWeightingIndex, task.taskId);
+      if (effectiveWeight === undefined) {
+        throw new Error(
+          `accumulateDataPoints: pre-registered task '${task.taskId}' is missing from definition '${definitionKey}'`
+        );
+      }
       ensureAverageContribution(
         averageContributionByTaskKey,
         definitionKey,
@@ -227,12 +189,10 @@ export function accumulateDataPoints(
 
     processAssignment(
       assignment,
-      resolved.assignmentWeighting,
+      taskWeightingIndex,
       definitionKey,
-      taskWeightByDefinitionKey,
       studentAccums,
       taskAccums,
-      classAccum,
       criterionWeightings,
       perStudentTaskAccums,
       averageContributionByTaskKey
@@ -242,7 +202,6 @@ export function accumulateDataPoints(
   return {
     studentAccums,
     taskAccums,
-    classAccum,
     perStudentTaskAccums,
     averageContributionByTaskKey,
   };

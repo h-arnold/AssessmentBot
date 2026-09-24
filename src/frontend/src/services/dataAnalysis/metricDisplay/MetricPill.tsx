@@ -1,8 +1,12 @@
 import type { CSSProperties, JSX } from 'react';
 import { Tag } from 'antd';
 import type { MetricResult } from '../dataAnalysis.zod';
-import { EXCLUDED_METRIC_ACCESSIBLE_LABEL, resolveMetricTone } from './metricTone';
-import type { MetricToneColor } from './metricTone';
+import { formatMetricDisplayText } from './metricDisplayText';
+import {
+  EXCLUDED_METRIC_ACCESSIBLE_LABEL,
+  resolveMetricTone,
+  type MetricToneColor,
+} from './metricTone';
 
 /** Default number of decimal places for computed values. */
 const DEFAULT_PRECISION = 2;
@@ -94,37 +98,15 @@ function buildPillStyle(muted: boolean, emphasised: boolean, compact: boolean): 
 }
 
 /**
- * Format the pill's display text for a resolved metric tone.
- *
- * @param {MetricResult} metric - The metric being rendered.
- * @param {number | 'N' | 'E' | null} displayValue - Resolved raw display value.
- * @param {number} precision - Decimal places for computed values.
- * @returns {string} The text shown inside the Tag.
- */
-function formatDisplayText(
-  metric: MetricResult,
-  displayValue: number | 'N' | 'E' | null,
-  precision: number
-): string {
-  if (metric.state === 'computed') {
-    return metric.value.toFixed(precision);
-  }
-  if (metric.state === 'excluded') {
-    return 'Excluded';
-  }
-  return String(displayValue);
-}
-
-/**
  * Render a `MetricResult` as an Ant Design `Tag` pill.
  *
  * @remarks
  * **Presentational contract.** This component is a pure rendering layer:
- * - Calls `resolveMetricTone(metric, range, errorColor)` to obtain the colour,
- *   display value, and muted flag.
- * - Formats `computed` values via `metric.value.toFixed(precision)`.
- *   `notAttempted` and `error` states produce the literal `'N'` and `'E'`;
- *   `excluded` produces the visible label **Excluded**.
+ * - Calls `resolveMetricTone(metric, range, errorColor)` to obtain the colour
+ *   and muted flag.
+ * - Uses the shared `formatMetricDisplayText` helper for every state.
+ *   `computed` values use `precision`; `notAttempted`, `error`, and `excluded`
+ *   produce the literals `'N'`, `'E'`, and **Excluded**.
  * - Applies `opacity: 0.55` only when the resolution's `muted` flag is `true`
  *   (`notAttempted`). Only `excluded` receives the accessible name and `img`
  *   role; `notAttempted` and `error` remain unchanged.
@@ -160,7 +142,7 @@ export function MetricPill({
   errorColor,
 }: MetricPillProperties): JSX.Element {
   const resolution = resolveMetricTone(metric, range, errorColor);
-  const displayText = formatDisplayText(metric, resolution.displayValue, precision);
+  const displayText = formatMetricDisplayText(metric, precision);
 
   const tagStyle: CSSProperties = buildPillStyle(resolution.muted, emphasised, compact);
 

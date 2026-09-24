@@ -13,11 +13,13 @@ import {
   createClassFull,
   createClassPartials,
   createDatasetState,
-  createMergedResult,
   createMockQueryResult,
-  createTestQueryClient,
   createTestWrapper,
 } from '../../test/heatmapsPageDataFixtures';
+import {
+  createHeatmapMergedResult as createMergedResult,
+  createTestQueryClient,
+} from '../../test/dataAnalysis/heatmapFixtures';
 
 const {
   mockUseQuery,

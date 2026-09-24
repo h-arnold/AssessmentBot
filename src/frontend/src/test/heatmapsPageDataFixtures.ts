@@ -1,33 +1,20 @@
 import { createElement, type ReactNode } from 'react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClientProvider, type QueryClient } from '@tanstack/react-query';
 import type { UseQueryResult } from '@tanstack/react-query';
 import { vi } from 'vitest';
 import type { ClassFull } from '../services/googleClassrooms/classDetail/classDetailService.zod';
 import type { AveragingResult } from '../services/dataAnalysis/dataAnalysis.zod';
-import type {
-  AssignmentDefinitionPartialsResponse,
-  AssignmentDefinitionPartial,
-} from '../services/assignmentDefinition/assignmentDefinitionPartials.zod';
+import type { AssignmentDefinitionPartialsResponse } from '../services/assignmentDefinition/assignmentDefinitionPartials.zod';
 import type { ClassPartial } from '../services/googleClassrooms/classPartialsService';
-import type { MergedHeatmapResult } from '../services/dataAnalysis/heatmapAdapter.merged';
 import type { PageDatasetState } from '../hooks/usePageDataset';
 import { createMetricResult } from './dataAnalysis/fixtures';
+import {
+  createHeatmapClassFull,
+  createHeatmapDefinitionPartial,
+} from './dataAnalysis/heatmapFixtures';
 
 /** Default class ID used across Heatmaps page-data tests. */
 export const DEFAULT_CLASS_ID = 'class-abc-123';
-
-/**
- * Creates a fresh QueryClient suitable for hook tests (retries disabled).
- *
- * @returns {QueryClient} A test QueryClient.
- */
-export function createTestQueryClient(): QueryClient {
-  return new QueryClient({
-    defaultOptions: {
-      queries: { retry: false },
-    },
-  });
-}
 
 /**
  * Creates a React wrapper providing the given QueryClient.
@@ -151,31 +138,25 @@ export function createClassPartials(): ClassPartial[] {
 }
 
 /**
- * Builds a minimal assignment-definition partial fixture.
- *
- * @param {string} definitionKey Definition key to embed.
- * @returns {AssignmentDefinitionPartial} A definition-partial fixture.
- */
-function createDefinitionPartial(definitionKey: string): AssignmentDefinitionPartial {
-  return {
-    definitionKey,
-    primaryTitle: `Title ${definitionKey}`,
-    primaryTopic: 'Topic A',
-    primaryTopicKey: 't1',
-    tasks: [{ taskId: 'tA', taskTitle: 'Task A' }],
-  } as unknown as AssignmentDefinitionPartial;
-}
-
-/**
  * Builds the assignment-definition partials fixture (registry of two definitions).
  *
  * @returns {AssignmentDefinitionPartialsResponse} The partials registry fixture.
  */
 export function createAssignmentDefinitionPartials(): AssignmentDefinitionPartialsResponse {
   return [
-    createDefinitionPartial('def1'),
-    createDefinitionPartial('def2'),
-  ] as unknown as AssignmentDefinitionPartialsResponse;
+    createHeatmapDefinitionPartial({
+      definitionKey: 'def1',
+      primaryTitle: 'Title def1',
+      taskId: 'tA',
+      taskTitle: 'Task A',
+    }),
+    createHeatmapDefinitionPartial({
+      definitionKey: 'def2',
+      primaryTitle: 'Title def2',
+      taskId: 'tB',
+      taskTitle: 'Task B',
+    }),
+  ];
 }
 
 /**
@@ -184,35 +165,15 @@ export function createAssignmentDefinitionPartials(): AssignmentDefinitionPartia
  * @param {Partial<ClassFull>} [overrides] Optional class-field overrides.
  * @returns {ClassFull} A class-full fixture.
  */
-export function createClassFull(overrides?: Partial<ClassFull>): ClassFull {
+export function createClassFull(overrides: Partial<ClassFull> = {}): ClassFull {
   return {
-    classId: DEFAULT_CLASS_ID,
-    className: 'Test Class 7A',
-    cohortKey: null,
-    courseLength: 1,
-    yearGroupKey: 'yg-7',
-    classOwner: null,
-    teachers: [],
-    students: [{ id: 's-1', name: 'Student One', email: 's1@test.com' }],
-    assignments: [
-      {
-        assignmentId: 'a1',
-        assignmentDefinitionKey: 'def1',
-        updatedAt: '2025-01-01T00:00:00.000Z',
-      } as unknown as ClassFull['assignments'][number],
-      {
-        assignmentId: 'a2',
-        assignmentDefinitionKey: 'def2',
-        updatedAt: '2025-02-01T00:00:00.000Z',
-      } as unknown as ClassFull['assignments'][number],
-    ],
+    ...createHeatmapClassFull(overrides),
     // The same fixture doubles as `AssignmentFull` for the per-assignment preview
     // query mock; `buildCellPreviewLookup` requires an embedded `assignmentDefinition`
     // (and `submissions`) so the loud fail-fast path in `useHeatmapsPageData` is not
     // tripped by the test data.
     assignmentDefinition: { definitionKey: 'def1' },
     submissions: [],
-    active: true,
     ...overrides,
   } as unknown as ClassFull;
 }
@@ -245,31 +206,4 @@ export function createAveragingResult(): AveragingResult {
     },
     appliedCriterionWeightings: { completeness: 0.4, accuracy: 0.4, spag: 0.2 },
   } as unknown as AveragingResult;
-}
-
-/**
- * Builds a minimal `MergedHeatmapResult` fixture for the default class.
- *
- * @returns {MergedHeatmapResult} A merged-heatmap-result fixture.
- */
-export function createMergedResult(): MergedHeatmapResult {
-  return {
-    classId: DEFAULT_CLASS_ID,
-    className: 'Test Class 7A',
-    sourceAssignments: [
-      { assignmentId: 'a1', definitionKey: 'def1', assignmentName: 'Title def1' },
-    ],
-    taskColumns: [
-      {
-        taskKey: 'def1::tA',
-        taskId: 'tA',
-        taskTitle: 'Task A',
-        averageContribution: { effectiveWeight: 1, includedInAverage: true },
-        assignmentId: 'a1',
-        definitionKey: 'def1',
-        assignmentName: 'Title def1',
-      },
-    ],
-    rows: [],
-  };
 }

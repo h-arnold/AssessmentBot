@@ -1,4 +1,4 @@
-import type { MetricResult } from '../dataAnalysis.zod';
+import type { MetricResult, TaskDisplayMetric } from '../dataAnalysis.zod';
 import type { MetricAccumulator } from './averagingAnalyser.types';
 
 /**
@@ -46,9 +46,9 @@ export function resolveAggregateMetric(accumulator: MetricAccumulator): MetricRe
 /**
  * Resolve display evidence, retaining numeric zero-weight observations.
  * @param {MetricAccumulator} accumulator - Display evidence accumulator.
- * @returns {MetricResult} The resolved display metric.
+ * @returns {TaskDisplayMetric} The resolved display metric.
  */
-export function resolveDisplayMetric(accumulator: MetricAccumulator): MetricResult {
+export function resolveDisplayMetric(accumulator: MetricAccumulator): TaskDisplayMetric {
   if (accumulator.displayCount > 0) {
     return {
       state: 'computed',

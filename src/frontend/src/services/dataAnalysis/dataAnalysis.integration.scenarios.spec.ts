@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { afterEach, describe, it, expect, vi } from 'vitest';
 import { DataAnalysisService } from './dataAnalysisService';
 import { DataAnalysisResponseSchema } from './dataAnalysis.zod';
 import {
@@ -17,7 +17,13 @@ import { expectMetricResultStateAware } from '../../test/dataAnalysis/averagingA
 
 describe('DataAnalysisService integration — advanced scenarios', () => {
   describe('empty tasks in partials', () => {
-    it('processes submissions correctly when live partials have an empty tasks array', () => {
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    it('drops submitted items with a warn and returns a schema-valid empty-task result', () => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const submittedTaskId = 't_missing';
       const input = buildInput(
         [
           {
@@ -28,11 +34,11 @@ describe('DataAnalysisService integration — advanced scenarios', () => {
               createAssignmentPartial({
                 assignmentId: 'a_001',
                 definitionKey: 'dk_algebra',
-                assignmentWeighting: 1,
-                tasks: [createTaskPartial('t_001', 1), createTaskPartial('t_002', 1)],
                 submissions: [
                   createSubmission('s_001', 'Alice', 'a_001', {
-                    t_001: createSubmissionItem('t_001', { accuracy: { score: 4 } }),
+                    [submittedTaskId]: createSubmissionItem(submittedTaskId, {
+                      accuracy: { score: 4 },
+                    }),
                   }),
                 ],
               }),
@@ -43,29 +49,42 @@ describe('DataAnalysisService integration — advanced scenarios', () => {
           assignmentDefinitionPartials: [
             createDefinitionPartial({
               definitionKey: 'dk_algebra',
-              assignmentWeighting: 1,
               tasks: [],
             }),
           ],
         }
       );
 
-      const service = new DataAnalysisService();
-      const results = service.analyse(input);
+      const results = new DataAnalysisService().analyse(input);
+      const parsedResults = DataAnalysisResponseSchema.parse(results);
 
-      expect(() => DataAnalysisResponseSchema.parse(results)).not.toThrow();
+      expect(parsedResults).toEqual(results);
       expect(results).toHaveLength(1);
-
-      expectMetricResultStateAware(results[0].perStudent[0].accuracy, {
-        state: 'computed',
-        value: 4,
-        totalWeight: 1,
-        applicableDataPoints: 1,
-        totalDataPoints: 1,
-      });
-
-      expect(results[0].perTask).toHaveLength(1);
-      expect(results[0].perTask[0].taskId).toBe('t_001');
+      expect(results[0].perStudent).toHaveLength(1);
+      for (const metric of [
+        results[0].perStudent[0].completeness,
+        results[0].perStudent[0].accuracy,
+        results[0].perStudent[0].spag,
+        results[0].perStudent[0].overall,
+      ]) {
+        expectMetricResultStateAware(metric, {
+          state: 'error',
+          totalWeight: 0,
+          totalDataPoints: 0,
+        });
+      }
+      expect(results[0].perTask).toEqual([]);
+      expect(results[0].perStudentTaskMetrics).toEqual([]);
+      expect(warnSpy).toHaveBeenCalledTimes(1);
+      expect(warnSpy).toHaveBeenCalledWith(
+        'processAssignment',
+        expect.objectContaining({
+          context: 'processAssignment',
+          errorMessage: `Submission task '${submittedTaskId}' is absent from the live assignment definition; dropping the item`,
+          metadata: { definitionKey: 'dk_algebra', taskId: submittedTaskId },
+          level: 'warn',
+        })
+      );
     });
   });
 
