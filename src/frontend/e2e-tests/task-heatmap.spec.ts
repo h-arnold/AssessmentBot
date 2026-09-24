@@ -12,6 +12,8 @@ const EXCLUDED_METRIC_ACCESSIBLE_NAME = 'Excluded from average: displayed work h
 /** Number of metric sub-columns per task group (Completeness, Accuracy, SPaG). */
 const METRIC_SUBCOLUMN_COUNT = 3;
 const EXCLUDED_AGGREGATE_COUNT = 4;
+const EXPECTED_EXCLUDED_COLUMN_WIDTH = 72;
+const MAX_ZERO_WEIGHT_TAB_PRESSES = 40;
 /** Number of keyboard steps to nudge the lower band-filter handle up past zero. */
 const LOWER_HANDLE_NUDGE_STEPS = 3;
 /** Human-readable task titles sourced from the warm-up partial (taskColumn.taskTitle). */
@@ -52,7 +54,7 @@ test.describe('Task Heatmap E2E journey', () => {
     ).toBeVisible();
     await expect(page.getByRole('heading', { name: HEATMAP_CLASS_NAME })).toBeVisible();
 
-    // Grouped header: split student name columns + task_001/002/003 with Completeness/Accuracy/SPaG.
+    // Grouped header: split student name columns + Task 1/2/3 with Completeness/Accuracy/SPaG.
     const table = page.getByRole('table', { name: HEATMAP_TABLE_NAME });
     await expect(table).toBeVisible();
     await expect(table.getByRole('columnheader', { name: 'Forename' })).toHaveCount(1);
@@ -69,13 +71,10 @@ test.describe('Task Heatmap E2E journey', () => {
       METRIC_SUBCOLUMN_COUNT
     );
 
-    // Student Two's task_001 Completeness cell shows green band + aria-label (integer, 0 dp).
-    // The aria-label is now applied to BOTH the `<td role="cell">` (via onCell) and the nested
-    // `<span role="button" aria-haspopup="dialog">` popover trigger, so a bare `[aria-label=...]`
-    // selector matches two elements. Target the `role="button"` trigger to keep a single match.
-    const cell = page.locator(
-      `[role="button"][aria-label="Student Two, task_001, Completeness: 5"]`
-    );
+    // Student Two's Task 1 Completeness cell shows green band + aria-label (integer, 0 dp).
+    // The aria-label is applied to BOTH the `<td role="cell">` (via onCell) and the nested
+    // popover trigger, so a bare `[aria-label=...]` selector matches two elements.
+    const cell = page.locator(`[role="button"][aria-label="Student Two, Task 1, Completeness: 5"]`);
     await expect(cell).toHaveCount(1);
   });
 
@@ -106,13 +105,46 @@ test.describe('Task Heatmap E2E journey', () => {
 
     const zeroWeightLabel =
       'Task 1 Zero weighting — scores are shown but do not contribute to averages.';
-    const taskHeaderLabel = page.getByLabel(zeroWeightLabel, { exact: true });
+    const taskHeaderLabel = table.getByRole('group', {
+      name: zeroWeightLabel,
+      exact: true,
+    });
     await expect(taskHeaderLabel).toHaveCount(1);
+    const zeroWeightHeader = table.locator('th.task-heatmap-zero-weight-group').first();
+    await expect(zeroWeightHeader).toHaveClass(/task-heatmap-zero-weight-group/);
+    const headerBoxShadow = await zeroWeightHeader.evaluate(
+      (element) => getComputedStyle(element).boxShadow
+    );
+    expect(headerBoxShadow).toMatch(/2(?:px 0){3}px inset/);
+    expect(headerBoxShadow).toMatch(/-2(?:px 0){3}px inset/);
     await taskHeaderLabel.hover();
     await expect(page.getByRole('tooltip')).toHaveText(
       'Zero weighting — scores are shown but do not contribute to averages.'
     );
-    await taskHeaderLabel.focus();
+    await page.mouse.move(0, 0);
+    await expect(page.getByRole('tooltip')).toHaveCount(0);
+    const focusStart = page.getByRole('button', { name: 'Back to Class overview' });
+    await focusStart.focus();
+    for (let tabPress = 0; tabPress < MAX_ZERO_WEIGHT_TAB_PRESSES; tabPress += 1) {
+      await page.keyboard.press('Tab');
+      if (await taskHeaderLabel.evaluate((element) => element === document.activeElement)) {
+        break;
+      }
+    }
+    await expect(taskHeaderLabel).toBeFocused();
+    const focusStyle = await taskHeaderLabel.evaluate((element) => {
+      const style = getComputedStyle(element);
+      return {
+        outlineColor: style.outlineColor,
+        outlineOffset: style.outlineOffset,
+        outlineStyle: style.outlineStyle,
+        outlineWidth: style.outlineWidth,
+      };
+    });
+    expect(focusStyle.outlineStyle).toBe('solid');
+    expect(focusStyle.outlineWidth).toBe('2px');
+    expect(focusStyle.outlineOffset).toBe('2px');
+    expect(focusStyle.outlineColor).not.toBe('transparent');
     await expect(page.getByRole('tooltip')).toHaveText(
       'Zero weighting — scores are shown but do not contribute to averages.'
     );
@@ -121,11 +153,11 @@ test.describe('Task Heatmap E2E journey', () => {
     await expect(page.getByRole('dialog')).toHaveCount(0);
 
     const studentTwoScore = table.locator(
-      '[role="button"][aria-label="Student Two, task_001, Completeness: 5"]'
+      '[role="button"][aria-label="Student Two, Task 1, Completeness: 5"]'
     );
     await expect(studentTwoScore).toHaveCount(1);
     await expect(
-      table.locator('[role="button"][aria-label="Student One, task_001, Completeness: N"]')
+      table.locator('[role="button"][aria-label="Student One, Task 1, Completeness: N"]')
     ).toHaveCount(1);
 
     const scoreBackground = await studentTwoScore.evaluate((element) => {
@@ -140,6 +172,14 @@ test.describe('Task Heatmap E2E journey', () => {
     );
     await expect(table.locator('.task-heatmap-zero-weight-first').first()).toHaveCount(1);
     await expect(table.locator('.task-heatmap-zero-weight-last').first()).toHaveCount(1);
+    const firstMetricCell = table.locator('.task-heatmap-zero-weight-first').first();
+    const lastMetricCell = table.locator('.task-heatmap-zero-weight-last').first();
+    const [firstBoxShadow, lastBoxShadow] = await Promise.all([
+      firstMetricCell.evaluate((element) => getComputedStyle(element).boxShadow),
+      lastMetricCell.evaluate((element) => getComputedStyle(element).boxShadow),
+    ]);
+    expect(firstBoxShadow).toMatch(/2(?:px 0){3}px inset/);
+    expect(lastBoxShadow).toMatch(/-2(?:px 0){3}px inset/);
     await expect(table.getByRole('columnheader', { name: 'Forename' })).not.toHaveClass(
       /task-heatmap-zero-weight/
     );
@@ -158,10 +198,49 @@ test.describe('Task Heatmap E2E journey', () => {
     await expect(averagesTable).toBeVisible();
 
     const excludedCell = averagesTable
-      .locator(`[aria-label="${EXCLUDED_METRIC_ACCESSIBLE_NAME}"]`)
+      .locator(`[aria-label*="${EXCLUDED_METRIC_ACCESSIBLE_NAME}"]`)
       .first();
     await expect(excludedCell).toHaveCount(1);
-
+    await expect(excludedCell).toHaveAttribute(
+      'aria-label',
+      new RegExp(
+        `^Student .+, (Completeness|Accuracy|SPaG|Average): ${EXCLUDED_METRIC_ACCESSIBLE_NAME}$`
+      )
+    );
+    const excludedText = excludedCell.getByText('Excluded', { exact: true });
+    await expect(excludedText).toHaveCount(1);
+    const excludedGeometry = await excludedCell.evaluate(
+      (cell, text) => {
+        const cellElement = cell as HTMLElement;
+        const textElement = text as HTMLElement;
+        const cellRect = cellElement.getBoundingClientRect();
+        const textRect = textElement.getBoundingClientRect();
+        return {
+          cellClientHeight: cellElement.clientHeight,
+          cellClientWidth: cellElement.clientWidth,
+          cellOffsetWidth: cellElement.offsetWidth,
+          cellScrollHeight: cellElement.scrollHeight,
+          cellScrollWidth: cellElement.scrollWidth,
+          cellTop: cellRect.top,
+          textBottom: textRect.bottom,
+          textHeight: textRect.height,
+          textTop: textRect.top,
+          textRight: textRect.right,
+          cellBottom: cellRect.bottom,
+          cellRight: cellRect.right,
+        };
+      },
+      await excludedText.elementHandle()
+    );
+    expect(excludedGeometry.cellOffsetWidth).toBeGreaterThanOrEqual(EXPECTED_EXCLUDED_COLUMN_WIDTH);
+    expect(excludedGeometry.cellScrollWidth).toBeLessThanOrEqual(excludedGeometry.cellClientWidth);
+    expect(excludedGeometry.cellScrollHeight).toBeLessThanOrEqual(
+      excludedGeometry.cellClientHeight
+    );
+    expect(excludedGeometry.textHeight).toBeLessThanOrEqual(excludedGeometry.cellClientHeight);
+    expect(excludedGeometry.textTop).toBeGreaterThanOrEqual(excludedGeometry.cellTop - 1);
+    expect(excludedGeometry.textBottom).toBeLessThanOrEqual(excludedGeometry.cellBottom + 1);
+    expect(excludedGeometry.textRight).toBeLessThanOrEqual(excludedGeometry.cellRight + 1);
     const readResolvedColours = async (cell: typeof excludedCell) =>
       cell.evaluate((element) => {
         const style = getComputedStyle(element);
@@ -190,11 +269,16 @@ test.describe('Task Heatmap E2E journey', () => {
     expect(lightColours.tokenTextValue).not.toBe('');
     expect(lightColours.background).toBe(lightColours.tokenBackground);
     expect(lightColours.text).toBe(lightColours.tokenText);
-
     const themeSwitch = page.getByRole('switch', { name: 'Dark mode' });
     await themeSwitch.click();
     await expect(themeSwitch).toBeChecked();
 
+    await expect
+      .poll(async () => {
+        const colours = await readResolvedColours(excludedCell);
+        return colours.background !== lightColours.background && colours.text !== lightColours.text;
+      })
+      .toBe(true);
     const darkColours = await readResolvedColours(excludedCell);
     expect(darkColours.tokenBackgroundValue).not.toBe('');
     expect(darkColours.tokenTextValue).not.toBe('');

@@ -33,6 +33,7 @@ import { buildMetricRangeFilter } from '../../services/dataAnalysis/metricDispla
 import { decodeFilterToRange } from '../../services/dataAnalysis/metricDisplay/metricRangeKey';
 import { MetricIconLabel } from '../../components/MetricIconLabel/MetricIconLabel';
 import { TaskPreviewCard, CARD_MAX_WIDTH } from './TaskPreviewCard';
+import { DeferredPopoverContent } from './DeferredPopoverContent';
 import { assembleTaskPreviewData } from './assembleTaskPreviewData';
 import type { CellPreviewData, CellPreviewLookup } from './buildCellPreviewLookup';
 import type { PreviewStatus } from './assembleMergedPreviewData';
@@ -120,6 +121,24 @@ const SHARED_DEFINITION_SUFFIX = ' (shared definition)';
  */
 function getDisplayTitle(key: HeatmapMetricKey): string {
   return METRIC_DISPLAY_META.get(key)!.label;
+}
+
+/**
+ * Build the accessible label shared by a metric cell and its Popover trigger.
+ *
+ * @param {string} studentName - The student's displayed name.
+ * @param {string} taskTitle - The human-readable task title or ID fallback.
+ * @param {HeatmapMetricKey} metric - The metric key.
+ * @param {string} score - The formatted metric display text.
+ * @returns {string} The contextual accessible label.
+ */
+function buildMetricCellAccessibleLabel(
+  studentName: string,
+  taskTitle: string,
+  metric: HeatmapMetricKey,
+  score: string
+): string {
+  return `${studentName}, ${taskTitle}, ${getDisplayTitle(metric)}: ${score}`;
 }
 
 /**
@@ -296,6 +315,8 @@ export function buildTaskMetricSubColumns(
   columnIsLoading: boolean,
   columnHasError: boolean
 ): TableColumnsType<TaskHeatmapRow> {
+  const taskTitle = taskColumn.taskTitle ?? taskColumn.taskId;
+
   return HEATMAP_METRIC_KEYS.map((metric, metricIndex) => {
     const meta = METRIC_DISPLAY_META.get(metric)!;
     const columnKey = `${taskColumn.taskKey}::${metric}`;
@@ -329,7 +350,7 @@ export function buildTaskMetricSubColumns(
         const m = getCellMetric(record.cells[taskIndex], metric);
         const { cellStyle } = resolveMetricTone(m);
         const score = formatMetricDisplayText(m, INDIVIDUAL_SCORE_PRECISION);
-        const ariaLabel = `${record.studentName}, ${taskColumn.taskId}, ${getDisplayTitle(metric)}: ${score}`;
+        const ariaLabel = buildMetricCellAccessibleLabel(record.studentName, taskTitle, metric, score);
         return {
           style: cellStyle,
           'aria-label': ariaLabel,
@@ -339,21 +360,27 @@ export function buildTaskMetricSubColumns(
         const m = getCellMetric(record.cells[taskIndex], metric);
         const cellData = cellPreviewLookup?.get(record.studentId)?.get(taskColumn.taskKey) ?? null;
         const score = formatMetricDisplayText(m, INDIVIDUAL_SCORE_PRECISION);
-        const ariaLabel = `${record.studentName}, ${taskColumn.taskId}, ${getDisplayTitle(metric)}: ${score}`;
+        const ariaLabel = buildMetricCellAccessibleLabel(record.studentName, taskTitle, metric, score);
 
         return (
           <Popover
             trigger={['hover', 'click']}
             placement="right"
             destroyOnHidden
-            content={buildPopoverContent({
-              cellData,
-              metricResult: m,
-              metricKey: metric,
-              taskId: taskColumn.taskId,
-              isLoading: columnIsLoading,
-              hasError: columnHasError,
-            })}
+            content={
+              <DeferredPopoverContent
+                buildContent={() =>
+                  buildPopoverContent({
+                    cellData,
+                    metricResult: m,
+                    metricKey: metric,
+                    taskId: taskColumn.taskId,
+                    isLoading: columnIsLoading,
+                    hasError: columnHasError,
+                  })
+                }
+              />
+            }
           >
             {/* 4px padding (APP_GAP_XS, documented half-unit exception) widens the
                 Popover hover/click target around the score without covering the
@@ -362,7 +389,6 @@ export function buildTaskMetricSubColumns(
               tabIndex={0}
               role="button"
               aria-label={ariaLabel}
-              aria-haspopup="dialog"
               style={{ padding: APP_GAP_XS, display: 'inline-block' }}
               onKeyDown={(event): void => {
                 if (event.key === 'Enter' || event.key === ' ') {

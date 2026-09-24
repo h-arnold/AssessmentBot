@@ -52,10 +52,10 @@ async function openHeatmapTable(page: Page): Promise<void> {
 /**
  * Returns the locator for the popover trigger of a single metric sub-cell.
  *
- * The aria-label format is `${studentName}, ${taskId}, ${metricLabel}: ${score}`
- * (see `TaskHeatmapTable.tsx` `onCell` and `render`). That label is now applied
+ * The aria-label format is `${studentName}, ${taskTitle}, ${metricLabel}: ${score}`
+ * (see `taskHeatmapTableColumns.tsx` `onCell` and `render`). That label is now applied
  * to BOTH the `<td role="cell">` (via `onCell`) and the nested
- * `<span role="button" aria-haspopup="dialog">` popover trigger, so a bare
+ * `<span role="button">` popover trigger, so a bare
  * `[aria-label="..."] selector matches two elements. Disambiguate by targeting
  * the `role="button"` trigger specifically — that is the element the hover and
  * click interactions must act on.
@@ -93,8 +93,8 @@ test.describe('Task Preview Card popover', () => {
     await installRuntimeMock(page, scenario);
     await openHeatmapTable(page);
 
-    // Student Two / task_001 / Completeness: 5 (from createHeatmapScenario fixture).
-    const cell = metricCell(page, 'Student Two, task_001, Completeness: 5');
+    // Student Two / Task 1 / Completeness: 5 (from createHeatmapScenario fixture).
+    const cell = metricCell(page, 'Student Two, Task 1, Completeness: 5');
     await expect(cell).toHaveCount(1);
 
     await cell.hover();
@@ -116,8 +116,8 @@ test.describe('Task Preview Card popover', () => {
     await installRuntimeMock(page, scenario);
     await openHeatmapTable(page);
 
-    // Student Two / task_002 / Accuracy: 4 (task_002 is the TEXT-seeded task).
-    const cell = metricCell(page, 'Student Two, task_002, Accuracy: 4');
+    // Student Two / Task 2 / Accuracy: 4 (Task 2 is the TEXT-seeded task).
+    const cell = metricCell(page, 'Student Two, Task 2, Accuracy: 4');
     await expect(cell).toHaveCount(1);
 
     await cell.hover();
@@ -126,7 +126,7 @@ test.describe('Task Preview Card popover', () => {
     await expect(popover).toBeVisible();
 
     await assertPopoverStructure(popover, 'Accuracy');
-    // TEXT artifact renders the seeded markdown reasoning for task_002 accuracy.
+    // TEXT artifact renders the seeded markdown reasoning for Task 2 accuracy.
     // Assert the deterministic real-data text rendered, proving the markdown
     // pipeline worked rather than merely that *a* paragraph element exists.
     await expect(
@@ -143,8 +143,8 @@ test.describe('Task Preview Card popover', () => {
     await installRuntimeMock(page, scenario);
     await openHeatmapTable(page);
 
-    // Student Two / task_003 / SPaG: 5 (task_003 is the TABLE-seeded task).
-    const cell = metricCell(page, 'Student Two, task_003, SPaG: 5');
+    // Student Two / Task 3 / SPaG: 5 (Task 3 is the TABLE-seeded task).
+    const cell = metricCell(page, 'Student Two, Task 3, SPaG: 5');
     await expect(cell).toHaveCount(1);
 
     await cell.hover();
@@ -169,7 +169,7 @@ test.describe('Task Preview Card popover', () => {
     await openHeatmapTable(page);
 
     // Click the completeness cell to pin the popover open.
-    const cell = metricCell(page, 'Student Two, task_001, Completeness: 5');
+    const cell = metricCell(page, 'Student Two, Task 1, Completeness: 5');
     await expect(cell).toHaveCount(1);
 
     await cell.click();

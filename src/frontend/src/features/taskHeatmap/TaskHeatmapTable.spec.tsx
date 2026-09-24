@@ -243,7 +243,7 @@ describe('TaskHeatmapTable', () => {
   // 4. Cell aria-label — assert the rendered cell has the exact expected
   //    aria-label for known student/task/metric combinations.
   // -------------------------------------------------------------------------
-  it('renders per-cell aria-labels matching "[Student Name], [Task ID], [Metric]: [Score]"', () => {
+  it('renders per-cell aria-labels matching "[Student Name], [Task Title], [Metric]: [Score]"', () => {
     const result = buildHeatmapResult();
     render(
       <TaskHeatmapTable
@@ -254,24 +254,22 @@ describe('TaskHeatmapTable', () => {
       />
     );
 
-    // Student One (s-1), Task 1 (task_001), Completeness: 5 (green / computed)
-    // Expected aria-label: "Student One, task_001, Completeness: 5"
-    const cellAriaComputed = getHeatmapCellByLabel('Student One, task_001, Completeness: 5');
+    // Computed score on Task 1.
+    const cellAriaComputed = getHeatmapCellByLabel(`Student One, ${TASK_1_TITLE}, Completeness: 5`);
     expect(cellAriaComputed).toBeInTheDocument();
 
-    // Student Three (s-3), Task 1 (task_001), Completeness: notAttempted ('N')
-    // Expected aria-label: "Student Three, task_001, Completeness: N"
-    const cellAriaNotAttempted = getHeatmapCellByLabel('Student Three, task_001, Completeness: N');
+    // Genuine notAttempted score on Task 1.
+    const cellAriaNotAttempted = getHeatmapCellByLabel(
+      `Student Three, ${TASK_1_TITLE}, Completeness: N`
+    );
     expect(cellAriaNotAttempted).toBeInTheDocument();
 
-    // Student One (s-1), Task 1 (task_001), Accuracy: 3 (computed, default)
-    // Expected aria-label: "Student One, task_001, Accuracy: 3"
-    const cellAriaAccuracy = getHeatmapCellByLabel('Student One, task_001, Accuracy: 3');
+    // Computed Accuracy score on Task 1.
+    const cellAriaAccuracy = getHeatmapCellByLabel(`Student One, ${TASK_1_TITLE}, Accuracy: 3`);
     expect(cellAriaAccuracy).toBeInTheDocument();
 
-    // Student Two (s-2), Task 2 (task_002), Completeness: E (error)
-    // Expected aria-label: "Student Two, task_002, Completeness: E"
-    const cellAriaError = getHeatmapCellByLabel('Student Two, task_002, Completeness: E');
+    // Error score on Task 2.
+    const cellAriaError = getHeatmapCellByLabel(`Student Two, ${TASK_2_TITLE}, Completeness: E`);
     expect(cellAriaError).toBeInTheDocument();
   });
 

@@ -28,7 +28,7 @@ import type { TableColumnsType } from 'antd';
 import type { FilterValue } from 'antd/es/table/interface';
 
 import { compareStudentNames } from '../../services/dataAnalysis/compareStudentNames';
-import { compareStudentNamePart, splitStudentName } from '../../utils/splitStudentName';
+import { buildStudentNameColumns } from '../shared/studentNameTableColumns';
 import {
   buildAdaptiveTierGroups,
   buildTaskMetricSubColumns,
@@ -39,7 +39,6 @@ import {
 } from './taskHeatmapTableColumns';
 import type { CellPreviewLookup } from './buildCellPreviewLookup';
 import type { PreviewStatus } from './assembleMergedPreviewData';
-import { APP_COL_WIDTH_FORENAME, APP_COL_WIDTH_SURNAME } from '../../theme/spacing';
 import { buildTaskHeaderPresentation } from './taskHeatmapZeroWeightHeader';
 
 // ---------------------------------------------------------------------------
@@ -132,32 +131,9 @@ export function TaskHeatmapTable({
     // default full-name ascending order comes from the `sortedRows` pre-sort
     // above (unchanged `compareStudentNames`), and Ant Design applies the
     // per-column derived sorter only after a header click.
-    const forenameColumn = {
-      key: 'forename',
-      title: 'Forename',
-      fixed: 'start' as const,
-      width: APP_COL_WIDTH_FORENAME,
-      sorter: {
-        compare: (a: TaskHeatmapRow, b: TaskHeatmapRow): number =>
-          compareStudentNamePart('forename', a, b),
-      },
-      render: (_: unknown, record: TaskHeatmapRow): JSX.Element => (
-        <Typography.Text>{splitStudentName(record.studentName).forename}</Typography.Text>
-      ),
-    };
-    const surnameColumn = {
-      key: 'surname',
-      title: 'Surname',
-      fixed: 'start' as const,
-      width: APP_COL_WIDTH_SURNAME,
-      sorter: {
-        compare: (a: TaskHeatmapRow, b: TaskHeatmapRow): number =>
-          compareStudentNamePart('surname', a, b),
-      },
-      render: (_: unknown, record: TaskHeatmapRow): JSX.Element => (
-        <Typography.Text>{splitStudentName(record.studentName).surname}</Typography.Text>
-      ),
-    };
+    const [forenameColumn, surnameColumn] = buildStudentNameColumns<TaskHeatmapRow>({
+      sticky: true,
+    });
 
     // ── Per-task group columns (built once, indexed by task position) ─
     const groupedTaskColumns = taskColumns.map((taskColumn: TaskHeatmapColumn, taskIndex) => {
@@ -207,7 +183,11 @@ export function TaskHeatmapTable({
 
   return (
     <>
-      {hasNoSubmissions && <Typography.Paragraph>No submissions yet</Typography.Paragraph>}
+      {hasNoSubmissions && (
+        <Typography.Paragraph role="status" aria-live="polite">
+          No submissions yet
+        </Typography.Paragraph>
+      )}
       <Table<TaskHeatmapRow>
         rowKey="studentId"
         columns={columns}

@@ -38,7 +38,10 @@ describe('student averages excluded metric display and filtering', () => {
     expect(screen.queryByText('E')).not.toBeInTheDocument();
     expect(screen.queryByText('N')).not.toBeInTheDocument();
     expect(screen.queryByText('4.00')).not.toBeInTheDocument();
-    expect(average.onCell!(excludedRow)).toHaveProperty('aria-label', EXCLUDED_ACCESSIBLE_TEXT);
+    expect(average.onCell!(excludedRow)).toHaveProperty(
+      'aria-label',
+      `Alice, Average: ${EXCLUDED_ACCESSIBLE_TEXT}`
+    );
     expect(average.render!(null, nRow, 0)).toHaveProperty('props.children', 'N');
     expect(average.render!(null, errorRow, 0)).toHaveProperty('props.children', 'E');
     expect(average.render!(null, computedRow, 0)).toHaveProperty('props.children', '4.00');

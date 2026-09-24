@@ -5,13 +5,17 @@ import userEvent from '@testing-library/user-event';
 import { TaskHeatmapTable } from './TaskHeatmapTable';
 import type { MergedHeatmapResult } from '../../services/dataAnalysis/heatmapAdapter.merged';
 import { buildCell, buildHeatmapResult } from '../../test/taskHeatmapTableTestHelpers';
+import {
+  ZERO_WEIGHT_EXPLANATION,
+  ZERO_WEIGHT_FIRST_CLASS,
+  ZERO_WEIGHT_GROUP_CLASS,
+  ZERO_WEIGHT_LAST_CLASS,
+  getZeroWeightMetricEdgeClass,
+} from './taskHeatmapZeroWeightHeader';
 
-const ZERO_WEIGHT_EXPLANATION =
-  'Zero weighting — scores are shown but do not contribute to averages.';
-const ZERO_WEIGHT_GROUP_CLASS = 'task-heatmap-zero-weight-group';
-const ZERO_WEIGHT_FIRST_CLASS = 'task-heatmap-zero-weight-first';
-const ZERO_WEIGHT_LAST_CLASS = 'task-heatmap-zero-weight-last';
 const MAX_ZERO_TITLE_TAB_STEPS = 20;
+const SINGLE_METRIC_INDEX = 0;
+const SINGLE_METRIC_COUNT = 1;
 
 let user: ReturnType<typeof userEvent.setup>;
 
@@ -99,13 +103,28 @@ function buildMergedZeroWeightResult(): MergedHeatmapResult {
 }
 
 describe('TaskHeatmapTable zero-weight presentation', () => {
+  it('marks a single zero-weight metric as both the first and last group edge', () => {
+    const edgeClass = getZeroWeightMetricEdgeClass(SINGLE_METRIC_INDEX, SINGLE_METRIC_COUNT, {
+      effectiveWeight: 0,
+      includedInAverage: false,
+    });
+
+    expect(edgeClass).toContain(ZERO_WEIGHT_FIRST_CLASS);
+    expect(edgeClass).toContain(ZERO_WEIGHT_LAST_CLASS);
+  });
+
   it('shows the exact explanation on pointer hover and keyboard focus with one non-actionable tab stop', async () => {
     renderEmbeddedZeroWeightTable();
 
-    const title = screen.getByLabelText(`Task 1 ${ZERO_WEIGHT_EXPLANATION}`);
+    const headerName = `Task 1 — ${ZERO_WEIGHT_EXPLANATION}`;
+    const targetName = `Task 1 ${ZERO_WEIGHT_EXPLANATION}`;
+    const title = screen.getByRole('group', { name: targetName });
+    expect(screen.getByRole('columnheader', { name: headerName })).toHaveAttribute(
+      'aria-label',
+      headerName
+    );
     expect(title).toHaveAttribute('tabindex', '0');
-    expect(title).not.toHaveAttribute('role');
-    expect(screen.getAllByLabelText(`Task 1 ${ZERO_WEIGHT_EXPLANATION}`)).toHaveLength(1);
+    expect(screen.getAllByRole('group', { name: targetName })).toHaveLength(1);
 
     await user.hover(title);
     expect(await screen.findByText(ZERO_WEIGHT_EXPLANATION)).toBeInTheDocument();
@@ -123,7 +142,7 @@ describe('TaskHeatmapTable zero-weight presentation', () => {
 
     await user.keyboard('{Enter}{Space}');
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-    expect(screen.getByRole('columnheader', { name: 'Task 1' })).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: headerName })).toBeInTheDocument();
   });
 
   it('keeps positive task titles plain and marks only the independently zero-weight embedded group', () => {
@@ -133,7 +152,9 @@ describe('TaskHeatmapTable zero-weight presentation', () => {
     expect(screen.queryByLabelText(`Task 2 ${ZERO_WEIGHT_EXPLANATION}`)).not.toBeInTheDocument();
     expect(screen.queryByText(ZERO_WEIGHT_EXPLANATION)).not.toBeInTheDocument();
 
-    const zeroHeader = screen.getByRole('columnheader', { name: 'Task 1' });
+    const zeroHeader = screen.getByRole('columnheader', {
+      name: `Task 1 — ${ZERO_WEIGHT_EXPLANATION}`,
+    });
     expect(zeroHeader).toHaveClass(ZERO_WEIGHT_GROUP_CLASS);
     const metricHeaders = screen.getAllByRole('columnheader', {
       name: /completeness|accuracy|spag/i,
@@ -146,9 +167,7 @@ describe('TaskHeatmapTable zero-weight presentation', () => {
     expect(bodyCells[2]).toHaveClass(ZERO_WEIGHT_FIRST_CLASS);
     expect(bodyCells[4]).toHaveClass(ZERO_WEIGHT_LAST_CLASS);
     expect(bodyCells[5]).not.toHaveClass(ZERO_WEIGHT_FIRST_CLASS);
-    expect(
-      screen.getAllByLabelText('Student One, task_001, Completeness: 5')[0]
-    ).toBeInTheDocument();
+    expect(screen.getAllByLabelText('Student One, Task 1, Completeness: 5')[0]).toBeInTheDocument();
   });
 
   it('preserves numeric zero-weight scores, genuine N and E as distinct rendered cell states', () => {
@@ -170,15 +189,11 @@ describe('TaskHeatmapTable zero-weight presentation', () => {
       />
     );
 
+    expect(screen.getAllByLabelText('Student One, Task 1, Completeness: 5')[0]).toBeInTheDocument();
     expect(
-      screen.getAllByLabelText('Student One, task_001, Completeness: 5')[0]
+      screen.getAllByLabelText('Student Three, Task 1, Completeness: N')[0]
     ).toBeInTheDocument();
-    expect(
-      screen.getAllByLabelText('Student Three, task_001, Completeness: N')[0]
-    ).toBeInTheDocument();
-    expect(
-      screen.getAllByLabelText('Student Two, task_002, Completeness: E')[0]
-    ).toBeInTheDocument();
+    expect(screen.getAllByLabelText('Student Two, Task 2, Completeness: E')[0]).toBeInTheDocument();
     expect(screen.queryByText('Excluded')).not.toBeInTheDocument();
   });
 
@@ -193,7 +208,7 @@ describe('TaskHeatmapTable zero-weight presentation', () => {
       />
     );
     const baselineCell = screen.getAllByLabelText(
-      'Student One, task_001, Completeness: 5'
+      'Student One, Task 1, Completeness: 5'
     )[0] as HTMLElement;
     const baselineBackground = baselineCell.style.backgroundColor;
     baselineRender.unmount();
@@ -216,7 +231,7 @@ describe('TaskHeatmapTable zero-weight presentation', () => {
     );
 
     const excludedCell = screen.getAllByLabelText(
-      'Student One, task_001, Completeness: 5'
+      'Student One, Task 1, Completeness: 5'
     )[0] as HTMLElement;
     expect(excludedCell.style.backgroundColor).toBe(baselineBackground);
     expect(excludedCell.textContent).toBe('5');
@@ -232,7 +247,8 @@ describe('TaskHeatmapTable zero-weight presentation', () => {
       />
     );
 
-    const mergedHeader = screen.getByRole('columnheader', { name: 'Merged zero-weight task' });
+    const mergedHeaderName = `Merged zero-weight task — ${ZERO_WEIGHT_EXPLANATION}`;
+    const mergedHeader = screen.getByRole('columnheader', { name: mergedHeaderName });
     expect(mergedHeader).toHaveClass(ZERO_WEIGHT_GROUP_CLASS);
     expect(screen.getByRole('columnheader', { name: 'Parent tier' })).not.toHaveClass(
       ZERO_WEIGHT_GROUP_CLASS
@@ -244,9 +260,9 @@ describe('TaskHeatmapTable zero-weight presentation', () => {
       ZERO_WEIGHT_GROUP_CLASS
     );
 
-    const focusableTitle = screen.getByLabelText(
-      `Merged zero-weight task ${ZERO_WEIGHT_EXPLANATION}`
-    );
+    const focusableTitle = screen.getByRole('group', {
+      name: `Merged zero-weight task ${ZERO_WEIGHT_EXPLANATION}`,
+    });
     expect(focusableTitle).toBeInTheDocument();
     const completeness = screen.getAllByRole('columnheader', { name: /completeness/i });
     expect(completeness[0]).toHaveClass(ZERO_WEIGHT_FIRST_CLASS);
@@ -255,7 +271,7 @@ describe('TaskHeatmapTable zero-weight presentation', () => {
     const studentRow = container.querySelector('tbody tr[data-row-key="student-1"]');
     expect(studentRow).not.toBeNull();
     const scoreMatches = within(studentRow as HTMLElement).getAllByLabelText(
-      'Student One, zero-task, Completeness: 4'
+      'Student One, Merged zero-weight task, Completeness: 4'
     );
     expect(scoreMatches[0]).toBeInTheDocument();
     expect(scoreMatches[0]).toHaveTextContent('4');

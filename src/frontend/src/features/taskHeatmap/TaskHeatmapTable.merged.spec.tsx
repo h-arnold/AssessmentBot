@@ -231,11 +231,11 @@ function buildCollapsedMergedResult(): MergedHeatmapResult {
 /**
  * Open a metric cell popover by hovering its trigger and return the popover node.
  *
- * @param {string} taskId - The task ID whose Completeness cell should be hovered.
+ * @param {string} taskTitle - The human-readable title whose Completeness cell should be hovered.
  * @returns {Promise<HTMLElement>} The opened Ant Design popover element.
  */
-async function openTaskPopover(taskId: string): Promise<HTMLElement> {
-  // Locate by task id and metric only — the completeness score varies per
+async function openTaskPopover(taskTitle: string): Promise<HTMLElement> {
+  // Locate by task title and metric only — the completeness score varies per
   // column in the merged fixtures, so the score component of the label is
   // intentionally not pinned here.
   //
@@ -251,10 +251,10 @@ async function openTaskPopover(taskId: string): Promise<HTMLElement> {
     renderTable(lastRenderProperties);
   }
   // The merged fixtures vary the completeness score per task, so match by the
-  // stable "Student One, <taskId>, Completeness:" label prefix rather than a
+  // stable "Student One, <taskTitle>, Completeness:" label prefix rather than a
   // non-literal RegExp (lint-forbidden) or a hard-coded score.
   const cell = screen.getAllByLabelText((content): boolean =>
-    content.startsWith(`Student One, ${taskId}, Completeness:`)
+    content.startsWith(`Student One, ${taskTitle}, Completeness:`)
   )[0];
   const trigger = cell.querySelector('span');
   expect(trigger).toBeInTheDocument();
@@ -291,7 +291,7 @@ describe('TaskHeatmapTable preview-status resolution and adaptive assignment tie
       previewStatusByTaskKey,
     });
 
-    const popover = await openTaskPopover('t1');
+    const popover = await openTaskPopover('A1 Task 1');
     expect(popover.querySelector('output[aria-busy="true"]')).toBeInTheDocument();
   });
 
@@ -308,7 +308,7 @@ describe('TaskHeatmapTable preview-status resolution and adaptive assignment tie
       previewStatusByTaskKey,
     });
 
-    const popover = await openTaskPopover('t1');
+    const popover = await openTaskPopover('A1 Task 1');
     // A healthy map entry must win over the aggregate loading flag.
     expect(popover.querySelector('output[aria-busy="true"]')).not.toBeInTheDocument();
     expect(popover.textContent).toContain('Student Response');
@@ -327,7 +327,7 @@ describe('TaskHeatmapTable preview-status resolution and adaptive assignment tie
       previewStatusByTaskKey,
     });
 
-    const popover = await openTaskPopover('t1');
+    const popover = await openTaskPopover('A1 Task 1');
     expect(popover.textContent).toContain("Couldn't load task details");
   });
 
@@ -346,13 +346,13 @@ describe('TaskHeatmapTable preview-status resolution and adaptive assignment tie
       previewStatusByTaskKey,
     });
 
-    const popoverT1 = await openTaskPopover('t1');
+    const popoverT1 = await openTaskPopover('A1 Task 1');
     expect(popoverT1.querySelector('output[aria-busy="true"]')).toBeInTheDocument();
 
-    const popoverT2 = await openTaskPopover('t2');
+    const popoverT2 = await openTaskPopover('A1 Task 2');
     expect(popoverT2.textContent).toContain("Couldn't load task details");
 
-    const popoverT3 = await openTaskPopover('t3');
+    const popoverT3 = await openTaskPopover('A1 Task 3');
     expect(popoverT3.textContent).toContain('Student Response');
   });
 
@@ -365,7 +365,7 @@ describe('TaskHeatmapTable preview-status resolution and adaptive assignment tie
       showAssignmentError: false,
     });
 
-    const popover = await openTaskPopover('t1');
+    const popover = await openTaskPopover('A1 Task 1');
     expect(popover.querySelector('output[aria-busy="true"]')).toBeInTheDocument();
   });
 
@@ -378,7 +378,7 @@ describe('TaskHeatmapTable preview-status resolution and adaptive assignment tie
       showAssignmentError: true,
     });
 
-    const popover = await openTaskPopover('t1');
+    const popover = await openTaskPopover('A1 Task 1');
     expect(popover.textContent).toContain("Couldn't load task details");
   });
 
@@ -397,12 +397,12 @@ describe('TaskHeatmapTable preview-status resolution and adaptive assignment tie
     });
 
     // Present, healthy entry must win → normal card (NOT the aggregate skeleton).
-    const popoverT1 = await openTaskPopover('t1');
+    const popoverT1 = await openTaskPopover('A1 Task 1');
     expect(popoverT1.querySelector('output[aria-busy="true"]')).not.toBeInTheDocument();
     expect(popoverT1.textContent).toContain('Student Response');
 
     // Missing entry falls back to the loading aggregate → skeleton (NOT a default healthy card).
-    const popoverT2 = await openTaskPopover('t2');
+    const popoverT2 = await openTaskPopover('A1 Task 2');
     expect(popoverT2.querySelector('output[aria-busy="true"]')).toBeInTheDocument();
   });
 

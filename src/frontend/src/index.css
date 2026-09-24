@@ -178,3 +178,8 @@ body {
 .task-heatmap-zero-weight-last {
   box-shadow: inset -2px 0 0 var(--ant-color-text-secondary);
 }
+
+.task-heatmap-zero-weight-tooltip-target:focus-visible {
+  outline: 2px solid var(--ant-color-primary);
+  outline-offset: 2px;
+}

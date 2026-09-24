@@ -1,5 +1,5 @@
-import { describe, it, expect, afterEach, beforeEach } from 'vitest';
-import { render, cleanup, waitFor } from '@testing-library/react';
+import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest';
+import { render, cleanup, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { TaskHeatmapTable } from './TaskHeatmapTable';
 import {
@@ -9,9 +9,21 @@ import {
   EMPTY_LOOKUP,
 } from '../../test/taskHeatmapTableTestHelpers';
 import type { CellPreviewLookup } from './buildCellPreviewLookup';
+import type * as TaskPreviewDataModule from './assembleTaskPreviewData';
+
+const { assembleTaskPreviewDataSpy } = vi.hoisted(() => ({
+  assembleTaskPreviewDataSpy: vi.fn(),
+}));
+
+vi.mock('./assembleTaskPreviewData', async (importOriginal) => {
+  const actual = await importOriginal<typeof TaskPreviewDataModule>();
+  assembleTaskPreviewDataSpy.mockImplementation(actual.assembleTaskPreviewData);
+  return { ...actual, assembleTaskPreviewData: assembleTaskPreviewDataSpy };
+});
 
 let user: ReturnType<typeof userEvent.setup>;
 beforeEach(() => {
+  assembleTaskPreviewDataSpy.mockClear();
   user = userEvent.setup();
 });
 afterEach(() => {
@@ -19,6 +31,66 @@ afterEach(() => {
 });
 
 describe('TaskHeatmapTable popover integration and preview presentation', () => {
+  it('uses the human-readable task title in both cell and trigger accessible names', () => {
+    render(
+      <TaskHeatmapTable
+        heatmapResult={buildHeatmapResult()}
+        cellPreviewLookup={null}
+        isAssignmentLoading={false}
+        showAssignmentError={false}
+      />
+    );
+
+    const accessibleName = 'Student One, Task 1, Completeness: 5';
+    const cell = getHeatmapCellByLabel(accessibleName);
+    const trigger = within(cell).getByRole('button', { name: accessibleName });
+
+    expect(cell).toHaveAttribute('aria-label', accessibleName);
+    expect(trigger).toHaveAttribute('aria-label', accessibleName);
+  });
+
+  it('does not describe the Ant Design Popover trigger as a dialog', () => {
+    render(
+      <TaskHeatmapTable
+        heatmapResult={buildHeatmapResult()}
+        cellPreviewLookup={null}
+        isAssignmentLoading={false}
+        showAssignmentError={false}
+      />
+    );
+
+    const cell = getHeatmapCellByLabel('Student One, Task 1, Completeness: 5');
+    const trigger = within(cell).getByRole('button');
+
+    expect(trigger).not.toHaveAttribute('aria-haspopup');
+  });
+
+  it('does not assemble preview data until its popover opens', async () => {
+    render(
+      <TaskHeatmapTable
+        heatmapResult={buildHeatmapResult()}
+        cellPreviewLookup={POPULATED_LOOKUP}
+        isAssignmentLoading={false}
+        showAssignmentError={false}
+      />
+    );
+
+    expect(assembleTaskPreviewDataSpy).not.toHaveBeenCalled();
+
+    const cell = getHeatmapCellByLabel('Student One, Task 1, Completeness: 5');
+    await user.hover(within(cell).getByRole('button'));
+    await waitFor(() => {
+      expect(document.querySelector('.ant-popover-content')).toBeInTheDocument();
+    });
+
+    expect(assembleTaskPreviewDataSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ artifactContent: 'Student answered the question correctly.' }),
+      expect.objectContaining({ state: 'computed', value: 5 }),
+      'completeness',
+      'task_001'
+    );
+  });
+
   // -------------------------------------------------------------------------
   // 6. Popover integration — metric sub-cells are wrapped in Popover with
   //    TaskPreviewCard content, while existing cell appearance is preserved.
@@ -36,7 +108,7 @@ describe('TaskHeatmapTable popover integration and preview presentation', () => 
     );
 
     // Find a computed cell's score span via its aria-label
-    const cell = getHeatmapCellByLabel('Student One, task_001, Completeness: 5');
+    const cell = getHeatmapCellByLabel('Student One, Task 1, Completeness: 5');
     const trigger = cell.querySelector('span');
     expect(trigger).toBeInTheDocument();
 
@@ -60,7 +132,7 @@ describe('TaskHeatmapTable popover integration and preview presentation', () => 
       />
     );
 
-    const cell = getHeatmapCellByLabel('Student One, task_001, Completeness: 5');
+    const cell = getHeatmapCellByLabel('Student One, Task 1, Completeness: 5');
     const trigger = cell.querySelector('span')!;
     expect(trigger).toBeInTheDocument();
 
@@ -89,9 +161,9 @@ describe('TaskHeatmapTable popover integration and preview presentation', () => 
 
     // The aria-label comes from onCell, not from render — Popover does not
     // change onCell, so the label should be unchanged.
-    expect(getHeatmapCellByLabel('Student One, task_001, Completeness: 5')).toBeInTheDocument();
-    expect(getHeatmapCellByLabel('Student One, task_001, Accuracy: 3')).toBeInTheDocument();
-    expect(getHeatmapCellByLabel('Student Two, task_002, Completeness: E')).toBeInTheDocument();
+    expect(getHeatmapCellByLabel('Student One, Task 1, Completeness: 5')).toBeInTheDocument();
+    expect(getHeatmapCellByLabel('Student One, Task 1, Accuracy: 3')).toBeInTheDocument();
+    expect(getHeatmapCellByLabel('Student Two, Task 2, Completeness: E')).toBeInTheDocument();
   });
 
   it('preserves the existing cell tone style (background colour) after popover integration', () => {
@@ -107,7 +179,7 @@ describe('TaskHeatmapTable popover integration and preview presentation', () => 
 
     // Student One, Task 1, Completeness: 5 is a computed score at the ceiling
     // of the range — the cell should carry a green/gradient background colour.
-    const cell = getHeatmapCellByLabel('Student One, task_001, Completeness: 5');
+    const cell = getHeatmapCellByLabel('Student One, Task 1, Completeness: 5');
     // resolveMetricTone sets backgroundColor (camelCase) on the <td> via onCell
     expect(cell.style.backgroundColor).toBeTruthy();
     expect(cell.style.backgroundColor).not.toBe('');
@@ -125,12 +197,12 @@ describe('TaskHeatmapTable popover integration and preview presentation', () => 
     );
 
     // Assert metric sub-cells are present and labelled
-    expect(getHeatmapCellByLabel('Student One, task_001, Completeness: 5')).toBeInTheDocument();
-    expect(getHeatmapCellByLabel('Student Two, task_001, Completeness: 3')).toBeInTheDocument();
-    expect(getHeatmapCellByLabel('Student Three, task_001, Completeness: N')).toBeInTheDocument();
+    expect(getHeatmapCellByLabel('Student One, Task 1, Completeness: 5')).toBeInTheDocument();
+    expect(getHeatmapCellByLabel('Student Two, Task 1, Completeness: 3')).toBeInTheDocument();
+    expect(getHeatmapCellByLabel('Student Three, Task 1, Completeness: N')).toBeInTheDocument();
 
     // Hover a computed cell and assert the popover opens
-    const cell = getHeatmapCellByLabel('Student One, task_001, Completeness: 5');
+    const cell = getHeatmapCellByLabel('Student One, Task 1, Completeness: 5');
     const trigger = cell.querySelector('span')!;
     expect(trigger).toBeInTheDocument();
 
@@ -157,7 +229,7 @@ describe('TaskHeatmapTable popover integration and preview presentation', () => 
       />
     );
 
-    const cell = getHeatmapCellByLabel('Student One, task_001, Completeness: 5');
+    const cell = getHeatmapCellByLabel('Student One, Task 1, Completeness: 5');
     const trigger = cell.querySelector('span')!;
     expect(trigger).toBeInTheDocument();
 
@@ -209,7 +281,7 @@ describe('TaskHeatmapTable popover integration and preview presentation', () => 
       />
     );
 
-    const cell = getHeatmapCellByLabel('Student One, task_001, Completeness: 5');
+    const cell = getHeatmapCellByLabel('Student One, Task 1, Completeness: 5');
     const trigger = cell.querySelector('span')!;
     expect(trigger).toBeInTheDocument();
 
@@ -233,8 +305,8 @@ describe('TaskHeatmapTable popover integration and preview presentation', () => 
       />
     );
 
-    expect(getHeatmapCellByLabel('Student One, task_001, Completeness: 5')).toBeInTheDocument();
-    expect(getHeatmapCellByLabel('Student One, task_001, Accuracy: 3')).toBeInTheDocument();
-    expect(getHeatmapCellByLabel('Student Two, task_002, Completeness: E')).toBeInTheDocument();
+    expect(getHeatmapCellByLabel('Student One, Task 1, Completeness: 5')).toBeInTheDocument();
+    expect(getHeatmapCellByLabel('Student One, Task 1, Accuracy: 3')).toBeInTheDocument();
+    expect(getHeatmapCellByLabel('Student Two, Task 2, Completeness: E')).toBeInTheDocument();
   });
 });

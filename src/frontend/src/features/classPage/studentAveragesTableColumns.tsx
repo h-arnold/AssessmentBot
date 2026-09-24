@@ -26,14 +26,13 @@
  */
 
 import type { CSSProperties, JSX } from 'react';
-import { Typography } from 'antd';
 import type { TableColumnsType, TableColumnType } from 'antd';
 import type { FilterValue } from 'antd/es/table/interface';
 
 import type { MetricResult } from '../../services/dataAnalysis/dataAnalysis.zod';
 import { getStudentMetric } from './classPageAdapter.zod';
 import type { StudentAverageRowModel } from './classPageAdapter.zod';
-import { compareStudentNamePart, splitStudentName } from '../../utils/splitStudentName';
+import { buildStudentNameColumns } from '../shared/studentNameTableColumns';
 import { METRIC_DISPLAY_META } from '../../services/dataAnalysis/metricDisplay/metricDisplayMeta';
 import type { MetricColumnKey } from '../../services/dataAnalysis/metricDisplay/metricDisplayMeta';
 import {
@@ -45,7 +44,7 @@ import { buildMetricRangeFilter } from '../../services/dataAnalysis/metricDispla
 import { decodeFilterToRange } from '../../services/dataAnalysis/metricDisplay/metricRangeKey';
 import { formatMetricDisplayText } from '../../services/dataAnalysis/metricDisplay/metricDisplayText';
 import { MetricIconLabel } from '../../components/MetricIconLabel/MetricIconLabel';
-import { APP_COL_WIDTH_FORENAME, APP_COL_WIDTH_SURNAME, APP_COL_WIDTH_METRIC_PILL } from '../../theme/spacing';
+import { APP_COL_WIDTH_METRIC_PILL } from '../../theme/spacing';
 
 // ---------------------------------------------------------------------------
 // Exported types
@@ -113,9 +112,9 @@ function buildMetricColumn(
       const metric = getStudentMetric(record.metrics, key);
       const { cellStyle } = resolveMetricTone(metric, DEFAULT_TONE_RANGE);
       const score = formatMetricDisplayText(metric, CLASS_PAGE_SCORE_PRECISION);
-      const ariaLabel = metric.state === 'excluded'
-        ? EXCLUDED_METRIC_ACCESSIBLE_LABEL
-        : `${record.studentName}, ${meta.label}: ${score}`;
+      const ariaLabel = `${record.studentName}, ${meta.label}: ${
+        metric.state === 'excluded' ? EXCLUDED_METRIC_ACCESSIBLE_LABEL : score
+      }`;
       return {
         style: cellStyle,
         'aria-label': ariaLabel,
@@ -157,39 +156,17 @@ function buildMetricColumn(
 export function buildStudentAveragesTableColumns(
   filters: StudentAveragesTableFilters
 ): TableColumnsType<StudentAverageRowModel> {
+  // ── Forename / Surname (no filters) ───────────────────────────────────
+  // No `defaultSortOrder`: the initial full-name order comes from the
+  // view model (see `buildClassPageViewModel`), and a static indicator
+  // here would re-sort by derived forename on mount.
+  const [forenameColumn, surnameColumn] = buildStudentNameColumns<StudentAverageRowModel>({
+    sticky: false,
+  });
+
   return [
-    // ── Forename (no filters) ────────────────────────────────────────
-    // No `defaultSortOrder`: the initial full-name order comes from the
-    // view model (see `buildClassPageViewModel`), and a static indicator
-    // here would re-sort by derived forename on mount.
-    {
-      key: 'forename',
-      title: 'Forename',
-      width: APP_COL_WIDTH_FORENAME,
-      sorter: {
-        compare: (a: StudentAverageRowModel, b: StudentAverageRowModel): number =>
-          compareStudentNamePart('forename', a, b),
-      },
-      render: (_: unknown, record: StudentAverageRowModel): JSX.Element => (
-        <Typography.Text>{splitStudentName(record.studentName).forename}</Typography.Text>
-      ),
-    },
-
-    // ── Surname (no filters) ─────────────────────────────────────────
-    {
-      key: 'surname',
-      title: 'Surname',
-      width: APP_COL_WIDTH_SURNAME,
-      sorter: {
-        compare: (a: StudentAverageRowModel, b: StudentAverageRowModel): number =>
-          compareStudentNamePart('surname', a, b),
-      },
-      render: (_: unknown, record: StudentAverageRowModel): JSX.Element => (
-        <Typography.Text>{splitStudentName(record.studentName).surname}</Typography.Text>
-      ),
-    },
-
-    // ── Metric columns ─────────────────────────────────────────────────
+    forenameColumn,
+    surnameColumn,
     buildMetricColumn('completeness', filters.completeness),
     buildMetricColumn('accuracy', filters.accuracy),
     buildMetricColumn('spag', filters.spag),

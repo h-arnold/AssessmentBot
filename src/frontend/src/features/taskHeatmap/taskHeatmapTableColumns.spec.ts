@@ -102,8 +102,9 @@ describe('task metric display text', () => {
     const columns = buildTaskMetricSubColumns(taskColumn, 0, {}, null, false, false);
     const cellProperties = columns[0]!.onCell!(taskRow, 0);
 
+    expect(taskColumn.taskTitle).toBe('Task task');
     expect(cellProperties).toMatchObject({
-      'aria-label': `Student One, task, Completeness: ${expected}`,
+      'aria-label': `Student One, ${taskColumn.taskTitle}, Completeness: ${expected}`,
     });
   });
 

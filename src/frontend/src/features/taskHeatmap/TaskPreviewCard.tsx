@@ -122,23 +122,6 @@ function buildMetricResult(metric: TaskPreviewMetric): TaskDisplayMetric {
 // ---------------------------------------------------------------------------
 
 /**
- * Placeholder copy for an empty student-response artifact, keyed by metric state.
- *
- * @param {TaskPreviewData['metricState']} metricState - The metric state discriminator.
- * @returns {JSX.Element} A placeholder text element.
- */
-function renderEmptyArtifactPlaceholder(metricState: TaskPreviewData['metricState']): JSX.Element {
-  if (metricState === 'notAttempted') {
-    return <Typography.Text>No submission available</Typography.Text>;
-  }
-  if (metricState === 'error') {
-    return <Typography.Text>Error loading response</Typography.Text>;
-  }
-  // Catch-all for computed state with empty content
-  return <Typography.Text>No content available</Typography.Text>;
-}
-
-/**
  * Render the student response artifact based on its type and metric state.
  *
  * Displays a placeholder message when content is empty and the metric
@@ -156,7 +139,13 @@ function renderArtifact(
   metricState: TaskPreviewData['metricState']
 ): JSX.Element {
   if (artifactContent === '') {
-    return renderEmptyArtifactPlaceholder(metricState);
+    if (metricState === 'notAttempted') {
+      return <Typography.Text>No submission available</Typography.Text>;
+    }
+    if (metricState === 'error') {
+      return <Typography.Text>Error loading response</Typography.Text>;
+    }
+    return <Typography.Text>No content available</Typography.Text>;
   }
 
   switch (artifactType) {
@@ -205,6 +194,8 @@ export function TaskPreviewCard({ data }: { readonly data: TaskPreviewData }): J
           gap={APP_GAP_SM}
           align="center"
           justify="center"
+          role="status"
+          aria-live="polite"
           aria-label={`${label} score: ${String(metricScore)}`}
         >
           <Typography.Text>{label}:</Typography.Text>

@@ -287,8 +287,8 @@ export function getRenderedRowKeys(container: HTMLElement): string[] {
  * Find the table cell `<td>` by its aria-label.
  *
  * Since both the `<td>` (via `onCell`) and the popover `<span>` trigger (via
- * `aria-label` + `aria-haspopup`) share the same label, use `getAllByLabelText`
- * and return the first match (the `<td>`, which comes first in DOM order).
+ * `aria-label`) share the same accessible label, use `getAllByLabelText` and
+ * return the first match (the `<td>`, which comes first in DOM order).
  *
  * @param {string | RegExp} label - The aria-label value (or pattern) to search for.
  * @returns {HTMLElement} The first matching element (the table cell).

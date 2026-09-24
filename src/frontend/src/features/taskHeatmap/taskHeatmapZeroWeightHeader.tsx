@@ -6,6 +6,7 @@ import type { AverageContribution } from '../../services/dataAnalysis/dataAnalys
 export const ZERO_WEIGHT_EXPLANATION =
   'Zero weighting — scores are shown but do not contribute to averages.';
 export const ZERO_WEIGHT_GROUP_CLASS = 'task-heatmap-zero-weight-group';
+export const ZERO_WEIGHT_TOOLTIP_TARGET_CLASS = 'task-heatmap-zero-weight-tooltip-target';
 export const ZERO_WEIGHT_FIRST_CLASS = 'task-heatmap-zero-weight-first';
 export const ZERO_WEIGHT_LAST_CLASS = 'task-heatmap-zero-weight-last';
 
@@ -33,14 +34,19 @@ export function buildTaskHeaderPresentation(
         title={ZERO_WEIGHT_EXPLANATION}
         trigger={['hover', 'focus']}
       >
-        <span tabIndex={0} aria-label={`${title} ${ZERO_WEIGHT_EXPLANATION}`}>
+        <span
+          className={ZERO_WEIGHT_TOOLTIP_TARGET_CLASS}
+          role="group"
+          tabIndex={0}
+          aria-label={`${title} ${ZERO_WEIGHT_EXPLANATION}`}
+        >
           {title}
         </span>
       </Tooltip>
     ),
     className: ZERO_WEIGHT_GROUP_CLASS,
     onHeaderCell: () => ({
-      'aria-label': title,
+      'aria-label': `${title} — ${ZERO_WEIGHT_EXPLANATION}`,
     }),
   };
 }
@@ -59,6 +65,9 @@ export function getZeroWeightMetricEdgeClass(
 ): string | undefined {
   if (averageContribution.includedInAverage) {
     return undefined;
+  }
+  if (metricCount === 1 && metricIndex === 0) {
+    return `${ZERO_WEIGHT_FIRST_CLASS} ${ZERO_WEIGHT_LAST_CLASS}`;
   }
   if (metricIndex === 0) {
     return ZERO_WEIGHT_FIRST_CLASS;
