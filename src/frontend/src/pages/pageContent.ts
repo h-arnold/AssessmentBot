@@ -1,5 +1,5 @@
 /**
- * Single source of truth for the shell page headings and summaries.
+ * Single source of truth for shell page headings, summaries, and shared page copy.
  * Navigation labels and page components should stay aligned with these values.
  */
 export const pageContent = {
@@ -21,6 +21,7 @@ export const pageContent = {
     summary: 'Build task heatmaps by selecting a class, topics, and assignments.',
     noClassEmpty: 'Select a class to build a heatmap.',
     noAssignmentsEmpty: 'Select one or more assignments to build a heatmap.',
+    selectionDisabledReason: 'Select a class first',
   },
   settings: {
     heading: 'Settings',

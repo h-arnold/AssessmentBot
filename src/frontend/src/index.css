@@ -165,6 +165,11 @@ body {
   border: 0;
 }
 
+.ant-table-cell.metric-tone-excluded-cell {
+  background-color: var(--ant-color-fill-quaternary);
+  color: var(--ant-color-text-secondary);
+}
+
 .task-heatmap-zero-weight-group {
   box-shadow:
     inset 2px 0 0 var(--ant-color-text-secondary),

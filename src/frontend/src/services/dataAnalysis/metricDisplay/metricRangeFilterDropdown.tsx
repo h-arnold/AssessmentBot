@@ -24,6 +24,7 @@ import {
   createDefaultMetricRangeFilterState,
   decodeMetricFilter,
   encodeMetricFilter,
+  type MetricRangeFilterFlags,
   type MetricRangeFilterState,
 } from './metricRangeKey';
 
@@ -45,6 +46,29 @@ type ApplyFilterOptions = Readonly<{
   /** Whether Ant Design should close the dropdown after applying. */
   closeDropdown: boolean;
 }>;
+
+type MetricRangeFilterStateToggle = Readonly<{
+  /** Filter-state field controlled by the checkbox. */
+  stateFlag: keyof MetricRangeFilterFlags;
+  /** User-visible checkbox label. */
+  label: string;
+}>;
+
+/** Checkbox descriptors for the independently selectable non-computed states. */
+const METRIC_RANGE_FILTER_STATE_TOGGLES = [
+  {
+    stateFlag: 'includeNotAttempted',
+    label: 'Include Not Attempted (N)',
+  },
+  {
+    stateFlag: 'includeError',
+    label: 'Include Error (E)',
+  },
+  {
+    stateFlag: 'includeExcluded',
+    label: 'Include Excluded',
+  },
+] as const satisfies readonly MetricRangeFilterStateToggle[];
 
 /**
  * Dropdown body for a numeric score-range filter.
@@ -76,10 +100,24 @@ export function MetricRangeFilterDropdown({
     confirm({ closeDropdown });
   };
 
+  const applyStateToggle = (
+    stateFlag: keyof MetricRangeFilterFlags,
+    checked: boolean
+  ): void => {
+    const nextState: MetricRangeFilterState = {
+      ...filterState,
+      [stateFlag]: checked,
+    };
+    applyFilter({ state: nextState, closeDropdown: false });
+  };
+
   const marks: Record<string, string> = {
     [String(range.lower)]: String(range.lower),
     [String(range.upper)]: String(range.upper),
   };
+  const availableStateToggles = METRIC_RANGE_FILTER_STATE_TOGGLES.filter(
+    ({ stateFlag }) => stateFlag !== 'includeExcluded' || showExcludedToggle
+  );
 
   return (
     <div style={{ padding: 8, width: 240 }}>
@@ -121,50 +159,17 @@ export function MetricRangeFilterDropdown({
             });
           }}
         />
-        <Checkbox
-          checked={filterState.includeNotAttempted}
-          onChange={(event): void => {
-            applyFilter({
-              state: {
-                ...filterState,
-                includeNotAttempted: event.target.checked,
-              },
-              closeDropdown: false,
-            });
-          }}
-        >
-          Include Not Attempted (N)
-        </Checkbox>
-        <Checkbox
-          checked={filterState.includeError}
-          onChange={(event): void => {
-            applyFilter({
-              state: {
-                ...filterState,
-                includeError: event.target.checked,
-              },
-              closeDropdown: false,
-            });
-          }}
-        >
-          Include Error (E)
-        </Checkbox>
-        {showExcludedToggle && (
+        {availableStateToggles.map(({ stateFlag, label }) => (
           <Checkbox
-            checked={filterState.includeExcluded}
+            key={stateFlag}
+            checked={filterState[stateFlag]}
             onChange={(event): void => {
-              applyFilter({
-                state: {
-                  ...filterState,
-                  includeExcluded: event.target.checked,
-                },
-                closeDropdown: false,
-              });
+              applyStateToggle(stateFlag, event.target.checked);
             }}
           >
-            Include Excluded
+            {label}
           </Checkbox>
-        )}
+        ))}
         <Button
           size="small"
           onClick={(): void => {

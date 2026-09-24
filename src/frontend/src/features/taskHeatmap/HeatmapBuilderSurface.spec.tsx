@@ -126,9 +126,13 @@ describe('HeatmapBuilderSurface — selection bar', () => {
     expect(assignments).toBeDisabled();
 
     // The reason must be discoverable by assistive tech (Tooltip content rendered in DOM).
-    expect(screen.getByText(DISABLED_REASON)).toBeInTheDocument();
-    // The reason is wired to the disabled control, not colour alone.
+    const reason = screen.getByText(DISABLED_REASON);
+    expect(reason).toHaveAttribute('id', 'heatmap-selection-disabled-reason');
+    // Both dependent controls use the same DOM-present reason, not colour alone.
+    expect(topics).toHaveAttribute('aria-describedby', 'heatmap-selection-disabled-reason');
+    expect(assignments).toHaveAttribute('aria-describedby', 'heatmap-selection-disabled-reason');
     expect(topics).toHaveAccessibleDescription(DISABLED_REASON);
+    expect(assignments).toHaveAccessibleDescription(DISABLED_REASON);
   });
 
   it('shows action-describing placeholders for all three selectors', () => {

@@ -41,13 +41,13 @@ export type MetricToneResolution = {
    */
   color: string;
   /**
-   * Ready-to-apply inline `<td>` / cell style for the resolved tone. Gradient
-   * values carry a light pastel background with a darker, hue-matched text
-   * colour so the *entire* cell (not just a pill inside it) carries the band
-   * colour. Discrete states (`'default'`, `'volcano'`, etc.) reuse the preset
-   * pairs in {@link METRIC_TONE_CELL_STYLE}.
+   * Ready-to-apply `<td>` presentation attributes. Gradient values carry a
+   * light pastel background with a darker, hue-matched text colour so the
+   * *entire* cell (not just a pill inside it) carries the band colour. The
+   * aggregate-only excluded treatment supplies a stylesheet `className`; other
+   * states supply inline CSS properties from {@link METRIC_TONE_CELL_STYLE}.
    */
-  cellStyle: CSSProperties;
+  cellStyle: CSSProperties & Readonly<{ className?: string }>;
   /** `true` only for `notAttempted`; `excluded` is not muted. */
   muted: boolean;
 };
@@ -64,7 +64,7 @@ export const DEFAULT_TONE_RANGE: MetricToneRange = { lower: 0, upper: 5 };
  * palette background/text pairs (the per-component `colorXxxBg`/`colorXxx`
  * shades, which are not exposed as top-level `theme.useToken()` tokens in
  * v6). `notAttempted` uses {@link NOT_ATTEMPTED_CELL_STYLE} with a light grey
- * background and dark grey text; excluded uses {@link EXCLUDED_CELL_STYLE}
+ * background and dark grey text; excluded uses the shared stylesheet class
  * rather than a preset style key. The `'default'` entry in this record is the
  * unused fallback.
  */
@@ -76,11 +76,8 @@ export const METRIC_TONE_CELL_STYLE: Readonly<Record<MetricToneColor, CSSPropert
   default: {},
 };
 
-/** Distinct theme-aware neutral treatment for aggregate-only excluded metrics. */
-const EXCLUDED_CELL_STYLE: CSSProperties = {
-  backgroundColor: 'var(--ant-color-fill-quaternary)',
-  color: 'var(--ant-color-text-secondary)',
-};
+/** Stylesheet class for the theme-aware aggregate-only excluded treatment. */
+const EXCLUDED_CELL_CLASS_NAME = 'metric-tone-excluded-cell';
 
 /**
  * Dark grey used for the `notAttempted` (`N`) state. Chosen deliberately darker
@@ -182,6 +179,11 @@ function resolveGradientCellStyle(t: number): CSSProperties {
 /**
  * Fail fast on an inverted or degenerate scoring range.
  *
+ * @remarks
+ * Retained as a named single-caller guard: inlining this branch raises
+ * `resolveMetricTone` above the configured complexity limit without creating
+ * an independently reusable contract.
+ *
  * @param {MetricToneRange} range - The scoring range to validate.
  * @throws {Error} When `range.upper <= range.lower`.
  */
@@ -269,7 +271,7 @@ export function resolveMetricTone(
     case 'excluded': {
       return {
         color: 'default',
-        cellStyle: EXCLUDED_CELL_STYLE,
+        cellStyle: { className: EXCLUDED_CELL_CLASS_NAME },
         muted: false,
       };
     }

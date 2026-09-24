@@ -21,7 +21,7 @@ import {
 export const PAGE_TITLE = pageContent.heatmaps.heading;
 export const NO_CLASS_EMPTY_COPY = pageContent.heatmaps.noClassEmpty;
 export const NO_ASSIGNMENTS_EMPTY_COPY = pageContent.heatmaps.noAssignmentsEmpty;
-export const DISABLED_REASON = 'Select a class first';
+export const DISABLED_REASON = pageContent.heatmaps.selectionDisabledReason;
 export const SELECTOR_CONTROL_COUNT = 3;
 export const CLASS_PLACEHOLDER = 'Select a class';
 export const TOPICS_PLACEHOLDER = 'Select topics';

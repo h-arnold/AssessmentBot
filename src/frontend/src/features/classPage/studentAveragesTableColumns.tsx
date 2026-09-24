@@ -108,15 +108,23 @@ function buildMetricColumn(
     align: 'center',
     sorter: true,
     ...rangeFilter,
-    onCell: (record: StudentAverageRowModel): { style: CSSProperties; 'aria-label': string } => {
+    onCell: (
+      record: StudentAverageRowModel
+    ): {
+      className: string | undefined;
+      style: CSSProperties;
+      'aria-label': string;
+    } => {
       const metric = getStudentMetric(record.metrics, key);
       const { cellStyle } = resolveMetricTone(metric, DEFAULT_TONE_RANGE);
+      const { className, ...inlineCellStyle } = cellStyle;
       const score = formatMetricDisplayText(metric, CLASS_PAGE_SCORE_PRECISION);
       const ariaLabel = `${record.studentName}, ${meta.label}: ${
         metric.state === 'excluded' ? EXCLUDED_METRIC_ACCESSIBLE_LABEL : score
       }`;
       return {
-        style: cellStyle,
+        className,
+        style: inlineCellStyle,
         'aria-label': ariaLabel,
       };
     },

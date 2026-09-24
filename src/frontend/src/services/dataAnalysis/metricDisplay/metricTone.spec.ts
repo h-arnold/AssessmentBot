@@ -15,6 +15,7 @@ import {
 } from '../../../test/dataAnalysis/fixtures';
 import { resolveMetricTone } from './metricTone';
 import type { MetricToneResolution } from './metricTone';
+import { appStylesRaw } from '../../../test/appStylesRaw';
 
 /** Value at the default range ceiling (upper bound of { lower: 0, upper: 5 }). */
 const DEFAULT_RANGE_CEILING = 5;
@@ -124,11 +125,29 @@ describe('resolveMetricTone', () => {
     expect(excluded.muted).toBe(false);
   });
 
-  it('uses theme-aware CSS variables for the excluded cell treatment', () => {
+  it('keeps the excluded treatment theme-aware when supplied inline or through the shared stylesheet', () => {
     const excluded = resolveMetricTone(createExcludedMetricResult());
+    const hasInlineThemeStyle =
+      excluded.cellStyle.backgroundColor === 'var(--ant-color-fill-quaternary)' &&
+      excluded.cellStyle.color === 'var(--ant-color-text-secondary)';
 
-    expect(excluded.cellStyle.backgroundColor).toMatch(/^var\(--/);
-    expect(excluded.cellStyle.color).toMatch(/^var\(--/);
+    if (hasInlineThemeStyle) {
+      expect(excluded.cellStyle).toEqual({
+        backgroundColor: 'var(--ant-color-fill-quaternary)',
+        color: 'var(--ant-color-text-secondary)',
+      });
+      return;
+    }
+
+    const stylesheetRule = appStylesRaw
+      .split('}')
+      .find(
+        (rule) =>
+          rule.includes('background-color: var(--ant-color-fill-quaternary)') &&
+          rule.includes('color: var(--ant-color-text-secondary)')
+      );
+
+    expect(stylesheetRule).toBeDefined();
   });
 
   it('returns custom errorColor for error metric when supplied', () => {
@@ -190,16 +209,20 @@ describe('resolveMetricTone', () => {
   // Range validation
   // -------------------------------------------------------------------------
 
-  it('throws when range upper equals lower', () => {
+  it('fails fast with the invalid equal-bound range when upper equals lower', () => {
     const metric: MetricResult = createComputedMetricResult({ value: 0 });
 
-    expect(() => resolveMetricTone(metric, { lower: 5, upper: 5 })).toThrow();
+    expect(() => resolveMetricTone(metric, { lower: 5, upper: 5 })).toThrow(
+      'resolveMetricTone: degenerate range { lower: 5, upper: 5 } - upper must be greater than lower'
+    );
   });
 
-  it('throws when range upper is less than lower', () => {
+  it('fails fast with the invalid inverted range when upper is less than lower', () => {
     const metric: MetricResult = createComputedMetricResult({ value: 0 });
 
-    expect(() => resolveMetricTone(metric, { lower: 5, upper: 0 })).toThrow();
+    expect(() => resolveMetricTone(metric, { lower: 5, upper: 0 })).toThrow(
+      'resolveMetricTone: degenerate range { lower: 5, upper: 0 } - upper must be greater than lower'
+    );
   });
 
   // -------------------------------------------------------------------------

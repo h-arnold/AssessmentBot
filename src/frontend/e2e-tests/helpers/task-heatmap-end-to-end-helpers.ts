@@ -10,12 +10,7 @@ import {
   HEATMAP_CLASS_NAME,
 } from './task-heatmap-fixtures';
 
-export {
-  HEATMAP_ASSIGNMENT_NAME,
-  HEATMAP_ASSIGNMENT_DISPLAY_TITLE,
-  HEATMAP_CLASS_ID,
-  HEATMAP_CLASS_NAME,
-} from './task-heatmap-fixtures';
+export { HEATMAP_ASSIGNMENT_DISPLAY_TITLE, HEATMAP_CLASS_NAME } from './task-heatmap-fixtures';
 
 export interface CreateHeatmapScenarioOptions {
   /** When true, use a deferred (loading) `getABClass` queue. */
