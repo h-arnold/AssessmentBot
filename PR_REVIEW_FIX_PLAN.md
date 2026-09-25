@@ -5,7 +5,7 @@ Source of truth: [`PR_REVIEW.md`](PR_REVIEW.md), especially the decisions at lin
 ## Baseline and safeguards
 
 - Regression session: `issue-307-pr-review-fixes`. Initial run: 7/8 checks pass; only ten pre-existing backend `max-lines` warnings fail lint. Frontend lint, unit tests, browser tests, builder checks and backend tests pass; zero baseline regressions.
-- The pre-existing working-tree changes to `.opencode/agents/code-reviewer.md`, `.opencode/agents/implementation.md`, `.opencode/agents/testing-specialist.md` and `opencode.jsonc` are not ours. Do not overwrite or stage them without resolving ownership with the user. The review's instruction to restore three configuration files conflicts with those later uncommitted edits; treat configuration removal as blocked pending confirmation.
+- The pre-existing working-tree changes to `.opencode/agents/code-reviewer.md`, `.opencode/agents/implementation.md`, `.opencode/agents/testing-specialist.md` and `opencode.jsonc` are not ours. Preserve their working-tree contents. To remove the unrelated tracked model changes from the PR without overwriting those edits, restore only the Git index versions of the three review-named files from `origin/main`; leave `code-reviewer.md` untouched.
 - Each batch: delegated execution by the relevant specialist, clean Code Reviewer pass, documentation/data-shape pass where applicable, and regression comparison before moving to the next batch. Preserve the current baseline; never accept new failures. Do not commit or push unless explicitly requested.
 
 ## Dependency-ordered batches
@@ -20,4 +20,4 @@ Source of truth: [`PR_REVIEW.md`](PR_REVIEW.md), especially the decisions at lin
 
 ## Completion gates
 
-For each batch record changed files, `Files read` evidence, test/lint/type-check results, clean review outcome and regression delta. No subsequent batch begins until its predecessor is clean. Batches 1–4 were committed together retrospectively as `066a997` because they shared files before the request to commit after each batch; batch 5 is `d56d212` and batch 6 is `8145316`. Batch 7 has a clean review and zero regression delta; commit it after final checks. Configuration restoration is the sole blocked finding pending clarification about the uncommitted user changes.
+For each batch record changed files, `Files read` evidence, test/lint/type-check results, clean review outcome and regression delta. No subsequent batch begins until its predecessor is clean. Batches 1–4 were committed together retrospectively as `066a997` because they shared files before the request to commit after each batch; batch 5 is `d56d212`, batch 6 is `8145316`, and batch 7 is `378dbd1`. The three unrelated model changes were restored to `origin/main` in the Git index only, preserving all newer uncommitted working-tree settings; this staged restoration passed a clean review.
