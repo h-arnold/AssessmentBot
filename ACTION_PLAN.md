@@ -4,9 +4,15 @@
 
 - Delivery complete: Sections 1–5, the zero-weight browser journey, canonical
   contract, architecture, shared-helper and teacher-facing documentation have
-  clean reviewer passes. Final frontend tests: 204 files / 2,209 tests passed;
-  browser tests: 249 passed; frontend type-check and lint passed. Every modified
-  frontend source module meets its planned size limit.
+  clean reviewer passes. Initial-delivery frontend tests: 204 files / 2,209
+  tests passed; browser tests: 249 passed; frontend type-check and lint passed.
+  Latest verified after the review-fix batches: 216 files / 2,290 frontend tests
+  and 251 browser tests. Every modified frontend source module meets its planned
+  size limit.
+- Pre-PR review follow-up: the fix batches tracked in
+  [`PR_REVIEW_FIX_PLAN.md`](PR_REVIEW_FIX_PLAN.md) were applied after initial
+  delivery, and the per-section shared-helper and data-shape status markers
+  below are reconciled to the implemented code.
 - Baseline session: `planning-issue-307-zero-weight-assessment`.
 - Final regression comparison: seven of eight checks passed, with zero
   regressions and zero new failures. The remaining backend ESLint failure is
@@ -156,11 +162,11 @@ Code Reviewer: the same implementation reads plus
    - Owner: `src/frontend/src/services/dataAnalysis/dataAnalysis.zod.ts`.
    - Rationale: analyser rows and both heatmap adapters share one invariant.
    - Canonical entries: `frontend-data-analysis-response.md` and shared-helper
-     standards §9.18; status: **Not implemented**.
+     standards §9.18; status: **Implemented**.
 2. `MetricResult` state consumers
    - Decision: extend the shared `metricDisplay/` group in Section 4, rather
      than add feature-specific state unions.
-   - Canonical entry: shared-helper standards §9.18; status: **Not implemented**.
+   - Canonical entry: shared-helper standards §9.18; status: **Implemented**.
 
 ### Acceptance criteria
 
@@ -243,14 +249,14 @@ Code Reviewer: implementation reads plus `@src/frontend/AGENTS.md`.
    - Owner: extracted accumulation modules described in the architecture doc.
    - Rationale: they have multiple analyser callers but no feature consumer;
      exporting a UI-facing shared helper would leak internal state.
-   - Canonical doc: architecture document; status: **Not implemented**.
+   - Canonical doc: architecture document; status: **Implemented**.
 2. Aggregate state resolution
    - Decision: extend existing `rollupMetric.ts` rather than duplicate
      precedence in row builders.
    - Owner: `rollupMetric.ts`.
    - Canonical docs: data-shape contract and shared-helper standards §9.18
      item 4;
-     status: **Not implemented**.
+     status: **Implemented**.
 
 ### Acceptance criteria
 
@@ -349,7 +355,7 @@ Code Reviewer: implementation reads plus `@src/frontend/AGENTS.md`.
    - Rationale: adapters already own definition-backed view-model projection;
      table code must not resolve or calculate this data.
    - Canonical contract: `frontend-data-analysis-response.md`; status:
-     **Not implemented**.
+     **Implemented**.
 
 ### Acceptance criteria
 
@@ -447,7 +453,7 @@ Code Reviewer: those files plus `@src/frontend/AGENTS.md`.
    - Decision: extend.
    - Owner: existing `metricDisplay/` modules.
    - Rationale and canonical status: shared-helper standards §9.18,
-     **Not implemented**.
+     **Implemented**.
 
 ### Acceptance criteria
 
@@ -548,12 +554,12 @@ Code Reviewer: those files plus `@src/frontend/AGENTS.md`.
      feature-local name).
    - Rationale: it serves the heatmap's grouped Ant Design Table only and is
      required to keep the column builder within the planned size boundary.
-   - Canonical entry: shared-helper standards §9.18; status: **Not implemented**.
+   - Canonical entry: shared-helper standards §9.18; status: **Implemented**.
 2. Contribution metadata consumption
    - Decision: reuse adapter descriptor field; no weighting utility in the UI.
    - Owner: `TaskHeatmapColumn.averageContribution` contract.
    - Canonical entry: `frontend-data-analysis-response.md`; status:
-     **Not implemented**.
+     **Implemented**.
 
 ### Acceptance criteria
 

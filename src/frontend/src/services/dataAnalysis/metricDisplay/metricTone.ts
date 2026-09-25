@@ -3,7 +3,8 @@
  *
  * Maps a `MetricResult` plus an optional scoring range to a
  * `MetricToneResolution` describing the Ant Design `Tag` colour, cell style,
- * and a muted flag. No React / antd / I/O / state imports.
+ * and a muted flag. The only React import is the type-only `CSSProperties`;
+ * no React runtime, antd, I/O, or state dependency.
  *
  * @module metricTone
  */
@@ -36,8 +37,9 @@ export type MetricToneResolution = {
   /**
    * Ant Design `Tag` colour. For `computed` values this is a continuous
    * gradient HSL string (red at the range floor → amber mid → green at the
-   * ceiling); for `notAttempted` it is a dark grey (`#434343`) and for `error`
-   * it is the `errorColor` token.
+   * ceiling); for `notAttempted` it is a dark grey (`#434343`); for `error`
+   * it is the `errorColor` token; and for `excluded` it is the neutral
+   * `'default'` preset.
    */
   color: string;
   /**
@@ -199,7 +201,8 @@ function assertValidRange(range: MetricToneRange): void {
  * Resolve a `MetricResult` to a `MetricToneResolution`.
  *
  * @remarks
- * **Pure function contract.** No side effects, no I/O, no React / antd imports.
+ * **Pure function contract.** No side effects, no I/O, no antd import, and no
+ * React runtime dependency (the module imports `CSSProperties` as a type only).
  * Idempotent and stateless.
  *
  * **Gradient resolution.** The normalised position `t` is computed once per

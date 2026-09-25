@@ -88,14 +88,14 @@ This feature is **not** intended to:
 - `DataAnalysisService` is a pure frontend orchestrator. It validates input and
   output with Zod and delegates analysis to `AveragingAnalyser`.
 
-### Current data-shape constraints
+### Data-shape constraints at planning time
 
-- `MetricResult` is currently a discriminated union of `computed`,
-  `notAttempted`, and `error`. The planned `excluded` state is an additive
+- At planning time, `MetricResult` was a discriminated union of `computed`,
+  `notAttempted`, and `error`. The `excluded` state was planned as an additive
   frontend validation and consumer contract change; it does not cross a
   backend API boundary.
-- `PerStudentTaskMetric` is the heatmap-facing task-cell shape and currently
-  contains only identifiers and the four `MetricResult` values.
+- `PerStudentTaskMetric` was the heatmap-facing task-cell shape and, at planning
+  time, contained only identifiers and its metric values.
 - `MetricResult.totalWeight` remains the sum of average contribution weights.
   A displayed numeric zero-weight result may therefore have `totalWeight: 0`;
   its displayed value is derived from display accumulation, not from division
@@ -111,9 +111,9 @@ This feature is **not** intended to:
   contribution metadata. The table must not reimplement weighting resolution.
 - `MetricPill`, metric tones, range filters, sort ranks, comparators, and table
   cell renderers must handle every `MetricResult` state exhaustively.
-- The current zero-weight path in `processAssignment` creates synthetic
-  not-attempted data and skips the real assessment. That behaviour is obsolete
-  under this specification.
+- At planning time, the zero-weight path in `processAssignment` created
+  synthetic not-attempted data and skipped the real assessment. This
+  specification replaces that behaviour.
 
 ## Domain and contract recommendations
 

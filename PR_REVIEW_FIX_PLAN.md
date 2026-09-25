@@ -20,4 +20,4 @@ Source of truth: [`PR_REVIEW.md`](PR_REVIEW.md), especially the decisions at lin
 
 ## Completion gates
 
-For each batch record changed files, `Files read` evidence, test/lint/type-check results, clean review outcome and regression delta. No subsequent batch begins until its predecessor is clean. Batches 1–4 were committed together retrospectively as `066a997` because they shared files before the request to commit after each batch; batch 5 is `d56d212`. Configuration restoration is the sole blocked finding pending clarification about the uncommitted user changes.
+For each batch record changed files, `Files read` evidence, test/lint/type-check results, clean review outcome and regression delta. No subsequent batch begins until its predecessor is clean. Batches 1–4 were committed together retrospectively as `066a997` because they shared files before the request to commit after each batch; batch 5 is `d56d212` and batch 6 is `8145316`. Batch 7 has a clean review and zero regression delta; commit it after final checks. Configuration restoration is the sole blocked finding pending clarification about the uncommitted user changes.

@@ -31,20 +31,18 @@ type MetricPillProperties = {
   readonly range?: { lower: number; upper: number };
   /**
    * When `true`, applies a larger font size (~1.25x) and bolder weight (600).
-   * Used by the `Average` cell in the Class page's `RecentAssignmentCard` and
-   * by the `Average` column in the Student Averages table. Does not change
-   * the colour, precision, or display value.
+   * Does not change the colour, precision, or display value.
    *
    * @default false
    */
   readonly emphasised?: boolean;
   /**
    * When `true`, renders a smaller footprint (font ~12px, padding `2px 4px`)
-   * for the dense heatmap matrix while keeping `precision: 2` (the default)
-   * and the same `resolveMetricTone` colouring. Mutually exclusive in intent
-   * from `emphasised` (a cell is one or the other). The `precision` prop is
-   * independently configurable — callers may override it (see the heatmap's
-   * `INDIVIDUAL_SCORE_PRECISION = 0`).
+   * for compact surfaces such as the task-preview card's metric header, while
+   * keeping the same `resolveMetricTone` colouring. Mutually exclusive in
+   * intent from `emphasised` (a cell is one or the other). The `precision`
+   * prop is independently configurable — callers may override it (for example
+   * `TaskPreviewCard` passes `precision={0}`).
    *
    * @default false
    */
@@ -116,10 +114,10 @@ function buildPillStyle(muted: boolean, emphasised: boolean, compact: boolean): 
  * **No interactivity.** The pill does not have `onClick`, `cursor: pointer`,
  * or a focus ring. It is purely a labelled badge.
  *
- * **Props.** `metric` is required; `range`, `emphasised`, `precision`, and
- * `errorColor` are optional. `range` and `errorColor` are pass-through
- * defaults to `resolveMetricTone` (no `MetricPill`-level default for
- * `errorColor`).
+ * **Props.** `metric` is required; `range`, `emphasised`, `compact`,
+ * `precision`, and `errorColor` are optional. `range` and `errorColor` are
+ * pass-through defaults to `resolveMetricTone` (no `MetricPill`-level default
+ * for `errorColor`).
  *
  * **Accessibility.** Excluded receives an `img` role and the shared accessible
  * name explaining that the displayed work did not contribute to the average.
@@ -129,6 +127,7 @@ function buildPillStyle(muted: boolean, emphasised: boolean, compact: boolean): 
  * @param {MetricResult} root0.metric - The metric value to render.
  * @param {{ lower: number; upper: number }} [root0.range] - Optional scoring range passed through to resolveMetricTone.
  * @param {boolean} [root0.emphasised=false] - When true applies larger font and bold weight.
+ * @param {boolean} [root0.compact=false] - When true applies a smaller footprint (font ~12px, padding 2px 4px).
  * @param {number} [root0.precision=2] - Number of decimal places for computed values.
  * @param {MetricToneColor} [root0.errorColor] - Optional error colour override passed through to resolveMetricTone.
  * @returns {JSX.Element} An Ant Design `Tag` element.

@@ -68,10 +68,21 @@ The partial wire schemas deliberately do not enforce a weighting range
 (`TaskPartialSchema.taskWeighting` is `z.number()`;
 `AssignmentDefinitionPartialSchema.assignmentWeighting` is
 `z.number().nullable()`), so a negative effective weight is not rejected on
-input. It is caught on output: `AverageContributionSchema.effectiveWeight` is
-`z.number().min(0)`, and the analyser only accumulates contribution weight when
-`weight > 0`, so a negative effective weight contributes nothing and fails output
-validation rather than producing a negative `totalWeight`.
+input. On the analyser path it is caught on output:
+`AverageContributionSchema.effectiveWeight` is `z.number().min(0)`, and the
+analyser only accumulates contribution weight when `weight > 0`, so a negative
+effective weight contributes nothing and fails output validation rather than
+producing a negative `totalWeight`.
+
+> **Caveat — the heatmap adapter path is not Zod-validated.** `buildTaskColumns`
+> (`heatmapAdapter.ts`) computes `averageContribution` with the same shared
+> `computeEffectiveWeight` helper but projects it straight onto the
+> `HeatmapTaskColumn` / `MergedHeatmapTaskColumn` descriptor without running
+> `AverageContributionSchema`. `includedInAverage` is always
+> `effectiveWeight > 0`, so the truth-table relationship holds by construction;
+> however, a negative `effectiveWeight` would reach the descriptor unchecked.
+> The `z.number().min(0)` guarantee applies only where output validation
+> (`DataAnalysisResponseSchema`) actually runs.
 
 ## Response shapes
 
@@ -320,6 +331,24 @@ crosses the analyser, persistence, or transport boundary. `classMetrics` on
 it accepts `excluded` but rejects the no-data placeholder; only
 `recentAssignments` and `studentAverages` use the display union.
 
+#### Heatmap missing-cell `N` placeholder (intentionally different)
+
+A second presentation-only `N` shape exists on the heatmap path. The frozen
+`NOT_ATTEMPTED_METRIC` fallback in `heatmapAdapter.ts`
+(`buildCellsForStudent`) uses `totalDataPoints: 1`. It is deliberately different
+from the Class-page zero-data placeholder:
+
+- The heatmap fallback stands in for a missing `(studentId, taskKey)` metric on a
+  task column that is otherwise in scope, so it must satisfy the task-level
+  `notAttempted` invariant (`totalDataPoints >= 1`) and is reused directly as a
+  `TaskDisplayMetric` across all three criteria.
+- The Class-page placeholder represents a genuinely empty aggregate surface and
+  uses `totalDataPoints: 0`, accepted only through
+  `ClassPageDisplayMetricSchema`.
+
+Neither shape is a raw analyser `N`, and neither can become `excluded`. The
+`totalDataPoints` difference is intentional and must not be normalised away.
+
 ## State resolution
 
 Task-level metrics resolve from display evidence; parent aggregates resolve from
@@ -388,9 +417,11 @@ The `excluded` state is displayed as **Excluded** with accessible text:
 
 - `MetricPill` renders the literal label `Excluded` for the state, with
   `role="img"` and the shared accessible name.
-- Its neutral treatment is the Ant Design `default` Tag colour with a distinct
-  neutral cell style (`#f0f0f0` background, `#595959` text); it is not muted and
-  does not reuse the not-attempted or error treatment.
+- Its neutral treatment is the Ant Design `default` Tag colour with a
+  theme-aware neutral cell style supplied as the `metric-tone-excluded-cell`
+  stylesheet class (defined in `index.css` as
+  `--ant-color-fill-quaternary` background, `--ant-color-text-secondary` text);
+  it is not muted and does not reuse the not-attempted or error treatment.
 - Ascending order is `computed → notAttempted → excluded → error`; descending
   order is the exact reverse.
 - It is never classified numerically by range filters; it has a separate
@@ -472,6 +503,7 @@ Analyser: `src/frontend/src/services/dataAnalysis/analysers/`
 ├── `averagingAnalyser.accumulatorRegistry.ts`
 ├── `averagingAnalyser.composite.ts`
 ├── `averagingAnalyser.criterionAccumulation.ts`
+├── `averagingAnalyser.filters.ts`
 ├── `averagingAnalyser.metricResolution.ts`
 ├── `averagingAnalyser.rows.ts`
 ├── `averagingAnalyser.taskProjection.ts`
