@@ -58,22 +58,40 @@ const {
   getAllTaskWeightingInputs,
   getReparseButton,
   getReparseCancelButton,
+  getSaveButton,
   fillRequiredFields,
+  performStageOneParse,
   changeReferenceUrl,
   changeTemplateUrl,
   assertTaskEditingHidden,
   assertParseButtonPresent,
   assertDocumentChangePromptVisible,
   assertDocumentChangePromptNotVisible,
-  assertMetadataAndTaskWeightingsDisabled,
   assertMetadataAndTaskWeightingsEnabled,
   assertDocumentUrlFieldsDisabled,
+  assertDocumentUrlFieldsEnabled,
+  assertConflictingControlsDisabled,
+  assertConflictingControlsEnabled,
   assertAllRequiredFieldsPresent,
   assertParseButtonDisabled,
   assertTaskVisible,
   getReferenceUrlValue,
   getTemplateUrlValue,
 } = wizard;
+
+/** Replacement reference URL used to create a pending document change. */
+const CHANGED_REFERENCE_URL = 'https://docs.google.com/presentation/d/new-ref';
+
+/** Replacement template URL used to create a pending document change. */
+const CHANGED_TEMPLATE_URL = 'https://docs.google.com/presentation/d/new-tpl';
+
+/**
+ * Each document URL field whose edit must leave both URL inputs editable.
+ */
+const pendingDocumentUrlChanges = [
+  { changedField: 'reference', changedUrl: CHANGED_REFERENCE_URL, changeUrl: changeReferenceUrl },
+  { changedField: 'template', changedUrl: CHANGED_TEMPLATE_URL, changeUrl: changeTemplateUrl },
+] as const;
 
 beforeEach(() => {
   setWizardMocks({
@@ -122,25 +140,64 @@ describe('AssignmentDefinitionWizardModal create and update flows', () => {
     expect(getAssignmentDefinitionMock).not.toHaveBeenCalled();
   });
 
-  // Test Case 3: Document change disables metadata/task weighting inputs
-  it('document change disables metadata and task weighting inputs', async () => {
+  it.each(pendingDocumentUrlChanges)(
+    'a pending $changedField document URL change keeps both URL inputs editable and locks every other control',
+    async ({ changedUrl, changeUrl }) => {
+      const definition = mockFullAssignmentDefinition;
+      setupUpdateModeMocks(definition);
+      const renderOptions = createBaseUpdateOptions();
+      const { modal } = await renderWizardModal(renderOptions);
+
+      // Change one document URL.
+      await changeUrl({ modal }, changedUrl);
+
+      // Both document URL inputs stay editable so the pending change can be corrected.
+      await assertDocumentUrlFieldsEnabled({ modal });
+
+      // Every other control is locked until the change is re-parsed or restored.
+      await assertConflictingControlsDisabled({ modal });
+
+      // Should show re-parse prompt
+      assertDocumentChangePromptVisible({ modal });
+      expect(getReparseButton({ modal })).toBeInTheDocument();
+
+      // Save cannot resolve a pending document change, so it stays locked.
+      const saveButton = getSaveButton({ modal });
+      expect(saveButton).toBeDisabled();
+
+      // A forced activation of the locked primary action must not reach transport.
+      await act(async () => {
+        fireEvent.click(saveButton);
+      });
+      expect(upsertAssignmentDefinitionMock).not.toHaveBeenCalled();
+    }
+  );
+
+  it('restoring both document URLs to their persisted baseline clears the lock and re-enables the other controls', async () => {
     const definition = mockFullAssignmentDefinition;
     setupUpdateModeMocks(definition);
     const renderOptions = createBaseUpdateOptions();
     const { modal } = await renderWizardModal(renderOptions);
 
-    // Change document URL
-    await changeReferenceUrl({ modal }, 'https://docs.google.com/presentation/d/new-ref');
+    const baselineReferenceUrl = getReferenceUrlValue({ modal });
+    const baselineTemplateUrl = getTemplateUrlValue({ modal });
 
-    await assertMetadataAndTaskWeightingsDisabled({ modal });
-
-    // Should show re-parse prompt
+    await changeReferenceUrl({ modal }, CHANGED_REFERENCE_URL);
+    await changeTemplateUrl({ modal }, CHANGED_TEMPLATE_URL);
+    await assertConflictingControlsDisabled({ modal });
     assertDocumentChangePromptVisible({ modal });
-    expect(getReparseButton({ modal })).toBeInTheDocument();
+
+    // Typing both URLs back to their persisted values clears the pending change.
+    await changeReferenceUrl({ modal }, baselineReferenceUrl);
+    await changeTemplateUrl({ modal }, baselineTemplateUrl);
+
+    await assertConflictingControlsEnabled({ modal });
+    await assertDocumentUrlFieldsEnabled({ modal });
+    assertDocumentChangePromptNotVisible({ modal });
+    expect(getSaveButton({ modal })).toBeEnabled();
   });
 
-  // Test Case 4: Cancel restores persisted URLs
-  it('cancel restores persisted URLs', async () => {
+  it('document change cancel restores the persisted URLs and re-enables the other controls', async () => {
     const definition = mockFullAssignmentDefinition;
     setupUpdateModeMocks(definition);
     const renderOptions = createBaseUpdateOptions();
@@ -151,8 +208,8 @@ describe('AssignmentDefinitionWizardModal create and update flows', () => {
     const originalTemplateUrl = getTemplateUrlValue({ modal });
 
     // Change document URLs
-    await changeReferenceUrl({ modal }, 'https://docs.google.com/presentation/d/new-ref');
-    await changeTemplateUrl({ modal }, 'https://docs.google.com/presentation/d/new-tpl');
+    await changeReferenceUrl({ modal }, CHANGED_REFERENCE_URL);
+    await changeTemplateUrl({ modal }, CHANGED_TEMPLATE_URL);
 
     // Click cancel on re-parse prompt
     const cancelButton = getReparseCancelButton({ modal });
@@ -168,6 +225,28 @@ describe('AssignmentDefinitionWizardModal create and update flows', () => {
     await assertMetadataAndTaskWeightingsEnabled({ modal });
 
     // Re-parse alert should be gone
+    assertDocumentChangePromptNotVisible({ modal });
+  });
+
+  it('create mode keeps both document URL fields locked while a document change is pending', async () => {
+    const { modal } = await renderWizardModal(createBaseCreateOptions());
+
+    await performStageOneParse(modal, 'create-pending-document-change');
+
+    const persistedReferenceUrl = getReferenceUrlValue({ modal });
+    await changeReferenceUrl({ modal }, CHANGED_REFERENCE_URL);
+    assertDocumentChangePromptVisible({ modal });
+
+    // Create mode keeps the whole form locked, including both document URL inputs.
+    await assertDocumentUrlFieldsDisabled({ modal });
+    await assertConflictingControlsDisabled({ modal });
+    expect(getSaveButton({ modal })).toBeDisabled();
+
+    // The document-change Cancel remains the only way to restore the baseline.
+    await act(async () => {
+      fireEvent.click(getReparseCancelButton({ modal }));
+    });
+    expect(getReferenceUrlValue({ modal })).toBe(persistedReferenceUrl);
     assertDocumentChangePromptNotVisible({ modal });
   });
 

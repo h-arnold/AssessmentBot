@@ -1,5 +1,21 @@
-import { waitFor, within } from '@testing-library/react';
+import { act, within } from '@testing-library/react';
 import { chooseSelectOption, setTextboxValue } from './wizardTestHelpers';
+
+/**
+ * Accessible name of the Ant Design modal's own close control.
+ */
+const MODAL_CLOSE_CONTROL_NAME = /^close$/i;
+
+/**
+ * Ant Design modal footer region, used to disambiguate the footer Cancel from the
+ * document-change action-row Cancel when a document change is pending.
+ */
+const MODAL_FOOTER_SELECTOR = '.ant-modal-footer';
+
+/**
+ * rc-dialog wrapper element that owns the mask (backdrop) click path.
+ */
+const MODAL_WRAP_SELECTOR = '.ant-modal-wrap';
 
 // Element Query Helpers
 // ============================================================================
@@ -95,6 +111,23 @@ export function getAllTaskWeightingInputs(
 }
 
 /**
+ * Gets only the per-task weighting spinbuttons rendered inside the task weightings table.
+ *
+ * @remarks
+ * `getAllTaskWeightingInputs` also returns the assignment-weighting spinbutton, so
+ * table-scoped queries are required whenever a test needs to assert the task
+ * weightings on their own.
+ *
+ * @param {HTMLElement | ModalElementQueries} container The modal or container object.
+ * @returns {HTMLElement[]} Array of per-task weighting spinbutton elements.
+ */
+export function getTaskWeightingInputs(
+  container: HTMLElement | ModalElementQueries
+): HTMLElement[] {
+  return within(getTaskTable(container)).getAllByRole('spinbutton');
+}
+
+/**
  * Gets the re-parse button from the modal.
  *
  * @param {HTMLElement | ModalElementQueries} container The modal or container object.
@@ -129,6 +162,72 @@ export function getReparseCancelButton(
 ): HTMLElement {
   const reparseActionRow = getReparseActionRow(container);
   return within(reparseActionRow).getByRole('button', { name: /^cancel$/i });
+}
+
+/**
+ * Gets the modal's own close control from the top-right of the dialog chrome.
+ *
+ * @param {HTMLElement | ModalElementQueries} container The modal or container object.
+ * @returns {HTMLElement} The close control element.
+ */
+export function getModalCloseButton(
+  container: HTMLElement | ModalElementQueries
+): HTMLElement {
+  const modal = 'modal' in container ? container.modal : container;
+  return within(modal).getByRole('button', { name: MODAL_CLOSE_CONTROL_NAME });
+}
+
+/**
+ * Gets the footer's Cancel action from the wizard footer.
+ *
+ * @remarks
+ * Scoped to the modal footer region because a pending document change renders a
+ * second, identically named Cancel in the document-change action row. The footer
+ * is the surface wired to the owning modal's dismissal, so the region is the
+ * accessible contract being asserted here.
+ *
+ * @param {HTMLElement | ModalElementQueries} container The modal or container object.
+ * @returns {HTMLElement} The footer Cancel element.
+ */
+export function getFooterCancelButton(
+  container: HTMLElement | ModalElementQueries
+): HTMLElement {
+  const modal = 'modal' in container ? container.modal : container;
+  const footer = modal.querySelector<HTMLElement>(MODAL_FOOTER_SELECTOR);
+  if (!footer) {
+    throw new TypeError('Expected the wizard modal to render a footer region.');
+  }
+  return within(footer).getByRole('button', { name: /^cancel$/i });
+}
+
+// ============================================================================
+// Modal Dismissal Helpers
+// ============================================================================
+
+/**
+ * Dismisses a modal through the real rc-dialog mask (backdrop) click path.
+ *
+ * @remarks
+ * rc-dialog only closes from the backdrop when the pointer gesture both starts and
+ * ends on `.ant-modal-wrap` itself, so a mousedown-only shortcut proves nothing and
+ * `fireEvent.click` on the mask is unreliable for portal-mounted content. This helper
+ * dispatches the native mousedown -> mouseup -> click sequence on the wrapper, which
+ * is the only path that exercises the library's mask-closable handling.
+ *
+ * @param {HTMLElement} dialog The modal dialog element.
+ * @returns {Promise<void>} Completion signal.
+ */
+export async function dismissModalByMaskClick(dialog: HTMLElement): Promise<void> {
+  const wrap = dialog.closest<HTMLElement>(MODAL_WRAP_SELECTOR);
+  if (!wrap) {
+    throw new TypeError(`Expected the dialog to be wrapped in ${MODAL_WRAP_SELECTOR}.`);
+  }
+
+  await act(async () => {
+    wrap.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+    wrap.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+    wrap.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+  });
 }
 
 // ============================================================================
@@ -260,240 +359,4 @@ export async function changeTemplateUrl(
   const modal = 'modal' in container ? container.modal : container;
   const { templateUrlInput } = getFormElements(modal);
   setTextboxValue(templateUrlInput, newUrl);
-}
-
-// ============================================================================
-// Assertion Helpers
-// ============================================================================
-
-/**
- * Asserts that task editing is hidden (create mode before parse).
- *
- * @param {HTMLElement | ModalElementQueries} container The modal or container object.
- * @returns {void}
- */
-export function assertTaskEditingHidden(container: HTMLElement | ModalElementQueries): void {
-  const modal = 'modal' in container ? container.modal : container;
-  expect(within(modal).getByText(/parsing is required/i)).toBeInTheDocument();
-  expect(within(modal).queryByRole('table', { name: /task weightings/i })).not.toBeInTheDocument();
-  expect(within(modal).queryByRole('spinbutton', { name: /assignment weighting/i })).not.toBeInTheDocument();
-}
-
-/**
- * Asserts that the parse button is present.
- *
- * @param {HTMLElement | ModalElementQueries} container The modal or container object.
- * @returns {void}
- */
-export function assertParseButtonPresent(container: HTMLElement | ModalElementQueries): void {
-  const modal = 'modal' in container ? container.modal : container;
-  expect(within(modal).getByRole('button', { name: /parse and continue/i })).toBeInTheDocument();
-}
-
-/**
- * Asserts that the shared edit surface is hydrated (task table and assignment weighting visible).
- *
- * @param {HTMLElement | ModalElementQueries} container The modal or container object.
- * @returns {void}
- */
-export function assertSharedEditSurfaceHydrated(
-  container: HTMLElement | ModalElementQueries
-): void {
-  const modal = 'modal' in container ? container.modal : container;
-  expect(within(modal).getByRole('table', { name: /task weightings/i })).toBeInTheDocument();
-  expect(within(modal).getByRole('spinbutton', { name: /assignment weighting/i })).toBeInTheDocument();
-}
-
-/**
- * Asserts that document change prompt is visible.
- *
- * @param {HTMLElement | ModalElementQueries} container The modal or container object.
- * @returns {void}
- */
-export function assertDocumentChangePromptVisible(
-  container: HTMLElement | ModalElementQueries
-): void {
-  const modal = 'modal' in container ? container.modal : container;
-  expect(within(modal).getByText(/document changed/i)).toBeInTheDocument();
-}
-
-/**
- * Asserts that document change prompt is not visible.
- *
- * @param {HTMLElement | ModalElementQueries} container The modal or container object.
- * @returns {void}
- */
-export function assertDocumentChangePromptNotVisible(
-  container: HTMLElement | ModalElementQueries
-): void {
-  const modal = 'modal' in container ? container.modal : container;
-  expect(within(modal).queryByText(/document changed/i)).not.toBeInTheDocument();
-}
-
-/**
- * Asserts that metadata and task weighting inputs are disabled.
- *
- * @param {HTMLElement | ModalElementQueries} container The modal or container object.
- * @returns {Promise<void>} Completion signal.
- */
-export async function assertMetadataAndTaskWeightingsDisabled(
-  container: HTMLElement | ModalElementQueries
-): Promise<void> {
-  const modal = 'modal' in container ? container.modal : container;
-
-  await waitFor(() => {
-    const titleInput = within(modal).getByRole('textbox', { name: /assignment title/i });
-    const weightingInput = within(modal).getByRole('spinbutton', { name: /assignment weighting/i });
-    const taskWeightingInputs = within(modal).getAllByRole('spinbutton');
-
-    expect(titleInput).toBeDisabled();
-    expect(weightingInput).toBeDisabled();
-    // All task weighting inputs should be disabled
-    taskWeightingInputs.forEach((input) => {
-      expect(input).toBeDisabled();
-    });
-  });
-}
-
-/**
- * Asserts that metadata and task weighting inputs are enabled.
- *
- * @param {HTMLElement | ModalElementQueries} container The modal or container object.
- * @returns {Promise<void>} Completion signal.
- */
-export async function assertMetadataAndTaskWeightingsEnabled(
-  container: HTMLElement | ModalElementQueries
-): Promise<void> {
-  const modal = 'modal' in container ? container.modal : container;
-
-  await waitFor(() => {
-    const titleInput = within(modal).getByRole('textbox', { name: /assignment title/i });
-    const weightingInput = within(modal).getByRole('spinbutton', { name: /assignment weighting/i });
-    expect(titleInput).toBeEnabled();
-    expect(weightingInput).toBeEnabled();
-  });
-}
-
-/**
- * Asserts that document URL fields are disabled.
- *
- * @param {HTMLElement | ModalElementQueries} container The modal or container object.
- * @returns {Promise<void>} Completion signal.
- */
-export async function assertDocumentUrlFieldsDisabled(
-  container: HTMLElement | ModalElementQueries
-): Promise<void> {
-  const modal = 'modal' in container ? container.modal : container;
-
-  await waitFor(() => {
-    const referenceUrlInput = within(modal).getByRole('textbox', { name: /reference document url/i });
-    const templateUrlInput = within(modal).getByRole('textbox', { name: /template document url/i });
-    expect(referenceUrlInput).toBeDisabled();
-    expect(templateUrlInput).toBeDisabled();
-  });
-}
-
-/**
- * Asserts that all required form fields are present.
- *
- * @param {HTMLElement | ModalElementQueries} container The modal or container object.
- * @returns {void}
- */
-export function assertAllRequiredFieldsPresent(
-  container: HTMLElement | ModalElementQueries
-): void {
-  const modal = 'modal' in container ? container.modal : container;
-  expect(within(modal).getByRole('textbox', { name: /assignment title/i })).toBeInTheDocument();
-  expect(within(modal).getByRole('combobox', { name: /assignment topic/i })).toBeInTheDocument();
-  expect(within(modal).getByRole('combobox', { name: /assignment year group/i })).toBeInTheDocument();
-  expect(within(modal).getByRole('textbox', { name: /reference document url/i })).toBeInTheDocument();
-  expect(within(modal).getByRole('textbox', { name: /template document url/i })).toBeInTheDocument();
-}
-
-/**
- * Asserts that the parse button is disabled.
- *
- * @param {HTMLElement | ModalElementQueries} container The modal or container object.
- * @returns {void}
- */
-export function assertParseButtonDisabled(container: HTMLElement | ModalElementQueries): void {
-  const modal = 'modal' in container ? container.modal : container;
-  expect(within(modal).getByRole('button', { name: /parse and continue/i })).toBeDisabled();
-}
-
-/**
- * Asserts that the parse button is enabled.
- *
- * @param {HTMLElement | ModalElementQueries} container The modal or container object.
- * @returns {void}
- */
-export function assertParseButtonEnabled(container: HTMLElement | ModalElementQueries): void {
-  const modal = 'modal' in container ? container.modal : container;
-  expect(within(modal).getByRole('button', { name: /parse and continue/i })).toBeEnabled();
-}
-
-/**
- * Asserts that a specific task is visible in the task table.
- *
- * @param {HTMLElement | ModalElementQueries} container The modal or container object.
- * @param {string | RegExp} taskTitle The task title to find.
- * @returns {void}
- */
-export function assertTaskVisible(
-  container: HTMLElement | ModalElementQueries,
-  taskTitle: string | RegExp
-): void {
-  const modal = 'modal' in container ? container.modal : container;
-  const taskTable = within(modal).getByRole('table', { name: /task weightings/i });
-  expect(within(taskTable).getByText(taskTitle)).toBeInTheDocument();
-}
-
-/**
- * Asserts that a specific task is NOT visible in the task table.
- *
- * @param {HTMLElement | ModalElementQueries} container The modal or container object.
- * @param {string | RegExp} taskTitle The task title to check.
- * @returns {void}
- */
-export function assertTaskNotVisible(
-  container: HTMLElement | ModalElementQueries,
-  taskTitle: string | RegExp
-): void {
-  const modal = 'modal' in container ? container.modal : container;
-  const taskTable = within(modal).getByRole('table', { name: /task weightings/i });
-  expect(within(taskTable).queryByText(taskTitle)).not.toBeInTheDocument();
-}
-
-// ============================================================================
-// Form State Assertions
-// ============================================================================
-
-/**
- * Gets the current value of the reference URL input.
- *
- * @param {HTMLElement | ModalElementQueries} container The modal or container object.
- * @returns {string} The current value.
- */
-export function getReferenceUrlValue(
-  container: HTMLElement | ModalElementQueries
-): string {
-  const modal = 'modal' in container ? container.modal : container;
-  const referenceUrlInput = within(modal).getByRole('textbox', {
-    name: /reference document url/i,
-  }) as HTMLInputElement;
-  return referenceUrlInput.value;
-}
-
-/**
- * Gets the current value of the template URL input.
- *
- * @param {HTMLElement | ModalElementQueries} container The modal or container object.
- * @returns {string} The current value.
- */
-export function getTemplateUrlValue(container: HTMLElement | ModalElementQueries): string {
-  const modal = 'modal' in container ? container.modal : container;
-  const templateUrlInput = within(modal).getByRole('textbox', {
-    name: /template document url/i,
-  }) as HTMLInputElement;
-  return templateUrlInput.value;
 }

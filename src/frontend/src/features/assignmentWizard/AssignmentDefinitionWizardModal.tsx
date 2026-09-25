@@ -15,11 +15,13 @@ import { type AssignmentDefinitionWizardModalProperties } from './useAssignmentD
  * - Stage one (create mode): parse document URLs first, then proceed to edit metadata and task weightings.
  * - Stage two (shared edit surface): edit metadata, year group, assignment weighting, and task weightings.
  *
- * Document change re-parse gating: when document URLs change after initial parse, other edits are disabled
- * until the user either re-parses (refreshes tasks from new URLs) or cancels (restores persisted URLs).
+ * Document change re-parse gating: in update mode, changing either document URL keeps metadata and
+ * weighting controls disabled while both URL inputs remain editable until the user re-parses or restores
+ * the persisted URLs. The update modal's close affordances remain available for a URL-only pending change;
+ * dirty metadata still uses the discard confirmation.
  *
- * Dirty state tracking: unsaved metadata or weighting edits disable document URL fields. Closing the modal
- * with dirty edits requires explicit discard confirmation.
+ * Dirty state tracking: unsaved metadata or weighting edits disable document URL fields when no document
+ * change is pending. Closing the modal with dirty edits requires explicit discard confirmation.
  *
  * @param {AssignmentDefinitionWizardModalProperties} properties Modal properties.
  * @returns {JSX.Element} The wizard modal component.
@@ -62,7 +64,7 @@ export function AssignmentDefinitionWizardModal(
     onYearGroupEntityCreated,
   } = useAssignmentDefinitionWizard({ open, mode, definitionKey, onClose, initialValues, onCreateSuccess });
 
-  const isClosable = !isSubmitting && !documentChange.hasPendingChange;
+  const isClosable = !isSubmitting && (mode === 'update' || !documentChange.hasPendingChange);
 
   // Child-modal opening stays in this modal component, which already owns the
   // Manage Topics and Manage Year Groups dialogs.

@@ -59,8 +59,14 @@ const {
   getParseButton,
   getSaveButton,
   getReparseCancelButton,
+  getModalCloseButton,
+  getFooterCancelButton,
+  dismissModalByMaskClick,
   fillRequiredFields,
+  performStageOneParse,
   changeReferenceUrl,
+  changeTemplateUrl,
+  getReferenceUrlValue,
   assertDocumentChangePromptVisible,
 } = wizard;
 
@@ -81,6 +87,12 @@ afterEach(() => {
 });
 
 describe('AssignmentDefinitionWizardModal guarded close and errors', () => {
+  /** Replacement reference URL used to leave a document change pending. */
+  const PENDING_REFERENCE_URL = 'https://docs.google.com/presentation/d/new-ref-doc';
+
+  /** Replacement template URL used to leave a document change pending. */
+  const PENDING_TEMPLATE_URL = 'https://docs.google.com/presentation/d/new-tpl-doc';
+
   // Test Case 16: Loading state renders skeleton during initial load
   it('loading state renders skeleton during initial load', async () => {
     useStartupWarmupStateMock.mockReturnValue(
@@ -109,8 +121,7 @@ describe('AssignmentDefinitionWizardModal guarded close and errors', () => {
     expect(skeleton).toHaveAttribute('aria-live', 'polite');
   });
 
-  // Test Case 17: Guarded close blocks mask click when pending document change
-  it('guarded close blocks mask click when pending document change', async () => {
+  it('update mode close control dismisses the wizard for a URL-only pending document change', async () => {
     const onCloseSpy = vi.fn();
     const definition = mockFullAssignmentDefinition;
     setupUpdateModeMocks(definition);
@@ -118,33 +129,25 @@ describe('AssignmentDefinitionWizardModal guarded close and errors', () => {
     const { modal } = await renderWizardModal(renderOptions);
 
     // Change document URL to trigger pending change
-    await changeReferenceUrl({ modal }, 'https://docs.google.com/presentation/d/new-ref-doc');
+    await changeReferenceUrl({ modal }, PENDING_REFERENCE_URL);
 
     // Wait for document change to be detected
     await waitFor(() => {
       assertDocumentChangePromptVisible({ modal });
     });
 
-    // Mask click should be blocked
-    const mask = screen.getByRole('dialog', { name: /update assignment/i }).parentElement;
-    if (mask) {
-      fireEvent.mouseDown(mask);
-      fireEvent.mouseUp(mask);
+    // The top-right close control stays live and dismisses the wizard.
+    const closeControl = getModalCloseButton({ modal });
+    expect(closeControl).toBeEnabled();
 
-      // Modal should still be open, onClose should not have been called
-      expect(screen.getByRole('dialog', { name: /update assignment/i })).toBeInTheDocument();
-      expect(onCloseSpy).not.toHaveBeenCalled();
-    }
+    await act(async () => {
+      fireEvent.click(closeControl);
+    });
 
-    // The re-parse action row Cancel button should be present and enabled
-    expect(getReparseCancelButton({ modal })).toBeEnabled();
-
-    // onClose should not have been called
-    expect(onCloseSpy).not.toHaveBeenCalled();
+    expect(onCloseSpy).toHaveBeenCalledTimes(1);
   });
 
-  // Test Case 18: Guarded close blocks escape key when pending document change
-  it('guarded close blocks escape key when pending document change', async () => {
+  it('update mode escape key dismisses the wizard for a URL-only pending document change', async () => {
     const onCloseSpy = vi.fn();
     const definition = mockFullAssignmentDefinition;
     setupUpdateModeMocks(definition);
@@ -152,18 +155,163 @@ describe('AssignmentDefinitionWizardModal guarded close and errors', () => {
     const { modal } = await renderWizardModal(renderOptions);
 
     // Change document URL to trigger pending change
-    await changeReferenceUrl({ modal }, 'https://docs.google.com/presentation/d/new-ref-doc');
+    await changeReferenceUrl({ modal }, PENDING_REFERENCE_URL);
 
     // Wait for document change to be detected
     await waitFor(() => {
       assertDocumentChangePromptVisible({ modal });
     });
 
-    // Escape key should be blocked
-    fireEvent.keyDown(modal, { key: 'Escape' });
+    await act(async () => {
+      fireEvent.keyDown(modal, { key: 'Escape' });
+    });
 
-    // Modal should still be open
+    expect(onCloseSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('update mode mask dismissal dismisses the wizard for a URL-only pending document change', async () => {
+    const onCloseSpy = vi.fn();
+    const definition = mockFullAssignmentDefinition;
+    setupUpdateModeMocks(definition);
+    const renderOptions = createBaseUpdateOptions(undefined, definition, onCloseSpy);
+    const { modal } = await renderWizardModal(renderOptions);
+
+    // Change document URL to trigger pending change
+    await changeReferenceUrl({ modal }, PENDING_REFERENCE_URL);
+
+    // Wait for document change to be detected
+    await waitFor(() => {
+      assertDocumentChangePromptVisible({ modal });
+    });
+
+    // Dispatched on the rc-dialog wrapper, which is the only element that owns the
+    // mask-closable path.
+    await dismissModalByMaskClick(modal);
+
+    expect(onCloseSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('update mode footer cancel dismisses the wizard for a URL-only pending document change', async () => {
+    const onCloseSpy = vi.fn();
+    const definition = mockFullAssignmentDefinition;
+    setupUpdateModeMocks(definition);
+    const renderOptions = createBaseUpdateOptions(undefined, definition, onCloseSpy);
+    const { modal } = await renderWizardModal(renderOptions);
+
+    // Both URLs are changed so the pending state is independent of which field was edited.
+    await changeReferenceUrl({ modal }, PENDING_REFERENCE_URL);
+    await changeTemplateUrl({ modal }, PENDING_TEMPLATE_URL);
+
+    // Wait for document change to be detected
+    await waitFor(() => {
+      assertDocumentChangePromptVisible({ modal });
+    });
+
+    // The footer Cancel is distinct from the document-change Cancel, which only restores URLs.
+    const footerCancel = getFooterCancelButton({ modal });
+    expect(footerCancel).toBeEnabled();
+    expect(getReparseCancelButton({ modal })).toBeEnabled();
+
+    await act(async () => {
+      fireEvent.click(footerCancel);
+    });
+
+    expect(onCloseSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('update mode routes a pending document change with unsaved metadata through the discard confirmation', async () => {
+    const onCloseSpy = vi.fn();
+    const definition = mockFullAssignmentDefinition;
+    setupUpdateModeMocks(definition);
+    const renderOptions = createBaseUpdateOptions(undefined, definition, onCloseSpy);
+    const { modal } = await renderWizardModal(renderOptions);
+
+    // Change document URL to trigger pending change
+    await changeReferenceUrl({ modal }, PENDING_REFERENCE_URL);
+
+    // Wait for document change to be detected
+    await waitFor(() => {
+      assertDocumentChangePromptVisible({ modal });
+    });
+
+    // Metadata edits are locked while the document change is pending, so the dirty
+    // combination is applied through the form directly to exercise the guard.
+    const { titleInput } = getFormElements({ modal });
+    await act(async () => {
+      fireEvent.change(titleInput, { target: { value: 'Unsaved metadata edit' } });
+    });
+
+    await act(async () => {
+      fireEvent.keyDown(modal, { key: 'Escape' });
+    });
+
+    // The wizard is not dismissed straight away; the discard confirmation is shown.
+    const discardDialog = await screen.findByRole('dialog', { name: /discard changes/i });
+    expect(onCloseSpy).not.toHaveBeenCalled();
+
+    // Keeping editing returns to the wizard without discarding anything.
+    await act(async () => {
+      fireEvent.click(within(discardDialog).getByRole('button', { name: 'Keep editing' }));
+    });
+
+    expect(
+      screen.queryByRole('dialog', { name: /discard changes/i })
+    ).not.toBeInTheDocument();
     expect(screen.getByRole('dialog', { name: /update assignment/i })).toBeInTheDocument();
+    expect(onCloseSpy).not.toHaveBeenCalled();
+
+    // Confirming the discard is the only path that closes the wizard.
+    await act(async () => {
+      fireEvent.click(getFooterCancelButton({ modal }));
+    });
+
+    const reopenedDiscardDialog = await screen.findByRole('dialog', { name: /discard changes/i });
+    await act(async () => {
+      fireEvent.click(within(reopenedDiscardDialog).getByRole('button', { name: 'Discard changes' }));
+    });
+
+    expect(onCloseSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('create mode blocks every dismissal path while a document change is pending', async () => {
+    const onCloseSpy = vi.fn();
+    const renderOptions = createBaseCreateOptions(onCloseSpy);
+    const { modal } = await renderWizardModal(renderOptions);
+
+    await performStageOneParse(modal, 'create-pending-document-change');
+
+    const persistedReferenceUrl = getReferenceUrlValue({ modal });
+    await changeReferenceUrl({ modal }, PENDING_REFERENCE_URL);
+
+    // Wait for document change to be detected
+    await waitFor(() => {
+      assertDocumentChangePromptVisible({ modal });
+    });
+
+    // Create mode has no close control at all while the document change is pending.
+    expect(within(modal).queryByRole('button', { name: /^close$/i })).toBeNull();
+
+    await act(async () => {
+      fireEvent.keyDown(modal, { key: 'Escape' });
+    });
+    await dismissModalByMaskClick(modal);
+    await act(async () => {
+      fireEvent.click(getFooterCancelButton({ modal }));
+    });
+
+    expect(onCloseSpy).not.toHaveBeenCalled();
+    expect(screen.getByRole('dialog', { name: /create assignment/i })).toBeInTheDocument();
+    expect(getSaveButton({ modal })).toBeDisabled();
+
+    // The document-change Cancel stays live as the only way to resolve the pending change.
+    const documentChangeCancel = getReparseCancelButton({ modal });
+    expect(documentChangeCancel).toBeEnabled();
+
+    await act(async () => {
+      fireEvent.click(documentChangeCancel);
+    });
+
+    expect(getReferenceUrlValue({ modal })).toBe(persistedReferenceUrl);
     expect(onCloseSpy).not.toHaveBeenCalled();
   });
 

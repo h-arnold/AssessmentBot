@@ -132,8 +132,16 @@ Shared traits:
 
 - one modal surface used for both create and update
 - stage-one parse/persist followed by a shared edit surface
-- explicit in-modal re-parse gating when document URLs change
+- explicit in-modal re-parse gating when document URLs change, with mode-specific URL-edit and dismissal behaviour (see below)
 - task-weight editing with feature-specific state rules
+
+Pending document-change contract (issue #306):
+
+- In update mode, a pending reference or template URL change keeps both URL inputs editable while the form-level lock disables title, topic, year group, assignment weighting, task weightings, and every other conflicting edit control. The lock clears when the user re-parses or restores the persisted URLs.
+- The primary action stays disabled while a change is pending (`isWizardPrimaryActionDisabled`), and the mutation boundary rejects a `save` before transport (`isWizardMutationBlocked`).
+- Update-mode close affordances stay live for a URL-only pending change. The shell's X, Escape, mask click, and footer `Cancel` resolve through `deriveWizardCloseAction` and dismiss directly; unsaved metadata or weighting edits still route through the shared discard confirmation.
+- The `Cancel` beside `Re-parse` restores the persisted document URLs and does not close the modal.
+- Create mode keeps the locked form and blocked dismissal while a change is pending, because its only resolutions are re-parse or URL restoration. The stale-recovery surface keeps its existing review-cancel flow and does not opt in to editable URLs, so this contract does not widen its dismissal. A mutation in flight still disables the form, the URL inputs, the weighting controls, and the close affordances.
 
 Use this family when:
 
@@ -148,6 +156,7 @@ Default decision:
   - hook: `useAssignmentDefinitionWizard.ts` (feature-local, complexity ≤7)
   - shell: `AssignmentDefinitionWizardModalShell.tsx` (extended to handle all view states)
   - modal: `AssignmentDefinitionWizardModal.tsx` (thin presenter delegating to shell)
+  - review footer: `AssignmentDefinitionWizardReviewFooter.tsx` (responsibility-coherent module owning the `Cancel` and primary-action rendering for both the chrome-free review content and the full-shell modal; re-exported from `AssignmentDefinitionWizardReviewContent.tsx`)
 - implemented (issue #301 stale-definition recovery, Section 5): chrome-free **review-content component** at `src/frontend/src/features/assignmentWizard/AssignmentDefinitionWizardReviewContent.tsx`, extracted from `AssignmentDefinitionWizardModalShell` (body form + footer content separated from the shell's `Modal` chrome; covers both wizard stages via `hasParsedTasks` gating; shared `AssignmentDefinitionWizardReviewFooter` reused by both). The existing full-shell create/update wizard keeps its own `Modal` chrome and re-composes from the extracted component with identical UI and behaviour. Current consumers: the Assignments-page shell `AssignmentDefinitionWizardModalShell` (keeps its own `Modal` chrome), and the two in-modal surfaces inside `AssessTaskModal` — the converted create path (`AssessTaskCreateReview`, both stages) and the stale-recovery review surface (`AssessTaskRecoverySurface`, stage two only). The two in-modal consumers render this content inside the single owning assessment modal and add no `Modal` chrome of their own, preserving the one-modal rule. The companion assessment-orchestration module (`useAssessTaskFlow`) is recorded in the shared-helper registry (`docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` §9.24); the generic wizard-orchestrator hook and recovery entry intent were not retained.
 
 ### 3.5 In-modal discard-confirmation dialogs (assignment wizard / assess-task create and recovery)
