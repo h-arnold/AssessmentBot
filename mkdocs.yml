@@ -86,6 +86,7 @@ nav:
           - Frontend Shared Helpers and Abstraction Standards: developer/frontend/frontend-shared-helpers-and-abstraction-standards.md
           - Frontend Shell Navigation and Motion: developer/frontend/frontend-shell-navigation-and-motion.md
           - Frontend Spacing and Padding Standards: developer/frontend/frontend-spacing-and-padding-standards.md
+          - Data Analysis Architecture: developer/frontend/data-analysis-architecture.md
           - Metric Display Precision: developer/frontend/metric-display-precision.md
           - Metric Icon Display: developer/frontend/metric-icon-display.md
           - Navigation Consistency Status: developer/frontend/navigation-consistency-status.md

@@ -67,7 +67,7 @@ test.describe('Heatmaps builder', () => {
     await expect(table.getByRole('columnheader', { name: /shared definition/ })).toHaveCount(1);
     await expect(table.getByRole('columnheader', { name: 'Task 1' })).toHaveCount(1);
     await expect(
-      table.locator('[role="button"][aria-label="Student Two, task_001, Completeness: 5"]')
+      table.locator('[role="button"][aria-label="Student Two, Task 1, Completeness: 5"]')
     ).toHaveCount(1);
   });
 
@@ -151,9 +151,7 @@ test.describe('Heatmaps builder', () => {
     await page.getByRole('combobox').nth(ASSIGNMENTS_CONTROL_INDEX).click();
     await selectVisibleOption(page, HEATMAP_ASSIGNMENT_DISPLAY_TITLE);
 
-    const cell = page.locator(
-      '[role="button"][aria-label="Student Two, task_001, Completeness: 5"]'
-    );
+    const cell = page.locator('[role="button"][aria-label="Student Two, Task 1, Completeness: 5"]');
     await expect(cell).toHaveCount(1);
     await cell.hover();
     const popover = page.locator('.ant-popover');

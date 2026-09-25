@@ -12,6 +12,7 @@ import type {
   AveragingAnalyserInput,
   MetricResult,
 } from '../../services/dataAnalysis/dataAnalysis.zod';
+import type { AssignmentDefinitionPartial } from '../../services/assignmentDefinition/assignmentDefinitionPartials.zod';
 import type { AssignmentPartial } from '../../services/googleClassrooms/classDetail/classDetailService.zod';
 
 // ---------------------------------------------------------------------------
@@ -38,9 +39,9 @@ export const DEFAULT_CREATED_AT = '2026-01-01T00:00:00.000Z';
  * @returns {MetricResult} A MetricResult fixture of the requested state.
  */
 export function createMetricResult(
-  state: 'computed' | 'notAttempted' | 'error',
+  state: 'computed' | 'notAttempted' | 'error' | 'excluded',
   overrides?: Partial<{
-    value: number;
+    value: number | null;
     totalWeight: number;
     applicableDataPoints: number;
     totalDataPoints: number;
@@ -77,6 +78,16 @@ export function createMetricResult(
         ...overrides,
       } as MetricResult;
     }
+    case 'excluded': {
+      return {
+        state: 'excluded',
+        value: null,
+        totalWeight: 0,
+        applicableDataPoints: 0,
+        totalDataPoints: 1,
+        ...overrides,
+      } as MetricResult;
+    }
     default: {
       throw new Error(`Unknown MetricResult state: ${state}`);
     }
@@ -86,10 +97,12 @@ export function createMetricResult(
 /**
  * Build a `computed` MetricResult fixture.
  *
- * Delegates to {@link createMetricResult}.
+ * Delegates to {@link createMetricResult}. The return type is narrowed to the
+ * `computed` member so task-level fixtures (which require the three-state
+ * display union) remain assignable without casts.
  *
  * @param {Partial<{ value: number; totalWeight: number; applicableDataPoints: number; totalDataPoints: number }>} [overrides] - Optional field overrides.
- * @returns {MetricResult} A computed MetricResult.
+ * @returns {Extract<MetricResult, { state: 'computed' }>} A computed MetricResult.
  */
 export function createComputedMetricResult(
   overrides?: Partial<{
@@ -98,42 +111,63 @@ export function createComputedMetricResult(
     applicableDataPoints: number;
     totalDataPoints: number;
   }>
-): MetricResult {
-  return createMetricResult('computed', overrides);
+): Extract<MetricResult, { state: 'computed' }> {
+  return createMetricResult('computed', overrides) as Extract<MetricResult, { state: 'computed' }>;
 }
 
 /**
  * Build a `notAttempted` MetricResult fixture.
  *
- * Delegates to {@link createMetricResult}.
+ * Delegates to {@link createMetricResult}. The return type is narrowed to the
+ * `notAttempted` member so task-level fixtures remain assignable without casts.
  *
  * @param {Partial<{ totalWeight: number; totalDataPoints: number }>} [overrides] - Optional field overrides.
- * @returns {MetricResult} A notAttempted MetricResult.
+ * @returns {Extract<MetricResult, { state: 'notAttempted' }>} A notAttempted MetricResult.
  */
 export function createNotAttemptedMetricResult(
   overrides?: Partial<{
     totalWeight: number;
     totalDataPoints: number;
   }>
-): MetricResult {
-  return createMetricResult('notAttempted', overrides);
+): Extract<MetricResult, { state: 'notAttempted' }> {
+  return createMetricResult('notAttempted', overrides) as Extract<
+    MetricResult,
+    { state: 'notAttempted' }
+  >;
 }
 
 /**
  * Build an `error` MetricResult fixture.
  *
- * Delegates to {@link createMetricResult}.
+ * Delegates to {@link createMetricResult}. The return type is narrowed to the
+ * `error` member so task-level fixtures remain assignable without casts.
  *
  * @param {Partial<{ totalWeight: number; totalDataPoints: number }>} [overrides] - Optional field overrides.
- * @returns {MetricResult} An error MetricResult.
+ * @returns {Extract<MetricResult, { state: 'error' }>} An error MetricResult.
  */
 export function createErrorMetricResult(
   overrides?: Partial<{
     totalWeight: number;
     totalDataPoints: number;
   }>
-): MetricResult {
-  return createMetricResult('error', overrides);
+): Extract<MetricResult, { state: 'error' }> {
+  return createMetricResult('error', overrides) as Extract<MetricResult, { state: 'error' }>;
+}
+
+/**
+ * Build an `excluded` MetricResult fixture.
+ *
+ * Delegates to {@link createMetricResult}.
+ *
+ * @param {Partial<{ totalDataPoints: number }>} [overrides] - Optional field overrides.
+ * @returns {Extract<MetricResult, { state: 'excluded' }>} An excluded MetricResult.
+ */
+export function createExcludedMetricResult(
+  overrides?: Partial<{
+    totalDataPoints: number;
+  }>
+): Extract<MetricResult, { state: 'excluded' }> {
+  return createMetricResult('excluded', overrides) as Extract<MetricResult, { state: 'excluded' }>;
 }
 
 // ---------------------------------------------------------------------------
@@ -327,6 +361,45 @@ export function createClassFull(overrides: {
 }
 
 /**
+ * Build one live definition partial per assignment-definition key.
+ *
+ * Every submitted task receives an explicit task weighting in the partial.
+ * This keeps ordinary analysis fixtures valid while deliberate missing-task
+ * tests can continue to provide their own boundary partial explicitly.
+ *
+ * @param {Array<ReturnType<typeof createClassFull>>} classes - Class fixtures.
+ * @returns {AssignmentDefinitionPartial[]} One inferred partial per definition key.
+ */
+function buildLiveDefinitionPartials(
+  classes: Array<ReturnType<typeof createClassFull>>
+): AssignmentDefinitionPartial[] {
+  const taskIdsByDefinitionKey = new Map<string, Set<string>>();
+
+  for (const classFixture of classes) {
+    for (const assignment of classFixture.assignments) {
+      const definitionKey = assignment.assignmentDefinitionKey;
+      let taskIds = taskIdsByDefinitionKey.get(definitionKey);
+      if (!taskIds) {
+        taskIds = new Set<string>();
+        taskIdsByDefinitionKey.set(definitionKey, taskIds);
+      }
+      for (const submission of assignment.submissions) {
+        for (const item of Object.values(submission.items)) {
+          taskIds.add(item.taskId);
+        }
+      }
+    }
+  }
+
+  return [...taskIdsByDefinitionKey].map(([definitionKey, taskIds]) =>
+    createDefinitionPartial({
+      definitionKey,
+      tasks: [...taskIds].map((taskId) => createTaskPartial(taskId)),
+    })
+  );
+}
+
+/**
  * Build a minimal `AveragingAnalyserInput` from partial overrides.
  *
  * @param {Array<Object>} classOverrides - Per-class override entries.
@@ -345,16 +418,7 @@ export function buildInput(
   const classIds = classOverrides.map((c) => c.classId);
   const classes = classOverrides.map((c) => createClassFull(c));
 
-  // Collect unique definitionKeys from assignments and build a partial per key
-  const seenKeys = new Set<string>();
-  const uniqueDefinitionPartials = classes.flatMap((c) =>
-    (c.assignments as Array<{ assignmentDefinitionKey: string | null }>)
-      .filter((a) => a.assignmentDefinitionKey != null && !seenKeys.has(a.assignmentDefinitionKey!))
-      .map((a) => {
-        seenKeys.add(a.assignmentDefinitionKey!);
-        return createDefinitionPartial({ definitionKey: a.assignmentDefinitionKey! });
-      })
-  );
+  const uniqueDefinitionPartials = buildLiveDefinitionPartials(classes);
 
   return {
     filter: {

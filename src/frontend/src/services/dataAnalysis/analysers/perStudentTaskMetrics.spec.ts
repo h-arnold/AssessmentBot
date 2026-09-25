@@ -1,12 +1,17 @@
 import { describe, it, expect } from 'vitest';
 import { AveragingAnalyser } from './averagingAnalyser';
+import { buildCellsForStudent } from '../heatmapAdapter';
 import {
   buildInput,
   createAssignmentPartial,
+  createComputedMetricResult,
+  createErrorMetricResult,
+  createNotAttemptedMetricResult,
   createSubmission,
   createSubmissionItem,
   createTaskPartial,
 } from '../../../test/dataAnalysis/fixtures';
+import type { PerStudentTaskMetric } from '../dataAnalysis.zod';
 
 // Number of decimal places of tolerance used when asserting composite floating-point scores.
 const COMPOSITE_SCORE_TOLERANCE_DIGITS = 5;
@@ -77,7 +82,7 @@ describe('perStudentTaskMetrics conversion', () => {
     expect(studentIds).toContain('s_002');
   });
 
-  it('populates completeness, accuracy, spag, and overall via accumToMetric for that scope', () => {
+  it('populates completeness, accuracy, spag, and overall from display accumulators for that scope', () => {
     const input = buildInput([
       {
         classId: 'c_001',
@@ -199,5 +204,31 @@ describe('perStudentTaskMetrics conversion', () => {
     // Both belong to the same student
     expect(t001Entry!.studentId).toBe('s_001');
     expect(t002Entry!.studentId).toBe('s_001');
+  });
+
+  it('preserves each valid narrow task-display state in heatmap cell projection', () => {
+    const metric = {
+      classId: 'c_001',
+      studentId: 's_001',
+      taskKey: 'dk_metric_states::t_001',
+      averageContribution: { effectiveWeight: 1, includedInAverage: true },
+      completeness: createNotAttemptedMetricResult(),
+      accuracy: createErrorMetricResult(),
+      spag: createComputedMetricResult({ value: 0 }),
+      overall: createComputedMetricResult({ value: 0 }),
+    } satisfies PerStudentTaskMetric;
+
+    const row = buildCellsForStudent(
+      metric.studentId,
+      'Alice',
+      [metric],
+      [{ taskKey: metric.taskKey }]
+    );
+
+    expect(row.cells[0]).toEqual({
+      completeness: metric.completeness,
+      accuracy: metric.accuracy,
+      spag: metric.spag,
+    });
   });
 });

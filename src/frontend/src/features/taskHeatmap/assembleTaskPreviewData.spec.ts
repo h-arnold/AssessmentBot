@@ -1,17 +1,14 @@
 /**
- * Red-phase tests for `assembleTaskPreviewData` — a pure function that
- * assembles a `TaskPreviewData` from a `CellPreviewData` (or `null`), the
- * analyser's `MetricResult`, the metric key, and the task ID.
- *
- * These tests WILL fail at import time because the implementation module
- * does not yet exist (TDD red phase).
+ * Tests for `assembleTaskPreviewData` — a pure function that assembles a
+ * `TaskPreviewData` from a `CellPreviewData` (or `null`), the analyser's
+ * narrow task-display metric, the metric key, and the task ID.
  */
 
 import { describe, it, expect } from 'vitest';
 import { assembleTaskPreviewData } from './assembleTaskPreviewData';
 import type { CellPreviewData } from './buildCellPreviewLookup';
 import { spreadsheetToMarkdownTable } from './spreadsheetToMarkdownTable';
-import type { MetricResult } from '../../services/dataAnalysis/dataAnalysis.zod';
+import type { TaskDisplayMetric } from '../../services/dataAnalysis/dataAnalysis.zod';
 
 // ===========================================================================
 // Fixture constants
@@ -57,12 +54,12 @@ const SPREADSHEET_SCORE = 5;
 // ===========================================================================
 
 /**
- * Create a computed MetricResult with the given value and defaults.
+ * Create a computed task-display metric with the given value and defaults.
  *
  * @param {number} value - The numeric metric score.
- * @returns {MetricResult} A computed MetricResult fixture.
+ * @returns {Extract<TaskDisplayMetric, { state: 'computed' }>} A computed task-display metric fixture.
  */
-function computedMetric(value: number): MetricResult {
+function computedMetric(value: number): Extract<TaskDisplayMetric, { state: 'computed' }> {
   return {
     state: 'computed' as const,
     value,
@@ -72,8 +69,8 @@ function computedMetric(value: number): MetricResult {
   };
 }
 
-/** A ready-made notAttempted MetricResult. */
-const NOT_ATTEMPTED_METRIC: MetricResult = {
+/** A ready-made notAttempted task-display metric. */
+const NOT_ATTEMPTED_METRIC: TaskDisplayMetric = {
   state: 'notAttempted' as const,
   value: 'N' as const,
   totalWeight: 0,
@@ -81,8 +78,8 @@ const NOT_ATTEMPTED_METRIC: MetricResult = {
   totalDataPoints: MIN_DATA_POINTS,
 };
 
-/** A ready-made error MetricResult. */
-const ERROR_METRIC: MetricResult = {
+/** A ready-made error task-display metric. */
+const ERROR_METRIC: TaskDisplayMetric = {
   state: 'error' as const,
   value: 'E' as const,
   totalWeight: 0,

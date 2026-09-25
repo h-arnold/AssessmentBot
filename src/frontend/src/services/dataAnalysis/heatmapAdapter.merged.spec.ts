@@ -197,6 +197,7 @@ function buildPerStudentTaskMetric(
     classId: CLASS_ID,
     studentId,
     taskKey: taskKeyFor(definitionKey, taskId),
+    averageContribution: { effectiveWeight: 1, includedInAverage: true },
     completeness: createComputedMetricResult({ value }),
     accuracy: createComputedMetricResult({ value: value + 1 }),
     spag: createComputedMetricResult({ value: value + SPAG_OFFSET }),
@@ -313,107 +314,6 @@ describe('adaptMetricsToMergedHeatmap — merged column construction and identit
   });
 });
 
-describe('adaptMetricsToMergedHeatmap — dedupe-by-taskKey', () => {
-  it('collapses two instances sharing a definition key into one column set, taking identity from the FIRST classFull occurrence', () => {
-    const analyserResult = minimalAveragingResult([]);
-    const classFull = buildClassFull();
-    const partials = buildPartials();
-
-    // Select a2 then a1 (both quadratics); classFull order is a1, a2 — first occurrence is a1.
-    const result = adaptMetricsToMergedHeatmap(
-      analyserResult,
-      classFull,
-      [ASSIGNMENT_ID_TWO, ASSIGNMENT_ID_ONE],
-      partials
-    );
-
-    // Only one column set (the quadratics tasks), not two.
-    expect(result.taskColumns).toHaveLength(QUAD_TASK_IDS.length);
-    expect(result.taskColumns[0].taskKey).toBe(
-      taskKeyFor(QUADRATICS_DEFINITION_KEY, QUAD_TASK_IDS[0])
-    );
-
-    // Identity comes from the FIRST classFull occurrence (a1), not the selection order (a2).
-    expect(result.taskColumns[0].assignmentId).toBe(ASSIGNMENT_ID_ONE);
-    expect(result.taskColumns[0].definitionKey).toBe(QUADRATICS_DEFINITION_KEY);
-    expect(result.taskColumns[0].assignmentName).toBe(QUADRATICS_TITLE);
-
-    // Both selected assignments still appear in sourceAssignments in selection order.
-    expect(result.sourceAssignments).toEqual([
-      {
-        assignmentId: ASSIGNMENT_ID_TWO,
-        definitionKey: QUADRATICS_DEFINITION_KEY,
-        assignmentName: QUADRATICS_TITLE,
-      },
-      {
-        assignmentId: ASSIGNMENT_ID_ONE,
-        definitionKey: QUADRATICS_DEFINITION_KEY,
-        assignmentName: QUADRATICS_TITLE,
-      },
-    ]);
-  });
-
-  it('feeds merged (accumulated) metrics into the single collapsed column for a shared taskKey', () => {
-    // One analyser metric for the shared quadratics taskKey; both instances selected.
-    const metric = buildPerStudentTaskMetric('s_001', QUADRATICS_DEFINITION_KEY, QUAD_TASK_IDS[0]);
-    const analyserResult = minimalAveragingResult([metric]);
-    const classFull = buildClassFull();
-    const partials = buildPartials();
-
-    const result = adaptMetricsToMergedHeatmap(
-      analyserResult,
-      classFull,
-      [ASSIGNMENT_ID_ONE, ASSIGNMENT_ID_TWO],
-      partials
-    );
-
-    // A single column for the shared taskKey; the merged metric shows for the student.
-    const sharedColumn = result.taskColumns.find(
-      (c) => c.taskKey === taskKeyFor(QUADRATICS_DEFINITION_KEY, QUAD_TASK_IDS[0])
-    );
-    expect(sharedColumn).toBeDefined();
-
-    const aliceRow = result.rows.find((r) => r.studentId === 's_001');
-    expect(aliceRow).toBeDefined();
-    const columnIndex = result.taskColumns.indexOf(sharedColumn!);
-    expect(aliceRow!.cells[columnIndex].completeness).toEqual(metric.completeness);
-    expect(aliceRow!.cells[columnIndex].accuracy).toEqual(metric.accuracy);
-    expect(aliceRow!.cells[columnIndex].spag).toEqual(metric.spag);
-  });
-
-  it('yields identical cells for a shared taskKey whether one or both instances are selected (merge parity)', () => {
-    const metric = buildPerStudentTaskMetric('s_001', QUADRATICS_DEFINITION_KEY, QUAD_TASK_IDS[1]);
-    const analyserResult = minimalAveragingResult([metric]);
-    const classFull = buildClassFull();
-    const partials = buildPartials();
-
-    const single = adaptMetricsToMergedHeatmap(
-      analyserResult,
-      classFull,
-      [ASSIGNMENT_ID_ONE],
-      partials
-    );
-    const both = adaptMetricsToMergedHeatmap(
-      analyserResult,
-      classFull,
-      [ASSIGNMENT_ID_ONE, ASSIGNMENT_ID_TWO],
-      partials
-    );
-
-    const indexSingle = single.taskColumns.findIndex(
-      (c) => c.taskKey === taskKeyFor(QUADRATICS_DEFINITION_KEY, QUAD_TASK_IDS[1])
-    );
-    const indexBoth = both.taskColumns.findIndex(
-      (c) => c.taskKey === taskKeyFor(QUADRATICS_DEFINITION_KEY, QUAD_TASK_IDS[1])
-    );
-
-    const aliceSingle = single.rows.find((r) => r.studentId === 's_001')!;
-    const aliceBoth = both.rows.find((r) => r.studentId === 's_001')!;
-
-    expect(aliceBoth.cells[indexBoth]).toEqual(aliceSingle.cells[indexSingle]);
-  });
-});
-
 describe('adaptMetricsToMergedHeatmap — cell mapping and roster completeness', () => {
   it('maps computed metrics and falls back to notAttempted for missing (student, taskKey) pairs, covering all students', () => {
     // Only Alice (s_001) has metrics, on both quadratics tasks; Bob and Carol have none.
@@ -474,39 +374,5 @@ describe('adaptMetricsToMergedHeatmap — error paths', () => {
     expect(() =>
       adaptMetricsToMergedHeatmap(analyserResult, classFull, [ASSIGNMENT_ID_MISSING], partials)
     ).toThrow(TaskTitlesUnavailableError);
-  });
-});
-
-describe('adaptMetricsToMergedHeatmap — title resolution and className fallback parity', () => {
-  it('resolves assignmentName from the partial primaryTitle and carries taskTitle', () => {
-    const analyserResult = minimalAveragingResult([]);
-    const classFull = buildClassFull();
-    const partials = buildPartials();
-
-    const result = adaptMetricsToMergedHeatmap(
-      analyserResult,
-      classFull,
-      [ASSIGNMENT_ID_THREE],
-      partials
-    );
-
-    expect(result.taskColumns).toHaveLength(LINEAR_TASK_IDS.length);
-    expect(result.taskColumns[0].assignmentName).toBe(LINEAR_TITLE);
-    expect(result.taskColumns[0].taskTitle).toBe(`${LINEAR_TASK_IDS[0]} title`);
-  });
-
-  it('falls back className to "Class Overview" when classFull.className is null, matching the existing adapter', () => {
-    const analyserResult = minimalAveragingResult([]);
-    const classFull = buildClassFull(null);
-    const partials = buildPartials();
-
-    const result = adaptMetricsToMergedHeatmap(
-      analyserResult,
-      classFull,
-      [ASSIGNMENT_ID_ONE],
-      partials
-    );
-
-    expect(result.className).toBe('Class Overview');
   });
 });

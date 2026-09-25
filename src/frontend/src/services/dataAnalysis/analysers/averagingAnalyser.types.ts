@@ -13,6 +13,11 @@ export interface MetricAccumulator {
   applicableDataPoints: number;
   totalDataPoints: number;
   nCount: number;
+  /** Display evidence is kept independently from contribution evidence. */
+  displaySum: number;
+  displayCount: number;
+  displayNCount: number;
+  displayTotalDataPoints: number;
 }
 
 /** Accumulator set for all four metrics (completeness, accuracy, spag, overall). */

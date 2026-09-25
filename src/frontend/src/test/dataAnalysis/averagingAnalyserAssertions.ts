@@ -61,12 +61,21 @@ interface ErrorMetricResultExpected {
 }
 
 /**
+ * Expected values for an `excluded` MetricResult.
+ */
+interface ExcludedMetricResultExpected {
+  state: 'excluded';
+  totalDataPoints: number;
+}
+
+/**
  * Union of expected value shapes for a MetricResult, discriminated by `state`.
  */
 export type MetricResultExpected =
   | ComputedMetricResultExpected
   | NotAttemptedMetricResultExpected
-  | ErrorMetricResultExpected;
+  | ErrorMetricResultExpected
+  | ExcludedMetricResultExpected;
 
 /**
  * Assert that an actual `MetricResult` matches the expected values,
@@ -120,6 +129,15 @@ export function expectMetricResultStateAware(
       expect(errorActual.totalWeight).toBeCloseTo(errorExpected.totalWeight, FLOAT_TOLERANCE);
       expect(errorActual.applicableDataPoints).toBe(0);
       expect(errorActual.totalDataPoints).toBe(errorExpected.totalDataPoints);
+      break;
+    }
+    case 'excluded': {
+      const excludedExpected = expected as ExcludedMetricResultExpected;
+      const excludedActual = actual as Extract<MetricResult, { state: 'excluded' }>;
+      expect(excludedActual.value).toBeNull();
+      expect(excludedActual.totalWeight).toBe(0);
+      expect(excludedActual.applicableDataPoints).toBe(0);
+      expect(excludedActual.totalDataPoints).toBe(excludedExpected.totalDataPoints);
       break;
     }
   }

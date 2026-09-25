@@ -1,10 +1,21 @@
-import type { AveragingResult, MetricResult, PerStudentTaskMetric } from './dataAnalysis.zod';
+import { logFrontendEvent } from '../../logging/frontendLogger';
+import type {
+  AverageContribution,
+  AveragingResult,
+  PerStudentTaskMetric,
+  TaskDisplayMetric,
+} from './dataAnalysis.zod';
 import type { ClassFull } from '../googleClassrooms/classDetail/classDetailService.zod';
 import type {
   AssignmentDefinitionPartial,
   AssignmentDefinitionPartialsResponse,
 } from '../assignmentDefinition/assignmentDefinitionPartials.zod';
-import { getAssignmentDefinitionPartial } from '../assignmentDefinition/assignmentDefinitionUtilities';
+import {
+  computeEffectiveWeight,
+  createTaskWeightingIndex,
+  getAssignmentDefinitionPartial,
+} from '../assignmentDefinition/assignmentDefinitionUtilities';
+import { buildTaskKey } from './taskKey';
 
 /**
  * Error thrown when task titles cannot be resolved for a heatmap assignment.
@@ -32,9 +43,9 @@ export class TaskTitlesUnavailableError extends Error {
  * student on one task.
  */
 export interface HeatmapCell {
-  completeness: MetricResult;
-  accuracy: MetricResult;
-  spag: MetricResult;
+  completeness: TaskDisplayMetric;
+  accuracy: TaskDisplayMetric;
+  spag: TaskDisplayMetric;
 }
 
 /**
@@ -59,6 +70,7 @@ export interface HeatmapTaskColumn {
   taskKey: string;
   taskId: string;
   taskTitle: string | null;
+  averageContribution: AverageContribution;
 }
 
 /**
@@ -76,15 +88,18 @@ export interface HeatmapResult {
 export const DEFAULT_CLASS_NAME_LABEL = 'Class Overview';
 
 /**
- * A frozen not-attempted `MetricResult` used as the default cell value when a
+ * A frozen not-attempted `TaskDisplayMetric` used as the default cell value when a
  * student has no per-student-task metric for a given task column.
  *
  * @remarks
  * This object is frozen to prevent accidental mutation from corrupting every
  * missing cell simultaneously.  If mutation is ever required, return a fresh
- * object per cell instead of unfreezing this one.
+ * object per cell instead of unfreezing this one. Its `totalDataPoints: 1` is
+ * intentional: it is a schema-valid task-level not-attempted fallback. The
+ * Class-page adapter's zero-data `N` placeholder uses `totalDataPoints: 0` and
+ * is intentionally kept separate from this task-display shape.
  */
-const NOT_ATTEMPTED_METRIC: Readonly<MetricResult> = Object.freeze({
+const NOT_ATTEMPTED_METRIC: Readonly<TaskDisplayMetric> = Object.freeze({
   state: 'notAttempted' as const,
   value: 'N' as const,
   totalWeight: 0,
@@ -102,11 +117,24 @@ const NOT_ATTEMPTED_METRIC: Readonly<MetricResult> = Object.freeze({
  *   `taskId`, and `taskTitle` read directly from the partial.
  */
 export function buildTaskColumns(partial: AssignmentDefinitionPartial): HeatmapTaskColumn[] {
-  return partial.tasks.map((task) => ({
-    taskKey: `${partial.definitionKey}::${task.taskId}`,
-    taskId: task.taskId,
-    taskTitle: task.taskTitle,
-  }));
+  const taskWeightingIndex = createTaskWeightingIndex(partial);
+  return partial.tasks.map((task) => {
+    const effectiveWeight = computeEffectiveWeight(taskWeightingIndex, task.taskId);
+    if (effectiveWeight === undefined) {
+      throw new Error(
+        `buildTaskColumns: task '${task.taskId}' is missing from partial '${partial.definitionKey}'`
+      );
+    }
+    return {
+      taskKey: buildTaskKey(partial.definitionKey, task.taskId),
+      taskId: task.taskId,
+      taskTitle: task.taskTitle,
+      averageContribution: {
+        effectiveWeight,
+        includedInAverage: effectiveWeight > 0,
+      },
+    };
+  });
 }
 
 /**
@@ -114,8 +142,9 @@ export function buildTaskColumns(partial: AssignmentDefinitionPartial): HeatmapT
  *
  * @param {string} studentId - The student identifier.
  * @param {string} studentName - The student display name.
- * @param {PerStudentTaskMetric[]} studentMetrics - The student's metrics (already
- *   filtered to this assignment's class and task-key set).
+ * @param {ReadonlyMap<string, PerStudentTaskMetric> | ReadonlyArray<PerStudentTaskMetric>} studentMetrics -
+ *   The student's metrics, either as a task-key lookup or as a direct array for
+ *   boundary callers. Arrays are indexed once before cell projection.
  * @param {ReadonlyArray<{ taskKey: string }>} taskColumns - The ordered task columns.
  * @returns {{ studentId: string; studentName: string; cells: HeatmapCell[] }} The
  *   completed heatmap row.
@@ -124,16 +153,23 @@ export function buildTaskColumns(partial: AssignmentDefinitionPartial): HeatmapT
  * Shared by both {@link adaptMetricsToHeatmap} and {@link adaptMetricsToMergedHeatmap}
  * (byte-identical cell projection). This is the single source of truth for cell
  * semantics: the merged projection re-uses it rather than duplicating it. A missing
- * `(student, taskKey)` metric falls back to the frozen not-attempted metric.
+ * `(student, taskKey)` metric falls back to the frozen not-attempted metric. The
+ * adapter supplies a task-key map, so cell projection performs constant-time lookups.
  */
 export function buildCellsForStudent(
   studentId: string,
   studentName: string,
-  studentMetrics: PerStudentTaskMetric[],
+  studentMetrics: ReadonlyMap<string, PerStudentTaskMetric> | ReadonlyArray<PerStudentTaskMetric>,
   taskColumns: ReadonlyArray<{ taskKey: string }>
 ): { studentId: string; studentName: string; cells: HeatmapCell[] } {
+  const metricsByTaskKey =
+    'get' in studentMetrics
+      ? studentMetrics
+      : new Map<string, PerStudentTaskMetric>(
+          studentMetrics.map((metric) => [metric.taskKey, metric] as const)
+        );
   const cells: HeatmapCell[] = taskColumns.map((column) => {
-    const metric = studentMetrics.find((m) => m.taskKey === column.taskKey);
+    const metric = metricsByTaskKey.get(column.taskKey);
     if (metric) {
       return {
         completeness: metric.completeness,
@@ -151,25 +187,80 @@ export function buildCellsForStudent(
 }
 
 /**
- * Group per-student-task metrics by student ID, filtering to those matching the
- * given class and task-key set.
+ * Warn once for each task column that has no analyser metric for any student.
+ *
+ * @param {string} context - The calling adapter's logging context.
+ * @param {string} classId - The class ID associated with the heatmap.
+ * @param {ReadonlyArray<{ taskKey: string }>} taskColumns - The ordered task columns.
+ * @param {ReadonlyMap<string, ReadonlyMap<string, PerStudentTaskMetric>>} metricsByStudent -
+ *   Metrics grouped by student ID and task key.
+ * @returns {void} Nothing.
+ */
+export function warnForMissingTaskMetrics(
+  context: string,
+  classId: string,
+  taskColumns: ReadonlyArray<{ taskKey: string }>,
+  metricsByStudent: ReadonlyMap<string, ReadonlyMap<string, PerStudentTaskMetric>>
+): void {
+  const observedTaskKeys = new Set<string>();
+  for (const studentMetrics of metricsByStudent.values()) {
+    for (const taskKey of studentMetrics.keys()) {
+      observedTaskKeys.add(taskKey);
+    }
+  }
+
+  for (const column of taskColumns) {
+    if (observedTaskKeys.has(column.taskKey)) {
+      continue;
+    }
+    logFrontendEvent('warn', {
+      context,
+      errorMessage: `No analyser metric exists for any student for heatmap column '${column.taskKey}'`,
+      metadata: { classId, taskKey: column.taskKey },
+    });
+  }
+}
+
+/**
+ * Group per-student-task metrics by student ID and task key, filtering to those
+ * matching the given class and task-key set.
  *
  * @param {AveragingResult} analyserResult - The analysis result.
  * @param {string} classId - The class ID to filter by.
  * @param {Set<string>} columnTaskKeys - The set of valid task keys for this assignment.
- * @returns {Map<string, PerStudentTaskMetric[]>} Metrics grouped by `studentId`.
+ * @returns {Map<string, Map<string, PerStudentTaskMetric>>} Metrics grouped by
+ *   student ID and canonical task key.
+ * @remarks
+ * An omitted optional `perStudentTaskMetrics` field is logged once at this
+ * boundary rather than silently treated as an empty metric set.
  */
 export function groupMetricsByStudent(
   analyserResult: AveragingResult,
   classId: string,
   columnTaskKeys: Set<string>
-): Map<string, PerStudentTaskMetric[]> {
-  const metricsByStudent = new Map<string, PerStudentTaskMetric[]>();
-  for (const metric of analyserResult.perStudentTaskMetrics ?? []) {
+): Map<string, Map<string, PerStudentTaskMetric>> {
+  const metricsByStudent = new Map<string, Map<string, PerStudentTaskMetric>>();
+  const perStudentTaskMetrics = analyserResult.perStudentTaskMetrics;
+  if (perStudentTaskMetrics === undefined) {
+    logFrontendEvent('warn', {
+      context: 'groupMetricsByStudent',
+      errorMessage:
+        'Analyser result is missing perStudentTaskMetrics; heatmap cells use no-submission placeholders',
+      metadata: { classId },
+    });
+    return metricsByStudent;
+  }
+
+  for (const metric of perStudentTaskMetrics) {
     if (metric.classId === classId && columnTaskKeys.has(metric.taskKey)) {
-      const list = metricsByStudent.get(metric.studentId) ?? [];
-      list.push(metric);
-      metricsByStudent.set(metric.studentId, list);
+      let studentMetrics = metricsByStudent.get(metric.studentId);
+      if (!studentMetrics) {
+        studentMetrics = new Map<string, PerStudentTaskMetric>();
+        metricsByStudent.set(metric.studentId, studentMetrics);
+      }
+      if (!studentMetrics.has(metric.taskKey)) {
+        studentMetrics.set(metric.taskKey, metric);
+      }
     }
   }
   return metricsByStudent;
@@ -253,7 +344,7 @@ export function resolveAssignmentPartial(
  * `getAssignmentDefinitionPartial` check above.
  *
  * v1 uses single-assignment selection at the adapter boundary by deriving
- * `taskKey`s (`${definitionKey}::${taskId}`) from the warm-up partial.
+ * `taskKey`s with the shared `buildTaskKey` helper from the warm-up partial.
  * Multi-assignment selection is handled by the merged adapter (`heatmapAdapter.merged.ts`); this adapter remains single-assignment.
  */
 export function adaptMetricsToHeatmap(
@@ -273,12 +364,20 @@ export function adaptMetricsToHeatmap(
 
   const columnTaskKeys = new Set(taskColumns.map((c) => c.taskKey));
   const metricsByStudent = groupMetricsByStudent(analyserResult, classFull.classId, columnTaskKeys);
+  if (analyserResult.perStudentTaskMetrics !== undefined) {
+    warnForMissingTaskMetrics(
+      'adaptMetricsToHeatmap',
+      classFull.classId,
+      taskColumns,
+      metricsByStudent
+    );
+  }
 
   const rows: HeatmapRow[] = classFull.students.map((student) =>
     buildCellsForStudent(
       student.id,
       student.name,
-      metricsByStudent.get(student.id) ?? [],
+      metricsByStudent.get(student.id) ?? new Map<string, PerStudentTaskMetric>(),
       taskColumns
     )
   );

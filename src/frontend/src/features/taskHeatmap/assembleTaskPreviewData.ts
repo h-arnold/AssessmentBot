@@ -1,24 +1,44 @@
 import type { CellPreviewData } from './buildCellPreviewLookup';
-import type { MetricResult } from '../../services/dataAnalysis/dataAnalysis.zod';
+import type { TaskDisplayMetric } from '../../services/dataAnalysis/dataAnalysis.zod';
 import type { HeatmapMetricKey } from '../../services/dataAnalysis/metricDisplay/metricDisplayMeta';
-import type { TaskPreviewData } from './TaskPreviewCard';
+import type { TaskPreviewData, TaskPreviewMetric } from './TaskPreviewCard';
 import { spreadsheetToMarkdownTable } from './spreadsheetToMarkdownTable';
 
 /**
+ * Map a task-display metric to the preview's flat discriminated state/score pair.
+ *
+ * @param {TaskDisplayMetric} metric - The schema-derived task-display metric.
+ * @returns {TaskPreviewMetric} The state and its schema-correlated score.
+ */
+function toTaskPreviewMetric(metric: TaskDisplayMetric): TaskPreviewMetric {
+  switch (metric.state) {
+    case 'computed': {
+      return { metricState: 'computed', metricScore: metric.value };
+    }
+    case 'notAttempted': {
+      return { metricState: 'notAttempted', metricScore: 'N' };
+    }
+    case 'error': {
+      return { metricState: 'error', metricScore: 'E' };
+    }
+  }
+}
+
+/**
  * Assembles a `TaskPreviewData` from a `CellPreviewData` (or `null`), the
- * analyser's `MetricResult`, the metric key, and the task ID.
+ * analyser's `TaskDisplayMetric`, the metric key, and the task ID.
  *
  * @param {CellPreviewData | null} cellData - The cell preview data from the
  *                   lookup, or `null` when no submission exists for the
  *                   (student, task) pair.
- * @param {MetricResult} metricResult - The analyser's metric result for this cell.
+ * @param {TaskDisplayMetric} metricResult - The analyser's task-display metric for this cell.
  * @param {HeatmapMetricKey} metricKey - Which metric column this preview is for.
  * @param {string} taskId - The heatmap column's task ID (forwarded unchanged).
  * @returns {TaskPreviewData} A `TaskPreviewData` object ready for the `TaskPreviewCard`.
  */
 export function assembleTaskPreviewData(
   cellData: CellPreviewData | null,
-  metricResult: MetricResult,
+  metricResult: TaskDisplayMetric,
   metricKey: HeatmapMetricKey,
   taskId: string
 ): TaskPreviewData {
@@ -45,8 +65,7 @@ export function assembleTaskPreviewData(
     artifactType,
     artifactContent,
     metricKey,
-    metricScore: metricResult.value,
-    metricState: metricResult.state,
+    ...toTaskPreviewMetric(metricResult),
     reasoning: cellData.reasoning[metricKey] ?? '',
   };
 }

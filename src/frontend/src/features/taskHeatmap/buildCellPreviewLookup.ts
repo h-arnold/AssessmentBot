@@ -4,6 +4,7 @@ import type {
   BaseTaskArtifactSchema,
 } from '../../services/assignmentAssessment/assignmentAssessment.zod';
 import { HEATMAP_METRIC_KEYS } from '../../services/dataAnalysis/metricDisplay/metricDisplayMeta';
+import { buildTaskKey } from '../../services/dataAnalysis/taskKey';
 import type { HeatmapMetricKey } from '../../services/dataAnalysis/metricDisplay/metricDisplayMeta';
 import type { z } from 'zod';
 
@@ -134,7 +135,7 @@ export function buildCellPreviewLookup(assignment: AssignmentFull): CellPreviewL
     const innerMap = new Map<string, CellPreviewData>();
 
     for (const item of Object.values(submission.items)) {
-      const taskKey = `${definitionKey}::${item.taskId}`;
+      const taskKey = buildTaskKey(definitionKey, item.taskId);
       // First-wins: only set if this taskKey has not been encountered yet
       if (!innerMap.has(taskKey)) {
         innerMap.set(

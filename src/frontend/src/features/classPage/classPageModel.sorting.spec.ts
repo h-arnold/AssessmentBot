@@ -13,175 +13,32 @@ import { describe, expect, it } from 'vitest';
 import { createMetricResult } from '../../test/dataAnalysis/fixtures';
 import type { MetricResult } from '../../services/dataAnalysis/dataAnalysis.zod';
 import { buildClassPageViewModel, compareAssignmentUpdatedAtDesc } from './classPageModel';
-import type {
-  ClassPageAdapterResult,
-  RecentAssignmentCardModel,
-  StudentAverageRowModel,
-} from './classPageAdapter.zod';
-
-// ---------------------------------------------------------------------------
-// Fixture helpers
-// ---------------------------------------------------------------------------
-
-/**
- * Build a `StudentAverageRowModel` fixture with sensible defaults.
- *
- * @param {Partial<StudentAverageRowModel>} [overrides] - Optional partial overrides for the fixture fields.
- *   Supports any subset of `StudentAverageRowModel` fields (e.g. `studentId`,
- *   `studentName`, `metrics`).
- * @returns {StudentAverageRowModel} A fully typed StudentAverageRowModel fixture.
- */
-function buildStudentRow(overrides?: Partial<StudentAverageRowModel>): StudentAverageRowModel {
-  return {
-    studentId: 's-1',
-    studentName: 'Student A',
-    metrics: {
-      completeness: createMetricResult('computed'),
-      accuracy: createMetricResult('computed'),
-      spag: createMetricResult('computed'),
-      average: createMetricResult('computed'),
-    },
-    ...overrides,
-  };
-}
-
-/**
- * Build a `ClassPageAdapterResult` fixture with sensible defaults.
- *
- * @param {Partial<ClassPageAdapterResult>} [overrides] - Optional partial overrides for the fixture fields.
- *   Supports any subset of `ClassPageAdapterResult` fields (e.g.
- *   `recentAssignments`, `studentAverages`, `classMetrics`).
- * @returns {ClassPageAdapterResult} A fully typed ClassPageAdapterResult fixture.
- */
-function buildAdapterResult(overrides?: Partial<ClassPageAdapterResult>): ClassPageAdapterResult {
-  return {
-    recentAssignments: [
-      {
-        assignmentId: 'a-1',
-        assignmentName: 'Assignment 1',
-        lastAssessedAt: '2026-06-01T00:00:00.000Z',
-        lastAssessedAtLabel: '01/06/2026',
-        metrics: {
-          completeness: createMetricResult('computed'),
-          accuracy: createMetricResult('computed'),
-          spag: createMetricResult('computed'),
-          average: createMetricResult('computed'),
-        },
-      },
-    ],
-    studentAverages: [buildStudentRow()],
-    classMetrics: {
-      completeness: createMetricResult('computed', { value: 4.2 }),
-      accuracy: createMetricResult('computed', { value: 3.5 }),
-      spag: createMetricResult('notAttempted'),
-      overall: createMetricResult('computed', { value: 3.8 }),
-    },
-    ...overrides,
-  };
-}
+import type { StudentAverageRowModel } from './classPageAdapter.zod';
+import { buildAdapterResult, buildStudentRow } from '../../test/classPage/classPageModelTestFixtures';
 
 // ===========================================================================
 // Tests
 // ===========================================================================
 
-describe('buildClassPageViewModel', () => {
-  // -----------------------------------------------------------------------
-  // Pass-through fields
-  // -----------------------------------------------------------------------
-  describe('pass-through fields', () => {
-    it('passes through recentAssignments and classMetrics unchanged', () => {
-      const recentAssignmentCard: RecentAssignmentCardModel = {
-        assignmentId: 'a-1',
-        assignmentName: 'Algebra Baseline',
-        lastAssessedAt: '2026-06-01T00:00:00.000Z',
-        lastAssessedAtLabel: '01/06/2026',
-        metrics: {
-          completeness: createMetricResult('computed', { value: 4 }),
-          accuracy: createMetricResult('notAttempted'),
-          spag: createMetricResult('error'),
-          average: createMetricResult('computed', { value: 3.2 }),
-        },
-      };
-
-      const classMetrics = {
-        completeness: createMetricResult('computed', { value: 4.5 }),
-        accuracy: createMetricResult('computed', { value: 3 }),
-        spag: createMetricResult('error'),
-        overall: createMetricResult('computed', { value: 3.7 }),
-      };
-
-      const adapterResult = buildAdapterResult({
-        recentAssignments: [recentAssignmentCard],
-        classMetrics,
-      });
-
-      const result = buildClassPageViewModel({
-        adapterResult,
-        filters: { searchTerm: '' },
-        sort: { column: 'forename', direction: 'asc' },
-      });
-
-      expect(result.recentAssignments).toEqual(adapterResult.recentAssignments);
-      expect(result.classMetrics).toEqual(adapterResult.classMetrics);
-    });
-  });
-
-  // -----------------------------------------------------------------------
-  // Search filter
-  // -----------------------------------------------------------------------
+describe('buildClassPageViewModel sorting and filtering', () => {
   describe('search filter', () => {
     it('filters studentAverages by case-insensitive substring on studentName', () => {
-      const oliverRow = buildStudentRow({
-        studentId: 's-1',
-        studentName: 'Oliver',
-      });
-      const bobRow = buildStudentRow({
-        studentId: 's-2',
-        studentName: 'Bob',
-      });
-      const lilyRow = buildStudentRow({
-        studentId: 's-3',
-        studentName: 'Lily',
-      });
-
       const adapterResult = buildAdapterResult({
-        studentAverages: [oliverRow, bobRow, lilyRow],
+        studentAverages: [
+          buildStudentRow({ studentId: 's-1', studentName: 'Oliver' }),
+          buildStudentRow({ studentId: 's-2', studentName: 'Bob' }),
+          buildStudentRow({ studentId: 's-3', studentName: 'Lily' }),
+        ],
       });
-
       const result = buildClassPageViewModel({
         adapterResult,
         filters: { searchTerm: 'li' },
         sort: { column: 'forename', direction: 'asc' },
       });
 
-      const expectedFilteredCount = 2;
-      expect(result.studentAverages).toHaveLength(expectedFilteredCount);
-      // Oliver and Lily both contain "li" (case-insensitive); Bob does not
-      const studentIds = result.studentAverages.map((row: StudentAverageRowModel) => row.studentId);
-      expect(studentIds).toContain('s-1');
-      expect(studentIds).toContain('s-3');
-      expect(studentIds).not.toContain('s-2');
-    });
-
-    it('returns all students when searchTerm is empty', () => {
-      const studentOne = buildStudentRow({ studentId: 's-1', studentName: 'Alice' });
-      const studentTwo = buildStudentRow({ studentId: 's-2', studentName: 'Bob' });
-
-      const adapterResult = buildAdapterResult({
-        studentAverages: [studentOne, studentTwo],
-      });
-
-      const result = buildClassPageViewModel({
-        adapterResult,
-        filters: { searchTerm: '' },
-        sort: { column: 'forename', direction: 'asc' },
-      });
-
-      const expectedCount = 2;
-      expect(result.studentAverages).toHaveLength(expectedCount);
+      expect(result.studentAverages.map((row) => row.studentId)).toEqual(['s-3', 's-1']);
     });
   });
-
   // -----------------------------------------------------------------------
   // Sort — name columns (surname ordering differs from forename ordering)
   // -----------------------------------------------------------------------

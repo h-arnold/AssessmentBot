@@ -2,11 +2,13 @@
  * Shared numeric range-filter support for metric columns.
  *
  * Provides a custom Ant Design `filterDropdown` (a two-thumb `Slider` bounded by
- * the metric's scoring range, with `N` / `E` include toggles) plus the matching
- * `onFilter` predicate, so the Student Averages table and the Task Heatmap can
- * filter by score range instead of a fixed colour band. The dropdown UI itself
- * lives in `metricRangeFilterDropdown.tsx` (kept separate so fast-refresh is
- * satisfied).
+ * the metric's scoring range, with independent `N` and `E` include toggles plus
+ * an aggregate-only `Excluded` toggle) plus the matching `onFilter` predicate,
+ * so the Student Averages table and Task Heatmap can filter by score range
+ * instead of a fixed colour band. Task-display heatmap filters omit the
+ * `Excluded` option because task metrics cannot resolve to that state. The
+ * dropdown UI itself lives in `metricRangeFilterDropdown.tsx` (kept separate so
+ * fast-refresh is satisfied).
  *
  * @module metricRangeFilter
  */
@@ -16,37 +18,50 @@ import type { FilterDropdownProps } from 'antd/es/table/interface';
 
 import type { MetricResult } from '../dataAnalysis.zod';
 import type { MetricToneRange } from './metricTone';
-import { decodeMetricFilter, encodeMetricFilter } from './metricRangeKey';
+import {
+  createDefaultMetricRangeFilterState,
+  decodeMetricFilter,
+  encodeMetricFilter,
+  type MetricRangeFilterFlags,
+} from './metricRangeKey';
 import { MetricRangeFilterDropdown } from './metricRangeFilterDropdown';
+
+/** Default policy for every non-computed metric state. */
+const DEFAULT_NON_COMPUTED_FILTER_FLAGS: MetricRangeFilterFlags =
+  createDefaultMetricRangeFilterState(0, 0);
 
 /**
  * Predicate: is a metric within the active filter?
  *
  * Computed values must fall inside the `[min, max]` range. The `N` (`notAttempted`)
- * and `E` (`error`) states are included only when their respective toggle is
- * enabled; otherwise they are hidden while a filter is applied.
+ * and `E` (`error`) states are included only when their respective named flag is
+ * enabled; otherwise they are hidden while a filter is applied. Aggregate-only
+ * `excluded` metrics pass only when their independent `includeExcluded` flag is
+ * enabled; they never pass by numeric range.
  *
  * @param {MetricResult} metric - The metric to test.
  * @param {number} min - The inclusive lower bound.
  * @param {number} max - The inclusive upper bound.
- * @param {boolean} [includeNotAttempted=false] - Keep `notAttempted` rows.
- * @param {boolean} [includeError=false] - Keep `error` rows.
+ * @param {MetricRangeFilterFlags} [filterFlags] - Named non-computed-state
+ *   flags. Omission uses {@link DEFAULT_NON_COMPUTED_FILTER_FLAGS}.
  * @returns {boolean} `true` when the metric passes the filter.
  */
 export function metricInRange(
   metric: MetricResult,
   min: number,
   max: number,
-  includeNotAttempted = false,
-  includeError = false
+  filterFlags: MetricRangeFilterFlags = DEFAULT_NON_COMPUTED_FILTER_FLAGS
 ): boolean {
-  if (metric.state === 'notAttempted') {
-    return includeNotAttempted;
+  if (metric.state === 'computed') {
+    return metric.value >= min && metric.value <= max;
   }
-  if (metric.state === 'error') {
-    return includeError;
-  }
-  return metric.value >= min && metric.value <= max;
+
+  const includeByState: Record<Exclude<MetricResult['state'], 'computed'>, boolean> = {
+    notAttempted: filterFlags.includeNotAttempted,
+    excluded: filterFlags.includeExcluded,
+    error: filterFlags.includeError,
+  };
+  return includeByState[metric.state];
 }
 
 /** Options for {@link buildMetricRangeFilter}. */
@@ -67,9 +82,14 @@ export type MetricRangeFilterOptions<RecordType> = {
   /**
    * Optional raw encoded filter key from the parent's filter state. When provided,
    * used directly as `filteredValue` instead of re-encoding from `activeRange`,
-   * preserving the N/E toggle state from the dropdown.
+   * preserving the N/E/Excluded toggle state from the dropdown.
    */
   activeFilterKey?: string;
+  /**
+   * Whether the dropdown exposes the aggregate-only **Include Excluded** toggle.
+   * Defaults to `true`; task-display heatmap filters pass `false`.
+   */
+  showExcludedToggle?: boolean;
   /** `Slider` step. Defaults to {@link RANGE_SLIDER_STEP}. */
   step?: number;
 };
@@ -93,8 +113,10 @@ export type MetricRangeFilterProperties = {
  *
  * @remarks
  * The `filterDropdown` renders a two-thumb `Slider` over `range.lower..range.upper`
- * plus `N` / `E` include toggles. Selecting a range (or toggling `N`/`E`) writes a
- * single encoded filter key into `selectedKeys` and confirms; **Reset** clears it.
+ * plus independent `N` and `E` include toggles, and exposes `Excluded` when
+ * `showExcludedToggle` is enabled. Selecting a range (or toggling one of these
+ * states) writes a single encoded filter key into `selectedKeys` and confirms;
+ * **Reset** clears it.
  * `onFilter` decodes that key and applies {@link metricInRange} to each row.
  *
  * @param {MetricRangeFilterOptions<RecordType>} options - Range filter options.
@@ -103,24 +125,33 @@ export type MetricRangeFilterProperties = {
 export function buildMetricRangeFilter<RecordType>(
   options: MetricRangeFilterOptions<RecordType>
 ): MetricRangeFilterProperties {
-  const { range, getMetric, activeRange, activeFilterKey, step = RANGE_SLIDER_STEP } = options;
+  const {
+    range,
+    getMetric,
+    activeRange,
+    activeFilterKey,
+    showExcludedToggle = true,
+    step = RANGE_SLIDER_STEP,
+  } = options;
 
   let filteredValue: string[] | undefined;
   if (activeFilterKey) {
     filteredValue = [activeFilterKey];
   } else if (activeRange.length === RANGE_SLIDER_HANDLE_COUNT) {
     filteredValue = [
-      encodeMetricFilter({
-        min: activeRange[0],
-        max: activeRange[1],
-        includeNotAttempted: false,
-        includeError: false,
-      }),
+      encodeMetricFilter(
+        createDefaultMetricRangeFilterState(activeRange[0], activeRange[1])
+      ),
     ];
   }
 
   const filterDropdown = (properties: FilterDropdownProps): JSX.Element => (
-    <MetricRangeFilterDropdown {...properties} range={range} step={step} />
+    <MetricRangeFilterDropdown
+      {...properties}
+      range={range}
+      step={step}
+      showExcludedToggle={showExcludedToggle}
+    />
   );
 
   const onFilter = (value: unknown, record: unknown): boolean => {
@@ -128,13 +159,7 @@ export function buildMetricRangeFilter<RecordType>(
     if (!decoded) {
       return true;
     }
-    return metricInRange(
-      getMetric(record as RecordType),
-      decoded.min,
-      decoded.max,
-      decoded.includeNotAttempted,
-      decoded.includeError
-    );
+    return metricInRange(getMetric(record as RecordType), decoded.min, decoded.max, decoded);
   };
 
   return {

@@ -67,7 +67,7 @@ export const APP_COL_WIDTH_METRIC = 40 as const;
 
 /**
  * Fixed width (px) for a single MetricPill column in the Student Averages table.
- * Matches the Class Page metric column width (a multiple of 8 per Ant Design
- * spacing standards).
+ * The width leaves room for the visible `Excluded` status label while staying
+ * aligned to the Class Page metric columns' 8px spacing grid.
  */
-export const APP_COL_WIDTH_METRIC_PILL = 48 as const;
+export const APP_COL_WIDTH_METRIC_PILL = 72 as const;

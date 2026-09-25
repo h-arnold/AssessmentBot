@@ -2,14 +2,18 @@
  * Pure tone resolver for `MetricResult` values.
  *
  * Maps a `MetricResult` plus an optional scoring range to a
- * `MetricToneResolution` describing the Ant Design `Tag` colour, the raw display
- * value, and a muted flag. No React / antd / I/O / state imports.
+ * `MetricToneResolution` describing the Ant Design `Tag` colour, cell style,
+ * and a muted flag. The only React import is the type-only `CSSProperties`;
+ * no React runtime, antd, I/O, or state dependency.
  *
  * @module metricTone
  */
 
 import type { CSSProperties } from 'react';
 import type { MetricResult } from '../dataAnalysis.zod';
+
+export const EXCLUDED_METRIC_ACCESSIBLE_LABEL =
+  'Excluded from average: displayed work had zero weighting.';
 
 /**
  * Ant Design `Tag` preset colour tokens supported by `metricTone` and
@@ -33,26 +37,20 @@ export type MetricToneResolution = {
   /**
    * Ant Design `Tag` colour. For `computed` values this is a continuous
    * gradient HSL string (red at the range floor → amber mid → green at the
-   * ceiling); for `notAttempted` it is a dark grey (`#434343`) and for `error`
-   * it is the `errorColor` token.
+   * ceiling); for `notAttempted` it is a dark grey (`#434343`); for `error`
+   * it is the `errorColor` token; and for `excluded` it is the neutral
+   * `'default'` preset.
    */
   color: string;
   /**
-   * Ready-to-apply inline `<td>` / cell style for the resolved tone. Gradient
-   * values carry a light pastel background with a darker, hue-matched text
-   * colour so the *entire* cell (not just a pill inside it) carries the band
-   * colour. Discrete states (`'default'`, `'volcano'`, etc.) reuse the preset
-   * pairs in {@link METRIC_TONE_CELL_STYLE}.
+   * Ready-to-apply `<td>` presentation attributes. Gradient values carry a
+   * light pastel background with a darker, hue-matched text colour so the
+   * *entire* cell (not just a pill inside it) carries the band colour. The
+   * aggregate-only excluded treatment supplies a stylesheet `className`; other
+   * states supply inline CSS properties from {@link METRIC_TONE_CELL_STYLE}.
    */
-  cellStyle: CSSProperties;
-  /**
-   * Raw display value:
-   * - `computed` -> the numeric `metric.value`
-   * - `notAttempted` -> `'N'`
-   * - `error` -> `'E'`
-   */
-  displayValue: number | 'N' | 'E';
-  /** `true` for `notAttempted`, `false` otherwise. */
+  cellStyle: CSSProperties & Readonly<{ className?: string }>;
+  /** `true` only for `notAttempted`; `excluded` is not muted. */
   muted: boolean;
 };
 
@@ -67,9 +65,10 @@ export const DEFAULT_TONE_RANGE: MetricToneRange = { lower: 0, upper: 5 };
  * than a pill inside the cell. The hex values mirror Ant Design's preset
  * palette background/text pairs (the per-component `colorXxxBg`/`colorXxx`
  * shades, which are not exposed as top-level `theme.useToken()` tokens in
- * v6). `notAttempted` now has a dedicated cell style (see
- * {@link NOT_ATTEMPTED_CELL_STYLE}) with a light grey background and dark grey
- * text; the `'default'` entry in this record is the unused fallback.
+ * v6). `notAttempted` uses {@link NOT_ATTEMPTED_CELL_STYLE} with a light grey
+ * background and dark grey text; excluded uses the shared stylesheet class
+ * rather than a preset style key. The `'default'` entry in this record is the
+ * unused fallback.
  */
 export const METRIC_TONE_CELL_STYLE: Readonly<Record<MetricToneColor, CSSProperties>> = {
   red: { backgroundColor: '#fff1f0', color: '#cf1322' },
@@ -78,6 +77,9 @@ export const METRIC_TONE_CELL_STYLE: Readonly<Record<MetricToneColor, CSSPropert
   volcano: { backgroundColor: '#fff2e8', color: '#d4380d' },
   default: {},
 };
+
+/** Stylesheet class for the theme-aware aggregate-only excluded treatment. */
+const EXCLUDED_CELL_CLASS_NAME = 'metric-tone-excluded-cell';
 
 /**
  * Dark grey used for the `notAttempted` (`N`) state. Chosen deliberately darker
@@ -177,10 +179,30 @@ function resolveGradientCellStyle(t: number): CSSProperties {
 }
 
 /**
+ * Fail fast on an inverted or degenerate scoring range.
+ *
+ * @remarks
+ * Retained as a named single-caller guard: inlining this branch raises
+ * `resolveMetricTone` above the configured complexity limit without creating
+ * an independently reusable contract.
+ *
+ * @param {MetricToneRange} range - The scoring range to validate.
+ * @throws {Error} When `range.upper <= range.lower`.
+ */
+function assertValidRange(range: MetricToneRange): void {
+  if (range.upper <= range.lower) {
+    throw new Error(
+      `resolveMetricTone: degenerate range { lower: ${range.lower}, upper: ${range.upper} } - upper must be greater than lower`
+    );
+  }
+}
+
+/**
  * Resolve a `MetricResult` to a `MetricToneResolution`.
  *
  * @remarks
- * **Pure function contract.** No side effects, no I/O, no React / antd imports.
+ * **Pure function contract.** No side effects, no I/O, no antd import, and no
+ * React runtime dependency (the module imports `CSSProperties` as a type only).
  * Idempotent and stateless.
  *
  * **Gradient resolution.** The normalised position `t` is computed once per
@@ -193,10 +215,11 @@ function resolveGradientCellStyle(t: number): CSSProperties {
  * amber (`60`) → green (`120`). Lightness is darker at the range ends (darkest
  * red at the floor, darkest green at the ceiling) and lighter in the middle,
  * making differences between adjacent scores obvious. Discrete states
- * (`notAttempted`, `error`) keep their fixed colour and cell styles — only
- * `computed` values participate in the gradient. `notAttempted` uses a custom
- * dark grey (`#434343`) rather than the `'default'` token, with its own light
- * grey cell background.
+ * (`notAttempted`, `error`, `excluded`) keep their fixed colour and cell styles
+ * — only `computed` values participate in the gradient. `notAttempted` uses
+ * dark-grey text (`#434343`) and its own cell background. Excluded uses the
+ * valid `'default'` Tag preset and a separate neutral cell style, and is not
+ * muted. The shared display formatter renders the visible **Excluded** label.
  *
  * | `value` condition              | Colour (computed)        |
  * | ------------------------------ | ------------------------ |
@@ -220,11 +243,7 @@ export function resolveMetricTone(
   range: MetricToneRange = DEFAULT_TONE_RANGE,
   errorColor: MetricToneColor = 'volcano'
 ): MetricToneResolution {
-  if (range.upper <= range.lower) {
-    throw new Error(
-      `resolveMetricTone: degenerate range { lower: ${range.lower}, upper: ${range.upper} } - upper must be greater than lower`
-    );
-  }
+  assertValidRange(range);
 
   switch (metric.state) {
     case 'computed': {
@@ -232,7 +251,6 @@ export function resolveMetricTone(
       return {
         color: resolveGradientFill(t),
         cellStyle: resolveGradientCellStyle(t),
-        displayValue: metric.value,
         muted: false,
       };
     }
@@ -241,7 +259,6 @@ export function resolveMetricTone(
       return {
         color: NOT_ATTEMPTED_GREY,
         cellStyle: NOT_ATTEMPTED_CELL_STYLE,
-        displayValue: 'N',
         muted: true,
       };
     }
@@ -250,7 +267,14 @@ export function resolveMetricTone(
       return {
         color: errorColor,
         cellStyle: resolveDiscreteCellStyle(errorColor),
-        displayValue: 'E',
+        muted: false,
+      };
+    }
+
+    case 'excluded': {
+      return {
+        color: 'default',
+        cellStyle: { className: EXCLUDED_CELL_CLASS_NAME },
         muted: false,
       };
     }

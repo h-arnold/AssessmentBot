@@ -1,18 +1,24 @@
 import type { AveragingAnalyserInput, AveragingResult, PerClassResult } from '../dataAnalysis.zod';
-import { accumulateDataPoints, buildPerStudentTaskMetrics } from './averagingAnalyser.accumulation';
+import { accumulateDataPoints } from './averagingAnalyser.accumulation';
+import { createDataPointAccumulator } from './averagingAnalyser.accumulatorRegistry';
 import { filterAssignments } from './averagingAnalyser.filters';
 import {
   buildPerStudentRows,
   buildPerTaskRows,
   rollupAccumulators,
 } from './averagingAnalyser.rows';
+import { buildPerStudentTaskMetrics } from './averagingAnalyser.taskProjection';
 import type { DataPointAccumulator } from './averagingAnalyser.types';
 
 /**
  * Default criterion weightings: completeness=0.4, accuracy=0.4, spag=0.2.
  * Set in the constructor only (AGENTS §11 / frontend §11).
  */
-const DEFAULT_CRITERION_WEIGHTINGS = { completeness: 0.4, accuracy: 0.4, spag: 0.2 } as const;
+export const DEFAULT_CRITERION_WEIGHTINGS = {
+  completeness: 0.4,
+  accuracy: 0.4,
+  spag: 0.2,
+} as const;
 
 /** Per-criterion weightings configurable at construction time. */
 export interface CriterionWeightings {
@@ -86,9 +92,9 @@ export class AveragingAnalyser {
    * @remarks
    * The per-class rollup now uses `rollupAccumulators` — the same function as
    * per-student and per-task rollups — eliminating the dual-path duplication.
-   * When no per-student-task accumulators exist, the fallback passes
-   * `[classAccum]` as a single-element array, which delegates to the same
-   * `rollupMetric` path as the populated case.
+   * When no per-student-task accumulators exist, a fresh empty accumulator
+   * follows the same `rollupMetric` path and preserves the established no-data
+   * `error` result without maintaining a write-only class accumulator.
    *
    * @param {AveragingAnalyserInput['classes'][number]} cls - The class data.
    * @param {AveragingAnalyserInput} input - The full analyser input.
@@ -114,8 +120,8 @@ export class AveragingAnalyser {
     );
     const perTask = buildPerTaskRows(
       accumulators.taskAccums,
-      accumulators.perStudentTaskAccums,
-      this.criterionWeightings
+      this.criterionWeightings,
+      accumulators.averageContributionByTaskKey
     );
 
     // Build per-class rollup from all per-(student, task) accumulators
@@ -126,10 +132,10 @@ export class AveragingAnalyser {
       }
     }
 
-    const { completeness, accuracy, spag, overall } =
-      allPerStudentTaskAccums.length > 0
-        ? rollupAccumulators(allPerStudentTaskAccums, this.criterionWeightings)
-        : rollupAccumulators([accumulators.classAccum], this.criterionWeightings);
+    const { completeness, accuracy, spag, overall } = rollupAccumulators(
+      allPerStudentTaskAccums.length > 0 ? allPerStudentTaskAccums : [createDataPointAccumulator()],
+      this.criterionWeightings
+    );
 
     const perClass: PerClassResult = {
       completeness,
@@ -140,7 +146,8 @@ export class AveragingAnalyser {
 
     const perStudentTaskMetrics = buildPerStudentTaskMetrics(
       cls.classId,
-      accumulators.perStudentTaskAccums
+      accumulators.perStudentTaskAccums,
+      accumulators.averageContributionByTaskKey
     );
 
     return {

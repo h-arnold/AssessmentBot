@@ -104,6 +104,30 @@ describe('AssignmentDefinitionController upsert — forced reparse and save-time
     expect(mockRegistryCollection.replaceOne).not.toHaveBeenCalled();
   });
 
+  it('accepts a matching approval baseline when the stored updatedAt is a live Date', () => {
+    const approvalInstant = '2026-01-06T12:30:00.000Z';
+    seedExistingDefinition({
+      mockFullCollection,
+      mockRegistryCollection,
+      overrides: { updatedAt: new Date(approvalInstant) },
+    });
+
+    const thrown = captureThrownError(() =>
+      controller.upsertDefinition(
+        createUpsertPayload({
+          definitionKey: 'existing-stable-key',
+          updatedAt: approvalInstant,
+        })
+      )
+    );
+
+    // Stored-record normalisation converts the stored Date to an ISO string before
+    // the baseline comparison, so the same instant must not surface as stale.
+    expect(thrown).toBeNull();
+    expect(mockFullCollection.replaceOne).toHaveBeenCalled();
+    expect(mockRegistryCollection.replaceOne).toHaveBeenCalled();
+  });
+
   it('maps a document parsing failure to DEFINITION_PARSE_FAILED and persists nothing', () => {
     seedExistingDefinition({ mockFullCollection, mockRegistryCollection });
     extractSlidesTaskDefinitionsMock.mockImplementationOnce(() => {
