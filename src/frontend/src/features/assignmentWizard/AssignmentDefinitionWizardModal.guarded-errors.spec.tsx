@@ -140,9 +140,7 @@ describe('AssignmentDefinitionWizardModal guarded close and errors', () => {
     const closeControl = getModalCloseButton({ modal });
     expect(closeControl).toBeEnabled();
 
-    await act(async () => {
-      fireEvent.click(closeControl);
-    });
+    fireEvent.click(closeControl);
 
     expect(onCloseSpy).toHaveBeenCalledTimes(1);
   });
@@ -162,9 +160,7 @@ describe('AssignmentDefinitionWizardModal guarded close and errors', () => {
       assertDocumentChangePromptVisible({ modal });
     });
 
-    await act(async () => {
-      fireEvent.keyDown(modal, { key: 'Escape' });
-    });
+    fireEvent.keyDown(modal, { key: 'Escape' });
 
     expect(onCloseSpy).toHaveBeenCalledTimes(1);
   });
@@ -212,9 +208,7 @@ describe('AssignmentDefinitionWizardModal guarded close and errors', () => {
     expect(footerCancel).toBeEnabled();
     expect(getReparseCancelButton({ modal })).toBeEnabled();
 
-    await act(async () => {
-      fireEvent.click(footerCancel);
-    });
+    fireEvent.click(footerCancel);
 
     expect(onCloseSpy).toHaveBeenCalledTimes(1);
   });
@@ -237,22 +231,16 @@ describe('AssignmentDefinitionWizardModal guarded close and errors', () => {
     // Metadata edits are locked while the document change is pending, so the dirty
     // combination is applied through the form directly to exercise the guard.
     const { titleInput } = getFormElements({ modal });
-    await act(async () => {
-      fireEvent.change(titleInput, { target: { value: 'Unsaved metadata edit' } });
-    });
+    fireEvent.change(titleInput, { target: { value: 'Unsaved metadata edit' } });
 
-    await act(async () => {
-      fireEvent.keyDown(modal, { key: 'Escape' });
-    });
+    fireEvent.keyDown(modal, { key: 'Escape' });
 
     // The wizard is not dismissed straight away; the discard confirmation is shown.
     const discardDialog = await screen.findByRole('dialog', { name: /discard changes/i });
     expect(onCloseSpy).not.toHaveBeenCalled();
 
     // Keeping editing returns to the wizard without discarding anything.
-    await act(async () => {
-      fireEvent.click(within(discardDialog).getByRole('button', { name: 'Keep editing' }));
-    });
+    fireEvent.click(within(discardDialog).getByRole('button', { name: 'Keep editing' }));
 
     expect(
       screen.queryByRole('dialog', { name: /discard changes/i })
@@ -261,14 +249,10 @@ describe('AssignmentDefinitionWizardModal guarded close and errors', () => {
     expect(onCloseSpy).not.toHaveBeenCalled();
 
     // Confirming the discard is the only path that closes the wizard.
-    await act(async () => {
-      fireEvent.click(getFooterCancelButton({ modal }));
-    });
+    fireEvent.click(getFooterCancelButton({ modal }));
 
     const reopenedDiscardDialog = await screen.findByRole('dialog', { name: /discard changes/i });
-    await act(async () => {
-      fireEvent.click(within(reopenedDiscardDialog).getByRole('button', { name: 'Discard changes' }));
-    });
+    fireEvent.click(within(reopenedDiscardDialog).getByRole('button', { name: 'Discard changes' }));
 
     expect(onCloseSpy).toHaveBeenCalledTimes(1);
   });
@@ -291,13 +275,9 @@ describe('AssignmentDefinitionWizardModal guarded close and errors', () => {
     // Create mode has no close control at all while the document change is pending.
     expect(within(modal).queryByRole('button', { name: /^close$/i })).toBeNull();
 
-    await act(async () => {
-      fireEvent.keyDown(modal, { key: 'Escape' });
-    });
+    fireEvent.keyDown(modal, { key: 'Escape' });
     await dismissModalByMaskClick(modal);
-    await act(async () => {
-      fireEvent.click(getFooterCancelButton({ modal }));
-    });
+    fireEvent.click(getFooterCancelButton({ modal }));
 
     expect(onCloseSpy).not.toHaveBeenCalled();
     expect(screen.getByRole('dialog', { name: /create assignment/i })).toBeInTheDocument();
@@ -307,9 +287,7 @@ describe('AssignmentDefinitionWizardModal guarded close and errors', () => {
     const documentChangeCancel = getReparseCancelButton({ modal });
     expect(documentChangeCancel).toBeEnabled();
 
-    await act(async () => {
-      fireEvent.click(documentChangeCancel);
-    });
+    fireEvent.click(documentChangeCancel);
 
     expect(getReferenceUrlValue({ modal })).toBe(persistedReferenceUrl);
     expect(onCloseSpy).not.toHaveBeenCalled();

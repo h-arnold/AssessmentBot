@@ -166,9 +166,7 @@ describe('AssignmentDefinitionWizardModal create and update flows', () => {
       expect(saveButton).toBeDisabled();
 
       // A forced activation of the locked primary action must not reach transport.
-      await act(async () => {
-        fireEvent.click(saveButton);
-      });
+      fireEvent.click(saveButton);
       expect(upsertAssignmentDefinitionMock).not.toHaveBeenCalled();
     }
   );
@@ -243,9 +241,7 @@ describe('AssignmentDefinitionWizardModal create and update flows', () => {
     expect(getSaveButton({ modal })).toBeDisabled();
 
     // The document-change Cancel remains the only way to restore the baseline.
-    await act(async () => {
-      fireEvent.click(getReparseCancelButton({ modal }));
-    });
+    fireEvent.click(getReparseCancelButton({ modal }));
     expect(getReferenceUrlValue({ modal })).toBe(persistedReferenceUrl);
     assertDocumentChangePromptNotVisible({ modal });
   });
