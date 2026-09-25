@@ -1,6 +1,5 @@
 import { createElement, type ReactNode } from 'react';
-import { QueryClientProvider, type QueryClient } from '@tanstack/react-query';
-import type { UseQueryResult } from '@tanstack/react-query';
+import { QueryClientProvider, type QueryClient, type UseQueryResult } from '@tanstack/react-query';
 import { vi } from 'vitest';
 import type { ClassFull } from '../services/googleClassrooms/classDetail/classDetailService.zod';
 import type { AveragingResult } from '../services/dataAnalysis/dataAnalysis.zod';

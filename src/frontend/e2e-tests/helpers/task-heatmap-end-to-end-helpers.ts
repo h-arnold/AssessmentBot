@@ -64,17 +64,15 @@ function createClassEntries(
  * @returns {RuntimeScenario} Runtime mock scenario.
  */
 export function createHeatmapScenario(options: CreateHeatmapScenarioOptions = {}): RuntimeScenario {
-  const scenarioOptions = Object.assign(
-    {
-      deferredClass: false,
-      emptySubmissions: false,
-      zeroTasks: false,
-      multipleAssignments: false,
-      classFailure: false,
-      zeroWeightAssignment: false,
-    },
-    options
-  );
+  const scenarioOptions = {
+    deferredClass: false,
+    emptySubmissions: false,
+    zeroTasks: false,
+    multipleAssignments: false,
+    classFailure: false,
+    zeroWeightAssignment: false,
+    ...options,
+  };
 
   const classDocument = buildClassFullDocument(scenarioOptions.emptySubmissions);
   if (scenarioOptions.multipleAssignments) addSecondAssignment(classDocument);

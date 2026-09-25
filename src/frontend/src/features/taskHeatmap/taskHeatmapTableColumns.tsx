@@ -16,8 +16,10 @@ import { Alert, Popover, Skeleton } from 'antd';
 import type { TableColumnsType } from 'antd';
 import type { FilterValue } from 'antd/es/table/interface';
 
-import type { TaskDisplayMetric } from '../../services/dataAnalysis/dataAnalysis.zod';
-import type { AverageContribution } from '../../services/dataAnalysis/dataAnalysis.zod';
+import type {
+  AverageContribution,
+  TaskDisplayMetric,
+} from '../../services/dataAnalysis/dataAnalysis.zod';
 import { compareMetricsByStateRank } from '../../services/dataAnalysis/metricDisplay/metricComparator';
 import {
   METRIC_DISPLAY_META,

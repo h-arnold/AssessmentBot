@@ -25,6 +25,7 @@ import type { JSX } from 'react';
 import { Card, Typography, Divider, Flex } from 'antd';
 import { MetricPill } from '../../services/dataAnalysis/metricDisplay/MetricPill';
 import { METRIC_DISPLAY_META } from '../../services/dataAnalysis/metricDisplay/metricDisplayMeta';
+import { formatMetricDisplayText } from '../../services/dataAnalysis/metricDisplay/metricDisplayText';
 import type { TaskDisplayMetric } from '../../services/dataAnalysis/dataAnalysis.zod';
 import { ImageRenderer } from '../../components/ImageRenderer/ImageRenderer';
 import { MarkdownRenderer } from '../../components/MarkdownRenderer/MarkdownRenderer';
@@ -74,6 +75,9 @@ const CARD_BODY_MAX_HEIGHT = 480;
  * width token (the popover skeleton is sized to match the rendered card).
  */
 export const CARD_MAX_WIDTH = 400;
+
+/** Number of decimal places used for the task-preview metric score. */
+const TASK_SCORE_PRECISION = 0;
 
 // ---------------------------------------------------------------------------
 // Task-display metric reassembly (local concern)
@@ -178,12 +182,13 @@ function renderArtifact(
  * @returns {JSX.Element} The rendered card.
  */
 export function TaskPreviewCard({ data }: { readonly data: TaskPreviewData }): JSX.Element {
-  const { artifactType, artifactContent, metricKey, metricScore, metricState, reasoning } = data;
+  const { artifactType, artifactContent, metricKey, metricState, reasoning } = data;
 
   const meta = METRIC_DISPLAY_META.get(metricKey)!;
   const label = meta.label;
 
   const metricResult = buildMetricResult(data);
+  const formattedScore = formatMetricDisplayText(metricResult, TASK_SCORE_PRECISION);
 
   return (
     <Card
@@ -196,10 +201,10 @@ export function TaskPreviewCard({ data }: { readonly data: TaskPreviewData }): J
           justify="center"
           role="status"
           aria-live="polite"
-          aria-label={`${label} score: ${String(metricScore)}`}
+          aria-label={`${label} score: ${formattedScore}`}
         >
           <Typography.Text>{label}:</Typography.Text>
-          <MetricPill metric={metricResult} precision={0} compact />
+          <MetricPill metric={metricResult} precision={TASK_SCORE_PRECISION} compact />
         </Flex>
       }
     >
