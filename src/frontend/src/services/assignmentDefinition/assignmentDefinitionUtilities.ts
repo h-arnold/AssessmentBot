@@ -62,6 +62,7 @@ export function createTaskWeightingIndex(partial: {
  * @param {string} taskId - Task identifier to resolve.
  * @returns {number | undefined} The effective weight, or `undefined` when the
  *   task is absent from the live partial.
+ * @throws {Error} If the resolved effective weight is negative or non-finite.
  *
  * @remarks
  * A `null` assignment weighting intentionally retains the established meaning
@@ -76,5 +77,16 @@ export function computeEffectiveWeight(
   if (taskWeighting === undefined) {
     return undefined;
   }
-  return (weightingIndex.assignmentWeighting ?? 1) * taskWeighting;
+  const effectiveWeight = (weightingIndex.assignmentWeighting ?? 1) * taskWeighting;
+  if (!Number.isFinite(effectiveWeight)) {
+    throw new TypeError(
+      `computeEffectiveWeight: task '${taskId}' resolves to non-finite effective weight ${effectiveWeight}`
+    );
+  }
+  if (effectiveWeight < 0) {
+    throw new Error(
+      `computeEffectiveWeight: task '${taskId}' resolves to negative effective weight ${effectiveWeight}`
+    );
+  }
+  return effectiveWeight;
 }

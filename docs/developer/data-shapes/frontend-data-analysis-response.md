@@ -67,22 +67,15 @@ used by both analyser accumulation and heatmap column projection.
 The partial wire schemas deliberately do not enforce a weighting range
 (`TaskPartialSchema.taskWeighting` is `z.number()`;
 `AssignmentDefinitionPartialSchema.assignmentWeighting` is
-`z.number().nullable()`), so a negative effective weight is not rejected on
-input. On the analyser path it is caught on output:
-`AverageContributionSchema.effectiveWeight` is `z.number().min(0)`, and the
-analyser only accumulates contribution weight when `weight > 0`, so a negative
-effective weight contributes nothing and fails output validation rather than
-producing a negative `totalWeight`.
-
-> **Caveat — the heatmap adapter path is not Zod-validated.** `buildTaskColumns`
-> (`heatmapAdapter.ts`) computes `averageContribution` with the same shared
-> `computeEffectiveWeight` helper but projects it straight onto the
-> `HeatmapTaskColumn` / `MergedHeatmapTaskColumn` descriptor without running
-> `AverageContributionSchema`. `includedInAverage` is always
-> `effectiveWeight > 0`, so the truth-table relationship holds by construction;
-> however, a negative `effectiveWeight` would reach the descriptor unchecked.
-> The `z.number().min(0)` guarantee applies only where output validation
-> (`DataAnalysisResponseSchema`) actually runs.
+`z.number().nullable()`). The shared `computeEffectiveWeight` helper therefore
+fails fast when the resolved effective product is negative or non-finite,
+including overflow from two finite factors, before it can be recorded in
+analyser contribution metadata or reach either heatmap task-column descriptor.
+`AverageContributionSchema.effectiveWeight` independently enforces the same
+finite, non-negative output invariant through `z.number().min(0)`. Both heatmap
+adapters remain direct TypeScript projections rather than Zod parses, but their
+shared weighting boundary prevents an invalid `effectiveWeight` from
+escaping.
 
 ## Response shapes
 
@@ -194,13 +187,14 @@ type AverageContribution = {
 The schema is a strict object with a refinement. The required relationship is a
 truth table, not a free pairing:
 
-| `effectiveWeight` | `includedInAverage` | Result                          |
-| ----------------- | ------------------- | ------------------------------- |
-| `> 0`             | `true`              | Accepted                        |
-| `> 0`             | `false`             | Rejected — contradictory        |
-| `0`               | `false`             | Accepted                        |
-| `0`               | `true`              | Rejected — contradictory        |
-| `< 0`             | any                 | Rejected by `z.number().min(0)` |
+| `effectiveWeight`   | `includedInAverage` | Result                          |
+| ------------------- | ------------------- | ------------------------------- |
+| `> 0`               | `true`              | Accepted                        |
+| `> 0`               | `false`             | Rejected — contradictory        |
+| `0`                 | `false`             | Accepted                        |
+| `0`                 | `true`              | Rejected — contradictory        |
+| `< 0`               | any                 | Rejected by `z.number().min(0)` |
+| `NaN` / `±Infinity` | any                 | Rejected as non-finite          |
 
 The refinement message is
 `includedInAverage must be true exactly when effectiveWeight > 0`.
@@ -258,6 +252,16 @@ type MetricResult =
 
 `totalWeight` remains the sum of contribution weights, not display weights. A
 numeric zero-weight task display can therefore have `totalWeight: 0`.
+
+At aggregate scopes, `totalDataPoints` retains every observed numeric and raw `N`
+input, including zero-weight display observations that contribute nothing to the
+average. Computed and not-attempted aggregate results therefore report their
+contributing observations plus any additional non-contributing observed inputs,
+so `totalDataPoints` can exceed `applicableDataPoints`. The retained
+observations never change the result value, `totalWeight`, `applicableDataPoints`,
+or the resolved state; the overall composite is the widest case, summing
+`totalDataPoints` across all three criteria even when a criterion is an error or
+has zero configured weighting.
 
 #### Aggregate-only `excluded` validation
 
@@ -375,11 +379,20 @@ display evidence but no contribution. An all-error result is determined from the
 input states. This lets an observed all-zero-weight task set resolve to `excluded`
 rather than an all-error result.
 
-The overall composite follows the same precedence across the three criteria and
-excludes errors, not-attempted criteria, and zero-weight computed criteria from
-the numeric composite. When a task-level composite would resolve to `excluded`,
-`buildPerTaskRows` substitutes the task's display overall so the row retains a
-valid narrow display state.
+The overall composite resolves its terminal state across criteria with a positive
+configured criterion weighting only. A criterion configured with zero criterion
+weight is ignored by the all-error test, the positive-weight raw `N` test, and
+the numeric composite, so it can never, on its own, force the overall to `error`
+or `notAttempted`. Contribution metadata stays contribution-based: a computed
+composite sums `totalWeight` and `applicableDataPoints` only from contributing
+computed entries with positive configured weighting. `totalDataPoints` is the
+exception: it sums the observed points of all three criteria on every composite
+path, including non-contributing error, zero-effective-weight, and
+zero-configured criteria, so the result reports every displayed observation. An
+`error` or `notAttempted` composite likewise retains the summed `totalWeight` and
+`totalDataPoints` across all three criteria. When a task-level composite would
+resolve to `excluded`, `buildPerTaskRows` substitutes the task's display overall
+so the row retains a valid narrow display state.
 
 Recent Assignment card averages are aggregate scope. They apply this same
 contribution-aware roll-up over their per-task display inputs and resolve an
@@ -456,6 +469,9 @@ The `excluded` state is displayed as **Excluded** with accessible text:
 from the schemas alone):
 
 - `includedInAverage` must equal `effectiveWeight > 0`.
+- A resolved negative or non-finite effective weight is rejected by the shared
+  `computeEffectiveWeight` boundary before it can reach analyser contribution
+  metadata or a heatmap task-column descriptor.
 - A submission task ID absent from the live partial is warned and dropped; it
   never receives a default task weight or contributes to any accumulator.
 - `excluded` is valid for aggregate scopes only; task display shapes use the
@@ -466,6 +482,15 @@ from the schemas alone):
   `totalWeight: 0` and `includedInAverage: false`.
 - Multiple numeric zero-weight observations resolving to one task display value
   use their unweighted arithmetic mean.
+- The overall composite resolves its terminal state over criteria with positive
+  configured criterion weighting only; a zero-configuration criterion affects
+  summed `totalDataPoints` but not state selection or contribution metadata.
+- Computed and not-attempted aggregate results retain non-contributing observed
+  inputs in `totalDataPoints`, without changing the result value, `totalWeight`,
+  `applicableDataPoints`, or state. The computed overall composite is the widest
+  case: its `totalDataPoints` sums all three criteria, including error and
+  zero-effective-weight criteria, while `totalWeight` and `applicableDataPoints`
+  stay contribution-based.
 - The Class-page no-data placeholder is the only accepted `notAttempted` shape
   with `totalDataPoints: 0`, and only through `ClassPageDisplayMetricSchema`.
 
@@ -488,6 +513,29 @@ from the schemas alone):
 - `MergedHeatmapTaskColumn.averageContribution` is inherited from the shared
   base projection; merged dedupe-by-`taskKey` guarantees one definition-scoped
   value per collapsed column.
+
+**Known discrepancies:**
+
+No misaligned or fragile discrepancies are known. The Batch 1 reconciliation
+semantics are aligned across the analyser, both heatmap adapters, and the
+Class-page adapter:
+
+1. **Aligned** — a negative or non-finite resolved effective weight is rejected
+   by the shared `computeEffectiveWeight` helper before analyser contribution
+   metadata or a heatmap task-column descriptor is produced. The partial wire
+   schemas still accept negative finite weighting values, and multiplication of
+   finite factors can overflow, so the helper is the single product-validity
+   boundary and `AverageContributionSchema.effectiveWeight` is a second
+   analyser boundary.
+2. **Aligned** — `computeOverallComposite` restricts its terminal (`error`,
+   `notAttempted`) state tests to criteria with positive configured criterion
+   weighting. It sums `totalDataPoints` across all three criteria on every path,
+   while keeping `totalWeight` and `applicableDataPoints` contribution-based on
+   the computed path and summing `totalWeight` across all three on the terminal
+   paths.
+3. **Aligned** — `resolveAggregateMetric` and `rollupMetric` retain zero-weight
+   observed numeric and raw `N` inputs in computed and not-attempted aggregate
+   `totalDataPoints`.
 
 ## File Index
 

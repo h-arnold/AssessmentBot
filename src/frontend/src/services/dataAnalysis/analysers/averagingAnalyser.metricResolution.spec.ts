@@ -230,7 +230,7 @@ describe('aggregate metric state resolution', () => {
     expect(result.totalWeight).toBe(1);
   });
 
-  it('renormalises a positive criterion when other criteria have zero weighting', () => {
+  it('renormalises a positive criterion while retaining observations from non-contributing criteria', () => {
     const result = computeOverallComposite(
       createComputedMetricResult({
         value: 4,
@@ -248,7 +248,7 @@ describe('aggregate metric state resolution', () => {
       value: 4,
       totalWeight: 2,
       applicableDataPoints: 2,
-      totalDataPoints: 2,
+      totalDataPoints: 4,
     });
   });
 
@@ -322,7 +322,7 @@ describe('aggregate metric state resolution', () => {
     expect(result.value).toBeCloseTo(EXPECTED_COMPOSITE_VALUE, FLOAT_TOLERANCE);
   });
 
-  it('sums only computed metadata when other criteria are notAttempted', () => {
+  it('retains observed metadata when other criteria are non-contributing notAttempted', () => {
     const result = computeOverallComposite(
       createComputedMetricResult({
         value: 3,
@@ -338,7 +338,7 @@ describe('aggregate metric state resolution', () => {
       state: 'computed',
       totalWeight: 10,
       applicableDataPoints: 2,
-      totalDataPoints: 2,
+      totalDataPoints: 4,
     });
     expect(result.value).toBeCloseTo(EXPECTED_SINGLE_CRITERION_VALUE, FLOAT_TOLERANCE);
   });
@@ -373,7 +373,7 @@ describe('aggregate metric state resolution', () => {
     });
   });
 
-  it('excludes an error criterion from the weighted average', () => {
+  it('excludes an error criterion from the weighted average while retaining its observed point', () => {
     const result = computeOverallComposite(
       createComputedMetricResult({
         value: 8,
@@ -394,7 +394,7 @@ describe('aggregate metric state resolution', () => {
       state: 'computed',
       totalWeight: 3,
       applicableDataPoints: 3,
-      totalDataPoints: 3,
+      totalDataPoints: 4,
     });
     expect(result.value).toBeCloseTo(
       EXPECTED_ERROR_EXCLUDED_VALUE / EXPECTED_ERROR_EXCLUDED_DENOMINATOR,

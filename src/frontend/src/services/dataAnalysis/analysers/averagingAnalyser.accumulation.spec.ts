@@ -10,7 +10,10 @@ import {
 } from '../../../test/dataAnalysis/fixtures';
 import { createAccumulator } from './averagingAnalyser.accumulatorRegistry';
 import { resolveAggregateMetric } from './averagingAnalyser.metricResolution';
-import { accumulateMetricsToTarget } from './averagingAnalyser.criterionAccumulation';
+import {
+  accumulateCriterion,
+  accumulateMetricsToTarget,
+} from './averagingAnalyser.criterionAccumulation';
 import { expectMetricResultStateAware } from '../../../test/dataAnalysis/averagingAnalyserAssertions';
 
 afterEach(() => {
@@ -148,6 +151,32 @@ describe('resolveAggregateMetric', () => {
     });
   });
 
+  it('retains zero-weight numeric observations in a computed aggregate total', () => {
+    const accumulator = createAccumulator();
+    accumulateCriterion(accumulator, 4, 1);
+    accumulateCriterion(accumulator, 10, 0);
+
+    expectMetricResultStateAware(resolveAggregateMetric(accumulator), {
+      state: 'computed',
+      value: 4,
+      totalWeight: 1,
+      applicableDataPoints: 1,
+      totalDataPoints: 2,
+    });
+  });
+
+  it('retains zero-weight raw N observations in a notAttempted aggregate total', () => {
+    const accumulator = createAccumulator();
+    accumulateCriterion(accumulator, 'N', 1);
+    accumulateCriterion(accumulator, 'N', 0);
+
+    expectMetricResultStateAware(resolveAggregateMetric(accumulator), {
+      state: 'notAttempted',
+      totalWeight: 1,
+      totalDataPoints: 2,
+    });
+  });
+
   it('returns error when there is no numeric or not-attempted evidence', () => {
     expectMetricResultStateAware(resolveAggregateMetric(createAccumulator()), {
       state: 'error',
@@ -233,6 +262,26 @@ describe('accumulateMetricsToTarget nCount tracking', () => {
       totalDataPoints: 1,
     });
   });
+});
+
+describe('AveragingAnalyser effective-weight rejection', () => {
+  it.each([
+    {
+      caseName: 'a negative assignment weighting',
+      assignmentWeighting: -1,
+    },
+    {
+      caseName: 'a negative task weighting',
+      taskWeighting: -1,
+    },
+  ])(
+    'rejects $caseName before emitting analysis results',
+    ({ assignmentWeighting, taskWeighting }) => {
+      expect(() =>
+        analyseSingleTask({ assignmentWeighting, taskWeighting, scores: [5] })
+      ).toThrow();
+    }
+  );
 });
 
 describe('AveragingAnalyser zero-weight display and contribution boundaries', () => {

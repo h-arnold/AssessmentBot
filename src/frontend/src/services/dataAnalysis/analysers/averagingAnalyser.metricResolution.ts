@@ -5,15 +5,22 @@ import type { MetricAccumulator } from './averagingAnalyser.types';
  * Resolve contribution evidence for an aggregate scope.
  * @param {MetricAccumulator} accumulator - Contribution and display evidence.
  * @returns {MetricResult} The resolved aggregate metric.
+ *
+ * @remarks
+ * Computed and not-attempted aggregate `totalDataPoints` use the larger
+ * observation count so retained zero-weight numeric and raw `N` evidence remains
+ * visible without changing contribution value, weight, or applicable-point
+ * metadata.
  */
 export function resolveAggregateMetric(accumulator: MetricAccumulator): MetricResult {
+  const totalDataPoints = Math.max(accumulator.totalDataPoints, accumulator.displayTotalDataPoints);
   if (accumulator.applicableDataPoints > 0) {
     return {
       state: 'computed',
       value: accumulator.weightedSum / accumulator.totalWeight,
       totalWeight: accumulator.totalWeight,
       applicableDataPoints: accumulator.applicableDataPoints,
-      totalDataPoints: accumulator.totalDataPoints,
+      totalDataPoints,
     };
   }
   if (accumulator.nCount > 0) {
@@ -22,7 +29,7 @@ export function resolveAggregateMetric(accumulator: MetricAccumulator): MetricRe
       value: 'N',
       totalWeight: accumulator.totalWeight,
       applicableDataPoints: 0,
-      totalDataPoints: accumulator.totalDataPoints,
+      totalDataPoints,
     };
   }
   if (accumulator.displayTotalDataPoints > 0) {

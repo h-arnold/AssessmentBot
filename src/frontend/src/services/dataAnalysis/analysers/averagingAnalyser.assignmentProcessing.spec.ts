@@ -17,7 +17,7 @@ afterEach(() => {
 
 describe('AveragingAnalyser assignment processing', () => {
   describe('positive-weight accumulation', () => {
-    it('excludes SPaG N from spag weighted sum and adjusts overall denominator', () => {
+    it('excludes SPaG N from the weighted sum and denominator but retains it in overall observations', () => {
       const input = buildInput([
         {
           classId: 'c_001',
@@ -71,7 +71,7 @@ describe('AveragingAnalyser assignment processing', () => {
         value: 3.5,
         totalWeight: 2,
         applicableDataPoints: 2,
-        totalDataPoints: 2,
+        totalDataPoints: 3,
       });
     });
 

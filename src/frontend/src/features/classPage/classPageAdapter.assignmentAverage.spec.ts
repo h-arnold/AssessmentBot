@@ -179,7 +179,7 @@ describe('adaptClassPageToViewModel', () => {
       }
     });
 
-    it('computes per-assignment average excluding error criteria when at least one criterion is computed', () => {
+    it('retains an error criterion observation when computing an average from computed criteria', () => {
       const perTaskRows: PerTaskRow[] = [
         perTaskRow({
           definitionKey: 'dk1',
@@ -197,7 +197,7 @@ describe('adaptClassPageToViewModel', () => {
       const EXPECTED_AVERAGE_VALUE = COMPOSITE_NUMERATOR / COMPOSITE_DENOMINATOR;
       const EXPECTED_SUM_TOTAL_WEIGHT = 2;
       const EXPECTED_SUM_AP = 2;
-      const EXPECTED_SUM_TDP = 2;
+      const EXPECTED_SUM_TDP = 3;
       const average = result.recentAssignments[0].metrics.average;
       // completeness rollup → computed(5, tw=1), accuracy rollup → error, spag rollup → computed(3, tw=1)
       // computeAverageMetric with error-exclusion:

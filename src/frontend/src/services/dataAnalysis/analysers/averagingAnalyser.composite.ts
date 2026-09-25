@@ -12,24 +12,23 @@ interface WeightedCriterion {
  *
  * Resolution order: all-error criteria produce `error`; any computed criterion
  * with positive contribution and positive criterion weighting produces
- * `computed`; otherwise a positive-weight raw `N` produces `notAttempted`.
- * Observed evidence with no contribution produces `excluded`. With no observed
- * data points at all, the legacy no-data `notAttempted` result is retained for
- * presentation-only placeholders.
+ * `computed`; otherwise a positive-weight raw `N` from a positively weighted
+ * criterion produces `notAttempted`. Observed evidence with no contribution
+ * produces `excluded`. With no observed data points at all, the legacy no-data
+ * `notAttempted` result is retained for presentation-only placeholders.
  *
  * Computed criteria are combined with the configured criterion weights,
  * renormalising over the included criteria (including SPaG exclusion). Errors,
  * not-attempted criteria and zero-weight computed criteria do not enter the
  * numeric composite.
  *
- * @remarks Metadata fields (`totalWeight`, `applicableDataPoints`,
- *   `totalDataPoints`) in the composite result are **summed** across the
- *   contributing criteria entries (not `Math.max`). The prior implementation
- *   used `Math.max`, which discarded data when criteria had different weights.
- *   The sum semantics was confirmed as a spec amendment per user decision.
- *   On terminal (`error` / `notAttempted`) branches, `totalWeight` is the sum
- *   of all three criteria's `totalWeight` (resolving a pre-existing
- *   inconsistency where terminal results used `totalWeight: 0`).
+ * @remarks `totalWeight` and `applicableDataPoints` are summed across the
+ *   contributing criteria entries (not `Math.max`). `totalDataPoints` is
+ *   accumulated independently from the contribution filter so all observed
+ *   criterion evidence is retained. On terminal (`error` / `notAttempted`)
+ *   branches, `totalWeight` is the sum of all three criteria's `totalWeight`,
+ *   resolving a pre-existing inconsistency where terminal results used
+ *   `totalWeight: 0`.
  *
  * @param {MetricResult} completeness - The completeness rollup MetricResult.
  * @param {MetricResult} accuracy - The accuracy rollup MetricResult.
@@ -61,7 +60,6 @@ export function computeOverallComposite(
     value: number;
     totalWeight: number;
     applicableDataPoints: number;
-    totalDataPoints: number;
     weighting: number;
   } | null => {
     if (m.state !== 'computed' || m.totalWeight <= 0 || w <= 0) return null;
@@ -69,7 +67,6 @@ export function computeOverallComposite(
       value: m.value,
       totalWeight: m.totalWeight,
       applicableDataPoints: m.applicableDataPoints,
-      totalDataPoints: m.totalDataPoints,
       weighting: w,
     };
   };
@@ -82,15 +79,15 @@ export function computeOverallComposite(
   let denominator = 0;
   let totalWeight = 0;
   let applicableDataPoints = 0;
-  let totalDataPoints = 0;
 
   for (const entry of entries) {
     numerator += entry.weighting * entry.value;
     denominator += entry.weighting;
     totalWeight += entry.totalWeight;
     applicableDataPoints += entry.applicableDataPoints;
-    totalDataPoints += entry.totalDataPoints;
   }
+
+  const totalDataPoints = criteria.reduce((sum, { metric }) => sum + metric.totalDataPoints, 0);
 
   return {
     state: 'computed',
@@ -109,7 +106,8 @@ export function computeOverallComposite(
 function resolveTerminalComposite(criteria: ReadonlyArray<WeightedCriterion>): MetricResult | null {
   const totalWeight = criteria.reduce((sum, { metric }) => sum + metric.totalWeight, 0);
   const totalDataPoints = criteria.reduce((sum, { metric }) => sum + metric.totalDataPoints, 0);
-  if (criteria.every(({ metric }) => metric.state === 'error')) {
+  const terminalCandidates = criteria.filter(({ weighting }) => weighting > 0);
+  if (terminalCandidates.every(({ metric }) => metric.state === 'error')) {
     return {
       state: 'error',
       value: 'E',
@@ -118,11 +116,10 @@ function resolveTerminalComposite(criteria: ReadonlyArray<WeightedCriterion>): M
       totalDataPoints,
     };
   }
-  const hasComputed = criteria.some(
-    ({ metric, weighting }) =>
-      metric.state === 'computed' && metric.totalWeight > 0 && weighting > 0
+  const hasComputed = terminalCandidates.some(
+    ({ metric }) => metric.state === 'computed' && metric.totalWeight > 0
   );
-  const hasPositiveNotAttempted = criteria.some(
+  const hasPositiveNotAttempted = terminalCandidates.some(
     ({ metric }) => metric.state === 'notAttempted' && metric.totalWeight > 0
   );
   if (!hasComputed && hasPositiveNotAttempted) {
