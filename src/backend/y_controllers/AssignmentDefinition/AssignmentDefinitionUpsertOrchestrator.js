@@ -34,13 +34,12 @@ class AssignmentDefinitionUpsertOrchestrator {
 
   /**
    * Creates or updates a reusable assignment definition.
-   * This is now the SOLE creation/update method per SPEC.md v1.9.0 (ensureDefinition removed).
    *
    * @param {Object} payload - Upsert payload.
    * @returns {AssignmentDefinition} Persisted full definition.
    */
   upsert(payload) {
-    /* global Validate, AssignmentDefinition, assertRecoveryPreconditions_, assertApprovalBaselineFresh_ */
+    /* global Validate, AssignmentDefinition, DateUtils, assertRecoveryPreconditions_, assertApprovalBaselineFresh_ */
     Validate.requireParams({ payload }, 'AssignmentDefinitionController.upsertDefinition');
 
     // Inlined validation logic from _buildUpsertContext
@@ -60,6 +59,9 @@ class AssignmentDefinitionUpsertOrchestrator {
       throw new Error(`Unknown definitionKey for update: ${payload.definitionKey}`);
     }
 
+    if (existingDefinition) {
+      DateUtils.normaliseDateFields(existingDefinition, ['createdAt', 'updatedAt']);
+    }
     assertApprovalBaselineFresh_(existingDefinition, payload.updatedAt, isUpdate);
 
     const primaryTitle = this.validation.requireTrimmedString(payload.primaryTitle, 'primaryTitle');
