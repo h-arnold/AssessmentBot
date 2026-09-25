@@ -5,7 +5,8 @@
  * Covers the full ordering composition consumed by state-aware metric column
  * sorting in both the Class overview table and the heatmap table:
  * direction-aware state ranking, numeric value comparison within the computed
- * band, and the ascending row-id ultimate tie-break.
+ * band, the ascending row-id ultimate tie-break, and fail-fast handling for
+ * unknown metric states.
  *
  * @see SPEC.md decisions 3-4 — shared services-layer placement
  */
@@ -16,6 +17,7 @@ import {
   createComputedMetricResult,
   createNotAttemptedMetricResult,
   createErrorMetricResult,
+  createExcludedMetricResult,
 } from '../../../test/dataAnalysis/fixtures';
 import { compareMetricsByStateRank } from './metricComparator';
 
@@ -64,6 +66,20 @@ describe('compareMetricsByStateRank', () => {
     expect(
       compareMetricsByStateRank(computed, notAttempted, ID_AAA, ID_AAA, 'desc')
     ).toBeGreaterThan(0);
+  });
+
+  it('places excluded between N and E in both directions', () => {
+    const notAttempted = createNotAttemptedMetricResult();
+    const excluded = createExcludedMetricResult();
+    const error = createErrorMetricResult();
+    expect(compareMetricsByStateRank(notAttempted, excluded, ID_AAA, ID_AAA, 'asc')).toBeLessThan(
+      0
+    );
+    expect(compareMetricsByStateRank(excluded, error, ID_AAA, ID_AAA, 'asc')).toBeLessThan(0);
+    expect(compareMetricsByStateRank(error, excluded, ID_AAA, ID_AAA, 'desc')).toBeLessThan(0);
+    expect(compareMetricsByStateRank(excluded, notAttempted, ID_AAA, ID_AAA, 'desc')).toBeLessThan(
+      0
+    );
   });
 
   // -------------------------------------------------------------------------
@@ -124,13 +140,12 @@ describe('compareMetricsByStateRank', () => {
   });
 
   // -------------------------------------------------------------------------
-  // Unknown-state fallback flowing through the composition
+  // Unknown-state fail-fast behaviour
   // -------------------------------------------------------------------------
 
-  it('treats an unknown state as rank 0: tying with computed in asc, but below it in desc', () => {
+  it('propagates the fail-fast error for an unknown metric state in both directions', () => {
     // The MetricResult union is closed, so an out-of-union state needs a
-    // minimal local cast to exercise the `?? 0` fallback branch inherited
-    // from `getMetricStateRank`.
+    // minimal local cast to exercise the rank boundary.
     const unknownStateMetric = {
       ...createComputedMetricResult(),
       state: 'unknown',
@@ -138,22 +153,11 @@ describe('compareMetricsByStateRank', () => {
 
     const computed = createComputedMetricResult({ value: HIGH_SCORE });
 
-    // Ascending: both resolve to rank 0, so ordering falls through to the id
-    // tie-break — swapping the ids flips the sign
-    expect(
+    expect(() =>
       compareMetricsByStateRank(unknownStateMetric, computed, ID_AAA, ID_ZZZ, 'asc')
-    ).toBeLessThan(0);
-    expect(
-      compareMetricsByStateRank(unknownStateMetric, computed, ID_ZZZ, ID_AAA, 'asc')
-    ).toBeGreaterThan(0);
-
-    // Descending: computed ranks HIGHEST_METRIC_STATE_RANK, the unknown state
-    // still falls back to 0, so the unknown-state result sorts first
-    expect(
+    ).toThrow();
+    expect(() =>
       compareMetricsByStateRank(unknownStateMetric, computed, ID_AAA, ID_ZZZ, 'desc')
-    ).toBeLessThan(0);
-    expect(
-      compareMetricsByStateRank(unknownStateMetric, computed, ID_ZZZ, ID_AAA, 'desc')
-    ).toBeLessThan(0);
+    ).toThrow();
   });
 });

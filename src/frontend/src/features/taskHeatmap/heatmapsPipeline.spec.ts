@@ -38,8 +38,12 @@ import type {
   AssignmentDefinitionPartial,
   AssignmentDefinitionPartialsResponse,
 } from '../../services/assignmentDefinition/assignmentDefinitionPartials.zod';
-import type { AveragingResult } from '../../services/dataAnalysis/dataAnalysis.zod';
+import {
+  DataAnalysisResponseSchema,
+  type AveragingResult,
+} from '../../services/dataAnalysis/dataAnalysis.zod';
 import type { MergedHeatmapResult } from '../../services/dataAnalysis/heatmapAdapter.merged';
+import { createMalformedAnalyserOutput } from '../../test/dataAnalysis/diagnosticsFixtures';
 
 const { mockAnalyse, mockAdaptMergedHeatmap, mockLogFrontendError } = vi.hoisted(() => ({
   mockAnalyse: vi.fn(),
@@ -242,6 +246,34 @@ describe('heatmapsPipeline — runAnalyserStep catch path (T-4)', () => {
     expect(result[2]).toBeNull();
     expect(result[3]).toBeNull();
     expect(mockLogFrontendError).toHaveBeenCalledTimes(1);
+  });
+
+  it('logs one structured zodIssues entry for the same malformed output across repeated runs', () => {
+    const malformedOutput = createMalformedAnalyserOutput();
+    const parseResult = DataAnalysisResponseSchema.safeParse(malformedOutput);
+    expect(parseResult.success).toBe(false);
+    if (parseResult.success) {
+      throw new Error('Expected malformed analyser output to fail validation');
+    }
+    const zodError = parseResult.error;
+    mockAnalyse.mockImplementation(() => {
+      throw zodError;
+    });
+    const classFull = makeClassFull();
+    const partials = makePartials();
+
+    const first = runHeatmapsPipeline(classFull, partials, 'c1', ['a1']);
+    const second = runHeatmapsPipeline(classFull, partials, 'c1', ['a1']);
+
+    expect(first[0]).toBeNull();
+    expect(first[1]).toBe(zodError);
+    expect(second[1]).toBe(zodError);
+    expect(mockLogFrontendError).toHaveBeenCalledTimes(1);
+    expect(mockLogFrontendError).toHaveBeenCalledWith(
+      'heatmapsPipeline.runAnalyserStep',
+      zodError,
+      { classId: 'c1', zodIssues: zodError.issues }
+    );
   });
 });
 

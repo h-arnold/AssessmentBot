@@ -36,6 +36,6 @@ export function resolveAssignmentDefinitionData(
 
   return {
     assignmentWeighting: partial.assignmentWeighting ?? 1,
-    tasks: partial.tasks ?? [],
+    tasks: partial.tasks,
   };
 }

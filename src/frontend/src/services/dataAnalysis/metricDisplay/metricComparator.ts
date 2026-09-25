@@ -20,8 +20,8 @@ import { getMetricStateRank } from './metricStateRank';
  *
  * Ordering, in precedence order:
  * 1. State rank via `getMetricStateRank`, honouring `direction`
- *    (`asc`: computed → notAttempted → error; `desc`: error → notAttempted →
- *    computed).
+ *    (`asc`: computed → notAttempted → excluded → error;
+ *    `desc`: error → excluded → notAttempted → computed).
  * 2. Within the computed band, numeric `value` ordered by `direction`.
  * 3. Ultimate tie-break: row id ascending, regardless of direction.
  *

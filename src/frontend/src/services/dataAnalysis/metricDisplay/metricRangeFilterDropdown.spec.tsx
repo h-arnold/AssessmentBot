@@ -11,9 +11,40 @@ import userEvent from '@testing-library/user-event';
 import type { FilterDropdownProps } from 'antd/es/table/interface';
 
 import { MetricRangeFilterDropdown } from './metricRangeFilterDropdown';
+import { buildMetricRangeFilter, metricInRange } from './metricRangeFilter';
+import type { MetricRangeFilterFlags } from './metricRangeKey';
+import { createExcludedMetricResult, createNotAttemptedMetricResult, createErrorMetricResult } from '../../../test/dataAnalysis/fixtures';
 
 /** Default scoring range used in tests. */
 const DEFAULT_RANGE = { lower: 0, upper: 5 };
+
+/** Named flags that keep no non-computed metric states. */
+const NO_NON_COMPUTED_FLAGS: MetricRangeFilterFlags = {
+  includeNotAttempted: false,
+  includeError: false,
+  includeExcluded: false,
+};
+
+/** Named flags that keep not-attempted metrics. */
+const INCLUDE_NOT_ATTEMPTED_FLAGS: MetricRangeFilterFlags = {
+  includeNotAttempted: true,
+  includeError: false,
+  includeExcluded: false,
+};
+
+/** Named flags that keep error metrics. */
+const INCLUDE_ERROR_FLAGS: MetricRangeFilterFlags = {
+  includeNotAttempted: false,
+  includeError: true,
+  includeExcluded: false,
+};
+
+/** Named flags that keep aggregate excluded metrics. */
+const INCLUDE_EXCLUDED_FLAGS: MetricRangeFilterFlags = {
+  includeNotAttempted: false,
+  includeError: false,
+  includeExcluded: true,
+};
 
 /** Number of slider handles (two-thumb slider). */
 const SLIDER_HANDLE_COUNT = 2;
@@ -28,6 +59,8 @@ const DOUBLE_TOGGLE_CALL_COUNT = 2;
 const FIRST_INVOCATION = 1;
 /** Second mock invocation index (1-based). */
 const SECOND_INVOCATION = 2;
+const FILTER_TEST_MINIMUM = 2;
+const FILTER_TEST_MAXIMUM = 3;
 
 /**
  * Create a mock `FilterDropdownProps` object with sensible defaults for
@@ -85,6 +118,7 @@ describe('MetricRangeFilterDropdown', () => {
     // Checkboxes
     expect(screen.getByText('Include Not Attempted (N)')).toBeInTheDocument();
     expect(screen.getByText('Include Error (E)')).toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: 'Include Excluded' })).not.toBeChecked();
 
     // Reset button
     expect(screen.getByRole('button', { name: /reset/i })).toBeInTheDocument();
@@ -112,6 +146,8 @@ describe('MetricRangeFilterDropdown', () => {
       name: /include not attempted/i,
     });
     expect(nCheckbox.checked).toBe(true);
+    expect(screen.getByRole('checkbox', { name: /include error/i })).not.toBeChecked();
+    expect(screen.getByRole('checkbox', { name: 'Include Excluded' })).not.toBeChecked();
   });
 
   it('falls back to default state when selectedKeys contains an invalid key', () => {
@@ -134,9 +170,95 @@ describe('MetricRangeFilterDropdown', () => {
     expect(nCheckbox.checked).toBe(false);
   });
 
-  // ---------------------------------------------------------------------------
-  // Include Not Attempted (N) checkbox
-  // ---------------------------------------------------------------------------
+  it('hydrates the range and all three state toggles from a five-part encoded key', () => {
+    const selectedKeys = ['1|4|1|1|1'];
+
+    render(
+      <MetricRangeFilterDropdown
+        {...createMockDropdownProperties({ selectedKeys })}
+        range={DEFAULT_RANGE}
+      />
+    );
+
+    expect(screen.getByText(/Showing 1 – 4/)).toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: /include not attempted/i })).toBeChecked();
+    expect(screen.getByRole('checkbox', { name: /include error/i })).toBeChecked();
+    expect(screen.getByRole('checkbox', { name: 'Include Excluded' })).toBeChecked();
+  });
+
+  it('preserves hydrated state and appends the excluded flag when a legacy key is changed', async () => {
+    const user = userEvent.setup();
+    const setSelectedKeys = vi.fn();
+    const confirm = vi.fn();
+
+    render(
+      <MetricRangeFilterDropdown
+        {...createMockDropdownProperties({ selectedKeys: ['1|4|1|1'], setSelectedKeys, confirm })}
+        range={DEFAULT_RANGE}
+      />
+    );
+
+    expect(screen.getByRole('checkbox', { name: /include not attempted/i })).toBeChecked();
+    expect(screen.getByRole('checkbox', { name: /include error/i })).toBeChecked();
+    expect(screen.getByRole('checkbox', { name: 'Include Excluded' })).not.toBeChecked();
+
+    await user.click(screen.getByRole('checkbox', { name: 'Include Excluded' }));
+
+    expect(setSelectedKeys).toHaveBeenLastCalledWith(['1|4|1|1|1']);
+    expect(confirm).toHaveBeenLastCalledWith({ closeDropdown: false });
+    expect(screen.getByRole('checkbox', { name: /include not attempted/i })).toBeChecked();
+    expect(screen.getByRole('checkbox', { name: /include error/i })).toBeChecked();
+    expect(screen.getByRole('checkbox', { name: 'Include Excluded' })).toBeChecked();
+  });
+
+  it('derives successive checkbox changes from the latest hydrated state', async () => {
+    const user = userEvent.setup();
+    const setSelectedKeys = vi.fn();
+    const confirm = vi.fn();
+
+    render(
+      <MetricRangeFilterDropdown
+        {...createMockDropdownProperties({ selectedKeys: ['1|4|1|1|1'], setSelectedKeys, confirm })}
+        range={DEFAULT_RANGE}
+      />
+    );
+
+    const notAttempted = screen.getByRole('checkbox', { name: /include not attempted/i });
+    const error = screen.getByRole('checkbox', { name: /include error/i });
+    const excluded = screen.getByRole('checkbox', { name: 'Include Excluded' });
+
+    await user.click(notAttempted);
+    expect(setSelectedKeys).toHaveBeenLastCalledWith(['1|4|0|1|1']);
+
+    await user.click(error);
+    expect(setSelectedKeys).toHaveBeenLastCalledWith(['1|4|0|0|1']);
+
+    await user.click(excluded);
+    expect(setSelectedKeys).toHaveBeenLastCalledWith(['1|4|0|0|0']);
+    expect(confirm).toHaveBeenCalledTimes(SINGLE_TOGGLE_CALL_COUNT + DOUBLE_TOGGLE_CALL_COUNT);
+    expect(confirm).toHaveBeenLastCalledWith({ closeDropdown: false });
+  });
+
+  it('does not expose or retain the aggregate flag when the excluded toggle is unavailable', async () => {
+    const user = userEvent.setup();
+    const setSelectedKeys = vi.fn();
+    const confirm = vi.fn();
+
+    render(
+      <MetricRangeFilterDropdown
+        {...createMockDropdownProperties({ selectedKeys: ['1|4|1|1|1'], setSelectedKeys, confirm })}
+        range={DEFAULT_RANGE}
+        showExcludedToggle={false}
+      />
+    );
+
+    expect(screen.queryByRole('checkbox', { name: 'Include Excluded' })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('checkbox', { name: /include not attempted/i }));
+
+    expect(setSelectedKeys).toHaveBeenLastCalledWith(['1|4|0|1|0']);
+    expect(confirm).toHaveBeenLastCalledWith({ closeDropdown: false });
+  });
 
   it('calls applyFilter with closeDropdown=false when N checkbox is toggled', async () => {
     const user = userEvent.setup();
@@ -155,9 +277,8 @@ describe('MetricRangeFilterDropdown', () => {
     expect(setSelectedKeys).toHaveBeenCalledOnce();
     expect(confirm).toHaveBeenCalledWith({ closeDropdown: false });
 
-    // The encoded key must have includeNotAttempted set to 1
-    const key = setSelectedKeys.mock.calls[0][0][0] as string;
-    expect(key.endsWith('|1|0') || key.endsWith('|1|1')).toBe(true);
+    // The encoded key must preserve the range and set only includeNotAttempted.
+    expect(setSelectedKeys).toHaveBeenLastCalledWith(['0|5|1|0|0']);
   });
 
   // ---------------------------------------------------------------------------
@@ -181,9 +302,8 @@ describe('MetricRangeFilterDropdown', () => {
     expect(setSelectedKeys).toHaveBeenCalledOnce();
     expect(confirm).toHaveBeenCalledWith({ closeDropdown: false });
 
-    // The encoded key must have includeError set to 1
-    const key = setSelectedKeys.mock.calls[0][0][0] as string;
-    expect(key.endsWith('|0|1') || key.endsWith('|1|1')).toBe(true);
+    // The encoded key must preserve the range and set only includeError.
+    expect(setSelectedKeys).toHaveBeenLastCalledWith(['0|5|0|1|0']);
   });
 
   // ---------------------------------------------------------------------------
@@ -263,6 +383,28 @@ describe('MetricRangeFilterDropdown', () => {
     // Even without prior interaction, reset should clear and confirm
     expect(setSelectedKeys).toHaveBeenCalledWith([]);
     expect(confirm).toHaveBeenCalledWith({ closeDropdown: true });
+  });
+
+  it('encodes only the excluded toggle as the fifth field and clears it on Reset', async () => {
+    const user = userEvent.setup();
+    const setSelectedKeys = vi.fn();
+    const confirm = vi.fn();
+    render(<MetricRangeFilterDropdown {...createMockDropdownProperties({ setSelectedKeys, confirm })} range={DEFAULT_RANGE} />);
+    await user.click(screen.getByRole('checkbox', { name: 'Include Excluded' }));
+    expect(setSelectedKeys).toHaveBeenLastCalledWith(['0|5|0|0|1']);
+    await user.click(screen.getByRole('button', { name: /reset/i }));
+    expect(screen.getByRole('checkbox', { name: 'Include Excluded' })).not.toBeChecked();
+  });
+
+  it('includes excluded only when its fifth toggle is enabled, independently of other states and range', () => {
+    const excluded = createExcludedMetricResult();
+    expect(metricInRange(excluded, FILTER_TEST_MINIMUM, FILTER_TEST_MAXIMUM, NO_NON_COMPUTED_FLAGS)).toBe(false);
+    expect(metricInRange(excluded, FILTER_TEST_MINIMUM, FILTER_TEST_MAXIMUM, INCLUDE_EXCLUDED_FLAGS)).toBe(true);
+    const filter = buildMetricRangeFilter({ range: DEFAULT_RANGE, activeRange: [], getMetric: (row: { metric: typeof excluded }) => row.metric });
+    expect(filter.onFilter('2|3|0|0|1', { metric: excluded })).toBe(true);
+    expect(filter.onFilter('2|3|0|0|0', { metric: excluded })).toBe(false);
+    expect(metricInRange(createNotAttemptedMetricResult(), FILTER_TEST_MINIMUM, FILTER_TEST_MAXIMUM, INCLUDE_NOT_ATTEMPTED_FLAGS)).toBe(true);
+    expect(metricInRange(createErrorMetricResult(), FILTER_TEST_MINIMUM, FILTER_TEST_MAXIMUM, INCLUDE_ERROR_FLAGS)).toBe(true);
   });
 
   // ---------------------------------------------------------------------------

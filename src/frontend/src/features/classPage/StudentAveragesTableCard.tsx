@@ -14,9 +14,9 @@
  * or a cleared sort, and resolves to full-name ascending in the model.
  *
  * **Filtering.** The `onChange` callback stores the raw encoded filter keys
- * (score ranges with N/E toggle flags) into the typed `StudentAveragesTableFilters`
+ * (score ranges with N/E/Excluded toggle flags) into the typed `StudentAveragesTableFilters`
  * state, which is passed to `buildMetricRangeFilter` as `activeFilterKey`. This
- * preserves the "Include Not Attempted (N)" and "Include Error (E)" toggle state
+ * preserves the N, E, and Excluded toggle state
  * across renders.
  *
  * **Memoisation.** `buildClassPageViewModel` is called inside a `useMemo`
@@ -222,7 +222,7 @@ export function StudentAveragesTableCard(
    * key is missing, so the model falls back to full-name ascending.
    *
    * Also stores the raw encoded filter keys from Ant Design's `filters` object
-   * into the typed `StudentAveragesTableFilters` state so N/E toggle state set
+   * into the typed `StudentAveragesTableFilters` state so N/E/Excluded toggle state set
    * by the dropdown is preserved across renders.
    */
   const handleTableChange = useCallback(
@@ -231,7 +231,7 @@ export function StudentAveragesTableCard(
       filtersArgument: Record<string, FilterValue | null>,
       sorter: SorterResult<StudentAverageRowModel> | SorterResult<StudentAverageRowModel>[]
     ): void => {
-      // Store raw encoded keys so the N/E toggle state from the dropdown
+      // Store raw encoded keys so the N/E/Excluded toggle state from the dropdown
       // is preserved across renders via activeFilterKey in buildMetricColumn.
       setFilters({
         completeness: extractFilterKeys(filtersArgument.completeness),

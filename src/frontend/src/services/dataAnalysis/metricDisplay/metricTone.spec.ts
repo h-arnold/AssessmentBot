@@ -2,6 +2,7 @@
  * Tests for `resolveMetricTone` — pure tone resolver.
  *
  * @see SPEC_CLASS_PAGE_PREPARATION.md lines 246–298
+ * @see metricDisplayText.spec.ts for state-to-text and precision coverage.
  */
 
 import { describe, it, expect } from 'vitest';
@@ -10,9 +11,11 @@ import {
   createComputedMetricResult,
   createNotAttemptedMetricResult,
   createErrorMetricResult,
+  createExcludedMetricResult,
 } from '../../../test/dataAnalysis/fixtures';
 import { resolveMetricTone } from './metricTone';
 import type { MetricToneResolution } from './metricTone';
+import { appStylesRaw } from '../../../test/appStylesRaw';
 
 /** Value at the default range ceiling (upper bound of { lower: 0, upper: 5 }). */
 const DEFAULT_RANGE_CEILING = 5;
@@ -33,7 +36,6 @@ describe('resolveMetricTone', () => {
         backgroundColor: 'hsl(0.0, 75%, 92%)',
         color: 'hsl(0.0, 70%, 32%)',
       },
-      displayValue: 0,
       muted: false,
     });
   });
@@ -49,7 +51,6 @@ describe('resolveMetricTone', () => {
       backgroundColor: 'hsl(10.7, 75%, 92%)',
       color: 'hsl(10.7, 70%, 32%)',
     });
-    expect(result.displayValue).toBe(1);
     expect(result.muted).toBe(false);
   });
 
@@ -77,7 +78,6 @@ describe('resolveMetricTone', () => {
       backgroundColor: 'hsl(120.0, 75%, 92%)',
       color: 'hsl(120.0, 70%, 32%)',
     });
-    expect(result.displayValue).toBe(DEFAULT_RANGE_CEILING);
     expect(result.muted).toBe(false);
   });
 
@@ -93,7 +93,6 @@ describe('resolveMetricTone', () => {
     expect(result).toStrictEqual({
       color: '#434343',
       cellStyle: { backgroundColor: '#e8e8e8', color: '#434343' },
-      displayValue: 'N',
       muted: true,
     });
   });
@@ -110,9 +109,45 @@ describe('resolveMetricTone', () => {
     expect(result).toStrictEqual({
       color: 'volcano',
       cellStyle: { backgroundColor: '#fff2e8', color: '#d4380d' },
-      displayValue: 'E',
       muted: false,
     });
+  });
+
+  it('resolves excluded to a distinct neutral tone without muting', () => {
+    const excluded = resolveMetricTone(createExcludedMetricResult());
+    const notAttempted = resolveMetricTone(createNotAttemptedMetricResult());
+    const error = resolveMetricTone(createErrorMetricResult());
+
+    expect(excluded.color).toBe('default');
+    expect(excluded.color).not.toBe('#434343');
+    expect(excluded.color).not.toBe(error.color);
+    expect(excluded.cellStyle).not.toEqual(notAttempted.cellStyle);
+    expect(excluded.muted).toBe(false);
+  });
+
+  it('keeps the excluded treatment theme-aware when supplied inline or through the shared stylesheet', () => {
+    const excluded = resolveMetricTone(createExcludedMetricResult());
+    const hasInlineThemeStyle =
+      excluded.cellStyle.backgroundColor === 'var(--ant-color-fill-quaternary)' &&
+      excluded.cellStyle.color === 'var(--ant-color-text-secondary)';
+
+    if (hasInlineThemeStyle) {
+      expect(excluded.cellStyle).toEqual({
+        backgroundColor: 'var(--ant-color-fill-quaternary)',
+        color: 'var(--ant-color-text-secondary)',
+      });
+      return;
+    }
+
+    const stylesheetRule = appStylesRaw
+      .split('}')
+      .find(
+        (rule) =>
+          rule.includes('background-color: var(--ant-color-fill-quaternary)') &&
+          rule.includes('color: var(--ant-color-text-secondary)')
+      );
+
+    expect(stylesheetRule).toBeDefined();
   });
 
   it('returns custom errorColor for error metric when supplied', () => {
@@ -123,7 +158,6 @@ describe('resolveMetricTone', () => {
     expect(result).toStrictEqual({
       color: 'red',
       cellStyle: { backgroundColor: '#fff1f0', color: '#cf1322' },
-      displayValue: 'E',
       muted: false,
     });
   });
@@ -142,7 +176,6 @@ describe('resolveMetricTone', () => {
       backgroundColor: 'hsl(0.0, 75%, 92%)',
       color: 'hsl(0.0, 70%, 32%)',
     });
-    expect(result.displayValue).toBe(0);
     expect(result.muted).toBe(false);
   });
 
@@ -176,16 +209,20 @@ describe('resolveMetricTone', () => {
   // Range validation
   // -------------------------------------------------------------------------
 
-  it('throws when range upper equals lower', () => {
+  it('fails fast with the invalid equal-bound range when upper equals lower', () => {
     const metric: MetricResult = createComputedMetricResult({ value: 0 });
 
-    expect(() => resolveMetricTone(metric, { lower: 5, upper: 5 })).toThrow();
+    expect(() => resolveMetricTone(metric, { lower: 5, upper: 5 })).toThrow(
+      'resolveMetricTone: degenerate range { lower: 5, upper: 5 } - upper must be greater than lower'
+    );
   });
 
-  it('throws when range upper is less than lower', () => {
+  it('fails fast with the invalid inverted range when upper is less than lower', () => {
     const metric: MetricResult = createComputedMetricResult({ value: 0 });
 
-    expect(() => resolveMetricTone(metric, { lower: 5, upper: 0 })).toThrow();
+    expect(() => resolveMetricTone(metric, { lower: 5, upper: 0 })).toThrow(
+      'resolveMetricTone: degenerate range { lower: 5, upper: 0 } - upper must be greater than lower'
+    );
   });
 
   // -------------------------------------------------------------------------
@@ -200,7 +237,6 @@ describe('resolveMetricTone', () => {
     expect(result).toStrictEqual({
       color: 'gold',
       cellStyle: { backgroundColor: '#fffbe6', color: '#d48806' },
-      displayValue: 'E',
       muted: false,
     });
   });
@@ -213,7 +249,6 @@ describe('resolveMetricTone', () => {
     expect(result).toStrictEqual({
       color: 'green',
       cellStyle: { backgroundColor: '#f6ffed', color: '#389e0d' },
-      displayValue: 'E',
       muted: false,
     });
   });
@@ -230,7 +265,6 @@ describe('resolveMetricTone', () => {
     expect(result).toStrictEqual({
       color: 'default',
       cellStyle: {},
-      displayValue: 'E',
       muted: false,
     });
   });
@@ -246,7 +280,6 @@ describe('resolveMetricTone', () => {
 
     // t = 0 -> hue 0, should be dark red
     expect(result.color).toBe('hsl(0.0, 70%, 34.0%)');
-    expect(result.displayValue).toBe(0);
     expect(result.muted).toBe(false);
   });
 
@@ -257,7 +290,6 @@ describe('resolveMetricTone', () => {
 
     // t = 1 -> hue 120, should be dark green
     expect(result.color).toBe('hsl(120.0, 70%, 34.0%)');
-    expect(result.displayValue).toBe(1);
     expect(result.muted).toBe(false);
   });
 
@@ -275,7 +307,6 @@ describe('resolveMetricTone', () => {
 
     // t = clampUnit((BELOW_RANGE_VALUE - 0) / 5) = clampUnit(-0.2) = 0
     expect(result.color).toBe('hsl(0.0, 70%, 34.0%)');
-    expect(result.displayValue).toBe(BELOW_RANGE_VALUE);
   });
 
   /** Value above the default scoring range ceiling for clamp testing. */
@@ -288,6 +319,5 @@ describe('resolveMetricTone', () => {
 
     // t = clampUnit((ABOVE_RANGE_VALUE - 0) / 5) = clampUnit(2) = 1
     expect(result.color).toBe('hsl(120.0, 70%, 34.0%)');
-    expect(result.displayValue).toBe(ABOVE_RANGE_VALUE);
   });
 });

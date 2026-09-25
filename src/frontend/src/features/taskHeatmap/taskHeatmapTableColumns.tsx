@@ -16,7 +16,10 @@ import { Alert, Popover, Skeleton } from 'antd';
 import type { TableColumnsType } from 'antd';
 import type { FilterValue } from 'antd/es/table/interface';
 
-import type { MetricResult } from '../../services/dataAnalysis/dataAnalysis.zod';
+import type {
+  AverageContribution,
+  TaskDisplayMetric,
+} from '../../services/dataAnalysis/dataAnalysis.zod';
 import { compareMetricsByStateRank } from '../../services/dataAnalysis/metricDisplay/metricComparator';
 import {
   METRIC_DISPLAY_META,
@@ -27,14 +30,17 @@ import {
   resolveMetricTone,
   DEFAULT_TONE_RANGE,
 } from '../../services/dataAnalysis/metricDisplay/metricTone';
+import { formatMetricDisplayText } from '../../services/dataAnalysis/metricDisplay/metricDisplayText';
 import { buildMetricRangeFilter } from '../../services/dataAnalysis/metricDisplay/metricRangeFilter';
 import { decodeFilterToRange } from '../../services/dataAnalysis/metricDisplay/metricRangeKey';
 import { MetricIconLabel } from '../../components/MetricIconLabel/MetricIconLabel';
 import { TaskPreviewCard, CARD_MAX_WIDTH } from './TaskPreviewCard';
+import { DeferredPopoverContent } from './DeferredPopoverContent';
 import { assembleTaskPreviewData } from './assembleTaskPreviewData';
 import type { CellPreviewData, CellPreviewLookup } from './buildCellPreviewLookup';
 import type { PreviewStatus } from './assembleMergedPreviewData';
 import { APP_COL_WIDTH_METRIC, APP_GAP_MD, APP_GAP_XS } from '../../theme/spacing';
+import { getZeroWeightMetricEdgeClass } from './taskHeatmapZeroWeightHeader';
 
 // ---------------------------------------------------------------------------
 // Structural view-model contract (read, never asserted)
@@ -53,6 +59,7 @@ export interface TaskHeatmapColumn {
   taskKey: string;
   taskId: string;
   taskTitle: string | null;
+  averageContribution: AverageContribution;
   assignmentId?: string;
   assignmentName?: string;
   definitionKey?: string;
@@ -67,9 +74,9 @@ export interface TaskHeatmapRow {
   studentId: string;
   studentName: string;
   cells: ReadonlyArray<{
-    completeness: MetricResult;
-    accuracy: MetricResult;
-    spag: MetricResult;
+    completeness: TaskDisplayMetric;
+    accuracy: TaskDisplayMetric;
+    spag: TaskDisplayMetric;
   }>;
 }
 
@@ -119,19 +126,37 @@ function getDisplayTitle(key: HeatmapMetricKey): string {
 }
 
 /**
+ * Build the accessible label shared by a metric cell and its Popover trigger.
+ *
+ * @param {string} studentName - The student's displayed name.
+ * @param {string} taskTitle - The human-readable task title or ID fallback.
+ * @param {HeatmapMetricKey} metric - The metric key.
+ * @param {string} score - The formatted metric display text.
+ * @returns {string} The contextual accessible label.
+ */
+function buildMetricCellAccessibleLabel(
+  studentName: string,
+  taskTitle: string,
+  metric: HeatmapMetricKey,
+  score: string
+): string {
+  return `${studentName}, ${taskTitle}, ${getDisplayTitle(metric)}: ${score}`;
+}
+
+/**
  * Extract a single cell metric by key via direct property access.
  *
  * @param {object} cell - The heatmap cell containing three metric results.
- * @param {MetricResult} cell.completeness - The completeness metric result.
- * @param {MetricResult} cell.accuracy - The accuracy metric result.
- * @param {MetricResult} cell.spag - The SPaG metric result.
+ * @param {TaskDisplayMetric} cell.completeness - The completeness metric result.
+ * @param {TaskDisplayMetric} cell.accuracy - The accuracy metric result.
+ * @param {TaskDisplayMetric} cell.spag - The SPaG metric result.
  * @param {HeatmapMetricKey} key - The metric key to extract.
- * @returns {MetricResult} The matching metric result.
+ * @returns {TaskDisplayMetric} The matching metric result.
  */
 function getCellMetric(
-  cell: { completeness: MetricResult; accuracy: MetricResult; spag: MetricResult },
+  cell: { completeness: TaskDisplayMetric; accuracy: TaskDisplayMetric; spag: TaskDisplayMetric },
   key: HeatmapMetricKey
-): MetricResult {
+): TaskDisplayMetric {
   switch (key) {
     case 'completeness': {
       return cell.completeness;
@@ -143,22 +168,6 @@ function getCellMetric(
       return cell.spag;
     }
   }
-}
-
-/**
- * Render the display score text for a metric result.
- *
- * @param {MetricResult} metric - The metric result.
- * @returns {string} The formatted score string.
- */
-function renderScore(metric: MetricResult): string {
-  if (metric.state === 'computed') {
-    return metric.value.toFixed(INDIVIDUAL_SCORE_PRECISION);
-  }
-  if (metric.state === 'notAttempted') {
-    return 'N';
-  }
-  return 'E';
 }
 
 /**
@@ -229,7 +238,7 @@ export function resolveColumnPreviewStatus(
  * opened by the popover.
  *
  * @param {CellPreviewData | null} cellData - The cell preview data from the lookup.
- * @param {MetricResult} metricResult - The analyser's metric result for this cell.
+ * @param {TaskDisplayMetric} metricResult - The analyser's metric result for this cell.
  * @param {HeatmapMetricKey} metricKey - Which metric column this preview is for.
  * @param {string} taskId - The heatmap column's task ID.
  * @param {boolean} isLoading - Whether this column's preview query is pending.
@@ -245,7 +254,7 @@ function buildPopoverContent({
   hasError,
 }: Readonly<{
   cellData: CellPreviewData | null;
-  metricResult: MetricResult;
+  metricResult: TaskDisplayMetric;
   metricKey: HeatmapMetricKey;
   taskId: string;
   isLoading: boolean;
@@ -308,21 +317,29 @@ export function buildTaskMetricSubColumns(
   columnIsLoading: boolean,
   columnHasError: boolean
 ): TableColumnsType<TaskHeatmapRow> {
-  return HEATMAP_METRIC_KEYS.map((metric) => {
+  const taskTitle = taskColumn.taskTitle ?? taskColumn.taskId;
+
+  return HEATMAP_METRIC_KEYS.map((metric, metricIndex) => {
     const meta = METRIC_DISPLAY_META.get(metric)!;
     const columnKey = `${taskColumn.taskKey}::${metric}`;
     const filterValue = tableFilters[columnKey];
     const rangeFilter = buildMetricRangeFilter<TaskHeatmapRow>({
       range: DEFAULT_TONE_RANGE,
-      getMetric: (record): MetricResult => getCellMetric(record.cells[taskIndex], metric),
+      getMetric: (record): TaskDisplayMetric => getCellMetric(record.cells[taskIndex], metric),
       activeRange: decodeFilterToRange(filterValue),
       activeFilterKey:
         filterValue && filterValue.length > 0 && typeof filterValue[0] === 'string'
           ? filterValue[0]
           : undefined,
+      showExcludedToggle: false,
     });
     return {
       key: columnKey,
+      className: getZeroWeightMetricEdgeClass(
+        metricIndex,
+        HEATMAP_METRIC_KEYS.length,
+        taskColumn.averageContribution
+      ),
       title: <MetricIconLabel icon={meta.icon} label={meta.label} />,
       align: 'center' as const,
       width: APP_COL_WIDTH_METRIC,
@@ -334,8 +351,8 @@ export function buildTaskMetricSubColumns(
       onCell: (record: TaskHeatmapRow): { style: CSSProperties; 'aria-label': string } => {
         const m = getCellMetric(record.cells[taskIndex], metric);
         const { cellStyle } = resolveMetricTone(m);
-        const score = renderScore(m);
-        const ariaLabel = `${record.studentName}, ${taskColumn.taskId}, ${getDisplayTitle(metric)}: ${score}`;
+        const score = formatMetricDisplayText(m, INDIVIDUAL_SCORE_PRECISION);
+        const ariaLabel = buildMetricCellAccessibleLabel(record.studentName, taskTitle, metric, score);
         return {
           style: cellStyle,
           'aria-label': ariaLabel,
@@ -344,22 +361,28 @@ export function buildTaskMetricSubColumns(
       render: (_: unknown, record: TaskHeatmapRow): JSX.Element => {
         const m = getCellMetric(record.cells[taskIndex], metric);
         const cellData = cellPreviewLookup?.get(record.studentId)?.get(taskColumn.taskKey) ?? null;
-        const score = renderScore(m);
-        const ariaLabel = `${record.studentName}, ${taskColumn.taskId}, ${getDisplayTitle(metric)}: ${score}`;
+        const score = formatMetricDisplayText(m, INDIVIDUAL_SCORE_PRECISION);
+        const ariaLabel = buildMetricCellAccessibleLabel(record.studentName, taskTitle, metric, score);
 
         return (
           <Popover
             trigger={['hover', 'click']}
             placement="right"
             destroyOnHidden
-            content={buildPopoverContent({
-              cellData,
-              metricResult: m,
-              metricKey: metric,
-              taskId: taskColumn.taskId,
-              isLoading: columnIsLoading,
-              hasError: columnHasError,
-            })}
+            content={
+              <DeferredPopoverContent
+                buildContent={() =>
+                  buildPopoverContent({
+                    cellData,
+                    metricResult: m,
+                    metricKey: metric,
+                    taskId: taskColumn.taskId,
+                    isLoading: columnIsLoading,
+                    hasError: columnHasError,
+                  })
+                }
+              />
+            }
           >
             {/* 4px padding (APP_GAP_XS, documented half-unit exception) widens the
                 Popover hover/click target around the score without covering the
@@ -368,7 +391,6 @@ export function buildTaskMetricSubColumns(
               tabIndex={0}
               role="button"
               aria-label={ariaLabel}
-              aria-haspopup="dialog"
               style={{ padding: APP_GAP_XS, display: 'inline-block' }}
               onKeyDown={(event): void => {
                 if (event.key === 'Enter' || event.key === ' ') {
@@ -377,7 +399,7 @@ export function buildTaskMetricSubColumns(
                 }
               }}
             >
-              {renderScore(m)}
+              {formatMetricDisplayText(m, INDIVIDUAL_SCORE_PRECISION)}
             </span>
           </Popover>
         );

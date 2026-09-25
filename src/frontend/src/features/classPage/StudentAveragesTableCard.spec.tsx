@@ -12,9 +12,11 @@ import userEvent from '@testing-library/user-event';
 import { StudentAveragesTableCard } from './StudentAveragesTableCard';
 import type { ClassPageAdapterResult, StudentAverageRowModel } from './classPageAdapter.zod';
 import type { ClassPageViewModel } from './classPageModel';
+import type { FilterDropdownProps } from 'antd/es/table/interface';
 import {
   createComputedMetricResult,
   createNotAttemptedMetricResult,
+  createExcludedMetricResult,
 } from '../../test/dataAnalysis/fixtures';
 
 // ---------------------------------------------------------------------------
@@ -57,6 +59,10 @@ interface MockColumn {
   filters?: ReadonlyArray<{ text: string; value: string }>;
   onFilter?: (value: string, record: StudentAverageRowModel) => boolean;
   render?: (value: unknown, record: StudentAverageRowModel, index: number) => React.ReactNode;
+  filterDropdown?: (properties: {
+    setSelectedKeys: FilterDropdownProps['setSelectedKeys'];
+    confirm: FilterDropdownProps['confirm'];
+  }) => React.ReactNode;
 }
 
 // ---------------------------------------------------------------------------
@@ -371,6 +377,49 @@ describe('StudentAveragesTableCard', () => {
     renderCard();
 
     expect(screen.getByText('No students match your search')).toBeInTheDocument();
+  });
+
+  it('forwards the excluded filter key from the table dropdown to column construction', async () => {
+    const INCLUDE_EXCLUDED_KEY = '2|4|0|0|1';
+    const user = userEvent.setup();
+    const excluded = createExcludedMetricResult();
+    const excludedRow = buildRow({
+      metrics: {
+        completeness: excluded,
+        accuracy: createComputedMetricResult({ value: 3 }),
+        spag: createNotAttemptedMetricResult(),
+        average: excluded,
+      },
+    });
+    mockBuildViewModel.mockReturnValue(buildViewModel({ studentAverages: [excludedRow] }));
+    mockBuildColumns.mockImplementation((filters: { completeness: readonly string[] }) => [{
+      key: 'completeness',
+      title: 'Completeness',
+      filters: [{ text: 'Include Excluded', value: INCLUDE_EXCLUDED_KEY }],
+      filterDropdown: ({ setSelectedKeys, confirm }: Parameters<NonNullable<MockColumn['filterDropdown']>>[0]) => (
+        <div>
+          <label>
+            <input
+              type="checkbox"
+              aria-label="Include Excluded"
+              checked={filters.completeness.includes(INCLUDE_EXCLUDED_KEY)}
+              onChange={(event) => {
+                setSelectedKeys(event.target.checked ? [INCLUDE_EXCLUDED_KEY] : []);
+                confirm();
+              }}
+            />
+            Include Excluded
+          </label>
+        </div>
+      ),
+    }]);
+    const { container } = renderCard({ adapterResult: { studentAverages: [excludedRow] } });
+    const filterTrigger = container.querySelector('.ant-table-filter-trigger');
+    expect(filterTrigger).not.toBeNull();
+    await user.click(filterTrigger!);
+    await user.click(await screen.findByRole('checkbox', { name: 'Include Excluded' }));
+    expect(mockBuildColumns).toHaveBeenLastCalledWith(expect.objectContaining({ completeness: [INCLUDE_EXCLUDED_KEY] }));
+    expect(mockBuildViewModel).toHaveBeenCalledWith(expect.objectContaining({ adapterResult: expect.any(Object) }));
   });
 
   // -----------------------------------------------------------------------

@@ -35,12 +35,10 @@ import type { ClassFull } from '../../services/googleClassrooms/classDetail/clas
 import type { ClassPartial } from '../../services/googleClassrooms/classPartialsService';
 import type { AssignmentDefinitionPartialsResponse } from '../../services/assignmentDefinition/assignmentDefinitionPartials.zod';
 import { getAssignmentDefinitionPartial } from '../../services/assignmentDefinition/assignmentDefinitionUtilities';
+import { pageContent } from '../../pages/pageContent';
 import { logFrontendEvent } from '../../logging/frontendLogger';
 import type { SelectionState } from './selectionCascade';
 import { APP_GAP_MD, APP_GAP_SM } from '../../theme/spacing';
-
-/** Accessible reason surfaced when a class has not yet been chosen. */
-const DISABLED_REASON = 'Select a class first';
 
 /** Stable DOM id for the disabled-reason description node (I2). */
 const DISABLED_REASON_ID = 'heatmap-selection-disabled-reason';
@@ -184,7 +182,9 @@ export function HeatmapSelectionBar({
   const dependentsDisabled = classFull === null;
 
   // Disabled-state affordances derived once to keep the JSX branch-free (complexity rule).
-  const disabledTooltipTitle = dependentsDisabled ? DISABLED_REASON : undefined;
+  const disabledTooltipTitle = dependentsDisabled
+    ? pageContent.heatmaps.selectionDisabledReason
+    : undefined;
   const disabledDescribedBy = dependentsDisabled ? DISABLED_REASON_ID : undefined;
 
   // Memoised membership sets (P-N4): O(1) `has` lookups in option renders and the
@@ -271,7 +271,7 @@ export function HeatmapSelectionBar({
       {/* Always present in the DOM so the `aria-describedby` target is robustly
           reachable when the dependent controls are disabled (A-N2). */}
       <span id={DISABLED_REASON_ID} className="sr-only">
-        {DISABLED_REASON}
+        {pageContent.heatmaps.selectionDisabledReason}
       </span>
       <Flex wrap gap={APP_GAP_MD} align="end">
         <Flex vertical gap={APP_GAP_SM} style={{ flex: 1, minWidth: 0 }}>

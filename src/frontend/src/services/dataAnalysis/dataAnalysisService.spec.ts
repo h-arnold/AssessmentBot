@@ -326,6 +326,7 @@ describe('DataAnalysisService', () => {
               definitionKey: 'dk_algebra',
               taskId: 't_001',
               taskTitle: null,
+              averageContribution: { effectiveWeight: 1, includedInAverage: true },
               completeness: createComputedMetricResult(),
               accuracy: createComputedMetricResult(),
               spag: createComputedMetricResult(),

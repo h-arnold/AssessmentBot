@@ -54,236 +54,31 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { createElement } from 'react';
-import { renderWithFrontendProviders } from '../../test/renderWithFrontendProviders';
-import { pageContent } from '../../pages/pageContent';
-import { HeatmapBuilderSurface } from './HeatmapBuilderSurface';
-import { useHeatmapsPageData } from './useHeatmapsPageData';
-import type { HeatmapsPageData } from './useHeatmapsPageData';
 import type { HeatmapsSurfaceState } from './heatmapsSurfaceState';
 import type { SelectionState } from './selectionCascade';
-import type {
-  MergedHeatmapResult,
-  MergedHeatmapTaskColumn,
-} from '../../services/dataAnalysis/heatmapAdapter.merged';
 import type { AssignmentDefinitionPartialsResponse } from '../../services/assignmentDefinition/assignmentDefinitionPartials.zod';
 import type { ClassFull } from '../../services/googleClassrooms/classDetail/classDetailService.zod';
-import type { UseQueryResult } from '@tanstack/react-query';
+import {
+  ASSIGNMENT_DEFINITION_PARTIALS,
+  ASSIGNMENTS_PLACEHOLDER,
+  CLASS_FULL,
+  CLASS_PLACEHOLDER,
+  DISABLED_REASON,
+  NO_ASSIGNMENTS_EMPTY_COPY,
+  NO_CLASS_EMPTY_COPY,
+  PAGE_TITLE,
+  READY_CLASS_QUERY,
+  SELECTOR_CONTROL_COUNT,
+  TOPICS_PLACEHOLDER,
+  buildMergedResult,
+  renderSurface,
+} from '../../test/heatmapBuilderSurfaceTestHelpers';
 
 // Mock the orchestration hook at the module seam. The stub does not import it yet,
 // so the mock is inert against the placeholder; the green surface will consume it.
 vi.mock('./useHeatmapsPageData', () => ({
   useHeatmapsPageData: vi.fn(),
 }));
-
-// ===========================================================================
-// Verbatim copy (sourced from pageContent.heatmaps)
-// ===========================================================================
-
-/** Chrome title when no class is selected — `pageContent.heatmaps.heading`. */
-const PAGE_TITLE = pageContent.heatmaps.heading; // 'Heatmaps'
-
-/** Content-region guidance when no class is selected (restored single source of truth). */
-const NO_CLASS_EMPTY_COPY = pageContent.heatmaps.noClassEmpty;
-
-/** Content-region guidance when a class is loaded but no assignments selected. */
-const NO_ASSIGNMENTS_EMPTY_COPY = pageContent.heatmaps.noAssignmentsEmpty;
-
-/** Tooltip / accessible reason for disabled dependent selectors. */
-const DISABLED_REASON = 'Select a class first';
-
-/** Number of labelled selector controls in the selection bar (class, topics, assignments). */
-const SELECTOR_CONTROL_COUNT = 3;
-
-/** Selector placeholders (action-describing, never auto-selected). */
-const CLASS_PLACEHOLDER = 'Select a class';
-const TOPICS_PLACEHOLDER = 'Select topics';
-const ASSIGNMENTS_PLACEHOLDER = 'Select assignments';
-
-// ===========================================================================
-// Fixtures (derived from the real `HeatmapsPageData` contract)
-// ===========================================================================
-
-/** Frozen not-attempted metric cell, reused for the merged-result fixture. */
-const NOT_ATTEMPTED_CELL = {
-  completeness: {
-    state: 'notAttempted',
-    value: 'N',
-    totalWeight: 0,
-    applicableDataPoints: 0,
-    totalDataPoints: 1,
-  },
-  accuracy: {
-    state: 'notAttempted',
-    value: 'N',
-    totalWeight: 0,
-    applicableDataPoints: 0,
-    totalDataPoints: 1,
-  },
-  spag: {
-    state: 'notAttempted',
-    value: 'N',
-    totalWeight: 0,
-    applicableDataPoints: 0,
-    totalDataPoints: 1,
-  },
-} as const;
-
-/**
- * Build a minimal `MergedHeatmapResult` (one assignment, one task, one student).
- *
- * @returns {MergedHeatmapResult} A small merged view-model fixture for table rendering.
- */
-function buildMergedResult(): MergedHeatmapResult {
-  const taskColumns: ReadonlyArray<MergedHeatmapTaskColumn> = [
-    {
-      taskKey: 'def1::tA',
-      taskId: 'tA',
-      taskTitle: 'Task A',
-      assignmentId: 'a1',
-      definitionKey: 'def1',
-      assignmentName: 'Title def1',
-    },
-  ];
-  return {
-    classId: 'class-1',
-    className: 'Test Class 7A',
-    sourceAssignments: [
-      { assignmentId: 'a1', definitionKey: 'def1', assignmentName: 'Title def1' },
-    ],
-    taskColumns,
-    rows: [{ studentId: 's-1', studentName: 'Student One', cells: [NOT_ATTEMPTED_CELL] }],
-  } as MergedHeatmapResult;
-}
-
-/** Minimal `UseQueryResult` placeholder for the class-full query field. */
-const MOCK_CLASS_QUERY = {
-  data: null,
-  isPending: false,
-  isError: false,
-  error: null,
-  isFetching: false,
-  isSuccess: false,
-  refetch: vi.fn(),
-} as unknown as UseQueryResult<ClassFull | null, Error>;
-
-/**
- * Class-full query fixture used by ready-with-class states.
- *
- * @remarks
- * Per finding N1, a ready state that has a populated `classFull` must report
- * `classFullQuery.isSuccess: true` so the mock is internally consistent with the
- * surface being `ready` (the green surface derives readiness from the query result,
- * not from `classFull` presence alone).
- */
-const READY_CLASS_QUERY = {
-  ...MOCK_CLASS_QUERY,
-  isSuccess: true,
-} as unknown as UseQueryResult<ClassFull | null, Error>;
-
-/**
- * Warm-up assignment-definition partials fixture for ready-with-class states.
- *
- * @remarks
- * Per finding C1, assignment options in the green surface are labelled by the RESOLVED
- * `primaryTitle` (not by `assignmentId`), and assignments whose `definitionKey` has no
- * resolvable partial are OMITTED. The fixtures below give `def1`/`def2` realistic
- * definition titles so the checkbox and search tests can locate options by their resolved
- * title (`/Title def1/i`, `/Title def2/i`) rather than by assignment id.
- */
-const ASSIGNMENT_DEFINITION_PARTIALS: AssignmentDefinitionPartialsResponse = [
-  {
-    primaryTitle: 'Title def1',
-    primaryTopic: 'Topic One',
-    primaryTopicKey: 'topic-1',
-    yearGroupKey: 'yg-7',
-    yearGroupLabel: 'Year 7',
-    alternateTitles: [],
-    alternateTopics: [],
-    documentType: 'doc',
-    referenceDocumentId: null,
-    templateDocumentId: null,
-    assignmentWeighting: 1,
-    definitionKey: 'def1',
-    tasks: [{ taskId: 'tA', taskWeighting: 1, taskTitle: 'Task A' }],
-    createdAt: null,
-    updatedAt: null,
-  },
-  {
-    primaryTitle: 'Title def2',
-    primaryTopic: 'Topic Two',
-    primaryTopicKey: 'topic-2',
-    yearGroupKey: 'yg-7',
-    yearGroupLabel: 'Year 7',
-    alternateTitles: [],
-    alternateTopics: [],
-    documentType: 'doc',
-    referenceDocumentId: null,
-    templateDocumentId: null,
-    assignmentWeighting: 1,
-    definitionKey: 'def2',
-    tasks: [{ taskId: 'tB', taskWeighting: 1, taskTitle: 'Task B' }],
-    createdAt: null,
-    updatedAt: null,
-  },
-];
-
-/** The default class-full fixture used by the "class selected" states. */
-const CLASS_FULL: ClassFull = {
-  classId: 'class-1',
-  className: 'Test Class 7A',
-  cohortKey: null,
-  courseLength: 1,
-  yearGroupKey: 'yg-7',
-  classOwner: null,
-  teachers: [],
-  students: [{ id: 's-1', name: 'Student One', email: 's1@test.com' }],
-  assignments: [
-    { assignmentId: 'a1', assignmentDefinitionKey: 'def1', updatedAt: '2025-01-01T00:00:00.000Z' },
-    { assignmentId: 'a2', assignmentDefinitionKey: 'def2', updatedAt: '2025-02-01T00:00:00.000Z' },
-  ],
-  active: true,
-} as unknown as ClassFull;
-
-/**
- * Build a `HeatmapsPageData` fixture for a single discriminated state.
- *
- * @param {Partial<HeatmapsPageData>} [overrides] - Field overrides for the state under test.
- * @returns {HeatmapsPageData} A complete, type-correct page-data fixture.
- */
-function makePageData(overrides: Partial<HeatmapsPageData> = {}): HeatmapsPageData {
-  const base: HeatmapsPageData = {
-    selection: { classId: null, topicKeys: [], assignmentIds: [] } as SelectionState,
-    classPartials: null,
-    assignmentDefinitionPartials: null,
-    classFull: null,
-    classFullQuery: MOCK_CLASS_QUERY,
-    analyserResult: null,
-    mergedResult: null,
-    mergedPreview: null,
-    error: null,
-    surfaceState: { status: 'ready' } as HeatmapsSurfaceState,
-    selectClass: vi.fn(),
-    changeTopics: vi.fn(),
-    changeAssignments: vi.fn(),
-    isRefreshing: false,
-    refetch: vi.fn(),
-  };
-  return { ...base, ...overrides };
-}
-
-// Typed handle to the mocked hook.
-const mockUseHeatmapsPageData = useHeatmapsPageData as unknown as ReturnType<typeof vi.fn>;
-
-/**
- * Render the surface with a controlled hook state.
- *
- * @param {Partial<HeatmapsPageData>} [overrides] - Hook return overrides for the state under test.
- */
-function renderSurface(overrides: Partial<HeatmapsPageData> = {}): void {
-  mockUseHeatmapsPageData.mockReturnValue(makePageData(overrides));
-  renderWithFrontendProviders(createElement(HeatmapBuilderSurface));
-}
 
 // ===========================================================================
 // Tests
@@ -331,9 +126,13 @@ describe('HeatmapBuilderSurface — selection bar', () => {
     expect(assignments).toBeDisabled();
 
     // The reason must be discoverable by assistive tech (Tooltip content rendered in DOM).
-    expect(screen.getByText(new RegExp(DISABLED_REASON, 'i'))).toBeInTheDocument();
-    // The reason is wired to the disabled control, not colour alone.
-    expect(topics).toHaveAccessibleDescription(new RegExp(DISABLED_REASON, 'i'));
+    const reason = screen.getByText(DISABLED_REASON);
+    expect(reason).toHaveAttribute('id', 'heatmap-selection-disabled-reason');
+    // Both dependent controls use the same DOM-present reason, not colour alone.
+    expect(topics).toHaveAttribute('aria-describedby', 'heatmap-selection-disabled-reason');
+    expect(assignments).toHaveAttribute('aria-describedby', 'heatmap-selection-disabled-reason');
+    expect(topics).toHaveAccessibleDescription(DISABLED_REASON);
+    expect(assignments).toHaveAccessibleDescription(DISABLED_REASON);
   });
 
   it('shows action-describing placeholders for all three selectors', () => {

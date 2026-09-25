@@ -37,6 +37,37 @@ Each **assignment** has an assignment weighting (default: 1). Each **task within
 
 So a major assignment with weighting 2 counts twice as much as a routine assignment with weighting 1. Similarly, a long task within an assignment might have weighting 3, making it three times more influential than a short task with weighting 1.
 
+### Work with zero weighting
+
+You can give a task or assignment a weighting of zero. This keeps its assessed
+scores visible without letting them influence an average. When you use zero
+weighting:
+
+- a numeric score of 0–5 is still shown exactly as assessed;
+- a genuine **N** still means the work was not attempted or was not applicable;
+  it is never created merely because a weighting is zero;
+- zero-weight work adds nothing to an average, so it does not change the result;
+  and
+- when every piece of work behind an average has zero weighting, the result
+  shows **Excluded** instead of a number, **N**, or **E**.
+
+**N**, **E**, and **Excluded** are three different things:
+
+- **N** means the student did not attempt the work, or it was not applicable.
+- **E** means the analyser could not produce a usable score (for example,
+  submissions exist but no assessments were performed).
+- **Excluded** means work was assessed, but none of it contributed to the
+  average because its weighting was zero. It only appears when at least one
+  observation was recorded, so a genuine data gap is never labelled this way.
+
+In the task heatmap, a zero-weight task heading is marked down its left and
+right edges and explains on hover or keyboard focus that “Zero weighting —
+scores are shown but do not contribute to averages.” The scores themselves keep
+their usual colours. **Excluded** appears wherever an average is shown — on the
+Class page's Recent Assignment cards and Student Averages table — not in the
+task-level heatmap cells. This helps distinguish intentional practice,
+diagnostic, or display-only work from missing assessment data.
+
 ## How the Overall score is calculated
 
 For each student response, Assessment Bot first checks which criteria are available:
@@ -80,14 +111,14 @@ Some tasks — particularly spreadsheet or formula-based tasks — do not involv
 
 When you view analysis results, each metric shows four rows of summary data:
 
-| Field                      | What it means                                                                                                                                                                                                                                                 |
-| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Value**                  | The weighted average score (0–5) with the band colour (red, amber, or green); or **N** (grey) when the student did not attempt the work; or **E** (dark red) when the analyser could not compute a usable value. The colour is the visual signal of the band. |
-| **Total weight**           | The sum of the influences (assignment weighting × task weighting) for all applicable submissions. This gives you a sense of how much evidence the average is based on.                                                                                        |
-| **Applicable data points** | How many submissions actually contributed to this metric. For example, if SPaG shows 8 out of 10, it means 2 submissions were formula tasks where SPaG did not apply.                                                                                         |
-| **Total data points**      | The total number of submissions in this group, including those where the metric was not applicable.                                                                                                                                                           |
+| Field                      | What it means                                                                                                                                                                                                                                                                                                                                              |
+| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Value**                  | The weighted average score (0–5) with the band colour (red, amber, or green); or **N** (grey) when the student did not attempt the work; or **E** (dark red) when the analyser could not compute a usable value; or **Excluded** (neutral) when work was assessed but none of it counted towards the average. The colour is the visual signal of the band. |
+| **Total weight**           | The sum of the influences (assignment weighting × task weighting) for all applicable submissions. This gives you a sense of how much evidence the average is based on.                                                                                                                                                                                     |
+| **Applicable data points** | How many submissions actually contributed to this metric. For example, if SPaG shows 8 out of 10, it means 2 submissions were formula tasks where SPaG did not apply.                                                                                                                                                                                      |
+| **Total data points**      | The total number of submissions in this group, including those where the metric was not applicable.                                                                                                                                                                                                                                                        |
 
-The **Value** row can now show three kinds of result: a number for computed scores, **N** for work the student did not attempt, or **E** for cases where the analyser could not produce a usable score (for example, submissions exist but no assessments were performed). The band colour (red, amber, green, grey, or dark red) is the visual signal that tells you at a glance which state applies. **N** is always a deliberate signal that the student did not attempt the work — it is not the same as a data problem. **E** means submissions exist but the analyser could not compute a usable value for that metric.
+The **Value** row can now show four kinds of result: a number for computed scores, **N** for work the student did not attempt, **E** for cases where the analyser could not produce a usable score (for example, submissions exist but no assessments were performed), or **Excluded** when work was assessed but none of it contributed to the average because its weighting was zero. The band colour (red, amber, green, grey, neutral, or dark red) is the visual signal that tells you at a glance which state applies. **N** is always a deliberate signal that the student did not attempt the work — it is not the same as a data problem. **E** means submissions exist but the analyser could not compute a usable value for that metric. **Excluded** is distinct from both: the work exists and may have a score, but the average had nothing to count.
 
 Note: when the analyser encounters the **E** state, `totalDataPoints` may exceed `applicableDataPoints` even when no **N** is recorded. This simply means submissions exist but none of them had usable assessment data for that metric — it is not a sign of missing data.
 
@@ -105,4 +136,4 @@ The current analysis shows averages per student, per task, and per class. Future
 
 These will be added as separate analysis options and will not change the existing averages.
 
-The Class page (the per-class overview surface) is the first place the three states (computed score, **N** for not attempted, **E** for error) appear. Cohort, trend, and distribution analyses will reuse the same vocabulary when they are built.
+The Class page (the per-class overview surface) is the first place the four states (computed score, **N** for not attempted, **E** for error, and **Excluded** for zero-weight aggregates) appear. Cohort, trend, and distribution analyses will reuse the same vocabulary when they are built.

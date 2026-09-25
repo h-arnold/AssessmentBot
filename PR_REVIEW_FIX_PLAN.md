@@ -1,0 +1,23 @@
+# Issue #307 pre-PR review fix batches
+
+Source of truth: [`PR_REVIEW.md`](PR_REVIEW.md), especially the decisions at lines 223–320. Only decisions marked **Fix now** are in scope. The deferred items are already tracked in issue #313; explicit wontfix items remain unchanged.
+
+## Baseline and safeguards
+
+- Regression session: `issue-307-pr-review-fixes`. Initial run: 7/8 checks pass; only ten pre-existing backend `max-lines` warnings fail lint. Frontend lint, unit tests, browser tests, builder checks and backend tests pass; zero baseline regressions.
+- The pre-existing working-tree changes to `.opencode/agents/code-reviewer.md`, `.opencode/agents/implementation.md`, `.opencode/agents/testing-specialist.md` and `opencode.jsonc` are not ours. Preserve their working-tree contents. To remove the unrelated tracked model changes from the PR without overwriting those edits, restore only the Git index versions of the three review-named files from `origin/main`; leave `code-reviewer.md` untouched.
+- Each batch: delegated execution by the relevant specialist, clean Code Reviewer pass, documentation/data-shape pass where applicable, and regression comparison before moving to the next batch. Preserve the current baseline; never accept new failures. Do not commit or push unless explicitly requested.
+
+## Dependency-ordered batches
+
+1. **Analysis contracts and weighting integrity (blocking correctness).** Export and propagate the narrow task-display union; make preview state/score pairing valid by construction; drop unknown submission task IDs with a warn; centralise effective weighting and task keys; reject conflicting contribution weights; explicitly reject null student names; document nullable assignment-weight defaults. Cover with focused tests and update the canonical shape contract. Resolves critical findings on wrong averages and task-level `excluded`, plus their overlapping decisions.
+2. **Analyser simplification and direct boundary tests.** Delete impossible composite/rollup branches and dead guards; collapse the accumulation facade and redundant contribution lookup; eliminate dead class accumulation; adjust composite criterion lookup and score warnings; cover metric resolution, accumulator registry, missing partial/contribution and invariants. Preserve behaviour and check equivalence against baseline.
+3. **Adapter integrity, merge parity and fixtures.** Restore three collapsed/merged parity tests; warn for missing heatmap metrics, missing `perStudentTaskMetrics`, and missing Class-page per-task rows; use a per-student metric map; share test fixtures and criterion-weight constants; improve Zod diagnostics and schema precision. Preserve intentional distinct no-data placeholders.
+4. **Shared display and filters.** Unify the three display-text formatters; make excluded styling theme-aware; restrict the excluded checkbox to aggregate surfaces; replace positional filter flags and duplicate checkbox state; remove dead helper/default/fallback code; test five-part hydration and formatting.
+5. **Heatmap and Class-page UI/a11y/performance.** Fix zero-weight header semantics and single-column edge; contextual cell/header labels and focus styles; excluded column width; preview/no-submission status; shared student-name columns; lazy popover content and remaining agreed aria/tooltip/UI nits. Add focused component tests and CSS visual assertions; check actual layout in a browser.
+6. **Remaining agreed code clean-up.** Complete the checkbox-state refactor; move excluded-cell styles to the agreed stylesheet boundary without changing theme behaviour; centralise disabled-reason copy; drop unused E2E barrel exports; settle the single-caller range guard. Test, obtain a clean review and regression comparison, then commit.
+7. **Playwright journey and final documentation reconciliation.** Add a browser test for aggregate Include Excluded filtering, with the Playwright specialist. Reconcile `SPEC.md`, the canonical contract, architecture/scoring/shared-helper docs, JSDoc and plan statuses with the implemented behaviour. Run the full regression comparison, seek a final clean review and commit.
+
+## Completion gates
+
+For each batch record changed files, `Files read` evidence, test/lint/type-check results, clean review outcome and regression delta. No subsequent batch begins until its predecessor is clean. Batches 1–4 were committed together retrospectively as `066a997` because they shared files before the request to commit after each batch; batch 5 is `d56d212`, batch 6 is `8145316`, and batch 7 is `378dbd1`. The three unrelated model changes were restored to `origin/main` in the Git index only, preserving all newer uncommitted working-tree settings; this staged restoration passed a clean review.

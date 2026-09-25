@@ -16,7 +16,8 @@ export type RollupMetric = 'completeness' | 'accuracy' | 'spag';
 interface AccumulatedState {
   hasError: boolean;
   hasComputed: boolean;
-  hasNotAttempted: boolean;
+  hasPositiveNotAttempted: boolean;
+  hasObservedNonError: boolean;
   totalWeightedSum: number;
   computedTotalWeight: number;
   computedAp: number;
@@ -25,6 +26,7 @@ interface AccumulatedState {
   naTotalDataPoints: number;
   allTotalWeight: number;
   allTotalDataPoints: number;
+  observedDataPoints: number;
 }
 
 /**
@@ -36,7 +38,8 @@ function createAccumulatedState(): AccumulatedState {
   return {
     hasError: false,
     hasComputed: false,
-    hasNotAttempted: false,
+    hasPositiveNotAttempted: false,
+    hasObservedNonError: false,
     totalWeightedSum: 0,
     computedTotalWeight: 0,
     computedAp: 0,
@@ -45,6 +48,7 @@ function createAccumulatedState(): AccumulatedState {
     naTotalDataPoints: 0,
     allTotalWeight: 0,
     allTotalDataPoints: 0,
+    observedDataPoints: 0,
   };
 }
 
@@ -69,45 +73,81 @@ function accumulateOne(
       break;
     }
     case 'computed': {
-      accumulator.hasComputed = true;
-      const cs = st as Extract<MetricResult, { state: 'computed' }>;
-      accumulator.totalWeightedSum += cs.value * cs.totalWeight;
-      accumulator.computedTotalWeight += cs.totalWeight;
-      accumulator.computedAp += cs.applicableDataPoints;
-      accumulator.computedTd += cs.totalDataPoints;
+      accumulateComputed(accumulator, st);
       break;
     }
     case 'notAttempted': {
-      accumulator.hasNotAttempted = true;
-      if (metric !== 'spag') {
-        accumulator.naTotalWeight += st.totalWeight;
-        accumulator.naTotalDataPoints += st.totalDataPoints;
-      }
+      accumulateNotAttempted(accumulator, st, metric);
+      break;
+    }
+    case 'excluded': {
+      accumulator.hasObservedNonError = true;
+      accumulator.observedDataPoints += st.totalDataPoints;
       break;
     }
   }
 }
 
 /**
- * Determine whether a rollup should be `error`, `notAttempted`, or should fall
- * through to the `computed` path.
- *
- * @param {AccumulatedState} accumulator - The accumulated state after one pass.
- * @returns {'error' | 'notAttempted' | 'computed'} The terminal state, or
- *   `'computed'` to signal the caller to run the weighted average.
+ * Accumulate a computed input.
+ * @param {AccumulatedState} accumulator - Running state.
+ * @param {Extract<MetricResult, { state: 'computed' }>} metric - Input metric.
  */
-function determineRollupState(
-  accumulator: AccumulatedState
-): 'error' | 'notAttempted' | 'computed' {
-  if (accumulator.hasError && !accumulator.hasComputed && !accumulator.hasNotAttempted)
-    return 'error';
-  if (!accumulator.hasComputed) return 'notAttempted';
-  return 'computed';
+function accumulateComputed(
+  accumulator: AccumulatedState,
+  metric: Extract<MetricResult, { state: 'computed' }>
+): void {
+  accumulator.hasObservedNonError = true;
+  accumulator.observedDataPoints += metric.totalDataPoints;
+  if (metric.totalWeight <= 0) {
+    return;
+  }
+  accumulator.hasComputed = true;
+  accumulator.totalWeightedSum += metric.value * metric.totalWeight;
+  accumulator.computedTotalWeight += metric.totalWeight;
+  accumulator.computedAp += metric.applicableDataPoints;
+  accumulator.computedTd += metric.totalDataPoints;
 }
 
 /**
- * Build a terminal (non-computed) MetricResult for either the `error` or
- * `notAttempted` state based on the `hasError` flag.
+ * Accumulate a raw not-attempted input.
+ * @param {AccumulatedState} accumulator - Running state.
+ * @param {Extract<MetricResult, { state: 'notAttempted' }>} metricResult - Input metric.
+ * @param {RollupMetric} metric - Criterion being rolled up.
+ */
+function accumulateNotAttempted(
+  accumulator: AccumulatedState,
+  metricResult: Extract<MetricResult, { state: 'notAttempted' }>,
+  metric: RollupMetric
+): void {
+  accumulator.hasObservedNonError = true;
+  accumulator.observedDataPoints += metricResult.totalDataPoints;
+  if (metricResult.totalWeight <= 0) return;
+  accumulator.hasPositiveNotAttempted = true;
+  if (metric !== 'spag') {
+    accumulator.naTotalWeight += metricResult.totalWeight;
+    accumulator.naTotalDataPoints += metricResult.totalDataPoints;
+  }
+}
+
+/**
+ * Resolve state in precedence order: all-error, positive-weight raw N without
+ * a numeric contribution, positive-weight numeric contribution, then excluded.
+ *
+ * @param {AccumulatedState} accumulator - The accumulated state after one pass.
+ * @returns {'error' | 'notAttempted' | 'computed' | 'excluded'} The rollup state.
+ */
+function determineRollupState(
+  accumulator: AccumulatedState
+): 'error' | 'notAttempted' | 'computed' | 'excluded' {
+  if (accumulator.hasError && !accumulator.hasObservedNonError) return 'error';
+  if (accumulator.hasComputed) return 'computed';
+  if (accumulator.hasPositiveNotAttempted) return 'notAttempted';
+  return accumulator.hasObservedNonError ? 'excluded' : 'error';
+}
+
+/**
+ * Build the terminal error or not-attempted MetricResult.
  *
  * @param {boolean} hasError - Whether the result should be in error state.
  * @param {number} totalWeight - Sum of totalWeight across all sub-tasks.
@@ -158,19 +198,18 @@ function terminalRollup(
  *   excludes them entirely).
  * - `hasError` — set to `true` if any sub-task is in error state.
  * - `hasComputed` — set to `true` if any sub-task is in computed state.
- * - `hasNotAttempted` — set to `true` if any sub-task is in notAttempted state.
+ * - `hasPositiveNotAttempted` — set only for positive-weight raw `notAttempted`
+ *   inputs.
  *
  * After the loop, the result state is determined by the following precedence:
  *
  * **Precedence:**
- * - `error` only when **every** input is `error` (no `computed`, no
- *   `notAttempted`). Error entries at aggregation levels above the per-cell
- *   level are **excluded** from the weighted average, preventing a single
- *   erroneous cell from collapsing the entire rollup.
- * - `notAttempted` when no `computed` entries remain (error entries are
- *   excluded); this includes the mixed `error` + `notAttempted` case.
- * - `computed` when at least one `computed` entry exists; `error` entries are
- *   excluded (they contribute nothing to numerator or denominator).
+ * - `error` when every input is `error`.
+ * - `computed` when a computed input has positive `totalWeight`.
+ * - `notAttempted` when a raw `notAttempted` input has positive `totalWeight`
+ *   and no numeric contribution exists.
+ * - `excluded` when observations exist but none contributes. Zero-weight
+ *   computed and raw `notAttempted` inputs remain observed evidence only.
  *
  * **Per-metric `notAttempted` handling** (spec decision 5):
  * - `completeness` / `accuracy`: a `notAttempted` sub-task contributes a score
@@ -187,8 +226,9 @@ function terminalRollup(
  * **Contract:**
  * - Pure function. No side effects, no React / antd / I/O / state.
  * - Throws on empty `subTasks` array.
- * - Throws if `finalTotalWeight` is zero in the computed path (all weights are
- *   zero).
+ * - Zero-weight observations do not contribute to the computed path.
+ * - Computed results report the maximum of contributing and all observed
+ *   non-error data-point counts, so excluded display evidence remains counted.
  * - Input structural validation is assumed to have been performed by Zod at the
  *   analyser boundary; no runtime field validation is performed.
  *
@@ -211,8 +251,16 @@ export function rollupMetric(
     accumulateOne(accumulator, st, metric);
   }
 
-  // Precedence: error only when ALL inputs are error; notAttempted when no
-  // computed entries remain (errors are excluded); otherwise computed.
+  return resolveRollupResult(accumulator, metric);
+}
+
+/**
+ * Resolve the accumulated rollup state and value.
+ * @param {AccumulatedState} accumulator - Running state.
+ * @param {RollupMetric} metric - Criterion being rolled up.
+ * @returns {MetricResult} The resolved metric.
+ */
+function resolveRollupResult(accumulator: AccumulatedState, metric: RollupMetric): MetricResult {
   const rollupState = determineRollupState(accumulator);
   if (rollupState === 'error') {
     return terminalRollup(true, accumulator.allTotalWeight, accumulator.allTotalDataPoints);
@@ -220,7 +268,15 @@ export function rollupMetric(
   if (rollupState === 'notAttempted') {
     return terminalRollup(false, accumulator.allTotalWeight, accumulator.allTotalDataPoints);
   }
-
+  if (rollupState === 'excluded') {
+    return {
+      state: 'excluded',
+      value: null,
+      totalWeight: 0,
+      applicableDataPoints: 0,
+      totalDataPoints: accumulator.allTotalDataPoints,
+    };
+  }
   // Computed path: determine whether to include notAttempted weight
   let finalTotalWeight: number;
   let finalTotalDataPoints: number;
@@ -233,15 +289,11 @@ export function rollupMetric(
     finalTotalDataPoints = accumulator.computedTd + accumulator.naTotalDataPoints;
   }
 
-  if (finalTotalWeight === 0) {
-    throw new Error('rollupMetric: all sub-task weights are zero');
-  }
-
   return {
     state: 'computed',
     value: accumulator.totalWeightedSum / finalTotalWeight,
     totalWeight: finalTotalWeight,
     applicableDataPoints: Math.min(accumulator.computedAp, finalTotalDataPoints),
-    totalDataPoints: finalTotalDataPoints,
+    totalDataPoints: Math.max(finalTotalDataPoints, accumulator.observedDataPoints),
   };
 }

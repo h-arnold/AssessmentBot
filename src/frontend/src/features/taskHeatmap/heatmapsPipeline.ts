@@ -2,16 +2,18 @@
  * Analyser + merged-adapter pipeline for the standalone Heatmaps hook.
  *
  * @remarks
- * Pure, deterministic helpers that run the synchronous averaging analysis over
+ * Synchronous analyser/adapter helpers that run the averaging analysis over
  * input-shaped assignments and the merged-adapter projection. Extracted from
  * `useHeatmapsPageData.ts` to keep that module under the 500-LOC module-size gate, and to
  * isolate the analyser/adapter orchestration (per
  * `src/frontend/AGENTS.md` §3.3).
  *
  * The full input-shaping and memoisation rationale lives in `useHeatmapsPageData.ts`'s
- * module JSDoc; this helper owns only the pure analyser/adapter orchestration.
+ * module JSDoc; this helper owns the synchronous orchestration, structured
+ * pipeline diagnostics, and repeat-run log deduplication.
  */
 
+import { z } from 'zod';
 import { DataAnalysisService } from '../../services/dataAnalysis/dataAnalysisService';
 import {
   adaptMetricsToMergedHeatmap,
@@ -73,8 +75,10 @@ const _loggedPipelineErrorKeys = new Set<string>();
  *
  * Identical errors raised on subsequent memo recomputations are suppressed to honour the
  * agreed L-4 review decision (no-double-logging of identical diagnostics), while the
- * underlying sink (`logFrontendError`) still emits every distinct diagnostic. The returned
- * error tuple is unaffected, so callers keep their behaviour regardless of dedupe.
+ * underlying sink (`logFrontendError`) still emits every distinct diagnostic. The metadata
+ * is part of the dedupe key, so structured `zodIssues` remain both visible in the surviving
+ * entry and part of the repeat-run identity. The returned error tuple is unaffected, so
+ * callers keep their behaviour regardless of dedupe.
  *
  * @param {string} context Log context for the emitting step.
  * @param {unknown} error The error to normalise and log.
@@ -142,7 +146,13 @@ function runAnalyserStep(
     }
     return [response[0] ?? null, null];
   } catch (error_: unknown) {
-    logPipelineError('heatmapsPipeline.runAnalyserStep', error_, { classId });
+    // This pipeline boundary owns analyser diagnostics. The service rethrows
+    // validation failures without logging, so the dedupe covers every emission.
+    logPipelineError(
+      'heatmapsPipeline.runAnalyserStep',
+      error_,
+      error_ instanceof z.ZodError ? { classId, zodIssues: error_.issues } : { classId }
+    );
     return [null, toError(error_)];
   }
 }

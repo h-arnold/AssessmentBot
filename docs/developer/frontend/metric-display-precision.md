@@ -13,48 +13,37 @@ These two tiers keep the heatmap matrix compact (no unnecessary `.00` noise) whi
 
 ## Source Constants
 
-| Constant                     | Value | File                                                                           | Role                                                                                                                                     |
-| ---------------------------- | ----- | ------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| `INDIVIDUAL_SCORE_PRECISION` | `0`   | `src/frontend/src/features/taskHeatmap/TaskHeatmapTable.tsx` (line 62)         | Controls precision for individual student task scores in both the visible `MetricPill` and the `aria-label` produced by `renderScore()`. |
-| `DEFAULT_PRECISION`          | `2`   | `src/frontend/src/services/dataAnalysis/metricDisplay/MetricPill.tsx` (line 8) | Default precision for all `MetricPill` instances. Used by average-display components.                                                    |
+| Constant                     | Value | File                                                                            | Role                                                                                                                                                                  |
+| ---------------------------- | ----- | ------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `INDIVIDUAL_SCORE_PRECISION` | `0`   | `src/frontend/src/features/taskHeatmap/taskHeatmapTableColumns.tsx` (line 107)  | Controls precision for individual student task scores in both the visible heatmap score text and the cell `aria-label`, both formatted via `formatMetricDisplayText`. |
+| `DEFAULT_PRECISION`          | `2`   | `src/frontend/src/services/dataAnalysis/metricDisplay/MetricPill.tsx` (line 12) | Default precision for all `MetricPill` instances. Used by average-display components.                                                                                 |
 
 ## How It Works
 
 - `MetricPill` accepts an optional `precision` prop (default: `DEFAULT_PRECISION = 2`).
-- The **heatmap** (`TaskHeatmapTable.tsx`) overrides this to `0` for individual student scores:
+- The **heatmap** does not render `MetricPill`; `taskHeatmapTableColumns.tsx` formats its visible score text and `aria-label` at `INDIVIDUAL_SCORE_PRECISION = 0`.
+- The **task-preview card** header (`TaskPreviewCard`) renders a single individual task score with the compact pill at `precision={0}`:
   ```tsx
-  <MetricPill metric={m} compact precision={INDIVIDUAL_SCORE_PRECISION} />
+  <MetricPill metric={metricResult} precision={0} compact />
   ```
-- **Average displays** (`RecentAssignmentCard`, `StudentAveragesTableColumn`) omit the `precision` prop and rely on the default 2 dp:
+- **Average displays** (`RecentAssignmentCard`) omit the `precision` prop and rely on the default 2 dp:
   ```tsx
-  <MetricPill metric={getStudentMetric(card.metrics, key)} emphasised={emphasised} />
+  <MetricPill metric={getStudentMetric(card.metrics, key)} />
   ```
 
-The `precision` prop is ignored for `notAttempted` and `error` states (the literals `'N'` and `'E'` are rendered as-is).
+The `precision` prop is ignored for `notAttempted`, `excluded`, and `error` states (the literals `'N'` and `'E'`, and the visible label **Excluded**, are rendered as-is).
 
 ## Adding a New Metric Display
 
 When creating a new component that renders a `MetricResult`, follow the precision tier:
 
-1. **Individual task score display** — pass `precision={0}` to `MetricPill`.
-2. **Aggregate / average display** — omit the `precision` prop (defaults to `2`).
+1. **Individual task score display** — format at `0` dp (`formatMetricDisplayText(..., 0)`, or `precision={0}` on `MetricPill`).
+2. **Aggregate / average display** — format at `2` dp (`formatMetricDisplayText(..., 2)`, or omit the `precision` prop on `MetricPill` to use the default).
 
 If the data source provides sub-integer individual scores in future, this convention should be revisited.
 
 ## Keeping `aria-label` in Sync
 
-The heatmap builds its own `aria-label` via `renderScore()` in `TaskHeatmapTable.tsx` (line 111–119), which uses the same `INDIVIDUAL_SCORE_PRECISION` constant:
+The heatmap builds each metric cell's `aria-label` from the same formatted score as its visible text. `taskHeatmapTableColumns.tsx` computes `const score = formatMetricDisplayText(m, INDIVIDUAL_SCORE_PRECISION)` and passes it to `buildMetricCellAccessibleLabel(...)` for both the `onCell` `aria-label` and the Popover trigger's `aria-label`.
 
-```typescript
-function renderScore(metric: MetricResult): string {
-  if (metric.state === 'computed') {
-    return metric.value.toFixed(INDIVIDUAL_SCORE_PRECISION);
-  }
-  if (metric.state === 'notAttempted') {
-    return 'N';
-  }
-  return 'E';
-}
-```
-
-The `aria-label` precision must match the visible `MetricPill` precision. If the visible precision changes, update `renderScore()` and `INDIVIDUAL_SCORE_PRECISION` together.
+The `aria-label` precision must match the visible score precision. If the visible precision changes, update the `formatMetricDisplayText` call sites and `INDIVIDUAL_SCORE_PRECISION` together.

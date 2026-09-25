@@ -11,6 +11,7 @@ import {
   createComputedMetricResult,
   createNotAttemptedMetricResult,
   createErrorMetricResult,
+  createExcludedMetricResult,
 } from '../../../test/dataAnalysis/fixtures';
 import { MetricPill } from './MetricPill';
 import { resolveMetricTone } from './metricTone';
@@ -26,6 +27,12 @@ const COMPACT_TAG_FONT_SIZE_PX = 12;
 
 /** Font size (px) for an emphasised Tag. */
 const EMPHASISED_TAG_FONT_SIZE_PX = 17.5;
+
+/** Computed value used by the state-to-text consistency table. */
+const STATE_TEXT_COMPUTED_VALUE = 3.14;
+
+/** Expected computed text at the default precision. */
+const STATE_TEXT_COMPUTED_OUTPUT = '3.14';
 
 describe('MetricPill', () => {
   // -------------------------------------------------------------------------
@@ -82,6 +89,39 @@ describe('MetricPill', () => {
     const tag = container.querySelector('.ant-tag');
     expect(tag).not.toBeNull();
     expect(tag!.className).toContain('ant-tag-volcano');
+  });
+
+  it('renders excluded with its exact visible and accessible meaning, without a score', () => {
+    const metric = createExcludedMetricResult();
+    const { container } = render(<MetricPill metric={metric} precision={4} />);
+
+    const pill = screen.getByRole('img', {
+      name: 'Excluded from average: displayed work had zero weighting.',
+    });
+    expect(pill).toHaveTextContent(/^Excluded$/);
+    expect(pill).not.toHaveStyle({ opacity: '0.55' });
+    expect(container.textContent).not.toContain('null');
+    expect(container.textContent).not.toContain('0.0000');
+  });
+
+  it.each([
+    {
+      state: 'computed' as const,
+      metric: createComputedMetricResult({ value: STATE_TEXT_COMPUTED_VALUE }),
+      expectedText: STATE_TEXT_COMPUTED_OUTPUT,
+    },
+    { state: 'notAttempted' as const, metric: createNotAttemptedMetricResult(), expectedText: 'N' },
+    { state: 'error' as const, metric: createErrorMetricResult(), expectedText: 'E' },
+    { state: 'excluded' as const, metric: createExcludedMetricResult(), expectedText: 'Excluded' },
+  ])('formats the $state state as its shared display text', ({ metric, expectedText }) => {
+    render(<MetricPill metric={metric} />);
+
+    expect(screen.getByText(expectedText)).toBeInTheDocument();
+  });
+
+  it('preserves numeric formatting for computed metrics', () => {
+    render(<MetricPill metric={createComputedMetricResult({ value: 2.5 })} precision={1} />);
+    expect(screen.getByText('2.5')).toBeInTheDocument();
   });
 
   // -------------------------------------------------------------------------
