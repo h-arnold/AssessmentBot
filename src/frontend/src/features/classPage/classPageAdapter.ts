@@ -25,6 +25,8 @@ import type { ClassFull } from '../../services/googleClassrooms/classDetail/clas
 import type { AssignmentDefinitionPartialsResponse } from '../../services/assignmentDefinition/assignmentDefinitionPartials.zod';
 import type {
   ClassPageAdapterResult,
+  ClassPageDisplayMetric,
+  ClassPageNoDataMetric,
   RecentAssignmentCardModel,
   StudentAverageRowModel,
 } from './classPageAdapter.zod';
@@ -97,7 +99,8 @@ function findFirstDuplicate<T>(
  * Build the adapter-local `notAttempted` placeholder used for empty Class-page
  * rows and recent assignments.
  *
- * @returns {MetricResult} A `notAttempted` value with zero weights and zero data points.
+ * @returns {ClassPageNoDataMetric} A `notAttempted` value with zero weights and
+ *   zero data points.
  *
  * @remarks
  * This `totalDataPoints: 0` shape is intentionally distinct from the task
@@ -106,7 +109,7 @@ function findFirstDuplicate<T>(
  * analyser and task-display schemas require raw `N` results to have at least
  * one observed data point.
  */
-function noDataMetric(): MetricResult {
+function noDataMetric(): ClassPageNoDataMetric {
   return {
     state: 'notAttempted',
     value: 'N',
@@ -135,16 +138,22 @@ function noDataMetric(): MetricResult {
  * three per-criterion values using the shared 40/40/20 default weighting with
  * SPaG renormalisation.
  *
+ * @remarks
+ * The composite can carry the zero-data shape: when all three criteria are the
+ * zero-data not-attempted value, the shared helper takes its
+ * `totalDataPoints === 0` terminal branch. The return type is therefore the
+ * Class-page display union, not the shared `MetricResult` union.
+ *
  * @param {MetricResult} completeness - The rolled-up completeness metric.
  * @param {MetricResult} accuracy - The rolled-up accuracy metric.
  * @param {MetricResult} spag - The rolled-up SPaG metric.
- * @returns {MetricResult} The per-assignment average MetricResult.
+ * @returns {ClassPageDisplayMetric} The per-assignment average MetricResult.
  */
 function computeAverageMetric(
   completeness: MetricResult,
   accuracy: MetricResult,
   spag: MetricResult
-): MetricResult {
+): ClassPageDisplayMetric {
   return computeOverallComposite(completeness, accuracy, spag, DEFAULT_CRITERION_WEIGHTINGS);
 }
 
@@ -170,9 +179,9 @@ function buildRecentAssignment(
 ): RecentAssignmentCardModel {
   const rows = matchingPerTask ?? [];
   // Roll up per-task metrics into per-assignment values
-  let rolledUpCompleteness: MetricResult;
-  let rolledUpAccuracy: MetricResult;
-  let rolledUpSpag: MetricResult;
+  let rolledUpCompleteness: ClassPageDisplayMetric;
+  let rolledUpAccuracy: ClassPageDisplayMetric;
+  let rolledUpSpag: ClassPageDisplayMetric;
 
   if (rows.length === 0) {
     // No per-task data — synthesise all-notAttempted

@@ -848,7 +848,7 @@ These entries record the feature-local helpers for the Class page. Per `frontend
 - Decision: `keep local`
 - Owning module/path: `src/frontend/src/features/classPage/classPageAdapter.zod.ts`
 - Status: `Implemented`
-- Implementation notes: Defines `RecentAssignmentCardModelSchema`, `StudentAverageRowModelSchema`, and `ClassPageAdapterResultSchema`. Added for issue #307: `ClassPageNoDataMetricSchema` and the adapter-local `ClassPageDisplayMetricSchema` union (shared four-state `MetricResultSchema` plus the zero-data placeholder). All types derived via `z.infer`. Reuses `MetricResult` from `src/frontend/src/services/dataAnalysis/dataAnalysis.zod`. Co-located spec: `classPageAdapter.zod.spec.ts`.
+- Implementation notes: Defines `RecentAssignmentCardModelSchema`, `StudentAverageRowModelSchema`, and `ClassPageAdapterResultSchema`. Added for issue #307: `ClassPageNoDataMetricSchema` (and its derived `ClassPageNoDataMetric` type) and the adapter-local `ClassPageDisplayMetricSchema` union (shared four-state `MetricResultSchema` plus the zero-data placeholder). All types derived via `z.infer`. Reuses `MetricResult` from `src/frontend/src/services/dataAnalysis/dataAnalysis.zod`. Co-located spec: `classPageAdapter.zod.spec.ts`.
 
 3. Structural change: extraction of `averagingAnalyser.criterionAccumulation.ts`
 
@@ -873,7 +873,7 @@ These entries record the feature-local helpers for the Class page. Per `frontend
 
 #### 9.19.9 Shared `getStudentMetric` accessor extracted from duplicated switch statements
 
-13. Helper: `getStudentMetric(metrics, key): MetricResult` — shared metric accessor
+13. Helper: `getStudentMetric(metrics, key): ClassPageDisplayMetric` — shared metric accessor
 
 - Decision: `extract`
 - Owning module/path: `src/frontend/src/features/classPage/classPageAdapter.zod.ts`
@@ -883,7 +883,8 @@ These entries record the feature-local helpers for the Class page. Per `frontend
   - Uses a `switch` statement (not computed property access) to satisfy the `security/detect-object-injection` lint rule.
   - JSDoc explains the lint-rule motivation and the switch-statement pattern.
   - `@remarks` documents the switch-statement rationale.
-  - Exported function signature: `getStudentMetric(metrics: StudentAverageRowModel['metrics'], key: 'completeness' | 'accuracy' | 'spag' | 'average'): MetricResult`
+  - Exported function signature: `getStudentMetric(metrics: StudentAverageRowModel['metrics'], key: 'completeness' | 'accuracy' | 'spag' | 'average'): ClassPageDisplayMetric`
+  - Returns the adapter-local `ClassPageDisplayMetric` union, so the value can be the presentation-only zero-data `N` placeholder (`totalDataPoints: 0`), which is **not** a valid `MetricResult`. Do not retype a caller's value back to `MetricResult`; the canonical distinction is recorded in `docs/developer/data-shapes/frontend-data-analysis-response.md` §"ClassPageDisplayMetric (adapter-local exception)".
 
 #### 9.19.11 Heatmap student-name ordering (consumes `compareStudentNames`)
 

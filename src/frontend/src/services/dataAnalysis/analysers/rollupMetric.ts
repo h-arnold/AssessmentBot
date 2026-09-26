@@ -184,10 +184,9 @@ function terminalRollup(
  *
  * @remarks
  * **Single-pass algorithm:**
- * This function makes exactly **one** iteration over `subTasks` per call.
- * The prior implementation iterated 4–5 times (validation, error detection,
- * filtering, computation, reduce calls). All accumulators are updated in a
- * single `for...of` loop via {@link accumulateOne}:
+ * This function makes exactly **one** iteration over `subTasks` per call. All
+ * accumulators are updated in that single `for...of` loop via
+ * {@link accumulateOne}:
  *
  * - `allTotalWeight` / `allTotalDataPoints` — summed from every sub-task
  *   (used for terminal rollup metadata).
