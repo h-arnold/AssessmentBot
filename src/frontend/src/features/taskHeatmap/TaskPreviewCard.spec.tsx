@@ -6,10 +6,12 @@ import { describe, it, expect } from 'vitest';
 import { screen } from '@testing-library/react';
 import { renderWithFrontendProviders } from '../../test/renderWithFrontendProviders';
 import {
-  TaskPreviewCard,
-  type TaskPreviewData,
-  type TaskPreviewMetric,
-} from './TaskPreviewCard';
+  createComputedMetricResult,
+  createErrorMetricResult,
+} from '../../test/dataAnalysis/fixtures';
+import { NOT_ATTEMPTED_METRIC } from '../../services/dataAnalysis/heatmapAdapter';
+import type { TaskDisplayMetric } from '../../services/dataAnalysis/dataAnalysis.zod';
+import { TaskPreviewCard, type TaskPreviewData } from './TaskPreviewCard';
 
 // ---------------------------------------------------------------------------
 // Fixture constants
@@ -21,39 +23,50 @@ const TEXT_CONTENT = 'Hello world';
 const REASONING_TEXT =
   'The student demonstrates a solid understanding of the core concepts.';
 
-/** Valid task-display state and score pairs that must remain renderable. */
-const VALID_PREVIEW_METRIC_PAIRS = [
-  { metricState: 'computed', metricScore: 0 },
-  { metricState: 'notAttempted', metricScore: 'N' },
-  { metricState: 'error', metricScore: 'E' },
-] as const;
+/** Score carried by the default computed fixture. */
+const COMPUTED_SCORE = 5;
+/** Score carried by the accuracy zero-decimal fixture. */
+const ACCURACY_SCORE = 3;
+
+/** A schema-valid error task-display metric. */
+const ERROR_METRIC: TaskDisplayMetric = createErrorMetricResult();
+
+/**
+ * One schema-valid task-display metric per state that must remain renderable,
+ * with a human-readable label because Vitest formats the numeric computed value
+ * as a signed literal in interpolated test titles.
+ */
+const VALID_PREVIEW_METRICS: ReadonlyArray<{
+  readonly label: string;
+  readonly metric: TaskDisplayMetric;
+}> = [
+  { label: 'computed 0', metric: createComputedMetricResult({ value: 0 }) },
+  { label: 'notAttempted N', metric: NOT_ATTEMPTED_METRIC },
+  { label: 'error E', metric: ERROR_METRIC },
+];
 
 // ---------------------------------------------------------------------------
 // Helper factory for test data
 // ---------------------------------------------------------------------------
 
-type TaskPreviewDataOverrides =
-  | Partial<Omit<TaskPreviewData, keyof TaskPreviewMetric>>
-  | (Partial<Omit<TaskPreviewData, keyof TaskPreviewMetric>> & TaskPreviewMetric);
-
 /**
  * Build a `TaskPreviewData` fixture for tests with sensible defaults.
  *
- * Metric state and score may only be overridden together as one valid
- * discriminated pair; widening both fields independently would make invalid
- * pairings such as `computed` with `null` legal in this test helper.
+ * Overrides are a plain `Partial<TaskPreviewData>` because the metric is a
+ * single discriminated `TaskDisplayMetric`, in which each state carries its own
+ * real value shape, so state and value cannot be widened independently into
+ * incoherent combinations.
  *
- * @param {TaskPreviewDataOverrides} overrides - Fields to override on the default fixture.
+ * @param {Partial<TaskPreviewData>} [overrides] - Fields to override on the default fixture.
  * @returns {TaskPreviewData} A fully-formed preview data object for rendering.
  */
-function createPreviewData(overrides: TaskPreviewDataOverrides = {}): TaskPreviewData {
+function createPreviewData(overrides: Partial<TaskPreviewData> = {}): TaskPreviewData {
   const baseData = {
     taskId: 'test-task-1',
     artifactType: 'IMAGE',
     artifactContent: IMAGE_CONTENT,
     metricKey: 'completeness',
-    metricScore: 5,
-    metricState: 'computed',
+    metric: createComputedMetricResult({ value: COMPUTED_SCORE }),
     reasoning: REASONING_TEXT,
   } satisfies TaskPreviewData;
 
@@ -71,8 +84,7 @@ describe('TaskPreviewCard', () => {
       <TaskPreviewCard
         data={createPreviewData({
           metricKey: 'completeness',
-          metricScore: 5,
-          metricState: 'computed',
+          metric: createComputedMetricResult({ value: COMPUTED_SCORE }),
         })}
       />,
     );
@@ -80,7 +92,7 @@ describe('TaskPreviewCard', () => {
     // Metric label text with colon from Typography.Text
     expect(screen.getByText('Completeness:')).toBeInTheDocument();
     // MetricPill score value
-    expect(screen.getByText('5')).toBeInTheDocument();
+    expect(screen.getByText(String(COMPUTED_SCORE))).toBeInTheDocument();
     // MetricIconLabel must not be rendered (icon removed in favour of text-only header)
     expect(screen.queryByLabelText('Completeness')).not.toBeInTheDocument();
   });
@@ -90,8 +102,7 @@ describe('TaskPreviewCard', () => {
     renderWithFrontendProviders(
       <TaskPreviewCard
         data={createPreviewData({
-          metricState: 'notAttempted',
-          metricScore: 'N',
+          metric: NOT_ATTEMPTED_METRIC,
         })}
       />,
     );
@@ -104,8 +115,7 @@ describe('TaskPreviewCard', () => {
     renderWithFrontendProviders(
       <TaskPreviewCard
         data={createPreviewData({
-          metricState: 'error',
-          metricScore: 'E',
+          metric: ERROR_METRIC,
           reasoning: '',
         })}
       />,
@@ -114,16 +124,13 @@ describe('TaskPreviewCard', () => {
     expect(screen.getByText('E')).toBeInTheDocument();
   });
 
-  it.each(VALID_PREVIEW_METRIC_PAIRS)(
-    'renders the valid $metricState state and $metricScore score pair',
-    (metric) => {
-      const data = { ...createPreviewData(), ...metric } satisfies TaskPreviewData;
+  it.each(VALID_PREVIEW_METRICS)('renders a valid metric pair: $label', ({ metric }) => {
+    const data = { ...createPreviewData(), metric } satisfies TaskPreviewData;
 
-      renderWithFrontendProviders(<TaskPreviewCard data={data} />);
+    renderWithFrontendProviders(<TaskPreviewCard data={data} />);
 
-      expect(screen.getByText(String(metric.metricScore))).toBeInTheDocument();
-    }
-  );
+    expect(screen.getByText(String(metric.value))).toBeInTheDocument();
+  });
 
   // --- Reasoning: provided text ---
   it('renders reasoning section with the provided reasoning text', () => {
@@ -182,8 +189,7 @@ describe('TaskPreviewCard', () => {
   // --- Empty content: notAttempted ---
   it('renders "No submission available" when artifact content is empty (notAttempted)', () => {
     const data = createPreviewData({
-      metricState: 'notAttempted',
-      metricScore: 'N',
+      metric: NOT_ATTEMPTED_METRIC,
       artifactContent: '',
     });
     renderWithFrontendProviders(<TaskPreviewCard data={data} />);
@@ -194,8 +200,7 @@ describe('TaskPreviewCard', () => {
   // --- Empty content: error ---
   it('renders "Error loading response" when artifact content is empty (error)', () => {
     const data = createPreviewData({
-      metricState: 'error',
-      metricScore: 'E',
+      metric: ERROR_METRIC,
       artifactContent: '',
       reasoning: '',
     });
@@ -204,20 +209,30 @@ describe('TaskPreviewCard', () => {
     expect(screen.getByText('Error loading response')).toBeInTheDocument();
   });
 
+  // --- Empty content: computed ---
+  it('renders "No content available" when artifact content is empty (computed)', () => {
+    const data = createPreviewData({
+      metric: createComputedMetricResult({ value: COMPUTED_SCORE }),
+      artifactContent: '',
+    });
+    renderWithFrontendProviders(<TaskPreviewCard data={data} />);
+
+    expect(screen.getByText('No content available')).toBeInTheDocument();
+  });
+
   // --- Integer score precision ---
   it('renders the computed score as an integer (e.g. "5", not "5.00")', () => {
     renderWithFrontendProviders(
       <TaskPreviewCard
         data={createPreviewData({
           metricKey: 'accuracy',
-          metricScore: 3,
-          metricState: 'computed',
+          metric: createComputedMetricResult({ value: ACCURACY_SCORE }),
           reasoning: 'No decimal scores appear in this test.',
         })}
       />,
     );
 
-    const pillText = screen.getByText('3');
+    const pillText = screen.getByText(String(ACCURACY_SCORE));
     expect(pillText).toBeInTheDocument();
     // Ensure there is no decimal point (toFixed(0) should produce integer)
     expect(pillText.textContent).not.toContain('.');

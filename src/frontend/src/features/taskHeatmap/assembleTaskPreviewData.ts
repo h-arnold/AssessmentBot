@@ -1,32 +1,20 @@
 import type { CellPreviewData } from './buildCellPreviewLookup';
 import type { TaskDisplayMetric } from '../../services/dataAnalysis/dataAnalysis.zod';
+import { NOT_ATTEMPTED_METRIC } from '../../services/dataAnalysis/heatmapAdapter';
 import type { HeatmapMetricKey } from '../../services/dataAnalysis/metricDisplay/metricDisplayMeta';
-import type { TaskPreviewData, TaskPreviewMetric } from './TaskPreviewCard';
+import type { TaskPreviewData } from './TaskPreviewCard';
 import { spreadsheetToMarkdownTable } from './spreadsheetToMarkdownTable';
-
-/**
- * Map a task-display metric to the preview's flat discriminated state/score pair.
- *
- * @param {TaskDisplayMetric} metric - The schema-derived task-display metric.
- * @returns {TaskPreviewMetric} The state and its schema-correlated score.
- */
-function toTaskPreviewMetric(metric: TaskDisplayMetric): TaskPreviewMetric {
-  switch (metric.state) {
-    case 'computed': {
-      return { metricState: 'computed', metricScore: metric.value };
-    }
-    case 'notAttempted': {
-      return { metricState: 'notAttempted', metricScore: 'N' };
-    }
-    case 'error': {
-      return { metricState: 'error', metricScore: 'E' };
-    }
-  }
-}
 
 /**
  * Assembles a `TaskPreviewData` from a `CellPreviewData` (or `null`), the
  * analyser's `TaskDisplayMetric`, the metric key, and the task ID.
+ *
+ * @remarks
+ * The analyser's metric is carried onto `TaskPreviewData` unchanged. A `null`
+ * `cellData` is the one exception: no submission exists for the
+ * (student, task) pair, so the metric is overridden with the shared
+ * `NOT_ATTEMPTED_METRIC` placeholder even when the analyser reported
+ * `computed`.
  *
  * @param {CellPreviewData | null} cellData - The cell preview data from the
  *                   lookup, or `null` when no submission exists for the
@@ -50,8 +38,7 @@ export function assembleTaskPreviewData(
       artifactType: 'TEXT',
       artifactContent: '',
       metricKey,
-      metricScore: 'N' as const,
-      metricState: 'notAttempted' as const,
+      metric: NOT_ATTEMPTED_METRIC,
       reasoning: '',
     };
   }
@@ -65,7 +52,7 @@ export function assembleTaskPreviewData(
     artifactType,
     artifactContent,
     metricKey,
-    ...toTaskPreviewMetric(metricResult),
+    metric: metricResult,
     reasoning: cellData.reasoning[metricKey] ?? '',
   };
 }
