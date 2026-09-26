@@ -300,9 +300,13 @@ keep numeric zero-weight scores and genuine raw `N` values visible.
 
 The analyser's `resolveDisplayMetric` return type is the schema-derived
 `TaskDisplayMetric`, so task projection cannot emit `excluded`; the output
-schemas reject it at runtime as a second boundary. Task-preview state/score
-properties are also a discriminated pairing, so `computed` with `null` is not
-representable.
+schemas reject it at runtime as a second boundary. Task-preview data carries
+that same `TaskDisplayMetric` on its single discriminated `metric` field, so
+`computed` with `null` is not representable. The no-submission override is a
+separate mechanism: when `cellData` is `null`, `assembleTaskPreviewData`
+substitutes the frozen `NOT_ATTEMPTED_METRIC` even when the analyser reported
+`computed`, so a `computed` metric is never shown against a cell with no
+submission.
 
 ### `ClassPageDisplayMetric` (adapter-local exception)
 
@@ -337,15 +341,22 @@ it accepts `excluded` but rejects the no-data placeholder; only
 
 #### Heatmap missing-cell `N` placeholder (intentionally different)
 
-A second presentation-only `N` shape exists on the heatmap path. The frozen
-`NOT_ATTEMPTED_METRIC` fallback in `heatmapAdapter.ts`
-(`buildCellsForStudent`) uses `totalDataPoints: 1`. It is deliberately different
-from the Class-page zero-data placeholder:
+A second presentation-only `N` shape exists on the heatmap path. The frozen,
+exported `NOT_ATTEMPTED_METRIC` in `heatmapAdapter.ts` uses
+`totalDataPoints: 1`. It has two consumers and is deliberately different from
+the Class-page zero-data placeholder:
 
-- The heatmap fallback stands in for a missing `(studentId, taskKey)` metric on a
-  task column that is otherwise in scope, so it must satisfy the task-level
-  `notAttempted` invariant (`totalDataPoints >= 1`) and is reused directly as a
-  `TaskDisplayMetric` across all three criteria.
+- `buildCellsForStudent` uses it as the fallback for a missing
+  `(studentId, taskKey)` metric on a task column that is otherwise in scope, and
+  reuses it directly as a `TaskDisplayMetric` across all three criteria.
+- `assembleTaskPreviewData` uses it in the task-preview no-submission branch when
+  `cellData` is `null`, standing in for the absent `(student, task)` submission on
+  the `metric` field even when the analyser reported `computed`.
+- Both consumers stand in for an absent submission or metric at task display
+  scope, so the value must satisfy the task-level `notAttempted` invariant
+  (`totalDataPoints >= 1`); `totalDataPoints: 1` is the schema-valid choice. The
+  "intentionally different from the Class-page zero-data placeholder" reasoning
+  is unchanged by the task-preview consumer.
 - The Class-page placeholder represents a genuinely empty aggregate surface and
   uses `totalDataPoints: 0`, accepted only through
   `ClassPageDisplayMetricSchema`.
@@ -475,8 +486,9 @@ from the schemas alone):
 - A submission task ID absent from the live partial is warned and dropped; it
   never receives a default task weight or contributes to any accumulator.
 - `excluded` is valid for aggregate scopes only; task display shapes use the
-  exported narrow union, and task-preview state/score pairs are correlated by
-  their schema-derived discriminator.
+  exported narrow union, and task-preview data carries that union on its single
+  `metric` field except in the no-submission branch, which substitutes the frozen
+  `NOT_ATTEMPTED_METRIC`.
 - A zero-weight raw `N` remains `notAttempted`, not `excluded`, at task level.
 - A zero-weight numeric result remains numeric at task level, with
   `totalWeight: 0` and `includedInAverage: false`.

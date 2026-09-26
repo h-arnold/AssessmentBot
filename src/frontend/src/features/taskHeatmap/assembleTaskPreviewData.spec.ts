@@ -8,16 +8,25 @@ import { describe, it, expect } from 'vitest';
 import { assembleTaskPreviewData } from './assembleTaskPreviewData';
 import type { CellPreviewData } from './buildCellPreviewLookup';
 import { spreadsheetToMarkdownTable } from './spreadsheetToMarkdownTable';
+import { NOT_ATTEMPTED_METRIC } from '../../services/dataAnalysis/heatmapAdapter';
 import type { TaskDisplayMetric } from '../../services/dataAnalysis/dataAnalysis.zod';
+import {
+  createComputedMetricResult,
+  createErrorMetricResult,
+} from '../../test/dataAnalysis/fixtures';
 
 // ===========================================================================
 // Fixture constants
 // ===========================================================================
 
-/** Default total weight for a computed metric in test fixtures. */
-const DEFAULT_WEIGHT = 1;
-/** Minimum applicable data points for a computed metric. */
-const MIN_DATA_POINTS = 1;
+/** Observed data points carried by the shared not-attempted metric (schema minimum). */
+const NOT_ATTEMPTED_TOTAL_DATA_POINTS = 1;
+/** Effective weight for the pass-through fixture; deliberately not a fabricated zero. */
+const PASS_THROUGH_TOTAL_WEIGHT = 2.5;
+/** Applicable data points for the pass-through fixture. */
+const PASS_THROUGH_APPLICABLE_DATA_POINTS = 4;
+/** Total data points for the pass-through fixture. */
+const PASS_THROUGH_TOTAL_DATA_POINTS = 6;
 
 /** Score value used for TEXT artifact test assertion. */
 const TEXT_SCORE = 4;
@@ -53,39 +62,8 @@ const SPREADSHEET_SCORE = 5;
 // Fixture factories
 // ===========================================================================
 
-/**
- * Create a computed task-display metric with the given value and defaults.
- *
- * @param {number} value - The numeric metric score.
- * @returns {Extract<TaskDisplayMetric, { state: 'computed' }>} A computed task-display metric fixture.
- */
-function computedMetric(value: number): Extract<TaskDisplayMetric, { state: 'computed' }> {
-  return {
-    state: 'computed' as const,
-    value,
-    totalWeight: DEFAULT_WEIGHT,
-    applicableDataPoints: MIN_DATA_POINTS,
-    totalDataPoints: MIN_DATA_POINTS,
-  };
-}
-
-/** A ready-made notAttempted task-display metric. */
-const NOT_ATTEMPTED_METRIC: TaskDisplayMetric = {
-  state: 'notAttempted' as const,
-  value: 'N' as const,
-  totalWeight: 0,
-  applicableDataPoints: 0,
-  totalDataPoints: MIN_DATA_POINTS,
-};
-
-/** A ready-made error task-display metric. */
-const ERROR_METRIC: TaskDisplayMetric = {
-  state: 'error' as const,
-  value: 'E' as const,
-  totalWeight: 0,
-  applicableDataPoints: 0,
-  totalDataPoints: 0,
-};
+/** A schema-valid error task-display metric. */
+const ERROR_METRIC: TaskDisplayMetric = createErrorMetricResult();
 
 /**
  * Create a CellPreviewData for the given artifact type, content and reasoning.
@@ -125,7 +103,7 @@ describe('assembleTaskPreviewData', () => {
 
     const result = assembleTaskPreviewData(
       data,
-      computedMetric(TEXT_SCORE),
+      createComputedMetricResult({ value: TEXT_SCORE }),
       'completeness',
       'task-1'
     );
@@ -138,7 +116,12 @@ describe('assembleTaskPreviewData', () => {
     const tableContent = '| H1 | H2 |\n| --- | --- |\n| V1 | V2 |';
     const data = cellData('TABLE', tableContent);
 
-    const result = assembleTaskPreviewData(data, computedMetric(TABLE_SCORE), 'accuracy', 'task-2');
+    const result = assembleTaskPreviewData(
+      data,
+      createComputedMetricResult({ value: TABLE_SCORE }),
+      'accuracy',
+      'task-2'
+    );
 
     expect(result.artifactType).toBe('TABLE');
     expect(result.artifactContent).toBe(tableContent);
@@ -148,7 +131,12 @@ describe('assembleTaskPreviewData', () => {
     const imageUrl = 'data:image/png;base64,iVBORw0KGgo=';
     const data = cellData('IMAGE', imageUrl);
 
-    const result = assembleTaskPreviewData(data, computedMetric(IMAGE_SCORE), 'spag', 'task-3');
+    const result = assembleTaskPreviewData(
+      data,
+      createComputedMetricResult({ value: IMAGE_SCORE }),
+      'spag',
+      'task-3'
+    );
 
     expect(result.artifactType).toBe('IMAGE');
     expect(result.artifactContent).toBe(imageUrl);
@@ -165,7 +153,7 @@ describe('assembleTaskPreviewData', () => {
 
     const result = assembleTaskPreviewData(
       data,
-      computedMetric(SPREADSHEET_SCORE),
+      createComputedMetricResult({ value: SPREADSHEET_SCORE }),
       'completeness',
       'task-4'
     );
@@ -177,7 +165,12 @@ describe('assembleTaskPreviewData', () => {
   it('maps a base artifact to artifactType TEXT with empty content', () => {
     const data = cellData('base', null);
 
-    const result = assembleTaskPreviewData(data, computedMetric(BASE_SCORE), 'accuracy', 'task-5');
+    const result = assembleTaskPreviewData(
+      data,
+      createComputedMetricResult({ value: BASE_SCORE }),
+      'accuracy',
+      'task-5'
+    );
 
     expect(result.artifactType).toBe('TEXT');
     expect(result.artifactContent).toBe('');
@@ -186,7 +179,7 @@ describe('assembleTaskPreviewData', () => {
   it('handles null cellData with TEXT type and empty content and reasoning', () => {
     const result = assembleTaskPreviewData(
       null,
-      computedMetric(NULL_CELL_SCORE),
+      createComputedMetricResult({ value: NULL_CELL_SCORE }),
       'completeness',
       'task-6'
     );
@@ -200,14 +193,24 @@ describe('assembleTaskPreviewData', () => {
     const data = cellData('SPREADSHEET', null);
 
     expect(() =>
-      assembleTaskPreviewData(data, computedMetric(TEXT_SCORE), 'completeness', 'task-15')
+      assembleTaskPreviewData(
+        data,
+        createComputedMetricResult({ value: TEXT_SCORE }),
+        'completeness',
+        'task-15'
+      )
     ).toThrow(TypeError);
   });
 
   it('handles TEXT artifact with null content by coercing to empty string', () => {
     const data = cellData('TEXT', null);
 
-    const result = assembleTaskPreviewData(data, computedMetric(TEXT_SCORE), 'accuracy', 'task-16');
+    const result = assembleTaskPreviewData(
+      data,
+      createComputedMetricResult({ value: TEXT_SCORE }),
+      'accuracy',
+      'task-16'
+    );
 
     expect(result.artifactContent).toBe('');
   });
@@ -215,17 +218,23 @@ describe('assembleTaskPreviewData', () => {
   it('null cellData returns notAttempted even when metricResult is computed', () => {
     const result = assembleTaskPreviewData(
       null,
-      computedMetric(NULL_CELL_COMPUTED_SCORE),
+      createComputedMetricResult({ value: NULL_CELL_COMPUTED_SCORE }),
       'spag',
       'task-17'
     );
 
-    expect(result.metricState).toBe('notAttempted');
-    expect(result.metricScore).toBe('N');
+    expect(result.metric).toBe(NOT_ATTEMPTED_METRIC);
+    expect(result.metric).toMatchObject({
+      state: 'notAttempted',
+      value: 'N',
+      // The shared not-attempted metric reports one observed data point, which
+      // is the schema-valid task-level choice, not a fabricated zero.
+      totalDataPoints: NOT_ATTEMPTED_TOTAL_DATA_POINTS,
+    });
   });
 
   // -------------------------------------------------------------------------
-  // Metric score and state pass-through
+  // Metric pass-through
   // -------------------------------------------------------------------------
 
   it('passes through notAttempted metric state and score N', () => {
@@ -233,8 +242,7 @@ describe('assembleTaskPreviewData', () => {
 
     const result = assembleTaskPreviewData(data, NOT_ATTEMPTED_METRIC, 'accuracy', 'task-7');
 
-    expect(result.metricState).toBe('notAttempted');
-    expect(result.metricScore).toBe('N');
+    expect(result.metric).toMatchObject({ state: 'notAttempted', value: 'N' });
   });
 
   it('passes through error metric state and score E', () => {
@@ -242,17 +250,42 @@ describe('assembleTaskPreviewData', () => {
 
     const result = assembleTaskPreviewData(data, ERROR_METRIC, 'spag', 'task-8');
 
-    expect(result.metricState).toBe('error');
-    expect(result.metricScore).toBe('E');
+    expect(result.metric).toMatchObject({ state: 'error', value: 'E' });
   });
 
   it('passes through computed metric state and numeric score', () => {
     const data = cellData('TEXT', 'Some content');
 
-    const result = assembleTaskPreviewData(data, computedMetric(TEXT_SCORE), 'accuracy', 'task-14');
+    const result = assembleTaskPreviewData(
+      data,
+      createComputedMetricResult({ value: TEXT_SCORE }),
+      'accuracy',
+      'task-14'
+    );
 
-    expect(result.metricState).toBe('computed');
-    expect(result.metricScore).toBe(TEXT_SCORE);
+    expect(result.metric).toMatchObject({ state: 'computed', value: TEXT_SCORE });
+  });
+
+  it('forwards the analyser metric through with its real weight and data-point fields intact', () => {
+    const data = cellData('TEXT', 'Some content');
+    // Each field is set explicitly to a value that differs from the shared
+    // builder's defaults, so a pass-through that substituted builder defaults
+    // would fail the assertions below.
+    const analyserMetric: TaskDisplayMetric = createComputedMetricResult({
+      value: TEXT_SCORE,
+      totalWeight: PASS_THROUGH_TOTAL_WEIGHT,
+      applicableDataPoints: PASS_THROUGH_APPLICABLE_DATA_POINTS,
+      totalDataPoints: PASS_THROUGH_TOTAL_DATA_POINTS,
+    });
+
+    const result = assembleTaskPreviewData(data, analyserMetric, 'accuracy', 'task-18');
+
+    expect(result.metric).toBe(analyserMetric);
+    expect(result.metric).toMatchObject({
+      totalWeight: PASS_THROUGH_TOTAL_WEIGHT,
+      applicableDataPoints: PASS_THROUGH_APPLICABLE_DATA_POINTS,
+      totalDataPoints: PASS_THROUGH_TOTAL_DATA_POINTS,
+    });
   });
 
   // -------------------------------------------------------------------------
@@ -268,7 +301,7 @@ describe('assembleTaskPreviewData', () => {
 
     const result = assembleTaskPreviewData(
       data,
-      computedMetric(REASONING_PRESENT_SCORE),
+      createComputedMetricResult({ value: REASONING_PRESENT_SCORE }),
       'completeness',
       'task-9'
     );
@@ -285,7 +318,7 @@ describe('assembleTaskPreviewData', () => {
 
     const result = assembleTaskPreviewData(
       data,
-      computedMetric(REASONING_ABSENT_SCORE),
+      createComputedMetricResult({ value: REASONING_ABSENT_SCORE }),
       'accuracy',
       'task-10'
     );
@@ -302,7 +335,7 @@ describe('assembleTaskPreviewData', () => {
 
     const result = assembleTaskPreviewData(
       data,
-      computedMetric(METRIC_KEY_SCORE),
+      createComputedMetricResult({ value: METRIC_KEY_SCORE }),
       'completeness',
       'task-11'
     );
@@ -315,7 +348,7 @@ describe('assembleTaskPreviewData', () => {
 
     const result = assembleTaskPreviewData(
       data,
-      computedMetric(METRIC_KEY_SCORE),
+      createComputedMetricResult({ value: METRIC_KEY_SCORE }),
       'accuracy',
       'task-12'
     );
@@ -328,7 +361,7 @@ describe('assembleTaskPreviewData', () => {
 
     const result = assembleTaskPreviewData(
       data,
-      computedMetric(METRIC_KEY_SCORE),
+      createComputedMetricResult({ value: METRIC_KEY_SCORE }),
       'spag',
       'task-13'
     );
@@ -345,7 +378,7 @@ describe('assembleTaskPreviewData', () => {
 
     const result = assembleTaskPreviewData(
       data,
-      computedMetric(TASK_ID_POPULATED_SCORE),
+      createComputedMetricResult({ value: TASK_ID_POPULATED_SCORE }),
       'completeness',
       'task-7'
     );
@@ -356,7 +389,7 @@ describe('assembleTaskPreviewData', () => {
   it('forwards taskId unchanged when cellData is null', () => {
     const result = assembleTaskPreviewData(
       null,
-      computedMetric(TASK_ID_NULL_SCORE),
+      createComputedMetricResult({ value: TASK_ID_NULL_SCORE }),
       'spag',
       'task-9'
     );

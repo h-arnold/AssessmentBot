@@ -98,8 +98,17 @@ export const DEFAULT_CLASS_NAME_LABEL = 'Class Overview';
  * intentional: it is a schema-valid task-level not-attempted fallback. The
  * Class-page adapter's zero-data `N` placeholder uses `totalDataPoints: 0` and
  * is intentionally kept separate from this task-display shape.
+ *
+ * It has two consumers, which express the same "no submission exists for this
+ * student and task" condition at different scopes: the heatmap cell projection
+ * in {@link buildCellsForStudent}, and the task-preview card's no-submission
+ * branch in `features/taskHeatmap/assembleTaskPreviewData.ts`. Both need a
+ * raw `N` task-display metric rather than a numeric zero, and the task-display
+ * union requires at least one observed data point, so `totalDataPoints: 1` is
+ * the only schema-valid choice. Exporting it keeps a single frozen definition
+ * rather than one byte-identical copy per consumer.
  */
-const NOT_ATTEMPTED_METRIC: Readonly<TaskDisplayMetric> = Object.freeze({
+export const NOT_ATTEMPTED_METRIC: Readonly<TaskDisplayMetric> = Object.freeze({
   state: 'notAttempted' as const,
   value: 'N' as const,
   totalWeight: 0,

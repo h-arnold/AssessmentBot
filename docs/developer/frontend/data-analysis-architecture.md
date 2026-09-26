@@ -103,8 +103,9 @@ use the narrower, exported `TaskDisplayMetricSchema` and its inferred
 `resolveAggregateMetric` (`averagingAnalyser.metricResolution.ts`) applies this
 precedence to accumulator state. `resolveDisplayMetric` in the same module
 returns the schema-derived `TaskDisplayMetric`, so task projection and heatmap
-cells cannot carry aggregate-only `excluded`. Task-preview state/score pairs
-use the same narrow discriminator.
+cells cannot carry aggregate-only `excluded`. Task-preview data carries that same
+`TaskDisplayMetric` on its single `metric` field and so cannot carry
+aggregate-only `excluded` either.
 
 Task-level shapes (`PerStudentTaskMetric` and `PerTaskRow`) and heatmap task
 column descriptors expose:
