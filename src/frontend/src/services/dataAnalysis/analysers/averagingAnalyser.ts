@@ -90,11 +90,11 @@ export class AveragingAnalyser {
    * Analyse a single class and produce its AveragingResult.
    *
    * @remarks
-   * The per-class rollup now uses `rollupAccumulators` — the same function as
-   * per-student and per-task rollups — eliminating the dual-path duplication.
-   * When no per-student-task accumulators exist, a fresh empty accumulator
-   * follows the same `rollupMetric` path and preserves the established no-data
-   * `error` result without maintaining a write-only class accumulator.
+   * The per-class rollup uses `rollupAccumulators`, the same function as the
+   * per-student and per-task rollups. When no per-student-task accumulators
+   * exist, a fresh empty accumulator follows the same `rollupMetric` path and
+   * yields the no-data `error` result without maintaining a write-only class
+   * accumulator.
    *
    * @param {AveragingAnalyserInput['classes'][number]} cls - The class data.
    * @param {AveragingAnalyserInput} input - The full analyser input.
