@@ -25,7 +25,8 @@ import {
 } from './assignmentWizardFormState';
 import {
   deriveCanReparseDocuments,
-  shouldPromptForCreateWizardDismissal,
+  deriveWizardCloseAction,
+  isWizardPrimaryActionDisabled,
 } from './assignmentWizardDismissal';
 import { useFormInitialization } from './assignmentWizardFormInitialization';
 import { deriveWizardBlockingError, useWizardMutationSequence } from './assignmentWizardMutation';
@@ -179,10 +180,13 @@ export function useAssignmentDefinitionWizard(
   const formValues = useMemo(() => watchedFormValues ?? {}, [watchedFormValues]);
 
   // Use extracted helper for primary action state derivation
-  const { primaryActionLabel, isPrimaryActionDisabled } = derivePrimaryActionState(
-    isCreateMode,
-    hasParsedTasks,
-    formValues
+  const { primaryActionLabel, isPrimaryActionDisabled: derivedPrimaryActionDisabled } =
+    derivePrimaryActionState(isCreateMode, hasParsedTasks, formValues);
+  // A pending document change must be resolved by re-parsing or by restoring the
+  // persisted URLs, so Save stays unavailable until it clears.
+  const isPrimaryActionDisabled = isWizardPrimaryActionDisabled(
+    derivedPrimaryActionDisabled,
+    documentChange
   );
 
   // Track definitionKey from parse response in create mode for subsequent operations
@@ -259,6 +263,7 @@ export function useAssignmentDefinitionWizard(
   const { isSubmitting, runWizardMutation } = useWizardMutationSequence({
     mode,
     form,
+    isDocumentChangePending: documentChange.hasPendingChange,
     taskRows,
     localDefinitionKey,
     onClose,
@@ -375,30 +380,27 @@ export function useAssignmentDefinitionWizard(
       onClose();
       return;
     }
-    // `isFieldsTouched` keeps the stage-one create guard synchronous for
-    // owning-modal events (Escape and mask clicks) that can arrive before the
-    // watched-form dirty state has rendered. Stage-two edits are compared by
-    // the parsed-baseline dirty-state calculation, so an unchanged review can
-    // return to the choice prompt without an unnecessary confirmation.
-    const hasSynchronousDirtyCreateEdits =
-      isCreateMode &&
-      shouldPromptForCreateWizardDismissal(
-        form,
-        form.getFieldsValue(),
-        hasParsedTasks,
-        getParsedCreateBaseline(),
-        taskRows,
-        initialValues
-      );
-    if (documentChange.hasPendingChange) return;
-    if (hasDirtyEdits || hasSynchronousDirtyCreateEdits) {
+
+    const closeAction = deriveWizardCloseAction({
+      isCreateMode,
+      values: form.getFieldsValue() as Record<string, unknown>,
+      hasPendingDocumentChange: documentChange.hasPendingChange,
+      form,
+      hasParsedTasks,
+      parsedBaseline: getParsedCreateBaseline(),
+      definition: definition as Record<string, unknown> | undefined,
+      taskRows,
+      initialValues,
+      hasDirtyEdits,
+    });
+    if (closeAction === 'blocked') return;
+    if (closeAction === 'confirm') {
       setShowDiscardConfirm(true);
       return;
     }
     onClose();
   }, [
     hasDirtyEdits,
-    documentChange.hasPendingChange,
     onClose,
     blockingError,
     isCreateMode,
@@ -407,6 +409,8 @@ export function useAssignmentDefinitionWizard(
     initialValues,
     getParsedCreateBaseline,
     taskRows,
+    definition,
+    documentChange.hasPendingChange,
   ]);
 
   const handleDiscardConfirm = useCallback(() => {

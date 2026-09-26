@@ -14,10 +14,12 @@ import {
   APP_SPACE_SIZE_TIGHT,
 } from '../../theme/spacing';
 import {
-  derivePrimaryActionState,
   type DocumentChangeState,
   type TaskRow,
 } from './assignmentWizardFormState';
+import { AssignmentDefinitionWizardReviewFooter } from './AssignmentDefinitionWizardReviewFooter';
+
+export { AssignmentDefinitionWizardReviewFooter } from './AssignmentDefinitionWizardReviewFooter';
 
 const { Text } = Typography;
 
@@ -31,6 +33,11 @@ export type AssignmentDefinitionWizardReviewContentProperties = Readonly<{
   hasParsedTasks?: boolean;
   taskRows?: TaskRow[];
   documentChange?: DocumentChangeState;
+  /**
+   * Whether document URL inputs may remain editable while a document change is pending.
+   * The update wizard opts in; shared create and recovery consumers retain the locked form.
+   */
+  allowDocumentUrlEditingWhilePending?: boolean;
   form?: FormInstance;
   topicOptions?: Array<{ value: string; label: string }>;
   yearGroupOptions?: Array<{ value: string; label: string }>;
@@ -98,46 +105,6 @@ export function AssignmentDefinitionWizardReviewContent(
         <AssignmentDefinitionWizardReviewFooter {...properties} />
       )}
     </>
-  );
-}
-
-/**
- * Renders the review footer with cancel and primary action buttons.
- * Shared by the chrome-free review content and the full-shell modal, so both
- * surfaces keep a single footer definition inside their own chrome.
- *
- * @param {AssignmentDefinitionWizardReviewContentProperties} properties Review content properties.
- * @returns {JSX.Element} The footer element.
- */
-export function AssignmentDefinitionWizardReviewFooter(
-  properties: AssignmentDefinitionWizardReviewContentProperties
-): JSX.Element {
-  const onPrimaryClick = properties.onPrimaryAction ?? properties.onSubmit;
-  // Falls back to the shared derivation so mode and parsed-state labels cannot diverge.
-  const { primaryActionLabel: derivedPrimaryActionLabel } = derivePrimaryActionState(
-    properties.mode === 'create',
-    properties.hasParsedTasks ?? false,
-    {}
-  );
-  const primaryActionLabel = properties.primaryActionLabel ?? derivedPrimaryActionLabel;
-  const isPrimaryActionDisabled = properties.isPrimaryActionDisabled ?? false;
-
-  return (
-    <Space size={APP_SPACE_SIZE_DEFAULT}>
-      <Button disabled={properties.isMutationBusy} onClick={properties.onCancel}>
-        Cancel
-      </Button>
-      {onPrimaryClick === undefined ? null : (
-        <Button
-          disabled={isPrimaryActionDisabled || properties.isMutationBusy}
-          loading={properties.isMutationBusy}
-          onClick={onPrimaryClick}
-          type="primary"
-        >
-          {primaryActionLabel}
-        </Button>
-      )}
-    </Space>
   );
 }
 
@@ -231,6 +198,13 @@ function renderBaseFormFields(
   topicOptions: Array<{ value: string; label: string }>,
   yearGroupOptions: Array<{ value: string; label: string }>
 ): JSX.Element {
+  // The update wizard opts in so both URL inputs stay editable while a document
+  // change is pending; create and stale-recovery consumers keep the locked form.
+  const canEditDocumentUrlsWhilePending = properties.allowDocumentUrlEditingWhilePending === true;
+  const documentUrlInputsDisabled =
+    properties.isMutationBusy ||
+    (documentChange.hasPendingChange ? !canEditDocumentUrlsWhilePending : hasDirtyEdits);
+
   return (
     <>
       <Form.Item
@@ -282,7 +256,7 @@ function renderBaseFormFields(
         rules={[{ required: true, message: 'Reference document URL is required' }]}
       >
         <Input
-          disabled={hasDirtyEdits || documentChange.hasPendingChange || properties.isMutationBusy}
+          disabled={documentUrlInputsDisabled}
           placeholder="https://docs.google.com/..."
         />
       </Form.Item>
@@ -293,7 +267,7 @@ function renderBaseFormFields(
         rules={[{ required: true, message: 'Template document URL is required' }]}
       >
         <Input
-          disabled={hasDirtyEdits || documentChange.hasPendingChange || properties.isMutationBusy}
+          disabled={documentUrlInputsDisabled}
           placeholder="https://docs.google.com/..."
         />
       </Form.Item>
@@ -389,7 +363,8 @@ function renderPostParseSections(
 }
 
 /**
- * Renders the re-parse and cancel action buttons for document change state.
+ * Renders the re-parse and URL-restoration action buttons for document change state.
+ * The separate Cancel restores the baseline document URLs; it does not dismiss the owning modal.
  *
  * @param {AssignmentDefinitionWizardReviewContentProperties} properties Review content properties.
  * @returns {JSX.Element} The action buttons.
@@ -479,6 +454,12 @@ function renderTaskWeightingsTable(
 /**
  * Renders the task weighting input cell for the table.
  *
+ * @remarks
+ * The busy state is included explicitly because Ant Design resolves
+ * `disabled` as `customDisabled ?? formDisabledContext`; passing only the
+ * document-change flag would send `false` and override the form-level busy lock
+ * applied while a mutation is in flight.
+ *
  * @param {DocumentChangeState} documentChange Document change state.
  * @param {AssignmentDefinitionWizardReviewContentProperties} properties Review content properties.
  * @returns {function} Render function for table cell.
@@ -489,7 +470,7 @@ function renderTaskWeightingInputCell(
 ): (value: unknown, record: TaskRow, index: number) => ReactNode {
   return (_: unknown, record: TaskRow) => (
     <InputNumber
-      disabled={documentChange.hasPendingChange}
+      disabled={documentChange.hasPendingChange || properties.isMutationBusy}
       min={MIN_WEIGHTING_VALUE}
       max={MAX_WEIGHTING_VALUE}
       value={record.taskWeighting}

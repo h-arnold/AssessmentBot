@@ -195,6 +195,8 @@ export function useWizardUpsertMutation(): {
 export interface WizardMutationSequenceOptions {
   mode: 'create' | 'update';
   form: FormInstance;
+  /** Whether the wizard is waiting for a document URL change to be resolved. */
+  isDocumentChangePending: boolean;
   taskRows: TaskRow[];
   localDefinitionKey: string | null;
   onClose: () => void;
@@ -209,6 +211,22 @@ export interface WizardMutationSequenceOptions {
 }
 
 const WIZARD_MUTATION_LOG_CONTEXT = 'AssignmentDefinitionWizardModal.runWizardMutation';
+
+/**
+ * Reports whether a wizard mutation must be rejected before transport.
+ *
+ * @param {WizardActionType} actionType Mutation action being attempted.
+ * @param {boolean} isMutationBusy Whether another mutation is already active.
+ * @param {boolean} isDocumentChangePending Whether a document change awaits resolution.
+ * @returns {boolean} Whether the mutation is blocked.
+ */
+function isWizardMutationBlocked(
+  actionType: WizardActionType,
+  isMutationBusy: boolean,
+  isDocumentChangePending: boolean
+): boolean {
+  return isMutationBusy || (actionType === 'save' && isDocumentChangePending);
+}
 
 /**
  * Owns the create/update wizard mutation sequence: response handling, query
@@ -230,6 +248,7 @@ export function useWizardMutationSequence(options: WizardMutationSequenceOptions
   const {
     mode,
     form,
+    isDocumentChangePending,
     taskRows,
     localDefinitionKey,
     onClose,
@@ -364,7 +383,7 @@ export function useWizardMutationSequence(options: WizardMutationSequenceOptions
    * @param {'parse' | 'save' | 'reparse'} mutationOptions.actionType - Type of mutation action.
    * @param {UpsertAssignmentDefinitionRequest} mutationOptions.request - Pre-built request object.
    * @param {string | null} mutationOptions.definitionKey - Definition key for update/reparse, or null for create parse.
-   * @returns {Promise<UpsertAssignmentDefinitionResponse | undefined>} Resolves with response for parse/reparse, undefined otherwise.
+   * @returns {Promise<UpsertAssignmentDefinitionResponse | undefined>} Resolves with response for parse/reparse, undefined otherwise. Save actions are rejected while a document change is pending.
    */
   const runWizardMutation = useCallback(
     async (mutationOptions: {
@@ -372,7 +391,9 @@ export function useWizardMutationSequence(options: WizardMutationSequenceOptions
       request: UpsertAssignmentDefinitionRequest;
       definitionKey: string | null;
     }): Promise<UpsertAssignmentDefinitionResponse | undefined> => {
-      if (isMutationBusy) {
+      if (
+        isWizardMutationBlocked(mutationOptions.actionType, isMutationBusy, isDocumentChangePending)
+      ) {
         return undefined;
       }
       const result = await runUpsert(mutationOptions.request, {
@@ -411,6 +432,7 @@ export function useWizardMutationSequence(options: WizardMutationSequenceOptions
     },
     [
       isMutationBusy,
+      isDocumentChangePending,
       runUpsert,
       mode,
       handleParseResponse,

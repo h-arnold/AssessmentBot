@@ -22,10 +22,15 @@ import {
   mockYearGroups,
 } from '../../test/assignmentDefinition/sharedTestFixtures';
 import {
+  assertConflictingControlsDisabled,
+  assertDocumentUrlFieldsDisabled,
   assertTaskNotVisible,
   assertTaskVisible,
   changeReferenceUrl,
   getFormElements,
+  getFooterCancelButton,
+  getSaveButton,
+  getTaskWeightingInputs,
   createUpdateWizardOptions,
   renderWizardModal,
 } from '../../test/assignmentDefinition/wizardModalTestHelpers';
@@ -287,8 +292,9 @@ describe('Reparse documents action behaviour', () => {
     assertTaskNotVisible({ modal }, REMOVED_TASK_PATTERN);
   });
 
-  it('shows a busy state on the action while the reparse mutation is pending', async () => {
+  it('shows a busy state on the action and locks every conflicting control while the reparse mutation is pending', async () => {
     const { modal } = await renderWizardModal(createUpdateOptions());
+    assertTaskVisible({ modal }, ORIGINAL_FIRST_TASK_TITLE);
 
     let resolveReparse: (value: AssignmentDefinition) => void;
     const pendingReparse = new Promise<AssignmentDefinition>((resolve) => {
@@ -302,16 +308,27 @@ describe('Reparse documents action behaviour', () => {
       expect(getReparseDocumentsAction(modal)).toHaveClass('ant-btn-loading');
     });
 
+    // The busy state locks the task weightings alongside the other conflicting controls,
+    // so an in-flight reparse cannot be overlapped by a weighting edit.
+    await assertConflictingControlsDisabled({ modal });
+    await assertDocumentUrlFieldsDisabled({ modal });
+    expect(getTaskWeightingInputs({ modal }).length).toBeGreaterThan(0);
+    expect(getSaveButton({ modal })).toBeDisabled();
+    expect(getFooterCancelButton({ modal })).toBeDisabled();
+
     await act(async () => {
       resolveReparse!({ ...UPDATE_DEFINITION });
       await pendingReparse;
     });
 
-    // Settled state: the action is no longer loading and is enabled again.
+    // Settled state: the action is no longer loading and the controls are editable again.
     await waitFor(() => {
       const action = getReparseDocumentsAction(modal);
       expect(action).toBeEnabled();
       expect(action).not.toHaveClass('ant-btn-loading');
+    });
+    getTaskWeightingInputs({ modal }).forEach((input) => {
+      expect(input).toBeEnabled();
     });
   });
 

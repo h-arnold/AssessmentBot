@@ -111,6 +111,7 @@ function toReviewContentProperties(
     showAlerts: true,
     taskRows: properties.taskRows,
     documentChange: properties.documentChange,
+    allowDocumentUrlEditingWhilePending: properties.mode === 'update',
     form: properties.form,
     topicOptions: properties.topicOptions,
     yearGroupOptions: properties.yearGroupOptions,
