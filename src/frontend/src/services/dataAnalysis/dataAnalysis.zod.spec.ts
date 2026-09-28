@@ -285,6 +285,17 @@ describe('StudentSubmissionItemPartialSchema.assessments', () => {
     expect(result.assessments!.spag.score).toBe('N');
   });
 
+  it('accepts absent criterion assessments (SPaG and completeness omitted)', () => {
+    const expectedAccuracyScore = 3;
+    const result = StudentSubmissionItemPartialSchema.parse({
+      ...validItemBase,
+      assessments: { accuracy: { score: expectedAccuracyScore } },
+    });
+    expect(result.assessments!.accuracy.score).toBe(expectedAccuracyScore);
+    expect(result.assessments!.completeness).toBeUndefined();
+    expect(result.assessments!.spag).toBeUndefined();
+  });
+
   it('rejects score above 5', () => {
     expect(() =>
       StudentSubmissionItemPartialSchema.parse({
