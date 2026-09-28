@@ -5,20 +5,11 @@
  * response sections inside a popover triggered from the heatmap table.
  *
  * @remarks
- * **Task-display metric reassembly (local concern).** The component reassembles
- * a schema-valid `TaskDisplayMetric` from the discriminated `metricState` +
- * `metricScore` pair to reuse the existing `MetricPill` component. The
- * reassembly values are:
- * - `computed` → `{ state: 'computed', value: metricScore,
- *   totalWeight: 0, applicableDataPoints: 1, totalDataPoints: 1 }`
- * - `notAttempted` → `{ state: 'notAttempted', value: 'N', totalWeight: 0,
- *   applicableDataPoints: 0, totalDataPoints: 1 }`
- * - `error` → `{ state: 'error', value: 'E', totalWeight: 0,
- *   applicableDataPoints: 0, totalDataPoints: 0 }`
- *
- * These weight/data-point fields are inert for display (`MetricPill` ignores
- * them) but must satisfy the `TaskDisplayMetric` discriminated-union constraints
- * per SPEC §"MetricPill reuse".
+ * **Metric pass-through (local concern).** The component renders the analyser's
+ * real `TaskDisplayMetric`, received on `data.metric`, and forwards it unchanged
+ * to `MetricPill` and `formatMetricDisplayText`. Only `state` and `value` are
+ * read, so the metric's weight and data-point fields are carried but inert for
+ * display; `metric.state` is what selects the empty-content placeholder.
  */
 
 import type { JSX } from 'react';
@@ -35,25 +26,16 @@ import { APP_GAP_SM } from '../../theme/spacing';
 // Public types
 // ---------------------------------------------------------------------------
 
-/** Common task-preview fields that do not depend on metric state. */
-interface TaskPreviewDataBase {
+/** Discriminated props contract for the TaskPreviewCard component. */
+export interface TaskPreviewData {
   readonly taskId: string;
   readonly artifactType: 'IMAGE' | 'TEXT' | 'TABLE';
   readonly artifactContent: string;
   readonly metricKey: 'completeness' | 'accuracy' | 'spag';
   readonly reasoning: string;
+  /** The analyser's task-display metric for this cell, rendered as-is. */
+  readonly metric: TaskDisplayMetric;
 }
-
-/** Schema-derived state/score pairs valid for task-level display metrics. */
-export type TaskPreviewMetric = {
-  [Metric in TaskDisplayMetric as Metric['state']]: {
-    readonly metricState: Metric['state'];
-    readonly metricScore: Metric['value'];
-  };
-}[TaskDisplayMetric['state']];
-
-/** Discriminated props contract for the TaskPreviewCard component. */
-export type TaskPreviewData = TaskPreviewDataBase & TaskPreviewMetric;
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -80,48 +62,6 @@ export const CARD_MAX_WIDTH = 400;
 const TASK_SCORE_PRECISION = 0;
 
 // ---------------------------------------------------------------------------
-// Task-display metric reassembly (local concern)
-// ---------------------------------------------------------------------------
-
-/**
- * Build a schema-valid task-display metric from its discriminated preview pair.
- *
- * @param {TaskPreviewMetric} metric - The state and schema-correlated score.
- * @returns {TaskDisplayMetric} A valid task-level display metric.
- */
-function buildMetricResult(metric: TaskPreviewMetric): TaskDisplayMetric {
-  switch (metric.metricState) {
-    case 'computed': {
-      return {
-        state: 'computed',
-        value: metric.metricScore,
-        totalWeight: 0,
-        applicableDataPoints: 1,
-        totalDataPoints: 1,
-      };
-    }
-    case 'notAttempted': {
-      return {
-        state: 'notAttempted',
-        value: 'N',
-        totalWeight: 0,
-        applicableDataPoints: 0,
-        totalDataPoints: 1,
-      };
-    }
-    case 'error': {
-      return {
-        state: 'error',
-        value: 'E',
-        totalWeight: 0,
-        applicableDataPoints: 0,
-        totalDataPoints: 0,
-      };
-    }
-  }
-}
-
-// ---------------------------------------------------------------------------
 // Artifact renderer
 // ---------------------------------------------------------------------------
 
@@ -134,13 +74,14 @@ function buildMetricResult(metric: TaskPreviewMetric): TaskDisplayMetric {
  *
  * @param {TaskPreviewData['artifactType']} artifactType - The type of artifact to render.
  * @param {string} artifactContent - The raw artifact string content.
- * @param {TaskPreviewData['metricState']} metricState - The metric state for determining placeholder text.
+ * @param {TaskDisplayMetric['state']} metricState - The state carried by the cell's metric,
+ *        used for determining placeholder text.
  * @returns {JSX.Element} A React element for the artifact content.
  */
 function renderArtifact(
   artifactType: TaskPreviewData['artifactType'],
   artifactContent: string,
-  metricState: TaskPreviewData['metricState']
+  metricState: TaskDisplayMetric['state']
 ): JSX.Element {
   if (artifactContent === '') {
     if (metricState === 'notAttempted') {
@@ -182,13 +123,12 @@ function renderArtifact(
  * @returns {JSX.Element} The rendered card.
  */
 export function TaskPreviewCard({ data }: { readonly data: TaskPreviewData }): JSX.Element {
-  const { artifactType, artifactContent, metricKey, metricState, reasoning } = data;
+  const { artifactType, artifactContent, metric, metricKey, reasoning } = data;
 
   const meta = METRIC_DISPLAY_META.get(metricKey)!;
   const label = meta.label;
 
-  const metricResult = buildMetricResult(data);
-  const formattedScore = formatMetricDisplayText(metricResult, TASK_SCORE_PRECISION);
+  const formattedScore = formatMetricDisplayText(metric, TASK_SCORE_PRECISION);
 
   return (
     <Card
@@ -204,7 +144,7 @@ export function TaskPreviewCard({ data }: { readonly data: TaskPreviewData }): J
           aria-label={`${label} score: ${formattedScore}`}
         >
           <Typography.Text>{label}:</Typography.Text>
-          <MetricPill metric={metricResult} precision={TASK_SCORE_PRECISION} compact />
+          <MetricPill metric={metric} precision={TASK_SCORE_PRECISION} compact />
         </Flex>
       }
     >
@@ -220,7 +160,7 @@ export function TaskPreviewCard({ data }: { readonly data: TaskPreviewData }): J
         {/* Student Response section */}
         <Flex vertical gap={APP_GAP_SM}>
           <Typography.Text strong>Student Response</Typography.Text>
-          {renderArtifact(artifactType, artifactContent, metricState)}
+          {renderArtifact(artifactType, artifactContent, metric.state)}
         </Flex>
       </Flex>
     </Card>

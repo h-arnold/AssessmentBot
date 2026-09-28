@@ -18,9 +18,8 @@ type PerStudentRowWithName = PerStudentRow & { studentName: string };
  * an iterable of DataPointAccumulators using rollupMetric and the composite rule.
  *
  * @remarks
- * This function was previously private and duplicated in `analyseClass`. The
- * export unifies the rollup pattern across per-student, per-task, and per-class
- * aggregation, eliminating the dual-path duplication.
+ * Shared by the per-student, per-task, and per-class aggregation scopes, so all
+ * three roll their criterion metrics up identically.
  *
  * @param {Iterable<DataPointAccumulator>} accumulators - The source accumulators.
  * @param {CriterionWeightings} criterionWeightings - The criterion weightings.
@@ -134,13 +133,12 @@ export function buildPerStudentRows(
  * computed from the three per-criterion rollups using the 40/40/20 weighting
  * with SPaG-renormalisation.
  *
- * `excluded` is valid only for aggregate scopes. Per SPEC.md §Task-level output,
- * task-level rows retain numeric or raw-`N` display evidence when observations
- * exist, while no-observation rows remain `error`. If the overall composite
- * resolves to `excluded` (for example, when contributing criterion aggregates
- * are all non-contributing), this row substitutes the criterion-weighted display
- * overall from the task accumulator instead of emitting an aggregate-only state
- * that the task schema rejects.
+ * `excluded` is valid only for aggregate scopes. Task-level rows retain numeric
+ * or raw-`N` display evidence when observations exist, while no-observation rows
+ * remain `error`. If the overall composite resolves to `excluded` (for example,
+ * when contributing criterion aggregates are all non-contributing), this row
+ * substitutes the criterion-weighted display overall from the task accumulator
+ * instead of emitting an aggregate-only state that the task schema rejects.
  *
  * @param {Map<string, { definitionKey: string; taskId: string } & DataPointAccumulator>}
  *   taskAccums - Map of composite key to accumulator data (used for definitionKey,

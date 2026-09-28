@@ -26,9 +26,7 @@ interface WeightedCriterion {
  *   contributing criteria entries (not `Math.max`). `totalDataPoints` is
  *   accumulated independently from the contribution filter so all observed
  *   criterion evidence is retained. On terminal (`error` / `notAttempted`)
- *   branches, `totalWeight` is the sum of all three criteria's `totalWeight`,
- *   resolving a pre-existing inconsistency where terminal results used
- *   `totalWeight: 0`.
+ *   branches, `totalWeight` is the sum of all three criteria's `totalWeight`.
  *
  * @param {MetricResult} completeness - The completeness rollup MetricResult.
  * @param {MetricResult} accuracy - The accuracy rollup MetricResult.

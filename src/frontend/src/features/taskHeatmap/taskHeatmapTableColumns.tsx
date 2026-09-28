@@ -450,12 +450,27 @@ export function buildAdaptiveTierGroups(
     }
   }
 
+  // Single pass over the columns, bucketing each column index under its
+  // definition key in ascending index order. Columns carrying no
+  // `definitionKey` belong to no group, because group keys are always
+  // non-empty strings.
+  const columnIndicesByDefinitionKey = new Map<string, number[]>();
+  for (const [index, column] of taskColumns.entries()) {
+    const { definitionKey } = column;
+    if (definitionKey === undefined) {
+      continue;
+    }
+    const existingIndices = columnIndicesByDefinitionKey.get(definitionKey);
+    if (existingIndices === undefined) {
+      columnIndicesByDefinitionKey.set(definitionKey, [index]);
+    } else {
+      existingIndices.push(index);
+    }
+  }
+
   return groups.map((group) => ({
     key: group.definitionKey,
     title: group.count > 1 ? `${group.firstName}${SHARED_DEFINITION_SUFFIX}` : group.firstName,
-    columnIndices: taskColumns
-      .map((column, index) => ({ column, index }))
-      .filter(({ column }) => column.definitionKey === group.definitionKey)
-      .map(({ index }) => index),
+    columnIndices: columnIndicesByDefinitionKey.get(group.definitionKey) ?? [],
   }));
 }

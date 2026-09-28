@@ -34,6 +34,16 @@ export const ClassPageNoDataMetricSchema = z.strictObject({
   totalDataPoints: z.literal(0),
 });
 
+/**
+ * Inferred type of the adapter-local zero-data `N` placeholder.
+ *
+ * @remarks
+ * Deliberately narrower than the shared `MetricResult`: the shared
+ * `NotAttemptedMetricSchema` requires `totalDataPoints >= 1`, which this
+ * presentation-only shape does not satisfy.
+ */
+export type ClassPageNoDataMetric = z.infer<typeof ClassPageNoDataMetricSchema>;
+
 /** Metric validation for display-only Class-page aggregates, including no-work placeholders. */
 export const ClassPageDisplayMetricSchema = z.union([
   MetricResultSchema,

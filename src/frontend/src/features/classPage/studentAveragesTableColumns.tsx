@@ -29,9 +29,8 @@ import type { CSSProperties, JSX } from 'react';
 import type { TableColumnsType, TableColumnType } from 'antd';
 import type { FilterValue } from 'antd/es/table/interface';
 
-import type { MetricResult } from '../../services/dataAnalysis/dataAnalysis.zod';
 import { getStudentMetric } from './classPageAdapter.zod';
-import type { StudentAverageRowModel } from './classPageAdapter.zod';
+import type { ClassPageDisplayMetric, StudentAverageRowModel } from './classPageAdapter.zod';
 import { buildStudentNameColumns } from '../shared/studentNameTableColumns';
 import { METRIC_DISPLAY_META } from '../../services/dataAnalysis/metricDisplay/metricDisplayMeta';
 import type { MetricColumnKey } from '../../services/dataAnalysis/metricDisplay/metricDisplayMeta';
@@ -97,7 +96,7 @@ function buildMetricColumn(
   const activeFilterKey: string | undefined = activeRange.length > 0 ? columnFilters[0] : undefined;
   const rangeFilter = buildMetricRangeFilter<StudentAverageRowModel>({
     range: DEFAULT_TONE_RANGE,
-    getMetric: (record): MetricResult => getStudentMetric(record.metrics, key),
+    getMetric: (record): ClassPageDisplayMetric => getStudentMetric(record.metrics, key),
     activeRange,
     activeFilterKey,
   });
