@@ -1,4 +1,3 @@
-import { logFrontendEvent } from '../../../logging/frontendLogger';
 import type { AveragingAnalyserInput } from '../dataAnalysis.zod';
 import type { CriterionWeightings } from './averagingAnalyser';
 import type {
@@ -16,16 +15,6 @@ import type {
  * `accumulateCriterion`, `accumulateMetricsToTarget`, `computeOverall`,
  * `processSubmissionItem`, and `processItemAssessments`.
  */
-
-/**
- * Narrow a raw criterion score to the analyser's assessment-score contract.
- * @param {unknown} score - Raw score value from a submission item.
- * @returns {AssessmentScore} The supported score, or undefined when invalid.
- */
-function toAssessmentScore(score: unknown): AssessmentScore {
-  if (typeof score === 'number' || score === 'N') return score;
-  return undefined;
-}
 
 /**
  * Accumulate a single criterion score into its metric accumulator.
@@ -204,6 +193,12 @@ export function processSubmissionItem(
  * Extract assessment scores from a submission item and apply them to all
  * accumulator scopes.
  *
+ * @remarks
+ * Criterion assessments are optional: a missing criterion contributes no
+ * data point and its metric derives the error state. No invalid-score
+ * warning is emitted here — the input schema rejects malformed provided
+ * scores before they reach the analyser.
+ *
  * @param {AveragingAnalyserInput['classes'][number]['assignments'][number]['submissions'][number]['items'][string]}
  *   item - The submission item.
  * @param {number} weight - The per-data-point weight.
@@ -221,32 +216,11 @@ export function processItemAssessments(
   criterionWeightings: CriterionWeightings,
   perStudentTaskAccum?: DataPointAccumulator
 ): void {
-  const { assessments, taskId } = item;
+  const { assessments } = item;
   const assessmentsOrEmpty = assessments ?? {};
-  const rawCriterionScores = [
-    ['completeness', assessmentsOrEmpty.completeness?.score],
-    ['accuracy', assessmentsOrEmpty.accuracy?.score],
-    ['spag', assessmentsOrEmpty.spag?.score],
-  ] as const;
-  const criterionScores = rawCriterionScores.map(([criterion, score]) => ({
-    criterion,
-    score: toAssessmentScore(score),
-    scoreType: typeof score,
-  }));
-
-  for (const { criterion, score, scoreType } of criterionScores) {
-    if (score !== undefined) continue;
-
-    logFrontendEvent('warn', {
-      context: 'processItemAssessments',
-      errorMessage: `Invalid ${criterion} score for task '${taskId}'; dropping the score`,
-      metadata: { criterion, taskId, scoreType },
-    });
-  }
-
-  const completenessScore = criterionScores[0].score;
-  const accuracyScore = criterionScores[1].score;
-  const spagScore = criterionScores[2].score;
+  const completenessScore = assessmentsOrEmpty.completeness?.score;
+  const accuracyScore = assessmentsOrEmpty.accuracy?.score;
+  const spagScore = assessmentsOrEmpty.spag?.score;
 
   processSubmissionItem(
     completenessScore,
