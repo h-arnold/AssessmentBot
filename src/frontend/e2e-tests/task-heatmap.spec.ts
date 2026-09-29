@@ -1,12 +1,13 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 import { installRuntimeMock, releaseNextDeferredSuccess } from './shared/endToEndRuntimeMocks';
 import {
+  CLASSES_LABEL,
   createHeatmapScenario,
   HEATMAP_CLASS_NAME,
   HEATMAP_ASSIGNMENT_DISPLAY_TITLE,
+  openHeatmapClass,
 } from './helpers/task-heatmap-end-to-end-helpers';
 
-const CLASSES_LABEL = 'Classes';
 const HEATMAP_TABLE_NAME = 'Task Heatmap';
 const EXCLUDED_METRIC_ACCESSIBLE_NAME = 'Excluded from average: displayed work had zero weighting.';
 /** Number of metric sub-columns per task group (Completeness, Accuracy, SPaG). */
@@ -18,25 +19,6 @@ const MAX_ZERO_WEIGHT_TAB_PRESSES = 40;
 const LOWER_HANDLE_NUDGE_STEPS = 3;
 /** Human-readable task titles sourced from the warm-up partial (taskColumn.taskTitle). */
 const HEATMAP_TASK_TITLES = ['Task 1', 'Task 2', 'Task 3'];
-
-/**
- * Navigate from the root shell to the heatmap class overview (ready state).
- *
- * @param {Page} page - The Playwright page.
- * @returns {Promise<void>}
- */
-async function openHeatmapClass(page: Page): Promise<void> {
-  await page.goto('/');
-  await page.getByRole('menuitem', { name: CLASSES_LABEL }).click();
-
-  // The class appears under a year-group panel; click its "View" button.
-  const classCard = page.getByRole('article').filter({ hasText: HEATMAP_CLASS_NAME });
-  await expect(classCard).toBeVisible();
-  await classCard.getByRole('button', { name: 'View' }).click();
-
-  // Wait for the ready-state Recent Assignments section (an antd Card title div).
-  await expect(page.getByText('Recent Assignments')).toBeVisible();
-}
 
 test.describe('Task Heatmap E2E journey', () => {
   test('opens heatmap from recent assignment card', async ({ page }) => {

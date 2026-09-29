@@ -33,6 +33,7 @@ import { pageContent } from '../../pages/pageContent';
 import { useClassSelection } from '../../ClassSelectionContext';
 import { APP_GAP_MD } from '../../theme/spacing';
 import { PageTitleCard, PageNavCard } from '../../components/PageHeader/PageHeader';
+import type { ReRunContext } from '../shared/reRunAssessmentContext';
 
 type ClassPageProperties = Readonly<{
   /** The class ID to fetch data for. */
@@ -103,6 +104,8 @@ export function ClassPage({ classId }: ClassPageProperties): JSX.Element {
 
   const [isAssessModalOpen, setIsAssessModalOpen] = useState<boolean>(false);
 
+  const [reRunContext, setReRunContext] = useState<ReRunContext | null>(null);
+
   const [selectedView, setSelectedView] = useState<{
     view: 'overview' | 'heatmap';
     assignmentId?: string;
@@ -115,16 +118,29 @@ export function ClassPage({ classId }: ClassPageProperties): JSX.Element {
   /**
    * Open the AssessTaskModal.
    * Called from both the header button and the empty-state CTA.
+   * A manual entry never carries a re-run context.
    */
   function handleStartNewAssessment(): void {
+    setReRunContext(null);
     setIsAssessModalOpen(true);
   }
 
   /**
-   * Close the AssessTaskModal.
+   * Close the AssessTaskModal and clear any re-run entry.
    */
   function handleCloseModal(): void {
+    setReRunContext(null);
     setIsAssessModalOpen(false);
+  }
+
+  /**
+   * Open the AssessTaskModal for an explicit re-run of one assignment.
+   *
+   * @param {ReRunContext} context - The assignment and its persisted definition key.
+   */
+  function handleReRunAssessment(context: ReRunContext): void {
+    setReRunContext(context);
+    setIsAssessModalOpen(true);
   }
 
   /**
@@ -167,6 +183,7 @@ export function ClassPage({ classId }: ClassPageProperties): JSX.Element {
           onBack={handleBack}
           refetch={refetch}
           onStartNewAssessment={handleStartNewAssessment}
+          onReRunAssessment={handleReRunAssessment}
           onNavigateToClasses={onNavigateToClasses}
           onRetry={refetch}
         />
@@ -178,6 +195,7 @@ export function ClassPage({ classId }: ClassPageProperties): JSX.Element {
           classId={classId}
           className={className}
           onClose={handleCloseModal}
+          reRunContext={reRunContext}
         />
       )}
     </>

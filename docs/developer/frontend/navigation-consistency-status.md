@@ -29,15 +29,17 @@ This separation keeps title and navigation concerns independent, so child pages 
 ```
 [PageTitleCard — parent class name, level 2]
 [PageTitleCard — assignment name, level 4]
-[PageNavCard — "Back to Class overview" | Refresh]
+[PageNavCard — "Back to Class overview" | Re-run Assessment + Refresh]
 [Task Heatmap table]
 ```
+
+`Re-run Assessment` sits immediately left of `Refresh` and renders only when the owning Class page supplies an `onReRunAssessment` callback (see Completed Work §9).
 
 Parent-level action buttons (Edit Student Details, Start New Assessment) do NOT appear on the child page.
 
 ## Completed Work
 
-### 1. Shared Components (`src/frontend/src/components/PageHeader.tsx`)
+### 1. Shared Components (`src/frontend/src/components/PageHeader/PageHeader.tsx`)
 
 **Status: Implemented and lint-clean**
 
@@ -54,7 +56,7 @@ Key design choices:
 - Actions are wrapped in `Space` with `APP_SPACE_SIZE_TIGHT` (8px gap)
 - Card uses `size="small"` per the data-card convention in spacing standards
 
-### 2. Unit Tests (`src/frontend/src/components/PageHeader.spec.tsx`)
+### 2. Unit Tests (`src/frontend/src/components/PageHeader/PageHeader.spec.tsx`)
 
 **Status: Implemented — 10 tests, all passing**
 
@@ -80,12 +82,12 @@ Changes:
 
 Changes:
 
-- Replaced single combined header Card with three-card stack:
-  1. `PageTitleCard` — parent class name (level 2)
-  2. `PageTitleCard` — assignment name (level 4)
-  3. `PageNavCard` — back button + Refresh action
-- `HeaderLabels` type extended to include `className` (derived from `classFull.className`)
-- `TaskTitlesUnavailableError` path also updated to render the three-card stack + Alert
+- Replaced the single combined header Card with a title + nav stack:
+  1. `PageTitleCard` — assignment name (rendered by `TaskHeatmapPage`)
+  2. `PageNavCard` — back button + Refresh action
+- The parent class-name `PageTitleCard` (level 2) is rendered by `ClassPage`'s header, not by `TaskHeatmapPage`; the child page supplies only its own assignment-title card so the two stack visually.
+- `TaskTitlesUnavailableError` path also renders the title + nav cards alongside the `Alert`.
+- The `Re-run Assessment` action was added to the nav card by issue #298 (see Completed Work §9).
 
 ### 5. ClassPageContent (`src/frontend/src/features/classPage/ClassPageContent.tsx`)
 
@@ -110,17 +112,21 @@ Changes:
 
 ### 7. Playwright Screenshot Tests (`src/frontend/e2e-tests/navigation-screenshots.spec.ts`)
 
-**Status: Created, snapshots generated**
+**Status: Implemented — 3 tests, all passing; snapshots committed and current**
 
-Two tests:
+Three tests, verified via `npm run test:frontend:e2e -- navigation-screenshots.spec.ts`:
 
 1. `Class Page overview with PageHeader` — navigates to class detail, captures screenshot
 2. `Task Heatmap with PageHeader` — navigates to heatmap, captures screenshot
+3. `Heatmaps builder with PageHeader` — opens the standalone Heatmaps nav entry, captures screenshot
 
-Snapshots saved at:
+Snapshots committed at:
 
 - `e2e-tests/navigation-screenshots.spec.ts-snapshots/class-page-overview-chromium-linux.png`
 - `e2e-tests/navigation-screenshots.spec.ts-snapshots/task-heatmap-chromium-linux.png`
+- `e2e-tests/navigation-screenshots.spec.ts-snapshots/heatmaps-builder-chromium-linux.png`
+
+The committed snapshots were captured with the title + nav card design, so no re-capture is outstanding.
 
 ### 8. Heatmaps standalone top-level entry (`src/frontend/src/pages/HeatmapsPage.tsx`)
 
@@ -133,82 +139,82 @@ Changes:
 - `AppNavigationKey` union gains `'heatmaps'`; `navigationDefinitions` places it between `assignments` and `settings` (menu order: dashboard, classes, assignments, heatmaps, settings).
 - Menu label sourced from `pageContent.heatmaps.heading`; icon is the Lucide `Flame` wrapped by `renderNavigationIcon` (decorative, `aria-hidden`), consistent with the other Lucide navigation icons.
 - `renderNavigationPage('heatmaps')` returns `<HeatmapsPage />`, so the entry is directly navigable and does not route through Class Page `selectedView` state (no second page-selection source of truth).
-- `pages/HeatmapsPage.tsx` (14 LOC) is a thin composition root that renders ONLY `features/taskHeatmap/HeatmapBuilderSurface` — no hooks, services, or state machines — matching the thinness of `ClassesPage.tsx`.
+- `pages/HeatmapsPage.tsx` (21 LOC) is a thin composition root that renders ONLY `features/taskHeatmap/HeatmapBuilderSurface` — no hooks, services, or state machines — matching the thinness of `ClassesPage.tsx`.
 - The builder surface composes the documented two-card stack (`PageTitleCard` level 2 + `PageNavCard` actions-only with Refresh), keeping the new entry consistent with the navigation pattern recorded here.
 - Existing navigation specs extended (not weakened) for the new key; `navigation-screenshots.spec.ts` gained a committed Heatmaps baseline.
 
+### 9. Re-run Assessment action in the child heatmap nav (issue #298)
+
+**Status: Implemented**
+
+Adds a `Re-run Assessment` action immediately left of `Refresh` in the child heatmap `PageNavCard`, wired to the existing `AssessTaskModal` through an explicit re-run context.
+
+Changes:
+
+- `TaskHeatmapPage` accepts an optional `onReRunAssessment(context)` callback and renders the `Re-run Assessment` button (Lucide `RotateCcw`) only when the callback is supplied, immediately left of `Refresh`; `Back to Class overview` stays on the left. `TaskHeatmapPage.reRunAssessment.spec.tsx` pins the placement, the `{ assignmentId, definitionKey }` payload, and the omission when no callback is supplied.
+- `ClassPageContent` forwards `onReRunAssessment` to `TaskHeatmapPage`; `ClassPage` owns the `reRunContext` state and opens the modal with it. `handleStartNewAssessment` clears any re-run context so the manual entry never carries one, and `handleCloseModal` clears it on close.
+- `AssessTaskModal` renders the re-run body/footer (`AssessTaskReRunSurface`) and auto-starts one run (`useAssessTaskReRunFlow`) instead of the assignment selector. The full entry, matching, success, failure, and recovery contract is recorded in `frontend-modal-patterns.md` §3.6 and `frontend-shared-helpers-and-abstraction-standards.md` §9.25.
+- The entry uses the class's persisted `assignmentDefinitionKey` and never re-matches by title, topic, or year group; a missing assignment, null key, or unreadable registry fails closed with an in-modal `Alert` instead of starting against a different definition.
+- A success response means the run has been queued in the background, not that results are ready; the heatmap `Refresh` action reloads results after processing.
+
+The full frontend suite, frontend lint check, and Playwright navigation screenshots passed during the issue #298 regression comparison.
+
 ## Outstanding Work
 
-### 1. Full Test Suite Run
-
-**Priority: High**
-
-All individual spec files pass, but the full frontend test suite has not been run end-to-end. Need to verify:
-
-- All 19 classPage tests pass together
-- No regressions in other feature specs
-- Full lint check passes (`npm run lint:frontend:check`)
-
-### 2. Playwright Screenshot Tests — Re-run with Updated UI
-
-**Priority: High**
-
-The existing screenshots were captured with the **first design** (single combined `PageHeader` Card). They need to be re-captured with the **new two-card design** (`PageTitleCard` + `PageNavCard`):
-
-- `class-page-overview.png` — should show two separate cards (title + nav)
-- `task-heatmap.png` — should show three separate cards (parent title + child title + nav)
-
-Command: `npm run test:e2e -- navigation-screenshots.spec.ts --update-snapshots`
-
-### 3. ClassPage Loading Skeleton
+### 1. ClassPage Loading Skeleton
 
 **Priority: Medium**
 
-The `ClassPageLoading` skeleton in `ClassPageContent.tsx` still uses a single `Skeleton.Input` for the heading. With the new two-card layout, the skeleton should reflect:
+The `ClassPageLoading` skeleton in `ClassPageContent.tsx` still uses a single `Skeleton.Input` for the heading. With the title + nav card layout, the skeleton should reflect:
 
 - A larger skeleton for the title card (level 2 heading)
 - A skeleton for the nav card (back button + action buttons)
 
 Currently the skeleton only shows a heading placeholder. The nav card skeleton is missing.
 
-### 4. Documentation
+### 2. Documentation
 
 **Priority: Low**
 
 The navigation consistency pattern should be documented for future pages. Consider adding to:
 
 - `docs/developer/frontend/frontend-shell-navigation-and-motion.md` — or a new dedicated doc
-- The `PageHeader.tsx` module JSDoc already documents the pattern well
+- The `PageHeader/PageHeader.tsx` module JSDoc already documents the pattern well
 
-### 5. ClassPage `titleLevel` Prop on `PageTitleCard`
+### 3. ClassPage `titleLevel` Prop on `PageTitleCard`
 
 **Priority: Low (informational)**
 
-The `PageTitleCard` on ClassPage uses `titleLevel={2}`. The TaskHeatmapPage parent title also uses `titleLevel={2}`. This is intentional — both represent the class-level heading. No action needed, but worth noting for consistency.
+The `PageTitleCard` on ClassPage uses `titleLevel={2}` for the class-level heading, including when the Task Heatmap is open. `TaskHeatmapPage` renders the assignment heading separately. No action needed, but worth noting for consistency.
 
 ## File Inventory
 
 ### New Files
 
-| File                                                    | Lines | Purpose                                                |
-| ------------------------------------------------------- | ----- | ------------------------------------------------------ |
-| `src/frontend/src/components/PageHeader.tsx`            | 116   | Shared `PageTitleCard` + `PageNavCard` components      |
-| `src/frontend/src/components/PageHeader.spec.tsx`       | 86    | Unit tests (10 tests)                                  |
-| `src/frontend/e2e-tests/navigation-screenshots.spec.ts` | 74    | Playwright screenshot tests                            |
-| `src/frontend/src/pages/HeatmapsPage.tsx`               | 14    | Thin composition root for the standalone Heatmaps page |
+| File                                                                           | Lines | Purpose                                                |
+| ------------------------------------------------------------------------------ | ----- | ------------------------------------------------------ |
+| `src/frontend/src/components/PageHeader/PageHeader.tsx`                        | 116   | Shared `PageTitleCard` + `PageNavCard` components      |
+| `src/frontend/src/components/PageHeader/PageHeader.spec.tsx`                   | 86    | Unit tests (10 tests)                                  |
+| `src/frontend/e2e-tests/navigation-screenshots.spec.ts`                        | 86    | Playwright screenshot tests (3 tests)                  |
+| `src/frontend/src/pages/HeatmapsPage.tsx`                                      | 21    | Thin composition root for the standalone Heatmaps page |
+| `src/frontend/src/features/shared/reRunAssessmentContext.ts`                   | 24    | Cross-feature re-run entry contract (`ReRunContext`)   |
+| `src/frontend/src/features/classes/AssessTaskModal/useAssessTaskReRunFlow.ts`  | 192   | Automatic single-run re-run orchestration              |
+| `src/frontend/src/features/classes/AssessTaskModal/AssessTaskReRunSurface.tsx` | 129   | Re-run modal body and footer                           |
 
 ### Modified Files
 
-| File                                                                | Key Changes                                                                                                    |
-| ------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| `src/frontend/src/features/classPage/ClassPage.tsx`                 | Replaced `Typography.Title` with `PageTitleCard` + `PageNavCard`; moved `ClassPageHeaderActions` into nav card |
-| `src/frontend/src/features/taskHeatmap/TaskHeatmapPage.tsx`         | Replaced single header Card with three-card stack; added `className` to `HeaderLabels`                         |
-| `src/frontend/src/features/classPage/ClassPageContent.tsx`          | Removed `ClassPageHeaderActions` from `ClassPageReady`; retained `onStartNewAssessment` for empty-state CTA    |
-| `src/frontend/src/features/classPage/ClassPageContent.spec.tsx`     | Removed `ClassPageHeaderActions` mock and assertions                                                           |
-| `src/frontend/src/features/classPage/ClassPage.spec.tsx`            | Updated modal tests to click button directly                                                                   |
-| `src/frontend/src/features/taskHeatmap/TaskHeatmapPage.spec.tsx`    | Updated assertions for parent + child title cards                                                              |
-| `src/frontend/src/features/classPage/ClassPageHeatmapView.spec.tsx` | Removed `ClassPageHeaderActions` mock                                                                          |
-| `src/frontend/src/navigation/appNavigation.tsx`                     | Added `heatmaps` navigation key (Flame icon, between assignments and settings) and `renderNavigationPage` case |
+| File                                                                      | Key Changes                                                                                                                                                                         |
+| ------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/frontend/src/features/classPage/ClassPage.tsx`                       | Replaced `Typography.Title` with `PageTitleCard` + `PageNavCard`; moved `ClassPageHeaderActions` into nav card; added `reRunContext` state and `handleReRunAssessment` (issue #298) |
+| `src/frontend/src/features/taskHeatmap/TaskHeatmapPage.tsx`               | Replaced single header Card with title + nav card stack; added `Re-run Assessment` action left of `Refresh` (issue #298)                                                            |
+| `src/frontend/src/features/classPage/ClassPageContent.tsx`                | Removed `ClassPageHeaderActions` from `ClassPageReady`; retained `onStartNewAssessment`; forwards `onReRunAssessment` to the heatmap                                                |
+| `src/frontend/src/features/classes/AssessTaskModal/AssessTaskModal.tsx`   | Renders the re-run body/footer and auto-start path when `reRunContext` is supplied (issue #298)                                                                                     |
+| `src/frontend/src/features/classes/AssessTaskModal/assessTaskFlowData.ts` | Added `resolveReRunTarget` + `getValidatedDefinitionPartials` (issue #298)                                                                                                          |
+| `src/frontend/src/features/classPage/ClassPageContent.spec.tsx`           | Removed `ClassPageHeaderActions` mock and assertions                                                                                                                                |
+| `src/frontend/src/features/classPage/ClassPage.spec.tsx`                  | Updated modal tests to click button directly                                                                                                                                        |
+| `src/frontend/src/features/taskHeatmap/TaskHeatmapPage.spec.tsx`          | Updated assertions for parent + child title cards                                                                                                                                   |
+| `src/frontend/src/features/classPage/ClassPageHeatmapView.spec.tsx`       | Removed `ClassPageHeaderActions` mock                                                                                                                                               |
+| `src/frontend/src/navigation/appNavigation.tsx`                           | Added `heatmaps` navigation key (Flame icon, between assignments and settings) and `renderNavigationPage` case                                                                      |
 
 ## Lint Status
 
@@ -216,11 +222,12 @@ All changed files pass `npm run lint:frontend:check` with zero errors or warning
 
 ## Test Status
 
-| Suite                           | Tests  | Status          |
-| ------------------------------- | ------ | --------------- |
-| `PageHeader.spec.tsx`           | 10     | All passing     |
-| `ClassPage.spec.tsx`            | 4      | All passing     |
-| `ClassPageContent.spec.tsx`     | 10     | All passing     |
-| `TaskHeatmapPage.spec.tsx`      | 2      | All passing     |
-| `ClassPageHeatmapView.spec.tsx` | 3      | All passing     |
-| **Total**                       | **29** | **All passing** |
+| Suite                                  | Tests  | Status          |
+| -------------------------------------- | ------ | --------------- |
+| `PageHeader.spec.tsx`                  | 10     | All passing     |
+| `ClassPage.spec.tsx`                   | 6      | All passing     |
+| `ClassPageContent.spec.tsx`            | 10     | All passing     |
+| `TaskHeatmapPage.spec.tsx`             | 2      | All passing     |
+| `ClassPageHeatmapView.spec.tsx`        | 3      | All passing     |
+| **Vitest total**                       | **31** | **All passing** |
+| `navigation-screenshots.spec.ts` (E2E) | 3      | All passing     |

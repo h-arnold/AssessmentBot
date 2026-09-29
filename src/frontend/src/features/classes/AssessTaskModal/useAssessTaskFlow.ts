@@ -79,14 +79,15 @@ export function useAssessTaskFlow(parameters: AssessTaskFlowParameters) {
 
   /**
    * Records the attempted start context in state for recovery and assessment
-   * resumption, and in a ref (for stale-routing inside async catch blocks, where state
-   * reads would be stale).
+   * resumption, and in a ref (for stale-routing inside async catch blocks),
+   * and syncs the assignment ref the obsolete guard compares against.
    *
    * @param {CapturedStartContext} context The attempted definition, assignment and course identifiers.
    * @returns {void}
    */
   function captureStartContext(context: CapturedStartContext): void {
     pendingStartContextReference.current = context;
+    selectedAssignmentIdReference.current = context.assignmentId;
     setCapturedStartContext(context);
   }
 
@@ -165,8 +166,8 @@ export function useAssessTaskFlow(parameters: AssessTaskFlowParameters) {
   }
 
   /**
-   * Settles the resumed assessment run after a successful recovery approval,
-   * returning the owning modal to the normal assessment lifecycle.
+   * Settles an assessment-run outcome (recovery approval or explicit re-run
+   * success), returning the owning modal to the normal assessment lifecycle.
    *
    * @param {AssessmentAlertType} alertType The result alert type.
    * @param {string} message The user-facing result message.
@@ -487,5 +488,13 @@ export function useAssessTaskFlow(parameters: AssessTaskFlowParameters) {
     getLoadingButtonLabel,
     endRecovery,
     settleAssessment,
+    sessionReference,
+    selectedAssignmentIdReference,
+    captureStartContext,
+    isAttemptObsolete,
+    handleStartAssessmentError,
+    setAssessmentAsError,
+    setAssessmentState,
+    setAssessmentError,
   };
 }

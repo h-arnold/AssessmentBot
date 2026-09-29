@@ -78,6 +78,7 @@ Feature-scoped helpers should stay feature-scoped unless there is proven cross-f
 - Classes bulk-set flow test helpers (exports `makeRow`, `assertQueuedBatchMutationCalledOnce`, `assertSingleSelectedRowEdit`): `src/frontend/src/test/classes/bulkFlowTestHelpers.ts` — shared by the `bulkSetYearGroup` and `bulkSetCohort` specs to keep the row-fixture and queued-batch-call assertion logic DRY.
 
 - Shared data-analysis test fixtures and assertion helpers: `src/frontend/src/test/dataAnalysis/` (fixtures, averaging analyser assertions). Placement follows the shared test helpers convention; cross-referenced from `docs/developer/frontend/frontend-testing.md`.
+- Shared document-order button-name helpers for placement assertions: `src/frontend/src/test/shared/buttonOrderingTestHelpers.ts` (exports `getAccessibleButtonNames` and `getAccessibleButtonIndex`), so specs assert relative action placement against the same accessible names.
 
 Test helper placement rules remain governed by `docs/developer/frontend/frontend-testing.md`.
 
@@ -778,15 +779,15 @@ These entries record the feature-local helpers for the Class page. Per `frontend
 
 - Decision: `keep local`
 - Owning module/path: `src/frontend/src/features/classPage/ClassPage.tsx`
-- Call-site rationale: thin composition root for the Class page. Owns `isAssessModalOpen` state, breadcrumb `Classes` link wiring, and per-state content dispatcher (`ClassPageContent`). Has exactly one caller (`ClassesPage.tsx`, inline render when `selectedClassId` is set).
+- Call-site rationale: thin composition root for the Class page. Owns `isAssessModalOpen` and `reRunContext` state, class-selection wiring, and the per-state content dispatcher (`ClassPageContent`). Has exactly one caller (`ClassesPage.tsx`, inline render when `selectedClassId` is set).
 - Status: `Implemented`
 - Implementation notes:
-  - 114 lines. Thin composition root.
-  - Renders a three-segment `Breadcrumb` (`AssessmentBot Frontend / Classes / {className}`) in-page — accepted v1 visual duplication with the shell's two-segment breadcrumb. When `selectedView.view === 'heatmap'`, a fourth `Task Heatmap` segment is appended.
-  - Owns the `selectedView` state (`{ view: 'overview' | 'heatmap'; assignmentId?: string }`, default `overview`); `handleOpenHeatmap(assignmentId)` sets the heatmap view, `handleBack()` resets to overview. Destructures `analyserResult` from the single `useClassPageData(classId)` call and passes it (plus `classFull`, `onOpenHeatmap`, `onBack`, `refetch`, `selectedView`) into `ClassPageContent` — no second analysis call.
-  - Renders `ClassPageContent` with per-state content (loading/blocking/ready/heatmap).
-  - Renders `AssessTaskModal` at the page root (not inside `ClassPageContent`) because the modal state spans loading/blocking/ready transitions.
-  - Co-located spec: `ClassPage.spec.tsx` (7 test cases covering breadcrumb, modal state, and navigation).
+  - 203 lines. Thin composition root.
+  - The shell (`AppShell`) owns the breadcrumb; `ClassPage` renders no in-page breadcrumb. `AppShell` builds it via `getBreadcrumbItems(key, className, onNavigateToClasses)`, which appends the class-name segment while a class detail is open.
+  - Owns the `selectedView` state (`{ view: 'overview' | 'heatmap'; assignmentId?: string }`, default `overview`); `handleOpenHeatmap(assignmentId)` sets the heatmap view, `handleBack()` resets to overview. Destructures `analyserResult` from the single `useClassPageData(classId)` call and passes it (plus `classFull`, `onOpenHeatmap`, `onBack`, `refetch`, `selectedView`, `onReRunAssessment`) into `ClassPageContent` — no second analysis call.
+  - Owns the `reRunContext` state for the explicit heatmap re-run entry (issue #298): `handleReRunAssessment(context)` stores `{ assignmentId, definitionKey }` and opens the modal; `handleStartNewAssessment` and `handleCloseModal` both clear it, so the manual entry never carries a stale context.
+  - Renders `AssessTaskModal` at the page root (not inside `ClassPageContent`) because the modal state spans loading/blocking/ready transitions, forwarding the nullable `reRunContext`.
+  - Co-located specs: `ClassPage.spec.tsx` (modal state and navigation) and `ClassPage.reRunAssessment.spec.tsx` (heatmap action placement, modal context payload, manual-entry clearing).
 
 #### 9.19.5 Per-state content dispatcher: `ClassPageContent`
 
@@ -916,16 +917,16 @@ These entries record the feature-local helpers for the Class page. Per `frontend
 
 #### 9.19.13 Heatmap page composition: `TaskHeatmapPage`
 
-16. Component: `TaskHeatmapPage` — heatmap view composition root (header, control, table regions)
+16. Component: `TaskHeatmapPage` — heatmap view composition root (title, nav, table regions)
 
 - Decision: `keep local`
-- Owning module/path: `src/frontend/src/features/taskHeatmap/TaskHeatmapPage.tsx` (moved unchanged from `features/classPage/` by the TaskHeatmap extraction)
-- Call-site rationale: rendered by `ClassPageContent` when `selectedView.view === 'heatmap'`. It is a pure presentational view that receives the already-computed `analyserResult` + `classFull` (it must NOT call `useClassPageData` — a second hook instance would re-run the analyser, violating the "no new analysis call" contract). It projects the view model via `adaptMetricsToHeatmap(analyserResult, classFull, assignmentId)`.
+- Owning module/path: `src/frontend/src/features/taskHeatmap/TaskHeatmapPage.tsx` (moved from `features/classPage/` by the TaskHeatmap extraction)
+- Call-site rationale: rendered by `ClassPageContent` when `selectedView.view === 'heatmap'`. It is a pure presentational view that receives the already-computed `analyserResult` + `classFull` (it must NOT call `useClassPageData` — a second hook instance would re-run the analyser, violating the "no new analysis call" contract). It projects the view model via `adaptMetricsToHeatmap(analyserResult, classFull, assignmentId, assignmentDefinitionPartials)`.
 - Status: `Implemented`
 - Implementation notes:
-  - `adaptMetricsToHeatmap` is computed exactly once via a `useState` lazy initializer (not re-run on every render). On throw (unknown `assignmentId`), it logs via `logFrontendError('TaskHeatmapPage', error)` inside a `useEffect` and then calls `onBack()` — auto-navigating back to the overview with NO in-view `Alert`/error UI. The error is logged, never silently ignored, and never via `console.*`.
-  - Renders a `Flex` (`vertical`, `gap=16`) with three `Card`s (`size="small"`): a header `Card` (`Typography.Title` assignment name + back `Button` `aria-label="Back to Class overview"` + secondary class name), a control `Card` (refresh `Button` → `refetch`), and the table `Card` (`TaskHeatmapTable`). The breadcrumb (with the `Task Heatmap` segment) is owned by `ClassPage`, not duplicated here.
-  - Co-located integration spec: `ClassPageHeatmapView.spec.tsx` (3 tests: card click opens heatmap; Back returns to overview; unknown `assignmentId` auto-navigates back via `logFrontendError` + `onBack`, no in-view error).
+  - The heatmap state is computed via `useMemo` keyed on the four data props. `TaskTitlesUnavailableError` renders an in-view `Alert` while keeping the title and nav cards visible; every other error is logged once via `logFrontendError('TaskHeatmapPage', error)` (guarded by `useLogOnce`) and then calls `onBack()` — auto-navigating back to the overview with NO in-view `Alert`/error UI. Errors are logged, never silently ignored, and never via `console.*`.
+  - Renders a `Flex` (`vertical`, gap `APP_GAP_MD`) with `PageTitleCard` (assignment name), `PageNavCard` (back button `Back to Class overview`, plus `Re-run Assessment` immediately left of `Refresh` when the owner supplies `onReRunAssessment`), and a table `Card` (`TaskHeatmapTable`). The Re-run action calls `onReRunAssessment({ assignmentId, definitionKey })`, where `definitionKey` is the assignment's persisted `assignmentDefinitionKey` (`null` when absent). The shell breadcrumb is owned by `AppShell`, not duplicated here.
+  - Co-located specs: `TaskHeatmapPage.spec.tsx` plus `TaskHeatmapPage.reRunAssessment.spec.tsx` (action placement, callback payload, and omission when no callback is supplied); `ClassPageHeatmapView.spec.tsx` covers the unknown-`assignmentId` auto-navigate path.
 
 #### 9.19.14 E2E scenario helper: `task-heatmap-end-to-end-helpers`
 
@@ -1127,6 +1128,38 @@ Entries for stale assignment-definition recovery. The delivered items are the as
 - Call-site rationale: the nested `Discard changes` confirmation was duplicated across the three callers, including its `Keep editing` / `Discard changes` footer semantics and the `aria-labelledby` re-anchoring that keeps the nested dialog's accessible name distinct from the owning modal. One narrow component removes the copy/accessibility drift risk without becoming a generic confirmation wrapper.
 - Status: `Implemented` — `AssignmentDiscardConfirm.tsx` is the narrow feature-local shared component for the wizard, in-modal create review, and stale-recovery review surfaces.
 - Cross-reference: `docs/developer/frontend/frontend-modal-patterns.md` §3.5 records the same extraction.
+
+## 9.25 Explicit assessment re-run entry helpers (issue #298)
+
+Entries for the explicit heatmap `Re-run Assessment` entry that reuses `AssessTaskModal`. The modal-side entry, matching, success, and recovery contract is recorded in `docs/developer/frontend/frontend-modal-patterns.md` §3.6.
+
+1. Helper: `ReRunContext` cross-feature entry contract
+
+- Decision: `new`
+- Owning module/path: `src/frontend/src/features/shared/reRunAssessmentContext.ts`
+- Call-site rationale: the `{ assignmentId, definitionKey }` value crosses three feature directories (`taskHeatmap` produces it, `classPage` forwards it, `classes/AssessTaskModal` consumes it). Placing it in `features/shared` keeps `features/taskHeatmap/**` free of imports from `features/classPage/**` (the permanent dependency rule). `definitionKey` is `null` when the assignment has no linked definition; the modal fails closed on that case instead of re-matching by title or topic.
+- Status: `Implemented`
+
+2. Helper: `resolveReRunTarget` validation plus `getValidatedDefinitionPartials` extraction
+
+- Decision: `new` (`resolveReRunTarget` and its `ReRunTargetResolution` type) and `extend` (`getValidatedDefinitionPartials` extracted from `getValidatedCachedData`)
+- Owning module/path: `src/frontend/src/features/classes/AssessTaskModal/assessTaskFlowData.ts`
+- Call-site rationale: `resolveReRunTarget` validates an explicit re-run entry before any run starts. It never re-matches by title, topic, or year group; a null definition key, a missing assignment, an unreadable registry, or a key absent from the registry resolves to `blocked`, so the modal surfaces the failure instead of starting against a different definition. Each block carries `retryable` so the footer offers `Retry` only when retrying could succeed. The registry read is separated into `getValidatedDefinitionPartials` because the re-run path needs only the definition partials, while the manual path's `getValidatedCachedData` additionally requires the class partial and a non-null year group. Both callers share the same cache-error descriptor.
+- Status: `Implemented`
+
+3. Helper: `useAssessTaskReRunFlow` hook
+
+- Decision: `new` (feature-local)
+- Owning module/path: `src/frontend/src/features/classes/AssessTaskModal/useAssessTaskReRunFlow.ts`
+- Call-site rationale: owns the effect-driven automatic single start, the processed-context guard (keyed on modal session + assignment + definition key), and the `retryReRun` / `isRetryAvailable` affordance. It records the attempt identity through `useAssessTaskFlow`'s `captureStartContext` — which also syncs the obsolete-assignment ref — instead of driving the assignment Select, and reuses the flow's error and stale-recovery handling rather than duplicating it. Exactly one caller (`AssessTaskModal`).
+- Status: `Implemented`
+
+4. Component pair: `AssessTaskReRunBody` / `AssessTaskReRunFooter`
+
+- Decision: `new` (feature-local presentational)
+- Owning module/path: `src/frontend/src/features/classes/AssessTaskModal/AssessTaskReRunSurface.tsx`
+- Call-site rationale: renders the re-run body (target assignment plus a note that the linked definition is reused; success/failure alerts) and footer (loading, retry, close, cancel). It never renders the assignment Select, so the skipped selector cannot be mistaken for the manual path, and never renders the internal definition key. Exactly one caller (`AssessTaskModal`).
+- Status: `Implemented`
 
 ## 10. Frontend utils folder convention
 

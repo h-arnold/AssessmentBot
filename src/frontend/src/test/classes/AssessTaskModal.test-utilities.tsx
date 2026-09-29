@@ -93,14 +93,14 @@ export function createPendingPromise<T>(): Promise<T> {
  * @param {QueryClient} queryClient Client whose cache should be seeded.
  * @param {AssignmentDefinitionPartial} definition Definition partial to cache.
  * @param {string} [classId=MOCK_CLASS_ID] Class identifier.
- * @param {string} [yearGroupKey='year-10'] Class year-group key.
+ * @param {string | null} [yearGroupKey='year-10'] Class year-group key, or null when the class has none.
  * @returns {void}
  */
 export function seedAssessmentFlowQueryData(
   queryClient: QueryClient,
   definition: AssignmentDefinitionPartial,
   classId: string = MOCK_CLASS_ID,
-  yearGroupKey: string = 'year-10'
+  yearGroupKey: string | null = 'year-10'
 ): void {
   queryClient.setQueryData(queryKeys.classPartials(), [
     createFixtureClassPartial({ classId, yearGroupKey }),
