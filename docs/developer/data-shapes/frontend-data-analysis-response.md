@@ -433,6 +433,93 @@ is inherited unchanged. In merged heatmaps, a definition-scoped duplicate
 by `taskKey`, and every collapsed instance shares the same definition-scoped
 effective weighting.
 
+## Task preview derived shapes (planned)
+
+> **Status: Not implemented — planned (issue #19).** Both types below exist today
+> without `sourceUrl`. The planned change adds one required
+> `readonly sourceUrl: string | null` field to each. Neither type is persisted and
+> neither is added to any API request or response, so the standard
+> [transport envelope](transport-envelope.md) still does not apply.
+
+These are frontend-only derived types in the task-preview pipeline. They are
+in-memory companions to the derived `DataAnalysisResponse`, not analyser output,
+and are not validated by a Zod schema.
+
+### `CellPreviewData` (planned)
+
+Owner: `src/frontend/src/features/taskHeatmap/buildCellPreviewLookup.ts` →
+`CellPreviewData`.
+
+Derived from an `AssignmentFull` submission item's artifact and assessments:
+`buildCellPreviewLookup()` transforms the payload into a
+`studentId → taskKey → CellPreviewData` lookup. A discriminated union keyed on
+`artifactType`, so `artifactContent` narrows with the discriminator.
+
+```ts
+type CellPreviewData = {
+  [K in ArtifactType]: {
+    readonly artifactType: K;
+    readonly artifactContent: ArtifactContentByType<K>;
+    readonly reasoning: Record<HeatmapMetricKey, string | null>;
+    readonly sourceUrl: string | null; // planned (issue #19)
+  };
+}[ArtifactType];
+```
+
+| #   | Field             | Type                                     | Notes                                                                                                                                                     |
+| --- | ----------------- | ---------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | `artifactType`    | `ArtifactType`                           | Discriminator derived from `BaseTaskArtifactSchema['type']`, so the two cannot drift.                                                                     |
+| 2   | `artifactContent` | `ArtifactContentByType<K>`               | `TEXT`/`TABLE`/`IMAGE` → `string \| null`; `SPREADSHEET` → 2D array or `null`; `base` → `unknown`.                                                        |
+| 3   | `reasoning`       | `Record<HeatmapMetricKey, string\|null>` | Per-metric reasoning strings; `null` when the assessment is absent for that metric.                                                                       |
+| 4   | `sourceUrl`       | `string\|null`                           | **Planned (issue #19).** Editor link derived in the lookup, or `null` when the source is unavailable. Never persisted and never added to an API response. |
+
+### `TaskPreviewData` (planned)
+
+Owner: `src/frontend/src/features/taskHeatmap/TaskPreviewCard.tsx` →
+`TaskPreviewData`.
+
+Assembled by `assembleTaskPreviewData.ts` from a `CellPreviewData` (or `null`) plus
+the analyser's [`TaskDisplayMetric`](#metricresult) and metric key, then consumed by
+`TaskPreviewCard`. In merged heatmaps, `assembleMergedPreviewData.ts` merges
+per-assignment lookups first-wins; `sourceUrl` travels with its cell and is never
+re-derived during merge.
+
+```ts
+interface TaskPreviewData {
+  readonly taskId: string;
+  readonly artifactType: 'IMAGE' | 'TEXT' | 'TABLE';
+  readonly artifactContent: string;
+  readonly metricKey: 'completeness' | 'accuracy' | 'spag';
+  readonly reasoning: string;
+  readonly metric: TaskDisplayMetric;
+  readonly sourceUrl: string | null; // planned (issue #19)
+}
+```
+
+| #   | Field             | Type                                     | Notes                                                                                                                                      |
+| --- | ----------------- | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1   | `taskId`          | `string`                                 | The heatmap column's task ID, forwarded unchanged.                                                                                         |
+| 2   | `artifactType`    | `'IMAGE' \| 'TEXT' \| 'TABLE'`           | Narrowed from `CellPreviewData['artifactType']`: `SPREADSHEET` → `TABLE`, `base` → `TEXT`.                                                 |
+| 3   | `artifactContent` | `string`                                 | Rendered form; `SPREADSHEET` is converted to a Markdown table, `base` becomes `''`.                                                        |
+| 4   | `metricKey`       | `'completeness' \| 'accuracy' \| 'spag'` | Which metric column the preview is for.                                                                                                    |
+| 5   | `reasoning`       | `string`                                 | `cellData.reasoning[metricKey] ?? ''`; empty string when no reasoning exists.                                                              |
+| 6   | `metric`          | `TaskDisplayMetric`                      | The analyser's task-display metric, except the no-submission branch substitutes the frozen `NOT_ATTEMPTED_METRIC`.                         |
+| 7   | `sourceUrl`       | `string\|null`                           | **Planned (issue #19).** Carried unchanged from the source `CellPreviewData`; `null` when `cellData` is `null` or no usable source exists. |
+
+> **Planned `sourceUrl` semantics (issue #19).** `sourceUrl` is an editor link to
+> the displayed submission artifact's source document. It is **distinct from
+> image-export `artifact.metadata.sourceUrl`** — the PNG export URL consumed by
+> `src/backend/RequestHandlers/ImageManager.js` to hydrate image content — and is
+> never copied from that metadata field. Resolution prefers a non-blank artifact
+> `documentId`, otherwise the parent submission's non-blank `documentId`; a usable
+> `pageId` supplies the fragment anchor. The format comes from the root full
+> assignment's `documentType` (`SLIDES` → presentation `/edit#slide=id.<pageId>`;
+> `SHEETS` → spreadsheet `/edit#gid=<pageId>`), with a bare `/edit` root fallback
+> when no usable page ID exists. An unknown document, or a `null`/unsupported
+> format, yields `sourceUrl: null`; so does missing cell data. This depends on the
+> planned nullable artefact `pageId`/`documentId` alignment recorded in
+> [Contract: Assignment §BaseTaskArtifact](assignment.md#basetaskartifact).
+
 ## Display contract
 
 The `excluded` state is displayed as **Excluded** with accessible text:
@@ -574,3 +661,9 @@ Analyser: `src/frontend/src/services/dataAnalysis/analysers/`
 Heatmap adapters: `src/frontend/src/services/dataAnalysis/heatmapAdapter.ts`, `src/frontend/src/services/dataAnalysis/heatmapAdapter.merged.ts`
 Metric display: `src/frontend/src/services/dataAnalysis/metricDisplay/`
 Class-page adapter schema: `src/frontend/src/features/classPage/classPageAdapter.zod.ts`
+
+Task preview derived shapes (planned, issue #19):
+├── `src/frontend/src/features/taskHeatmap/buildCellPreviewLookup.ts` → `CellPreviewData` (owner)
+├── `src/frontend/src/features/taskHeatmap/assembleTaskPreviewData.ts` → `TaskPreviewData` assembly
+├── `src/frontend/src/features/taskHeatmap/assembleMergedPreviewData.ts` → merged lookup/status
+└── `src/frontend/src/features/taskHeatmap/TaskPreviewCard.tsx` → `TaskPreviewData` (owner)
