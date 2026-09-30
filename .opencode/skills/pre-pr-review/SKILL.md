@@ -1,6 +1,6 @@
 ---
 name: pre-pr-review
-description: Pre-PR code review orchestrator. Runs the regression checker first and blocks on any regressions, then runs a set of code review focuses in parallel (repo rule compliance, KISS/DRY, de-sloppification, performance/Big-O, logging rules, plus optional layer-scoped focuses), synthesises them into a single PR_REVIEW.md at the repo root, walks through each finding with the user via the ask-user-a-question tool to capture a decision, and records those decisions in detail in the review document.
+description: Pre-PR code review orchestrator. Runs the regression checker first and blocks on any regressions, then runs a set of code review focuses in parallel (repo rule compliance, KISS/DRY, de-sloppification, performance/Big-O, logging rules, plus optional layer-scoped focuses), synthesises them into a single PR_REVIEW.md at the repo root, walks through each finding with the user via the ask-user-a-question tool to capture a decision, records those decisions in detail in the review document, and raises GitHub Issues for deferred findings (combined where similar or overlapping) once all decisions are recorded.
 license: MIT
 compatibility: Mistral Vibe CLI
 user-invocable: true
@@ -26,6 +26,8 @@ verified by the regression checker up front.
 2. Captures the diff between the current branch and `main`.
 3. Launches the review focuses in parallel.
 4. Synthesises the results into `PR_REVIEW.md` at the repo root.
+5. Walks through each finding to capture decisions, then creates GitHub Issues for any deferred
+   findings (combined where similar or overlapping).
 
 ## Quick start
 
@@ -243,19 +245,28 @@ label omitted optional sections with `_(not in scope for this diff)_`.
 
 ## Step 5 — Decision pass with the user
 
-Before finalising, walk through **every** finding in the synthesised `PR_REVIEW.md` with the user, one
-item at a time, using the **ask user a question** tool. For each finding, capture the user's decision on
-whether and how to address it. Where appropriate, ask for the chosen approach (e.g. fix now, fix later,
-wontfix, or a specific remediation strategy) so the outcome is unambiguous.
+Before finalising, walk through **every** finding in the synthesised `PR_REVIEW.md` with the user. For
+each finding, capture the user's decision on whether and how to address it. Where appropriate, ask for
+the chosen approach (e.g. fix now, defer, wontfix, or a specific remediation strategy) so the outcome is
+unambiguous.
 
 Guidance:
 
-- Work through findings in order of severity (Critical → Improvement → Nitpick), including incidental items.
-- For each item, present the finding, its `file:line` evidence, and the available options, then let the
-  user decide.
+- Work through findings **strictly one item at a time** in order of severity (Critical → Improvement →
+  Nitpick), including incidental items. Do not present or ask about the next finding until the current
+  one has been decided.
+- **Explain in chat, ask with the tool.** Put the full explanation of the finding — what it is, its
+  `file:line` evidence, the options, and their trade-offs — in the chat message, then use the **ask user
+  a question** tool **only** to capture the choice. Do not attempt to compress a complex issue into the
+  tool's option labels or character limits; the tool is for selecting an option, not for conveying the
+  detail. The chat explanation is the source of detail.
 - Record each decision in full detail — do not reduce it to a single word. Capture the chosen option and
   any specifics the user provides about _how_ the issue should be addressed (e.g. the intended fix, the
   trade-offs considered, or why a finding is being rejected).
+- **Deferral means a GitHub Issue.** When presenting the defer option, state explicitly that choosing it
+  assumes a GitHub Issue will be created recording the deferred work. Do not create the Issue during the
+  decision pass; collect all deferrals first so similar or overlapping findings can be combined into a
+  single Issue in Step 7.
 
 ## Step 6 — Record decisions in PR_REVIEW.md
 
@@ -264,7 +275,8 @@ Step 5. Each decision MUST be written so that another engineer can pick up the d
 it without further context from the conversation. For each finding include:
 
 - The finding reference (focus area + severity + `file:line`).
-- The decision (e.g. Fix now / Fix later / Wontfix).
+- The decision (e.g. Fix now / Defer / Wontfix). A **Defer** decision implies a GitHub Issue will be
+  raised (see Step 7); note any intended Issue scope and which other findings it might be combined with.
 - The detailed rationale and, where applicable, the agreed approach for addressing it.
 
 Structure:
@@ -274,22 +286,38 @@ Structure:
 
 ### Repo rule compliance
 
-- **[Critical] `src/backend/foo.js:42`** — Decision: Fix later. Approach: extract the duplicated
-  validation into `Validate.requireParams` and add a unit test; deferred because it is not on the hot
-  path. Rationale: user wants the PR to ship first, follow-up ticket to be raised.
+- **[Critical] `src/backend/foo.js:42`** — Decision: Defer (GitHub Issue). Approach: extract the
+  duplicated validation into `Validate.requireParams` and add a unit test; deferred because it is not on
+  the hot path. Rationale: user wants the PR to ship first. To be combined with the KISS & DRY finding at
+  `src/backend/foo.js:90` into a single follow-up Issue.
 - **[Nitpick] `src/frontend/Bar.tsx:88`** — Decision: Wontfix. Rationale: intentional deviation agreed
   with design; documented so a future reviewer does not re-raise it.
 
 ...
 ```
 
-## Step 7 — Return to the user
+## Step 7 — Create GitHub Issues for deferred findings
+
+Only after **all** decisions have been recorded in `PR_REVIEW.md` (Step 6), create the GitHub Issues for
+findings decided as **Defer**.
+
+- Review the full set of deferrals together and combine similar or overlapping findings into a single
+  Issue rather than raising one Issue per finding, so related work is not scattered.
+- Create each Issue with `gh issue create`, using a title that names the affected area/behaviour and a
+  body that includes the finding details, `file:line` evidence, the agreed approach/rationale, and a
+  link back to `PR_REVIEW.md`.
+- After creating the Issues, update each corresponding **Defer** entry in the Decisions section with its
+  GitHub Issue number/URL so the document and tracker stay in sync.
+- If no findings were deferred, skip this step.
+
+## Step 8 — Return to the user
 
 Print a brief summary:
 
 - The overall verdict (Pass / Needs Improvement / Fail).
 - Regression gate result.
 - The list of focuses run.
+- The GitHub Issues created for deferred findings (numbers/URLs), if any.
 - The path to `PR_REVIEW.md` (now including the recorded decisions).
 
 Do not mark the review complete while any Critical item remains unaddressed; instead report the
@@ -300,3 +328,8 @@ Critical items so the user can address them and re-run the skill.
 - Keep the regression checker as the single source of truth for branch health. Never bypass the gate.
 - Parallelise all review agents in one message to keep the review fast.
 - The skill synthesises; it does not re-litigate individual findings. Trust agent evidence.
+- A **Defer** decision always implies a GitHub Issue. Deferrals are collected across all findings and
+  Issues are only created in Step 7, after every decision is recorded, so overlapping findings can be
+  merged into one Issue.
+- In the decision pass, explain each finding fully in chat and use the ask user a question tool only to
+  capture the selection; handle exactly one finding per exchange.
