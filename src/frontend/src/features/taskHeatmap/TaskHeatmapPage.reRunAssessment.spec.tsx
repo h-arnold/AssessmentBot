@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { createElement } from 'react';
 import { App } from 'antd';
 import { QueryClientProvider } from '@tanstack/react-query';
-import { TaskHeatmapPage } from './TaskHeatmapPage';
+import { mockGetAssignment } from '../../test/taskHeatmapPageMocks';
 import {
   analyserResultFixture,
   buildDefaultAssignmentFixture,
@@ -12,36 +12,14 @@ import {
   VALID_ASSIGNMENT_PARTIAL,
 } from '../../test/taskHeatmapPageFixtures';
 import { createTestQueryClient } from '../../test/dataAnalysis/heatmapFixtures';
-import { getAccessibleButtonIndex } from '../../test/shared/buttonOrderingTestHelpers';
+import { expectReRunButtonOrdering } from '../../test/shared/buttonOrderingTestHelpers';
+import { TaskHeatmapPage } from './TaskHeatmapPage';
 import type { ReRunContext } from '../shared/reRunAssessmentContext';
 
 /** Heatmap properties overridden by the re-run action specs. */
 type ReRunSpecProperties = Readonly<{
   onReRunAssessment?: (context: ReRunContext) => void;
 }>;
-
-const { mockGetAssignment, mockLogFrontendError, mockLogFrontendEvent, mockTaskHeatmapTable } =
-  vi.hoisted(() => ({
-    mockGetAssignment: vi.fn(),
-    mockLogFrontendError: vi.fn(),
-    mockLogFrontendEvent: vi.fn(),
-    mockTaskHeatmapTable: vi.fn(() =>
-      createElement('div', { 'data-testid': 'task-heatmap-table' })
-    ),
-  }));
-
-vi.mock('../../services/assignmentAssessment/assignmentAssessmentService', () => ({
-  getAssignment: mockGetAssignment,
-}));
-
-vi.mock('../../logging/frontendLogger', () => ({
-  logFrontendError: mockLogFrontendError,
-  logFrontendEvent: mockLogFrontendEvent,
-}));
-
-vi.mock('./TaskHeatmapTable', () => ({
-  TaskHeatmapTable: mockTaskHeatmapTable,
-}));
 
 /**
  * Builds the heatmap page properties from the shared fixtures, with optional
@@ -99,14 +77,7 @@ describe('TaskHeatmapPage — Re-run Assessment action', () => {
     renderHeatmapPage({ onReRunAssessment: vi.fn() });
     await screen.findByRole('button', { name: /re-run assessment/i });
 
-    const backIndex = getAccessibleButtonIndex('Back to Class overview');
-    const reRunIndex = getAccessibleButtonIndex('Re-run Assessment');
-    const refreshIndex = getAccessibleButtonIndex('Refresh');
-
-    expect(backIndex).toBeGreaterThanOrEqual(0);
-    expect(refreshIndex).toBeGreaterThan(backIndex);
-    expect(reRunIndex).toBe(refreshIndex - 1);
-    expect(reRunIndex).toBeGreaterThan(backIndex);
+    expectReRunButtonOrdering();
   });
 
   it('invokes onReRunAssessment with the assignment and its linked definition key', async () => {

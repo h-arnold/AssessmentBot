@@ -2,6 +2,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testi
 import userEvent from '@testing-library/user-event';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import '../../../test/classes/AssessTaskModal.mockSetup';
 import { AssessTaskModal } from './AssessTaskModal';
 import { getGoogleClassroomAssignments } from '../../../services/googleClassrooms/googleClassroomAssignmentsService';
 import { startAssessmentRun } from '../../../services/assignmentAssessment/assignmentAssessmentService';
@@ -44,32 +45,6 @@ import { createDefinitionPartial } from '../../../test/classes/matchDefinitionFo
 import { setTextboxValue } from '../../../test/assignmentDefinition/wizardTestHelpers';
 import { getAssignmentTopics } from '../../../services/assignmentDefinition/assignmentTopicsService';
 import { getYearGroups } from '../../../services/referenceData/referenceDataService';
-
-vi.mock('../../../services/googleClassrooms/googleClassroomAssignmentsService', () => ({
-  getGoogleClassroomAssignments: vi.fn(),
-}));
-
-vi.mock('../../../services/assignmentAssessment/assignmentAssessmentService', () => ({
-  startAssessmentRun: vi.fn(),
-}));
-
-vi.mock('../../../services/assignmentDefinition/assignmentDefinitionService', () => ({
-  getAssignmentDefinition: vi.fn(),
-  upsertAssignmentDefinition: vi.fn(),
-}));
-
-vi.mock('../../../services/assignmentDefinition/assignmentTopicsService', () => ({
-  getAssignmentTopics: vi.fn(),
-}));
-
-vi.mock('../../../services/referenceData/referenceDataService', () => ({
-  getCohorts: vi.fn(),
-  getYearGroups: vi.fn(),
-}));
-
-vi.mock('./matchDefinitionForAssignment', () => ({
-  findMatchingDefinition: vi.fn(),
-}));
 
 let user: ReturnType<typeof userEvent.setup>;
 

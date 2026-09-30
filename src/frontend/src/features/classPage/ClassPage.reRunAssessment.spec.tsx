@@ -20,7 +20,7 @@ import {
   classFullFixture,
   VALID_ASSIGNMENT_PARTIAL,
 } from '../../test/taskHeatmapPageFixtures';
-import { getAccessibleButtonIndex } from '../../test/shared/buttonOrderingTestHelpers';
+import { expectReRunButtonOrdering } from '../../test/shared/buttonOrderingTestHelpers';
 
 const CLASS_PAGE_CLASS_ID = 'class-1';
 const RECENT_ASSIGNMENT_NAME = 'Assignment One';
@@ -179,14 +179,7 @@ describe('ClassPage — Re-run Assessment hand-off', () => {
     await openHeatmapView(user);
     await screen.findByRole('button', { name: /re-run assessment/i });
 
-    const backIndex = getAccessibleButtonIndex('Back to Class overview');
-    const reRunIndex = getAccessibleButtonIndex('Re-run Assessment');
-    const refreshIndex = getAccessibleButtonIndex('Refresh');
-
-    expect(backIndex).toBeGreaterThanOrEqual(0);
-    expect(refreshIndex).toBeGreaterThan(backIndex);
-    expect(reRunIndex).toBe(refreshIndex - 1);
-    expect(reRunIndex).toBeGreaterThan(backIndex);
+    expectReRunButtonOrdering();
   });
 
   it('opens the assessment modal with the selected assignment re-run context', async () => {

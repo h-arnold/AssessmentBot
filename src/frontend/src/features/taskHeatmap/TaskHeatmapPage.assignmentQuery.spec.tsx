@@ -4,6 +4,12 @@ import userEvent from '@testing-library/user-event';
 import { createElement } from 'react';
 import { App } from 'antd';
 import { QueryClientProvider } from '@tanstack/react-query';
+import {
+  mockGetAssignment,
+  mockLogFrontendError,
+  mockLogFrontendEvent,
+  mockTaskHeatmapTable,
+} from '../../test/taskHeatmapPageMocks';
 import { TaskHeatmapPage } from './TaskHeatmapPage';
 import {
   analyserResultFixture,
@@ -12,29 +18,6 @@ import {
   VALID_ASSIGNMENT_PARTIAL,
 } from '../../test/taskHeatmapPageFixtures';
 import { createTestQueryClient } from '../../test/dataAnalysis/heatmapFixtures';
-
-const { mockGetAssignment, mockLogFrontendError, mockLogFrontendEvent, mockTaskHeatmapTable } =
-  vi.hoisted(() => ({
-    mockGetAssignment: vi.fn(),
-    mockLogFrontendError: vi.fn(),
-    mockLogFrontendEvent: vi.fn(),
-    mockTaskHeatmapTable: vi.fn(() =>
-      createElement('div', { 'data-testid': 'task-heatmap-table' })
-    ),
-  }));
-
-vi.mock('../../services/assignmentAssessment/assignmentAssessmentService', () => ({
-  getAssignment: mockGetAssignment,
-}));
-
-vi.mock('../../logging/frontendLogger', () => ({
-  logFrontendError: mockLogFrontendError,
-  logFrontendEvent: mockLogFrontendEvent,
-}));
-
-vi.mock('./TaskHeatmapTable', () => ({
-  TaskHeatmapTable: mockTaskHeatmapTable,
-}));
 
 /**
  * Extracts the props from the most recent TaskHeatmapTable mock call.

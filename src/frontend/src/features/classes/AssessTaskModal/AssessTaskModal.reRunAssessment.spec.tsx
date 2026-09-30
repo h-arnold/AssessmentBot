@@ -13,6 +13,7 @@ import userEvent from '@testing-library/user-event';
 import { QueryClientProvider, type QueryClient } from '@tanstack/react-query';
 import { act, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import '../../../test/classes/AssessTaskModal.mockSetup';
 import { AssessTaskModal } from './AssessTaskModal';
 import { findMatchingDefinition } from './matchDefinitionForAssignment';
 import { getGoogleClassroomAssignments } from '../../../services/googleClassrooms/googleClassroomAssignmentsService';
@@ -48,32 +49,6 @@ import {
 } from '../../../test/classes/AssessTaskModal.test-utilities';
 import type { GoogleClassroomAssignmentsResponse } from '../../../services/googleClassrooms/googleClassroomAssignments.zod';
 import type { ReRunContext } from '../../shared/reRunAssessmentContext';
-
-vi.mock('../../../services/googleClassrooms/googleClassroomAssignmentsService', () => ({
-  getGoogleClassroomAssignments: vi.fn(),
-}));
-
-vi.mock('../../../services/assignmentAssessment/assignmentAssessmentService', () => ({
-  startAssessmentRun: vi.fn(),
-}));
-
-vi.mock('../../../services/assignmentDefinition/assignmentDefinitionService', () => ({
-  getAssignmentDefinition: vi.fn(),
-  upsertAssignmentDefinition: vi.fn(),
-}));
-
-vi.mock('../../../services/assignmentDefinition/assignmentTopicsService', () => ({
-  getAssignmentTopics: vi.fn(),
-}));
-
-vi.mock('../../../services/referenceData/referenceDataService', () => ({
-  getCohorts: vi.fn(),
-  getYearGroups: vi.fn(),
-}));
-
-vi.mock('./matchDefinitionForAssignment', () => ({
-  findMatchingDefinition: vi.fn(),
-}));
 
 /** Definition key persisted on the previously assessed assignment. */
 const PERSISTED_DEFINITION_KEY = 'essay-def-key';
