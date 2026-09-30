@@ -421,7 +421,6 @@ Do not reintroduce a monolithic shape doc in the backend folder.
 
 Provide a concise handoff summary including:
 
-- **Files read** (explicit paths): every backend model, z_Api handler, response mapper, frontend Zod schema, and service file read during this pass.
 - **Files created/updated**: paths and a one-line summary of the change.
 - **Contracts documented**: which contracts were created, updated, or left untouched with rationale.
 - **Discrepancies surfaced**: every discrepancy found and its classification (aligned/misaligned/fragile).

@@ -280,4 +280,4 @@ Structure all feedback as follows:
 
 ## 8. Completion
 
-When your review is complete, write your complete review findings to the scratchpad. Return to a brief summary to the calling agent detailing whether the review has passed, the file path to the full review and a list of the files read.
+When your review is complete, write your complete review findings to the scratchpad. Return to a brief summary to the calling agent detailing whether the review has passed and the file path to the full review.

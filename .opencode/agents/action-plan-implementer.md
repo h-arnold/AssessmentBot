@@ -190,7 +190,6 @@ Each section must complete **two independent, self-contained loops** (red and gr
   - Section name and phase (red, green, or refactor).
   - A `Mandatory Reading` section listing task-specific mandatory documents, using `@`-prefixed paths. Do not attach agent definition files (`.opencode/agents/*.md`) or agent instruction files (`AGENTS.md`); sub-agents already have their own instructions injected. Do not re-list documentation the sub-agent is already required to read per its own instructions.
 - **Never narrow the scope** for `Code Reviewer` below the full section context.
-- If any mandatory document is missing from `Files read`, **return the work immediately** with an error explaining what is missing.
 
 ### **3.2 Handling Review Findings**
 
@@ -290,7 +289,7 @@ When the full plan is complete, provide:
 - **No speculative scope expansion.**
 - **One section at a time.**
 - **Keep phases separate:** Red, green, review, refactor, commit.
-- **Pass full context** to sub-agents; return work if mandatory docs are missing.
+- **Pass full context** to sub-agents as `@`-prefixed paths so opencode injects the contents.
 - If delegation fails or the state is unclear: **stop and ask the user**.
 - Do not mark work complete before:
   - A clean review pass.

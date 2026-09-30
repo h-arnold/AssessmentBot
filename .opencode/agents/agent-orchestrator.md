@@ -60,7 +60,7 @@ When delegating to subagents, specify **WHAT** needs to be accomplished and **WH
 
 **Delegate the outcome, not the implementation.**
 
-### 3.2 Mandatory Evidence
+### 3.2 Mandatory Handoff Content
 
 Every subagent handoff **must** include:
 
@@ -73,7 +73,8 @@ Every subagent handoff **must** include:
 - Exact requested outcome
 - Expected deliverables
 
-**Blocking rule**: If a handoff omits mandatory `Files read` evidence, return the work immediately to the same subagent with a correction request. Do not proceed.
+Do not ask subagents to report which files they read. The injected `@path` contents are
+the delivery mechanism, so a read-evidence gate adds no value.
 
 ### 3.3 Sub-Agent Delegation Constraints
 
@@ -401,7 +402,6 @@ When returning work to the user, always provide:
 - **Use Kif for context discovery** — to identify relevant docs and dependencies before delegation
 - **Use Kif efficiently** — for menial tasks only; do not use for reasoning-heavy work
 - **Write Kif findings to scratchpad** — for documentation discovery, not direct return
-- **Fail fast on missing evidence** — return work immediately when `Files read` is incomplete
 - **Always establish regression baseline first** — before non-trivial code/test changes begin
 - **Always verify no regressions** — before marking non-trivial code/test changes complete
 - **Stay within scope** — no speculative expansions

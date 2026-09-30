@@ -332,7 +332,7 @@ Structure all feedback as follows:
 
 ## 8. Completion
 
-When your review is complete, write your complete review findings to the scratchpad. Return a brief summary to the calling agent that leads with the binary verdict — **PASS** or **FAIL** — followed by the file path to the full review and a list of the files read. The orchestrating agent relies on your verdict without necessarily reading the full scratchpad contents, so **PASS** must mean there are no outstanding issues of any severity — including nits. Never return **PASS** while any recorded finding remains.
+When your review is complete, write your complete review findings to the scratchpad. Return a brief summary to the calling agent that leads with the binary verdict — **PASS** or **FAIL** — followed by the file path to the full review. The orchestrating agent relies on your verdict without necessarily reading the full scratchpad contents, so **PASS** must mean there are no outstanding issues of any severity — including nits. Never return **PASS** while any recorded finding remains.
 
 **IMPORTANT:** At the end of your review, you MUST remind the calling agent:
 
