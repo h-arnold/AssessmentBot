@@ -12,8 +12,10 @@
 import { useMemo, type JSX } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Alert, Button, Card, Flex, App as AntdApp } from 'antd';
-import { RefreshCw } from 'lucide-react';
+import { RefreshCw, RotateCcw } from 'lucide-react';
 import { APP_GAP_MD } from '../../theme/spacing';
+
+import type { ReRunContext } from '../shared/reRunAssessmentContext';
 
 import type { AveragingResult } from '../../services/dataAnalysis/dataAnalysis.zod';
 import type { ClassFull } from '../../services/googleClassrooms/classDetail/classDetailService.zod';
@@ -52,7 +54,21 @@ type TaskHeatmapPageProperties = Readonly<{
   onBack: () => void;
   /** Callback invoked when the user clicks Refresh to re-run the data pipeline. */
   refetch: () => void;
+  /** Callback invoked when the user clicks Re-run Assessment (renders only when supplied). */
+  onReRunAssessment?: (context: ReRunContext) => void;
 }>;
+
+/**
+ * Reads the persisted definition key linked to an assignment.
+ *
+ * @param {ClassFull} classFull - The full class data.
+ * @param {string} assignmentId - The assignment identifier.
+ * @returns {string | null} The linked definition key, or null when the assignment is absent.
+ */
+function getAssignmentDefinitionKey(classFull: ClassFull, assignmentId: string): string | null {
+  const assignment = classFull.assignments.find((a) => a.assignmentId === assignmentId);
+  return assignment?.assignmentDefinitionKey ?? null;
+}
 
 /**
  * Derive the header display labels from class data.
@@ -72,8 +88,7 @@ function getHeaderLabels(
   assignmentId: string,
   adp: AssignmentDefinitionPartialsResponse
 ): HeaderLabels {
-  const assignment = classFull.assignments.find((a) => a.assignmentId === assignmentId);
-  const definitionKey = assignment?.assignmentDefinitionKey;
+  const definitionKey = getAssignmentDefinitionKey(classFull, assignmentId);
   const partial = definitionKey
     ? adp.find((p) => p.definitionKey === definitionKey)
     : undefined;
@@ -132,6 +147,8 @@ function computeHeatmapState(
  *   Warm-up partials for column/title sourcing.
  * @param {() => void} properties.onBack - Back callback.
  * @param {() => void} properties.refetch - Refresh callback.
+ * @param {(context: ReRunContext) => void} [properties.onReRunAssessment] -
+ *   Re-run Assessment callback; the action renders only when supplied.
  * @returns {JSX.Element | null} The rendered heatmap page, an error `Alert`,
  *   or `null` on generic error (after navigation).
  */
@@ -141,6 +158,7 @@ export function TaskHeatmapPage({
   assignmentId,
   assignmentDefinitionPartials,
   onBack: backCallback,
+  onReRunAssessment,
   refetch,
 }: TaskHeatmapPageProperties): JSX.Element | null {
   const state = useMemo<HeatmapPageState>(() =>
@@ -204,6 +222,58 @@ export function TaskHeatmapPage({
     });
   });
 
+  /**
+   * Handles the Re-run Assessment click: hands the assignment and its
+   * persisted definition key to the owning class page.
+   *
+   * @returns {void}
+   */
+  function handleReRunAssessment(): void {
+    onReRunAssessment?.({
+      assignmentId,
+      definitionKey: getAssignmentDefinitionKey(classFull, assignmentId),
+    });
+  }
+
+  /**
+   * Renders the navigation-card action buttons for the normal heatmap view.
+   *
+   * @remarks Re-run Assessment sits immediately left of Refresh when the
+   * owner supplies a re-run callback; otherwise only Refresh renders. The
+   * buttons return as a fragment so Ant Design's `Space` flattens them into
+   * adjacent items (a conditional null child would leave an empty item).
+   *
+   * @returns {React.ReactNode} The action buttons.
+   */
+  function renderNavActions(): React.ReactNode {
+    const refreshButton = (
+      <Button
+        icon={<RefreshCw size={16} />}
+        onClick={() => {
+          refetch();
+          assignmentQuery.refetch();
+        }}
+      >
+        Refresh
+      </Button>
+    );
+    if (onReRunAssessment === undefined) {
+      return refreshButton;
+    }
+
+    const reRunButton = (
+      <Button icon={<RotateCcw size={16} />} onClick={handleReRunAssessment}>
+        Re-run Assessment
+      </Button>
+    );
+    return (
+      <>
+        {reRunButton}
+        {refreshButton}
+      </>
+    );
+  }
+
   if (isGenericError) {
     return null;
   }
@@ -233,11 +303,7 @@ export function TaskHeatmapPage({
         onBack={backCallback}
         backLabel="Back to Class overview"
         backAriaLabel="Back to Class overview"
-        actions={
-          <Button icon={<RefreshCw size={16} />} onClick={() => { refetch(); assignmentQuery.refetch(); }}>
-            Refresh
-          </Button>
-        }
+        actions={renderNavActions()}
       />
       <Card size="small">
         <TaskHeatmapTable heatmapResult={heatmapResult!} cellPreviewLookup={cellPreviewLookup} isAssignmentLoading={isAssignmentLoading} showAssignmentError={showAssignmentError} />

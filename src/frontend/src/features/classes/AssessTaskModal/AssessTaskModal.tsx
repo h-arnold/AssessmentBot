@@ -1,16 +1,20 @@
 import { Alert, Button, Empty, Modal, Select, Space, Tooltip, Typography } from 'antd';
 import { useCallback, useEffect, useRef } from 'react';
 import { useAssessTaskFlow } from './useAssessTaskFlow';
+import { useAssessTaskReRunFlow } from './useAssessTaskReRunFlow';
 import { AssessTaskCreateReview } from './AssessTaskCreateReview';
 import { AssessTaskRecoverySurface } from './AssessTaskRecoverySurface';
+import { AssessTaskReRunBody, AssessTaskReRunFooter } from './AssessTaskReRunSurface';
 import { LinkableDefinitionList } from './LinkableDefinitionList';
 import { AssignmentSelectSkeleton } from './AssignmentSelectSkeleton';
+import type { ReRunContext } from '../../shared/reRunAssessmentContext';
 
 export type AssessTaskModalProperties = Readonly<{
   open: boolean;
   classId: string;
   className: string;
   onClose: () => void;
+  reRunContext?: ReRunContext | null;
 }>;
 
 /** Approved shared modal-width exception applied while wizard content is active. */
@@ -32,11 +36,16 @@ type ModalDismissEvent = Readonly<{ stopPropagation: () => void }>;
  * `stale-prompt`), so no recovery state stacks a second modal. See the hooks
  * for the state-machine documentation.
  *
+ * With `reRunContext` the re-run body (`AssessTaskReRunBody`), footer
+ * (`AssessTaskReRunFooter`) and `useAssessTaskReRunFlow` start one run with
+ * the persisted key; without it the manual selection path is unchanged.
+ *
  * @param {Readonly<AssessTaskModalProperties>} properties Modal properties.
  * @returns {JSX.Element} The assess task modal.
  */
 export function AssessTaskModal(properties: Readonly<AssessTaskModalProperties>) {
-  const { open, classId, className, onClose } = properties;
+  const { open, classId, className, onClose, reRunContext } = properties;
+  const flow = useAssessTaskFlow({ open, classId });
   const {
     assignments,
     selectedAssignmentId,
@@ -66,7 +75,9 @@ export function AssessTaskModal(properties: Readonly<AssessTaskModalProperties>)
     getLoadingButtonLabel,
     endRecovery,
     settleAssessment,
-  } = useAssessTaskFlow({ open, classId });
+  } = flow;
+
+  const reRunControls = useAssessTaskReRunFlow({ open, classId, reRunContext, flow });
 
   // Registration slot for the recovery review's modal-level cancel intent. The
   // recovery phase lives inside `AssessTaskRecoverySurface`; while that phase
@@ -284,7 +295,7 @@ export function AssessTaskModal(properties: Readonly<AssessTaskModalProperties>)
     if (fetchState === 'error') {
       return <Alert type="error" title={errorMessage} />;
     }
-    if (assignments.length === 0) {
+    if (assignments.length === 0 && !reRunContext) {
       return <Empty description="No assignments found for this class" />;
     }
     return null as React.ReactNode;
@@ -293,12 +304,26 @@ export function AssessTaskModal(properties: Readonly<AssessTaskModalProperties>)
   /**
    * Determines the body content based on fetch and assessment state.
    *
+   * @remarks A `reRunContext` renders `AssessTaskReRunBody`, not the selection branches.
+   *
    * @returns {React.ReactNode} The body content for the modal.
    */
   function renderBody(): React.ReactNode {
     const fetchBody = renderFetchBody();
     if (fetchBody !== null) {
       return fetchBody;
+    }
+
+    if (reRunContext) {
+      return (
+        <AssessTaskReRunBody
+          context={reRunContext}
+          assignments={assignments}
+          assessmentState={assessmentState}
+          assessmentError={assessmentError}
+          assessmentAlertType={assessmentAlertType}
+        />
+      );
     }
 
     if (noMatchResolution === 'linking') {
@@ -412,9 +437,30 @@ export function AssessTaskModal(properties: Readonly<AssessTaskModalProperties>)
     );
   }
 
+  /**
+   * Resolves the footer the owning modal renders while it keeps its own
+   * footer slot: the explicit re-run entry owns its footer states, and every
+   * other state uses the manual selection footer.
+   *
+   * @returns {React.ReactNode} The footer content before in-modal suppression.
+   */
+  function getUnsuppressedFooterContent(): React.ReactNode {
+    if (reRunContext) {
+      return (
+        <AssessTaskReRunFooter
+          assessmentState={assessmentState}
+          isRetryAvailable={reRunControls.isRetryAvailable}
+          onRetry={reRunControls.retryReRun}
+          onClose={onClose}
+        />
+      );
+    }
+    return getFooterContent();
+  }
+
   // While in-modal wizard or recovery content is active the owning footer is
   // suppressed so the content's own footer is the only visible one.
-  const footerContent = isWizardContentActive ? null : getFooterContent();
+  const footerContent = isWizardContentActive ? null : getUnsuppressedFooterContent();
 
   return (
     <Modal

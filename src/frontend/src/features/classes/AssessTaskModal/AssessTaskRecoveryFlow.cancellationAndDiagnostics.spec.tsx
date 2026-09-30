@@ -10,6 +10,7 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { act, renderHook, waitFor, within } from '@testing-library/react';
 import { createElement, type ReactNode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import '../../../test/classes/AssessTaskModal.mockSetup';
 import { startAssessmentRun } from '../../../services/assignmentAssessment/assignmentAssessmentService';
 import {
   getAssignmentDefinition,
@@ -33,32 +34,6 @@ import {
 } from '../../../test/classes/AssessTaskModal.recovery-helpers';
 import { useAssessTaskLinkFlow } from './useAssessTaskLinkFlow';
 import { useAssessTaskRecoveryFlow } from './useAssessTaskRecoveryFlow';
-
-vi.mock('../../../services/googleClassrooms/googleClassroomAssignmentsService', () => ({
-  getGoogleClassroomAssignments: vi.fn(),
-}));
-
-vi.mock('../../../services/assignmentAssessment/assignmentAssessmentService', () => ({
-  startAssessmentRun: vi.fn(),
-}));
-
-vi.mock('../../../services/assignmentDefinition/assignmentDefinitionService', () => ({
-  getAssignmentDefinition: vi.fn(),
-  upsertAssignmentDefinition: vi.fn(),
-}));
-
-vi.mock('../../../services/assignmentDefinition/assignmentTopicsService', () => ({
-  getAssignmentTopics: vi.fn(),
-}));
-
-vi.mock('../../../services/referenceData/referenceDataService', () => ({
-  getCohorts: vi.fn(),
-  getYearGroups: vi.fn(),
-}));
-
-vi.mock('./matchDefinitionForAssignment', () => ({
-  findMatchingDefinition: vi.fn(),
-}));
 
 afterEach(() => {
   vi.resetAllMocks();

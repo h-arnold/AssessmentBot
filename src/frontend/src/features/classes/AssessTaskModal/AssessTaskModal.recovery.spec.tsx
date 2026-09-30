@@ -13,6 +13,7 @@
 
 import { act, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import '../../../test/classes/AssessTaskModal.mockSetup';
 import { startAssessmentRun } from '../../../services/assignmentAssessment/assignmentAssessmentService';
 import { upsertAssignmentDefinition } from '../../../services/assignmentDefinition/assignmentDefinitionService';
 import { setTextboxValue } from '../../../test/assignmentDefinition/wizardTestHelpers';
@@ -52,32 +53,6 @@ import {
   triggerStalePrompt,
   waitForSelectionBody,
 } from '../../../test/classes/AssessTaskModal.recovery-helpers';
-
-vi.mock('../../../services/googleClassrooms/googleClassroomAssignmentsService', () => ({
-  getGoogleClassroomAssignments: vi.fn(),
-}));
-
-vi.mock('../../../services/assignmentAssessment/assignmentAssessmentService', () => ({
-  startAssessmentRun: vi.fn(),
-}));
-
-vi.mock('../../../services/assignmentDefinition/assignmentDefinitionService', () => ({
-  getAssignmentDefinition: vi.fn(),
-  upsertAssignmentDefinition: vi.fn(),
-}));
-
-vi.mock('../../../services/assignmentDefinition/assignmentTopicsService', () => ({
-  getAssignmentTopics: vi.fn(),
-}));
-
-vi.mock('../../../services/referenceData/referenceDataService', () => ({
-  getCohorts: vi.fn(),
-  getYearGroups: vi.fn(),
-}));
-
-vi.mock('./matchDefinitionForAssignment', () => ({
-  findMatchingDefinition: vi.fn(),
-}));
 
 /**
  * Expected call count for a two-step recovery journey (reparse then retry, or

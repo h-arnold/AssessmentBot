@@ -41,18 +41,17 @@ When handling menu clicks, validate unknown keys before updating state.
 
 Use a module-level `Set<AppNavigationKey>` for membership checks (`isAppNavigationKey`) rather than repeated array scans.
 
-### 1.4 Breadcrumb extension by child pages
+### 1.4 Breadcrumb extension for class detail
 
-The shell renders a two-segment `Breadcrumb` (`AssessmentBot Frontend / {navKey}`) via `getBreadcrumbItems(key)` in `AppShell`. Pages that need additional breadcrumb segments beyond these two must render their own in-page breadcrumb.
+The shell renders the `Breadcrumb` itself via `getBreadcrumbItems(key, className, onNavigateToClasses)` in `appNavigation.tsx`. The trail does not include a separate root/`AssessmentBot Frontend` segment; `components/PageHeader` does not render a breadcrumb, and `appBreadcrumbBaseLabel` is used for the application title rather than as a breadcrumb item.
 
-The **Class page** (`src/frontend/src/features/classPage/ClassPage.tsx`) is the current example: it renders a three-segment `Breadcrumb` (`AssessmentBot Frontend / Classes / {className}`) in the page content area. This produces a temporary visual duplication with the shell's two-segment `Breadcrumb` — an accepted v1 trade-off documented in `SPEC_CLASS_PAGE.md`. The `AppShell` and `appNavigation.tsx` are not modified for v1. A future refactor may add a breadcrumb-override prop on `AppShell` to hide the shell breadcrumb when a child page owns its own breadcrumb.
-
-**Rules for in-page breadcrumbs:**
-
-- The in-page breadcrumb must include the full path (all segments, including the root `AssessmentBot Frontend`), not only the additional segments.
-- The clickable segment (e.g. `Classes`) must invoke the parent page's navigation callback.
+- With no class detail open the breadcrumb has a single non-clickable segment: the label for the active navigation key.
+- When the active key is `classes` and a class detail is open, a second segment shows the class name, and the `Classes` label becomes a clickable link back to the class list.
+- Keep breadcrumb construction in `appNavigation.tsx`; do not render a second in-page breadcrumb in the Class page.
+- Pass the class name and navigation callback through `ClassSelectionContext` so `AppShell` can extend the trail without duplicating page labels.
 - The final segment (current location) must be non-clickable.
-- The `AppShell`'s two-segment breadcrumb remains visible — no v1 mechanism hides it.
+
+If a future page needs breadcrumb segments beyond this contract, extend `getBreadcrumbItems` rather than adding an in-page breadcrumb.
 
 ## 2. Accessibility and selector conventions for navigation icons
 

@@ -16,9 +16,16 @@ export const HEATMAP_CLASS_ID = '100000000001';
 export const HEATMAP_ASSIGNMENT_NAME = '4. Presenting our Findings - Video Plan';
 export const HEATMAP_ASSIGNMENT_DISPLAY_TITLE = '7. Video Plan';
 export const HEATMAP_CLASS_NAME = '7C2 Digital Technology 2025-2026';
+/**
+ * Google Classroom title for the fixture assignment after a teacher retitles it
+ * post-assessment. The re-run journey asserts against this current title while
+ * the run itself must reuse the definition key persisted on the class snapshot.
+ */
+export const HEATMAP_UPDATED_CLASSROOM_TITLE =
+  '4. Presenting our Findings - Video Plan (edited in Classroom)';
 
-const HEATMAP_ASSIGNMENT_ID = '100000000037';
-const HEATMAP_DEFINITION_KEY = '00000000-0000-0000-0000-000000000004';
+export const HEATMAP_ASSIGNMENT_ID = '100000000037';
+export const HEATMAP_DEFINITION_KEY = '00000000-0000-0000-0000-000000000004';
 const HEATMAP_TASK_IDS = ['task_001', 'task_002', 'task_003'] as const;
 
 type HeatmapStudent = Readonly<{ id: string; name: string }>;
@@ -199,6 +206,26 @@ export function addSecondAssignment(classDocument: Record<string, unknown>): voi
       })
     ),
   });
+}
+
+/**
+ * Build the Google Classroom assignment listing for the fixture assignment.
+ *
+ * The listing keeps the class snapshot's assignment id but carries both a
+ * retitled title and a renamed topic, so the explicit re-run journey proves the
+ * persisted definition key survives a Classroom metadata change instead of
+ * being re-matched by title or topic.
+ *
+ * @returns {Record<string, unknown>} Classroom assignment listing payload.
+ */
+export function buildGoogleClassroomAssignment(): Record<string, unknown> {
+  return {
+    assignmentId: HEATMAP_ASSIGNMENT_ID,
+    title: HEATMAP_UPDATED_CLASSROOM_TITLE,
+    creationTime: '2026-06-29T09:40:37.069Z',
+    topicId: '00000000-0000-0000-0000-000000000009',
+    topicName: 'Renamed Topic',
+  };
 }
 
 /**

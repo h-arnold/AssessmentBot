@@ -78,6 +78,7 @@ export const NON_STALE_FAILURE_MESSAGE = mapErrorCodeToUserMessage('INTERNAL_ERR
 
 /** Repeated accessible names and copy patterns hoisted to shared constants. */
 export const CANCEL_BUTTON = 'Cancel';
+export const CLOSE_BUTTON = 'Close';
 export const UPDATE_BUTTON = 'Update';
 export const SAVE_BUTTON = 'Save';
 export const RETRY_BUTTON = 'Retry';

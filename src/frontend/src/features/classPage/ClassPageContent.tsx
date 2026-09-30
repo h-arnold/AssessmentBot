@@ -38,6 +38,7 @@ import type { AssignmentDefinitionPartialsResponse } from '../../services/assign
 import { RecentAssignmentsSection } from './RecentAssignmentsSection';
 import { StudentAveragesTableCard } from './StudentAveragesTableCard';
 import { TaskHeatmapPage } from '../taskHeatmap/TaskHeatmapPage';
+import type { ReRunContext } from '../shared/reRunAssessmentContext';
 import type { BlockingConfig } from '../../errors/blockingConfig';
 import { resolveBlockingResultConfig } from '../../errors/blockingConfig';
 
@@ -72,6 +73,8 @@ type ClassPageContentProperties = Readonly<{
   refetch: () => void;
   /** Callback invoked when the user clicks "Start New Assessment" (used by empty-state CTA). */
   onStartNewAssessment: () => void;
+  /** Callback invoked when the user clicks Re-run Assessment in the heatmap view. */
+  onReRunAssessment?: (context: ReRunContext) => void;
 }>;
 
 type ClassPageBlockingProperties = Readonly<{
@@ -288,6 +291,7 @@ interface RenderReadyContentOptions {
   onBack: () => void;
   refetch: () => void;
   onStartNewAssessment: () => void;
+  onReRunAssessment?: (context: ReRunContext) => void;
 }
 
 /**
@@ -308,6 +312,7 @@ function renderReadyContent(options: RenderReadyContentOptions): JSX.Element {
     onBack,
     refetch,
     onStartNewAssessment,
+    onReRunAssessment,
   } = options;
   if (
     selectedView.view === 'heatmap' &&
@@ -324,6 +329,7 @@ function renderReadyContent(options: RenderReadyContentOptions): JSX.Element {
         assignmentDefinitionPartials={assignmentDefinitionPartials}
         onBack={onBack}
         refetch={refetch}
+        onReRunAssessment={onReRunAssessment}
       />
     );
   }
@@ -404,6 +410,7 @@ export function ClassPageContent({
   onOpenHeatmap,
   onBack,
   refetch,
+  onReRunAssessment,
 }: ClassPageContentProperties): JSX.Element {
   switch (surfaceState.status) {
     case 'loading': {
@@ -435,6 +442,7 @@ export function ClassPageContent({
         onBack,
         refetch,
         onStartNewAssessment,
+        onReRunAssessment,
       });
     }
   }

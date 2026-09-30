@@ -187,6 +187,34 @@ Owning-modal dismissal routing (assess-task modal, issue #301):
 - `AssessTaskModal` registers the active in-modal surface's close intent (create review or recovery review) and routes its close affordance, mask click and capture-phase Escape through that handler before falling back to closing itself, so an owning-modal dismissal cannot bypass the dirty guard.
 - The in-modal create branch delegates to `shouldPromptForCreateWizardDismissal` in `assignmentWizardDismissal.ts`: dirty stage-one values and an edited stage-two review prompt for confirmation, while an unchanged review returns to the choice prompt without one.
 
+### 3.6 Assess Task modal re-run entry
+
+- Owning surface: `src/frontend/src/features/classes/AssessTaskModal/AssessTaskModal.tsx`
+- Re-run body and footer: `src/frontend/src/features/classes/AssessTaskModal/AssessTaskReRunSurface.tsx`
+- Re-run orchestration: `src/frontend/src/features/classes/AssessTaskModal/useAssessTaskReRunFlow.ts`
+- Entry contract: `src/frontend/src/features/shared/reRunAssessmentContext.ts`
+
+The heatmap `Re-run Assessment` action reuses the existing `AssessTaskModal` through an optional `reRunContext`; it does not add a second assessment modal or a new modal family. The action renders immediately left of `Refresh` in the child heatmap `PageNavCard` and passes `{ assignmentId, definitionKey }` up through `ClassPageContent` to `ClassPage`, which owns the open/close state.
+
+Entry stage and matching:
+
+- On open the modal skips the assignment-selection and definition-matching stages and starts exactly one run once the assignment fetch is ready. The assignment selector is never rendered on this path.
+- The run targets the `assignmentDefinitionKey` persisted on the class's previously assessed assignment. The path never re-matches by title, topic, or year group, so a renamed Google Classroom assignment still re-runs its linked definition.
+- Only the definition registry is required; the persisted key is sufficient even when the class has no cached year group.
+- Without `reRunContext` the manual entry is unchanged: selection, matching, create, and link behaviour are untouched, and `ClassPage` clears any retained context on close so a reopened manual entry never auto-starts.
+
+Success, failure, and recovery:
+
+- A success response means the run has been queued in the background, not that results are ready. The modal then shows only the success alert and `Close`; results appear after background processing and are reloaded by the heatmap `Refresh` action.
+- A missing assignment, a null definition key, an unreadable definition registry, or a key absent from the registry fails closed with an in-modal `Alert`. The modal never starts a run against a different definition.
+- Failures that a retry could clear expose `Retry`; permanently blocked input failures expose only `Cancel`, so the footer never offers an action that cannot succeed.
+- A `DEFINITION_STALE` rejection routes to the existing stale-definition recovery surface (Section 3.4/3.5); the re-run footer is suppressed while recovery owns the body.
+- A processed-context guard keyed on the modal session, assignment, and definition key prevents duplicate runs under React StrictMode and ignores late completions after close/reopen.
+
+Default decision:
+
+- reuse `AssessTaskModal` for the explicit re-run entry; do not add a confirmation step, a parallel modal, or a second assessment surface
+
 ## 4. Keep-local rules
 
 Keep a modal implementation local to one file when any of these are true:

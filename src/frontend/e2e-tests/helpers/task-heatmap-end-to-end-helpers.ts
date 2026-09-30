@@ -1,16 +1,28 @@
-/** Runtime scenario construction for the Task Heatmap Playwright suite. */
+/** Runtime scenario construction and shared navigation for the Task Heatmap suite. */
 
+import { expect, type Page } from '@playwright/test';
 import type { ResponseItem, RuntimeScenario } from '../shared/endToEndRuntimeMocks';
 import {
   addSecondAssignment,
   buildAssignmentDefinitionPartial,
   buildAssignmentFullDocument,
   buildClassFullDocument,
+  buildGoogleClassroomAssignment,
   HEATMAP_CLASS_ID,
   HEATMAP_CLASS_NAME,
 } from './task-heatmap-fixtures';
 
-export { HEATMAP_ASSIGNMENT_DISPLAY_TITLE, HEATMAP_CLASS_NAME } from './task-heatmap-fixtures';
+export {
+  HEATMAP_ASSIGNMENT_DISPLAY_TITLE,
+  HEATMAP_ASSIGNMENT_ID,
+  HEATMAP_CLASS_ID,
+  HEATMAP_CLASS_NAME,
+  HEATMAP_DEFINITION_KEY,
+  HEATMAP_UPDATED_CLASSROOM_TITLE,
+} from './task-heatmap-fixtures';
+
+/** Shell menu label for the Classes entry in the application sidebar. */
+export const CLASSES_LABEL = 'Classes';
 
 export interface CreateHeatmapScenarioOptions {
   /** When true, use a deferred (loading) `getABClass` queue. */
@@ -120,5 +132,56 @@ export function createHeatmapScenario(options: CreateHeatmapScenarioOptions = {}
       { kind: 'success', data: buildAssignmentFullDocument() },
     ],
     getABClass: classEntries,
+  };
+}
+
+/**
+ * Navigate from the root shell to the heatmap class overview (ready state).
+ *
+ * @param {Page} page - The Playwright page.
+ * @returns {Promise<void>} Resolves once the Recent Assignments section is visible.
+ */
+export async function openHeatmapClass(page: Page): Promise<void> {
+  await page.goto('/');
+  await page.getByRole('menuitem', { name: CLASSES_LABEL }).click();
+
+  // The class appears under a year-group panel; click its "View" button.
+  const classCard = page.getByRole('article').filter({ hasText: HEATMAP_CLASS_NAME });
+  await expect(classCard).toBeVisible();
+  await classCard.getByRole('button', { name: 'View' }).click();
+
+  // Wait for the ready-state Recent Assignments section (an antd Card title div).
+  await expect(page.getByText('Recent Assignments')).toBeVisible();
+}
+
+export interface CreateReRunHeatmapScenarioOptions {
+  /** StrictMode-safe `startAssessmentRun` queue for the automatic re-run. */
+  startAssessmentRun: ReadonlyArray<ResponseItem>;
+}
+
+/**
+ * Build the heatmap scenario for the explicit re-run journey.
+ *
+ * The Classroom listing keeps the fixture assignment id while carrying a
+ * retitled title and a renamed topic, so the journey proves the run reuses the
+ * definition key persisted on the class snapshot rather than re-matching the
+ * current Classroom metadata.
+ *
+ * @param {CreateReRunHeatmapScenarioOptions} options - Scenario customisation.
+ * @returns {RuntimeScenario} Runtime mock scenario.
+ */
+export function createReRunHeatmapScenario(
+  options: CreateReRunHeatmapScenarioOptions
+): RuntimeScenario {
+  const classroomAssignment = buildGoogleClassroomAssignment();
+  return {
+    ...createHeatmapScenario(),
+    // React 19 StrictMode replays the modal's assignment-fetch effect, so the
+    // listing carries two identical entries like every other per-open queue.
+    getGoogleClassroomAssignments: [
+      { kind: 'success', data: [classroomAssignment] },
+      { kind: 'success', data: [classroomAssignment] },
+    ],
+    startAssessmentRun: options.startAssessmentRun,
   };
 }
