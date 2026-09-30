@@ -8,7 +8,7 @@
  * the heatmap call site, exercising locale-aware, case-insensitive name
  * ordering with a deterministic `studentId` ascending tie-break.
  *
- * @see docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md §9.17 (entry 6 — `compareStudentNames` shared helper placement)
+ * @see docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md §3.7
  */
 
 import { describe, expect, it } from 'vitest';

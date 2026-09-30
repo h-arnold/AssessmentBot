@@ -6,7 +6,7 @@
  * score-range `filterDropdown` (via `buildMetricRangeFilter`) rather than the
  * fixed `METRIC_COLUMN_FILTERS` band list.
  *
- * @see docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md §9.18
+ * @see docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md §3.7
  */
 
 import { describe, it, expect, afterEach, beforeEach } from 'vitest';

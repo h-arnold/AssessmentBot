@@ -8,7 +8,7 @@
  * assignment-tier grouping. They carry no React state and no side effects
  * beyond the deferred `assembleTaskPreviewData` call inside the popover.
  *
- * @see docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md §9.18
+ * @see docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md §3.7
  */
 
 import type { CSSProperties, JSX } from 'react';

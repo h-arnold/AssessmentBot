@@ -1,7 +1,7 @@
 /**
  * Tests for the Heatmaps orchestration hook (`useHeatmapsPageData`).
  *
- * @see docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md §9.22
+ * @see docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md §3.7
  *   — the standalone Heatmaps cascade/selection contract; mirrors `useClassPageData`'s
  *   nullability contract (derived results non-null only in ready states).
  *

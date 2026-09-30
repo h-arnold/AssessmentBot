@@ -1,7 +1,7 @@
 /**
  * Tests for the selection-cascade reducer (`selectionCascade`).
  *
- * @see docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md §9.22
+ * @see docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md §3.7
  *   — cascade rules (a class change atomically clears topic and assignment selections; a topic
  *   change clears assignments whose topic no longer matches; widening the topic set never
  *   restores cleared assignments) and the selection state shape.

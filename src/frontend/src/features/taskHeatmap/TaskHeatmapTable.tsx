@@ -18,7 +18,7 @@
  * (keyed by column key), row sorting, the no-submissions caption, and the
  * memoised column tree.
  *
- * @see docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md §9.18
+ * @see docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md §3.7
  */
 
 import type { JSX } from 'react';
