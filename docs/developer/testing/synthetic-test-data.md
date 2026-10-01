@@ -121,6 +121,24 @@ Consequences:
 - Regeneration with `npm run fixtures:synthetic` rewrites the committed rosters and every dependent view (submissions and assignments carry the same IDs), then commits only the files that change. Fixtures that need a roster ID must derive it from the roster records rather than restating a literal.
 - `tests/synthetic-analysis/syntheticStudentIdentifiers.test.ts` pins the convention for generated and committed rosters across every profile: digit-only 21-character strings, string precision through JSON, per-profile uniqueness, deterministic repeat runs, cross-view roster/submission linkage, and production-schema opacity to digit formatting.
 
+## Assignment-timestamp convention
+
+Every generated assignment carries a deterministic non-null `updatedAt` set exactly three minutes after its `createdAt`, using the generator's existing `isoAt(offset + 3)` offset. This includes each class's index-zero assignment, which previously held `null` only to provide nullable transport-shape diversity.
+
+The convention keeps the corpus realistic:
+
+- Class-embedded partial and full transport records carry exactly equal creation and update timestamps.
+- Embedded `updatedAt` values are strictly chronological by assignment index (oldest first), so a recent-assignment slice reads the newest record.
+- No clock, Faker, seed, or count changes are involved, so the corpus stays byte-reproducibly regenerable.
+
+Regeneration with `npm run fixtures:synthetic` rewrites the dependent `classesById` and `assignmentsByKey` views and commits only the files that actually change.
+
+This is **fixture realism only**, not a production nullable-contract change:
+
+- `updatedAt` stays a nullable transport field. `AssignmentFullSchema.updatedAt` and `AssignmentPartialSchema.updatedAt` still accept `string | null`; production schemas and backend behaviour are untouched.
+- Nullable transport acceptance is covered by explicit **local null-boundary probes**, not by generated null population. `tests/synthetic-analysis/syntheticAssignmentTimestamps.test.ts` clones a canonical class-embedded assignment partial and a canonical full assignment, sets `updatedAt = null`, and parses both through the real frontend schemas. `tests/synthetic-analysis/syntheticGraphShapeCoverage.test.ts` clones a canonical class, nulls its first assignment's `updatedAt`, and re-parses it through `ClassFullSchema`.
+- The Class page's fail-closed rejection of a null or unparseable `updatedAt` is unchanged and tested with independent local invalid probes in `src/frontend/src/features/classPage/classPageAdapter.trustValidation.spec.ts`. Do not use canonical rows to assert that rejection.
+
 ## Compact versus full lifecycle
 
 - **Compact (committed):** small, medium, and large-representative transport views plus manifests are checked in under `tests/__mocks__/data/synthetic-analysis/`. Regeneration stages and validates every profile before replacing any committed directory, and rolls every applied replacement back if a later one fails.
