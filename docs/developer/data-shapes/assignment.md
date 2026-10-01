@@ -322,21 +322,26 @@ See [Contract: AssignmentDefinition §Sub-entity BaseTaskArtifact](assignment-de
 
 The full and partial schemas on the frontend are:
 
-- **Full** (`BaseTaskArtifactSchema` in `assignmentAssessment.zod.ts`): discriminated union by `type` — `TEXT`/`TABLE`/`IMAGE` have `content: string | null`; `SPREADSHEET` has `content: Array<Array<string | number | null>> | null`; `base` has `content: unknown`. Common fields: `taskId`, `role`, `pageId`, `documentId`, `uid`, `contentHash` (nullable), `metadata`. The shared `BaseTaskArtifactFields` object currently validates `pageId`/`documentId` as non-nullable `z.string()`; see the planned alignment below.
+- **Full** (`BaseTaskArtifactSchema` in `assignmentAssessment.zod.ts`): discriminated union by `type` — `TEXT`/`TABLE`/`IMAGE` have `content: string | null`; `SPREADSHEET` has `content: Array<Array<string | number | null>> | null`; `base` has `content: unknown`. Common fields: `taskId`, `role`, `pageId`, `documentId`, `uid`, `contentHash` (nullable), `metadata`. The shared `BaseTaskArtifactFields` object validates the two source IDs as required nullable strings (`pageId: z.string().nullable()`, `documentId: z.string().nullable()`); see the implemented alignment below. The parent submission `StudentSubmissionSchema.documentId` validator is deliberately unchanged and remains `.nullable().optional()`.
 - **Partial** (`BaseTaskArtifactPartialSchema` in `classDetailService.zod.ts`): reduced shape with `taskId`, `role`, `pageId` (nullable optional), `documentId` (nullable optional), `metadata` (optional), `uid`, `type`. `content` and `contentHash` are omitted entirely (set to `null` by `toPartialJSON()`).
 
-> **Status: Not implemented — planned (issue #19).** The full frontend
-> `BaseTaskArtifactFields` object in `assignmentAssessment.zod.ts` declares
-> `pageId: z.string()` and `documentId: z.string()`, which reject the `null` source
-> IDs the backend contract permits. The planned alignment makes both common fields
-> required `string | null` (`z.string().nullable()`); numeric or object IDs and
-> absent artefact fields remain invalid, and types continue to derive from Zod.
-> This is a frontend-only validation alignment: the backend `BaseTaskArtifact`
-> constructor already defaults `pageId`/`documentId` to `null` and
-> `toJSON()`/`toPartialJSON()` always emit them as `string | null`
+> **Status: Implemented (issue #19).** The full frontend `BaseTaskArtifactFields`
+> object in `assignmentAssessment.zod.ts` validates `pageId` and `documentId` as
+> required nullable strings (`z.string().nullable()`): both reject a missing key
+> and a non-string value, but accept the `null` source IDs the backend contract
+> permits. Numeric or object IDs and absent artefact fields remain invalid, and
+> types continue to derive from Zod. This was a frontend-only validation
+> alignment: the backend `BaseTaskArtifact` constructor already defaults
+> `pageId`/`documentId` to `null` and `toJSON()`/`toPartialJSON()` always emit
+> them as `string | null`
 > (`src/backend/Models/Artifacts/0_BaseTaskArtifact.js`), so no backend contract
-> change is required. The partial `BaseTaskArtifactPartialSchema` already accepts
-> `string | null` and is unchanged.
+> change was required. **Parent optionality is unchanged:** the parent submission
+> `StudentSubmissionSchema.documentId` remains `.nullable().optional()` — the
+> optionality tolerates the key being omitted entirely from real payloads even
+> though the backend always emits it (see the `StudentSubmission` key note
+> above). The partial `BaseTaskArtifactPartialSchema` in `classDetailService.zod.ts`
+> likewise still accepts `string | null` via `.nullable().optional()` and is
+> unchanged.
 
 ---
 

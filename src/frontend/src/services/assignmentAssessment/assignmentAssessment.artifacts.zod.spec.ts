@@ -8,13 +8,18 @@
  * Accepting cases are derived from the canonical submission artifact and task
  * definition carried by `validFullAssignment`, so the schemas are exercised
  * against realistic transport shapes. Boundary overrides (null content, null
- * contentHash, null index) and the unsupported `SPREADSHEET` / `base` bodies
- * the corpus never emits stay local on top of that canonical base; rejecting
- * cases stay deliberately invalid and local.
+ * contentHash, null index), the nullable artifact source IDs, and the
+ * unsupported `SPREADSHEET` / `base` bodies the corpus never emits stay local
+ * on top of that canonical base; rejecting cases stay deliberately invalid and
+ * local.
  */
 
 import { describe, expect, it } from 'vitest';
-import { BaseTaskArtifactSchema, TaskDefinitionSchema } from './assignmentAssessment.zod';
+import {
+  AssignmentFullSchema,
+  BaseTaskArtifactSchema,
+  TaskDefinitionSchema,
+} from './assignmentAssessment.zod';
 import { validFullAssignment } from './assignmentAssessment.zod.fixtures';
 
 /** Canonical submission artifact carrying a realistic TEXT body. */
@@ -22,6 +27,9 @@ const CANONICAL_TEXT_ARTIFACT = Object.values(validFullAssignment.submissions[0]
 
 /** Canonical task definition carried by the embedded assignment definition. */
 const CANONICAL_TASK_DEFINITION = Object.values(validFullAssignment.assignmentDefinition.tasks)[0];
+
+/** Artifact types that share the common `pageId` / `documentId` fields. */
+const SUPPORTED_ARTIFACT_TYPES = ['TEXT', 'TABLE', 'IMAGE', 'SPREADSHEET', 'base'] as const;
 
 describe('assignmentAssessment.zod schemas', () => {
   describe('BaseTaskArtifactSchema', () => {
@@ -113,6 +121,85 @@ describe('assignmentAssessment.zod schemas', () => {
         BaseTaskArtifactSchema.parse({
           ...CANONICAL_TEXT_ARTIFACT,
           type: 'BOGUS',
+        })
+      ).toThrow();
+    });
+  });
+
+  describe('BaseTaskArtifactSchema source-ID nullability', () => {
+    it.each(SUPPORTED_ARTIFACT_TYPES)(
+      'accepts null pageId and documentId on a %s artifact',
+      (type) => {
+        const artifact = {
+          ...CANONICAL_TEXT_ARTIFACT,
+          type,
+          content: null,
+          pageId: null,
+          documentId: null,
+        };
+        expect(BaseTaskArtifactSchema.parse(artifact)).toEqual(artifact);
+      }
+    );
+
+    it('accepts the canonical full assignment with every artifact source ID nulled', () => {
+      const payload = structuredClone(validFullAssignment);
+      for (const submission of payload.submissions) {
+        for (const item of Object.values(submission.items)) {
+          item.artifact.pageId = null;
+          item.artifact.documentId = null;
+        }
+      }
+      for (const task of Object.values(payload.assignmentDefinition.tasks)) {
+        for (const artifact of [...task.artifacts.reference, ...task.artifacts.template]) {
+          artifact.pageId = null;
+          artifact.documentId = null;
+        }
+      }
+
+      expect(() => AssignmentFullSchema.parse(payload)).not.toThrow();
+    });
+
+    it('rejects an artifact missing pageId', () => {
+      expect(() =>
+        BaseTaskArtifactSchema.parse({
+          taskId: 'task-1',
+          role: 'submission',
+          documentId: 'doc-1',
+          uid: 'uid-1',
+          type: 'TEXT',
+          content: null,
+          contentHash: null,
+          metadata: {},
+        })
+      ).toThrow();
+    });
+
+    it('rejects an artifact missing documentId', () => {
+      expect(() =>
+        BaseTaskArtifactSchema.parse({
+          taskId: 'task-1',
+          role: 'submission',
+          pageId: 'page-1',
+          uid: 'uid-1',
+          type: 'TEXT',
+          content: null,
+          contentHash: null,
+          metadata: {},
+        })
+      ).toThrow();
+    });
+
+    it('rejects a pageId that is a number', () => {
+      expect(() =>
+        BaseTaskArtifactSchema.parse({ ...CANONICAL_TEXT_ARTIFACT, pageId: 42 })
+      ).toThrow();
+    });
+
+    it('rejects a documentId that is an object', () => {
+      expect(() =>
+        BaseTaskArtifactSchema.parse({
+          ...CANONICAL_TEXT_ARTIFACT,
+          documentId: { id: 'doc-1' },
         })
       ).toThrow();
     });

@@ -24,6 +24,7 @@ import type { CellPreviewLookup } from './buildCellPreviewLookup';
 import {
   BASE_ARTIFACT_FIELDS,
   DEFAULT_DATE,
+  buildExpectedSourceUrl,
   createAssignment,
 } from '../../test/taskHeatmap/buildCellPreviewLookupTestFixtures';
 import {
@@ -57,6 +58,13 @@ describe('buildCellPreviewLookup indexing', () => {
       secondInner!.get(buildTaskKey(CANONICAL_READY_CELL.definitionKey, secondTaskId))!
         .artifactContent
     ).toBe(secondSubmission.items[secondTaskId].artifact.content);
+
+    // Each indexed cell also carries its own derived source URL, built from
+    // that submission item's stored document and page IDs.
+    const firstArtifact = firstSubmission.items[firstTaskId].artifact;
+    expect(
+      firstInner!.get(buildTaskKey(CANONICAL_READY_CELL.definitionKey, firstTaskId))!.sourceUrl
+    ).toBe(buildExpectedSourceUrl('SLIDES', firstArtifact.documentId, firstArtifact.pageId));
   });
 
   // -----------------------------------------------------------------------

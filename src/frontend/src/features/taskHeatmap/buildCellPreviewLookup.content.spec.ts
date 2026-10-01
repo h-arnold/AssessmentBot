@@ -5,7 +5,9 @@
  * `artifactType` / `artifactContent` for every supported artifact shape
  * (TEXT, TABLE, IMAGE, SPREADSHEET) and the per-criterion `reasoning` text
  * derived from the item's assessments, including the `null` pattern when only
- * completeness is assessed.
+ * completeness is assessed. The canonical cell also carries the derived
+ * `sourceUrl`; the full derivation matrix lives in
+ * `buildCellPreviewLookup.sourceLink.spec.ts`.
  *
  * Realistic setup comes from the canonical `small` records selected by
  * `src/test/taskHeatmap/previewFixtures.ts`. The corpus only emits TEXT
@@ -27,6 +29,7 @@ import {
   CANONICAL_READY_CELL,
   cloneCanonicalSlidesAssignment,
 } from '../../test/taskHeatmap/previewFixtures';
+import { buildExpectedSourceUrl } from '../../test/taskHeatmap/buildCellPreviewLookupTestFixtures';
 
 /** Submission-item shape carried by an `AssignmentFull` submission. */
 type AssignmentSubmissionItem = AssignmentFull['submissions'][number]['items'][string];
@@ -78,7 +81,9 @@ describe('buildCellPreviewLookup cell content', () => {
   // -----------------------------------------------------------------------
 
   it('builds CellPreviewData for the canonical TEXT submission artifact', () => {
-    const lookup: CellPreviewLookup = buildCellPreviewLookup(cloneCanonicalSlidesAssignment());
+    const assignment = cloneCanonicalSlidesAssignment();
+    const submissionItem = canonicalSubmissionItem(assignment);
+    const lookup: CellPreviewLookup = buildCellPreviewLookup(assignment);
     const cellData: CellPreviewData | undefined = lookup
       .get(CANONICAL_READY_CELL.studentId)
       ?.get(CANONICAL_READY_CELL.taskKey);
@@ -89,6 +94,13 @@ describe('buildCellPreviewLookup cell content', () => {
     expect(cellData!.reasoning.completeness).toBe(CANONICAL_READY_CELL.completenessReasoning);
     expect(cellData!.reasoning.accuracy).toBe(CANONICAL_READY_CELL.accuracyReasoning);
     expect(cellData!.reasoning.spag).toBe(CANONICAL_READY_CELL.spagReasoning);
+    expect(cellData!.sourceUrl).toBe(
+      buildExpectedSourceUrl(
+        'SLIDES',
+        submissionItem.artifact.documentId,
+        submissionItem.artifact.pageId
+      )
+    );
   });
 
   // -----------------------------------------------------------------------

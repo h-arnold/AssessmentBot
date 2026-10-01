@@ -14,6 +14,10 @@
  *    `taskKey`s that `adaptMetricsToHeatmap` derives), which is exercised
  *    directly by the co-located `buildCellPreviewLookup.parity.spec.ts`.
  *
+ * The resolved cell also carries the derived `sourceUrl` for the canonical
+ * ready cell; the full derivation matrix lives in
+ * `buildCellPreviewLookup.sourceLink.spec.ts`.
+ *
  * The wider suite is split by concern so each file stays under the line
  * budget: cell-content derivation lives in
  * `buildCellPreviewLookup.content.spec.ts`, student/task indexing and
@@ -32,6 +36,7 @@ import type { CellPreviewLookup } from './buildCellPreviewLookup';
 import {
   BASE_ARTIFACT_FIELDS,
   DEFAULT_DATE,
+  buildExpectedSourceUrl,
   createAssignment,
 } from '../../test/taskHeatmap/buildCellPreviewLookupTestFixtures';
 import {
@@ -49,7 +54,8 @@ describe('buildCellPreviewLookup', () => {
     // The canonical Slides assignment is owned by `class-2`, so its submission
     // studentId and item taskId are the identifiers a ClassFull-derived
     // heatmap for that roster carries.
-    const lookup: CellPreviewLookup = buildCellPreviewLookup(cloneCanonicalSlidesAssignment());
+    const assignment = cloneCanonicalSlidesAssignment();
+    const lookup: CellPreviewLookup = buildCellPreviewLookup(assignment);
 
     expect(CANONICAL_CLASS.students.map((student) => student.id)).toContain(
       CANONICAL_READY_CELL.studentId
@@ -65,6 +71,21 @@ describe('buildCellPreviewLookup', () => {
     expect(cellData!.artifactType).toBe('TEXT');
     expect(cellData!.artifactContent).toBe(CANONICAL_READY_CELL.artifactContent);
     expect(cellData!.reasoning.completeness).toBe(CANONICAL_READY_CELL.completenessReasoning);
+
+    // The derived editor source URL joins the cell's output shape, built from
+    // the same submission item's stored document and page IDs.
+    const submission = assignment.submissions.find(
+      (candidate) => candidate.studentId === CANONICAL_READY_CELL.studentId
+    );
+    if (submission == null) {
+      throw new Error(
+        `buildCellPreviewLookup spec: student "${CANONICAL_READY_CELL.studentId}" has no submission to inspect.`
+      );
+    }
+    const artifact = submission.items[CANONICAL_READY_CELL.taskId].artifact;
+    expect(cellData!.sourceUrl).toBe(
+      buildExpectedSourceUrl('SLIDES', artifact.documentId, artifact.pageId)
+    );
   });
 
   // -----------------------------------------------------------------------

@@ -1,12 +1,13 @@
 /**
  * Canonical synthetic `small` fixture selection for the task-preview suites.
  *
- * Selects the shared realistic records — the trustworthy `class-2` roster and
- * its populated Slides `assignment-2-1` — from the committed transport views
- * using the frontend raw-JSON import convention, validates every selected full
- * record through its transport schema, and derives the identifiers, labels,
- * metric values and content that the suites assert against. Selected records
- * are deep-frozen, so callers clone them before mutating anything.
+ * Selects the shared realistic records — the trustworthy `class-2` roster, its
+ * populated Slides `assignment-2-1` and its populated Sheets `assignment-2-2` —
+ * from the committed transport views using the frontend raw-JSON import
+ * convention, validates every selected full record through its transport
+ * schema, and derives the identifiers, labels, metric values and content that
+ * the suites assert against. Selected records are deep-frozen, so callers clone
+ * them before mutating anything.
  *
  * This module selects from the existing corpus; it is not a second fixture
  * corpus and it never restates realistic labels or content as literals.
@@ -34,6 +35,9 @@ const CLASS_ID = 'class-2';
 
 /** Canonical populated Slides assignment owned by {@link CLASS_ID}. */
 const SLIDES_ASSIGNMENT_ID = 'assignment-2-1';
+
+/** Canonical populated Sheets assignment owned by {@link CLASS_ID}. */
+const SHEETS_ASSIGNMENT_ID = 'assignment-2-2';
 
 /** Canonical task whose submission item backs the ready-preview cell. */
 const READY_TASK_ID = 'task-0-0';
@@ -89,6 +93,13 @@ export const CANONICAL_CLASS: ClassFull = deepFreeze(
 export const CANONICAL_SLIDES_ASSIGNMENT: AssignmentFull = deepFreeze(
   AssignmentFullSchema.parse(
     requireRecord(assignmentsByKey, SLIDES_ASSIGNMENT_ID, 'assignmentsByKey')
+  )
+);
+
+/** Canonical populated Sheets assignment, validated against `AssignmentFullSchema`. */
+export const CANONICAL_SHEETS_ASSIGNMENT: AssignmentFull = deepFreeze(
+  AssignmentFullSchema.parse(
+    requireRecord(assignmentsByKey, SHEETS_ASSIGNMENT_ID, 'assignmentsByKey')
   )
 );
 
@@ -296,6 +307,16 @@ export const CANONICAL_READY_CELL: CanonicalReadyCell = deriveReadyCell(
  */
 export function cloneCanonicalSlidesAssignment(): AssignmentFull {
   return structuredClone(CANONICAL_SLIDES_ASSIGNMENT);
+}
+
+/**
+ * Clone the canonical Sheets assignment so a spec can mutate its submissions,
+ * items or artifacts without touching the frozen shared record.
+ *
+ * @returns {AssignmentFull} A detached copy of the canonical assignment.
+ */
+export function cloneCanonicalSheetsAssignment(): AssignmentFull {
+  return structuredClone(CANONICAL_SHEETS_ASSIGNMENT);
 }
 
 /**

@@ -10,11 +10,11 @@ import { spreadsheetToMarkdownTable } from './spreadsheetToMarkdownTable';
  * analyser's `TaskDisplayMetric`, the metric key, and the task ID.
  *
  * @remarks
- * The analyser's metric is carried onto `TaskPreviewData` unchanged. A `null`
- * `cellData` is the one exception: no submission exists for the
- * (student, task) pair, so the metric is overridden with the shared
- * `NOT_ATTEMPTED_METRIC` placeholder even when the analyser reported
- * `computed`.
+ * The analyser's metric is carried onto `TaskPreviewData` unchanged, as is the
+ * cell's derived `sourceUrl` (never re-derived here). A `null` `cellData` is
+ * the one exception: no submission exists for the (student, task) pair, so the
+ * metric is overridden with the shared `NOT_ATTEMPTED_METRIC` placeholder even
+ * when the analyser reported `computed`, and `sourceUrl` is `null`.
  *
  * @param {CellPreviewData | null} cellData - The cell preview data from the
  *                   lookup, or `null` when no submission exists for the
@@ -40,6 +40,7 @@ export function assembleTaskPreviewData(
       metricKey,
       metric: NOT_ATTEMPTED_METRIC,
       reasoning: '',
+      sourceUrl: null,
     };
   }
 
@@ -54,6 +55,7 @@ export function assembleTaskPreviewData(
     metricKey,
     metric: metricResult,
     reasoning: cellData.reasoning[metricKey] ?? '',
+    sourceUrl: cellData.sourceUrl,
   };
 }
 

@@ -35,6 +35,15 @@ export interface TaskPreviewData {
   readonly reasoning: string;
   /** The analyser's task-display metric for this cell, rendered as-is. */
   readonly metric: TaskDisplayMetric;
+  /**
+   * Derived editor source link for the displayed submission artefact, carried
+   * unchanged from `CellPreviewData`; `null` when no usable source exists.
+   *
+   * @remarks
+   * Never persisted and never added to an API response. The header action that
+   * consumes it is delivered separately (issue #19, Section 3).
+   */
+  readonly sourceUrl: string | null;
 }
 
 // ---------------------------------------------------------------------------

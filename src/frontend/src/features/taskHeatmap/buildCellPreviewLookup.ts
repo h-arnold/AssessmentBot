@@ -42,6 +42,12 @@ export type CellPreviewData = {
     readonly artifactContent: ArtifactContentByType<K>;
     /** Per-metric reasoning strings (null when assessment is absent for that metric). */
     readonly reasoning: Record<HeatmapMetricKey, string | null>;
+    /**
+     * Derived editor source link for this submission artefact, resolved in the
+     * lookup; `null` when the source is unavailable. Never persisted and never
+     * added to an API response.
+     */
+    readonly sourceUrl: string | null;
   };
 }[ArtifactType];
 
@@ -58,17 +64,99 @@ export type CellPreviewData = {
 export type CellPreviewLookup = ReadonlyMap<string, ReadonlyMap<string, CellPreviewData>>;
 
 /**
+ * Trim a stored identifier, treating `null`, an absent key, an empty string
+ * and a whitespace-only string as unusable.
+ *
+ * @param {string | null | undefined} value - A stored document or page identifier.
+ * @returns {string | null} The trimmed identifier, or `null` when unusable.
+ */
+function trimStoredId(value: string | null | undefined): string | null {
+  if (value == null) {
+    return null;
+  }
+  const trimmed = value.trim();
+  return trimmed === '' ? null : trimmed;
+}
+
+/**
+ * Build the fixed HTTPS Google editor `/edit` URL for one usable document ID.
+ *
+ * @remarks
+ * The path comes from the root assignment's `documentType` only; anything
+ * other than `SLIDES` or `SHEETS` (including `null`) yields `null`.
+ *
+ * @param {string | null} documentType - Root assignment document format.
+ * @param {string} documentId - Usable, already-trimmed document ID.
+ * @returns {string | null} The document-root editor URL, or `null` when the format is unsupported.
+ */
+function buildEditorBaseUrl(documentType: string | null, documentId: string): string | null {
+  if (documentType === 'SLIDES') {
+    return `https://docs.google.com/presentation/d/${encodeURIComponent(documentId)}/edit`;
+  }
+  if (documentType === 'SHEETS') {
+    return `https://docs.google.com/spreadsheets/d/${encodeURIComponent(documentId)}/edit`;
+  }
+  return null;
+}
+
+/**
+ * Resolve the derived editor source URL for one submission item (issue #19).
+ *
+ * @remarks
+ * Pure and private to this module. The format comes from the root full
+ * assignment's `documentType` (`SLIDES` or `SHEETS`), never from the artefact's
+ * content type. The document ID is the artefact's when usable, otherwise the
+ * parent submission's; both are trimmed and encoded as URL components against a
+ * fixed HTTPS Google Docs editor host and path. The artefact's page ID supplies
+ * the fragment anchor (trimmed and encoded; the Sheets value `"0"` is valid);
+ * an unusable page ID yields the document-root `/edit` URL with no fragment.
+ * An unsupported or null format, or no usable document ID at all, yields
+ * `null`. Reference/template documents, image-export `metadata.sourceUrl` and
+ * definition task page IDs are never consulted.
+ *
+ * @param {string | null} documentType - Root assignment document format.
+ * @param {string | null} artifactDocumentId - Stored artefact document ID.
+ * @param {string | null} artifactPageId - Stored artefact page ID.
+ * @param {string | null | undefined} parentDocumentId - Stored parent submission document ID.
+ * @returns {string | null} The derived editor URL, or `null` when unavailable.
+ */
+function resolveSourceUrl(
+  documentType: string | null,
+  artifactDocumentId: string | null,
+  artifactPageId: string | null,
+  parentDocumentId: string | null | undefined
+): string | null {
+  const documentId = trimStoredId(artifactDocumentId) ?? trimStoredId(parentDocumentId);
+  const baseUrl = documentId == null ? null : buildEditorBaseUrl(documentType, documentId);
+  if (baseUrl == null) {
+    return null;
+  }
+
+  const pageId = trimStoredId(artifactPageId);
+  if (pageId == null) {
+    return baseUrl;
+  }
+
+  const encodedPageId = encodeURIComponent(pageId);
+  return documentType === 'SLIDES'
+    ? `${baseUrl}#slide=id.${encodedPageId}`
+    : `${baseUrl}#gid=${encodedPageId}`;
+}
+
+/**
  * Builds a `CellPreviewData` from a single submission item's artifact and assessments.
  *
  * @param {ArtifactType} artifactType - The artifact type discriminator.
  * @param {unknown} artifactContent - The artifact content.
  * @param {Record<string, Assessment>} assessments - The per-metric assessments.
+ * @param {string | null} sourceUrl - The derived editor source URL for this item.
  * @returns {CellPreviewData} The assembled cell preview data.
  */
 function createCellPreviewData(
   artifactType: ArtifactType,
   artifactContent: unknown,
-  assessments: Record<string, Assessment>
+  assessments: Record<string, Assessment>,
+  sourceUrl: string | null
 ): CellPreviewData {
   return {
     artifactType,
@@ -80,6 +168,7 @@ function createCellPreviewData(
     reasoning: Object.fromEntries(
       HEATMAP_METRIC_KEYS.map((key) => [key, assessments[key]?.reasoning ?? null])
     ) as Record<HeatmapMetricKey, string | null>,
+    sourceUrl,
   } as CellPreviewData;
 }
 
@@ -138,9 +227,20 @@ export function buildCellPreviewLookup(assignment: AssignmentFull): CellPreviewL
       const taskKey = buildTaskKey(definitionKey, item.taskId);
       // First-wins: only set if this taskKey has not been encountered yet
       if (!innerMap.has(taskKey)) {
+        const sourceUrl = resolveSourceUrl(
+          assignment.documentType,
+          item.artifact.documentId,
+          item.artifact.pageId,
+          submission.documentId
+        );
         innerMap.set(
           taskKey,
-          createCellPreviewData(item.artifact.type, item.artifact.content, item.assessments)
+          createCellPreviewData(
+            item.artifact.type,
+            item.artifact.content,
+            item.assessments,
+            sourceUrl
+          )
         );
       }
     }
