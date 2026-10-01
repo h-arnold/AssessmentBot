@@ -1,18 +1,22 @@
 /**
- * Column-construction and popover-support helpers for `TaskHeatmapTable`.
+ * Column-construction helpers for `TaskHeatmapTable`.
  *
  * Co-located sibling of `TaskHeatmapTable.tsx`. Extracted from the table
  * component when the component breached the 500-LOC module-size gate: these pure
  * helpers own the metric sub-column shape, the
- * per-column preview-status resolution, the popover content, and the adaptive
- * assignment-tier grouping. They carry no React state and no side effects
- * beyond the deferred `assembleTaskPreviewData` call inside the popover.
+ * per-column preview-status resolution, and the adaptive assignment-tier
+ * grouping. They carry no React state and no side effects.
+ *
+ * The per-cell Popover trigger and its preview body live in the sibling
+ * `TaskMetricPreviewCell.tsx` / `TaskMetricPreviewContent.tsx` modules; this
+ * module supplies each cell's inputs (metric result, lookup entry, resolved
+ * status, accessible label and score text) and keeps the `<td>` tone and label
+ * mapping.
  *
  * @see docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md §3.7
  */
 
 import type { CSSProperties, JSX } from 'react';
-import { Alert, Popover, Skeleton } from 'antd';
 import type { TableColumnsType } from 'antd';
 import type { FilterValue } from 'antd/es/table/interface';
 
@@ -34,12 +38,10 @@ import { formatMetricDisplayText } from '../../services/dataAnalysis/metricDispl
 import { buildMetricRangeFilter } from '../../services/dataAnalysis/metricDisplay/metricRangeFilter';
 import { decodeFilterToRange } from '../../services/dataAnalysis/metricDisplay/metricRangeKey';
 import { MetricIconLabel } from '../../components/MetricIconLabel/MetricIconLabel';
-import { TaskPreviewCard, CARD_MAX_WIDTH } from './TaskPreviewCard';
-import { DeferredPopoverContent } from './DeferredPopoverContent';
-import { assembleTaskPreviewData } from './assembleTaskPreviewData';
-import type { CellPreviewData, CellPreviewLookup } from './buildCellPreviewLookup';
+import { TaskMetricPreviewCell } from './TaskMetricPreviewCell';
+import type { CellPreviewLookup } from './buildCellPreviewLookup';
 import type { PreviewStatus } from './assembleMergedPreviewData';
-import { APP_COL_WIDTH_METRIC, APP_GAP_MD, APP_GAP_XS } from '../../theme/spacing';
+import { APP_COL_WIDTH_METRIC } from '../../theme/spacing';
 import { getZeroWeightMetricEdgeClass } from './taskHeatmapZeroWeightHeader';
 
 // ---------------------------------------------------------------------------
@@ -229,77 +231,16 @@ export function resolveColumnPreviewStatus(
 }
 
 /**
- * Build the popover content for a single metric cell.
- *
- * Resolves the per-column status (loading → skeleton, error → alert, else the
- * deferred `TaskPreviewCard`). The skeleton width (400px) mirrors
- * `CARD_MAX_WIDTH` from `TaskPreviewCard.tsx`. The expensive
- * `assembleTaskPreviewData` call is deferred until this content is actually
- * opened by the popover.
- *
- * @param {CellPreviewData | null} cellData - The cell preview data from the lookup.
- * @param {TaskDisplayMetric} metricResult - The analyser's metric result for this cell.
- * @param {HeatmapMetricKey} metricKey - Which metric column this preview is for.
- * @param {string} taskId - The heatmap column's task ID.
- * @param {boolean} isLoading - Whether this column's preview query is pending.
- * @param {boolean} hasError - Whether this column's preview query errored or returned null.
- * @returns {JSX.Element} The popover content (skeleton, alert, or TaskPreviewCard).
- */
-function buildPopoverContent({
-  cellData,
-  metricResult,
-  metricKey,
-  taskId,
-  isLoading,
-  hasError,
-}: Readonly<{
-  cellData: CellPreviewData | null;
-  metricResult: TaskDisplayMetric;
-  metricKey: HeatmapMetricKey;
-  taskId: string;
-  isLoading: boolean;
-  hasError: boolean;
-}>): JSX.Element {
-  if (isLoading) {
-    return (
-      <output
-        aria-busy="true"
-        aria-label="Loading task preview"
-        style={{ display: 'block', width: CARD_MAX_WIDTH }}
-      >
-        {/* Title bar — approximates TaskPreviewCard header height */}
-        <Skeleton.Input
-          active
-          size="small"
-          style={{ width: 200, height: 24, marginBottom: APP_GAP_MD }}
-        />
-        {/* Reasoning skeleton — 3 rows matching the card's reasoning section */}
-        <Skeleton
-          active
-          paragraph={{ rows: 3 }}
-          title={false}
-          style={{ marginBottom: APP_GAP_MD }}
-        />
-        {/* Artifact image placeholder — approximate height for an image block */}
-        <Skeleton.Input active size="small" style={{ width: '100%', height: 120 }} />
-      </output>
-    );
-  }
-
-  if (hasError) {
-    return <Alert type="error" showIcon title="Couldn't load task details" />;
-  }
-
-  // Defer the expensive assembleTaskPreviewData call until the popover opens.
-  const previewData = assembleTaskPreviewData(cellData, metricResult, metricKey, taskId);
-  return <TaskPreviewCard data={previewData} />;
-}
-
-/**
  * Build the three metric sub-columns (Completeness, Accuracy, SPaG) for a
  * single task group.
  *
  * Extracted to avoid excessive function nesting inside `useMemo`.
+ *
+ * @remarks
+ * Each rendered cell delegates to `TaskMetricPreviewCell`, which owns the
+ * trigger/Popover pair and the deferred preview body; this builder keeps the
+ * column contract (shape, filtering, sorting, `<td>` tone and accessible
+ * label) and supplies the delegated inputs.
  *
  * @param {TaskHeatmapColumn} taskColumn - The task column descriptor.
  * @param {number} taskIndex - The index of the task within the heatmap.
@@ -365,43 +306,16 @@ export function buildTaskMetricSubColumns(
         const ariaLabel = buildMetricCellAccessibleLabel(record.studentName, taskTitle, metric, score);
 
         return (
-          <Popover
-            trigger={['hover', 'click']}
-            placement="right"
-            destroyOnHidden
-            content={
-              <DeferredPopoverContent
-                buildContent={() =>
-                  buildPopoverContent({
-                    cellData,
-                    metricResult: m,
-                    metricKey: metric,
-                    taskId: taskColumn.taskId,
-                    isLoading: columnIsLoading,
-                    hasError: columnHasError,
-                  })
-                }
-              />
-            }
-          >
-            {/* 4px padding (APP_GAP_XS, documented half-unit exception) widens the
-                Popover hover/click target around the score without covering the
-                whole cell; inline-block is required for padding to take effect. */}
-            <span
-              tabIndex={0}
-              role="button"
-              aria-label={ariaLabel}
-              style={{ padding: APP_GAP_XS, display: 'inline-block' }}
-              onKeyDown={(event): void => {
-                if (event.key === 'Enter' || event.key === ' ') {
-                  event.preventDefault();
-                  (event.currentTarget as HTMLElement).click();
-                }
-              }}
-            >
-              {formatMetricDisplayText(m, INDIVIDUAL_SCORE_PRECISION)}
-            </span>
-          </Popover>
+          <TaskMetricPreviewCell
+            accessibleLabel={ariaLabel}
+            scoreText={score}
+            cellData={cellData}
+            metricResult={m}
+            metricKey={metric}
+            taskId={taskColumn.taskId}
+            isLoading={columnIsLoading}
+            hasError={columnHasError}
+          />
         );
       },
     };

@@ -4,13 +4,11 @@ import {
   AssignmentDefinitionSchema,
   AssignmentFullSchema,
   AssignmentFullResponseSchema,
-  BaseTaskArtifactSchema,
   GetAssignmentRequestSchema,
   StartAssessmentRunRequestSchema,
   StartAssessmentRunResponseSchema,
   StudentSubmissionItemSchema,
   StudentSubmissionSchema,
-  TaskDefinitionSchema,
 } from './assignmentAssessment.zod';
 import { validBaseArtifact, validFullAssignment } from './assignmentAssessment.zod.fixtures';
 
@@ -134,164 +132,6 @@ describe('assignmentAssessment.zod schemas', () => {
     });
   });
 
-  describe('BaseTaskArtifactSchema', () => {
-    it('accepts a valid artifact with all string fields and contentHash: null', () => {
-      const validArtifact = {
-        taskId: 'task-1',
-        role: 'reference',
-        pageId: 'page-1',
-        documentId: 'doc-ref',
-        uid: 'uid-1',
-        type: 'TEXT',
-        content: null,
-        contentHash: null,
-        metadata: {},
-      };
-      expect(BaseTaskArtifactSchema.parse(validArtifact)).toEqual(validArtifact);
-    });
-
-    it('rejects an artifact missing taskId', () => {
-      expect(() =>
-        BaseTaskArtifactSchema.parse({
-          role: 'reference',
-          pageId: 'page-1',
-          documentId: 'doc-ref',
-          uid: 'uid-1',
-          type: 'TEXT',
-          content: null,
-          contentHash: null,
-          metadata: {},
-        })
-      ).toThrow();
-    });
-
-    it('rejects an artifact with contentHash as a number', () => {
-      expect(() =>
-        BaseTaskArtifactSchema.parse({
-          taskId: 'task-1',
-          role: 'reference',
-          pageId: 'page-1',
-          documentId: 'doc-ref',
-          uid: 'uid-1',
-          type: 'TEXT',
-          content: null,
-          contentHash: 123,
-          metadata: {},
-        })
-      ).toThrow();
-    });
-
-    it('accepts a TEXT artifact with string content', () => {
-      const artifact = {
-        taskId: 'task-1',
-        role: 'reference',
-        pageId: 'page-1',
-        documentId: 'doc-ref',
-        uid: 'uid-1',
-        type: 'TEXT',
-        content: 'some text content',
-        contentHash: null,
-        metadata: {},
-      };
-      expect(BaseTaskArtifactSchema.parse(artifact)).toEqual(artifact);
-    });
-
-    it('accepts a TEXT artifact with null content', () => {
-      const artifact = {
-        taskId: 'task-1',
-        role: 'reference',
-        pageId: 'page-1',
-        documentId: 'doc-ref',
-        uid: 'uid-1',
-        type: 'TEXT',
-        content: null,
-        contentHash: null,
-        metadata: {},
-      };
-      expect(BaseTaskArtifactSchema.parse(artifact)).toEqual(artifact);
-    });
-
-    it('accepts a SPREADSHEET artifact with 2D array content', () => {
-      const artifact = {
-        taskId: 'task-1',
-        role: 'reference',
-        pageId: 'page-1',
-        documentId: 'doc-ref',
-        uid: 'uid-1',
-        type: 'SPREADSHEET',
-        content: [
-          ['a', 1, null],
-          ['b', 1, null],
-        ],
-        contentHash: null,
-        metadata: {},
-      };
-      expect(BaseTaskArtifactSchema.parse(artifact)).toEqual(artifact);
-    });
-
-    it('accepts a SPREADSHEET artifact with null content', () => {
-      const artifact = {
-        taskId: 'task-1',
-        role: 'reference',
-        pageId: 'page-1',
-        documentId: 'doc-ref',
-        uid: 'uid-1',
-        type: 'SPREADSHEET',
-        content: null,
-        contentHash: null,
-        metadata: {},
-      };
-      expect(BaseTaskArtifactSchema.parse(artifact)).toEqual(artifact);
-    });
-
-    it('accepts a base artifact with unknown content', () => {
-      const artifact = {
-        taskId: 'task-1',
-        role: 'reference',
-        pageId: 'page-1',
-        documentId: 'doc-ref',
-        uid: 'uid-1',
-        type: 'base',
-        content: { arbitrary: 'object' },
-        contentHash: null,
-        metadata: {},
-      };
-      expect(BaseTaskArtifactSchema.parse(artifact)).toEqual(artifact);
-    });
-
-    it('rejects a SPREADSHEET artifact with string content', () => {
-      expect(() =>
-        BaseTaskArtifactSchema.parse({
-          taskId: 'task-1',
-          role: 'reference',
-          pageId: 'page-1',
-          documentId: 'doc-ref',
-          uid: 'uid-1',
-          type: 'SPREADSHEET',
-          content: 'string instead of 2D array',
-          contentHash: null,
-          metadata: {},
-        })
-      ).toThrow();
-    });
-
-    it('rejects an artifact with an unrecognised type', () => {
-      expect(() =>
-        BaseTaskArtifactSchema.parse({
-          taskId: 'task-1',
-          role: 'reference',
-          pageId: 'page-1',
-          documentId: 'doc-ref',
-          uid: 'uid-1',
-          type: 'BOGUS',
-          content: null,
-          contentHash: null,
-          metadata: {},
-        })
-      ).toThrow();
-    });
-  });
-
   describe('AssessmentSchema', () => {
     it('accepts a valid assessment with score and reasoning', () => {
       const assessment = { score: 3, reasoning: 'good work' };
@@ -318,55 +158,6 @@ describe('assignmentAssessment.zod schemas', () => {
     it('strips unknown extra fields (strict by default in Zod v4)', () => {
       const assessment = { score: 3, reasoning: 'good', extra: 'field' };
       expect(AssessmentSchema.parse(assessment)).toEqual({ score: 3, reasoning: 'good' });
-    });
-  });
-
-  describe('TaskDefinitionSchema', () => {
-    it('accepts a valid definition with taskWeighting: 1, index: null, taskNotes: null', () => {
-      const validDefinition = {
-        id: 'task-1',
-        taskTitle: 'Task One',
-        pageId: 'page-1',
-        taskNotes: null,
-        taskMetadata: {},
-        taskWeighting: 1,
-        index: null,
-        artifacts: {
-          reference: [],
-          template: [],
-        },
-      };
-      expect(TaskDefinitionSchema.parse(validDefinition)).toEqual(validDefinition);
-    });
-
-    it('rejects a definition with taskWeighting as a string', () => {
-      expect(() =>
-        TaskDefinitionSchema.parse({
-          id: 'task-1',
-          taskTitle: 'Task One',
-          pageId: 'page-1',
-          taskNotes: null,
-          taskMetadata: {},
-          taskWeighting: 'heavy',
-          index: null,
-          artifacts: { reference: [], template: [] },
-        })
-      ).toThrow();
-    });
-
-    it('rejects a definition with index as a string', () => {
-      expect(() =>
-        TaskDefinitionSchema.parse({
-          id: 'task-1',
-          taskTitle: 'Task One',
-          pageId: 'page-1',
-          taskNotes: null,
-          taskMetadata: {},
-          taskWeighting: 1,
-          index: 'first',
-          artifacts: { reference: [], template: [] },
-        })
-      ).toThrow();
     });
   });
 

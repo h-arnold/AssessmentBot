@@ -4,8 +4,31 @@
  * Kept in a non-spec module so both `assignmentAssessment.zod.spec.ts` and
  * `assignmentAssessment.zod.regression.spec.ts` can import them without vitest
  * double-collecting the test files.
+ *
+ * `validFullAssignment` selects the populated Slides `assignment-2-1` record
+ * from the committed `small` synthetic profile and validates it through the
+ * schema under test, so the schema suites parse a realistic transport payload
+ * instead of a schematic one. It is deliberately deep-frozen: boundary probes
+ * clone it (`structuredClone` or an explicit object spread) before mutating,
+ * so a shared canonical record cannot drift between suites.
+ *
+ * `validBaseArtifact` stays a local schematic shape: it is the shared
+ * null-content/null-contentHash boundary artefact that the submission, item
+ * and regression cases deliberately probe. Deliberately invalid payloads stay
+ * local to their owning specs.
+ *
+ * @see docs/developer/testing/synthetic-test-data.md
  */
 
+import assignmentsByKeyRaw from '../../../../../tests/__mocks__/data/synthetic-analysis/small/assignmentsByKey.json?raw';
+
+import { AssignmentFullSchema } from './assignmentAssessment.zod';
+import type { AssignmentFull } from './assignmentAssessment.zod';
+
+/** Canonical populated Slides assignment selected from the `small` profile. */
+const CANONICAL_ASSIGNMENT_ID = 'assignment-2-1';
+
+/** Local schematic artefact shared by the boundary cases of the schema suites. */
 export const validBaseArtifact = {
   taskId: 'task-1',
   role: 'reference',
@@ -18,115 +41,37 @@ export const validBaseArtifact = {
   metadata: {},
 };
 
-export const validFullAssignment = {
-  courseId: 'course-1',
-  assignmentId: 'assign-1',
-  assignmentName: 'Algebra Baseline',
-  dueDate: '2026-07-01T00:00:00.000Z',
-  updatedAt: '2026-06-01T00:00:00.000Z',
-  createdAt: '2026-05-01T00:00:00.000Z',
-  documentType: 'QUIZ',
-  referenceDocumentId: 'ref-1',
-  templateDocumentId: 'tpl-1',
-  tasks: {
-    'task-1': {
-      id: 'task-1',
-      taskTitle: 'Task One',
-      pageId: 'page-1',
-      taskNotes: null,
-      taskMetadata: {},
-      taskWeighting: 1,
-      index: 0,
-      artifacts: {
-        reference: [
-          {
-            taskId: 'task-1',
-            role: 'reference',
-            pageId: 'page-1',
-            documentId: 'doc-ref',
-            content: null,
-            contentHash: null,
-            metadata: {},
-            uid: 'uid-1',
-            type: 'TEXT',
-          },
-        ],
-        template: [],
-      },
-    },
-  },
-  submissions: [
-    {
-      studentId: 'student-1',
-      studentName: 'Student One',
-      assignmentId: 'assign-1',
-      documentId: 'doc-1',
-      items: {
-        'task-1': {
-          id: 'item-1',
-          taskId: 'task-1',
-          artifact: {
-            taskId: 'task-1',
-            role: 'reference',
-            pageId: 'page-1',
-            documentId: 'doc-ref',
-            content: null,
-            contentHash: null,
-            metadata: {},
-            uid: 'uid-1',
-            type: 'TEXT',
-          },
-          assessments: {},
-          feedback: {},
-        },
-      },
-      createdAt: '2026-05-02T00:00:00.000Z',
-      updatedAt: '2026-05-02T00:00:00.000Z',
-    },
-  ],
-  assignmentDefinition: {
-    primaryTitle: 'Algebra',
-    primaryTopic: 'algebra',
-    primaryTopicKey: 'algebra',
-    yearGroupKey: 'yg-1',
-    yearGroupLabel: 'Year 1',
-    alternateTitles: [],
-    alternateTopics: [],
-    documentType: 'QUIZ',
-    referenceDocumentId: 'ref-1',
-    templateDocumentId: 'tpl-1',
-    referenceLastModified: '2026-04-01T00:00:00.000Z',
-    templateLastModified: '2026-04-01T00:00:00.000Z',
-    assignmentWeighting: 1,
-    definitionKey: 'def-1',
-    tasks: {
-      'task-1': {
-        id: 'task-1',
-        taskTitle: 'Task One',
-        pageId: 'page-1',
-        taskNotes: null,
-        taskMetadata: {},
-        taskWeighting: 1,
-        index: 0,
-        artifacts: {
-          reference: [
-            {
-              taskId: 'task-1',
-              role: 'reference',
-              pageId: 'page-1',
-              documentId: 'doc-ref',
-              content: null,
-              contentHash: null,
-              metadata: {},
-              uid: 'uid-1',
-              type: 'TEXT',
-            },
-          ],
-          template: [],
-        },
-      },
-    },
-    createdAt: '2026-04-01T00:00:00.000Z',
-    updatedAt: '2026-04-01T00:00:00.000Z',
-  },
-};
+/**
+ * Deep-freeze a canonical fixture so an in-place mutation fails loudly instead
+ * of leaking into another suite.
+ *
+ * @template T - Type of the value being frozen.
+ * @param {T} value - The record to freeze.
+ * @returns {T} The same record, with every reachable object frozen.
+ */
+function deepFreeze<T>(value: T): T {
+  if (value === null || typeof value !== 'object') {
+    return value;
+  }
+  for (const propertyValue of Object.values(value)) {
+    deepFreeze(propertyValue);
+  }
+  return Object.freeze(value);
+}
+
+const assignmentsByKey = JSON.parse(assignmentsByKeyRaw) as Record<string, unknown>;
+
+const canonicalAssignment = assignmentsByKey[CANONICAL_ASSIGNMENT_ID];
+if (canonicalAssignment == null) {
+  throw new Error(
+    `assignmentAssessment.zod.fixtures: record "${CANONICAL_ASSIGNMENT_ID}" is absent from the small synthetic assignmentsByKey view.`
+  );
+}
+
+/**
+ * Canonical full assignment payload, validated against the schema under test
+ * and deep-frozen so every boundary probe clones before it mutates.
+ */
+export const validFullAssignment: AssignmentFull = deepFreeze(
+  AssignmentFullSchema.parse(canonicalAssignment)
+);

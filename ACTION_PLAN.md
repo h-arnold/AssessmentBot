@@ -106,7 +106,7 @@ Separate oversized test concerns and extract the metric-cell popover responsibil
 
 - `npm run test:frontend -- src/features/taskHeatmap`
 - `npm run test:frontend -- src/services/assignmentAssessment`
-- `npm --prefix src/frontend exec -- tsc -b`
+- `npm exec -- tsc -b` (working directory: `src/frontend`)
 - `npm run lint:frontend`
 - `npm run test:frontend:e2e -- e2e-tests/task-preview-card.spec.ts e2e-tests/task-heatmap.spec.ts e2e-tests/heatmaps.spec.ts`
 - Review diff for behaviour preservation, recount files and check mandatory-read evidence.
@@ -145,7 +145,7 @@ Implement the documented target contracts using only existing transport metadata
 ### Section checks
 
 - `npm run test:frontend -- src/services/assignmentAssessment src/features/taskHeatmap`
-- `npm --prefix src/frontend exec -- tsc -b`
+- `npm exec -- tsc -b` (working directory: `src/frontend`)
 - `npm run lint:frontend`
 - Data Shapes Agent reconciliation and clean Code Reviewer pass; mandatory-read evidence complete.
 
@@ -182,7 +182,7 @@ The new files become mandatory only after Section 1 creates them; reject handoff
 ### Section checks
 
 - `npm run test:frontend -- src/features/taskHeatmap`
-- `npm --prefix src/frontend exec -- tsc -b`
+- `npm exec -- tsc -b` (working directory: `src/frontend`)
 - `npm run lint:frontend`
 - Clean Code Reviewer pass, recount and mandatory-read evidence.
 
@@ -238,7 +238,7 @@ Regression and documentation agents use common/phase reads plus @docs/developer/
 - Earlier red-first contracts remain green; original body, metric states, hover/click pinning, table sorting/filtering, merged winner semantics and loading/error behaviour are preserved.
 - `npm run test:frontend`
 - `npm run test:frontend:e2e`
-- `npm --prefix src/frontend exec -- tsc -b`
+- `npm exec -- tsc -b` (working directory: `src/frontend`)
 - `npm run lint:frontend`
 - `npm run build:frontend`
 - Docs/Data Shapes Agent reconcile implemented `Not implemented` entries and final visual values, including explicit editor-vs-export URL distinction. Historical metric-icon prose is reconciled only as warranted by measured evidence; no metric renderer changes.
@@ -247,7 +247,17 @@ Regression and documentation agents use common/phase reads plus @docs/developer/
 
 ### Implementation notes / deviations / follow-up (populate during execution)
 
-- Section 1 decomposition evidence and clean review:
+- Execution status: Section 1 reviews and regression gates passed; commit/push gate pending. Section 2 remains blocked until commit/push evidence is recorded. Baseline established on branch `docs/issue-19-task-preview-source-link`.
+- User-approved Section 1 scope amendment: migrate realistic fixtures throughout the suites being split and the new characterisation specs to canonical synthetic `small` records, not merely the new ready-content tests. Preserve assertions; clone canonical records for narrow boundary mutations and retain local invalid/state probes. Unsupported image/table/spreadsheet content retains the documented corpus-capability exception. Investigate bugs exposed by this migration and route production fixes through Implementation and Code Reviewer; do not weaken assertions to hide failures.
+- Sequencing deviation: Testing Specialist performed the lookup/schema suite split during the red handoff rather than after green extraction. No feature production changes were made. Review the complete red test diff, including canonical migration, before green extraction; decomposition still requires its full regression and review gates before Section 2.
+- User-approved additional generator alignment: replace synthetic roster `student-{class}-{student}` IDs with deterministic digit-only 21-character strings, regenerate committed compact profiles and derive fixture consumer IDs from roster records. The user supplied a live 21-digit sample; do not retain that exact value in tracked tests, code or documentation (use a fictional precision probe). Official Classroom UserProfile.id and Student.userId remain string contracts; numeric identifiers are documented, but neither a fixed length nor digit-only response validation is guaranteed. This is synthetic realism only: no production validation tightening or numeric conversion. Add focused red-first tests for deterministic uniqueness, string precision and cross-view linkage; preserve seeds/counts/names/Faker sequence. This approval does not authorise the separately recorded document-content generator extension.
+- Red review identified five minor in-scope items: correct type-check gate cwd (fixed above), accurate spec JSDoc aliases, replace silent lookup cast with loud guard, co-locate boundary fixture helper under `src/test/taskHeatmap`, and freeze canonical schema fixture deliberately. All must be resolved before clean red sign-off.
+- Red sign-off: all five findings fixed and Code Reviewer PASS (`.opencode/scratchpad/section1-red-review.md`). Preserved lookup 17 tests and schema 46 split tests; feature 213 assertions/tests passing, schema 58 tests passing, Section 1 browser subset 22 passing. Expected current-section reds: two missing extraction modules (also two TS2307 errors) and four digit-ID tests against unchanged generator; six identifier tests pass. Fictional precision probe replaces live sample, never tighten runtime string contracts. Frontend lint 32 existing warnings, none touched.
+- Red regression run: `npm run regression-checker`, comparison timestamp `2026-09-30T21:14:38.275Z`, zero regressions, zero counted new failures, two lint fixes. Coverage command exit 1 is accounted by the two intended missing-module red suites (checker does not count these suite-import errors as individual test failures); full E2E and all other checks pass except accepted backend lint. Green must remove all intentional reds, not waive them. Report directory: `.ts-regression-checker/reports/session-docs-issue-19-task-preview-source-link/runs/`.
+- Baseline: `npm run regression-checker` (2026-09-30), 7/8 checks passing; backend lint fails with 10 pre-existing `max-lines` warnings and zero errors. Frontend lint, frontend unit coverage, full frontend E2E, backend coverage, builder lint/coverage/compile pass. Report: `.ts-regression-checker/reports/session-docs-issue-19-task-preview-source-link/baseline/baseline.txt`. User accepted existing oversized-file technical debt and authorised continuation; no new failures or regressions may be waived. Baseline checker reports backend warnings (not frontend); broader existing oversized-file debt does not waive this plan's required in-scope decomposition.
+- Worktree preservation: unrelated modification to `.opencode/skills/pre-pr-review/SKILL.md` detected after baseline; leave untouched and exclude from commits.
+- Section 1 decomposition evidence and clean review: final Code Reviewer PASS, zero outstanding findings (`.opencode/scratchpad/section1-green-final-review.md`). Columns 390 lines, extracted cell/content 103/111; split lookup contract/content/indexing 140/180/275; schema original/artefacts 450/145. Canonical fixture selection and all materially touched modules remain below 500 lines. Feature 223 tests, schema 58, full frontend 2370, Section 1 E2E 22 and synthetic 248 pass; frontend type-check passes. Generator ID uniqueness/string precision/linkage covered; six dependent fixture views regenerate byte-reproducibly with names/seeds/Faker sequence unchanged. Docs reconciled extraction and fixture selection only; source-link/nullability/focus remain planned.
+- Green regression gate: `npm run regression-checker` comparison `2026-10-01T00:09:20.677Z`: 7/8 passing, zero regressions, zero new failures, two lint fixes. Full frontend E2E and coverage pass. Only the 10 accepted baseline backend `max-lines` warnings remain failing. All current-section intentional reds removed. Branch `docs/issue-19-task-preview-source-link`; commit SHA/message and push confirmation pending below.
 - Sections 2–3 red/green results, contracts/helpers reconciled and clean review:
 - Section 4 final icon/action/spacing, geometry, screenshot paths, themes/viewports/zoom and visual-review verdict:
 - Section 5 regression results, final review, documentation reconciliation:
