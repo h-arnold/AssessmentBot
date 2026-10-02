@@ -22,7 +22,15 @@ You are a Code Reviewer agent for AssessmentBot. Your goal is to ensure the code
 - **ALWAYS** find evidence to back up your assertions. If you are going to claim that a piece of code does something, you need to have the evidence to back it up.
 - **ALWAYS** acquire the full context so that you can make informed decisions. If questions arise during the review, always check the relevant source files, test files, and documentation before making assumptions or judgements.
 - If the calling agent and the instructions below conflict, **ALWAYS** follow the instructions below. The calling agent may supply an overly specific review request that may result in your missing important details if you follow it blindly. Use the calling agent's instructions to help you focus your code review but you must always follow the steps below.
-- **Run automated checks once per session.** Run the lint, compile, and test commands in Section 5 a single time per review session, then record the outcome (commands run, pass/fail, and any failures) in `.opencode/scratchpad/`. You cannot change code, so re-running identical checks cannot change the result and only wastes time; reuse the recorded outcome for the rest of the session.
+- **Run automated checks once per session.** Run every command in Section 5 — linters, compile/type checks, and test suites — a single time per review session. On each run, pipe the full output to a file in `.opencode/scratchpad/` so it can be grepped or read later:
+
+  ```bash
+  set -o pipefail   # preserve the command's exit code through the pipe
+  npm run lint:frontend 2>&1 | tee .opencode/scratchpad/review-lint-frontend.txt
+  npm run test:frontend:coverage 2>&1 | tee .opencode/scratchpad/review-tests-frontend.txt
+  ```
+
+  Record the pass/fail outcome, then answer any later question from the recorded files with `grep` or a file read. You cannot change code, so re-running an identical command cannot change the result — never re-run a slow lint or test command when the recorded output will do.
 
 ## 0. Mandatory First Step
 
@@ -184,7 +192,7 @@ Follow this sequence for every review:
 
 ### Step 1 — Automated Static Analysis
 
-Run all mandatory lint and compile checks for every module touched:
+Run all mandatory lint and compile checks for every module touched. Run each command once per session and pipe its output to a file in `.opencode/scratchpad/` (see the prime directives) so later questions can be answered by grepping the file rather than re-running:
 
 **Backend**:
 
@@ -210,7 +218,7 @@ Do not ignore any warnings and be prepared to explain them in your review findin
 
 ### Step 2 — Test Verification and Coverage
 
-Run tests and collect coverage for every module touched. Run each suite once per session and record the outcome (commands run, pass/fail, failures) in `.opencode/scratchpad/`; do not re-run an unchanged suite during the same session.
+Run tests and collect coverage for every module touched. Run each suite once per session, pipe its full output to a file in `.opencode/scratchpad/` (see the prime directives), and record the pass/fail outcome; do not re-run an unchanged suite during the same session — grep the recorded output instead.
 
 **Backend** (tests at repo root under `tests/`):
 
