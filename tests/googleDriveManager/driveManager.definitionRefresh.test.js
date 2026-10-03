@@ -108,7 +108,9 @@ describe('DriveManager - Definition Refresh Integration', () => {
         templateDocumentId: 'tpl-456',
         referenceLastModified: '2025-01-01T10:00:00.000Z',
         templateLastModified: '2025-01-01T10:00:00.000Z',
-        tasks: { t1: { taskTitle: 'Task 1', artifacts: { reference: [], template: [] } } },
+        tasks: {
+          t1: { taskTitle: 'Task 1', pageId: 'p1', artifacts: { reference: [], template: [] } },
+        },
       });
 
       // Drive files modified in June (newer)
@@ -142,7 +144,9 @@ describe('DriveManager - Definition Refresh Integration', () => {
         templateDocumentId: 'tpl-456',
         referenceLastModified: '2025-06-15T14:30:00.000Z',
         templateLastModified: '2025-06-15T14:30:00.000Z',
-        tasks: { t1: { taskTitle: 'Task 1', artifacts: { reference: [], template: [] } } },
+        tasks: {
+          t1: { taskTitle: 'Task 1', pageId: 'p1', artifacts: { reference: [], template: [] } },
+        },
       });
 
       // Drive files have same timestamp

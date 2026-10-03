@@ -239,7 +239,7 @@ describe('AssignmentDefinition Validation', () => {
         documentType: 'SLIDES',
         referenceDocumentId: 'ref123',
         templateDocumentId: 'tmpl123',
-        tasks: { t1: { taskTitle: 'Task 1' } },
+        tasks: { t1: { taskTitle: 'Task 1', pageId: 'p1' } },
       });
 
       const json = fullDef.toPartialJSON();

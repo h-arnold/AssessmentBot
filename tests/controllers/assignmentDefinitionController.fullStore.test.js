@@ -110,6 +110,7 @@ describe('AssignmentDefinitionController - Full Store Pattern', () => {
           t1: {
             id: 't1',
             taskTitle: 'Task 1',
+            pageId: 'p1',
             taskWeighting: 1,
             artifacts: {
               reference: [
@@ -145,6 +146,7 @@ describe('AssignmentDefinitionController - Full Store Pattern', () => {
           t1: {
             id: 't1',
             taskTitle: 'Task 1',
+            pageId: 'p1',
             taskWeighting: 1,
             artifacts: {
               reference: [

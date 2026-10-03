@@ -75,6 +75,7 @@ const createFullDefinition = function (options) {
       t1: {
         id: 't1',
         taskTitle: 'Task 1',
+        pageId: 'p1',
         artifacts: {
           reference: [{ taskId: 't1', role: 'reference', content: 'content', contentHash: 'hash' }],
         },
@@ -265,6 +266,7 @@ describe('AssignmentController - Definition Hydration', () => {
           t1: {
             id: 't1',
             taskTitle: 'Introduction',
+            pageId: 'p1',
             artifacts: {
               reference: [
                 {
@@ -374,7 +376,9 @@ describe('AssignmentController - Definition Hydration', () => {
         templateDocumentId: 'tpl',
         referenceLastModified: '2025-01-01T00:00:00Z',
         templateLastModified: '2025-01-01T00:00:00Z',
-        tasks: { t1: { taskTitle: 'Task 1', artifacts: { reference: [], template: [] } } },
+        tasks: {
+          t1: { taskTitle: 'Task 1', pageId: 'p1', artifacts: { reference: [], template: [] } },
+        },
       });
 
       const mockAssignment = new globalThis.SlidesAssignment();

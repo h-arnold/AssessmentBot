@@ -368,9 +368,10 @@ decisions are out of scope.
    live-instance internals (e.g. `TableTaskArtifact._rows`). Task-level fields compared
    are `id`, `pageId`, `taskTitle`, `taskNotes`, `taskMetadata` (absent → `{}`), and the
    ordered `artifacts.reference`/`artifacts.template` collections; `taskWeighting` and
-   `index` never affect the decision. Absent optional scalars normalise to `null` and
-   absent metadata to `{}`, so persisted omissions and parser-produced nulls compare
-   equal.
+   `index` never affect the decision. `pageId` is required on both sides and is compared
+   directly (no absent→`null` normalisation). The remaining optional scalar (`taskNotes`)
+   normalises to `null` and absent metadata to `{}`, so persisted omissions and
+   parser-produced nulls compare equal.
    Regression coverage:
    `tests/y_controllers/AssignmentDefinitionTaskEquivalence.test.js` (canonical
    fields, exclusions, key/array order, reason precedence) and
@@ -498,16 +499,16 @@ Frontend Zod:
 
 `TaskDefinition.toJSON()` emits:
 
-| Field           | Type           | Backend toJSON() | Frontend Zod (full)                                                                           | Frontend Zod (partial)                               | Notes                                                                                                                                                                                         |
-| --------------- | -------------- | ---------------- | --------------------------------------------------------------------------------------------- | ---------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `id`            | `string`       | Always emitted   | `AssignmentDefinitionTaskSchema.taskId: TrimmedNonEmptyStringSchema`                          | `TaskPartialSchema.taskId: z.string().min(1)`        | Stable ID derived from `taskTitle`+`pageId` hash (`t_`-prefixed).                                                                                                                             |
-| `taskTitle`     | `string`       | Always emitted   | `AssignmentDefinitionTaskSchema.taskTitle: TrimmedNonEmptyStringSchema`                       | `TaskPartialSchema.taskTitle: z.string().nullable()` | Task title. Nullable in partial shape for legacy/missing titles.                                                                                                                              |
-| `pageId`        | `string\|null` | Always emitted   | — (not in transport schema)                                                                   | —                                                    | Source page ID for the task. Omitted from both frontend schemas.                                                                                                                              |
-| `taskNotes`     | `string\|null` | Always emitted   | —                                                                                             | —                                                    | Optional task notes. Omitted from frontend transport schemas.                                                                                                                                 |
-| `taskMetadata`  | `object`       | Always emitted   | —                                                                                             | —                                                    | Optional metadata object. Omitted from frontend transport schemas.                                                                                                                            |
-| `taskWeighting` | `number`       | Always emitted   | `AssignmentDefinitionTaskSchema.taskWeighting: WeightingSchema` (`z.number().min(0).max(10)`) | `TaskPartialSchema.taskWeighting: z.number()`        | Defaults to `1` in the constructor; hydration keeps that default when a stored value is null. Full schema enforces 0–10 range; the partial schema expects a number and rejects legacy `null`. |
-| `index`         | `number\|null` | Always emitted   | —                                                                                             | —                                                    | Positional index. Omitted from frontend transport schemas.                                                                                                                                    |
-| `artifacts`     | `Object`       | Always emitted   | —                                                                                             | —                                                    | `{ reference: BaseTaskArtifact[], template: BaseTaskArtifact[] }`. Omitted from frontend transport schemas — only present in full backend persistence.                                        |
+| Field           | Type           | Backend toJSON() | Frontend Zod (full)                                                                           | Frontend Zod (partial)                               | Notes                                                                                                                                                                                                                                                                                |
+| --------------- | -------------- | ---------------- | --------------------------------------------------------------------------------------------- | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `id`            | `string`       | Always emitted   | `AssignmentDefinitionTaskSchema.taskId: TrimmedNonEmptyStringSchema`                          | `TaskPartialSchema.taskId: z.string().min(1)`        | Stable ID derived from `taskTitle`+`pageId` hash (`t_`-prefixed).                                                                                                                                                                                                                    |
+| `taskTitle`     | `string`       | Always emitted   | `AssignmentDefinitionTaskSchema.taskTitle: TrimmedNonEmptyStringSchema`                       | `TaskPartialSchema.taskTitle: z.string().nullable()` | Task title. Nullable in partial shape for legacy/missing titles.                                                                                                                                                                                                                     |
+| `pageId`        | `string`       | Always emitted   | — (not in transport schema)                                                                   | —                                                    | Source page ID for the task. Required non-empty string: the constructor throws `TaskDefinition requires pageId` when absent. Both parsers populate it unconditionally (Slides `getPageId(slide)`; Sheets `String(sheetData.sheetId)`). Omitted from both frontend transport schemas. |
+| `taskNotes`     | `string\|null` | Always emitted   | —                                                                                             | —                                                    | Optional task notes. Omitted from frontend transport schemas.                                                                                                                                                                                                                        |
+| `taskMetadata`  | `object`       | Always emitted   | —                                                                                             | —                                                    | Optional metadata object. Omitted from frontend transport schemas.                                                                                                                                                                                                                   |
+| `taskWeighting` | `number`       | Always emitted   | `AssignmentDefinitionTaskSchema.taskWeighting: WeightingSchema` (`z.number().min(0).max(10)`) | `TaskPartialSchema.taskWeighting: z.number()`        | Defaults to `1` in the constructor; hydration keeps that default when a stored value is null. Full schema enforces 0–10 range; the partial schema expects a number and rejects legacy `null`.                                                                                        |
+| `index`         | `number\|null` | Always emitted   | —                                                                                             | —                                                    | Positional index. Omitted from frontend transport schemas.                                                                                                                                                                                                                           |
+| `artifacts`     | `Object`       | Always emitted   | —                                                                                             | —                                                    | `{ reference: BaseTaskArtifact[], template: BaseTaskArtifact[] }`. Omitted from frontend transport schemas — only present in full backend persistence.                                                                                                                               |
 
 `TaskDefinition.toPartialJSON()` emits the same shape as `toJSON()` but with
 `artifacts.reference` and `artifacts.template` mapped through `BaseTaskArtifact.toPartialJSON()`
@@ -526,6 +527,17 @@ Key notes:
   when a stored value is null, so `toPartialJSON()` emits a number for hydrated full definitions.
   A legacy partial-wire-format row that persisted `null` would still fail the frontend parse —
   tracked as Known discrepancy 1 below.
+- `pageId` is required at the model boundary. The `TaskDefinition` constructor throws
+  `TaskDefinition requires pageId` when the value is absent or falsy, matching the frontend
+  `TaskDefinitionSchema.pageId: z.string()` (`assignmentAssessment.zod.ts`), which has always
+  required it. Both parsers populate it unconditionally: the Slides parser via `getPageId(slide)`
+  (a platform-guaranteed non-empty slide object ID) and the Sheets parser via
+  `String(sheetData.sheetId)`. `_deriveId()` therefore no longer applies a `pageId || ''` fallback.
+- **Legacy `fromJSON()` fails loudly.** `TaskDefinition.fromJSON()` passes `json.pageId` straight
+  to the constructor, so a legacy stored definition whose persisted JSON omits `pageId` now throws
+  `TaskDefinition requires pageId` instead of silently defaulting to `null`. This is intended:
+  extraction always sets the field, so such records are not expected to exist, and a loud failure
+  is preferred over tolerating an unlinkable task.
 
 ### Sub-entity: BaseTaskArtifact
 
@@ -638,6 +650,7 @@ Key notes:
 
 - `assignmentWeighting` must be a number between 0 and 10 inclusive (model-level enforcement in constructor; defaults to 1 if null/undefined).
 - `yearGroupKey` must be a string (model-level enforcement; controller guarantees non-null).
+- `TaskDefinition` requires a non-empty `pageId`: the model constructor throws `TaskDefinition requires pageId` when absent. Both parsers always populate it, so a legacy stored definition persisted without `pageId` fails loudly at `fromJSON()` rather than defaulting to `null` (intended).
 - Duplicate detection: the orchestrator checks for existing definitions with matching `(primaryTitle, primaryTopicKey, yearGroupKey)` tuple on create upserts.
 - Document-ID mismatch: the orchestrator validates that `referenceDocumentId` and `templateDocumentId` refer to existing Drive files.
 - Unknown task IDs in `taskWeightings` are controller-owned validation: the orchestrator validates that each `taskId` in `taskWeightings` exists in the parsed task map.

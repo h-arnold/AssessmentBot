@@ -135,7 +135,7 @@ describe('AssignmentDefinition', () => {
     it('should not include yearGroup in toJSON output (full instance)', () => {
       const def = new AssignmentDefinition({
         ...baseValidParams,
-        tasks: { t1: { taskTitle: 'Task 1' } },
+        tasks: { t1: { taskTitle: 'Task 1', pageId: 'p1' } },
       });
       const json = def.toJSON();
       expect(json).not.toHaveProperty('yearGroup');
@@ -181,7 +181,7 @@ describe('AssignmentDefinition', () => {
     });
 
     it('should return tasks object in toJSON for full definitions', () => {
-      const tasks = { t1: { taskTitle: 'Task 1' } };
+      const tasks = { t1: { taskTitle: 'Task 1', pageId: 'p1' } };
       const def = new AssignmentDefinition({ ...baseValidParams, tasks });
       const json = def.toJSON();
       expect(json.tasks).toBeTypeOf('object');
@@ -192,8 +192,8 @@ describe('AssignmentDefinition', () => {
   // 10. toPartialJSON tasks as Array<TaskPartial>
   describe('toPartialJSON tasks as Array<TaskPartial>', () => {
     it('should include tasks as array of {id, taskWeighting} when definition has tasks', () => {
-      const task1 = new TaskDefinition({ taskTitle: 'Task One' }, 2);
-      const task2 = new TaskDefinition({ taskTitle: 'Task Two' });
+      const task1 = new TaskDefinition({ taskTitle: 'Task One', pageId: 'p1' }, 2);
+      const task2 = new TaskDefinition({ taskTitle: 'Task Two', pageId: 'p2' });
       const tasks = { [task1.id]: task1, [task2.id]: task2 };
       const def = new AssignmentDefinition({ ...baseValidParams, tasks });
       const partial = def.toPartialJSON();
@@ -238,13 +238,13 @@ describe('AssignmentDefinition', () => {
     });
 
     it('should reflect taskWeighting of 5', () => {
-      const task = new TaskDefinition({ taskTitle: 'W5' }, 5);
+      const task = new TaskDefinition({ taskTitle: 'W5', pageId: 'p1' }, 5);
       const def = new AssignmentDefinition({ ...baseValidParams, tasks: { [task.id]: task } });
       expect(def.toPartialJSON().tasks[0].taskWeighting).toBe(5);
     });
 
     it('should reflect default taskWeighting of 1', () => {
-      const task = new TaskDefinition({ taskTitle: 'Default' });
+      const task = new TaskDefinition({ taskTitle: 'Default', pageId: 'p1' });
       const def = new AssignmentDefinition({ ...baseValidParams, tasks: { [task.id]: task } });
       expect(def.toPartialJSON().tasks[0].taskWeighting).toBe(1);
     });
@@ -317,7 +317,7 @@ describe('AssignmentDefinition', () => {
     it('should succeed when toJSON() is called on a full instance (tasks is an object)', () => {
       const def = new AssignmentDefinition({
         ...baseValidParams,
-        tasks: { t1: { taskTitle: 'Task 1' } },
+        tasks: { t1: { taskTitle: 'Task 1', pageId: 'p1' } },
       });
       expect(() => def.toJSON()).not.toThrow();
     });

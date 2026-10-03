@@ -474,7 +474,7 @@ describe('ABClassController._toReadView', () => {
     // Full AssignmentDefinition with a populated tasks tree. The toJSON() path would
     // expose this tree at `assignmentDefinition.tasks`; the toPartialJSON() path now
     // carries lightweight {id, taskWeighting} summaries.
-    const task1 = new TaskDefinition({ taskTitle: 'Task 1' }, 2);
+    const task1 = new TaskDefinition({ taskTitle: 'Task 1', pageId: 'p1' }, 2);
     const fullDef = new AssignmentDefinition({
       primaryTitle: 'Essay Draft',
       primaryTopic: 'English',
