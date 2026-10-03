@@ -1,7 +1,7 @@
 ---
 description: Creates, maintains, and debugs Vitest unit/component tests and backend tests
 mode: all
-model: opencode/mimo-v2.6-flash-free
+model: opencode/fledge-alpha-free
 steps: 100
 ---
 
