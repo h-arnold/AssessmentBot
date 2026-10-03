@@ -9,8 +9,7 @@ const DefinitionStaleError = require('../../src/backend/Utils/ErrorTypes/Definit
 const mockPropertiesService = createMockPropertiesService(vi);
 globalThis.PropertiesService = mockPropertiesService;
 
-// Mock GASPropertiesUtils to route to mockProperties so the controller
-// can use getUserProperties() and the tests can still assert on setProperty etc.
+// Route GASPropertiesUtils through the same mockProperties as PropertiesService
 const mockGASPropertiesUtils = {
   getUserProperties: vi.fn(),
   applyProperties: vi.fn(),
@@ -119,8 +118,6 @@ describe('AssignmentController - Definition Hydration', () => {
     };
     globalThis.PropertiesService.getDocumentProperties.mockReturnValue(mockProperties);
 
-    // Wire GASPropertiesUtils to use the same mockProperties so the controller
-    // (which now calls GASPropertiesUtils.getUserProperties()) can work correctly
     globalThis.GASPropertiesUtils.getUserProperties.mockReturnValue(mockProperties);
     globalThis.GASPropertiesUtils.applyProperties.mockImplementation((properties, propertyMap) => {
       Object.keys(propertyMap).forEach((key) => properties.setProperty(key, propertyMap[key]));
@@ -438,7 +435,6 @@ describe('AssignmentController - Definition Hydration', () => {
       mockDefinitionController.ensureDefinition.mockReturnValue(mockDefinition);
       mockDefinitionController.upsertDefinition.mockReturnValue(mockDefinition);
 
-      // Mock DriveApp for document type detection
       globalThis.DriveApp = {
         getFileById: vi.fn().mockReturnValue({
           getMimeType: vi.fn().mockReturnValue('application/vnd.google-apps.presentation'),
