@@ -290,6 +290,25 @@ const ARTIFACT_CONTENT: Readonly<Record<string, string>> = {
 };
 
 /**
+ * The IMAGE and TABLE artefact bodies this fixture already seeds.
+ *
+ * Exported so a new spec reuses the content that the preview renderer is already
+ * covered against rather than inventing a second corpus. The committed
+ * synthetic `small` profile ships TEXT-only artefacts, so reviewing the image
+ * and table renderers needs this documented local-content exception.
+ *
+ * Kept alongside `ARTIFACT_CONTENT` on purpose: one source of truth for the
+ * seeded bodies, no copy of the data URLs or markdown here.
+ */
+export const HEATMAP_UNSUPPORTED_ARTIFACT_CONTENT: Readonly<{
+  readonly IMAGE: string;
+  readonly TABLE: string;
+}> = Object.freeze({
+  IMAGE: ARTIFACT_CONTENT.task_001,
+  TABLE: ARTIFACT_CONTENT.task_003,
+});
+
+/**
  * Resolve the seeded reasoning text for one task criterion.
  * @param {string} taskId - Task identifier.
  * @param {string} metric - Criterion identifier.

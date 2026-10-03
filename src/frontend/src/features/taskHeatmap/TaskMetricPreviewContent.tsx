@@ -18,14 +18,14 @@
  * @see `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md`
  */
 
-import type { JSX } from 'react';
+import type { JSX, RefCallback } from 'react';
 import { Alert, Skeleton } from 'antd';
 
 import type { TaskDisplayMetric } from '../../services/dataAnalysis/dataAnalysis.zod';
 import type { HeatmapMetricKey } from '../../services/dataAnalysis/metricDisplay/metricDisplayMeta';
 import type { CellPreviewData } from './buildCellPreviewLookup';
 import { assembleTaskPreviewData } from './assembleTaskPreviewData';
-import { TaskPreviewCard, CARD_MAX_WIDTH } from './TaskPreviewCard';
+import { TaskPreviewCard, CARD_MAX_WIDTH, type SourceActionElement } from './TaskPreviewCard';
 import { APP_GAP_MD } from '../../theme/spacing';
 
 // ---------------------------------------------------------------------------
@@ -49,6 +49,15 @@ export interface TaskMetricPreviewContentProperties {
   readonly isLoading: boolean;
   /** Whether this column's preview query errored or returned null. */
   readonly hasError: boolean;
+  /**
+   * Optional internal UI hook forwarded to the ready card's source action.
+   *
+   * @remarks
+   * Only the ready state renders an action at all, so the loading skeleton and
+   * the error alert leave this hook untouched — which is exactly what tells the
+   * owning metric cell that this preview has nothing yet to hand focus to.
+   */
+  readonly sourceAnchorRef?: RefCallback<SourceActionElement>;
 }
 
 // ---------------------------------------------------------------------------
@@ -74,6 +83,7 @@ export function TaskMetricPreviewContent({
   taskId,
   isLoading,
   hasError,
+  sourceAnchorRef,
 }: Readonly<TaskMetricPreviewContentProperties>): JSX.Element {
   if (isLoading) {
     return (
@@ -107,5 +117,5 @@ export function TaskMetricPreviewContent({
 
   // Defer the expensive assembleTaskPreviewData call until the popover opens.
   const previewData = assembleTaskPreviewData(cellData, metricResult, metricKey, taskId);
-  return <TaskPreviewCard data={previewData} />;
+  return <TaskPreviewCard data={previewData} sourceAnchorRef={sourceAnchorRef} />;
 }

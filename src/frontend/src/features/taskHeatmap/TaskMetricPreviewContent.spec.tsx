@@ -21,6 +21,11 @@ import {
   CANONICAL_READY_CELL,
   buildCanonicalReadyCellData,
 } from '../../test/taskHeatmap/previewFixtures';
+import {
+  CANONICAL_SOURCE_URL,
+  SOURCE_ACTION_LABEL,
+  buildCanonicalCellWithoutSourceUrl,
+} from '../../test/taskHeatmap/previewSourceActionTestHelpers';
 import { createComputedMetricResult } from '../../test/dataAnalysis/fixtures';
 import type * as TaskPreviewDataModule from './assembleTaskPreviewData';
 
@@ -103,15 +108,14 @@ describe('TaskMetricPreviewContent', () => {
       TASK_ID
     );
 
-    expect(screen.getByRole('status')).toHaveAttribute('aria-label', `Completeness score: ${CANONICAL_READY_CELL.completenessScore}`);
+    expect(screen.getByRole('status')).toHaveAttribute(
+      'aria-label',
+      `Completeness score: ${CANONICAL_READY_CELL.completenessScore}`
+    );
     expect(screen.getByText('Reasoning')).toBeInTheDocument();
-    expect(
-      screen.getByText(CANONICAL_READY_CELL.completenessReasoning)
-    ).toBeInTheDocument();
+    expect(screen.getByText(CANONICAL_READY_CELL.completenessReasoning)).toBeInTheDocument();
     expect(screen.getByText('Student Response')).toBeInTheDocument();
-    expect(
-      screen.getByText(CANONICAL_READY_CELL.artifactContent)
-    ).toBeInTheDocument();
+    expect(screen.getByText(CANONICAL_READY_CELL.artifactContent)).toBeInTheDocument();
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 
@@ -125,5 +129,41 @@ describe('TaskMetricPreviewContent', () => {
       TASK_ID
     );
     expect(screen.getByText('No reasoning available')).toBeInTheDocument();
+  });
+});
+
+describe('TaskMetricPreviewContent source action availability', () => {
+  it('offers the source action on the ready card when the cell carries a derived URL', () => {
+    renderContent({ isLoading: false, hasError: false });
+
+    expect(screen.getByRole('link', { name: SOURCE_ACTION_LABEL })).toHaveAttribute(
+      'href',
+      CANONICAL_SOURCE_URL
+    );
+  });
+
+  it('offers no source action when the cell carries no derived URL', () => {
+    renderContent({ cellData: buildCanonicalCellWithoutSourceUrl() });
+
+    // The ready card still renders its content; only the action is absent, and
+    // no disabled placeholder may stand in for it.
+    expect(screen.getByText(CANONICAL_READY_CELL.artifactContent)).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: SOURCE_ACTION_LABEL })).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(SOURCE_ACTION_LABEL)).not.toBeInTheDocument();
+  });
+
+  it('offers no source action while the preview is loading', () => {
+    renderContent({ isLoading: true });
+
+    // A full-data loading state must not invent a link to a source it has not
+    // loaded yet.
+    expect(screen.queryByRole('link', { name: SOURCE_ACTION_LABEL })).not.toBeInTheDocument();
+  });
+
+  it('offers no source action for a failed preview', () => {
+    renderContent({ hasError: true });
+
+    expect(screen.getByRole('alert')).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: SOURCE_ACTION_LABEL })).not.toBeInTheDocument();
   });
 });

@@ -2,7 +2,7 @@
 
 ## Status
 
-Reviewed planning specification. Planning only; no production implementation.
+Implemented and accepted under the user-approved reduced finish line. The source action, nullable source-ID alignment, derived editor URL and controlled keyboard-focus session are in place; the representative visual inspection, final focused review and regression validation are complete and accepted.
 
 ## Purpose
 
@@ -63,7 +63,7 @@ Both the embedded class-assignment heatmap and standalone/merged Heatmaps must o
 
 The starting proposal is a 16px icon inside a 24px header action, vertically aligned with the metric and positioned at the right header inset. The user explicitly authorised, via the question tool, final dimensions and spacing to be tuned by evidence-based Playwright visual review when the proposal looks wrong or inconsistent with the app. This is the only deliberate deferral.
 
-Top-right placement, whole-card metric centring, no overlap/clipping, keyboard access and correct navigation are fixed requirements. Review both desktop and narrow viewports, light and dark themes, and a 200% browser-zoom walkthrough. Record final dimensions, rationale, measured geometry and screenshots; reconcile layout and test expectations before sign-off.
+Top-right placement, whole-card metric centring, no overlap/clipping, keyboard access and correct navigation are fixed requirements. Use one representative visual check across desktop and narrow viewports in light and dark themes; the exhaustive viewport/zoom capture matrix and the separate 200% browser-zoom walkthrough are waived under the user-approved reduced finish line. Record final dimensions, rationale, measured geometry and screenshots; reconcile layout and test expectations before sign-off.
 
 ## Non-goals
 

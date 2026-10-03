@@ -55,14 +55,17 @@ Use Card's `extra` action slot. Reserve matching non-interactive space on the le
 - Fixed invariants: icon/action wholly inside the header and viewport, no intersection with metric label/pill, metric centred on whole card, body rendering unchanged.
 - Pointer movement from cell to card/action must leave the existing popover usable, without moving keyboard focus. As expressly approved by the user, Enter/Space on a cell opens its popover and focuses the rendered source link; Escape from trigger or preview closes it and restores the trigger. Loading/error/no-link content retains trigger focus, with a one-time focus transfer on ready only if that keyboard-opened preview remains open and the trigger still has focus. Do not steal focus after a user moves elsewhere. Tab and Shift+Tab remain untrapped. Returning to the original app tab preserves its view. Keep the existing body portal; use local focus refs and controlled open state, not global popup-container changes.
 - No new motion. Existing reduced-motion behaviour must remain intact; geometry checks wait for stable layout rather than measuring an entrance-animation frame.
+- At ≤390px the feature-local `TaskMetricPreviewCell.module.css` hides only the popover arrow, whose box otherwise spills 4px past the right viewport edge and widens the page's horizontal scroll width. The card, action and table region are unchanged; placement, trigger behaviour and the desktop arrow are preserved. This is a local containment fix, not a relaxation of the no-new-overflow invariant.
 
 ## Authorised visual tuning and acceptance evidence
 
 The user explicitly authorised the Playwright agent to adjust final icon/action dimensions and header spacing if the initial 16px/24px proposal looks wrong or inconsistent with the app. This is a deliberate execution-stage deferral, not a licence to change placement, semantics, centring or source behaviour.
 
+Under the user-approved reduced finish line for issue #19, one representative visual inspection replaces the exhaustive viewport/zoom capture matrix and the separate 200% browser-zoom walkthrough. The geometry measurements and tolerances below are unchanged. The inspection is complete and the 16px icon, 24px action and 1.5 stroke were retained as legible, aligned and free of overlap or clipping; the narrow-viewport arrow absence was acceptable. The final focused review and regression validation are complete and accepted.
+
 Use the Card header/extra semantic styles with `alignItems: 'center'` and an inline-flex action/icon wrapper to obtain vertical alignment; compliant alignment styles are within the authorised spacing/alignment tuning. Do not change Card padding arbitrarily or alter shared icon behaviour for this local action.
 
-Review desktop 1440×900 and narrow 390×844 viewports, light and dark themes, plus a separate 200% browser-zoom walkthrough. Both entry points require a browser journey; inspect text, table and image card examples, preserving existing rendering.
+Review desktop 1440×900 and narrow 390×844 viewports in light and dark themes as one representative visual check. The exhaustive viewport/zoom matrix and the separate 200% browser-zoom walkthrough are not completion requirements under the user-approved reduced finish line; the accessibility, source-correctness and no-overlap/clipping invariants still apply. Both entry points require a browser journey; inspect text, table and image card examples, preserving existing rendering.
 
 For stable ready cards, measure:
 
@@ -72,7 +75,8 @@ For stable ready cards, measure:
 4. Icon/action vertical centre differs from the header centre by at most 2 CSS pixels.
 5. Action lies to the right of the metric, does not overlap it and retains the Card's right header inset. Compare the action's right edge with the header content boundary, accounting for built-in padding.
 6. Header content is inside the card and viewport, with no clipping or new horizontal overflow.
+7. The left balancing region's rendered width matches the action's rendered width within 1 CSS pixel, so the reserved non-interactive space balances the occupied right action and the metric group stays centred on the whole card. The 1 CSS pixel allowance covers rendered measurement and subpixel rounding only; it does not relax the centring, icon/action size or non-overlap checks above.
 
 Use project-owned region selectors plus accessible link/status names; do not infer alignment solely from DOM order or SVG attributes. Capture card-level screenshots (normal, hovered and keyboard-focused) and contextual screenshots of both entry points. Visually inspect the captured images against issue #19's illustration and neighbouring app actions for scale, stroke, centring, spacing, focus and theme contrast. Screenshots without an actual review do not satisfy this requirement.
 
-Record final values, measurements, screenshot paths, viewport/theme/zoom, review verdict and any tuning rationale in the implementation notes of `ACTION_PLAN.md`. Update this layout document and geometry assertions to those final values before sign-off. Do not bless a screenshot baseline solely because a test passes.
+Record final values, measurements, screenshot paths, viewport/theme, review verdict and any tuning rationale in the implementation notes of `ACTION_PLAN.md`. Update this layout document and geometry assertions to those final values before sign-off. Do not bless a screenshot baseline solely because a test passes.

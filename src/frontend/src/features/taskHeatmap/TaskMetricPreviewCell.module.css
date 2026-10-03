@@ -1,0 +1,16 @@
+/*
+ * Keep the keyboard-opened preview from widening a narrow page.
+ *
+ * At the 390px standalone Heatmaps viewport the flipped popover's arrow box
+ * (antd renders it fully past the popover's right edge, untouched by any
+ * containing width) spills 4px past the right viewport edge and grows the
+ * page's horizontal scroll width from 390 to 394. Hiding just the arrow at
+ * narrow widths removes the spill while the card, its action and the table
+ * region — all already inside the viewport — are unchanged. Placement,
+ * trigger, hover/click behaviour and the desktop arrow are preserved.
+ */
+@media (max-width: 390px) {
+  .previewPopover :global(.ant-popover-arrow) {
+    display: none;
+  }
+}
