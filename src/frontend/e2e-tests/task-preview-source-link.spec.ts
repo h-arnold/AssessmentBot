@@ -57,10 +57,10 @@ import {
 import {
   CANONICAL_SLIDES_ASSIGNMENT,
   HEATMAP_TABLE_NAME,
-  SOURCE_DOCUMENT_ACTION_LABEL,
   withNumericSheetsPageId,
   withSourceLocationOverride,
 } from './helpers/task-preview-source-link-fixtures';
+import { SOURCE_ACTION_LABEL } from '../src/features/taskHeatmap/TaskPreviewCard';
 import {
   CANONICAL_SHEETS_CELL,
   CANONICAL_SLIDES_CELL,
@@ -115,7 +115,7 @@ test.describe('Task preview source link — pointer interaction', () => {
     // keyboard focus to the action.
     await action.hover();
     await expect(popover).toBeVisible();
-    await expect(visibleTooltip(page)).toHaveText(SOURCE_DOCUMENT_ACTION_LABEL);
+    await expect(visibleTooltip(page)).toHaveText(SOURCE_ACTION_LABEL);
     await expect(action).not.toBeFocused();
 
     const navigation = await captureSourceNavigation(page, async () => action.click());
@@ -180,7 +180,7 @@ test.describe('Task preview source link — keyboard interaction', () => {
     const popover = openPreviewPopover(page);
     await expect(popover).toBeVisible();
     await expect(sourceDocumentAction(popover)).toBeFocused();
-    await expect(visibleTooltip(page)).toHaveText(SOURCE_DOCUMENT_ACTION_LABEL);
+    await expect(visibleTooltip(page)).toHaveText(SOURCE_ACTION_LABEL);
   });
 
   test('Space opens the preview and focuses the link, which Enter then activates', async ({

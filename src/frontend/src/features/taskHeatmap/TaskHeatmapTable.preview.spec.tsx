@@ -2,6 +2,7 @@ import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest';
 import { render, cleanup, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { TaskHeatmapTable } from './TaskHeatmapTable';
+import { PREVIEW_ERROR_TEXT } from './TaskMetricPreviewContent';
 import {
   buildHeatmapResult,
   getHeatmapCellByLabel,
@@ -254,7 +255,7 @@ describe('TaskHeatmapTable popover integration and preview presentation', () => 
       title: 'renders an error Alert in the popover when showAssignmentError is true',
       lookup: null,
       showAssignmentError: true,
-      expectedText: "Couldn't load task details",
+      expectedText: PREVIEW_ERROR_TEXT,
     },
     {
       title:

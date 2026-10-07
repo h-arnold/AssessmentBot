@@ -18,6 +18,18 @@ export const DEFAULT_DATE = '2024-01-01T00:00:00.000Z';
  * Base artifact fields shared by all artifact types (BaseTaskArtifactFields).
  * `taskId` is intentionally excluded here because it varies per item and is
  * always supplied inline.
+ *
+ * @remarks
+ * Provenance: these are schematic boundary-field defaults, not a projection
+ * of any canonical synthetic record — realistic labels, IDs and content are
+ * derived from the corpus in `previewFixtures.ts`, never restated here.
+ *
+ * Coincidence hazard: reusing the same `pageId`/`documentId` between an
+ * artefact and its parent submission lets a derivation that accidentally
+ * prefers the parent pass unnoticed. Do not rely on coincidence here; the
+ * non-coincidence pattern the source-link spec pins is its
+ * 'prefers the artifact documentId over the parent submission documentId'
+ * case, which deliberately sets distinct stored IDs.
  */
 export const BASE_ARTIFACT_FIELDS = {
   role: 'student',

@@ -33,6 +33,7 @@ import {
   ClassFullSchema,
   type ClassFull,
 } from '../../src/services/googleClassrooms/classDetail/classDetailService.zod';
+import { deepFreeze, requireRecord } from '../../src/test/shared/canonicalFixturePrimitives';
 import classPartialsRaw from '../../../../tests/__mocks__/data/synthetic-analysis/small/classPartials.json';
 import classesByIdRaw from '../../../../tests/__mocks__/data/synthetic-analysis/small/classesById.json';
 import assignmentDefinitionPartialsRaw from '../../../../tests/__mocks__/data/synthetic-analysis/small/assignmentDefinitionPartials.json';
@@ -124,13 +125,6 @@ export const SLIDES_ASSIGNMENT_ID = 'assignment-2-1';
 /** Canonical populated Sheets assignment used for the second editor URL shape. */
 export const SHEETS_ASSIGNMENT_ID = 'assignment-2-2';
 
-/**
- * Exact accessible name and tooltip text required on the source action.
- *
- * @see TASK_PREVIEW_SOURCE_LINK_LAYOUT.md — Source region
- */
-export const SOURCE_DOCUMENT_ACTION_LABEL = 'Open source document (opens in a new tab)';
-
 /** Accessible name of the task heatmap table on both entry points. */
 export const HEATMAP_TABLE_NAME = 'Task Heatmap';
 
@@ -144,42 +138,6 @@ const NUMERIC_SHEETS_PAGE_ID = '0';
 // ---------------------------------------------------------------------------
 // Canonical selection
 // ---------------------------------------------------------------------------
-
-/**
- * Deep-freeze a selected canonical record so in-place mutation fails loudly
- * instead of leaking across specs.
- *
- * @template T - Type of the value being frozen.
- * @param {T} value - The record to freeze.
- * @returns {T} The same record, with every reachable object frozen.
- */
-function deepFreeze<T>(value: T): T {
-  if (value === null || typeof value !== 'object') {
-    return value;
-  }
-  for (const propertyValue of Object.values(value)) {
-    deepFreeze(propertyValue);
-  }
-  return Object.freeze(value);
-}
-
-/**
- * Read one keyed record from a parsed transport view, failing loudly when absent.
- *
- * @param {Record<string, unknown>} view - Parsed transport view keyed by record ID.
- * @param {string} recordId - ID of the record to select.
- * @param {string} viewName - View name quoted in the failure message.
- * @returns {unknown} The selected raw record.
- */
-function requireRecord(view: Record<string, unknown>, recordId: string, viewName: string): unknown {
-  const record = view[recordId];
-  if (record == null) {
-    throw new Error(
-      `task-preview-source-link-fixtures: "${recordId}" is absent from the small synthetic ${viewName} view.`
-    );
-  }
-  return record;
-}
 
 /**
  * Select the canonical class partial, failing loudly when the Classes page

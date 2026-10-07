@@ -36,11 +36,8 @@ import { NOT_ATTEMPTED_METRIC } from '../../services/dataAnalysis/heatmapAdapter
 import { METRIC_DISPLAY_META } from '../../services/dataAnalysis/metricDisplay/metricDisplayMeta';
 import type { TaskDisplayMetric } from '../../services/dataAnalysis/dataAnalysis.zod';
 import { CANONICAL_READY_CELL } from '../../test/taskHeatmap/previewFixtures';
-import {
-  CANONICAL_SOURCE_URL,
-  SOURCE_ACTION_LABEL,
-} from '../../test/taskHeatmap/previewSourceActionTestHelpers';
-import { TaskPreviewCard, type TaskPreviewData } from './TaskPreviewCard';
+import { CANONICAL_SOURCE_URL } from '../../test/taskHeatmap/previewSourceActionTestHelpers';
+import { SOURCE_ACTION_LABEL, TaskPreviewCard, type TaskPreviewData } from './TaskPreviewCard';
 
 // ---------------------------------------------------------------------------
 // Fixture constants
@@ -120,7 +117,9 @@ describe('TaskPreviewCard source action', () => {
     // A native anchor, so the browser owns both activation and new-tab
     // navigation instead of the component orchestrating a click.
     expect(action.tagName).toBe('A');
-    expect(action).toHaveAccessibleName(SOURCE_ACTION_LABEL);
+    // Deliberate verbatim pin of the spec-fixed contract name; every other
+    // consumer imports `SOURCE_ACTION_LABEL`.
+    expect(action).toHaveAccessibleName('Open source document (opens in a new tab)');
     // Keyboard focus must remain reachable and visible on the action.
     expect(action).toHaveAttribute('tabindex', '0');
   });

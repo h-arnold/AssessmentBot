@@ -10,7 +10,10 @@ import {
   StudentSubmissionItemSchema,
   StudentSubmissionSchema,
 } from './assignmentAssessment.zod';
-import { validBaseArtifact, validFullAssignment } from './assignmentAssessment.zod.fixtures';
+import {
+  validBaseArtifact,
+  validFullAssignment,
+} from '../../test/assignmentAssessment/assignmentAssessment.zod.fixtures';
 
 const validStartAssessmentRunRequest = {
   definitionKey: 'algebra-baseline',

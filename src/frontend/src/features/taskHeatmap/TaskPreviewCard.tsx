@@ -116,7 +116,7 @@ const TASK_SCORE_PRECISION = 0;
  * Stated on the action itself, so the tooltip is a visible affordance for the
  * same words rather than the only place the name exists.
  */
-const SOURCE_ACTION_LABEL = 'Open source document (opens in a new tab)';
+export const SOURCE_ACTION_LABEL = 'Open source document (opens in a new tab)';
 
 /**
  * Project-owned marker class on the header's left balancing space.

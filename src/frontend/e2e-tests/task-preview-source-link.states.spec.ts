@@ -58,9 +58,13 @@ import {
 import { createEmbeddedAssignmentQueue } from './helpers/task-preview-source-link-scenarios';
 import {
   CANONICAL_SLIDES_ASSIGNMENT,
-  SOURCE_DOCUMENT_ACTION_LABEL,
   withSourceLocationOverride,
 } from './helpers/task-preview-source-link-fixtures';
+import { SOURCE_ACTION_LABEL } from '../src/features/taskHeatmap/TaskPreviewCard';
+import {
+  LOADING_PREVIEW_LABEL,
+  PREVIEW_ERROR_TEXT,
+} from '../src/features/taskHeatmap/TaskMetricPreviewContent';
 import {
   CANONICAL_SLIDES_CELL,
   deriveSourceLinkCell,
@@ -72,12 +76,6 @@ import {
 
 /** Ready Slides preview cell of the canonical Slides assignment. */
 const slidesCell = CANONICAL_SLIDES_CELL;
-
-/** Loading state the deferred popover body announces. */
-const LOADING_PREVIEW_LABEL = 'Loading task preview';
-
-/** Error copy the failed popover body renders. */
-const PREVIEW_ERROR_TEXT = "Couldn't load task details";
 
 // ---------------------------------------------------------------------------
 // Loading and error states
@@ -209,7 +207,7 @@ test.describe('Task preview source link — deferred readiness', () => {
 
     await releaseNextDeferredSuccess(page);
 
-    await expect(page.getByRole('link', { name: SOURCE_DOCUMENT_ACTION_LABEL })).toHaveCount(0);
+    await expect(page.getByRole('link', { name: SOURCE_ACTION_LABEL })).toHaveCount(0);
     await expect(trigger).toBeFocused();
   });
 });

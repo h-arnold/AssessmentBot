@@ -19,6 +19,7 @@ import userEvent from '@testing-library/user-event';
 import type { ComponentProps } from 'react';
 
 import { TaskMetricPreviewCell } from './TaskMetricPreviewCell';
+import { buildMetricCellAccessibleLabel } from './taskHeatmapTableColumns';
 import {
   CANONICAL_READY_CELL,
   buildCanonicalReadyCellData,
@@ -45,7 +46,12 @@ const METRIC_RESULT = createComputedMetricResult({ value: CANONICAL_READY_CELL.c
 /** Score text rendered inside the trigger, formatted as the column builder formats it. */
 const SCORE_TEXT = formatMetricDisplayText(METRIC_RESULT, 0);
 /** Accessible label shared by the table cell and the popover trigger. */
-const ACCESSIBLE_LABEL = `${CANONICAL_READY_CELL.studentName}, ${CANONICAL_READY_CELL.taskTitle}, Completeness: ${SCORE_TEXT}`;
+const ACCESSIBLE_LABEL = buildMetricCellAccessibleLabel(
+  CANONICAL_READY_CELL.studentName,
+  CANONICAL_READY_CELL.taskTitle,
+  'completeness',
+  SCORE_TEXT
+);
 /** Bare task ID passed to the preview content by the column builder. */
 const TASK_ID = CANONICAL_READY_CELL.taskId;
 

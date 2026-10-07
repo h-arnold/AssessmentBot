@@ -16,14 +16,13 @@ import { render, cleanup, screen } from '@testing-library/react';
 import type { ComponentProps } from 'react';
 
 import { TaskMetricPreviewContent } from './TaskMetricPreviewContent';
-import { CARD_MAX_WIDTH } from './TaskPreviewCard';
+import { CARD_MAX_WIDTH, SOURCE_ACTION_LABEL } from './TaskPreviewCard';
 import {
   CANONICAL_READY_CELL,
   buildCanonicalReadyCellData,
 } from '../../test/taskHeatmap/previewFixtures';
 import {
   CANONICAL_SOURCE_URL,
-  SOURCE_ACTION_LABEL,
   buildCanonicalCellWithoutSourceUrl,
 } from '../../test/taskHeatmap/previewSourceActionTestHelpers';
 import { createComputedMetricResult } from '../../test/dataAnalysis/fixtures';
@@ -82,6 +81,8 @@ describe('TaskMetricPreviewContent', () => {
 
     const status = container.querySelector('output[aria-busy="true"]');
     expect(status).toBeInTheDocument();
+    // Deliberate verbatim pin of the spec-fixed loading label; every other
+    // consumer imports `LOADING_PREVIEW_LABEL`.
     expect(status).toHaveAttribute('aria-label', 'Loading task preview');
     // The skeleton mirrors CARD_MAX_WIDTH so it does not resize when the
     // ready card arrives.
@@ -93,6 +94,8 @@ describe('TaskMetricPreviewContent', () => {
   it('shows the error alert only when nothing is pending', () => {
     const { container } = renderContent({ isLoading: false, hasError: true });
 
+    // Deliberate verbatim pin of the spec-fixed error text; every other
+    // consumer imports `PREVIEW_ERROR_TEXT`.
     expect(screen.getByRole('alert')).toHaveTextContent("Couldn't load task details");
     expect(container.querySelector('output[aria-busy="true"]')).not.toBeInTheDocument();
   });

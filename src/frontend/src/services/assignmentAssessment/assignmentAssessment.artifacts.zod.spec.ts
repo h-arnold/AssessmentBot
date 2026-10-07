@@ -20,7 +20,7 @@ import {
   BaseTaskArtifactSchema,
   TaskDefinitionSchema,
 } from './assignmentAssessment.zod';
-import { validFullAssignment } from './assignmentAssessment.zod.fixtures';
+import { validFullAssignment } from '../../test/assignmentAssessment/assignmentAssessment.zod.fixtures';
 
 /** Canonical submission artifact carrying a realistic TEXT body. */
 const CANONICAL_TEXT_ARTIFACT = Object.values(validFullAssignment.submissions[0].items)[0].artifact;

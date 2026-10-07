@@ -17,8 +17,9 @@
  * @see docs/developer/testing/synthetic-test-data.md
  */
 
-import { METRIC_DISPLAY_META } from '../../src/services/dataAnalysis/metricDisplay/metricDisplayMeta';
 import type { AssignmentFull } from '../../src/services/assignmentAssessment/assignmentAssessment.zod';
+import { buildMetricCellAccessibleLabel } from '../../src/features/taskHeatmap/taskHeatmapTableColumns';
+import { requireTextArtifactContent } from '../../src/test/shared/canonicalFixturePrimitives';
 import {
   CANONICAL_SHEETS_ASSIGNMENT,
   CANONICAL_SLIDES_ASSIGNMENT,
@@ -36,7 +37,7 @@ import {
 const METRIC_CELL_SCORE_PRECISION = 0;
 
 /** Metric sub-column the source-link walkthroughs read. */
-const COMPLETENESS_METRIC_KEY = 'completeness';
+const COMPLETENESS_METRIC_KEY = 'completeness' as const;
 
 /** Editor path segment per supported root document format. */
 const EDITOR_PATH_SEGMENT: Readonly<Partial<Record<string, string>>> = {
@@ -174,36 +175,6 @@ function toStoredBodyText(content: unknown): string {
   return typeof content === 'string' ? content : '';
 }
 
-/**
- * Read the TEXT artifact body of a submission item, failing loudly otherwise.
- *
- * @param {CanonicalSubmissionItem} item - The submission item to read.
- * @returns {string} The ready artifact body.
- */
-function requireTextArtifactContent(item: CanonicalSubmissionItem): string {
-  if (item.artifact.type !== 'TEXT' || typeof item.artifact.content !== 'string') {
-    throw new Error(
-      `task-preview-source-link-expectations: ${item.taskId} does not carry a TEXT body the walkthroughs expect.`
-    );
-  }
-  return item.artifact.content;
-}
-
-/**
- * Read the metric label the heatmap sub-column renders for completeness.
- *
- * @returns {string} The metric display label.
- */
-function requireMetricLabel(): string {
-  const metricLabel = METRIC_DISPLAY_META.get(COMPLETENESS_METRIC_KEY)?.label;
-  if (metricLabel === undefined) {
-    throw new Error(
-      `task-preview-source-link-expectations: metric ${COMPLETENESS_METRIC_KEY} carries no display label.`
-    );
-  }
-  return metricLabel;
-}
-
 /** Submission item the cell resolves to. */
 type ResolvedCellParts = Readonly<{
   selection: SourceLinkCellSelection;
@@ -232,7 +203,6 @@ function resolveCellParts(assignment: AssignmentFull): ResolvedCellParts {
   }
 
   const scoreText = requireDisplayScoreText(item);
-  const metricLabel = requireMetricLabel();
 
   return {
     submission,
@@ -245,7 +215,12 @@ function resolveCellParts(assignment: AssignmentFull): ResolvedCellParts {
       taskId: taskDefinition.id,
       taskTitle: taskDefinition.taskTitle,
       scoreText,
-      cellAccessibleLabel: `${submission.studentName}, ${taskDefinition.taskTitle}, ${metricLabel}: ${scoreText}`,
+      cellAccessibleLabel: buildMetricCellAccessibleLabel(
+        submission.studentName,
+        taskDefinition.taskTitle,
+        COMPLETENESS_METRIC_KEY,
+        scoreText
+      ),
       artifactContent: toStoredBodyText(item.artifact.content),
       expectedSourceUrl: deriveEditorSourceUrl(assignment, submission, item),
     },
@@ -269,7 +244,7 @@ export function deriveSourceLinkCell(assignment: AssignmentFull): SourceLinkCell
   const resolved = resolveCellParts(assignment);
   return {
     ...resolved.selection,
-    artifactContent: requireTextArtifactContent(resolved.item),
+    artifactContent: requireTextArtifactContent(resolved.item, resolved.submission.studentId),
   };
 }
 

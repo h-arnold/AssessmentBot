@@ -84,6 +84,14 @@ journeys/geometry dead weight would remove roughly 1,500–2,000 lines with no l
 
 ### Execution outcomes
 
+#### Batch 2 — complete (2026-10-07)
+
+- Implementation exported the existing metric-label formatter and preview contract labels. Testing Specialist consolidated shared fixture primitives, moved schema fixtures into `src/test/assignmentAssessment`, reused the canonical Slides selection and pinned each fixed label once. Playwright migrated the E2E consumers without removing either independent URL oracle. Docs reconciled §9.26.
+- Code Reviewer returned fully clean sign-off after a fixture-provenance pointer was corrected to name its test: `.opencode/scratchpad/re-review-batch2-final-signoff.md`.
+- Independent `loc-counter`/scc measurement against `891771e`, including new/deleted/moved paths: code 3,924 → 3,922 (**−2**); total lines 6,757 → 6,737 (**−20**). Report: `.opencode/scratchpad/loc-counter/batch2-final-review/report.json`. This is a modest real reduction, not the larger estimate in the original review; Vite raw loading and Node direct JSON loading remain separate.
+- Frontend: 2,443 unit tests passing; relevant source-link E2E tests passing; TypeScript and frontend lint pass with no new findings. All changed files are formatter-stable. Full regression comparison `runs/2026-10-07T04-21-16.802Z/comparison.txt` in the branch session: seven checks passing, unchanged ten accepted backend lint findings, zero regressions/new failures.
+- No scope expansion: deferred schema/runtime issues and later-batch coverage reduction were not attempted. Tooling was prepared only in ignored scratchpad; no agent/config changes were made.
+
 #### Batch 1 — complete (2026-10-03)
 
 - Delivery: `75876fd` (`fix: require task definition page IDs`) pushed to `docs/issue-19-task-preview-source-link`. Its successful commit hook reformatted the compact hydration fixtures, increasing the existing line-count finding again. Before starting Batch 2, a formatter-stable follow-up removed four lines of redundant local comment narration; Code Reviewer signed it off clean (`.opencode/scratchpad/re-review-batch1-fu2-formatter-stable-followup.md`). The full post-format regression comparison at `runs/2026-10-03T15-11-15.626Z/comparison.txt` in the same session reports zero regressions/new failures, seven passing checks and the unchanged ten accepted backend lint findings. This supersedes the pre-hook comparison below.

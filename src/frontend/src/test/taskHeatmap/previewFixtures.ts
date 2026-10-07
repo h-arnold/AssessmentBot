@@ -29,6 +29,13 @@ import type { AssignmentFull } from '../../services/assignmentAssessment/assignm
 import { ClassFullSchema } from '../../services/googleClassrooms/classDetail/classDetailService.zod';
 import type { ClassFull } from '../../services/googleClassrooms/classDetail/classDetailService.zod';
 import { buildTaskKey } from '../../services/dataAnalysis/taskKey';
+import {
+  deepFreeze,
+  requireRecord,
+  requireTextArtifactContent,
+  type CanonicalSubmission,
+  type CanonicalSubmissionItem,
+} from '../shared/canonicalFixturePrimitives';
 
 /** Canonical trustworthy class row selected from the `small` profile. */
 const CLASS_ID = 'class-2';
@@ -44,42 +51,6 @@ const READY_TASK_ID = 'task-0-0';
 
 /** Array offset that selects the last entry of the canonical class roster. */
 const LAST_ROSTER_OFFSET = -1;
-
-/**
- * Deep-freeze a selected canonical record so any in-place mutation fails
- * loudly instead of leaking across suites.
- *
- * @template T - Type of the value being frozen.
- * @param {T} value - The record to freeze.
- * @returns {T} The same record, with every reachable object frozen.
- */
-function deepFreeze<T>(value: T): T {
-  if (value === null || typeof value !== 'object') {
-    return value;
-  }
-  for (const propertyValue of Object.values(value)) {
-    deepFreeze(propertyValue);
-  }
-  return Object.freeze(value);
-}
-
-/**
- * Read one record from a parsed transport view, failing loudly when absent.
- *
- * @param {Record<string, unknown>} view - Parsed transport view keyed by record ID.
- * @param {string} recordId - ID of the record to select.
- * @param {string} viewName - View name quoted in the failure message.
- * @returns {unknown} The selected raw record.
- */
-function requireRecord(view: Record<string, unknown>, recordId: string, viewName: string): unknown {
-  const record = view[recordId];
-  if (record == null) {
-    throw new Error(
-      `previewFixtures: record "${recordId}" is absent from the small synthetic ${viewName} view.`
-    );
-  }
-  return record;
-}
 
 const classesById = JSON.parse(classesByIdRaw) as Record<string, unknown>;
 const assignmentsByKey = JSON.parse(assignmentsByKeyRaw) as Record<string, unknown>;
@@ -134,12 +105,6 @@ export interface CanonicalReadyCell {
   /** SPaG reasoning assessed for the selected student. */
   readonly spagReasoning: string | null;
 }
-
-/** Submission record carried by a canonical `AssignmentFull` payload. */
-type CanonicalSubmission = AssignmentFull['submissions'][number];
-
-/** Submission item carried by a canonical submission. */
-type CanonicalSubmissionItem = CanonicalSubmission['items'][string];
 
 /**
  * Read one submission for a rostered student, failing loudly when absent.
@@ -213,22 +178,6 @@ function requireNumericCompleteness(
     );
   }
   return { score: completeness.score, reasoning: completeness.reasoning };
-}
-
-/**
- * Read the TEXT body of a submission item's artifact.
- *
- * @param {CanonicalSubmissionItem} item - The submission item to read.
- * @param {string} studentId - Student ID quoted in the failure message.
- * @returns {string} The TEXT artifact body.
- */
-function requireTextArtifactContent(item: CanonicalSubmissionItem, studentId: string): string {
-  if (item.artifact.type !== 'TEXT' || typeof item.artifact.content !== 'string') {
-    throw new Error(
-      `previewFixtures: ${studentId} / ${item.taskId} does not carry a TEXT body the preview suites expect.`
-    );
-  }
-  return item.artifact.content;
 }
 
 /**

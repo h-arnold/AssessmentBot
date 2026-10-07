@@ -29,7 +29,7 @@
  */
 
 import type { Locator } from '@playwright/test';
-import { SOURCE_DOCUMENT_ACTION_LABEL } from './task-preview-source-link-fixtures';
+import { SOURCE_ACTION_LABEL } from '../../src/features/taskHeatmap/TaskPreviewCard';
 
 // ---------------------------------------------------------------------------
 // Region contract
@@ -70,7 +70,7 @@ export type PreviewHeaderRegionName = (typeof REGION_NAMES)[number];
  * Selector resolving the source action by the accessible name a teacher actually
  * gets from assistive technology, rather than by a class name.
  */
-const ACTION_SELECTOR = `.ant-card-head [aria-label="${SOURCE_DOCUMENT_ACTION_LABEL}"]`;
+const ACTION_SELECTOR = `.ant-card-head [aria-label="${SOURCE_ACTION_LABEL}"]`;
 
 /**
  * Descendant selector resolving each contract region, keyed by region name.

@@ -40,17 +40,11 @@ import {
   type TaskMetricPreviewCellProperties,
 } from '../../features/taskHeatmap/TaskMetricPreviewCell';
 import type { CellPreviewData } from '../../features/taskHeatmap/buildCellPreviewLookup';
+import { SOURCE_ACTION_LABEL } from '../../features/taskHeatmap/TaskPreviewCard';
+import { buildMetricCellAccessibleLabel } from '../../features/taskHeatmap/taskHeatmapTableColumns';
 import { formatMetricDisplayText } from '../../services/dataAnalysis/metricDisplay/metricDisplayText';
 import { createComputedMetricResult } from '../dataAnalysis/fixtures';
 import { CANONICAL_READY_CELL, buildCanonicalReadyCellData } from './previewFixtures';
-
-/**
- * Accessible name (and tooltip text) of the preview card's source action.
- *
- * The name is stated on the action itself, so it is the single source of truth
- * for every unit-suite query against it.
- */
-export const SOURCE_ACTION_LABEL = 'Open source document (opens in a new tab)';
 
 /** Metric result the canonical ready cell's analyser output carries. */
 const CANONICAL_CELL_METRIC = createComputedMetricResult({
@@ -61,7 +55,12 @@ const CANONICAL_CELL_METRIC = createComputedMetricResult({
 const CANONICAL_CELL_SCORE_TEXT = formatMetricDisplayText(CANONICAL_CELL_METRIC, 0);
 
 /** Accessible label the column builder shares between a cell and its trigger. */
-const CANONICAL_CELL_ACCESSIBLE_LABEL = `${CANONICAL_READY_CELL.studentName}, ${CANONICAL_READY_CELL.taskTitle}, Completeness: ${CANONICAL_CELL_SCORE_TEXT}`;
+const CANONICAL_CELL_ACCESSIBLE_LABEL = buildMetricCellAccessibleLabel(
+  CANONICAL_READY_CELL.studentName,
+  CANONICAL_READY_CELL.taskTitle,
+  'completeness',
+  CANONICAL_CELL_SCORE_TEXT
+);
 
 /** Accessible name of the focusable control rendered before the metric cell. */
 const PRECEDING_CONTROL_LABEL = 'Previous metric cell control';
@@ -72,6 +71,14 @@ const FOLLOWING_CONTROL_LABEL = 'Following metric cell control';
 /**
  * Read the editor source URL the canonical Slides ready cell derives, failing
  * loudly when the corpus no longer provides one.
+ *
+ * @remarks
+ * The winning ID source is the displayed submission artefact's own usable
+ * `documentId` and `pageId`; the parent submission's `documentId` is the
+ * documented fallback, and no reference/template or image-export URL ever
+ * substitutes. A cell whose record offers no usable source derives
+ * `sourceUrl: null` — the same null-`cellData` invariant recorded on
+ * `TaskPreviewData.sourceUrl`.
  *
  * @returns {string} The canonical derived editor URL.
  */

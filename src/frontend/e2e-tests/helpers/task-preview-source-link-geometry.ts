@@ -35,7 +35,7 @@
  */
 
 import { expect, type Locator, type Page } from '@playwright/test';
-import { SOURCE_DOCUMENT_ACTION_LABEL } from './task-preview-source-link-fixtures';
+import { SOURCE_ACTION_LABEL } from '../../src/features/taskHeatmap/TaskPreviewCard';
 import { openPreviewPopover } from './task-preview-source-link-helpers';
 import {
   PREVIEW_HEADER_REGION_SELECTORS,
@@ -254,7 +254,7 @@ export async function measureStablePreviewHeader(
   // The accessible name, not a class, identifies the action: that is the name a
   // teacher actually gets from assistive technology.
   await expect(
-    popover.getByRole('link', { name: SOURCE_DOCUMENT_ACTION_LABEL }),
+    popover.getByRole('link', { name: SOURCE_ACTION_LABEL }),
     `${description}: the header offers the source action`
   ).toBeVisible();
   // Both regions are matched as header descendants: antd nests the `extra` slot
@@ -411,7 +411,7 @@ export function assertPreviewHeaderInvariants(
   expect(
     actionAccessibleLabel,
     `${description}: the measured action carries the documented accessible name`
-  ).toBe(SOURCE_DOCUMENT_ACTION_LABEL);
+  ).toBe(SOURCE_ACTION_LABEL);
   expect(balanceIsFocusable, `${description}: the balancing space creates no focus target`).toBe(
     false
   );

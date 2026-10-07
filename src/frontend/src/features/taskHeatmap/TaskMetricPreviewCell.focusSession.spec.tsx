@@ -46,7 +46,6 @@ import userEvent from '@testing-library/user-event';
 
 import type { PreviewCellHarness } from '../../test/taskHeatmap/previewSourceActionTestHelpers';
 import {
-  SOURCE_ACTION_LABEL,
   buildCanonicalCellWithoutSourceUrl,
   findSourceAction,
   renderPreviewCell,
@@ -54,12 +53,8 @@ import {
   waitForPreviewDismissed,
 } from '../../test/taskHeatmap/previewSourceActionTestHelpers';
 import { CANONICAL_READY_CELL } from '../../test/taskHeatmap/previewFixtures';
-
-/** Accessible label the loading preview body announces. */
-const LOADING_PREVIEW_LABEL = 'Loading task preview';
-
-/** Error copy a failed preview body renders. */
-const PREVIEW_ERROR_TEXT = "Couldn't load task details";
+import { SOURCE_ACTION_LABEL } from './TaskPreviewCard';
+import { LOADING_PREVIEW_LABEL, PREVIEW_ERROR_TEXT } from './TaskMetricPreviewContent';
 
 /**
  * Focus transfers observed once two keyboard sessions have each handed focus to

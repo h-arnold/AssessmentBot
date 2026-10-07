@@ -136,7 +136,7 @@ function getDisplayTitle(key: HeatmapMetricKey): string {
  * @param {string} score - The formatted metric display text.
  * @returns {string} The contextual accessible label.
  */
-function buildMetricCellAccessibleLabel(
+export function buildMetricCellAccessibleLabel(
   studentName: string,
   taskTitle: string,
   metric: HeatmapMetricKey,
@@ -293,7 +293,12 @@ export function buildTaskMetricSubColumns(
         const m = getCellMetric(record.cells[taskIndex], metric);
         const { cellStyle } = resolveMetricTone(m);
         const score = formatMetricDisplayText(m, INDIVIDUAL_SCORE_PRECISION);
-        const ariaLabel = buildMetricCellAccessibleLabel(record.studentName, taskTitle, metric, score);
+        const ariaLabel = buildMetricCellAccessibleLabel(
+          record.studentName,
+          taskTitle,
+          metric,
+          score
+        );
         return {
           style: cellStyle,
           'aria-label': ariaLabel,
@@ -303,7 +308,12 @@ export function buildTaskMetricSubColumns(
         const m = getCellMetric(record.cells[taskIndex], metric);
         const cellData = cellPreviewLookup?.get(record.studentId)?.get(taskColumn.taskKey) ?? null;
         const score = formatMetricDisplayText(m, INDIVIDUAL_SCORE_PRECISION);
-        const ariaLabel = buildMetricCellAccessibleLabel(record.studentName, taskTitle, metric, score);
+        const ariaLabel = buildMetricCellAccessibleLabel(
+          record.studentName,
+          taskTitle,
+          metric,
+          score
+        );
 
         return (
           <TaskMetricPreviewCell

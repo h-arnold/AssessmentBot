@@ -21,9 +21,9 @@ import {
   HEATMAP_TABLE_NAME,
   SHEETS_ASSIGNMENT_TITLE,
   SLIDES_ASSIGNMENT_TITLE,
-  SOURCE_DOCUMENT_ACTION_LABEL,
   SOURCE_LINK_CLASS_NAME,
 } from './task-preview-source-link-fixtures';
+import { SOURCE_ACTION_LABEL } from '../../src/features/taskHeatmap/TaskPreviewCard';
 
 // ---------------------------------------------------------------------------
 // Shared journey labels
@@ -91,7 +91,7 @@ export function openPreviewPopover(page: Page): Locator {
  * @returns {Locator} The accessible source-action link locator.
  */
 export function sourceDocumentAction(container: Locator): Locator {
-  return container.getByRole('link', { name: SOURCE_DOCUMENT_ACTION_LABEL });
+  return container.getByRole('link', { name: SOURCE_ACTION_LABEL });
 }
 
 /**

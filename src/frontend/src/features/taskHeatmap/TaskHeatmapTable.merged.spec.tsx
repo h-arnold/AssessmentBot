@@ -3,6 +3,7 @@ import { render, screen, cleanup, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ComponentProps } from 'react';
 import { TaskHeatmapTable } from './TaskHeatmapTable';
+import { PREVIEW_ERROR_TEXT } from './TaskMetricPreviewContent';
 import type {
   MergedHeatmapResult,
   MergedHeatmapTaskColumn,
@@ -328,7 +329,7 @@ describe('TaskHeatmapTable preview-status resolution and adaptive assignment tie
     });
 
     const popover = await openTaskPopover('A1 Task 1');
-    expect(popover.textContent).toContain("Couldn't load task details");
+    expect(popover.textContent).toContain(PREVIEW_ERROR_TEXT);
   });
 
   it('owns status entirely via the map when aggregates are passed as false (loading → skeleton, error → alert, healthy → card)', async () => {
@@ -350,7 +351,7 @@ describe('TaskHeatmapTable preview-status resolution and adaptive assignment tie
     expect(popoverT1.querySelector('output[aria-busy="true"]')).toBeInTheDocument();
 
     const popoverT2 = await openTaskPopover('A1 Task 2');
-    expect(popoverT2.textContent).toContain("Couldn't load task details");
+    expect(popoverT2.textContent).toContain(PREVIEW_ERROR_TEXT);
 
     const popoverT3 = await openTaskPopover('A1 Task 3');
     expect(popoverT3.textContent).toContain('Student Response');
@@ -379,7 +380,7 @@ describe('TaskHeatmapTable preview-status resolution and adaptive assignment tie
     });
 
     const popover = await openTaskPopover('A1 Task 1');
-    expect(popover.textContent).toContain("Couldn't load task details");
+    expect(popover.textContent).toContain(PREVIEW_ERROR_TEXT);
   });
 
   it('falls back to the aggregate booleans for a column with no map entry (not a default healthy state)', async () => {

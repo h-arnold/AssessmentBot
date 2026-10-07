@@ -61,6 +61,19 @@ export interface TaskMetricPreviewContentProperties {
 }
 
 // ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
+
+/**
+ * Accessible label of the loading skeleton region, announced by the metric
+ * cell while the preview query is pending.
+ */
+export const LOADING_PREVIEW_LABEL = 'Loading task preview';
+
+/** Error alert text shown when the preview fails to load. */
+export const PREVIEW_ERROR_TEXT = "Couldn't load task details";
+
+// ---------------------------------------------------------------------------
 // TaskMetricPreviewContent component
 // ---------------------------------------------------------------------------
 
@@ -89,7 +102,7 @@ export function TaskMetricPreviewContent({
     return (
       <output
         aria-busy="true"
-        aria-label="Loading task preview"
+        aria-label={LOADING_PREVIEW_LABEL}
         style={{ display: 'block', width: CARD_MAX_WIDTH }}
       >
         {/* Title bar — approximates TaskPreviewCard header height */}
@@ -112,7 +125,7 @@ export function TaskMetricPreviewContent({
   }
 
   if (hasError) {
-    return <Alert type="error" showIcon title="Couldn't load task details" />;
+    return <Alert type="error" showIcon title={PREVIEW_ERROR_TEXT} />;
   }
 
   // Defer the expensive assembleTaskPreviewData call until the popover opens.
