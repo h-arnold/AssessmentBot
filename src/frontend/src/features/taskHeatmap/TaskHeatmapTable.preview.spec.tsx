@@ -50,7 +50,7 @@ describe('TaskHeatmapTable popover integration and preview presentation', () => 
     expect(trigger).toHaveAttribute('aria-label', accessibleName);
   });
 
-  it('does not describe the Ant Design Popover trigger as a dialog', () => {
+  it('exposes the preview trigger state and its named non-modal dialog', async () => {
     render(
       <TaskHeatmapTable
         heatmapResult={buildHeatmapResult()}
@@ -63,7 +63,15 @@ describe('TaskHeatmapTable popover integration and preview presentation', () => 
     const cell = getHeatmapCellByLabel('Student One, Task 1, Completeness: 5');
     const trigger = within(cell).getByRole('button');
 
-    expect(trigger).not.toHaveAttribute('aria-haspopup');
+    expect(trigger).toHaveAttribute('aria-expanded', 'false');
+    expect(trigger).toHaveAttribute('aria-haspopup', 'dialog');
+    await user.hover(trigger);
+    const dialog = await within(document.body).findByRole('dialog', {
+      name: 'Student One, Task 1, Completeness: 5',
+    });
+    expect(dialog).toBeInTheDocument();
+    expect(dialog).not.toHaveAttribute('aria-modal', 'true');
+    expect(trigger).toHaveAttribute('aria-expanded', 'true');
   });
 
   it('does not assemble preview data until its popover opens', async () => {

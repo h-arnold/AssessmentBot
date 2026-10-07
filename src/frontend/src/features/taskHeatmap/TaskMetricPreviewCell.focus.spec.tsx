@@ -91,6 +91,23 @@ describe('TaskMetricPreviewCell keyboard activation and focus ownership', () => 
     expect(harness.sourceFocusCount()).toBe(1);
   });
 
+  it.each(['Enter', ' '] as const)(
+    're-arms source focus when %s is pressed after pointer-opening the preview',
+    async (key) => {
+      harness = renderPreviewCell();
+      await user.click(harness.trigger);
+      await waitForPreviewContent();
+      const action = await findSourceAction();
+      expect(action).not.toHaveFocus();
+
+      harness.trigger.focus();
+      await user.keyboard(key === 'Enter' ? '{Enter}' : '{ }');
+
+      await waitFor(() => expect(action).toHaveFocus());
+      expect(harness.sourceFocusCount()).toBe(1);
+    }
+  );
+
   it('opens the preview on pointer hover without taking focus at all', async () => {
     harness = renderPreviewCell();
 

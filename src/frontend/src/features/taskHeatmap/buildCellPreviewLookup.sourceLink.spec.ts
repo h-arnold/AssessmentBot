@@ -232,6 +232,26 @@ describe('buildCellPreviewLookup source URL derivation', () => {
       );
     });
 
+    it('uses the Sheets editor root URL when the artifact pageId is unusable', () => {
+      const assignment = cloneCanonicalSheetsAssignment();
+      const { studentId, taskKey, item } = selectFirstSourceCell(assignment);
+      item.artifact.pageId = null;
+
+      expect(deriveSourceUrl(assignment, studentId, taskKey)).toBe(
+        `https://docs.google.com/spreadsheets/d/${encodeURIComponent(item.artifact.documentId!)}/edit`
+      );
+    });
+
+    it('encodes a Sheets gid fragment independently of the expected-URL helper', () => {
+      const assignment = cloneCanonicalSheetsAssignment();
+      const { studentId, taskKey, item } = selectFirstSourceCell(assignment);
+      item.artifact.pageId = '  tab 1/final  ';
+
+      expect(deriveSourceUrl(assignment, studentId, taskKey)).toBe(
+        `https://docs.google.com/spreadsheets/d/${encodeURIComponent(item.artifact.documentId!)}/edit#gid=tab%201%2Ffinal`
+      );
+    });
+
     it('trims and encodes stored documentId and pageId components', () => {
       const assignment = cloneCanonicalSlidesAssignment();
       const { studentId, taskKey, item } = selectFirstSourceCell(assignment);

@@ -273,7 +273,7 @@ export function TaskMetricPreviewCell({
         // the only thing this module renders inside the portal, so it answers
         // "is focus inside the preview?" locally, without a global DOM query and
         // without depending on Ant Design's own overlay handle.
-        <div ref={previewBodyReference}>
+        <div ref={previewBodyReference} role="dialog" aria-label={accessibleLabel}>
           <DeferredPopoverContent
             buildContent={() => (
               <TaskMetricPreviewContent
@@ -298,6 +298,9 @@ export function TaskMetricPreviewCell({
         tabIndex={0}
         role="button"
         aria-label={accessibleLabel}
+        aria-expanded={isPreviewOpen}
+        aria-haspopup="dialog"
+        className={styles.trigger}
         style={{ padding: APP_GAP_XS, display: 'inline-block' }}
         onKeyDown={handleTriggerKeyDown}
         onBlur={handleTriggerBlur}

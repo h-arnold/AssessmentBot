@@ -122,6 +122,44 @@ describe('TaskMetricPreviewContent', () => {
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 
+  it('reuses assembled preview data for unchanged ready inputs and invalidates it when an input changes', () => {
+    const { rerender } = renderContent();
+    expect(assembleTaskPreviewDataSpy).toHaveBeenCalledTimes(1);
+
+    rerender(
+      <TaskMetricPreviewContent
+        cellData={CELL_DATA}
+        metricResult={METRIC_RESULT}
+        metricKey="completeness"
+        taskId={TASK_ID}
+        isLoading={false}
+        hasError={false}
+      />
+    );
+    expect(assembleTaskPreviewDataSpy).toHaveBeenCalledTimes(1);
+
+    assembleTaskPreviewDataSpy.mockClear();
+    rerender(
+      <TaskMetricPreviewContent
+        cellData={CELL_DATA}
+        metricResult={METRIC_RESULT}
+        metricKey="accuracy"
+        taskId={TASK_ID}
+        isLoading={false}
+        hasError={false}
+      />
+    );
+    expect(assembleTaskPreviewDataSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    { label: 'loading', isLoading: true, hasError: false },
+    { label: 'error', isLoading: false, hasError: true },
+  ])('skips ready-data assembly for the $label state', ({ isLoading, hasError }) => {
+    renderContent({ isLoading, hasError });
+    expect(assembleTaskPreviewDataSpy).not.toHaveBeenCalled();
+  });
+
   it('renders the empty-content card when no cell data exists', () => {
     renderContent({ cellData: null });
 

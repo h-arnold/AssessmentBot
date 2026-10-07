@@ -18,7 +18,7 @@
  * @see `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md`
  */
 
-import type { JSX, RefCallback } from 'react';
+import { useMemo, type JSX, type RefCallback } from 'react';
 import { Alert, Skeleton } from 'antd';
 
 import type { TaskDisplayMetric } from '../../services/dataAnalysis/dataAnalysis.zod';
@@ -84,10 +84,10 @@ export const PREVIEW_ERROR_TEXT = "Couldn't load task details";
  * deferred `TaskPreviewCard`). The skeleton width (400px) mirrors
  * `CARD_MAX_WIDTH` from `TaskPreviewCard.tsx`. The expensive
  * `assembleTaskPreviewData` call stays deferred until this content is actually
- * opened by the popover (see the module remarks).
+ * opened by the popover, and is memoised across re-renders of the ready body.
  *
  * @param {Readonly<TaskMetricPreviewContentProperties>} props - Content inputs.
- * @returns {JSX.Element} The popover content (skeleton, alert, or TaskPreviewCard).
+ * @returns {JSX.Element | null} The popover content (skeleton, alert, or ready card).
  */
 export function TaskMetricPreviewContent({
   cellData,
@@ -97,7 +97,15 @@ export function TaskMetricPreviewContent({
   isLoading,
   hasError,
   sourceAnchorRef,
-}: Readonly<TaskMetricPreviewContentProperties>): JSX.Element {
+}: Readonly<TaskMetricPreviewContentProperties>): JSX.Element | null {
+  const previewData = useMemo(
+    () =>
+      isLoading || hasError
+        ? null
+        : assembleTaskPreviewData(cellData, metricResult, metricKey, taskId),
+    [cellData, metricResult, metricKey, taskId, isLoading, hasError]
+  );
+
   if (isLoading) {
     return (
       <output
@@ -128,7 +136,5 @@ export function TaskMetricPreviewContent({
     return <Alert type="error" showIcon title={PREVIEW_ERROR_TEXT} />;
   }
 
-  // Defer the expensive assembleTaskPreviewData call until the popover opens.
-  const previewData = assembleTaskPreviewData(cellData, metricResult, metricKey, taskId);
-  return <TaskPreviewCard data={previewData} sourceAnchorRef={sourceAnchorRef} />;
+  return <TaskPreviewCard data={previewData!} sourceAnchorRef={sourceAnchorRef} />;
 }

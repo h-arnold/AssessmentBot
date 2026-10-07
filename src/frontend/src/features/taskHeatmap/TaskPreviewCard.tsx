@@ -63,10 +63,9 @@ export interface TaskPreviewData {
  * @remarks
  * Ant Design types its button ref as the anchor/button union because one Button
  * renders either. This action always carries an `href`, so it renders as a
- * native anchor; both members expose the focus behaviour the metric cell owns,
- * so the union is kept rather than narrowed by a cast.
+ * native anchor, and the ref type is narrowed accordingly.
  */
-export type SourceActionElement = HTMLAnchorElement | HTMLButtonElement;
+export type SourceActionElement = HTMLAnchorElement;
 
 /** Props accepted by {@link TaskPreviewCard}. */
 export interface TaskPreviewCardProperties {
@@ -135,13 +134,13 @@ const SOURCE_ICON_STROKE_WIDTH = 1.5;
  * metric group.
  *
  * @remarks
- * 24px is ant Design's `controlHeightSM`, which an icon-only small `Button`
+ * 24px is Ant Design's `controlHeightSM`, which an icon-only small `Button`
  * already adopts for its width and height, so the action needs no forced
  * dimensions. The balance space is sized from this same constant instead of
  * being measured off the rendered action, which keeps the reserved space equal
  * to the occupied width without a layout read — and giving both the same height
  * keeps the title region as tall as the action, so the header's vertical
- * centring stays a property of ant Design's own flex alignment.
+ * centring stays a property of Ant Design's own flex alignment.
  */
 const SOURCE_ACTION_SIZE = 24;
 

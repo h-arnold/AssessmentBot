@@ -79,22 +79,34 @@ function trimStoredId(value: string | null | undefined): string | null {
 }
 
 /**
- * Build the fixed HTTPS Google editor `/edit` URL for one usable document ID.
+ * Build the fixed HTTPS Google editor URL parts for one usable document ID.
  *
  * @remarks
  * The path comes from the root assignment's `documentType` only; anything
- * other than `SLIDES` or `SHEETS` (including `null`) yields `null`.
+ * other than `SLIDES` or `SHEETS` (including `null`) yields `null`. The
+ * fragment prefix (`#slide=id.` or `#gid=`) shares this single format
+ * decision, so callers can append an encoded page ID without re-deriving it.
  *
  * @param {string | null} documentType - Root assignment document format.
  * @param {string} documentId - Usable, already-trimmed document ID.
- * @returns {string | null} The document-root editor URL, or `null` when the format is unsupported.
+ * @returns {{ baseUrl: string; fragmentPrefix: string } | null} The document-root
+ *   editor URL and its fragment prefix, or `null` when the format is unsupported.
  */
-function buildEditorBaseUrl(documentType: string | null, documentId: string): string | null {
+function buildEditorBaseUrl(
+  documentType: string | null,
+  documentId: string
+): { baseUrl: string; fragmentPrefix: string } | null {
   if (documentType === 'SLIDES') {
-    return `https://docs.google.com/presentation/d/${encodeURIComponent(documentId)}/edit`;
+    return {
+      baseUrl: `https://docs.google.com/presentation/d/${encodeURIComponent(documentId)}/edit`,
+      fragmentPrefix: '#slide=id.',
+    };
   }
   if (documentType === 'SHEETS') {
-    return `https://docs.google.com/spreadsheets/d/${encodeURIComponent(documentId)}/edit`;
+    return {
+      baseUrl: `https://docs.google.com/spreadsheets/d/${encodeURIComponent(documentId)}/edit`,
+      fragmentPrefix: '#gid=',
+    };
   }
   return null;
 }
@@ -127,20 +139,20 @@ function resolveSourceUrl(
   parentDocumentId: string | null | undefined
 ): string | null {
   const documentId = trimStoredId(artifactDocumentId) ?? trimStoredId(parentDocumentId);
-  const baseUrl = documentId == null ? null : buildEditorBaseUrl(documentType, documentId);
-  if (baseUrl == null) {
+  if (documentId == null) {
+    return null;
+  }
+  const editor = buildEditorBaseUrl(documentType, documentId);
+  if (editor == null) {
     return null;
   }
 
   const pageId = trimStoredId(artifactPageId);
   if (pageId == null) {
-    return baseUrl;
+    return editor.baseUrl;
   }
 
-  const encodedPageId = encodeURIComponent(pageId);
-  return documentType === 'SLIDES'
-    ? `${baseUrl}#slide=id.${encodedPageId}`
-    : `${baseUrl}#gid=${encodedPageId}`;
+  return `${editor.baseUrl}${editor.fragmentPrefix}${encodeURIComponent(pageId)}`;
 }
 
 /**
@@ -200,23 +212,9 @@ function createCellPreviewData(
  * 2. **Collision elimination.** Two assignment instances that share one
  *    definition key would otherwise merge their submissions under identical bare
  *    `taskId`s; the composite key keeps each instance's cells distinct.
- *
- * If the embedded `assignmentDefinition` or its `definitionKey` is absent, the
- * function throws. This is a fail-fast invariant guard, not validation: the
- * transport schema already forbids the omission. Were we to silently fall back
- * to a bare `taskId` (or a default key) instead of throwing, a broken invariant
- * would surface not as a crash but as embedded popovers silently losing data —
- * the lookup would build keys that never match the column `taskKey`s, so every
- * `get(taskKey)` returns `undefined` and previews would silently fail to render.
  */
 export function buildCellPreviewLookup(assignment: AssignmentFull): CellPreviewLookup {
-  const definition = assignment.assignmentDefinition;
-  if (definition?.definitionKey == null) {
-    throw new Error(
-      'buildCellPreviewLookup: assignment.assignmentDefinition.definitionKey is required to derive composite task keys; the embedded definition was absent.'
-    );
-  }
-  const definitionKey = definition.definitionKey;
+  const definitionKey = assignment.assignmentDefinition.definitionKey;
 
   const outerMap = new Map<string, Map<string, CellPreviewData>>();
 

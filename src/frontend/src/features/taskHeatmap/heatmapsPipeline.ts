@@ -85,7 +85,7 @@ const _loggedPipelineErrorKeys = new Set<string>();
  * @param {Record<string, unknown> | undefined} metadata Additional log metadata.
  * @returns {void} Nothing.
  */
-function logPipelineError(
+export function logPipelineError(
   context: string,
   error: unknown,
   metadata?: Record<string, unknown>

@@ -107,9 +107,6 @@ function coerceSpreadsheetContent(content: Array<Array<string | number | null>> 
   if (content === null) {
     throw new TypeError('SPREADSHEET artifact content is null');
   }
-  if (!Array.isArray(content)) {
-    throw new TypeError('SPREADSHEET artifact content is not a 2D array');
-  }
   return spreadsheetToMarkdownTable(content);
 }
 

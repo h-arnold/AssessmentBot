@@ -14,3 +14,10 @@
     display: none;
   }
 }
+
+/* Themed keyboard-focus ring (mirrors index.css's :focus-visible treatment
+   instead of the UA default outline). */
+.trigger:focus-visible {
+  outline: 2px solid var(--ant-color-primary);
+  outline-offset: 2px;
+}

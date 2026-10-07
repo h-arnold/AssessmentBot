@@ -84,6 +84,15 @@ journeys/geometry dead weight would remove roughly 1,500–2,000 lines with no l
 
 ### Execution outcomes
 
+#### Batch 5 — complete (2026-10-07)
+
+- Implementation applied the listed trigger accessibility/focus-ring, memoisation, URL format deduplication, dead-guard removal, existing diagnostic-dedupe reuse and anchor-type/casing fixes. The existing preview wrapper is a named non-modal dialog matching `aria-haspopup="dialog"`; ordinary Tab navigation remains unchanged. Memoisation stays in the existing content component, without a new forwarding wrapper.
+- Testing Specialist covered already-open Enter/Space re-arming, the open-change callback's focus re-decision, Sheets root/encoded-fragment URLs and memo reuse/invalidation. The branch-specific callback test is isolated from the real-portal integration cases; no production test seam was added. Step 8's throw-message correction was superseded by deleting that unreachable guard in step 4.
+- All review findings addressed, including stale contract remarks and unnecessary test ceremony. Code/test sign-off: `.opencode/scratchpad/re-review-batch5-final-clean.md`; documentation sign-off: `re-review-batch5-docs-final-rereview-signoff.md`. Docs qualify the diagnostic helper as standalone-Heatmaps-local, not cross-feature policy.
+- Frontend: 236 files / 2,452 tests passing; TypeScript, frontend lint and formatter checks pass with no new findings. Full regression `runs/2026-10-07T15-33-42.213Z/comparison.txt`: seven checks passing, unchanged ten accepted backend lint findings, zero regressions/new failures.
+- Measured scc delta against `a612a5f`: **+209 code / +228 total lines**, predominantly the expressly requested new coverage and accessibility/memo behaviour. No reduction is claimed for this feature-and-coverage batch; guard/lookup cleanup itself is net-negative and no new production helper/module/wrapper was introduced. Report: `.opencode/scratchpad/loc-counter/batch5-clean-review/report.json`.
+- User-owned changes to three `.opencode/agents/` files were excluded from this batch and left unstaged. No Wontfix/deferred work was attempted.
+
 #### Batch 4 — complete (2026-10-07)
 
 - Testing Specialist replaced the two corpus-convention suites with `tests/synthetic-analysis/syntheticCorpusConventions.test.ts`: parametrised committed-view assertions plus one generator-determinism probe. Both timestamp conventions and 21-digit student identifiers retain their cross-profile/cross-view coverage; Docs corrected the retired filenames in the canonical testing document and one generator JSDoc pointer, without changing generator behaviour.
