@@ -1,7 +1,7 @@
 ---
 description: Implements code changes in an idiomatic and type-safe manner with validated results
 mode: all
-model: opencode/fledge-alpha-free
+model: openai/gpt-6-luna
 steps: 100
 ---
 
