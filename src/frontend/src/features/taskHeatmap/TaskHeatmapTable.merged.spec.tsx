@@ -257,7 +257,7 @@ async function openTaskPopover(taskTitle: string): Promise<HTMLElement> {
   const cell = screen.getAllByLabelText((content): boolean =>
     content.startsWith(`Student One, ${taskTitle}, Completeness:`)
   )[0];
-  const trigger = cell.querySelector('span');
+  const trigger = cell.querySelector('button');
   expect(trigger).toBeInTheDocument();
   await user.hover(trigger!);
   await waitFor(() => {

@@ -411,7 +411,7 @@ describe('synthetic corpus generator determinism probe', () => {
 
     const largeFullRosters = generateLargeFullRosters();
     const largeFullIds = collectStudentIds(largeFullRosters);
-    expect(largeFullIds.length).toBe(LARGE_FULL_CLASS_COUNT * LARGE_FULL_STUDENTS_PER_CLASS);
+    expect(largeFullIds).toHaveLength(LARGE_FULL_CLASS_COUNT * LARGE_FULL_STUDENTS_PER_CLASS);
     expectDigitOnlyStudentIds(largeFullIds, 'large-full generated roster');
     expect(new Set(largeFullIds).size).toBe(largeFullIds.length);
     expect(collectStudentIds(generateLargeFullRosters())).toEqual(largeFullIds);

@@ -115,9 +115,9 @@ describe('TaskHeatmapTable popover integration and preview presentation', () => 
       />
     );
 
-    // Find a computed cell's score span via its aria-label
+    // Find the computed cell's native button trigger via its aria-label.
     const cell = getHeatmapCellByLabel('Student One, Task 1, Completeness: 5');
-    const trigger = cell.querySelector('span');
+    const trigger = within(cell).getByRole('button');
     expect(trigger).toBeInTheDocument();
 
     // Hover the trigger — the Popover should appear.
@@ -141,7 +141,7 @@ describe('TaskHeatmapTable popover integration and preview presentation', () => 
     );
 
     const cell = getHeatmapCellByLabel('Student One, Task 1, Completeness: 5');
-    const trigger = cell.querySelector('span')!;
+    const trigger = within(cell).getByRole('button');
     expect(trigger).toBeInTheDocument();
 
     await user.hover(trigger);
@@ -211,7 +211,7 @@ describe('TaskHeatmapTable popover integration and preview presentation', () => 
 
     // Hover a computed cell and assert the popover opens
     const cell = getHeatmapCellByLabel('Student One, Task 1, Completeness: 5');
-    const trigger = cell.querySelector('span')!;
+    const trigger = within(cell).getByRole('button');
     expect(trigger).toBeInTheDocument();
 
     await user.hover(trigger);
@@ -238,7 +238,7 @@ describe('TaskHeatmapTable popover integration and preview presentation', () => 
     );
 
     const cell = getHeatmapCellByLabel('Student One, Task 1, Completeness: 5');
-    const trigger = cell.querySelector('span')!;
+    const trigger = within(cell).getByRole('button');
     expect(trigger).toBeInTheDocument();
 
     await user.hover(trigger);
@@ -290,7 +290,7 @@ describe('TaskHeatmapTable popover integration and preview presentation', () => 
     );
 
     const cell = getHeatmapCellByLabel('Student One, Task 1, Completeness: 5');
-    const trigger = cell.querySelector('span')!;
+    const trigger = within(cell).getByRole('button');
     expect(trigger).toBeInTheDocument();
 
     await user.hover(trigger);

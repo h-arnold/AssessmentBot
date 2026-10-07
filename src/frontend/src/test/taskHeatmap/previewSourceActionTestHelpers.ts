@@ -234,12 +234,13 @@ export function renderPreviewCell(
     precedingControl: screen.getByRole('button', { name: PRECEDING_CONTROL_LABEL }),
     followingControl: screen.getByRole('button', { name: FOLLOWING_CONTROL_LABEL }),
     sourceFocusCount: () => observer.count(),
-    rerenderCell: async (overrides = {}): Promise<void> => {
+    rerenderCell: (overrides = {}): Promise<void> => {
       resolvedProperties = { ...resolvedProperties, ...overrides };
       const nextTree = buildCellTree(resolvedProperties);
-      await act(async () => {
+      act(() => {
         view.rerender(nextTree);
       });
+      return Promise.resolve();
     },
     stop: () => {
       observer.stop();
@@ -286,7 +287,7 @@ export async function waitForPreviewDismissed(): Promise<void> {
  *
  * @returns {Promise<HTMLElement>} The action element.
  */
-export async function findSourceAction(): Promise<HTMLElement> {
+export function findSourceAction(): Promise<HTMLElement> {
   return screen.findByRole('link', { name: SOURCE_ACTION_LABEL });
 }
 

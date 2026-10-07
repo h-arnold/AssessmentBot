@@ -40,6 +40,7 @@ import type { PreviewCellHarness } from '../../test/taskHeatmap/previewSourceAct
 import {
   dispatchCancelableKeydown,
   findSourceAction,
+  buildCanonicalCellWithoutSourceUrl,
   renderPreviewCell,
   waitForPreviewContent,
   waitForPreviewDismissed,
@@ -58,6 +59,24 @@ afterEach(() => {
 });
 
 describe('TaskMetricPreviewCell keyboard activation and focus ownership', () => {
+  it.each([
+    ['loading', { isLoading: true }],
+    ['error', { isLoading: false, hasError: true }],
+    ['no-source', { cellData: buildCanonicalCellWithoutSourceUrl() }],
+  ] as const)('closes the %s preview on Escape at the trigger', async (_state, properties) => {
+    harness = renderPreviewCell(properties);
+    harness.trigger.focus();
+
+    await user.keyboard('{Enter}');
+    await waitForPreviewContent();
+    expect(document.activeElement).toBe(harness.trigger);
+
+    await user.keyboard('{Escape}');
+    await waitForPreviewDismissed();
+
+    expect(harness.trigger).toHaveFocus();
+  });
+
   it('opens the preview on Enter and focuses the source link exactly once', async () => {
     harness = renderPreviewCell();
     harness.trigger.focus();

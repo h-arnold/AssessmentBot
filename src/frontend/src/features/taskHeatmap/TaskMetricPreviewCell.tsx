@@ -93,8 +93,8 @@ export function TaskMetricPreviewCell({
   hasError,
 }: Readonly<TaskMetricPreviewCellProperties>): JSX.Element {
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
-  const triggerReference = useRef<HTMLSpanElement | null>(null);
-  const previewBodyReference = useRef<HTMLDivElement | null>(null);
+  const triggerReference = useRef<HTMLButtonElement | null>(null);
+  const previewBodyReference = useRef<HTMLDialogElement | null>(null);
   const sourceActionReference = useRef<SourceActionElement | null>(null);
   // Whether the current open session still owes its body a focus transfer.
   const pendingSourceFocus = useRef(false);
@@ -177,7 +177,7 @@ export function TaskMetricPreviewCell({
    * action the transfer itself targets, or anything else rendered there) is
    * not a departure and leaves the intent alone.
    */
-  const handleTriggerBlur = useCallback((event: FocusEvent<HTMLSpanElement>): void => {
+  const handleTriggerBlur = useCallback((event: FocusEvent<HTMLButtonElement>): void => {
     const next = event.relatedTarget;
     if (next instanceof Node && previewBodyReference.current?.contains(next) === true) {
       return;
@@ -189,13 +189,16 @@ export function TaskMetricPreviewCell({
    * Open the preview from the keyboard, and arm this session's focus transfer.
    *
    * @remarks
-   * The trigger is a span, so it has no native activation of its own, and Space
-   * would scroll the page: this handler is the whole keyboard contract. It opens
-   * rather than toggles, which is why the trigger-level dismissal in the approved
-   * workflow is Escape.
+   * Prevent native activation after handling Enter/Space: the Popover's click
+   * trigger must not interpret the browser-generated click as a second toggle.
    */
   const handleTriggerKeyDown = useCallback(
-    (event: KeyboardEvent<HTMLSpanElement>): void => {
+    (event: KeyboardEvent<HTMLButtonElement>): void => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        handleOpenChange(false);
+        return;
+      }
       if (event.key !== 'Enter' && event.key !== ' ') {
         return;
       }
@@ -206,7 +209,24 @@ export function TaskMetricPreviewCell({
       // armed intent would wait for an unrelated render to spend it.
       scheduleSourceFocusTransfer();
     },
-    [scheduleSourceFocusTransfer]
+    [handleOpenChange, scheduleSourceFocusTransfer]
+  );
+
+  /**
+   * Close the preview session when Escape is pressed inside its body.
+   *
+   * @remarks
+   * Closing goes through `handleOpenChange`, which returns focus to the trigger
+   * when focus is still in the body that is about to unmount.
+   */
+  const handlePreviewKeyDown = useCallback(
+    (event: KeyboardEvent<HTMLDialogElement>): void => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        handleOpenChange(false);
+      }
+    },
+    [handleOpenChange]
   );
 
   /**
@@ -227,6 +247,21 @@ export function TaskMetricPreviewCell({
     [scheduleSourceFocusTransfer]
   );
 
+  const buildContent = useCallback(
+    () => (
+      <TaskMetricPreviewContent
+        cellData={cellData}
+        metricResult={metricResult}
+        metricKey={metricKey}
+        taskId={taskId}
+        isLoading={isLoading}
+        hasError={hasError}
+        sourceAnchorRef={handleSourceActionMounted}
+      />
+    ),
+    [cellData, metricResult, metricKey, taskId, isLoading, hasError, handleSourceActionMounted]
+  );
+
   return (
     <Popover
       trigger={['hover', 'click']}
@@ -240,30 +275,24 @@ export function TaskMetricPreviewCell({
         // the only thing this module renders inside the portal, so it answers
         // "is focus inside the preview?" locally, without a global DOM query and
         // without depending on Ant Design's own overlay handle.
-        <div ref={previewBodyReference} role="dialog" aria-label={accessibleLabel}>
-          <DeferredPopoverContent
-            buildContent={() => (
-              <TaskMetricPreviewContent
-                cellData={cellData}
-                metricResult={metricResult}
-                metricKey={metricKey}
-                taskId={taskId}
-                isLoading={isLoading}
-                hasError={hasError}
-                sourceAnchorRef={handleSourceActionMounted}
-              />
-            )}
-          />
-        </div>
+        <dialog
+          open
+          ref={previewBodyReference}
+          aria-label={accessibleLabel}
+          className={styles.previewDialog}
+          onKeyDown={handlePreviewKeyDown}
+        >
+          <DeferredPopoverContent buildContent={buildContent} />
+        </dialog>
       }
     >
       {/* 4px padding (APP_GAP_XS, documented half-unit exception) widens the
-          Popover hover/click target around the score without covering the
-          whole cell; inline-block is required for padding to take effect. */}
-      <span
+          native button's Popover hover/click target around the score without
+          covering the whole cell; inline-block keeps its padding around the
+          score content rather than making the button a block-level cell. */}
+      <button
         ref={triggerReference}
-        tabIndex={0}
-        role="button"
+        type="button"
         aria-label={accessibleLabel}
         aria-expanded={isPreviewOpen}
         aria-haspopup="dialog"
@@ -273,7 +302,7 @@ export function TaskMetricPreviewCell({
         onBlur={handleTriggerBlur}
       >
         {scoreText}
-      </span>
+      </button>
     </Popover>
   );
 }

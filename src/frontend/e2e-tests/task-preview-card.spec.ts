@@ -55,17 +55,16 @@ async function openHeatmapTable(page: Page): Promise<void> {
  * The aria-label format is `${studentName}, ${taskTitle}, ${metricLabel}: ${score}`
  * (see `taskHeatmapTableColumns.tsx` `onCell` and `render`). That label is now applied
  * to BOTH the `<td role="cell">` (via `onCell`) and the nested
- * `<span role="button">` popover trigger, so a bare
- * `[aria-label="..."] selector matches two elements. Disambiguate by targeting
- * the `role="button"` trigger specifically — that is the element the hover and
- * click interactions must act on.
+ * `<button>` popover trigger, so a bare `[aria-label="..."]` selector matches
+ * two elements. Disambiguate by its accessible button role and exact name —
+ * that is the element the hover and click interactions must act on.
  *
  * @param {Page} page - The Playwright page.
  * @param {string} ariaLabel - The exact aria-label value of the target cell.
  * @returns {Locator} The popover trigger locator.
  */
 function metricCell(page: Page, ariaLabel: string) {
-  return page.locator(`[role="button"][aria-label="${ariaLabel}"]`);
+  return page.getByRole('button', { name: ariaLabel, exact: true });
 }
 
 /**

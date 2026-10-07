@@ -73,10 +73,10 @@ const HEATMAPS_ASSIGNMENTS_COMBOBOX_INDEX = 2;
  *
  * @param {Page} page - The Playwright page under test.
  * @param {string} cellAccessibleLabel - The shared cell/trigger accessible label.
- * @returns {Locator} The `role="button"` trigger locator.
+ * @returns {Locator} The native `<button>` trigger locator.
  */
 export function metricTrigger(page: Page, cellAccessibleLabel: string): Locator {
-  return page.locator(`[role="button"][aria-label="${cellAccessibleLabel}"]`);
+  return page.getByRole('button', { name: cellAccessibleLabel });
 }
 
 /**
@@ -292,14 +292,18 @@ export async function openMergedHeatmap(
     controlActivation
   );
 
-  for (const assignmentTitle of assignmentTitles) {
-    await selectBuilderOption(
-      page,
-      HEATMAPS_ASSIGNMENTS_COMBOBOX_INDEX,
-      assignmentTitle,
-      controlActivation
+  let selection = Promise.resolve();
+  assignmentTitles.forEach((assignmentTitle) => {
+    selection = selection.then(() =>
+      selectBuilderOption(
+        page,
+        HEATMAPS_ASSIGNMENTS_COMBOBOX_INDEX,
+        assignmentTitle,
+        controlActivation
+      )
     );
-  }
+  });
+  await selection;
 
   await expect(page.getByRole('table', { name: HEATMAP_TABLE_NAME })).toBeVisible();
 }
@@ -385,7 +389,7 @@ export function taskMetricCells(
   page: Page,
   cell: Readonly<{ studentName: string; taskTitle: string }>
 ): Locator {
-  return page.locator(`[role="button"][aria-label^="${cell.studentName}, ${cell.taskTitle},"]`);
+  return page.locator(`button[aria-label^="${cell.studentName}, ${cell.taskTitle},"]`);
 }
 
 // ---------------------------------------------------------------------------

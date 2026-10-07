@@ -4,7 +4,7 @@
  * This suite renders the metric-cell module directly — the trigger/Popover
  * responsibility delegated by `taskHeatmapTableColumns.tsx` — and pins its
  * module contract: the shared accessible label and
- * score text on a focusable `role="button"` trigger that carries no background
+ * score text on a native button trigger that carries no background
  * tone of its own, hover and click activation, explicit Enter/Space handling,
  * right placement, and content assembly deferred until the overlay actually
  * opens.
@@ -107,7 +107,9 @@ describe('TaskMetricPreviewCell', () => {
 
     const trigger = screen.getByRole('button', { name: ACCESSIBLE_LABEL });
 
-    expect(trigger).toHaveAttribute('tabindex', '0');
+    expect(trigger.tagName).toBe('BUTTON');
+    expect(trigger).not.toHaveAttribute('role');
+    expect(trigger).not.toHaveAttribute('tabindex');
     expect(trigger).toHaveTextContent(SCORE_TEXT);
     // Documented 4px half-unit exception: the padding widens the hover/click
     // target around the score without covering the whole table cell.
