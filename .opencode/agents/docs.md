@@ -143,7 +143,6 @@ Do not claim completion until documentation and JSDoc reflect the implemented co
 
 Provide a concise handoff summary including:
 
-- Files read (explicit paths), including mandatory docs from agent instructions.
 - Files updated/created.
 - What behaviour or contract changes were documented.
 - Policy updates made.

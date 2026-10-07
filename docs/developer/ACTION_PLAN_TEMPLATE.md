@@ -46,9 +46,9 @@ For each section below:
 3. **Refactor**: tidy implementation with all tests still green.
 4. Run section-level verification commands.
 
-### Delegation mandatory-read gate (mandatory for sub-agent execution)
+### Delegation mandatory reads (mandatory for sub-agent execution)
 
-When a section is delegated to sub-agents, the plan must define and enforce mandatory documentation reads.
+When a section is delegated to sub-agents, the plan must define the mandatory documentation reads for that phase.
 
 For each delegated phase (`Testing Specialist`, `Implementation`, `Code Reviewer`, `Docs`, `De-Sloppification`, or planning agents when used):
 
@@ -56,9 +56,8 @@ For each delegated phase (`Testing Specialist`, `Implementation`, `Code Reviewer
    `@`-prefixed worktree-relative paths (e.g. `@SPEC.md`, `@src/backend/Services/AssessmentService.js`)
    so opencode injects the line-numbered file contents into the sub-agent prompt — never paste
    file contents into the prompt body
-2. require the sub-agent handoff to include `Files read` with explicit file paths
-3. verify every mandatory file is listed before accepting the handoff
-4. if any mandatory file is missing, return the work to the same sub-agent and block progression to the next phase
+
+Injection is the delivery mechanism, so no read-evidence report is required from the sub-agent.
 
 ### Shared-helper planning gate (mandatory when helper changes are expected)
 
@@ -196,7 +195,6 @@ _(Repeat above section template for each logical chunk of work, renumbering sect
 2. Run touched frontend service/UI suites.
 3. Run backend frontend lint commands.
 4. Run any required e2e tests.
-5. Verify mandatory-read evidence (`Files read`) is complete for every delegated regression handoff.
 
 ### Section checks
 
@@ -229,8 +227,7 @@ _(Repeat above section template for each logical chunk of work, renumbering sect
 1. Verify docs mention persistence/transport strategies.
 2. Verify API docs list new endpoints/methods.
 3. Confirm notes/deviations fields are filled during implementation.
-4. Verify mandatory-read evidence (`Files read`) is complete for delegated docs/review handoffs.
-5. Reconcile planned shared-helper entries in canonical docs: keep `Not implemented` where still pending, and update implemented entries where delivered.
+4. Reconcile planned shared-helper entries in canonical docs: keep `Not implemented` where still pending, and update implemented entries where delivered.
 
 ### Optional `@remarks` JSDoc review
 

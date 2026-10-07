@@ -20,8 +20,7 @@ import { TaskPreviewCard, type TaskPreviewData } from './TaskPreviewCard';
 const IMAGE_CONTENT = 'data:image/png;base64,iVBORw0KGgo=';
 const TABLE_CONTENT = '| A | B |\n|---|---|\n| 1 | 2 |';
 const TEXT_CONTENT = 'Hello world';
-const REASONING_TEXT =
-  'The student demonstrates a solid understanding of the core concepts.';
+const REASONING_TEXT = 'The student demonstrates a solid understanding of the core concepts.';
 
 /** Score carried by the default computed fixture. */
 const COMPUTED_SCORE = 5;
@@ -30,6 +29,10 @@ const ACCURACY_SCORE = 3;
 
 /** A schema-valid error task-display metric. */
 const ERROR_METRIC: TaskDisplayMetric = createErrorMetricResult();
+
+/** Derived editor source URL carried by the default preview fixture. */
+const PREVIEW_SOURCE_URL =
+  'https://docs.google.com/presentation/d/preview-document/edit#slide=id.1';
 
 /**
  * One schema-valid task-display metric per state that must remain renderable,
@@ -68,6 +71,7 @@ function createPreviewData(overrides: Partial<TaskPreviewData> = {}): TaskPrevie
     metricKey: 'completeness',
     metric: createComputedMetricResult({ value: COMPUTED_SCORE }),
     reasoning: REASONING_TEXT,
+    sourceUrl: PREVIEW_SOURCE_URL,
   } satisfies TaskPreviewData;
 
   return { ...baseData, ...overrides };
@@ -86,7 +90,7 @@ describe('TaskPreviewCard', () => {
           metricKey: 'completeness',
           metric: createComputedMetricResult({ value: COMPUTED_SCORE }),
         })}
-      />,
+      />
     );
 
     // Metric label text with colon from Typography.Text
@@ -104,7 +108,7 @@ describe('TaskPreviewCard', () => {
         data={createPreviewData({
           metric: NOT_ATTEMPTED_METRIC,
         })}
-      />,
+      />
     );
 
     expect(screen.getByText('N')).toBeInTheDocument();
@@ -118,7 +122,7 @@ describe('TaskPreviewCard', () => {
           metric: ERROR_METRIC,
           reasoning: '',
         })}
-      />,
+      />
     );
 
     expect(screen.getByText('E')).toBeInTheDocument();
@@ -134,9 +138,7 @@ describe('TaskPreviewCard', () => {
 
   // --- Reasoning: provided text ---
   it('renders reasoning section with the provided reasoning text', () => {
-    renderWithFrontendProviders(
-      <TaskPreviewCard data={createPreviewData()} />,
-    );
+    renderWithFrontendProviders(<TaskPreviewCard data={createPreviewData()} />);
 
     expect(screen.getByText('Reasoning')).toBeInTheDocument();
     expect(screen.getByText(REASONING_TEXT)).toBeInTheDocument();
@@ -144,9 +146,7 @@ describe('TaskPreviewCard', () => {
 
   // --- Reasoning: empty ---
   it('renders "No reasoning available" when reasoning is empty', () => {
-    renderWithFrontendProviders(
-      <TaskPreviewCard data={createPreviewData({ reasoning: '' })} />,
-    );
+    renderWithFrontendProviders(<TaskPreviewCard data={createPreviewData({ reasoning: '' })} />);
 
     expect(screen.getByText('Reasoning')).toBeInTheDocument();
     expect(screen.getByText('No reasoning available')).toBeInTheDocument();
@@ -154,9 +154,7 @@ describe('TaskPreviewCard', () => {
 
   // --- Artifact: IMAGE ---
   it('renders an IMAGE artifact using ImageRenderer', () => {
-    renderWithFrontendProviders(
-      <TaskPreviewCard data={createPreviewData()} />,
-    );
+    renderWithFrontendProviders(<TaskPreviewCard data={createPreviewData()} />);
 
     const img = document.querySelector('img');
     expect(img).toBeInTheDocument();
@@ -229,7 +227,7 @@ describe('TaskPreviewCard', () => {
           metric: createComputedMetricResult({ value: ACCURACY_SCORE }),
           reasoning: 'No decimal scores appear in this test.',
         })}
-      />,
+      />
     );
 
     const pillText = screen.getByText(String(ACCURACY_SCORE));

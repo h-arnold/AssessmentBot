@@ -183,15 +183,15 @@ items keyed by task ID.
 
 `StudentSubmission.toJSON()` emits:
 
-| Field          | Type                                    | Backend toJSON() | Frontend Zod                                        | Notes                                                                                                      |
-| -------------- | --------------------------------------- | ---------------- | --------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| `studentId`    | `string`                                | Always emitted   | `z.string()`                                        | Student's unique ID from Google Classroom.                                                                 |
-| `studentName`  | `string`                                | Always emitted   | `z.string()`                                        | Student's full name. Set at construction; will be removed in a future version (temporary for V0.7.2).      |
-| `assignmentId` | `string`                                | Always emitted   | `z.string()`                                        | The parent assignment ID.                                                                                  |
-| `documentId`   | `string\|null`                          | Always emitted   | `z.string().nullable()`                             | The Drive file ID of the student's submission document. Null for students who never opened the assignment. |
-| `items`        | `Record<string, StudentSubmissionItem>` | Always emitted   | `z.record(z.string(), StudentSubmissionItemSchema)` | Dictionary of submission items keyed by taskId. Empty object when no items.                                |
-| `createdAt`    | `string`                                | Always emitted   | `z.string()`                                        | ISO 8601 string. Set at construction.                                                                      |
-| `updatedAt`    | `string`                                | Always emitted   | `z.string()`                                        | ISO 8601 string with monotonic counter suffix (e.g. `"2025-09-10T12:30:00Z#2"`). Set via `touchUpdated()`. |
+| Field          | Type                                    | Backend toJSON() | Frontend Zod                                        | Notes                                                                                                                                                                                                                                                                                    |
+| -------------- | --------------------------------------- | ---------------- | --------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `studentId`    | `string`                                | Always emitted   | `z.string()`                                        | Student's unique ID from Google Classroom.                                                                                                                                                                                                                                               |
+| `studentName`  | `string\|null`                          | Always emitted   | `z.string()`                                        | Student's full name, or `null` per the constructor default (`studentName = null`). The full schema remains `z.string()` and is stricter than the backend's nullable emission; the partial schema is `z.string().nullable()`. Will be removed in a future version (temporary for V0.7.2). |
+| `assignmentId` | `string`                                | Always emitted   | `z.string()`                                        | The parent assignment ID.                                                                                                                                                                                                                                                                |
+| `documentId`   | `string\|null`                          | Always emitted   | `z.string().nullable().optional()`                  | The Drive file ID of the student's submission document. Null for students who never opened the assignment; `.optional()` tolerates the key being omitted entirely from real payloads (see key note below).                                                                               |
+| `items`        | `Record<string, StudentSubmissionItem>` | Always emitted   | `z.record(z.string(), StudentSubmissionItemSchema)` | Dictionary of submission items keyed by taskId. Empty object when no items.                                                                                                                                                                                                              |
+| `createdAt`    | `string`                                | Always emitted   | `z.string()`                                        | ISO 8601 string. Set at construction.                                                                                                                                                                                                                                                    |
+| `updatedAt`    | `string`                                | Always emitted   | `z.string()`                                        | ISO 8601 string with monotonic counter suffix (e.g. `"2025-09-10T12:30:00Z#2"`). Set via `touchUpdated()`.                                                                                                                                                                               |
 
 **Partial variant** (`StudentSubmission.toPartialJSON()`): Same as `toJSON()` except:
 
@@ -212,7 +212,7 @@ items keyed by task ID.
 Key notes:
 
 - The `updatedAt` monotonic counter suffix (e.g., `...Z#2`) is a valid `z.string()` match; Zod does not enforce ISO format, only the string type.
-- `documentId` in the partial frontend schema is `.nullable().optional()` to handle both `null` values and missing fields from Google Classroom, but the backend always emits it.
+- `documentId` is `.nullable().optional()` in both the full (`StudentSubmissionSchema`) and partial (`StudentSubmissionPartialSchema`) frontend schemas. The optionality tolerates both `null` values and the key being omitted entirely from real payloads, even though both `StudentSubmission.toJSON()` and `toPartialJSON()` always emit it.
 
 ### StudentSubmissionItem
 
@@ -322,8 +322,26 @@ See [Contract: AssignmentDefinition §Sub-entity BaseTaskArtifact](assignment-de
 
 The full and partial schemas on the frontend are:
 
-- **Full** (`BaseTaskArtifactSchema` in `assignmentAssessment.zod.ts`): discriminated union by `type` — `TEXT`/`TABLE`/`IMAGE` have `content: string | null`; `SPREADSHEET` has `content: Array<Array<string | number | null>> | null`; `base` has `content: unknown`. Common fields: `taskId`, `role`, `pageId`, `documentId`, `uid`, `contentHash` (nullable), `metadata`.
+- **Full** (`BaseTaskArtifactSchema` in `assignmentAssessment.zod.ts`): discriminated union by `type` — `TEXT`/`TABLE`/`IMAGE` have `content: string | null`; `SPREADSHEET` has `content: Array<Array<string | number | null>> | null`; `base` has `content: unknown`. Common fields: `taskId`, `role`, `pageId`, `documentId`, `uid`, `contentHash` (nullable), `metadata`. The shared `BaseTaskArtifactFields` object validates the two source IDs as required nullable strings (`pageId: z.string().nullable()`, `documentId: z.string().nullable()`); see the implemented alignment below. The parent submission `StudentSubmissionSchema.documentId` validator is deliberately unchanged and remains `.nullable().optional()`.
 - **Partial** (`BaseTaskArtifactPartialSchema` in `classDetailService.zod.ts`): reduced shape with `taskId`, `role`, `pageId` (nullable optional), `documentId` (nullable optional), `metadata` (optional), `uid`, `type`. `content` and `contentHash` are omitted entirely (set to `null` by `toPartialJSON()`).
+
+> **Status: Implemented (issue #19).** The full frontend `BaseTaskArtifactFields`
+> object in `assignmentAssessment.zod.ts` validates `pageId` and `documentId` as
+> required nullable strings (`z.string().nullable()`): both reject a missing key
+> and a non-string value, but accept the `null` source IDs the backend contract
+> permits. Numeric or object IDs and absent artefact fields remain invalid, and
+> types continue to derive from Zod. This was a frontend-only validation
+> alignment: the backend `BaseTaskArtifact` constructor already defaults
+> `pageId`/`documentId` to `null` and `toJSON()`/`toPartialJSON()` always emit
+> them as `string | null`
+> (`src/backend/Models/Artifacts/0_BaseTaskArtifact.js`), so no backend contract
+> change was required. **Parent optionality is unchanged:** the parent submission
+> `StudentSubmissionSchema.documentId` remains `.nullable().optional()` — the
+> optionality tolerates the key being omitted entirely from real payloads even
+> though the backend always emits it (see the `StudentSubmission` key note
+> above). The partial `BaseTaskArtifactPartialSchema` in `classDetailService.zod.ts`
+> likewise still accepts `string | null` via `.nullable().optional()` and is
+> unchanged.
 
 ---
 
@@ -383,9 +401,9 @@ The full and partial schemas on the frontend are:
    The ABClassResponseMapper._toReadView() replaces the embedded `assignmentDefinition` object with a `assignmentDefinitionKey` string at the transport boundary. This is **not** part of `Assignment.toPartialJSON()` — it is a transport transformation specific to the `getABClass` endpoint. The frontend resolves definition details from its own `AssignmentDefinitionPartials` registry.
    **Classification: Aligned** — intentional transport-boundary transformation documented in ABClassResponseMapper.
 
-3. **`StudentSubmissionPartialSchema.documentId` is `.nullable().optional()` but backend `toPartialJSON()` always emits it.**
-   Backend `StudentSubmission.toPartialJSON()` always includes `documentId` (which may be `null`). The frontend schema tolerates both `null` and an absent field to handle cases where Google Classroom omits the Drive file reference for students who never opened an assignment.
-   **Classification: Aligned** — documented in the partial-vs-full hydration pattern in [rehydration.md](../backend/rehydration.md). The Zod schema is permissive to handle both backend and Google Classroom edge cases.
+3. **`StudentSubmissionSchema.documentId` and `StudentSubmissionPartialSchema.documentId` are `.nullable().optional()` but the backend always emits the field.**
+   Backend `StudentSubmission.toJSON()` and `StudentSubmission.toPartialJSON()` always include `documentId` (which may be `null`). The frontend schemas tolerate both `null` and an absent field to handle cases where Google Classroom omits the Drive file reference for students who never opened an assignment.
+   **Classification: Aligned** — documented in the partial-vs-full hydration pattern in [rehydration.md](../backend/rehydration.md). The Zod schemas are permissive to handle both backend and Google Classroom edge cases.
 
 4. **`StudentSubmissionPartialSchema.studentName` is `z.string().nullable()` but backend always emits it as a nullable string.**
    Backend `StudentSubmission.toPartialJSON()` always includes `studentName` (which may be `null` per constructor default). The frontend schema expects `string | null`. Both sides aligned.
@@ -418,6 +436,22 @@ The full and partial schemas on the frontend are:
 11. **`startAssessmentRun` returns `null` and the frontend schema uses `z.void().nullable()`.**
     Backend returns `null` (no payload on success). The frontend `StartAssessmentRunResponseSchema` is `z.void().nullable()` which accepts both `undefined` (from the envelope's `data ?? null` coercion) and `null`.
     **Classification: Aligned** — standard pattern for void-response endpoints.
+
+12. **Full `BaseTaskArtifactFields` requires `pageId`/`documentId` as nullable strings, while the partial `BaseTaskArtifactPartialSchema` accepts them as `.nullable().optional()`.**
+    Backend `BaseTaskArtifact.toJSON()` and `BaseTaskArtifact.toPartialJSON()` always emit both source IDs
+    as `pageId`/`documentId` (`string | null`); `toPartialJSON()` redacts only `content` and `contentHash`,
+    so neither ID is ever omitted (`src/backend/Models/Artifacts/0_BaseTaskArtifact.js`). Issue #19
+    deliberately tightened only the full `getAssignment` transport schema
+    (`assignmentAssessment.zod.ts`), which now rejects a missing `pageId`/`documentId` key while still
+    accepting the `null` the backend permits. The class-detail partial schema
+    (`classDetailService.zod.ts`) is intentionally left permissive: its `.optional()` is defensive
+    tolerance at the `getABClass` transport boundary, mirroring the pre-existing optionality of the
+    parent `StudentSubmissionPartialSchema.documentId`, and is not a response to any backend omission.
+    Because the backend always emits both fields, the partial schema accepts an absent key the backend
+    never produces.
+    **Classification: Aligned** — deliberate, scoped asymmetry. The full path is the canonical strict
+    contract; the partial path is unchanged by issue #19 and remains broad pending a separate decision
+    to tighten the class-detail contract.
 
 ---
 

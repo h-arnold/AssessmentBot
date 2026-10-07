@@ -4,7 +4,7 @@
     "assignmentId": "assignment-0-0",
     "assignmentName": "Synthetic Assignment 1.1",
     "dueDate": null,
-    "updatedAt": null,
+    "updatedAt": "2024-01-02T09:03:00.000Z",
     "createdAt": "2024-01-02T09:00:00.000Z",
     "documentType": null,
     "referenceDocumentId": "reference-document-0",
@@ -269,23 +269,23 @@
     },
     "submissions": [
       {
-        "studentId": "student-0-0",
+        "studentId": "100000000000000000000",
         "studentName": "Connie Miller",
         "assignmentId": "assignment-0-1",
-        "documentId": "submission-document-assignment-0-1-student-0-0",
+        "documentId": "submission-document-assignment-0-1-100000000000000000000",
         "items": {
           "task-1-0": {
-            "id": "ssi-assignment-0-1-student-0-0-task-1-0",
+            "id": "ssi-assignment-0-1-100000000000000000000-task-1-0",
             "taskId": "task-1-0",
             "artifact": {
               "taskId": "task-1-0",
               "role": "submission",
               "pageId": "page-task-1-0",
-              "documentId": "artifact-document-assignment-0-1-student-0-0-task-1-0",
-              "content": "Synthetic submission content for assignment-0-1-student-0-0-task-1-0",
-              "contentHash": "hash-assignment-0-1-student-0-0-task-1-0",
+              "documentId": "artifact-document-assignment-0-1-100000000000000000000-task-1-0",
+              "content": "Synthetic submission content for assignment-0-1-100000000000000000000-task-1-0",
+              "contentHash": "hash-assignment-0-1-100000000000000000000-task-1-0",
               "metadata": {},
-              "uid": "uid-assignment-0-1-student-0-0-task-1-0",
+              "uid": "uid-assignment-0-1-100000000000000000000-task-1-0",
               "type": "TEXT"
             },
             "assessments": {
@@ -306,17 +306,17 @@
             }
           },
           "task-1-1": {
-            "id": "ssi-assignment-0-1-student-0-0-task-1-1",
+            "id": "ssi-assignment-0-1-100000000000000000000-task-1-1",
             "taskId": "task-1-1",
             "artifact": {
               "taskId": "task-1-1",
               "role": "submission",
               "pageId": "page-task-1-1",
-              "documentId": "artifact-document-assignment-0-1-student-0-0-task-1-1",
-              "content": "Synthetic submission content for assignment-0-1-student-0-0-task-1-1",
-              "contentHash": "hash-assignment-0-1-student-0-0-task-1-1",
+              "documentId": "artifact-document-assignment-0-1-100000000000000000000-task-1-1",
+              "content": "Synthetic submission content for assignment-0-1-100000000000000000000-task-1-1",
+              "contentHash": "hash-assignment-0-1-100000000000000000000-task-1-1",
               "metadata": {},
-              "uid": "uid-assignment-0-1-student-0-0-task-1-1",
+              "uid": "uid-assignment-0-1-100000000000000000000-task-1-1",
               "type": "TEXT"
             },
             "assessments": {
@@ -341,40 +341,40 @@
         "updatedAt": "2024-01-02T10:05:00.000Z"
       },
       {
-        "studentId": "student-0-1",
+        "studentId": "100000000000000000001",
         "studentName": "Brandt Swaniawski",
         "assignmentId": "assignment-0-1",
-        "documentId": "submission-document-assignment-0-1-student-0-1",
+        "documentId": "submission-document-assignment-0-1-100000000000000000001",
         "items": {
           "task-1-0": {
-            "id": "ssi-assignment-0-1-student-0-1-task-1-0",
+            "id": "ssi-assignment-0-1-100000000000000000001-task-1-0",
             "taskId": "task-1-0",
             "artifact": {
               "taskId": "task-1-0",
               "role": "submission",
               "pageId": "page-task-1-0",
-              "documentId": "artifact-document-assignment-0-1-student-0-1-task-1-0",
-              "content": "Synthetic submission content for assignment-0-1-student-0-1-task-1-0",
-              "contentHash": "hash-assignment-0-1-student-0-1-task-1-0",
+              "documentId": "artifact-document-assignment-0-1-100000000000000000001-task-1-0",
+              "content": "Synthetic submission content for assignment-0-1-100000000000000000001-task-1-0",
+              "contentHash": "hash-assignment-0-1-100000000000000000001-task-1-0",
               "metadata": {},
-              "uid": "uid-assignment-0-1-student-0-1-task-1-0",
+              "uid": "uid-assignment-0-1-100000000000000000001-task-1-0",
               "type": "TEXT"
             },
             "assessments": {},
             "feedback": {}
           },
           "task-1-1": {
-            "id": "ssi-assignment-0-1-student-0-1-task-1-1",
+            "id": "ssi-assignment-0-1-100000000000000000001-task-1-1",
             "taskId": "task-1-1",
             "artifact": {
               "taskId": "task-1-1",
               "role": "submission",
               "pageId": "page-task-1-1",
-              "documentId": "artifact-document-assignment-0-1-student-0-1-task-1-1",
-              "content": "Synthetic submission content for assignment-0-1-student-0-1-task-1-1",
-              "contentHash": "hash-assignment-0-1-student-0-1-task-1-1",
+              "documentId": "artifact-document-assignment-0-1-100000000000000000001-task-1-1",
+              "content": "Synthetic submission content for assignment-0-1-100000000000000000001-task-1-1",
+              "contentHash": "hash-assignment-0-1-100000000000000000001-task-1-1",
               "metadata": {},
-              "uid": "uid-assignment-0-1-student-0-1-task-1-1",
+              "uid": "uid-assignment-0-1-100000000000000000001-task-1-1",
               "type": "TEXT"
             },
             "assessments": {},
@@ -385,23 +385,23 @@
         "updatedAt": "2024-01-02T10:12:00.000Z"
       },
       {
-        "studentId": "student-0-2",
+        "studentId": "100000000000000000002",
         "studentName": "Jalen Hegmann-Skiles",
         "assignmentId": "assignment-0-1",
         "documentId": null,
         "items": {
           "task-1-0": {
-            "id": "ssi-assignment-0-1-student-0-2-task-1-0",
+            "id": "ssi-assignment-0-1-100000000000000000002-task-1-0",
             "taskId": "task-1-0",
             "artifact": {
               "taskId": "task-1-0",
               "role": "submission",
               "pageId": "page-task-1-0",
-              "documentId": "artifact-document-assignment-0-1-student-0-2-task-1-0",
-              "content": "Synthetic submission content for assignment-0-1-student-0-2-task-1-0",
-              "contentHash": "hash-assignment-0-1-student-0-2-task-1-0",
+              "documentId": "artifact-document-assignment-0-1-100000000000000000002-task-1-0",
+              "content": "Synthetic submission content for assignment-0-1-100000000000000000002-task-1-0",
+              "contentHash": "hash-assignment-0-1-100000000000000000002-task-1-0",
               "metadata": {},
-              "uid": "uid-assignment-0-1-student-0-2-task-1-0",
+              "uid": "uid-assignment-0-1-100000000000000000002-task-1-0",
               "type": "TEXT"
             },
             "assessments": {
@@ -417,17 +417,17 @@
             "feedback": {}
           },
           "task-1-1": {
-            "id": "ssi-assignment-0-1-student-0-2-task-1-1",
+            "id": "ssi-assignment-0-1-100000000000000000002-task-1-1",
             "taskId": "task-1-1",
             "artifact": {
               "taskId": "task-1-1",
               "role": "submission",
               "pageId": "page-task-1-1",
-              "documentId": "artifact-document-assignment-0-1-student-0-2-task-1-1",
-              "content": "Synthetic submission content for assignment-0-1-student-0-2-task-1-1",
-              "contentHash": "hash-assignment-0-1-student-0-2-task-1-1",
+              "documentId": "artifact-document-assignment-0-1-100000000000000000002-task-1-1",
+              "content": "Synthetic submission content for assignment-0-1-100000000000000000002-task-1-1",
+              "contentHash": "hash-assignment-0-1-100000000000000000002-task-1-1",
               "metadata": {},
-              "uid": "uid-assignment-0-1-student-0-2-task-1-1",
+              "uid": "uid-assignment-0-1-100000000000000000002-task-1-1",
               "type": "TEXT"
             },
             "assessments": {
@@ -447,23 +447,23 @@
         "updatedAt": "2024-01-02T10:19:00.000Z"
       },
       {
-        "studentId": "student-0-3",
+        "studentId": "100000000000000000003",
         "studentName": "Maryjane Daniel",
         "assignmentId": "assignment-0-1",
-        "documentId": "submission-document-assignment-0-1-student-0-3",
+        "documentId": "submission-document-assignment-0-1-100000000000000000003",
         "items": {
           "task-1-0": {
-            "id": "ssi-assignment-0-1-student-0-3-task-1-0",
+            "id": "ssi-assignment-0-1-100000000000000000003-task-1-0",
             "taskId": "task-1-0",
             "artifact": {
               "taskId": "task-1-0",
               "role": "submission",
               "pageId": "page-task-1-0",
-              "documentId": "artifact-document-assignment-0-1-student-0-3-task-1-0",
-              "content": "Synthetic submission content for assignment-0-1-student-0-3-task-1-0",
-              "contentHash": "hash-assignment-0-1-student-0-3-task-1-0",
+              "documentId": "artifact-document-assignment-0-1-100000000000000000003-task-1-0",
+              "content": "Synthetic submission content for assignment-0-1-100000000000000000003-task-1-0",
+              "contentHash": "hash-assignment-0-1-100000000000000000003-task-1-0",
               "metadata": {},
-              "uid": "uid-assignment-0-1-student-0-3-task-1-0",
+              "uid": "uid-assignment-0-1-100000000000000000003-task-1-0",
               "type": "TEXT"
             },
             "assessments": {
@@ -479,17 +479,17 @@
             "feedback": {}
           },
           "task-1-1": {
-            "id": "ssi-assignment-0-1-student-0-3-task-1-1",
+            "id": "ssi-assignment-0-1-100000000000000000003-task-1-1",
             "taskId": "task-1-1",
             "artifact": {
               "taskId": "task-1-1",
               "role": "submission",
               "pageId": "page-task-1-1",
-              "documentId": "artifact-document-assignment-0-1-student-0-3-task-1-1",
-              "content": "Synthetic submission content for assignment-0-1-student-0-3-task-1-1",
-              "contentHash": "hash-assignment-0-1-student-0-3-task-1-1",
+              "documentId": "artifact-document-assignment-0-1-100000000000000000003-task-1-1",
+              "content": "Synthetic submission content for assignment-0-1-100000000000000000003-task-1-1",
+              "contentHash": "hash-assignment-0-1-100000000000000000003-task-1-1",
               "metadata": {},
-              "uid": "uid-assignment-0-1-student-0-3-task-1-1",
+              "uid": "uid-assignment-0-1-100000000000000000003-task-1-1",
               "type": "TEXT"
             },
             "assessments": {
@@ -509,23 +509,23 @@
         "updatedAt": "2024-01-02T10:26:00.000Z"
       },
       {
-        "studentId": "student-0-4",
+        "studentId": "100000000000000000004",
         "studentName": "Donato Dickens",
         "assignmentId": "assignment-0-1",
-        "documentId": "submission-document-assignment-0-1-student-0-4",
+        "documentId": "submission-document-assignment-0-1-100000000000000000004",
         "items": {
           "task-1-0": {
-            "id": "ssi-assignment-0-1-student-0-4-task-1-0",
+            "id": "ssi-assignment-0-1-100000000000000000004-task-1-0",
             "taskId": "task-1-0",
             "artifact": {
               "taskId": "task-1-0",
               "role": "submission",
               "pageId": "page-task-1-0",
-              "documentId": "artifact-document-assignment-0-1-student-0-4-task-1-0",
-              "content": "Synthetic submission content for assignment-0-1-student-0-4-task-1-0",
-              "contentHash": "hash-assignment-0-1-student-0-4-task-1-0",
+              "documentId": "artifact-document-assignment-0-1-100000000000000000004-task-1-0",
+              "content": "Synthetic submission content for assignment-0-1-100000000000000000004-task-1-0",
+              "contentHash": "hash-assignment-0-1-100000000000000000004-task-1-0",
               "metadata": {},
-              "uid": "uid-assignment-0-1-student-0-4-task-1-0",
+              "uid": "uid-assignment-0-1-100000000000000000004-task-1-0",
               "type": "TEXT"
             },
             "assessments": {
@@ -541,17 +541,17 @@
             "feedback": {}
           },
           "task-1-1": {
-            "id": "ssi-assignment-0-1-student-0-4-task-1-1",
+            "id": "ssi-assignment-0-1-100000000000000000004-task-1-1",
             "taskId": "task-1-1",
             "artifact": {
               "taskId": "task-1-1",
               "role": "submission",
               "pageId": "page-task-1-1",
-              "documentId": "artifact-document-assignment-0-1-student-0-4-task-1-1",
-              "content": "Synthetic submission content for assignment-0-1-student-0-4-task-1-1",
-              "contentHash": "hash-assignment-0-1-student-0-4-task-1-1",
+              "documentId": "artifact-document-assignment-0-1-100000000000000000004-task-1-1",
+              "content": "Synthetic submission content for assignment-0-1-100000000000000000004-task-1-1",
+              "contentHash": "hash-assignment-0-1-100000000000000000004-task-1-1",
               "metadata": {},
-              "uid": "uid-assignment-0-1-student-0-4-task-1-1",
+              "uid": "uid-assignment-0-1-100000000000000000004-task-1-1",
               "type": "TEXT"
             },
             "assessments": {
@@ -571,23 +571,23 @@
         "updatedAt": "2024-01-02T10:33:00.000Z"
       },
       {
-        "studentId": "student-0-5",
+        "studentId": "100000000000000000005",
         "studentName": "Alisha Gibson",
         "assignmentId": "assignment-0-1",
-        "documentId": "submission-document-assignment-0-1-student-0-5",
+        "documentId": "submission-document-assignment-0-1-100000000000000000005",
         "items": {
           "task-1-0": {
-            "id": "ssi-assignment-0-1-student-0-5-task-1-0",
+            "id": "ssi-assignment-0-1-100000000000000000005-task-1-0",
             "taskId": "task-1-0",
             "artifact": {
               "taskId": "task-1-0",
               "role": "submission",
               "pageId": "page-task-1-0",
-              "documentId": "artifact-document-assignment-0-1-student-0-5-task-1-0",
-              "content": "Synthetic submission content for assignment-0-1-student-0-5-task-1-0",
-              "contentHash": "hash-assignment-0-1-student-0-5-task-1-0",
+              "documentId": "artifact-document-assignment-0-1-100000000000000000005-task-1-0",
+              "content": "Synthetic submission content for assignment-0-1-100000000000000000005-task-1-0",
+              "contentHash": "hash-assignment-0-1-100000000000000000005-task-1-0",
               "metadata": {},
-              "uid": "uid-assignment-0-1-student-0-5-task-1-0",
+              "uid": "uid-assignment-0-1-100000000000000000005-task-1-0",
               "type": "TEXT"
             },
             "assessments": {
@@ -603,17 +603,17 @@
             "feedback": {}
           },
           "task-1-1": {
-            "id": "ssi-assignment-0-1-student-0-5-task-1-1",
+            "id": "ssi-assignment-0-1-100000000000000000005-task-1-1",
             "taskId": "task-1-1",
             "artifact": {
               "taskId": "task-1-1",
               "role": "submission",
               "pageId": "page-task-1-1",
-              "documentId": "artifact-document-assignment-0-1-student-0-5-task-1-1",
-              "content": "Synthetic submission content for assignment-0-1-student-0-5-task-1-1",
-              "contentHash": "hash-assignment-0-1-student-0-5-task-1-1",
+              "documentId": "artifact-document-assignment-0-1-100000000000000000005-task-1-1",
+              "content": "Synthetic submission content for assignment-0-1-100000000000000000005-task-1-1",
+              "contentHash": "hash-assignment-0-1-100000000000000000005-task-1-1",
               "metadata": {},
-              "uid": "uid-assignment-0-1-student-0-5-task-1-1",
+              "uid": "uid-assignment-0-1-100000000000000000005-task-1-1",
               "type": "TEXT"
             },
             "assessments": {
@@ -816,23 +816,23 @@
     },
     "submissions": [
       {
-        "studentId": "student-0-0",
+        "studentId": "100000000000000000000",
         "studentName": "Connie Miller",
         "assignmentId": "assignment-0-2",
-        "documentId": "submission-document-assignment-0-2-student-0-0",
+        "documentId": "submission-document-assignment-0-2-100000000000000000000",
         "items": {
           "task-2-0": {
-            "id": "ssi-assignment-0-2-student-0-0-task-2-0",
+            "id": "ssi-assignment-0-2-100000000000000000000-task-2-0",
             "taskId": "task-2-0",
             "artifact": {
               "taskId": "task-2-0",
               "role": "submission",
               "pageId": "page-task-2-0",
-              "documentId": "artifact-document-assignment-0-2-student-0-0-task-2-0",
-              "content": "Synthetic submission content for assignment-0-2-student-0-0-task-2-0",
-              "contentHash": "hash-assignment-0-2-student-0-0-task-2-0",
+              "documentId": "artifact-document-assignment-0-2-100000000000000000000-task-2-0",
+              "content": "Synthetic submission content for assignment-0-2-100000000000000000000-task-2-0",
+              "contentHash": "hash-assignment-0-2-100000000000000000000-task-2-0",
               "metadata": {},
-              "uid": "uid-assignment-0-2-student-0-0-task-2-0",
+              "uid": "uid-assignment-0-2-100000000000000000000-task-2-0",
               "type": "TEXT"
             },
             "assessments": {
@@ -853,17 +853,17 @@
             }
           },
           "task-2-1": {
-            "id": "ssi-assignment-0-2-student-0-0-task-2-1",
+            "id": "ssi-assignment-0-2-100000000000000000000-task-2-1",
             "taskId": "task-2-1",
             "artifact": {
               "taskId": "task-2-1",
               "role": "submission",
               "pageId": "page-task-2-1",
-              "documentId": "artifact-document-assignment-0-2-student-0-0-task-2-1",
-              "content": "Synthetic submission content for assignment-0-2-student-0-0-task-2-1",
-              "contentHash": "hash-assignment-0-2-student-0-0-task-2-1",
+              "documentId": "artifact-document-assignment-0-2-100000000000000000000-task-2-1",
+              "content": "Synthetic submission content for assignment-0-2-100000000000000000000-task-2-1",
+              "contentHash": "hash-assignment-0-2-100000000000000000000-task-2-1",
               "metadata": {},
-              "uid": "uid-assignment-0-2-student-0-0-task-2-1",
+              "uid": "uid-assignment-0-2-100000000000000000000-task-2-1",
               "type": "TEXT"
             },
             "assessments": {
@@ -888,40 +888,40 @@
         "updatedAt": "2024-01-02T11:05:00.000Z"
       },
       {
-        "studentId": "student-0-1",
+        "studentId": "100000000000000000001",
         "studentName": "Brandt Swaniawski",
         "assignmentId": "assignment-0-2",
-        "documentId": "submission-document-assignment-0-2-student-0-1",
+        "documentId": "submission-document-assignment-0-2-100000000000000000001",
         "items": {
           "task-2-0": {
-            "id": "ssi-assignment-0-2-student-0-1-task-2-0",
+            "id": "ssi-assignment-0-2-100000000000000000001-task-2-0",
             "taskId": "task-2-0",
             "artifact": {
               "taskId": "task-2-0",
               "role": "submission",
               "pageId": "page-task-2-0",
-              "documentId": "artifact-document-assignment-0-2-student-0-1-task-2-0",
-              "content": "Synthetic submission content for assignment-0-2-student-0-1-task-2-0",
-              "contentHash": "hash-assignment-0-2-student-0-1-task-2-0",
+              "documentId": "artifact-document-assignment-0-2-100000000000000000001-task-2-0",
+              "content": "Synthetic submission content for assignment-0-2-100000000000000000001-task-2-0",
+              "contentHash": "hash-assignment-0-2-100000000000000000001-task-2-0",
               "metadata": {},
-              "uid": "uid-assignment-0-2-student-0-1-task-2-0",
+              "uid": "uid-assignment-0-2-100000000000000000001-task-2-0",
               "type": "TEXT"
             },
             "assessments": {},
             "feedback": {}
           },
           "task-2-1": {
-            "id": "ssi-assignment-0-2-student-0-1-task-2-1",
+            "id": "ssi-assignment-0-2-100000000000000000001-task-2-1",
             "taskId": "task-2-1",
             "artifact": {
               "taskId": "task-2-1",
               "role": "submission",
               "pageId": "page-task-2-1",
-              "documentId": "artifact-document-assignment-0-2-student-0-1-task-2-1",
-              "content": "Synthetic submission content for assignment-0-2-student-0-1-task-2-1",
-              "contentHash": "hash-assignment-0-2-student-0-1-task-2-1",
+              "documentId": "artifact-document-assignment-0-2-100000000000000000001-task-2-1",
+              "content": "Synthetic submission content for assignment-0-2-100000000000000000001-task-2-1",
+              "contentHash": "hash-assignment-0-2-100000000000000000001-task-2-1",
               "metadata": {},
-              "uid": "uid-assignment-0-2-student-0-1-task-2-1",
+              "uid": "uid-assignment-0-2-100000000000000000001-task-2-1",
               "type": "TEXT"
             },
             "assessments": {},
@@ -1115,23 +1115,23 @@
     },
     "submissions": [
       {
-        "studentId": "student-0-0",
+        "studentId": "100000000000000000000",
         "studentName": "Connie Miller",
         "assignmentId": "assignment-0-3",
-        "documentId": "submission-document-assignment-0-3-student-0-0",
+        "documentId": "submission-document-assignment-0-3-100000000000000000000",
         "items": {
           "task-3-0": {
-            "id": "ssi-assignment-0-3-student-0-0-task-3-0",
+            "id": "ssi-assignment-0-3-100000000000000000000-task-3-0",
             "taskId": "task-3-0",
             "artifact": {
               "taskId": "task-3-0",
               "role": "submission",
               "pageId": "page-task-3-0",
-              "documentId": "artifact-document-assignment-0-3-student-0-0-task-3-0",
-              "content": "Synthetic submission content for assignment-0-3-student-0-0-task-3-0",
-              "contentHash": "hash-assignment-0-3-student-0-0-task-3-0",
+              "documentId": "artifact-document-assignment-0-3-100000000000000000000-task-3-0",
+              "content": "Synthetic submission content for assignment-0-3-100000000000000000000-task-3-0",
+              "contentHash": "hash-assignment-0-3-100000000000000000000-task-3-0",
               "metadata": {},
-              "uid": "uid-assignment-0-3-student-0-0-task-3-0",
+              "uid": "uid-assignment-0-3-100000000000000000000-task-3-0",
               "type": "TEXT"
             },
             "assessments": {
@@ -1152,17 +1152,17 @@
             }
           },
           "task-3-1": {
-            "id": "ssi-assignment-0-3-student-0-0-task-3-1",
+            "id": "ssi-assignment-0-3-100000000000000000000-task-3-1",
             "taskId": "task-3-1",
             "artifact": {
               "taskId": "task-3-1",
               "role": "submission",
               "pageId": "page-task-3-1",
-              "documentId": "artifact-document-assignment-0-3-student-0-0-task-3-1",
-              "content": "Synthetic submission content for assignment-0-3-student-0-0-task-3-1",
-              "contentHash": "hash-assignment-0-3-student-0-0-task-3-1",
+              "documentId": "artifact-document-assignment-0-3-100000000000000000000-task-3-1",
+              "content": "Synthetic submission content for assignment-0-3-100000000000000000000-task-3-1",
+              "contentHash": "hash-assignment-0-3-100000000000000000000-task-3-1",
               "metadata": {},
-              "uid": "uid-assignment-0-3-student-0-0-task-3-1",
+              "uid": "uid-assignment-0-3-100000000000000000000-task-3-1",
               "type": "TEXT"
             },
             "assessments": {
@@ -1187,40 +1187,40 @@
         "updatedAt": "2024-01-02T12:05:00.000Z"
       },
       {
-        "studentId": "student-0-1",
+        "studentId": "100000000000000000001",
         "studentName": "Brandt Swaniawski",
         "assignmentId": "assignment-0-3",
-        "documentId": "submission-document-assignment-0-3-student-0-1",
+        "documentId": "submission-document-assignment-0-3-100000000000000000001",
         "items": {
           "task-3-0": {
-            "id": "ssi-assignment-0-3-student-0-1-task-3-0",
+            "id": "ssi-assignment-0-3-100000000000000000001-task-3-0",
             "taskId": "task-3-0",
             "artifact": {
               "taskId": "task-3-0",
               "role": "submission",
               "pageId": "page-task-3-0",
-              "documentId": "artifact-document-assignment-0-3-student-0-1-task-3-0",
-              "content": "Synthetic submission content for assignment-0-3-student-0-1-task-3-0",
-              "contentHash": "hash-assignment-0-3-student-0-1-task-3-0",
+              "documentId": "artifact-document-assignment-0-3-100000000000000000001-task-3-0",
+              "content": "Synthetic submission content for assignment-0-3-100000000000000000001-task-3-0",
+              "contentHash": "hash-assignment-0-3-100000000000000000001-task-3-0",
               "metadata": {},
-              "uid": "uid-assignment-0-3-student-0-1-task-3-0",
+              "uid": "uid-assignment-0-3-100000000000000000001-task-3-0",
               "type": "TEXT"
             },
             "assessments": {},
             "feedback": {}
           },
           "task-3-1": {
-            "id": "ssi-assignment-0-3-student-0-1-task-3-1",
+            "id": "ssi-assignment-0-3-100000000000000000001-task-3-1",
             "taskId": "task-3-1",
             "artifact": {
               "taskId": "task-3-1",
               "role": "submission",
               "pageId": "page-task-3-1",
-              "documentId": "artifact-document-assignment-0-3-student-0-1-task-3-1",
-              "content": "Synthetic submission content for assignment-0-3-student-0-1-task-3-1",
-              "contentHash": "hash-assignment-0-3-student-0-1-task-3-1",
+              "documentId": "artifact-document-assignment-0-3-100000000000000000001-task-3-1",
+              "content": "Synthetic submission content for assignment-0-3-100000000000000000001-task-3-1",
+              "contentHash": "hash-assignment-0-3-100000000000000000001-task-3-1",
               "metadata": {},
-              "uid": "uid-assignment-0-3-student-0-1-task-3-1",
+              "uid": "uid-assignment-0-3-100000000000000000001-task-3-1",
               "type": "TEXT"
             },
             "assessments": {},
@@ -1231,23 +1231,23 @@
         "updatedAt": "2024-01-02T12:12:00.000Z"
       },
       {
-        "studentId": "student-0-2",
+        "studentId": "100000000000000000002",
         "studentName": "Jalen Hegmann-Skiles",
         "assignmentId": "assignment-0-3",
         "documentId": null,
         "items": {
           "task-3-0": {
-            "id": "ssi-assignment-0-3-student-0-2-task-3-0",
+            "id": "ssi-assignment-0-3-100000000000000000002-task-3-0",
             "taskId": "task-3-0",
             "artifact": {
               "taskId": "task-3-0",
               "role": "submission",
               "pageId": "page-task-3-0",
-              "documentId": "artifact-document-assignment-0-3-student-0-2-task-3-0",
-              "content": "Synthetic submission content for assignment-0-3-student-0-2-task-3-0",
-              "contentHash": "hash-assignment-0-3-student-0-2-task-3-0",
+              "documentId": "artifact-document-assignment-0-3-100000000000000000002-task-3-0",
+              "content": "Synthetic submission content for assignment-0-3-100000000000000000002-task-3-0",
+              "contentHash": "hash-assignment-0-3-100000000000000000002-task-3-0",
               "metadata": {},
-              "uid": "uid-assignment-0-3-student-0-2-task-3-0",
+              "uid": "uid-assignment-0-3-100000000000000000002-task-3-0",
               "type": "TEXT"
             },
             "assessments": {
@@ -1263,17 +1263,17 @@
             "feedback": {}
           },
           "task-3-1": {
-            "id": "ssi-assignment-0-3-student-0-2-task-3-1",
+            "id": "ssi-assignment-0-3-100000000000000000002-task-3-1",
             "taskId": "task-3-1",
             "artifact": {
               "taskId": "task-3-1",
               "role": "submission",
               "pageId": "page-task-3-1",
-              "documentId": "artifact-document-assignment-0-3-student-0-2-task-3-1",
-              "content": "Synthetic submission content for assignment-0-3-student-0-2-task-3-1",
-              "contentHash": "hash-assignment-0-3-student-0-2-task-3-1",
+              "documentId": "artifact-document-assignment-0-3-100000000000000000002-task-3-1",
+              "content": "Synthetic submission content for assignment-0-3-100000000000000000002-task-3-1",
+              "contentHash": "hash-assignment-0-3-100000000000000000002-task-3-1",
               "metadata": {},
-              "uid": "uid-assignment-0-3-student-0-2-task-3-1",
+              "uid": "uid-assignment-0-3-100000000000000000002-task-3-1",
               "type": "TEXT"
             },
             "assessments": {
@@ -1293,23 +1293,23 @@
         "updatedAt": "2024-01-02T12:19:00.000Z"
       },
       {
-        "studentId": "student-0-3",
+        "studentId": "100000000000000000003",
         "studentName": "Maryjane Daniel",
         "assignmentId": "assignment-0-3",
-        "documentId": "submission-document-assignment-0-3-student-0-3",
+        "documentId": "submission-document-assignment-0-3-100000000000000000003",
         "items": {
           "task-3-0": {
-            "id": "ssi-assignment-0-3-student-0-3-task-3-0",
+            "id": "ssi-assignment-0-3-100000000000000000003-task-3-0",
             "taskId": "task-3-0",
             "artifact": {
               "taskId": "task-3-0",
               "role": "submission",
               "pageId": "page-task-3-0",
-              "documentId": "artifact-document-assignment-0-3-student-0-3-task-3-0",
-              "content": "Synthetic submission content for assignment-0-3-student-0-3-task-3-0",
-              "contentHash": "hash-assignment-0-3-student-0-3-task-3-0",
+              "documentId": "artifact-document-assignment-0-3-100000000000000000003-task-3-0",
+              "content": "Synthetic submission content for assignment-0-3-100000000000000000003-task-3-0",
+              "contentHash": "hash-assignment-0-3-100000000000000000003-task-3-0",
               "metadata": {},
-              "uid": "uid-assignment-0-3-student-0-3-task-3-0",
+              "uid": "uid-assignment-0-3-100000000000000000003-task-3-0",
               "type": "TEXT"
             },
             "assessments": {
@@ -1325,17 +1325,17 @@
             "feedback": {}
           },
           "task-3-1": {
-            "id": "ssi-assignment-0-3-student-0-3-task-3-1",
+            "id": "ssi-assignment-0-3-100000000000000000003-task-3-1",
             "taskId": "task-3-1",
             "artifact": {
               "taskId": "task-3-1",
               "role": "submission",
               "pageId": "page-task-3-1",
-              "documentId": "artifact-document-assignment-0-3-student-0-3-task-3-1",
-              "content": "Synthetic submission content for assignment-0-3-student-0-3-task-3-1",
-              "contentHash": "hash-assignment-0-3-student-0-3-task-3-1",
+              "documentId": "artifact-document-assignment-0-3-100000000000000000003-task-3-1",
+              "content": "Synthetic submission content for assignment-0-3-100000000000000000003-task-3-1",
+              "contentHash": "hash-assignment-0-3-100000000000000000003-task-3-1",
               "metadata": {},
-              "uid": "uid-assignment-0-3-student-0-3-task-3-1",
+              "uid": "uid-assignment-0-3-100000000000000000003-task-3-1",
               "type": "TEXT"
             },
             "assessments": {
@@ -1355,23 +1355,23 @@
         "updatedAt": "2024-01-02T12:26:00.000Z"
       },
       {
-        "studentId": "student-0-4",
+        "studentId": "100000000000000000004",
         "studentName": "Donato Dickens",
         "assignmentId": "assignment-0-3",
-        "documentId": "submission-document-assignment-0-3-student-0-4",
+        "documentId": "submission-document-assignment-0-3-100000000000000000004",
         "items": {
           "task-3-0": {
-            "id": "ssi-assignment-0-3-student-0-4-task-3-0",
+            "id": "ssi-assignment-0-3-100000000000000000004-task-3-0",
             "taskId": "task-3-0",
             "artifact": {
               "taskId": "task-3-0",
               "role": "submission",
               "pageId": "page-task-3-0",
-              "documentId": "artifact-document-assignment-0-3-student-0-4-task-3-0",
-              "content": "Synthetic submission content for assignment-0-3-student-0-4-task-3-0",
-              "contentHash": "hash-assignment-0-3-student-0-4-task-3-0",
+              "documentId": "artifact-document-assignment-0-3-100000000000000000004-task-3-0",
+              "content": "Synthetic submission content for assignment-0-3-100000000000000000004-task-3-0",
+              "contentHash": "hash-assignment-0-3-100000000000000000004-task-3-0",
               "metadata": {},
-              "uid": "uid-assignment-0-3-student-0-4-task-3-0",
+              "uid": "uid-assignment-0-3-100000000000000000004-task-3-0",
               "type": "TEXT"
             },
             "assessments": {
@@ -1387,17 +1387,17 @@
             "feedback": {}
           },
           "task-3-1": {
-            "id": "ssi-assignment-0-3-student-0-4-task-3-1",
+            "id": "ssi-assignment-0-3-100000000000000000004-task-3-1",
             "taskId": "task-3-1",
             "artifact": {
               "taskId": "task-3-1",
               "role": "submission",
               "pageId": "page-task-3-1",
-              "documentId": "artifact-document-assignment-0-3-student-0-4-task-3-1",
-              "content": "Synthetic submission content for assignment-0-3-student-0-4-task-3-1",
-              "contentHash": "hash-assignment-0-3-student-0-4-task-3-1",
+              "documentId": "artifact-document-assignment-0-3-100000000000000000004-task-3-1",
+              "content": "Synthetic submission content for assignment-0-3-100000000000000000004-task-3-1",
+              "contentHash": "hash-assignment-0-3-100000000000000000004-task-3-1",
               "metadata": {},
-              "uid": "uid-assignment-0-3-student-0-4-task-3-1",
+              "uid": "uid-assignment-0-3-100000000000000000004-task-3-1",
               "type": "TEXT"
             },
             "assessments": {
@@ -1417,23 +1417,23 @@
         "updatedAt": "2024-01-02T12:33:00.000Z"
       },
       {
-        "studentId": "student-0-5",
+        "studentId": "100000000000000000005",
         "studentName": "Alisha Gibson",
         "assignmentId": "assignment-0-3",
-        "documentId": "submission-document-assignment-0-3-student-0-5",
+        "documentId": "submission-document-assignment-0-3-100000000000000000005",
         "items": {
           "task-3-0": {
-            "id": "ssi-assignment-0-3-student-0-5-task-3-0",
+            "id": "ssi-assignment-0-3-100000000000000000005-task-3-0",
             "taskId": "task-3-0",
             "artifact": {
               "taskId": "task-3-0",
               "role": "submission",
               "pageId": "page-task-3-0",
-              "documentId": "artifact-document-assignment-0-3-student-0-5-task-3-0",
-              "content": "Synthetic submission content for assignment-0-3-student-0-5-task-3-0",
-              "contentHash": "hash-assignment-0-3-student-0-5-task-3-0",
+              "documentId": "artifact-document-assignment-0-3-100000000000000000005-task-3-0",
+              "content": "Synthetic submission content for assignment-0-3-100000000000000000005-task-3-0",
+              "contentHash": "hash-assignment-0-3-100000000000000000005-task-3-0",
               "metadata": {},
-              "uid": "uid-assignment-0-3-student-0-5-task-3-0",
+              "uid": "uid-assignment-0-3-100000000000000000005-task-3-0",
               "type": "TEXT"
             },
             "assessments": {
@@ -1449,17 +1449,17 @@
             "feedback": {}
           },
           "task-3-1": {
-            "id": "ssi-assignment-0-3-student-0-5-task-3-1",
+            "id": "ssi-assignment-0-3-100000000000000000005-task-3-1",
             "taskId": "task-3-1",
             "artifact": {
               "taskId": "task-3-1",
               "role": "submission",
               "pageId": "page-task-3-1",
-              "documentId": "artifact-document-assignment-0-3-student-0-5-task-3-1",
-              "content": "Synthetic submission content for assignment-0-3-student-0-5-task-3-1",
-              "contentHash": "hash-assignment-0-3-student-0-5-task-3-1",
+              "documentId": "artifact-document-assignment-0-3-100000000000000000005-task-3-1",
+              "content": "Synthetic submission content for assignment-0-3-100000000000000000005-task-3-1",
+              "contentHash": "hash-assignment-0-3-100000000000000000005-task-3-1",
               "metadata": {},
-              "uid": "uid-assignment-0-3-student-0-5-task-3-1",
+              "uid": "uid-assignment-0-3-100000000000000000005-task-3-1",
               "type": "TEXT"
             },
             "assessments": {
@@ -1579,7 +1579,7 @@
     "assignmentId": "assignment-1-0",
     "assignmentName": "Synthetic Assignment 2.1",
     "dueDate": null,
-    "updatedAt": null,
+    "updatedAt": "2024-01-03T09:03:00.000Z",
     "createdAt": "2024-01-03T09:00:00.000Z",
     "documentType": null,
     "referenceDocumentId": "reference-document-1",
@@ -1844,23 +1844,23 @@
     },
     "submissions": [
       {
-        "studentId": "student-1-0",
+        "studentId": "100000000010000000000",
         "studentName": "Kamron Medhurst",
         "assignmentId": "assignment-1-1",
-        "documentId": "submission-document-assignment-1-1-student-1-0",
+        "documentId": "submission-document-assignment-1-1-100000000010000000000",
         "items": {
           "task-2-0": {
-            "id": "ssi-assignment-1-1-student-1-0-task-2-0",
+            "id": "ssi-assignment-1-1-100000000010000000000-task-2-0",
             "taskId": "task-2-0",
             "artifact": {
               "taskId": "task-2-0",
               "role": "submission",
               "pageId": "page-task-2-0",
-              "documentId": "artifact-document-assignment-1-1-student-1-0-task-2-0",
-              "content": "Synthetic submission content for assignment-1-1-student-1-0-task-2-0",
-              "contentHash": "hash-assignment-1-1-student-1-0-task-2-0",
+              "documentId": "artifact-document-assignment-1-1-100000000010000000000-task-2-0",
+              "content": "Synthetic submission content for assignment-1-1-100000000010000000000-task-2-0",
+              "contentHash": "hash-assignment-1-1-100000000010000000000-task-2-0",
               "metadata": {},
-              "uid": "uid-assignment-1-1-student-1-0-task-2-0",
+              "uid": "uid-assignment-1-1-100000000010000000000-task-2-0",
               "type": "TEXT"
             },
             "assessments": {
@@ -1881,17 +1881,17 @@
             }
           },
           "task-2-1": {
-            "id": "ssi-assignment-1-1-student-1-0-task-2-1",
+            "id": "ssi-assignment-1-1-100000000010000000000-task-2-1",
             "taskId": "task-2-1",
             "artifact": {
               "taskId": "task-2-1",
               "role": "submission",
               "pageId": "page-task-2-1",
-              "documentId": "artifact-document-assignment-1-1-student-1-0-task-2-1",
-              "content": "Synthetic submission content for assignment-1-1-student-1-0-task-2-1",
-              "contentHash": "hash-assignment-1-1-student-1-0-task-2-1",
+              "documentId": "artifact-document-assignment-1-1-100000000010000000000-task-2-1",
+              "content": "Synthetic submission content for assignment-1-1-100000000010000000000-task-2-1",
+              "contentHash": "hash-assignment-1-1-100000000010000000000-task-2-1",
               "metadata": {},
-              "uid": "uid-assignment-1-1-student-1-0-task-2-1",
+              "uid": "uid-assignment-1-1-100000000010000000000-task-2-1",
               "type": "TEXT"
             },
             "assessments": {
@@ -1916,40 +1916,40 @@
         "updatedAt": "2024-01-03T10:05:00.000Z"
       },
       {
-        "studentId": "student-1-1",
+        "studentId": "100000000010000000001",
         "studentName": "Whitney Schneider",
         "assignmentId": "assignment-1-1",
-        "documentId": "submission-document-assignment-1-1-student-1-1",
+        "documentId": "submission-document-assignment-1-1-100000000010000000001",
         "items": {
           "task-2-0": {
-            "id": "ssi-assignment-1-1-student-1-1-task-2-0",
+            "id": "ssi-assignment-1-1-100000000010000000001-task-2-0",
             "taskId": "task-2-0",
             "artifact": {
               "taskId": "task-2-0",
               "role": "submission",
               "pageId": "page-task-2-0",
-              "documentId": "artifact-document-assignment-1-1-student-1-1-task-2-0",
-              "content": "Synthetic submission content for assignment-1-1-student-1-1-task-2-0",
-              "contentHash": "hash-assignment-1-1-student-1-1-task-2-0",
+              "documentId": "artifact-document-assignment-1-1-100000000010000000001-task-2-0",
+              "content": "Synthetic submission content for assignment-1-1-100000000010000000001-task-2-0",
+              "contentHash": "hash-assignment-1-1-100000000010000000001-task-2-0",
               "metadata": {},
-              "uid": "uid-assignment-1-1-student-1-1-task-2-0",
+              "uid": "uid-assignment-1-1-100000000010000000001-task-2-0",
               "type": "TEXT"
             },
             "assessments": {},
             "feedback": {}
           },
           "task-2-1": {
-            "id": "ssi-assignment-1-1-student-1-1-task-2-1",
+            "id": "ssi-assignment-1-1-100000000010000000001-task-2-1",
             "taskId": "task-2-1",
             "artifact": {
               "taskId": "task-2-1",
               "role": "submission",
               "pageId": "page-task-2-1",
-              "documentId": "artifact-document-assignment-1-1-student-1-1-task-2-1",
-              "content": "Synthetic submission content for assignment-1-1-student-1-1-task-2-1",
-              "contentHash": "hash-assignment-1-1-student-1-1-task-2-1",
+              "documentId": "artifact-document-assignment-1-1-100000000010000000001-task-2-1",
+              "content": "Synthetic submission content for assignment-1-1-100000000010000000001-task-2-1",
+              "contentHash": "hash-assignment-1-1-100000000010000000001-task-2-1",
               "metadata": {},
-              "uid": "uid-assignment-1-1-student-1-1-task-2-1",
+              "uid": "uid-assignment-1-1-100000000010000000001-task-2-1",
               "type": "TEXT"
             },
             "assessments": {},
@@ -1960,23 +1960,23 @@
         "updatedAt": "2024-01-03T10:12:00.000Z"
       },
       {
-        "studentId": "student-1-2",
+        "studentId": "100000000010000000002",
         "studentName": "Mae Flatley PhD",
         "assignmentId": "assignment-1-1",
         "documentId": null,
         "items": {
           "task-2-0": {
-            "id": "ssi-assignment-1-1-student-1-2-task-2-0",
+            "id": "ssi-assignment-1-1-100000000010000000002-task-2-0",
             "taskId": "task-2-0",
             "artifact": {
               "taskId": "task-2-0",
               "role": "submission",
               "pageId": "page-task-2-0",
-              "documentId": "artifact-document-assignment-1-1-student-1-2-task-2-0",
-              "content": "Synthetic submission content for assignment-1-1-student-1-2-task-2-0",
-              "contentHash": "hash-assignment-1-1-student-1-2-task-2-0",
+              "documentId": "artifact-document-assignment-1-1-100000000010000000002-task-2-0",
+              "content": "Synthetic submission content for assignment-1-1-100000000010000000002-task-2-0",
+              "contentHash": "hash-assignment-1-1-100000000010000000002-task-2-0",
               "metadata": {},
-              "uid": "uid-assignment-1-1-student-1-2-task-2-0",
+              "uid": "uid-assignment-1-1-100000000010000000002-task-2-0",
               "type": "TEXT"
             },
             "assessments": {
@@ -1992,17 +1992,17 @@
             "feedback": {}
           },
           "task-2-1": {
-            "id": "ssi-assignment-1-1-student-1-2-task-2-1",
+            "id": "ssi-assignment-1-1-100000000010000000002-task-2-1",
             "taskId": "task-2-1",
             "artifact": {
               "taskId": "task-2-1",
               "role": "submission",
               "pageId": "page-task-2-1",
-              "documentId": "artifact-document-assignment-1-1-student-1-2-task-2-1",
-              "content": "Synthetic submission content for assignment-1-1-student-1-2-task-2-1",
-              "contentHash": "hash-assignment-1-1-student-1-2-task-2-1",
+              "documentId": "artifact-document-assignment-1-1-100000000010000000002-task-2-1",
+              "content": "Synthetic submission content for assignment-1-1-100000000010000000002-task-2-1",
+              "contentHash": "hash-assignment-1-1-100000000010000000002-task-2-1",
               "metadata": {},
-              "uid": "uid-assignment-1-1-student-1-2-task-2-1",
+              "uid": "uid-assignment-1-1-100000000010000000002-task-2-1",
               "type": "TEXT"
             },
             "assessments": {
@@ -2022,23 +2022,23 @@
         "updatedAt": "2024-01-03T10:19:00.000Z"
       },
       {
-        "studentId": "student-1-3",
+        "studentId": "100000000010000000003",
         "studentName": "Martin Lang I",
         "assignmentId": "assignment-1-1",
-        "documentId": "submission-document-assignment-1-1-student-1-3",
+        "documentId": "submission-document-assignment-1-1-100000000010000000003",
         "items": {
           "task-2-0": {
-            "id": "ssi-assignment-1-1-student-1-3-task-2-0",
+            "id": "ssi-assignment-1-1-100000000010000000003-task-2-0",
             "taskId": "task-2-0",
             "artifact": {
               "taskId": "task-2-0",
               "role": "submission",
               "pageId": "page-task-2-0",
-              "documentId": "artifact-document-assignment-1-1-student-1-3-task-2-0",
-              "content": "Synthetic submission content for assignment-1-1-student-1-3-task-2-0",
-              "contentHash": "hash-assignment-1-1-student-1-3-task-2-0",
+              "documentId": "artifact-document-assignment-1-1-100000000010000000003-task-2-0",
+              "content": "Synthetic submission content for assignment-1-1-100000000010000000003-task-2-0",
+              "contentHash": "hash-assignment-1-1-100000000010000000003-task-2-0",
               "metadata": {},
-              "uid": "uid-assignment-1-1-student-1-3-task-2-0",
+              "uid": "uid-assignment-1-1-100000000010000000003-task-2-0",
               "type": "TEXT"
             },
             "assessments": {
@@ -2054,17 +2054,17 @@
             "feedback": {}
           },
           "task-2-1": {
-            "id": "ssi-assignment-1-1-student-1-3-task-2-1",
+            "id": "ssi-assignment-1-1-100000000010000000003-task-2-1",
             "taskId": "task-2-1",
             "artifact": {
               "taskId": "task-2-1",
               "role": "submission",
               "pageId": "page-task-2-1",
-              "documentId": "artifact-document-assignment-1-1-student-1-3-task-2-1",
-              "content": "Synthetic submission content for assignment-1-1-student-1-3-task-2-1",
-              "contentHash": "hash-assignment-1-1-student-1-3-task-2-1",
+              "documentId": "artifact-document-assignment-1-1-100000000010000000003-task-2-1",
+              "content": "Synthetic submission content for assignment-1-1-100000000010000000003-task-2-1",
+              "contentHash": "hash-assignment-1-1-100000000010000000003-task-2-1",
               "metadata": {},
-              "uid": "uid-assignment-1-1-student-1-3-task-2-1",
+              "uid": "uid-assignment-1-1-100000000010000000003-task-2-1",
               "type": "TEXT"
             },
             "assessments": {
@@ -2084,23 +2084,23 @@
         "updatedAt": "2024-01-03T10:26:00.000Z"
       },
       {
-        "studentId": "student-1-4",
+        "studentId": "100000000010000000004",
         "studentName": "Burley Bradtke",
         "assignmentId": "assignment-1-1",
-        "documentId": "submission-document-assignment-1-1-student-1-4",
+        "documentId": "submission-document-assignment-1-1-100000000010000000004",
         "items": {
           "task-2-0": {
-            "id": "ssi-assignment-1-1-student-1-4-task-2-0",
+            "id": "ssi-assignment-1-1-100000000010000000004-task-2-0",
             "taskId": "task-2-0",
             "artifact": {
               "taskId": "task-2-0",
               "role": "submission",
               "pageId": "page-task-2-0",
-              "documentId": "artifact-document-assignment-1-1-student-1-4-task-2-0",
-              "content": "Synthetic submission content for assignment-1-1-student-1-4-task-2-0",
-              "contentHash": "hash-assignment-1-1-student-1-4-task-2-0",
+              "documentId": "artifact-document-assignment-1-1-100000000010000000004-task-2-0",
+              "content": "Synthetic submission content for assignment-1-1-100000000010000000004-task-2-0",
+              "contentHash": "hash-assignment-1-1-100000000010000000004-task-2-0",
               "metadata": {},
-              "uid": "uid-assignment-1-1-student-1-4-task-2-0",
+              "uid": "uid-assignment-1-1-100000000010000000004-task-2-0",
               "type": "TEXT"
             },
             "assessments": {
@@ -2116,17 +2116,17 @@
             "feedback": {}
           },
           "task-2-1": {
-            "id": "ssi-assignment-1-1-student-1-4-task-2-1",
+            "id": "ssi-assignment-1-1-100000000010000000004-task-2-1",
             "taskId": "task-2-1",
             "artifact": {
               "taskId": "task-2-1",
               "role": "submission",
               "pageId": "page-task-2-1",
-              "documentId": "artifact-document-assignment-1-1-student-1-4-task-2-1",
-              "content": "Synthetic submission content for assignment-1-1-student-1-4-task-2-1",
-              "contentHash": "hash-assignment-1-1-student-1-4-task-2-1",
+              "documentId": "artifact-document-assignment-1-1-100000000010000000004-task-2-1",
+              "content": "Synthetic submission content for assignment-1-1-100000000010000000004-task-2-1",
+              "contentHash": "hash-assignment-1-1-100000000010000000004-task-2-1",
               "metadata": {},
-              "uid": "uid-assignment-1-1-student-1-4-task-2-1",
+              "uid": "uid-assignment-1-1-100000000010000000004-task-2-1",
               "type": "TEXT"
             },
             "assessments": {
@@ -2146,23 +2146,23 @@
         "updatedAt": "2024-01-03T10:33:00.000Z"
       },
       {
-        "studentId": "student-1-5",
+        "studentId": "100000000010000000005",
         "studentName": "Mark Gerhold",
         "assignmentId": "assignment-1-1",
-        "documentId": "submission-document-assignment-1-1-student-1-5",
+        "documentId": "submission-document-assignment-1-1-100000000010000000005",
         "items": {
           "task-2-0": {
-            "id": "ssi-assignment-1-1-student-1-5-task-2-0",
+            "id": "ssi-assignment-1-1-100000000010000000005-task-2-0",
             "taskId": "task-2-0",
             "artifact": {
               "taskId": "task-2-0",
               "role": "submission",
               "pageId": "page-task-2-0",
-              "documentId": "artifact-document-assignment-1-1-student-1-5-task-2-0",
-              "content": "Synthetic submission content for assignment-1-1-student-1-5-task-2-0",
-              "contentHash": "hash-assignment-1-1-student-1-5-task-2-0",
+              "documentId": "artifact-document-assignment-1-1-100000000010000000005-task-2-0",
+              "content": "Synthetic submission content for assignment-1-1-100000000010000000005-task-2-0",
+              "contentHash": "hash-assignment-1-1-100000000010000000005-task-2-0",
               "metadata": {},
-              "uid": "uid-assignment-1-1-student-1-5-task-2-0",
+              "uid": "uid-assignment-1-1-100000000010000000005-task-2-0",
               "type": "TEXT"
             },
             "assessments": {
@@ -2178,17 +2178,17 @@
             "feedback": {}
           },
           "task-2-1": {
-            "id": "ssi-assignment-1-1-student-1-5-task-2-1",
+            "id": "ssi-assignment-1-1-100000000010000000005-task-2-1",
             "taskId": "task-2-1",
             "artifact": {
               "taskId": "task-2-1",
               "role": "submission",
               "pageId": "page-task-2-1",
-              "documentId": "artifact-document-assignment-1-1-student-1-5-task-2-1",
-              "content": "Synthetic submission content for assignment-1-1-student-1-5-task-2-1",
-              "contentHash": "hash-assignment-1-1-student-1-5-task-2-1",
+              "documentId": "artifact-document-assignment-1-1-100000000010000000005-task-2-1",
+              "content": "Synthetic submission content for assignment-1-1-100000000010000000005-task-2-1",
+              "contentHash": "hash-assignment-1-1-100000000010000000005-task-2-1",
               "metadata": {},
-              "uid": "uid-assignment-1-1-student-1-5-task-2-1",
+              "uid": "uid-assignment-1-1-100000000010000000005-task-2-1",
               "type": "TEXT"
             },
             "assessments": {
@@ -2391,23 +2391,23 @@
     },
     "submissions": [
       {
-        "studentId": "student-1-0",
+        "studentId": "100000000010000000000",
         "studentName": "Kamron Medhurst",
         "assignmentId": "assignment-1-2",
-        "documentId": "submission-document-assignment-1-2-student-1-0",
+        "documentId": "submission-document-assignment-1-2-100000000010000000000",
         "items": {
           "task-3-0": {
-            "id": "ssi-assignment-1-2-student-1-0-task-3-0",
+            "id": "ssi-assignment-1-2-100000000010000000000-task-3-0",
             "taskId": "task-3-0",
             "artifact": {
               "taskId": "task-3-0",
               "role": "submission",
               "pageId": "page-task-3-0",
-              "documentId": "artifact-document-assignment-1-2-student-1-0-task-3-0",
-              "content": "Synthetic submission content for assignment-1-2-student-1-0-task-3-0",
-              "contentHash": "hash-assignment-1-2-student-1-0-task-3-0",
+              "documentId": "artifact-document-assignment-1-2-100000000010000000000-task-3-0",
+              "content": "Synthetic submission content for assignment-1-2-100000000010000000000-task-3-0",
+              "contentHash": "hash-assignment-1-2-100000000010000000000-task-3-0",
               "metadata": {},
-              "uid": "uid-assignment-1-2-student-1-0-task-3-0",
+              "uid": "uid-assignment-1-2-100000000010000000000-task-3-0",
               "type": "TEXT"
             },
             "assessments": {
@@ -2428,17 +2428,17 @@
             }
           },
           "task-3-1": {
-            "id": "ssi-assignment-1-2-student-1-0-task-3-1",
+            "id": "ssi-assignment-1-2-100000000010000000000-task-3-1",
             "taskId": "task-3-1",
             "artifact": {
               "taskId": "task-3-1",
               "role": "submission",
               "pageId": "page-task-3-1",
-              "documentId": "artifact-document-assignment-1-2-student-1-0-task-3-1",
-              "content": "Synthetic submission content for assignment-1-2-student-1-0-task-3-1",
-              "contentHash": "hash-assignment-1-2-student-1-0-task-3-1",
+              "documentId": "artifact-document-assignment-1-2-100000000010000000000-task-3-1",
+              "content": "Synthetic submission content for assignment-1-2-100000000010000000000-task-3-1",
+              "contentHash": "hash-assignment-1-2-100000000010000000000-task-3-1",
               "metadata": {},
-              "uid": "uid-assignment-1-2-student-1-0-task-3-1",
+              "uid": "uid-assignment-1-2-100000000010000000000-task-3-1",
               "type": "TEXT"
             },
             "assessments": {
@@ -2463,40 +2463,40 @@
         "updatedAt": "2024-01-03T11:05:00.000Z"
       },
       {
-        "studentId": "student-1-1",
+        "studentId": "100000000010000000001",
         "studentName": "Whitney Schneider",
         "assignmentId": "assignment-1-2",
-        "documentId": "submission-document-assignment-1-2-student-1-1",
+        "documentId": "submission-document-assignment-1-2-100000000010000000001",
         "items": {
           "task-3-0": {
-            "id": "ssi-assignment-1-2-student-1-1-task-3-0",
+            "id": "ssi-assignment-1-2-100000000010000000001-task-3-0",
             "taskId": "task-3-0",
             "artifact": {
               "taskId": "task-3-0",
               "role": "submission",
               "pageId": "page-task-3-0",
-              "documentId": "artifact-document-assignment-1-2-student-1-1-task-3-0",
-              "content": "Synthetic submission content for assignment-1-2-student-1-1-task-3-0",
-              "contentHash": "hash-assignment-1-2-student-1-1-task-3-0",
+              "documentId": "artifact-document-assignment-1-2-100000000010000000001-task-3-0",
+              "content": "Synthetic submission content for assignment-1-2-100000000010000000001-task-3-0",
+              "contentHash": "hash-assignment-1-2-100000000010000000001-task-3-0",
               "metadata": {},
-              "uid": "uid-assignment-1-2-student-1-1-task-3-0",
+              "uid": "uid-assignment-1-2-100000000010000000001-task-3-0",
               "type": "TEXT"
             },
             "assessments": {},
             "feedback": {}
           },
           "task-3-1": {
-            "id": "ssi-assignment-1-2-student-1-1-task-3-1",
+            "id": "ssi-assignment-1-2-100000000010000000001-task-3-1",
             "taskId": "task-3-1",
             "artifact": {
               "taskId": "task-3-1",
               "role": "submission",
               "pageId": "page-task-3-1",
-              "documentId": "artifact-document-assignment-1-2-student-1-1-task-3-1",
-              "content": "Synthetic submission content for assignment-1-2-student-1-1-task-3-1",
-              "contentHash": "hash-assignment-1-2-student-1-1-task-3-1",
+              "documentId": "artifact-document-assignment-1-2-100000000010000000001-task-3-1",
+              "content": "Synthetic submission content for assignment-1-2-100000000010000000001-task-3-1",
+              "contentHash": "hash-assignment-1-2-100000000010000000001-task-3-1",
               "metadata": {},
-              "uid": "uid-assignment-1-2-student-1-1-task-3-1",
+              "uid": "uid-assignment-1-2-100000000010000000001-task-3-1",
               "type": "TEXT"
             },
             "assessments": {},
@@ -2690,23 +2690,23 @@
     },
     "submissions": [
       {
-        "studentId": "student-1-0",
+        "studentId": "100000000010000000000",
         "studentName": "Kamron Medhurst",
         "assignmentId": "assignment-1-3",
-        "documentId": "submission-document-assignment-1-3-student-1-0",
+        "documentId": "submission-document-assignment-1-3-100000000010000000000",
         "items": {
           "task-0-0": {
-            "id": "ssi-assignment-1-3-student-1-0-task-0-0",
+            "id": "ssi-assignment-1-3-100000000010000000000-task-0-0",
             "taskId": "task-0-0",
             "artifact": {
               "taskId": "task-0-0",
               "role": "submission",
               "pageId": "page-task-0-0",
-              "documentId": "artifact-document-assignment-1-3-student-1-0-task-0-0",
-              "content": "Synthetic submission content for assignment-1-3-student-1-0-task-0-0",
-              "contentHash": "hash-assignment-1-3-student-1-0-task-0-0",
+              "documentId": "artifact-document-assignment-1-3-100000000010000000000-task-0-0",
+              "content": "Synthetic submission content for assignment-1-3-100000000010000000000-task-0-0",
+              "contentHash": "hash-assignment-1-3-100000000010000000000-task-0-0",
               "metadata": {},
-              "uid": "uid-assignment-1-3-student-1-0-task-0-0",
+              "uid": "uid-assignment-1-3-100000000010000000000-task-0-0",
               "type": "TEXT"
             },
             "assessments": {
@@ -2727,17 +2727,17 @@
             }
           },
           "task-0-1": {
-            "id": "ssi-assignment-1-3-student-1-0-task-0-1",
+            "id": "ssi-assignment-1-3-100000000010000000000-task-0-1",
             "taskId": "task-0-1",
             "artifact": {
               "taskId": "task-0-1",
               "role": "submission",
               "pageId": "page-task-0-1",
-              "documentId": "artifact-document-assignment-1-3-student-1-0-task-0-1",
-              "content": "Synthetic submission content for assignment-1-3-student-1-0-task-0-1",
-              "contentHash": "hash-assignment-1-3-student-1-0-task-0-1",
+              "documentId": "artifact-document-assignment-1-3-100000000010000000000-task-0-1",
+              "content": "Synthetic submission content for assignment-1-3-100000000010000000000-task-0-1",
+              "contentHash": "hash-assignment-1-3-100000000010000000000-task-0-1",
               "metadata": {},
-              "uid": "uid-assignment-1-3-student-1-0-task-0-1",
+              "uid": "uid-assignment-1-3-100000000010000000000-task-0-1",
               "type": "TEXT"
             },
             "assessments": {
@@ -2762,40 +2762,40 @@
         "updatedAt": "2024-01-03T12:05:00.000Z"
       },
       {
-        "studentId": "student-1-1",
+        "studentId": "100000000010000000001",
         "studentName": "Whitney Schneider",
         "assignmentId": "assignment-1-3",
-        "documentId": "submission-document-assignment-1-3-student-1-1",
+        "documentId": "submission-document-assignment-1-3-100000000010000000001",
         "items": {
           "task-0-0": {
-            "id": "ssi-assignment-1-3-student-1-1-task-0-0",
+            "id": "ssi-assignment-1-3-100000000010000000001-task-0-0",
             "taskId": "task-0-0",
             "artifact": {
               "taskId": "task-0-0",
               "role": "submission",
               "pageId": "page-task-0-0",
-              "documentId": "artifact-document-assignment-1-3-student-1-1-task-0-0",
-              "content": "Synthetic submission content for assignment-1-3-student-1-1-task-0-0",
-              "contentHash": "hash-assignment-1-3-student-1-1-task-0-0",
+              "documentId": "artifact-document-assignment-1-3-100000000010000000001-task-0-0",
+              "content": "Synthetic submission content for assignment-1-3-100000000010000000001-task-0-0",
+              "contentHash": "hash-assignment-1-3-100000000010000000001-task-0-0",
               "metadata": {},
-              "uid": "uid-assignment-1-3-student-1-1-task-0-0",
+              "uid": "uid-assignment-1-3-100000000010000000001-task-0-0",
               "type": "TEXT"
             },
             "assessments": {},
             "feedback": {}
           },
           "task-0-1": {
-            "id": "ssi-assignment-1-3-student-1-1-task-0-1",
+            "id": "ssi-assignment-1-3-100000000010000000001-task-0-1",
             "taskId": "task-0-1",
             "artifact": {
               "taskId": "task-0-1",
               "role": "submission",
               "pageId": "page-task-0-1",
-              "documentId": "artifact-document-assignment-1-3-student-1-1-task-0-1",
-              "content": "Synthetic submission content for assignment-1-3-student-1-1-task-0-1",
-              "contentHash": "hash-assignment-1-3-student-1-1-task-0-1",
+              "documentId": "artifact-document-assignment-1-3-100000000010000000001-task-0-1",
+              "content": "Synthetic submission content for assignment-1-3-100000000010000000001-task-0-1",
+              "contentHash": "hash-assignment-1-3-100000000010000000001-task-0-1",
               "metadata": {},
-              "uid": "uid-assignment-1-3-student-1-1-task-0-1",
+              "uid": "uid-assignment-1-3-100000000010000000001-task-0-1",
               "type": "TEXT"
             },
             "assessments": {},
@@ -2806,23 +2806,23 @@
         "updatedAt": "2024-01-03T12:12:00.000Z"
       },
       {
-        "studentId": "student-1-2",
+        "studentId": "100000000010000000002",
         "studentName": "Mae Flatley PhD",
         "assignmentId": "assignment-1-3",
         "documentId": null,
         "items": {
           "task-0-0": {
-            "id": "ssi-assignment-1-3-student-1-2-task-0-0",
+            "id": "ssi-assignment-1-3-100000000010000000002-task-0-0",
             "taskId": "task-0-0",
             "artifact": {
               "taskId": "task-0-0",
               "role": "submission",
               "pageId": "page-task-0-0",
-              "documentId": "artifact-document-assignment-1-3-student-1-2-task-0-0",
-              "content": "Synthetic submission content for assignment-1-3-student-1-2-task-0-0",
-              "contentHash": "hash-assignment-1-3-student-1-2-task-0-0",
+              "documentId": "artifact-document-assignment-1-3-100000000010000000002-task-0-0",
+              "content": "Synthetic submission content for assignment-1-3-100000000010000000002-task-0-0",
+              "contentHash": "hash-assignment-1-3-100000000010000000002-task-0-0",
               "metadata": {},
-              "uid": "uid-assignment-1-3-student-1-2-task-0-0",
+              "uid": "uid-assignment-1-3-100000000010000000002-task-0-0",
               "type": "TEXT"
             },
             "assessments": {
@@ -2838,17 +2838,17 @@
             "feedback": {}
           },
           "task-0-1": {
-            "id": "ssi-assignment-1-3-student-1-2-task-0-1",
+            "id": "ssi-assignment-1-3-100000000010000000002-task-0-1",
             "taskId": "task-0-1",
             "artifact": {
               "taskId": "task-0-1",
               "role": "submission",
               "pageId": "page-task-0-1",
-              "documentId": "artifact-document-assignment-1-3-student-1-2-task-0-1",
-              "content": "Synthetic submission content for assignment-1-3-student-1-2-task-0-1",
-              "contentHash": "hash-assignment-1-3-student-1-2-task-0-1",
+              "documentId": "artifact-document-assignment-1-3-100000000010000000002-task-0-1",
+              "content": "Synthetic submission content for assignment-1-3-100000000010000000002-task-0-1",
+              "contentHash": "hash-assignment-1-3-100000000010000000002-task-0-1",
               "metadata": {},
-              "uid": "uid-assignment-1-3-student-1-2-task-0-1",
+              "uid": "uid-assignment-1-3-100000000010000000002-task-0-1",
               "type": "TEXT"
             },
             "assessments": {
@@ -2868,23 +2868,23 @@
         "updatedAt": "2024-01-03T12:19:00.000Z"
       },
       {
-        "studentId": "student-1-3",
+        "studentId": "100000000010000000003",
         "studentName": "Martin Lang I",
         "assignmentId": "assignment-1-3",
-        "documentId": "submission-document-assignment-1-3-student-1-3",
+        "documentId": "submission-document-assignment-1-3-100000000010000000003",
         "items": {
           "task-0-0": {
-            "id": "ssi-assignment-1-3-student-1-3-task-0-0",
+            "id": "ssi-assignment-1-3-100000000010000000003-task-0-0",
             "taskId": "task-0-0",
             "artifact": {
               "taskId": "task-0-0",
               "role": "submission",
               "pageId": "page-task-0-0",
-              "documentId": "artifact-document-assignment-1-3-student-1-3-task-0-0",
-              "content": "Synthetic submission content for assignment-1-3-student-1-3-task-0-0",
-              "contentHash": "hash-assignment-1-3-student-1-3-task-0-0",
+              "documentId": "artifact-document-assignment-1-3-100000000010000000003-task-0-0",
+              "content": "Synthetic submission content for assignment-1-3-100000000010000000003-task-0-0",
+              "contentHash": "hash-assignment-1-3-100000000010000000003-task-0-0",
               "metadata": {},
-              "uid": "uid-assignment-1-3-student-1-3-task-0-0",
+              "uid": "uid-assignment-1-3-100000000010000000003-task-0-0",
               "type": "TEXT"
             },
             "assessments": {
@@ -2900,17 +2900,17 @@
             "feedback": {}
           },
           "task-0-1": {
-            "id": "ssi-assignment-1-3-student-1-3-task-0-1",
+            "id": "ssi-assignment-1-3-100000000010000000003-task-0-1",
             "taskId": "task-0-1",
             "artifact": {
               "taskId": "task-0-1",
               "role": "submission",
               "pageId": "page-task-0-1",
-              "documentId": "artifact-document-assignment-1-3-student-1-3-task-0-1",
-              "content": "Synthetic submission content for assignment-1-3-student-1-3-task-0-1",
-              "contentHash": "hash-assignment-1-3-student-1-3-task-0-1",
+              "documentId": "artifact-document-assignment-1-3-100000000010000000003-task-0-1",
+              "content": "Synthetic submission content for assignment-1-3-100000000010000000003-task-0-1",
+              "contentHash": "hash-assignment-1-3-100000000010000000003-task-0-1",
               "metadata": {},
-              "uid": "uid-assignment-1-3-student-1-3-task-0-1",
+              "uid": "uid-assignment-1-3-100000000010000000003-task-0-1",
               "type": "TEXT"
             },
             "assessments": {
@@ -2930,23 +2930,23 @@
         "updatedAt": "2024-01-03T12:26:00.000Z"
       },
       {
-        "studentId": "student-1-4",
+        "studentId": "100000000010000000004",
         "studentName": "Burley Bradtke",
         "assignmentId": "assignment-1-3",
-        "documentId": "submission-document-assignment-1-3-student-1-4",
+        "documentId": "submission-document-assignment-1-3-100000000010000000004",
         "items": {
           "task-0-0": {
-            "id": "ssi-assignment-1-3-student-1-4-task-0-0",
+            "id": "ssi-assignment-1-3-100000000010000000004-task-0-0",
             "taskId": "task-0-0",
             "artifact": {
               "taskId": "task-0-0",
               "role": "submission",
               "pageId": "page-task-0-0",
-              "documentId": "artifact-document-assignment-1-3-student-1-4-task-0-0",
-              "content": "Synthetic submission content for assignment-1-3-student-1-4-task-0-0",
-              "contentHash": "hash-assignment-1-3-student-1-4-task-0-0",
+              "documentId": "artifact-document-assignment-1-3-100000000010000000004-task-0-0",
+              "content": "Synthetic submission content for assignment-1-3-100000000010000000004-task-0-0",
+              "contentHash": "hash-assignment-1-3-100000000010000000004-task-0-0",
               "metadata": {},
-              "uid": "uid-assignment-1-3-student-1-4-task-0-0",
+              "uid": "uid-assignment-1-3-100000000010000000004-task-0-0",
               "type": "TEXT"
             },
             "assessments": {
@@ -2962,17 +2962,17 @@
             "feedback": {}
           },
           "task-0-1": {
-            "id": "ssi-assignment-1-3-student-1-4-task-0-1",
+            "id": "ssi-assignment-1-3-100000000010000000004-task-0-1",
             "taskId": "task-0-1",
             "artifact": {
               "taskId": "task-0-1",
               "role": "submission",
               "pageId": "page-task-0-1",
-              "documentId": "artifact-document-assignment-1-3-student-1-4-task-0-1",
-              "content": "Synthetic submission content for assignment-1-3-student-1-4-task-0-1",
-              "contentHash": "hash-assignment-1-3-student-1-4-task-0-1",
+              "documentId": "artifact-document-assignment-1-3-100000000010000000004-task-0-1",
+              "content": "Synthetic submission content for assignment-1-3-100000000010000000004-task-0-1",
+              "contentHash": "hash-assignment-1-3-100000000010000000004-task-0-1",
               "metadata": {},
-              "uid": "uid-assignment-1-3-student-1-4-task-0-1",
+              "uid": "uid-assignment-1-3-100000000010000000004-task-0-1",
               "type": "TEXT"
             },
             "assessments": {
@@ -2992,23 +2992,23 @@
         "updatedAt": "2024-01-03T12:33:00.000Z"
       },
       {
-        "studentId": "student-1-5",
+        "studentId": "100000000010000000005",
         "studentName": "Mark Gerhold",
         "assignmentId": "assignment-1-3",
-        "documentId": "submission-document-assignment-1-3-student-1-5",
+        "documentId": "submission-document-assignment-1-3-100000000010000000005",
         "items": {
           "task-0-0": {
-            "id": "ssi-assignment-1-3-student-1-5-task-0-0",
+            "id": "ssi-assignment-1-3-100000000010000000005-task-0-0",
             "taskId": "task-0-0",
             "artifact": {
               "taskId": "task-0-0",
               "role": "submission",
               "pageId": "page-task-0-0",
-              "documentId": "artifact-document-assignment-1-3-student-1-5-task-0-0",
-              "content": "Synthetic submission content for assignment-1-3-student-1-5-task-0-0",
-              "contentHash": "hash-assignment-1-3-student-1-5-task-0-0",
+              "documentId": "artifact-document-assignment-1-3-100000000010000000005-task-0-0",
+              "content": "Synthetic submission content for assignment-1-3-100000000010000000005-task-0-0",
+              "contentHash": "hash-assignment-1-3-100000000010000000005-task-0-0",
               "metadata": {},
-              "uid": "uid-assignment-1-3-student-1-5-task-0-0",
+              "uid": "uid-assignment-1-3-100000000010000000005-task-0-0",
               "type": "TEXT"
             },
             "assessments": {
@@ -3024,17 +3024,17 @@
             "feedback": {}
           },
           "task-0-1": {
-            "id": "ssi-assignment-1-3-student-1-5-task-0-1",
+            "id": "ssi-assignment-1-3-100000000010000000005-task-0-1",
             "taskId": "task-0-1",
             "artifact": {
               "taskId": "task-0-1",
               "role": "submission",
               "pageId": "page-task-0-1",
-              "documentId": "artifact-document-assignment-1-3-student-1-5-task-0-1",
-              "content": "Synthetic submission content for assignment-1-3-student-1-5-task-0-1",
-              "contentHash": "hash-assignment-1-3-student-1-5-task-0-1",
+              "documentId": "artifact-document-assignment-1-3-100000000010000000005-task-0-1",
+              "content": "Synthetic submission content for assignment-1-3-100000000010000000005-task-0-1",
+              "contentHash": "hash-assignment-1-3-100000000010000000005-task-0-1",
               "metadata": {},
-              "uid": "uid-assignment-1-3-student-1-5-task-0-1",
+              "uid": "uid-assignment-1-3-100000000010000000005-task-0-1",
               "type": "TEXT"
             },
             "assessments": {
@@ -3154,7 +3154,7 @@
     "assignmentId": "assignment-2-0",
     "assignmentName": "Synthetic Assignment 3.1",
     "dueDate": null,
-    "updatedAt": null,
+    "updatedAt": "2024-01-04T09:03:00.000Z",
     "createdAt": "2024-01-04T09:00:00.000Z",
     "documentType": null,
     "referenceDocumentId": "reference-document-2",
@@ -3419,23 +3419,23 @@
     },
     "submissions": [
       {
-        "studentId": "student-2-0",
+        "studentId": "100000000020000000000",
         "studentName": "Golden Wiegand",
         "assignmentId": "assignment-2-1",
-        "documentId": "submission-document-assignment-2-1-student-2-0",
+        "documentId": "submission-document-assignment-2-1-100000000020000000000",
         "items": {
           "task-3-0": {
-            "id": "ssi-assignment-2-1-student-2-0-task-3-0",
+            "id": "ssi-assignment-2-1-100000000020000000000-task-3-0",
             "taskId": "task-3-0",
             "artifact": {
               "taskId": "task-3-0",
               "role": "submission",
               "pageId": "page-task-3-0",
-              "documentId": "artifact-document-assignment-2-1-student-2-0-task-3-0",
-              "content": "Synthetic submission content for assignment-2-1-student-2-0-task-3-0",
-              "contentHash": "hash-assignment-2-1-student-2-0-task-3-0",
+              "documentId": "artifact-document-assignment-2-1-100000000020000000000-task-3-0",
+              "content": "Synthetic submission content for assignment-2-1-100000000020000000000-task-3-0",
+              "contentHash": "hash-assignment-2-1-100000000020000000000-task-3-0",
               "metadata": {},
-              "uid": "uid-assignment-2-1-student-2-0-task-3-0",
+              "uid": "uid-assignment-2-1-100000000020000000000-task-3-0",
               "type": "TEXT"
             },
             "assessments": {
@@ -3456,17 +3456,17 @@
             }
           },
           "task-3-1": {
-            "id": "ssi-assignment-2-1-student-2-0-task-3-1",
+            "id": "ssi-assignment-2-1-100000000020000000000-task-3-1",
             "taskId": "task-3-1",
             "artifact": {
               "taskId": "task-3-1",
               "role": "submission",
               "pageId": "page-task-3-1",
-              "documentId": "artifact-document-assignment-2-1-student-2-0-task-3-1",
-              "content": "Synthetic submission content for assignment-2-1-student-2-0-task-3-1",
-              "contentHash": "hash-assignment-2-1-student-2-0-task-3-1",
+              "documentId": "artifact-document-assignment-2-1-100000000020000000000-task-3-1",
+              "content": "Synthetic submission content for assignment-2-1-100000000020000000000-task-3-1",
+              "contentHash": "hash-assignment-2-1-100000000020000000000-task-3-1",
               "metadata": {},
-              "uid": "uid-assignment-2-1-student-2-0-task-3-1",
+              "uid": "uid-assignment-2-1-100000000020000000000-task-3-1",
               "type": "TEXT"
             },
             "assessments": {
@@ -3491,40 +3491,40 @@
         "updatedAt": "2024-01-04T10:05:00.000Z"
       },
       {
-        "studentId": "student-2-1",
+        "studentId": "100000000020000000001",
         "studentName": "Johnathon Windler V",
         "assignmentId": "assignment-2-1",
-        "documentId": "submission-document-assignment-2-1-student-2-1",
+        "documentId": "submission-document-assignment-2-1-100000000020000000001",
         "items": {
           "task-3-0": {
-            "id": "ssi-assignment-2-1-student-2-1-task-3-0",
+            "id": "ssi-assignment-2-1-100000000020000000001-task-3-0",
             "taskId": "task-3-0",
             "artifact": {
               "taskId": "task-3-0",
               "role": "submission",
               "pageId": "page-task-3-0",
-              "documentId": "artifact-document-assignment-2-1-student-2-1-task-3-0",
-              "content": "Synthetic submission content for assignment-2-1-student-2-1-task-3-0",
-              "contentHash": "hash-assignment-2-1-student-2-1-task-3-0",
+              "documentId": "artifact-document-assignment-2-1-100000000020000000001-task-3-0",
+              "content": "Synthetic submission content for assignment-2-1-100000000020000000001-task-3-0",
+              "contentHash": "hash-assignment-2-1-100000000020000000001-task-3-0",
               "metadata": {},
-              "uid": "uid-assignment-2-1-student-2-1-task-3-0",
+              "uid": "uid-assignment-2-1-100000000020000000001-task-3-0",
               "type": "TEXT"
             },
             "assessments": {},
             "feedback": {}
           },
           "task-3-1": {
-            "id": "ssi-assignment-2-1-student-2-1-task-3-1",
+            "id": "ssi-assignment-2-1-100000000020000000001-task-3-1",
             "taskId": "task-3-1",
             "artifact": {
               "taskId": "task-3-1",
               "role": "submission",
               "pageId": "page-task-3-1",
-              "documentId": "artifact-document-assignment-2-1-student-2-1-task-3-1",
-              "content": "Synthetic submission content for assignment-2-1-student-2-1-task-3-1",
-              "contentHash": "hash-assignment-2-1-student-2-1-task-3-1",
+              "documentId": "artifact-document-assignment-2-1-100000000020000000001-task-3-1",
+              "content": "Synthetic submission content for assignment-2-1-100000000020000000001-task-3-1",
+              "contentHash": "hash-assignment-2-1-100000000020000000001-task-3-1",
               "metadata": {},
-              "uid": "uid-assignment-2-1-student-2-1-task-3-1",
+              "uid": "uid-assignment-2-1-100000000020000000001-task-3-1",
               "type": "TEXT"
             },
             "assessments": {},
@@ -3535,23 +3535,23 @@
         "updatedAt": "2024-01-04T10:12:00.000Z"
       },
       {
-        "studentId": "student-2-2",
+        "studentId": "100000000020000000002",
         "studentName": "Shane O'Keefe",
         "assignmentId": "assignment-2-1",
         "documentId": null,
         "items": {
           "task-3-0": {
-            "id": "ssi-assignment-2-1-student-2-2-task-3-0",
+            "id": "ssi-assignment-2-1-100000000020000000002-task-3-0",
             "taskId": "task-3-0",
             "artifact": {
               "taskId": "task-3-0",
               "role": "submission",
               "pageId": "page-task-3-0",
-              "documentId": "artifact-document-assignment-2-1-student-2-2-task-3-0",
-              "content": "Synthetic submission content for assignment-2-1-student-2-2-task-3-0",
-              "contentHash": "hash-assignment-2-1-student-2-2-task-3-0",
+              "documentId": "artifact-document-assignment-2-1-100000000020000000002-task-3-0",
+              "content": "Synthetic submission content for assignment-2-1-100000000020000000002-task-3-0",
+              "contentHash": "hash-assignment-2-1-100000000020000000002-task-3-0",
               "metadata": {},
-              "uid": "uid-assignment-2-1-student-2-2-task-3-0",
+              "uid": "uid-assignment-2-1-100000000020000000002-task-3-0",
               "type": "TEXT"
             },
             "assessments": {
@@ -3567,17 +3567,17 @@
             "feedback": {}
           },
           "task-3-1": {
-            "id": "ssi-assignment-2-1-student-2-2-task-3-1",
+            "id": "ssi-assignment-2-1-100000000020000000002-task-3-1",
             "taskId": "task-3-1",
             "artifact": {
               "taskId": "task-3-1",
               "role": "submission",
               "pageId": "page-task-3-1",
-              "documentId": "artifact-document-assignment-2-1-student-2-2-task-3-1",
-              "content": "Synthetic submission content for assignment-2-1-student-2-2-task-3-1",
-              "contentHash": "hash-assignment-2-1-student-2-2-task-3-1",
+              "documentId": "artifact-document-assignment-2-1-100000000020000000002-task-3-1",
+              "content": "Synthetic submission content for assignment-2-1-100000000020000000002-task-3-1",
+              "contentHash": "hash-assignment-2-1-100000000020000000002-task-3-1",
               "metadata": {},
-              "uid": "uid-assignment-2-1-student-2-2-task-3-1",
+              "uid": "uid-assignment-2-1-100000000020000000002-task-3-1",
               "type": "TEXT"
             },
             "assessments": {
@@ -3597,23 +3597,23 @@
         "updatedAt": "2024-01-04T10:19:00.000Z"
       },
       {
-        "studentId": "student-2-3",
+        "studentId": "100000000020000000003",
         "studentName": "Lloyd Labadie DVM",
         "assignmentId": "assignment-2-1",
-        "documentId": "submission-document-assignment-2-1-student-2-3",
+        "documentId": "submission-document-assignment-2-1-100000000020000000003",
         "items": {
           "task-3-0": {
-            "id": "ssi-assignment-2-1-student-2-3-task-3-0",
+            "id": "ssi-assignment-2-1-100000000020000000003-task-3-0",
             "taskId": "task-3-0",
             "artifact": {
               "taskId": "task-3-0",
               "role": "submission",
               "pageId": "page-task-3-0",
-              "documentId": "artifact-document-assignment-2-1-student-2-3-task-3-0",
-              "content": "Synthetic submission content for assignment-2-1-student-2-3-task-3-0",
-              "contentHash": "hash-assignment-2-1-student-2-3-task-3-0",
+              "documentId": "artifact-document-assignment-2-1-100000000020000000003-task-3-0",
+              "content": "Synthetic submission content for assignment-2-1-100000000020000000003-task-3-0",
+              "contentHash": "hash-assignment-2-1-100000000020000000003-task-3-0",
               "metadata": {},
-              "uid": "uid-assignment-2-1-student-2-3-task-3-0",
+              "uid": "uid-assignment-2-1-100000000020000000003-task-3-0",
               "type": "TEXT"
             },
             "assessments": {
@@ -3629,17 +3629,17 @@
             "feedback": {}
           },
           "task-3-1": {
-            "id": "ssi-assignment-2-1-student-2-3-task-3-1",
+            "id": "ssi-assignment-2-1-100000000020000000003-task-3-1",
             "taskId": "task-3-1",
             "artifact": {
               "taskId": "task-3-1",
               "role": "submission",
               "pageId": "page-task-3-1",
-              "documentId": "artifact-document-assignment-2-1-student-2-3-task-3-1",
-              "content": "Synthetic submission content for assignment-2-1-student-2-3-task-3-1",
-              "contentHash": "hash-assignment-2-1-student-2-3-task-3-1",
+              "documentId": "artifact-document-assignment-2-1-100000000020000000003-task-3-1",
+              "content": "Synthetic submission content for assignment-2-1-100000000020000000003-task-3-1",
+              "contentHash": "hash-assignment-2-1-100000000020000000003-task-3-1",
               "metadata": {},
-              "uid": "uid-assignment-2-1-student-2-3-task-3-1",
+              "uid": "uid-assignment-2-1-100000000020000000003-task-3-1",
               "type": "TEXT"
             },
             "assessments": {
@@ -3659,23 +3659,23 @@
         "updatedAt": "2024-01-04T10:26:00.000Z"
       },
       {
-        "studentId": "student-2-4",
+        "studentId": "100000000020000000004",
         "studentName": "Bette Wyman",
         "assignmentId": "assignment-2-1",
-        "documentId": "submission-document-assignment-2-1-student-2-4",
+        "documentId": "submission-document-assignment-2-1-100000000020000000004",
         "items": {
           "task-3-0": {
-            "id": "ssi-assignment-2-1-student-2-4-task-3-0",
+            "id": "ssi-assignment-2-1-100000000020000000004-task-3-0",
             "taskId": "task-3-0",
             "artifact": {
               "taskId": "task-3-0",
               "role": "submission",
               "pageId": "page-task-3-0",
-              "documentId": "artifact-document-assignment-2-1-student-2-4-task-3-0",
-              "content": "Synthetic submission content for assignment-2-1-student-2-4-task-3-0",
-              "contentHash": "hash-assignment-2-1-student-2-4-task-3-0",
+              "documentId": "artifact-document-assignment-2-1-100000000020000000004-task-3-0",
+              "content": "Synthetic submission content for assignment-2-1-100000000020000000004-task-3-0",
+              "contentHash": "hash-assignment-2-1-100000000020000000004-task-3-0",
               "metadata": {},
-              "uid": "uid-assignment-2-1-student-2-4-task-3-0",
+              "uid": "uid-assignment-2-1-100000000020000000004-task-3-0",
               "type": "TEXT"
             },
             "assessments": {
@@ -3691,17 +3691,17 @@
             "feedback": {}
           },
           "task-3-1": {
-            "id": "ssi-assignment-2-1-student-2-4-task-3-1",
+            "id": "ssi-assignment-2-1-100000000020000000004-task-3-1",
             "taskId": "task-3-1",
             "artifact": {
               "taskId": "task-3-1",
               "role": "submission",
               "pageId": "page-task-3-1",
-              "documentId": "artifact-document-assignment-2-1-student-2-4-task-3-1",
-              "content": "Synthetic submission content for assignment-2-1-student-2-4-task-3-1",
-              "contentHash": "hash-assignment-2-1-student-2-4-task-3-1",
+              "documentId": "artifact-document-assignment-2-1-100000000020000000004-task-3-1",
+              "content": "Synthetic submission content for assignment-2-1-100000000020000000004-task-3-1",
+              "contentHash": "hash-assignment-2-1-100000000020000000004-task-3-1",
               "metadata": {},
-              "uid": "uid-assignment-2-1-student-2-4-task-3-1",
+              "uid": "uid-assignment-2-1-100000000020000000004-task-3-1",
               "type": "TEXT"
             },
             "assessments": {
@@ -3721,23 +3721,23 @@
         "updatedAt": "2024-01-04T10:33:00.000Z"
       },
       {
-        "studentId": "student-2-5",
+        "studentId": "100000000020000000005",
         "studentName": "Zena Hand",
         "assignmentId": "assignment-2-1",
-        "documentId": "submission-document-assignment-2-1-student-2-5",
+        "documentId": "submission-document-assignment-2-1-100000000020000000005",
         "items": {
           "task-3-0": {
-            "id": "ssi-assignment-2-1-student-2-5-task-3-0",
+            "id": "ssi-assignment-2-1-100000000020000000005-task-3-0",
             "taskId": "task-3-0",
             "artifact": {
               "taskId": "task-3-0",
               "role": "submission",
               "pageId": "page-task-3-0",
-              "documentId": "artifact-document-assignment-2-1-student-2-5-task-3-0",
-              "content": "Synthetic submission content for assignment-2-1-student-2-5-task-3-0",
-              "contentHash": "hash-assignment-2-1-student-2-5-task-3-0",
+              "documentId": "artifact-document-assignment-2-1-100000000020000000005-task-3-0",
+              "content": "Synthetic submission content for assignment-2-1-100000000020000000005-task-3-0",
+              "contentHash": "hash-assignment-2-1-100000000020000000005-task-3-0",
               "metadata": {},
-              "uid": "uid-assignment-2-1-student-2-5-task-3-0",
+              "uid": "uid-assignment-2-1-100000000020000000005-task-3-0",
               "type": "TEXT"
             },
             "assessments": {
@@ -3753,17 +3753,17 @@
             "feedback": {}
           },
           "task-3-1": {
-            "id": "ssi-assignment-2-1-student-2-5-task-3-1",
+            "id": "ssi-assignment-2-1-100000000020000000005-task-3-1",
             "taskId": "task-3-1",
             "artifact": {
               "taskId": "task-3-1",
               "role": "submission",
               "pageId": "page-task-3-1",
-              "documentId": "artifact-document-assignment-2-1-student-2-5-task-3-1",
-              "content": "Synthetic submission content for assignment-2-1-student-2-5-task-3-1",
-              "contentHash": "hash-assignment-2-1-student-2-5-task-3-1",
+              "documentId": "artifact-document-assignment-2-1-100000000020000000005-task-3-1",
+              "content": "Synthetic submission content for assignment-2-1-100000000020000000005-task-3-1",
+              "contentHash": "hash-assignment-2-1-100000000020000000005-task-3-1",
               "metadata": {},
-              "uid": "uid-assignment-2-1-student-2-5-task-3-1",
+              "uid": "uid-assignment-2-1-100000000020000000005-task-3-1",
               "type": "TEXT"
             },
             "assessments": {
@@ -3966,23 +3966,23 @@
     },
     "submissions": [
       {
-        "studentId": "student-2-0",
+        "studentId": "100000000020000000000",
         "studentName": "Golden Wiegand",
         "assignmentId": "assignment-2-2",
-        "documentId": "submission-document-assignment-2-2-student-2-0",
+        "documentId": "submission-document-assignment-2-2-100000000020000000000",
         "items": {
           "task-0-0": {
-            "id": "ssi-assignment-2-2-student-2-0-task-0-0",
+            "id": "ssi-assignment-2-2-100000000020000000000-task-0-0",
             "taskId": "task-0-0",
             "artifact": {
               "taskId": "task-0-0",
               "role": "submission",
               "pageId": "page-task-0-0",
-              "documentId": "artifact-document-assignment-2-2-student-2-0-task-0-0",
-              "content": "Synthetic submission content for assignment-2-2-student-2-0-task-0-0",
-              "contentHash": "hash-assignment-2-2-student-2-0-task-0-0",
+              "documentId": "artifact-document-assignment-2-2-100000000020000000000-task-0-0",
+              "content": "Synthetic submission content for assignment-2-2-100000000020000000000-task-0-0",
+              "contentHash": "hash-assignment-2-2-100000000020000000000-task-0-0",
               "metadata": {},
-              "uid": "uid-assignment-2-2-student-2-0-task-0-0",
+              "uid": "uid-assignment-2-2-100000000020000000000-task-0-0",
               "type": "TEXT"
             },
             "assessments": {
@@ -4003,17 +4003,17 @@
             }
           },
           "task-0-1": {
-            "id": "ssi-assignment-2-2-student-2-0-task-0-1",
+            "id": "ssi-assignment-2-2-100000000020000000000-task-0-1",
             "taskId": "task-0-1",
             "artifact": {
               "taskId": "task-0-1",
               "role": "submission",
               "pageId": "page-task-0-1",
-              "documentId": "artifact-document-assignment-2-2-student-2-0-task-0-1",
-              "content": "Synthetic submission content for assignment-2-2-student-2-0-task-0-1",
-              "contentHash": "hash-assignment-2-2-student-2-0-task-0-1",
+              "documentId": "artifact-document-assignment-2-2-100000000020000000000-task-0-1",
+              "content": "Synthetic submission content for assignment-2-2-100000000020000000000-task-0-1",
+              "contentHash": "hash-assignment-2-2-100000000020000000000-task-0-1",
               "metadata": {},
-              "uid": "uid-assignment-2-2-student-2-0-task-0-1",
+              "uid": "uid-assignment-2-2-100000000020000000000-task-0-1",
               "type": "TEXT"
             },
             "assessments": {
@@ -4038,40 +4038,40 @@
         "updatedAt": "2024-01-04T11:05:00.000Z"
       },
       {
-        "studentId": "student-2-1",
+        "studentId": "100000000020000000001",
         "studentName": "Johnathon Windler V",
         "assignmentId": "assignment-2-2",
-        "documentId": "submission-document-assignment-2-2-student-2-1",
+        "documentId": "submission-document-assignment-2-2-100000000020000000001",
         "items": {
           "task-0-0": {
-            "id": "ssi-assignment-2-2-student-2-1-task-0-0",
+            "id": "ssi-assignment-2-2-100000000020000000001-task-0-0",
             "taskId": "task-0-0",
             "artifact": {
               "taskId": "task-0-0",
               "role": "submission",
               "pageId": "page-task-0-0",
-              "documentId": "artifact-document-assignment-2-2-student-2-1-task-0-0",
-              "content": "Synthetic submission content for assignment-2-2-student-2-1-task-0-0",
-              "contentHash": "hash-assignment-2-2-student-2-1-task-0-0",
+              "documentId": "artifact-document-assignment-2-2-100000000020000000001-task-0-0",
+              "content": "Synthetic submission content for assignment-2-2-100000000020000000001-task-0-0",
+              "contentHash": "hash-assignment-2-2-100000000020000000001-task-0-0",
               "metadata": {},
-              "uid": "uid-assignment-2-2-student-2-1-task-0-0",
+              "uid": "uid-assignment-2-2-100000000020000000001-task-0-0",
               "type": "TEXT"
             },
             "assessments": {},
             "feedback": {}
           },
           "task-0-1": {
-            "id": "ssi-assignment-2-2-student-2-1-task-0-1",
+            "id": "ssi-assignment-2-2-100000000020000000001-task-0-1",
             "taskId": "task-0-1",
             "artifact": {
               "taskId": "task-0-1",
               "role": "submission",
               "pageId": "page-task-0-1",
-              "documentId": "artifact-document-assignment-2-2-student-2-1-task-0-1",
-              "content": "Synthetic submission content for assignment-2-2-student-2-1-task-0-1",
-              "contentHash": "hash-assignment-2-2-student-2-1-task-0-1",
+              "documentId": "artifact-document-assignment-2-2-100000000020000000001-task-0-1",
+              "content": "Synthetic submission content for assignment-2-2-100000000020000000001-task-0-1",
+              "contentHash": "hash-assignment-2-2-100000000020000000001-task-0-1",
               "metadata": {},
-              "uid": "uid-assignment-2-2-student-2-1-task-0-1",
+              "uid": "uid-assignment-2-2-100000000020000000001-task-0-1",
               "type": "TEXT"
             },
             "assessments": {},
@@ -4265,23 +4265,23 @@
     },
     "submissions": [
       {
-        "studentId": "student-2-0",
+        "studentId": "100000000020000000000",
         "studentName": "Golden Wiegand",
         "assignmentId": "assignment-2-3",
-        "documentId": "submission-document-assignment-2-3-student-2-0",
+        "documentId": "submission-document-assignment-2-3-100000000020000000000",
         "items": {
           "task-1-0": {
-            "id": "ssi-assignment-2-3-student-2-0-task-1-0",
+            "id": "ssi-assignment-2-3-100000000020000000000-task-1-0",
             "taskId": "task-1-0",
             "artifact": {
               "taskId": "task-1-0",
               "role": "submission",
               "pageId": "page-task-1-0",
-              "documentId": "artifact-document-assignment-2-3-student-2-0-task-1-0",
-              "content": "Synthetic submission content for assignment-2-3-student-2-0-task-1-0",
-              "contentHash": "hash-assignment-2-3-student-2-0-task-1-0",
+              "documentId": "artifact-document-assignment-2-3-100000000020000000000-task-1-0",
+              "content": "Synthetic submission content for assignment-2-3-100000000020000000000-task-1-0",
+              "contentHash": "hash-assignment-2-3-100000000020000000000-task-1-0",
               "metadata": {},
-              "uid": "uid-assignment-2-3-student-2-0-task-1-0",
+              "uid": "uid-assignment-2-3-100000000020000000000-task-1-0",
               "type": "TEXT"
             },
             "assessments": {
@@ -4302,17 +4302,17 @@
             }
           },
           "task-1-1": {
-            "id": "ssi-assignment-2-3-student-2-0-task-1-1",
+            "id": "ssi-assignment-2-3-100000000020000000000-task-1-1",
             "taskId": "task-1-1",
             "artifact": {
               "taskId": "task-1-1",
               "role": "submission",
               "pageId": "page-task-1-1",
-              "documentId": "artifact-document-assignment-2-3-student-2-0-task-1-1",
-              "content": "Synthetic submission content for assignment-2-3-student-2-0-task-1-1",
-              "contentHash": "hash-assignment-2-3-student-2-0-task-1-1",
+              "documentId": "artifact-document-assignment-2-3-100000000020000000000-task-1-1",
+              "content": "Synthetic submission content for assignment-2-3-100000000020000000000-task-1-1",
+              "contentHash": "hash-assignment-2-3-100000000020000000000-task-1-1",
               "metadata": {},
-              "uid": "uid-assignment-2-3-student-2-0-task-1-1",
+              "uid": "uid-assignment-2-3-100000000020000000000-task-1-1",
               "type": "TEXT"
             },
             "assessments": {
@@ -4337,40 +4337,40 @@
         "updatedAt": "2024-01-04T12:05:00.000Z"
       },
       {
-        "studentId": "student-2-1",
+        "studentId": "100000000020000000001",
         "studentName": "Johnathon Windler V",
         "assignmentId": "assignment-2-3",
-        "documentId": "submission-document-assignment-2-3-student-2-1",
+        "documentId": "submission-document-assignment-2-3-100000000020000000001",
         "items": {
           "task-1-0": {
-            "id": "ssi-assignment-2-3-student-2-1-task-1-0",
+            "id": "ssi-assignment-2-3-100000000020000000001-task-1-0",
             "taskId": "task-1-0",
             "artifact": {
               "taskId": "task-1-0",
               "role": "submission",
               "pageId": "page-task-1-0",
-              "documentId": "artifact-document-assignment-2-3-student-2-1-task-1-0",
-              "content": "Synthetic submission content for assignment-2-3-student-2-1-task-1-0",
-              "contentHash": "hash-assignment-2-3-student-2-1-task-1-0",
+              "documentId": "artifact-document-assignment-2-3-100000000020000000001-task-1-0",
+              "content": "Synthetic submission content for assignment-2-3-100000000020000000001-task-1-0",
+              "contentHash": "hash-assignment-2-3-100000000020000000001-task-1-0",
               "metadata": {},
-              "uid": "uid-assignment-2-3-student-2-1-task-1-0",
+              "uid": "uid-assignment-2-3-100000000020000000001-task-1-0",
               "type": "TEXT"
             },
             "assessments": {},
             "feedback": {}
           },
           "task-1-1": {
-            "id": "ssi-assignment-2-3-student-2-1-task-1-1",
+            "id": "ssi-assignment-2-3-100000000020000000001-task-1-1",
             "taskId": "task-1-1",
             "artifact": {
               "taskId": "task-1-1",
               "role": "submission",
               "pageId": "page-task-1-1",
-              "documentId": "artifact-document-assignment-2-3-student-2-1-task-1-1",
-              "content": "Synthetic submission content for assignment-2-3-student-2-1-task-1-1",
-              "contentHash": "hash-assignment-2-3-student-2-1-task-1-1",
+              "documentId": "artifact-document-assignment-2-3-100000000020000000001-task-1-1",
+              "content": "Synthetic submission content for assignment-2-3-100000000020000000001-task-1-1",
+              "contentHash": "hash-assignment-2-3-100000000020000000001-task-1-1",
               "metadata": {},
-              "uid": "uid-assignment-2-3-student-2-1-task-1-1",
+              "uid": "uid-assignment-2-3-100000000020000000001-task-1-1",
               "type": "TEXT"
             },
             "assessments": {},
@@ -4381,23 +4381,23 @@
         "updatedAt": "2024-01-04T12:12:00.000Z"
       },
       {
-        "studentId": "student-2-2",
+        "studentId": "100000000020000000002",
         "studentName": "Shane O'Keefe",
         "assignmentId": "assignment-2-3",
         "documentId": null,
         "items": {
           "task-1-0": {
-            "id": "ssi-assignment-2-3-student-2-2-task-1-0",
+            "id": "ssi-assignment-2-3-100000000020000000002-task-1-0",
             "taskId": "task-1-0",
             "artifact": {
               "taskId": "task-1-0",
               "role": "submission",
               "pageId": "page-task-1-0",
-              "documentId": "artifact-document-assignment-2-3-student-2-2-task-1-0",
-              "content": "Synthetic submission content for assignment-2-3-student-2-2-task-1-0",
-              "contentHash": "hash-assignment-2-3-student-2-2-task-1-0",
+              "documentId": "artifact-document-assignment-2-3-100000000020000000002-task-1-0",
+              "content": "Synthetic submission content for assignment-2-3-100000000020000000002-task-1-0",
+              "contentHash": "hash-assignment-2-3-100000000020000000002-task-1-0",
               "metadata": {},
-              "uid": "uid-assignment-2-3-student-2-2-task-1-0",
+              "uid": "uid-assignment-2-3-100000000020000000002-task-1-0",
               "type": "TEXT"
             },
             "assessments": {
@@ -4413,17 +4413,17 @@
             "feedback": {}
           },
           "task-1-1": {
-            "id": "ssi-assignment-2-3-student-2-2-task-1-1",
+            "id": "ssi-assignment-2-3-100000000020000000002-task-1-1",
             "taskId": "task-1-1",
             "artifact": {
               "taskId": "task-1-1",
               "role": "submission",
               "pageId": "page-task-1-1",
-              "documentId": "artifact-document-assignment-2-3-student-2-2-task-1-1",
-              "content": "Synthetic submission content for assignment-2-3-student-2-2-task-1-1",
-              "contentHash": "hash-assignment-2-3-student-2-2-task-1-1",
+              "documentId": "artifact-document-assignment-2-3-100000000020000000002-task-1-1",
+              "content": "Synthetic submission content for assignment-2-3-100000000020000000002-task-1-1",
+              "contentHash": "hash-assignment-2-3-100000000020000000002-task-1-1",
               "metadata": {},
-              "uid": "uid-assignment-2-3-student-2-2-task-1-1",
+              "uid": "uid-assignment-2-3-100000000020000000002-task-1-1",
               "type": "TEXT"
             },
             "assessments": {
@@ -4443,23 +4443,23 @@
         "updatedAt": "2024-01-04T12:19:00.000Z"
       },
       {
-        "studentId": "student-2-3",
+        "studentId": "100000000020000000003",
         "studentName": "Lloyd Labadie DVM",
         "assignmentId": "assignment-2-3",
-        "documentId": "submission-document-assignment-2-3-student-2-3",
+        "documentId": "submission-document-assignment-2-3-100000000020000000003",
         "items": {
           "task-1-0": {
-            "id": "ssi-assignment-2-3-student-2-3-task-1-0",
+            "id": "ssi-assignment-2-3-100000000020000000003-task-1-0",
             "taskId": "task-1-0",
             "artifact": {
               "taskId": "task-1-0",
               "role": "submission",
               "pageId": "page-task-1-0",
-              "documentId": "artifact-document-assignment-2-3-student-2-3-task-1-0",
-              "content": "Synthetic submission content for assignment-2-3-student-2-3-task-1-0",
-              "contentHash": "hash-assignment-2-3-student-2-3-task-1-0",
+              "documentId": "artifact-document-assignment-2-3-100000000020000000003-task-1-0",
+              "content": "Synthetic submission content for assignment-2-3-100000000020000000003-task-1-0",
+              "contentHash": "hash-assignment-2-3-100000000020000000003-task-1-0",
               "metadata": {},
-              "uid": "uid-assignment-2-3-student-2-3-task-1-0",
+              "uid": "uid-assignment-2-3-100000000020000000003-task-1-0",
               "type": "TEXT"
             },
             "assessments": {
@@ -4475,17 +4475,17 @@
             "feedback": {}
           },
           "task-1-1": {
-            "id": "ssi-assignment-2-3-student-2-3-task-1-1",
+            "id": "ssi-assignment-2-3-100000000020000000003-task-1-1",
             "taskId": "task-1-1",
             "artifact": {
               "taskId": "task-1-1",
               "role": "submission",
               "pageId": "page-task-1-1",
-              "documentId": "artifact-document-assignment-2-3-student-2-3-task-1-1",
-              "content": "Synthetic submission content for assignment-2-3-student-2-3-task-1-1",
-              "contentHash": "hash-assignment-2-3-student-2-3-task-1-1",
+              "documentId": "artifact-document-assignment-2-3-100000000020000000003-task-1-1",
+              "content": "Synthetic submission content for assignment-2-3-100000000020000000003-task-1-1",
+              "contentHash": "hash-assignment-2-3-100000000020000000003-task-1-1",
               "metadata": {},
-              "uid": "uid-assignment-2-3-student-2-3-task-1-1",
+              "uid": "uid-assignment-2-3-100000000020000000003-task-1-1",
               "type": "TEXT"
             },
             "assessments": {
@@ -4505,23 +4505,23 @@
         "updatedAt": "2024-01-04T12:26:00.000Z"
       },
       {
-        "studentId": "student-2-4",
+        "studentId": "100000000020000000004",
         "studentName": "Bette Wyman",
         "assignmentId": "assignment-2-3",
-        "documentId": "submission-document-assignment-2-3-student-2-4",
+        "documentId": "submission-document-assignment-2-3-100000000020000000004",
         "items": {
           "task-1-0": {
-            "id": "ssi-assignment-2-3-student-2-4-task-1-0",
+            "id": "ssi-assignment-2-3-100000000020000000004-task-1-0",
             "taskId": "task-1-0",
             "artifact": {
               "taskId": "task-1-0",
               "role": "submission",
               "pageId": "page-task-1-0",
-              "documentId": "artifact-document-assignment-2-3-student-2-4-task-1-0",
-              "content": "Synthetic submission content for assignment-2-3-student-2-4-task-1-0",
-              "contentHash": "hash-assignment-2-3-student-2-4-task-1-0",
+              "documentId": "artifact-document-assignment-2-3-100000000020000000004-task-1-0",
+              "content": "Synthetic submission content for assignment-2-3-100000000020000000004-task-1-0",
+              "contentHash": "hash-assignment-2-3-100000000020000000004-task-1-0",
               "metadata": {},
-              "uid": "uid-assignment-2-3-student-2-4-task-1-0",
+              "uid": "uid-assignment-2-3-100000000020000000004-task-1-0",
               "type": "TEXT"
             },
             "assessments": {
@@ -4537,17 +4537,17 @@
             "feedback": {}
           },
           "task-1-1": {
-            "id": "ssi-assignment-2-3-student-2-4-task-1-1",
+            "id": "ssi-assignment-2-3-100000000020000000004-task-1-1",
             "taskId": "task-1-1",
             "artifact": {
               "taskId": "task-1-1",
               "role": "submission",
               "pageId": "page-task-1-1",
-              "documentId": "artifact-document-assignment-2-3-student-2-4-task-1-1",
-              "content": "Synthetic submission content for assignment-2-3-student-2-4-task-1-1",
-              "contentHash": "hash-assignment-2-3-student-2-4-task-1-1",
+              "documentId": "artifact-document-assignment-2-3-100000000020000000004-task-1-1",
+              "content": "Synthetic submission content for assignment-2-3-100000000020000000004-task-1-1",
+              "contentHash": "hash-assignment-2-3-100000000020000000004-task-1-1",
               "metadata": {},
-              "uid": "uid-assignment-2-3-student-2-4-task-1-1",
+              "uid": "uid-assignment-2-3-100000000020000000004-task-1-1",
               "type": "TEXT"
             },
             "assessments": {
@@ -4567,23 +4567,23 @@
         "updatedAt": "2024-01-04T12:33:00.000Z"
       },
       {
-        "studentId": "student-2-5",
+        "studentId": "100000000020000000005",
         "studentName": "Zena Hand",
         "assignmentId": "assignment-2-3",
-        "documentId": "submission-document-assignment-2-3-student-2-5",
+        "documentId": "submission-document-assignment-2-3-100000000020000000005",
         "items": {
           "task-1-0": {
-            "id": "ssi-assignment-2-3-student-2-5-task-1-0",
+            "id": "ssi-assignment-2-3-100000000020000000005-task-1-0",
             "taskId": "task-1-0",
             "artifact": {
               "taskId": "task-1-0",
               "role": "submission",
               "pageId": "page-task-1-0",
-              "documentId": "artifact-document-assignment-2-3-student-2-5-task-1-0",
-              "content": "Synthetic submission content for assignment-2-3-student-2-5-task-1-0",
-              "contentHash": "hash-assignment-2-3-student-2-5-task-1-0",
+              "documentId": "artifact-document-assignment-2-3-100000000020000000005-task-1-0",
+              "content": "Synthetic submission content for assignment-2-3-100000000020000000005-task-1-0",
+              "contentHash": "hash-assignment-2-3-100000000020000000005-task-1-0",
               "metadata": {},
-              "uid": "uid-assignment-2-3-student-2-5-task-1-0",
+              "uid": "uid-assignment-2-3-100000000020000000005-task-1-0",
               "type": "TEXT"
             },
             "assessments": {
@@ -4599,17 +4599,17 @@
             "feedback": {}
           },
           "task-1-1": {
-            "id": "ssi-assignment-2-3-student-2-5-task-1-1",
+            "id": "ssi-assignment-2-3-100000000020000000005-task-1-1",
             "taskId": "task-1-1",
             "artifact": {
               "taskId": "task-1-1",
               "role": "submission",
               "pageId": "page-task-1-1",
-              "documentId": "artifact-document-assignment-2-3-student-2-5-task-1-1",
-              "content": "Synthetic submission content for assignment-2-3-student-2-5-task-1-1",
-              "contentHash": "hash-assignment-2-3-student-2-5-task-1-1",
+              "documentId": "artifact-document-assignment-2-3-100000000020000000005-task-1-1",
+              "content": "Synthetic submission content for assignment-2-3-100000000020000000005-task-1-1",
+              "contentHash": "hash-assignment-2-3-100000000020000000005-task-1-1",
               "metadata": {},
-              "uid": "uid-assignment-2-3-student-2-5-task-1-1",
+              "uid": "uid-assignment-2-3-100000000020000000005-task-1-1",
               "type": "TEXT"
             },
             "assessments": {
@@ -4729,7 +4729,7 @@
     "assignmentId": "assignment-3-0",
     "assignmentName": "Synthetic Assignment 4.1",
     "dueDate": null,
-    "updatedAt": null,
+    "updatedAt": "2024-01-05T09:03:00.000Z",
     "createdAt": "2024-01-05T09:00:00.000Z",
     "documentType": null,
     "referenceDocumentId": "reference-document-3",
@@ -4994,23 +4994,23 @@
     },
     "submissions": [
       {
-        "studentId": "student-3-0",
+        "studentId": "100000000030000000000",
         "studentName": "Erik Grimes",
         "assignmentId": "assignment-3-1",
-        "documentId": "submission-document-assignment-3-1-student-3-0",
+        "documentId": "submission-document-assignment-3-1-100000000030000000000",
         "items": {
           "task-0-0": {
-            "id": "ssi-assignment-3-1-student-3-0-task-0-0",
+            "id": "ssi-assignment-3-1-100000000030000000000-task-0-0",
             "taskId": "task-0-0",
             "artifact": {
               "taskId": "task-0-0",
               "role": "submission",
               "pageId": "page-task-0-0",
-              "documentId": "artifact-document-assignment-3-1-student-3-0-task-0-0",
-              "content": "Synthetic submission content for assignment-3-1-student-3-0-task-0-0",
-              "contentHash": "hash-assignment-3-1-student-3-0-task-0-0",
+              "documentId": "artifact-document-assignment-3-1-100000000030000000000-task-0-0",
+              "content": "Synthetic submission content for assignment-3-1-100000000030000000000-task-0-0",
+              "contentHash": "hash-assignment-3-1-100000000030000000000-task-0-0",
               "metadata": {},
-              "uid": "uid-assignment-3-1-student-3-0-task-0-0",
+              "uid": "uid-assignment-3-1-100000000030000000000-task-0-0",
               "type": "TEXT"
             },
             "assessments": {
@@ -5031,17 +5031,17 @@
             }
           },
           "task-0-1": {
-            "id": "ssi-assignment-3-1-student-3-0-task-0-1",
+            "id": "ssi-assignment-3-1-100000000030000000000-task-0-1",
             "taskId": "task-0-1",
             "artifact": {
               "taskId": "task-0-1",
               "role": "submission",
               "pageId": "page-task-0-1",
-              "documentId": "artifact-document-assignment-3-1-student-3-0-task-0-1",
-              "content": "Synthetic submission content for assignment-3-1-student-3-0-task-0-1",
-              "contentHash": "hash-assignment-3-1-student-3-0-task-0-1",
+              "documentId": "artifact-document-assignment-3-1-100000000030000000000-task-0-1",
+              "content": "Synthetic submission content for assignment-3-1-100000000030000000000-task-0-1",
+              "contentHash": "hash-assignment-3-1-100000000030000000000-task-0-1",
               "metadata": {},
-              "uid": "uid-assignment-3-1-student-3-0-task-0-1",
+              "uid": "uid-assignment-3-1-100000000030000000000-task-0-1",
               "type": "TEXT"
             },
             "assessments": {
@@ -5066,40 +5066,40 @@
         "updatedAt": "2024-01-05T10:05:00.000Z"
       },
       {
-        "studentId": "student-3-1",
+        "studentId": "100000000030000000001",
         "studentName": "Lane Boehm",
         "assignmentId": "assignment-3-1",
-        "documentId": "submission-document-assignment-3-1-student-3-1",
+        "documentId": "submission-document-assignment-3-1-100000000030000000001",
         "items": {
           "task-0-0": {
-            "id": "ssi-assignment-3-1-student-3-1-task-0-0",
+            "id": "ssi-assignment-3-1-100000000030000000001-task-0-0",
             "taskId": "task-0-0",
             "artifact": {
               "taskId": "task-0-0",
               "role": "submission",
               "pageId": "page-task-0-0",
-              "documentId": "artifact-document-assignment-3-1-student-3-1-task-0-0",
-              "content": "Synthetic submission content for assignment-3-1-student-3-1-task-0-0",
-              "contentHash": "hash-assignment-3-1-student-3-1-task-0-0",
+              "documentId": "artifact-document-assignment-3-1-100000000030000000001-task-0-0",
+              "content": "Synthetic submission content for assignment-3-1-100000000030000000001-task-0-0",
+              "contentHash": "hash-assignment-3-1-100000000030000000001-task-0-0",
               "metadata": {},
-              "uid": "uid-assignment-3-1-student-3-1-task-0-0",
+              "uid": "uid-assignment-3-1-100000000030000000001-task-0-0",
               "type": "TEXT"
             },
             "assessments": {},
             "feedback": {}
           },
           "task-0-1": {
-            "id": "ssi-assignment-3-1-student-3-1-task-0-1",
+            "id": "ssi-assignment-3-1-100000000030000000001-task-0-1",
             "taskId": "task-0-1",
             "artifact": {
               "taskId": "task-0-1",
               "role": "submission",
               "pageId": "page-task-0-1",
-              "documentId": "artifact-document-assignment-3-1-student-3-1-task-0-1",
-              "content": "Synthetic submission content for assignment-3-1-student-3-1-task-0-1",
-              "contentHash": "hash-assignment-3-1-student-3-1-task-0-1",
+              "documentId": "artifact-document-assignment-3-1-100000000030000000001-task-0-1",
+              "content": "Synthetic submission content for assignment-3-1-100000000030000000001-task-0-1",
+              "contentHash": "hash-assignment-3-1-100000000030000000001-task-0-1",
               "metadata": {},
-              "uid": "uid-assignment-3-1-student-3-1-task-0-1",
+              "uid": "uid-assignment-3-1-100000000030000000001-task-0-1",
               "type": "TEXT"
             },
             "assessments": {},
@@ -5110,23 +5110,23 @@
         "updatedAt": "2024-01-05T10:12:00.000Z"
       },
       {
-        "studentId": "student-3-2",
+        "studentId": "100000000030000000002",
         "studentName": "Tommy Kerluke",
         "assignmentId": "assignment-3-1",
         "documentId": null,
         "items": {
           "task-0-0": {
-            "id": "ssi-assignment-3-1-student-3-2-task-0-0",
+            "id": "ssi-assignment-3-1-100000000030000000002-task-0-0",
             "taskId": "task-0-0",
             "artifact": {
               "taskId": "task-0-0",
               "role": "submission",
               "pageId": "page-task-0-0",
-              "documentId": "artifact-document-assignment-3-1-student-3-2-task-0-0",
-              "content": "Synthetic submission content for assignment-3-1-student-3-2-task-0-0",
-              "contentHash": "hash-assignment-3-1-student-3-2-task-0-0",
+              "documentId": "artifact-document-assignment-3-1-100000000030000000002-task-0-0",
+              "content": "Synthetic submission content for assignment-3-1-100000000030000000002-task-0-0",
+              "contentHash": "hash-assignment-3-1-100000000030000000002-task-0-0",
               "metadata": {},
-              "uid": "uid-assignment-3-1-student-3-2-task-0-0",
+              "uid": "uid-assignment-3-1-100000000030000000002-task-0-0",
               "type": "TEXT"
             },
             "assessments": {
@@ -5142,17 +5142,17 @@
             "feedback": {}
           },
           "task-0-1": {
-            "id": "ssi-assignment-3-1-student-3-2-task-0-1",
+            "id": "ssi-assignment-3-1-100000000030000000002-task-0-1",
             "taskId": "task-0-1",
             "artifact": {
               "taskId": "task-0-1",
               "role": "submission",
               "pageId": "page-task-0-1",
-              "documentId": "artifact-document-assignment-3-1-student-3-2-task-0-1",
-              "content": "Synthetic submission content for assignment-3-1-student-3-2-task-0-1",
-              "contentHash": "hash-assignment-3-1-student-3-2-task-0-1",
+              "documentId": "artifact-document-assignment-3-1-100000000030000000002-task-0-1",
+              "content": "Synthetic submission content for assignment-3-1-100000000030000000002-task-0-1",
+              "contentHash": "hash-assignment-3-1-100000000030000000002-task-0-1",
               "metadata": {},
-              "uid": "uid-assignment-3-1-student-3-2-task-0-1",
+              "uid": "uid-assignment-3-1-100000000030000000002-task-0-1",
               "type": "TEXT"
             },
             "assessments": {
@@ -5172,23 +5172,23 @@
         "updatedAt": "2024-01-05T10:19:00.000Z"
       },
       {
-        "studentId": "student-3-3",
+        "studentId": "100000000030000000003",
         "studentName": "Lilyan O'Reilly",
         "assignmentId": "assignment-3-1",
-        "documentId": "submission-document-assignment-3-1-student-3-3",
+        "documentId": "submission-document-assignment-3-1-100000000030000000003",
         "items": {
           "task-0-0": {
-            "id": "ssi-assignment-3-1-student-3-3-task-0-0",
+            "id": "ssi-assignment-3-1-100000000030000000003-task-0-0",
             "taskId": "task-0-0",
             "artifact": {
               "taskId": "task-0-0",
               "role": "submission",
               "pageId": "page-task-0-0",
-              "documentId": "artifact-document-assignment-3-1-student-3-3-task-0-0",
-              "content": "Synthetic submission content for assignment-3-1-student-3-3-task-0-0",
-              "contentHash": "hash-assignment-3-1-student-3-3-task-0-0",
+              "documentId": "artifact-document-assignment-3-1-100000000030000000003-task-0-0",
+              "content": "Synthetic submission content for assignment-3-1-100000000030000000003-task-0-0",
+              "contentHash": "hash-assignment-3-1-100000000030000000003-task-0-0",
               "metadata": {},
-              "uid": "uid-assignment-3-1-student-3-3-task-0-0",
+              "uid": "uid-assignment-3-1-100000000030000000003-task-0-0",
               "type": "TEXT"
             },
             "assessments": {
@@ -5204,17 +5204,17 @@
             "feedback": {}
           },
           "task-0-1": {
-            "id": "ssi-assignment-3-1-student-3-3-task-0-1",
+            "id": "ssi-assignment-3-1-100000000030000000003-task-0-1",
             "taskId": "task-0-1",
             "artifact": {
               "taskId": "task-0-1",
               "role": "submission",
               "pageId": "page-task-0-1",
-              "documentId": "artifact-document-assignment-3-1-student-3-3-task-0-1",
-              "content": "Synthetic submission content for assignment-3-1-student-3-3-task-0-1",
-              "contentHash": "hash-assignment-3-1-student-3-3-task-0-1",
+              "documentId": "artifact-document-assignment-3-1-100000000030000000003-task-0-1",
+              "content": "Synthetic submission content for assignment-3-1-100000000030000000003-task-0-1",
+              "contentHash": "hash-assignment-3-1-100000000030000000003-task-0-1",
               "metadata": {},
-              "uid": "uid-assignment-3-1-student-3-3-task-0-1",
+              "uid": "uid-assignment-3-1-100000000030000000003-task-0-1",
               "type": "TEXT"
             },
             "assessments": {
@@ -5234,23 +5234,23 @@
         "updatedAt": "2024-01-05T10:26:00.000Z"
       },
       {
-        "studentId": "student-3-4",
+        "studentId": "100000000030000000004",
         "studentName": "Evelyn Schaefer",
         "assignmentId": "assignment-3-1",
-        "documentId": "submission-document-assignment-3-1-student-3-4",
+        "documentId": "submission-document-assignment-3-1-100000000030000000004",
         "items": {
           "task-0-0": {
-            "id": "ssi-assignment-3-1-student-3-4-task-0-0",
+            "id": "ssi-assignment-3-1-100000000030000000004-task-0-0",
             "taskId": "task-0-0",
             "artifact": {
               "taskId": "task-0-0",
               "role": "submission",
               "pageId": "page-task-0-0",
-              "documentId": "artifact-document-assignment-3-1-student-3-4-task-0-0",
-              "content": "Synthetic submission content for assignment-3-1-student-3-4-task-0-0",
-              "contentHash": "hash-assignment-3-1-student-3-4-task-0-0",
+              "documentId": "artifact-document-assignment-3-1-100000000030000000004-task-0-0",
+              "content": "Synthetic submission content for assignment-3-1-100000000030000000004-task-0-0",
+              "contentHash": "hash-assignment-3-1-100000000030000000004-task-0-0",
               "metadata": {},
-              "uid": "uid-assignment-3-1-student-3-4-task-0-0",
+              "uid": "uid-assignment-3-1-100000000030000000004-task-0-0",
               "type": "TEXT"
             },
             "assessments": {
@@ -5266,17 +5266,17 @@
             "feedback": {}
           },
           "task-0-1": {
-            "id": "ssi-assignment-3-1-student-3-4-task-0-1",
+            "id": "ssi-assignment-3-1-100000000030000000004-task-0-1",
             "taskId": "task-0-1",
             "artifact": {
               "taskId": "task-0-1",
               "role": "submission",
               "pageId": "page-task-0-1",
-              "documentId": "artifact-document-assignment-3-1-student-3-4-task-0-1",
-              "content": "Synthetic submission content for assignment-3-1-student-3-4-task-0-1",
-              "contentHash": "hash-assignment-3-1-student-3-4-task-0-1",
+              "documentId": "artifact-document-assignment-3-1-100000000030000000004-task-0-1",
+              "content": "Synthetic submission content for assignment-3-1-100000000030000000004-task-0-1",
+              "contentHash": "hash-assignment-3-1-100000000030000000004-task-0-1",
               "metadata": {},
-              "uid": "uid-assignment-3-1-student-3-4-task-0-1",
+              "uid": "uid-assignment-3-1-100000000030000000004-task-0-1",
               "type": "TEXT"
             },
             "assessments": {
@@ -5296,23 +5296,23 @@
         "updatedAt": "2024-01-05T10:33:00.000Z"
       },
       {
-        "studentId": "student-3-5",
+        "studentId": "100000000030000000005",
         "studentName": "Rex Langworth",
         "assignmentId": "assignment-3-1",
-        "documentId": "submission-document-assignment-3-1-student-3-5",
+        "documentId": "submission-document-assignment-3-1-100000000030000000005",
         "items": {
           "task-0-0": {
-            "id": "ssi-assignment-3-1-student-3-5-task-0-0",
+            "id": "ssi-assignment-3-1-100000000030000000005-task-0-0",
             "taskId": "task-0-0",
             "artifact": {
               "taskId": "task-0-0",
               "role": "submission",
               "pageId": "page-task-0-0",
-              "documentId": "artifact-document-assignment-3-1-student-3-5-task-0-0",
-              "content": "Synthetic submission content for assignment-3-1-student-3-5-task-0-0",
-              "contentHash": "hash-assignment-3-1-student-3-5-task-0-0",
+              "documentId": "artifact-document-assignment-3-1-100000000030000000005-task-0-0",
+              "content": "Synthetic submission content for assignment-3-1-100000000030000000005-task-0-0",
+              "contentHash": "hash-assignment-3-1-100000000030000000005-task-0-0",
               "metadata": {},
-              "uid": "uid-assignment-3-1-student-3-5-task-0-0",
+              "uid": "uid-assignment-3-1-100000000030000000005-task-0-0",
               "type": "TEXT"
             },
             "assessments": {
@@ -5328,17 +5328,17 @@
             "feedback": {}
           },
           "task-0-1": {
-            "id": "ssi-assignment-3-1-student-3-5-task-0-1",
+            "id": "ssi-assignment-3-1-100000000030000000005-task-0-1",
             "taskId": "task-0-1",
             "artifact": {
               "taskId": "task-0-1",
               "role": "submission",
               "pageId": "page-task-0-1",
-              "documentId": "artifact-document-assignment-3-1-student-3-5-task-0-1",
-              "content": "Synthetic submission content for assignment-3-1-student-3-5-task-0-1",
-              "contentHash": "hash-assignment-3-1-student-3-5-task-0-1",
+              "documentId": "artifact-document-assignment-3-1-100000000030000000005-task-0-1",
+              "content": "Synthetic submission content for assignment-3-1-100000000030000000005-task-0-1",
+              "contentHash": "hash-assignment-3-1-100000000030000000005-task-0-1",
               "metadata": {},
-              "uid": "uid-assignment-3-1-student-3-5-task-0-1",
+              "uid": "uid-assignment-3-1-100000000030000000005-task-0-1",
               "type": "TEXT"
             },
             "assessments": {
@@ -5541,23 +5541,23 @@
     },
     "submissions": [
       {
-        "studentId": "student-3-0",
+        "studentId": "100000000030000000000",
         "studentName": "Erik Grimes",
         "assignmentId": "assignment-3-2",
-        "documentId": "submission-document-assignment-3-2-student-3-0",
+        "documentId": "submission-document-assignment-3-2-100000000030000000000",
         "items": {
           "task-1-0": {
-            "id": "ssi-assignment-3-2-student-3-0-task-1-0",
+            "id": "ssi-assignment-3-2-100000000030000000000-task-1-0",
             "taskId": "task-1-0",
             "artifact": {
               "taskId": "task-1-0",
               "role": "submission",
               "pageId": "page-task-1-0",
-              "documentId": "artifact-document-assignment-3-2-student-3-0-task-1-0",
-              "content": "Synthetic submission content for assignment-3-2-student-3-0-task-1-0",
-              "contentHash": "hash-assignment-3-2-student-3-0-task-1-0",
+              "documentId": "artifact-document-assignment-3-2-100000000030000000000-task-1-0",
+              "content": "Synthetic submission content for assignment-3-2-100000000030000000000-task-1-0",
+              "contentHash": "hash-assignment-3-2-100000000030000000000-task-1-0",
               "metadata": {},
-              "uid": "uid-assignment-3-2-student-3-0-task-1-0",
+              "uid": "uid-assignment-3-2-100000000030000000000-task-1-0",
               "type": "TEXT"
             },
             "assessments": {
@@ -5578,17 +5578,17 @@
             }
           },
           "task-1-1": {
-            "id": "ssi-assignment-3-2-student-3-0-task-1-1",
+            "id": "ssi-assignment-3-2-100000000030000000000-task-1-1",
             "taskId": "task-1-1",
             "artifact": {
               "taskId": "task-1-1",
               "role": "submission",
               "pageId": "page-task-1-1",
-              "documentId": "artifact-document-assignment-3-2-student-3-0-task-1-1",
-              "content": "Synthetic submission content for assignment-3-2-student-3-0-task-1-1",
-              "contentHash": "hash-assignment-3-2-student-3-0-task-1-1",
+              "documentId": "artifact-document-assignment-3-2-100000000030000000000-task-1-1",
+              "content": "Synthetic submission content for assignment-3-2-100000000030000000000-task-1-1",
+              "contentHash": "hash-assignment-3-2-100000000030000000000-task-1-1",
               "metadata": {},
-              "uid": "uid-assignment-3-2-student-3-0-task-1-1",
+              "uid": "uid-assignment-3-2-100000000030000000000-task-1-1",
               "type": "TEXT"
             },
             "assessments": {
@@ -5613,40 +5613,40 @@
         "updatedAt": "2024-01-05T11:05:00.000Z"
       },
       {
-        "studentId": "student-3-1",
+        "studentId": "100000000030000000001",
         "studentName": "Lane Boehm",
         "assignmentId": "assignment-3-2",
-        "documentId": "submission-document-assignment-3-2-student-3-1",
+        "documentId": "submission-document-assignment-3-2-100000000030000000001",
         "items": {
           "task-1-0": {
-            "id": "ssi-assignment-3-2-student-3-1-task-1-0",
+            "id": "ssi-assignment-3-2-100000000030000000001-task-1-0",
             "taskId": "task-1-0",
             "artifact": {
               "taskId": "task-1-0",
               "role": "submission",
               "pageId": "page-task-1-0",
-              "documentId": "artifact-document-assignment-3-2-student-3-1-task-1-0",
-              "content": "Synthetic submission content for assignment-3-2-student-3-1-task-1-0",
-              "contentHash": "hash-assignment-3-2-student-3-1-task-1-0",
+              "documentId": "artifact-document-assignment-3-2-100000000030000000001-task-1-0",
+              "content": "Synthetic submission content for assignment-3-2-100000000030000000001-task-1-0",
+              "contentHash": "hash-assignment-3-2-100000000030000000001-task-1-0",
               "metadata": {},
-              "uid": "uid-assignment-3-2-student-3-1-task-1-0",
+              "uid": "uid-assignment-3-2-100000000030000000001-task-1-0",
               "type": "TEXT"
             },
             "assessments": {},
             "feedback": {}
           },
           "task-1-1": {
-            "id": "ssi-assignment-3-2-student-3-1-task-1-1",
+            "id": "ssi-assignment-3-2-100000000030000000001-task-1-1",
             "taskId": "task-1-1",
             "artifact": {
               "taskId": "task-1-1",
               "role": "submission",
               "pageId": "page-task-1-1",
-              "documentId": "artifact-document-assignment-3-2-student-3-1-task-1-1",
-              "content": "Synthetic submission content for assignment-3-2-student-3-1-task-1-1",
-              "contentHash": "hash-assignment-3-2-student-3-1-task-1-1",
+              "documentId": "artifact-document-assignment-3-2-100000000030000000001-task-1-1",
+              "content": "Synthetic submission content for assignment-3-2-100000000030000000001-task-1-1",
+              "contentHash": "hash-assignment-3-2-100000000030000000001-task-1-1",
               "metadata": {},
-              "uid": "uid-assignment-3-2-student-3-1-task-1-1",
+              "uid": "uid-assignment-3-2-100000000030000000001-task-1-1",
               "type": "TEXT"
             },
             "assessments": {},
@@ -5840,23 +5840,23 @@
     },
     "submissions": [
       {
-        "studentId": "student-3-0",
+        "studentId": "100000000030000000000",
         "studentName": "Erik Grimes",
         "assignmentId": "assignment-3-3",
-        "documentId": "submission-document-assignment-3-3-student-3-0",
+        "documentId": "submission-document-assignment-3-3-100000000030000000000",
         "items": {
           "task-2-0": {
-            "id": "ssi-assignment-3-3-student-3-0-task-2-0",
+            "id": "ssi-assignment-3-3-100000000030000000000-task-2-0",
             "taskId": "task-2-0",
             "artifact": {
               "taskId": "task-2-0",
               "role": "submission",
               "pageId": "page-task-2-0",
-              "documentId": "artifact-document-assignment-3-3-student-3-0-task-2-0",
-              "content": "Synthetic submission content for assignment-3-3-student-3-0-task-2-0",
-              "contentHash": "hash-assignment-3-3-student-3-0-task-2-0",
+              "documentId": "artifact-document-assignment-3-3-100000000030000000000-task-2-0",
+              "content": "Synthetic submission content for assignment-3-3-100000000030000000000-task-2-0",
+              "contentHash": "hash-assignment-3-3-100000000030000000000-task-2-0",
               "metadata": {},
-              "uid": "uid-assignment-3-3-student-3-0-task-2-0",
+              "uid": "uid-assignment-3-3-100000000030000000000-task-2-0",
               "type": "TEXT"
             },
             "assessments": {
@@ -5877,17 +5877,17 @@
             }
           },
           "task-2-1": {
-            "id": "ssi-assignment-3-3-student-3-0-task-2-1",
+            "id": "ssi-assignment-3-3-100000000030000000000-task-2-1",
             "taskId": "task-2-1",
             "artifact": {
               "taskId": "task-2-1",
               "role": "submission",
               "pageId": "page-task-2-1",
-              "documentId": "artifact-document-assignment-3-3-student-3-0-task-2-1",
-              "content": "Synthetic submission content for assignment-3-3-student-3-0-task-2-1",
-              "contentHash": "hash-assignment-3-3-student-3-0-task-2-1",
+              "documentId": "artifact-document-assignment-3-3-100000000030000000000-task-2-1",
+              "content": "Synthetic submission content for assignment-3-3-100000000030000000000-task-2-1",
+              "contentHash": "hash-assignment-3-3-100000000030000000000-task-2-1",
               "metadata": {},
-              "uid": "uid-assignment-3-3-student-3-0-task-2-1",
+              "uid": "uid-assignment-3-3-100000000030000000000-task-2-1",
               "type": "TEXT"
             },
             "assessments": {
@@ -5912,40 +5912,40 @@
         "updatedAt": "2024-01-05T12:05:00.000Z"
       },
       {
-        "studentId": "student-3-1",
+        "studentId": "100000000030000000001",
         "studentName": "Lane Boehm",
         "assignmentId": "assignment-3-3",
-        "documentId": "submission-document-assignment-3-3-student-3-1",
+        "documentId": "submission-document-assignment-3-3-100000000030000000001",
         "items": {
           "task-2-0": {
-            "id": "ssi-assignment-3-3-student-3-1-task-2-0",
+            "id": "ssi-assignment-3-3-100000000030000000001-task-2-0",
             "taskId": "task-2-0",
             "artifact": {
               "taskId": "task-2-0",
               "role": "submission",
               "pageId": "page-task-2-0",
-              "documentId": "artifact-document-assignment-3-3-student-3-1-task-2-0",
-              "content": "Synthetic submission content for assignment-3-3-student-3-1-task-2-0",
-              "contentHash": "hash-assignment-3-3-student-3-1-task-2-0",
+              "documentId": "artifact-document-assignment-3-3-100000000030000000001-task-2-0",
+              "content": "Synthetic submission content for assignment-3-3-100000000030000000001-task-2-0",
+              "contentHash": "hash-assignment-3-3-100000000030000000001-task-2-0",
               "metadata": {},
-              "uid": "uid-assignment-3-3-student-3-1-task-2-0",
+              "uid": "uid-assignment-3-3-100000000030000000001-task-2-0",
               "type": "TEXT"
             },
             "assessments": {},
             "feedback": {}
           },
           "task-2-1": {
-            "id": "ssi-assignment-3-3-student-3-1-task-2-1",
+            "id": "ssi-assignment-3-3-100000000030000000001-task-2-1",
             "taskId": "task-2-1",
             "artifact": {
               "taskId": "task-2-1",
               "role": "submission",
               "pageId": "page-task-2-1",
-              "documentId": "artifact-document-assignment-3-3-student-3-1-task-2-1",
-              "content": "Synthetic submission content for assignment-3-3-student-3-1-task-2-1",
-              "contentHash": "hash-assignment-3-3-student-3-1-task-2-1",
+              "documentId": "artifact-document-assignment-3-3-100000000030000000001-task-2-1",
+              "content": "Synthetic submission content for assignment-3-3-100000000030000000001-task-2-1",
+              "contentHash": "hash-assignment-3-3-100000000030000000001-task-2-1",
               "metadata": {},
-              "uid": "uid-assignment-3-3-student-3-1-task-2-1",
+              "uid": "uid-assignment-3-3-100000000030000000001-task-2-1",
               "type": "TEXT"
             },
             "assessments": {},
@@ -5956,23 +5956,23 @@
         "updatedAt": "2024-01-05T12:12:00.000Z"
       },
       {
-        "studentId": "student-3-2",
+        "studentId": "100000000030000000002",
         "studentName": "Tommy Kerluke",
         "assignmentId": "assignment-3-3",
         "documentId": null,
         "items": {
           "task-2-0": {
-            "id": "ssi-assignment-3-3-student-3-2-task-2-0",
+            "id": "ssi-assignment-3-3-100000000030000000002-task-2-0",
             "taskId": "task-2-0",
             "artifact": {
               "taskId": "task-2-0",
               "role": "submission",
               "pageId": "page-task-2-0",
-              "documentId": "artifact-document-assignment-3-3-student-3-2-task-2-0",
-              "content": "Synthetic submission content for assignment-3-3-student-3-2-task-2-0",
-              "contentHash": "hash-assignment-3-3-student-3-2-task-2-0",
+              "documentId": "artifact-document-assignment-3-3-100000000030000000002-task-2-0",
+              "content": "Synthetic submission content for assignment-3-3-100000000030000000002-task-2-0",
+              "contentHash": "hash-assignment-3-3-100000000030000000002-task-2-0",
               "metadata": {},
-              "uid": "uid-assignment-3-3-student-3-2-task-2-0",
+              "uid": "uid-assignment-3-3-100000000030000000002-task-2-0",
               "type": "TEXT"
             },
             "assessments": {
@@ -5988,17 +5988,17 @@
             "feedback": {}
           },
           "task-2-1": {
-            "id": "ssi-assignment-3-3-student-3-2-task-2-1",
+            "id": "ssi-assignment-3-3-100000000030000000002-task-2-1",
             "taskId": "task-2-1",
             "artifact": {
               "taskId": "task-2-1",
               "role": "submission",
               "pageId": "page-task-2-1",
-              "documentId": "artifact-document-assignment-3-3-student-3-2-task-2-1",
-              "content": "Synthetic submission content for assignment-3-3-student-3-2-task-2-1",
-              "contentHash": "hash-assignment-3-3-student-3-2-task-2-1",
+              "documentId": "artifact-document-assignment-3-3-100000000030000000002-task-2-1",
+              "content": "Synthetic submission content for assignment-3-3-100000000030000000002-task-2-1",
+              "contentHash": "hash-assignment-3-3-100000000030000000002-task-2-1",
               "metadata": {},
-              "uid": "uid-assignment-3-3-student-3-2-task-2-1",
+              "uid": "uid-assignment-3-3-100000000030000000002-task-2-1",
               "type": "TEXT"
             },
             "assessments": {
@@ -6018,23 +6018,23 @@
         "updatedAt": "2024-01-05T12:19:00.000Z"
       },
       {
-        "studentId": "student-3-3",
+        "studentId": "100000000030000000003",
         "studentName": "Lilyan O'Reilly",
         "assignmentId": "assignment-3-3",
-        "documentId": "submission-document-assignment-3-3-student-3-3",
+        "documentId": "submission-document-assignment-3-3-100000000030000000003",
         "items": {
           "task-2-0": {
-            "id": "ssi-assignment-3-3-student-3-3-task-2-0",
+            "id": "ssi-assignment-3-3-100000000030000000003-task-2-0",
             "taskId": "task-2-0",
             "artifact": {
               "taskId": "task-2-0",
               "role": "submission",
               "pageId": "page-task-2-0",
-              "documentId": "artifact-document-assignment-3-3-student-3-3-task-2-0",
-              "content": "Synthetic submission content for assignment-3-3-student-3-3-task-2-0",
-              "contentHash": "hash-assignment-3-3-student-3-3-task-2-0",
+              "documentId": "artifact-document-assignment-3-3-100000000030000000003-task-2-0",
+              "content": "Synthetic submission content for assignment-3-3-100000000030000000003-task-2-0",
+              "contentHash": "hash-assignment-3-3-100000000030000000003-task-2-0",
               "metadata": {},
-              "uid": "uid-assignment-3-3-student-3-3-task-2-0",
+              "uid": "uid-assignment-3-3-100000000030000000003-task-2-0",
               "type": "TEXT"
             },
             "assessments": {
@@ -6050,17 +6050,17 @@
             "feedback": {}
           },
           "task-2-1": {
-            "id": "ssi-assignment-3-3-student-3-3-task-2-1",
+            "id": "ssi-assignment-3-3-100000000030000000003-task-2-1",
             "taskId": "task-2-1",
             "artifact": {
               "taskId": "task-2-1",
               "role": "submission",
               "pageId": "page-task-2-1",
-              "documentId": "artifact-document-assignment-3-3-student-3-3-task-2-1",
-              "content": "Synthetic submission content for assignment-3-3-student-3-3-task-2-1",
-              "contentHash": "hash-assignment-3-3-student-3-3-task-2-1",
+              "documentId": "artifact-document-assignment-3-3-100000000030000000003-task-2-1",
+              "content": "Synthetic submission content for assignment-3-3-100000000030000000003-task-2-1",
+              "contentHash": "hash-assignment-3-3-100000000030000000003-task-2-1",
               "metadata": {},
-              "uid": "uid-assignment-3-3-student-3-3-task-2-1",
+              "uid": "uid-assignment-3-3-100000000030000000003-task-2-1",
               "type": "TEXT"
             },
             "assessments": {
@@ -6080,23 +6080,23 @@
         "updatedAt": "2024-01-05T12:26:00.000Z"
       },
       {
-        "studentId": "student-3-4",
+        "studentId": "100000000030000000004",
         "studentName": "Evelyn Schaefer",
         "assignmentId": "assignment-3-3",
-        "documentId": "submission-document-assignment-3-3-student-3-4",
+        "documentId": "submission-document-assignment-3-3-100000000030000000004",
         "items": {
           "task-2-0": {
-            "id": "ssi-assignment-3-3-student-3-4-task-2-0",
+            "id": "ssi-assignment-3-3-100000000030000000004-task-2-0",
             "taskId": "task-2-0",
             "artifact": {
               "taskId": "task-2-0",
               "role": "submission",
               "pageId": "page-task-2-0",
-              "documentId": "artifact-document-assignment-3-3-student-3-4-task-2-0",
-              "content": "Synthetic submission content for assignment-3-3-student-3-4-task-2-0",
-              "contentHash": "hash-assignment-3-3-student-3-4-task-2-0",
+              "documentId": "artifact-document-assignment-3-3-100000000030000000004-task-2-0",
+              "content": "Synthetic submission content for assignment-3-3-100000000030000000004-task-2-0",
+              "contentHash": "hash-assignment-3-3-100000000030000000004-task-2-0",
               "metadata": {},
-              "uid": "uid-assignment-3-3-student-3-4-task-2-0",
+              "uid": "uid-assignment-3-3-100000000030000000004-task-2-0",
               "type": "TEXT"
             },
             "assessments": {
@@ -6112,17 +6112,17 @@
             "feedback": {}
           },
           "task-2-1": {
-            "id": "ssi-assignment-3-3-student-3-4-task-2-1",
+            "id": "ssi-assignment-3-3-100000000030000000004-task-2-1",
             "taskId": "task-2-1",
             "artifact": {
               "taskId": "task-2-1",
               "role": "submission",
               "pageId": "page-task-2-1",
-              "documentId": "artifact-document-assignment-3-3-student-3-4-task-2-1",
-              "content": "Synthetic submission content for assignment-3-3-student-3-4-task-2-1",
-              "contentHash": "hash-assignment-3-3-student-3-4-task-2-1",
+              "documentId": "artifact-document-assignment-3-3-100000000030000000004-task-2-1",
+              "content": "Synthetic submission content for assignment-3-3-100000000030000000004-task-2-1",
+              "contentHash": "hash-assignment-3-3-100000000030000000004-task-2-1",
               "metadata": {},
-              "uid": "uid-assignment-3-3-student-3-4-task-2-1",
+              "uid": "uid-assignment-3-3-100000000030000000004-task-2-1",
               "type": "TEXT"
             },
             "assessments": {
@@ -6142,23 +6142,23 @@
         "updatedAt": "2024-01-05T12:33:00.000Z"
       },
       {
-        "studentId": "student-3-5",
+        "studentId": "100000000030000000005",
         "studentName": "Rex Langworth",
         "assignmentId": "assignment-3-3",
-        "documentId": "submission-document-assignment-3-3-student-3-5",
+        "documentId": "submission-document-assignment-3-3-100000000030000000005",
         "items": {
           "task-2-0": {
-            "id": "ssi-assignment-3-3-student-3-5-task-2-0",
+            "id": "ssi-assignment-3-3-100000000030000000005-task-2-0",
             "taskId": "task-2-0",
             "artifact": {
               "taskId": "task-2-0",
               "role": "submission",
               "pageId": "page-task-2-0",
-              "documentId": "artifact-document-assignment-3-3-student-3-5-task-2-0",
-              "content": "Synthetic submission content for assignment-3-3-student-3-5-task-2-0",
-              "contentHash": "hash-assignment-3-3-student-3-5-task-2-0",
+              "documentId": "artifact-document-assignment-3-3-100000000030000000005-task-2-0",
+              "content": "Synthetic submission content for assignment-3-3-100000000030000000005-task-2-0",
+              "contentHash": "hash-assignment-3-3-100000000030000000005-task-2-0",
               "metadata": {},
-              "uid": "uid-assignment-3-3-student-3-5-task-2-0",
+              "uid": "uid-assignment-3-3-100000000030000000005-task-2-0",
               "type": "TEXT"
             },
             "assessments": {
@@ -6174,17 +6174,17 @@
             "feedback": {}
           },
           "task-2-1": {
-            "id": "ssi-assignment-3-3-student-3-5-task-2-1",
+            "id": "ssi-assignment-3-3-100000000030000000005-task-2-1",
             "taskId": "task-2-1",
             "artifact": {
               "taskId": "task-2-1",
               "role": "submission",
               "pageId": "page-task-2-1",
-              "documentId": "artifact-document-assignment-3-3-student-3-5-task-2-1",
-              "content": "Synthetic submission content for assignment-3-3-student-3-5-task-2-1",
-              "contentHash": "hash-assignment-3-3-student-3-5-task-2-1",
+              "documentId": "artifact-document-assignment-3-3-100000000030000000005-task-2-1",
+              "content": "Synthetic submission content for assignment-3-3-100000000030000000005-task-2-1",
+              "contentHash": "hash-assignment-3-3-100000000030000000005-task-2-1",
               "metadata": {},
-              "uid": "uid-assignment-3-3-student-3-5-task-2-1",
+              "uid": "uid-assignment-3-3-100000000030000000005-task-2-1",
               "type": "TEXT"
             },
             "assessments": {

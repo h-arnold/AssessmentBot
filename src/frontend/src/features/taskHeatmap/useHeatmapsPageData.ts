@@ -56,7 +56,6 @@ import {
 import { getABClassQueryOptions, getAssignmentQueryOptions } from '../../query/sharedQueries';
 import { queryKeys } from '../../query/queryKeys';
 import { usePageDataset } from '../../hooks/usePageDataset';
-import { logFrontendError } from '../../logging/frontendLogger';
 import { toError } from '../../errors/normaliseUnknownError';
 import type { AveragingResult } from '../../services/dataAnalysis/dataAnalysis.zod';
 import type { ClassFull } from '../../services/googleClassrooms/classDetail/classDetailService.zod';
@@ -75,7 +74,11 @@ import {
   type MergedPreviewAssemblyResult,
 } from './assembleMergedPreviewData';
 import { buildCellPreviewLookup, type CellPreviewLookup } from './buildCellPreviewLookup';
-import { shouldRunHeatmapsPipeline, runHeatmapsPipeline } from './heatmapsPipeline';
+import {
+  shouldRunHeatmapsPipeline,
+  runHeatmapsPipeline,
+  logPipelineError,
+} from './heatmapsPipeline';
 import {
   computeHeatmapsSurfaceState,
   type HeatmapsPageError,
@@ -195,9 +198,8 @@ type AssignmentPreviewCombined = Readonly<{
  *
  * @remarks
  * The enriched `AssignmentFull` lookup is built whenever `data` is present; the
- * embedded `assignmentDefinition` is REQUIRED by `AssignmentFullSchema`, so
- * `buildCellPreviewLookup` fail-fasts (loudly) if it is ever absent rather than
- * silently degrading to an empty lookup.
+ * transport contract validates its required embedded `assignmentDefinition`
+ * fields before this data reaches the hook.
  */
 function buildPreviewInput(
   assignmentId: string,
@@ -389,7 +391,7 @@ export function useHeatmapsPageData(): HeatmapsPageData {
         assemblyError: null,
       };
     } catch (error: unknown) {
-      logFrontendError('useHeatmapsPageData.assembleMergedPreviewData', error, { classId });
+      logPipelineError('useHeatmapsPageData.assembleMergedPreviewData', error, { classId });
       return { mergedPreview: null, assemblyError: toError(error) };
     }
   }, [mergedResult, selectedAssignmentIds, assignmentPreviewCombined, classId]);

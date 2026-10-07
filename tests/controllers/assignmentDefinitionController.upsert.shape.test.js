@@ -92,6 +92,7 @@ describe('AssignmentDefinitionController upsert behaviour — transport shape', 
         t_task_1: {
           id: 't_task_1',
           taskTitle: 'Task A',
+          pageId: 'p_t_task_1',
           taskWeighting: 2,
           artifacts: { reference: [], template: [] },
         },

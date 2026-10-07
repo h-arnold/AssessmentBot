@@ -1,7 +1,7 @@
 ---
 description: Creates, maintains, and debugs Vitest unit/component tests and backend tests
 mode: all
-model: opencode/mimo-v2.6-flash-free
+model: openai/gpt-6-luna
 steps: 100
 ---
 

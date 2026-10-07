@@ -2,6 +2,7 @@ import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest';
 import { render, cleanup, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { TaskHeatmapTable } from './TaskHeatmapTable';
+import { PREVIEW_ERROR_TEXT } from './TaskMetricPreviewContent';
 import {
   buildHeatmapResult,
   getHeatmapCellByLabel,
@@ -49,7 +50,7 @@ describe('TaskHeatmapTable popover integration and preview presentation', () => 
     expect(trigger).toHaveAttribute('aria-label', accessibleName);
   });
 
-  it('does not describe the Ant Design Popover trigger as a dialog', () => {
+  it('exposes the preview trigger state and its named non-modal dialog', async () => {
     render(
       <TaskHeatmapTable
         heatmapResult={buildHeatmapResult()}
@@ -62,7 +63,15 @@ describe('TaskHeatmapTable popover integration and preview presentation', () => 
     const cell = getHeatmapCellByLabel('Student One, Task 1, Completeness: 5');
     const trigger = within(cell).getByRole('button');
 
-    expect(trigger).not.toHaveAttribute('aria-haspopup');
+    expect(trigger).toHaveAttribute('aria-expanded', 'false');
+    expect(trigger).toHaveAttribute('aria-haspopup', 'dialog');
+    await user.hover(trigger);
+    const dialog = await within(document.body).findByRole('dialog', {
+      name: 'Student One, Task 1, Completeness: 5',
+    });
+    expect(dialog).toBeInTheDocument();
+    expect(dialog).not.toHaveAttribute('aria-modal', 'true');
+    expect(trigger).toHaveAttribute('aria-expanded', 'true');
   });
 
   it('does not assemble preview data until its popover opens', async () => {
@@ -92,8 +101,7 @@ describe('TaskHeatmapTable popover integration and preview presentation', () => 
   });
 
   // -------------------------------------------------------------------------
-  // 6. Popover integration — metric sub-cells are wrapped in Popover with
-  //    TaskPreviewCard content, while existing cell appearance is preserved.
+  // Popover integration preserves existing metric-cell appearance.
   // -------------------------------------------------------------------------
 
   it('wraps each metric sub-cell render output in an Ant Design Popover', async () => {
@@ -107,12 +115,12 @@ describe('TaskHeatmapTable popover integration and preview presentation', () => 
       />
     );
 
-    // Find a computed cell's score span via its aria-label
+    // Find the computed cell's native button trigger via its aria-label.
     const cell = getHeatmapCellByLabel('Student One, Task 1, Completeness: 5');
-    const trigger = cell.querySelector('span');
+    const trigger = within(cell).getByRole('button');
     expect(trigger).toBeInTheDocument();
 
-    // Hover the trigger — Popover should appear after mouseEnterDelay
+    // Hover the trigger — the Popover should appear.
     await user.hover(trigger!);
 
     // Assert the popover wrapper appears in the DOM
@@ -133,7 +141,7 @@ describe('TaskHeatmapTable popover integration and preview presentation', () => 
     );
 
     const cell = getHeatmapCellByLabel('Student One, Task 1, Completeness: 5');
-    const trigger = cell.querySelector('span')!;
+    const trigger = within(cell).getByRole('button');
     expect(trigger).toBeInTheDocument();
 
     await user.hover(trigger);
@@ -203,7 +211,7 @@ describe('TaskHeatmapTable popover integration and preview presentation', () => 
 
     // Hover a computed cell and assert the popover opens
     const cell = getHeatmapCellByLabel('Student One, Task 1, Completeness: 5');
-    const trigger = cell.querySelector('span')!;
+    const trigger = within(cell).getByRole('button');
     expect(trigger).toBeInTheDocument();
 
     await user.hover(trigger);
@@ -230,7 +238,7 @@ describe('TaskHeatmapTable popover integration and preview presentation', () => 
     );
 
     const cell = getHeatmapCellByLabel('Student One, Task 1, Completeness: 5');
-    const trigger = cell.querySelector('span')!;
+    const trigger = within(cell).getByRole('button');
     expect(trigger).toBeInTheDocument();
 
     await user.hover(trigger);
@@ -254,7 +262,7 @@ describe('TaskHeatmapTable popover integration and preview presentation', () => 
       title: 'renders an error Alert in the popover when showAssignmentError is true',
       lookup: null,
       showAssignmentError: true,
-      expectedText: "Couldn't load task details",
+      expectedText: PREVIEW_ERROR_TEXT,
     },
     {
       title:
@@ -282,7 +290,7 @@ describe('TaskHeatmapTable popover integration and preview presentation', () => 
     );
 
     const cell = getHeatmapCellByLabel('Student One, Task 1, Completeness: 5');
-    const trigger = cell.querySelector('span')!;
+    const trigger = within(cell).getByRole('button');
     expect(trigger).toBeInTheDocument();
 
     await user.hover(trigger);

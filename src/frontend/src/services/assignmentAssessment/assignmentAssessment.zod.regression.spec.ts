@@ -19,7 +19,10 @@ import {
   AssignmentFullSchema,
   StudentSubmissionSchema,
 } from './assignmentAssessment.zod';
-import { validBaseArtifact, validFullAssignment } from './assignmentAssessment.zod.fixtures';
+import {
+  validBaseArtifact,
+  validFullAssignment,
+} from '../../test/assignmentAssessment/assignmentAssessment.zod.fixtures';
 
 describe("assignmentAssessment.zod regression (score 'N' / absent documentId)", () => {
   it("accepts an assessment with the 'N' sentinel score (unattempted criterion)", () => {

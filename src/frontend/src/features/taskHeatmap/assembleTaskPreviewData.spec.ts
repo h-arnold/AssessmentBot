@@ -66,27 +66,69 @@ const SPREADSHEET_SCORE = 5;
 const ERROR_METRIC: TaskDisplayMetric = createErrorMetricResult();
 
 /**
- * Create a CellPreviewData for the given artifact type, content and reasoning.
+ * Build the per-metric reasoning record for a `CellPreviewData` fixture,
+ * defaulting each metric absent from the overrides to null.
+ *
+ * @param {Partial<CellPreviewData['reasoning']>} [overrides] - Optional per-metric reasoning overrides.
+ * @returns {CellPreviewData['reasoning']} The reasoning record for the cell.
+ */
+function buildReasoning(
+  overrides?: Partial<CellPreviewData['reasoning']>
+): CellPreviewData['reasoning'] {
+  return {
+    completeness: overrides?.completeness ?? null,
+    accuracy: overrides?.accuracy ?? null,
+    spag: overrides?.spag ?? null,
+  };
+}
+
+/**
+ * Create a CellPreviewData for the given artifact type, content, reasoning
+ * overrides and derived source URL.
+ *
+ * The `artifactType` argument is narrowed by switch case labels: the
+ * identical `string | null` content branches (`TEXT`, `TABLE`, `IMAGE` and
+ * `base`, whose `unknown` slot accepts the same narrow content) share one
+ * fall-through block, while `SPREADSHEET` keeps its narrower 2-D array cast.
+ * Each returned object literal is still checked against the matching
+ * `CellPreviewData` union members, and `sourceUrl` is written explicitly on
+ * every path, so no whole-object cast can conceal an omitted required field.
  *
  * @param {CellPreviewData['artifactType']} artifactType - The artifact type discriminator.
  * @param {unknown} artifactContent - The raw artifact content.
  * @param {Partial<CellPreviewData['reasoning']>} [overrides] - Optional per-metric reasoning overrides.
+ * @param {string | null} [sourceUrl] - The derived editor source URL carried by the cell.
  * @returns {CellPreviewData} A CellPreviewData fixture.
  */
 function cellData(
   artifactType: CellPreviewData['artifactType'],
   artifactContent: unknown,
-  overrides?: Partial<CellPreviewData['reasoning']>
+  overrides?: Partial<CellPreviewData['reasoning']>,
+  sourceUrl: string | null = null
 ): CellPreviewData {
-  return {
-    artifactType,
-    artifactContent,
-    reasoning: {
-      completeness: overrides?.completeness ?? null,
-      accuracy: overrides?.accuracy ?? null,
-      spag: overrides?.spag ?? null,
-    },
-  } as CellPreviewData;
+  const reasoning = buildReasoning(overrides);
+
+  switch (artifactType) {
+    case 'TEXT':
+    case 'TABLE':
+    case 'IMAGE':
+    case 'base': {
+      return {
+        artifactType,
+        artifactContent: artifactContent as string | null,
+        reasoning,
+        sourceUrl,
+      };
+    }
+    case 'SPREADSHEET': {
+      return {
+        artifactType,
+        artifactContent: artifactContent as Array<Array<string | number | null>> | null,
+        reasoning,
+        sourceUrl,
+      };
+    }
+  }
 }
 
 // ===========================================================================

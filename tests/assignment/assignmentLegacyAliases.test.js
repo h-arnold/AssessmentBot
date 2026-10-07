@@ -45,7 +45,7 @@ describe('Assignment (legacy alias removal)', () => {
         documentType: 'SLIDES',
         referenceDocumentId: 'ref123',
         templateDocumentId: 'tmpl123',
-        tasks: { t1: { taskTitle: 'Task 1' } },
+        tasks: { t1: { taskTitle: 'Task 1', pageId: 'p1' } },
       });
 
       const assignment = Assignment.create(fullDef, 'C123', 'A1');
@@ -221,7 +221,7 @@ describe('Assignment (legacy alias removal)', () => {
         documentType: 'SLIDES',
         referenceDocumentId: 'ref123',
         templateDocumentId: 'tmpl123',
-        tasks: { t1: { taskTitle: 'Task 1' } },
+        tasks: { t1: { taskTitle: 'Task 1', pageId: 'p1' } },
       });
 
       const assignment = Assignment.create(fullDef, 'C123', 'A1');

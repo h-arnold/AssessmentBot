@@ -115,6 +115,39 @@ function mockWarmupDatasetsReady(): void {
 }
 
 describe('useHeatmapsPageData — preview queries and status map', () => {
+  it('reuses merged preview assembly while its ready inputs remain unchanged', () => {
+    mockWarmupDatasetsReady();
+    mockGetABClassQueryOptions.mockReturnValue({ queryKey: ['abClass', DEFAULT_CLASS_ID] });
+    mockGetAssignmentQueryOptions.mockReturnValue({ queryKey: ['assignment', 'a1'] });
+    mockUseQuery.mockReturnValue(
+      createMockQueryResult<ClassFull | null>({ data: createClassFull() })
+    );
+    mockAnalyse.mockReturnValue([createAveragingResult()]);
+    mockAdaptMergedHeatmap.mockReturnValue(createMergedResult());
+    const stablePreviewResults = [
+      { assignmentId: 'a1', isPending: false, isError: false, data: null },
+    ];
+    const stableCombined = { previewResults: stablePreviewResults, rawResults: [] };
+    mockUseQueries.mockReturnValue(stableCombined);
+
+    const { result, rerender } = renderHook(() => useHeatmapsPageData(), { wrapper });
+    act(() => result.current.selectClass(DEFAULT_CLASS_ID));
+    act(() => result.current.changeAssignments(['a1']));
+    expect(mockAssembleMergedPreviewData).toHaveBeenCalledTimes(1);
+
+    rerender();
+
+    expect(mockAssembleMergedPreviewData).toHaveBeenCalledTimes(1);
+
+    mockUseQueries.mockReturnValue({
+      previewResults: [...stablePreviewResults],
+      rawResults: [],
+    });
+    mockAssembleMergedPreviewData.mockClear();
+    rerender();
+    expect(mockAssembleMergedPreviewData).toHaveBeenCalledTimes(1);
+  });
+
   it('creates one assignment query per selected assignment only', () => {
     mockWarmupDatasetsReady();
     mockGetABClassQueryOptions.mockReturnValue({ queryKey: ['abClass', DEFAULT_CLASS_ID] });
