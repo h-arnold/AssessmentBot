@@ -84,6 +84,19 @@ journeys/geometry dead weight would remove roughly 1,500–2,000 lines with no l
 
 ### Execution outcomes
 
+**Remediation status:** all six recorded batches have passed clean review and their final regression gates. Original findings and verdict below are retained as review-history evidence; the outcomes here describe the delivered remediation. Deferred/Wontfix decisions remain unchanged.
+
+**Delivery record:** Batch 1 `75876fd` + formatter follow-up `891771e`; Batch 2 `ec05a07`; Batch 3 `f1b4e32`; Batch 4 `a612a5f`; Batch 5 `08db14c`. All pushed to `docs/issue-19-task-preview-source-link` before the next batch began. Batch 6 is delivered with this outcome record.
+
+**Cumulative cleanup measurement (Batches 2–6):** scc against `891771e`, counting the same union of old/new TS/TSX/JS/CSS paths and all replacement helpers/tests: code 6,482 → 6,255 (**−227**), comments 3,570 → 3,236 (**−334**), blanks 1,069 → 963 (**−106**), total 11,121 → 10,454 (**−667**). This includes Batch 5's expressly requested additional coverage; it excludes Markdown documentation and mechanical JSON fixtures. Evidence: `.opencode/scratchpad/loc-counter/cleanup-final-cumulative/report.json`. Actual reduction is smaller than the original estimate; no claimed reduction relies on file relocation or hidden replacement code.
+
+#### Batch 6 — complete (2026-10-07)
+
+- Implementation, Testing Specialist and Playwright removed stale development/review narration and corrected the key-handler, mouse-delay and layout comments. Docs single-sourced the microtask/`flushSync` rationale in §9.26 and reconciled the final testing map. Data Shapes Agent recorded the deliberate partial/full artefact-ID schema asymmetry, corrected full-response artefact presence and aligned the registry row.
+- No executable behaviour changed: Code Reviewer independently verified byte-identical comment-free transpilation for all 14 TS/TSX files and comment-stripped CSS equality. Clean sign-off: `.opencode/scratchpad/review-batch6-retry/REVIEW.md`.
+- Independent scc delta against `08db14c`: **0 code / −114 comment / −114 total lines**, with no blank-line compression. Report: `.opencode/scratchpad/loc-counter/batch6-review-retry/report.json`. Feature docs also shed duplicated prose; data-contract corrections add only the required explanations.
+- Relevant unit/E2E, TypeScript and formatter checks pass. Final full regression comparison `runs/2026-10-07T17-24-29.917Z/comparison.txt`: seven checks passing, unchanged ten accepted backend lint findings, zero regressions/new failures. User-owned agent configuration edits remain excluded and unstaged.
+
 #### Batch 5 — complete (2026-10-07)
 
 - Implementation applied the listed trigger accessibility/focus-ring, memoisation, URL format deduplication, dead-guard removal, existing diagnostic-dedupe reuse and anchor-type/casing fixes. The existing preview wrapper is a named non-modal dialog matching `aria-haspopup="dialog"`; ordinary Tab navigation remains unchanged. Memoisation stays in the existing content component, without a new forwarding wrapper.

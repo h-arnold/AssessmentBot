@@ -1,5 +1,5 @@
 /**
- * Derived expectations for the issue #19 Section 4 Playwright source-link
+ * Derived expectations for the issue #19 Playwright source-link
  * walkthroughs.
  *
  * Turns the assignment record a journey actually serves into the exact editor

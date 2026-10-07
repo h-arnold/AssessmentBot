@@ -8,13 +8,8 @@
  * action and no disabled placeholder.
  *
  * @remarks
- * The loading, error, deferred-readiness and keyboard-boundary focus cases that
- * used to mirror this spec were removed in the Batch 3 layer reduction: the unit
- * suites already exercise them against the real `TaskMetricPreviewCell` and the
- * real Ant Design portal, so only this unavailable-source rendering case stays
- * browser-pinned here. None of the state cases resolves a source URL, so they
- * all stop at "the action is absent"; navigation is covered by the companion
- * spec.
+ * Vitest owns loading, error and deferred-readiness focus behaviour. Playwright
+ * owns unavailable-source rendering and the companion spec's browser navigation.
  *
  * @see TASK_PREVIEW_SOURCE_LINK_LAYOUT.md
  * @see docs/developer/frontend/frontend-playwright-e2e.md — runtime mocks, StrictMode rule

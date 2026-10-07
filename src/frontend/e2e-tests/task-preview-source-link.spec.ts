@@ -22,12 +22,8 @@
  * `task-preview-source-link.states.spec.ts`, so each spec stays readable and
  * below the module-size gate.
  *
- * Section 4 was authored red-first, before the Section 3 UI delivered the
- * source action and its focus ownership; that provenance is why the suite pins
- * their presence rather than assuming them. The suite now pins the delivered
- * behaviour, and any failure must be a genuine behaviour failure, never a
- * navigation, schema or queue artefact. Actual visual and geometry sign-off
- * remains pending the Section 4 visual review.
+ * The suite pins the delivered interaction and navigation behaviour. Its
+ * scenarios use the shared runtime mocks and canonical source-link records.
  *
  * @see TASK_PREVIEW_SOURCE_LINK_LAYOUT.md
  * @see docs/developer/frontend/frontend-playwright-e2e.md — runtime mocks, StrictMode rule

@@ -1,5 +1,5 @@
 /**
- * Canonical synthetic `small` fixture selection for the issue #19 Section 4
+ * Canonical synthetic `small` fixture selection for the issue #19
  * Playwright source-link walkthroughs.
  *
  * Selects the trustworthy `class-2` roster, its populated Slides
@@ -92,7 +92,7 @@ const assignmentsByKey = assignmentsByKeyRaw as unknown as Record<string, unknow
 // Journey identifiers
 // ---------------------------------------------------------------------------
 
-/** Canonical trustworthy class exercised by both Section 4 entry points. */
+/** Canonical trustworthy class exercised by both source-link entry points. */
 export const SOURCE_LINK_CLASS_ID = 'class-2';
 
 /**

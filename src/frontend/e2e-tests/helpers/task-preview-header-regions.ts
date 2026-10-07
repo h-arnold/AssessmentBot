@@ -2,7 +2,7 @@
  * Region reading for the issue #19 task-preview source action's rendered Card
  * header.
  *
- * Owns two responsibilities the rest of the Section 4 geometry work depends on:
+ * Owns two responsibilities the source-link geometry checks depend on:
  * *where* each header region is (the region contract) and *what the browser
  * painted* there (one atomic rendered reading).
  *

@@ -1,24 +1,9 @@
 /**
- * Presentational component for the Task Preview Card popover content.
- *
- * Renders an Ant Design `Card` with metric header, LLM reasoning, and student
- * response sections inside a popover triggered from the heatmap table.
+ * Presentational content for the heatmap task-preview card.
  *
  * @remarks
- * **Metric pass-through (local concern).** The component renders the analyser's
- * real `TaskDisplayMetric`, received on `data.metric`, and forwards it unchanged
- * to `MetricPill` and `formatMetricDisplayText`. Only `state` and `value` are
- * read, so the metric's weight and data-point fields are carried but inert for
- * display; `metric.state` is what selects the empty-content placeholder.
- *
- * **Source action (issue #19).** Whether the header offers the source action is
- * decided by the derived `sourceUrl` alone, never by the metric's computed /
- * not-attempted / error state: an unattempted cell whose record carries a stored
- * source still links to it, and a ready cell without one gets no action and no
- * inert placeholder. The action is deliberately a sibling of the metric's live
- * status rather than a child of it, because a static link is not part of the
- * score announcement; the balance space beside the title keeps that status
- * centred on the whole card instead of on the room the action leaves over.
+ * The source action depends only on `sourceUrl` and remains outside the metric's
+ * live status region.
  */
 
 import type { JSX, RefCallback } from 'react';
@@ -129,19 +114,7 @@ const SOURCE_ICON_SIZE = 16;
  */
 const SOURCE_ICON_STROKE_WIDTH = 1.5;
 
-/**
- * Side length of the square header action, and of the balance space beside the
- * metric group.
- *
- * @remarks
- * 24px is Ant Design's `controlHeightSM`, which an icon-only small `Button`
- * already adopts for its width and height, so the action needs no forced
- * dimensions. The balance space is sized from this same constant instead of
- * being measured off the rendered action, which keeps the reserved space equal
- * to the occupied width without a layout read — and giving both the same height
- * keeps the title region as tall as the action, so the header's vertical
- * centring stays a property of Ant Design's own flex alignment.
- */
+/** Side length of the header action and matching balance space. */
 const SOURCE_ACTION_SIZE = 24;
 
 // ---------------------------------------------------------------------------
@@ -235,15 +208,7 @@ function renderArtifact(
 // ---------------------------------------------------------------------------
 
 /**
- * Task Preview Card — popover content for the heatmap metric sub-cells.
- *
- * Renders a compact card (maxWidth 400) with:
- * - **Header**: centred metric label with colon + `MetricPill` score, balanced
- *   against the top-right source action when the record carries a source
- * - **Reasoning**: bold "Reasoning" label and the LLM reasoning text (or
- *   "No reasoning available" placeholder)
- * - **Student Response**: bold "Student Response" label and the artifact
- *   rendered by the appropriate renderer (ImageRenderer or MarkdownRenderer)
+ * Task Preview Card — see `TASK_PREVIEW_SOURCE_LINK_LAYOUT.md` for its header layout.
  *
  * @param {Readonly<TaskPreviewCardProperties>} props - Component properties.
  * @returns {JSX.Element} The rendered card.

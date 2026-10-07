@@ -1,5 +1,5 @@
 /**
- * Runtime scenario construction for the issue #19 Section 4 Playwright source-link
+ * Runtime scenario construction for the issue #19 Playwright source-link
  * walkthroughs.
  *
  * @remarks

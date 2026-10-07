@@ -1,11 +1,11 @@
 /**
- * Behaviour-preserving characterisation spec for `TaskMetricPreviewCell`.
+ * Contract tests for the trigger and preview behaviour owned by `TaskMetricPreviewCell`.
  *
  * This suite renders the metric-cell module directly — the trigger/Popover
- * responsibility that `taskHeatmapTableColumns.tsx` delegates to it — and pins
- * the behaviour the column module relies on: the shared accessible label and
+ * responsibility delegated by `taskHeatmapTableColumns.tsx` — and pins its
+ * module contract: the shared accessible label and
  * score text on a focusable `role="button"` trigger that carries no background
- * tone of its own, hover and click activation, Enter/Space click synthesis,
+ * tone of its own, hover and click activation, explicit Enter/Space handling,
  * right placement, and content assembly deferred until the overlay actually
  * opens.
  *

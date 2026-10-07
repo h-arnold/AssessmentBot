@@ -1,6 +1,6 @@
 /**
  * Locators, navigation, external navigation capture and viewport helpers for the
- * issue #19 Section 4 Playwright source-link walkthroughs.
+ * issue #19 task-preview source-link walkthroughs.
  *
  * @remarks
  * This module owns everything that *drives* a journey: the locators the specs
@@ -90,7 +90,7 @@ export function openPreviewPopover(page: Page): Locator {
 }
 
 /**
- * Return the Section 3 source action inside a preview popover.
+ * Return the source action inside a preview popover.
  *
  * @param {Locator} container - The popover locator.
  * @returns {Locator} The accessible source-action link locator.

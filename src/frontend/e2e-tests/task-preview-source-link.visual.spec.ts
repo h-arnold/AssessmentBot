@@ -24,14 +24,8 @@
  * or CSS declarations — only `getBoundingClientRect()` values count, read once
  * settled (see `task-preview-source-link-geometry.ts`).
  *
- * **Red-first provenance.** These journeys were authored before the source-link
- * UI delivered the action and its regions, so the geometry assertions then
- * failed at the missing action. The action, its regions and the local ≤390px
- * popover-arrow containment have since landed, so the original geometry
- * assertions pass. The representative visual inspection accepted the retained
- * 16px icon, 24px action and 1.5 stroke as legible, aligned and free of overlap
- * or clipping; final review and regression remain. Screenshots are captured as
- * review evidence into Playwright's untracked per-test output directory.
+ * Screenshots are captured as review evidence into Playwright's untracked
+ * per-test output directory.
  *
  * **Narrow-viewport journey.** At 390x844 the heatmap's sticky Forename/Surname
  * columns are wider than the table's remaining visible strip, so they cover every

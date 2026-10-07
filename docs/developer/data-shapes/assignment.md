@@ -437,6 +437,22 @@ The full and partial schemas on the frontend are:
     Backend returns `null` (no payload on success). The frontend `StartAssessmentRunResponseSchema` is `z.void().nullable()` which accepts both `undefined` (from the envelope's `data ?? null` coercion) and `null`.
     **Classification: Aligned** — standard pattern for void-response endpoints.
 
+12. **Full `BaseTaskArtifactFields` requires `pageId`/`documentId` as nullable strings, while the partial `BaseTaskArtifactPartialSchema` accepts them as `.nullable().optional()`.**
+    Backend `BaseTaskArtifact.toJSON()` and `BaseTaskArtifact.toPartialJSON()` always emit both source IDs
+    as `pageId`/`documentId` (`string | null`); `toPartialJSON()` redacts only `content` and `contentHash`,
+    so neither ID is ever omitted (`src/backend/Models/Artifacts/0_BaseTaskArtifact.js`). Issue #19
+    deliberately tightened only the full `getAssignment` transport schema
+    (`assignmentAssessment.zod.ts`), which now rejects a missing `pageId`/`documentId` key while still
+    accepting the `null` the backend permits. The class-detail partial schema
+    (`classDetailService.zod.ts`) is intentionally left permissive: its `.optional()` is defensive
+    tolerance at the `getABClass` transport boundary, mirroring the pre-existing optionality of the
+    parent `StudentSubmissionPartialSchema.documentId`, and is not a response to any backend omission.
+    Because the backend always emits both fields, the partial schema accepts an absent key the backend
+    never produces.
+    **Classification: Aligned** — deliberate, scoped asymmetry. The full path is the canonical strict
+    contract; the partial path is unchanged by issue #19 and remains broad pending a separate decision
+    to tighten the class-detail contract.
+
 ---
 
 ## File Index

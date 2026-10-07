@@ -1,5 +1,5 @@
 /**
- * Acceptance tests for the task-preview card's source-document action.
+ * Contract tests for the task-preview card's source-document action.
  *
  * The card already owns the metric live status, the reasoning section and the
  * student response; this suite pins what the action adds on top of that
@@ -8,13 +8,6 @@
  * editor URL in a new tab, rendered outside the metric's live region, with a
  * decorative icon, present for every ready metric state that has a source and
  * absent — with no disabled placeholder — when it does not.
- *
- * @remarks
- * **Red-first provenance.** These are the issue #19 acceptance criteria for
- * the card, authored before the action existed — the present-and-tooltip
- * cases failing on its absence — and they now pin the delivered contract.
- * The absent-action case passes both before and after; it pins the boundary
- * against over-reach during and after implementation.
  *
  * Geometry, whole-card metric centring and rendered icon sizing are measured in
  * the Playwright visual suite, not here: happy-dom performs no layout.
@@ -218,7 +211,7 @@ describe('TaskPreviewCard source action', () => {
     // Focus is set directly, with no pointer interaction, so the tooltip can
     // only be the focus trigger answering a keyboard user. Wrapped in `act`
     // because this programmatic focus is what opens the action's own
-    // hover/focus tooltip, and ant Design mounts the overlay's Trigger, Portal
+    // hover/focus tooltip, and Ant Design mounts the overlay's Trigger, Portal
     // and CSSMotion updates outside any user interaction.
     const action = screen.getByRole('link', { name: SOURCE_ACTION_LABEL });
     act(() => {

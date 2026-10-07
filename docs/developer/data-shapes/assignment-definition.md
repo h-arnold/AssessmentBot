@@ -508,7 +508,7 @@ Frontend Zod:
 | `taskMetadata`  | `object`       | Always emitted   | —                                                                                             | —                                                    | Optional metadata object. Omitted from frontend transport schemas.                                                                                                                                                                                                                   |
 | `taskWeighting` | `number`       | Always emitted   | `AssignmentDefinitionTaskSchema.taskWeighting: WeightingSchema` (`z.number().min(0).max(10)`) | `TaskPartialSchema.taskWeighting: z.number()`        | Defaults to `1` in the constructor; hydration keeps that default when a stored value is null. Full schema enforces 0–10 range; the partial schema expects a number and rejects legacy `null`.                                                                                        |
 | `index`         | `number\|null` | Always emitted   | —                                                                                             | —                                                    | Positional index. Omitted from frontend transport schemas.                                                                                                                                                                                                                           |
-| `artifacts`     | `Object`       | Always emitted   | —                                                                                             | —                                                    | `{ reference: BaseTaskArtifact[], template: BaseTaskArtifact[] }`. Omitted from frontend transport schemas — only present in full backend persistence.                                                                                                                               |
+| `artifacts`     | `Object`       | Always emitted   | —                                                                                             | —                                                    | `{ reference: BaseTaskArtifact[], template: BaseTaskArtifact[] }`. Omitted from this contract's definition-endpoint transport schemas; present in the [Contract: Assignment](assignment.md) `getAssignment` transport — see key notes below.                                         |
 
 `TaskDefinition.toPartialJSON()` emits the same shape as `toJSON()` but with
 `artifacts.reference` and `artifacts.template` mapped through `BaseTaskArtifact.toPartialJSON()`
@@ -520,6 +520,12 @@ Key notes:
   `AssignmentDefinitionSchema.tasks` (the array returned by the response mapper).
 - The partial frontend schema (`TaskPartialSchema`) is used inside
   `AssignmentDefinitionPartialSchema.tasks` (the registry transport).
+- `artifacts` is always emitted by both `toJSON()` and `toPartialJSON()` (the latter redacts
+  `.content`/`.contentHash` but keeps the collections). It is deliberately omitted from this
+  contract's definition-endpoint transport schemas, which are lightweight task projections, but it
+  is **not** omitted from every frontend transport: the [Contract: Assignment](assignment.md)
+  `TaskDefinitionSchema` (`assignmentAssessment.zod.ts`) validates the full `artifacts` object for
+  `getAssignment` responses.
 - `taskTitle` is nullable in `TaskPartialSchema` to carry legacy or missing titles through
   to the heatmap column (where the table header falls back to `taskId` for display).
 - `taskWeighting` is numeric in `TaskPartialSchema` (`z.number()`). The runtime-supported shape

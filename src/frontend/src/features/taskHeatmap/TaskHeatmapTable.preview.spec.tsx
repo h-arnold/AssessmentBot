@@ -101,8 +101,7 @@ describe('TaskHeatmapTable popover integration and preview presentation', () => 
   });
 
   // -------------------------------------------------------------------------
-  // 6. Popover integration — metric sub-cells are wrapped in Popover with
-  //    TaskPreviewCard content, while existing cell appearance is preserved.
+  // Popover integration preserves existing metric-cell appearance.
   // -------------------------------------------------------------------------
 
   it('wraps each metric sub-cell render output in an Ant Design Popover', async () => {
@@ -121,7 +120,7 @@ describe('TaskHeatmapTable popover integration and preview presentation', () => 
     const trigger = cell.querySelector('span');
     expect(trigger).toBeInTheDocument();
 
-    // Hover the trigger — Popover should appear after mouseEnterDelay
+    // Hover the trigger — the Popover should appear.
     await user.hover(trigger!);
 
     // Assert the popover wrapper appears in the DOM

@@ -1,33 +1,10 @@
 /**
- * Popover trigger, and owner of the preview's focus session, for one heatmap
- * metric cell.
- *
- * Sibling of `TaskMetricPreviewContent.tsx`; both were extracted from
- * `taskHeatmapTableColumns.tsx`, which keeps column construction (shape, sorting,
- * filtering, tier grouping, `<td>` tone and accessible labels) and delegates
- * rendering to this module.
+ * Popover trigger and focus-session owner for one heatmap metric cell.
  *
  * @remarks
- * **Deferred assembly.** The popover body is only built once the overlay mounts,
- * via `DeferredPopoverContent`, so `assembleTaskPreviewData` never runs while the
- * preview is closed. A function-valued Ant Design `content` prop is not
- * sufficient on its own, because Ant evaluates it while the Popover is merely
- * rendered.
- *
- * **Controlled open state.** `isPreviewOpen` is this module's own state, handed
- * to the Popover as `open`. Ant Design keeps everything it owned before:
- * hover traversal, click pinning, outside-click dismissal and destroy-on-hide
- * all still raise `onOpenChange`, and this module records what it is told. Owning
- * the flag is what lets the trigger open its preview from a key press, and what
- * lets a focus intent be tied to one open/close session rather than to a library
- * transition.
- *
- * **Focus ownership (issue #19).** This module is the only element that knows
- * both ends of the preview's focus lifecycle: the trigger in the table, and a
- * body mounted in a portal elsewhere in the document. It therefore owns the
- * current session's pending focus intent — handing keyboard focus to the ready
- * body's source action — and knows where the preview's own content is, so Escape
- * can return focus to the cell that opened it.
+ * The controlled preview retains ordinary pointer behaviour; keyboard activation
+ * transfers focus to a ready source action once per session, and Escape restores
+ * focus to the trigger.
  *
  * The intent is armed only by a keyboard activation of the trigger, and is spent
  * at most once, on the first moment this session offers something focusable —
@@ -40,22 +17,12 @@
  * Pointer traversal never arms the intent, so hovering or clicking a cell moves no
  * focus at all, and there is no focus trap — Tab and Shift+Tab stay ordinary.
  *
- * **Why the intent is a ref and the open flag is state.** The intent drives
- * focus and never changes what is rendered, so it is read at the moment of the
- * decision rather than written as state; the open flag is state because the
- * Popover renders from it. The two elements the decisions read are refs too:
- * the action is published by the body as it mounts, and the body element is
- * local to this module, so neither costs a render.
- *
- * **Why the transfer waits a microtask.** Moving focus opens the action's own
- * hover/focus Tooltip, and Ant Design opens an overlay inside a synchronous
- * `flushSync`. React logs a development-only warning whenever `flushSync` is
- * reached while React is itself still rendering or committing — and a ref
- * callback, a layout effect and a passive effect all run inside that commit — so
- * the focus move waits for the next microtask, the deferral React's own message
- * prescribes. Nothing else waits: every guard is re-checked when the transfer
- * runs, so it can neither take focus the user has since claimed nor focus an
- * action belonging to a session that has since closed.
+ * **Focus safety.** The intent is armed only by keyboard activation, spent at
+ * most once, and cancelled on departure from the trigger or session close. The
+ * transfer re-checks the active element before focusing, so it never steals
+ * focus after the user moves elsewhere. It is deferred by one microtask to avoid
+ * invoking Ant Design's synchronous overlay update during React's commit; see
+ * §9.26 of `frontend-shared-helpers-and-abstraction-standards.md`.
  */
 
 import {

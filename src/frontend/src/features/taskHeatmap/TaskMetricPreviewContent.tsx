@@ -1,21 +1,8 @@
 /**
- * Popover body for a single heatmap metric cell.
- *
- * Sibling of `TaskMetricPreviewCell.tsx`; both were extracted from
- * `taskHeatmapTableColumns.tsx` so the column module keeps only column
- * construction (shape, sorting, filtering, tier grouping, `<td>` tone and
- * accessible labels) while this module owns the three preview states:
- * loading skeleton, error alert, or the ready `TaskPreviewCard`.
+ * Loading, error, and ready body for one heatmap metric preview.
  *
  * @remarks
- * **Deferred assembly.** `assembleTaskPreviewData` still runs only when this
- * content actually renders. A function-valued Ant Design `content` prop is not
- * sufficient on its own, because Ant evaluates it while the Popover is merely
- * rendered, so the cell mounts this body behind `DeferredPopoverContent`, at
- * the overlay's open-state mount boundary.
- *
- * @see `DeferredPopoverContent.tsx`
- * @see `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md`
+ * Preview data assembly is deferred until the popover body mounts.
  */
 
 import { useMemo, type JSX, type RefCallback } from 'react';
