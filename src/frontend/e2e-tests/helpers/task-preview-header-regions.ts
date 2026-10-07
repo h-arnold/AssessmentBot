@@ -15,9 +15,10 @@
  * wrapper into a contract of this test suite and fail against correct markup.
  *
  * **Balance region.** The left balancing space the layout document requires is
- * the one genuinely project-owned region, so it carries
- * {@link HEADER_BALANCE_CLASS}. It is matched as a header descendant, which
- * states where it has to appear without constraining how the header composes it.
+ * the one genuinely project-owned region, so it carries the
+ * `task-preview-header-balance` test id. It is matched as a header
+ * descendant, which states where it has to appear without constraining how
+ * the header composes it.
  *
  * **One atomic read.** Every number is read in a single `evaluate`: separate
  * per-element reads could mix two frames of the overlay's `zoom-big` motion into
@@ -34,16 +35,6 @@ import { SOURCE_ACTION_LABEL } from '../../src/features/taskHeatmap/TaskPreviewC
 // ---------------------------------------------------------------------------
 // Region contract
 // ---------------------------------------------------------------------------
-
-/**
- * Project-owned class on the header's left balancing space.
- *
- * The layout document requires matching non-interactive space on the left of the
- * title region so the metric group stays centred on the whole card once the
- * action occupies the right inset. This is the only measured region that cannot
- * be reached through an antd semantic class or an accessible name.
- */
-export const HEADER_BALANCE_CLASS = 'task-preview-header-balance';
 
 /**
  * Every region the header contract measures, in reading order.
@@ -64,7 +55,7 @@ const REGION_NAMES = [
 ] as const;
 
 /** Name of one region the header contract measures. */
-export type PreviewHeaderRegionName = (typeof REGION_NAMES)[number];
+type PreviewHeaderRegionName = (typeof REGION_NAMES)[number];
 
 /**
  * Selector resolving the source action by the accessible name a teacher actually
@@ -85,7 +76,7 @@ export const PREVIEW_HEADER_REGION_SELECTORS: Readonly<Record<PreviewHeaderRegio
     header: '.ant-card-head',
     title: '.ant-card-head-title',
     extra: '.ant-card-head .ant-card-extra',
-    balance: `.ant-card-head .${HEADER_BALANCE_CLASS}`,
+    balance: '.ant-card-head [data-testid="task-preview-header-balance"]',
     action: ACTION_SELECTOR,
     icon: `${ACTION_SELECTOR} svg`,
     metricGroupWrapper: '.ant-card-head [role="status"]',

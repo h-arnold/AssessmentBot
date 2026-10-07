@@ -14,7 +14,7 @@
  * reading live in `task-preview-header-regions.ts`. Regions resolve through antd
  * Card semantic classes and accessible names, so only one genuinely new
  * project-owned region is required — the header's left balancing space, which
- * carries `HEADER_BALANCE_CLASS` (`task-preview-header-balance`) somewhere in
+ * carries the `task-preview-header-balance` test id somewhere in
  * `.ant-card-head`. The action itself is located by its accessible name,
  * `Open source document (opens in a new tab)`, and must live in the Card `extra`
  * region. Both regions are matched as header *descendants*, because antd nests
@@ -71,6 +71,7 @@ import {
   revealMetricCellForPointer,
   setColourScheme,
   sourceDocumentAction,
+  taskMetricCells,
 } from './helpers/task-preview-source-link-helpers';
 import {
   createEmbeddedAssignmentQueue,
@@ -93,6 +94,7 @@ import {
   deriveSourceLinkBodySelection,
 } from './helpers/task-preview-source-link-expectations';
 import { HEATMAP_METRIC_KEYS } from '../src/services/dataAnalysis/metricDisplay/metricDisplayMeta';
+import { PREVIEW_HEADER_REGION_SELECTORS } from './helpers/task-preview-header-regions';
 
 // ---------------------------------------------------------------------------
 // Review matrix
@@ -141,9 +143,6 @@ const TEXT_CELL = CANONICAL_SLIDES_CELL;
 
 /** Every artefact body the preview card's three renderers must be measured over. */
 const BODY_KINDS: readonly SourceLinkBodyKind[] = ['TEXT', 'IMAGE', 'TABLE'];
-
-/** Separator between a metric and its score in a metric cell's accessible label. */
-const ACCESSIBLE_LABEL_SCORE_SEPARATOR = ': ';
 
 // ---------------------------------------------------------------------------
 // Journeys
@@ -272,38 +271,10 @@ for (const viewport of VIEWPORTS) {
 }
 
 // ---------------------------------------------------------------------------
-// Metric label and state coverage
+// Metric label and body renderer fold
 // ---------------------------------------------------------------------------
 
-/**
- * List the accessible labels of every metric sub-cell of one student's task.
- *
- * @param {Page} page - The Playwright page under test.
- * @param {string} cellPrefix - The canonical `<student>, <task>, ` label prefix.
- * @returns {Promise<string[]>} The exact accessible labels, in DOM order.
- */
-async function taskMetricCellLabels(page: Page, cellPrefix: string): Promise<string[]> {
-  const triggers = page.locator(`[role="button"][aria-label^="${cellPrefix}"]`);
-  await expect(triggers).toHaveCount(HEATMAP_METRIC_KEYS.length);
-  return await triggers.evaluateAll((cells) =>
-    cells.map((cell) => cell.getAttribute('aria-label') ?? '')
-  );
-}
-
-/**
- * List every metric sub-cell label the rendered table shows.
- *
- * @param {Page} page - The Playwright page under test.
- * @returns {Promise<string[]>} The exact accessible labels, in DOM order.
- */
-async function allMetricCellLabels(page: Page): Promise<string[]> {
-  const table = page.getByRole('table', { name: HEATMAP_TABLE_NAME });
-  return await table
-    .locator('[role="button"][aria-label]')
-    .evaluateAll((cells) => cells.map((cell) => cell.getAttribute('aria-label') ?? ''));
-}
-
-test.describe('Metric label and state geometry', () => {
+test.describe('Metric label geometry (representative coordinate)', () => {
   test('holds the header geometry for every metric label of the canonical task', async ({
     page,
   }) => {
@@ -311,7 +282,11 @@ test.describe('Metric label and state geometry', () => {
     let closedPageWidth = await enterEntryPoint(page, VIEWPORTS[0], 'embedded Classes', 'light');
 
     const cellPrefix = `${TEXT_CELL.studentName}, ${TEXT_CELL.taskTitle}, `;
-    const labels = await taskMetricCellLabels(page, cellPrefix);
+    const triggers = taskMetricCells(page, TEXT_CELL);
+    await expect(triggers).toHaveCount(HEATMAP_METRIC_KEYS.length);
+    const labels = await triggers.evaluateAll((cells) =>
+      cells.map((cell) => cell.getAttribute('aria-label') ?? '')
+    );
     // Every metric label the heatmap can render must be represented, so this
     // cannot quietly collapse into the widest label alone.
     expect(new Set(labels.map((label) => label.slice(cellPrefix.length).split(':')[0])).size).toBe(
@@ -326,50 +301,11 @@ test.describe('Metric label and state geometry', () => {
       closedPageWidth = await rebaselineClosedPageOverflow(page, description);
     }
   });
-
-  test('holds the header geometry for the not-attempted and error metric states', async ({
-    page,
-  }) => {
-    const description = 'desktop 1440x900 light embedded Classes (non-computed metric states)';
-    let closedPageWidth = await enterEntryPoint(page, VIEWPORTS[0], 'embedded Classes', 'light');
-
-    const labels = await allMetricCellLabels(page);
-    const notAttempted = labels.find((label) => label.endsWith(': N'));
-    const errored = labels.find((label) => label.endsWith(': E'));
-    if (notAttempted === undefined || errored === undefined) {
-      throw new Error(
-        `The canonical heatmap must render both non-computed metric states for this coverage to mean anything; rendered score states: ${JSON.stringify(
-          [
-            ...new Set(
-              labels.map((label) =>
-                label.slice(
-                  label.lastIndexOf(ACCESSIBLE_LABEL_SCORE_SEPARATOR) +
-                    ACCESSIBLE_LABEL_SCORE_SEPARATOR.length
-                )
-              )
-            ),
-          ]
-        )}`
-      );
-    }
-
-    // Each iteration is measured against a page at rest, and the preview is
-    // closed and re-baselined between iterations.
-    for (const label of [notAttempted, errored]) {
-      const popover = await openReadyPreview(page, label, VIEWPORTS[0].activation);
-      await assertReadyPreviewGeometry(page, popover, `${description} — ${label}`, closedPageWidth);
-      closedPageWidth = await rebaselineClosedPageOverflow(page, description);
-    }
-  });
 });
 
-// ---------------------------------------------------------------------------
-// Body renderer coverage
-// ---------------------------------------------------------------------------
-
-test.describe('Preview body geometry', () => {
+test.describe('Preview body renderer samples', () => {
   for (const bodyKind of BODY_KINDS) {
-    test(`holds the header geometry over a ${bodyKind} response body`, async ({ page }) => {
+    test(`holds the header geometry and captures a ${bodyKind} response body`, async ({ page }) => {
       // TEXT is the canonical body; IMAGE and TABLE reuse the recorded local
       // content exception on a clone of the canonical record.
       const servedRecord = withArtifactBody(CANONICAL_SLIDES_ASSIGNMENT, bodyKind);
@@ -403,6 +339,9 @@ test.describe('Preview body geometry', () => {
       }
 
       await assertReadyPreviewGeometry(page, popover, description, closedPageWidth);
+      await popover.screenshot({
+        path: `${test.info().outputDir}/${description.replaceAll(' ', '-')}.png`,
+      });
     });
   }
 });
@@ -411,71 +350,69 @@ test.describe('Preview body geometry', () => {
 // Review screenshot capture
 // ---------------------------------------------------------------------------
 
-/**
- * Capture the card and page context the visual review needs, in every state.
- *
- * @remarks
- * These are capture hooks, not verdicts. Each file lands in Playwright's untracked
- * per-test output directory so the review can compare the normal card, the card
- * with the pointer on the action (so its tooltip renders too) and the
- * keyboard-focused card — plus the surrounding page — against issue #19's
- * illustration and neighbouring app actions. No judgement about scale, stroke,
- * alignment, theme contrast or clipping is recorded here.
- *
- * @param {Page} page - The Playwright page under test.
- * @param {Locator} popover - The open preview popover.
- * @param {string} entryPoint - The entry point under review, used in file names.
- * @returns {Promise<void>} Resolves once every capture is written.
- */
-async function captureReviewScreenshots(
-  page: Page,
-  popover: Locator,
-  entryPoint: EntryPoint
-): Promise<void> {
-  const outputDirectory = test.info().outputDir;
-  const filePrefix = entryPoint.replaceAll(' ', '-');
+for (const viewport of VIEWPORTS) {
+  for (const scheme of SCHEMES) {
+    for (const entryPoint of ENTRY_POINTS) {
+      test(`captures normal, hovered and keyboard-focused review screenshots at ${matrixKey(viewport, entryPoint, scheme)}`, async ({
+        page,
+      }) => {
+        const description = `${matrixKey(viewport, entryPoint, scheme)} (keyboard-opened capture)`;
+        const closedPageWidth = await enterEntryPoint(page, viewport, entryPoint, scheme);
 
-  await popover.screenshot({ path: `${outputDirectory}/${filePrefix}-card-normal.png` });
-  await page.screenshot({ path: `${outputDirectory}/${filePrefix}-page-context.png` });
+        // Capture the page as a teacher first sees it, before the page is scrolled
+        // to bring the metric cell clear of the sticky name columns.
+        await page.screenshot({
+          path: `${test.info().outputDir}/${viewport.key.replaceAll(' ', '-')}-${scheme}-${entryPoint.replaceAll(' ', '-')}-page-initial.png`,
+        });
 
-  await sourceDocumentAction(popover).hover();
-  await expect(popover).toBeVisible();
-  await popover.screenshot({ path: `${outputDirectory}/${filePrefix}-card-hovered.png` });
-}
+        const trigger = metricTrigger(page, TEXT_CELL.cellAccessibleLabel);
+        await expect(trigger).toHaveCount(1);
+        await trigger.focus();
+        await page.keyboard.press('Enter');
 
-for (const entryPoint of ENTRY_POINTS) {
-  test(`captures normal, hovered and keyboard-focused review screenshots from ${entryPoint}`, async ({
-    page,
-  }) => {
-    const description = `${matrixKey(VIEWPORTS[0], entryPoint, 'light')} (keyboard-opened capture)`;
-    const closedPageWidth = await enterEntryPoint(page, VIEWPORTS[0], entryPoint, 'light');
+        const popover = openPreviewPopover(page);
+        await expect(popover).toBeVisible();
+        // The keyboard-opened preview is the state a keyboard user sees, so its
+        // focused capture is taken first.
+        const action = sourceDocumentAction(popover);
+        await expect(action).toBeFocused();
+        // The measured matrix opens a pointer preview at 1440x900 but a keyboard
+        // preview at 390x844, so this keyboard-opened capture only contributes a
+        // new measurement at the desktop viewport; at the narrow viewport the
+        // matrix has already measured the keyboard journey.
+        if (viewport.activation === 'pointer') {
+          await assertReadyPreviewGeometry(page, popover, description, closedPageWidth);
+        }
+        // The card itself is the capture subject: the popover root's box includes
+        // placement offsets that `locator.screenshot` clips incorrectly once the
+        // overlay overflows the viewport at 390x844, whereas the Card's own box
+        // captures the focused action and its focus ring faithfully.
+        const card = popover.locator(PREVIEW_HEADER_REGION_SELECTORS.card);
+        await expect(card).toHaveCount(1);
+        await card.screenshot({
+          path: `${test.info().outputDir}/${viewport.key.replaceAll(' ', '-')}-${scheme}-${entryPoint.replaceAll(' ', '-')}-card-keyboard-focused.png`,
+        });
 
-    // Capture the page as a teacher first sees it, before the page is scrolled
-    // to bring the metric cell clear of the sticky name columns.
-    await page.screenshot({
-      path: `${test.info().outputDir}/${entryPoint.replaceAll(' ', '-')}-page-initial.png`,
-    });
+        // Tab off the action without dismissing the preview: leaving focus never
+        // closes it, so this is the genuinely unfocused card a keyboard user sees
+        // after tabbing on, distinct from the focused capture above.
+        await page.keyboard.press('Tab');
+        await expect(action).not.toBeFocused();
+        await expect(popover).toBeVisible();
+        await card.screenshot({
+          path: `${test.info().outputDir}/${viewport.key.replaceAll(' ', '-')}-${scheme}-${entryPoint.replaceAll(' ', '-')}-card-normal.png`,
+        });
 
-    const trigger = metricTrigger(page, TEXT_CELL.cellAccessibleLabel);
-    await expect(trigger).toHaveCount(1);
-    await trigger.focus();
-    await page.keyboard.press('Enter');
-
-    const popover = openPreviewPopover(page);
-    await expect(popover).toBeVisible();
-    // The keyboard-opened preview is the state a keyboard user sees, and the
-    // review needs its focused capture before the hover capture.
-    await expect(sourceDocumentAction(popover)).toBeFocused();
-    // This flow captures the keyboard-opened preview the matrix never measures,
-    // so the same invariants are accepted here rather than left unchecked.
-    await assertReadyPreviewGeometry(page, popover, description, closedPageWidth);
-    await popover.screenshot({
-      path: `${test.info().outputDir}/${entryPoint.replaceAll(' ', '-')}-card-keyboard-focused.png`,
-    });
-    await page.screenshot({
-      path: `${test.info().outputDir}/${entryPoint.replaceAll(' ', '-')}-page-context-keyboard-focused.png`,
-    });
-
-    await captureReviewScreenshots(page, popover, entryPoint);
-  });
+        // Hovering the action renders its tooltip; at the narrow viewport the
+        // pointer journey is not the real one, so its capture is skipped.
+        if (viewport.activation === 'pointer') {
+          await action.hover();
+          await expect(popover).toBeVisible();
+          await card.screenshot({
+            path: `${test.info().outputDir}/${viewport.key.replaceAll(' ', '-')}-${scheme}-${entryPoint.replaceAll(' ', '-')}-card-hovered.png`,
+          });
+        }
+      });
+    }
+  }
 }

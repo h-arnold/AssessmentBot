@@ -25,6 +25,7 @@ import {
   CANONICAL_SHEETS_ASSIGNMENT,
   CANONICAL_SLIDES_ASSIGNMENT,
   CANONICAL_YEAR_GROUPS,
+  assertWarmPrefetchCorpusProvenance,
 } from './task-preview-source-link-fixtures';
 import type { AssignmentFull } from '../../src/services/assignmentAssessment/assignmentAssessment.zod';
 
@@ -40,13 +41,13 @@ const DEFINITION_PARTIALS_QUEUE_REPEATS = 14;
 const CLASS_QUEUE_REPEATS = 8;
 
 /**
- * Entries answered for the journey assignment of an embedded journey.
+ * Copies of the journey assignment entry in an embedded journey's queue.
  *
  * @remarks
- * A failure needs two entries because the heatmap's own query retries after the
- * Class page's warm-up prefetch rejected; readiness and deferral need one.
+ * The journey slot is the only one repeated, because it is the only one the
+ * verified embedded request stream replays. Extra entries are never consumed,
+ * while an under-sized queue fails loudly at {@link withTailSentinel}.
  */
-const JOURNEY_FAILURE_RESPONSE_REPEATS = 2;
 const JOURNEY_DEFAULT_RESPONSE_REPEATS = 2;
 
 // ---------------------------------------------------------------------------
@@ -64,19 +65,6 @@ function success(data: unknown): ResponseItem {
 }
 
 /**
- * Build a StrictMode-safe failure entry for the journey assignment.
- *
- * @returns {ResponseItem} The failure entry.
- */
-function assignmentFailure(): ResponseItem {
-  return {
-    kind: 'failureEnvelope',
-    code: 'INTERNAL_ERROR',
-    message: 'Assignment load failed',
-  };
-}
-
-/**
  * Repeat one response entry into a fresh array.
  *
  * @param {ResponseItem} entry - The response entry to repeat.
@@ -87,15 +75,33 @@ function repeat(entry: ResponseItem, count: number): ResponseItem[] {
   return Array.from({ length: count }, () => ({ ...entry }));
 }
 
-/** How the journey assignment of an embedded journey must answer. */
-export type JourneyResponseKind = 'success' | 'deferredSuccess' | 'failure';
+/**
+ * Append a sentinel that turns an under-sized queue into a named failure.
+ *
+ * If the app ever requests more responses than the queue anticipates, the tail
+ * entry is consumed and the mock fails that call with
+ * `QUEUE_UNDERSIZED: <method> — the source-link queue ended early` instead of a
+ * stray "Unexpected call index" envelope mismatch.
+ *
+ * @param {string} method - The API method the queue answers.
+ * @param {ResponseItem[]} entries - The intended entries, in request order.
+ * @returns {ResponseItem[]} The entries plus one tail sentinel.
+ */
+function withTailSentinel(method: string, entries: ResponseItem[]): ResponseItem[] {
+  return [
+    ...entries,
+    {
+      kind: 'transportFailure',
+      code: 'QUEUE_UNDERSIZED',
+      message: `QUEUE_UNDERSIZED: ${method} — the source-link queue ended early`,
+    },
+  ];
+}
 
 /** Per-queue customisation for an embedded Class-page journey. */
-export interface EmbeddedAssignmentQueueOptions {
+interface EmbeddedAssignmentQueueOptions {
   /** Assignment served for the journey heatmap (default: canonical Slides). */
   journeyAssignment?: AssignmentFull;
-  /** How the journey assignment answers (default: ready success). */
-  journeyResponseKind?: JourneyResponseKind;
 }
 
 /**
@@ -123,22 +129,19 @@ export interface EmbeddedAssignmentQueueOptions {
 export function createEmbeddedAssignmentQueue(
   options: EmbeddedAssignmentQueueOptions = {}
 ): ResponseItem[] {
-  const { journeyAssignment = CANONICAL_SLIDES_ASSIGNMENT, journeyResponseKind = 'success' } =
-    options;
+  const { journeyAssignment = CANONICAL_SLIDES_ASSIGNMENT } = options;
 
-  const journeyEntries =
-    journeyResponseKind === 'failure'
-      ? repeat(assignmentFailure(), JOURNEY_FAILURE_RESPONSE_REPEATS)
-      : repeat(
-          { kind: journeyResponseKind, data: journeyAssignment },
-          JOURNEY_DEFAULT_RESPONSE_REPEATS
-        );
+  const journeyEntries = repeat(success(journeyAssignment), JOURNEY_DEFAULT_RESPONSE_REPEATS);
 
-  return [success(null), success(CANONICAL_SHEETS_ASSIGNMENT), ...journeyEntries];
+  return withTailSentinel('getAssignment', [
+    success(null),
+    success(CANONICAL_SHEETS_ASSIGNMENT),
+    ...journeyEntries,
+  ]);
 }
 
 /** Per-queue customisation for a standalone merged Heatmaps journey. */
-export interface MergedAssignmentQueueOptions {
+interface MergedAssignmentQueueOptions {
   /** Assignment served for the first selected assignment (default: Slides). */
   slidesAssignment?: AssignmentFull;
   /** Assignment served for the second selected assignment (default: Sheets). */
@@ -164,11 +167,11 @@ export function createMergedAssignmentQueue(
     sheetsAssignment = CANONICAL_SHEETS_ASSIGNMENT,
   } = options;
 
-  return [success(slidesAssignment), success(sheetsAssignment)];
+  return withTailSentinel('getAssignment', [success(slidesAssignment), success(sheetsAssignment)]);
 }
 
 /** Optional per-method queue overrides for a source-link scenario. */
-export type SourceLinkScenarioOverrides = Readonly<{
+type SourceLinkScenarioOverrides = Readonly<{
   /** Replaces the default `getAssignment` queue. */
   getAssignment?: ReadonlyArray<ResponseItem>;
 }>;
@@ -182,16 +185,32 @@ export type SourceLinkScenarioOverrides = Readonly<{
 export function createSourceLinkScenario(
   overrides: SourceLinkScenarioOverrides = {}
 ): RuntimeScenario {
+  assertWarmPrefetchCorpusProvenance();
   return {
-    getAuthorisationStatus: repeat(success(true), STARTUP_QUEUE_REPEATS),
-    getABClassPartials: repeat(success([CANONICAL_CLASS_PARTIAL]), REFERENCE_DATA_QUEUE_REPEATS),
-    getABClass: repeat(success(CANONICAL_CLASS), CLASS_QUEUE_REPEATS),
-    getCohorts: repeat(success([]), REFERENCE_DATA_QUEUE_REPEATS),
-    getYearGroups: repeat(success(CANONICAL_YEAR_GROUPS), REFERENCE_DATA_QUEUE_REPEATS),
-    getAssignmentTopics: repeat(success([]), REFERENCE_DATA_QUEUE_REPEATS),
-    getAssignmentDefinitionPartials: repeat(
-      success(CANONICAL_DEFINITION_PARTIALS),
-      DEFINITION_PARTIALS_QUEUE_REPEATS
+    getAuthorisationStatus: withTailSentinel(
+      'getAuthorisationStatus',
+      repeat(success(true), STARTUP_QUEUE_REPEATS)
+    ),
+    getABClassPartials: withTailSentinel(
+      'getABClassPartials',
+      repeat(success([CANONICAL_CLASS_PARTIAL]), REFERENCE_DATA_QUEUE_REPEATS)
+    ),
+    getABClass: withTailSentinel(
+      'getABClass',
+      repeat(success(CANONICAL_CLASS), CLASS_QUEUE_REPEATS)
+    ),
+    getCohorts: withTailSentinel('getCohorts', repeat(success([]), REFERENCE_DATA_QUEUE_REPEATS)),
+    getYearGroups: withTailSentinel(
+      'getYearGroups',
+      repeat(success(CANONICAL_YEAR_GROUPS), REFERENCE_DATA_QUEUE_REPEATS)
+    ),
+    getAssignmentTopics: withTailSentinel(
+      'getAssignmentTopics',
+      repeat(success([]), REFERENCE_DATA_QUEUE_REPEATS)
+    ),
+    getAssignmentDefinitionPartials: withTailSentinel(
+      'getAssignmentDefinitionPartials',
+      repeat(success(CANONICAL_DEFINITION_PARTIALS), DEFINITION_PARTIALS_QUEUE_REPEATS)
     ),
     getAssignment: createEmbeddedAssignmentQueue(),
     ...overrides,

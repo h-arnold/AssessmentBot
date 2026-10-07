@@ -84,6 +84,14 @@ journeys/geometry dead weight would remove roughly 1,500–2,000 lines with no l
 
 ### Execution outcomes
 
+#### Batch 3 — complete (2026-10-07)
+
+- Implementation replaced the balance-span class hook with a test ID. Playwright removed the duplicated focus matrix, merged journeys into helpers, reduced representative visual checks, simplified geometry tracking, pruned dead support and added named queue capacities/tail sentinels. Docs reconciled the coverage split, layout evidence and merged helper ownership.
+- Review corrected an inaccurate deletion premise: the Space twin also contained browser-only Enter-on-link navigation. That half remains in one focused real-browser test (including the focus tooltip); the unit-owned matrix stays removed. Other findings addressed: orphaned failure/deferred queue arms, stale journey ownership and identical normal/focused screenshots. Final clean review: `.opencode/scratchpad/re-review-batch3-final-clean.md`.
+- Independent scc comparison against `ec05a07`: code 1,594 → 1,392 (**−202**); total 3,260 → 2,885 (**−375**), including the merged helper and retained navigation coverage. Report: `.opencode/scratchpad/loc-counter/batch3-final-review/report.json`.
+- Relevant E2E: 7 interaction/state + 20 visual tests passing; focused navigation repeat 5/5 and narrow capture repeat 3/3 pass. The representative desktop/narrow, light/dark, both-entry-point matrix retains seven measurements and TEXT/TABLE/IMAGE samples. Normal/focused card captures are genuinely distinct; hover captures are desktop-only, disclosed in the layout document. Screenshot artifacts are generated under `src/frontend/test-results/`.
+- An overlapping validation run suffered a V8 coverage-file collision and two unrelated retry flakes. Isolated revalidation and the final full regression run at `runs/2026-10-07T06-56-38.627Z/comparison.txt` passed with zero regressions/new failures: seven checks passing, unchanged ten accepted backend lint findings. No unrelated tests or configuration were changed.
+
 #### Batch 2 — complete (2026-10-07)
 
 - Implementation exported the existing metric-label formatter and preview contract labels. Testing Specialist consolidated shared fixture primitives, moved schema fixtures into `src/test/assignmentAssessment`, reused the canonical Slides selection and pinned each fixed label once. Playwright migrated the E2E consumers without removing either independent URL oracle. Docs reconciled §9.26.

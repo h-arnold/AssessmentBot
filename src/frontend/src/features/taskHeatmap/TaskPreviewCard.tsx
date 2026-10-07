@@ -118,19 +118,6 @@ const TASK_SCORE_PRECISION = 0;
  */
 export const SOURCE_ACTION_LABEL = 'Open source document (opens in a new tab)';
 
-/**
- * Project-owned marker class on the header's left balancing space.
- *
- * @remarks
- * The space is inert — no text, nothing focusable — so it can be reached by no
- * accessible name and by no ant Design region class. This class is therefore the
- * only handle the rendered-geometry assertions have on it (see
- * `e2e-tests/helpers/task-preview-header-regions.ts`). It carries no rule of its
- * own: the size comes from {@link SOURCE_ACTION_SIZE} inline, next to the
- * component that renders it.
- */
-const HEADER_BALANCE_CLASS = 'task-preview-header-balance';
-
 /** Retained final value, accepted at the representative visual inspection: side length of the source action's decorative icon, in CSS pixels. */
 const SOURCE_ICON_SIZE = 16;
 
@@ -291,7 +278,7 @@ export function TaskPreviewCard({
             // source carries no empty placeholder.
             <span
               aria-hidden="true"
-              className={HEADER_BALANCE_CLASS}
+              data-testid="task-preview-header-balance"
               style={{ width: SOURCE_ACTION_SIZE, height: SOURCE_ACTION_SIZE, flexShrink: 0 }}
             />
           )}

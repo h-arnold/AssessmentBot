@@ -15,7 +15,11 @@
  */
 
 import { expect, type BrowserContext, type Locator, type Page } from '@playwright/test';
-import { selectVisibleOption } from '../shared/endToEndRuntimeMocks';
+import {
+  installRuntimeMock,
+  selectVisibleOption,
+  type ResponseItem,
+} from '../shared/endToEndRuntimeMocks';
 import { pageContent } from '../../src/pages/pageContent';
 import {
   HEATMAP_TABLE_NAME,
@@ -24,6 +28,7 @@ import {
   SOURCE_LINK_CLASS_NAME,
 } from './task-preview-source-link-fixtures';
 import { SOURCE_ACTION_LABEL } from '../../src/features/taskHeatmap/TaskPreviewCard';
+import { createSourceLinkScenario } from './task-preview-source-link-scenarios';
 
 // ---------------------------------------------------------------------------
 // Shared journey labels
@@ -123,7 +128,7 @@ export function visibleTooltip(page: Page): Locator {
  * @param {BrowserContext} context - The Playwright browser context under test.
  * @returns {Promise<void>} Resolves once the route is installed.
  */
-export async function registerStubbedGoogleDocumentRoute(context: BrowserContext): Promise<void> {
+async function registerStubbedGoogleDocumentRoute(context: BrowserContext): Promise<void> {
   await context.route(GOOGLE_DOCS_ROUTE_PATTERN, async (route) => {
     await route.fulfill({ status: 200, contentType: 'text/html', body: GOOGLE_DOCS_STUB_BODY });
   });
@@ -250,7 +255,7 @@ async function selectBuilderOption(
 }
 
 /** Options for the standalone merged Heatmaps journey. */
-export interface OpenMergedHeatmapOptions {
+interface OpenMergedHeatmapOptions {
   /** Option labels to select, in selection order (default: both canonical titles). */
   readonly assignmentTitles?: readonly string[];
   /** How the builder's selects are driven (default: `pointer`). */
@@ -297,6 +302,90 @@ export async function openMergedHeatmap(
   }
 
   await expect(page.getByRole('table', { name: HEATMAP_TABLE_NAME })).toBeVisible();
+}
+
+// ---------------------------------------------------------------------------
+// Journey composition
+// ---------------------------------------------------------------------------
+
+/**
+ * Install the canonical stubs and walk to the embedded class-assignment heatmap.
+ *
+ * @param {Page} page - The Playwright page under test.
+ * @param {ReadonlyArray<ResponseItem>} [queue] - `getAssignment` queue override.
+ * @returns {Promise<void>} Resolves once the heatmap table is visible.
+ */
+export async function enterEmbeddedJourney(
+  page: Page,
+  queue?: ReadonlyArray<ResponseItem>
+): Promise<void> {
+  await registerStubbedGoogleDocumentRoute(page.context());
+  await installRuntimeMock(
+    page,
+    createSourceLinkScenario(queue === undefined ? {} : { getAssignment: queue })
+  );
+  await openEmbeddedHeatmap(page);
+}
+
+/**
+ * Install the canonical stubs and walk to the standalone merged heatmap.
+ *
+ * @param {Page} page - The Playwright page under test.
+ * @param {ReadonlyArray<ResponseItem>} queue - `getAssignment` queue override.
+ * @returns {Promise<void>} Resolves once the merged table is visible.
+ */
+export async function enterMergedJourney(
+  page: Page,
+  queue: ReadonlyArray<ResponseItem>
+): Promise<void> {
+  await registerStubbedGoogleDocumentRoute(page.context());
+  await installRuntimeMock(page, createSourceLinkScenario({ getAssignment: queue }));
+  await openMergedHeatmap(page);
+}
+
+/**
+ * Hover a metric cell and return its open preview popover.
+ *
+ * @param {Page} page - The Playwright page under test.
+ * @param {Locator} trigger - The metric cell trigger.
+ * @returns {Promise<Locator>} The open preview popover.
+ */
+export async function hoverPreview(page: Page, trigger: Locator): Promise<Locator> {
+  await trigger.hover();
+  const popover = openPreviewPopover(page);
+  await expect(popover).toBeVisible();
+  return popover;
+}
+
+/**
+ * Open the canonical embedded preview for one derived cell with the pointer.
+ *
+ * @param {Page} page - The Playwright page under test.
+ * @param {ReadonlyArray<ResponseItem>} queue - The `getAssignment` queue to serve.
+ * @param {Readonly<{ cellAccessibleLabel: string }>} cell - The cell to open.
+ * @returns {Promise<Locator>} The open preview popover.
+ */
+export async function hoverCanonicalCell(
+  page: Page,
+  queue: ReadonlyArray<ResponseItem>,
+  cell: Readonly<{ cellAccessibleLabel: string }>
+): Promise<Locator> {
+  await enterEmbeddedJourney(page, queue);
+  return await hoverPreview(page, metricTrigger(page, cell.cellAccessibleLabel));
+}
+
+/**
+ * Return every metric sub-column trigger of one student's task group.
+ *
+ * @param {Page} page - The Playwright page under test.
+ * @param {Readonly<{ studentName: string; taskTitle: string }>} cell - The cell selection.
+ * @returns {Locator} The task group's metric sub-column triggers.
+ */
+export function taskMetricCells(
+  page: Page,
+  cell: Readonly<{ studentName: string; taskTitle: string }>
+): Locator {
+  return page.locator(`[role="button"][aria-label^="${cell.studentName}, ${cell.taskTitle},"]`);
 }
 
 // ---------------------------------------------------------------------------

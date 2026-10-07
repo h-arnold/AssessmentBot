@@ -49,22 +49,22 @@ import {
 // ---------------------------------------------------------------------------
 
 /** Retained final value, accepted at the representative visual inspection: SVG side length of the Lucide `ExternalLink` icon, in CSS pixels. */
-export const SOURCE_ICON_SIDE_PX = 16;
+const SOURCE_ICON_SIDE_PX = 16;
 
 /** Retained final value, accepted at the representative visual inspection: square side length of the header source action, in CSS pixels. */
-export const SOURCE_ACTION_SIDE_PX = 24;
+const SOURCE_ACTION_SIDE_PX = 24;
 
 /** Tolerance the layout document allows on the icon and action size checks. */
-export const SIZE_TOLERANCE_PX = 1;
+const SIZE_TOLERANCE_PX = 1;
 
 /** Tolerance the layout document allows on the centring and vertical checks. */
-export const CENTRE_TOLERANCE_PX = 2;
+const CENTRE_TOLERANCE_PX = 2;
 
 /** Tolerance used when comparing two edges that must coincide. */
-export const EDGE_TOLERANCE_PX = 1;
+const EDGE_TOLERANCE_PX = 1;
 
 /** Consecutive byte-identical reads required before the layout counts as settled. */
-export const REQUIRED_STABLE_READS = 3;
+const REQUIRED_STABLE_READS = 3;
 
 /** Longest the stability poll waits for a settled, motion-free layout. */
 const GEOMETRY_STABILITY_TIMEOUT_MS = 10_000;
@@ -190,48 +190,34 @@ export async function rebaselineClosedPageOverflow(
 // Asserting
 // ---------------------------------------------------------------------------
 
-/** Bookkeeping for the "same geometry N reads running" decision. */
+/** The stateful half of the stability poll. */
 interface GeometryStabilityTracker {
-  /**
-   * Feed one reading.
-   *
-   * @param {PreviewHeaderMeasurement | null} reading - A fresh reading, or `null`
-   * when a region was missing or had no painted area yet.
-   * @returns {string | null} The reading's serialised key once the layout has been
-   * identical for {@link REQUIRED_STABLE_READS} consecutive reads and the
-   * overlay's motion has finished; otherwise `null`, which makes the poll retry.
-   */
   accept(reading: PreviewHeaderMeasurement | null): string | null;
-  /** The most recent reading, present once any reading has been seen. */
   readonly accepted: PreviewHeaderMeasurement | null;
 }
 
 /**
- * Create the stateful half of the stability poll.
- *
- * @remarks
- * Keeping this out of the poll callback leaves each function small enough to
- * read, and makes the stability rule — identical readings, no motion — explicit
- * in one place.
+ * Create the stability rule in one place: identical readings for
+ * {@link REQUIRED_STABLE_READS} consecutive polls and finished overlay motion.
  *
  * @returns {GeometryStabilityTracker} A fresh tracker.
  */
 function createStabilityTracker(): GeometryStabilityTracker {
-  let latestKey: string | null = null;
-  let latestReading: PreviewHeaderMeasurement | null = null;
-  let identicalReads = 0;
-
+  let lastKey: string | null = null;
+  let accepted: PreviewHeaderMeasurement | null = null;
+  let identical = 0;
   return {
     accept(reading) {
       const key = reading === null ? null : JSON.stringify(reading);
-      identicalReads = key !== null && key === latestKey ? identicalReads + 1 : 1;
-      latestKey = key;
-      latestReading = reading;
-      const settled = reading?.overlayMotionSettled === true;
-      return settled && identicalReads >= REQUIRED_STABLE_READS ? key : null;
+      identical = key !== null && key === lastKey ? identical + 1 : 1;
+      lastKey = key;
+      accepted = reading;
+      return reading?.overlayMotionSettled === true && identical >= REQUIRED_STABLE_READS
+        ? key
+        : null;
     },
     get accepted() {
-      return latestReading;
+      return accepted;
     },
   };
 }
@@ -299,7 +285,7 @@ export async function measureStablePreviewHeader(
  * @param {string} description - Matrix coordinate used in every failure message.
  * @returns {void}
  */
-export function assertPreviewHeaderInvariants(
+function assertPreviewHeaderInvariants(
   measurement: PreviewHeaderMeasurement,
   description: string
 ): void {

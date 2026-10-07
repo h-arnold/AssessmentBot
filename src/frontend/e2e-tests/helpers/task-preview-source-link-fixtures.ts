@@ -113,10 +113,20 @@ export const SOURCE_LINK_CLASS_ID = 'class-2';
  */
 const WARM_PREFETCH_ASSIGNMENT_ID = 'assignment-2-3';
 
-if (assignmentsByKey[WARM_PREFETCH_ASSIGNMENT_ID] != null) {
-  throw new Error(
-    `task-preview-source-link-fixtures: ${WARM_PREFETCH_ASSIGNMENT_ID} now ships a full record, so the embedded journey must serve that record instead of answering null.`
-  );
+/**
+ * Fail loudly when the committed corpus drifts from the warm-up assumption.
+ *
+ * Called by scenario construction rather than at module import time, so corpus
+ * drift surfaces with locality tied to the journey that needs the assumption.
+ *
+ * @returns {void}
+ */
+export function assertWarmPrefetchCorpusProvenance(): void {
+  if (assignmentsByKey[WARM_PREFETCH_ASSIGNMENT_ID] != null) {
+    throw new Error(
+      `task-preview-source-link-fixtures: ${WARM_PREFETCH_ASSIGNMENT_ID} now ships a full record, so the embedded journey must serve that record instead of answering null.`
+    );
+  }
 }
 
 /** Canonical populated Slides assignment opened from the Recent Assignments card. */
@@ -232,7 +242,7 @@ export const CANONICAL_YEAR_GROUPS: ReadonlyArray<CanonicalYearGroup> = selectYe
 
 /** Canonical definition partials view served by the startup warm-up query. */
 export const CANONICAL_DEFINITION_PARTIALS: ReadonlyArray<Record<string, unknown>> =
-  definitionPartials as unknown as ReadonlyArray<Record<string, unknown>>;
+  definitionPartials as ReadonlyArray<Record<string, unknown>>;
 
 /** Visible class name of the canonical class. */
 export const SOURCE_LINK_CLASS_NAME: string = CANONICAL_CLASS_PARTIAL.className;

@@ -84,6 +84,15 @@ Where a Vitest test covers visible rendering, add or update a Playwright test th
   - user sees light/dark mode switch reflected in the rendered UI
   - user sees motion disabled or minimal when reduced-motion preference is active
 
+### Example split for the task-preview source link (issue #19)
+
+The issue #19 source link moves duplicated interaction coverage to the layer that actually exercises it.
+
+- **Vitest owns the keyboard and focus-readiness matrix.** `TaskMetricPreviewCell.focus.spec.tsx` and `TaskMetricPreviewCell.focusSession.spec.tsx` render the real `TaskMetricPreviewCell`, which mounts the real Ant Design portal and the real `TaskPreviewCard`. They pin Enter/Space activation and the single source-link focus transfer, Escape from the trigger and from inside the portal, untrapped Tab/Shift+Tab, the deferred-readiness transfer, and focus retention across loading, error, no-source and user-departure states. Do not mirror this matrix assertion-for-assertion in Playwright: once the real portal is rendered, repeating it adds no confidence, and the unit harness observes focus transfers directly. The browser suite still exercises the keyboard journey through the narrow geometry matrix and the keyboard-focused capture, so the interaction keeps its required real-browser coverage.
+- **Playwright retains browser-visible behaviour only.** `task-preview-source-link.spec.ts` covers the real hover tooltip, the exact outgoing editor URL and new-tab navigation from both entry points, and the source-URL boundary variants. `task-preview-source-link.states.spec.ts` pins the unavailable-source rendering case. `task-preview-source-link.visual.spec.ts` runs the layout document's seven measured geometry checks plus the representative visual samples across desktop 1440×900 and narrow 390×844, light and dark, both entry points and the TEXT/IMAGE/TABLE card bodies.
+
+When adding coverage to a duplicated interaction matrix, extend the unit suite. Add an E2E case only when the assertion needs a real browser: layout geometry, native navigation, tooltips, or cross-component runtime integration.
+
 ## Test naming and traceability
 
 Name frontend tests after the behaviour, component, hook, or service they verify.

@@ -38,18 +38,15 @@ import { getMethodCalls } from './shared/endToEndRuntimeMocks';
 import {
   GOOGLE_DOCS_STUB_TEXT,
   captureSourceNavigation,
+  enterEmbeddedJourney,
+  enterMergedJourney,
+  hoverCanonicalCell,
+  hoverPreview,
   metricTrigger,
   openPreviewPopover,
   sourceDocumentAction,
   visibleTooltip,
 } from './helpers/task-preview-source-link-helpers';
-import {
-  enterEmbeddedJourney,
-  enterMergedJourney,
-  hoverCanonicalCell,
-  hoverPreview,
-  taskMetricCells,
-} from './helpers/task-preview-source-link-journeys';
 import {
   createEmbeddedAssignmentQueue,
   createMergedAssignmentQueue,
@@ -68,7 +65,6 @@ import {
   requireReadyCell,
 } from './helpers/task-preview-source-link-expectations';
 import { measureStablePreviewHeader } from './helpers/task-preview-source-link-geometry';
-import { HEATMAP_METRIC_KEYS } from '../src/services/dataAnalysis/metricDisplay/metricDisplayMeta';
 
 // ---------------------------------------------------------------------------
 // Journey cells
@@ -164,80 +160,34 @@ test.describe('Task preview source link — pointer interaction', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Keyboard interaction
+// Keyboard activation
 // ---------------------------------------------------------------------------
 
-test.describe('Task preview source link — keyboard interaction', () => {
-  test('Enter on a metric cell opens the preview and focuses its source link', async ({ page }) => {
-    await enterEmbeddedJourney(page);
-
-    const trigger = metricTrigger(page, slidesCell.cellAccessibleLabel);
-    await trigger.focus();
-    await expect(trigger).toBeFocused();
-
-    await page.keyboard.press('Enter');
-
-    const popover = openPreviewPopover(page);
-    await expect(popover).toBeVisible();
-    await expect(sourceDocumentAction(popover)).toBeFocused();
-    await expect(visibleTooltip(page)).toHaveText(SOURCE_ACTION_LABEL);
-  });
-
-  test('Space opens the preview and focuses the link, which Enter then activates', async ({
+test.describe('Task preview source link — keyboard activation', () => {
+  test('Enter on the focused source link opens the exact editor URL in a new tab', async ({
     page,
   }) => {
     await enterEmbeddedJourney(page);
 
     const trigger = metricTrigger(page, slidesCell.cellAccessibleLabel);
     await trigger.focus();
-    await page.keyboard.press(' ');
+    await page.keyboard.press('Enter');
 
     const popover = openPreviewPopover(page);
     await expect(popover).toBeVisible();
-    await expect(sourceDocumentAction(popover)).toBeFocused();
+    const action = sourceDocumentAction(popover);
+    // A keyboard opening hands focus to the action once it is rendered, and the
+    // focused action shows its tooltip — both of which only a real browser can
+    // prove, since the unit harness owns the focus transfer but not the overlay.
+    await expect(action).toBeFocused();
+    await expect(visibleTooltip(page)).toHaveText(SOURCE_ACTION_LABEL);
 
     // Enter on the native link performs the browser's own new-tab navigation.
     const navigation = await captureSourceNavigation(page, async () =>
       page.keyboard.press('Enter')
     );
     expect(navigation.url).toBe(slidesCell.expectedSourceUrl);
-  });
-
-  test('Escape inside the open preview closes it and restores focus to the cell', async ({
-    page,
-  }) => {
-    await enterEmbeddedJourney(page);
-
-    const trigger = metricTrigger(page, slidesCell.cellAccessibleLabel);
-    await trigger.focus();
-    await page.keyboard.press('Enter');
-
-    const popover = openPreviewPopover(page);
-    await expect(sourceDocumentAction(popover)).toBeFocused();
-
-    await page.keyboard.press('Escape');
-
-    await expect(openPreviewPopover(page)).toHaveCount(0);
-    await expect(trigger).toBeFocused();
-  });
-
-  test('ordinary Tab and Shift+Tab move between metric cells without a focus trap', async ({
-    page,
-  }) => {
-    await enterEmbeddedJourney(page);
-
-    const cells = taskMetricCells(page, slidesCell);
-    await expect(cells).toHaveCount(HEATMAP_METRIC_KEYS.length);
-    const trigger = cells.first();
-    await trigger.focus();
-
-    await page.keyboard.press('Tab');
-    // Tab continued into the next metric sub-column instead of being trapped
-    // inside the open preview.
-    await expect(cells.nth(1)).toBeFocused();
-
-    await page.keyboard.press('Shift+Tab');
-    await expect(trigger).toBeFocused();
+    expect(navigation.stubContent).toBe(GOOGLE_DOCS_STUB_TEXT);
   });
 });
 
