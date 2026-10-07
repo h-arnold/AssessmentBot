@@ -84,6 +84,13 @@ journeys/geometry dead weight would remove roughly 1,500–2,000 lines with no l
 
 ### Execution outcomes
 
+#### Batch 4 — complete (2026-10-07)
+
+- Testing Specialist replaced the two corpus-convention suites with `tests/synthetic-analysis/syntheticCorpusConventions.test.ts`: parametrised committed-view assertions plus one generator-determinism probe. Both timestamp conventions and 21-digit student identifiers retain their cross-profile/cross-view coverage; Docs corrected the retired filenames in the canonical testing document and one generator JSDoc pointer, without changing generator behaviour.
+- Code Reviewer mapped the deleted assertions to retained/subsuming coverage, required two accurate JSDoc summaries and returned clean final sign-off: `.opencode/scratchpad/re-review-batch4-final-signoff.md`.
+- Independent scc measurement against `f1b4e32`: **−232 code / −386 total lines**. The suites themselves went from 861 to 475 total lines; the generator comment edit is line-neutral. Report: `.opencode/scratchpad/loc-counter/batch4-final-review/report.json`.
+- New suite: 24 tests passing; full synthetic project: 24 files / 262 tests passing. Synthetic lint and formatter checks pass. Full regression comparison `runs/2026-10-07T07-32-57.201Z/comparison.txt`: seven checks passing, unchanged ten accepted backend lint findings, zero regressions/new failures.
+
 #### Batch 3 — complete (2026-10-07)
 
 - Implementation replaced the balance-span class hook with a test ID. Playwright removed the duplicated focus matrix, merged journeys into helpers, reduced representative visual checks, simplified geometry tracking, pruned dead support and added named queue capacities/tail sentinels. Docs reconciled the coverage split, layout evidence and merged helper ownership.

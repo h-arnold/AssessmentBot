@@ -15,7 +15,7 @@ const STUDENT_ID_PREFIX = '1';
  * Zero-padded width of each index segment of a synthetic student identifier.
  * The profiles generate at most 100 classes and 30 students per class, so
  * both indices stay well inside this width and every identifier is exactly
- * `1 + 10 + 10 = 21` characters. `tests/synthetic-analysis/syntheticStudentIdentifiers.test.ts`
+ * `1 + 10 + 10 = 21` characters. `tests/synthetic-analysis/syntheticCorpusConventions.test.ts`
  * pins that length for every profile.
  */
 const STUDENT_ID_SEGMENT_LENGTH = 10;

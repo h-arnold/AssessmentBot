@@ -113,13 +113,13 @@ This is a test-only synthetic realism convention, not a production contract:
 - It constrains the corpus only. Official Google Classroom `UserProfile.id` and `Student.userId` remain opaque string contracts; neither a fixed length nor digit-only formatting is guaranteed, and the production schemas stay digit-agnostic.
 - No production validation tightening or numeric conversion is authorised by this convention. A production schema must accept any string student ID, including non-digit values.
 
-The fictional 21-digit calibration sample used in `tests/synthetic-analysis/syntheticStudentIdentifiers.test.ts` is a test-only precision probe. Never substitute a real user identifier.
+The fictional 21-digit calibration sample used in `tests/synthetic-analysis/syntheticCorpusConventions.test.ts` is a test-only precision probe. Never substitute a real user identifier.
 
 Consequences:
 
 - IDs are stable across repeat runs: re-running a profile with its recorded seed reproduces every committed byte, and the JSON transport views preserve each ID as an exact string.
 - Regeneration with `npm run fixtures:synthetic` rewrites the committed rosters and every dependent view (submissions and assignments carry the same IDs), then commits only the files that change. Fixtures that need a roster ID must derive it from the roster records rather than restating a literal.
-- `tests/synthetic-analysis/syntheticStudentIdentifiers.test.ts` pins the convention for generated and committed rosters across every profile: digit-only 21-character strings, string precision through JSON, per-profile uniqueness, deterministic repeat runs, cross-view roster/submission linkage, and production-schema opacity to digit formatting.
+- `tests/synthetic-analysis/syntheticCorpusConventions.test.ts` pins the convention for generated and committed rosters across every profile: digit-only 21-character strings, string precision through JSON, per-profile uniqueness, deterministic repeat runs, cross-view roster/submission linkage, and production-schema opacity to digit formatting.
 
 ## Assignment-timestamp convention
 
@@ -136,7 +136,7 @@ Regeneration with `npm run fixtures:synthetic` rewrites the dependent `classesBy
 This is **fixture realism only**, not a production nullable-contract change:
 
 - `updatedAt` stays a nullable transport field. `AssignmentFullSchema.updatedAt` and `AssignmentPartialSchema.updatedAt` still accept `string | null`; production schemas and backend behaviour are untouched.
-- Nullable transport acceptance is covered by explicit **local null-boundary probes**, not by generated null population. `tests/synthetic-analysis/syntheticAssignmentTimestamps.test.ts` clones a canonical class-embedded assignment partial and a canonical full assignment, sets `updatedAt = null`, and parses both through the real frontend schemas. `tests/synthetic-analysis/syntheticGraphShapeCoverage.test.ts` clones a canonical class, nulls its first assignment's `updatedAt`, and re-parses it through `ClassFullSchema`.
+- Nullable transport acceptance is covered by explicit **local null-boundary probes**, not by generated null population. `tests/synthetic-analysis/syntheticCorpusConventions.test.ts` clones a canonical class-embedded assignment partial and a canonical full assignment, sets `updatedAt = null`, and parses both through the real frontend schemas. `tests/synthetic-analysis/syntheticGraphShapeCoverage.test.ts` clones a canonical class, nulls its first assignment's `updatedAt`, and re-parses it through `ClassFullSchema`.
 - The Class page's fail-closed rejection of a null or unparseable `updatedAt` is unchanged and tested with independent local invalid probes in `src/frontend/src/features/classPage/classPageAdapter.trustValidation.spec.ts`. Do not use canonical rows to assert that rejection.
 
 ## Compact versus full lifecycle
