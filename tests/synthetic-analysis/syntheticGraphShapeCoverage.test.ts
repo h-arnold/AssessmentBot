@@ -340,10 +340,23 @@ describe('synthetic analysis nullable contract coverage', () => {
 
   it('exercises nullable assignment fields in the compact profiles', () => {
     for (const graph of compactGraphs) {
-      const assignments = parseClassFullViews(graph).flatMap((classFull) => classFull.assignments);
+      const classes = parseClassFullViews(graph);
+      const assignments = classes.flatMap((classFull) => classFull.assignments);
       expect(assignments.some((assignment) => assignment.dueDate === null)).toBe(true);
-      expect(assignments.some((assignment) => assignment.updatedAt === null)).toBe(true);
       expect(assignments.some((assignment) => assignment.documentType === null)).toBe(true);
+
+      // Nullable transport contract: ordinary assignments carry realistic
+      // non-null `updatedAt` values, so a cloned class now exercises the null
+      // branch directly instead of relying on generated null population.
+      const probeClass = structuredClone(classes[0]);
+      const probeAssignment = probeClass?.assignments[0];
+      if (probeAssignment === undefined) {
+        throw new Error(
+          'nullable assignment probe: the compact profile has no class-embedded assignments.'
+        );
+      }
+      probeAssignment.updatedAt = null;
+      expect(() => ClassFullSchema.parse(probeClass)).not.toThrow();
     }
   });
 

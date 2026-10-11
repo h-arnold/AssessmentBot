@@ -77,6 +77,7 @@ describe('AssignmentDefinitionController upsert behaviour — validation', () =>
           old_task: {
             id: 'old_task',
             taskTitle: 'Old',
+            pageId: 'p_old_task',
             artifacts: { reference: [], template: [] },
           },
         },

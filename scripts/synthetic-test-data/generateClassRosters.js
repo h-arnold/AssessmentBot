@@ -5,6 +5,41 @@ const NULL_OWNER_CLASS_INDEX = 2;
 const ACTIVE_ALTERNATION_DIVISOR = 2;
 
 /**
+ * Leading digit of every synthetic student identifier. Kept as a literal so
+ * the identifier always starts with a non-zero digit and never round-trips
+ * through a number type.
+ */
+const STUDENT_ID_PREFIX = '1';
+
+/**
+ * Zero-padded width of each index segment of a synthetic student identifier.
+ * The profiles generate at most 100 classes and 30 students per class, so
+ * both indices stay well inside this width and every identifier is exactly
+ * `1 + 10 + 10 = 21` characters. `tests/synthetic-analysis/syntheticCorpusConventions.test.ts`
+ * pins that length for every profile.
+ */
+const STUDENT_ID_SEGMENT_LENGTH = 10;
+
+/**
+ * Builds the deterministic, digit-only 21-character student identifier for one
+ * roster position.
+ *
+ * The value stays an opaque string: it is composed by left-padding each index
+ * rather than by converting a number, so no precision-sensitive arithmetic is
+ * ever applied to it.
+ *
+ * @param {number} classIndex Zero-based class index.
+ * @param {number} studentIndex Zero-based student index within the class.
+ * @returns {string} The 21-character digit-only student identifier.
+ */
+function buildStudentId(classIndex, studentIndex) {
+  return `${STUDENT_ID_PREFIX}${String(classIndex).padStart(
+    STUDENT_ID_SEGMENT_LENGTH,
+    '0'
+  )}${String(studentIndex).padStart(STUDENT_ID_SEGMENT_LENGTH, '0')}`;
+}
+
+/**
  * Leading honourific tokens stripped from generated person names. Only the
  * first whitespace-separated token is ever removed; Faker suffix tokens and
  * all remaining name tokens are preserved unchanged.
@@ -56,7 +91,7 @@ function buildStudents(faker, classIndex, studentsPerClass) {
   const students = [];
   for (let studentIndex = 0; studentIndex < studentsPerClass; studentIndex += 1) {
     students.push({
-      id: `student-${classIndex}-${studentIndex}`,
+      id: buildStudentId(classIndex, studentIndex),
       name: stripLeadingHonourific(faker.person.fullName()),
       email: `student-${classIndex}-${studentIndex}@example.test`,
     });

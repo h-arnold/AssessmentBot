@@ -15,7 +15,7 @@ class TaskDefinition {
    * Constructs a TaskDefinition instance.
    * @param {Object} params - Task definition parameters
    * @param {string} params.taskTitle - The task title
-   * @param {string} [params.pageId] - Source page ID
+   * @param {string} params.pageId - Source page ID (required)
    * @param {string} [params.taskNotes] - Optional task notes
    * @param {Object} [params.taskMetadata] - Optional task metadata
    * @param {string} [params.id] - Stable ID (if omitted, derived from title+pageId)
@@ -23,10 +23,11 @@ class TaskDefinition {
    * @param {number|null} [taskWeighting] - Optional task weighting (not yet implemented)
    */
   constructor(
-    { taskTitle, pageId = null, taskNotes = null, taskMetadata = {}, id = null, index = null } = {},
+    { taskTitle, pageId, taskNotes = null, taskMetadata = {}, id = null, index = null } = {},
     taskWeighting = 1
   ) {
     if (!taskTitle) throw new Error('TaskDefinition requires taskTitle');
+    if (!pageId) throw new Error('TaskDefinition requires pageId');
     this.taskTitle = taskTitle;
     this.pageId = pageId;
     this.taskNotes = taskNotes;
@@ -47,12 +48,12 @@ class TaskDefinition {
   /**
    * Derives a stable unique ID from task title and page ID using a hash.
    * @param {string} taskTitle - The task title
-   * @param {string|null} pageId - The page ID
+   * @param {string} pageId - The page ID
    * @returns {string} A stable ID prefixed with 't_'
    * @private
    */
   _deriveId(taskTitle, pageId) {
-    const base = `${taskTitle || ''}::${pageId || ''}`;
+    const base = `${taskTitle || ''}::${pageId}`;
     return 't_' + Utils.generateHash(base).slice(0, Math.max(0, TASK_DEFINITION_HASH_LENGTH)); // shorter stable prefix
   }
 

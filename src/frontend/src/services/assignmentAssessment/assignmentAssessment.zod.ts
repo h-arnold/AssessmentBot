@@ -35,8 +35,12 @@ export const AssessmentSchema = z.object({
 const BaseTaskArtifactFields = z.object({
   taskId: z.string(),
   role: z.string(),
-  pageId: z.string(),
-  documentId: z.string(),
+  // Backend `BaseTaskArtifact` always emits both source IDs as `string | null`
+  // (issue #19 alignment with `assignment-definition.md` §BaseTaskArtifact).
+  // Required, but nullable: an absent field is still invalid, as is a
+  // non-string value. Parent submission `documentId` stays `.nullable().optional()`.
+  pageId: z.string().nullable(),
+  documentId: z.string().nullable(),
   uid: z.string(),
   contentHash: z.string().nullable(),
   metadata: z.record(z.string(), z.unknown()),

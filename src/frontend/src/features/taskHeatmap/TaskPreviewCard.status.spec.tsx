@@ -31,6 +31,7 @@ const PREVIEW_DATA = {
   metricKey: 'completeness',
   metric: createComputedMetricResult({ value: COMPUTED_SCORE }),
   reasoning: 'Reasoning for the current score',
+  sourceUrl: null,
 } satisfies TaskPreviewData;
 
 describe('TaskPreviewCard live header status', () => {

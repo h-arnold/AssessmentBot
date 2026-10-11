@@ -28,16 +28,19 @@ if (typeof assembleMergedPreviewData !== 'function') {
 
 /**
  * Build a minimal valid `CellPreviewData` (artifactType 'base') tagged so the
- * merged-lookup first-wins assertion can tell assignments apart.
+ * merged-lookup first-wins assertion can tell assignments apart, carrying an
+ * explicit `sourceUrl` so URL first-wins pinning can tell assignments apart too.
  *
  * @param {string} tag - Identity marker carried in `artifactContent`.
+ * @param {string | null} [sourceUrl] - Derived source URL carried by the cell.
  * @returns {CellPreviewData} A minimal cell-preview payload.
  */
-function makeCell(tag: string): CellPreviewData {
+function makeCell(tag: string, sourceUrl: string | null = null): CellPreviewData {
   return {
     artifactType: 'base',
     artifactContent: tag,
     reasoning: { completeness: null, accuracy: null, spag: null },
+    sourceUrl,
   };
 }
 
@@ -126,6 +129,59 @@ describe('assembleMergedPreviewData — merged lookup', () => {
 
     expect(result.mergedLookup.get('s1')?.get('def1::tA')?.artifactContent).toBe('a1');
     expect(result.mergedLookup.get('s1')?.get('def2::tB')?.artifactContent).toBe('a2');
+  });
+});
+
+describe('assembleMergedPreviewData — first-wins sourceUrl', () => {
+  /** Editor URL carried by the first-wins winner fixture. */
+  const WINNER_SOURCE_URL =
+    'https://docs.google.com/presentation/d/winner-document/edit#slide=id.1';
+  /** Editor URL carried by the link-bearing loser fixture. */
+  const LOSER_SOURCE_URL = 'https://docs.google.com/spreadsheets/d/loser-document/edit#gid=2';
+
+  it('pins content and sourceUrl from the same first-wins item', () => {
+    const taskKey = 'def1::tA';
+    const a1Lookup = buildLookup({ s1: { [taskKey]: makeCell('a1', WINNER_SOURCE_URL) } });
+    const a2Lookup = buildLookup({ s1: { [taskKey]: makeCell('a2', LOSER_SOURCE_URL) } });
+
+    const inputs: ReadonlyArray<AssignmentPreviewInput> = [
+      { assignmentId: 'a1', lookup: a1Lookup, isLoading: false, hasError: false },
+      { assignmentId: 'a2', lookup: a2Lookup, isLoading: false, hasError: false },
+    ];
+    const columnOrder: ReadonlyArray<MergedHeatmapTaskColumn> = [
+      col('a1', 'def1', 'tA', null),
+      col('a2', 'def1', 'tA', null),
+    ];
+
+    const result: MergedPreviewAssemblyResult = assembleMergedPreviewData(inputs, columnOrder);
+    const cell = result.mergedLookup.get('s1')?.get(taskKey);
+
+    // Content and URL must come from the same winning item, not pair up with
+    // the loser's cell content or its link.
+    expect(cell?.artifactContent).toBe('a1');
+    expect(cell?.sourceUrl).toBe(WINNER_SOURCE_URL);
+  });
+
+  it('keeps a first winner with null sourceUrl over a link-bearing loser', () => {
+    const taskKey = 'def1::tA';
+    const a1Lookup = buildLookup({ s1: { [taskKey]: makeCell('a1', null) } });
+    const a2Lookup = buildLookup({ s1: { [taskKey]: makeCell('a2', LOSER_SOURCE_URL) } });
+
+    const inputs: ReadonlyArray<AssignmentPreviewInput> = [
+      { assignmentId: 'a1', lookup: a1Lookup, isLoading: false, hasError: false },
+      { assignmentId: 'a2', lookup: a2Lookup, isLoading: false, hasError: false },
+    ];
+    const columnOrder: ReadonlyArray<MergedHeatmapTaskColumn> = [
+      col('a1', 'def1', 'tA', null),
+      col('a2', 'def1', 'tA', null),
+    ];
+
+    const result: MergedPreviewAssemblyResult = assembleMergedPreviewData(inputs, columnOrder);
+    const cell = result.mergedLookup.get('s1')?.get(taskKey);
+
+    // A null-URL winner must not be "upgraded" by the link-bearing loser.
+    expect(cell?.artifactContent).toBe('a1');
+    expect(cell?.sourceUrl).toBeNull();
   });
 });
 

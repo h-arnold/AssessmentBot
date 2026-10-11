@@ -102,10 +102,7 @@ function buildAssignment({
     assignmentName: `Synthetic Assignment ${classIndex + 1}.${assignmentIndex + 1}`,
     assignmentDefinitionKey: assignmentDefinition.definitionKey,
     dueDate: null,
-    updatedAt:
-      assignmentIndex === 0
-        ? null
-        : isoAt(assignmentMinuteOffset + MINUTES_AFTER_ASSIGNMENT_CREATED),
+    updatedAt: isoAt(assignmentMinuteOffset + MINUTES_AFTER_ASSIGNMENT_CREATED),
     createdAt: isoAt(assignmentMinuteOffset),
     documentType: assignmentIndex === 0 ? null : assignmentDefinition.documentType,
     submissions: generateSubmissions({

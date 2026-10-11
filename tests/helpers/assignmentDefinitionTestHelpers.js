@@ -13,10 +13,12 @@ import { setupDualCollectionGetFunction } from './mockFactories.js';
 export const DEFAULT_PARSED_TASK_DEFINITION = {
   getId: () => 't1',
   taskTitle: 'Task 1',
+  pageId: 'p1',
   validate: () => ({ ok: true, errors: [] }),
   toJSON: () => ({
     id: 't1',
     taskTitle: 'Task 1',
+    pageId: 'p1',
     taskWeighting: null,
     index: 0,
     artifacts: {
@@ -180,10 +182,12 @@ export class MockSlidesParser {
       {
         getId: () => 't1',
         taskTitle: 'Parsed Task',
+        pageId: 'p1',
         validate: () => ({ ok: true, errors: [] }),
         toJSON: () => ({
           id: 't1',
           taskTitle: 'Parsed Task',
+          pageId: 'p1',
           taskWeighting: null,
           index: 0,
           artifacts: { reference: [], template: [] },

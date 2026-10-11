@@ -20,32 +20,32 @@
     "active": true,
     "students": [
       {
-        "id": "student-0-0",
+        "id": "100000000000000000000",
         "name": "Katarina Sauer",
         "email": "student-0-0@example.test"
       },
       {
-        "id": "student-0-1",
+        "id": "100000000000000000001",
         "name": "Hulda Harber",
         "email": "student-0-1@example.test"
       },
       {
-        "id": "student-0-2",
+        "id": "100000000000000000002",
         "name": "Irene Graham",
         "email": "student-0-2@example.test"
       },
       {
-        "id": "student-0-3",
+        "id": "100000000000000000003",
         "name": "Burnice O'Kon",
         "email": "student-0-3@example.test"
       },
       {
-        "id": "student-0-4",
+        "id": "100000000000000000004",
         "name": "Pauline Spencer",
         "email": "student-0-4@example.test"
       },
       {
-        "id": "student-0-5",
+        "id": "100000000000000000005",
         "name": "Jaren Ondricka",
         "email": "student-0-5@example.test"
       }
@@ -56,7 +56,7 @@
         "assignmentId": "assignment-0-0",
         "assignmentName": "Synthetic Assignment 1.1",
         "dueDate": null,
-        "updatedAt": null,
+        "updatedAt": "2024-01-02T09:03:00.000Z",
         "createdAt": "2024-01-02T09:00:00.000Z",
         "documentType": null,
         "submissions": [],
@@ -72,23 +72,23 @@
         "documentType": "SHEETS",
         "submissions": [
           {
-            "studentId": "student-0-0",
+            "studentId": "100000000000000000000",
             "studentName": "Katarina Sauer",
             "assignmentId": "assignment-0-1",
-            "documentId": "submission-document-assignment-0-1-student-0-0",
+            "documentId": "submission-document-assignment-0-1-100000000000000000000",
             "items": {
               "task-1-0": {
-                "id": "ssi-assignment-0-1-student-0-0-task-1-0",
+                "id": "ssi-assignment-0-1-100000000000000000000-task-1-0",
                 "taskId": "task-1-0",
                 "artifact": {
                   "taskId": "task-1-0",
                   "role": "submission",
                   "pageId": "page-task-1-0",
-                  "documentId": "artifact-document-assignment-0-1-student-0-0-task-1-0",
+                  "documentId": "artifact-document-assignment-0-1-100000000000000000000-task-1-0",
                   "content": null,
                   "contentHash": null,
                   "metadata": {},
-                  "uid": "uid-assignment-0-1-student-0-0-task-1-0",
+                  "uid": "uid-assignment-0-1-100000000000000000000-task-1-0",
                   "type": "TEXT"
                 },
                 "assessments": {
@@ -107,17 +107,17 @@
                 }
               },
               "task-1-1": {
-                "id": "ssi-assignment-0-1-student-0-0-task-1-1",
+                "id": "ssi-assignment-0-1-100000000000000000000-task-1-1",
                 "taskId": "task-1-1",
                 "artifact": {
                   "taskId": "task-1-1",
                   "role": "submission",
                   "pageId": "page-task-1-1",
-                  "documentId": "artifact-document-assignment-0-1-student-0-0-task-1-1",
+                  "documentId": "artifact-document-assignment-0-1-100000000000000000000-task-1-1",
                   "content": null,
                   "contentHash": null,
                   "metadata": {},
-                  "uid": "uid-assignment-0-1-student-0-0-task-1-1",
+                  "uid": "uid-assignment-0-1-100000000000000000000-task-1-1",
                   "type": "TEXT"
                 },
                 "assessments": {
@@ -140,40 +140,40 @@
             "updatedAt": "2024-01-02T10:05:00.000Z"
           },
           {
-            "studentId": "student-0-1",
+            "studentId": "100000000000000000001",
             "studentName": "Hulda Harber",
             "assignmentId": "assignment-0-1",
-            "documentId": "submission-document-assignment-0-1-student-0-1",
+            "documentId": "submission-document-assignment-0-1-100000000000000000001",
             "items": {
               "task-1-0": {
-                "id": "ssi-assignment-0-1-student-0-1-task-1-0",
+                "id": "ssi-assignment-0-1-100000000000000000001-task-1-0",
                 "taskId": "task-1-0",
                 "artifact": {
                   "taskId": "task-1-0",
                   "role": "submission",
                   "pageId": "page-task-1-0",
-                  "documentId": "artifact-document-assignment-0-1-student-0-1-task-1-0",
+                  "documentId": "artifact-document-assignment-0-1-100000000000000000001-task-1-0",
                   "content": null,
                   "contentHash": null,
                   "metadata": {},
-                  "uid": "uid-assignment-0-1-student-0-1-task-1-0",
+                  "uid": "uid-assignment-0-1-100000000000000000001-task-1-0",
                   "type": "TEXT"
                 },
                 "assessments": {},
                 "feedback": {}
               },
               "task-1-1": {
-                "id": "ssi-assignment-0-1-student-0-1-task-1-1",
+                "id": "ssi-assignment-0-1-100000000000000000001-task-1-1",
                 "taskId": "task-1-1",
                 "artifact": {
                   "taskId": "task-1-1",
                   "role": "submission",
                   "pageId": "page-task-1-1",
-                  "documentId": "artifact-document-assignment-0-1-student-0-1-task-1-1",
+                  "documentId": "artifact-document-assignment-0-1-100000000000000000001-task-1-1",
                   "content": null,
                   "contentHash": null,
                   "metadata": {},
-                  "uid": "uid-assignment-0-1-student-0-1-task-1-1",
+                  "uid": "uid-assignment-0-1-100000000000000000001-task-1-1",
                   "type": "TEXT"
                 },
                 "assessments": {},
@@ -184,23 +184,23 @@
             "updatedAt": "2024-01-02T10:12:00.000Z"
           },
           {
-            "studentId": "student-0-2",
+            "studentId": "100000000000000000002",
             "studentName": "Irene Graham",
             "assignmentId": "assignment-0-1",
             "documentId": null,
             "items": {
               "task-1-0": {
-                "id": "ssi-assignment-0-1-student-0-2-task-1-0",
+                "id": "ssi-assignment-0-1-100000000000000000002-task-1-0",
                 "taskId": "task-1-0",
                 "artifact": {
                   "taskId": "task-1-0",
                   "role": "submission",
                   "pageId": "page-task-1-0",
-                  "documentId": "artifact-document-assignment-0-1-student-0-2-task-1-0",
+                  "documentId": "artifact-document-assignment-0-1-100000000000000000002-task-1-0",
                   "content": null,
                   "contentHash": null,
                   "metadata": {},
-                  "uid": "uid-assignment-0-1-student-0-2-task-1-0",
+                  "uid": "uid-assignment-0-1-100000000000000000002-task-1-0",
                   "type": "TEXT"
                 },
                 "assessments": {
@@ -214,17 +214,17 @@
                 "feedback": {}
               },
               "task-1-1": {
-                "id": "ssi-assignment-0-1-student-0-2-task-1-1",
+                "id": "ssi-assignment-0-1-100000000000000000002-task-1-1",
                 "taskId": "task-1-1",
                 "artifact": {
                   "taskId": "task-1-1",
                   "role": "submission",
                   "pageId": "page-task-1-1",
-                  "documentId": "artifact-document-assignment-0-1-student-0-2-task-1-1",
+                  "documentId": "artifact-document-assignment-0-1-100000000000000000002-task-1-1",
                   "content": null,
                   "contentHash": null,
                   "metadata": {},
-                  "uid": "uid-assignment-0-1-student-0-2-task-1-1",
+                  "uid": "uid-assignment-0-1-100000000000000000002-task-1-1",
                   "type": "TEXT"
                 },
                 "assessments": {
@@ -242,23 +242,23 @@
             "updatedAt": "2024-01-02T10:19:00.000Z"
           },
           {
-            "studentId": "student-0-3",
+            "studentId": "100000000000000000003",
             "studentName": "Burnice O'Kon",
             "assignmentId": "assignment-0-1",
-            "documentId": "submission-document-assignment-0-1-student-0-3",
+            "documentId": "submission-document-assignment-0-1-100000000000000000003",
             "items": {
               "task-1-0": {
-                "id": "ssi-assignment-0-1-student-0-3-task-1-0",
+                "id": "ssi-assignment-0-1-100000000000000000003-task-1-0",
                 "taskId": "task-1-0",
                 "artifact": {
                   "taskId": "task-1-0",
                   "role": "submission",
                   "pageId": "page-task-1-0",
-                  "documentId": "artifact-document-assignment-0-1-student-0-3-task-1-0",
+                  "documentId": "artifact-document-assignment-0-1-100000000000000000003-task-1-0",
                   "content": null,
                   "contentHash": null,
                   "metadata": {},
-                  "uid": "uid-assignment-0-1-student-0-3-task-1-0",
+                  "uid": "uid-assignment-0-1-100000000000000000003-task-1-0",
                   "type": "TEXT"
                 },
                 "assessments": {
@@ -272,17 +272,17 @@
                 "feedback": {}
               },
               "task-1-1": {
-                "id": "ssi-assignment-0-1-student-0-3-task-1-1",
+                "id": "ssi-assignment-0-1-100000000000000000003-task-1-1",
                 "taskId": "task-1-1",
                 "artifact": {
                   "taskId": "task-1-1",
                   "role": "submission",
                   "pageId": "page-task-1-1",
-                  "documentId": "artifact-document-assignment-0-1-student-0-3-task-1-1",
+                  "documentId": "artifact-document-assignment-0-1-100000000000000000003-task-1-1",
                   "content": null,
                   "contentHash": null,
                   "metadata": {},
-                  "uid": "uid-assignment-0-1-student-0-3-task-1-1",
+                  "uid": "uid-assignment-0-1-100000000000000000003-task-1-1",
                   "type": "TEXT"
                 },
                 "assessments": {
@@ -300,23 +300,23 @@
             "updatedAt": "2024-01-02T10:26:00.000Z"
           },
           {
-            "studentId": "student-0-4",
+            "studentId": "100000000000000000004",
             "studentName": "Pauline Spencer",
             "assignmentId": "assignment-0-1",
-            "documentId": "submission-document-assignment-0-1-student-0-4",
+            "documentId": "submission-document-assignment-0-1-100000000000000000004",
             "items": {
               "task-1-0": {
-                "id": "ssi-assignment-0-1-student-0-4-task-1-0",
+                "id": "ssi-assignment-0-1-100000000000000000004-task-1-0",
                 "taskId": "task-1-0",
                 "artifact": {
                   "taskId": "task-1-0",
                   "role": "submission",
                   "pageId": "page-task-1-0",
-                  "documentId": "artifact-document-assignment-0-1-student-0-4-task-1-0",
+                  "documentId": "artifact-document-assignment-0-1-100000000000000000004-task-1-0",
                   "content": null,
                   "contentHash": null,
                   "metadata": {},
-                  "uid": "uid-assignment-0-1-student-0-4-task-1-0",
+                  "uid": "uid-assignment-0-1-100000000000000000004-task-1-0",
                   "type": "TEXT"
                 },
                 "assessments": {
@@ -330,17 +330,17 @@
                 "feedback": {}
               },
               "task-1-1": {
-                "id": "ssi-assignment-0-1-student-0-4-task-1-1",
+                "id": "ssi-assignment-0-1-100000000000000000004-task-1-1",
                 "taskId": "task-1-1",
                 "artifact": {
                   "taskId": "task-1-1",
                   "role": "submission",
                   "pageId": "page-task-1-1",
-                  "documentId": "artifact-document-assignment-0-1-student-0-4-task-1-1",
+                  "documentId": "artifact-document-assignment-0-1-100000000000000000004-task-1-1",
                   "content": null,
                   "contentHash": null,
                   "metadata": {},
-                  "uid": "uid-assignment-0-1-student-0-4-task-1-1",
+                  "uid": "uid-assignment-0-1-100000000000000000004-task-1-1",
                   "type": "TEXT"
                 },
                 "assessments": {
@@ -358,23 +358,23 @@
             "updatedAt": "2024-01-02T10:33:00.000Z"
           },
           {
-            "studentId": "student-0-5",
+            "studentId": "100000000000000000005",
             "studentName": "Jaren Ondricka",
             "assignmentId": "assignment-0-1",
-            "documentId": "submission-document-assignment-0-1-student-0-5",
+            "documentId": "submission-document-assignment-0-1-100000000000000000005",
             "items": {
               "task-1-0": {
-                "id": "ssi-assignment-0-1-student-0-5-task-1-0",
+                "id": "ssi-assignment-0-1-100000000000000000005-task-1-0",
                 "taskId": "task-1-0",
                 "artifact": {
                   "taskId": "task-1-0",
                   "role": "submission",
                   "pageId": "page-task-1-0",
-                  "documentId": "artifact-document-assignment-0-1-student-0-5-task-1-0",
+                  "documentId": "artifact-document-assignment-0-1-100000000000000000005-task-1-0",
                   "content": null,
                   "contentHash": null,
                   "metadata": {},
-                  "uid": "uid-assignment-0-1-student-0-5-task-1-0",
+                  "uid": "uid-assignment-0-1-100000000000000000005-task-1-0",
                   "type": "TEXT"
                 },
                 "assessments": {
@@ -388,17 +388,17 @@
                 "feedback": {}
               },
               "task-1-1": {
-                "id": "ssi-assignment-0-1-student-0-5-task-1-1",
+                "id": "ssi-assignment-0-1-100000000000000000005-task-1-1",
                 "taskId": "task-1-1",
                 "artifact": {
                   "taskId": "task-1-1",
                   "role": "submission",
                   "pageId": "page-task-1-1",
-                  "documentId": "artifact-document-assignment-0-1-student-0-5-task-1-1",
+                  "documentId": "artifact-document-assignment-0-1-100000000000000000005-task-1-1",
                   "content": null,
                   "contentHash": null,
                   "metadata": {},
-                  "uid": "uid-assignment-0-1-student-0-5-task-1-1",
+                  "uid": "uid-assignment-0-1-100000000000000000005-task-1-1",
                   "type": "TEXT"
                 },
                 "assessments": {
@@ -428,23 +428,23 @@
         "documentType": "SLIDES",
         "submissions": [
           {
-            "studentId": "student-0-0",
+            "studentId": "100000000000000000000",
             "studentName": "Katarina Sauer",
             "assignmentId": "assignment-0-2",
-            "documentId": "submission-document-assignment-0-2-student-0-0",
+            "documentId": "submission-document-assignment-0-2-100000000000000000000",
             "items": {
               "task-2-0": {
-                "id": "ssi-assignment-0-2-student-0-0-task-2-0",
+                "id": "ssi-assignment-0-2-100000000000000000000-task-2-0",
                 "taskId": "task-2-0",
                 "artifact": {
                   "taskId": "task-2-0",
                   "role": "submission",
                   "pageId": "page-task-2-0",
-                  "documentId": "artifact-document-assignment-0-2-student-0-0-task-2-0",
+                  "documentId": "artifact-document-assignment-0-2-100000000000000000000-task-2-0",
                   "content": null,
                   "contentHash": null,
                   "metadata": {},
-                  "uid": "uid-assignment-0-2-student-0-0-task-2-0",
+                  "uid": "uid-assignment-0-2-100000000000000000000-task-2-0",
                   "type": "TEXT"
                 },
                 "assessments": {
@@ -463,17 +463,17 @@
                 }
               },
               "task-2-1": {
-                "id": "ssi-assignment-0-2-student-0-0-task-2-1",
+                "id": "ssi-assignment-0-2-100000000000000000000-task-2-1",
                 "taskId": "task-2-1",
                 "artifact": {
                   "taskId": "task-2-1",
                   "role": "submission",
                   "pageId": "page-task-2-1",
-                  "documentId": "artifact-document-assignment-0-2-student-0-0-task-2-1",
+                  "documentId": "artifact-document-assignment-0-2-100000000000000000000-task-2-1",
                   "content": null,
                   "contentHash": null,
                   "metadata": {},
-                  "uid": "uid-assignment-0-2-student-0-0-task-2-1",
+                  "uid": "uid-assignment-0-2-100000000000000000000-task-2-1",
                   "type": "TEXT"
                 },
                 "assessments": {
@@ -496,40 +496,40 @@
             "updatedAt": "2024-01-02T11:05:00.000Z"
           },
           {
-            "studentId": "student-0-1",
+            "studentId": "100000000000000000001",
             "studentName": "Hulda Harber",
             "assignmentId": "assignment-0-2",
-            "documentId": "submission-document-assignment-0-2-student-0-1",
+            "documentId": "submission-document-assignment-0-2-100000000000000000001",
             "items": {
               "task-2-0": {
-                "id": "ssi-assignment-0-2-student-0-1-task-2-0",
+                "id": "ssi-assignment-0-2-100000000000000000001-task-2-0",
                 "taskId": "task-2-0",
                 "artifact": {
                   "taskId": "task-2-0",
                   "role": "submission",
                   "pageId": "page-task-2-0",
-                  "documentId": "artifact-document-assignment-0-2-student-0-1-task-2-0",
+                  "documentId": "artifact-document-assignment-0-2-100000000000000000001-task-2-0",
                   "content": null,
                   "contentHash": null,
                   "metadata": {},
-                  "uid": "uid-assignment-0-2-student-0-1-task-2-0",
+                  "uid": "uid-assignment-0-2-100000000000000000001-task-2-0",
                   "type": "TEXT"
                 },
                 "assessments": {},
                 "feedback": {}
               },
               "task-2-1": {
-                "id": "ssi-assignment-0-2-student-0-1-task-2-1",
+                "id": "ssi-assignment-0-2-100000000000000000001-task-2-1",
                 "taskId": "task-2-1",
                 "artifact": {
                   "taskId": "task-2-1",
                   "role": "submission",
                   "pageId": "page-task-2-1",
-                  "documentId": "artifact-document-assignment-0-2-student-0-1-task-2-1",
+                  "documentId": "artifact-document-assignment-0-2-100000000000000000001-task-2-1",
                   "content": null,
                   "contentHash": null,
                   "metadata": {},
-                  "uid": "uid-assignment-0-2-student-0-1-task-2-1",
+                  "uid": "uid-assignment-0-2-100000000000000000001-task-2-1",
                   "type": "TEXT"
                 },
                 "assessments": {},
@@ -552,23 +552,23 @@
         "documentType": "SLIDES",
         "submissions": [
           {
-            "studentId": "student-0-0",
+            "studentId": "100000000000000000000",
             "studentName": "Katarina Sauer",
             "assignmentId": "assignment-0-3",
-            "documentId": "submission-document-assignment-0-3-student-0-0",
+            "documentId": "submission-document-assignment-0-3-100000000000000000000",
             "items": {
               "task-partial-0-0": {
-                "id": "ssi-assignment-0-3-student-0-0-task-partial-0-0",
+                "id": "ssi-assignment-0-3-100000000000000000000-task-partial-0-0",
                 "taskId": "task-partial-0-0",
                 "artifact": {
                   "taskId": "task-partial-0-0",
                   "role": "submission",
                   "pageId": "page-task-partial-0-0",
-                  "documentId": "artifact-document-assignment-0-3-student-0-0-task-partial-0-0",
+                  "documentId": "artifact-document-assignment-0-3-100000000000000000000-task-partial-0-0",
                   "content": null,
                   "contentHash": null,
                   "metadata": {},
-                  "uid": "uid-assignment-0-3-student-0-0-task-partial-0-0",
+                  "uid": "uid-assignment-0-3-100000000000000000000-task-partial-0-0",
                   "type": "TEXT"
                 },
                 "assessments": {
@@ -591,23 +591,23 @@
             "updatedAt": "2024-01-02T12:05:00.000Z"
           },
           {
-            "studentId": "student-0-1",
+            "studentId": "100000000000000000001",
             "studentName": "Hulda Harber",
             "assignmentId": "assignment-0-3",
-            "documentId": "submission-document-assignment-0-3-student-0-1",
+            "documentId": "submission-document-assignment-0-3-100000000000000000001",
             "items": {
               "task-partial-0-0": {
-                "id": "ssi-assignment-0-3-student-0-1-task-partial-0-0",
+                "id": "ssi-assignment-0-3-100000000000000000001-task-partial-0-0",
                 "taskId": "task-partial-0-0",
                 "artifact": {
                   "taskId": "task-partial-0-0",
                   "role": "submission",
                   "pageId": "page-task-partial-0-0",
-                  "documentId": "artifact-document-assignment-0-3-student-0-1-task-partial-0-0",
+                  "documentId": "artifact-document-assignment-0-3-100000000000000000001-task-partial-0-0",
                   "content": null,
                   "contentHash": null,
                   "metadata": {},
-                  "uid": "uid-assignment-0-3-student-0-1-task-partial-0-0",
+                  "uid": "uid-assignment-0-3-100000000000000000001-task-partial-0-0",
                   "type": "TEXT"
                 },
                 "assessments": {},
@@ -618,23 +618,23 @@
             "updatedAt": "2024-01-02T12:12:00.000Z"
           },
           {
-            "studentId": "student-0-2",
+            "studentId": "100000000000000000002",
             "studentName": null,
             "assignmentId": "assignment-0-3",
             "documentId": null,
             "items": {
               "task-partial-0-0": {
-                "id": "ssi-assignment-0-3-student-0-2-task-partial-0-0",
+                "id": "ssi-assignment-0-3-100000000000000000002-task-partial-0-0",
                 "taskId": "task-partial-0-0",
                 "artifact": {
                   "taskId": "task-partial-0-0",
                   "role": "submission",
                   "pageId": "page-task-partial-0-0",
-                  "documentId": "artifact-document-assignment-0-3-student-0-2-task-partial-0-0",
+                  "documentId": "artifact-document-assignment-0-3-100000000000000000002-task-partial-0-0",
                   "content": null,
                   "contentHash": null,
                   "metadata": {},
-                  "uid": "uid-assignment-0-3-student-0-2-task-partial-0-0",
+                  "uid": "uid-assignment-0-3-100000000000000000002-task-partial-0-0",
                   "type": "TEXT"
                 },
                 "assessments": {
@@ -652,13 +652,13 @@
             "updatedAt": "2024-01-02T12:19:00.000Z"
           },
           {
-            "studentId": "student-0-3",
+            "studentId": "100000000000000000003",
             "studentName": "Burnice O'Kon",
             "assignmentId": "assignment-0-3",
-            "documentId": "submission-document-assignment-0-3-student-0-3",
+            "documentId": "submission-document-assignment-0-3-100000000000000000003",
             "items": {
               "task-partial-0-0": {
-                "id": "ssi-assignment-0-3-student-0-3-task-partial-0-0",
+                "id": "ssi-assignment-0-3-100000000000000000003-task-partial-0-0",
                 "taskId": "task-partial-0-0",
                 "artifact": {
                   "taskId": "task-partial-0-0",
@@ -668,7 +668,7 @@
                   "content": null,
                   "contentHash": null,
                   "metadata": {},
-                  "uid": "uid-assignment-0-3-student-0-3-task-partial-0-0",
+                  "uid": "uid-assignment-0-3-100000000000000000003-task-partial-0-0",
                   "type": "TEXT"
                 },
                 "assessments": {
@@ -686,23 +686,23 @@
             "updatedAt": "2024-01-02T12:26:00.000Z"
           },
           {
-            "studentId": "student-0-4",
+            "studentId": "100000000000000000004",
             "studentName": "Pauline Spencer",
             "assignmentId": "assignment-0-3",
-            "documentId": "submission-document-assignment-0-3-student-0-4",
+            "documentId": "submission-document-assignment-0-3-100000000000000000004",
             "items": {
               "task-partial-0-0": {
-                "id": "ssi-assignment-0-3-student-0-4-task-partial-0-0",
+                "id": "ssi-assignment-0-3-100000000000000000004-task-partial-0-0",
                 "taskId": "task-partial-0-0",
                 "artifact": {
                   "taskId": "task-partial-0-0",
                   "role": "submission",
                   "pageId": "page-task-partial-0-0",
-                  "documentId": "artifact-document-assignment-0-3-student-0-4-task-partial-0-0",
+                  "documentId": "artifact-document-assignment-0-3-100000000000000000004-task-partial-0-0",
                   "content": null,
                   "contentHash": null,
                   "metadata": {},
-                  "uid": "uid-assignment-0-3-student-0-4-task-partial-0-0",
+                  "uid": "uid-assignment-0-3-100000000000000000004-task-partial-0-0",
                   "type": "TEXT"
                 },
                 "assessments": {
@@ -720,23 +720,23 @@
             "updatedAt": "2024-01-02T12:33:00.000Z"
           },
           {
-            "studentId": "student-0-5",
+            "studentId": "100000000000000000005",
             "studentName": "Jaren Ondricka",
             "assignmentId": "assignment-0-3",
-            "documentId": "submission-document-assignment-0-3-student-0-5",
+            "documentId": "submission-document-assignment-0-3-100000000000000000005",
             "items": {
               "task-partial-0-0": {
-                "id": "ssi-assignment-0-3-student-0-5-task-partial-0-0",
+                "id": "ssi-assignment-0-3-100000000000000000005-task-partial-0-0",
                 "taskId": "task-partial-0-0",
                 "artifact": {
                   "taskId": "task-partial-0-0",
                   "role": "submission",
                   "pageId": "page-task-partial-0-0",
-                  "documentId": "artifact-document-assignment-0-3-student-0-5-task-partial-0-0",
+                  "documentId": "artifact-document-assignment-0-3-100000000000000000005-task-partial-0-0",
                   "content": null,
                   "contentHash": null,
                   "metadata": {},
-                  "uid": "uid-assignment-0-3-student-0-5-task-partial-0-0",
+                  "uid": "uid-assignment-0-3-100000000000000000005-task-partial-0-0",
                   "type": "TEXT"
                 },
                 "assessments": {
@@ -779,32 +779,32 @@
     "active": false,
     "students": [
       {
-        "id": "student-1-0",
+        "id": "100000000010000000000",
         "name": "Adolphus Hilpert",
         "email": "student-1-0@example.test"
       },
       {
-        "id": "student-1-1",
+        "id": "100000000010000000001",
         "name": "Maria Daugherty",
         "email": "student-1-1@example.test"
       },
       {
-        "id": "student-1-2",
+        "id": "100000000010000000002",
         "name": "Hadley Greenholt",
         "email": "student-1-2@example.test"
       },
       {
-        "id": "student-1-3",
+        "id": "100000000010000000003",
         "name": "Kamren Cremin-Donnelly",
         "email": "student-1-3@example.test"
       },
       {
-        "id": "student-1-4",
+        "id": "100000000010000000004",
         "name": "Urban Murazik-Kshlerin DDS",
         "email": "student-1-4@example.test"
       },
       {
-        "id": "student-1-5",
+        "id": "100000000010000000005",
         "name": "Keith Effertz",
         "email": "student-1-5@example.test"
       }
@@ -815,7 +815,7 @@
         "assignmentId": "assignment-1-0",
         "assignmentName": "Synthetic Assignment 2.1",
         "dueDate": null,
-        "updatedAt": null,
+        "updatedAt": "2024-01-03T09:03:00.000Z",
         "createdAt": "2024-01-03T09:00:00.000Z",
         "documentType": null,
         "submissions": [],
@@ -831,23 +831,23 @@
         "documentType": "SLIDES",
         "submissions": [
           {
-            "studentId": "student-1-0",
+            "studentId": "100000000010000000000",
             "studentName": "Adolphus Hilpert",
             "assignmentId": "assignment-1-1",
-            "documentId": "submission-document-assignment-1-1-student-1-0",
+            "documentId": "submission-document-assignment-1-1-100000000010000000000",
             "items": {
               "task-2-0": {
-                "id": "ssi-assignment-1-1-student-1-0-task-2-0",
+                "id": "ssi-assignment-1-1-100000000010000000000-task-2-0",
                 "taskId": "task-2-0",
                 "artifact": {
                   "taskId": "task-2-0",
                   "role": "submission",
                   "pageId": "page-task-2-0",
-                  "documentId": "artifact-document-assignment-1-1-student-1-0-task-2-0",
+                  "documentId": "artifact-document-assignment-1-1-100000000010000000000-task-2-0",
                   "content": null,
                   "contentHash": null,
                   "metadata": {},
-                  "uid": "uid-assignment-1-1-student-1-0-task-2-0",
+                  "uid": "uid-assignment-1-1-100000000010000000000-task-2-0",
                   "type": "TEXT"
                 },
                 "assessments": {
@@ -866,17 +866,17 @@
                 }
               },
               "task-2-1": {
-                "id": "ssi-assignment-1-1-student-1-0-task-2-1",
+                "id": "ssi-assignment-1-1-100000000010000000000-task-2-1",
                 "taskId": "task-2-1",
                 "artifact": {
                   "taskId": "task-2-1",
                   "role": "submission",
                   "pageId": "page-task-2-1",
-                  "documentId": "artifact-document-assignment-1-1-student-1-0-task-2-1",
+                  "documentId": "artifact-document-assignment-1-1-100000000010000000000-task-2-1",
                   "content": null,
                   "contentHash": null,
                   "metadata": {},
-                  "uid": "uid-assignment-1-1-student-1-0-task-2-1",
+                  "uid": "uid-assignment-1-1-100000000010000000000-task-2-1",
                   "type": "TEXT"
                 },
                 "assessments": {
@@ -899,40 +899,40 @@
             "updatedAt": "2024-01-03T10:05:00.000Z"
           },
           {
-            "studentId": "student-1-1",
+            "studentId": "100000000010000000001",
             "studentName": "Maria Daugherty",
             "assignmentId": "assignment-1-1",
-            "documentId": "submission-document-assignment-1-1-student-1-1",
+            "documentId": "submission-document-assignment-1-1-100000000010000000001",
             "items": {
               "task-2-0": {
-                "id": "ssi-assignment-1-1-student-1-1-task-2-0",
+                "id": "ssi-assignment-1-1-100000000010000000001-task-2-0",
                 "taskId": "task-2-0",
                 "artifact": {
                   "taskId": "task-2-0",
                   "role": "submission",
                   "pageId": "page-task-2-0",
-                  "documentId": "artifact-document-assignment-1-1-student-1-1-task-2-0",
+                  "documentId": "artifact-document-assignment-1-1-100000000010000000001-task-2-0",
                   "content": null,
                   "contentHash": null,
                   "metadata": {},
-                  "uid": "uid-assignment-1-1-student-1-1-task-2-0",
+                  "uid": "uid-assignment-1-1-100000000010000000001-task-2-0",
                   "type": "TEXT"
                 },
                 "assessments": {},
                 "feedback": {}
               },
               "task-2-1": {
-                "id": "ssi-assignment-1-1-student-1-1-task-2-1",
+                "id": "ssi-assignment-1-1-100000000010000000001-task-2-1",
                 "taskId": "task-2-1",
                 "artifact": {
                   "taskId": "task-2-1",
                   "role": "submission",
                   "pageId": "page-task-2-1",
-                  "documentId": "artifact-document-assignment-1-1-student-1-1-task-2-1",
+                  "documentId": "artifact-document-assignment-1-1-100000000010000000001-task-2-1",
                   "content": null,
                   "contentHash": null,
                   "metadata": {},
-                  "uid": "uid-assignment-1-1-student-1-1-task-2-1",
+                  "uid": "uid-assignment-1-1-100000000010000000001-task-2-1",
                   "type": "TEXT"
                 },
                 "assessments": {},
@@ -943,23 +943,23 @@
             "updatedAt": "2024-01-03T10:12:00.000Z"
           },
           {
-            "studentId": "student-1-2",
+            "studentId": "100000000010000000002",
             "studentName": "Hadley Greenholt",
             "assignmentId": "assignment-1-1",
             "documentId": null,
             "items": {
               "task-2-0": {
-                "id": "ssi-assignment-1-1-student-1-2-task-2-0",
+                "id": "ssi-assignment-1-1-100000000010000000002-task-2-0",
                 "taskId": "task-2-0",
                 "artifact": {
                   "taskId": "task-2-0",
                   "role": "submission",
                   "pageId": "page-task-2-0",
-                  "documentId": "artifact-document-assignment-1-1-student-1-2-task-2-0",
+                  "documentId": "artifact-document-assignment-1-1-100000000010000000002-task-2-0",
                   "content": null,
                   "contentHash": null,
                   "metadata": {},
-                  "uid": "uid-assignment-1-1-student-1-2-task-2-0",
+                  "uid": "uid-assignment-1-1-100000000010000000002-task-2-0",
                   "type": "TEXT"
                 },
                 "assessments": {
@@ -973,17 +973,17 @@
                 "feedback": {}
               },
               "task-2-1": {
-                "id": "ssi-assignment-1-1-student-1-2-task-2-1",
+                "id": "ssi-assignment-1-1-100000000010000000002-task-2-1",
                 "taskId": "task-2-1",
                 "artifact": {
                   "taskId": "task-2-1",
                   "role": "submission",
                   "pageId": "page-task-2-1",
-                  "documentId": "artifact-document-assignment-1-1-student-1-2-task-2-1",
+                  "documentId": "artifact-document-assignment-1-1-100000000010000000002-task-2-1",
                   "content": null,
                   "contentHash": null,
                   "metadata": {},
-                  "uid": "uid-assignment-1-1-student-1-2-task-2-1",
+                  "uid": "uid-assignment-1-1-100000000010000000002-task-2-1",
                   "type": "TEXT"
                 },
                 "assessments": {
@@ -1001,23 +1001,23 @@
             "updatedAt": "2024-01-03T10:19:00.000Z"
           },
           {
-            "studentId": "student-1-3",
+            "studentId": "100000000010000000003",
             "studentName": "Kamren Cremin-Donnelly",
             "assignmentId": "assignment-1-1",
-            "documentId": "submission-document-assignment-1-1-student-1-3",
+            "documentId": "submission-document-assignment-1-1-100000000010000000003",
             "items": {
               "task-2-0": {
-                "id": "ssi-assignment-1-1-student-1-3-task-2-0",
+                "id": "ssi-assignment-1-1-100000000010000000003-task-2-0",
                 "taskId": "task-2-0",
                 "artifact": {
                   "taskId": "task-2-0",
                   "role": "submission",
                   "pageId": "page-task-2-0",
-                  "documentId": "artifact-document-assignment-1-1-student-1-3-task-2-0",
+                  "documentId": "artifact-document-assignment-1-1-100000000010000000003-task-2-0",
                   "content": null,
                   "contentHash": null,
                   "metadata": {},
-                  "uid": "uid-assignment-1-1-student-1-3-task-2-0",
+                  "uid": "uid-assignment-1-1-100000000010000000003-task-2-0",
                   "type": "TEXT"
                 },
                 "assessments": {
@@ -1031,17 +1031,17 @@
                 "feedback": {}
               },
               "task-2-1": {
-                "id": "ssi-assignment-1-1-student-1-3-task-2-1",
+                "id": "ssi-assignment-1-1-100000000010000000003-task-2-1",
                 "taskId": "task-2-1",
                 "artifact": {
                   "taskId": "task-2-1",
                   "role": "submission",
                   "pageId": "page-task-2-1",
-                  "documentId": "artifact-document-assignment-1-1-student-1-3-task-2-1",
+                  "documentId": "artifact-document-assignment-1-1-100000000010000000003-task-2-1",
                   "content": null,
                   "contentHash": null,
                   "metadata": {},
-                  "uid": "uid-assignment-1-1-student-1-3-task-2-1",
+                  "uid": "uid-assignment-1-1-100000000010000000003-task-2-1",
                   "type": "TEXT"
                 },
                 "assessments": {
@@ -1059,23 +1059,23 @@
             "updatedAt": "2024-01-03T10:26:00.000Z"
           },
           {
-            "studentId": "student-1-4",
+            "studentId": "100000000010000000004",
             "studentName": "Urban Murazik-Kshlerin DDS",
             "assignmentId": "assignment-1-1",
-            "documentId": "submission-document-assignment-1-1-student-1-4",
+            "documentId": "submission-document-assignment-1-1-100000000010000000004",
             "items": {
               "task-2-0": {
-                "id": "ssi-assignment-1-1-student-1-4-task-2-0",
+                "id": "ssi-assignment-1-1-100000000010000000004-task-2-0",
                 "taskId": "task-2-0",
                 "artifact": {
                   "taskId": "task-2-0",
                   "role": "submission",
                   "pageId": "page-task-2-0",
-                  "documentId": "artifact-document-assignment-1-1-student-1-4-task-2-0",
+                  "documentId": "artifact-document-assignment-1-1-100000000010000000004-task-2-0",
                   "content": null,
                   "contentHash": null,
                   "metadata": {},
-                  "uid": "uid-assignment-1-1-student-1-4-task-2-0",
+                  "uid": "uid-assignment-1-1-100000000010000000004-task-2-0",
                   "type": "TEXT"
                 },
                 "assessments": {
@@ -1089,17 +1089,17 @@
                 "feedback": {}
               },
               "task-2-1": {
-                "id": "ssi-assignment-1-1-student-1-4-task-2-1",
+                "id": "ssi-assignment-1-1-100000000010000000004-task-2-1",
                 "taskId": "task-2-1",
                 "artifact": {
                   "taskId": "task-2-1",
                   "role": "submission",
                   "pageId": "page-task-2-1",
-                  "documentId": "artifact-document-assignment-1-1-student-1-4-task-2-1",
+                  "documentId": "artifact-document-assignment-1-1-100000000010000000004-task-2-1",
                   "content": null,
                   "contentHash": null,
                   "metadata": {},
-                  "uid": "uid-assignment-1-1-student-1-4-task-2-1",
+                  "uid": "uid-assignment-1-1-100000000010000000004-task-2-1",
                   "type": "TEXT"
                 },
                 "assessments": {
@@ -1117,23 +1117,23 @@
             "updatedAt": "2024-01-03T10:33:00.000Z"
           },
           {
-            "studentId": "student-1-5",
+            "studentId": "100000000010000000005",
             "studentName": "Keith Effertz",
             "assignmentId": "assignment-1-1",
-            "documentId": "submission-document-assignment-1-1-student-1-5",
+            "documentId": "submission-document-assignment-1-1-100000000010000000005",
             "items": {
               "task-2-0": {
-                "id": "ssi-assignment-1-1-student-1-5-task-2-0",
+                "id": "ssi-assignment-1-1-100000000010000000005-task-2-0",
                 "taskId": "task-2-0",
                 "artifact": {
                   "taskId": "task-2-0",
                   "role": "submission",
                   "pageId": "page-task-2-0",
-                  "documentId": "artifact-document-assignment-1-1-student-1-5-task-2-0",
+                  "documentId": "artifact-document-assignment-1-1-100000000010000000005-task-2-0",
                   "content": null,
                   "contentHash": null,
                   "metadata": {},
-                  "uid": "uid-assignment-1-1-student-1-5-task-2-0",
+                  "uid": "uid-assignment-1-1-100000000010000000005-task-2-0",
                   "type": "TEXT"
                 },
                 "assessments": {
@@ -1147,17 +1147,17 @@
                 "feedback": {}
               },
               "task-2-1": {
-                "id": "ssi-assignment-1-1-student-1-5-task-2-1",
+                "id": "ssi-assignment-1-1-100000000010000000005-task-2-1",
                 "taskId": "task-2-1",
                 "artifact": {
                   "taskId": "task-2-1",
                   "role": "submission",
                   "pageId": "page-task-2-1",
-                  "documentId": "artifact-document-assignment-1-1-student-1-5-task-2-1",
+                  "documentId": "artifact-document-assignment-1-1-100000000010000000005-task-2-1",
                   "content": null,
                   "contentHash": null,
                   "metadata": {},
-                  "uid": "uid-assignment-1-1-student-1-5-task-2-1",
+                  "uid": "uid-assignment-1-1-100000000010000000005-task-2-1",
                   "type": "TEXT"
                 },
                 "assessments": {
@@ -1187,23 +1187,23 @@
         "documentType": "SLIDES",
         "submissions": [
           {
-            "studentId": "student-1-0",
+            "studentId": "100000000010000000000",
             "studentName": "Adolphus Hilpert",
             "assignmentId": "assignment-1-2",
-            "documentId": "submission-document-assignment-1-2-student-1-0",
+            "documentId": "submission-document-assignment-1-2-100000000010000000000",
             "items": {
               "task-0-0": {
-                "id": "ssi-assignment-1-2-student-1-0-task-0-0",
+                "id": "ssi-assignment-1-2-100000000010000000000-task-0-0",
                 "taskId": "task-0-0",
                 "artifact": {
                   "taskId": "task-0-0",
                   "role": "submission",
                   "pageId": "page-task-0-0",
-                  "documentId": "artifact-document-assignment-1-2-student-1-0-task-0-0",
+                  "documentId": "artifact-document-assignment-1-2-100000000010000000000-task-0-0",
                   "content": null,
                   "contentHash": null,
                   "metadata": {},
-                  "uid": "uid-assignment-1-2-student-1-0-task-0-0",
+                  "uid": "uid-assignment-1-2-100000000010000000000-task-0-0",
                   "type": "TEXT"
                 },
                 "assessments": {
@@ -1222,17 +1222,17 @@
                 }
               },
               "task-0-1": {
-                "id": "ssi-assignment-1-2-student-1-0-task-0-1",
+                "id": "ssi-assignment-1-2-100000000010000000000-task-0-1",
                 "taskId": "task-0-1",
                 "artifact": {
                   "taskId": "task-0-1",
                   "role": "submission",
                   "pageId": "page-task-0-1",
-                  "documentId": "artifact-document-assignment-1-2-student-1-0-task-0-1",
+                  "documentId": "artifact-document-assignment-1-2-100000000010000000000-task-0-1",
                   "content": null,
                   "contentHash": null,
                   "metadata": {},
-                  "uid": "uid-assignment-1-2-student-1-0-task-0-1",
+                  "uid": "uid-assignment-1-2-100000000010000000000-task-0-1",
                   "type": "TEXT"
                 },
                 "assessments": {
@@ -1255,40 +1255,40 @@
             "updatedAt": "2024-01-03T11:05:00.000Z"
           },
           {
-            "studentId": "student-1-1",
+            "studentId": "100000000010000000001",
             "studentName": "Maria Daugherty",
             "assignmentId": "assignment-1-2",
-            "documentId": "submission-document-assignment-1-2-student-1-1",
+            "documentId": "submission-document-assignment-1-2-100000000010000000001",
             "items": {
               "task-0-0": {
-                "id": "ssi-assignment-1-2-student-1-1-task-0-0",
+                "id": "ssi-assignment-1-2-100000000010000000001-task-0-0",
                 "taskId": "task-0-0",
                 "artifact": {
                   "taskId": "task-0-0",
                   "role": "submission",
                   "pageId": "page-task-0-0",
-                  "documentId": "artifact-document-assignment-1-2-student-1-1-task-0-0",
+                  "documentId": "artifact-document-assignment-1-2-100000000010000000001-task-0-0",
                   "content": null,
                   "contentHash": null,
                   "metadata": {},
-                  "uid": "uid-assignment-1-2-student-1-1-task-0-0",
+                  "uid": "uid-assignment-1-2-100000000010000000001-task-0-0",
                   "type": "TEXT"
                 },
                 "assessments": {},
                 "feedback": {}
               },
               "task-0-1": {
-                "id": "ssi-assignment-1-2-student-1-1-task-0-1",
+                "id": "ssi-assignment-1-2-100000000010000000001-task-0-1",
                 "taskId": "task-0-1",
                 "artifact": {
                   "taskId": "task-0-1",
                   "role": "submission",
                   "pageId": "page-task-0-1",
-                  "documentId": "artifact-document-assignment-1-2-student-1-1-task-0-1",
+                  "documentId": "artifact-document-assignment-1-2-100000000010000000001-task-0-1",
                   "content": null,
                   "contentHash": null,
                   "metadata": {},
-                  "uid": "uid-assignment-1-2-student-1-1-task-0-1",
+                  "uid": "uid-assignment-1-2-100000000010000000001-task-0-1",
                   "type": "TEXT"
                 },
                 "assessments": {},
@@ -1311,23 +1311,23 @@
         "documentType": "SLIDES",
         "submissions": [
           {
-            "studentId": "student-1-0",
+            "studentId": "100000000010000000000",
             "studentName": "Adolphus Hilpert",
             "assignmentId": "assignment-1-3",
-            "documentId": "submission-document-assignment-1-3-student-1-0",
+            "documentId": "submission-document-assignment-1-3-100000000010000000000",
             "items": {
               "task-partial-0-0": {
-                "id": "ssi-assignment-1-3-student-1-0-task-partial-0-0",
+                "id": "ssi-assignment-1-3-100000000010000000000-task-partial-0-0",
                 "taskId": "task-partial-0-0",
                 "artifact": {
                   "taskId": "task-partial-0-0",
                   "role": "submission",
                   "pageId": "page-task-partial-0-0",
-                  "documentId": "artifact-document-assignment-1-3-student-1-0-task-partial-0-0",
+                  "documentId": "artifact-document-assignment-1-3-100000000010000000000-task-partial-0-0",
                   "content": null,
                   "contentHash": null,
                   "metadata": {},
-                  "uid": "uid-assignment-1-3-student-1-0-task-partial-0-0",
+                  "uid": "uid-assignment-1-3-100000000010000000000-task-partial-0-0",
                   "type": "TEXT"
                 },
                 "assessments": {
@@ -1350,23 +1350,23 @@
             "updatedAt": "2024-01-03T12:05:00.000Z"
           },
           {
-            "studentId": "student-1-1",
+            "studentId": "100000000010000000001",
             "studentName": "Maria Daugherty",
             "assignmentId": "assignment-1-3",
-            "documentId": "submission-document-assignment-1-3-student-1-1",
+            "documentId": "submission-document-assignment-1-3-100000000010000000001",
             "items": {
               "task-partial-0-0": {
-                "id": "ssi-assignment-1-3-student-1-1-task-partial-0-0",
+                "id": "ssi-assignment-1-3-100000000010000000001-task-partial-0-0",
                 "taskId": "task-partial-0-0",
                 "artifact": {
                   "taskId": "task-partial-0-0",
                   "role": "submission",
                   "pageId": "page-task-partial-0-0",
-                  "documentId": "artifact-document-assignment-1-3-student-1-1-task-partial-0-0",
+                  "documentId": "artifact-document-assignment-1-3-100000000010000000001-task-partial-0-0",
                   "content": null,
                   "contentHash": null,
                   "metadata": {},
-                  "uid": "uid-assignment-1-3-student-1-1-task-partial-0-0",
+                  "uid": "uid-assignment-1-3-100000000010000000001-task-partial-0-0",
                   "type": "TEXT"
                 },
                 "assessments": {},
@@ -1377,23 +1377,23 @@
             "updatedAt": "2024-01-03T12:12:00.000Z"
           },
           {
-            "studentId": "student-1-2",
+            "studentId": "100000000010000000002",
             "studentName": null,
             "assignmentId": "assignment-1-3",
             "documentId": null,
             "items": {
               "task-partial-0-0": {
-                "id": "ssi-assignment-1-3-student-1-2-task-partial-0-0",
+                "id": "ssi-assignment-1-3-100000000010000000002-task-partial-0-0",
                 "taskId": "task-partial-0-0",
                 "artifact": {
                   "taskId": "task-partial-0-0",
                   "role": "submission",
                   "pageId": "page-task-partial-0-0",
-                  "documentId": "artifact-document-assignment-1-3-student-1-2-task-partial-0-0",
+                  "documentId": "artifact-document-assignment-1-3-100000000010000000002-task-partial-0-0",
                   "content": null,
                   "contentHash": null,
                   "metadata": {},
-                  "uid": "uid-assignment-1-3-student-1-2-task-partial-0-0",
+                  "uid": "uid-assignment-1-3-100000000010000000002-task-partial-0-0",
                   "type": "TEXT"
                 },
                 "assessments": {
@@ -1411,13 +1411,13 @@
             "updatedAt": "2024-01-03T12:19:00.000Z"
           },
           {
-            "studentId": "student-1-3",
+            "studentId": "100000000010000000003",
             "studentName": "Kamren Cremin-Donnelly",
             "assignmentId": "assignment-1-3",
-            "documentId": "submission-document-assignment-1-3-student-1-3",
+            "documentId": "submission-document-assignment-1-3-100000000010000000003",
             "items": {
               "task-partial-0-0": {
-                "id": "ssi-assignment-1-3-student-1-3-task-partial-0-0",
+                "id": "ssi-assignment-1-3-100000000010000000003-task-partial-0-0",
                 "taskId": "task-partial-0-0",
                 "artifact": {
                   "taskId": "task-partial-0-0",
@@ -1427,7 +1427,7 @@
                   "content": null,
                   "contentHash": null,
                   "metadata": {},
-                  "uid": "uid-assignment-1-3-student-1-3-task-partial-0-0",
+                  "uid": "uid-assignment-1-3-100000000010000000003-task-partial-0-0",
                   "type": "TEXT"
                 },
                 "assessments": {
@@ -1445,23 +1445,23 @@
             "updatedAt": "2024-01-03T12:26:00.000Z"
           },
           {
-            "studentId": "student-1-4",
+            "studentId": "100000000010000000004",
             "studentName": "Urban Murazik-Kshlerin DDS",
             "assignmentId": "assignment-1-3",
-            "documentId": "submission-document-assignment-1-3-student-1-4",
+            "documentId": "submission-document-assignment-1-3-100000000010000000004",
             "items": {
               "task-partial-0-0": {
-                "id": "ssi-assignment-1-3-student-1-4-task-partial-0-0",
+                "id": "ssi-assignment-1-3-100000000010000000004-task-partial-0-0",
                 "taskId": "task-partial-0-0",
                 "artifact": {
                   "taskId": "task-partial-0-0",
                   "role": "submission",
                   "pageId": "page-task-partial-0-0",
-                  "documentId": "artifact-document-assignment-1-3-student-1-4-task-partial-0-0",
+                  "documentId": "artifact-document-assignment-1-3-100000000010000000004-task-partial-0-0",
                   "content": null,
                   "contentHash": null,
                   "metadata": {},
-                  "uid": "uid-assignment-1-3-student-1-4-task-partial-0-0",
+                  "uid": "uid-assignment-1-3-100000000010000000004-task-partial-0-0",
                   "type": "TEXT"
                 },
                 "assessments": {
@@ -1479,23 +1479,23 @@
             "updatedAt": "2024-01-03T12:33:00.000Z"
           },
           {
-            "studentId": "student-1-5",
+            "studentId": "100000000010000000005",
             "studentName": "Keith Effertz",
             "assignmentId": "assignment-1-3",
-            "documentId": "submission-document-assignment-1-3-student-1-5",
+            "documentId": "submission-document-assignment-1-3-100000000010000000005",
             "items": {
               "task-partial-0-0": {
-                "id": "ssi-assignment-1-3-student-1-5-task-partial-0-0",
+                "id": "ssi-assignment-1-3-100000000010000000005-task-partial-0-0",
                 "taskId": "task-partial-0-0",
                 "artifact": {
                   "taskId": "task-partial-0-0",
                   "role": "submission",
                   "pageId": "page-task-partial-0-0",
-                  "documentId": "artifact-document-assignment-1-3-student-1-5-task-partial-0-0",
+                  "documentId": "artifact-document-assignment-1-3-100000000010000000005-task-partial-0-0",
                   "content": null,
                   "contentHash": null,
                   "metadata": {},
-                  "uid": "uid-assignment-1-3-student-1-5-task-partial-0-0",
+                  "uid": "uid-assignment-1-3-100000000010000000005-task-partial-0-0",
                   "type": "TEXT"
                 },
                 "assessments": {
@@ -1534,32 +1534,32 @@
     "active": null,
     "students": [
       {
-        "id": "student-2-0",
+        "id": "100000000020000000000",
         "name": "Taylor Kuphal",
         "email": "student-2-0@example.test"
       },
       {
-        "id": "student-2-1",
+        "id": "100000000020000000001",
         "name": "Lillian Monahan",
         "email": "student-2-1@example.test"
       },
       {
-        "id": "student-2-2",
+        "id": "100000000020000000002",
         "name": "Camron Lockman",
         "email": "student-2-2@example.test"
       },
       {
-        "id": "student-2-3",
+        "id": "100000000020000000003",
         "name": "Royal Schowalter-Auer",
         "email": "student-2-3@example.test"
       },
       {
-        "id": "student-2-4",
+        "id": "100000000020000000004",
         "name": "Aryanna Harvey",
         "email": "student-2-4@example.test"
       },
       {
-        "id": "student-2-5",
+        "id": "100000000020000000005",
         "name": "Ole Dicki PhD",
         "email": "student-2-5@example.test"
       }
@@ -1570,7 +1570,7 @@
         "assignmentId": "assignment-2-0",
         "assignmentName": "Synthetic Assignment 3.1",
         "dueDate": null,
-        "updatedAt": null,
+        "updatedAt": "2024-01-04T09:03:00.000Z",
         "createdAt": "2024-01-04T09:00:00.000Z",
         "documentType": null,
         "submissions": [],
@@ -1586,23 +1586,23 @@
         "documentType": "SLIDES",
         "submissions": [
           {
-            "studentId": "student-2-0",
+            "studentId": "100000000020000000000",
             "studentName": "Taylor Kuphal",
             "assignmentId": "assignment-2-1",
-            "documentId": "submission-document-assignment-2-1-student-2-0",
+            "documentId": "submission-document-assignment-2-1-100000000020000000000",
             "items": {
               "task-0-0": {
-                "id": "ssi-assignment-2-1-student-2-0-task-0-0",
+                "id": "ssi-assignment-2-1-100000000020000000000-task-0-0",
                 "taskId": "task-0-0",
                 "artifact": {
                   "taskId": "task-0-0",
                   "role": "submission",
                   "pageId": "page-task-0-0",
-                  "documentId": "artifact-document-assignment-2-1-student-2-0-task-0-0",
+                  "documentId": "artifact-document-assignment-2-1-100000000020000000000-task-0-0",
                   "content": null,
                   "contentHash": null,
                   "metadata": {},
-                  "uid": "uid-assignment-2-1-student-2-0-task-0-0",
+                  "uid": "uid-assignment-2-1-100000000020000000000-task-0-0",
                   "type": "TEXT"
                 },
                 "assessments": {
@@ -1621,17 +1621,17 @@
                 }
               },
               "task-0-1": {
-                "id": "ssi-assignment-2-1-student-2-0-task-0-1",
+                "id": "ssi-assignment-2-1-100000000020000000000-task-0-1",
                 "taskId": "task-0-1",
                 "artifact": {
                   "taskId": "task-0-1",
                   "role": "submission",
                   "pageId": "page-task-0-1",
-                  "documentId": "artifact-document-assignment-2-1-student-2-0-task-0-1",
+                  "documentId": "artifact-document-assignment-2-1-100000000020000000000-task-0-1",
                   "content": null,
                   "contentHash": null,
                   "metadata": {},
-                  "uid": "uid-assignment-2-1-student-2-0-task-0-1",
+                  "uid": "uid-assignment-2-1-100000000020000000000-task-0-1",
                   "type": "TEXT"
                 },
                 "assessments": {
@@ -1654,40 +1654,40 @@
             "updatedAt": "2024-01-04T10:05:00.000Z"
           },
           {
-            "studentId": "student-2-1",
+            "studentId": "100000000020000000001",
             "studentName": "Lillian Monahan",
             "assignmentId": "assignment-2-1",
-            "documentId": "submission-document-assignment-2-1-student-2-1",
+            "documentId": "submission-document-assignment-2-1-100000000020000000001",
             "items": {
               "task-0-0": {
-                "id": "ssi-assignment-2-1-student-2-1-task-0-0",
+                "id": "ssi-assignment-2-1-100000000020000000001-task-0-0",
                 "taskId": "task-0-0",
                 "artifact": {
                   "taskId": "task-0-0",
                   "role": "submission",
                   "pageId": "page-task-0-0",
-                  "documentId": "artifact-document-assignment-2-1-student-2-1-task-0-0",
+                  "documentId": "artifact-document-assignment-2-1-100000000020000000001-task-0-0",
                   "content": null,
                   "contentHash": null,
                   "metadata": {},
-                  "uid": "uid-assignment-2-1-student-2-1-task-0-0",
+                  "uid": "uid-assignment-2-1-100000000020000000001-task-0-0",
                   "type": "TEXT"
                 },
                 "assessments": {},
                 "feedback": {}
               },
               "task-0-1": {
-                "id": "ssi-assignment-2-1-student-2-1-task-0-1",
+                "id": "ssi-assignment-2-1-100000000020000000001-task-0-1",
                 "taskId": "task-0-1",
                 "artifact": {
                   "taskId": "task-0-1",
                   "role": "submission",
                   "pageId": "page-task-0-1",
-                  "documentId": "artifact-document-assignment-2-1-student-2-1-task-0-1",
+                  "documentId": "artifact-document-assignment-2-1-100000000020000000001-task-0-1",
                   "content": null,
                   "contentHash": null,
                   "metadata": {},
-                  "uid": "uid-assignment-2-1-student-2-1-task-0-1",
+                  "uid": "uid-assignment-2-1-100000000020000000001-task-0-1",
                   "type": "TEXT"
                 },
                 "assessments": {},
@@ -1698,23 +1698,23 @@
             "updatedAt": "2024-01-04T10:12:00.000Z"
           },
           {
-            "studentId": "student-2-2",
+            "studentId": "100000000020000000002",
             "studentName": "Camron Lockman",
             "assignmentId": "assignment-2-1",
             "documentId": null,
             "items": {
               "task-0-0": {
-                "id": "ssi-assignment-2-1-student-2-2-task-0-0",
+                "id": "ssi-assignment-2-1-100000000020000000002-task-0-0",
                 "taskId": "task-0-0",
                 "artifact": {
                   "taskId": "task-0-0",
                   "role": "submission",
                   "pageId": "page-task-0-0",
-                  "documentId": "artifact-document-assignment-2-1-student-2-2-task-0-0",
+                  "documentId": "artifact-document-assignment-2-1-100000000020000000002-task-0-0",
                   "content": null,
                   "contentHash": null,
                   "metadata": {},
-                  "uid": "uid-assignment-2-1-student-2-2-task-0-0",
+                  "uid": "uid-assignment-2-1-100000000020000000002-task-0-0",
                   "type": "TEXT"
                 },
                 "assessments": {
@@ -1728,17 +1728,17 @@
                 "feedback": {}
               },
               "task-0-1": {
-                "id": "ssi-assignment-2-1-student-2-2-task-0-1",
+                "id": "ssi-assignment-2-1-100000000020000000002-task-0-1",
                 "taskId": "task-0-1",
                 "artifact": {
                   "taskId": "task-0-1",
                   "role": "submission",
                   "pageId": "page-task-0-1",
-                  "documentId": "artifact-document-assignment-2-1-student-2-2-task-0-1",
+                  "documentId": "artifact-document-assignment-2-1-100000000020000000002-task-0-1",
                   "content": null,
                   "contentHash": null,
                   "metadata": {},
-                  "uid": "uid-assignment-2-1-student-2-2-task-0-1",
+                  "uid": "uid-assignment-2-1-100000000020000000002-task-0-1",
                   "type": "TEXT"
                 },
                 "assessments": {
@@ -1756,23 +1756,23 @@
             "updatedAt": "2024-01-04T10:19:00.000Z"
           },
           {
-            "studentId": "student-2-3",
+            "studentId": "100000000020000000003",
             "studentName": "Royal Schowalter-Auer",
             "assignmentId": "assignment-2-1",
-            "documentId": "submission-document-assignment-2-1-student-2-3",
+            "documentId": "submission-document-assignment-2-1-100000000020000000003",
             "items": {
               "task-0-0": {
-                "id": "ssi-assignment-2-1-student-2-3-task-0-0",
+                "id": "ssi-assignment-2-1-100000000020000000003-task-0-0",
                 "taskId": "task-0-0",
                 "artifact": {
                   "taskId": "task-0-0",
                   "role": "submission",
                   "pageId": "page-task-0-0",
-                  "documentId": "artifact-document-assignment-2-1-student-2-3-task-0-0",
+                  "documentId": "artifact-document-assignment-2-1-100000000020000000003-task-0-0",
                   "content": null,
                   "contentHash": null,
                   "metadata": {},
-                  "uid": "uid-assignment-2-1-student-2-3-task-0-0",
+                  "uid": "uid-assignment-2-1-100000000020000000003-task-0-0",
                   "type": "TEXT"
                 },
                 "assessments": {
@@ -1786,17 +1786,17 @@
                 "feedback": {}
               },
               "task-0-1": {
-                "id": "ssi-assignment-2-1-student-2-3-task-0-1",
+                "id": "ssi-assignment-2-1-100000000020000000003-task-0-1",
                 "taskId": "task-0-1",
                 "artifact": {
                   "taskId": "task-0-1",
                   "role": "submission",
                   "pageId": "page-task-0-1",
-                  "documentId": "artifact-document-assignment-2-1-student-2-3-task-0-1",
+                  "documentId": "artifact-document-assignment-2-1-100000000020000000003-task-0-1",
                   "content": null,
                   "contentHash": null,
                   "metadata": {},
-                  "uid": "uid-assignment-2-1-student-2-3-task-0-1",
+                  "uid": "uid-assignment-2-1-100000000020000000003-task-0-1",
                   "type": "TEXT"
                 },
                 "assessments": {
@@ -1814,23 +1814,23 @@
             "updatedAt": "2024-01-04T10:26:00.000Z"
           },
           {
-            "studentId": "student-2-4",
+            "studentId": "100000000020000000004",
             "studentName": "Aryanna Harvey",
             "assignmentId": "assignment-2-1",
-            "documentId": "submission-document-assignment-2-1-student-2-4",
+            "documentId": "submission-document-assignment-2-1-100000000020000000004",
             "items": {
               "task-0-0": {
-                "id": "ssi-assignment-2-1-student-2-4-task-0-0",
+                "id": "ssi-assignment-2-1-100000000020000000004-task-0-0",
                 "taskId": "task-0-0",
                 "artifact": {
                   "taskId": "task-0-0",
                   "role": "submission",
                   "pageId": "page-task-0-0",
-                  "documentId": "artifact-document-assignment-2-1-student-2-4-task-0-0",
+                  "documentId": "artifact-document-assignment-2-1-100000000020000000004-task-0-0",
                   "content": null,
                   "contentHash": null,
                   "metadata": {},
-                  "uid": "uid-assignment-2-1-student-2-4-task-0-0",
+                  "uid": "uid-assignment-2-1-100000000020000000004-task-0-0",
                   "type": "TEXT"
                 },
                 "assessments": {
@@ -1844,17 +1844,17 @@
                 "feedback": {}
               },
               "task-0-1": {
-                "id": "ssi-assignment-2-1-student-2-4-task-0-1",
+                "id": "ssi-assignment-2-1-100000000020000000004-task-0-1",
                 "taskId": "task-0-1",
                 "artifact": {
                   "taskId": "task-0-1",
                   "role": "submission",
                   "pageId": "page-task-0-1",
-                  "documentId": "artifact-document-assignment-2-1-student-2-4-task-0-1",
+                  "documentId": "artifact-document-assignment-2-1-100000000020000000004-task-0-1",
                   "content": null,
                   "contentHash": null,
                   "metadata": {},
-                  "uid": "uid-assignment-2-1-student-2-4-task-0-1",
+                  "uid": "uid-assignment-2-1-100000000020000000004-task-0-1",
                   "type": "TEXT"
                 },
                 "assessments": {
@@ -1872,23 +1872,23 @@
             "updatedAt": "2024-01-04T10:33:00.000Z"
           },
           {
-            "studentId": "student-2-5",
+            "studentId": "100000000020000000005",
             "studentName": "Ole Dicki PhD",
             "assignmentId": "assignment-2-1",
-            "documentId": "submission-document-assignment-2-1-student-2-5",
+            "documentId": "submission-document-assignment-2-1-100000000020000000005",
             "items": {
               "task-0-0": {
-                "id": "ssi-assignment-2-1-student-2-5-task-0-0",
+                "id": "ssi-assignment-2-1-100000000020000000005-task-0-0",
                 "taskId": "task-0-0",
                 "artifact": {
                   "taskId": "task-0-0",
                   "role": "submission",
                   "pageId": "page-task-0-0",
-                  "documentId": "artifact-document-assignment-2-1-student-2-5-task-0-0",
+                  "documentId": "artifact-document-assignment-2-1-100000000020000000005-task-0-0",
                   "content": null,
                   "contentHash": null,
                   "metadata": {},
-                  "uid": "uid-assignment-2-1-student-2-5-task-0-0",
+                  "uid": "uid-assignment-2-1-100000000020000000005-task-0-0",
                   "type": "TEXT"
                 },
                 "assessments": {
@@ -1902,17 +1902,17 @@
                 "feedback": {}
               },
               "task-0-1": {
-                "id": "ssi-assignment-2-1-student-2-5-task-0-1",
+                "id": "ssi-assignment-2-1-100000000020000000005-task-0-1",
                 "taskId": "task-0-1",
                 "artifact": {
                   "taskId": "task-0-1",
                   "role": "submission",
                   "pageId": "page-task-0-1",
-                  "documentId": "artifact-document-assignment-2-1-student-2-5-task-0-1",
+                  "documentId": "artifact-document-assignment-2-1-100000000020000000005-task-0-1",
                   "content": null,
                   "contentHash": null,
                   "metadata": {},
-                  "uid": "uid-assignment-2-1-student-2-5-task-0-1",
+                  "uid": "uid-assignment-2-1-100000000020000000005-task-0-1",
                   "type": "TEXT"
                 },
                 "assessments": {
@@ -1942,23 +1942,23 @@
         "documentType": "SHEETS",
         "submissions": [
           {
-            "studentId": "student-2-0",
+            "studentId": "100000000020000000000",
             "studentName": "Taylor Kuphal",
             "assignmentId": "assignment-2-2",
-            "documentId": "submission-document-assignment-2-2-student-2-0",
+            "documentId": "submission-document-assignment-2-2-100000000020000000000",
             "items": {
               "task-1-0": {
-                "id": "ssi-assignment-2-2-student-2-0-task-1-0",
+                "id": "ssi-assignment-2-2-100000000020000000000-task-1-0",
                 "taskId": "task-1-0",
                 "artifact": {
                   "taskId": "task-1-0",
                   "role": "submission",
                   "pageId": "page-task-1-0",
-                  "documentId": "artifact-document-assignment-2-2-student-2-0-task-1-0",
+                  "documentId": "artifact-document-assignment-2-2-100000000020000000000-task-1-0",
                   "content": null,
                   "contentHash": null,
                   "metadata": {},
-                  "uid": "uid-assignment-2-2-student-2-0-task-1-0",
+                  "uid": "uid-assignment-2-2-100000000020000000000-task-1-0",
                   "type": "TEXT"
                 },
                 "assessments": {
@@ -1977,17 +1977,17 @@
                 }
               },
               "task-1-1": {
-                "id": "ssi-assignment-2-2-student-2-0-task-1-1",
+                "id": "ssi-assignment-2-2-100000000020000000000-task-1-1",
                 "taskId": "task-1-1",
                 "artifact": {
                   "taskId": "task-1-1",
                   "role": "submission",
                   "pageId": "page-task-1-1",
-                  "documentId": "artifact-document-assignment-2-2-student-2-0-task-1-1",
+                  "documentId": "artifact-document-assignment-2-2-100000000020000000000-task-1-1",
                   "content": null,
                   "contentHash": null,
                   "metadata": {},
-                  "uid": "uid-assignment-2-2-student-2-0-task-1-1",
+                  "uid": "uid-assignment-2-2-100000000020000000000-task-1-1",
                   "type": "TEXT"
                 },
                 "assessments": {
@@ -2010,40 +2010,40 @@
             "updatedAt": "2024-01-04T11:05:00.000Z"
           },
           {
-            "studentId": "student-2-1",
+            "studentId": "100000000020000000001",
             "studentName": "Lillian Monahan",
             "assignmentId": "assignment-2-2",
-            "documentId": "submission-document-assignment-2-2-student-2-1",
+            "documentId": "submission-document-assignment-2-2-100000000020000000001",
             "items": {
               "task-1-0": {
-                "id": "ssi-assignment-2-2-student-2-1-task-1-0",
+                "id": "ssi-assignment-2-2-100000000020000000001-task-1-0",
                 "taskId": "task-1-0",
                 "artifact": {
                   "taskId": "task-1-0",
                   "role": "submission",
                   "pageId": "page-task-1-0",
-                  "documentId": "artifact-document-assignment-2-2-student-2-1-task-1-0",
+                  "documentId": "artifact-document-assignment-2-2-100000000020000000001-task-1-0",
                   "content": null,
                   "contentHash": null,
                   "metadata": {},
-                  "uid": "uid-assignment-2-2-student-2-1-task-1-0",
+                  "uid": "uid-assignment-2-2-100000000020000000001-task-1-0",
                   "type": "TEXT"
                 },
                 "assessments": {},
                 "feedback": {}
               },
               "task-1-1": {
-                "id": "ssi-assignment-2-2-student-2-1-task-1-1",
+                "id": "ssi-assignment-2-2-100000000020000000001-task-1-1",
                 "taskId": "task-1-1",
                 "artifact": {
                   "taskId": "task-1-1",
                   "role": "submission",
                   "pageId": "page-task-1-1",
-                  "documentId": "artifact-document-assignment-2-2-student-2-1-task-1-1",
+                  "documentId": "artifact-document-assignment-2-2-100000000020000000001-task-1-1",
                   "content": null,
                   "contentHash": null,
                   "metadata": {},
-                  "uid": "uid-assignment-2-2-student-2-1-task-1-1",
+                  "uid": "uid-assignment-2-2-100000000020000000001-task-1-1",
                   "type": "TEXT"
                 },
                 "assessments": {},
@@ -2066,23 +2066,23 @@
         "documentType": "SLIDES",
         "submissions": [
           {
-            "studentId": "student-2-0",
+            "studentId": "100000000020000000000",
             "studentName": "Taylor Kuphal",
             "assignmentId": "assignment-2-3",
-            "documentId": "submission-document-assignment-2-3-student-2-0",
+            "documentId": "submission-document-assignment-2-3-100000000020000000000",
             "items": {
               "task-partial-0-0": {
-                "id": "ssi-assignment-2-3-student-2-0-task-partial-0-0",
+                "id": "ssi-assignment-2-3-100000000020000000000-task-partial-0-0",
                 "taskId": "task-partial-0-0",
                 "artifact": {
                   "taskId": "task-partial-0-0",
                   "role": "submission",
                   "pageId": "page-task-partial-0-0",
-                  "documentId": "artifact-document-assignment-2-3-student-2-0-task-partial-0-0",
+                  "documentId": "artifact-document-assignment-2-3-100000000020000000000-task-partial-0-0",
                   "content": null,
                   "contentHash": null,
                   "metadata": {},
-                  "uid": "uid-assignment-2-3-student-2-0-task-partial-0-0",
+                  "uid": "uid-assignment-2-3-100000000020000000000-task-partial-0-0",
                   "type": "TEXT"
                 },
                 "assessments": {
@@ -2105,23 +2105,23 @@
             "updatedAt": "2024-01-04T12:05:00.000Z"
           },
           {
-            "studentId": "student-2-1",
+            "studentId": "100000000020000000001",
             "studentName": "Lillian Monahan",
             "assignmentId": "assignment-2-3",
-            "documentId": "submission-document-assignment-2-3-student-2-1",
+            "documentId": "submission-document-assignment-2-3-100000000020000000001",
             "items": {
               "task-partial-0-0": {
-                "id": "ssi-assignment-2-3-student-2-1-task-partial-0-0",
+                "id": "ssi-assignment-2-3-100000000020000000001-task-partial-0-0",
                 "taskId": "task-partial-0-0",
                 "artifact": {
                   "taskId": "task-partial-0-0",
                   "role": "submission",
                   "pageId": "page-task-partial-0-0",
-                  "documentId": "artifact-document-assignment-2-3-student-2-1-task-partial-0-0",
+                  "documentId": "artifact-document-assignment-2-3-100000000020000000001-task-partial-0-0",
                   "content": null,
                   "contentHash": null,
                   "metadata": {},
-                  "uid": "uid-assignment-2-3-student-2-1-task-partial-0-0",
+                  "uid": "uid-assignment-2-3-100000000020000000001-task-partial-0-0",
                   "type": "TEXT"
                 },
                 "assessments": {},
@@ -2132,23 +2132,23 @@
             "updatedAt": "2024-01-04T12:12:00.000Z"
           },
           {
-            "studentId": "student-2-2",
+            "studentId": "100000000020000000002",
             "studentName": null,
             "assignmentId": "assignment-2-3",
             "documentId": null,
             "items": {
               "task-partial-0-0": {
-                "id": "ssi-assignment-2-3-student-2-2-task-partial-0-0",
+                "id": "ssi-assignment-2-3-100000000020000000002-task-partial-0-0",
                 "taskId": "task-partial-0-0",
                 "artifact": {
                   "taskId": "task-partial-0-0",
                   "role": "submission",
                   "pageId": "page-task-partial-0-0",
-                  "documentId": "artifact-document-assignment-2-3-student-2-2-task-partial-0-0",
+                  "documentId": "artifact-document-assignment-2-3-100000000020000000002-task-partial-0-0",
                   "content": null,
                   "contentHash": null,
                   "metadata": {},
-                  "uid": "uid-assignment-2-3-student-2-2-task-partial-0-0",
+                  "uid": "uid-assignment-2-3-100000000020000000002-task-partial-0-0",
                   "type": "TEXT"
                 },
                 "assessments": {
@@ -2166,13 +2166,13 @@
             "updatedAt": "2024-01-04T12:19:00.000Z"
           },
           {
-            "studentId": "student-2-3",
+            "studentId": "100000000020000000003",
             "studentName": "Royal Schowalter-Auer",
             "assignmentId": "assignment-2-3",
-            "documentId": "submission-document-assignment-2-3-student-2-3",
+            "documentId": "submission-document-assignment-2-3-100000000020000000003",
             "items": {
               "task-partial-0-0": {
-                "id": "ssi-assignment-2-3-student-2-3-task-partial-0-0",
+                "id": "ssi-assignment-2-3-100000000020000000003-task-partial-0-0",
                 "taskId": "task-partial-0-0",
                 "artifact": {
                   "taskId": "task-partial-0-0",
@@ -2182,7 +2182,7 @@
                   "content": null,
                   "contentHash": null,
                   "metadata": {},
-                  "uid": "uid-assignment-2-3-student-2-3-task-partial-0-0",
+                  "uid": "uid-assignment-2-3-100000000020000000003-task-partial-0-0",
                   "type": "TEXT"
                 },
                 "assessments": {
@@ -2200,23 +2200,23 @@
             "updatedAt": "2024-01-04T12:26:00.000Z"
           },
           {
-            "studentId": "student-2-4",
+            "studentId": "100000000020000000004",
             "studentName": "Aryanna Harvey",
             "assignmentId": "assignment-2-3",
-            "documentId": "submission-document-assignment-2-3-student-2-4",
+            "documentId": "submission-document-assignment-2-3-100000000020000000004",
             "items": {
               "task-partial-0-0": {
-                "id": "ssi-assignment-2-3-student-2-4-task-partial-0-0",
+                "id": "ssi-assignment-2-3-100000000020000000004-task-partial-0-0",
                 "taskId": "task-partial-0-0",
                 "artifact": {
                   "taskId": "task-partial-0-0",
                   "role": "submission",
                   "pageId": "page-task-partial-0-0",
-                  "documentId": "artifact-document-assignment-2-3-student-2-4-task-partial-0-0",
+                  "documentId": "artifact-document-assignment-2-3-100000000020000000004-task-partial-0-0",
                   "content": null,
                   "contentHash": null,
                   "metadata": {},
-                  "uid": "uid-assignment-2-3-student-2-4-task-partial-0-0",
+                  "uid": "uid-assignment-2-3-100000000020000000004-task-partial-0-0",
                   "type": "TEXT"
                 },
                 "assessments": {
@@ -2234,23 +2234,23 @@
             "updatedAt": "2024-01-04T12:33:00.000Z"
           },
           {
-            "studentId": "student-2-5",
+            "studentId": "100000000020000000005",
             "studentName": "Ole Dicki PhD",
             "assignmentId": "assignment-2-3",
-            "documentId": "submission-document-assignment-2-3-student-2-5",
+            "documentId": "submission-document-assignment-2-3-100000000020000000005",
             "items": {
               "task-partial-0-0": {
-                "id": "ssi-assignment-2-3-student-2-5-task-partial-0-0",
+                "id": "ssi-assignment-2-3-100000000020000000005-task-partial-0-0",
                 "taskId": "task-partial-0-0",
                 "artifact": {
                   "taskId": "task-partial-0-0",
                   "role": "submission",
                   "pageId": "page-task-partial-0-0",
-                  "documentId": "artifact-document-assignment-2-3-student-2-5-task-partial-0-0",
+                  "documentId": "artifact-document-assignment-2-3-100000000020000000005-task-partial-0-0",
                   "content": null,
                   "contentHash": null,
                   "metadata": {},
-                  "uid": "uid-assignment-2-3-student-2-5-task-partial-0-0",
+                  "uid": "uid-assignment-2-3-100000000020000000005-task-partial-0-0",
                   "type": "TEXT"
                 },
                 "assessments": {

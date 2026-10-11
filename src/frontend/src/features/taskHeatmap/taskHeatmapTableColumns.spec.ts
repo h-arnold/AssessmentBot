@@ -20,7 +20,11 @@ import {
   TaskDisplayMetricSchema,
   type TaskDisplayMetric,
 } from '../../services/dataAnalysis/dataAnalysis.zod';
-import { buildAdaptiveTierGroups, buildTaskMetricSubColumns } from './taskHeatmapTableColumns';
+import {
+  buildAdaptiveTierGroups,
+  buildMetricCellAccessibleLabel,
+  buildTaskMetricSubColumns,
+} from './taskHeatmapTableColumns';
 import type { TaskHeatmapColumn, TaskHeatmapRow } from './taskHeatmapTableColumns';
 
 /**
@@ -104,7 +108,12 @@ describe('task metric display text', () => {
 
     expect(taskColumn.taskTitle).toBe('Task task');
     expect(cellProperties).toMatchObject({
-      'aria-label': `Student One, ${taskColumn.taskTitle}, Completeness: ${expected}`,
+      'aria-label': buildMetricCellAccessibleLabel(
+        'Student One',
+        taskColumn.taskTitle ?? taskColumn.taskId,
+        'completeness',
+        expected
+      ),
     });
   });
 

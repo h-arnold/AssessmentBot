@@ -168,9 +168,7 @@ export function createClassFull(overrides: Partial<ClassFull> = {}): ClassFull {
   return {
     ...createHeatmapClassFull(overrides),
     // The same fixture doubles as `AssignmentFull` for the per-assignment preview
-    // query mock; `buildCellPreviewLookup` requires an embedded `assignmentDefinition`
-    // (and `submissions`) so the loud fail-fast path in `useHeatmapsPageData` is not
-    // tripped by the test data.
+    // query mock; include the transport fields consumed by `buildCellPreviewLookup`.
     assignmentDefinition: { definitionKey: 'def1' },
     submissions: [],
     ...overrides,

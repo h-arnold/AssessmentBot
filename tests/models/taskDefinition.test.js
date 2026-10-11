@@ -13,4 +13,30 @@ describe('TaskDefinition', () => {
     const restored = TaskDefinition.fromJSON(json);
     expect(restored.getPrimaryReference().content).toBe('Ref');
   });
+
+  describe('pageId fail-fast contract', () => {
+    it('constructor throws when pageId is omitted', () => {
+      expect(() => new TaskDefinition({ taskTitle: 'No Page' })).toThrow(
+        'TaskDefinition requires pageId'
+      );
+    });
+
+    it('constructor throws when pageId is null', () => {
+      expect(() => new TaskDefinition({ taskTitle: 'Null Page', pageId: null })).toThrow(
+        'TaskDefinition requires pageId'
+      );
+    });
+
+    it('fromJSON throws when the stored definition omits pageId', () => {
+      expect(() => TaskDefinition.fromJSON({ taskTitle: 'Legacy Stored' })).toThrow(
+        'TaskDefinition requires pageId'
+      );
+    });
+
+    it('fromJSON throws when the stored definition has a null pageId', () => {
+      expect(() => TaskDefinition.fromJSON({ taskTitle: 'Legacy Stored', pageId: null })).toThrow(
+        'TaskDefinition requires pageId'
+      );
+    });
+  });
 });

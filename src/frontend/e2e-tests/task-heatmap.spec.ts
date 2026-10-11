@@ -54,9 +54,12 @@ test.describe('Task Heatmap E2E journey', () => {
     );
 
     // Student Two's Task 1 Completeness cell shows green band + aria-label (integer, 0 dp).
-    // The aria-label is applied to BOTH the `<td role="cell">` (via onCell) and the nested
-    // popover trigger, so a bare `[aria-label=...]` selector matches two elements.
-    const cell = page.locator(`[role="button"][aria-label="Student Two, Task 1, Completeness: 5"]`);
+    // The aria-label is applied to BOTH the `<td role="cell">` (via onCell) and the
+    // popover trigger; the button role and exact accessible name disambiguate it.
+    const cell = page.getByRole('button', {
+      name: 'Student Two, Task 1, Completeness: 5',
+      exact: true,
+    });
     await expect(cell).toHaveCount(1);
   });
 
@@ -134,12 +137,16 @@ test.describe('Task Heatmap E2E journey', () => {
     await page.keyboard.press('Space');
     await expect(page.getByRole('dialog')).toHaveCount(0);
 
-    const studentTwoScore = table.locator(
-      '[role="button"][aria-label="Student Two, Task 1, Completeness: 5"]'
-    );
+    const studentTwoScore = table.getByRole('button', {
+      name: 'Student Two, Task 1, Completeness: 5',
+      exact: true,
+    });
     await expect(studentTwoScore).toHaveCount(1);
     await expect(
-      table.locator('[role="button"][aria-label="Student One, Task 1, Completeness: N"]')
+      table.getByRole('button', {
+        name: 'Student One, Task 1, Completeness: N',
+        exact: true,
+      })
     ).toHaveCount(1);
 
     const scoreBackground = await studentTwoScore.evaluate((element) => {

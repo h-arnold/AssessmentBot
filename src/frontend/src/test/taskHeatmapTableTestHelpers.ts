@@ -61,6 +61,10 @@ export const TASK_COLUMNS: HeatmapTaskColumn[] = [
 // CellPreviewLookup fixtures for popover state tests
 // ---------------------------------------------------------------------------
 
+/** Derived editor source URL carried by the populated TEXT cell fixture. */
+const TEXT_CELL_SOURCE_URL =
+  'https://docs.google.com/presentation/d/text-cell-document/edit#slide=id.2';
+
 /** CellPreviewData fixture for the populated-lookup test (TEXT artifact). */
 export const TEXT_CELL_PREVIEW_DATA: CellPreviewData = {
   artifactType: 'TEXT',
@@ -70,6 +74,7 @@ export const TEXT_CELL_PREVIEW_DATA: CellPreviewData = {
     accuracy: null,
     spag: null,
   },
+  sourceUrl: TEXT_CELL_SOURCE_URL,
 };
 
 /** Inner map (composite taskKey → CellPreviewData) for the populated-lookup test. */

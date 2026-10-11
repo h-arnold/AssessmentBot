@@ -127,12 +127,14 @@ describe('AssignmentDefinitionController upsert — reparse weighting reconcilia
             t_task_1: {
               id: 't_task_1',
               taskTitle: 'Task A',
+              pageId: 'p_t_task_1',
               artifacts: { reference: [], template: [] },
               taskWeighting: 2,
             },
             t_task_old: {
               id: 't_task_old',
               taskTitle: 'Old task',
+              pageId: 'p_t_task_old',
               artifacts: { reference: [], template: [] },
               taskWeighting: 2,
             },
@@ -228,12 +230,14 @@ describe('AssignmentDefinitionController upsert — reparse weighting reconcilia
             t_task_1: {
               id: 't_task_1',
               taskTitle: 'Task A',
+              pageId: 'p_t_task_1',
               artifacts: { reference: [], template: [] },
               taskWeighting: 2,
             },
             t_task_old: {
               id: 't_task_old',
               taskTitle: 'Old task',
+              pageId: 'p_t_task_old',
               artifacts: { reference: [], template: [] },
               taskWeighting: 2,
             },

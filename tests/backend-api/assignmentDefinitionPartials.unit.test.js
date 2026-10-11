@@ -1911,7 +1911,7 @@ describe('toPartialJSON emits taskTitle per task', () => {
     const { AssignmentDefinition } = require('../../src/backend/Models/AssignmentDefinition.js');
     const { TaskDefinition } = require('../../src/backend/Models/TaskDefinition.js');
 
-    const task = new TaskDefinition({ taskTitle: 'My Task Title' }, 3);
+    const task = new TaskDefinition({ taskTitle: 'My Task Title', pageId: 'p1' }, 3);
     const def = new AssignmentDefinition({
       primaryTitle: 'Algebra Baseline',
       primaryTopic: 'Algebra',

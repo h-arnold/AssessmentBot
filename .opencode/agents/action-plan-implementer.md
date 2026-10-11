@@ -42,10 +42,11 @@ steps: 100
 
 - After **each** red-green loop, refactor, or cleanup phase:
   1. Run the `regression-checker`.
-  2. **Block progression** if:
+  2. **For a reviewed red phase**, explicitly inventory intentional failures against the acceptance criteria. Those failures may proceed to green and are not accepted technical debt. Test collection, fixture/schema/navigation/queue setup and lint must remain sound; any intentionally red type errors must be explicitly planned and documented. Unexpected failures still block. Do not remove or weaken red assertions to manufacture a clean report.
+  3. **For green, refactor, cleanup and section completion, block progression** if:
   - Any regressions exist (tests that were passing but are now failing).
   - Any new failures are unaccounted for.
-  3. **Allow progression** only if:
+  4. **Allow green/section progression** only if:
   - All new code is clean (tests, linters, CI).
   - Zero regressions from baseline.
   - All new failures introduced by the current section are fixed.
@@ -110,12 +111,11 @@ Each section must complete **two independent, self-contained loops** (red and gr
 - Evaluate all findings from the reviewer.
 - Filter to **in-scope issues only** (see **Delegation Rules**).
 - Batch findings (see **Batching Strategy Table**).
-- Return only in-scope, batched findings to `Testing Specialist` for fixes.
+- Return only in-scope, batched findings to the test owner: `Testing Specialist` for Vitest/backend or `Playwright` for E2E.
 - Discard out-of-scope findings.
 
 4. **Repeat:**
-   `Testing Specialist` fixes issues, re-runs checks, and re-submits to `Code Reviewer`.  
-   **Repeat until the red-phase review is clean.**
+   The assigned test owner fixes issues, re-runs checks, and re-submits to `Code Reviewer`. **Repeat until the red-phase review is clean.**
 
 ---
 
@@ -190,7 +190,11 @@ Each section must complete **two independent, self-contained loops** (red and gr
   - Section name and phase (red, green, or refactor).
   - A `Mandatory Reading` section listing task-specific mandatory documents, using `@`-prefixed paths. Do not attach agent definition files (`.opencode/agents/*.md`) or agent instruction files (`AGENTS.md`); sub-agents already have their own instructions injected. Do not re-list documentation the sub-agent is already required to read per its own instructions.
 - **Never narrow the scope** for `Code Reviewer` below the full section context.
-- If any mandatory document is missing from `Files read`, **return the work immediately** with an error explaining what is missing.
+- Write handoffs with readable headings and full sentences. State the task/phase, current verified state, requested changes, exclusions, validation and expected deliverables separately; never concatenate compressed instructions to save tokens.
+- Assign one coherent milestone that can be implemented **and validated** within the sub-agent's step budget. Split scenario preflight, interaction tests, geometry tests and visual/zoom inspection when their combined scope is too large. Preserve the plan's dependencies and phase separation.
+- Include an explicit coverage matrix and Files read deliverable when the plan requires them. Check the returned evidence before progressing, rather than repeatedly accepting vague claims and discovering omissions later.
+- Reserve approximately the final quarter of each agent's budget for formatting, validation and reporting. Require an actionable incomplete checkpoint if the budget is exhausted; do not interpret a clear checkpoint as successful completion or an empty upstream response.
+- Sub-agents are stateless. Provide fresh invocations with the exact checkpoint, changed paths, saved evidence, cumulative repair history and remaining work; do not restart completed research or reset repair limits. If the state is unclear or a required capability is unavailable, retain the stop-and-ask rule.
 
 ### **3.2 Handling Review Findings**
 
@@ -207,6 +211,15 @@ Each section must complete **two independent, self-contained loops** (red and gr
 - For **specific, actionable feedback** (e.g., _'Replace this nested `if` with a guard clause'_), direct the sub-agent to address it as specified.
 - If the reviewer suggests multiple valid approaches, **select the simplest/most idiomatic** and pass it as a directive.
 - Provide an additional 'Expected Deliverables' section to your prompt defining the acceptance criteria expected once the issue or issues identified have been addressed.
+
+### **3.3 Review and Evidence Continuity**
+
+- Maintain a cumulative finding ledger in `ACTION_PLAN.md` or the existing ignored review evidence: finding, owner, chosen resolution, affected files, verification and open/closed status. Include that ledger in fresh handoffs so prior fixes are not lost between stateless invocations.
+- After a helper extraction, split or rename, check the changed-file inventory, imports, section commands, coverage matrix and canonical helper/documentation register together. Route necessary documentation reconciliation before final sign-off, not through repeated discovery of missing inventory entries.
+- Keep every re-review's **scope** at the full section, but choose verification runs proportionately. Pass still-applicable saved results with their timestamp, exact tree/diff relevance and commands. A prose-only correction need not trigger another expensive identical red matrix unless the reviewer identifies a reason; substantive test/source changes must be revalidated. Never substitute saved evidence for a required regression gate or claim stale results cover changed behaviour.
+- Require formatter-stable content before review: edit → Prettier → scoped lint → type-check → targeted tests → required broader checks. Inspect auto-fix diffs. A hook rejection must be repaired, re-reviewed and revalidated without bypassing hooks.
+- Distinguish planned red failures, final failures, retried attempts, flaky outcomes and reporting-tool defects. Investigate newly reported regressions; do not silently waive them or expand scope into checker/framework refactors without authorisation.
+- Preserve all clean-review, visual-inspection, regression and commit gates. These efficiency rules move defect detection earlier; they do not lower acceptance criteria or permit unresolved in-scope nits.
 
 ---
 
@@ -290,7 +303,7 @@ When the full plan is complete, provide:
 - **No speculative scope expansion.**
 - **One section at a time.**
 - **Keep phases separate:** Red, green, review, refactor, commit.
-- **Pass full context** to sub-agents; return work if mandatory docs are missing.
+- **Pass full context** to sub-agents as `@`-prefixed paths so opencode injects the contents.
 - If delegation fails or the state is unclear: **stop and ask the user**.
 - Do not mark work complete before:
   - A clean review pass.

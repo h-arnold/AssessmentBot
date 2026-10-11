@@ -23,16 +23,20 @@ import { SheetsParser } from '../../src/backend/DocumentParsers/SheetsParser.js'
 
 /**
  * Creates a mock parsed task definition
- * @param {{ id: string, taskTitle?: string, index?: number }} options
+ * @param {{ id: string, taskTitle?: string, index?: number, pageId?: string }} options
+ *   pageId defaults to `'p_' + id` so seeded definitions and reparse mocks agree
+ *   on the required pageId by construction.
  * @returns {Object} Mock task definition object
  */
-export function createParsedTaskDefinition({ id, taskTitle, index = 0 }) {
+export function createParsedTaskDefinition({ id, taskTitle, index = 0, pageId = 'p_' + id }) {
   return {
     getId: () => id,
+    pageId,
     validate: () => ({ ok: true, errors: [] }),
     toJSON: () => ({
       id,
       taskTitle: taskTitle || 'Task ' + id,
+      pageId,
       taskWeighting: null,
       index,
       artifacts: {
@@ -297,6 +301,7 @@ export function setupDuplicateDetectionWithExisting(
       t_task_1: {
         id: 't_task_1',
         taskTitle: 'Task A',
+        pageId: 'p_t_task_1',
         artifacts: { reference: [], template: [] },
       },
     },
@@ -355,6 +360,7 @@ export function seedExistingDefinition({
   const defaultTask = {
     id: 't_task_1',
     taskTitle: 'Task A',
+    pageId: 'p_t_task_1',
     artifacts: { reference: [], template: [] },
     ...taskOverrides,
   };

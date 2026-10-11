@@ -80,16 +80,18 @@ describe('Document Parser Interface and Stub Tests', () => {
 
   test('extractTaskDefinitions returns TaskDefinitions with sequential index starting at 0', () => {
     const parser = new TestDocumentParser([
-      { title: 'A', refContent: 'R1', tplContent: 'T1' },
-      { title: 'B', refContent: 'R2', tplContent: 'T2' },
-      { title: 'A', refContent: 'R3', tplContent: 'T3' },
+      { title: 'A', pageId: 'p1', refContent: 'R1', tplContent: 'T1' },
+      { title: 'B', pageId: 'p2', refContent: 'R2', tplContent: 'T2' },
+      { title: 'A', pageId: 'p3', refContent: 'R3', tplContent: 'T3' },
     ]);
     const defs = parser.extractTaskDefinitions('refDoc', 'tplDoc');
     expect(defs.map((d) => d.index)).toEqual([0, 1, 2]);
   });
 
   test('Returned TaskDefinitions artifacts contain only primitive artifact contents', () => {
-    const parser = new TestDocumentParser([{ title: 'A', refContent: 'Ref', tplContent: 'Tpl' }]);
+    const parser = new TestDocumentParser([
+      { title: 'A', pageId: 'p1', refContent: 'Ref', tplContent: 'Tpl' },
+    ]);
     const [def] = parser.extractTaskDefinitions('refDoc', 'tplDoc');
     const ref = def.getPrimaryReference();
     const tpl = def.getPrimaryTemplate();
@@ -98,7 +100,9 @@ describe('Document Parser Interface and Stub Tests', () => {
   });
 
   test('extractSubmissionArtifacts output uses the canonical shape with no parser-owned contentHash or role', () => {
-    const parser = new TestDocumentParser([{ title: 'A', refContent: 'Ref', tplContent: 'Tpl' }]);
+    const parser = new TestDocumentParser([
+      { title: 'A', pageId: 'p1', refContent: 'Ref', tplContent: 'Tpl' },
+    ]);
     const defs = parser.extractTaskDefinitions('refDoc', 'tplDoc');
     const subs = parser.extractSubmissionArtifacts('studentDoc', defs);
     subs.forEach((o) => {
@@ -121,7 +125,9 @@ describe('Document Parser Interface and Stub Tests', () => {
   });
 
   test('Parser artifacts already hashed immediately for reference/template', () => {
-    const parser = new TestDocumentParser([{ title: 'A', refContent: 'Ref', tplContent: 'Tpl' }]);
+    const parser = new TestDocumentParser([
+      { title: 'A', pageId: 'p1', refContent: 'Ref', tplContent: 'Tpl' },
+    ]);
     const [def] = parser.extractTaskDefinitions('refDoc', 'tplDoc');
     const ref = def.getPrimaryReference();
     const tpl = def.getPrimaryTemplate();
@@ -131,9 +137,9 @@ describe('Document Parser Interface and Stub Tests', () => {
 
   test('Alignment logic: duplicate titles maintain order of appearance via index', () => {
     const parser = new TestDocumentParser([
-      { title: 'B', refContent: 'R1', tplContent: 'T1' },
-      { title: 'A', refContent: 'R2', tplContent: 'T2' },
-      { title: 'B', refContent: 'R3', tplContent: 'T3' },
+      { title: 'B', pageId: 'p1', refContent: 'R1', tplContent: 'T1' },
+      { title: 'A', pageId: 'p2', refContent: 'R2', tplContent: 'T2' },
+      { title: 'B', pageId: 'p3', refContent: 'R3', tplContent: 'T3' },
     ]);
     const defs = parser.extractTaskDefinitions('ref', 'tpl');
     expect(defs.map((d) => d.taskTitle + ':' + d.index)).toEqual(['B:0', 'A:1', 'B:2']);

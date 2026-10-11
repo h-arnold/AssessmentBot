@@ -37,10 +37,7 @@ function compareTaskEquivalence_(previousTask, reparsedTask) {
     return { equivalent: false, reason: 'task-id-changed' };
   }
 
-  // Optional fields are normalised to their canonical parsed form first: the
-  // parser turns absent values into null (scalars) or {} (metadata) while
-  // stored tasks may omit those keys, and neither spelling is a content change.
-  if (absentToNull_(previousTask.pageId) !== absentToNull_(reparsedTask.pageId)) {
+  if (previousTask.pageId !== reparsedTask.pageId) {
     return { equivalent: false, reason: 'page-id-changed' };
   }
 
@@ -48,6 +45,9 @@ function compareTaskEquivalence_(previousTask, reparsedTask) {
     return { equivalent: false, reason: 'title-changed' };
   }
 
+  // Optional nullable fields are normalised to their canonical parsed form:
+  // the parser turns absent values into null (scalars) or {} (metadata) while
+  // stored tasks may omit those keys, and neither spelling is a content change.
   if (absentToNull_(previousTask.taskNotes) !== absentToNull_(reparsedTask.taskNotes)) {
     return { equivalent: false, reason: 'notes-changed' };
   }
