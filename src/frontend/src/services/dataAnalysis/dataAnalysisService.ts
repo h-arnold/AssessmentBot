@@ -1,6 +1,8 @@
 import { AveragingAnalyser } from './analysers/averagingAnalyser';
 import { AveragingAnalyserInputSchema, DataAnalysisResponseSchema } from './dataAnalysis.zod';
 import type { AveragingAnalyserInput, DataAnalysisResponse } from './dataAnalysis.zod';
+import { AssignmentSummaryAnalyser } from './analysers/assignmentSummaryAnalyser';
+import { AssignmentSummarySchema, type AssignmentSummary } from './assignmentSummary.zod';
 
 /**
  * Thin stateless orchestrator that validates input, dispatches to registered
@@ -20,6 +22,7 @@ import type { AveragingAnalyserInput, DataAnalysisResponse } from './dataAnalysi
 export class DataAnalysisService {
   /** Internal registry of analyser key → analyser instance. */
   private readonly registry: Map<string, AveragingAnalyser>;
+  private readonly summaryAnalyser: AssignmentSummaryAnalyser;
 
   /**
    * Constructs a `DataAnalysisService` and initialises the analyser registry.
@@ -31,6 +34,25 @@ export class DataAnalysisService {
    */
   constructor() {
     this.registry = new Map<string, AveragingAnalyser>([['averaging', new AveragingAnalyser()]]);
+    this.summaryAnalyser = new AssignmentSummaryAnalyser();
+  }
+
+  /**
+   * Validate and analyse descriptive task summaries for one class assignment.
+   * @param {AveragingAnalyserInput} input - Loaded class data and live definitions.
+   * @param {string} classId - Class to summarise.
+   * @param {string} assignmentId - Assignment to isolate before accumulation.
+   * @returns {AssignmentSummary} Validated UI-independent evidence.
+   */
+  analyseAssignmentSummary(
+    input: AveragingAnalyserInput,
+    classId: string,
+    assignmentId: string
+  ): AssignmentSummary {
+    const validated = AveragingAnalyserInputSchema.parse(input);
+    return AssignmentSummarySchema.parse(
+      this.summaryAnalyser.analyse(validated, classId, assignmentId)
+    );
   }
 
   /**

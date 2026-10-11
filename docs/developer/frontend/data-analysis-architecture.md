@@ -122,6 +122,42 @@ metric value. `includedInAverage` is true exactly when `effectiveWeight > 0`.
 
 ## Presentation flow
 
+### Single-assignment summaries (#277)
+
+`DataAnalysisService.analyseAssignmentSummary` validates the existing source
+input and the separate `AssignmentSummarySchema` output. Its pure
+`AssignmentSummaryAnalyser` scopes the source class to the requested assignment
+before reusing `AveragingAnalyser` display results. This matters because the
+existing definition-scoped task keys intentionally omit assignment instances.
+The global averaging and heatmap projections are unchanged.
+
+The analyser counts roster students by completeness state, computes numeric-only
+per-task accuracy means, classifies thresholds, and returns all ranking ties.
+These descriptive summaries retain zero-weight display evidence, and expose
+sample counts and errors rather than silently treating missing grades as zero.
+
+`assignmentSummaryAdapter.ts` resolves task labels from heatmap columns and
+formats display text. `TaskHeatmapSummaryCards` renders two Ant Design cards
+above the table in `TaskHeatmapPage`. Neither layer calculates counts,
+averages or rankings. Summaries use loaded class data and do not depend on the
+assignment-preview query or local table filters.
+
+Each card initially shows up to three tasks, prioritising those requiring
+attention while preserving task order within each group. Show all / Show less
+controls expose the remaining tasks independently for each card. Information
+buttons explain the thresholds and summary groups; N values remain distinct
+from assessment errors. Error counts appear in red only when non-zero.
+
+The standalone Heatmaps builder also renders these cards above the table.
+`useHeatmapSelectionSummary` connects the selected assignment to the analysis
+service and presentation adaptor. A single selected assignment displays its
+summaries; multiple selected assignments display a notice in each card asking
+the user to select one assignment. This also applies to assignments sharing a
+definition. The existing merged heatmap remains unchanged. SPaG summaries are
+outside this first-version scope.
+
+### Existing heatmap projection
+
 1. `heatmapAdapter.ts` and `heatmapAdapter.merged.ts` attach the authoritative
    `averageContribution` metadata to each task-column descriptor.
 2. `TaskHeatmapTable` consumes this metadata without resolving definition data

@@ -31,7 +31,7 @@
  */
 
 import type { JSX } from 'react';
-import { Button, Card, Empty, Flex, Result, Skeleton } from 'antd';
+import { Alert, Button, Card, Empty, Flex, Result, Skeleton } from 'antd';
 import { RefreshCw } from 'lucide-react';
 import { PageTitleCard, PageNavCard } from '../../components/PageHeader/PageHeader';
 import { pageContent } from '../../pages/pageContent';
@@ -39,6 +39,8 @@ import { APP_GAP_MD } from '../../theme/spacing';
 import { TaskHeatmapTable } from './TaskHeatmapTable';
 import { HeatmapSelectionBar } from './HeatmapSelectionBar';
 import { useHeatmapsPageData } from './useHeatmapsPageData';
+import { TaskHeatmapSummaryCards } from './TaskHeatmapSummaryCards';
+import { useHeatmapSelectionSummary, type HeatmapSelectionSummaryResult } from './useHeatmapSelectionSummary';
 import type { HeatmapsPageError } from './heatmapsSurfaceState';
 import type { BlockingConfig } from '../../errors/blockingConfig';
 import { resolveBlockingResultConfig } from '../../errors/blockingConfig';
@@ -128,6 +130,17 @@ function ContentRegion({
 }
 
 /**
+ * Render a selection summary without affecting the existing heatmap result.
+ * @param {Readonly<{ result: HeatmapSelectionSummaryResult }>} properties - Prepared summary state.
+ * @returns {JSX.Element | null} Summary cards, a local failure, or no content.
+ */
+function SelectionSummary({ result }: Readonly<{ result: HeatmapSelectionSummaryResult }>): JSX.Element | null {
+  if (result.error !== null) return <Alert type="error" showIcon title="The summary could not be built" />;
+  if (result.view === null) return null;
+  return <TaskHeatmapSummaryCards {...result.view} />;
+}
+
+/**
  * Feature-owned entry component for the standalone Heatmaps builder surface.
  *
  * @returns {JSX.Element} The rendered builder surface.
@@ -147,6 +160,13 @@ export function HeatmapBuilderSurface(): JSX.Element {
     changeTopics,
     changeAssignments,
   } = useHeatmapsPageData();
+
+  const summaryResult = useHeatmapSelectionSummary(
+    classFull,
+    assignmentDefinitionPartials,
+    mergedResult,
+    surfaceState.status === 'ready',
+  );
 
   const title =
     selection.classId !== null && classFull !== null
@@ -179,15 +199,18 @@ export function HeatmapBuilderSurface(): JSX.Element {
 
     if (mergedResult !== null) {
       return (
-        <Card size="small">
-          <TaskHeatmapTable
-            heatmapResult={mergedResult}
-            cellPreviewLookup={cellPreviewLookup}
-            isAssignmentLoading={false}
-            showAssignmentError={false}
-            previewStatusByTaskKey={previewStatusByTaskKey}
-          />
-        </Card>
+        <Flex vertical gap={APP_GAP_MD}>
+          <SelectionSummary result={summaryResult} />
+          <Card size="small">
+            <TaskHeatmapTable
+              heatmapResult={mergedResult}
+              cellPreviewLookup={cellPreviewLookup}
+              isAssignmentLoading={false}
+              showAssignmentError={false}
+              previewStatusByTaskKey={previewStatusByTaskKey}
+            />
+          </Card>
+        </Flex>
       );
     }
 

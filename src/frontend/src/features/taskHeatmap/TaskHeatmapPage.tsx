@@ -30,10 +30,14 @@ import { buildCellPreviewLookup } from './buildCellPreviewLookup';
 import type { CellPreviewLookup } from './buildCellPreviewLookup';
 import { getAssignmentQueryOptions } from '../../query/sharedQueries';
 import { TaskHeatmapTable } from './TaskHeatmapTable';
+import { TaskHeatmapSummaryCards } from './TaskHeatmapSummaryCards';
+import { DataAnalysisService } from '../../services/dataAnalysis/dataAnalysisService';
+import { adaptAssignmentSummary, type AssignmentSummaryView } from '../../services/dataAnalysis/assignmentSummaryAdapter';
 import { PageTitleCard, PageNavCard } from '../../components/PageHeader/PageHeader';
 
 type HeatmapPageState = Readonly<{
   heatmapResult: ReturnType<typeof adaptMetricsToHeatmap> | null;
+  summary: AssignmentSummaryView | null;
   error: unknown;
 }>;
 
@@ -116,12 +120,19 @@ function computeHeatmapState(
   adp: AssignmentDefinitionPartialsResponse
 ): HeatmapPageState {
   try {
+    const heatmapResult = adaptMetricsToHeatmap(analyserResult, classFull, assignmentId, adp);
+    const summary = new DataAnalysisService().analyseAssignmentSummary({
+      filter: { classIds: [classFull.classId] },
+      classes: [classFull],
+      assignmentDefinitionPartials: adp,
+    }, classFull.classId, assignmentId);
     return {
-      heatmapResult: adaptMetricsToHeatmap(analyserResult, classFull, assignmentId, adp),
+      heatmapResult,
+      summary: adaptAssignmentSummary(summary, heatmapResult.taskColumns),
       error: null,
     };
   } catch (error: unknown) {
-    return { heatmapResult: null, error };
+    return { heatmapResult: null, summary: null, error };
   }
 }
 
@@ -295,7 +306,7 @@ export function TaskHeatmapPage({
   }
 
   // Normal (successful) rendering.
-  const { heatmapResult } = state;
+  const { heatmapResult, summary } = state;
   return (
     <Flex vertical gap={APP_GAP_MD}>
       <PageTitleCard title={heatmapResult!.assignmentName} />
@@ -305,6 +316,7 @@ export function TaskHeatmapPage({
         backAriaLabel="Back to Class overview"
         actions={renderNavActions()}
       />
+      <TaskHeatmapSummaryCards summary={summary!} />
       <Card size="small">
         <TaskHeatmapTable heatmapResult={heatmapResult!} cellPreviewLookup={cellPreviewLookup} isAssignmentLoading={isAssignmentLoading} showAssignmentError={showAssignmentError} />
       </Card>

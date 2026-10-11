@@ -79,6 +79,42 @@ escaping.
 
 ## Response shapes
 
+### Assignment task summaries (#277)
+
+`DataAnalysisService.analyseAssignmentSummary(input, classId, assignmentId)`
+validates the existing `AveragingAnalyserInput` and returns a separate
+`AssignmentSummarySchema` result from `assignmentSummary.zod.ts`. This does not
+add fields to `AveragingResult` or change backend transport/persistence.
+
+The result carries `classId`, `assignmentId`, `totalStudents`, explicit
+`thresholds` (`completeness`, `accuracy`, `incompleteProportion`), `tasks`, and
+all tied `mostAccurateTaskKeys` / `leastAccurateTaskKeys`.
+
+Each task carries its definition-scoped `taskKey`, completeness counts
+(`completedCount`, `belowThresholdCount`, `notAttemptedCount`,
+`completenessErrorCount`), `incompleteAcrossMostStudents`, nullable
+`accuracyAverage`, accuracy counts (`accuracyAssessedCount`,
+`accuracyNotAttemptedCount`, `accuracyErrorCount`), and
+`belowAccuracyThreshold`. Counts describe the class roster, not raw observation
+counts. Each criterion partitions the roster; missing cells follow the existing
+heatmap N rule. Errors remain separate from N and numeric zero.
+
+This call deliberately summarises the complete requested assignment and roster,
+independently of the input's global averaging filters. It isolates that
+assignment before reusing `AveragingAnalyser`, preventing shared-definition
+assignments from being mixed in the summary. It averages numeric per-student
+display scores equally, including zero-weight evidence, rather than returning a
+weighted assignment grade. No numeric evidence yields `accuracyAverage: null`.
+Ranking and threshold checks use unrounded values; the adaptor formats averages
+to two decimal places. The constructor's first-version policy is completeness
+at least 4 points out of 5, accuracy strictly below 3 points out of 5, and
+incompleteness strictly above 50%. `completedCount` counts students meeting the
+completeness threshold; it does not imply that their tasks are fully completed.
+
+Presentation lives in `assignmentSummaryAdapter.ts` and
+`features/taskHeatmap/TaskHeatmapSummaryCards.tsx`; see
+the [single-assignment presentation flow](../frontend/data-analysis-architecture.md#single-assignment-summaries-277).
+
 ### `DataAnalysisResponse`
 
 `DataAnalysisResponseSchema = z.array(AveragingResultSchema)`.
