@@ -122,7 +122,7 @@ test.describe('Task Heatmap assignment summaries', () => {
     await expect(table.getByRole('columnheader', { name: /shared definition/ })).toHaveCount(1);
     await expect(table.getByRole('columnheader', { name: 'Task 1', exact: true })).toHaveCount(1);
     await expect(
-      table.locator('[role="button"][aria-label="Student Two, Task 1, Completeness: 5"]')
+      table.getByRole('button', { name: 'Student Two, Task 1, Completeness: 5', exact: true })
     ).toHaveCount(1);
     await page.getByRole('heading', { name: HEATMAP_CLASS_NAME, exact: true }).click();
     await testInfo.attach('standalone-summary-notices', {
