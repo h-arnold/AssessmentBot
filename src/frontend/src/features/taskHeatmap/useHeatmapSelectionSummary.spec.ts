@@ -4,6 +4,7 @@ import { useHeatmapSelectionSummary } from './useHeatmapSelectionSummary';
 import { DataAnalysisService } from '../../services/dataAnalysis/dataAnalysisService';
 import { adaptMetricsToMergedHeatmap } from '../../services/dataAnalysis/heatmapAdapter.merged';
 import * as frontendLogger from '../../logging/frontendLogger';
+import * as summaryAdapter from '../../services/dataAnalysis/assignmentSummaryAdapter';
 import {
   buildInput,
   createAssignmentPartial,
@@ -15,6 +16,8 @@ const FIRST_ACCURACY = 4;
 const SECOND_ACCURACY = 1;
 const THIRD_ACCURACY = 2;
 const TWO_ASSIGNMENTS = 2;
+const SECOND_CALL = 2;
+const THIRD_CALL = 3;
 const ASSIGNMENT_IDS = ['a_001', 'a_002', 'a_003'];
 const ACCURACY_SCORES = [FIRST_ACCURACY, SECOND_ACCURACY, THIRD_ACCURACY];
 const INPUT = buildInput([
@@ -137,14 +140,74 @@ describe('Heatmaps selection summaries', () => {
     expect(analyseSummary).not.toHaveBeenCalled();
   });
 
-  it('exposes analysis failures and logs them once instead of retaining stale evidence', () => {
+  it.each(['analysis', 'adaptor'] as const)(
+    'clears stale evidence on %s failure and recovers after recomputation',
+    (stage) => {
+      const heatmap = selectedHeatmap([ASSIGNMENT_IDS[0]]);
+      const error = new Error(`Selection summary ${stage} recovery failure`);
+      const logError = vi.spyOn(frontendLogger, 'logFrontendError').mockImplementation(vi.fn());
+      const { result, rerender } = renderHook(
+        ({ heatmap }) =>
+          useHeatmapSelectionSummary(
+            INPUT.classes[0],
+            INPUT.assignmentDefinitionPartials,
+            heatmap,
+            true
+          ),
+        { initialProps: { heatmap } }
+      );
+      expect(result.current.error).toBeNull();
+      expect(result.current.view?.summary?.accuracy.rows[0].primaryValue).toBe('4.00/5');
+
+      const failure =
+        stage === 'analysis'
+          ? vi.spyOn(DataAnalysisService.prototype, 'analyseAssignmentSummary')
+          : vi.spyOn(summaryAdapter, 'adaptAssignmentSummary');
+      failure.mockImplementation(() => {
+        throw error;
+      });
+      rerender({ heatmap: { ...heatmap } });
+      expect(result.current).toEqual({ view: null, error });
+      expect(logError).toHaveBeenCalledExactlyOnceWith('useHeatmapSelectionSummary', error, {
+        classId: INPUT.classes[0].classId,
+        assignmentId: ASSIGNMENT_IDS[0],
+      });
+
+      failure.mockRestore();
+      rerender({ heatmap: selectedHeatmap([ASSIGNMENT_IDS[1]]) });
+      expect(result.current.error).toBeNull();
+      expect(result.current.view?.summary?.accuracy.rows[0].primaryValue).toBe('1.00/5');
+      expect(logError).toHaveBeenCalledTimes(1);
+    }
+  );
+
+  it('suppresses identical diagnostics across recomputations and remounts', () => {
     const heatmap = selectedHeatmap([ASSIGNMENT_IDS[0]]);
-    const error = new Error('Invalid summary input');
-    vi.spyOn(DataAnalysisService.prototype, 'analyseAssignmentSummary').mockImplementation(() => {
-      throw error;
-    });
+    const message = 'Selection summary repeated diagnostic';
+    const analyseSummary = vi
+      .spyOn(DataAnalysisService.prototype, 'analyseAssignmentSummary')
+      .mockImplementation(() => {
+        throw new Error(message);
+      });
     const logError = vi.spyOn(frontendLogger, 'logFrontendError').mockImplementation(vi.fn());
-    const { result, rerender } = renderHook(() =>
+    const { result, rerender, unmount } = renderHook(
+      ({ heatmap }) =>
+        useHeatmapSelectionSummary(
+          INPUT.classes[0],
+          INPUT.assignmentDefinitionPartials,
+          heatmap,
+          true
+        ),
+      { initialProps: { heatmap } }
+    );
+    expect(result.current.view).toBeNull();
+    expect(result.current.error?.message).toBe(message);
+    rerender({ heatmap: { ...heatmap } });
+    expect(analyseSummary).toHaveBeenCalledTimes(SECOND_CALL);
+    expect(logError).toHaveBeenCalledTimes(1);
+    unmount();
+
+    const remounted = renderHook(() =>
       useHeatmapSelectionSummary(
         INPUT.classes[0],
         INPUT.assignmentDefinitionPartials,
@@ -152,8 +215,78 @@ describe('Heatmaps selection summaries', () => {
         true
       )
     );
-    expect(result.current).toEqual({ view: null, error });
-    rerender();
+    expect(remounted.result.current.view).toBeNull();
+    expect(remounted.result.current.error?.message).toBe(message);
+    expect(analyseSummary).toHaveBeenCalledTimes(THIRD_CALL);
     expect(logError).toHaveBeenCalledTimes(1);
+  });
+
+  it('logs distinct failures on the same mounted selection', () => {
+    const heatmap = selectedHeatmap([ASSIGNMENT_IDS[0]]);
+    const firstError = new Error('Selection summary first distinct diagnostic');
+    const secondError = new Error('Selection summary second distinct diagnostic');
+    const analyseSummary = vi
+      .spyOn(DataAnalysisService.prototype, 'analyseAssignmentSummary')
+      .mockImplementation(() => {
+        throw firstError;
+      });
+    const logError = vi.spyOn(frontendLogger, 'logFrontendError').mockImplementation(vi.fn());
+    const { result, rerender } = renderHook(
+      ({ heatmap }) =>
+        useHeatmapSelectionSummary(
+          INPUT.classes[0],
+          INPUT.assignmentDefinitionPartials,
+          heatmap,
+          true
+        ),
+      { initialProps: { heatmap } }
+    );
+    expect(result.current).toEqual({ view: null, error: firstError });
+    analyseSummary.mockImplementation(() => {
+      throw secondError;
+    });
+    rerender({ heatmap: { ...heatmap } });
+    expect(result.current).toEqual({ view: null, error: secondError });
+    const metadata = { classId: INPUT.classes[0].classId, assignmentId: ASSIGNMENT_IDS[0] };
+    expect(logError).toHaveBeenNthCalledWith(1, 'useHeatmapSelectionSummary', firstError, metadata);
+    expect(logError).toHaveBeenNthCalledWith(
+      SECOND_CALL,
+      'useHeatmapSelectionSummary',
+      secondError,
+      metadata
+    );
+    expect(logError).toHaveBeenCalledTimes(SECOND_CALL);
+  });
+
+  it('logs the same message separately for different assignments', () => {
+    const first = selectedHeatmap([ASSIGNMENT_IDS[0]]);
+    const second = selectedHeatmap([ASSIGNMENT_IDS[1]]);
+    const error = new Error('Selection summary assignment-specific diagnostic');
+    vi.spyOn(DataAnalysisService.prototype, 'analyseAssignmentSummary').mockImplementation(() => {
+      throw error;
+    });
+    const logError = vi.spyOn(frontendLogger, 'logFrontendError').mockImplementation(vi.fn());
+    const { result, rerender } = renderHook(
+      ({ heatmap }) =>
+        useHeatmapSelectionSummary(
+          INPUT.classes[0],
+          INPUT.assignmentDefinitionPartials,
+          heatmap,
+          true
+        ),
+      { initialProps: { heatmap: first } }
+    );
+    expect(result.current).toEqual({ view: null, error });
+    rerender({ heatmap: second });
+    expect(result.current).toEqual({ view: null, error });
+    expect(logError).toHaveBeenNthCalledWith(1, 'useHeatmapSelectionSummary', error, {
+      classId: INPUT.classes[0].classId,
+      assignmentId: ASSIGNMENT_IDS[0],
+    });
+    expect(logError).toHaveBeenNthCalledWith(SECOND_CALL, 'useHeatmapSelectionSummary', error, {
+      classId: INPUT.classes[0].classId,
+      assignmentId: ASSIGNMENT_IDS[1],
+    });
+    expect(logError).toHaveBeenCalledTimes(SECOND_CALL);
   });
 });

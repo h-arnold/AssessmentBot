@@ -83,7 +83,6 @@ test.describe('Task Heatmap assignment summaries', () => {
     await testInfo.attach('standalone-summary', {
       body: await page.screenshot({
         fullPage: true,
-        path: '../../.opencode/scratchpad/issue-277-standalone-summary.png',
       }),
       contentType: 'image/png',
     });
@@ -128,7 +127,6 @@ test.describe('Task Heatmap assignment summaries', () => {
     await testInfo.attach('standalone-summary-notices', {
       body: await page.screenshot({
         fullPage: true,
-        path: '../../.opencode/scratchpad/issue-277-standalone-notices.png',
       }),
       contentType: 'image/png',
     });
@@ -185,7 +183,6 @@ test.describe('Task Heatmap assignment summaries', () => {
     await testInfo.attach('summary-desktop-light', {
       body: await page.screenshot({
         fullPage: true,
-        path: '../../.opencode/scratchpad/issue-277-desktop-light.png',
       }),
       contentType: 'image/png',
     });
@@ -195,7 +192,6 @@ test.describe('Task Heatmap assignment summaries', () => {
     await testInfo.attach('summary-desktop-dark', {
       body: await page.screenshot({
         fullPage: true,
-        path: '../../.opencode/scratchpad/issue-277-desktop-dark.png',
       }),
       contentType: 'image/png',
     });
@@ -305,7 +301,6 @@ test.describe('Task Heatmap assignment summaries', () => {
     await testInfo.attach('summary-assessment-errors', {
       body: await page.screenshot({
         fullPage: true,
-        path: '../../.opencode/scratchpad/issue-277-assessment-errors.png',
       }),
       contentType: 'image/png',
     });
@@ -360,7 +355,7 @@ test.describe('Task Heatmap assignment summaries', () => {
       completeness.getByText('Task 2, Task 3, Task 4 (+26 more)', { exact: true })
     ).toBeVisible();
     await testInfo.attach('summary-30-tasks', {
-      body: await page.screenshot({ path: '../../.opencode/scratchpad/issue-277-30-tasks.png' }),
+      body: await page.screenshot(),
       contentType: 'image/png',
     });
     const showCompleteness = completeness.getByRole('button', { name: 'Show all 30 tasks' });

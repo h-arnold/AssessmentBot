@@ -1,6 +1,5 @@
-import { useMemo } from 'react';
-import { useLogOnce } from '../../hooks/useLogOnce';
-import { logFrontendError } from '../../logging/frontendLogger';
+import { useEffect, useMemo } from 'react';
+import { logPipelineError } from './heatmapsPipeline';
 import { toError } from '../../errors/normaliseUnknownError';
 import { DataAnalysisService } from '../../services/dataAnalysis/dataAnalysisService';
 import {
@@ -58,7 +57,7 @@ function buildSelectionSummary(
 }
 
 /**
- * Prepare selection-scoped summaries and log failures once, as on TaskHeatmapPage.
+ * Prepare selection-scoped summaries and deduplicate failures across recomputations and remounts.
  * @param {ClassFull | null} classFull - Loaded class and roster.
  * @param {AssignmentDefinitionPartialsResponse | null} partials - Loaded task definitions.
  * @param {MergedHeatmapResult | null} heatmap - Ready selected heatmap.
@@ -76,8 +75,12 @@ export function useHeatmapSelectionSummary(
       isReady ? buildSelectionSummary(classFull, partials, heatmap) : { view: null, error: null },
     [classFull, partials, heatmap, isReady]
   );
-  useLogOnce(result.error !== null, () => {
-    logFrontendError('useHeatmapSelectionSummary', result.error, { classId: classFull?.classId });
-  });
+  const classId = classFull?.classId;
+  const assignmentId = heatmap?.sourceAssignments[0]?.assignmentId;
+  useEffect(() => {
+    if (result.error !== null) {
+      logPipelineError('useHeatmapSelectionSummary', result.error, { classId, assignmentId });
+    }
+  }, [result.error, classId, assignmentId]);
   return result;
 }

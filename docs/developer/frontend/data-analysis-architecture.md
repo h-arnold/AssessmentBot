@@ -156,6 +156,14 @@ the user to select one assignment. This also applies to assignments sharing a
 definition. The existing merged heatmap remains unchanged. SPaG summaries are
 outside this first-version scope.
 
+Summary analysis or adaptor failures preserve the valid heatmap and replace only
+the summary cards with a local `Alert` titled 'The summary could not be built'.
+Diagnostics use the existing `logPipelineError` helper with contexts
+`TaskHeatmapPage.summary` and `useHeatmapSelectionSummary`, keyed by context,
+normalised message and `classId`/`assignmentId` metadata.
+Its bounded 256-key cache deduplicates identical errors across recomputations and
+remounts while logging distinct errors.
+
 ### Existing heatmap projection
 
 1. `heatmapAdapter.ts` and `heatmapAdapter.merged.ts` attach the authoritative
