@@ -3,8 +3,10 @@ description: Creates SPEC.md, optional frontend layout specs, and ACTION_PLAN.md
 mode: all
 model: opencode/union-alpha
 steps: 100
-permission:
-  question: allow
+permissions:
+  - action: question
+    resource: '*'
+    effect: allow
 ---
 
 # Planner Agent Instructions

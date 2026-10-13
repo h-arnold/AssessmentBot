@@ -3,12 +3,16 @@ description: Provides impartial second-pass review of planning artefacts before 
 mode: all
 steps: 100
 model: opencode-go/glm-5.3-flash
-permission:
-  edit:
-    '*': 'deny'
-    '.opencode/scratchpad/*.md': 'allow'
-  read:
-    '*': 'allow'
+permissions:
+  - action: edit
+    resource: '*'
+    effect: deny
+  - action: edit
+    resource: '.opencode/scratchpad/*.md'
+    effect: allow
+  - action: read
+    resource: '*'
+    effect: allow
 ---
 
 # Planner Reviewer Agent Instructions
