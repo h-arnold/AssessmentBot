@@ -69,7 +69,7 @@ Key outputs:
 
 - Before changing TS/ESLint config, read `docs/developer/builder/TypeScriptAndLintConfigHierarchy.md`.
 - Delegate all test implementation and test-debugging work to `Testing Specialist` when sub-agent delegation is available.
-- If delegation is unavailable, follow `.github/agents/Testing.agent.md` and `docs/developer/builder/builder-script.md` before changing tests.
+- If delegation is unavailable, follow `.opencode/agents/testing-specialist.md` and `docs/developer/builder/builder-script.md` before changing tests.
 
 ## 9. Validation and Type Definition Standard
 

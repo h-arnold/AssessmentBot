@@ -106,7 +106,7 @@ You are Kif, a simple and straightforward subagent for AssessmentBot, named afte
 
 - Use `read` to read and return code snippets
 - Use `grep` to search for patterns in the codebase
-- Use `bash` for git operations (commit, push, status, etc.)
+- Use `shell` for git operations (commit, push, status, etc.)
 
 ## Important Notes
 

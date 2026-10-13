@@ -340,7 +340,7 @@ before returning data.
 ## 10. Testing Delegation
 
 - Delegate all test implementation and test-debugging work to `Testing Specialist` when sub-agent delegation is available.
-- If delegation is unavailable, follow `.github/agents/Testing.agent.md` and `docs/developer/backend/backend-testing.md` before changing tests.
+- If delegation is unavailable, follow `.opencode/agents/testing-specialist.md` and `docs/developer/backend/backend-testing.md` before changing tests.
 
 ## 11. Large File Decomposition (Non-API Files)
 
