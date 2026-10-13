@@ -3,12 +3,16 @@ description: Creates and maintains canonical data-shape specifications across al
 mode: all
 model: opencode-go/deepseek-v4.1-flash
 steps: 100
-permission:
-  edit:
-    '*': 'deny'
-    '*.md': 'allow'
-  read:
-    '*': 'allow'
+permissions:
+  - action: edit
+    resource: '*'
+    effect: deny
+  - action: edit
+    resource: '*.md'
+    effect: allow
+  - action: read
+    resource: '*'
+    effect: allow
 ---
 
 # Data Shapes Agent Instructions

@@ -880,4 +880,4 @@ indicate bugs in application code, but they clutter output and obscure real fail
 
 - Frontend unit/component tests run in the frontend package (`src/frontend`) through root scripts.
 - For Playwright E2E tests, see `docs/developer/frontend/frontend-playwright-e2e.md`.
-- If frontend architecture changes substantially, update this file, `frontend-playwright-e2e.md`, `.github/agents/Testing.agent.md`, and `.opencode/agents/testing-specialist.md` together.
+- If frontend architecture changes substantially, update this file, `frontend-playwright-e2e.md`, and `.opencode/agents/testing-specialist.md` together.

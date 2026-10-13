@@ -51,7 +51,7 @@ You will fail the task unless you read _the entirety_ of the relevant context be
 
 Before writing or modifying tests, you **MUST** conduct research:
 
-1. **Web search**: Use `web_search` to find:
+1. **Web search**: Use `websearch` to find:
    - Known issues or bug reports for the same/similar test failures or symptoms
    - Solutions or workarounds from official sources (library docs, framework GitHub issues)
    - Stack Overflow or community discussions with verified answers

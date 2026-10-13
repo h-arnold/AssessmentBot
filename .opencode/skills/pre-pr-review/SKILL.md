@@ -1,14 +1,8 @@
 ---
 name: pre-pr-review
-description: Pre-PR code review orchestrator. Runs the regression checker first and blocks on any regressions, then runs a set of code review focuses in parallel (repo rule compliance, KISS/DRY, de-sloppification, performance/Big-O, logging rules, plus optional layer-scoped focuses), synthesises them into a single PR_REVIEW.md at the repo root, walks through each finding with the user via the ask-user-a-question tool to capture a decision, records those decisions in detail in the review document, and raises GitHub Issues for deferred findings (combined where similar or overlapping) once all decisions are recorded.
+description: Pre-PR code review orchestrator. Runs the regression checker first and blocks on any regressions, then runs a set of code review focuses in parallel (repo rule compliance, KISS/DRY, de-sloppification, performance/Big-O, logging rules, plus optional layer-scoped focuses), synthesises them into a single PR_REVIEW.md at the repo root, walks through each finding with the user via the question tool to capture a decision, records those decisions in detail in the review document, and raises GitHub Issues for deferred findings (combined where similar or overlapping) once all decisions are recorded.
 license: MIT
-compatibility: Mistral Vibe CLI
-user-invocable: true
-allowed-tools:
-  - bash
-  - read_file
-  - write_file
-  - task
+compatibility: opencode
 ---
 
 # Pre-PR Review
@@ -53,7 +47,7 @@ Run the regression checker from the repo root with a long timeout (test suites c
 npm run regression-checker
 ```
 
-> **Timeout:** Always set a 600000 ms (10 minute) timeout when invoking this via the `bash` tool.
+> **Timeout:** Always set a 600000 ms (10 minute) timeout when invoking this via the `shell` tool.
 
 Read the resulting `comparison.txt` (or `baseline.txt` on the first run) from the report directory
 (default `.ts-regression-checker/reports/<branch-name>/`). Inspect:
@@ -92,8 +86,8 @@ This classification drives which optional focuses run (Step 3).
 
 ## Step 3 — Parallel review agents
 
-Launch every focus as a separate `task` agent in a **single message** (multiple tool calls) so they
-run in parallel. The skill owns all coordination; never instruct a sub-agent to spawn other agents.
+Launch every focus as a separate subagent via the `subagent` tool in a **single message** (multiple tool calls) so they
+run in parallel. The skill owns all coordination; never instruct a subagent to spawn other agents.
 
 For every focus, the handoff prompt MUST include:
 
@@ -256,8 +250,8 @@ Guidance:
   Nitpick), including incidental items. Do not present or ask about the next finding until the current
   one has been decided.
 - **Explain in chat, ask with the tool.** Put the full explanation of the finding — what it is, its
-  `file:line` evidence, the options, and their trade-offs — in the chat message, then use the **ask user
-  a question** tool **only** to capture the choice. Do not attempt to compress a complex issue into the
+  `file:line` evidence, the options, and their trade-offs — in the chat message, then use the
+  **question** tool **only** to capture the choice. Do not attempt to compress a complex issue into the
   tool's option labels or character limits; the tool is for selecting an option, not for conveying the
   detail. The chat explanation is the source of detail.
 - Record each decision in full detail — do not reduce it to a single word. Capture the chosen option and
@@ -331,5 +325,5 @@ Critical items so the user can address them and re-run the skill.
 - A **Defer** decision always implies a GitHub Issue. Deferrals are collected across all findings and
   Issues are only created in Step 7, after every decision is recorded, so overlapping findings can be
   merged into one Issue.
-- In the decision pass, explain each finding fully in chat and use the ask user a question tool only to
+- In the decision pass, explain each finding fully in chat and use the `question` tool only to
   capture the selection; handle exactly one finding per exchange.

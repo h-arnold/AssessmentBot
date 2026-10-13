@@ -168,7 +168,7 @@ Each section must complete **two independent, self-contained loops** (red and gr
 ### **2.4 Commit and Push**
 
 1. Update `ACTION_PLAN.md` for the finished section.
-2. Perform `git commit` / `git push` directly via the `bash` tool. `Kif` remains available for other simple menial tasks but is **not** required for version-control operations.
+2. Perform `git commit` / `git push` directly via the `shell` tool. `Kif` remains available for other simple menial tasks but is **not** required for version-control operations.
 3. Create a separate commit for plan or documentation updates if not already included.
 4. Record:
 

@@ -163,7 +163,7 @@ Frontend build output is consumed by the GAS builder pipeline.
 - Before changing TS/ESLint config, read `docs/developer/builder/TypeScriptAndLintConfigHierarchy.md`.
 - Delegate all Vitest unit/component test implementation and test-debugging work to `Testing Specialist` when sub-agent delegation is available.
 - Delegate all Playwright E2E test implementation and test-debugging work to `Playwright` when sub-agent delegation is available.
-- If delegation is unavailable, follow `.github/agents/Testing.agent.md` and `docs/developer/frontend/frontend-testing.md` for Vitest tests, or `.github/agents/playwright.agent.md` and `docs/developer/frontend/frontend-playwright-e2e.md` for E2E tests.
+- If delegation is unavailable, follow `.opencode/agents/testing-specialist.md` and `docs/developer/frontend/frontend-testing.md` for Vitest tests, or `.opencode/agents/playwright.md` and `docs/developer/frontend/frontend-playwright-e2e.md` for E2E tests.
 - Shared frontend test helpers live under `src/frontend/src/test/**`; keep specs co-located in `src/frontend/src/**` and do not import `src/test/**` from production source.
 - When a frontend change depends on backend configuration transport behaviour, treat `tests/api/backendConfigApi.test.js` as the dedicated backend transport suite and keep frontend service assertions in `src/frontend/src/services/backendConfiguration/backendConfigurationService.spec.ts`.
 
