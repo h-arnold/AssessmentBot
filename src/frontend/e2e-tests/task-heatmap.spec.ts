@@ -130,7 +130,7 @@ test.describe('Task Heatmap E2E journey', () => {
     expect(focusStyle.outlineWidth).toBe('2px');
     expect(focusStyle.outlineOffset).toBe('2px');
     expect(focusStyle.outlineColor).not.toBe('transparent');
-    await expect(page.getByRole('tooltip')).toHaveText(
+    await expect(page.getByRole('tooltip', { name: /^Zero weighting/ })).toHaveText(
       'Zero weighting — scores are shown but do not contribute to averages.'
     );
     await page.keyboard.press('Enter');
