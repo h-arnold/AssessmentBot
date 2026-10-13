@@ -2,13 +2,17 @@
 description: Reviews code for quality, standards adherence, and defects using project-specific checklists
 mode: all
 steps: 100
-model: opencode-go/glm-5.3-flash
-permission:
-  edit:
-    '*': 'deny'
-    '.opencode/scratchpad/*.md': 'allow'
-  read:
-    '*': 'allow'
+model: openai/gpt-6.1-sol
+permissions:
+  - action: edit
+    resource: '*'
+    effect: deny
+  - action: edit
+    resource: '.opencode/scratchpad/*.md'
+    effect: allow
+  - action: read
+    resource: '*'
+    effect: allow
 ---
 
 # Code Reviewer Agent Instructions

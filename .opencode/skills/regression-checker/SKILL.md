@@ -2,12 +2,7 @@
 name: regression-checker
 description: Use the config-driven regression checker CLI to establish a baseline, compare follow-up runs, and track repository health while progressing through `ACTION_PLAN.md`.
 license: MIT
-compatibility: Mistral Vibe CLI
-user-invocable: true
-allowed-tools:
-  - bash
-  - read_file
-  - write_file
+compatibility: opencode
 ---
 
 # Regression Checker
@@ -37,7 +32,7 @@ changing there.
 The wrapper first runs `npm run builder:compile` and then launches
 `scripts/builder/dist/regression-checker/run-regression-checker.js`.
 
-> **Timeout:** Always set a 20 minute (1200000 ms) timeout when invoking this command via the `bash` tool.
+> **Timeout:** Always set a 20 minute (1200000 ms) timeout when invoking this command via the `shell` tool.
 > Test suites can take several minutes and the default 120s timeout is not sufficient.
 
 ## How to use it with `ACTION_PLAN.md`
