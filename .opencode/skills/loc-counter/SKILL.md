@@ -80,11 +80,17 @@ scc --format json src/backend
 scc --format json src/backend-refactored
 
 # Compare the working tree against a Git revision by extracting the revision first
+# Extract into a clean directory so stale files from a previous run cannot skew the count
+rm -rf .opencode/scratchpad/loc-counter/compare
 mkdir -p .opencode/scratchpad/loc-counter/compare
 git archive HEAD~1 | tar -x -C .opencode/scratchpad/loc-counter/compare
 scc --format json .opencode/scratchpad/loc-counter/compare
 scc --format json .
 ```
+
+The working-tree count relies on `.gitignore`: `.opencode/scratchpad/*` is ignored and
+`scc` honours `.gitignore` by default, so the extracted copy is not double-counted. Always
+re-extract into a clean directory so stale files never inflate the before count.
 
 **Output**: Report the delta (`after − before`) for lines, code, and comments, plus the
 percentage change.

@@ -81,15 +81,16 @@ function rejectIfSuppressed(operation: 'edit' | 'write', input: unknown): void {
 }
 
 /**
- * Inspect added source lines in a unified diff for suppression constructs.
+ * Inspect added source lines in a V2 patch for suppression constructs.
  * @param {unknown} input - The patch arguments.
  */
 function rejectSuppressedPatch(input: unknown): void {
   if (!isRecord(input) || typeof input.patchText !== 'string') return;
   let currentPath: string | null = null;
   for (const line of input.patchText.split(/\r?\n/)) {
-    if (line.startsWith('+++ ')) {
-      currentPath = addedFilePath(line);
+    const markerPath = patchMarkerPath(line);
+    if (markerPath !== undefined) {
+      currentPath = markerPath;
       continue;
     }
     const match = addedLineMatch(line, currentPath);
@@ -115,14 +116,19 @@ function addedLineMatch(line: string, filePath: string | null): string | null {
 }
 
 /**
- * Extract the destination path from a unified diff file header.
- * @param {string} line - The header line.
- * @returns {string | null} The destination path, or null for unsupported headers.
+ * Extract the destination path from a V2 patch file marker.
+ * @param {string} line - The line to inspect.
+ * @returns {string | null | undefined} The destination path, null for a delete marker, or undefined when the line is not a file marker.
  */
-function addedFilePath(line: string): string | null {
-  const header = line.slice('+++ '.length);
-  if (header === '/dev/null' || !header.startsWith('b/')) return null;
-  return header.slice('b/'.length);
+function patchMarkerPath(line: string): string | null | undefined {
+  const addPrefix = '*** Add File: ';
+  const updatePrefix = '*** Update File: ';
+  const movePrefix = '*** Move to:';
+  if (line.startsWith(addPrefix)) return line.slice(addPrefix.length).trim();
+  if (line.startsWith(updatePrefix)) return line.slice(updatePrefix.length).trim();
+  if (line.startsWith(movePrefix)) return line.slice(movePrefix.length).trim();
+  if (line.startsWith('*** Delete File: ')) return null;
+  return undefined;
 }
 
 export default Plugin.define({
