@@ -2,13 +2,7 @@
 name: deploy-gas
 description: Build a development version of the AssessmentBot GAS bundle, push it to an existing Apps Script project with clasp, redeploy to a single stable deployment, and return the live web-app URL so the user can test from any device. Supports a remote, headless `clasp login --no-localhost` handshake via login-pty.mjs.
 license: MIT
-compatibility: Mistral Vibe CLI
-user-invocable: true
-allowed-tools:
-  - bash
-  - read_file
-  - write_file
-  - question
+compatibility: opencode
 ---
 
 # Deploy GAS
@@ -42,7 +36,7 @@ Two flows are provided:
 
 ## Flow 1: Deploy and return the URL
 
-Run these steps with the `bash` tool:
+Run these steps with the `shell` tool:
 
 1. **Build the dev bundle.**
 
@@ -115,7 +109,7 @@ Use this when there is no valid `~/.clasprc.json`, e.g. on a fresh machine. Run 
      "$PWD/.opencode/scratchpad/clasp-login/in.txt" </dev/null >/dev/null 2>&1 &
    ```
 
-   The helper stays alive across separate tool calls because it is detached. The bash tool
+   The helper stays alive across separate tool calls because it is detached. The shell tool
    call that launches it will appear to hang and hit its timeout — that is expected: the helper
    is intentionally left running to await your pasted URL. Issue it detached (as above) and
    proceed; later `cat`/`printf` calls against `out.txt`/`in.txt` run normally.

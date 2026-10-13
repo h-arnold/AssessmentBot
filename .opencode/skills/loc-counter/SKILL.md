@@ -2,8 +2,7 @@
 name: loc-counter
 description: Counts lines of code and compares changes to determine LOC reduction, particularly useful for deduplication tasks.
 license: MIT
-compatibility: Mistral Vibe CLI
-user-invocable: true
+compatibility: opencode
 ---
 
 # LOC Counter Skill
@@ -54,9 +53,8 @@ scc --version
 
 ## Invocation
 
-```bash
-task agent=loc-counter task="<action>: <path> [options]"
-```
+Run `scc` directly with the `shell` tool and read its JSON output. There is no `loc-counter` agent
+or helper CLI; the actions below are `scc` invocations plus simple bookkeeping in the scratchpad.
 
 ## Actions
 
@@ -65,101 +63,97 @@ task agent=loc-counter task="<action>: <path> [options]"
 Count LOC for a file or directory:
 
 ```bash
-task agent=loc-counter task="Count: src/backend"
-task agent=loc-counter task="Count: src/backend/controllers/AssignmentController.js"
+scc --format json src/backend
+scc --format json src/backend/controllers/AssignmentController.js
 ```
 
-**Output**: JSON with total lines, code, comments, blanks, and per-language breakdown.
+**Output**: `scc` JSON with total lines, code, comments, blanks, complexity, and a per-language
+breakdown.
 
 ### 2. Compare
 
-Compare two directories or states to determine LOC delta:
+Count each state separately and subtract the totals:
 
 ```bash
 # Compare two directories
-task agent=loc-counter task="Compare: src/backend,src/backend-refactored"
+scc --format json src/backend
+scc --format json src/backend-refactored
 
-# Compare before/after in git (requires clean working tree)
-task agent=loc-counter task="Compare: HEAD~1,HEAD --git"
+# Compare the working tree against a Git revision by extracting the revision first
+mkdir -p .opencode/scratchpad/loc-counter/compare
+git archive HEAD~1 | tar -x -C .opencode/scratchpad/loc-counter/compare
+scc --format json .opencode/scratchpad/loc-counter/compare
+scc --format json .
 ```
 
-**Output**: JSON with LOC delta, percentage change, and per-file differences.
+**Output**: Report the delta (`after − before`) for lines, code, and comments, plus the
+percentage change.
 
 ### 3. Baseline
 
 Establish a baseline for later comparison:
 
 ```bash
-task agent=loc-counter task="Baseline: src --name my-refactor"
+mkdir -p .opencode/scratchpad/loc-counter/my-refactor
+scc --format json src > .opencode/scratchpad/loc-counter/my-refactor/baseline.json
 ```
 
-Baseline saved to the agent's scratchpad under `loc-counter/<name>/baseline.json`
+The baseline is saved under `.opencode/scratchpad/loc-counter/<name>/baseline.json`.
 
 ### 4. Check Reduction
 
-Check if changes resulted in LOC reduction (dedicated dedup action):
+Check whether changes resulted in a LOC reduction for a named task:
 
 ```bash
-task agent=loc-counter task="Check reduction: src/backend --name dedup-task-001"
+mkdir -p .opencode/scratchpad/loc-counter/dedup-task-001
+scc --format json src/backend > .opencode/scratchpad/loc-counter/dedup-task-001/after.json
 ```
 
-Runs a comparison against the most recent baseline for the named task. Returns:
+Compare `after.json` against that task's `baseline.json` and report:
 
-- `reduction: true/false`
+- `reduction: true/false` (`true` when total lines decreased)
 - `loc_delta: <number>` (negative = reduction)
 - `percentage_change: <number>`
 
 ## Output Format
 
-All actions return JSON to stdout and save a report file.
-
-### Count Output Example
+All counts come from `scc --format json`, which prints a JSON array with one object per language.
+Each entry carries `Name`, `Lines`, `Code`, `Comment`, `Blank`, `Complexity`, `Count`, and a
+`Files` array:
 
 ```json
-{
-  "path": "src/backend",
-  "total": {
-    "lines": 15234,
-    "code": 11200,
-    "comments": 2500,
-    "blanks": 1534
-  },
-  "languages": {
-    "JavaScript": { "lines": 11200, "code": 9800, "comments": 1000, "blanks": 400 },
-    "TypeScript": { "lines": 4034, "code": 2400, "comments": 1500, "blanks": 134 }
-  },
-  "timestamp": "2024-01-15T10:30:00Z"
-}
+[
+  {
+    "Name": "JavaScript",
+    "Lines": 11200,
+    "Code": 9800,
+    "Comment": 1000,
+    "Blank": 400,
+    "Complexity": 120,
+    "Count": 40,
+    "Files": []
+  }
+]
 ```
 
-### Compare Output Example
+Comparisons add the derived delta on top of that:
 
 ```json
 {
-  "comparison": {
-    "before": { "lines": 15234, "code": 11200 },
-    "after": { "lines": 14123, "code": 10500 },
-    "delta": {
-      "lines": -1111,
-      "code": -700,
-      "percentage": -7.29
-    }
-  },
-  "reduction": true,
-  "files_changed": 42,
-  "files_added": 5,
-  "files_removed": 3,
-  "timestamp": "2024-01-15T10:35:00Z"
+  "before": { "lines": 15234, "code": 11200 },
+  "after": { "lines": 14123, "code": 10500 },
+  "delta": { "lines": -1111, "code": -700, "percentage": -7.29 },
+  "reduction": true
 }
 ```
 
 ## Report Location
 
-All reports saved to the agent's scratchpad under `loc-counter/<session-name>/`
+Reports are saved under `.opencode/scratchpad/loc-counter/<session-name>/`:
 
 - `baseline.json` — Baseline counts
-- `report-<timestamp>.json` — Comparison reports
-- `summary.txt` — Human-readable summary
+- `after.json` — Post-change counts for comparison
+- `summary.txt` — Optional human-readable summary
 
 ## scc Options
 
@@ -168,14 +162,14 @@ Underlying `scc` command supports these relevant flags:
 - `--by-file`: Show output for each file (verbose)
 - `--exclude-dir`: Exclude specific directories
 - `--include-ext`: Only include specific extensions
-- `--no-dupe`: Exclude duplicate files from count
+- `--no-duplicates`: Exclude duplicate files from count
 - `--format json`: Output results in JSON format
 - `--ci`: Enable CI-friendly output (ASCII only)
 
-Pass options via task:
+Pass options directly:
 
 ```bash
-task agent=loc-counter task="Count: src -- --exclude-dir node_modules"
+scc --format json --exclude-dir node_modules src
 ```
 
 **Note on trace output:** If you see verbose TRACE messages, this may be caused by a configuration file. Run without the `-t` flag (which enables trace) or check for any `scc` configuration files that may have tracing enabled.
@@ -185,10 +179,12 @@ task agent=loc-counter task="Count: src -- --exclude-dir node_modules"
 `scc` provides DRYness estimation. Use for dedup verification:
 
 ```bash
-task agent=loc-counter task="Count: src -- --dryness"
+scc --dryness src
 ```
 
-Returns duplicate line counts and DRYness score (0-100, higher = more duplication).
+The tabular output reports `Unique Lines of Code (ULOC)` and `DRYness %` (ULOC / SLOC). The higher
+the ratio, the more DRY the code and the less duplication. `--format json` carries only the `ULOC`
+field, so use the tabular output when you need the DRYness figure.
 
 ## Best Practices
 
@@ -196,19 +192,20 @@ Returns duplicate line counts and DRYness score (0-100, higher = more duplicatio
 2. **Name sessions**: Use descriptive names like `dedup-assessment-form` or `refactor-api-layer`
 3. **Compare frequently**: Check reduction after each significant change
 4. **Review outliers**: Investigate files with unexpected LOC increases
-5. **Combine with complexity**: Use `--complexity` flag to verify code quality improvements alongside LOC reduction
+5. **Combine with complexity**: complexity is calculated by default, so use the `Complexity` field in the JSON to verify code quality improvements alongside LOC reduction
 
 ## Example Dedup Workflow
 
 ```bash
 # 1. Establish baseline before dedup
-task agent=loc-counter task="Baseline: src/frontend --name dedup-modal-components"
+mkdir -p .opencode/scratchpad/loc-counter/dedup-modal-components
+scc --format json src/frontend > .opencode/scratchpad/loc-counter/dedup-modal-components/baseline.json
 
 # 2. Perform deduplication work...
 
-# 3. Check if LOC reduced
-task agent=loc-counter task="Check reduction: src/frontend --name dedup-modal-components"
+# 3. Re-count and compare against the baseline
+scc --format json src/frontend > .opencode/scratchpad/loc-counter/dedup-modal-components/after.json
 
-# 4. If reduction=true, verify quality
-task agent=loc-counter task="Count: src/frontend -- --complexity"
+# 4. If the baseline shows a reduction, verify quality with a per-file breakdown
+scc --format json --by-file src/frontend
 ```
