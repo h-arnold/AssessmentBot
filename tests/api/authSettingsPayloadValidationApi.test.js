@@ -22,19 +22,19 @@ import { buildUsersJson } from '../utils/authService/authServiceTestHarness.js';
 const ADMIN = 'admin@school.edu';
 const GROUP_EMAIL = 'teachers@school.edu';
 
+let ctx;
+
+beforeEach(() => {
+  ctx = undefined;
+  resetAuthApiTestState();
+});
+
+afterEach(() => {
+  teardownAuthApiTestContext(ctx);
+  ctx = undefined;
+});
+
 describe('setAuthenticationSettings — non-object payload rejection', () => {
-  let ctx;
-
-  beforeEach(() => {
-    ctx = undefined;
-    resetAuthApiTestState();
-  });
-
-  afterEach(() => {
-    teardownAuthApiTestContext(ctx);
-    ctx = undefined;
-  });
-
   it.each([
     ['null', null],
     ['an array', []],
@@ -62,18 +62,6 @@ describe('setAuthenticationSettings — non-object payload rejection', () => {
 });
 
 describe('setAuthenticationSettings — unknown request field rejection', () => {
-  let ctx;
-
-  beforeEach(() => {
-    ctx = undefined;
-    resetAuthApiTestState();
-  });
-
-  afterEach(() => {
-    teardownAuthApiTestContext(ctx);
-    ctx = undefined;
-  });
-
   it.each(['unexpected', 'authmode', 'users'])(
     'rejects the unknown field "%s" at the transport boundary before any domain save',
     (unknownField) => {
@@ -104,18 +92,6 @@ describe('setAuthenticationSettings — unknown request field rejection', () => 
 });
 
 describe('setAuthenticationSettings — strict per-mode field set', () => {
-  let ctx;
-
-  beforeEach(() => {
-    ctx = undefined;
-    resetAuthApiTestState();
-  });
-
-  afterEach(() => {
-    teardownAuthApiTestContext(ctx);
-    ctx = undefined;
-  });
-
   it('rejects authGroupEmail in a scriptProperties request with no write', () => {
     ctx = provisionAuthApiContext({
       seed: {
@@ -162,18 +138,6 @@ describe('setAuthenticationSettings — strict per-mode field set', () => {
 });
 
 describe('setAuthenticationSettings — expectedAuthRevision type rejection', () => {
-  let ctx;
-
-  beforeEach(() => {
-    ctx = undefined;
-    resetAuthApiTestState();
-  });
-
-  afterEach(() => {
-    teardownAuthApiTestContext(ctx);
-    ctx = undefined;
-  });
-
   it.each([
     ['a number', 1],
     ['null', null],
