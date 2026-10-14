@@ -151,7 +151,7 @@ Enable each only if its layer appears in the Step 2 classification.
     `toJSON`/`fromJSON`, storage layer, model files) — on either the frontend or backend.
   - Inspect the diff against the canonical data-shape specifications in `docs/developer/data-shapes/`.
   - Check that the data-shape docs have been updated to reflect the changes — they should have been,
-    per the data-shapes-agent workflow mandated in `AGENTS.md` section 4 and the implementation
+    per the data-shapes-agent workflow mandated in `AGENTS.md` section 2 and the implementation
     ACTION_PLAN.md.
   - Cross-reference code vs docs: do the schemas in code match the documented contracts in
     `docs/developer/data-shapes/`? Note any discrepancies (field names, types, optionality,

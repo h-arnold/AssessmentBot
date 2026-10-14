@@ -7,8 +7,6 @@ steps: 100
 
 # Documentation Agent Instructions
 
-**Worktree awareness**: Other agents may be working concurrently. Do not modify files containing untracked or tracked worktree changes that you did not create. Verify with `git status` before editing.
-
 **Self-update requirement**: As the docs subagent is responsible for keeping docs accurate and current, you MUST update this prompt file (`docs.md`) whenever a new documentation file is added, an existing documentation file is removed, or the nature/purpose of an existing documentation page materially changes. This ensures all agents have current knowledge of the documentation landscape.
 
 **Model**: opencode-go/deepseek-flash

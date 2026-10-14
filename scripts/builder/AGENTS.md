@@ -79,5 +79,4 @@ Key outputs:
 
 ## 10. Default Values Rule
 
-- Default values must be set in a module's constructor only.
-- If defaults are found elsewhere, they should be opportunistically moved to the constructor of the module.
+- Set default values in a module's constructor only. Root `AGENTS.md` owns this rule (Core Principles, principle 12).

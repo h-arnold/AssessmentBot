@@ -1,26 +1,18 @@
 # AssessmentBot – Core Agent Contract
 
+AssessmentBot is a Google Apps Script tool that marks student submissions to Google Classroom assignments across three criteria — Completeness, Accuracy, and SPaG — for each task. For the project overview, see `README.md`; for the scoring model, see `docs/pedagogy/data-analysis-scoring.md`.
+
+**Stack**
+
+- **Backend:** Google Apps Script (V8, plain JavaScript), deployed as a GAS web app.
+- **Frontend:** React + TypeScript (Vite) with Ant Design.
+- **Persistence:** application data is stored in Google Drive-backed [JsonDbApp](https://github.com/h-arnold/JsonDbApp) collections ([docs](https://h-arnold.github.io/JsonDbApp/)); its source is vendored under `scripts/builder/vendor/jsondbapp` and inlined into the GAS bundle.
+- **LLM marking:** the backend sends assessment requests to a separately deployed [Assessment Bot LLM Service](https://github.com/h-arnold/AssessmentBot-LLM-Service).
+- **Build:** Node-based TypeScript pipeline in `scripts/builder`.
+
 This file defines cross-component rules only.
-For implementation details, always load component-specific instructions first.
 
-### 1. Read-First Routing (Mandatory)
-
-Before editing code, **YOU MUST** read the instruction file(s) for every component you touch:
-
-- Backend (`src/backend/**`): `src/backend/AGENTS.md`
-- Frontend (`src/frontend/**`): `src/frontend/AGENTS.md`
-- Builder (`scripts/builder/**`, `build/**` pipeline behaviour): `scripts/builder/AGENTS.md`
-
-If a task spans multiple components, read and apply all relevant instruction files.
-If rules conflict, prefer the stricter rule and preserve runtime compatibility.
-
-Failing to read these files **will** result in you failing your task.
-
-### 2. Active vs Deprecated Areas
-
-- Active implementation areas: `src/backend`, `src/frontend`, `scripts/builder`.
-
-### 3. Core Principles (All Components)
+### 1. Core Principles (All Components)
 
 1. KISS: implement the simplest working solution.
 2. Fail fast and loudly in development; never hide errors behind catch-and-ignore logic.
@@ -34,19 +26,11 @@ Failing to read these files **will** result in you failing your task.
 10. Never disable lint rules without express permission from the user; if a rule triggers cascading failures, stop and ask before turning it off.
 11. **Never push commits that fail pre-commit hooks (lint, type-check, tests).** If the pre-commit hook fails, fix all errors before committing. Do not use `--no-verify` or any other method to bypass hooks.
 12. **Default values must be set in a module's constructor only.** If defaults are found elsewhere, they should be opportunistically moved to the constructor of the module.
+13. **Worktree awareness.** Other agents may be working concurrently. Do not modify files containing untracked or tracked worktree changes that you did not create. Verify with `git status` before editing.
 
-### 4. Delegation Protocol
+### 2. Delegation Protocol
 
-- Available project agents (source of truth: `.opencode/agents`):
-  - `Planner` (`.opencode/agents/planner.md`) for clarification-driven planning that produces `SPEC.md`, optional frontend layout specs, and `ACTION_PLAN.md`.
-  - `Planner Reviewer` (`.opencode/agents/planner-reviewer.md`) for impartial second-pass review of planning artefacts against the codebase before later documents or implementation depend on them.
-  - `Testing Specialist` (`.opencode/agents/testing-specialist.md`) for Vitest unit/component test and backend test implementation and debugging.
-  - `Playwright` (`.opencode/agents/playwright.md`) for Playwright E2E test implementation and debugging.
-  - `Code Reviewer` (`.opencode/agents/code-reviewer.md`) for code review and standards checks.
-  - `Implementation` (`.opencode/agents/implementation.md`) for focused implementation tasks.
-  - `Docs` (`.opencode/agents/docs.md`) for developer-documentation and JSDoc updates.
-  - `Data Shapes Agent` (`.opencode/agents/data-shapes-agent.md`) for creating and maintaining canonical data-shape specifications across persistence, transport, and validation boundaries.
-  - `De-Sloppification` (`.opencode/agents/de-sloppification.md`) for slop review.
+Project agents are defined in `.opencode/agents` (source of truth). opencode injects the available agent list at runtime; delegate using those agent IDs.
 
 Sub-agents are stateless. Provide explicit context in prompts:
 
@@ -66,7 +50,7 @@ Sub-agent handoffs must include a `Mandatory Reading` section listing mandatory 
 `@`-prefixed paths. Do not re-list documentation the sub-agent is already required to read per its own instructions.
 Injection of these paths is what makes the documentation available, so no further read-evidence gate is required.
 
-### 5. Shared Config Rule
+### 3. Shared Config Rule
 
 Before changing any TypeScript or ESLint configuration, read:
 
@@ -74,7 +58,7 @@ Before changing any TypeScript or ESLint configuration, read:
 
 Keep shared standards in shared/root config and runtime-specific behaviour in leaf configs.
 
-### 5.1 Policy source-of-truth signposts
+### 3.1 Policy source-of-truth signposts
 
 To avoid policy drift, keep detailed policy in dedicated docs and use AGENTS files as routing signposts only:
 
@@ -82,9 +66,13 @@ To avoid policy drift, keep detailed policy in dedicated docs and use AGENTS fil
 - Frontend logging and error-handling policy: `docs/developer/frontend/frontend-logging-and-error-handling.md`
 - Frontend testing policy and commands: `docs/developer/frontend/frontend-testing.md`
 
+Module-specific test file naming and location conventions belong in the module testing docs; do not duplicate them in `AGENTS.md` files.
+
 If guidance appears in multiple places, update the canonical doc first, then keep AGENTS references brief and consistent.
 
-### 6. Agentic Workflow for Non-Trivial Changes
+Any change that alters documented behaviour must carry its canonical documentation update in the same change. Delegate documentation updates to the `Docs` agent (`.opencode/agents/docs.md`) and canonical data-shape specification updates to the `Data Shapes Agent` (`.opencode/agents/data-shapes-agent.md`).
+
+### 4. Agentic Workflow for Non-Trivial Changes
 
 Planning is for full features or material product/design changes that need a specification and phased delivery plan. Do not create `SPEC.md` or `ACTION_PLAN.md` for small, well-scoped fixes such as isolated code-review findings; implement those directly after reading the relevant component instructions.
 
@@ -113,13 +101,13 @@ Rules:
   delegated agents as `@`-prefixed worktree-relative paths (e.g. `@ACTION_PLAN.md`,
   `@SPEC.md`) so opencode injects their contents.
 
-### 7. Ambiguity Rule
+### 5. Ambiguity Rule
 
 State 1-2 concise assumptions and proceed with the simplest compliant implementation.
 
 **REMEMBER**: You must always adhere to the prime directives and core principles, even when making assumptions.
 
-### 8. Lint Command Hierarchy
+### 6. Lint Command Hierarchy
 
 When validating lint output, use the runtime-specific commands defined in the config hierarchy:
 
@@ -130,19 +118,10 @@ When validating lint output, use the runtime-specific commands defined in the co
 
 Do not run frontend or builder files through the root backend ESLint command directly; use their leaf configs via the commands above.
 
-### 9. Temporary Workspace Convention
+The complete command set is defined in `package.json`; run the full local gate with `npm run run-all-checks` (lint, coverage, and production build).
+
+### 7. Temporary Workspace Convention
 
 All agents **must** use `.opencode/scratchpad/` as the temporary workspace for files that should not be tracked by git. Use this instead of `/tmp` or other system temp directories when writing ephemeral artefacts (e.g. diagnostic dumps, intermediate reports, exploration notes). This directory is already covered by `.gitignore` and will never be committed.
 
 Do not write planning artefacts (`SPEC.md`, `ACTION_PLAN.md`, layout specs, etc.) to scratchpad — those belong in the project root where the orchestrator can retrieve them.
-
-### 10. Testing Delegation Policy
-
-- Do not define or duplicate module-specific test file naming/location conventions in `AGENTS.md` files.
-- For Vitest unit/component tests and backend tests, always delegate test implementation/debugging tasks to `Testing Specialist` when your environment supports sub-agent delegation.
-- For Playwright E2E tests, always delegate to `Playwright` when your environment supports sub-agent delegation.
-- If delegation is unavailable, read `.opencode/agents/testing-specialist.md` (for Vitest/backend) or `.opencode/agents/playwright.md` (for E2E) plus the relevant module testing docs before changing tests:
-  - `docs/developer/backend/backend-testing.md`
-  - `docs/developer/frontend/frontend-testing.md`
-  - `docs/developer/frontend/frontend-playwright-e2e.md`
-  - `docs/developer/builder/builder-script.md`
