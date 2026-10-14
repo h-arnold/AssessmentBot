@@ -7,6 +7,7 @@
  * true` with no weighting patch), in-place task refresh, the busy affordance,
  * its settled state, and the existing blocking-error treatment on failure.
  */
+import '../../test/assignmentDefinition/AssignmentDefinitionWizardModal.mockSetup';
 
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -45,43 +46,20 @@ import {
 } from '../../test/assignmentDefinition/wizardTestHelpers';
 import editableDefinitionsRaw from '../../../../../tests/__mocks__/data/synthetic-analysis/small/editableDefinitions.json?raw';
 
-const wizardMockState = await vi.hoisted(async () => {
-  const { createWizardServiceMocks, createWizardServiceModuleMocks } = await import(
-    '../../test/assignmentDefinition/wizardMockFactories'
-  );
-  const mocks = createWizardServiceMocks();
-  return { mocks, moduleMocks: createWizardServiceModuleMocks(mocks), useStartupWarmupStateMock: mocks.useStartupWarmupStateMock };
-});
-const { mocks } = wizardMockState;
-const {
-  getAssignmentDefinitionMock,
-  getAssignmentTopicsMock,
-  getCohortsMock,
-  getYearGroupsMock,
-  upsertAssignmentDefinitionMock,
-  useStartupWarmupStateMock,
-} = mocks;
+import {
+  getAssignmentDefinition,
+  upsertAssignmentDefinition,
+} from '../../services/assignmentDefinition/assignmentDefinitionService';
+import { getAssignmentTopics } from '../../services/assignmentDefinition/assignmentTopicsService';
+import { getCohorts, getYearGroups } from '../../services/referenceData/referenceDataService';
+import { useStartupWarmupState } from '../../features/auth/startupWarmupState';
 
-vi.mock('../../features/auth/startupWarmupState', async (importOriginal) => {
-  const actualModule = (await importOriginal()) as Record<string, unknown>;
-
-  return {
-    ...actualModule,
-    useStartupWarmupState: wizardMockState.useStartupWarmupStateMock,
-  };
-});
-
-vi.mock('../../services/assignmentDefinition/assignmentDefinitionService', () =>
-  wizardMockState.moduleMocks.assignmentDefinitionService
-);
-
-vi.mock('../../services/assignmentDefinition/assignmentTopicsService', () =>
-  wizardMockState.moduleMocks.assignmentTopicsService
-);
-
-vi.mock('../../services/referenceData/referenceDataService', () =>
-  wizardMockState.moduleMocks.referenceDataService
-);
+const getAssignmentDefinitionMock = vi.mocked(getAssignmentDefinition) as ReturnType<typeof vi.fn>;
+const getAssignmentTopicsMock = vi.mocked(getAssignmentTopics) as ReturnType<typeof vi.fn>;
+const getCohortsMock = vi.mocked(getCohorts) as ReturnType<typeof vi.fn>;
+const getYearGroupsMock = vi.mocked(getYearGroups) as ReturnType<typeof vi.fn>;
+const upsertAssignmentDefinitionMock = vi.mocked(upsertAssignmentDefinition) as ReturnType<typeof vi.fn>;
+const useStartupWarmupStateMock = vi.mocked(useStartupWarmupState) as ReturnType<typeof vi.fn>;
 
 vi.mock('../../logging/frontendLogger', () => {
   return {

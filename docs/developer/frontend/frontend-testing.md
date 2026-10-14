@@ -154,12 +154,12 @@ Use shared helpers to keep fixtures and mocks consistent and avoid duplicate tes
 - Classes modal test helpers: `src/frontend/src/test/classes/modalTestHelpers.tsx` (shared interaction helpers, assertion utilities, and mock creators for Classes modal components).
 - Classes Page test helpers: `src/frontend/src/test/classes/classesPageTestHelpers.tsx` (shared ClassPartial/YearGroup fixtures, rendering helpers, assertion utilities, and E2E serialisation helpers for ClassesPage component tests).
 - Classes bulk test helpers: `src/frontend/src/test/classes/bulkFlowTestHelpers.ts` (exports the row fixture `makeRow` and the queued-batch assertions `assertQueuedBatchMutationCalledOnce` and `assertSingleSelectedRowEdit`, shared by the `bulkSetYearGroup` and `bulkSetCohort` flow specs; plus `createBulkPanelMocks`, `createBulkQueueModuleMock`, and `BULK_PANEL_COMPONENT_MOCKS`, shared by the `bulkActiveState` and `bulkDelete` panel specs).
-- Assignment-definition wizard mock factories: `src/frontend/src/test/assignmentDefinition/wizardMockFactories.ts` (exports `createWizardServiceMocks` for fresh service/startup-state mocks and `createWizardServiceModuleMocks` for the service module shapes built from them; shared by the `AssignmentDefinitionWizardModal.*` specs).
+- Registration-only mock setup modules: `src/frontend/src/test/classes/AssessTaskModal.mockSetup.ts` and `src/frontend/src/test/assignmentDefinition/AssignmentDefinitionWizardModal.mockSetup.ts` (see [Shared mock-registration pattern](#shared-mock-registration-pattern)).
 - Builder fixture helpers: `scripts/builder/src/test/builder-fixture-test-helpers.ts` (shared by builder specs to build release archives, create path fixtures, and write release files/manifests).
 
 When adding test scenarios, prefer extending an existing helper before copying setup logic into each spec. In particular, Classes feature specs should reuse `src/frontend/src/test/classes/classesTestHelpers.ts` for row fixtures and state builders, `src/frontend/src/test/classes/modalTestHelpers.tsx` for modal interaction patterns, and `src/frontend/src/test/classes/classesPageTestHelpers.tsx` for ClassesPage fixtures and rendering, rather than redefining near-identical test utilities in each file.
 
-The bulk panel, assignment-definition wizard, Class-page hook, Classes management panel, and auth gate mock factories are pure constructors. Each spec calls them from inside an async `vi.hoisted(...)` block and keeps its own `vi.mock(...)` registrations local, so no pre-built mock instance or module-scope side effect is shared between specs.
+The bulk panel, Class-page hook, Classes management panel, and auth gate mock factories are pure constructors. Each spec calls them from inside an async `vi.hoisted(...)` block and keeps its own `vi.mock(...)` registrations local, so no pre-built mock instance is shared between specs.
 
 Shared frontend test helpers belong under `src/frontend/src/test/**`. Feature-scoped subfolders are allowed when they keep related fixtures together, but production feature folders should stay free of shared test helpers.
 
@@ -175,6 +175,20 @@ Shared frontend test helpers belong under `src/frontend/src/test/**`. Feature-sc
 - Classes management panel mock factories: `src/frontend/src/test/classes/classesManagementPanelMockFactories.tsx` — exports `createClassesManagementPanelMocks()` to build isolated panel module mocks (management state, batch mutation, queue, progress modal, bulk create, bulk delete) and their module shapes; shared by the `ClassesManagementPanel.*.spec.tsx` specs. Status: **Implemented**.
 - Auth gate test helpers: `src/frontend/src/test/auth/appAuthGateTestHelpers.tsx` — exports `createAppAuthGateMocks()`, the module-shape builders `createAppAuthGateServiceMockModule(mocks)` and `createAppAuthGateSharedQueriesMockModule(actual, mocks)`, the access-result fixtures (`grantedAdminAccess`, `freshInstallAccess`, `brokenConfigAccess`, `deniedAccess`), and `createQueryWrapper()`; shared by the auth-gate specs. Status: **Implemented**.
 - Focused analysis input builder: `buildSingleStudentInput(assessments, additionalOverrides?)` in `src/frontend/src/test/dataAnalysis/fixtures.ts` — builds a one-class, one-student `AveragingAnalyserInput` from a criterion-score map for focused analyser/service cases. Status: **Implemented**.
+
+### Shared mock-registration pattern
+
+When several specs mock the same modules identically, prefer a **registration-only mock setup module** over repeating the registrations in each file.
+
+- The module contains only imports and `vi.mock(...)` calls, and exports nothing. Importing it exists solely to register the doubles.
+- Import it before the production or test-harness modules it mocks, so registration precedes their first instantiation.
+- Obtain typed handles in each spec with `vi.mocked(<service import>)`, then seed and assert on them as usual.
+- Keep each spec's own isolation hooks, resetting with `vi.resetAllMocks()` per [Mock Reset Best Practices](#mock-reset-best-practices). Vitest evaluates the setup module once per spec file, so each file gets its own registered doubles; resetting per file keeps implementations and call history clean. Do not substitute `vi.clearAllMocks()`, which clears call history only and leaves mock implementations in place.
+- Do not add `eslint-disable` comments to make the pattern fit. The setup module passes the frontend ESLint config unchanged, and disabling a lint rule to accommodate it is not acceptable.
+
+The two setup modules named in the helper bullet list above are the current examples. Apply the pattern when you add or touch a spec whose registrations are identical to a sibling's, migrating that spec opportunistically instead of repeating the block locally. Specs that still inline identical registrations — for example `AssessTaskModal.inModalCreate.spec.tsx` — remain transitional; migrate them when you next touch them, not as a wholesale conversion.
+
+When specs need genuinely different registrations — different mocked modules, module shapes, or hoist-time configuration — keep the mocks local instead: create them in a pure factory, call it inside an async `vi.hoisted(...)` block, and register them with a local `vi.mock(...)`. The Classes bulk panel, Classes management panel, Class-page hook, and auth-gate factories follow this retained approach.
 
 ### Classes Modal Test Helpers
 
