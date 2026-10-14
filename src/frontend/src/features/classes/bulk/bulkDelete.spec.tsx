@@ -10,86 +10,47 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { BulkDeleteModal, type BulkDeleteModalProperties } from './BulkDeleteModal';
-import type { ClassesManagementRow } from '../classesManagementViewModel';
 import { renderWithFrontendProviders } from '../../../test/renderWithFrontendProviders';
 import {
   buildClassesManagementState,
   createFulfilledClassResult,
 } from '../../../test/classes/classesTestHelpers';
-import type { BatchProgressSnapshot } from './runQueuedBatchMutation';
+import type { ClassesManagementRow } from '../classesManagementViewModel';
+import { makeRow as sharedMakeRow } from '../../../test/classes/bulkFlowTestHelpers';
 
 const TWO_SELECTED_ROWS = 2;
 
-const classesManagementStateMock = vi.fn();
-const runQueuedBatchMutationMock = vi.hoisted(() => vi.fn());
-const runQueuedBulkActionMock = vi.fn(
-  async ({ mutate, onComplete }: { mutate: (onProgress: (snapshot: BatchProgressSnapshot) => void) => Promise<unknown[]>; onComplete: (results: unknown[]) => Promise<void> }) => {
-    const results = await mutate(vi.fn());
-    await onComplete(results);
-  },
-);
-
-vi.mock('../../services/apiService', () => {
-  return {
-    callApi: vi.fn(),
-  };
+const { classesManagementStateMock, runQueuedBatchMutationMock, runQueuedBulkActionMock } = await vi.hoisted(async () => {
+  const { createBulkPanelMocks } = await import('../../../test/classes/bulkFlowTestHelpers');
+  return await createBulkPanelMocks();
 });
 
-vi.mock('../useClassesManagement', () => {
-  return {
-    useClassesManagement: classesManagementStateMock,
-  };
+vi.mock('../../services/apiService', () => ({ callApi: vi.fn() }));
+vi.mock('../useClassesManagement', () => ({ useClassesManagement: classesManagementStateMock }));
+vi.mock('./runQueuedBatchMutation', () => ({ runQueuedBatchMutation: runQueuedBatchMutationMock }));
+vi.mock('../useClassesBulkMutationQueue', async () => {
+  const { createBulkQueueModuleMock } = await import('../../../test/classes/bulkFlowTestHelpers');
+  return createBulkQueueModuleMock(runQueuedBulkActionMock);
 });
-
-vi.mock('./runQueuedBatchMutation', () => {
-  return {
-    runQueuedBatchMutation: runQueuedBatchMutationMock,
-  };
+vi.mock('./BulkCreateModal', async () => {
+  const { BULK_PANEL_COMPONENT_MOCKS } = await import('../../../test/classes/bulkFlowTestHelpers');
+  return BULK_PANEL_COMPONENT_MOCKS.bulkCreate;
 });
-
-vi.mock('../useClassesBulkMutationQueue', () => {
-  return {
-    useClassesBulkMutationQueue: () => {
-      return {
-        isQueueActive: false,
-        progress: { currentItem: null, completed: 0, pendingCount: 0, total: 0, isInProgress: false },
-        isProgressModalOpen: false,
-        onDismissProgressModal: vi.fn(),
-        onCancelQueue: vi.fn(),
-        runQueuedBulkAction: runQueuedBulkActionMock,
-      };
-    },
-  };
+vi.mock('./BulkSetSelectModal', async () => {
+  const { BULK_PANEL_COMPONENT_MOCKS } = await import('../../../test/classes/bulkFlowTestHelpers');
+  return BULK_PANEL_COMPONENT_MOCKS.bulkSetSelect;
 });
-
-vi.mock('./BulkCreateModal', () => {
-  return {
-    BulkCreateModal() { return null; },
-  };
+vi.mock('./BulkSetCourseLengthModal', async () => {
+  const { BULK_PANEL_COMPONENT_MOCKS } = await import('../../../test/classes/bulkFlowTestHelpers');
+  return BULK_PANEL_COMPONENT_MOCKS.bulkSetCourseLength;
 });
-
-vi.mock('./BulkSetSelectModal', () => {
-  return {
-    BulkSetSelectModal() { return null; },
-  };
+vi.mock('../referenceData/ManageCohortsModal', async () => {
+  const { BULK_PANEL_COMPONENT_MOCKS } = await import('../../../test/classes/bulkFlowTestHelpers');
+  return BULK_PANEL_COMPONENT_MOCKS.manageCohorts;
 });
-
-vi.mock('./BulkSetCourseLengthModal', () => {
-  return {
-    BulkSetCourseLengthModal() { return null; },
-  };
-});
-
-vi.mock('../referenceData/ManageCohortsModal', () => {
-  return {
-    ManageCohortsModal() { return null; },
-  };
-});
-
-vi.mock('../referenceData/ManageYearGroupsModal', () => {
-  return {
-    ManageYearGroupsModal() { return null; },
-  };
+vi.mock('../referenceData/ManageYearGroupsModal', async () => {
+  const { BULK_PANEL_COMPONENT_MOCKS } = await import('../../../test/classes/bulkFlowTestHelpers');
+  return BULK_PANEL_COMPONENT_MOCKS.manageYearGroups;
 });
 
 /**
@@ -99,18 +60,14 @@ vi.mock('../referenceData/ManageYearGroupsModal', () => {
  * @returns {ClassesManagementRow} The composed test row.
  */
 function makeRow(overrides: Partial<ClassesManagementRow> = {}): ClassesManagementRow {
-  return {
-    classId: 'class-001',
-    className: 'Year 10 Maths',
-    status: 'active',
+  return sharedMakeRow({
     cohortKey: '2025',
     cohortLabel: 'Cohort 2025',
     yearGroupKey: 'yg-10',
     yearGroupLabel: 'Year 10',
     courseLength: 1,
-    active: true,
     ...overrides,
-  };
+  });
 }
 
 /**
