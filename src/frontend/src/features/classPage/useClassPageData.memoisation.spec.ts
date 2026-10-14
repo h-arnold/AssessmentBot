@@ -14,19 +14,9 @@ import {
   createMockClassQueryResult,
   createPageDatasetReturn,
 } from '../../test/classPage/useClassPageDataTestFixtures';
-import { useQuery } from '@tanstack/react-query';
-import { usePageDataset } from '../../hooks/usePageDataset';
-import { getABClassQueryOptions } from '../../query/sharedQueries';
-import { DataAnalysisService } from '../../services/dataAnalysis/dataAnalysisService';
-import { adaptClassPageToViewModel } from './classPageAdapter';
+import { createUseClassPageDataMockHandles } from '../../test/classPage/useClassPageDataMockHandles';
 
-const mockUseQuery = vi.mocked(useQuery);
-const mockUsePageDataset = vi.mocked(usePageDataset);
-const mockGetABClassQueryOptions = vi.mocked(getABClassQueryOptions);
-const mockAnalyse = vi.mocked(
-  DataAnalysisService as unknown as { analyse: typeof DataAnalysisService.prototype.analyse }
-).analyse;
-const mockAdaptClassPageToViewModel = vi.mocked(adaptClassPageToViewModel);
+const mocks = createUseClassPageDataMockHandles();
 let queryClient: QueryClient;
 let wrapper: ReturnType<typeof createClassPageDataWrapper>;
 beforeEach(() => {
@@ -47,13 +37,15 @@ function seedReadyState(
   queryRefetch: ReturnType<typeof vi.fn>,
   datasetRefetch: ReturnType<typeof vi.fn>
 ) {
-  mockAnalyse.mockReturnValue([createAveragingResult()]);
-  mockAdaptClassPageToViewModel.mockReturnValue(createAdapterResult());
-  mockGetABClassQueryOptions.mockReturnValue(createABClassQueryOptionsFixture(DEFAULT_CLASS_ID));
-  mockUseQuery.mockReturnValue(
+  mocks.mockAnalyse.mockReturnValue([createAveragingResult()]);
+  mocks.mockAdaptClassPageToViewModel.mockReturnValue(createAdapterResult());
+  mocks.mockGetABClassQueryOptions.mockReturnValue(
+    createABClassQueryOptionsFixture(DEFAULT_CLASS_ID)
+  );
+  mocks.mockUseQuery.mockReturnValue(
     createMockClassQueryResult({ data: classFull, refetch: queryRefetch })
   );
-  mockUsePageDataset.mockReturnValue(createPageDatasetReturn({ refetch: datasetRefetch }));
+  mocks.mockUsePageDataset.mockReturnValue(createPageDatasetReturn({ refetch: datasetRefetch }));
 }
 
 // Memoisation and refetch contracts.
@@ -62,24 +54,26 @@ describe('memoisation (referential equality)', () => {
     {
       title:
         'does not re-call the analyser when classFull and assignmentDefinitionPartials are referentially equal',
-      selectedMock: mockAnalyse,
+      selectedMock: mocks.mockAnalyse,
     },
     {
       title:
         'does not re-call the adapter when analyserResult and classFull are referentially equal',
-      selectedMock: mockAdaptClassPageToViewModel,
+      selectedMock: mocks.mockAdaptClassPageToViewModel,
     },
   ])('$title', ({ selectedMock }) => {
     const classFull = createClassFull();
     const averagingResult = createAveragingResult();
     const adapterResult = createAdapterResult();
 
-    mockAnalyse.mockReturnValue([averagingResult]);
-    mockAdaptClassPageToViewModel.mockReturnValue(adapterResult);
+    mocks.mockAnalyse.mockReturnValue([averagingResult]);
+    mocks.mockAdaptClassPageToViewModel.mockReturnValue(adapterResult);
 
-    mockGetABClassQueryOptions.mockReturnValue(createABClassQueryOptionsFixture(DEFAULT_CLASS_ID));
-    mockUseQuery.mockReturnValue(createMockClassQueryResult({ data: classFull }));
-    mockUsePageDataset.mockReturnValue(createPageDatasetReturn());
+    mocks.mockGetABClassQueryOptions.mockReturnValue(
+      createABClassQueryOptionsFixture(DEFAULT_CLASS_ID)
+    );
+    mocks.mockUseQuery.mockReturnValue(createMockClassQueryResult({ data: classFull }));
+    mocks.mockUsePageDataset.mockReturnValue(createPageDatasetReturn());
 
     const { rerender } = renderHook(
       (properties: { classId: string }) => useClassPageData(properties.classId),
@@ -107,29 +101,31 @@ describe('memoisation invalidation', () => {
     const averagingResult = createAveragingResult();
     const adapterResult = createAdapterResult();
 
-    mockAnalyse.mockReturnValue([averagingResult]);
-    mockAdaptClassPageToViewModel.mockReturnValue(adapterResult);
+    mocks.mockAnalyse.mockReturnValue([averagingResult]);
+    mocks.mockAdaptClassPageToViewModel.mockReturnValue(adapterResult);
 
-    mockGetABClassQueryOptions.mockReturnValue(createABClassQueryOptionsFixture(DEFAULT_CLASS_ID));
-    mockUsePageDataset.mockReturnValue(createPageDatasetReturn());
+    mocks.mockGetABClassQueryOptions.mockReturnValue(
+      createABClassQueryOptionsFixture(DEFAULT_CLASS_ID)
+    );
+    mocks.mockUsePageDataset.mockReturnValue(createPageDatasetReturn());
 
     // First render with initial classFull
-    mockUseQuery.mockReturnValue(createMockClassQueryResult({ data: initialClassFull }));
+    mocks.mockUseQuery.mockReturnValue(createMockClassQueryResult({ data: initialClassFull }));
 
     const { rerender } = renderHook(
       (properties: { classId: string }) => useClassPageData(properties.classId),
       { initialProps: { classId: DEFAULT_CLASS_ID }, wrapper }
     );
 
-    expect(mockAnalyse).toHaveBeenCalledTimes(1);
-    mockAnalyse.mockClear();
+    expect(mocks.mockAnalyse).toHaveBeenCalledTimes(1);
+    mocks.mockAnalyse.mockClear();
 
     // Change classFull to a different object
-    mockUseQuery.mockReturnValue(createMockClassQueryResult({ data: updatedClassFull }));
+    mocks.mockUseQuery.mockReturnValue(createMockClassQueryResult({ data: updatedClassFull }));
 
     rerender({ classId: DEFAULT_CLASS_ID });
 
-    expect(mockAnalyse).toHaveBeenCalledTimes(1);
+    expect(mocks.mockAnalyse).toHaveBeenCalledTimes(1);
   });
 
   it('re-calls the adapter when analyserResult changes', () => {
@@ -138,34 +134,36 @@ describe('memoisation invalidation', () => {
     const updatedAveragingResult = createAveragingResult({ className: 'Second Analysis' });
     const adapterResult = createAdapterResult();
 
-    mockAdaptClassPageToViewModel.mockReturnValue(adapterResult);
+    mocks.mockAdaptClassPageToViewModel.mockReturnValue(adapterResult);
 
-    mockGetABClassQueryOptions.mockReturnValue(createABClassQueryOptionsFixture(DEFAULT_CLASS_ID));
-    mockUseQuery.mockReturnValue(createMockClassQueryResult({ data: classFull }));
-    mockUsePageDataset.mockReturnValue(createPageDatasetReturn());
+    mocks.mockGetABClassQueryOptions.mockReturnValue(
+      createABClassQueryOptionsFixture(DEFAULT_CLASS_ID)
+    );
+    mocks.mockUseQuery.mockReturnValue(createMockClassQueryResult({ data: classFull }));
+    mocks.mockUsePageDataset.mockReturnValue(createPageDatasetReturn());
 
-    // First render — first call to mockAnalyse returns initial result,
+    // First render — first call to mocks.mockAnalyse returns initial result,
     // subsequent calls return the updated result
-    mockAnalyse.mockReturnValueOnce([initialAveragingResult]);
-    mockAnalyse.mockReturnValue([updatedAveragingResult]);
+    mocks.mockAnalyse.mockReturnValueOnce([initialAveragingResult]);
+    mocks.mockAnalyse.mockReturnValue([updatedAveragingResult]);
 
     const { rerender } = renderHook(
       (properties: { classId: string }) => useClassPageData(properties.classId),
       { initialProps: { classId: DEFAULT_CLASS_ID }, wrapper }
     );
 
-    expect(mockAdaptClassPageToViewModel).toHaveBeenCalledTimes(1);
-    mockAdaptClassPageToViewModel.mockClear();
+    expect(mocks.mockAdaptClassPageToViewModel).toHaveBeenCalledTimes(1);
+    mocks.mockAdaptClassPageToViewModel.mockClear();
 
     // Keep classFull content constant but supply a new reference to trigger re-analysis.
     // The analyser re-runs (classFull reference changed) and returns updatedAveragingResult,
     // which should cause the adapter to re-run
     // (adapter memoisation key = [analyserResult, classFull]).
-    mockUseQuery.mockReturnValue(createMockClassQueryResult({ data: createClassFull() }));
+    mocks.mockUseQuery.mockReturnValue(createMockClassQueryResult({ data: createClassFull() }));
 
     rerender({ classId: DEFAULT_CLASS_ID });
 
-    expect(mockAdaptClassPageToViewModel).toHaveBeenCalledTimes(1);
+    expect(mocks.mockAdaptClassPageToViewModel).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -197,11 +195,13 @@ describe('refetch dual-query contract', () => {
     const queryRefetchMock = vi.fn();
     const adpRefetchMock = vi.fn();
 
-    mockGetABClassQueryOptions.mockReturnValue(createABClassQueryOptionsFixture(DEFAULT_CLASS_ID));
-    mockUseQuery.mockReturnValue(
+    mocks.mockGetABClassQueryOptions.mockReturnValue(
+      createABClassQueryOptionsFixture(DEFAULT_CLASS_ID)
+    );
+    mocks.mockUseQuery.mockReturnValue(
       createMockClassQueryResult({ data: classFull, refetch: queryRefetchMock })
     );
-    mockUsePageDataset.mockReturnValue(
+    mocks.mockUsePageDataset.mockReturnValue(
       createPageDatasetReturn(
         { refetch: adpRefetchMock, isError: true },
         {
@@ -268,11 +268,13 @@ describe('refetch dual-query contract', () => {
     const firstRefetch = result.current.refetch;
 
     // Update mocks to simulate new query results for a different classId
-    mockGetABClassQueryOptions.mockReturnValue(createABClassQueryOptionsFixture(newClassId));
-    mockUseQuery.mockReturnValue(
+    mocks.mockGetABClassQueryOptions.mockReturnValue(createABClassQueryOptionsFixture(newClassId));
+    mocks.mockUseQuery.mockReturnValue(
       createMockClassQueryResult({ data: classFull, refetch: newQueryRefetchMock })
     );
-    mockUsePageDataset.mockReturnValue(createPageDatasetReturn({ refetch: newAdpRefetchMock }));
+    mocks.mockUsePageDataset.mockReturnValue(
+      createPageDatasetReturn({ refetch: newAdpRefetchMock })
+    );
 
     rerender({ classId: newClassId });
 
