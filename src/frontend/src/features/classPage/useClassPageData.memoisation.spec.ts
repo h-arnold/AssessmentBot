@@ -39,7 +39,18 @@ afterEach(() => {
 
 // Memoisation and refetch contracts.
 describe('memoisation (referential equality)', () => {
-  it('does not re-call the analyser when classFull and assignmentDefinitionPartials are referentially equal', () => {
+  it.each([
+    {
+      title:
+        'does not re-call the analyser when classFull and assignmentDefinitionPartials are referentially equal',
+      selectedMock: mockAnalyse,
+    },
+    {
+      title:
+        'does not re-call the adapter when analyserResult and classFull are referentially equal',
+      selectedMock: mockAdaptClassPageToViewModel,
+    },
+  ])('$title', ({ selectedMock }) => {
     const classFull = createClassFull();
     const averagingResult = createAveragingResult();
     const adapterResult = createAdapterResult();
@@ -56,39 +67,13 @@ describe('memoisation (referential equality)', () => {
       { initialProps: { classId: DEFAULT_CLASS_ID }, wrapper }
     );
 
-    expect(mockAnalyse).toHaveBeenCalledTimes(1);
-    mockAnalyse.mockClear();
+    expect(selectedMock).toHaveBeenCalledTimes(1);
+    selectedMock.mockClear();
 
     // Rerender with the same classId — mocks return the same references
     rerender({ classId: DEFAULT_CLASS_ID });
 
-    expect(mockAnalyse).not.toHaveBeenCalled();
-  });
-
-  it('does not re-call the adapter when analyserResult and classFull are referentially equal', () => {
-    const classFull = createClassFull();
-    const averagingResult = createAveragingResult();
-    const adapterResult = createAdapterResult();
-
-    mockAnalyse.mockReturnValue([averagingResult]);
-    mockAdaptClassPageToViewModel.mockReturnValue(adapterResult);
-
-    mockGetABClassQueryOptions.mockReturnValue(createABClassQueryOptionsFixture(DEFAULT_CLASS_ID));
-    mockUseQuery.mockReturnValue(createMockClassQueryResult({ data: classFull }));
-    mockUsePageDataset.mockReturnValue(createPageDatasetReturn());
-
-    const { rerender } = renderHook(
-      (properties: { classId: string }) => useClassPageData(properties.classId),
-      { initialProps: { classId: DEFAULT_CLASS_ID }, wrapper }
-    );
-
-    expect(mockAdaptClassPageToViewModel).toHaveBeenCalledTimes(1);
-    mockAdaptClassPageToViewModel.mockClear();
-
-    // Rerender with the same classId — mocks return the same references
-    rerender({ classId: DEFAULT_CLASS_ID });
-
-    expect(mockAdaptClassPageToViewModel).not.toHaveBeenCalled();
+    expect(selectedMock).not.toHaveBeenCalled();
   });
 });
 

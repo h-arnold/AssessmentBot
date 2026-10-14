@@ -47,13 +47,31 @@ const EXPECTED_PREFETCH_COUNT_SINGLE = 1;
 const THIRD_CALL_INDEX = 2;
 
 describe('assignment query effect', () => {
-  it('calls query for the 3 most recently updated assignments when surfaceState becomes ready', () => {
-    const assignments = [
-      createAssignment('oldest', '2025-01-01T00:00:00.000Z'),
-      createAssignment('middle-2', '2025-02-01T00:00:00.000Z'),
-      createAssignment('middle-1', '2025-03-01T00:00:00.000Z'),
-      createAssignment('newest', '2025-04-01T00:00:00.000Z'),
-    ];
+  it.each([
+    {
+      name: 'calls query for the 3 most recently updated assignments when surfaceState becomes ready',
+      assignments: [
+        createAssignment('oldest', '2025-01-01T00:00:00.000Z'),
+        createAssignment('middle-2', '2025-02-01T00:00:00.000Z'),
+        createAssignment('middle-1', '2025-03-01T00:00:00.000Z'),
+        createAssignment('newest', '2025-04-01T00:00:00.000Z'),
+      ],
+      // Top 3 by updatedAt desc: newest, middle-1, middle-2.  oldest is excluded.
+      expectedIds: ['newest', 'middle-1', 'middle-2'],
+    },
+    {
+      name: 'uses assignmentId ascending as tie-break when two assignments share the same updatedAt',
+      assignments: [
+        createAssignment('b-assign', '2025-04-01T00:00:00.000Z'),
+        createAssignment('a-assign', '2025-04-01T00:00:00.000Z'),
+        createAssignment('c-assign', '2025-03-01T00:00:00.000Z'),
+        createAssignment('d-assign', '2025-02-01T00:00:00.000Z'),
+      ],
+      // Sorted: a-assign, b-assign (tie on updatedAt, a.id < b.id), c-assign, d-assign
+      // Top 3: a-assign, b-assign, c-assign
+      expectedIds: ['a-assign', 'b-assign', 'c-assign'],
+    },
+  ])('$name', ({ assignments, expectedIds }) => {
     const averagingResult = createAveragingResult();
     const adapterResult = createAdapterResult();
 
@@ -67,50 +85,15 @@ describe('assignment query effect', () => {
 
     renderHook(() => useClassPageData(DEFAULT_CLASS_ID), { wrapper });
 
-    // Top 3 by updatedAt desc: newest, middle-1, middle-2.  oldest is excluded.
     expect(querySpy.mock.calls).toHaveLength(EXPECTED_PREFETCH_COUNT_TOP_3);
     expect(querySpy.mock.calls[0][0]).toMatchObject(
-      expect.objectContaining({ queryKey: ['assignment', DEFAULT_CLASS_ID, 'newest'] })
+      expect.objectContaining({ queryKey: ['assignment', DEFAULT_CLASS_ID, expectedIds[0]] })
     );
     expect(querySpy.mock.calls[1][0]).toMatchObject(
-      expect.objectContaining({ queryKey: ['assignment', DEFAULT_CLASS_ID, 'middle-1'] })
+      expect.objectContaining({ queryKey: ['assignment', DEFAULT_CLASS_ID, expectedIds[1]] })
     );
     expect(querySpy.mock.calls[THIRD_CALL_INDEX][0]).toMatchObject(
-      expect.objectContaining({ queryKey: ['assignment', DEFAULT_CLASS_ID, 'middle-2'] })
-    );
-  });
-
-  it('uses assignmentId ascending as tie-break when two assignments share the same updatedAt', () => {
-    const assignments = [
-      createAssignment('b-assign', '2025-04-01T00:00:00.000Z'),
-      createAssignment('a-assign', '2025-04-01T00:00:00.000Z'),
-      createAssignment('c-assign', '2025-03-01T00:00:00.000Z'),
-      createAssignment('d-assign', '2025-02-01T00:00:00.000Z'),
-    ];
-    const averagingResult = createAveragingResult();
-    const adapterResult = createAdapterResult();
-
-    mockAnalyse.mockReturnValue([averagingResult]);
-    mockAdaptClassPageToViewModel.mockReturnValue(adapterResult);
-    mockGetABClassQueryOptions.mockReturnValue(createABClassQueryOptionsFixture(DEFAULT_CLASS_ID));
-    mockUseQuery.mockReturnValue(
-      createMockClassQueryResult({ data: createClassFull({ assignments }) })
-    );
-    mockUsePageDataset.mockReturnValue(createPageDatasetReturn());
-
-    renderHook(() => useClassPageData(DEFAULT_CLASS_ID), { wrapper });
-
-    // Sorted: a-assign, b-assign (tie on updatedAt, a.id < b.id), c-assign, d-assign
-    // Top 3: a-assign, b-assign, c-assign
-    expect(querySpy.mock.calls).toHaveLength(EXPECTED_PREFETCH_COUNT_TOP_3);
-    expect(querySpy.mock.calls[0][0]).toMatchObject(
-      expect.objectContaining({ queryKey: ['assignment', DEFAULT_CLASS_ID, 'a-assign'] })
-    );
-    expect(querySpy.mock.calls[1][0]).toMatchObject(
-      expect.objectContaining({ queryKey: ['assignment', DEFAULT_CLASS_ID, 'b-assign'] })
-    );
-    expect(querySpy.mock.calls[THIRD_CALL_INDEX][0]).toMatchObject(
-      expect.objectContaining({ queryKey: ['assignment', DEFAULT_CLASS_ID, 'c-assign'] })
+      expect.objectContaining({ queryKey: ['assignment', DEFAULT_CLASS_ID, expectedIds[2]] })
     );
   });
 
