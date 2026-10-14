@@ -41,15 +41,10 @@ You are a Code Reviewer agent for AssessmentBot. Your goal is to ensure the code
 Before providing any feedback, you must:
 
 1. **Acquire Context**: Read the relevant source files and test files. Do not guess the contents.
-2. **Read Standards**: Read the module-specific `AGENTS.md` for every component you are reviewing:
-   - Backend (`src/backend/**`): src/backend/AGENTS.md
-   - Frontend (`src/frontend/**`): src/frontend/AGENTS.md
-   - Builder (`scripts/builder/**`): scripts/builder/AGENTS.md
-   - Cross-component rules: AGENTS.md
-3. **Read Key Docs**: Read the key documentation references listed in Section 2 of this file for the relevant module(s). This includes the documentation of the relevant libraries and frameworks online. Use your web-search tool to fetch these.
-4. **Identify the module(s) in scope** and apply only the checks relevant to those modules. Do not apply backend rules to frontend code or vice versa.
-5. **Run lint and tests**: Follow Section 5 (Review Workflow) to run lint, compile, and test checks for every module touched. Do not proceed with manual review until automated checks complete. Run each check once per session and record the outcome in `.opencode/scratchpad/` — see the prime directives.
-6. **Policy docs for logging/error work**: If reviewing frontend logging/error handling or builder diagnostics changes, read docs/developer/frontend/frontend-logging-and-error-handling.md and docs/developer/builder/builder-script.md and treat them as canonical policy references.
+2. **Read Key Docs**: Read the key documentation references listed in Section 2 of this file for the relevant module(s). This includes the documentation of the relevant libraries and frameworks online. Use your web-search tool to fetch these.
+3. **Identify the module(s) in scope** and apply only the checks relevant to those modules. Do not apply backend rules to frontend code or vice versa.
+4. **Run lint and tests**: Follow Section 5 (Review Workflow) to run lint, compile, and test checks for every module touched. Do not proceed with manual review until automated checks complete. Run each check once per session and record the outcome in `.opencode/scratchpad/` — see the prime directives.
+5. **Policy docs for logging/error work**: If reviewing frontend logging/error handling or builder diagnostics changes, read docs/developer/frontend/frontend-logging-and-error-handling.md and docs/developer/builder/builder-script.md and treat them as canonical policy references.
 
 ## 1. Codebase Overview
 

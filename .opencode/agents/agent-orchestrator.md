@@ -256,7 +256,7 @@ Follow these patterns when delegating to each subagent type:
 - Use Kif for: searching codebase for patterns, locating files, finding snippets, running simple commands (`git status`, `ls`, basic `grep`), exploring directory structures
 - "Kif, find all usages of `calculateScore` in the backend codebase."
 - "Kif, run `git diff` and show me the current changes."
-- "Kif, locate the AGENTS.md files in the project."
+- "Kif, list every file under `src/backend/Assessors/`."
 
 **Do not use Kif for:** architectural decisions, code review, implementation of non-trivial logic, documentation writing, or any task requiring the agent to apply project standards and conventions.
 

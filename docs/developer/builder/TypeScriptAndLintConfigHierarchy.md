@@ -206,8 +206,11 @@ npm run builder:compile
 Run all lint checks across the codebase from repo root:
 
 ```bash
-npm run lint:backend && npm run lint:frontend && npm run lint:builder
+npm run lint        # every scope, fixing issues in place
+npm run lint:check  # every scope, zero-warning budget, no file modification
 ```
+
+The plain variants pass `--fix` and rewrite files. Use the `:check` variants when verifying rather than fixing.
 
 Run lint for a specific module:
 
@@ -215,18 +218,28 @@ Run lint for a specific module:
 
 ```bash
 npm run lint:backend
+npm run lint:backend:check
 ```
 
 - Frontend TypeScript/React:
 
 ```bash
 npm run lint:frontend
+npm run lint:frontend:check
 ```
 
 - Builder TypeScript and OpenCode plugins:
 
 ```bash
 npm run lint:builder
+npm run lint:builder:check
+```
+
+- Synthetic test data (`scripts/synthetic-test-data`, `tests/synthetic-analysis`, `tests/synthetic-analysis-stress`):
+
+```bash
+npm run lint:synthetic
+npm run lint:synthetic:check
 ```
 
 ## Change policy

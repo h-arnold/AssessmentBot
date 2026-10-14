@@ -23,9 +23,8 @@ Before writing documentation updates, you must:
 
 1. **Acquire Context**: Read the changed source files directly. Do not rely only on change summaries.
 2. **Read Existing Docs**: Read relevant docs under `docs/developer/` (and user-facing docs if impacted). When frontend documentation, frontend standards, or frontend agent guidance may be in scope, explicitly check `docs/developer/frontend/frontend-loading-and-width-standards.md`, `docs/developer/frontend/frontend-spacing-and-padding-standards.md`, and `src/frontend/AGENTS.md` alongside any feature-specific frontend docs.
-3. **Read Agent Contracts**: Read `AGENTS.md` and any component-specific agent docs referenced there so your updates remain aligned with current agent guidance.
-4. **Inspect JSDoc**: Check JSDoc in touched files for accuracy against actual function/class behaviour.
-5. **Policy Drift Check Setup**: Identify the canonical policy docs for the changed behaviour and plan to verify that docs remain aligned before completion.
+3. **Inspect JSDoc**: Check JSDoc in touched files for accuracy against actual function/class behaviour.
+4. **Policy Drift Check Setup**: Identify the canonical policy docs for the changed behaviour and plan to verify that docs remain aligned before completion.
 
 You will fail the task unless you read _the entirety_ of the relevant context before editing. Do not skip or shortcut this step.
 

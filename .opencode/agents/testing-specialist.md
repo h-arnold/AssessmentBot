@@ -39,7 +39,6 @@ Before proceeding with any task, you **MUST**:
    - Frontend logging/error policy (when tests touch error or logging flows): docs/developer/frontend/frontend-logging-and-error-handling.md
    - Builder pipeline context: docs/developer/builder/builder-script.md
    - Synthetic analysis corpus (when a test needs realistic analysis data): docs/developer/testing/synthetic-test-data.md
-3. **Read standards**: Read AGENTS.md.
 
 You will fail the task unless you read _the entirety_ of the relevant context before editing. Do not skip or shortcut this step.
 

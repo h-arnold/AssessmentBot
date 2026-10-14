@@ -14,6 +14,14 @@ AssessmentBot is a Google Apps Script tool that marks student submissions to Goo
 - **LLM marking:** the backend sends assessment requests to a separately deployed [Assessment Bot LLM Service](https://github.com/h-arnold/AssessmentBot-LLM-Service).
 - **Build:** Node-based TypeScript pipeline in `scripts/builder`.
 
+**Agent instructions**
+
+- Cross-component rules: `AGENTS.md` (this file).
+- Component rules: `src/backend/AGENTS.md`, `src/frontend/AGENTS.md`, `scripts/builder/AGENTS.md`.
+- Agent definitions: `.opencode/agents/*.md`. Skills: `.opencode/skills/*/SKILL.md`. Plugins: `.opencode/plugins/*.ts`. Shared OpenCode settings: `opencode.jsonc`.
+
+opencode injects this file automatically, and injects a component file once you interact with a file in that component's directory or below. Read a component file directly only when the injected content does not cover your task.
+
 ## 2. Prime Directives
 
 These apply to all components.
@@ -95,12 +103,15 @@ Rules:
 
 ### 6.1 Lint Command Hierarchy
 
-When validating lint output, use the runtime-specific commands defined in the config hierarchy:
+Lint runs from the repository root. The plain variants pass `--fix` and rewrite files; use the `:check` variants to verify without modifying anything.
 
-- Backend GAS JavaScript: `npm run lint:backend`
-- Frontend TypeScript/React: `npm run lint:frontend`
-- Builder TypeScript: `npm run lint:builder`
-- All lint checks in sequence: `npm run lint:backend && npm run lint:frontend && npm run lint:builder`
+| Scope                                           | Fix in place             | Verify only                    |
+| ----------------------------------------------- | ------------------------ | ------------------------------ |
+| Backend GAS JavaScript (`src/backend`, `tests`) | `npm run lint:backend`   | `npm run lint:backend:check`   |
+| Frontend TypeScript/React                       | `npm run lint:frontend`  | `npm run lint:frontend:check`  |
+| Builder TypeScript and OpenCode plugins         | `npm run lint:builder`   | `npm run lint:builder:check`   |
+| Synthetic test data                             | `npm run lint:synthetic` | `npm run lint:synthetic:check` |
+| All scopes                                      | `npm run lint`           | `npm run lint:check`           |
 
 Do not run frontend or builder files through the root backend ESLint command directly; use their leaf configs via the commands above.
 
@@ -120,6 +131,7 @@ Keep shared standards in shared/root config and runtime-specific behaviour in le
 
 To avoid policy drift, keep detailed policy in dedicated docs and use AGENTS files as routing signposts only:
 
+- Security approach, threat model, and data-handling rules: `docs/developer/security/README.md`
 - Backend logging and error-handling policy: `docs/developer/backend/backend-logging-and-error-handling.md`
 - Frontend logging and error-handling policy: `docs/developer/frontend/frontend-logging-and-error-handling.md`
 - Frontend testing policy and commands: `docs/developer/frontend/frontend-testing.md`

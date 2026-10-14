@@ -36,9 +36,8 @@ Before proceeding with any task, you **MUST**:
 
 1. **Acquire context**: You are stateless. Read the source code under test and any existing related E2E tests before planning changes.
 2. **Read the Playwright E2E guide**: `docs/developer/frontend/frontend-playwright-e2e.md` (mandatory for every task).
-3. **Read the frontend AGENTS.md**: `src/frontend/AGENTS.md` for frontend conventions.
-4. **Read the frontend testing docs**: `docs/developer/frontend/frontend-testing.md` for the behaviour split between Vitest and Playwright.
-5. **Read existing test files**: study nearby E2E specs for patterns, fixtures, and helpers.
+3. **Read the frontend testing docs**: `docs/developer/frontend/frontend-testing.md` for the behaviour split between Vitest and Playwright.
+4. **Read existing test files**: study nearby E2E specs for patterns, fixtures, and helpers.
 
 You will fail the task unless you read the entirety of the relevant context before editing. Do not skip or shortcut this step.
 

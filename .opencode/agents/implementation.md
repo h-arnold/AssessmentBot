@@ -33,17 +33,11 @@ Before planning or editing anything, you **MUST** fetch the local context:
    - Read the files you will modify.
    - Read nearby tests covering the same behaviour when they exist.
    - Read enough surrounding code to understand the local pattern before changing it.
-2. **Read standards**:
-   - Read AGENTS.md.
-   - Read the module-specific `AGENTS.md` for every area you touch:
-     - Backend: src/backend/AGENTS.md
-     - Frontend: src/frontend/AGENTS.md
-     - Builder: scripts/builder/AGENTS.md
-3. **Read canonical docs when the task touches these areas**:
+2. **Read canonical docs when the task touches these areas**:
    - Frontend logging/error handling: docs/developer/frontend/frontend-logging-and-error-handling.md
    - Builder pipeline/diagnostics: docs/developer/builder/builder-script.md
    - Shared TypeScript/ESLint config changes: docs/developer/builder/TypeScriptAndLintConfigHierarchy.md
-4. **Identify the module(s) in scope** and apply only the relevant rules.
+3. **Identify the module(s) in scope** and apply only the relevant rules.
 
 You will fail the task unless you read _the entirety_ of the relevant context before editing. Do not skip or shortcut this step.
 

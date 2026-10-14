@@ -20,8 +20,6 @@ Before reviewing or editing anything, you must:
    - Read nearby tests and call sites when they exist.
    - Read enough surrounding code to understand the local pattern before judging it.
 2. **Read standards**:
-   - Read AGENTS.md.
-   - Read the component-specific `AGENTS.md` for every area you touch.
    - Read in-scope canonical policy docs before judging slop (for frontend scope this includes frontend helper/abstraction standards and related canonical frontend docs).
 3. **Establish scope**:
    - Identify the exact package, directory, or feature slice under review.
