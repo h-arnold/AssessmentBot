@@ -36,6 +36,7 @@
     { "action": "shell", "resource": "truncate*", "effect": "ask" },
     { "action": "shell", "resource": "rm *", "effect": "ask" },
     { "action": "shell", "resource": "rm", "effect": "ask" },
+    { "action": "playwright_*", "resource": "*", "effect": "deny" },
   ],
   "mcp": {
     "servers": {
@@ -61,6 +62,11 @@
       "description": "Reviews code for quality, standards adherence, and defects",
       "mode": "subagent",
       "model": "openai/gpt-5.6-luna",
+    },
+    "build": {
+      "permissions": [
+        { "action": "playwright_*", "resource": "*", "effect": "allow" },
+      ],
     },
   },
 }

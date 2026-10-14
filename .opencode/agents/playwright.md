@@ -3,6 +3,10 @@ description: Creates, maintains, and debugs Playwright browser end-to-end tests
 mode: all
 steps: 100
 model: openai/gpt-6-luna
+permissions:
+  - action: playwright_*
+    resource: '*'
+    effect: allow
 ---
 
 # Playwright Specialist Agent Instructions
