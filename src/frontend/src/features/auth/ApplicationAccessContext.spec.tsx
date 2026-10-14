@@ -6,27 +6,31 @@ import { createQueryWrapper, grantedAdminAccess } from '../../test/auth/appAuthG
 import { useApplicationAccessContext } from './ApplicationAccessContext';
 import { AppAuthGate } from './AppAuthGate';
 
-const { getAuthorisationStatusMock, warmStartupQueriesMock, getApplicationAccessMock } =
-  await vi.hoisted(async () => {
-    const { createAppAuthGateMocks } = await import('../../test/auth/appAuthGateTestHelpers');
-    return createAppAuthGateMocks();
-  });
-
-vi.mock('../../services/authService/authService', () => {
+const appAuthGateMocks = await vi.hoisted(async () => {
+  const {
+    createAppAuthGateMocks,
+    createAppAuthGateServiceMockModule,
+    createAppAuthGateSharedQueriesMockModule,
+  } = await import('../../test/auth/appAuthGateTestHelpers');
   return {
-    hasScriptAuthorisation: getAuthorisationStatusMock,
-    getApplicationAccess: getApplicationAccessMock,
+    ...createAppAuthGateMocks(),
+    createAppAuthGateServiceMockModule,
+    createAppAuthGateSharedQueriesMockModule,
   };
 });
+
+vi.mock('../../services/authService/authService', () =>
+  appAuthGateMocks.createAppAuthGateServiceMockModule(appAuthGateMocks)
+);
 
 vi.mock('../../query/sharedQueries', async () => {
   const actual = await vi.importActual<typeof SharedQueriesModule>('../../query/sharedQueries');
 
-  return {
-    ...actual,
-    warmStartupQueries: warmStartupQueriesMock,
-  };
+  return appAuthGateMocks.createAppAuthGateSharedQueriesMockModule(actual, appAuthGateMocks);
 });
+
+const { getAuthorisationStatusMock, warmStartupQueriesMock, getApplicationAccessMock } =
+  appAuthGateMocks;
 
 /**
  * Probes the application access context delivered to the gate's children subtree.
@@ -36,9 +40,7 @@ vi.mock('../../query/sharedQueries', async () => {
 function AccessGateContextProbe() {
   const access = useApplicationAccessContext();
   return (
-    <output data-testid="access-context">
-      {access ? JSON.stringify(access) : 'no-provider'}
-    </output>
+    <output data-testid="access-context">{access ? JSON.stringify(access) : 'no-provider'}</output>
   );
 }
 

@@ -10,13 +10,15 @@ import { render, screen, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createElement } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import type { UseQueryResult } from '@tanstack/react-query';
 import type { AssignmentFull } from '../../services/assignmentAssessment/assignmentAssessment.zod';
 import { ClassPage } from './ClassPage';
-import type { ClassPageData, ClassPageSurfaceState } from './useClassPageData';
-import type { ClassPageAdapterResult } from './classPageAdapter.zod';
-import type { ClassFull } from '../../services/googleClassrooms/classDetail/classDetailService.zod';
 import type { ClassPageContent as ClassPageContentType } from './ClassPageContent';
+import {
+  CLASS_NAME,
+  DEFAULT_CLASS_ID,
+  createClassPageAdapterResult as createAdapterResult,
+  createReadyClassPageData,
+} from '../../test/classPage/classPageFixtures';
 
 // ===========================================================================
 // Mock setup (hoisted to avoid temporal dead zone issues)
@@ -162,104 +164,6 @@ vi.mock('../taskHeatmap/TaskHeatmapTable', () => {
 // Fixture helpers
 // ===========================================================================
 
-const DEFAULT_CLASS_ID = 'class-abc-123';
-const CLASS_NAME = '7A1 Digital Technology 2025-2026';
-
-/**
- * Overridable `ClassFull` partial for test data.
- */
-const DEFAULT_CLASS_FULL: Partial<ClassFull> = {
-  classId: DEFAULT_CLASS_ID,
-  className: CLASS_NAME,
-};
-
-/**
- * Create a minimal `ClassPageAdapterResult` fixture for ready-state tests.
- *
- * @returns {ClassPageAdapterResult} A fixture with default empty arrays.
- */
-function createAdapterResult(): ClassPageAdapterResult {
-  return {
-    recentAssignments: [],
-    studentAverages: [],
-    classMetrics: {
-      completeness: {
-        state: 'computed',
-        value: 4,
-        totalWeight: 1,
-        applicableDataPoints: 1,
-        totalDataPoints: 1,
-      },
-      accuracy: {
-        state: 'computed',
-        value: 3.5,
-        totalWeight: 1,
-        applicableDataPoints: 1,
-        totalDataPoints: 1,
-      },
-      spag: {
-        state: 'notAttempted',
-        value: 'N',
-        totalWeight: 0,
-        applicableDataPoints: 0,
-        totalDataPoints: 1,
-      },
-      overall: {
-        state: 'computed',
-        value: 3.8,
-        totalWeight: 1,
-        applicableDataPoints: 1,
-        totalDataPoints: 1,
-      },
-    },
-  };
-}
-
-/**
- * Create a minimal `ClassPageData` fixture in the ready state.
- *
- * @param {Partial<ClassPageData>} [overrides] - Optional overrides.
- * @returns {ClassPageData} A fixture with default ready surface state.
- */
-function createReadyClassPageData(overrides?: Partial<ClassPageData>): ClassPageData {
-  return {
-    classFull: DEFAULT_CLASS_FULL as ClassFull,
-    classFullQuery: {
-      data: DEFAULT_CLASS_FULL,
-      dataUpdatedAt: 0,
-      error: null,
-      errorUpdatedAt: 0,
-      failureCount: 0,
-      failureReason: null,
-      fetchStatus: 'idle',
-      isError: false,
-      isFetched: true,
-      isFetchedAfterMount: true,
-      isFetching: false,
-      isInitialLoading: false,
-      isLoading: false,
-      isLoadingError: false,
-      isPaused: false,
-      isPending: false,
-      isPlaceholderData: false,
-      isRefetchError: false,
-      isRefetching: false,
-      isStale: false,
-      isSuccess: true,
-      promise: Promise.resolve(DEFAULT_CLASS_FULL),
-      refetch: vi.fn(),
-      status: 'success',
-    } as unknown as UseQueryResult<ClassFull | null, Error>,
-    assignmentDefinitionPartials: [],
-    analyserResult: null,
-    adapterResult: createAdapterResult(),
-    error: null,
-    surfaceState: { status: 'ready' } as ClassPageSurfaceState,
-    refetch: vi.fn(),
-    ...overrides,
-  };
-}
-
 /**
  * Extract the last call's first argument as a record.
  * Returns an empty object if the mock has not been called.
@@ -358,15 +262,20 @@ describe('ClassPage', () => {
 
     // Override the ClassPageContent mock to use the real component so the
     // RecentAssignmentCard → onOpenHeatmap → view transition chain works.
-    const { ClassPageContent: RealClassPageContent } =
-      await vi.importActual<{ ClassPageContent: typeof ClassPageContentType }>('./ClassPageContent');
-    mockClassPageContent.mockImplementation(RealClassPageContent as unknown as typeof mockClassPageContent);
+    const { ClassPageContent: RealClassPageContent } = await vi.importActual<{
+      ClassPageContent: typeof ClassPageContentType;
+    }>('./ClassPageContent');
+    mockClassPageContent.mockImplementation(
+      RealClassPageContent as unknown as typeof mockClassPageContent
+    );
 
     const queryClient = new QueryClient({
       defaultOptions: { queries: { retry: false } },
     });
     render(
-      createElement(QueryClientProvider, { client: queryClient },
+      createElement(
+        QueryClientProvider,
+        { client: queryClient },
         createElement(ClassPage, {
           classId: DEFAULT_CLASS_ID,
         })
@@ -475,8 +384,6 @@ describe('ClassPage', () => {
     await user.click(startButton);
 
     // The modal should have been called again (re-opened)
-    expect(mockAssessTaskModal.mock.calls.length).toBeGreaterThan(
-      callCountBeforeReopen
-    );
+    expect(mockAssessTaskModal.mock.calls.length).toBeGreaterThan(callCountBeforeReopen);
   });
 });

@@ -3,6 +3,7 @@ import { AveragingAnalyser } from './averagingAnalyser';
 import { buildTaskColumns } from '../heatmapAdapter';
 import {
   buildInput,
+  buildSingleStudentInput,
   createAssignmentPartial,
   createDefinitionPartial,
   createSubmission,
@@ -173,24 +174,8 @@ describe('AveragingAnalyser assignment processing', () => {
 
     it('resolves taskWeighting from pre-fetched assignmentDefinitionPartials cross-reference', () => {
       const preFetchedTaskWeighting = 5;
-      const assignment = createAssignmentPartial({
-        assignmentId: 'a_001',
-        definitionKey: 'dk_algebra',
-        tasks: [createTaskPartial('t_001', 1)],
-        submissions: [
-          createSubmission('s_001', 'Alice', 'a_001', {
-            t_001: createSubmissionItem('t_001', { accuracy: { score: 4 } }),
-          }),
-        ],
-      });
-      const input = buildInput(
-        [
-          {
-            classId: 'c_001',
-            studentIds: ['s_001'],
-            assignments: [assignment],
-          },
-        ],
+      const input = buildSingleStudentInput(
+        { accuracy: { score: 4 } },
         {
           assignmentDefinitionPartials: [
             createDefinitionPartial({
@@ -274,24 +259,8 @@ describe('AveragingAnalyser assignment processing', () => {
 
     it('applies the live task weighting from the matching definition partial', () => {
       const preFetchedTaskWeighting = 5;
-      const assignment = createAssignmentPartial({
-        assignmentId: 'a_001',
-        definitionKey: 'dk_algebra',
-        tasks: [createTaskPartial('t_001', 1)],
-        submissions: [
-          createSubmission('s_001', 'Alice', 'a_001', {
-            t_001: createSubmissionItem('t_001', { accuracy: { score: 4 } }),
-          }),
-        ],
-      });
-      const input = buildInput(
-        [
-          {
-            classId: 'c_001',
-            studentIds: ['s_001'],
-            assignments: [assignment],
-          },
-        ],
+      const input = buildSingleStudentInput(
+        { accuracy: { score: 4 } },
         {
           assignmentDefinitionPartials: [
             createDefinitionPartial({

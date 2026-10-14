@@ -4,10 +4,7 @@ import userEvent from '@testing-library/user-event';
 import type * as SharedQueriesModule from '../../query/sharedQueries';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ApiTransportError } from '../../errors/apiTransportError';
-import {
-  getStartupWarmupQueryKey,
-  startupWarmupDatasetKeys,
-} from '../../query/sharedQueries';
+import { getStartupWarmupQueryKey, startupWarmupDatasetKeys } from '../../query/sharedQueries';
 import type { ApplicationAccess } from '../../services/authService/authService.zod';
 import {
   brokenConfigAccess,
@@ -20,27 +17,31 @@ import { createDeferredPromise } from '../../test/shared/testDeferredPromise';
 import { useApplicationAccessContext } from './ApplicationAccessContext';
 import { AppAuthGate } from './AppAuthGate';
 
-const { getAuthorisationStatusMock, warmStartupQueriesMock, getApplicationAccessMock } =
-  await vi.hoisted(async () => {
-    const { createAppAuthGateMocks } = await import('../../test/auth/appAuthGateTestHelpers');
-    return createAppAuthGateMocks();
-  });
-
-vi.mock('../../services/authService/authService', () => {
+const appAuthGateMocks = await vi.hoisted(async () => {
+  const {
+    createAppAuthGateMocks,
+    createAppAuthGateServiceMockModule,
+    createAppAuthGateSharedQueriesMockModule,
+  } = await import('../../test/auth/appAuthGateTestHelpers');
   return {
-    hasScriptAuthorisation: getAuthorisationStatusMock,
-    getApplicationAccess: getApplicationAccessMock,
+    ...createAppAuthGateMocks(),
+    createAppAuthGateServiceMockModule,
+    createAppAuthGateSharedQueriesMockModule,
   };
 });
+
+vi.mock('../../services/authService/authService', () =>
+  appAuthGateMocks.createAppAuthGateServiceMockModule(appAuthGateMocks)
+);
 
 vi.mock('../../query/sharedQueries', async () => {
   const actual = await vi.importActual<typeof SharedQueriesModule>('../../query/sharedQueries');
 
-  return {
-    ...actual,
-    warmStartupQueries: warmStartupQueriesMock,
-  };
+  return appAuthGateMocks.createAppAuthGateSharedQueriesMockModule(actual, appAuthGateMocks);
 });
+
+const { getAuthorisationStatusMock, warmStartupQueriesMock, getApplicationAccessMock } =
+  appAuthGateMocks;
 
 /**
  * Probes the application access context and renders a protected-child marker so the

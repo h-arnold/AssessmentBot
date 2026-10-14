@@ -18,9 +18,12 @@ import userEvent from '@testing-library/user-event';
 import { createElement } from 'react';
 import { ClassPageContent } from './ClassPageContent';
 import type { ClassPageSurfaceState, ClassPageError } from './useClassPageData';
-import type { ClassPageAdapterResult } from './classPageAdapter.zod';
 import type { AveragingResult } from '../../services/dataAnalysis/dataAnalysis.zod';
 import type { ClassFull } from '../../services/googleClassrooms/classDetail/classDetailService.zod';
+import {
+  createClassPageAdapterResult as createAdapterResult,
+  createReadyClassPageData,
+} from '../../test/classPage/classPageFixtures';
 
 // ===========================================================================
 // Mock setup
@@ -73,48 +76,6 @@ vi.mock('../taskHeatmap/TaskHeatmapPage', () => {
 // ===========================================================================
 
 /**
- * Create a minimal `ClassPageAdapterResult` fixture for ready-state tests.
- *
- * @returns {ClassPageAdapterResult} The fixed ready-state fixture.
- */
-function createAdapterResult(): ClassPageAdapterResult {
-  return {
-    recentAssignments: [],
-    studentAverages: [],
-    classMetrics: {
-      completeness: {
-        state: 'computed',
-        value: 4,
-        totalWeight: 1,
-        applicableDataPoints: 1,
-        totalDataPoints: 1,
-      },
-      accuracy: {
-        state: 'computed',
-        value: 3.5,
-        totalWeight: 1,
-        applicableDataPoints: 1,
-        totalDataPoints: 1,
-      },
-      spag: {
-        state: 'notAttempted',
-        value: 'N',
-        totalWeight: 0,
-        applicableDataPoints: 0,
-        totalDataPoints: 1,
-      },
-      overall: {
-        state: 'computed',
-        value: 3.8,
-        totalWeight: 1,
-        applicableDataPoints: 1,
-        totalDataPoints: 1,
-      },
-    },
-  };
-}
-
-/**
  * Extract the first call's first argument as a record.
  * Returns an empty object if the mock has not been called.
  *
@@ -126,6 +87,34 @@ function getFirstCallArguments(mock: ReturnType<typeof vi.fn>): Record<string, u
     return {};
   }
   return mock.mock.calls[0][0] as Record<string, unknown>;
+}
+
+type ClassPageContentProperties = Parameters<typeof ClassPageContent>[0];
+
+/**
+ * Renders the dispatcher with the shared ready fixture and focused overrides.
+ * @param {Partial<ClassPageContentProperties>} overrides - State and property overrides for the test.
+ */
+function renderClassPageContent(overrides: Partial<ClassPageContentProperties> = {}): void {
+  const readyData = createReadyClassPageData();
+  render(
+    createElement(ClassPageContent, {
+      surfaceState: readyData.surfaceState,
+      adapterResult: readyData.adapterResult,
+      error: readyData.error,
+      onStartNewAssessment: vi.fn(),
+      onNavigateToClasses: vi.fn(),
+      onRetry: vi.fn(),
+      analyserResult: readyData.analyserResult,
+      classFull: readyData.classFull,
+      selectedView: { view: 'overview' },
+      onOpenHeatmap: vi.fn(),
+      onBack: vi.fn(),
+      refetch: readyData.refetch,
+      assignmentDefinitionPartials: readyData.assignmentDefinitionPartials,
+      ...overrides,
+    })
+  );
 }
 
 // ===========================================================================
@@ -156,23 +145,7 @@ describe('ClassPageContent', () => {
   it('renders skeleton placeholders when surfaceState.status is loading', () => {
     const surfaceState: ClassPageSurfaceState = { status: 'loading' };
 
-    render(
-      createElement(ClassPageContent, {
-        surfaceState,
-        adapterResult: null,
-        error: null,
-        onStartNewAssessment: vi.fn(),
-        onNavigateToClasses: vi.fn(),
-        onRetry: vi.fn(),
-        analyserResult: null,
-        classFull: null,
-        selectedView: { view: 'overview' },
-        onOpenHeatmap: vi.fn(),
-        onBack: vi.fn(),
-        refetch: vi.fn(),
-        assignmentDefinitionPartials: null,
-      })
-    );
+    renderClassPageContent({ surfaceState, adapterResult: null, analyserResult: null, classFull: null });
 
     // The loading state renders Ant Design Skeleton components.
     // Skeleton renders with a CSS class .ant-skeleton.
@@ -196,23 +169,7 @@ describe('ClassPageContent', () => {
       error: blockingError,
     };
 
-    render(
-      createElement(ClassPageContent, {
-        surfaceState,
-        adapterResult: null,
-        error: blockingError,
-        onStartNewAssessment: vi.fn(),
-        onNavigateToClasses,
-        onRetry,
-        analyserResult: null,
-        classFull: null,
-        selectedView: { view: 'overview' },
-        onOpenHeatmap: vi.fn(),
-        onBack: vi.fn(),
-        refetch: vi.fn(),
-        assignmentDefinitionPartials: null,
-      })
-    );
+    renderClassPageContent({ surfaceState, error: blockingError, onNavigateToClasses, onRetry });
 
     // Should render Result with status="warning" and title "Couldn't load class"
     expect(screen.getByText("Couldn't load class")).toBeInTheDocument();
@@ -242,23 +199,7 @@ describe('ClassPageContent', () => {
       error: blockingError,
     };
 
-    render(
-      createElement(ClassPageContent, {
-        surfaceState,
-        adapterResult: null,
-        error: blockingError,
-        onStartNewAssessment: vi.fn(),
-        onNavigateToClasses,
-        onRetry,
-        analyserResult: null,
-        classFull: null,
-        selectedView: { view: 'overview' },
-        onOpenHeatmap: vi.fn(),
-        onBack: vi.fn(),
-        refetch: vi.fn(),
-        assignmentDefinitionPartials: null,
-      })
-    );
+    renderClassPageContent({ surfaceState, error: blockingError, onNavigateToClasses, onRetry });
 
     // Should render Result with status="warning" and title "Couldn't compute averages"
     expect(screen.getByText("Couldn't compute averages")).toBeInTheDocument();
@@ -287,23 +228,7 @@ describe('ClassPageContent', () => {
       error: blockingError,
     };
 
-    render(
-      createElement(ClassPageContent, {
-        surfaceState,
-        adapterResult: null,
-        error: blockingError,
-        onStartNewAssessment: vi.fn(),
-        onNavigateToClasses,
-        onRetry,
-        analyserResult: null,
-        classFull: null,
-        selectedView: { view: 'overview' },
-        onOpenHeatmap: vi.fn(),
-        onBack: vi.fn(),
-        refetch: vi.fn(),
-        assignmentDefinitionPartials: null,
-      })
-    );
+    renderClassPageContent({ surfaceState, error: blockingError, onNavigateToClasses, onRetry });
 
     // Should render Result with status="warning" and title "Couldn't load assessment definitions"
     expect(screen.getByText("Couldn't load assessment definitions")).toBeInTheDocument();
@@ -332,23 +257,7 @@ describe('ClassPageContent', () => {
       error: blockingError,
     };
 
-    render(
-      createElement(ClassPageContent, {
-        surfaceState,
-        adapterResult: null,
-        error: blockingError,
-        onStartNewAssessment: vi.fn(),
-        onNavigateToClasses,
-        onRetry,
-        analyserResult: null,
-        classFull: null,
-        selectedView: { view: 'overview' },
-        onOpenHeatmap: vi.fn(),
-        onBack: vi.fn(),
-        refetch: vi.fn(),
-        assignmentDefinitionPartials: null,
-      })
-    );
+    renderClassPageContent({ surfaceState, error: blockingError, onNavigateToClasses, onRetry });
 
     // Should render Result with status="warning" and title "Assessment definitions are unavailable"
     expect(screen.getByText('Assessment definitions are unavailable')).toBeInTheDocument();
@@ -379,23 +288,7 @@ describe('ClassPageContent', () => {
       error: blockingError,
     };
 
-    render(
-      createElement(ClassPageContent, {
-        surfaceState,
-        adapterResult: null,
-        error: blockingError,
-        onStartNewAssessment: vi.fn(),
-        onNavigateToClasses,
-        onRetry,
-        analyserResult: null,
-        classFull: null,
-        selectedView: { view: 'overview' },
-        onOpenHeatmap: vi.fn(),
-        onBack: vi.fn(),
-        refetch: vi.fn(),
-        assignmentDefinitionPartials: null,
-      })
-    );
+    renderClassPageContent({ surfaceState, error: blockingError, onNavigateToClasses, onRetry });
 
     // Should render Result with status="error" and title "Class not found"
     expect(screen.getByText('Class not found')).toBeInTheDocument();
@@ -461,23 +354,7 @@ describe('ClassPageContent', () => {
     const adapterResult = createAdapterResult();
     const surfaceState: ClassPageSurfaceState = { status: 'ready' };
 
-    render(
-      createElement(ClassPageContent, {
-        surfaceState,
-        adapterResult,
-        error: null,
-        onStartNewAssessment: vi.fn(),
-        onNavigateToClasses: vi.fn(),
-        onRetry: vi.fn(),
-        analyserResult: null,
-        classFull: null,
-        selectedView: { view: 'overview' },
-        onOpenHeatmap: vi.fn(),
-        onBack: vi.fn(),
-        refetch: vi.fn(),
-        assignmentDefinitionPartials: null,
-      })
-    );
+    renderClassPageContent({ surfaceState, adapterResult });
 
     // The ready state should render RecentAssignmentsSection
     expect(mockRecentAssignmentsSection).toHaveBeenCalled();
@@ -487,9 +364,7 @@ describe('ClassPageContent', () => {
 
     // Verify RecentAssignmentsSection receives the recentAssignments data
     const recentAssignmentsProperties = getFirstCallArguments(mockRecentAssignmentsSection);
-    expect(recentAssignmentsProperties.recentAssignments).toEqual(
-      adapterResult.recentAssignments
-    );
+    expect(recentAssignmentsProperties.recentAssignments).toEqual(adapterResult.recentAssignments);
 
     // Verify StudentAveragesTableCard receives the adapterResult
     const studentTableProperties = getFirstCallArguments(mockStudentAveragesTableCard);
@@ -504,23 +379,14 @@ describe('ClassPageContent', () => {
     const adapterResult = createAdapterResult();
     const surfaceState: ClassPageSurfaceState = { status: 'ready' };
 
-    render(
-      createElement(ClassPageContent, {
-        surfaceState,
-        adapterResult,
-        error: null,
-        onStartNewAssessment: vi.fn(),
-        onNavigateToClasses: vi.fn(),
-        onRetry: vi.fn(),
-        analyserResult: nonNullAnalyserResult,
-        classFull: nonNullClassFull,
-        selectedView: { view: 'heatmap', assignmentId: 'a-1' },
-        onOpenHeatmap: vi.fn(),
-        onBack: vi.fn(),
-        refetch: vi.fn(),
-        assignmentDefinitionPartials: [],
-      })
-    );
+    renderClassPageContent({
+      surfaceState,
+      adapterResult,
+      analyserResult: nonNullAnalyserResult,
+      classFull: nonNullClassFull,
+      selectedView: { view: 'heatmap', assignmentId: 'a-1' },
+      assignmentDefinitionPartials: [],
+    });
 
     // TaskHeatmapPage should receive the correct props
     expect(mockTaskHeatmapPage).toHaveBeenCalledTimes(1);
@@ -543,23 +409,14 @@ describe('ClassPageContent', () => {
     const adapterResult = createAdapterResult();
     const surfaceState: ClassPageSurfaceState = { status: 'ready' };
 
-    render(
-      createElement(ClassPageContent, {
-        surfaceState,
-        adapterResult,
-        error: null,
-        onStartNewAssessment: vi.fn(),
-        onNavigateToClasses: vi.fn(),
-        onRetry: vi.fn(),
-        analyserResult: nonNullAnalyserResult,
-        classFull: nonNullClassFull,
-        selectedView: { view: 'heatmap', assignmentId: 'a-1' },
-        onOpenHeatmap: vi.fn(),
-        onBack: vi.fn(),
-        refetch: vi.fn(),
-        assignmentDefinitionPartials: null,
-      })
-    );
+    renderClassPageContent({
+      surfaceState,
+      adapterResult,
+      analyserResult: nonNullAnalyserResult,
+      classFull: nonNullClassFull,
+      selectedView: { view: 'heatmap', assignmentId: 'a-1' },
+      assignmentDefinitionPartials: null,
+    });
 
     // TaskHeatmapPage should NOT render
     expect(mockTaskHeatmapPage).not.toHaveBeenCalled();

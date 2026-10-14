@@ -138,27 +138,16 @@ describe('MetricResultSchema', () => {
     }).toThrow();
   });
 
-  it('rejects notAttempted state with applicableDataPoints > 0', async () => {
+  it.each([
+    ['notAttempted', 'N'],
+    ['error', 'E'],
+  ] as const)('rejects %s state with applicableDataPoints > 0', async (state, value) => {
     const { MetricResultSchema } = await loadDataAnalysisZod();
 
     expect(() => {
       return MetricResultSchema.parse({
-        state: 'notAttempted',
-        value: 'N',
-        totalWeight: 0,
-        applicableDataPoints: 1,
-        totalDataPoints: 1,
-      });
-    }).toThrow();
-  });
-
-  it('rejects error state with applicableDataPoints > 0', async () => {
-    const { MetricResultSchema } = await loadDataAnalysisZod();
-
-    expect(() => {
-      return MetricResultSchema.parse({
-        state: 'error',
-        value: 'E',
+        state,
+        value,
         totalWeight: 0,
         applicableDataPoints: 1,
         totalDataPoints: 1,

@@ -10,6 +10,43 @@ export type AppAuthGateMocks = Readonly<{
   warmStartupQueriesMock: ReturnType<typeof vi.fn>;
 }>;
 
+export type AppAuthGateServiceMockModule = Readonly<{
+  hasScriptAuthorisation: AppAuthGateMocks['getAuthorisationStatusMock'];
+  getApplicationAccess: AppAuthGateMocks['getApplicationAccessMock'];
+}>;
+
+/**
+ * Creates the auth-service module shape used by each spec's local Vitest mock.
+ *
+ * @param {AppAuthGateMocks} mocks The spec-local service mocks.
+ * @returns {AppAuthGateServiceMockModule} The mocked auth-service exports.
+ */
+export function createAppAuthGateServiceMockModule(
+  mocks: AppAuthGateMocks
+): AppAuthGateServiceMockModule {
+  return {
+    hasScriptAuthorisation: mocks.getAuthorisationStatusMock,
+    getApplicationAccess: mocks.getApplicationAccessMock,
+  };
+}
+
+/**
+ * Adds the spec-local startup warm-up mock to the actual shared-query exports.
+ *
+ * @param {T} actual The real shared-query module exports.
+ * @param {AppAuthGateMocks} mocks The spec-local auth-gate mocks.
+ * @returns {T & Readonly<{ warmStartupQueries: AppAuthGateMocks['warmStartupQueriesMock'] }>} The shared-query exports with warm-up replaced by its mock.
+ */
+export function createAppAuthGateSharedQueriesMockModule<T extends object>(
+  actual: T,
+  mocks: AppAuthGateMocks
+): T & Readonly<{ warmStartupQueries: AppAuthGateMocks['warmStartupQueriesMock'] }> {
+  return {
+    ...actual,
+    warmStartupQueries: mocks.warmStartupQueriesMock,
+  };
+}
+
 /**
  * Creates the shared service mocks consumed by the auth gate specs.
  *

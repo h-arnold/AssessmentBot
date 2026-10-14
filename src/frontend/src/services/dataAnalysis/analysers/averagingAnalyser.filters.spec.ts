@@ -12,6 +12,35 @@ import {
 import type { MetricResult } from '../dataAnalysis.zod';
 import { expectMetricResultStateAware } from '../../../test/dataAnalysis/averagingAnalyserAssertions';
 
+/**
+ * Build matching algebra and geometry assignment fixtures for filter tests.
+ * @returns {ReturnType<typeof createAssignmentPartial>[]} Assignment fixtures with distinct definitions and scores.
+ */
+function createAlgebraAndGeometryAssignments() {
+  return [
+    createAssignmentPartial({
+      assignmentId: 'a_algebra',
+      definitionKey: 'dk_algebra',
+      tasks: [createTaskPartial('t_001')],
+      submissions: [
+        createSubmission('s_001', 'Alice', 'a_algebra', {
+          t_001: createSubmissionItem('t_001', { accuracy: { score: 4 } }),
+        }),
+      ],
+    }),
+    createAssignmentPartial({
+      assignmentId: 'a_geometry',
+      definitionKey: 'dk_geometry',
+      tasks: [createTaskPartial('t_001')],
+      submissions: [
+        createSubmission('s_001', 'Alice', 'a_geometry', {
+          t_001: createSubmissionItem('t_001', { accuracy: { score: 5 } }),
+        }),
+      ],
+    }),
+  ];
+}
+
 describe('AveragingAnalyser', () => {
   describe('analyse — filters', () => {
     it('filters assignments by date range, excluding those with createdAt outside [from, to)', () => {
@@ -88,28 +117,7 @@ describe('AveragingAnalyser', () => {
     });
 
     it('filters assignments by topicKeys, excluding non-matching primaryTopicKey', () => {
-      const assignments = [
-        createAssignmentPartial({
-          assignmentId: 'a_algebra',
-          definitionKey: 'dk_algebra',
-          tasks: [createTaskPartial('t_001')],
-          submissions: [
-            createSubmission('s_001', 'Alice', 'a_algebra', {
-              t_001: createSubmissionItem('t_001', { accuracy: { score: 4 } }),
-            }),
-          ],
-        }),
-        createAssignmentPartial({
-          assignmentId: 'a_geometry',
-          definitionKey: 'dk_geometry',
-          tasks: [createTaskPartial('t_001')],
-          submissions: [
-            createSubmission('s_001', 'Alice', 'a_geometry', {
-              t_001: createSubmissionItem('t_001', { accuracy: { score: 5 } }),
-            }),
-          ],
-        }),
-      ];
+      const assignments = createAlgebraAndGeometryAssignments();
       const input: AveragingAnalyserInput = {
         filter: {
           classIds: ['c_001'],
@@ -155,28 +163,7 @@ describe('AveragingAnalyser', () => {
     });
 
     it('filters assignments by assignmentDefinitionKeys, excluding non-matching', () => {
-      const assignments = [
-        createAssignmentPartial({
-          assignmentId: 'a_algebra',
-          definitionKey: 'dk_algebra',
-          tasks: [createTaskPartial('t_001')],
-          submissions: [
-            createSubmission('s_001', 'Alice', 'a_algebra', {
-              t_001: createSubmissionItem('t_001', { accuracy: { score: 4 } }),
-            }),
-          ],
-        }),
-        createAssignmentPartial({
-          assignmentId: 'a_geometry',
-          definitionKey: 'dk_geometry',
-          tasks: [createTaskPartial('t_001')],
-          submissions: [
-            createSubmission('s_001', 'Alice', 'a_geometry', {
-              t_001: createSubmissionItem('t_001', { accuracy: { score: 5 } }),
-            }),
-          ],
-        }),
-      ];
+      const assignments = createAlgebraAndGeometryAssignments();
       const input: AveragingAnalyserInput = {
         filter: {
           classIds: ['c_001'],
