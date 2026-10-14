@@ -58,7 +58,18 @@ This project uses a shared configuration tree so TypeScript and linting standard
   - Magic number policy
   - Consistent type imports
 
-### 2) Component ESLint configs
+### 2) Shared Unicorn preference module
+
+- `config/eslint/unicorn-preference-rules.cjs`
+- Holds the Unicorn preference rules shared by the backend and frontend configs so the two cannot drift. The frontend config (`src/frontend/eslint.config.js`) and the backend root config (`eslint.config.js`) import these maps instead of restating the rules.
+- Exports two maps, preserving the original frontend scoping:
+  - `unicornPreferenceRules` — general shared preferences, applied to backend source and, in the frontend config, unscoped across all frontend files.
+  - `crossRuntimeUnicornPreferenceRules` — the four cross-runtime preferences (`catch-error-name`, `no-null`, `no-keyword-prefix`, `filename-case`), applied to backend source and to frontend TypeScript/TSX files only.
+- Keeps each rule's rationale, caveats and issue links beside the rule it explains.
+- Runtime-specific and file-scoped overrides stay local to their leaf config; only preferences shared across runtimes live here.
+- The move changes no effective rule severity or scope.
+
+### 3) Component ESLint configs
 
 - `src/frontend/eslint.config.js`
   - Imports shared TS base rules.
@@ -222,7 +233,7 @@ npm run lint:builder
 
 When updating TypeScript or lint standards:
 
-1. Update root shared base first (`tsconfig.base.json` or `config/eslint/ts-base-rules.cjs`) when the rule is intended to apply across components.
+1. Update root shared base first (`tsconfig.base.json`, `config/eslint/ts-base-rules.cjs`, or `config/eslint/unicorn-preference-rules.cjs`) when the rule is intended to apply across components.
 2. Update leaf config only for runtime- or component-specific behaviour.
 3. Run affected validation commands:
    - `npm run build:production`

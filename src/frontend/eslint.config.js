@@ -12,6 +12,10 @@ import { defineConfig, globalIgnores } from 'eslint/config';
 const require = createRequire(import.meta.url);
 const { unicodeSecurityRules } = require('../../config/eslint/unicode-security-rules.cjs');
 const {
+  crossRuntimeUnicornPreferenceRules,
+  unicornPreferenceRules,
+} = require('../../config/eslint/unicorn-preference-rules.cjs');
+const {
   security: securityPlugin,
   tsBaseRules,
   sonarjs: sonarjsPlugin,
@@ -23,60 +27,7 @@ export default defineConfig([
   unicorn.configs.all,
   {
     rules: {
-      // Personal preference: conventional starred JSDoc is more readable.
-      'unicorn/no-asterisk-prefix-in-documentation-comments': 'off',
-      'unicorn/single-line-block-comment-style': ['error', 'single-line'],
-      // Personal preference: retain full words in prose while checking standard capitalisation.
-      'unicorn/comment-content': [
-        'error',
-        {
-          replacements: {
-            '\\bapplication\\b(?!/)': false,
-            '\\bapplications\\b': false,
-          },
-        },
-      ],
-      // Personal preference: keep comments wrapped for readability and line-length requirements.
-      'unicorn/no-manually-wrapped-comments': 'off',
-      // Personal preference: action-labelled UI names are clearer than forced noun-based names.
-      'unicorn/no-non-function-verb-prefix': 'off',
-      // Personal preference: common Date/Set expressions are clearer without extra variables.
-      'unicorn/no-unreadable-new-expression': 'off',
-      // Personal preference: consistent object-method syntax is more readable than short arrow properties.
-      'unicorn/prefer-short-arrow-method': 'off',
-      // Personal preference: logical grouping suits constructor-first and public-entrypoint-first layouts.
-      'unicorn/consistent-class-member-order': 'off',
-      // Personal preference: preserve semantic guard order rather than sorting conditions by syntax.
-      // Reordering can skip validation, logging or other side effects.
-      'unicorn/prefer-simple-condition-first': 'off',
-      // Personal preference: retain deliberate promise observers, identity and cleanup ordering.
-      'unicorn/prefer-await': 'off',
-      // Preserve CSS-unit prefix parsing; Number coercion rejects values such as '12px'.
-      'unicorn/prefer-number-coercion': 'off',
-      // Personal preference: preserve descriptive full names rather than enforce abbreviation churn.
-      'unicorn/name-replacements': 'off',
-      // Personal preference: short whitespace fixtures are clearer as literals.
-      'unicorn/prefer-string-repeat': 'off',
-      // Temporal is unavailable in Node 24; GAS/browser compatibility is not established.
-      'unicorn/prefer-temporal': 'off',
-      // Temporarily off: review exception boundaries before enforcing a complexity limit of one.
-      // https://github.com/h-arnold/AssessmentBot/issues/325
-      'unicorn/try-complexity': 'off',
-      // Personal preference: .forEach is readable and preserves existing iteration semantics;
-      // for...of offers no readability benefit here.
-      'unicorn/no-for-each': 'off',
-      // Temporarily disabled pending native Error.isError runtime, typing and recognition investigation.
-      // https://github.com/h-arnold/AssessmentBot/issues/326
-      'unicorn/prefer-error-is-error': 'off',
-      // Temporarily disabled pending a universal custom-error constructor and cause contract.
-      // https://github.com/h-arnold/AssessmentBot/issues/328
-      'unicorn/custom-error-definition': 'off',
-      // Temporarily disabled pending native Error.cause support, descriptors/serialisation and full-cause preservation.
-      // https://github.com/h-arnold/AssessmentBot/issues/328
-      'unicorn/no-error-property-assignment': 'off',
-      // Guard clauses and comparator tie-breaks are clearer as statements; ternaries also
-      // conflict with prefer-logical-operator-over-ternary.
-      'unicorn/prefer-ternary': 'off',
+      ...unicornPreferenceRules,
       // Iterator.concat is absent from Node 24 and the project's ES2024 TypeScript typings.
       'unicorn/prefer-iterator-concat': 'off',
     },
@@ -104,14 +55,10 @@ export default defineConfig([
     },
     rules: {
       ...tsBaseRules,
+      ...crossRuntimeUnicornPreferenceRules,
       // TypeScript's compiler enforces this check; the base ESLint rule is disabled
       // as recommended by https://eslint.org/docs/latest/rules/no-unreachable#handled_by_typescript
       'no-unreachable': 'off',
-      // unicorn rules customization for frontend
-      'unicorn/catch-error-name': 'error',
-      'unicorn/no-null': 'off',
-      'unicorn/no-keyword-prefix': 'off',
-      'unicorn/filename-case': 'off',
       // Disabled by explicit user authorisation: this rule produces hideous workarounds
       // that are no better, and can be worse, than the flagged access. Frontend security
       // relies on sanitising and validating inputs at the relevant boundaries instead.

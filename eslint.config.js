@@ -5,6 +5,10 @@ const unicorn = require('eslint-plugin-unicorn').default;
 const sonarjs = require('eslint-plugin-sonarjs');
 const { unicodeSecurityRules } = require('./config/eslint/unicode-security-rules.cjs');
 const {
+  crossRuntimeUnicornPreferenceRules,
+  unicornPreferenceRules,
+} = require('./config/eslint/unicorn-preference-rules.cjs');
+const {
   security,
   securityRecommendedErrorRules,
   nodeToolingRules,
@@ -92,6 +96,8 @@ module.exports = [
       // instead.
       'security/detect-object-injection': 'off',
       ...unicodeSecurityRules,
+      ...unicornPreferenceRules,
+      ...crossRuntimeUnicornPreferenceRules,
       ...sonarjs.configs.recommended.rules,
       // Temporarily disabled for the backend section only; re-enable requires explicit user approval before modifying these helpers.
       'sonarjs/prefer-single-boolean-return': 'off',
@@ -100,30 +106,7 @@ module.exports = [
       'unicorn/prefer-global-this': 'error',
       // insist on Number.parseInt, Number.parseFloat, etc., instead of globals
       'unicorn/prefer-number-properties': 'error',
-      // Standardize on error names only (catch clauses should use 'error')
-      'unicorn/catch-error-name': 'error',
-      // Personal preference: preserve descriptive full names rather than enforce abbreviation churn.
-      'unicorn/name-replacements': 'off',
       'unicorn/no-array-callback-reference': 'warn',
-      // Disable rules that conflict with GAS naming conventions and preferences
-      'unicorn/no-null': 'off',
-      'unicorn/no-keyword-prefix': 'off',
-      'unicorn/filename-case': 'off',
-      // Personal preference: .forEach is readable and preserves existing iteration semantics;
-      // for...of offers no readability benefit here.
-      'unicorn/no-for-each': 'off',
-      // Temporarily disabled pending native Error.isError runtime, typing and recognition investigation.
-      // https://github.com/h-arnold/AssessmentBot/issues/326
-      'unicorn/prefer-error-is-error': 'off',
-      // Temporarily disabled pending a universal custom-error constructor and cause contract.
-      // https://github.com/h-arnold/AssessmentBot/issues/328
-      'unicorn/custom-error-definition': 'off',
-      // Temporarily disabled pending native Error.cause support, descriptors/serialisation and full-cause preservation.
-      // https://github.com/h-arnold/AssessmentBot/issues/328
-      'unicorn/no-error-property-assignment': 'off',
-      // Guard clauses and comparator tie-breaks are clearer as statements; ternaries also
-      // conflict with prefer-logical-operator-over-ternary.
-      'unicorn/prefer-ternary': 'off',
       // Preserve the documented per-singleton getInstance forwarding convention.
       'unicorn/no-useless-override': 'off',
       // Keep the Node 24 Buffer test fallback; Uint8Array#toBase64 is unavailable there.
@@ -136,43 +119,6 @@ module.exports = [
       // Personal preference: preserve explicit class/prototype/helper bindings alongside
       // receiver-relative singleton inheritance; replacing either changes static call semantics.
       'unicorn/class-reference-in-static-methods': 'off',
-      // Personal preference: conventional starred JSDoc is more readable.
-      'unicorn/no-asterisk-prefix-in-documentation-comments': 'off',
-      'unicorn/single-line-block-comment-style': ['error', 'single-line'],
-      // Personal preference: retain full words in prose while checking standard capitalisation.
-      'unicorn/comment-content': [
-        'error',
-        {
-          replacements: {
-            '\\bapplication\\b(?!/)': false,
-            '\\bapplications\\b': false,
-          },
-        },
-      ],
-      // Personal preference: keep comments wrapped for readability and line-length requirements.
-      'unicorn/no-manually-wrapped-comments': 'off',
-      // Personal preference: action-labelled UI names are clearer than forced noun-based names.
-      'unicorn/no-non-function-verb-prefix': 'off',
-      // Personal preference: common Date/Set expressions are clearer without extra variables.
-      'unicorn/no-unreadable-new-expression': 'off',
-      // Personal preference: consistent object-method syntax is more readable than short arrow properties.
-      'unicorn/prefer-short-arrow-method': 'off',
-      // Personal preference: logical grouping suits constructor-first and public-entrypoint-first layouts.
-      'unicorn/consistent-class-member-order': 'off',
-      // Personal preference: preserve semantic guard order rather than sorting conditions by syntax.
-      // Reordering can skip validation, logging or other side effects.
-      'unicorn/prefer-simple-condition-first': 'off',
-      // Personal preference: retain deliberate promise chaining without adding async wrappers.
-      'unicorn/prefer-await': 'off',
-      // Preserve prefix parsing and existing validation; Number coercion changes accepted inputs.
-      'unicorn/prefer-number-coercion': 'off',
-      // Personal preference: short whitespace fixtures are clearer as literals.
-      'unicorn/prefer-string-repeat': 'off',
-      // Temporal is unavailable in Node 24; GAS/browser compatibility is not established.
-      'unicorn/prefer-temporal': 'off',
-      // Temporarily off: review exception boundaries before enforcing a complexity limit of one.
-      // https://github.com/h-arnold/AssessmentBot/issues/325
-      'unicorn/try-complexity': 'off',
       // Prevent accidental redefinition of BaseSingleton outside the canonical file.
       'no-restricted-syntax': [
         'error',
