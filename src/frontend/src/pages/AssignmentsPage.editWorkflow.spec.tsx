@@ -15,7 +15,7 @@ import {
   mockUpsertResponse,
   readyAssignmentPartialRows,
 } from '../test/assignmentDefinition/assignmentDefinitionTestFixtures';
-import { setupQueryClientWithAssignmentsData } from '../test/assignmentDefinition/assignmentsPageTestHelpers';
+import { openUpdateAssignmentModal } from '../test/assignmentDefinition/assignmentsPageTestHelpers';
 import { AssignmentsPage } from './AssignmentsPage';
 
 const {
@@ -73,6 +73,15 @@ vi.mock('../services/googleClassrooms/classPartialsService', () => {
   };
 });
 const readyRows = [...readyAssignmentPartialRows];
+
+const safeAssignmentUpdateSetupOptions = {
+  partialRows: [...readyRows],
+  topics: mockTopics,
+  yearGroups: mockYearGroups,
+  assignmentDefinition: mockFullAssignmentDefinition,
+  definitionKey: 'alg-10-safe',
+};
+
 describe('AssignmentsPage edit workflow', () => {
   let userEventInstance: ReturnType<typeof userEvent.setup>;
   beforeEach(() => {
@@ -154,27 +163,7 @@ describe('AssignmentsPage edit workflow', () => {
 
     it('document change disables metadata and task weighting inputs until re-parse or cancel', async () => {
       const { queryClient } = renderWithFrontendProviders(<AssignmentsPage />);
-
-      // Pre-populate the query cache with the definition data for update mode
-      setupQueryClientWithAssignmentsData(queryClient, {
-        partialRows: [...readyRows],
-        topics: mockTopics,
-        yearGroups: mockYearGroups,
-        assignmentDefinition: mockFullAssignmentDefinition,
-        definitionKey: 'alg-10-safe',
-      });
-
-      const table = await screen.findByRole('table', { name: 'Assignment definitions table' });
-      const safeRow = within(table).getByRole('row', { name: /algebra foundations/i });
-
-      // Row should have update action
-      const updateButton = within(safeRow).getByRole('button', { name: /update/i });
-      expect(updateButton).toBeInTheDocument();
-
-      // Click update
-      fireEvent.click(updateButton);
-
-      const modal = await waitFor(() => screen.getByRole('dialog', { name: /update assignment/i }));
+      const modal = await openUpdateAssignmentModal(queryClient, safeAssignmentUpdateSetupOptions);
 
       // Change document URL using userEvent for Ant Design Form compatibility
       const referenceUrlInput = within(modal).getByRole('textbox', {
@@ -212,23 +201,7 @@ describe('AssignmentsPage edit workflow', () => {
 
     it('cancel restores persisted URLs and re-enables other fields', async () => {
       const { queryClient } = renderWithFrontendProviders(<AssignmentsPage />);
-
-      // Pre-populate the query cache with the definition data for update mode
-      setupQueryClientWithAssignmentsData(queryClient, {
-        partialRows: [...readyRows],
-        topics: mockTopics,
-        yearGroups: mockYearGroups,
-        assignmentDefinition: mockFullAssignmentDefinition,
-        definitionKey: 'alg-10-safe',
-      });
-
-      const table = await screen.findByRole('table', { name: 'Assignment definitions table' });
-      const safeRow = within(table).getByRole('row', { name: /algebra foundations/i });
-
-      // Click update
-      fireEvent.click(within(safeRow).getByRole('button', { name: /update/i }));
-
-      const modal = await waitFor(() => screen.getByRole('dialog', { name: /update assignment/i }));
+      const modal = await openUpdateAssignmentModal(queryClient, safeAssignmentUpdateSetupOptions);
 
       // Store original URLs
       const referenceUrlInput = within(modal).getByRole('textbox', {
@@ -285,23 +258,7 @@ describe('AssignmentsPage edit workflow', () => {
 
     it('re-parse refreshes task rows and preserves matching weightings', async () => {
       const { queryClient } = renderWithFrontendProviders(<AssignmentsPage />);
-
-      // Pre-populate the query cache with the definition data for update mode
-      setupQueryClientWithAssignmentsData(queryClient, {
-        partialRows: [...readyRows],
-        topics: mockTopics,
-        yearGroups: mockYearGroups,
-        assignmentDefinition: mockFullAssignmentDefinition,
-        definitionKey: 'alg-10-safe',
-      });
-
-      const table = await screen.findByRole('table', { name: 'Assignment definitions table' });
-      const safeRow = within(table).getByRole('row', { name: /algebra foundations/i });
-
-      // Click update
-      fireEvent.click(within(safeRow).getByRole('button', { name: /update/i }));
-
-      const modal = await waitFor(() => screen.getByRole('dialog', { name: /update assignment/i }));
+      const modal = await openUpdateAssignmentModal(queryClient, safeAssignmentUpdateSetupOptions);
 
       // Change document URL using userEvent
       const referenceUrlInput = within(modal).getByRole('textbox', {
@@ -366,23 +323,7 @@ describe('AssignmentsPage edit workflow', () => {
 
     it('dirty metadata or weighting edits disable document URL fields until save or discard-by-close', async () => {
       const { queryClient } = renderWithFrontendProviders(<AssignmentsPage />);
-
-      // Pre-populate the query cache with the definition data for update mode
-      setupQueryClientWithAssignmentsData(queryClient, {
-        partialRows: [...readyRows],
-        topics: mockTopics,
-        yearGroups: mockYearGroups,
-        assignmentDefinition: mockFullAssignmentDefinition,
-        definitionKey: 'alg-10-safe',
-      });
-
-      const table = await screen.findByRole('table', { name: 'Assignment definitions table' });
-      const safeRow = within(table).getByRole('row', { name: /algebra foundations/i });
-
-      // Click update
-      fireEvent.click(within(safeRow).getByRole('button', { name: /update/i }));
-
-      const modal = await waitFor(() => screen.getByRole('dialog', { name: /update assignment/i }));
+      const modal = await openUpdateAssignmentModal(queryClient, safeAssignmentUpdateSetupOptions);
 
       // Edit metadata using userEvent
       const titleInput = within(modal).getByRole('textbox', { name: /assignment title/i });
