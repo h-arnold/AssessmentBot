@@ -37,6 +37,25 @@ afterEach(() => {
   vi.resetAllMocks();
 });
 
+/** Seeds the shared ready query and analysis pipeline mocks.
+ * @param {ReturnType<typeof createClassFull>} classFull - Class query data.
+ * @param {ReturnType<typeof vi.fn>} queryRefetch - Class query refetch mock.
+ * @param {ReturnType<typeof vi.fn>} datasetRefetch - Dataset query refetch mock.
+ */
+function seedReadyState(
+  classFull: ReturnType<typeof createClassFull>,
+  queryRefetch: ReturnType<typeof vi.fn>,
+  datasetRefetch: ReturnType<typeof vi.fn>
+) {
+  mockAnalyse.mockReturnValue([createAveragingResult()]);
+  mockAdaptClassPageToViewModel.mockReturnValue(createAdapterResult());
+  mockGetABClassQueryOptions.mockReturnValue(createABClassQueryOptionsFixture(DEFAULT_CLASS_ID));
+  mockUseQuery.mockReturnValue(
+    createMockClassQueryResult({ data: classFull, refetch: queryRefetch })
+  );
+  mockUsePageDataset.mockReturnValue(createPageDatasetReturn({ refetch: datasetRefetch }));
+}
+
 // Memoisation and refetch contracts.
 describe('memoisation (referential equality)', () => {
   it.each([
@@ -157,19 +176,10 @@ describe('memoisation invalidation', () => {
 describe('refetch dual-query contract', () => {
   it('calls refetch on both the per-class and dataset queries when refetch() is invoked', () => {
     const classFull = createClassFull();
-    const averagingResult = createAveragingResult();
-    const adapterResult = createAdapterResult();
     const queryRefetchMock = vi.fn();
     const adpRefetchMock = vi.fn();
 
-    mockAnalyse.mockReturnValue([averagingResult]);
-    mockAdaptClassPageToViewModel.mockReturnValue(adapterResult);
-
-    mockGetABClassQueryOptions.mockReturnValue(createABClassQueryOptionsFixture(DEFAULT_CLASS_ID));
-    mockUseQuery.mockReturnValue(
-      createMockClassQueryResult({ data: classFull, refetch: queryRefetchMock })
-    );
-    mockUsePageDataset.mockReturnValue(createPageDatasetReturn({ refetch: adpRefetchMock }));
+    seedReadyState(classFull, queryRefetchMock, adpRefetchMock);
 
     const { result } = renderHook(() => useClassPageData(DEFAULT_CLASS_ID), { wrapper });
 
@@ -223,19 +233,10 @@ describe('refetch dual-query contract', () => {
 
   it('remains stable across renders when neither refetch reference changes', () => {
     const classFull = createClassFull();
-    const averagingResult = createAveragingResult();
-    const adapterResult = createAdapterResult();
     const queryRefetchMock = vi.fn();
     const adpRefetchMock = vi.fn();
 
-    mockAnalyse.mockReturnValue([averagingResult]);
-    mockAdaptClassPageToViewModel.mockReturnValue(adapterResult);
-
-    mockGetABClassQueryOptions.mockReturnValue(createABClassQueryOptionsFixture(DEFAULT_CLASS_ID));
-    mockUseQuery.mockReturnValue(
-      createMockClassQueryResult({ data: classFull, refetch: queryRefetchMock })
-    );
-    mockUsePageDataset.mockReturnValue(createPageDatasetReturn({ refetch: adpRefetchMock }));
+    seedReadyState(classFull, queryRefetchMock, adpRefetchMock);
 
     const { rerender, result } = renderHook(
       (properties: { classId: string }) => useClassPageData(properties.classId),
@@ -251,22 +252,13 @@ describe('refetch dual-query contract', () => {
 
   it('updates to use the new refs when classId changes', () => {
     const classFull = createClassFull();
-    const averagingResult = createAveragingResult();
-    const adapterResult = createAdapterResult();
     const initialQueryRefetchMock = vi.fn();
     const initialAdpRefetchMock = vi.fn();
     const newClassId = 'class-xyz-789';
     const newQueryRefetchMock = vi.fn();
     const newAdpRefetchMock = vi.fn();
 
-    mockAnalyse.mockReturnValue([averagingResult]);
-    mockAdaptClassPageToViewModel.mockReturnValue(adapterResult);
-
-    mockGetABClassQueryOptions.mockReturnValue(createABClassQueryOptionsFixture(DEFAULT_CLASS_ID));
-    mockUseQuery.mockReturnValue(
-      createMockClassQueryResult({ data: classFull, refetch: initialQueryRefetchMock })
-    );
-    mockUsePageDataset.mockReturnValue(createPageDatasetReturn({ refetch: initialAdpRefetchMock }));
+    seedReadyState(classFull, initialQueryRefetchMock, initialAdpRefetchMock);
 
     const { rerender, result } = renderHook(
       (properties: { classId: string }) => useClassPageData(properties.classId),
