@@ -1,5 +1,9 @@
 # AssessmentBot – Core Agent Contract
 
+This file defines cross-component rules only; component-specific rules live in the component `AGENTS.md` files.
+
+## 1. Project Overview
+
 AssessmentBot is a Google Apps Script tool that marks student submissions to Google Classroom assignments across three criteria — Completeness, Accuracy, and SPaG — for each task. For the project overview, see `README.md`; for the scoring model, see `docs/pedagogy/data-analysis-scoring.md`.
 
 **Stack**
@@ -10,9 +14,11 @@ AssessmentBot is a Google Apps Script tool that marks student submissions to Goo
 - **LLM marking:** the backend sends assessment requests to a separately deployed [Assessment Bot LLM Service](https://github.com/h-arnold/AssessmentBot-LLM-Service).
 - **Build:** Node-based TypeScript pipeline in `scripts/builder`.
 
-This file defines cross-component rules only.
+## 2. Prime Directives
 
-### 1. Core Principles (All Components)
+These apply to all components.
+
+### 2.1 Coding Principles
 
 1. KISS: implement the simplest working solution.
 2. Fail fast and loudly in development; never hide errors behind catch-and-ignore logic.
@@ -23,12 +29,25 @@ This file defines cross-component rules only.
 7. Never set defaults unless explicitly instructed to do so.
 8. Do not add production code purely to satisfy tests.
 9. Keep changes minimal, localised, and consistent with existing patterns.
-10. Never disable lint rules without express permission from the user; if a rule triggers cascading failures, stop and ask before turning it off.
-11. **Never push commits that fail pre-commit hooks (lint, type-check, tests).** If the pre-commit hook fails, fix all errors before committing. Do not use `--no-verify` or any other method to bypass hooks.
-12. **Default values must be set in a module's constructor only.** If defaults are found elsewhere, they should be opportunistically moved to the constructor of the module.
-13. **Worktree awareness.** Other agents may be working concurrently. Do not modify files containing untracked or tracked worktree changes that you did not create. Verify with `git status` before editing.
+10. **Default values must be set in a module's constructor only.** If defaults are found elsewhere, they should be opportunistically moved to the constructor of the module.
 
-### 2. Delegation Protocol
+### 2.2 Codebase Conduct
+
+1. Never disable lint rules without express permission from the user; if a rule triggers cascading failures, stop and ask before turning it off.
+2. **Never push commits that fail pre-commit hooks (lint, type-check, tests).** If the pre-commit hook fails, fix all errors before committing. Do not use `--no-verify` or any other method to bypass hooks.
+3. **Worktree awareness.** Other agents may be working concurrently. Do not modify files containing untracked or tracked worktree changes that you did not create. Verify with `git status` before editing.
+
+## 3. Working Environment
+
+### 3.1 Temporary Workspace
+
+All agents **must** use `.opencode/scratchpad/` as the temporary workspace for files that should not be tracked by git. Use this instead of `/tmp` or other system temp directories when writing ephemeral artefacts (e.g. diagnostic dumps, intermediate reports, exploration notes). This directory is already covered by `.gitignore` and will never be committed.
+
+### 3.2 Ambiguity Rule
+
+State 1-2 concise assumptions and proceed with the simplest compliant implementation. The prime directives still apply when you make assumptions.
+
+## 4. Delegation Protocol
 
 Project agents are defined in `.opencode/agents` (source of truth). opencode injects the available agent list at runtime; delegate using those agent IDs.
 
@@ -50,35 +69,9 @@ Sub-agent handoffs must include a `Mandatory Reading` section listing mandatory 
 `@`-prefixed paths. Do not re-list documentation the sub-agent is already required to read per its own instructions.
 Injection of these paths is what makes the documentation available, so no further read-evidence gate is required.
 
-### 3. Shared Config Rule
+Prompt sub-agents in unambiguous, imperative language. State the required deliverable and the constraints explicitly: name what the sub-agent must produce, and set out the scope limits, forbidden actions, and conventions to follow. Sub-agents cannot infer unstated intent, so do not rely on implication.
 
-Before changing any TypeScript or ESLint configuration, read:
-
-- `docs/developer/builder/TypeScriptAndLintConfigHierarchy.md`
-
-Keep shared standards in shared/root config and runtime-specific behaviour in leaf configs.
-
-### 3.1 Policy source-of-truth signposts
-
-To avoid policy drift, keep detailed policy in dedicated docs and use AGENTS files as routing signposts only:
-
-- Backend logging and error-handling policy: `docs/developer/backend/backend-logging-and-error-handling.md`
-- Frontend logging and error-handling policy: `docs/developer/frontend/frontend-logging-and-error-handling.md`
-- Frontend testing policy and commands: `docs/developer/frontend/frontend-testing.md`
-
-Module-specific test file naming and location conventions belong in the module testing docs; do not duplicate them in `AGENTS.md` files.
-
-If guidance appears in multiple places, update the canonical doc first, then keep AGENTS references brief and consistent.
-
-Any change that alters documented behaviour must carry its canonical documentation update in the same change. Delegate documentation updates to the `Docs` agent (`.opencode/agents/docs.md`) and canonical data-shape specification updates to the `Data Shapes Agent` (`.opencode/agents/data-shapes-agent.md`).
-
-### 4. Agentic Workflow for Non-Trivial Changes
-
-Planning is for full features or material product/design changes that need a specification and phased delivery plan. Do not create `SPEC.md` or `ACTION_PLAN.md` for small, well-scoped fixes such as isolated code-review findings; implement those directly after reading the relevant component instructions.
-
-If `SPEC.md`, any required frontend layout spec, or `ACTION_PLAN.md` are missing or materially stale for the requested work, delegate planning to `Planner` first and use the resulting artefacts as the source of truth for the implementation loop below.
-
-Planning artefacts should pass through `Planner Reviewer` after each document draft so gaps or contradictions are corrected before later planning documents inherit them.
+## 5. Implementation and Review Loop
 
 For non-trivial code changes (multi-file logic changes, behavioural changes, refactors, or risky fixes), follow this mandatory loop:
 
@@ -97,17 +90,10 @@ Rules:
 - Do not mark non-trivial work complete before a clean reviewer pass.
 - Preserve explicit handoff context each cycle: changed files, review findings, constraints, and acceptance criteria.
 - Keep the loop scoped to the requested task; avoid opportunistic refactors unless requested.
-- When using `ACTION_PLAN.md`, include phase-level mandatory documentation paths for
-  delegated agents as `@`-prefixed worktree-relative paths (e.g. `@ACTION_PLAN.md`,
-  `@SPEC.md`) so opencode injects their contents.
 
-### 5. Ambiguity Rule
+## 6. Commands and Configuration
 
-State 1-2 concise assumptions and proceed with the simplest compliant implementation.
-
-**REMEMBER**: You must always adhere to the prime directives and core principles, even when making assumptions.
-
-### 6. Lint Command Hierarchy
+### 6.1 Lint Command Hierarchy
 
 When validating lint output, use the runtime-specific commands defined in the config hierarchy:
 
@@ -120,8 +106,28 @@ Do not run frontend or builder files through the root backend ESLint command dir
 
 The complete command set is defined in `package.json`; run the full local gate with `npm run run-all-checks` (lint, coverage, and production build).
 
-### 7. Temporary Workspace Convention
+### 6.2 Shared Config Rule
 
-All agents **must** use `.opencode/scratchpad/` as the temporary workspace for files that should not be tracked by git. Use this instead of `/tmp` or other system temp directories when writing ephemeral artefacts (e.g. diagnostic dumps, intermediate reports, exploration notes). This directory is already covered by `.gitignore` and will never be committed.
+Before changing any TypeScript or ESLint configuration, read:
 
-Do not write planning artefacts (`SPEC.md`, `ACTION_PLAN.md`, layout specs, etc.) to scratchpad — those belong in the project root where the orchestrator can retrieve them.
+- `docs/developer/builder/TypeScriptAndLintConfigHierarchy.md`
+
+Keep shared standards in shared/root config and runtime-specific behaviour in leaf configs.
+
+## 7. Documentation and Policy Ownership
+
+### 7.1 Policy Source-of-Truth Signposts
+
+To avoid policy drift, keep detailed policy in dedicated docs and use AGENTS files as routing signposts only:
+
+- Backend logging and error-handling policy: `docs/developer/backend/backend-logging-and-error-handling.md`
+- Frontend logging and error-handling policy: `docs/developer/frontend/frontend-logging-and-error-handling.md`
+- Frontend testing policy and commands: `docs/developer/frontend/frontend-testing.md`
+
+Module-specific test file naming and location conventions belong in the module testing docs; do not duplicate them in `AGENTS.md` files.
+
+If guidance appears in multiple places, update the canonical doc first, then keep AGENTS references brief and consistent.
+
+### 7.2 Same-Change Documentation Obligation
+
+Any change that alters documented behaviour must carry its canonical documentation update in the same change. Delegate documentation updates to the `Docs` agent (`.opencode/agents/docs.md`) and canonical data-shape specification updates to the `Data Shapes Agent` (`.opencode/agents/data-shapes-agent.md`).

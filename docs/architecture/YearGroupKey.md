@@ -81,7 +81,7 @@ The assignment definition creation path contained significant technical debt:
 This approach was selected because it:
 
 1. **Addresses Root Causes**: Directly eliminates the ambiguity between `yearGroup` and `yearGroupKey`
-2. **Enforces Standards**: Implements the validation ownership rules from `src/backend/AGENTS.md` §0.2
+2. **Enforces Standards**: Implements the validation ownership rules from `src/backend/AGENTS.md` §1.2
 3. **Fail-Fast Principle**: Makes deprecated usage immediately visible, preventing hidden bugs
 4. **Architectural Consistency**: Aligns with existing patterns (controller-resolution for reference data)
 5. **Maintainability**: Reduces code paths and simplifies the mental model for developers
@@ -98,7 +98,7 @@ is recorded in the implementation commits and the current `yearGroupKey` contrac
 
 ## Related Documents
 
-- `src/backend/AGENTS.md` §0.2 - Validation ownership rules
+- `src/backend/AGENTS.md` §1.2 - Validation ownership rules
 - `docs/developer/backend/api-layer.md` - Shared helper status
 - `docs/developer/backend/backend-testing.md` - Testing standards
 

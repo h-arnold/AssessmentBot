@@ -198,7 +198,7 @@ For modal-family discovery, reuse decisions, and extraction rules, use:
 
 ## 13. Default Values Rule
 
-- Set default values in a module's constructor only. Root `AGENTS.md` owns this rule (Core Principles, principle 12).
+- Set default values in a module's constructor only. Root `AGENTS.md` owns this rule (Prime Directives → Coding Principles).
 
 ## 14. Service Domain Folder Organisation
 

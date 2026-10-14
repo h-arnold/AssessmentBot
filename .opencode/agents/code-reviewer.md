@@ -2,7 +2,7 @@
 description: Reviews code for quality, standards adherence, and defects using project-specific checklists
 mode: all
 steps: 100
-model: opencode-go/glm-5.3-flash
+model: opencode-go/step-5-preview-free
 permissions:
   - action: edit
     resource: '*'
@@ -178,7 +178,7 @@ You will fail the task unless you read _the entirety_ of the relevant context be
 - **Backend boundary**: Do not import anything from `src/backend/` into frontend code. Treat the interface as an API boundary.
 - **Error handling**: Fail loudly in development. No broad catch-and-ignore logic.
 - **Builder compatibility**: Avoid CDN-dependent runtime assets. Keep `index.html` asset wiring compatible with builder inlining into HtmlService output.
-- **Shared helpers and testing**: See `src/frontend/AGENTS.md` Sections 2.2 and 7 for shared helpers reuse requirements and testing delegation guidance.
+- **Shared helpers and testing**: See `src/frontend/AGENTS.md` Sections 3.2 and 8 for shared helpers reuse requirements and testing delegation guidance.
 - **Export functions as functions**: Functions should be declared as such, not exported constants with arrow functions. Fail the code review unless there is a very good reason to export a constant over a function.
 
 ### 4.3 Builder (`scripts/builder/`)
