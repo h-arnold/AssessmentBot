@@ -11,6 +11,7 @@ import {
   getClassesCrudRow,
   selectClassesCrudRow,
 } from './helpers/classes-crud-bulk-metadata';
+import { openBulkMetadataDialog } from './helpers/classes-crud-bulk-eligibility-journey';
 
 const bulkCohortOptions = [
   {
@@ -59,19 +60,7 @@ test.describe('Classes CRUD bulk cohort flow', () => {
       })
     );
 
-    await selectClassesCrudRow(page, 'gc-active');
-    await expect(page.getByRole('button', { name: 'Set cohort' })).toBeEnabled();
-
-    await clearClassesCrudRowSelection(page, 'gc-active');
-    await selectClassesCrudRow(page, 'gc-inactive');
-    await expect(page.getByRole('button', { name: 'Set cohort' })).toBeEnabled();
-
-    await selectClassesCrudRow(page, 'gc-active');
-    await expect(page.getByRole('button', { name: 'Set cohort' })).toBeEnabled();
-
-    await page.getByRole('button', { name: 'Set cohort' }).click();
-
-    await expect(page.getByRole('dialog', { name: 'Set cohort' })).toBeVisible();
+    await openBulkMetadataDialog(page, 'Set cohort', 'Set cohort');
     await page.getByRole('combobox', { name: 'Cohort' }).click();
     await expect(page.getByRole('option', { name: 'Cohort 2024' })).toBeVisible();
     await expect(page.getByRole('option', { name: 'Cohort 2025' })).toBeVisible();

@@ -12,6 +12,7 @@ import {
   getClassesCrudRow,
   selectClassesCrudRow,
 } from './helpers/classes-crud-bulk-metadata';
+import { openBulkMetadataDialog } from './helpers/classes-crud-bulk-eligibility-journey';
 
 const yearGroupPartialsAfterPartialFailure = [
   {
@@ -36,19 +37,7 @@ test.describe('Classes CRUD bulk year-group flow', () => {
       })
     );
 
-    await selectClassesCrudRow(page, 'gc-active');
-    await expect(page.getByRole('button', { name: 'Set year group' })).toBeEnabled();
-
-    await clearClassesCrudRowSelection(page, 'gc-active');
-    await selectClassesCrudRow(page, 'gc-inactive');
-    await expect(page.getByRole('button', { name: 'Set year group' })).toBeEnabled();
-
-    await selectClassesCrudRow(page, 'gc-active');
-    await expect(page.getByRole('button', { name: 'Set year group' })).toBeEnabled();
-
-    await page.getByRole('button', { name: 'Set year group' }).click();
-
-    await expect(page.getByRole('dialog', { name: 'Set year group' })).toBeVisible();
+    await openBulkMetadataDialog(page, 'Set year group', 'Set year group');
     await page.getByRole('combobox', { name: 'Year group' }).click();
     await expect(page.getByRole('option', { name: 'Year 7' })).toBeVisible();
     await expect(page.getByRole('option', { name: 'Year 8' })).toBeVisible();

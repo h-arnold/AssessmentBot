@@ -13,6 +13,7 @@ import {
   getClassesCrudRow,
   selectClassesCrudRow,
 } from './helpers/classes-crud-bulk-metadata';
+import { openBulkMetadataDialog } from './helpers/classes-crud-bulk-eligibility-journey';
 
 const courseLengthPartialsAfterPartialFailure = [
   {
@@ -37,19 +38,7 @@ test.describe('Classes CRUD bulk course-length flow', () => {
       })
     );
 
-    await selectClassesCrudRow(page, 'gc-active');
-    await expect(page.getByRole('button', { name: 'Set course length' })).toBeEnabled();
-
-    await clearClassesCrudRowSelection(page, 'gc-active');
-    await selectClassesCrudRow(page, 'gc-inactive');
-    await expect(page.getByRole('button', { name: 'Set course length' })).toBeEnabled();
-
-    await selectClassesCrudRow(page, 'gc-active');
-    await expect(page.getByRole('button', { name: 'Set course length' })).toBeEnabled();
-
-    await page.getByRole('button', { name: 'Set course length' }).click();
-
-    await expect(page.getByRole('dialog', { name: 'Set course length' })).toBeVisible();
+    await openBulkMetadataDialog(page, 'Set course length', 'Set course length');
     await page.getByRole('spinbutton', { name: 'Course length' }).fill('0');
     const courseLengthOkButton = page
       .getByRole('dialog', { name: 'Set course length' })
