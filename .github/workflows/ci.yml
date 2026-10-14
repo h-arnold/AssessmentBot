@@ -146,7 +146,7 @@ jobs:
       - name: Install frontend dependencies
         run: npm --prefix src/frontend ci
       - name: Install builder dependencies
-        run: npm --prefix scripts/builder ci
+        run: npm --prefix scripts/builder ci --ignore-scripts
       - name: Run builder lint
         run: npm run lint:builder:check
       - name: Run builder tests

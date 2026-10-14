@@ -1,4 +1,5 @@
 import { Alert, Button, Flex, Select, Tooltip, Typography } from 'antd';
+import type { BaseOptionType } from 'antd/es/select';
 import { memo, type JSX } from 'react';
 import type { LinkableDefinition } from './getLinkableDefinitionsForModal';
 
@@ -12,6 +13,29 @@ export type LinkExistingDefinitionButtonProperties = Readonly<{
   hasLinkableDefinitions: boolean;
   onLink: () => void;
 }>;
+
+type LinkableDefinitionOption = BaseOptionType & {
+  primaryTitle: string;
+  primaryTopic: string;
+  yearGroupLabel: string;
+};
+
+/**
+ * Renders the two-line label for a linkable definition option.
+ *
+ * @param {LinkableDefinitionOption} data The option's linkable definition display fields.
+ * @returns {JSX.Element} The formatted option label.
+ */
+function renderLinkableDefinitionOption({ data }: { data: LinkableDefinitionOption }): JSX.Element {
+  return (
+    <Flex vertical gap="small">
+      <Typography.Text strong ellipsis>{data.primaryTitle}</Typography.Text>
+      <Typography.Text type="secondary" ellipsis>
+        {data.primaryTopic} · {data.yearGroupLabel}
+      </Typography.Text>
+    </Flex>
+  );
+}
 
 /**
  * Renders the choice prompt's action for linking an existing definition.
@@ -86,18 +110,7 @@ export const LinkableDefinitionList = memo(function LinkableDefinitionList(
             yearGroupLabel: d.yearGroupLabel,
           };
         })}
-        optionRender={(option) => {
-          return (
-          <Flex vertical gap="small">
-            <Typography.Text strong ellipsis>
-              {option.data.primaryTitle}
-            </Typography.Text>
-            <Typography.Text type="secondary" ellipsis>
-              {option.data.primaryTopic} · {option.data.yearGroupLabel}
-            </Typography.Text>
-          </Flex>
-          );
-        }}
+        optionRender={renderLinkableDefinitionOption}
       />
     </Flex>
   );

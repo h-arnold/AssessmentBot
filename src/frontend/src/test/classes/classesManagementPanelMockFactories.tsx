@@ -29,7 +29,7 @@ export function createClassesManagementPanelMocks() {
       }
 
       return (
-        <div role="dialog" aria-label="Create ABClass">
+        <dialog open aria-label="Create ABClass">
           <button
             type="button"
             onClick={() => {
@@ -42,7 +42,7 @@ export function createClassesManagementPanelMocks() {
           >
             OK
           </button>
-        </div>
+        </dialog>
       );
     }),
   };
@@ -68,18 +68,18 @@ export function createClassesManagementPanelMocks() {
         open: boolean; progress: BatchProgressSnapshot; verb: string;
         onCancel: () => void; onDismiss: () => void;
       }>): ReactElement | null {
-        return properties.open ? <div role="dialog" aria-label="Bulk class update in progress">
+        return properties.open ? <dialog open aria-label="Bulk class update in progress">
           <span>{properties.progress.completed} / {properties.progress.total}</span>
           <span>{properties.verb} class {properties.progress.currentItem?.className ?? ''}</span>
-        </div> : null;
+        </dialog> : null;
       },
     },
     bulkCreateModule: { BulkCreateModal: mocks.bulkCreateModalMock },
     bulkDeleteModule: {
       BulkDeleteModal(properties: Readonly<{ open: boolean; onConfirm: () => void; onCancel: () => void; confirmLoading?: boolean }>): ReactElement | null {
-        return properties.open ? <div role="dialog" aria-label="Delete classes">
+        return properties.open ? <dialog open aria-label="Delete classes">
           <button type="button" onClick={properties.onConfirm}>Delete</button>
-        </div> : null;
+        </dialog> : null;
       },
     },
   };
