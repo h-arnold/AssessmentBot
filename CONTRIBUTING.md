@@ -76,6 +76,8 @@ npm run lint:synthetic    # synthetic test-data scripts
 
 Run every scope at once with `npm run lint`.
 
+These commands pass `--fix` and rewrite files. To check without modifying anything, use the matching `:check` variants (`npm run lint:backend:check`, `npm run lint:frontend:check`, `npm run lint:builder:check`, `npm run lint:synthetic:check`) or `npm run lint:check` for every scope at once.
+
 TypeScript compile checks:
 
 ```bash
@@ -165,7 +167,7 @@ If a class has no `fromJSON()` method and you need constructor behaviour, mock t
 
 ## Pre-Submission Checklist
 
-- [ ] All relevant lint checks pass (`npm run lint:backend`, `npm run lint:frontend`, `npm run lint:builder`)
+- [ ] All relevant lint checks pass (`npm run lint:check` runs every scope without modifying files)
 - [ ] TypeScript compiles cleanly (frontend and builder)
 - [ ] Tests pass and new logic has test coverage
 - [ ] No `console.*` calls introduced
