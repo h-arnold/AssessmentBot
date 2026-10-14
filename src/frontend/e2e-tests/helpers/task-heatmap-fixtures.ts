@@ -178,10 +178,7 @@ export function buildClassFullDocument(hasEmptySubmissions: boolean): Record<str
             documentId: `doc-${student.id}`,
             studentName: student.name,
             items: Object.fromEntries(
-              HEATMAP_TASK_IDS.map((taskId) => [
-                taskId,
-                buildItem(student, taskId, hasEmptySubmissions),
-              ])
+              HEATMAP_TASK_IDS.map((taskId) => [taskId, buildItem(student, taskId, hasEmptySubmissions)])
             ),
             createdAt: '2026-07-07T07:49:23.014Z',
             updatedAt: '2026-07-07T07:49:29.872Z',

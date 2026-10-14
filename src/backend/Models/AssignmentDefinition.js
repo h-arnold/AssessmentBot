@@ -294,7 +294,10 @@ class AssignmentDefinition {
 
     const tasks = Object.fromEntries(
       Object.entries(this.tasks).map(([taskId, task]) => {
-        return [taskId, task.toJSON ? task.toJSON() : task];
+        return [
+          taskId,
+          task.toJSON ? task.toJSON() : task,
+        ];
       })
     );
     return {

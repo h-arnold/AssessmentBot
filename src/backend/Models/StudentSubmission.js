@@ -135,7 +135,10 @@ class StudentSubmissionItem {
     if (!assessments || typeof assessments !== 'object') return assessments;
     return Object.fromEntries(
       Object.entries(assessments).map(([criterion, assessment]) => {
-        return [criterion, StudentSubmissionItem._removeAssessmentReasoning(assessment)];
+        return [
+          criterion,
+          StudentSubmissionItem._removeAssessmentReasoning(assessment),
+        ];
       })
     );
   }

@@ -10,7 +10,10 @@ describe('getStartupWarmupQueryKey', () => {
   it('maps every startup warm-up dataset key to the matching shared query key', () => {
     expect(
       startupWarmupDatasetKeys.map((datasetKey) => {
-        return [datasetKey, getStartupWarmupQueryKey(datasetKey)];
+        return [
+          datasetKey,
+          getStartupWarmupQueryKey(datasetKey),
+        ];
       })
     ).toEqual([
       ['classPartials', queryKeys.classPartials()],

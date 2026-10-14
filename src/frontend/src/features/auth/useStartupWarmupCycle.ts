@@ -78,7 +78,10 @@ function createWarmupSnapshotFromQueryClient(queryClient: QueryClient): StartupW
   return {
     datasets: Object.fromEntries(
       startupWarmupDatasetKeys.map((datasetKey) => {
-        return [datasetKey, getDatasetWarmupState(queryClient, datasetKey)];
+        return [
+          datasetKey,
+          getDatasetWarmupState(queryClient, datasetKey),
+        ];
       })
     ) as StartupWarmupSnapshot['datasets'],
   };

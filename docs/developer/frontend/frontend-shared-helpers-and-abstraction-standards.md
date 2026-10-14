@@ -65,6 +65,8 @@ Do not create a new helper only to move code out of a large file.
 - Classes batch-mutation shared types: `src/frontend/src/features/classes/bulk/batchMutationEngine.ts`
 - Classes metadata bulk-update helper: `src/frontend/src/features/classes/bulk/bulkMetadataUpdateFlow.ts`
 - Classes query refresh and invalidation contract helpers: `src/frontend/src/features/classes/bulk/queryInvalidation.ts`
+- Classes bulk-mutation outcome resolution: `src/frontend/src/features/classes/bulk/bulkMutationResolution.ts` — turns settled batch results into the alert, close and refresh-required UI state.
+- Classes bulk-mutation failure copy: `src/frontend/src/features/classes/bulk/bulkMutationFailureMessages.ts` — owns the `BulkFailureMessageCopy` type and the six pure action-specific failure-message builders (shared, create, delete, set-active, set-inactive, metadata) plus their user-facing copy. `bulkMutationResolution.ts` re-exports these bindings unchanged for compatibility, so existing consumers keep importing through it; new call sites import the failure-copy helpers from the owning module.
 - Reference-data workflow helpers: `src/frontend/src/features/referenceData/manageReferenceDataHelpers.ts`
 - Year-group presentation ordering: `src/frontend/src/features/referenceData/yearGroupSorting.ts` — source of truth for immutable, natural year-group ordering.
 - Classes bulk form modal scaffold: `src/frontend/src/features/classes/bulk/BulkFormModalScaffold.tsx` — three-caller shell owning reset-on-cancel, submit-on-OK, inline submission error rendering, and busy semantics.

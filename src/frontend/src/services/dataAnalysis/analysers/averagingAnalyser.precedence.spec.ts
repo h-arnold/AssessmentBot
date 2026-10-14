@@ -84,7 +84,10 @@ describe('contribution-aware parent precedence', () => {
 
     expect(
       result.perTask.map((task) => {
-        return [`${task.definitionKey}::${task.taskId}`, task.averageContribution];
+        return [
+          `${task.definitionKey}::${task.taskId}`,
+          task.averageContribution,
+        ];
       })
     ).toEqual([...expected]);
     expect(
