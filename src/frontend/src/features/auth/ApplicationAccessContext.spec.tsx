@@ -1,36 +1,23 @@
+import '../../test/auth/appAuthGate.mockSetup';
 import { render, screen, waitFor } from '@testing-library/react';
-import type * as SharedQueriesModule from '../../query/sharedQueries';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ApplicationAccess } from '../../services/authService/authService.zod';
-import { createQueryWrapper, grantedAdminAccess } from '../../test/auth/appAuthGateTestHelpers';
+import {
+  createQueryWrapper,
+  EMPTY_STARTUP_WARMUP_RESULT,
+  grantedAdminAccess,
+} from '../../test/auth/appAuthGateTestHelpers';
 import { useApplicationAccessContext } from './ApplicationAccessContext';
 import { AppAuthGate } from './AppAuthGate';
+import {
+  getApplicationAccess,
+  hasScriptAuthorisation,
+} from '../../services/authService/authService';
+import { warmStartupQueries } from '../../query/sharedQueries';
 
-const appAuthGateMocks = await vi.hoisted(async () => {
-  const {
-    createAppAuthGateMocks,
-    createAppAuthGateServiceMockModule,
-    createAppAuthGateSharedQueriesMockModule,
-  } = await import('../../test/auth/appAuthGateTestHelpers');
-  return {
-    ...createAppAuthGateMocks(),
-    createAppAuthGateServiceMockModule,
-    createAppAuthGateSharedQueriesMockModule,
-  };
-});
-
-vi.mock('../../services/authService/authService', () =>
-  appAuthGateMocks.createAppAuthGateServiceMockModule(appAuthGateMocks)
-);
-
-vi.mock('../../query/sharedQueries', async () => {
-  const actual = await vi.importActual<typeof SharedQueriesModule>('../../query/sharedQueries');
-
-  return appAuthGateMocks.createAppAuthGateSharedQueriesMockModule(actual, appAuthGateMocks);
-});
-
-const { getAuthorisationStatusMock, warmStartupQueriesMock, getApplicationAccessMock } =
-  appAuthGateMocks;
+const getAuthorisationStatusMock = vi.mocked(hasScriptAuthorisation);
+const warmStartupQueriesMock = vi.mocked(warmStartupQueries);
+const getApplicationAccessMock = vi.mocked(getApplicationAccess);
 
 /**
  * Probes the application access context delivered to the gate's children subtree.
@@ -52,7 +39,7 @@ function AccessGateContextProbe() {
  */
 function renderGateWithResolvedAccess(access: ApplicationAccess) {
   getAuthorisationStatusMock.mockResolvedValueOnce(true);
-  warmStartupQueriesMock.mockResolvedValueOnce({});
+  warmStartupQueriesMock.mockResolvedValueOnce(EMPTY_STARTUP_WARMUP_RESULT);
   getApplicationAccessMock.mockResolvedValueOnce(access);
   const { QueryWrapper } = createQueryWrapper();
 

@@ -54,9 +54,11 @@ export function createClassesManagementPanelMocks() {
     queueModule: {
       useClassesBulkMutationQueue: () => {
         return {
-          isQueueActive: mocks.queueStateMock.isQueueActive,
+          get isQueueActive() { return mocks.queueStateMock.isQueueActive; },
+          set isQueueActive(value: boolean) { mocks.queueStateMock.isQueueActive = value; },
           progress: { currentItem: null, completed: 0, pendingCount: 0, total: 0, isInProgress: false },
-          isProgressModalOpen: mocks.queueStateMock.isProgressModalOpen,
+          get isProgressModalOpen() { return mocks.queueStateMock.isProgressModalOpen; },
+          set isProgressModalOpen(value: boolean) { mocks.queueStateMock.isProgressModalOpen = value; },
           onDismissProgressModal: vi.fn(),
           onCancelQueue: vi.fn(),
           runQueuedBulkAction: mocks.runQueuedBulkActionMock,

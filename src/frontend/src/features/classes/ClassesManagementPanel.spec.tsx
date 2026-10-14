@@ -1,3 +1,4 @@
+import '../../test/classes/ClassesManagementPanel.mockSetup';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi, type MockInstance } from 'vitest';
 import { ApiTransportError } from '../../errors/apiTransportError';
@@ -8,41 +9,17 @@ import {
   createFulfilledClassResult,
   createRejectedClassResult,
 } from '../../test/classes/classesTestHelpers';
-import type { ClassesManagementRow } from './classesManagementViewModel';
 import type { ClassesManagementState } from './useClassesManagement';
-import type { BatchProgressSnapshot } from './bulk/runQueuedBatchMutation';
+import { useClassesManagement } from './useClassesManagement';
+import { runQueuedBatchMutation } from './bulk/runQueuedBatchMutation';
+import { useClassesBulkMutationQueue } from './useClassesBulkMutationQueue';
 
-const panelMocks = vi.hoisted(async () => {
-  const { createClassesManagementPanelMocks } = await import('../../test/classes/classesManagementPanelMockFactories');
-  return createClassesManagementPanelMocks();
-});
-
-vi.mock('./useClassesManagement', async () => {
-  const mocks = await panelMocks;
-  return mocks.useClassesManagementModule;
-});
-vi.mock('./bulk/runQueuedBatchMutation', async () => {
-  const mocks = await panelMocks;
-  return mocks.batchMutationModule;
-});
-vi.mock('./useClassesBulkMutationQueue', async () => {
-  const mocks = await panelMocks;
-  return mocks.queueModule;
-});
-vi.mock('./bulk/ClassesBulkProgressModal', async () => {
-  const mocks = await panelMocks;
-  return mocks.progressModalModule;
-});
-vi.mock('./bulk/BulkCreateModal', async () => {
-  const mocks = await panelMocks;
-  return mocks.bulkCreateModule;
-});
-vi.mock('./bulk/BulkDeleteModal', async () => {
-  const mocks = await panelMocks;
-  return mocks.bulkDeleteModule;
-});
-
-const { classesManagementStateMock, runQueuedBatchMutationMock, runQueuedBulkActionMock, queueStateMock } = await panelMocks;
+const classesManagementStateMock = vi.mocked(useClassesManagement);
+const runQueuedBatchMutationMock = vi.mocked(runQueuedBatchMutation);
+type QueueState = ReturnType<typeof useClassesBulkMutationQueue>;
+type MutableQueueState = { -readonly [Key in keyof QueueState]: QueueState[Key] };
+const queueStateMock = vi.mocked(useClassesBulkMutationQueue)() as MutableQueueState;
+const runQueuedBulkActionMock = vi.mocked(queueStateMock.runQueuedBulkAction);
 
 /**
  * Installs the mocked classes-management hook state for one test.
@@ -103,10 +80,7 @@ beforeEach(() => {
     async ({
       mutate,
       onComplete,
-    }: {
-      mutate: (onProgress: (snapshot: BatchProgressSnapshot) => void) => Promise<unknown[]>;
-      onComplete: (results: unknown[]) => Promise<void>;
-    }) => {
+    }: Parameters<typeof queueStateMock.runQueuedBulkAction>[0]) => {
       queueStateMock.isQueueActive = true;
       queueStateMock.isProgressModalOpen = true;
       const results = await mutate(vi.fn());
@@ -276,10 +250,10 @@ describe('ClassesManagementPanel', () => {
     );
 
     await waitFor(() => expect(runQueuedBatchMutationMock).toHaveBeenCalledTimes(1));
-    const [items] = runQueuedBatchMutationMock.mock.calls[0] as [unknown[]];
+    const [items] = runQueuedBatchMutationMock.mock.calls[0];
     expect(items).toHaveLength(1);
-    const firstItem = items[0] as Record<string, unknown>;
-    const firstRow = firstItem.row as ClassesManagementRow;
+    const firstItem = items[0];
+    const firstRow = firstItem.row;
     expect(firstRow.classId).toBe('not-created-1');
     expect(firstRow.status).toBe('notCreated');
     expect(onSelectedRowKeysChange).toHaveBeenLastCalledWith([]);

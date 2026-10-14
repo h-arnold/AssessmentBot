@@ -6,6 +6,7 @@
  * integration with runQueuedBatchMutation.
  */
 
+import '../../../test/classes/bulkPanel.mockSetup';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -17,41 +18,13 @@ import {
 } from '../../../test/classes/classesTestHelpers';
 import type { ClassesManagementRow } from '../classesManagementViewModel';
 import { makeRow as sharedMakeRow } from '../../../test/classes/bulkFlowTestHelpers';
+import { useClassesManagement } from '../useClassesManagement';
+import { runQueuedBatchMutation } from './runQueuedBatchMutation';
 
 const TWO_SELECTED_ROWS = 2;
 
-const { classesManagementStateMock, runQueuedBatchMutationMock, runQueuedBulkActionMock } = await vi.hoisted(async () => {
-  const { createBulkPanelMocks } = await import('../../../test/classes/bulkFlowTestHelpers');
-  return await createBulkPanelMocks();
-});
-
-vi.mock('../../services/apiService', () => ({ callApi: vi.fn() }));
-vi.mock('../useClassesManagement', () => ({ useClassesManagement: classesManagementStateMock }));
-vi.mock('./runQueuedBatchMutation', () => ({ runQueuedBatchMutation: runQueuedBatchMutationMock }));
-vi.mock('../useClassesBulkMutationQueue', async () => {
-  const { createBulkQueueModuleMock } = await import('../../../test/classes/bulkFlowTestHelpers');
-  return createBulkQueueModuleMock(runQueuedBulkActionMock);
-});
-vi.mock('./BulkCreateModal', async () => {
-  const { BULK_PANEL_COMPONENT_MOCKS } = await import('../../../test/classes/bulkFlowTestHelpers');
-  return BULK_PANEL_COMPONENT_MOCKS.bulkCreate;
-});
-vi.mock('./BulkSetSelectModal', async () => {
-  const { BULK_PANEL_COMPONENT_MOCKS } = await import('../../../test/classes/bulkFlowTestHelpers');
-  return BULK_PANEL_COMPONENT_MOCKS.bulkSetSelect;
-});
-vi.mock('./BulkSetCourseLengthModal', async () => {
-  const { BULK_PANEL_COMPONENT_MOCKS } = await import('../../../test/classes/bulkFlowTestHelpers');
-  return BULK_PANEL_COMPONENT_MOCKS.bulkSetCourseLength;
-});
-vi.mock('../referenceData/ManageCohortsModal', async () => {
-  const { BULK_PANEL_COMPONENT_MOCKS } = await import('../../../test/classes/bulkFlowTestHelpers');
-  return BULK_PANEL_COMPONENT_MOCKS.manageCohorts;
-});
-vi.mock('../referenceData/ManageYearGroupsModal', async () => {
-  const { BULK_PANEL_COMPONENT_MOCKS } = await import('../../../test/classes/bulkFlowTestHelpers');
-  return BULK_PANEL_COMPONENT_MOCKS.manageYearGroups;
-});
+const classesManagementStateMock = vi.mocked(useClassesManagement);
+const runQueuedBatchMutationMock = vi.mocked(runQueuedBatchMutation);
 
 /**
  * Builds a test ClassesManagementRow with sensible defaults and optional overrides.
@@ -146,7 +119,7 @@ async function renderPanel() {
 
 describe('bulk delete handler integration', () => {
   afterEach(() => {
-    vi.clearAllMocks();
+    vi.resetAllMocks();
   });
 
   it('calls runQueuedBatchMutation with correct items when deleting', async () => {
@@ -155,7 +128,7 @@ describe('bulk delete handler integration', () => {
       buildClassesManagementState({
         onSelectedRowKeysChange,
         selectedRowKeys: ['active-1', 'orphaned-1'],
-      }),
+      })
     );
     runQueuedBatchMutationMock.mockResolvedValue([
       createFulfilledClassResult('active-1'),
@@ -173,9 +146,9 @@ describe('bulk delete handler integration', () => {
       expect(runQueuedBatchMutationMock).toHaveBeenCalled();
     });
 
-    const [items] = runQueuedBatchMutationMock.mock.calls[0] as [unknown[]];
+    const [items] = runQueuedBatchMutationMock.mock.calls[0];
     expect(items).toHaveLength(TWO_SELECTED_ROWS);
-    const firstItem = items[0] as Record<string, unknown>;
+    const firstItem = items[0];
     expect(firstItem.method).toBe('deleteABClass');
     expect(firstItem.verb).toBe('Deleting');
   });

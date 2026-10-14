@@ -1,7 +1,13 @@
 /** Shared pure fixture builders for useClassPageData test modules. */
 import { vi } from 'vitest';
 import { createMetricResult } from '../dataAnalysis/fixtures';
-import type { QueryStatus, UseQueryResult } from '@tanstack/react-query';
+import {
+  queryOptions,
+  QueryClientProvider,
+  type QueryClient,
+  type QueryStatus,
+  type UseQueryResult,
+} from '@tanstack/react-query';
 import type { ClassPageAdapterResult } from '../../features/classPage/classPageAdapter.zod';
 import type { AveragingResult } from '../../services/dataAnalysis/dataAnalysis.zod';
 import type {
@@ -9,9 +15,34 @@ import type {
   ClassFull,
 } from '../../services/googleClassrooms/classDetail/classDetailService.zod';
 import type { PageDatasetState } from '../../hooks/usePageDataset';
+import { createElement, type ReactNode } from 'react';
+import { getABClass } from '../../services/googleClassrooms/classDetail/classDetailService';
+import { queryKeys } from '../../query/queryKeys';
 
 /** Default classId used across tests. */
 export const DEFAULT_CLASS_ID = 'class-abc-123';
+
+/**
+ * Creates real, data-tagged query options for the mocked class query factory.
+ * @param {string} classId - The class identifier.
+ * @returns {ReturnType<typeof queryOptions>} Typed query options fixture.
+ */
+export function createABClassQueryOptionsFixture(classId: string) {
+  return queryOptions({
+    queryKey: queryKeys.abClass(classId),
+    queryFn: () => getABClass({ classId }),
+  });
+}
+
+/** Creates a query-provider wrapper scoped to a spec's query client.
+ * @param {QueryClient} client - Spec-local query client.
+ * @returns {Function} Query-provider wrapper.
+ */
+export function createClassPageDataWrapper(client: QueryClient) {
+  return function ClassPageDataTestWrapper({ children }: { children: ReactNode }) {
+    return createElement(QueryClientProvider, { client }, children);
+  };
+}
 
 /**
  * Creates a minimal ClassFull fixture.

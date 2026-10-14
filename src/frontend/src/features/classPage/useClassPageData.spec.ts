@@ -3,71 +3,31 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderHook } from '@testing-library/react';
 import { QueryClient } from '@tanstack/react-query';
 import type { ClassFull } from '../../services/googleClassrooms/classDetail/classDetailService.zod';
+import '../../test/classPage/useClassPageData.mockSetup';
 import { useClassPageData } from './useClassPageData';
-import { createElement, type ReactNode } from 'react';
-import { QueryClientProvider } from '@tanstack/react-query';
 import {
   DEFAULT_CLASS_ID,
+  createClassPageDataWrapper,
+  createABClassQueryOptionsFixture,
   createAdapterResult,
   createAveragingResult,
   createClassFull,
   createMockClassQueryResult,
   createPageDatasetReturn,
 } from '../../test/classPage/useClassPageDataTestFixtures';
-const mocks = await vi.hoisted(async () => {
-  const { createUseClassPageDataMocks } =
-    await import('../../test/classPage/useClassPageDataMockFactories');
-  return createUseClassPageDataMocks();
-});
-const {
-  mockUseQuery,
-  mockUsePageDataset,
-  mockGetABClassQueryOptions,
-  mockAnalyse,
-  mockAdaptClassPageToViewModel,
-} = mocks;
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const { mockUseQuery } = mocks;
-  return {
-    ...((await importOriginal()) as Record<string, unknown>),
-    useQuery: mockUseQuery,
-  };
-});
-vi.mock('../../hooks/usePageDataset', async (importOriginal) => {
-  const { mockUsePageDataset } = mocks;
-  return {
-    ...((await importOriginal()) as Record<string, unknown>),
-    usePageDataset: mockUsePageDataset,
-  };
-});
-vi.mock('../../query/sharedQueries', async (importOriginal) => {
-  const { mockGetABClassQueryOptions } = mocks;
-  return {
-    ...((await importOriginal()) as Record<string, unknown>),
-    getABClassQueryOptions: mockGetABClassQueryOptions,
-  };
-});
-vi.mock('../../services/dataAnalysis/dataAnalysisService', () => {
-  const { mockAnalyse } = mocks;
-  return {
-    DataAnalysisService: vi.fn().mockImplementation(function () {
-      return { analyse: mockAnalyse };
-    }),
-  };
-});
-vi.mock('./classPageAdapter', () => {
-  const { mockAdaptClassPageToViewModel } = mocks;
-  return { adaptClassPageToViewModel: mockAdaptClassPageToViewModel };
-});
-/** Creates a query-provider wrapper scoped to this spec's query client.
- * @param {QueryClient} client - Spec-local query client.
- * @returns {Function} Query-provider wrapper.
- */
-function createClassPageDataWrapper(client: QueryClient) {
-  return function ClassPageDataTestWrapper({ children }: { children: ReactNode }) {
-    return createElement(QueryClientProvider, { client }, children);
-  };
-}
+import { useQuery } from '@tanstack/react-query';
+import { usePageDataset } from '../../hooks/usePageDataset';
+import { getABClassQueryOptions } from '../../query/sharedQueries';
+import { DataAnalysisService } from '../../services/dataAnalysis/dataAnalysisService';
+import { adaptClassPageToViewModel } from './classPageAdapter';
+
+const mockUseQuery = vi.mocked(useQuery);
+const mockUsePageDataset = vi.mocked(usePageDataset);
+const mockGetABClassQueryOptions = vi.mocked(getABClassQueryOptions);
+const mockAnalyse = vi.mocked(
+  DataAnalysisService as unknown as { analyse: typeof DataAnalysisService.prototype.analyse }
+).analyse;
+const mockAdaptClassPageToViewModel = vi.mocked(adaptClassPageToViewModel);
 let queryClient: QueryClient;
 let wrapper: ReturnType<typeof createClassPageDataWrapper>;
 beforeEach(() => {
@@ -81,7 +41,7 @@ afterEach(() => {
 // Surface-state and synchronous pipeline behaviour.
 describe('surfaceState derivation', () => {
   it('returns loading when the per-class query is in flight and the dataset is not ready and not failed', () => {
-    mockGetABClassQueryOptions.mockReturnValue({ queryKey: ['abClass', DEFAULT_CLASS_ID] });
+    mockGetABClassQueryOptions.mockReturnValue(createABClassQueryOptionsFixture(DEFAULT_CLASS_ID));
     mockUseQuery.mockReturnValue(createMockClassQueryResult({ isPending: true }));
     mockUsePageDataset.mockReturnValue(
       createPageDatasetReturn(
@@ -99,7 +59,7 @@ describe('surfaceState derivation', () => {
   });
 
   it('returns classNotFound blocking when getABClass returns null and the dataset is trustworthily ready', () => {
-    mockGetABClassQueryOptions.mockReturnValue({ queryKey: ['abClass', DEFAULT_CLASS_ID] });
+    mockGetABClassQueryOptions.mockReturnValue(createABClassQueryOptionsFixture(DEFAULT_CLASS_ID));
     mockUseQuery.mockReturnValue(createMockClassQueryResult({ data: null }));
     mockUsePageDataset.mockReturnValue(createPageDatasetReturn());
 
@@ -117,7 +77,7 @@ describe('surfaceState derivation', () => {
 
   it('returns classQueryError blocking when the per-class query errors and the dataset is trustworthily ready', () => {
     const queryError = new Error('Failed to fetch class');
-    mockGetABClassQueryOptions.mockReturnValue({ queryKey: ['abClass', DEFAULT_CLASS_ID] });
+    mockGetABClassQueryOptions.mockReturnValue(createABClassQueryOptionsFixture(DEFAULT_CLASS_ID));
     mockUseQuery.mockReturnValue(createMockClassQueryResult({ isError: true, error: queryError }));
     mockUsePageDataset.mockReturnValue(createPageDatasetReturn());
 
@@ -134,7 +94,7 @@ describe('surfaceState derivation', () => {
   });
 
   it('returns assignmentDefinitionPartialsFailed blocking when the warm-up dataset failed with no query data', () => {
-    mockGetABClassQueryOptions.mockReturnValue({ queryKey: ['abClass', DEFAULT_CLASS_ID] });
+    mockGetABClassQueryOptions.mockReturnValue(createABClassQueryOptionsFixture(DEFAULT_CLASS_ID));
     mockUseQuery.mockReturnValue(createMockClassQueryResult({ data: createClassFull() }));
     mockUsePageDataset.mockReturnValue(
       createPageDatasetReturn(
@@ -162,7 +122,7 @@ describe('surfaceState derivation', () => {
   });
 
   it('returns assignmentDefinitionPartialsUntrustworthy blocking when the warm-up dataset is untrustworthy but ready', () => {
-    mockGetABClassQueryOptions.mockReturnValue({ queryKey: ['abClass', DEFAULT_CLASS_ID] });
+    mockGetABClassQueryOptions.mockReturnValue(createABClassQueryOptionsFixture(DEFAULT_CLASS_ID));
     mockUseQuery.mockReturnValue(createMockClassQueryResult({ data: createClassFull() }));
     mockUsePageDataset.mockReturnValue(
       createPageDatasetReturn(
@@ -189,7 +149,7 @@ describe('surfaceState derivation', () => {
       throw adapterError;
     });
 
-    mockGetABClassQueryOptions.mockReturnValue({ queryKey: ['abClass', DEFAULT_CLASS_ID] });
+    mockGetABClassQueryOptions.mockReturnValue(createABClassQueryOptionsFixture(DEFAULT_CLASS_ID));
     mockUseQuery.mockReturnValue(createMockClassQueryResult({ data: createClassFull() }));
     mockUsePageDataset.mockReturnValue(createPageDatasetReturn());
 
@@ -210,7 +170,7 @@ describe('surfaceState derivation', () => {
       throw analyserError;
     });
 
-    mockGetABClassQueryOptions.mockReturnValue({ queryKey: ['abClass', DEFAULT_CLASS_ID] });
+    mockGetABClassQueryOptions.mockReturnValue(createABClassQueryOptionsFixture(DEFAULT_CLASS_ID));
     mockUseQuery.mockReturnValue(createMockClassQueryResult({ data: createClassFull() }));
     mockUsePageDataset.mockReturnValue(createPageDatasetReturn());
 
@@ -232,7 +192,7 @@ describe('surfaceState derivation', () => {
     mockAnalyse.mockReturnValue([averagingResult]);
     mockAdaptClassPageToViewModel.mockReturnValue(adapterResult);
 
-    mockGetABClassQueryOptions.mockReturnValue({ queryKey: ['abClass', DEFAULT_CLASS_ID] });
+    mockGetABClassQueryOptions.mockReturnValue(createABClassQueryOptionsFixture(DEFAULT_CLASS_ID));
     mockUseQuery.mockReturnValue(createMockClassQueryResult({ data: createClassFull() }));
     mockUsePageDataset.mockReturnValue(createPageDatasetReturn());
 
@@ -248,7 +208,7 @@ describe('surfaceState derivation', () => {
   });
 
   it('returns loading when isDatasetReady is true but adapterResult is null (pipeline not yet run)', () => {
-    mockGetABClassQueryOptions.mockReturnValue({ queryKey: ['abClass', DEFAULT_CLASS_ID] });
+    mockGetABClassQueryOptions.mockReturnValue(createABClassQueryOptionsFixture(DEFAULT_CLASS_ID));
     mockUseQuery.mockReturnValue(createMockClassQueryResult({ data: createClassFull() }));
     // Dataset reports ready but the query data is null, so assignmentDefinitionPartials
     // is null and the pipeline has not produced an adapterResult.
@@ -276,7 +236,7 @@ describe('analyser and adapter synchronous invocation', () => {
     mockAnalyse.mockReturnValue([averagingResult]);
     mockAdaptClassPageToViewModel.mockReturnValue(adapterResult);
 
-    mockGetABClassQueryOptions.mockReturnValue({ queryKey: ['abClass', DEFAULT_CLASS_ID] });
+    mockGetABClassQueryOptions.mockReturnValue(createABClassQueryOptionsFixture(DEFAULT_CLASS_ID));
     mockUseQuery.mockReturnValue(createMockClassQueryResult({ data: createClassFull() }));
     mockUsePageDataset.mockReturnValue(createPageDatasetReturn());
 
@@ -292,7 +252,7 @@ describe('analyser and adapter synchronous invocation', () => {
     mockAnalyse.mockReturnValue([averagingResult]);
     mockAdaptClassPageToViewModel.mockReturnValue(adapterResult);
 
-    mockGetABClassQueryOptions.mockReturnValue({ queryKey: ['abClass', DEFAULT_CLASS_ID] });
+    mockGetABClassQueryOptions.mockReturnValue(createABClassQueryOptionsFixture(DEFAULT_CLASS_ID));
     mockUseQuery.mockReturnValue(createMockClassQueryResult({ data: createClassFull() }));
     mockUsePageDataset.mockReturnValue(createPageDatasetReturn());
 
