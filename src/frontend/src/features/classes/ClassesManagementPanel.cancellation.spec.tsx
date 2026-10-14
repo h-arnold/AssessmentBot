@@ -1,9 +1,9 @@
 import '../../test/classes/ClassesManagementPanel.mockSetup';
 import { fireEvent, screen, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { renderWithFrontendProviders } from '../../test/renderWithFrontendProviders';
+import { createClassesManagementPanelHarness } from '../../test/classes/classesManagementPanelHarness';
+import type { MutableQueueState } from '../../test/classes/classesManagementPanelHarness';
 import {
-  buildClassesManagementState,
   buildClassesManagementRow,
   createFulfilledClassResult,
   createRejectedClassResult,
@@ -15,51 +15,16 @@ import { useClassesBulkMutationQueue } from './useClassesBulkMutationQueue';
 
 const classesManagementStateMock = vi.mocked(useClassesManagement);
 const runQueuedBatchMutationMock = vi.mocked(runQueuedBatchMutation);
-type QueueState = ReturnType<typeof useClassesBulkMutationQueue>;
-type MutableQueueState = { -readonly [Key in keyof QueueState]: QueueState[Key] };
 const queueStateMock = vi.mocked(useClassesBulkMutationQueue)() as MutableQueueState;
 const runQueuedBulkActionMock = vi.mocked(queueStateMock.runQueuedBulkAction);
-
-/**
- * Installs the mocked classes-management hook state for one test.
- *
- * @param {Parameters<typeof buildClassesManagementState>[0]} [overrides] Hook-state overrides.
- * @returns {void}
- */
-function mockClassesManagementState(overrides = {}) {
-  classesManagementStateMock.mockReturnValue(buildClassesManagementState(overrides));
-}
-
-/**
- * Loads and renders the panel with shared frontend providers.
- *
- * @returns {Promise<ReturnType<typeof renderWithFrontendProviders>>} Render result plus query client.
- */
-async function renderPanel() {
-  const { ClassesManagementPanel } = await import('./ClassesManagementPanel');
-  return renderWithFrontendProviders(<ClassesManagementPanel />);
-}
-
-beforeEach(() => {
-  queueStateMock.isQueueActive = false;
-  queueStateMock.isProgressModalOpen = false;
-  classesManagementStateMock.mockReset();
-  runQueuedBatchMutationMock.mockReset();
-  runQueuedBulkActionMock.mockReset();
-  runQueuedBulkActionMock.mockImplementation(
-    async ({
-      mutate,
-      onComplete,
-    }: Parameters<typeof queueStateMock.runQueuedBulkAction>[0]) => {
-      queueStateMock.isQueueActive = true;
-      queueStateMock.isProgressModalOpen = true;
-      const results = await mutate(vi.fn());
-      await onComplete(results);
-      queueStateMock.isQueueActive = false;
-      queueStateMock.isProgressModalOpen = false;
-    }
-  );
-});
+const harness = createClassesManagementPanelHarness(
+  classesManagementStateMock,
+  runQueuedBatchMutationMock,
+  queueStateMock,
+  runQueuedBulkActionMock
+);
+const { mockClassesManagementState, renderPanel } = harness;
+beforeEach(() => harness.reset());
 
 describe('ClassesManagementPanel cancellation outcomes', () => {
   // ---------------------------------------------------------------------------
