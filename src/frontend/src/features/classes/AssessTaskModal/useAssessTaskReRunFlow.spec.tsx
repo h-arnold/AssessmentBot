@@ -20,6 +20,37 @@ vi.mock('./assessTaskFlowData', () => {
 const SECOND_PROCESSED_CONTEXT_COUNT = 2;
 
 /**
+ * Verifies that changing the definition key produces the expected processed-context count.
+ *
+ * @param {string} nextDefinitionKey Definition key supplied on rerender.
+ * @param {number} expectedProcessedContextCount Expected recorder invocation count.
+ * @returns {void}
+ */
+function expectDefinitionKeyIdentity(
+  nextDefinitionKey: string,
+  expectedProcessedContextCount: number
+): void {
+  const setAssessmentAsError = vi.fn();
+  const flow = createBlockedFlow(setAssessmentAsError);
+
+  const { rerender } = renderHook(
+    ({ definitionKey }: { definitionKey: string | null }) => {
+      return useAssessTaskReRunFlow({
+        open: true,
+        classId: 'class-1',
+        reRunContext: { assignmentId: 'assignment-1', definitionKey },
+        flow,
+      });
+    },
+    { initialProps: { definitionKey: null as string | null }, wrapper: createWrapper() }
+  );
+
+  expect(setAssessmentAsError).toHaveBeenCalledTimes(1);
+  rerender({ definitionKey: nextDefinitionKey });
+  expect(setAssessmentAsError).toHaveBeenCalledTimes(expectedProcessedContextCount);
+}
+
+/**
  * Creates the minimal flow controls needed by a blocked re-run context.
  *
  * @param {ReturnType<typeof vi.fn>} setAssessmentAsError The blocked-state recorder.
@@ -55,44 +86,10 @@ function createWrapper() {
 
 describe('useAssessTaskReRunFlow context identity', () => {
   it('treats null and empty definition keys as the same processed context', () => {
-    const setAssessmentAsError = vi.fn();
-    const flow = createBlockedFlow(setAssessmentAsError);
-
-    const { rerender } = renderHook(
-      ({ definitionKey }: { definitionKey: string | null }) => {
-        return useAssessTaskReRunFlow({
-          open: true,
-          classId: 'class-1',
-          reRunContext: { assignmentId: 'assignment-1', definitionKey },
-          flow,
-        });
-      },
-      { initialProps: { definitionKey: null as string | null }, wrapper: createWrapper() }
-    );
-
-    expect(setAssessmentAsError).toHaveBeenCalledTimes(1);
-    rerender({ definitionKey: '' });
-    expect(setAssessmentAsError).toHaveBeenCalledTimes(1);
+    expectDefinitionKeyIdentity('', 1);
   });
 
   it('keeps the literal null key distinct from a null definition key', () => {
-    const setAssessmentAsError = vi.fn();
-    const flow = createBlockedFlow(setAssessmentAsError);
-
-    const { rerender } = renderHook(
-      ({ definitionKey }: { definitionKey: string | null }) => {
-        return useAssessTaskReRunFlow({
-          open: true,
-          classId: 'class-1',
-          reRunContext: { assignmentId: 'assignment-1', definitionKey },
-          flow,
-        });
-      },
-      { initialProps: { definitionKey: null as string | null }, wrapper: createWrapper() }
-    );
-
-    expect(setAssessmentAsError).toHaveBeenCalledTimes(1);
-    rerender({ definitionKey: 'null' });
-    expect(setAssessmentAsError).toHaveBeenCalledTimes(SECOND_PROCESSED_CONTEXT_COUNT);
+    expectDefinitionKeyIdentity('null', SECOND_PROCESSED_CONTEXT_COUNT);
   });
 });

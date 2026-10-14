@@ -3,6 +3,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, renderHook } from '@testing-library/react';
 import type { QueryClient } from '@tanstack/react-query';
+import type { StartupWarmupDatasetKey } from '../../query/sharedQueries';
 import type { ClassFull } from '../../services/googleClassrooms/classDetail/classDetailService.zod';
 import { useHeatmapsPageData } from './useHeatmapsPageData';
 import type { MergedHeatmapResult } from '../../services/dataAnalysis/heatmapAdapter.merged';
@@ -20,6 +21,7 @@ import {
   createHeatmapMergedResult as createMergedResult,
   createTestQueryClient,
 } from '../../test/dataAnalysis/heatmapFixtures';
+import { createReadyHeatmapsDatasetResult } from '../../test/taskHeatmap/hookMockFactories';
 
 const {
   mockUseQuery,
@@ -109,17 +111,9 @@ afterEach(() => {
 
 /** Configures both selector datasets as trustworthily ready. */
 function mockWarmupDatasetsReady(): void {
-  mockUsePageDataset.mockImplementation((datasetKey: string) => {
-    return {
-      query: createMockQueryResult<unknown>({
-        data:
-          datasetKey === 'classPartials'
-            ? createClassPartials()
-            : createAssignmentDefinitionPartials(),
-      }),
-      datasetState: createDatasetState(),
-    };
-  });
+  mockUsePageDataset.mockImplementation((datasetKey: StartupWarmupDatasetKey) =>
+    createReadyHeatmapsDatasetResult(datasetKey)
+  );
 }
 
 describe('useHeatmapsPageData — preview queries and status map', () => {
@@ -246,7 +240,7 @@ describe('useHeatmapsPageData — refresh', () => {
       ['a1', vi.fn()],
       ['a2', vi.fn()],
     ]);
-    mockUsePageDataset.mockImplementation((datasetKey: string) => {
+    mockUsePageDataset.mockImplementation((datasetKey: StartupWarmupDatasetKey) => {
       return {
         query: {
           ...createMockQueryResult<unknown>({
@@ -334,7 +328,7 @@ describe('useHeatmapsPageData — isRefreshing real derivation', () => {
   });
 
   it('reports refreshing while ADP dataset query is fetching', () => {
-    mockUsePageDataset.mockImplementation((datasetKey: string) => {
+    mockUsePageDataset.mockImplementation((datasetKey: StartupWarmupDatasetKey) => {
       return {
         query: createMockQueryResult<unknown>({
           data:

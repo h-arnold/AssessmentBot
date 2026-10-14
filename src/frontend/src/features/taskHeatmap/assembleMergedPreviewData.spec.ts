@@ -79,6 +79,32 @@ function col(assignmentId: string, definitionKey: string, taskId: string): Merge
   };
 }
 
+/**
+ * Build equivalent assignment preview inputs for status-map contract cases.
+ * @param {ReadonlyArray<{ assignmentId: string; isLoading: boolean; hasError: boolean }>} states - Query states.
+ * @returns {ReadonlyArray<AssignmentPreviewInput>} Preview inputs with empty lookups.
+ */
+function previewInputs(
+  states: ReadonlyArray<{ assignmentId: string; isLoading: boolean; hasError: boolean }>
+): ReadonlyArray<AssignmentPreviewInput> {
+  return states.map(({ assignmentId, isLoading, hasError }) => {
+    return {
+      assignmentId,
+      lookup: buildLookup({}),
+      isLoading,
+      hasError,
+    };
+  });
+}
+
+/**
+ * Build the task columns used by the repeated shared-task-key status cases.
+ * @returns {ReadonlyArray<MergedHeatmapTaskColumn>} Two columns with one shared task key.
+ */
+function sharedTaskColumns(): ReadonlyArray<MergedHeatmapTaskColumn> {
+  return [col('a1', 'def1', 'tA'), col('a2', 'def1', 'tA')];
+}
+
 describe('assembleMergedPreviewData — merged lookup', () => {
   it('merges per-assignment lookups, first-wins in stable column order for duplicate taskKeys', () => {
     const taskKey = 'def1::tA';
@@ -178,14 +204,11 @@ describe('assembleMergedPreviewData — first-wins sourceUrl', () => {
 
 describe('assembleMergedPreviewData — previewStatusByTaskKey', () => {
   it('covers every selected assignment taskKeys, first occurrence wins for a shared taskKey', () => {
-    const columnOrder: ReadonlyArray<MergedHeatmapTaskColumn> = [
-      col('a1', 'def1', 'tA'),
-      col('a2', 'def1', 'tA'),
-    ];
-    const inputs: ReadonlyArray<AssignmentPreviewInput> = [
-      { assignmentId: 'a1', lookup: buildLookup({}), isLoading: true, hasError: false },
-      { assignmentId: 'a2', lookup: buildLookup({}), isLoading: false, hasError: true },
-    ];
+    const columnOrder = sharedTaskColumns();
+    const inputs = previewInputs([
+      { assignmentId: 'a1', isLoading: true, hasError: false },
+      { assignmentId: 'a2', isLoading: false, hasError: true },
+    ]);
 
     const result: MergedPreviewAssemblyResult = assembleMergedPreviewData(inputs, columnOrder);
 
@@ -202,10 +225,10 @@ describe('assembleMergedPreviewData — previewStatusByTaskKey', () => {
       col('a1', 'def1', 'tB'),
       col('a2', 'def2', 'tC'),
     ];
-    const inputs: ReadonlyArray<AssignmentPreviewInput> = [
-      { assignmentId: 'a1', lookup: buildLookup({}), isLoading: false, hasError: false },
-      { assignmentId: 'a2', lookup: buildLookup({}), isLoading: true, hasError: false },
-    ];
+    const inputs = previewInputs([
+      { assignmentId: 'a1', isLoading: false, hasError: false },
+      { assignmentId: 'a2', isLoading: true, hasError: false },
+    ]);
 
     const result: MergedPreviewAssemblyResult = assembleMergedPreviewData(inputs, columnOrder);
 
@@ -229,10 +252,10 @@ describe('assembleMergedPreviewData — previewStatusByTaskKey', () => {
       col('a1', 'def1', 'tA'),
       col('a2', 'def2', 'tB'),
     ];
-    const inputs: ReadonlyArray<AssignmentPreviewInput> = [
-      { assignmentId: 'a1', lookup: buildLookup({}), isLoading: false, hasError: false },
-      { assignmentId: 'a2', lookup: buildLookup({}), isLoading: false, hasError: true },
-    ];
+    const inputs = previewInputs([
+      { assignmentId: 'a1', isLoading: false, hasError: false },
+      { assignmentId: 'a2', isLoading: false, hasError: true },
+    ]);
 
     const result: MergedPreviewAssemblyResult = assembleMergedPreviewData(inputs, columnOrder);
 
@@ -255,9 +278,7 @@ describe('assembleMergedPreviewData — fail-fast on missing preview input (T-8 
     ];
     // inputs omit the preview for 'a2' — a wiring regression that previously
     // silently yielded { isLoading: false, hasError: false } for the column.
-    const inputs: ReadonlyArray<AssignmentPreviewInput> = [
-      { assignmentId: 'a1', lookup: buildLookup({}), isLoading: false, hasError: false },
-    ];
+    const inputs = previewInputs([{ assignmentId: 'a1', isLoading: false, hasError: false }]);
 
     expect(() => assembleMergedPreviewData(inputs, columnOrder)).toThrow(
       /no preview input for assignmentId "a2" \(taskKey "def1::tB"\)/
@@ -269,10 +290,10 @@ describe('assembleMergedPreviewData — fail-fast on missing preview input (T-8 
       col('a1', 'def1', 'tA'),
       col('a2', 'def1', 'tB'),
     ];
-    const inputs: ReadonlyArray<AssignmentPreviewInput> = [
-      { assignmentId: 'a1', lookup: buildLookup({}), isLoading: false, hasError: false },
-      { assignmentId: 'a2', lookup: buildLookup({}), isLoading: true, hasError: false },
-    ];
+    const inputs = previewInputs([
+      { assignmentId: 'a1', isLoading: false, hasError: false },
+      { assignmentId: 'a2', isLoading: true, hasError: false },
+    ]);
 
     expect(() => assembleMergedPreviewData(inputs, columnOrder)).not.toThrow();
     const result: MergedPreviewAssemblyResult = assembleMergedPreviewData(inputs, columnOrder);
