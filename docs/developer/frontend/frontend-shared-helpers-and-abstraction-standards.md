@@ -112,6 +112,7 @@ Test helper placement rules remain governed by `docs/developer/frontend/frontend
 
 - Assignment transport: `src/frontend/src/services/assignmentAssessment/` — the `getAssignment` service (`assignmentAssessmentService.ts`) plus `AssignmentFullSchema` / `AssignmentFullResponseSchema` validation (`assignmentAssessment.zod.ts`).
 - Effective weighting: `src/frontend/src/services/assignmentDefinition/assignmentDefinitionUtilities.ts` — `TaskWeightingIndex` and `computeEffectiveWeight`, the single effective-weight resolver for analyser accumulation and heatmap column projection.
+- Assignment-weighting coercion: `src/frontend/src/services/assignmentDefinition/assignmentDefinitionUtilities.ts` — `coerceAssignmentWeighting(value: unknown): number`, which returns every primitive number unchanged and falls back to the schema-owned `DEFAULT_WEIGHTING_VALUE` only for non-numbers. It is **distinct from `computeEffectiveWeight`** (different nullable/validation semantics) and is the form-level coercion consumed by the wizard dirty checks, the save/reparse builders and recovery approval. The legacy `assignmentWizardFormState.ts` export path re-exports the same binding and must be retained for existing consumers.
 
 ## 4. Extraction decision rules
 
@@ -197,7 +198,7 @@ Rules for new entries:
 - **9.8 One-off destructive confirmations** — `src/frontend/src/features/classes/bulk/BulkDeleteModal.tsx` and `src/frontend/src/pages/AssignmentsPage.tsx` stay workflow-specific; no shared confirmation wrapper.
 - **9.11 Classes page grouped view-model** — keep local to `src/frontend/src/pages/classesPageModel.ts`; do not widen the Settings Classes helper family, which serves different merge and workflow needs.
 - **9.14 Topic existence check** — single-caller one-liner in `src/frontend/src/features/classes/AssessTaskModal/AssessTaskModal.tsx`; no existing helper matches the contract.
-- **9.16 / 9.16a AssessTask link and skeleton helpers** — `matchDefinitionForAssignment.ts`, `getLinkableDefinitionsForModal.ts`, `LinkableDefinitionList.tsx`, `AssignmentSelectSkeleton.tsx`, and `stringComparison.ts` stay in `src/frontend/src/features/classes/AssessTaskModal/`; two or three in-modal callers each, so they are not promoted.
+- **9.16 / 9.16a AssessTask link and skeleton helpers** — `matchDefinitionForAssignment.ts`, `getLinkableDefinitionsForModal.ts`, `LinkableDefinitionList.tsx` (which also exports the `LinkExistingDefinitionButton` availability leaf), `AssignmentSelectSkeleton.tsx`, and `stringComparison.ts` stay in `src/frontend/src/features/classes/AssessTaskModal/`; two or three in-modal callers each, so they are not promoted.
 - **9.19 Class page and task-heatmap surface** — every adapter, model, hook, dispatcher, presentational component, zero-weight header, and E2E scenario helper under `src/frontend/src/features/classPage/**` and `src/frontend/src/features/taskHeatmap/**` stays feature-local per Section 6; promotion requires a documented cross-feature caller.
 
 ### Rejected and superseded designs

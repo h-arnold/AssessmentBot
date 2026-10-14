@@ -119,12 +119,12 @@ function renderAlerts(
   documentChange: DocumentChangeState,
   hasParsedTasks: boolean
 ): JSX.Element {
-  const showDocumentChangeAlert = documentChange.hasPendingChange;
-  const showParseRequiredAlert = !hasParsedTasks;
+  const shouldShowDocumentChangeAlert = documentChange.hasPendingChange;
+  const shouldShowParseRequiredAlert = !hasParsedTasks;
 
   return (
     <>
-      {showDocumentChangeAlert && (
+      {shouldShowDocumentChangeAlert && (
         <Alert
           title={DOCUMENT_CHANGED_MESSAGE}
           type="warning"
@@ -132,7 +132,7 @@ function renderAlerts(
           style={{ marginBottom: APP_GAP_MD }}
         />
       )}
-      {showParseRequiredAlert && (
+      {shouldShowParseRequiredAlert && (
         <Alert
           title={PARSE_REQUIRED_MESSAGE}
           type="info"
@@ -201,7 +201,7 @@ function renderBaseFormFields(
   // The update wizard opts in so both URL inputs stay editable while a document
   // change is pending; create and stale-recovery consumers keep the locked form.
   const canEditDocumentUrlsWhilePending = properties.allowDocumentUrlEditingWhilePending === true;
-  const documentUrlInputsDisabled =
+  const areDocumentUrlInputsDisabled =
     properties.isMutationBusy ||
     (documentChange.hasPendingChange ? !canEditDocumentUrlsWhilePending : hasDirtyEdits);
 
@@ -256,7 +256,7 @@ function renderBaseFormFields(
         rules={[{ required: true, message: 'Reference document URL is required' }]}
       >
         <Input
-          disabled={documentUrlInputsDisabled}
+          disabled={areDocumentUrlInputsDisabled}
           placeholder="https://docs.google.com/..."
         />
       </Form.Item>
@@ -267,7 +267,7 @@ function renderBaseFormFields(
         rules={[{ required: true, message: 'Template document URL is required' }]}
       >
         <Input
-          disabled={documentUrlInputsDisabled}
+          disabled={areDocumentUrlInputsDisabled}
           placeholder="https://docs.google.com/..."
         />
       </Form.Item>
@@ -297,7 +297,7 @@ function renderReparseDocumentsAction(
   const canReparseDocuments = properties.canReparseDocuments ?? false;
   // Bound to the unsaved-edits reason directly (hasDirtyEdits implies
   // !canReparseDocuments), so other disabled reasons never render this copy.
-  const showDisabledExplanation = properties.hasDirtyEdits ?? false;
+  const shouldShowDisabledExplanation = properties.hasDirtyEdits ?? false;
 
   return (
     <Space orientation="vertical" size={APP_SPACE_SIZE_TIGHT}>
@@ -308,7 +308,7 @@ function renderReparseDocumentsAction(
       >
         Reparse documents
       </Button>
-      {showDisabledExplanation && (
+      {shouldShowDisabledExplanation && (
         <Text type="secondary">{REPARSE_DOCUMENTS_DISABLED_MESSAGE}</Text>
       )}
     </Space>
@@ -468,13 +468,15 @@ function renderTaskWeightingInputCell(
   documentChange: DocumentChangeState,
   properties: AssignmentDefinitionWizardReviewContentProperties
 ): (value: unknown, record: TaskRow, index: number) => ReactNode {
-  return (_: unknown, record: TaskRow) => (
-    <InputNumber
-      disabled={documentChange.hasPendingChange || properties.isMutationBusy}
-      min={MIN_WEIGHTING_VALUE}
-      max={MAX_WEIGHTING_VALUE}
-      value={record.taskWeighting}
-      onChange={(value) => properties.onTaskWeightingChange!(record.taskId, value)}
-    />
-  );
+  return (_: unknown, record: TaskRow) => {
+    return (
+      <InputNumber
+        disabled={documentChange.hasPendingChange || properties.isMutationBusy}
+        min={MIN_WEIGHTING_VALUE}
+        max={MAX_WEIGHTING_VALUE}
+        value={record.taskWeighting}
+        onChange={(value) => properties.onTaskWeightingChange!(record.taskId, value)}
+      />
+    );
+  };
 }

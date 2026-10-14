@@ -1,18 +1,11 @@
 /* global AssignmentTopic, Cohort, DbManager, Validate, YearGroup */
 
-let fallbackKeyCounter = 0;
-
 /**
  * Generates a stable key for reference-data records.
  * @returns {string} Stable key.
  */
 function generateStableKey_() {
-  if (typeof Utilities !== 'undefined' && typeof Utilities.getUuid === 'function') {
-    return Utilities.getUuid();
-  }
-
-  fallbackKeyCounter += 1;
-  return `${Date.now()}-${fallbackKeyCounter}`;
+  return Utilities.getUuid();
 }
 
 /**
@@ -290,12 +283,13 @@ class ReferenceDataController {
 
     const partialsCollection = this.dbManager.getCollection(config.inUseCollectionName);
     const partials = partialsCollection.find({});
-    const isInUse = partials.some(
-      (partial) =>
+    const isInUse = partials.some((partial) => {
+      return (
         partial &&
         typeof partial === 'object' &&
         partial[config.partialsReferenceField] === trimmedKey
-    );
+      );
+    });
 
     if (isInUse) {
       const error = new Error(config.inUseErrorMessage);

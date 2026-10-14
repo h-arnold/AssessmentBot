@@ -9,13 +9,17 @@ const ADAPTER_LOG_REQUIRED_ARGUMENT_COUNT = 2;
 const DISTINCT_ERROR_COUNT_TO_TRIGGER_EVICTION = 257;
 const EXPECTED_LOG_COUNT_AFTER_RE_EMISSION = 258;
 
-const { mockLogFrontendError } = vi.hoisted(() => ({
-  mockLogFrontendError: vi.fn(),
-}));
+const { mockLogFrontendError } = vi.hoisted(() => {
+  return {
+    mockLogFrontendError: vi.fn(),
+  };
+});
 
-vi.mock('../../logging/frontendLogger', () => ({
-  logFrontendError: mockLogFrontendError,
-}));
+vi.mock('../../logging/frontendLogger', () => {
+  return {
+    logFrontendError: mockLogFrontendError,
+  };
+});
 
 afterEach(() => {
   vi.resetAllMocks();

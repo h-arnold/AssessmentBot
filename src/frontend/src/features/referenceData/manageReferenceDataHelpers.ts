@@ -118,16 +118,16 @@ export function isInUseError(error: unknown): boolean {
  * Derives a user-facing delete error message from the thrown error.
  *
  * @param {unknown} error Error caught from the delete service call.
- * @param {boolean} blocked Whether the error was an IN_USE block.
+ * @param {boolean} isBlocked Whether the error was an IN_USE block.
  * @param {string} entityLabel Singular lower-case label for the entity (e.g. 'cohort', 'year group').
  * @returns {string} User-facing error message.
  */
 export function getDeleteErrorMessage(
   error: unknown,
-  blocked: boolean,
+  isBlocked: boolean,
   entityLabel: string
 ): string {
-  if (blocked) {
+  if (isBlocked) {
     return `This ${entityLabel} is in use by one or more classes and cannot be deleted.`;
   }
 
@@ -142,7 +142,7 @@ export function getDeleteErrorMessage(
  * @param {QueryKey} queryKey Exact query key to refetch.
  * @returns {Promise<boolean>} True when the refetch succeeded.
  */
-export async function refetchRequiredReferenceDataQuery(
+export async function hasRefetchedRequiredReferenceDataQuery(
   queryClient: QueryClient,
   queryKey: QueryKey
 ): Promise<boolean> {

@@ -17,7 +17,7 @@ import {
  * @param {boolean} isSubmitting Whether a mutation is pending.
  * @returns {boolean} Whether the reparse action may run.
  */
-export function deriveCanReparseDocuments(
+export function canWizardReparseDocuments(
   isCreateMode: boolean,
   isDefinitionLoaded: boolean,
   isDefinitionError: boolean,
@@ -39,15 +39,15 @@ export function deriveCanReparseDocuments(
  * Resolves the primary-action disabled state from its baseline derivation and
  * the current document-change state.
  *
- * @param {boolean} derivedDisabled Baseline primary-action state.
+ * @param {boolean} isDerivedDisabled Baseline primary-action state.
  * @param {DocumentChangeState} documentChange Current document state.
  * @returns {boolean} Whether the primary action is unavailable.
  */
 export function isWizardPrimaryActionDisabled(
-  derivedDisabled: boolean,
+  isDerivedDisabled: boolean,
   documentChange: DocumentChangeState
 ): boolean {
-  return derivedDisabled || documentChange.hasPendingChange;
+  return isDerivedDisabled || documentChange.hasPendingChange;
 }
 
 /**

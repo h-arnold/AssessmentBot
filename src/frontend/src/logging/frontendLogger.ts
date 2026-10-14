@@ -21,7 +21,14 @@ type FrontendLogOptions = {
   isDevelopmentRuntime?: boolean;
 };
 
-const SENSITIVE_FIELD_NAMES = new Set(['token', 'secret', 'password', 'authorisation', 'authorization', 'email']);
+const SENSITIVE_FIELD_NAMES = new Set([
+  'token',
+  'secret',
+  'password',
+  'authorisation',
+  'authorization',
+  'email',
+]);
 const REDACTED_VALUE = '[REDACTED]';
 const MAX_SERIALISED_METADATA_LENGTH = 2000;
 
@@ -85,7 +92,9 @@ function redactValue(value: unknown): unknown {
  * @param {Record<string, unknown> | undefined} metadata Metadata to sanitise.
  * @returns {Record<string, unknown> | undefined} The sanitised metadata, or undefined.
  */
-function sanitiseMetadata(metadata: Record<string, unknown> | undefined): Record<string, unknown> | undefined {
+function sanitiseMetadata(
+  metadata: Record<string, unknown> | undefined
+): Record<string, unknown> | undefined {
   if (!metadata) {
     return undefined;
   }
@@ -107,7 +116,6 @@ function shouldIncludeStack(options: FrontendLogOptions | undefined): boolean {
   return import.meta.env.DEV;
 }
 
-
 /**
  * Returns true when a log level is enabled in the current runtime mode.
  *
@@ -125,11 +133,14 @@ function isLevelEnabled(level: FrontendLogLevel, options: FrontendLogOptions | u
   return level === 'warn' || level === 'error';
 }
 
-const consoleMethodByLevel: Record<FrontendLogLevel, (message?: unknown, ...optionalParameters: unknown[]) => void> = {
-  debug: (...arguments_) => globalThis.console.debug(...arguments_),
-  info: (...arguments_) => globalThis.console.info(...arguments_),
-  warn: (...arguments_) => globalThis.console.warn(...arguments_),
-  error: (...arguments_) => globalThis.console.error(...arguments_),
+const consoleMethodByLevel: Record<
+  FrontendLogLevel,
+  (message?: unknown, ...optionalParameters: unknown[]) => void
+> = {
+  debug: (...arguments_) => console.debug(...arguments_),
+  info: (...arguments_) => console.info(...arguments_),
+  warn: (...arguments_) => console.warn(...arguments_),
+  error: (...arguments_) => console.error(...arguments_),
 };
 
 /**

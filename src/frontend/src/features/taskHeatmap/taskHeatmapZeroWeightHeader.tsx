@@ -45,9 +45,11 @@ export function buildTaskHeaderPresentation(
       </Tooltip>
     ),
     className: ZERO_WEIGHT_GROUP_CLASS,
-    onHeaderCell: () => ({
-      'aria-label': `${title} — ${ZERO_WEIGHT_EXPLANATION}`,
-    }),
+    onHeaderCell: () => {
+      return {
+        'aria-label': `${title} — ${ZERO_WEIGHT_EXPLANATION}`,
+      };
+    },
   };
 }
 

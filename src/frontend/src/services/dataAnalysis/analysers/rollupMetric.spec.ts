@@ -119,17 +119,19 @@ describe('rollupMetric established aggregation', () => {
       metric
     );
     expect(result.state).toBe('computed');
-    if (result.state === 'computed') {
-      expect(result.value).toBeCloseTo(
-        metric === 'spag'
-          ? SPAG_COMPUTED_VALUE
-          : NOT_ATTEMPTED_WEIGHTED_SUM / NOT_ATTEMPTED_TOTAL_WEIGHT,
-        FLOAT_TOLERANCE
-      );
-      expect(result.totalWeight).toBe(
-        metric === 'spag' ? COMPUTED_TOTAL_WEIGHT - COMPUTED_WEIGHT : NOT_ATTEMPTED_TOTAL_WEIGHT
-      );
+    if (result.state !== 'computed') {
+      return;
     }
+
+    expect(result.value).toBeCloseTo(
+      metric === 'spag'
+        ? SPAG_COMPUTED_VALUE
+        : NOT_ATTEMPTED_WEIGHTED_SUM / NOT_ATTEMPTED_TOTAL_WEIGHT,
+      FLOAT_TOLERANCE
+    );
+    expect(result.totalWeight).toBe(
+      metric === 'spag' ? COMPUTED_TOTAL_WEIGHT - COMPUTED_WEIGHT : NOT_ATTEMPTED_TOTAL_WEIGHT
+    );
   });
 
   it('preserves terminal notAttempted totalWeight and totalDataPoints for one sub-task', () => {

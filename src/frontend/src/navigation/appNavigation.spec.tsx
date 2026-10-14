@@ -70,12 +70,14 @@ describe('app navigation config', () => {
     const heatmapsCopy = (pageContent as { heatmaps?: { heading: string } }).heatmaps;
 
     expect(
-      navigationItems.map(({ key, label, children, icon }) => ({
-        key,
-        label,
-        children,
-        icon: describeNavigationIconShape(icon),
-      }))
+      navigationItems.map(({ key, label, children, icon }) => {
+        return {
+          key,
+          label,
+          children,
+          icon: describeNavigationIconShape(icon),
+        };
+      })
     ).toEqual([
       { key: 'dashboard', label: pageContent.dashboard.heading, children: [], icon: NAVIGATION_ICON_WRAPPER_SHAPE },
       { key: 'classes', label: pageContent.classes.heading, children: [], icon: NAVIGATION_ICON_WRAPPER_SHAPE },

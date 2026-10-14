@@ -59,9 +59,8 @@ function compareUpdatedAtDesc(a: string | null, b: string | null): number {
  *
  * @param {AssignmentDefinitionPartial[]} definitionPartials The cached partials to filter and sort.
  * @param {string} classYearGroupKey The class's year group key; only partials with a matching `yearGroupKey` are returned.
- * @param {{ title: string; topicName: string | null }} selectedAssignment The selected Google Classroom assignment; used for fuzzy title ranking.
+ * @param {{ title: string }} selectedAssignment The selected Google Classroom assignment title used for fuzzy ranking.
  * @param {string} selectedAssignment.title The assignment title used for fuzzy ranking.
- * @param {string | null} selectedAssignment.topicName Unused by this helper; present for API consistency with the caller.
  * @returns {LinkableDefinition[]} The filtered, sorted picker rows.
  * @remarks
  * Filtering: by `yearGroupKey` equality. The matcher's relaxation (case-insensitive
@@ -75,7 +74,7 @@ function compareUpdatedAtDesc(a: string | null, b: string | null): number {
 export function getLinkableDefinitionsForModal(
   definitionPartials: AssignmentDefinitionPartial[],
   classYearGroupKey: string,
-  selectedAssignment: { title: string; topicName: string | null }
+  selectedAssignment: { title: string }
 ): LinkableDefinition[] {
   if (definitionPartials.length === 0) {
     return [];
@@ -126,17 +125,19 @@ export function getLinkableDefinitionsForModal(
     ...unranked.toSorted((a, b) => compareUpdatedAtDesc(a.updatedAt, b.updatedAt)),
   ];
 
-  return ordered.map((partial) => ({
-    definitionKey: partial.definitionKey,
-    primaryTitle: partial.primaryTitle ?? '',
-    primaryTopic: partial.primaryTopic ?? '',
-    yearGroupKey: partial.yearGroupKey,
-    yearGroupLabel: partial.yearGroupLabel,
-    updatedAt: partial.updatedAt ?? '',
-    alternateTitles: partial.alternateTitles ?? [],
-    alternateTopics: partial.alternateTopics ?? [],
-    documentType: partial.documentType as 'SLIDES' | 'SHEETS',
-    referenceDocumentId: partial.referenceDocumentId,
-    templateDocumentId: partial.templateDocumentId,
-  }));
+  return ordered.map((partial) => {
+    return {
+      definitionKey: partial.definitionKey,
+      primaryTitle: partial.primaryTitle ?? '',
+      primaryTopic: partial.primaryTopic ?? '',
+      yearGroupKey: partial.yearGroupKey,
+      yearGroupLabel: partial.yearGroupLabel,
+      updatedAt: partial.updatedAt ?? '',
+      alternateTitles: partial.alternateTitles ?? [],
+      alternateTopics: partial.alternateTopics ?? [],
+      documentType: partial.documentType as 'SLIDES' | 'SHEETS',
+      referenceDocumentId: partial.referenceDocumentId,
+      templateDocumentId: partial.templateDocumentId,
+    };
+  });
 }

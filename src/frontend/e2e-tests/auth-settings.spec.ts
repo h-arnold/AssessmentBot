@@ -98,7 +98,8 @@ test.describe('Authentication settings journeys', () => {
     await page.getByRole('button', { name: 'Add', exact: true }).click();
     await page.getByRole('button', { name: /save/i }).click();
 
-    await expect(page.getByRole('alert')).toContainText(
+    const authenticationPanel = page.getByRole('region', { name: 'Authentication settings panel' });
+    await expect(authenticationPanel.getByRole('alert')).toContainText(
       /another administrator saved first|stale revision/i
     );
     await expect(page.getByText('secondteacher@example.com', { exact: true })).toHaveCount(1);

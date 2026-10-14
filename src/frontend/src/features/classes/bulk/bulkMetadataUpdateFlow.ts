@@ -75,13 +75,15 @@ export async function bulkMetadataUpdate(
   const verb = getVerbForKey(payload.key);
   const updatePayload = getUpdatePayload(payload);
 
-  const items: QueuedBatchItem[] = rows.map((row) => ({
-    row,
-    method: 'updateABClass' as const,
-    parameters: { classId: row.classId, ...updatePayload },
-    verb,
-    className: row.className,
-  }));
+  const items: QueuedBatchItem[] = rows.map((row) => {
+    return {
+      row,
+      method: 'updateABClass' as const,
+      parameters: { classId: row.classId, ...updatePayload },
+      verb,
+      className: row.className,
+    };
+  });
 
   return runQueuedBatchMutation(items, { jobName: 'classesBulkMutation', onProgress });
 }

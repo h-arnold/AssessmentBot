@@ -37,10 +37,9 @@ class ABClassRoster {
       abClass.setClassName(course.name);
     }
 
-    if (course.ownerId) {
-      const owner = new Teacher(null, course.ownerId);
-      abClass.setClassOwner(owner);
-    }
+    if (!course.ownerId) return;
+    const owner = new Teacher(null, course.ownerId);
+    abClass.setClassOwner(owner);
   }
 
   /**
@@ -210,7 +209,7 @@ class ABClassRoster {
       abClass.cohortKey = options.cohortKey === null ? null : String(options.cohortKey);
     }
     if (options.courseLength !== undefined) {
-      abClass.courseLength = Number.isInteger(options.courseLength)
+      abClass.courseLength = Number.isSafeInteger(options.courseLength)
         ? options.courseLength
         : ABClass._parseNullableInt(options.courseLength, abClass.courseLength);
     }

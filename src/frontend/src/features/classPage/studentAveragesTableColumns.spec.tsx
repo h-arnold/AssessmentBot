@@ -13,7 +13,7 @@ import {
 } from './studentAveragesTableColumns';
 import type { StudentAveragesTableFilters } from './studentAveragesTableColumns';
 import type { StudentAverageRowModel } from './classPageAdapter.zod';
-import { metricInRange } from '../../services/dataAnalysis/metricDisplay/metricRangeFilter';
+import { isMetricInRange } from '../../services/dataAnalysis/metricDisplay/metricRangeFilter';
 import {
   createComputedMetricResult,
   createNotAttemptedMetricResult,
@@ -121,14 +121,13 @@ describe('buildStudentAveragesTableColumns', () => {
       } else {
         // Render the JSX title element and check the SVG's aria-label via
         // querySelector (getByLabelText does not resolve <svg aria-label="…">
-        // in the happy‑dom stack).
+        // in the happy-dom stack).
         const { container, unmount } = render(
           <>{column.title as unknown as React.ReactElement}</>
         );
-        const headerElement = container.ownerDocument.querySelector(
-          `[aria-label="${expectedHeader}"]`
-        );
+        const headerElement = container.querySelector('[aria-label]');
         expect(headerElement).not.toBeNull();
+        expect(headerElement).toHaveAttribute('aria-label', expectedHeader);
         unmount();
       }
     });
@@ -166,22 +165,22 @@ describe('buildStudentAveragesTableColumns', () => {
   );
 
   // -----------------------------------------------------------------------
-  // metricInRange predicate
+  // isMetricInRange predicate
   // -----------------------------------------------------------------------
-  describe('metricInRange predicate', () => {
+  describe('isMetricInRange predicate', () => {
     it('matches computed values inside the range', () => {
-      expect(metricInRange(createComputedMetricResult({ value: 3 }), RANGE_LOWER, RANGE_UPPER)).toBe(true);
-      expect(metricInRange(createComputedMetricResult({ value: 4 }), RANGE_UPPER, RANGE_UPPER_ALT)).toBe(true);
+      expect(isMetricInRange(createComputedMetricResult({ value: 3 }), RANGE_LOWER, RANGE_UPPER)).toBe(true);
+      expect(isMetricInRange(createComputedMetricResult({ value: 4 }), RANGE_UPPER, RANGE_UPPER_ALT)).toBe(true);
     });
 
     it('excludes computed values outside the range', () => {
-      expect(metricInRange(createComputedMetricResult({ value: BELOW_RANGE }), RANGE_LOWER, RANGE_UPPER)).toBe(false);
-      expect(metricInRange(createComputedMetricResult({ value: ABOVE_RANGE }), 0, RANGE_UPPER_ALT)).toBe(false);
+      expect(isMetricInRange(createComputedMetricResult({ value: BELOW_RANGE }), RANGE_LOWER, RANGE_UPPER)).toBe(false);
+      expect(isMetricInRange(createComputedMetricResult({ value: ABOVE_RANGE }), 0, RANGE_UPPER_ALT)).toBe(false);
     });
 
     it('excludes notAttempted and error metrics', () => {
-      expect(metricInRange(createNotAttemptedMetricResult(), 0, RANGE_UPPER_ALT)).toBe(false);
-      expect(metricInRange(createErrorMetricResult(), 0, RANGE_UPPER_ALT)).toBe(false);
+      expect(isMetricInRange(createNotAttemptedMetricResult(), 0, RANGE_UPPER_ALT)).toBe(false);
+      expect(isMetricInRange(createErrorMetricResult(), 0, RANGE_UPPER_ALT)).toBe(false);
     });
   });
 

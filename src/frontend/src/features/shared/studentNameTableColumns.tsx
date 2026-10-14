@@ -49,9 +49,11 @@ export function buildStudentNameColumns<Row extends StudentNameTableRow>(
     sorter: {
       compare: (a: Row, b: Row): number => compareStudentNamePart('forename', a, b),
     },
-    render: (_: unknown, record: Row): JSX.Element => (
-      <Typography.Text>{splitStudentName(record.studentName).forename}</Typography.Text>
-    ),
+    render: (_: unknown, record: Row): JSX.Element => {
+      return (
+        <Typography.Text>{splitStudentName(record.studentName).forename}</Typography.Text>
+      );
+    },
   };
 
   const surnameColumn: TableColumnType<Row> = {
@@ -62,9 +64,11 @@ export function buildStudentNameColumns<Row extends StudentNameTableRow>(
     sorter: {
       compare: (a: Row, b: Row): number => compareStudentNamePart('surname', a, b),
     },
-    render: (_: unknown, record: Row): JSX.Element => (
-      <Typography.Text>{splitStudentName(record.studentName).surname}</Typography.Text>
-    ),
+    render: (_: unknown, record: Row): JSX.Element => {
+      return (
+        <Typography.Text>{splitStudentName(record.studentName).surname}</Typography.Text>
+      );
+    },
   };
 
   return [forenameColumn, surnameColumn];

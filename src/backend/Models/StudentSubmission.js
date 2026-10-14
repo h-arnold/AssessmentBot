@@ -134,10 +134,9 @@ class StudentSubmissionItem {
   static _stripAssessmentReasoning(assessments) {
     if (!assessments || typeof assessments !== 'object') return assessments;
     return Object.fromEntries(
-      Object.entries(assessments).map(([criterion, assessment]) => [
-        criterion,
-        StudentSubmissionItem._removeAssessmentReasoning(assessment),
-      ])
+      Object.entries(assessments).map(([criterion, assessment]) => {
+        return [criterion, StudentSubmissionItem._removeAssessmentReasoning(assessment)];
+      })
     );
   }
 
@@ -237,7 +236,7 @@ class StudentSubmission {
     }
     const taskId = taskDefinition.getId();
     let item = this.items[taskId];
-    let mutated = false;
+    let isMutated = false;
 
     const {
       pageId = null,
@@ -249,12 +248,12 @@ class StudentSubmission {
     const metadataPayload = hasMetadata ? extractionMetadata : undefined;
     // True when the parser boundary already logged the missing-content diagnostic,
     // so this layer stays silent and the artifact is stored without duplicate detail.
-    const missingContentLogged = extraction.missingContentLogged === true;
+    const isMissingContentLogged = extraction.missingContentLogged === true;
 
     if (item) {
       if (content !== undefined) {
         this._mergeExtractedContent(item.artifact, content);
-        mutated = true;
+        isMutated = true;
       }
       if (hasMetadata) {
         const metadataUpdates = metadataPayload ?? {};
@@ -262,7 +261,7 @@ class StudentSubmission {
           ...item.artifact.metadata,
           ...metadataUpdates,
         };
-        mutated = true;
+        isMutated = true;
       }
     } else {
       const resolvedPageId = pageId ?? taskDefinition.pageId;
@@ -281,16 +280,16 @@ class StudentSubmission {
         metadata: metadataForArtifact,
         uid,
       });
-      if (artifact.content == null && artifact.getType() !== 'IMAGE' && !missingContentLogged) {
+      if (artifact.content == null && artifact.getType() !== 'IMAGE' && !isMissingContentLogged) {
         ABLogger.getInstance().warn(
           `No content found for ${this.studentName} for task '${taskDefinition.taskTitle}'.`
         );
       }
       item = new StudentSubmissionItem({ taskId, artifact, onMutate: () => this.touchUpdated() });
       this.items[taskId] = item;
-      mutated = true;
+      isMutated = true;
     }
-    if (mutated) this.touchUpdated();
+    if (isMutated) this.touchUpdated();
     return item;
   }
 

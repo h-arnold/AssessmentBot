@@ -16,7 +16,7 @@ export type AppAuthGateMocks = Readonly<{
  * Call this inside `vi.hoisted` so the returned mocks can be referenced by the
  * hoisted `vi.mock` factories for the auth service and shared queries.
  *
- * @returns {AppAuthGateMocks} The `getAuthorisationStatus`, `getApplicationAccess`, and `warmStartupQueries` mocks.
+ * @returns {AppAuthGateMocks} The `hasScriptAuthorisation`, `getApplicationAccess`, and `warmStartupQueries` mocks.
  */
 export function createAppAuthGateMocks(): AppAuthGateMocks {
   return {

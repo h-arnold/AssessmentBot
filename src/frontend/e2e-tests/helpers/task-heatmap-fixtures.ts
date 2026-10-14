@@ -106,16 +106,18 @@ const HEATMAP_SUBMISSION_SCORES: Record<string, HeatmapStudentScores> = {
  * Build one submission item for the class snapshot.
  * @param {HeatmapStudent} student - Student owning the item.
  * @param {(typeof HEATMAP_TASK_IDS)[number]} taskId - Task identifier.
- * @param {boolean} empty - Whether to use not-attempted scores.
+ * @param {boolean} isEmpty - Whether to use not-attempted scores.
  * @returns {Record<string, unknown>} Submission item payload.
  */
 function buildItem(
   student: HeatmapStudent,
   taskId: (typeof HEATMAP_TASK_IDS)[number],
-  empty: boolean
+  isEmpty: boolean
 ) {
   const fallback = { completeness: 'N', accuracy: 'N', spag: 'N' };
-  const metrics = empty ? fallback : (HEATMAP_SUBMISSION_SCORES[student.id]?.[taskId] ?? fallback);
+  const metrics = isEmpty
+    ? fallback
+    : (HEATMAP_SUBMISSION_SCORES[student.id]?.[taskId] ?? fallback);
   return {
     taskId,
     artifact: { taskId, role: 'submission', uid: `uid-${student.id}-${taskId}`, type: 'page' },
@@ -137,10 +139,10 @@ function buildItem(
  * `AssignmentDefinitionPartials` registry by `assignmentDefinitionKey`.
  * The class snapshot therefore deliberately carries the registry key rather
  * than an embedded definition object.
- * @param {boolean} emptySubmissions - Whether submissions should be empty.
+ * @param {boolean} hasEmptySubmissions - Whether submissions should be empty.
  * @returns {Record<string, unknown>} Class payload.
  */
-export function buildClassFullDocument(emptySubmissions: boolean): Record<string, unknown> {
+export function buildClassFullDocument(hasEmptySubmissions: boolean): Record<string, unknown> {
   return {
     classId: HEATMAP_CLASS_ID,
     className: HEATMAP_CLASS_NAME,
@@ -153,10 +155,12 @@ export function buildClassFullDocument(emptySubmissions: boolean): Record<string
       teacherName: 'Teacher A',
     },
     teachers: [],
-    students: HEATMAP_STUDENTS.map((student) => ({
-      ...student,
-      email: `${student.id}@example.com`,
-    })),
+    students: HEATMAP_STUDENTS.map((student) => {
+      return {
+        ...student,
+        email: `${student.id}@example.com`,
+      };
+    }),
     assignments: [
       {
         courseId: HEATMAP_CLASS_ID,
@@ -167,18 +171,23 @@ export function buildClassFullDocument(emptySubmissions: boolean): Record<string
         createdAt: '2026-06-29T09:40:37.069Z',
         documentType: 'SLIDES',
         assignmentDefinitionKey: HEATMAP_DEFINITION_KEY,
-        submissions: HEATMAP_STUDENTS.map((student) => ({
-          studentId: student.id,
-          assignmentId: HEATMAP_ASSIGNMENT_ID,
-          documentId: `doc-${student.id}`,
-          studentName: student.name,
-          items: Object.fromEntries(
-            HEATMAP_TASK_IDS.map((taskId) => [taskId, buildItem(student, taskId, emptySubmissions)])
-          ),
-          createdAt: '2026-07-07T07:49:23.014Z',
-          updatedAt: '2026-07-07T07:49:29.872Z',
-          _updateCounter: 0,
-        })),
+        submissions: HEATMAP_STUDENTS.map((student) => {
+          return {
+            studentId: student.id,
+            assignmentId: HEATMAP_ASSIGNMENT_ID,
+            documentId: `doc-${student.id}`,
+            studentName: student.name,
+            items: Object.fromEntries(
+              HEATMAP_TASK_IDS.map((taskId) => [
+                taskId,
+                buildItem(student, taskId, hasEmptySubmissions),
+              ])
+            ),
+            createdAt: '2026-07-07T07:49:23.014Z',
+            updatedAt: '2026-07-07T07:49:29.872Z',
+            _updateCounter: 0,
+          };
+        }),
       },
     ],
     active: true,
@@ -200,10 +209,12 @@ export function addSecondAssignment(classDocument: Record<string, unknown>): voi
     ...firstAssignment,
     assignmentId: secondAssignmentId,
     submissions: (firstAssignment.submissions as Array<Record<string, unknown>>).map(
-      (submission) => ({
-        ...submission,
-        assignmentId: secondAssignmentId,
-      })
+      (submission) => {
+        return {
+          ...submission,
+          assignmentId: secondAssignmentId,
+        };
+      }
     ),
   });
 }
@@ -237,13 +248,13 @@ export function buildGoogleClassroomAssignment(): Record<string, unknown> {
  * partial is unavailable, the adapter raises `TaskTitlesUnavailableError`.
  * The zero-weight option changes only `assignmentWeighting` in this live
  * partial, leaving the class and assignment snapshots unchanged.
- * @param {boolean} zeroTasks - Whether to omit task columns.
- * @param {boolean} zeroWeightAssignment - Whether assignment weighting is zero.
+ * @param {boolean} hasZeroTasks - Whether to omit task columns.
+ * @param {boolean} isZeroWeightAssignment - Whether assignment weighting is zero.
  * @returns {Record<string, unknown>} Definition partial payload.
  */
 export function buildAssignmentDefinitionPartial(
-  zeroTasks: boolean,
-  zeroWeightAssignment: boolean
+  hasZeroTasks: boolean,
+  isZeroWeightAssignment: boolean
 ): Record<string, unknown> {
   return {
     primaryTitle: HEATMAP_ASSIGNMENT_DISPLAY_TITLE,
@@ -256,15 +267,17 @@ export function buildAssignmentDefinitionPartial(
     documentType: 'SLIDES',
     referenceDocumentId: 'ref',
     templateDocumentId: 'tpl',
-    assignmentWeighting: zeroWeightAssignment ? 0 : 1,
+    assignmentWeighting: isZeroWeightAssignment ? 0 : 1,
     definitionKey: HEATMAP_DEFINITION_KEY,
-    tasks: zeroTasks
+    tasks: hasZeroTasks
       ? []
-      : HEATMAP_TASK_IDS.map((taskId, index) => ({
-          taskId,
-          taskWeighting: 1,
-          taskTitle: `Task ${index + 1}`,
-        })),
+      : HEATMAP_TASK_IDS.map((taskId, index) => {
+          return {
+            taskId,
+            taskWeighting: 1,
+            taskTitle: `Task ${index + 1}`,
+          };
+        }),
     createdAt: '2026-07-07T07:45:23.916Z',
     updatedAt: '2026-07-07T07:49:06.791Z',
   };

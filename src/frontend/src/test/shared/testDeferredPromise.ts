@@ -29,12 +29,7 @@ export function createDeferredPromise<T>(): {
   resolvePromise: (value: T) => void;
   rejectPromise: (error: unknown) => void;
 } {
-  let resolvePromise!: (value: T) => void;
-  let rejectPromise!: (error: unknown) => void;
-  const promise = new Promise<T>((resolve, reject) => {
-    resolvePromise = resolve;
-    rejectPromise = reject;
-  });
+  const { promise, resolve: resolvePromise, reject: rejectPromise } = Promise.withResolvers<T>();
 
   return {
     promise,
@@ -103,14 +98,14 @@ export function createDeferredStartupDatasets<TDatasets extends Record<string, u
 
   // datasetFactories is a typed parameter with known structure - safe to iterate
   for (const key in datasetFactories) {
-    if (Object.hasOwn(datasetFactories, key)) {
-      const factory = datasetFactories[key as keyof TDatasets];
-      const deferred = factory();
-      const deferredKey = `${String(key)}Deferred`;
+    if (!Object.hasOwn(datasetFactories, key)) continue;
 
-      // Build result with proper typing - key comes from datasetFactories which is typed
-      (result as Record<string, unknown>)[deferredKey] = deferred;
-    }
+    const factory = datasetFactories[key as keyof TDatasets];
+    const deferred = factory();
+    const deferredKey = `${key}Deferred`;
+
+    // Build result with proper typing - key comes from datasetFactories which is typed
+    (result as Record<string, unknown>)[deferredKey] = deferred;
   }
 
   return result;

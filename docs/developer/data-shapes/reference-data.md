@@ -45,7 +45,7 @@ Stored via `Cohort.toJSON()`.
 Key notes:
 
 - `active` is always a boolean in `toJSON()` — there is no tri-state null like ABClass.
-- `startYear` is an integer year (e.g. 2025), not a full date.
+- `startYear` is a safe integer year (e.g. 2025), not a full date. `Cohort.setStartYear` rejects values outside `Number.MIN_SAFE_INTEGER` through `Number.MAX_SAFE_INTEGER`, including during construction and rehydration; no narrower year range is introduced.
 - `startMonth` is an integer (1–12). Defaults to 9 (September) via the module constant `ACADEMIC_YEAR_START_MONTH`.
 - Constructor defaults: `active: true`, `startYear: getCurrentAcademicYearStart()`, `startMonth: 9`.
 - `fromJSON()` uses `Object.hasOwn()` fallback checks for `active`, `startMonth`, and `startYear` so legacy records missing these fields still deserialise correctly.

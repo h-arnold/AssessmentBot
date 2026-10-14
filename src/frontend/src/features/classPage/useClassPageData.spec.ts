@@ -29,13 +29,15 @@ const {
   mockGetABClassQueryOptions,
   mockAnalyse,
   mockAdaptClassPageToViewModel,
-} = vi.hoisted(() => ({
-  mockUseQuery: vi.fn(),
-  mockUsePageDataset: vi.fn(),
-  mockGetABClassQueryOptions: vi.fn(),
-  mockAnalyse: vi.fn(),
-  mockAdaptClassPageToViewModel: vi.fn(),
-}));
+} = vi.hoisted(() => {
+  return {
+    mockUseQuery: vi.fn(),
+    mockUsePageDataset: vi.fn(),
+    mockGetABClassQueryOptions: vi.fn(),
+    mockAnalyse: vi.fn(),
+    mockAdaptClassPageToViewModel: vi.fn(),
+  };
+});
 
 vi.mock('@tanstack/react-query', async (importOriginal) => {
   const actual = (await importOriginal()) as Record<string, unknown>;
@@ -61,15 +63,19 @@ vi.mock('../../query/sharedQueries', async (importOriginal) => {
   };
 });
 
-vi.mock('../../services/dataAnalysis/dataAnalysisService', () => ({
-  DataAnalysisService: vi.fn().mockImplementation(function () {
-    return { analyse: mockAnalyse };
-  }),
-}));
+vi.mock('../../services/dataAnalysis/dataAnalysisService', () => {
+  return {
+    DataAnalysisService: vi.fn().mockImplementation(function () {
+      return { analyse: mockAnalyse };
+    }),
+  };
+});
 
-vi.mock('./classPageAdapter', () => ({
-  adaptClassPageToViewModel: mockAdaptClassPageToViewModel,
-}));
+vi.mock('./classPageAdapter', () => {
+  return {
+    adaptClassPageToViewModel: mockAdaptClassPageToViewModel,
+  };
+});
 
 // ===========================================================================
 // Shared test helpers
@@ -156,10 +162,9 @@ function createAveragingResult(overrides?: Partial<AveragingResult>): AveragingR
 /**
  * Creates a minimal ClassPageAdapterResult fixture.
  *
- * @param {Partial<ClassPageAdapterResult>} [overrides] - Optional overrides.
  * @returns {ClassPageAdapterResult} A ClassPageAdapterResult fixture.
  */
-function createAdapterResult(overrides?: Partial<ClassPageAdapterResult>): ClassPageAdapterResult {
+function createAdapterResult(): ClassPageAdapterResult {
   return {
     recentAssignments: [],
     studentAverages: [],
@@ -169,7 +174,6 @@ function createAdapterResult(overrides?: Partial<ClassPageAdapterResult>): Class
       spag: createMetricResult('notAttempted'),
       overall: createMetricResult('computed', { value: 3.8 }),
     },
-    ...overrides,
   };
 }
 
@@ -200,7 +204,7 @@ type QueryStatus = 'pending' | 'error' | 'success';
  *
  * @param {ClassFull | null | undefined} queryData - The query data payload.
  * @param {Error | null} queryError - The query error object.
- * @param {boolean} queryIsPending - Whether the query is pending.
+ * @param {boolean} isQueryPending - Whether the query is pending.
  * @param {QueryStatus} status - The query status.
  * @param {Function} refetch - Refetch function mock.
  * @returns {object} Partial UseQueryResult mock.
@@ -208,7 +212,7 @@ type QueryStatus = 'pending' | 'error' | 'success';
 function buildBaseQueryResult(
   queryData: ClassFull | null | undefined,
   queryError: Error | null,
-  queryIsPending: boolean,
+  isQueryPending: boolean,
   status: 'pending' | 'error' | 'success',
   refetch: ReturnType<typeof vi.fn>
 ) {
@@ -219,15 +223,15 @@ function buildBaseQueryResult(
     errorUpdatedAt: 0,
     failureCount: 0,
     failureReason: null,
-    fetchStatus: queryIsPending ? ('fetching' as const) : ('idle' as const),
-    isFetched: !queryIsPending,
-    isFetchedAfterMount: !queryIsPending,
-    isFetching: queryIsPending,
-    isInitialLoading: queryIsPending,
-    isLoading: queryIsPending,
+    fetchStatus: isQueryPending ? ('fetching' as const) : ('idle' as const),
+    isFetched: !isQueryPending,
+    isFetchedAfterMount: !isQueryPending,
+    isFetching: isQueryPending,
+    isInitialLoading: isQueryPending,
+    isLoading: isQueryPending,
     isLoadingError: false,
     isPaused: false,
-    isPending: queryIsPending,
+    isPending: isQueryPending,
     isPlaceholderData: false,
     isRefetchError: false,
     isRefetching: false,
@@ -256,16 +260,16 @@ function createMockClassQueryResult(overrides: {
   error?: Error | null;
   refetch?: ReturnType<typeof vi.fn>;
 }): UseQueryResult<ClassFull | null, Error> {
-  const queryIsPending = overrides.isPending ?? false;
-  const queryIsError = overrides.isError ?? false;
+  const isQueryPending = overrides.isPending ?? false;
+  const isQueryError = overrides.isError ?? false;
   const queryError = overrides.error ?? null;
   const refetch = overrides.refetch ?? vi.fn();
   const queryData = overrides.data;
-  const status = computeStatus(queryIsPending, queryIsError);
+  const status = computeStatus(isQueryPending, isQueryError);
 
   return {
-    ...buildBaseQueryResult(queryData, queryError, queryIsPending, status, refetch),
-    isError: queryIsError,
+    ...buildBaseQueryResult(queryData, queryError, isQueryPending, status, refetch),
+    isError: isQueryError,
     status: status as 'pending' | 'error' | 'success',
   } as unknown as UseQueryResult<ClassFull | null, Error>;
 }
@@ -343,12 +347,12 @@ function createPageDatasetReturn(
 
 let queryClient: QueryClient;
 let wrapper: ReturnType<typeof createTestWrapper>;
-let prefetchSpy: ReturnType<typeof vi.spyOn>;
+let querySpy: ReturnType<typeof vi.spyOn>;
 
 beforeEach(() => {
   queryClient = createTestQueryClient();
   wrapper = createTestWrapper(queryClient);
-  prefetchSpy = vi.spyOn(queryClient, 'prefetchQuery').mockResolvedValue();
+  querySpy = vi.spyOn(queryClient, 'query').mockImplementation(() => Promise.resolve(null));
 });
 
 afterEach(() => {
@@ -944,15 +948,15 @@ describe('empty analyser response', () => {
 });
 
 // ===========================================================================
-// Prefetch effect tests
+// Assignment query effect tests
 // ===========================================================================
 
 const EXPECTED_PREFETCH_COUNT_TOP_3 = 3;
 const EXPECTED_PREFETCH_COUNT_SINGLE = 1;
 const THIRD_CALL_INDEX = 2;
 
-describe('prefetch effect', () => {
-  it('calls prefetchQuery for the 3 most recently updated assignments when surfaceState becomes ready', () => {
+describe('assignment query effect', () => {
+  it('calls query for the 3 most recently updated assignments when surfaceState becomes ready', () => {
     const assignments = [
       createAssignment('oldest', '2025-01-01T00:00:00.000Z'),
       createAssignment('middle-2', '2025-02-01T00:00:00.000Z'),
@@ -973,14 +977,14 @@ describe('prefetch effect', () => {
     renderHook(() => useClassPageData(DEFAULT_CLASS_ID), { wrapper });
 
     // Top 3 by updatedAt desc: newest, middle-1, middle-2.  oldest is excluded.
-    expect(prefetchSpy.mock.calls).toHaveLength(EXPECTED_PREFETCH_COUNT_TOP_3);
-    expect(prefetchSpy.mock.calls[0][0]).toMatchObject(
+    expect(querySpy.mock.calls).toHaveLength(EXPECTED_PREFETCH_COUNT_TOP_3);
+    expect(querySpy.mock.calls[0][0]).toMatchObject(
       expect.objectContaining({ queryKey: ['assignment', DEFAULT_CLASS_ID, 'newest'] })
     );
-    expect(prefetchSpy.mock.calls[1][0]).toMatchObject(
+    expect(querySpy.mock.calls[1][0]).toMatchObject(
       expect.objectContaining({ queryKey: ['assignment', DEFAULT_CLASS_ID, 'middle-1'] })
     );
-    expect(prefetchSpy.mock.calls[THIRD_CALL_INDEX][0]).toMatchObject(
+    expect(querySpy.mock.calls[THIRD_CALL_INDEX][0]).toMatchObject(
       expect.objectContaining({ queryKey: ['assignment', DEFAULT_CLASS_ID, 'middle-2'] })
     );
   });
@@ -1007,19 +1011,19 @@ describe('prefetch effect', () => {
 
     // Sorted: a-assign, b-assign (tie on updatedAt, a.id < b.id), c-assign, d-assign
     // Top 3: a-assign, b-assign, c-assign
-    expect(prefetchSpy.mock.calls).toHaveLength(EXPECTED_PREFETCH_COUNT_TOP_3);
-    expect(prefetchSpy.mock.calls[0][0]).toMatchObject(
+    expect(querySpy.mock.calls).toHaveLength(EXPECTED_PREFETCH_COUNT_TOP_3);
+    expect(querySpy.mock.calls[0][0]).toMatchObject(
       expect.objectContaining({ queryKey: ['assignment', DEFAULT_CLASS_ID, 'a-assign'] })
     );
-    expect(prefetchSpy.mock.calls[1][0]).toMatchObject(
+    expect(querySpy.mock.calls[1][0]).toMatchObject(
       expect.objectContaining({ queryKey: ['assignment', DEFAULT_CLASS_ID, 'b-assign'] })
     );
-    expect(prefetchSpy.mock.calls[THIRD_CALL_INDEX][0]).toMatchObject(
+    expect(querySpy.mock.calls[THIRD_CALL_INDEX][0]).toMatchObject(
       expect.objectContaining({ queryKey: ['assignment', DEFAULT_CLASS_ID, 'c-assign'] })
     );
   });
 
-  it('calls prefetchQuery once when classFull has only 1 assignment', () => {
+  it('calls query once when classFull has only 1 assignment', () => {
     const assignments = [createAssignment('only-assign', '2025-04-01T00:00:00.000Z')];
     const averagingResult = createAveragingResult();
     const adapterResult = createAdapterResult();
@@ -1034,13 +1038,13 @@ describe('prefetch effect', () => {
 
     renderHook(() => useClassPageData(DEFAULT_CLASS_ID), { wrapper });
 
-    expect(prefetchSpy.mock.calls).toHaveLength(EXPECTED_PREFETCH_COUNT_SINGLE);
-    expect(prefetchSpy.mock.calls[0][0]).toMatchObject(
+    expect(querySpy.mock.calls).toHaveLength(EXPECTED_PREFETCH_COUNT_SINGLE);
+    expect(querySpy.mock.calls[0][0]).toMatchObject(
       expect.objectContaining({ queryKey: ['assignment', DEFAULT_CLASS_ID, 'only-assign'] })
     );
   });
 
-  it('does not call prefetchQuery when classFull has zero assignments', () => {
+  it('does not call query when classFull has zero assignments', () => {
     const averagingResult = createAveragingResult();
     const adapterResult = createAdapterResult();
 
@@ -1054,11 +1058,11 @@ describe('prefetch effect', () => {
 
     renderHook(() => useClassPageData(DEFAULT_CLASS_ID), { wrapper });
 
-    expect(prefetchSpy).not.toHaveBeenCalled();
+    expect(querySpy).not.toHaveBeenCalled();
   });
 
-  it('swallows prefetchQuery rejection without affecting surfaceState or error', () => {
-    prefetchSpy.mockRejectedValue(new Error('Prefetch network error'));
+  it('logs query rejection without affecting surfaceState or error', () => {
+    querySpy.mockRejectedValue(new Error('Query network error'));
 
     const assignments = [
       createAssignment('a1', '2025-04-01T00:00:00.000Z'),
@@ -1080,12 +1084,12 @@ describe('prefetch effect', () => {
     const { result } = renderHook(() => useClassPageData(DEFAULT_CLASS_ID), { wrapper });
 
     // Surface state must remain ready and error must stay null even though
-    // prefetchQuery rejected — the effect's .catch(() => undefined) swallows it
+    // query rejected — the effect catches and logs the failure
     expect(result.current.surfaceState).toEqual({ status: 'ready' });
     expect(result.current.error).toBeNull();
   });
 
-  it('does not re-fire prefetchQuery on refetch when classId remains the same', () => {
+  it('does not re-fire query on refetch when classId remains the same', () => {
     const assignments = [
       createAssignment('a1', '2025-04-01T00:00:00.000Z'),
       createAssignment('a2', '2025-03-01T00:00:00.000Z'),
@@ -1108,7 +1112,7 @@ describe('prefetch effect', () => {
     );
 
     // Effect should have fired exactly 3 times for top-3 assignments
-    expect(prefetchSpy.mock.calls).toHaveLength(EXPECTED_PREFETCH_COUNT_TOP_3);
+    expect(querySpy.mock.calls).toHaveLength(EXPECTED_PREFETCH_COUNT_TOP_3);
 
     // Simulate a refetch: fresh classFull (new reference, same classId, same content).
     // A new classFull reference triggers the effect to re-run (classFull is in the
@@ -1121,21 +1125,20 @@ describe('prefetch effect', () => {
     rerender({ classId: DEFAULT_CLASS_ID });
 
     // Guard ref prevents re-dispatch for the same classId — count must not increase
-    expect(prefetchSpy.mock.calls).toHaveLength(EXPECTED_PREFETCH_COUNT_TOP_3);
+    expect(querySpy.mock.calls).toHaveLength(EXPECTED_PREFETCH_COUNT_TOP_3);
   });
 
-  it('does not call prefetchQuery before surfaceState becomes ready', () => {
+  it('does not call query before surfaceState becomes ready', () => {
     // Keep classFull non-null with assignments to verify the effect does NOT
     // fire even when classFull data is available but the page is not yet ready.
     mockGetABClassQueryOptions.mockReturnValue({ queryKey: ['abClass', DEFAULT_CLASS_ID] });
-    mockUseQuery.mockReturnValue(
-      createMockClassQueryResult({
-        data: createClassFull({
-          assignments: [createAssignment('a1', '2025-04-01T00:00:00.000Z')],
-        }),
-        isPending: true,
-      })
-    );
+    const queryResult = createMockClassQueryResult({
+      data: createClassFull({
+        assignments: [createAssignment('a1', '2025-04-01T00:00:00.000Z')],
+      }),
+      isPending: true,
+    });
+    mockUseQuery.mockReturnValue(queryResult);
     // Set adpQuery.data to null so the pipeline guard blocks execution,
     // keeping surfaceState as 'loading' without needing analyser/adapter mocks.
     mockUsePageDataset.mockReturnValue(
@@ -1148,6 +1151,6 @@ describe('prefetch effect', () => {
     const { result } = renderHook(() => useClassPageData(DEFAULT_CLASS_ID), { wrapper });
 
     expect(result.current.surfaceState.status).toBe('loading');
-    expect(prefetchSpy).not.toHaveBeenCalled();
+    expect(querySpy).not.toHaveBeenCalled();
   });
 });

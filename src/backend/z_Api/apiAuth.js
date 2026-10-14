@@ -27,9 +27,9 @@ const SET_AUTHENTICATION_SETTINGS_ALLOWED_FIELDS = Object.freeze([
  * the dispatcher admission phase — it is deliberately NOT duplicated here.
  *
  * @remarks
- * `getApplicationAccess` joins `getAuthorisationStatus` in the dispatcher's
+ * `getApplicationAccess` joins `hasScriptAuthorisation` in the dispatcher's
  * gate-exempt set (the same precedent used for the OAuth status read). Unlike
- * `getAuthorisationStatus`, it routes through the SHARED access-resolution path
+ * `hasScriptAuthorisation`, it routes through the SHARED access-resolution path
  * in `AuthService`, so the Section 4 bootstrap claim fires on a fresh install
  * and the same call returns `reason: 'ok'` with the claimed admin role for the
  * first claimable caller.

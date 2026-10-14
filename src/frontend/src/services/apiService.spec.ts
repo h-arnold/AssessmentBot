@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, assert, beforeEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 import {
   createGoogleScriptRunApiHandlerMock,
@@ -18,7 +18,7 @@ type ApiErrorEnvelope = {
   error: {
     code: string;
     message: string;
-    retriable?: boolean;
+    isRetriable?: boolean;
   };
   meta?: Record<string, unknown>;
 };
@@ -50,16 +50,16 @@ type CancelApiQueued = (jobName: string) => number;
  * @param {GoogleScript} value - The mock Google runtime to install.
  */
 function setGoogle(value: GoogleScript): void {
-  (globalThis as unknown as Record<string, unknown>).google = value;
+  vi.stubGlobal('google', value);
 }
 
 /**
- * Removes the mock `google` runtime object after each test.
+ * Restores the `google` runtime object that preceded the test stub.
  *
  * @returns {void} Nothing.
  */
 function clearGoogle(): void {
-  delete (globalThis as Record<string, unknown>).google;
+  vi.unstubAllGlobals();
 }
 
 /**
@@ -119,7 +119,7 @@ function makeRateLimitedEnvelope(requestId: string): ApiErrorEnvelope {
   return {
     ok: false,
     requestId,
-    error: { code: 'RATE_LIMITED', message: `Attempt ${requestId} failed.`, retriable: true },
+    error: { code: 'RATE_LIMITED', message: `Attempt ${requestId} failed.`, isRetriable: true },
   };
 }
 
@@ -220,7 +220,7 @@ describe('apiService.callApi', () => {
       },
     });
 
-    const data = await callApi<typeof expectedData>('getAuthorisationStatus', {
+    const data = await callApi<typeof expectedData>('hasScriptAuthorisation', {
       cohortId: 'cohort-1',
     });
 
@@ -229,11 +229,50 @@ describe('apiService.callApi', () => {
   });
 
   it('rejects when google.script.run is unavailable', async () => {
+    vi.stubGlobal('google', undefined);
     const callApi = await loadCallApi();
 
-    await expect(callApi('getAuthorisationStatus')).rejects.toThrow(
+    await expect(callApi('hasScriptAuthorisation')).rejects.toThrow(
       'google.script.run is unavailable in this runtime.'
     );
+  });
+
+  it('restores absent and pre-existing google descriptors after repeated stubs', () => {
+    const originalDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'google');
+    const firstRuntime: GoogleScript = { script: { run: {} } };
+    const secondRuntime: GoogleScript = { script: { run: {} } };
+    const originalRuntime: GoogleScript = { script: { run: 'original' } };
+
+    try {
+      Reflect.deleteProperty(globalThis, 'google');
+      setGoogle(firstRuntime);
+      setGoogle(secondRuntime);
+      expect((globalThis as unknown as Record<string, unknown>).google).toBe(secondRuntime);
+      clearGoogle();
+      expect(Object.hasOwn(globalThis, 'google')).toBe(false);
+
+      Object.defineProperty(globalThis, 'google', {
+        configurable: true,
+        enumerable: false,
+        value: originalRuntime,
+        writable: false,
+      });
+      const preExistingDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'google');
+
+      setGoogle(firstRuntime);
+      setGoogle(secondRuntime);
+      clearGoogle();
+
+      expect(Object.getOwnPropertyDescriptor(globalThis, 'google')).toEqual(preExistingDescriptor);
+      expect((globalThis as unknown as Record<string, unknown>).google).toBe(originalRuntime);
+    } finally {
+      clearGoogle();
+      if (originalDescriptor === undefined) {
+        Reflect.deleteProperty(globalThis, 'google');
+      } else {
+        Object.defineProperty(globalThis, 'google', originalDescriptor);
+      }
+    }
   });
 
   it('rejects when apiHandler is unavailable on google.script.run', async () => {
@@ -245,7 +284,7 @@ describe('apiService.callApi', () => {
       },
     });
 
-    await expect(callApi('getAuthorisationStatus')).rejects.toThrow(
+    await expect(callApi('hasScriptAuthorisation')).rejects.toThrow(
       'google.script.run.apiHandler is unavailable in this runtime.'
     );
   });
@@ -288,7 +327,7 @@ describe('apiService.callApi', () => {
       },
     });
 
-    await expect(callApi('getAuthorisationStatus')).rejects.toThrow();
+    await expect(callApi('hasScriptAuthorisation')).rejects.toThrow();
   });
 
   it('rejects when backend returns a malformed error envelope', async () => {
@@ -311,7 +350,7 @@ describe('apiService.callApi', () => {
       },
     });
 
-    await expect(callApi('getAuthorisationStatus')).rejects.toThrow();
+    await expect(callApi('hasScriptAuthorisation')).rejects.toThrow();
   });
 
   it('logs enriched error metadata with method and zodIssues for a malformed success envelope', async () => {
@@ -331,7 +370,7 @@ describe('apiService.callApi', () => {
       script: { run: runner },
     });
 
-    await expect(callApi('getAuthorisationStatus')).rejects.toThrow();
+    await expect(callApi('hasScriptAuthorisation')).rejects.toThrow();
 
     // Find error-level log entries from our context
     const errorEntries = consoleErrorSpy.mock.calls
@@ -346,7 +385,7 @@ describe('apiService.callApi', () => {
     const metadata = lastErrorEntry.metadata as Record<string, unknown>;
     expect(metadata).toMatchObject({
       attempt: 0,
-      method: 'getAuthorisationStatus',
+      method: 'hasScriptAuthorisation',
     });
     expect(metadata).toHaveProperty('zodIssues');
     const zodIssues = metadata.zodIssues as Array<unknown>;
@@ -372,7 +411,7 @@ describe('apiService.callApi', () => {
       script: { run: runner },
     });
 
-    await callApi('getAuthorisationStatus', { cohortId: 'cohort-1' });
+    await callApi('hasScriptAuthorisation', { cohortId: 'cohort-1' });
 
     // The debug log is written as console.debug(contextString, entryObject)
     expect(consoleDebugSpy).toHaveBeenCalledWith(
@@ -383,7 +422,7 @@ describe('apiService.callApi', () => {
         metadata: expect.objectContaining({
           attempt: 0,
           params: { cohortId: 'cohort-1' },
-          method: 'getAuthorisationStatus',
+          method: 'hasScriptAuthorisation',
         }),
       })
     );
@@ -397,7 +436,7 @@ describe('apiService.callApi', () => {
       script: { run: createRawSuccessResponseRunner('<html><body>Login Required</body></html>') },
     });
 
-    await expect(callApi('getAuthorisationStatus')).rejects.toThrow(
+    await expect(callApi('hasScriptAuthorisation')).rejects.toThrow(
       'Failed to parse API response as JSON.'
     );
   });
@@ -412,12 +451,20 @@ describe('apiService.callApi', () => {
       script: { run: createRawSuccessResponseRunner(oversizedRawResponse) },
     });
 
-    const thrownError = await callApi('getAuthorisationStatus').then(
-      () => {
-        throw new Error('Expected callApi to reject for a non-JSON success response.');
-      },
-      (error: unknown) => error as Error & { preview?: string }
-    );
+    let result: unknown;
+    let didReject = false;
+    try {
+      result = await callApi('hasScriptAuthorisation');
+    } catch (error: unknown) {
+      didReject = true;
+      result = error;
+    }
+
+    if (!didReject) {
+      throw new Error('Expected callApi to reject for a non-JSON success response.');
+    }
+    assert.instanceOf(result, Error);
+    const thrownError = result as Error & { preview?: string };
 
     expect(thrownError.message).toContain('Failed to parse API response as JSON.');
     expect(thrownError.preview?.endsWith('…')).toBe(true);
@@ -432,7 +479,7 @@ describe('apiService.callApi', () => {
       error: {
         code: 'RATE_LIMITED',
         message: 'Too many concurrent requests.',
-        retriable: true,
+        isRetriable: true,
       },
       meta: {
         retryAfterMs: 1500,
@@ -450,11 +497,11 @@ describe('apiService.callApi', () => {
       },
     });
 
-    await expect(callApi('getAuthorisationStatus')).rejects.toMatchObject({
+    await expect(callApi('hasScriptAuthorisation')).rejects.toMatchObject({
       requestId: 'req-rate-limit-42',
       code: 'RATE_LIMITED',
       message: 'Too many concurrent requests.',
-      retriable: true,
+      isRetriable: true,
       meta: {
         retryAfterMs: 1500,
         activeRequests: 25,
@@ -508,9 +555,8 @@ describe('apiService.callApi', () => {
     const alphaPromise = callApi<{ label: string }>('loadAlpha');
     const betaPromise = callApi<{ label: string }>('loadBeta');
 
-    if (releaseAlphaResponse === undefined || releaseBetaResponse === undefined) {
-      throw new Error('Expected both concurrent responses to be registered before release.');
-    }
+    assert.isDefined(releaseAlphaResponse, 'Expected the alpha response handler to be registered.');
+    assert.isDefined(releaseBetaResponse, 'Expected the beta response handler to be registered.');
 
     releaseBetaResponse();
     releaseAlphaResponse();
@@ -568,7 +614,7 @@ function makeRateLimitedResponseEnvelope(requestId: string): ApiErrorEnvelope {
   return {
     ok: false,
     requestId,
-    error: { code: 'RATE_LIMITED', message: 'Rate limited.', retriable: true },
+    error: { code: 'RATE_LIMITED', message: 'Rate limited.', isRetriable: true },
   };
 }
 
@@ -600,7 +646,7 @@ describe('retry policy', () => {
     clearGoogle();
   });
 
-  it('retries on RATE_LIMITED with retriable: true and resolves on second attempt', async () => {
+  it('retries on RATE_LIMITED with isRetriable: true and resolves on second attempt', async () => {
     const callApi = await loadCallApi();
 
     const rateLimitedEnvelope = makeRateLimitedResponseEnvelope('req-retry-rl-1');
@@ -627,14 +673,16 @@ describe('retry policy', () => {
     const rateLimitedEnvelope: ApiErrorEnvelope = {
       ok: false,
       requestId: 'req-retry-max-1',
-      error: { code: 'RATE_LIMITED', message: 'Still rate limited.', retriable: true },
+      error: { code: 'RATE_LIMITED', message: 'Still rate limited.', isRetriable: true },
     };
 
     const { runner, apiHandlerSpy } = createSequentialHarness(
-      Array.from({ length: MAX_ATTEMPTS }, () => ({
-        kind: 'success' as const,
-        payload: rateLimitedEnvelope,
-      }))
+      Array.from({ length: MAX_ATTEMPTS }, () => {
+        return {
+          kind: 'success' as const,
+          payload: rateLimitedEnvelope,
+        };
+      })
     );
 
     setGoogle({ script: { run: runner } });
@@ -648,13 +696,17 @@ describe('retry policy', () => {
     expect(apiHandlerSpy).toHaveBeenCalledTimes(MAX_ATTEMPTS);
   });
 
-  it('does not retry when retriable is false', async () => {
+  it('does not retry when isRetriable is false', async () => {
     const callApi = await loadCallApi();
 
     const notRetriableEnvelope: ApiErrorEnvelope = {
       ok: false,
       requestId: 'req-no-retry-retriable-false',
-      error: { code: 'RATE_LIMITED', message: 'Rate limited but not retriable.', retriable: false },
+      error: {
+        code: 'RATE_LIMITED',
+        message: 'Rate limited but not retriable.',
+        isRetriable: false,
+      },
     };
 
     const { runner, apiHandlerSpy } = createSequentialHarness([
@@ -678,7 +730,7 @@ describe('retry policy', () => {
     const invalidRequestEnvelope: ApiErrorEnvelope = {
       ok: false,
       requestId: 'req-no-retry-code',
-      error: { code: 'INVALID_REQUEST', message: 'Bad request.', retriable: true },
+      error: { code: 'INVALID_REQUEST', message: 'Bad request.', isRetriable: true },
     };
 
     const { runner, apiHandlerSpy } = createSequentialHarness([
@@ -802,12 +854,12 @@ describe('callApiQueued enqueue', () => {
     expect(promise).toBeInstanceOf(Promise);
 
     // Verify it does NOT resolve within a tick (no dequeue loop yet)
-    let resolved = false;
+    let hasResolved = false;
     promise.then(() => {
-      resolved = true;
+      hasResolved = true;
     });
     await Promise.resolve();
-    expect(resolved).toBe(false);
+    expect(hasResolved).toBe(false);
   });
 
   it('two enqueues with same jobName produce distinct pending Promises', async () => {
@@ -868,18 +920,18 @@ describe('callApiQueued enqueue', () => {
     expect(promiseA).not.toBe(promiseB);
 
     // Neither should resolve within a tick
-    let resolvedA = false;
-    let resolvedB = false;
+    let hasResolvedA = false;
+    let hasResolvedB = false;
     promiseA.then(() => {
-      resolvedA = true;
+      hasResolvedA = true;
     });
     promiseB.then(() => {
-      resolvedB = true;
+      hasResolvedB = true;
     });
 
     await Promise.resolve();
-    expect(resolvedA).toBe(false);
-    expect(resolvedB).toBe(false);
+    expect(hasResolvedA).toBe(false);
+    expect(hasResolvedB).toBe(false);
   });
 });
 
@@ -1326,10 +1378,12 @@ describe('callApiQueued retry interaction and failure continuation', () => {
 
     // 4 RATE_LIMITED responses (one per attempt, exhausting retries) + 1 success for B
     const responses: RunnerHarnessResponse[] = [
-      ...Array.from({ length: MAX_ATTEMPTS }, () => ({
-        kind: 'success' as const,
-        payload: rateLimitedEnvelope,
-      })),
+      ...Array.from({ length: MAX_ATTEMPTS }, () => {
+        return {
+          kind: 'success' as const,
+          payload: rateLimitedEnvelope,
+        };
+      }),
       { kind: 'success', payload: successEnvelope },
     ];
 
@@ -1364,7 +1418,7 @@ describe('callApiQueued retry interaction and failure continuation', () => {
     const invalidRequestEnvelope: ApiErrorEnvelope = {
       ok: false,
       requestId: 'req-nonretry-1',
-      error: { code: 'INVALID_REQUEST', message: 'Invalid request data.', retriable: false },
+      error: { code: 'INVALID_REQUEST', message: 'Invalid request data.', isRetriable: false },
     };
     const successEnvelope: ApiSuccessEnvelope<{ done: boolean }> = {
       ok: true,
@@ -1431,6 +1485,7 @@ describe('callApiQueued retry interaction and failure continuation', () => {
   });
 
   it('synchronous callApi failure rejects and queue continues to next request', async () => {
+    vi.stubGlobal('google', undefined);
     const { callApiQueued } = (await import(apiServiceModulePath)) as {
       callApiQueued?: CallApiQueued;
     };

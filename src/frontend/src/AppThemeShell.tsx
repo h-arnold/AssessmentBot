@@ -13,8 +13,8 @@ const appThemeToken = {
  * @returns {MediaQueryList | null} The reduced-motion media query object, or null when unsupported.
  */
 function getReducedMotionMediaQuery() {
-  return typeof globalThis.matchMedia === 'function'
-    ? globalThis.matchMedia('(prefers-reduced-motion: reduce)')
+  return typeof matchMedia === 'function'
+    ? matchMedia('(prefers-reduced-motion: reduce)')
     : null;
 }
 
@@ -65,19 +65,19 @@ type AppThemeShellProperties = Readonly<{ dashboardContent?: ReactNode }>;
 export function AppThemeShell(properties: AppThemeShellProperties) {
   const { dashboardContent } = properties;
   const [isDarkMode, setIsDarkMode] = useState(false);
-  const prefersReducedMotion = usePrefersReducedMotion();
+  const shouldReduceMotion = usePrefersReducedMotion();
 
   const themeConfig = useMemo(
     () => ({
       algorithm: isDarkMode ? theme.darkAlgorithm : theme.defaultAlgorithm,
       token: {
         ...appThemeToken,
-        motion: !prefersReducedMotion,
+        motion: !shouldReduceMotion,
         // Mid-tier transition duration (matches the design-token scale).
         motionDurationMid: '0.1s',
       },
     }),
-    [isDarkMode, prefersReducedMotion],
+    [isDarkMode, shouldReduceMotion],
   );
 
   return (

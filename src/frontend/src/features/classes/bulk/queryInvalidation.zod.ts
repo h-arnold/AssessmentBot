@@ -4,7 +4,7 @@ export const refreshErrorMetadataSchema = z
   .object({
     code: z.string().optional(),
     requestId: z.string().optional(),
-    retriable: z.boolean().optional(),
+    isRetriable: z.boolean().optional(),
   })
   .readonly();
 

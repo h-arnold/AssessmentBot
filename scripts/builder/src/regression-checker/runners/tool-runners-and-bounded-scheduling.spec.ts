@@ -1,4 +1,5 @@
 import path from 'node:path';
+import process from 'node:process';
 
 import { describe, expect, it } from 'vitest';
 
@@ -76,6 +77,7 @@ const GENERAL_DELAY_SLOW_MS = 80;
 const PLAYWRIGHT_DELAY_MS = 60;
 const FAILING_CHECK_MESSAGE = 'spawn ENOENT';
 const TSC_PROJECT_PATH = 'scripts/builder/tsconfig.json';
+const TSC_COMPILER_PATH = 'node_modules/@typescript/native/bin/tsc';
 const NPM_SCRIPT_LINT = 'lint:backend:check';
 const NPM_SCRIPT_TEST = 'test:backend';
 const NPM_SCRIPT_E2E = 'test:frontend:e2e';
@@ -240,15 +242,19 @@ describe('tool runner command construction and bounded scheduling', () => {
       rawArtefactPath: rawArtefactPathFor(BASELINE_ARTEFACT_ROOT, tscCheck.id, '.txt'),
     });
     expect(tscInvocation).toMatchObject({
-      executable: 'tsc',
+      executable: process.execPath,
       cwd: REPO_ROOT,
       rawArtefactPath: rawArtefactPathFor(BASELINE_ARTEFACT_ROOT, tscCheck.id, '.txt'),
       rawArtefactExtension: '.txt',
     });
     expect(tscInvocation.rawArtefactPath).toContain('/baseline/checks/');
-    expect(tscInvocation.args).toEqual(
-      expect.arrayContaining(['-p', path.resolve(REPO_ROOT, TSC_PROJECT_PATH), '--pretty', 'false'])
-    );
+    expect(tscInvocation.args).toEqual([
+      path.resolve(REPO_ROOT, TSC_COMPILER_PATH),
+      '-p',
+      path.resolve(REPO_ROOT, TSC_PROJECT_PATH),
+      '--pretty',
+      'false',
+    ]);
   });
 
   it('resolves command-facing output and project paths from repo root for non-root cwd checks', async () => {
@@ -292,6 +298,8 @@ describe('tool runner command construction and bounded scheduling', () => {
       rawArtefactPath: rawArtefactPathFor(BASELINE_ARTEFACT_ROOT, nestedTscCheck.id, '.txt'),
     });
     expect(nestedTscInvocation.cwd).toBe(path.resolve(REPO_ROOT, nestedTscCheck.cwd));
+    expect(nestedTscInvocation.executable).toBe(process.execPath);
+    expect(nestedTscInvocation.args[0]).toBe(path.resolve(REPO_ROOT, TSC_COMPILER_PATH));
     expect(nestedTscInvocation.args).toEqual(
       expect.arrayContaining(['-p', path.resolve(REPO_ROOT, TSC_PROJECT_PATH), '--pretty', 'false'])
     );

@@ -14,12 +14,14 @@ const STRICT_MODE_DOUBLED_CALL_COUNT = 2;
 const DISTINCT_ERROR_TOTAL_LOG_COUNT = 2;
 
 const { mockUseQuery, mockUsePageDataset, mockGetABClassQueryOptions, mockAnalyse } = vi.hoisted(
-  () => ({
-    mockUseQuery: vi.fn(),
-    mockUsePageDataset: vi.fn(),
-    mockGetABClassQueryOptions: vi.fn(),
-    mockAnalyse: vi.fn(),
-  })
+  () => {
+    return {
+      mockUseQuery: vi.fn(),
+      mockUsePageDataset: vi.fn(),
+      mockGetABClassQueryOptions: vi.fn(),
+      mockAnalyse: vi.fn(),
+    };
+  }
 );
 
 vi.mock('@tanstack/react-query', async (importOriginal) => {
@@ -46,11 +48,13 @@ vi.mock('../../query/sharedQueries', async (importOriginal) => {
   };
 });
 
-vi.mock('../../services/dataAnalysis/dataAnalysisService', () => ({
-  DataAnalysisService: vi.fn().mockImplementation(function () {
-    return { analyse: mockAnalyse };
-  }),
-}));
+vi.mock('../../services/dataAnalysis/dataAnalysisService', () => {
+  return {
+    DataAnalysisService: vi.fn().mockImplementation(function () {
+      return { analyse: mockAnalyse };
+    }),
+  };
+});
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -202,13 +206,15 @@ describe('useClassPageData analyser diagnostics ownership', () => {
       error: { type: 'analyserError', cause: distinctError },
     });
     expect(consoleErrorSpy).toHaveBeenCalledTimes(DISTINCT_ERROR_TOTAL_LOG_COUNT);
-    const loggedEntries = consoleErrorSpy.mock.calls.map(([context, rawEntry]) => ({
-      context,
-      entry: rawEntry as {
-        level?: unknown;
-        metadata?: Record<string, unknown>;
-      },
-    }));
+    const loggedEntries = consoleErrorSpy.mock.calls.map(([context, rawEntry]) => {
+      return {
+        context,
+        entry: rawEntry as {
+          level?: unknown;
+          metadata?: Record<string, unknown>;
+        },
+      };
+    });
     expect(loggedEntries.map(({ context }) => context)).toEqual([
       'useClassPageData.runAnalyserStep',
       'useClassPageData.runAnalyserStep',

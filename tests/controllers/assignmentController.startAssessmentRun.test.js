@@ -209,7 +209,7 @@ describe('AssignmentController.startAssessmentRun', () => {
       );
     });
 
-    it('throws DefinitionStaleError with templateStale: true when template document has changed', () => {
+    it('throws DefinitionStaleError with isTemplateStale: true when template document has changed', () => {
       // Mock definition lookup returns the definition
       globalThis.AssignmentDefinitionController = vi.fn(function () {
         this.getDefinitionByKey = vi.fn(() => ({ ...MOCK_DEFINITION }));

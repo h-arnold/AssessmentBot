@@ -185,7 +185,7 @@ export function TaskHeatmapPage({
     [assignmentQuery.data],
   );
 
-  const showAssignmentError: boolean = assignmentQuery.isError || assignmentQuery.data === null;
+  const shouldShowAssignmentError: boolean = assignmentQuery.isError || assignmentQuery.data === null;
   const isAssignmentLoading: boolean = assignmentQuery.isPending;
 
   // Assignment-query error logging: fires once via useLogOnce guard.
@@ -306,7 +306,7 @@ export function TaskHeatmapPage({
         actions={renderNavActions()}
       />
       <Card size="small">
-        <TaskHeatmapTable heatmapResult={heatmapResult!} cellPreviewLookup={cellPreviewLookup} isAssignmentLoading={isAssignmentLoading} showAssignmentError={showAssignmentError} />
+        <TaskHeatmapTable heatmapResult={heatmapResult!} cellPreviewLookup={cellPreviewLookup} isAssignmentLoading={isAssignmentLoading} showAssignmentError={shouldShowAssignmentError} />
       </Card>
     </Flex>
   );

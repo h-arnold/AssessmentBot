@@ -99,7 +99,7 @@ describe('TaskHeatmapTable', () => {
   // 2. Score-range filter UI — the Task 1 > Completeness column exposes a
   //    numeric range filter (two-thumb Slider + Reset) instead of the old
   //    fixed band menu. The predicate itself is covered by the
-  //    `metricInRange` unit tests and the averages-table onFilter integration.
+  //    `isMetricInRange` unit tests and the averages-table onFilter integration.
   // -------------------------------------------------------------------------
   it('exposes a score-range filter dropdown (slider + reset) on Task 1 Completeness', async () => {
     const result = buildHeatmapResult();
@@ -400,7 +400,7 @@ describe('TaskHeatmapTable', () => {
       />
     );
 
-    const row = container.querySelector('tbody tr[data-row-key="s-1"]');
+    const row = container.querySelector(':scope tbody tr[data-row-key="s-1"]');
     expect(row).not.toBeNull();
     const cells = row!.querySelectorAll('td');
     // Forename then Surname are the first two body columns.
@@ -418,7 +418,7 @@ describe('TaskHeatmapTable', () => {
       />
     );
 
-    const row = container.querySelector('tbody tr[data-row-key="s-1"]');
+    const row = container.querySelector(':scope tbody tr[data-row-key="s-1"]');
     expect(row).not.toBeNull();
     const cells = row!.querySelectorAll('td');
     // Forename then Surname are the first two body columns.

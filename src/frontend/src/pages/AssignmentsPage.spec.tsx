@@ -9,7 +9,6 @@ import {
   setTextboxValue,
   createStartupWarmupState,
   createReadyStartupWarmupState,
-  noop,
 } from '../test/assignmentDefinition/wizardTestHelpers';
 import type { AssignmentDefinitionPartialRow } from '../test/assignmentDefinition/assignmentDefinitionTestFixtures';
 import {
@@ -33,18 +32,20 @@ const {
   upsertAssignmentDefinitionMock,
   useStartupWarmupStateMock,
   refetchAfterStaleInvalidateMock,
-} = vi.hoisted(() => ({
-  deleteAssignmentDefinitionMock: vi.fn(),
-  getAssignmentDefinitionPartialsMock: vi.fn(),
-  getAssignmentDefinitionMock: vi.fn(),
-  getAssignmentTopicsMock: vi.fn(),
-  getCohortsMock: vi.fn(),
-  getYearGroupsMock: vi.fn(),
-  getABClassPartialsMock: vi.fn(),
-  upsertAssignmentDefinitionMock: vi.fn(),
-  useStartupWarmupStateMock: vi.fn(),
-  refetchAfterStaleInvalidateMock: vi.fn(),
-}));
+} = vi.hoisted(() => {
+  return {
+    deleteAssignmentDefinitionMock: vi.fn(),
+    getAssignmentDefinitionPartialsMock: vi.fn(),
+    getAssignmentDefinitionMock: vi.fn(),
+    getAssignmentTopicsMock: vi.fn(),
+    getCohortsMock: vi.fn(),
+    getYearGroupsMock: vi.fn(),
+    getABClassPartialsMock: vi.fn(),
+    upsertAssignmentDefinitionMock: vi.fn(),
+    useStartupWarmupStateMock: vi.fn(),
+    refetchAfterStaleInvalidateMock: vi.fn(),
+  };
+});
 
 vi.mock('../features/auth/startupWarmupState', async (importOriginal) => {
   const actualModule = (await importOriginal()) as Record<string, unknown>;
@@ -55,28 +56,38 @@ vi.mock('../features/auth/startupWarmupState', async (importOriginal) => {
   };
 });
 
-vi.mock('../services/assignmentDefinition/assignmentDefinitionPartialsService', () => ({
-  deleteAssignmentDefinition: deleteAssignmentDefinitionMock,
-  getAssignmentDefinitionPartials: getAssignmentDefinitionPartialsMock,
-}));
+vi.mock('../services/assignmentDefinition/assignmentDefinitionPartialsService', () => {
+  return {
+    deleteAssignmentDefinition: deleteAssignmentDefinitionMock,
+    getAssignmentDefinitionPartials: getAssignmentDefinitionPartialsMock,
+  };
+});
 
-vi.mock('../services/assignmentDefinition/assignmentDefinitionService', () => ({
-  getAssignmentDefinition: getAssignmentDefinitionMock,
-  upsertAssignmentDefinition: upsertAssignmentDefinitionMock,
-}));
+vi.mock('../services/assignmentDefinition/assignmentDefinitionService', () => {
+  return {
+    getAssignmentDefinition: getAssignmentDefinitionMock,
+    upsertAssignmentDefinition: upsertAssignmentDefinitionMock,
+  };
+});
 
-vi.mock('../services/assignmentDefinition/assignmentTopicsService', () => ({
-  getAssignmentTopics: getAssignmentTopicsMock,
-}));
+vi.mock('../services/assignmentDefinition/assignmentTopicsService', () => {
+  return {
+    getAssignmentTopics: getAssignmentTopicsMock,
+  };
+});
 
-vi.mock('../services/referenceData/referenceDataService', () => ({
-  getCohorts: getCohortsMock,
-  getYearGroups: getYearGroupsMock,
-}));
+vi.mock('../services/referenceData/referenceDataService', () => {
+  return {
+    getCohorts: getCohortsMock,
+    getYearGroups: getYearGroupsMock,
+  };
+});
 
-vi.mock('../services/googleClassrooms/classPartialsService', () => ({
-  getABClassPartials: getABClassPartialsMock,
-}));
+vi.mock('../services/googleClassrooms/classPartialsService', () => {
+  return {
+    getABClassPartials: getABClassPartialsMock,
+  };
+});
 
 vi.mock('../query/queryInvalidationHelpers', async (importOriginal) => {
   const actualModule = (await importOriginal()) as Record<string, unknown>;
@@ -455,11 +466,9 @@ describe('AssignmentsPage', () => {
   it('awaits refetchAfterStaleInvalidate in handleRetryAssignmentsData so errors cannot become unhandled rejections', async () => {
     const originalImpl = refetchAfterStaleInvalidateMock.getMockImplementation();
     try {
-      let refetchCompleted = false;
-      refetchAfterStaleInvalidateMock.mockImplementation(() => {
-        return Promise.resolve().then(() => {
-          refetchCompleted = true;
-        });
+      let hasRefetchCompleted = false;
+      refetchAfterStaleInvalidateMock.mockImplementation(async () => {
+        hasRefetchCompleted = true;
       });
 
       useStartupWarmupStateMock.mockReturnValue(
@@ -480,12 +489,11 @@ describe('AssignmentsPage', () => {
 
       expect(refetchAfterStaleInvalidateMock).toHaveBeenCalledTimes(1);
 
-      // With the async/await fix in handleRetryAssignmentsData, the click fires
-      // the async handler which awaits the refetch promise. Flush microtasks so
-      // the promise's .then() callback sets refetchCompleted before we assert.
+      // The mock marks completion when the async handler invokes it; await a
+      // microtask for the returned promise to settle before checking the flag.
       await Promise.resolve();
 
-      expect(refetchCompleted).toBe(true);
+      expect(hasRefetchCompleted).toBe(true);
     } finally {
       refetchAfterStaleInvalidateMock.mockImplementation(originalImpl!);
     }
@@ -513,12 +521,13 @@ describe('AssignmentsPage', () => {
   });
 
   it('shows confirm-loading and disables conflicting deletes while mutation is in flight', async () => {
-    let resolveDeleteRequest: () => void = noop;
+    let resolveDeleteRequest!: () => void;
     deleteAssignmentDefinitionMock.mockImplementation(
-      () =>
-        new Promise<void>((resolve) => {
-          resolveDeleteRequest = resolve;
-        })
+      () => {
+        const { promise, resolve } = Promise.withResolvers<void>();
+        resolveDeleteRequest = resolve;
+        return promise;
+      }
     );
 
     renderWithFrontendProviders(<AssignmentsPage />);
@@ -691,9 +700,7 @@ describe('AssignmentsPage', () => {
       // Open create modal
       fireEvent.click(screen.getByRole('button', { name: 'Create assignment' }));
 
-      const modal = await waitFor(() => {
-        return screen.getByRole('dialog', { name: /create assignment/i });
-      });
+      const modal = await waitFor(() => screen.getByRole('dialog', { name: /create assignment/i }));
 
       expect(within(modal).getByRole('button', { name: /parse and continue/i })).toBeDisabled();
       expect(getAssignmentDefinitionMock).not.toHaveBeenCalled();
@@ -721,9 +728,7 @@ describe('AssignmentsPage', () => {
       // Click update
       fireEvent.click(updateButton);
 
-      const modal = await waitFor(() => {
-        return screen.getByRole('dialog', { name: /update assignment/i });
-      });
+      const modal = await waitFor(() => screen.getByRole('dialog', { name: /update assignment/i }));
 
       // Change document URL using userEvent for Ant Design Form compatibility
       const referenceUrlInput = within(modal).getByRole('textbox', {
@@ -777,9 +782,7 @@ describe('AssignmentsPage', () => {
       // Click update
       fireEvent.click(within(safeRow).getByRole('button', { name: /update/i }));
 
-      const modal = await waitFor(() => {
-        return screen.getByRole('dialog', { name: /update assignment/i });
-      });
+      const modal = await waitFor(() => screen.getByRole('dialog', { name: /update assignment/i }));
 
       // Store original URLs
       const referenceUrlInput = within(modal).getByRole('textbox', {
@@ -852,9 +855,7 @@ describe('AssignmentsPage', () => {
       // Click update
       fireEvent.click(within(safeRow).getByRole('button', { name: /update/i }));
 
-      const modal = await waitFor(() => {
-        return screen.getByRole('dialog', { name: /update assignment/i });
-      });
+      const modal = await waitFor(() => screen.getByRole('dialog', { name: /update assignment/i }));
 
       // Change document URL using userEvent
       const referenceUrlInput = within(modal).getByRole('textbox', {
@@ -897,9 +898,7 @@ describe('AssignmentsPage', () => {
       // Open create modal
       fireEvent.click(screen.getByRole('button', { name: 'Create assignment' }));
 
-      const modal = await waitFor(() => {
-        return screen.getByRole('dialog', { name: /create assignment/i });
-      });
+      const modal = await waitFor(() => screen.getByRole('dialog', { name: /create assignment/i }));
 
       // Fill in required fields except year group using userEvent
       const titleInput = within(modal).getByRole('textbox', { name: /assignment title/i });
@@ -937,9 +936,7 @@ describe('AssignmentsPage', () => {
       // Click update
       fireEvent.click(within(safeRow).getByRole('button', { name: /update/i }));
 
-      const modal = await waitFor(() => {
-        return screen.getByRole('dialog', { name: /update assignment/i });
-      });
+      const modal = await waitFor(() => screen.getByRole('dialog', { name: /update assignment/i }));
 
       // Edit metadata using userEvent
       const titleInput = within(modal).getByRole('textbox', { name: /assignment title/i });

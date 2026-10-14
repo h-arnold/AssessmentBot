@@ -28,43 +28,57 @@ const {
   getCohortsMock,
   getAssignmentTopicsMock,
   getYearGroupsMock,
-} = vi.hoisted(() => ({
-  getAuthorisationStatusMock: vi.fn(),
-  getApplicationAccessMock: vi.fn(),
-  warmStartupQueriesMock: vi.fn(),
-  getABClassPartialsMock: vi.fn(),
-  getAssignmentDefinitionPartialsMock: vi.fn(),
-  callApiMock: vi.fn(),
-  getCohortsMock: vi.fn(),
-  getAssignmentTopicsMock: vi.fn(),
-  getYearGroupsMock: vi.fn(),
-}));
+} = vi.hoisted(() => {
+  return {
+    getAuthorisationStatusMock: vi.fn(),
+    getApplicationAccessMock: vi.fn(),
+    warmStartupQueriesMock: vi.fn(),
+    getABClassPartialsMock: vi.fn(),
+    getAssignmentDefinitionPartialsMock: vi.fn(),
+    callApiMock: vi.fn(),
+    getCohortsMock: vi.fn(),
+    getAssignmentTopicsMock: vi.fn(),
+    getYearGroupsMock: vi.fn(),
+  };
+});
 
-vi.mock('../../services/authService/authService', () => ({
-  getAuthorisationStatus: getAuthorisationStatusMock,
-  getApplicationAccess: getApplicationAccessMock,
-}));
+vi.mock('../../services/authService/authService', () => {
+  return {
+    hasScriptAuthorisation: getAuthorisationStatusMock,
+    getApplicationAccess: getApplicationAccessMock,
+  };
+});
 
-vi.mock('../../services/googleClassrooms/classPartialsService', () => ({
-  getABClassPartials: getABClassPartialsMock,
-}));
+vi.mock('../../services/googleClassrooms/classPartialsService', () => {
+  return {
+    getABClassPartials: getABClassPartialsMock,
+  };
+});
 
-vi.mock('../../services/assignmentDefinition/assignmentDefinitionPartialsService', () => ({
-  getAssignmentDefinitionPartials: getAssignmentDefinitionPartialsMock,
-}));
+vi.mock('../../services/assignmentDefinition/assignmentDefinitionPartialsService', () => {
+  return {
+    getAssignmentDefinitionPartials: getAssignmentDefinitionPartialsMock,
+  };
+});
 
-vi.mock('../../services/apiService', () => ({
-  callApi: callApiMock,
-}));
+vi.mock('../../services/apiService', () => {
+  return {
+    callApi: callApiMock,
+  };
+});
 
-vi.mock('../../services/referenceData/referenceDataService', () => ({
-  getCohorts: getCohortsMock,
-  getYearGroups: getYearGroupsMock,
-}));
+vi.mock('../../services/referenceData/referenceDataService', () => {
+  return {
+    getCohorts: getCohortsMock,
+    getYearGroups: getYearGroupsMock,
+  };
+});
 
-vi.mock('../../services/assignmentDefinition/assignmentTopicsService', () => ({
-  getAssignmentTopics: getAssignmentTopicsMock,
-}));
+vi.mock('../../services/assignmentDefinition/assignmentTopicsService', () => {
+  return {
+    getAssignmentTopics: getAssignmentTopicsMock,
+  };
+});
 
 vi.mock('../../query/sharedQueries', async () => {
   const actual = await vi.importActual<typeof SharedQueriesModule>('../../query/sharedQueries');
@@ -280,7 +294,7 @@ describe('AppAuthGate', () => {
     const { QueryWrapper } = createQueryWrapper();
     const forbiddenError = new ApiTransportError({
       requestId: 'req-warmup-forbidden',
-      error: { code: 'FORBIDDEN', message: 'Access denied.', retriable: false },
+      error: { code: 'FORBIDDEN', message: 'Access denied.', isRetriable: false },
     });
     getAuthorisationStatusMock.mockResolvedValueOnce(true);
     getApplicationAccessMock.mockResolvedValueOnce({ ...GRANTED_ACCESS });
@@ -363,7 +377,7 @@ describe('AppAuthGate', () => {
     getAuthorisationStatusMock.mockRejectedValueOnce(
       new ApiTransportError({
         requestId: 'req-auth-gate-surface',
-        error: { code: 'RATE_LIMITED', message: 'Rate limited.', retriable: true },
+        error: { code: 'RATE_LIMITED', message: 'Rate limited.', isRetriable: true },
       })
     );
 
@@ -660,7 +674,7 @@ describe('AppAuthGate', () => {
         error: {
           code: 'RATE_LIMITED',
           message: 'Rate limited.',
-          retriable: true,
+          isRetriable: true,
         },
       })
     );

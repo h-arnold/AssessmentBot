@@ -124,10 +124,9 @@ function accumulateNotAttempted(
   accumulator.observedDataPoints += metricResult.totalDataPoints;
   if (metricResult.totalWeight <= 0) return;
   accumulator.hasPositiveNotAttempted = true;
-  if (metric !== 'spag') {
-    accumulator.naTotalWeight += metricResult.totalWeight;
-    accumulator.naTotalDataPoints += metricResult.totalDataPoints;
-  }
+  if (metric === 'spag') return;
+  accumulator.naTotalWeight += metricResult.totalWeight;
+  accumulator.naTotalDataPoints += metricResult.totalDataPoints;
 }
 
 /**

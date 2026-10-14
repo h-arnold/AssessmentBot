@@ -22,49 +22,61 @@ const runQueuedBulkActionMock = vi.fn();
  * runQueuedBulkAction sets isQueueActive/isProgressModalOpen to true before
  * the mutation runs and false afterwards.
  */
-const queueStateMock = vi.hoisted(() => ({
-  isQueueActive: false,
-  isProgressModalOpen: false,
-}));
+const queueStateMock = vi.hoisted(() => {
+  return {
+    isQueueActive: false,
+    isProgressModalOpen: false,
+  };
+});
 
-vi.mock('./useClassesManagement', () => ({
-  useClassesManagement: classesManagementStateMock,
-}));
+vi.mock('./useClassesManagement', () => {
+  return {
+    useClassesManagement: classesManagementStateMock,
+  };
+});
 
-vi.mock('./bulk/runQueuedBatchMutation', () => ({
-  runQueuedBatchMutation: runQueuedBatchMutationMock,
-}));
+vi.mock('./bulk/runQueuedBatchMutation', () => {
+  return {
+    runQueuedBatchMutation: runQueuedBatchMutationMock,
+  };
+});
 
-vi.mock('./useClassesBulkMutationQueue', () => ({
-  useClassesBulkMutationQueue: () => ({
-    isQueueActive: queueStateMock.isQueueActive,
-    progress: { currentItem: null, completed: 0, pendingCount: 0, total: 0, isInProgress: false },
-    isProgressModalOpen: queueStateMock.isProgressModalOpen,
-    onDismissProgressModal: vi.fn(),
-    onCancelQueue: vi.fn(),
-    runQueuedBulkAction: runQueuedBulkActionMock,
-  }),
-}));
+vi.mock('./useClassesBulkMutationQueue', () => {
+  return {
+    useClassesBulkMutationQueue: () => {
+      return {
+        isQueueActive: queueStateMock.isQueueActive,
+        progress: { currentItem: null, completed: 0, pendingCount: 0, total: 0, isInProgress: false },
+        isProgressModalOpen: queueStateMock.isProgressModalOpen,
+        onDismissProgressModal: vi.fn(),
+        onCancelQueue: vi.fn(),
+        runQueuedBulkAction: runQueuedBulkActionMock,
+      };
+    },
+  };
+});
 
-vi.mock('./bulk/ClassesBulkProgressModal', () => ({
-  ClassesBulkProgressModal(properties: Readonly<{
-    open: boolean;
-    progress: BatchProgressSnapshot;
-    verb: string;
-    onCancel: () => void;
-    onDismiss: () => void;
-  }>) {
-    return properties.open ? (
-      <div role="dialog" aria-label="Bulk class update in progress">
-        <span>{properties.progress.completed} / {properties.progress.total}</span>
-        <span>{properties.verb} class {properties.progress.currentItem?.className ?? ''}</span>
-      </div>
-    ) : null;
-  },
-}));
+vi.mock('./bulk/ClassesBulkProgressModal', () => {
+  return {
+    ClassesBulkProgressModal(properties: Readonly<{
+      open: boolean;
+      progress: BatchProgressSnapshot;
+      verb: string;
+      onCancel: () => void;
+      onDismiss: () => void;
+    }>) {
+      return properties.open ? (
+        <div role="dialog" aria-label="Bulk class update in progress">
+          <span>{properties.progress.completed} / {properties.progress.total}</span>
+          <span>{properties.verb} class {properties.progress.currentItem?.className ?? ''}</span>
+        </div>
+      ) : null;
+    },
+  };
+});
 
-const bulkCreateModalMock = vi.hoisted(() =>
-  vi.fn((properties: {
+const bulkCreateModalMock = vi.hoisted(() => {
+  return vi.fn((properties: {
     open: boolean;
     onConfirm: (options: { cohortKey: string; yearGroupKey: string; courseLength?: number }) => Promise<void>;
   }) => {
@@ -84,36 +96,40 @@ const bulkCreateModalMock = vi.hoisted(() =>
         </button>
       </div>
     );
-  }),
-);
+  });
+});
 
-vi.mock('./bulk/BulkCreateModal', () => ({
-  BulkCreateModal: bulkCreateModalMock,
-}));
+vi.mock('./bulk/BulkCreateModal', () => {
+  return {
+    BulkCreateModal: bulkCreateModalMock,
+  };
+});
 
-vi.mock('./bulk/BulkDeleteModal', () => ({
-  BulkDeleteModal(properties: Readonly<{
-    open: boolean;
-    onConfirm: () => void;
-    onCancel: () => void;
-    confirmLoading?: boolean;
-  }>) {
-    if (!properties.open) {
-      return null;
-    }
+vi.mock('./bulk/BulkDeleteModal', () => {
+  return {
+    BulkDeleteModal(properties: Readonly<{
+      open: boolean;
+      onConfirm: () => void;
+      onCancel: () => void;
+      confirmLoading?: boolean;
+    }>) {
+      if (!properties.open) {
+        return null;
+      }
 
-    return (
-      <div role="dialog" aria-label="Delete classes">
-        <button
-          type="button"
-          onClick={properties.onConfirm}
-        >
-          Delete
-        </button>
-      </div>
-    );
-  },
-}));
+      return (
+        <div role="dialog" aria-label="Delete classes">
+          <button
+            type="button"
+            onClick={properties.onConfirm}
+          >
+            Delete
+          </button>
+        </div>
+      );
+    },
+  };
+});
 
 /**
  * Installs the mocked classes-management hook state for one test.
@@ -339,10 +355,12 @@ describe('ClassesManagementPanel', () => {
 
     let resolveBatch!: (results: Array<ReturnType<typeof createFulfilledClassResult>>) => void;
     runQueuedBatchMutationMock.mockImplementationOnce(
-      () =>
-        new Promise<Array<ReturnType<typeof createFulfilledClassResult>>>((resolve) => {
-          resolveBatch = resolve;
-        }),
+      () => {
+        const { promise, resolve } =
+          Promise.withResolvers<Array<ReturnType<typeof createFulfilledClassResult>>>();
+        resolveBatch = resolve;
+        return promise;
+      },
     );
 
     await renderPanel();
@@ -401,7 +419,7 @@ describe('ClassesManagementPanel', () => {
         error: {
           code: 'RATE_LIMITED',
           message: 'Transport refresh text.',
-          retriable: true,
+          isRetriable: true,
         },
       }),
     );
@@ -435,10 +453,12 @@ describe('ClassesManagementPanel', () => {
     // Simulate queue active: mutate resolves slowly, exposing progress modal
     let resolveBatch!: (results: Array<ReturnType<typeof createFulfilledClassResult>>) => void;
     runQueuedBatchMutationMock.mockImplementationOnce(
-      () =>
-        new Promise<Array<ReturnType<typeof createFulfilledClassResult>>>((resolve) => {
-          resolveBatch = resolve;
-        }),
+      () => {
+        const { promise, resolve } =
+          Promise.withResolvers<Array<ReturnType<typeof createFulfilledClassResult>>>();
+        resolveBatch = resolve;
+        return promise;
+      },
     );
 
     await renderPanel();
@@ -473,10 +493,12 @@ describe('ClassesManagementPanel', () => {
 
     let resolveBatch!: (results: Array<ReturnType<typeof createFulfilledClassResult>>) => void;
     runQueuedBatchMutationMock.mockImplementationOnce(
-      () =>
-        new Promise<Array<ReturnType<typeof createFulfilledClassResult>>>((resolve) => {
-          resolveBatch = resolve;
-        }),
+      () => {
+        const { promise, resolve } =
+          Promise.withResolvers<Array<ReturnType<typeof createFulfilledClassResult>>>();
+        resolveBatch = resolve;
+        return promise;
+      },
     );
 
     await renderPanel();
@@ -510,10 +532,12 @@ describe('ClassesManagementPanel', () => {
 
     let resolveBatch!: (results: Array<ReturnType<typeof createFulfilledClassResult>>) => void;
     runQueuedBatchMutationMock.mockImplementationOnce(
-      () =>
-        new Promise<Array<ReturnType<typeof createFulfilledClassResult>>>((resolve) => {
-          resolveBatch = resolve;
-        }),
+      () => {
+        const { promise, resolve } =
+          Promise.withResolvers<Array<ReturnType<typeof createFulfilledClassResult>>>();
+        resolveBatch = resolve;
+        return promise;
+      },
     );
 
     await renderPanel();

@@ -31,9 +31,6 @@ class DriveManagerFileOperations {
     Validate.requireParams({ destinationFolderId }, 'moveFiles');
 
     const details = [];
-    let successCount = 0;
-    let failCount = 0;
-
     // If no files are provided
     if (!fileIds || fileIds.length === 0) {
       const noFilesMessage = 'No file IDs provided; nothing to move.';
@@ -44,6 +41,9 @@ class DriveManagerFileOperations {
         details,
       };
     }
+
+    let successCount = 0;
+    let failCount = 0;
 
     // Validate the destination folder exists (fail fast).
     this._folderValidator.validateFolderExists(destinationFolderId);
@@ -152,8 +152,7 @@ class DriveManagerFileOperations {
       const escapedName = String(newSheetName)
         .replaceAll('\\', String.raw`\\`)
         .replaceAll("'", String.raw`\'`);
-      const query =
-        `'${destinationFolderId}' in parents and trashed = false ` + `and name = '${escapedName}'`;
+      const query = `'${destinationFolderId}' in parents and trashed = false and name = '${escapedName}'`;
 
       const existing = Drive.Files.list({
         q: query,

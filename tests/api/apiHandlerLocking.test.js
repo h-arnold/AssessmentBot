@@ -126,7 +126,7 @@ describe('Api/apiHandler – atomicity and lock-protected tracking', () => {
 
     expect(result).toMatchObject({
       ok: false,
-      error: { code: 'RATE_LIMITED', retriable: true },
+      error: { code: 'RATE_LIMITED', isRetriable: true },
     });
     // Handler must not have been called
     expect(context.scriptAppManagerInstance.isAuthorised).not.toHaveBeenCalled();
@@ -151,7 +151,7 @@ describe('Api/apiHandler – atomicity and lock-protected tracking', () => {
     const store = readPersistedUserRequestStore();
     expect(store[result.requestId]).toMatchObject({
       status: 'started',
-      method: 'getAuthorisationStatus',
+      method: 'hasScriptAuthorisation',
     });
   });
 
@@ -175,7 +175,7 @@ describe('Api/apiHandler – atomicity and lock-protected tracking', () => {
     const { ACTIVE_LIMIT } = require('../../src/backend/z_Api/apiConstants.js');
 
     // Seed the store with ACTIVE_LIMIT started entries so the next admission is rejected.
-    const store = buildStartedStore(ACTIVE_LIMIT, 'seed-req', Date.now(), 'getAuthorisationStatus');
+    const store = buildStartedStore(ACTIVE_LIMIT, 'seed-req', Date.now(), 'hasScriptAuthorisation');
     persistUserRequestStore(store);
 
     const dispatcher = getApiDispatcherInstance();
@@ -186,7 +186,7 @@ describe('Api/apiHandler – atomicity and lock-protected tracking', () => {
 
     expect(result).toMatchObject({
       ok: false,
-      error: { code: 'RATE_LIMITED', retriable: true },
+      error: { code: 'RATE_LIMITED', isRetriable: true },
     });
     // Handler must not have been called.
     expect(context.scriptAppManagerInstance.isAuthorised).not.toHaveBeenCalled();

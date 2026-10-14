@@ -47,18 +47,16 @@ export function student(id: string, name: string): StudentSummary {
 
 /**
  * Build a minimal AssignmentPartial fixture for adapter tests.
- * @param {{ assignmentId: string; updatedAt: string | null; definitionKey: string; taskIds: string[] }} overrides - The required fields for the assignment fixture.
+ * @param {{ assignmentId: string; updatedAt: string | null; definitionKey: string }} overrides - The required fields for the assignment fixture.
  * @param {string} overrides.assignmentId - The assignment identifier.
  * @param {string | null} overrides.updatedAt - The ISO timestamp or null for the last update.
  * @param {string} overrides.definitionKey - The definition key linking to per-task rows.
- * @param {string[]} overrides.taskIds - The task identifiers belonging to this assignment.
  * @returns {AssignmentPartial} A fully typed AssignmentPartial.
  */
 export function assignment(overrides: {
   assignmentId: string;
   updatedAt: string | null;
   definitionKey: string;
-  taskIds: string[];
 }): AssignmentPartial {
   return {
     courseId: 'course_001',
@@ -107,13 +105,9 @@ export function computedPerTaskRow(
  * Build the single-assignment `dk1` input shared by metric rollup tests.
  *
  * @param {PerTaskRow[]} perTaskRows - Fresh rows supplied by the test, including empty data.
- * @param {string[]} taskIds - Task identifiers for assignment `a-1`.
  * @returns {Object} Fresh adapter input with Alice's roster and the matching definition.
  */
-export function singleAssignmentAdapterInput(
-  perTaskRows: PerTaskRow[],
-  taskIds: string[]
-): {
+export function singleAssignmentAdapterInput(perTaskRows: PerTaskRow[]): {
   analyserResult: AveragingResult;
   classFull: ClassFull;
   assignmentDefinitionPartials: ReturnType<typeof createDefinitionPartial>[];
@@ -123,7 +117,7 @@ export function singleAssignmentAdapterInput(
     classFull: classFull({
       students: [student('s-1', 'Alice')],
       assignments: [
-        assignment({ assignmentId: 'a-1', updatedAt: DEFAULT_TS, definitionKey: 'dk1', taskIds }),
+        assignment({ assignmentId: 'a-1', updatedAt: DEFAULT_TS, definitionKey: 'dk1' }),
       ],
     }),
     assignmentDefinitionPartials: [createDefinitionPartial({ definitionKey: 'dk1' })],

@@ -7,10 +7,12 @@ const { callApiMock, parseApiResponseMock } = await vi.hoisted(async () => {
   return createApiServiceMockScaffold();
 });
 
-vi.mock('../apiService', () => ({
-  callApi: callApiMock,
-  parseApiResponse: parseApiResponseMock,
-}));
+vi.mock('../apiService', () => {
+  return {
+    callApi: callApiMock,
+    parseApiResponse: parseApiResponseMock,
+  };
+});
 
 const validStartAssessmentRunRequest = {
   definitionKey: 'algebra-baseline',

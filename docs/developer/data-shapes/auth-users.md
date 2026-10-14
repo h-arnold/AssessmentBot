@@ -144,7 +144,7 @@ are denied without claiming or writing; the next eligible caller retries the cla
 
 ### `getApplicationAccess` (gate-exempt, all callers)
 
-Joins `getAuthorisationStatus` in the gate-exempt set, but routes through the same
+Joins `hasScriptAuthorisation` in the gate-exempt set, but routes through the same
 access-resolution path as `checkAccess`, so the bootstrap claim fires here on a
 fresh install. Reveals only the caller's own access state (no method-surface
 probing); ordinary protected-method denial remains the uniform `FORBIDDEN`
@@ -341,7 +341,7 @@ registry.
 - `setAuthenticationSettings(request)` — validates the raw request against
   `SetAuthenticationSettingsRequestSchema` before `callApi('setAuthenticationSettings', parsedRequest)`,
   then parses the result with `SetAuthenticationSettingsResultSchema`.
-- `getAuthorisationStatus()` — `callApi('getAuthorisationStatus')` (OAuth gate, unchanged).
+- `hasScriptAuthorisation()` — `callApi('hasScriptAuthorisation')` (ScriptApp OAuth scope gate; not application membership or admin role).
 - All method names match `ALLOWLISTED_METHOD_HANDLERS` in the backend `z_apiHandler.js`.
 
 **Key domain validation rules (frontend):**
@@ -368,7 +368,7 @@ registry.
   safe deny/retry on contention/cap/write failure, never-claim for blank/trigger callers)
   all match the shapes above.
 - Section 5 (transport endpoints in `apiAuth.js`) has landed and matches this contract:
-  `getApplicationAccess` is gate-exempt (joins `getAuthorisationStatus` in
+  `getApplicationAccess` is gate-exempt (joins `hasScriptAuthorisation` in
   `GATE_EXEMPT_METHOD_NAMES`) and routes through the shared access-resolution path,
   performing the bootstrap claim and returning the four-value `reason` enum with no
   `'unconfigured'` and no `provider` field; `getAuthenticationSettings` /
@@ -446,7 +446,7 @@ API handlers:                src/backend/z_Api/
 
 Frontend:                    src/frontend/src/services/authService/
   ├── authService.zod.ts            — ApplicationAccessSchema, AuthenticationSettingsSchema, AuthUserEntrySchema, SetAuthenticationSettingsRequestSchema, SetAuthenticationSettingsResultSchema
-  └── authService.ts                — getApplicationAccess(), getAuthenticationSettings(), setAuthenticationSettings(), getAuthorisationStatus()
+  └── authService.ts                — getApplicationAccess(), getAuthenticationSettings(), setAuthenticationSettings(), hasScriptAuthorisation()
 
 Feature:                     src/frontend/src/features/settings/authentication/
   ├── useAuthenticationSettings.helpers.ts — save-error code→copy mapping (mode-aware) + failure logging

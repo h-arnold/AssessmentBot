@@ -46,6 +46,14 @@ const BaseTaskArtifactFields = z.object({
   metadata: z.record(z.string(), z.unknown()),
 });
 
+const SpreadsheetCellSchema = z.union([z.string(), z.number(), z.null()]);
+const SpreadsheetRowSchema = z.array(SpreadsheetCellSchema);
+const SpreadsheetContentSchema = z.array(SpreadsheetRowSchema).nullable();
+const FeedbackSchema = z.looseObject({
+  type: z.string(),
+  createdAt: z.string(),
+});
+
 /**
  * Schema for a base task artifact, matching `BaseTaskArtifact.toJSON()` in
  * `src/backend/Models/Artifacts/0_BaseTaskArtifact.js`.
@@ -64,7 +72,7 @@ export const BaseTaskArtifactSchema = z.discriminatedUnion('type', [
   }),
   BaseTaskArtifactFields.extend({
     type: z.literal('SPREADSHEET'),
-    content: z.array(z.array(z.union([z.string(), z.number(), z.null()]))).nullable(),
+    content: SpreadsheetContentSchema,
   }),
   BaseTaskArtifactFields.extend({
     type: z.literal('base'),
@@ -99,13 +107,7 @@ export const StudentSubmissionItemSchema = z.object({
   taskId: z.string(),
   artifact: BaseTaskArtifactSchema,
   assessments: z.record(z.string(), AssessmentSchema),
-  feedback: z.record(
-    z.string(),
-    z.looseObject({
-      type: z.string(),
-      createdAt: z.string(),
-    })
-  ),
+  feedback: z.record(z.string(), FeedbackSchema),
 });
 
 /**

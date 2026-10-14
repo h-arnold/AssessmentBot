@@ -76,9 +76,11 @@ import {
 
 // Mock the orchestration hook at the module seam. The stub does not import it yet,
 // so the mock is inert against the placeholder; the green surface will consume it.
-vi.mock('./useHeatmapsPageData', () => ({
-  useHeatmapsPageData: vi.fn(),
-}));
+vi.mock('./useHeatmapsPageData', () => {
+  return {
+    useHeatmapsPageData: vi.fn(),
+  };
+});
 
 // ===========================================================================
 // Tests

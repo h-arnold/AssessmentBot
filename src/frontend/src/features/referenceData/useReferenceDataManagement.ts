@@ -23,7 +23,7 @@ import {
   getReferenceDataBlockingLoadErrorQueryKey,
   getReferenceDataLoadError,
   isInUseError,
-  refetchRequiredReferenceDataQuery,
+  hasRefetchedRequiredReferenceDataQuery,
   setPersistedBlockingLoadError,
   type BlockingLoadErrorState,
   type ReferenceDataTrustBoundary,
@@ -157,7 +157,7 @@ export type ReferenceDataManagementResult<T extends { key: string; name: string 
   handleModalClose: () => void;
   handleFormFinish: (values: ReferenceDataFormValues) => Promise<void>;
   handleDeleteConfirm: () => Promise<void>;
-  handleToggleActive?: (entity: T, active: boolean) => Promise<void>;
+  handleToggleActive?: (entity: T, isActive: boolean) => Promise<void>;
 };
 
 // ============================================================================
@@ -322,12 +322,12 @@ export function useReferenceDataManagement<T extends { key: string; name: string
           });
         }
 
-        const refreshSucceeded = await refetchRequiredReferenceDataQuery(
+        const hasRefreshSucceeded = await hasRefetchedRequiredReferenceDataQuery(
           queryClient,
           queryKeyForRefetch
         );
 
-        if (!refreshSucceeded) {
+        if (!hasRefreshSucceeded) {
           handleRequiredRefreshFailure();
           return;
         }
@@ -362,26 +362,28 @@ export function useReferenceDataManagement<T extends { key: string; name: string
 
     try {
       await config.deleteService({ key: deleteState.entity.key });
-      const refreshSucceeded = await refetchRequiredReferenceDataQuery(
+      const hasRefreshSucceeded = await hasRefetchedRequiredReferenceDataQuery(
         queryClient,
         queryKeyForRefetch
       );
 
-      if (!refreshSucceeded) {
+      if (!hasRefreshSucceeded) {
         handleRequiredRefreshFailure();
         return;
       }
 
       setDeleteState(INITIAL_DELETE_STATE);
     } catch (error: unknown) {
-      const blocked = isInUseError(error);
+      const isBlocked = isInUseError(error);
 
-      setDeleteState((previous) => ({
-        ...previous,
-        submitting: false,
-        error: getDeleteErrorMessage(error, blocked, config.entityLabel),
-        blocked,
-      }));
+      setDeleteState((previous) => {
+        return {
+          ...previous,
+          submitting: false,
+          error: getDeleteErrorMessage(error, isBlocked, config.entityLabel),
+          blocked: isBlocked,
+        };
+      });
     }
   }, [deleteState.entity, config, queryClient, queryKeyForRefetch, handleRequiredRefreshFailure]);
 
@@ -402,7 +404,7 @@ export function useReferenceDataManagement<T extends { key: string; name: string
 
   // Toggle active handler (optional, only when supportsToggleActive is true)
   const handleToggleActive = useCallback(
-    async (entity: T, active: boolean): Promise<void> => {
+    async (entity: T, isActive: boolean): Promise<void> => {
       if (!config.supportsToggleActive || !config.toggleService) {
         return;
       }
@@ -410,13 +412,13 @@ export function useReferenceDataManagement<T extends { key: string; name: string
       setToggleError(null);
 
       try {
-        await config.toggleService({ entity, active });
-        const refreshSucceeded = await refetchRequiredReferenceDataQuery(
+        await config.toggleService({ entity, active: isActive });
+        const hasRefreshSucceeded = await hasRefetchedRequiredReferenceDataQuery(
           queryClient,
           queryKeyForRefetch
         );
 
-        if (!refreshSucceeded) {
+        if (!hasRefreshSucceeded) {
           handleRequiredRefreshFailure();
           return;
         }
@@ -504,19 +506,17 @@ export function useReferenceDataManagement<T extends { key: string; name: string
       },
     });
 
-    const deleteDialog = renderDeleteDialogFunction({
+    // Form dialog takes precedence over delete dialog
+    if (formDialog !== null) {
+      return formDialog;
+    }
+    return renderDeleteDialogFunction({
       deleteState,
       onClose: () => {
         setDeleteState(INITIAL_DELETE_STATE);
       },
       onConfirm: handleDeleteConfirm,
     });
-
-    // Form dialog takes precedence over delete dialog
-    if (formDialog !== null) {
-      return formDialog;
-    }
-    return deleteDialog;
   }, [
     config,
     editingEntity,
@@ -574,7 +574,7 @@ export function useReferenceDataManagement<T extends { key: string; name: string
     handleFormFinish,
     handleDeleteConfirm,
     // Only include handleToggleActive if toggle is supported
-    ...(config.supportsToggleActive ? { handleToggleActive } : {}),
+    ...(config.supportsToggleActive && { handleToggleActive }),
   };
 }
 

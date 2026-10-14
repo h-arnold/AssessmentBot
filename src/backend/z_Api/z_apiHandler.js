@@ -2,15 +2,23 @@
 
 /* global BaseSingleton, Utilities, LockService, ABLogger, ScriptAppManager, ABClassController, ReferenceDataController, AuthService */
 
-let lockTimeoutMs;
-let lockWaitWarnThresholdMs;
-let activeLimit;
-let staleRequestAgeMs;
-let requestStoreFns;
-let apiRateLimitErrorName,
-  apiValidationErrorName,
-  apiDisabledErrorName,
-  apiDefinitionStaleErrorName;
+const lockTimeoutMs = LOCK_TIMEOUT_MS;
+const lockWaitWarnThresholdMs = LOCK_WAIT_WARN_THRESHOLD_MS;
+const activeLimit = ACTIVE_LIMIT;
+const staleRequestAgeMs = STALE_REQUEST_AGE_MS;
+const requestStoreFns = {
+  loadStore_,
+  saveStore_,
+  createStartedRecord_,
+  markSuccess_,
+  markError_,
+  compactStore_,
+  pruneStaleEntries_,
+};
+const apiRateLimitErrorName = ApiRateLimitError.name;
+const apiValidationErrorName = ApiValidationError.name;
+const apiDisabledErrorName = ApiDisabledError.name;
+const apiDefinitionStaleErrorName = DefinitionStaleError.name;
 
 const API_ERROR_CODE_MAP = {
   RATE_LIMITED: 'RATE_LIMITED',
@@ -22,7 +30,7 @@ const API_ERROR_CODE_MAP = {
 };
 
 // Gate-exempt methods skip the auth gate and run their own handlers (OAuth status precedent).
-const GATE_EXEMPT_METHOD_NAMES = Object.freeze(['getAuthorisationStatus', 'getApplicationAccess']);
+const GATE_EXEMPT_METHOD_NAMES = Object.freeze(['hasScriptAuthorisation', 'getApplicationAccess']);
 
 // Admin-only methods resolve access FRESH (provider cache bypassed); non-admin roles get FORBIDDEN.
 const ADMIN_REQUIRED_METHOD_NAMES = Object.freeze([
@@ -32,7 +40,7 @@ const ADMIN_REQUIRED_METHOD_NAMES = Object.freeze([
 
 const PII_LOG_METHODS = Object.freeze(['getAuthenticationSettings', 'setAuthenticationSettings']);
 const ALLOWLISTED_METHOD_HANDLERS = Object.freeze({
-  getAuthorisationStatus: () => new ScriptAppManager().isAuthorised(),
+  hasScriptAuthorisation: () => new ScriptAppManager().isAuthorised(),
   getApplicationAccess: () => getApplicationAccess_(),
   getAuthenticationSettings: () => getAuthenticationSettings_(),
   setAuthenticationSettings: (parameters) => setAuthenticationSettings_(parameters),
@@ -68,59 +76,6 @@ const ALLOWLISTED_METHOD_HANDLERS = Object.freeze({
     new ReferenceDataController().deleteAssignmentTopic(parameters.key),
 });
 
-if (typeof module !== 'undefined' && module.exports) {
-  const apiConfigFns = require('./apiConfig.js');
-  globalThis.getBackendConfig_ = apiConfigFns.getBackendConfig_;
-  globalThis.setBackendConfig_ = apiConfigFns.setBackendConfig_;
-  ({
-    LOCK_TIMEOUT_MS: lockTimeoutMs,
-    LOCK_WAIT_WARN_THRESHOLD_MS: lockWaitWarnThresholdMs,
-    ACTIVE_LIMIT: activeLimit,
-    STALE_REQUEST_AGE_MS: staleRequestAgeMs,
-  } = require('./apiConstants.js'));
-  requestStoreFns = require('./requestStore.js');
-  apiRateLimitErrorName = require('../Utils/ErrorTypes/ApiRateLimitError.js').name;
-  apiValidationErrorName = require('../Utils/ErrorTypes/ApiValidationError.js').name;
-  apiDisabledErrorName = require('../Utils/ErrorTypes/ApiDisabledError.js').name;
-  apiDefinitionStaleErrorName = require('../Utils/ErrorTypes/DefinitionStaleError.js').name;
-  globalThis.startAssessmentRun_ = require('./assignmentAssessment.js').startAssessmentRun_;
-  globalThis.getAssignment_ = require('./assignmentAssessment.js').getAssignment_;
-  const apiAuthFns = require('./apiAuth.js');
-  globalThis.getApplicationAccess_ = apiAuthFns.getApplicationAccess_;
-  globalThis.getAuthenticationSettings_ = apiAuthFns.getAuthenticationSettings_;
-  globalThis.setAuthenticationSettings_ = apiAuthFns.setAuthenticationSettings_;
-  // Wire only if not already set (allows test harness to install mocks before this module loads).
-  if (globalThis.upsertABClass_ === undefined) {
-    const abclassMutationsFns = require('./abclass/abclassMutations.js');
-    globalThis.upsertABClass_ = abclassMutationsFns.upsertABClass_;
-    globalThis.updateABClass_ = abclassMutationsFns.updateABClass_;
-    globalThis.deleteABClass_ = abclassMutationsFns.deleteABClass_;
-  }
-  if (globalThis.getABClass_ === undefined) {
-    const abclassReadFns = require('./abclass/abclassRead.js');
-    globalThis.getABClass_ = abclassReadFns.getABClass_;
-  }
-} else {
-  // In GAS, these are loaded as global constants and functions from the bundle.
-  lockTimeoutMs = LOCK_TIMEOUT_MS;
-  lockWaitWarnThresholdMs = LOCK_WAIT_WARN_THRESHOLD_MS;
-  activeLimit = ACTIVE_LIMIT;
-  staleRequestAgeMs = STALE_REQUEST_AGE_MS;
-  requestStoreFns = {
-    loadStore_,
-    saveStore_,
-    createStartedRecord_,
-    markSuccess_,
-    markError_,
-    compactStore_,
-    pruneStaleEntries_,
-  };
-  apiRateLimitErrorName = ApiRateLimitError.name;
-  apiValidationErrorName = ApiValidationError.name;
-  apiDisabledErrorName = ApiDisabledError.name;
-  apiDefinitionStaleErrorName = DefinitionStaleError.name;
-}
-
 /** Dispatches allowlisted API requests with rate limiting and lifecycle state tracking. */
 class ApiDispatcher extends BaseSingleton {
   /**
@@ -144,7 +99,7 @@ class ApiDispatcher extends BaseSingleton {
     ABLogger.getInstance().debug('API request received.', {
       requestId,
       method: methodName,
-      ...(PII_LOG_METHODS.includes(methodName) ? {} : { params: JSON.stringify(request.params) }),
+      ...(!PII_LOG_METHODS.includes(methodName) && { params: JSON.stringify(request.params) }),
     });
 
     // Auth gate: runs before the allowlist lookup so non-members get FORBIDDEN uniformly and
@@ -186,16 +141,16 @@ class ApiDispatcher extends BaseSingleton {
     }
 
     let handlerError;
-    let handlerFailed = false;
+    let isHandlerFailed = false;
     let data;
     try {
       data = handler(request.params);
     } catch (error) {
-      handlerFailed = true;
+      isHandlerFailed = true;
       handlerError = error;
     }
 
-    if (handlerFailed) {
+    if (isHandlerFailed) {
       ABLogger.getInstance().error(
         'API request failed.',
         { requestId, method: methodName },
@@ -203,9 +158,9 @@ class ApiDispatcher extends BaseSingleton {
       );
     }
 
-    this._runCompletionPhase(requestId, methodName, handlerFailed, handlerError);
+    this._runCompletionPhase(requestId, methodName, isHandlerFailed, handlerError);
 
-    if (handlerFailed) {
+    if (isHandlerFailed) {
       const response = this._mapErrorToFailureEnvelope(requestId, handlerError);
       this._logResponseSent(requestId, methodName, response);
       return response;
@@ -226,7 +181,7 @@ class ApiDispatcher extends BaseSingleton {
     ABLogger.getInstance().debug('API response sent.', {
       requestId,
       method,
-      ...(PII_LOG_METHODS.includes(method) ? {} : { response: JSON.stringify(response) }),
+      ...(!PII_LOG_METHODS.includes(method) && { response: JSON.stringify(response) }),
     });
   }
 
@@ -295,10 +250,10 @@ class ApiDispatcher extends BaseSingleton {
    * Acquires the lock, marks the request success/error, compacts the store, and releases it.
    * @param {string} requestId - Unique identifier for this request.
    * @param {string} method - The API method name.
-   * @param {boolean} handlerFailed - Whether the handler threw an error.
+   * @param {boolean} isHandlerFailed - Whether the handler threw an error.
    * @param {*} [handlerError] - The value thrown by the handler, if any.
    */
-  _runCompletionPhase(requestId, method, handlerFailed, handlerError) {
+  _runCompletionPhase(requestId, method, isHandlerFailed, handlerError) {
     const acquired = this._acquireLock(requestId, method, 'completion');
     if (!acquired.lock) {
       ABLogger.getInstance().warn('Could not acquire completion lock for request.', { requestId });
@@ -307,7 +262,7 @@ class ApiDispatcher extends BaseSingleton {
     const { lock, phaseStart, lockAcquiredAt, lockWaitMs } = acquired;
     try {
       const store = requestStoreFns.loadStore_();
-      if (handlerFailed) {
+      if (isHandlerFailed) {
         requestStoreFns.markError_(store, requestId, String(handlerError));
       } else {
         requestStoreFns.markSuccess_(store, requestId);
@@ -423,12 +378,12 @@ class ApiDispatcher extends BaseSingleton {
    * @param {string} requestId - Unique request identifier.
    * @param {string} code - Error code (e.g. RATE_LIMITED, INVALID_REQUEST, DEFINITION_STALE).
    * @param {string} message - Human-readable error message.
-   * @param {boolean} retriable - Whether the operation can be safely retried.
+   * @param {boolean} isRetriable - Whether the operation can be safely retried.
    * @param {Object} [details] - Optional structured metadata to include in the error block.
    * @returns {Object} Response envelope with ok=false and error details.
    */
-  _failure(requestId, code, message, retriable, details) {
-    const error = { code, message, retriable };
+  _failure(requestId, code, message, isRetriable, details) {
+    const error = { code, message, isRetriable };
     if (details !== undefined && details !== null) {
       error.details = details;
     }
@@ -464,19 +419,19 @@ class ApiDispatcher extends BaseSingleton {
     const mappedCode =
       candidateCode && (hasMessage || isDefinitionStale) ? candidateCode : 'INTERNAL_ERROR';
     const mappedMessage = mappedCode === 'INTERNAL_ERROR' ? 'Internal API error.' : error.message;
-    const retriable = mappedCode === 'RATE_LIMITED';
+    const isRetriable = mappedCode === 'RATE_LIMITED';
 
     if (isDefinitionStale) {
-      return this._failure(requestId, mappedCode, mappedMessage, retriable, {
+      return this._failure(requestId, mappedCode, mappedMessage, isRetriable, {
         definitionKey: error.definitionKey,
         referenceStale: error.referenceStale,
-        templateStale: error.templateStale,
+        isTemplateStale: error.isTemplateStale,
         referenceLastModified: error.referenceLastModified,
         templateLastModified: error.templateLastModified,
       });
     }
 
-    return this._failure(requestId, mappedCode, mappedMessage, retriable);
+    return this._failure(requestId, mappedCode, mappedMessage, isRetriable);
   }
 }
 

@@ -1,4 +1,4 @@
-import { Alert, Flex, Select, Typography } from 'antd';
+import { Alert, Button, Flex, Select, Tooltip, Typography } from 'antd';
 import { memo, type JSX } from 'react';
 import type { LinkableDefinition } from './getLinkableDefinitionsForModal';
 
@@ -7,6 +7,33 @@ export type LinkableDefinitionListProperties = Readonly<{
   selectedDefinitionKey: string | null;
   onSelect: (definitionKey: string) => void;
 }>;
+
+export type LinkExistingDefinitionButtonProperties = Readonly<{
+  hasLinkableDefinitions: boolean;
+  onLink: () => void;
+}>;
+
+/**
+ * Renders the choice prompt's action for linking an existing definition.
+ *
+ * @param {Readonly<LinkExistingDefinitionButtonProperties>} properties Availability and link action.
+ * @returns {JSX.Element} The enabled action or its unavailable explanation.
+ */
+export function LinkExistingDefinitionButton(
+  properties: Readonly<LinkExistingDefinitionButtonProperties>
+): JSX.Element {
+  const { hasLinkableDefinitions, onLink } = properties;
+  if (hasLinkableDefinitions) {
+    return <Button onClick={onLink}>Link to Existing Definition</Button>;
+  }
+  return (
+    <Tooltip title="No assignment definitions exist for this class's year group.">
+      <span>
+        <Button disabled>Link to Existing Definition</Button>
+      </span>
+    </Tooltip>
+  );
+}
 
 /**
  * Renders the "Link to Existing Definition" picker.
@@ -50,14 +77,17 @@ export const LinkableDefinitionList = memo(function LinkableDefinitionList(
         virtual={false}
         notFoundContent="Not found"
         labelRender={(option) => option.label}
-        options={linkableDefinitions.map((d) => ({
-          value: d.definitionKey,
-          label: d.primaryTitle,
-          primaryTitle: d.primaryTitle,
-          primaryTopic: d.primaryTopic,
-          yearGroupLabel: d.yearGroupLabel,
-        }))}
-        optionRender={(option) => (
+        options={linkableDefinitions.map((d) => {
+          return {
+            value: d.definitionKey,
+            label: d.primaryTitle,
+            primaryTitle: d.primaryTitle,
+            primaryTopic: d.primaryTopic,
+            yearGroupLabel: d.yearGroupLabel,
+          };
+        })}
+        optionRender={(option) => {
+          return (
           <Flex vertical gap="small">
             <Typography.Text strong ellipsis>
               {option.data.primaryTitle}
@@ -66,7 +96,8 @@ export const LinkableDefinitionList = memo(function LinkableDefinitionList(
               {option.data.primaryTopic} · {option.data.yearGroupLabel}
             </Typography.Text>
           </Flex>
-        )}
+          );
+        }}
       />
     </Flex>
   );

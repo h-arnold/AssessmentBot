@@ -109,11 +109,13 @@ const CONFIRM_CLICK_RETRY_ATTEMPTS = 3;
  * @returns {ReadonlyArray<object>} Deferred success entries with releaseSignal.
  */
 function buildDeferredMutationEntries(count: number, prefix: string) {
-  return Array.from({ length: count }, (_, index) => ({
-    kind: 'success' as const,
-    data: null,
-    releaseSignal: `${prefix}${index}`,
-  }));
+  return Array.from({ length: count }, (_, index) => {
+    return {
+      kind: 'success' as const,
+      data: null,
+      releaseSignal: `${prefix}${index}`,
+    };
+  });
 }
 
 /**
@@ -207,7 +209,7 @@ async function startBulkCreateWithDeferredUpserts(page: Page) {
 test.describe('bulk progress modal', () => {
   test('bulk create shows progress modal with correct initial count', async ({ page }) => {
     const scenario: ClassesCrudRuntimeScenario = {
-      getAuthorisationStatus: [{ kind: 'success', data: true }],
+      hasScriptAuthorisation: [{ kind: 'success', data: true }],
       getABClassPartials: [{ kind: 'success', data: [] }],
       getCohorts: [{ kind: 'success', data: cohorts }],
       getYearGroups: [{ kind: 'success', data: yearGroups }],
@@ -230,7 +232,7 @@ test.describe('bulk progress modal', () => {
 
   test('progress count updates as queued create calls complete', async ({ page }) => {
     const scenario: ClassesCrudRuntimeScenario = {
-      getAuthorisationStatus: [{ kind: 'success', data: true }],
+      hasScriptAuthorisation: [{ kind: 'success', data: true }],
       getABClassPartials: [
         { kind: 'success', data: [] },
         // Post-mutation refetch — not deferred so it resolves when the refetch runs
@@ -276,7 +278,7 @@ test.describe('bulk progress modal', () => {
     page,
   }) => {
     const scenario: ClassesCrudRuntimeScenario = {
-      getAuthorisationStatus: [{ kind: 'success', data: true }],
+      hasScriptAuthorisation: [{ kind: 'success', data: true }],
       getABClassPartials: [
         { kind: 'success', data: [] },
         // Post-mutation refetch — will include cancelled-row partials
@@ -315,7 +317,7 @@ test.describe('bulk progress modal', () => {
     page,
   }) => {
     const scenario: ClassesCrudRuntimeScenario = {
-      getAuthorisationStatus: [{ kind: 'success', data: true }],
+      hasScriptAuthorisation: [{ kind: 'success', data: true }],
       getABClassPartials: [
         { kind: 'success', data: [] },
         { kind: 'success', data: [] },
@@ -353,7 +355,7 @@ test.describe('bulk progress modal', () => {
 
   test('bulk delete disables toolbar buttons while queue is active', async ({ page }) => {
     const scenario: ClassesCrudRuntimeScenario = {
-      getAuthorisationStatus: [{ kind: 'success', data: true }],
+      hasScriptAuthorisation: [{ kind: 'success', data: true }],
       getABClassPartials: [
         { kind: 'success', data: [existingClassPartial1, existingClassPartial2] },
         { kind: 'success', data: [] },
@@ -363,10 +365,12 @@ test.describe('bulk progress modal', () => {
       getGoogleClassrooms: [{ kind: 'success', data: [existingGCR1, existingGCR2] }],
       deleteABClass: buildDeferredMutationEntries(TWO_ROWS, DELETE_SIGNAL_PREFIX),
       // Provide upsertABClass entries as a safety net (default queue for core tests)
-      upsertABClass: Array.from({ length: 12 }, () => ({
-        kind: 'success' as const,
-        data: null,
-      })),
+      upsertABClass: Array.from({ length: 12 }, () => {
+        return {
+          kind: 'success' as const,
+          data: null,
+        };
+      }),
     };
 
     await mockClassesCrudRuntime(page, padClassesCrudReadQueues(scenario));
@@ -409,7 +413,7 @@ test.describe('bulk progress modal', () => {
 
   test('set cohort shows progress modal with correct verb and count updates', async ({ page }) => {
     const scenario: ClassesCrudRuntimeScenario = {
-      getAuthorisationStatus: [{ kind: 'success', data: true }],
+      hasScriptAuthorisation: [{ kind: 'success', data: true }],
       getABClassPartials: [
         { kind: 'success', data: [existingClassPartial1, existingClassPartial2] },
         { kind: 'success', data: [existingClassPartial1, existingClassPartial2] },
@@ -418,10 +422,12 @@ test.describe('bulk progress modal', () => {
       getYearGroups: [{ kind: 'success', data: baseYearGroups }],
       getGoogleClassrooms: [{ kind: 'success', data: [existingGCR1, existingGCR2] }],
       updateABClass: buildDeferredMutationEntries(TWO_ROWS, UPDATE_SIGNAL_PREFIX),
-      upsertABClass: Array.from({ length: 12 }, () => ({
-        kind: 'success' as const,
-        data: null,
-      })),
+      upsertABClass: Array.from({ length: 12 }, () => {
+        return {
+          kind: 'success' as const,
+          data: null,
+        };
+      }),
     };
 
     await mockClassesCrudRuntime(page, padClassesCrudReadQueues(scenario));

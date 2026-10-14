@@ -60,11 +60,13 @@ class AssignmentDefinitionResponseMapper {
 
     const canonicalTasks = Object.entries(source.tasks || {})
       .filter(([, task]) => task?.taskWeighting !== null && task?.taskWeighting !== undefined)
-      .map(([taskId, task]) => ({
-        taskId,
-        taskTitle: task.taskTitle,
-        taskWeighting: task.taskWeighting,
-      }));
+      .map(([taskId, task]) => {
+        return {
+          taskId,
+          taskTitle: task.taskTitle,
+          taskWeighting: task.taskWeighting,
+        };
+      });
 
     const result = {
       definitionKey: source.definitionKey,

@@ -3,12 +3,7 @@ import { STATUS_ORDER, type ClassesManagementRow } from '../classesManagementVie
 const NULL_SORT_SENTINEL = -1;
 
 export type ClassesSortableColumnKey =
-  | 'status'
-  | 'className'
-  | 'cohortLabel'
-  | 'courseLength'
-  | 'yearGroupLabel'
-  | 'active';
+  'status' | 'className' | 'cohortLabel' | 'courseLength' | 'yearGroupLabel' | 'active';
 
 /**
  * Compares nullable text values using case-insensitive locale ordering.
@@ -63,7 +58,7 @@ function compareNullableNumber(left: number | null, right: number | null): numbe
  * @returns {(left: ClassesManagementRow, right: ClassesManagementRow) => number} Comparator.
  */
 export function getClassesTableSortComparator(
-  columnKey: ClassesSortableColumnKey,
+  columnKey: ClassesSortableColumnKey
 ): (left: ClassesManagementRow, right: ClassesManagementRow) => number {
   switch (columnKey) {
     case 'status': {
@@ -71,7 +66,8 @@ export function getClassesTableSortComparator(
     }
 
     case 'className': {
-      return (left, right) => left.className.localeCompare(right.className, undefined, { sensitivity: 'base' });
+      return (left, right) =>
+        left.className.localeCompare(right.className, undefined, { sensitivity: 'base' });
     }
 
     case 'cohortLabel': {
@@ -87,11 +83,12 @@ export function getClassesTableSortComparator(
     }
 
     default: {
-      return (left, right) =>
-        compareNullableNumber(
+      return (left, right) => {
+        return compareNullableNumber(
           left.active === null ? null : Number(left.active),
-          right.active === null ? null : Number(right.active),
+          right.active === null ? null : Number(right.active)
         );
+      };
     }
   }
 }

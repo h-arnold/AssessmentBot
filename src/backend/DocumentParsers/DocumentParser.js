@@ -68,11 +68,11 @@ class DocumentParser {
     let markdownTable = '';
 
     // Create header row (escaped consistently with data rows so pipes cannot corrupt columns)
-    const escapedHeader = tableData[0].map((cell) =>
-      String(cell)
+    const escapedHeader = tableData[0].map((cell) => {
+      return String(cell)
         .replaceAll('\\', '\\\\')
-        .replaceAll('|', String.raw`\|`)
-    );
+        .replaceAll('|', String.raw`\|`);
+    });
     markdownTable += '| ' + escapedHeader.join(' | ') + ' |\n';
 
     // Create separator row
@@ -81,11 +81,11 @@ class DocumentParser {
     // Create data rows
     for (let index = 1; index < tableData.length; index++) {
       // Escape pipe characters in Markdown
-      const escapedRow = tableData[index].map((cell) =>
-        String(cell)
+      const escapedRow = tableData[index].map((cell) => {
+        return String(cell)
           .replaceAll('\\', '\\\\')
-          .replaceAll('|', String.raw`\|`)
-      );
+          .replaceAll('|', String.raw`\|`);
+      });
       markdownTable += '| ' + escapedRow.join(' | ') + ' |\n';
     }
 

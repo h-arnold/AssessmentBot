@@ -1,6 +1,6 @@
 {
   "type": "module",
   "devDependencies": {
-    "eslint-plugin-sonarjs": "^4.0.1"
+    "eslint-plugin-sonarjs": "4.2.2"
   }
 }

@@ -47,14 +47,14 @@ class ABClassValidation {
   }
 
   /**
-   * Validates that courseLength is a positive integer.
+   * Validates that courseLength is a positive safe integer.
    * @param {*} courseLength - The course length to validate.
    * @param {string} methodName - The calling method name for error reporting.
    * @returns {number} The validated courseLength.
    * @throws {TypeError} If courseLength is not an integer >= 1.
    */
   _validateCourseLength(courseLength, methodName) {
-    if (!Number.isInteger(courseLength) || courseLength < 1) {
+    if (!Number.isSafeInteger(courseLength) || courseLength < 1) {
       throw new TypeError(
         `${methodName}: courseLength must be an integer greater than or equal to 1`
       );

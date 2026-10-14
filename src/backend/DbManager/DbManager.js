@@ -53,7 +53,7 @@ class DbManager extends BaseSingleton {
       collectionLockLeaseMs: configManager.getJsonDbLockTimeoutMs(),
       logLevel: configManager.getJsonDbLogLevel(),
       backupOnInitialise: configManager.getJsonDbBackupOnInitialise(),
-      ...(rootFolderId ? { rootFolderId } : {}),
+      ...(rootFolderId && { rootFolderId }),
     };
   }
 
@@ -98,8 +98,8 @@ class DbManager extends BaseSingleton {
     } catch (error) {
       // If loading fails because the MasterIndex is missing, attempt a first-time initialise
       const message = String(error?.message ?? '');
-      const missingMaster = /master\s*index|not\s*found|missing/iu.test(message);
-      if (missingMaster) {
+      const isMissingMaster = /master\s*index|not\s*found|missing/iu.test(message);
+      if (isMissingMaster) {
         try {
           this._db = JsonDbApp.createAndInitialiseDatabase(this._getConfig());
           return this._db;

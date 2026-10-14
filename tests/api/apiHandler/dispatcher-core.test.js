@@ -26,7 +26,7 @@ describe('Api/apiHandler dispatcher — core dispatch, validation and request ID
     const dispatcher = ApiDispatcher.getInstance();
 
     const response = dispatcher.handle({
-      method: 'getAuthorisationStatus',
+      method: 'hasScriptAuthorisation',
       params: {},
     });
 
@@ -36,14 +36,14 @@ describe('Api/apiHandler dispatcher — core dispatch, validation and request ID
     });
   });
 
-  it('routes getAuthorisationStatus through ScriptAppManager and returns true when authorised', () => {
+  it('routes hasScriptAuthorisation through ScriptAppManager and returns true when authorised', () => {
     context.scriptAppManagerInstance.isAuthorised.mockReturnValueOnce(true);
 
     const { ApiDispatcher } = loadApiHandlerModule();
     const dispatcher = ApiDispatcher.getInstance();
 
     const response = dispatcher.handle({
-      method: 'getAuthorisationStatus',
+      method: 'hasScriptAuthorisation',
     });
 
     expect(context.scriptAppManagerCtor).toHaveBeenCalledTimes(1);
@@ -51,14 +51,14 @@ describe('Api/apiHandler dispatcher — core dispatch, validation and request ID
     expect(response).toMatchObject({ ok: true, data: true });
   });
 
-  it('routes getAuthorisationStatus through ScriptAppManager and returns false when not authorised', () => {
+  it('routes hasScriptAuthorisation through ScriptAppManager and returns false when not authorised', () => {
     context.scriptAppManagerInstance.isAuthorised.mockReturnValueOnce(false);
 
     const { ApiDispatcher } = loadApiHandlerModule();
     const dispatcher = ApiDispatcher.getInstance();
 
     const response = dispatcher.handle({
-      method: 'getAuthorisationStatus',
+      method: 'hasScriptAuthorisation',
     });
 
     expect(context.scriptAppManagerCtor).toHaveBeenCalledTimes(1);
@@ -152,7 +152,7 @@ describe('Api/apiHandler dispatcher — core dispatch, validation and request ID
     const dispatcher = ApiDispatcher.getInstance();
 
     const response = dispatcher.handle({
-      method: 'getAuthorisationStatus',
+      method: 'hasScriptAuthorisation',
       requestId: 'req-client-supplied',
     });
 
@@ -165,7 +165,7 @@ describe('Api/apiHandler dispatcher — core dispatch, validation and request ID
     const dispatcher = ApiDispatcher.getInstance();
 
     const response = dispatcher.handle({
-      method: 'getAuthorisationStatus',
+      method: 'hasScriptAuthorisation',
     });
 
     expect(response.ok).toBe(true);
@@ -184,7 +184,7 @@ describe('Api/apiHandler dispatcher — core dispatch, validation and request ID
       const dispatcher = ApiDispatcher.getInstance();
 
       const response = dispatcher.handle({
-        method: 'getAuthorisationStatus',
+        method: 'hasScriptAuthorisation',
       });
 
       expect(globalThis.Utilities.getUuid).toHaveBeenCalledTimes(1);

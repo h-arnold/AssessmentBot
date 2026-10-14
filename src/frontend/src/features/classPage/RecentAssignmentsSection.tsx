@@ -68,9 +68,11 @@ export function RecentAssignmentsSection({
         </Empty>
       ) : (
         <Flex justify="center" gap="middle" wrap>
-          {recentAssignments.map((card) => (
-            <RecentAssignmentCard key={card.assignmentId} card={card} onOpenHeatmap={onOpenHeatmap} />
-          ))}
+          {recentAssignments.map((card) => {
+            return (
+              <RecentAssignmentCard key={card.assignmentId} card={card} onOpenHeatmap={onOpenHeatmap} />
+            );
+          })}
         </Flex>
       )}
     </Card>

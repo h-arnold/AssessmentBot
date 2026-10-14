@@ -135,10 +135,10 @@ export function computeServiceError(
  *
  * @param {string | null} classId - The selected class ID.
  * @param {ClassFull | null} classFull - The class query data.
- * @param {boolean} classIsSuccess - Whether the class query succeeded.
- * @param {boolean} classIsError - Whether the class query errored.
+ * @param {boolean} isClassSuccess - Whether the class query succeeded.
+ * @param {boolean} isClassError - Whether the class query errored.
  * @param {Error | null} classError - The class query error.
- * @param {boolean} classIsPending - Whether the class query is pending.
+ * @param {boolean} isClassPending - Whether the class query is pending.
  * @param {PageDatasetState} adpDatasetState - The ADP dataset state.
  * @param {Error | null} analyserError - The analyser error.
  * @param {Error | null} adapterError - The adapter error.
@@ -147,10 +147,10 @@ export function computeServiceError(
 export function computeHeatmapsSurfaceState(
   classId: string | null,
   classFull: ClassFull | null,
-  classIsSuccess: boolean,
-  classIsError: boolean,
+  isClassSuccess: boolean,
+  isClassError: boolean,
   classError: Error | null,
-  classIsPending: boolean,
+  isClassPending: boolean,
   adpDatasetState: PageDatasetState,
   analyserError: Error | null,
   adapterError: Error | null
@@ -162,7 +162,7 @@ export function computeHeatmapsSurfaceState(
       : { status: 'blocking', error: datasetError };
   }
 
-  const queryError = computeQueryBlockingError(classFull, classIsSuccess, classIsError, classError);
+  const queryError = computeQueryBlockingError(classFull, isClassSuccess, isClassError, classError);
   if (queryError !== null) {
     return { status: 'blocking', error: queryError };
   }
@@ -177,7 +177,7 @@ export function computeHeatmapsSurfaceState(
     return { status: 'blocking', error: serviceError };
   }
 
-  if (classIsPending) {
+  if (isClassPending) {
     return { status: 'loading' };
   }
 

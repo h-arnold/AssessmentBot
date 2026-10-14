@@ -32,13 +32,13 @@ function fixtures() {
     yearGroupKey: 'year-10',
     active: null,
     students: [{ id: 'student-1', name: 'Student', email: 'student@example.test' }],
-    assignments: [FIRST_ASSIGNMENT, SECOND_ASSIGNMENT].map((assignmentId) =>
-      createAssignmentPartial({
+    assignments: [FIRST_ASSIGNMENT, SECOND_ASSIGNMENT].map((assignmentId) => {
+      return createAssignmentPartial({
         assignmentId,
         definitionKey: DEFINITION,
         submissions: [],
-      })
-    ),
+      });
+    }),
   });
   const partial = createHeatmapDefinitionPartial({
     definitionKey: DEFINITION,

@@ -89,7 +89,7 @@ export function MetricRangeFilterDropdown({
   const initialState: MetricRangeFilterState = decodeMetricFilter(selectedKeys[0]) ?? defaultState;
   const hydratedState: MetricRangeFilterState = {
     ...initialState,
-    includeExcluded: showExcludedToggle ? initialState.includeExcluded : false,
+    includeExcluded: initialState.includeExcluded && showExcludedToggle,
   };
 
   const [filterState, setFilterState] = useState<MetricRangeFilterState>(hydratedState);
@@ -102,11 +102,11 @@ export function MetricRangeFilterDropdown({
 
   const applyStateToggle = (
     stateFlag: keyof MetricRangeFilterFlags,
-    checked: boolean
+    isChecked: boolean
   ): void => {
     const nextState: MetricRangeFilterState = {
       ...filterState,
-      [stateFlag]: checked,
+      [stateFlag]: isChecked,
     };
     applyFilter({ state: nextState, closeDropdown: false });
   };
@@ -141,11 +141,13 @@ export function MetricRangeFilterDropdown({
           value={[filterState.min, filterState.max]}
           onChange={(value): void => {
             const nextBounds = value as [number, number];
-            setFilterState((current) => ({
-              ...current,
-              min: nextBounds[0],
-              max: nextBounds[1],
-            }));
+            setFilterState((current) => {
+              return {
+                ...current,
+                min: nextBounds[0],
+                max: nextBounds[1],
+              };
+            });
           }}
           onChangeComplete={(value): void => {
             const nextBounds = value as [number, number];
@@ -159,7 +161,8 @@ export function MetricRangeFilterDropdown({
             });
           }}
         />
-        {availableStateToggles.map(({ stateFlag, label }) => (
+        {availableStateToggles.map(({ stateFlag, label }) => {
+          return (
           <Checkbox
             key={stateFlag}
             checked={filterState[stateFlag]}
@@ -169,7 +172,8 @@ export function MetricRangeFilterDropdown({
           >
             {label}
           </Checkbox>
-        ))}
+          );
+        })}
         <Button
           size="small"
           onClick={(): void => {

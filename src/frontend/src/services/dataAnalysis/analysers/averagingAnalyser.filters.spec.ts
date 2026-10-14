@@ -15,6 +15,41 @@ import { expectMetricResultStateAware } from '../../../test/dataAnalysis/averagi
 describe('AveragingAnalyser', () => {
   describe('analyse — filters', () => {
     it('filters assignments by date range, excluding those with createdAt outside [from, to)', () => {
+      const assignments = [
+        createAssignmentPartial({
+          assignmentId: 'a_out_before',
+          definitionKey: 'dk_algebra',
+          tasks: [createTaskPartial('t_001')],
+          createdAt: '2026-01-01T00:00:00.000Z',
+          submissions: [
+            createSubmission('s_001', 'Alice', 'a_out_before', {
+              t_001: createSubmissionItem('t_001', { accuracy: { score: 3 } }),
+            }),
+          ],
+        }),
+        createAssignmentPartial({
+          assignmentId: 'a_in_range',
+          definitionKey: 'dk_algebra',
+          tasks: [createTaskPartial('t_001')],
+          createdAt: '2026-01-03T00:00:00.000Z',
+          submissions: [
+            createSubmission('s_001', 'Alice', 'a_in_range', {
+              t_001: createSubmissionItem('t_001', { accuracy: { score: 5 } }),
+            }),
+          ],
+        }),
+        createAssignmentPartial({
+          assignmentId: 'a_out_after',
+          definitionKey: 'dk_algebra',
+          tasks: [createTaskPartial('t_001')],
+          createdAt: '2026-01-05T00:00:00.000Z',
+          submissions: [
+            createSubmission('s_001', 'Alice', 'a_out_after', {
+              t_001: createSubmissionItem('t_001', { accuracy: { score: 4 } }),
+            }),
+          ],
+        }),
+      ];
       const input: AveragingAnalyserInput = {
         filter: {
           classIds: ['c_001'],
@@ -27,41 +62,7 @@ describe('AveragingAnalyser', () => {
           createClassFull({
             classId: 'c_001',
             studentIds: ['s_001'],
-            assignments: [
-              createAssignmentPartial({
-                assignmentId: 'a_out_before',
-                definitionKey: 'dk_algebra',
-                tasks: [createTaskPartial('t_001')],
-                createdAt: '2026-01-01T00:00:00.000Z',
-                submissions: [
-                  createSubmission('s_001', 'Alice', 'a_out_before', {
-                    t_001: createSubmissionItem('t_001', { accuracy: { score: 3 } }),
-                  }),
-                ],
-              }),
-              createAssignmentPartial({
-                assignmentId: 'a_in_range',
-                definitionKey: 'dk_algebra',
-                tasks: [createTaskPartial('t_001')],
-                createdAt: '2026-01-03T00:00:00.000Z',
-                submissions: [
-                  createSubmission('s_001', 'Alice', 'a_in_range', {
-                    t_001: createSubmissionItem('t_001', { accuracy: { score: 5 } }),
-                  }),
-                ],
-              }),
-              createAssignmentPartial({
-                assignmentId: 'a_out_after',
-                definitionKey: 'dk_algebra',
-                tasks: [createTaskPartial('t_001')],
-                createdAt: '2026-01-05T00:00:00.000Z',
-                submissions: [
-                  createSubmission('s_001', 'Alice', 'a_out_after', {
-                    t_001: createSubmissionItem('t_001', { accuracy: { score: 4 } }),
-                  }),
-                ],
-              }),
-            ],
+            assignments,
           }),
         ],
         assignmentDefinitionPartials: [
@@ -87,6 +88,28 @@ describe('AveragingAnalyser', () => {
     });
 
     it('filters assignments by topicKeys, excluding non-matching primaryTopicKey', () => {
+      const assignments = [
+        createAssignmentPartial({
+          assignmentId: 'a_algebra',
+          definitionKey: 'dk_algebra',
+          tasks: [createTaskPartial('t_001')],
+          submissions: [
+            createSubmission('s_001', 'Alice', 'a_algebra', {
+              t_001: createSubmissionItem('t_001', { accuracy: { score: 4 } }),
+            }),
+          ],
+        }),
+        createAssignmentPartial({
+          assignmentId: 'a_geometry',
+          definitionKey: 'dk_geometry',
+          tasks: [createTaskPartial('t_001')],
+          submissions: [
+            createSubmission('s_001', 'Alice', 'a_geometry', {
+              t_001: createSubmissionItem('t_001', { accuracy: { score: 5 } }),
+            }),
+          ],
+        }),
+      ];
       const input: AveragingAnalyserInput = {
         filter: {
           classIds: ['c_001'],
@@ -96,28 +119,7 @@ describe('AveragingAnalyser', () => {
           createClassFull({
             classId: 'c_001',
             studentIds: ['s_001'],
-            assignments: [
-              createAssignmentPartial({
-                assignmentId: 'a_algebra',
-                definitionKey: 'dk_algebra',
-                tasks: [createTaskPartial('t_001')],
-                submissions: [
-                  createSubmission('s_001', 'Alice', 'a_algebra', {
-                    t_001: createSubmissionItem('t_001', { accuracy: { score: 4 } }),
-                  }),
-                ],
-              }),
-              createAssignmentPartial({
-                assignmentId: 'a_geometry',
-                definitionKey: 'dk_geometry',
-                tasks: [createTaskPartial('t_001')],
-                submissions: [
-                  createSubmission('s_001', 'Alice', 'a_geometry', {
-                    t_001: createSubmissionItem('t_001', { accuracy: { score: 5 } }),
-                  }),
-                ],
-              }),
-            ],
+            assignments,
           }),
         ],
         assignmentDefinitionPartials: [
@@ -153,6 +155,28 @@ describe('AveragingAnalyser', () => {
     });
 
     it('filters assignments by assignmentDefinitionKeys, excluding non-matching', () => {
+      const assignments = [
+        createAssignmentPartial({
+          assignmentId: 'a_algebra',
+          definitionKey: 'dk_algebra',
+          tasks: [createTaskPartial('t_001')],
+          submissions: [
+            createSubmission('s_001', 'Alice', 'a_algebra', {
+              t_001: createSubmissionItem('t_001', { accuracy: { score: 4 } }),
+            }),
+          ],
+        }),
+        createAssignmentPartial({
+          assignmentId: 'a_geometry',
+          definitionKey: 'dk_geometry',
+          tasks: [createTaskPartial('t_001')],
+          submissions: [
+            createSubmission('s_001', 'Alice', 'a_geometry', {
+              t_001: createSubmissionItem('t_001', { accuracy: { score: 5 } }),
+            }),
+          ],
+        }),
+      ];
       const input: AveragingAnalyserInput = {
         filter: {
           classIds: ['c_001'],
@@ -162,28 +186,7 @@ describe('AveragingAnalyser', () => {
           createClassFull({
             classId: 'c_001',
             studentIds: ['s_001'],
-            assignments: [
-              createAssignmentPartial({
-                assignmentId: 'a_algebra',
-                definitionKey: 'dk_algebra',
-                tasks: [createTaskPartial('t_001')],
-                submissions: [
-                  createSubmission('s_001', 'Alice', 'a_algebra', {
-                    t_001: createSubmissionItem('t_001', { accuracy: { score: 4 } }),
-                  }),
-                ],
-              }),
-              createAssignmentPartial({
-                assignmentId: 'a_geometry',
-                definitionKey: 'dk_geometry',
-                tasks: [createTaskPartial('t_001')],
-                submissions: [
-                  createSubmission('s_001', 'Alice', 'a_geometry', {
-                    t_001: createSubmissionItem('t_001', { accuracy: { score: 5 } }),
-                  }),
-                ],
-              }),
-            ],
+            assignments,
           }),
         ],
         assignmentDefinitionPartials: [
@@ -243,6 +246,91 @@ describe('AveragingAnalyser', () => {
       // Only these 4 definition keys match both topic and definition filters
       const includedDefinitionKeys = ['dk_algebra', 'dk_geometry', 'dk_statistics', 'dk_calculus'];
 
+      const assignments = [
+        // 4 assignments matching BOTH topic and definition filters → contribute
+        createAssignmentPartial({
+          assignmentId: 'a_algebra',
+          definitionKey: 'dk_algebra',
+          primaryTopicKey: 'algebra',
+          tasks: [createTaskPartial('t_001')],
+          submissions: [
+            createSubmission('s_001', 'Alice', 'a_algebra', {
+              t_001: createSubmissionItem('t_001', { accuracy: { score: 1 } }),
+            }),
+          ],
+        }),
+        createAssignmentPartial({
+          assignmentId: 'a_geometry',
+          definitionKey: 'dk_geometry',
+          primaryTopicKey: 'geometry',
+          tasks: [createTaskPartial('t_001')],
+          submissions: [
+            createSubmission('s_001', 'Alice', 'a_geometry', {
+              t_001: createSubmissionItem('t_001', { accuracy: { score: 2 } }),
+            }),
+          ],
+        }),
+        createAssignmentPartial({
+          assignmentId: 'a_statistics',
+          definitionKey: 'dk_statistics',
+          primaryTopicKey: 'statistics',
+          tasks: [createTaskPartial('t_001')],
+          submissions: [
+            createSubmission('s_001', 'Alice', 'a_statistics', {
+              t_001: createSubmissionItem('t_001', { accuracy: { score: 3 } }),
+            }),
+          ],
+        }),
+        createAssignmentPartial({
+          assignmentId: 'a_calculus',
+          definitionKey: 'dk_calculus',
+          primaryTopicKey: 'calculus',
+          tasks: [createTaskPartial('t_001')],
+          submissions: [
+            createSubmission('s_001', 'Alice', 'a_calculus', {
+              t_001: createSubmissionItem('t_001', { accuracy: { score: 4 } }),
+            }),
+          ],
+        }),
+        // Topic in filter, definition NOT in filter → excluded
+        createAssignmentPartial({
+          assignmentId: 'a_topic_match_def_mismatch',
+          definitionKey: 'dk_bio',
+          primaryTopicKey: 'algebra',
+          tasks: [createTaskPartial('t_001')],
+          submissions: [
+            createSubmission('s_001', 'Alice', 'a_topic_match_def_mismatch', {
+              t_001: createSubmissionItem('t_001', { accuracy: { score: 5 } }),
+            }),
+          ],
+        }),
+        // Definition in filter, topic NOT in filter → excluded
+        // Uses dk_ratio (in assignmentDefinitionKeys filter) with a definition
+        // partial whose primaryTopicKey='biology' (NOT in topicKeys filter).
+        createAssignmentPartial({
+          assignmentId: 'a_def_match_topic_mismatch',
+          definitionKey: 'dk_ratio',
+          primaryTopicKey: 'biology',
+          tasks: [createTaskPartial('t_001')],
+          submissions: [
+            createSubmission('s_001', 'Alice', 'a_def_match_topic_mismatch', {
+              t_001: createSubmissionItem('t_001', { accuracy: { score: 6 } }),
+            }),
+          ],
+        }),
+        // NEITHER topic nor definition in filter → excluded
+        createAssignmentPartial({
+          assignmentId: 'a_biology',
+          definitionKey: 'dk_bio',
+          primaryTopicKey: 'biology',
+          tasks: [createTaskPartial('t_001')],
+          submissions: [
+            createSubmission('s_001', 'Alice', 'a_biology', {
+              t_001: createSubmissionItem('t_001', { accuracy: { score: 7 } }),
+            }),
+          ],
+        }),
+      ];
       const input: AveragingAnalyserInput = {
         filter: {
           classIds: ['c_001'],
@@ -253,91 +341,7 @@ describe('AveragingAnalyser', () => {
           createClassFull({
             classId: 'c_001',
             studentIds: ['s_001'],
-            assignments: [
-              // 4 assignments matching BOTH topic and definition filters → contribute
-              createAssignmentPartial({
-                assignmentId: 'a_algebra',
-                definitionKey: 'dk_algebra',
-                primaryTopicKey: 'algebra',
-                tasks: [createTaskPartial('t_001')],
-                submissions: [
-                  createSubmission('s_001', 'Alice', 'a_algebra', {
-                    t_001: createSubmissionItem('t_001', { accuracy: { score: 1 } }),
-                  }),
-                ],
-              }),
-              createAssignmentPartial({
-                assignmentId: 'a_geometry',
-                definitionKey: 'dk_geometry',
-                primaryTopicKey: 'geometry',
-                tasks: [createTaskPartial('t_001')],
-                submissions: [
-                  createSubmission('s_001', 'Alice', 'a_geometry', {
-                    t_001: createSubmissionItem('t_001', { accuracy: { score: 2 } }),
-                  }),
-                ],
-              }),
-              createAssignmentPartial({
-                assignmentId: 'a_statistics',
-                definitionKey: 'dk_statistics',
-                primaryTopicKey: 'statistics',
-                tasks: [createTaskPartial('t_001')],
-                submissions: [
-                  createSubmission('s_001', 'Alice', 'a_statistics', {
-                    t_001: createSubmissionItem('t_001', { accuracy: { score: 3 } }),
-                  }),
-                ],
-              }),
-              createAssignmentPartial({
-                assignmentId: 'a_calculus',
-                definitionKey: 'dk_calculus',
-                primaryTopicKey: 'calculus',
-                tasks: [createTaskPartial('t_001')],
-                submissions: [
-                  createSubmission('s_001', 'Alice', 'a_calculus', {
-                    t_001: createSubmissionItem('t_001', { accuracy: { score: 4 } }),
-                  }),
-                ],
-              }),
-              // Topic in filter, definition NOT in filter → excluded
-              createAssignmentPartial({
-                assignmentId: 'a_topic_match_def_mismatch',
-                definitionKey: 'dk_bio',
-                primaryTopicKey: 'algebra',
-                tasks: [createTaskPartial('t_001')],
-                submissions: [
-                  createSubmission('s_001', 'Alice', 'a_topic_match_def_mismatch', {
-                    t_001: createSubmissionItem('t_001', { accuracy: { score: 5 } }),
-                  }),
-                ],
-              }),
-              // Definition in filter, topic NOT in filter → excluded
-              // Uses dk_ratio (in assignmentDefinitionKeys filter) with a definition
-              // partial whose primaryTopicKey='biology' (NOT in topicKeys filter).
-              createAssignmentPartial({
-                assignmentId: 'a_def_match_topic_mismatch',
-                definitionKey: 'dk_ratio',
-                primaryTopicKey: 'biology',
-                tasks: [createTaskPartial('t_001')],
-                submissions: [
-                  createSubmission('s_001', 'Alice', 'a_def_match_topic_mismatch', {
-                    t_001: createSubmissionItem('t_001', { accuracy: { score: 6 } }),
-                  }),
-                ],
-              }),
-              // NEITHER topic nor definition in filter → excluded
-              createAssignmentPartial({
-                assignmentId: 'a_biology',
-                definitionKey: 'dk_bio',
-                primaryTopicKey: 'biology',
-                tasks: [createTaskPartial('t_001')],
-                submissions: [
-                  createSubmission('s_001', 'Alice', 'a_biology', {
-                    t_001: createSubmissionItem('t_001', { accuracy: { score: 7 } }),
-                  }),
-                ],
-              }),
-            ],
+            assignments,
           }),
         ],
         assignmentDefinitionPartials: [
@@ -371,33 +375,34 @@ describe('AveragingAnalyser', () => {
     });
 
     it('filterAssignments produces identical results for an empty filter array vs an undefined filter', () => {
+      const assignments = [
+        createAssignmentPartial({
+          assignmentId: 'a_algebra',
+          definitionKey: 'dk_algebra',
+          primaryTopicKey: 'algebra',
+          tasks: [createTaskPartial('t_001')],
+          submissions: [
+            createSubmission('s_001', 'Alice', 'a_algebra', {
+              t_001: createSubmissionItem('t_001', { accuracy: { score: 4 } }),
+            }),
+          ],
+        }),
+        createAssignmentPartial({
+          assignmentId: 'a_geometry',
+          definitionKey: 'dk_geometry',
+          primaryTopicKey: 'geometry',
+          tasks: [createTaskPartial('t_001')],
+          submissions: [
+            createSubmission('s_001', 'Alice', 'a_geometry', {
+              t_001: createSubmissionItem('t_001', { accuracy: { score: 5 } }),
+            }),
+          ],
+        }),
+      ];
       const sharedClass = createClassFull({
         classId: 'c_001',
         studentIds: ['s_001'],
-        assignments: [
-          createAssignmentPartial({
-            assignmentId: 'a_algebra',
-            definitionKey: 'dk_algebra',
-            primaryTopicKey: 'algebra',
-            tasks: [createTaskPartial('t_001')],
-            submissions: [
-              createSubmission('s_001', 'Alice', 'a_algebra', {
-                t_001: createSubmissionItem('t_001', { accuracy: { score: 4 } }),
-              }),
-            ],
-          }),
-          createAssignmentPartial({
-            assignmentId: 'a_geometry',
-            definitionKey: 'dk_geometry',
-            primaryTopicKey: 'geometry',
-            tasks: [createTaskPartial('t_001')],
-            submissions: [
-              createSubmission('s_001', 'Alice', 'a_geometry', {
-                t_001: createSubmissionItem('t_001', { accuracy: { score: 5 } }),
-              }),
-            ],
-          }),
-        ],
+        assignments,
       });
 
       // Input with empty topicKeys array (all assignments pass through)

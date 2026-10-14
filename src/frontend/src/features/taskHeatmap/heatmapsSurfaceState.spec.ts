@@ -96,10 +96,12 @@ describe('heatmapsSurfaceState — computeQueryBlockingError (T-2, T-N3)', () =>
     expect(error?.type).toBe('classQueryError');
     // Narrow to the classQueryError variant before touching `cause`, since not
     // every member of the HeatmapsPageError union carries a `cause`.
-    if (error?.type === 'classQueryError') {
-      expect(error.cause).toBeInstanceOf(Error);
-      expect(error.cause.message).toBe('string failure');
+    if (error?.type !== 'classQueryError') {
+      return;
     }
+
+    expect(error.cause).toBeInstanceOf(Error);
+    expect(error.cause.message).toBe('string failure');
   });
 });
 

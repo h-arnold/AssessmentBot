@@ -86,7 +86,7 @@ export function createHeatmapScenario(options: CreateHeatmapScenarioOptions = {}
     ...options,
   };
 
-  const classDocument = buildClassFullDocument(scenarioOptions.emptySubmissions);
+  const classDocument = buildClassFullDocument(scenarioOptions.emptySubmissions ?? false);
   if (scenarioOptions.multipleAssignments) addSecondAssignment(classDocument);
 
   const classEntries = createClassEntries(classDocument, scenarioOptions);
@@ -96,7 +96,7 @@ export function createHeatmapScenario(options: CreateHeatmapScenarioOptions = {}
   );
 
   return {
-    getAuthorisationStatus: [{ kind: 'success', data: true }],
+    hasScriptAuthorisation: [{ kind: 'success', data: true }],
     getABClassPartials: [
       {
         kind: 'success',

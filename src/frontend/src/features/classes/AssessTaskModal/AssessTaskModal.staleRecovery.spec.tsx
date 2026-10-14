@@ -25,21 +25,29 @@ import {
   selectAssignment,
 } from '../../../test/classes/AssessTaskModal.test-utilities';
 
-vi.mock('../../../services/googleClassrooms/googleClassroomAssignmentsService', () => ({
-  getGoogleClassroomAssignments: vi.fn(),
-}));
+vi.mock('../../../services/googleClassrooms/googleClassroomAssignmentsService', () => {
+  return {
+    getGoogleClassroomAssignments: vi.fn(),
+  };
+});
 
-vi.mock('../../../services/assignmentAssessment/assignmentAssessmentService', () => ({
-  startAssessmentRun: vi.fn(),
-}));
+vi.mock('../../../services/assignmentAssessment/assignmentAssessmentService', () => {
+  return {
+    startAssessmentRun: vi.fn(),
+  };
+});
 
-vi.mock('../../../services/assignmentDefinition/assignmentDefinitionService', () => ({
-  upsertAssignmentDefinition: vi.fn(),
-}));
+vi.mock('../../../services/assignmentDefinition/assignmentDefinitionService', () => {
+  return {
+    upsertAssignmentDefinition: vi.fn(),
+  };
+});
 
-vi.mock('./matchDefinitionForAssignment', () => ({
-  findMatchingDefinition: vi.fn(),
-}));
+vi.mock('./matchDefinitionForAssignment', () => {
+  return {
+    findMatchingDefinition: vi.fn(),
+  };
+});
 
 let user: ReturnType<typeof userEvent.setup>;
 

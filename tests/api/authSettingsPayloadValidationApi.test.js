@@ -55,7 +55,7 @@ describe('setAuthenticationSettings — non-object payload rejection', () => {
     const response = dispatchAuthApi('setAuthenticationSettings', params);
 
     expect(response.ok).toBe(false);
-    expect(response.error).toMatchObject({ code: 'INVALID_REQUEST', retriable: false });
+    expect(response.error).toMatchObject({ code: 'INVALID_REQUEST', isRetriable: false });
     expect(rawStoreBlob(ctx.store)).toBe(before);
     expect(ctx.configManager.writeConfigurationLocked).not.toHaveBeenCalled();
   });
@@ -95,7 +95,7 @@ describe('setAuthenticationSettings — unknown request field rejection', () => 
       });
 
       expect(response.ok).toBe(false);
-      expect(response.error).toMatchObject({ code: 'INVALID_REQUEST', retriable: false });
+      expect(response.error).toMatchObject({ code: 'INVALID_REQUEST', isRetriable: false });
       expect(response.error).not.toHaveProperty('details');
       expect(rawStoreBlob(ctx.store)).toBe(before);
       expect(ctx.configManager.writeConfigurationLocked).not.toHaveBeenCalled();
@@ -135,7 +135,7 @@ describe('setAuthenticationSettings — strict per-mode field set', () => {
     });
 
     expect(response.ok).toBe(false);
-    expect(response.error).toMatchObject({ code: 'INVALID_REQUEST', retriable: false });
+    expect(response.error).toMatchObject({ code: 'INVALID_REQUEST', isRetriable: false });
     expect(rawStoreBlob(ctx.store)).toBe(before);
     expect(ctx.configManager.writeConfigurationLocked).not.toHaveBeenCalled();
   });
@@ -155,7 +155,7 @@ describe('setAuthenticationSettings — strict per-mode field set', () => {
     });
 
     expect(response.ok).toBe(false);
-    expect(response.error).toMatchObject({ code: 'INVALID_REQUEST', retriable: false });
+    expect(response.error).toMatchObject({ code: 'INVALID_REQUEST', isRetriable: false });
     expect(rawStoreBlob(ctx.store)).toBe(before);
     expect(ctx.configManager.writeConfigurationLocked).not.toHaveBeenCalled();
   });
@@ -198,7 +198,7 @@ describe('setAuthenticationSettings — expectedAuthRevision type rejection', ()
       });
 
       expect(response.ok).toBe(false);
-      expect(response.error).toMatchObject({ code: 'INVALID_REQUEST', retriable: false });
+      expect(response.error).toMatchObject({ code: 'INVALID_REQUEST', isRetriable: false });
       expect(rawStoreBlob(ctx.store)).toBe(before);
       expect(ctx.configManager.writeConfigurationLocked).not.toHaveBeenCalled();
     }

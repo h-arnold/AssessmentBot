@@ -60,12 +60,12 @@ async function closeManageTopicsModalForTest(cancelButton: HTMLElement): Promise
  * Verifies the modal can be reopened and is in a clean state.
  *
  * @param {HTMLElement} manageTopicsButton - The Manage Topics button element.
- * @param {boolean} [verifyCancelButton=false] - Whether to also verify the Cancel button is present.
+ * @param {boolean} [shouldVerifyCancelButton=false] - Whether to also verify the Cancel button is present.
  * @returns {Promise<HTMLElement>} The Cancel button from the reopened modal.
  */
 async function verifyModalCanBeReopenedForTest(
   manageTopicsButton: HTMLElement,
-  verifyCancelButton = false
+  shouldVerifyCancelButton = false
 ): Promise<HTMLElement> {
   fireEvent.click(manageTopicsButton);
 
@@ -73,7 +73,7 @@ async function verifyModalCanBeReopenedForTest(
     expect(screen.getByRole('dialog', { name: 'Manage Topics' })).toBeInTheDocument();
   });
 
-  if (verifyCancelButton) {
+  if (shouldVerifyCancelButton) {
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
     });
@@ -90,26 +90,40 @@ const updateAssignmentTopicMock = vi.hoisted(() => vi.fn());
 const deleteAssignmentTopicMock = vi.hoisted(() => vi.fn());
 
 // Mock assignmentTopicsService
-vi.mock('../../services/assignmentDefinition/assignmentTopicsService', () => ({
-  getAssignmentTopics: getAssignmentTopicsFromAssignmentTopicsServiceMock,
-}));
+vi.mock('../../services/assignmentDefinition/assignmentTopicsService', () => {
+  return {
+    getAssignmentTopics: getAssignmentTopicsFromAssignmentTopicsServiceMock,
+  };
+});
 
 // Mock referenceDataService
-vi.mock('../../services/referenceData/referenceDataService', () => ({
-  getCohorts: vi.fn(),
-  createCohort: vi.fn(),
-  updateCohort: vi.fn(),
-  deleteCohort: vi.fn(),
-  getYearGroups: getYearGroupsMock,
-  createYearGroup: vi.fn(),
-  updateYearGroup: vi.fn(),
-  deleteYearGroup: vi.fn(),
-  createAssignmentTopic: createAssignmentTopicMock,
-  updateAssignmentTopic: updateAssignmentTopicMock,
-  deleteAssignmentTopic: deleteAssignmentTopicMock,
-}));
+vi.mock('../../services/referenceData/referenceDataService', () => {
+  return {
+    getCohorts: vi.fn(),
+    createCohort: vi.fn(),
+    updateCohort: vi.fn(),
+    deleteCohort: vi.fn(),
+    getYearGroups: getYearGroupsMock,
+    createYearGroup: vi.fn(),
+    updateYearGroup: vi.fn(),
+    deleteYearGroup: vi.fn(),
+    createAssignmentTopic: createAssignmentTopicMock,
+    updateAssignmentTopic: updateAssignmentTopicMock,
+    deleteAssignmentTopic: deleteAssignmentTopicMock,
+  };
+});
 
 // Section 4 - ReferenceDataSettingsPanel basic rendering tests
+
+/**
+ * Renders the ReferenceDataSettingsPanel component for testing.
+ *
+ * @returns {ReturnType<typeof renderWithFrontendProviders>} The render result.
+ */
+function renderReferenceDataSettingsPanel() {
+  const queryClient = createAppQueryClient();
+  return renderWithFrontendProviders(<ReferenceDataSettingsPanel />, { queryClient });
+}
 
 describe('ReferenceDataSettingsPanel', () => {
   beforeEach(() => {
@@ -122,25 +136,6 @@ describe('ReferenceDataSettingsPanel', () => {
   afterEach(() => {
     vi.resetAllMocks();
   });
-
-  /**
-   * Renders the ReferenceDataSettingsPanel component for testing.
-   *
-   * @param {object} [options] Render options.
-   * @param {boolean} [options.seedQueryData] Whether to seed the query cache before render.
-   * @returns {ReturnType<typeof renderWithFrontendProviders>} The render result.
-   */
-  function renderReferenceDataSettingsPanel(options: { seedQueryData?: boolean } = {}) {
-    const { seedQueryData = false } = options;
-    const queryClient = createAppQueryClient();
-
-    if (seedQueryData) {
-      queryClient.setQueryData(queryKeys.assignmentTopics(), []);
-      queryClient.setQueryData(queryKeys.yearGroups(), []);
-    }
-
-    return renderWithFrontendProviders(<ReferenceDataSettingsPanel />, { queryClient });
-  }
 
   it('renders the complete Reference Data panel structure with Topics section', () => {
     renderReferenceDataSettingsPanel();
@@ -198,6 +193,20 @@ describe('ReferenceDataSettingsPanel', () => {
 // These tests verify the wiring between ReferenceDataSettingsPanel and ManageTopicsModal
 // following the established patterns from ManageYearGroupsModal tests
 
+/**
+ * Renders the ReferenceDataSettingsPanel component with seeded query data for modal wiring tests.
+ *
+ * @returns {ReturnType<typeof renderWithFrontendProviders>} The render result with query client.
+ */
+function renderReferenceDataSettingsPanelWithData() {
+  const queryClient = createAppQueryClient();
+  // Seed the query cache with empty data to prevent loading state
+  queryClient.setQueryData(queryKeys.assignmentTopics(), []);
+  queryClient.setQueryData(queryKeys.yearGroups(), []);
+
+  return renderWithFrontendProviders(<ReferenceDataSettingsPanel />, { queryClient });
+}
+
 describe('ReferenceDataSettingsPanel modal wiring', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -209,20 +218,6 @@ describe('ReferenceDataSettingsPanel modal wiring', () => {
   afterEach(() => {
     vi.resetAllMocks();
   });
-
-  /**
-   * Renders the ReferenceDataSettingsPanel component with seeded query data for modal wiring tests.
-   *
-   * @returns {ReturnType<typeof renderWithFrontendProviders>} The render result with query client.
-   */
-  function renderReferenceDataSettingsPanelWithData() {
-    const queryClient = createAppQueryClient();
-    // Seed the query cache with empty data to prevent loading state
-    queryClient.setQueryData(queryKeys.assignmentTopics(), []);
-    queryClient.setQueryData(queryKeys.yearGroups(), []);
-
-    return renderWithFrontendProviders(<ReferenceDataSettingsPanel />, { queryClient });
-  }
 
   it('maintains modal state and has ManageTopicsModal mounted with open=false initially', () => {
     // Verifies that the component maintains modal open state and mounts ManageTopicsModal

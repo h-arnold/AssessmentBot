@@ -51,22 +51,21 @@ describe('analyser diagnostic and invariant boundaries', () => {
 
   it('warns and skips an assignment when its live definition partial is missing', () => {
     const definitionKey = 'dk_missing';
+    const assignment = createAssignmentPartial({
+      assignmentId: 'a_001',
+      definitionKey,
+      submissions: [
+        createSubmission('s_001', 'Alice', 'a_001', {
+          t_001: createSubmissionItem('t_001', { accuracy: { score: 4 } }),
+        }),
+      ],
+    });
     const input = buildInput(
       [
         {
           classId: 'c_001',
           studentIds: ['s_001'],
-          assignments: [
-            createAssignmentPartial({
-              assignmentId: 'a_001',
-              definitionKey,
-              submissions: [
-                createSubmission('s_001', 'Alice', 'a_001', {
-                  t_001: createSubmissionItem('t_001', { accuracy: { score: 4 } }),
-                }),
-              ],
-            }),
-          ],
+          assignments: [assignment],
         },
       ],
       { assignmentDefinitionPartials: [] }
@@ -93,22 +92,21 @@ describe('analyser diagnostic and invariant boundaries', () => {
   it('emits no invalid-score warnings when criterion assessments are absent and derives error metrics', () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const definitionKey = 'dk_absent_scores';
+    const assignment = createAssignmentPartial({
+      assignmentId: 'a_001',
+      definitionKey,
+      submissions: [
+        createSubmission('s_001', 'Alice', 'a_001', {
+          t_001: createSubmissionItem('t_001', { accuracy: { score: 4 } }),
+        }),
+      ],
+    });
     const input = buildInput(
       [
         {
           classId: 'c_001',
           studentIds: ['s_001'],
-          assignments: [
-            createAssignmentPartial({
-              assignmentId: 'a_001',
-              definitionKey,
-              submissions: [
-                createSubmission('s_001', 'Alice', 'a_001', {
-                  t_001: createSubmissionItem('t_001', { accuracy: { score: 4 } }),
-                }),
-              ],
-            }),
-          ],
+          assignments: [assignment],
         },
       ],
       {
@@ -140,22 +138,21 @@ describe('analyser diagnostic and invariant boundaries', () => {
   it('derives error metrics for every criterion when a submission item carries no assessments', () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const definitionKey = 'dk_no_assessments';
+    const assignment = createAssignmentPartial({
+      assignmentId: 'a_001',
+      definitionKey,
+      submissions: [
+        createSubmission('s_001', 'Alice', 'a_001', {
+          t_001: createSubmissionItem('t_001'),
+        }),
+      ],
+    });
     const input = buildInput(
       [
         {
           classId: 'c_001',
           studentIds: ['s_001'],
-          assignments: [
-            createAssignmentPartial({
-              assignmentId: 'a_001',
-              definitionKey,
-              submissions: [
-                createSubmission('s_001', 'Alice', 'a_001', {
-                  t_001: createSubmissionItem('t_001'),
-                }),
-              ],
-            }),
-          ],
+          assignments: [assignment],
         },
       ],
       {

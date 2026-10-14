@@ -391,12 +391,12 @@ function buildLiveDefinitionPartials(
     }
   }
 
-  return [...taskIdsByDefinitionKey].map(([definitionKey, taskIds]) =>
-    createDefinitionPartial({
+  return [...taskIdsByDefinitionKey].map(([definitionKey, taskIds]) => {
+    return createDefinitionPartial({
       definitionKey,
       tasks: [...taskIds].map((taskId) => createTaskPartial(taskId)),
-    })
-  );
+    });
+  });
 }
 
 /**

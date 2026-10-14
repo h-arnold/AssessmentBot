@@ -132,7 +132,7 @@ test.describe('Classes CRUD bulk course-length flow', () => {
     await openClassesTabWithScenario(
       page,
       padClassesCrudReadQueues({
-        getAuthorisationStatus: [{ kind: 'success', data: true }],
+        hasScriptAuthorisation: [{ kind: 'success', data: true }],
         getABClassPartials: [
           { kind: 'success', data: courseLengthEligibleClassPartials },
           { kind: 'success', data: courseLengthPartialsAfterPartialFailure },
@@ -171,7 +171,7 @@ test.describe('Classes CRUD bulk course-length flow', () => {
     await openClassesTabWithScenario(
       page,
       padClassesCrudReadQueues({
-        getAuthorisationStatus: [{ kind: 'success', data: true }],
+        hasScriptAuthorisation: [{ kind: 'success', data: true }],
         getABClassPartials: [{ kind: 'success', data: courseLengthEligibleClassPartials }],
         getCohorts: [{ kind: 'success', data: baseCohorts }],
         getYearGroups: [{ kind: 'success', data: baseYearGroups }],

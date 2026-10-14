@@ -283,9 +283,9 @@ test.describe('Metric label geometry (representative coordinate)', () => {
     );
     // Every metric label the heatmap can render must be represented, so this
     // cannot quietly collapse into the widest label alone.
-    expect(new Set(labels.map((label) => label.slice(cellPrefix.length).split(':')[0])).size).toBe(
-      HEATMAP_METRIC_KEYS.length
-    );
+    expect(
+      new Set(labels.map((label) => label.slice(cellPrefix.length).split(':', 1)[0])).size
+    ).toBe(HEATMAP_METRIC_KEYS.length);
 
     // Each iteration is measured against a page at rest, and the preview is
     // closed and re-baselined between iterations.
@@ -399,13 +399,13 @@ for (const viewport of VIEWPORTS) {
 
         // Hovering the action renders its tooltip; at the narrow viewport the
         // pointer journey is not the real one, so its capture is skipped.
-        if (viewport.activation === 'pointer') {
-          await action.hover();
-          await expect(popover).toBeVisible();
-          await card.screenshot({
-            path: `${test.info().outputDir}/${viewport.key.replaceAll(' ', '-')}-${scheme}-${entryPoint.replaceAll(' ', '-')}-card-hovered.png`,
-          });
-        }
+        if (viewport.activation !== 'pointer') return;
+
+        await action.hover();
+        await expect(popover).toBeVisible();
+        await card.screenshot({
+          path: `${test.info().outputDir}/${viewport.key.replaceAll(' ', '-')}-${scheme}-${entryPoint.replaceAll(' ', '-')}-card-hovered.png`,
+        });
       });
     }
   }

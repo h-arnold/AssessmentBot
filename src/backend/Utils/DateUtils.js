@@ -38,10 +38,12 @@ const DateUtils = {
    * @returns {boolean} True if refresh is needed.
    */
   definitionNeedsRefresh(definition, referenceModified, templateModified) {
-    if (!definition?.tasks || Object.keys(definition.tasks).length === 0) {
-      return true;
-    }
-    if (!definition.referenceLastModified || !definition.templateLastModified) {
+    if (
+      !definition?.tasks ||
+      Object.keys(definition.tasks).length === 0 ||
+      !definition.referenceLastModified ||
+      !definition.templateLastModified
+    ) {
       return true;
     }
     const referenceFresh = this.isNewer(referenceModified, definition.referenceLastModified);

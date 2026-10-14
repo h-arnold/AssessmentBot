@@ -22,7 +22,7 @@ describe('AppThemeShell', () => {
 
 
   it('safely renders when matchMedia is unavailable', async () => {
-    const originalMatchMedia = globalThis.matchMedia;
+    const originalMatchMedia = typeof matchMedia === 'undefined' ? undefined : matchMedia;
     Object.defineProperty(globalThis, 'matchMedia', {
       configurable: true,
       writable: true,

@@ -90,12 +90,14 @@ function buildMergedTaskColumns(
 ): MergedHeatmapTaskColumn[] {
   // Reuse the complete shared base projection
   // mapping, then augment each entry with the full assignment identity.
-  return buildTaskColumns(partial).map((column) => ({
-    ...column,
-    assignmentId,
-    definitionKey: partial.definitionKey,
-    assignmentName,
-  }));
+  return buildTaskColumns(partial).map((column) => {
+    return {
+      ...column,
+      assignmentId,
+      definitionKey: partial.definitionKey,
+      assignmentName,
+    };
+  });
 }
 
 /**
@@ -157,11 +159,13 @@ export function adaptMetricsToMergedHeatmap(
     assignmentDefinitionPartials
   );
 
-  const sourceAssignments = selectedMeta.map((meta) => ({
-    assignmentId: meta.assignmentId,
-    definitionKey: meta.definitionKey,
-    assignmentName: meta.assignmentName,
-  }));
+  const sourceAssignments = selectedMeta.map((meta) => {
+    return {
+      assignmentId: meta.assignmentId,
+      definitionKey: meta.definitionKey,
+      assignmentName: meta.assignmentName,
+    };
+  });
 
   // Task columns follow classFull.assignments order (restricted to selected IDs),
   // deduplicated by taskKey; identity comes from the FIRST classFull occurrence.
@@ -178,14 +182,14 @@ export function adaptMetricsToMergedHeatmap(
     );
   }
 
-  const rows = classFull.students.map((student) =>
-    buildCellsForStudent(
+  const rows = classFull.students.map((student) => {
+    return buildCellsForStudent(
       student.id,
       student.name,
       metricsByStudent.get(student.id) ?? new Map<string, PerStudentTaskMetric>(),
       taskColumns
-    )
-  );
+    );
+  });
 
   return {
     classId: classFull.classId,

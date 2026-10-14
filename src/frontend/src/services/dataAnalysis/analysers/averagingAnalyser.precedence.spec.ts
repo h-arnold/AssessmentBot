@@ -47,24 +47,23 @@ describe('contribution-aware parent precedence', () => {
   });
 
   it('reports zero and positive task contributions on both task-level outputs', () => {
+    const assignment = createAssignmentPartial({
+      assignmentId: 'a_001',
+      definitionKey: 'dk_contributions',
+      tasks: [createTaskPartial('zero', 0), createTaskPartial('positive', 1)],
+      submissions: [
+        createSubmission('s_001', 'Alice', 'a_001', {
+          zero: createSubmissionItem('zero', { completeness: { score: 2 } }),
+          positive: createSubmissionItem('positive', { completeness: { score: 8 } }),
+        }),
+      ],
+    });
     const input = buildInput(
       [
         {
           classId: 'c_001',
           studentIds: ['s_001'],
-          assignments: [
-            createAssignmentPartial({
-              assignmentId: 'a_001',
-              definitionKey: 'dk_contributions',
-              tasks: [createTaskPartial('zero', 0), createTaskPartial('positive', 1)],
-              submissions: [
-                createSubmission('s_001', 'Alice', 'a_001', {
-                  zero: createSubmissionItem('zero', { completeness: { score: 2 } }),
-                  positive: createSubmissionItem('positive', { completeness: { score: 8 } }),
-                }),
-              ],
-            }),
-          ],
+          assignments: [assignment],
         },
       ],
       {
@@ -84,10 +83,9 @@ describe('contribution-aware parent precedence', () => {
     ]);
 
     expect(
-      result.perTask.map((task) => [
-        `${task.definitionKey}::${task.taskId}`,
-        task.averageContribution,
-      ])
+      result.perTask.map((task) => {
+        return [`${task.definitionKey}::${task.taskId}`, task.averageContribution];
+      })
     ).toEqual([...expected]);
     expect(
       result.perStudentTaskMetrics?.map((task) => [task.taskKey, task.averageContribution])

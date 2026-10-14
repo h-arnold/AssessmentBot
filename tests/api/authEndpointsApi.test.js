@@ -249,7 +249,7 @@ describe('Auth endpoints — setAuthenticationSettings transport', () => {
     expect(response.ok).toBe(false);
     expect(response.error).toMatchObject({
       code: 'AUTH_SETTINGS_STALE_REVISION',
-      retriable: false,
+      isRetriable: false,
     });
     expect(rawStoreBlob(ctx.store)).toBe(before);
     // The validation envelope never leaks the stored users list (PII). The
@@ -278,7 +278,7 @@ describe('Auth endpoints — setAuthenticationSettings transport', () => {
     expect(response.ok).toBe(false);
     expect(response.error).toMatchObject({
       code: 'AUTH_SETTINGS_REVISION_REQUIRED',
-      retriable: false,
+      isRetriable: false,
     });
     expect(rawStoreBlob(ctx.store)).toBe(before);
   });
@@ -312,7 +312,7 @@ describe('Auth endpoints — setAuthenticationSettings transport', () => {
     expect(response.ok).toBe(false);
     expect(response.error).toMatchObject({
       code: 'AUTH_SETTINGS_LAST_ADMIN',
-      retriable: false,
+      isRetriable: false,
     });
     expect(rawStoreBlob(ctx.store)).toBe(before);
   });
@@ -346,7 +346,7 @@ describe('Auth endpoints — setAuthenticationSettings transport', () => {
       expect(response.ok).toBe(false);
       expect(response.error).toMatchObject({
         code: 'AUTH_SETTINGS_INVALID_CANDIDATE',
-        retriable: false,
+        isRetriable: false,
       });
       expect(rawStoreBlob(ctx.store)).toBe(before);
     }
@@ -388,7 +388,7 @@ describe('Auth endpoints — setAuthenticationSettings transport', () => {
     expect(response.ok).toBe(false);
     expect(response.error).toMatchObject({
       code: 'AUTH_SETTINGS_SAVING_ADMIN_DENIED',
-      retriable: false,
+      isRetriable: false,
     });
     expect(rawStoreBlob(ctx.store)).toBe(before);
   });
@@ -408,7 +408,7 @@ describe('Auth endpoints — setAuthenticationSettings transport', () => {
     });
 
     expect(response.ok).toBe(false);
-    expect(response.error).toMatchObject({ code: 'INVALID_REQUEST', retriable: false });
+    expect(response.error).toMatchObject({ code: 'INVALID_REQUEST', isRetriable: false });
     expect(rawStoreBlob(ctx.store)).toBe(before);
   });
 
@@ -459,7 +459,7 @@ describe('Auth endpoints — setAuthenticationSettings transport', () => {
     });
 
     expect(response.ok).toBe(false);
-    expect(response.error).toMatchObject({ code: 'INVALID_REQUEST', retriable: false });
+    expect(response.error).toMatchObject({ code: 'INVALID_REQUEST', isRetriable: false });
     expect(rawStoreBlob(ctx.store)).toBe(before);
   });
 });

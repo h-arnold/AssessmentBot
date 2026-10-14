@@ -83,21 +83,20 @@ export function filterAssignments(
   const { dateRange } = input.filter;
 
   const definitionByKey = new Map<string, AssignmentDefinitionPartial>();
-  for (const p of input.assignmentDefinitionPartials ?? []) {
+  for (const p of input.assignmentDefinitionPartials) {
     definitionByKey.set(p.definitionKey, p);
   }
 
-  return cls.assignments.filter(
-    (a) =>
-      !shouldExcludeAssignment(
-        a,
-        dateRange,
-        topicKeySet,
-        definitionKeySet,
-        definitionByKey,
-        cls.classId
-      )
-  );
+  return cls.assignments.filter((a) => {
+    return !shouldExcludeAssignment(
+      a,
+      dateRange,
+      topicKeySet,
+      definitionKeySet,
+      definitionByKey,
+      cls.classId
+    );
+  });
 }
 
 /**

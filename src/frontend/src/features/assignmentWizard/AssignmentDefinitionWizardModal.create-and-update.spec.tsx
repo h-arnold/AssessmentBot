@@ -1,4 +1,4 @@
-import type { RenderWizardModalOptions } from '../../test/assignmentDefinition/wizardModalTestHelpers';
+import type { RenderWizardModalOptions } from '../../test/assignmentDefinition/wizardModalRenderingHelpers';
 import {
   mockFullAssignmentDefinition,
   mockUpsertResponse,
@@ -23,30 +23,38 @@ const {
   getYearGroupsMock,
   upsertAssignmentDefinitionMock,
   useStartupWarmupStateMock,
-} = vi.hoisted(() => ({
-  getAssignmentDefinitionMock: vi.fn(),
-  getAssignmentTopicsMock: vi.fn(),
-  getCohortsMock: vi.fn(),
-  getYearGroupsMock: vi.fn(),
-  upsertAssignmentDefinitionMock: vi.fn(),
-  useStartupWarmupStateMock: vi.fn(),
-}));
+} = vi.hoisted(() => {
+  return {
+    getAssignmentDefinitionMock: vi.fn(),
+    getAssignmentTopicsMock: vi.fn(),
+    getCohortsMock: vi.fn(),
+    getYearGroupsMock: vi.fn(),
+    upsertAssignmentDefinitionMock: vi.fn(),
+    useStartupWarmupStateMock: vi.fn(),
+  };
+});
 
 vi.mock('../../features/auth/startupWarmupState', async (importOriginal) => {
   const actualModule = (await importOriginal()) as Record<string, unknown>;
   return { ...actualModule, useStartupWarmupState: useStartupWarmupStateMock };
 });
-vi.mock('../../services/assignmentDefinition/assignmentDefinitionService', () => ({
-  getAssignmentDefinition: getAssignmentDefinitionMock,
-  upsertAssignmentDefinition: upsertAssignmentDefinitionMock,
-}));
-vi.mock('../../services/assignmentDefinition/assignmentTopicsService', () => ({
-  getAssignmentTopics: getAssignmentTopicsMock,
-}));
-vi.mock('../../services/referenceData/referenceDataService', () => ({
-  getCohorts: getCohortsMock,
-  getYearGroups: getYearGroupsMock,
-}));
+vi.mock('../../services/assignmentDefinition/assignmentDefinitionService', () => {
+  return {
+    getAssignmentDefinition: getAssignmentDefinitionMock,
+    upsertAssignmentDefinition: upsertAssignmentDefinitionMock,
+  };
+});
+vi.mock('../../services/assignmentDefinition/assignmentTopicsService', () => {
+  return {
+    getAssignmentTopics: getAssignmentTopicsMock,
+  };
+});
+vi.mock('../../services/referenceData/referenceDataService', () => {
+  return {
+    getCohorts: getCohortsMock,
+    getYearGroups: getYearGroupsMock,
+  };
+});
 
 const {
   renderWizardModal,
@@ -341,9 +349,7 @@ describe('AssignmentDefinitionWizardModal create and update flows', () => {
     assertParseButtonDisabled({ modal });
 
     // Form has required field indicators
-    const requiredLabels = within(modal).getAllByText((_, element) => {
-      return element?.classList.contains('ant-form-item-required') ?? false;
-    });
+    const requiredLabels = within(modal).getAllByText((_, element) => element?.classList.contains('ant-form-item-required') ?? false);
     expect(requiredLabels.length).toBeGreaterThan(0);
 
     // Fill in only title - button should remain disabled

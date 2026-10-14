@@ -16,30 +16,38 @@ const {
   getYearGroupsMock,
   upsertAssignmentDefinitionMock,
   useStartupWarmupStateMock,
-} = vi.hoisted(() => ({
-  getAssignmentDefinitionMock: vi.fn(),
-  getAssignmentTopicsMock: vi.fn(),
-  getCohortsMock: vi.fn(),
-  getYearGroupsMock: vi.fn(),
-  upsertAssignmentDefinitionMock: vi.fn(),
-  useStartupWarmupStateMock: vi.fn(),
-}));
+} = vi.hoisted(() => {
+  return {
+    getAssignmentDefinitionMock: vi.fn(),
+    getAssignmentTopicsMock: vi.fn(),
+    getCohortsMock: vi.fn(),
+    getYearGroupsMock: vi.fn(),
+    upsertAssignmentDefinitionMock: vi.fn(),
+    useStartupWarmupStateMock: vi.fn(),
+  };
+});
 
 vi.mock('../../features/auth/startupWarmupState', async (importOriginal) => {
   const actualModule = (await importOriginal()) as Record<string, unknown>;
   return { ...actualModule, useStartupWarmupState: useStartupWarmupStateMock };
 });
-vi.mock('../../services/assignmentDefinition/assignmentDefinitionService', () => ({
-  getAssignmentDefinition: getAssignmentDefinitionMock,
-  upsertAssignmentDefinition: upsertAssignmentDefinitionMock,
-}));
-vi.mock('../../services/assignmentDefinition/assignmentTopicsService', () => ({
-  getAssignmentTopics: getAssignmentTopicsMock,
-}));
-vi.mock('../../services/referenceData/referenceDataService', () => ({
-  getCohorts: getCohortsMock,
-  getYearGroups: getYearGroupsMock,
-}));
+vi.mock('../../services/assignmentDefinition/assignmentDefinitionService', () => {
+  return {
+    getAssignmentDefinition: getAssignmentDefinitionMock,
+    upsertAssignmentDefinition: upsertAssignmentDefinitionMock,
+  };
+});
+vi.mock('../../services/assignmentDefinition/assignmentTopicsService', () => {
+  return {
+    getAssignmentTopics: getAssignmentTopicsMock,
+  };
+});
+vi.mock('../../services/referenceData/referenceDataService', () => {
+  return {
+    getCohorts: getCohortsMock,
+    getYearGroups: getYearGroupsMock,
+  };
+});
 
 const {
   renderWizardModal,

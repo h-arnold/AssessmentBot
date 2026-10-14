@@ -8,7 +8,7 @@ import {
 } from '../../services/assignmentDefinition/assignmentDefinitionService';
 import {
   buildDocumentUrlsFromDefinition,
-  calculateDirtyState,
+  hasWizardDirtyEdits,
   hydrateFormFromDefinition,
   type DocumentChangeState,
   type ParsedCreateBaseline,
@@ -25,10 +25,10 @@ export interface FormInitializationOptions {
   taskRows: TaskRow[];
   hasParsedTasks: boolean;
   localDefinitionKey: string | null;
-  setHasParsedTasks: (value: boolean) => void;
+  setHasParsedTasks: (hasParsedTasks: boolean) => void;
   setTaskRows: (rows: TaskRow[]) => void;
   setDocumentChange: (state: DocumentChangeState) => void;
-  setHasDirtyEdits: (value: boolean) => void;
+  setHasDirtyEdits: (hasDirtyEdits: boolean) => void;
   setSubmitBlockingError: (error: string | null) => void;
   setLocalDefinitionKey: (key: string | null) => void;
 }
@@ -37,7 +37,7 @@ export interface FormInitializationOptions {
  * Hook for form initialization and baseline management.
  * Manages parse baseline storage and retrieval for the assignment definition wizard.
  *
- * @param {boolean} open - Whether the modal is open.
+ * @param {boolean} isOpen - Whether the modal is open.
  * @param {boolean} isCreateMode - Whether in create mode.
  * @param {FormInstance} form - The Ant Design form instance.
  * @param {FormInitializationOptions} options - Form initialization options containing state and setters.
@@ -45,7 +45,7 @@ export interface FormInitializationOptions {
  * @returns {object} Object containing storeParseBaseline and getParsedCreateBaseline functions.
  */
 export function useFormInitialization(
-  open: boolean,
+  isOpen: boolean,
   isCreateMode: boolean,
   form: FormInstance,
   options: FormInitializationOptions,
@@ -72,7 +72,7 @@ export function useFormInitialization(
 
   // Initialize modal and track hydration state
   useEffect(() => {
-    if (!open) {
+    if (!isOpen) {
       isHydratingDefinitionReference.current = false;
       parsedCreateBaselineReference.current = null;
       setLocalDefinitionKey(null);
@@ -110,7 +110,7 @@ export function useFormInitialization(
       });
     }
   }, [
-    open,
+    isOpen,
     isCreateMode,
     definition,
     form,
@@ -134,7 +134,7 @@ export function useFormInitialization(
       return;
     }
 
-    const isDirty = calculateDirtyState(
+    const isDirty = hasWizardDirtyEdits(
       formValues,
       parsedCreateBaselineReference.current,
       definition,

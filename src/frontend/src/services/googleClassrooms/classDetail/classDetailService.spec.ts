@@ -2,14 +2,16 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const callApiMock = vi.fn();
 
-vi.mock('../../apiService', () => ({
-  callApi: callApiMock,
-  parseApiResponse: (
-    schema: { parse: (data: unknown) => unknown },
-    _method: string,
-    data: unknown
-  ) => schema.parse(data),
-}));
+vi.mock('../../apiService', () => {
+  return {
+    callApi: callApiMock,
+    parseApiResponse: (
+      schema: { parse: (data: unknown) => unknown },
+      _method: string,
+      data: unknown
+    ) => schema.parse(data),
+  };
+});
 
 const validSubmissionPartial = {
   studentId: 'student-1',

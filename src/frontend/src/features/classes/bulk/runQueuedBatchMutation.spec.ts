@@ -12,9 +12,11 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const callApiQueuedMock = vi.hoisted(() => vi.fn());
 
-vi.mock('../../../services/apiService', () => ({
-  callApiQueued: callApiQueuedMock,
-}));
+vi.mock('../../../services/apiService', () => {
+  return {
+    callApiQueued: callApiQueuedMock,
+  };
+});
 
 import { runQueuedBatchMutation } from './runQueuedBatchMutation';
 import type { QueuedBatchItem, BatchProgressSnapshot } from './runQueuedBatchMutation';
@@ -108,7 +110,11 @@ describe('runQueuedBatchMutation', () => {
 
   it('multiple items processed sequentially', async () => {
     const resolvers: Array<(value: unknown) => void> = [];
-    callApiQueuedMock.mockImplementation(() => new Promise((resolve) => resolvers.push(resolve)));
+    callApiQueuedMock.mockImplementation(() => {
+      return new Promise((resolve) => {
+        resolvers.push(resolve);
+      });
+    });
 
     const items = [
       makeItem({ className: 'Class A', parameters: { classId: 'a' } }),
@@ -146,7 +152,9 @@ describe('runQueuedBatchMutation', () => {
 
     await runQueuedBatchMutation(items, {
       jobName: 'test-job',
-      onProgress: (snapshot) => snapshots.push({ ...snapshot }),
+      onProgress: (snapshot) => {
+        snapshots.push({ ...snapshot });
+      },
     });
 
     expect(snapshots).toHaveLength(FOUR_SNAPSHOTS);
@@ -231,7 +239,11 @@ describe('runQueuedBatchMutation', () => {
   it('cancellation via reject aggregates CANCELLED results correctly', async () => {
     const cancellers: Array<(value: unknown) => void> = [];
     callApiQueuedMock
-      .mockImplementationOnce(() => new Promise((resolve) => cancellers.push(resolve)))
+      .mockImplementationOnce(() => {
+        return new Promise((resolve) => {
+          cancellers.push(resolve);
+        });
+      })
       // Items 2 and 3 simulate cancellation via callApiQueued rejection
       .mockRejectedValue({ reason: 'CANCELLED' })
       .mockRejectedValue({ reason: 'CANCELLED' });

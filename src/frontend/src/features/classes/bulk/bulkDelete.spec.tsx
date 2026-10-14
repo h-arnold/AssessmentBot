@@ -29,48 +29,68 @@ const runQueuedBulkActionMock = vi.fn(
   },
 );
 
-vi.mock('../../services/apiService', () => ({
-  callApi: vi.fn(),
-}));
+vi.mock('../../services/apiService', () => {
+  return {
+    callApi: vi.fn(),
+  };
+});
 
-vi.mock('../useClassesManagement', () => ({
-  useClassesManagement: classesManagementStateMock,
-}));
+vi.mock('../useClassesManagement', () => {
+  return {
+    useClassesManagement: classesManagementStateMock,
+  };
+});
 
-vi.mock('./runQueuedBatchMutation', () => ({
-  runQueuedBatchMutation: runQueuedBatchMutationMock,
-}));
+vi.mock('./runQueuedBatchMutation', () => {
+  return {
+    runQueuedBatchMutation: runQueuedBatchMutationMock,
+  };
+});
 
-vi.mock('../useClassesBulkMutationQueue', () => ({
-  useClassesBulkMutationQueue: () => ({
-    isQueueActive: false,
-    progress: { currentItem: null, completed: 0, pendingCount: 0, total: 0, isInProgress: false },
-    isProgressModalOpen: false,
-    onDismissProgressModal: vi.fn(),
-    onCancelQueue: vi.fn(),
-    runQueuedBulkAction: runQueuedBulkActionMock,
-  }),
-}));
+vi.mock('../useClassesBulkMutationQueue', () => {
+  return {
+    useClassesBulkMutationQueue: () => {
+      return {
+        isQueueActive: false,
+        progress: { currentItem: null, completed: 0, pendingCount: 0, total: 0, isInProgress: false },
+        isProgressModalOpen: false,
+        onDismissProgressModal: vi.fn(),
+        onCancelQueue: vi.fn(),
+        runQueuedBulkAction: runQueuedBulkActionMock,
+      };
+    },
+  };
+});
 
-vi.mock('./BulkCreateModal', () => ({
-  BulkCreateModal() { return null; },
-}));
+vi.mock('./BulkCreateModal', () => {
+  return {
+    BulkCreateModal() { return null; },
+  };
+});
 
-vi.mock('./BulkSetSelectModal', () => ({
-  BulkSetSelectModal() { return null; },
-}));
+vi.mock('./BulkSetSelectModal', () => {
+  return {
+    BulkSetSelectModal() { return null; },
+  };
+});
 
-vi.mock('./BulkSetCourseLengthModal', () => ({
-  BulkSetCourseLengthModal() { return null; },
-}));
+vi.mock('./BulkSetCourseLengthModal', () => {
+  return {
+    BulkSetCourseLengthModal() { return null; },
+  };
+});
 
-vi.mock('../referenceData/ManageCohortsModal', () => ({
-  ManageCohortsModal() { return null; },
-}));
+vi.mock('../referenceData/ManageCohortsModal', () => {
+  return {
+    ManageCohortsModal() { return null; },
+  };
+});
 
-vi.mock('../referenceData/ManageYearGroupsModal', () => ({
-  ManageYearGroupsModal() { return null; },
-}));
+vi.mock('../referenceData/ManageYearGroupsModal', () => {
+  return {
+    ManageYearGroupsModal() { return null; },
+  };
+});
 
 /**
  * Builds a test ClassesManagementRow with sensible defaults and optional overrides.
@@ -157,20 +177,20 @@ describe('BulkDeleteModal', () => {
   });
 });
 
+/**
+ * Loads and renders the panel with shared frontend providers.
+ *
+ * @returns {Promise<void>} Completion signal.
+ */
+async function renderPanel() {
+  const { ClassesManagementPanel } = await import('../ClassesManagementPanel');
+  return renderWithFrontendProviders(<ClassesManagementPanel />);
+}
+
 describe('bulk delete handler integration', () => {
   afterEach(() => {
     vi.clearAllMocks();
   });
-
-  /**
-   * Loads and renders the panel with shared frontend providers.
-   *
-   * @returns {Promise<void>} Completion signal.
-   */
-  async function renderPanel() {
-    const { ClassesManagementPanel } = await import('../ClassesManagementPanel');
-    return renderWithFrontendProviders(<ClassesManagementPanel />);
-  }
 
   it('calls runQueuedBatchMutation with correct items when deleting', async () => {
     const onSelectedRowKeysChange = vi.fn();

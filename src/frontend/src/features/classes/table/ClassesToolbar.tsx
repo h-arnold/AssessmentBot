@@ -106,32 +106,32 @@ type ClassesToolbarDisabledState = Readonly<{
  * Returns whether one bulk-action trigger should be disabled.
  *
  * @param {boolean} canPerformAction Whether the current selection permits the action.
- * @param {boolean} workflowMutationInFlight Whether a conflicting workflow write is running.
+ * @param {boolean} isWorkflowMutationInFlight Whether a conflicting workflow write is running.
  * @returns {boolean} True when the action should stay disabled.
  */
-function isClassesToolbarActionDisabled(canPerformAction: boolean, workflowMutationInFlight: boolean): boolean {
-  return workflowMutationInFlight || !canPerformAction;
+function isClassesToolbarActionDisabled(canPerformAction: boolean, isWorkflowMutationInFlight: boolean): boolean {
+  return isWorkflowMutationInFlight || !canPerformAction;
 }
 
 /**
  * Returns disabled state for workflow-owned bulk actions.
  *
  * @param {ClassesToolbarEligibility} eligibility Current selection eligibility.
- * @param {boolean} workflowMutationInFlight Whether a conflicting workflow write is running.
+ * @param {boolean} isWorkflowMutationInFlight Whether a conflicting workflow write is running.
  * @returns {ClassesToolbarDisabledState} Disabled flags for bulk-action buttons.
  */
 function getClassesToolbarDisabledState(
   eligibility: ClassesToolbarEligibility,
-  workflowMutationInFlight: boolean,
+  isWorkflowMutationInFlight: boolean,
 ): ClassesToolbarDisabledState {
   return {
-    create: isClassesToolbarActionDisabled(eligibility.canCreate, workflowMutationInFlight),
-    deleteAction: isClassesToolbarActionDisabled(eligibility.canDelete, workflowMutationInFlight),
-    setActive: isClassesToolbarActionDisabled(eligibility.canSetActive, workflowMutationInFlight),
-    setCohort: isClassesToolbarActionDisabled(eligibility.canSetCohort, workflowMutationInFlight),
-    setCourseLength: isClassesToolbarActionDisabled(eligibility.canSetCourseLength, workflowMutationInFlight),
-    setInactive: isClassesToolbarActionDisabled(eligibility.canSetInactive, workflowMutationInFlight),
-    setYearGroup: isClassesToolbarActionDisabled(eligibility.canSetYearGroup, workflowMutationInFlight),
+    create: isClassesToolbarActionDisabled(eligibility.canCreate, isWorkflowMutationInFlight),
+    deleteAction: isClassesToolbarActionDisabled(eligibility.canDelete, isWorkflowMutationInFlight),
+    setActive: isClassesToolbarActionDisabled(eligibility.canSetActive, isWorkflowMutationInFlight),
+    setCohort: isClassesToolbarActionDisabled(eligibility.canSetCohort, isWorkflowMutationInFlight),
+    setCourseLength: isClassesToolbarActionDisabled(eligibility.canSetCourseLength, isWorkflowMutationInFlight),
+    setInactive: isClassesToolbarActionDisabled(eligibility.canSetInactive, isWorkflowMutationInFlight),
+    setYearGroup: isClassesToolbarActionDisabled(eligibility.canSetYearGroup, isWorkflowMutationInFlight),
   };
 }
 
@@ -144,9 +144,9 @@ function getClassesToolbarDisabledState(
 export function ClassesToolbar(properties: Readonly<ClassesToolbarProperties>) {
   const eligibility = getBulkActionEligibility(properties.selectedRows);
   const selectionMessage = getSelectionMessage(eligibility.selectedRows);
-  const activeStateMutationInFlight = properties.setActiveLoading === true || properties.setInactiveLoading === true;
-  const workflowMutationInFlight = properties.mutationInFlight === true || activeStateMutationInFlight;
-  const disabledState = getClassesToolbarDisabledState(eligibility, workflowMutationInFlight);
+  const isActiveStateMutationInFlight = properties.setActiveLoading === true || properties.setInactiveLoading === true;
+  const isWorkflowMutationInFlight = properties.mutationInFlight === true || isActiveStateMutationInFlight;
+  const disabledState = getClassesToolbarDisabledState(eligibility, isWorkflowMutationInFlight);
 
   return (
     <Card size="small" title="Bulk actions">

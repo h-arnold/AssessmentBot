@@ -34,11 +34,11 @@ class SheetsAssessor {
       this.progressTracker.updateProgress(`Assessing ${studentName}'s spreadsheet.`, false);
 
       Object.entries(submission.items).forEach(([taskKey, submissionItem]) => {
-        if (!submissionItem || typeof submissionItem.getType !== 'function') {
-          return;
-        }
-
-        if (submissionItem.getType() !== 'SPREADSHEET') {
+        if (
+          !submissionItem ||
+          typeof submissionItem.getType !== 'function' ||
+          submissionItem.getType() !== 'SPREADSHEET'
+        ) {
           return;
         }
 
@@ -194,8 +194,7 @@ class SheetsAssessor {
       const referenceRow = Array.isArray(referenceRowRaw) ? referenceRowRaw : [];
       const studentRow = Array.isArray(studentGrid[rowIndex]) ? studentGrid[rowIndex] : [];
 
-      for (const [columnIndex, referenceFormulaRaw] of referenceRow.entries()) {
-        const referenceFormula = referenceFormulaRaw || '';
+      for (const [columnIndex, referenceFormula] of referenceRow.entries()) {
         if (!referenceFormula) {
           continue;
         }

@@ -111,14 +111,18 @@ class SlidesParserSubmissionMatcher {
    * @returns {Array<{slide: GoogleAppsScript.Slides.Slide, elements: SlidesSubmissionEntry[]}>} - Parsed slide contexts.
    */
   buildSubmissionSlideContexts(slides) {
-    return slides.map((slide) => ({
-      slide,
-      elements: slide.getPageElements().map((pageElement) => ({
+    return slides.map((slide) => {
+      return {
         slide,
-        pageElement,
-        descriptionInfo: this.parser.parseDescriptionTag(pageElement.getDescription()),
-      })),
-    }));
+        elements: slide.getPageElements().map((pageElement) => {
+          return {
+            slide,
+            pageElement,
+            descriptionInfo: this.parser.parseDescriptionTag(pageElement.getDescription()),
+          };
+        }),
+      };
+    });
   }
 
   /**

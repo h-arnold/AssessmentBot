@@ -3,9 +3,11 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const callApiMock = vi.fn();
 
-vi.mock('../apiService', () => ({
-  callApi: callApiMock,
-}));
+vi.mock('../apiService', () => {
+  return {
+    callApi: callApiMock,
+  };
+});
 
 describe('googleClassroomAssignmentsService.getGoogleClassroomAssignments', () => {
   afterEach(() => {

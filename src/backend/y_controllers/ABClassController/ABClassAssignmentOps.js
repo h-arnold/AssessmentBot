@@ -255,21 +255,21 @@ class ABClassAssignmentOps {
     // Detect partial definition by checking if tasks is an array
     const isPartial = Array.isArray(assignment.assignmentDefinition?.tasks);
 
-    if (isPartial) {
-      const definitionController = new AssignmentDefinitionController();
-      const storedDefinition = definitionController.getDefinitionByKey(definitionKey, {
-        form: 'full',
-      });
+    if (!isPartial) return;
 
-      if (storedDefinition && !Array.isArray(storedDefinition.tasks)) {
-        // Use the full definition from the registry
-        assignment.assignmentDefinition = storedDefinition;
-      } else {
-        throw new Error(
-          `Failed to rehydrate definition '${definitionKey}': the authoritative record is a partial (tasks is an array).`
-        );
-      }
+    const definitionController = new AssignmentDefinitionController();
+    const storedDefinition = definitionController.getDefinitionByKey(definitionKey, {
+      form: 'full',
+    });
+
+    if (!storedDefinition || Array.isArray(storedDefinition.tasks)) {
+      throw new Error(
+        `Failed to rehydrate definition '${definitionKey}': the authoritative record is a partial (tasks is an array).`
+      );
     }
+
+    // Use the full definition from the registry
+    assignment.assignmentDefinition = storedDefinition;
   }
 }
 

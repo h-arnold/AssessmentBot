@@ -18,16 +18,18 @@ import { ManageYearGroupsModal } from './ManageYearGroupsModal';
 
 const deleteYearGroupMock = vi.hoisted(() => vi.fn());
 
-vi.mock('../../services/referenceData/referenceDataService', () => ({
-  getCohorts: vi.fn(),
-  createCohort: vi.fn(),
-  updateCohort: vi.fn(),
-  deleteCohort: vi.fn(),
-  getYearGroups: vi.fn(),
-  createYearGroup: vi.fn(),
-  updateYearGroup: vi.fn(),
-  deleteYearGroup: deleteYearGroupMock,
-}));
+vi.mock('../../services/referenceData/referenceDataService', () => {
+  return {
+    getCohorts: vi.fn(),
+    createCohort: vi.fn(),
+    updateCohort: vi.fn(),
+    deleteCohort: vi.fn(),
+    getYearGroups: vi.fn(),
+    createYearGroup: vi.fn(),
+    updateYearGroup: vi.fn(),
+    deleteYearGroup: deleteYearGroupMock,
+  };
+});
 
 const onCloseMock = vi.fn();
 
@@ -39,16 +41,15 @@ const seedYearGroups: YearGroup[] = [
 /**
  * Builds an ApiTransportError representing a blocked delete (year group in use).
  *
- * @param {string} [code] Error code from the API envelope.
- * @returns {ApiTransportError} Transport error with the given code.
+ * @returns {ApiTransportError} Transport error for a year group already in use.
  */
-function buildDeleteBlockedError(code = 'IN_USE'): ApiTransportError {
+function buildDeleteBlockedError(): ApiTransportError {
   return new ApiTransportError({
     requestId: 'req-delete-blocked',
     error: {
-      code,
+      code: 'IN_USE',
       message: 'Year group is in use by one or more classes and cannot be deleted.',
-      retriable: false,
+      isRetriable: false,
     },
   });
 }
@@ -156,7 +157,7 @@ describe('ManageYearGroupsModal — delete flow', () => {
 
   describe('blocked delete — year group in use', () => {
     it('keeps the delete confirmation open when the API returns an IN_USE error', async () => {
-      deleteYearGroupMock.mockRejectedValue(buildDeleteBlockedError('IN_USE'));
+      deleteYearGroupMock.mockRejectedValue(buildDeleteBlockedError());
       renderManageYearGroupsModal();
 
       await openDeleteConfirmationForFirstRow();
@@ -169,7 +170,7 @@ describe('ManageYearGroupsModal — delete flow', () => {
     });
 
     it('shows an inline Alert explaining that the year group is in use when delete is blocked', async () => {
-      deleteYearGroupMock.mockRejectedValue(buildDeleteBlockedError('IN_USE'));
+      deleteYearGroupMock.mockRejectedValue(buildDeleteBlockedError());
       renderManageYearGroupsModal();
 
       await openDeleteConfirmationForFirstRow();
@@ -183,7 +184,7 @@ describe('ManageYearGroupsModal — delete flow', () => {
     });
 
     it('disables the destructive delete button when the year group is blocked', async () => {
-      deleteYearGroupMock.mockRejectedValue(buildDeleteBlockedError('IN_USE'));
+      deleteYearGroupMock.mockRejectedValue(buildDeleteBlockedError());
       renderManageYearGroupsModal();
 
       await openDeleteConfirmationForFirstRow();

@@ -50,23 +50,22 @@ describe('AveragingAnalyser', () => {
 
   describe('analyse — orchestration', () => {
     it('computes correct weighted average for single student, single task, single criterion', () => {
+      const assignment = createAssignmentPartial({
+        assignmentId: 'a_001',
+        definitionKey: 'dk_algebra',
+        tasks: [createTaskPartial('t_001')],
+        submissions: [
+          createSubmission('s_001', 'Alice', 'a_001', {
+            t_001: createSubmissionItem('t_001', { accuracy: { score: 4 } }),
+          }),
+        ],
+      });
       const input = buildInput([
         {
           classId: 'c_001',
           className: 'Test Class',
           studentIds: ['s_001'],
-          assignments: [
-            createAssignmentPartial({
-              assignmentId: 'a_001',
-              definitionKey: 'dk_algebra',
-              tasks: [createTaskPartial('t_001')],
-              submissions: [
-                createSubmission('s_001', 'Alice', 'a_001', {
-                  t_001: createSubmissionItem('t_001', { accuracy: { score: 4 } }),
-                }),
-              ],
-            }),
-          ],
+          assignments: [assignment],
         },
       ]);
 
@@ -177,26 +176,25 @@ describe('AveragingAnalyser', () => {
     });
 
     it('produces identical results between default and explicit weightings', () => {
+      const assignment = createAssignmentPartial({
+        assignmentId: 'a_001',
+        definitionKey: 'dk_algebra',
+        tasks: [createTaskPartial('t_001')],
+        submissions: [
+          createSubmission('s_001', 'Alice', 'a_001', {
+            t_001: createSubmissionItem('t_001', {
+              completeness: { score: 3 },
+              accuracy: { score: 4 },
+              spag: { score: 5 },
+            }),
+          }),
+        ],
+      });
       const input = buildInput([
         {
           classId: 'c_001',
           studentIds: ['s_001'],
-          assignments: [
-            createAssignmentPartial({
-              assignmentId: 'a_001',
-              definitionKey: 'dk_algebra',
-              tasks: [createTaskPartial('t_001')],
-              submissions: [
-                createSubmission('s_001', 'Alice', 'a_001', {
-                  t_001: createSubmissionItem('t_001', {
-                    completeness: { score: 3 },
-                    accuracy: { score: 4 },
-                    spag: { score: 5 },
-                  }),
-                }),
-              ],
-            }),
-          ],
+          assignments: [assignment],
         },
       ]);
 
@@ -214,26 +212,25 @@ describe('AveragingAnalyser', () => {
     });
 
     it('uses custom criterion weightings passed to constructor', () => {
+      const assignment = createAssignmentPartial({
+        assignmentId: 'a_001',
+        definitionKey: 'dk_algebra',
+        tasks: [createTaskPartial('t_001')],
+        submissions: [
+          createSubmission('s_001', 'Alice', 'a_001', {
+            t_001: createSubmissionItem('t_001', {
+              completeness: { score: 3 },
+              accuracy: { score: 4 },
+              spag: { score: 5 },
+            }),
+          }),
+        ],
+      });
       const input = buildInput([
         {
           classId: 'c_001',
           studentIds: ['s_001'],
-          assignments: [
-            createAssignmentPartial({
-              assignmentId: 'a_001',
-              definitionKey: 'dk_algebra',
-              tasks: [createTaskPartial('t_001')],
-              submissions: [
-                createSubmission('s_001', 'Alice', 'a_001', {
-                  t_001: createSubmissionItem('t_001', {
-                    completeness: { score: 3 },
-                    accuracy: { score: 4 },
-                    spag: { score: 5 },
-                  }),
-                }),
-              ],
-            }),
-          ],
+          assignments: [assignment],
         },
       ]);
 
@@ -280,39 +277,38 @@ describe('AveragingAnalyser', () => {
     it('includes perStudentTaskMetrics with expected length and preserves perStudent/perTask counts', () => {
       // RED phase: perStudentTaskMetrics is not yet populated on AveragingResult,
       // so expect(...).toBeDefined() will fail.
+      const assignment = createAssignmentPartial({
+        assignmentId: 'a_001',
+        definitionKey: 'dk_algebra',
+        tasks: [createTaskPartial('t_001'), createTaskPartial('t_002')],
+        submissions: [
+          createSubmission('s_001', 'Alice', 'a_001', {
+            t_001: createSubmissionItem('t_001', {
+              completeness: { score: 3 },
+              accuracy: { score: 4 },
+              spag: { score: 5 },
+            }),
+            t_002: createSubmissionItem('t_002', {
+              completeness: { score: 5 },
+              accuracy: { score: 5 },
+              spag: { score: 5 },
+            }),
+          }),
+          createSubmission('s_002', 'Bob', 'a_001', {
+            t_001: createSubmissionItem('t_001', {
+              completeness: { score: 1 },
+              accuracy: { score: 2 },
+              spag: { score: 3 },
+            }),
+          }),
+        ],
+      });
       const input = buildInput([
         {
           classId: 'c_001',
           className: 'Test Class',
           studentIds: ['s_001', 's_002'],
-          assignments: [
-            createAssignmentPartial({
-              assignmentId: 'a_001',
-              definitionKey: 'dk_algebra',
-              tasks: [createTaskPartial('t_001'), createTaskPartial('t_002')],
-              submissions: [
-                createSubmission('s_001', 'Alice', 'a_001', {
-                  t_001: createSubmissionItem('t_001', {
-                    completeness: { score: 3 },
-                    accuracy: { score: 4 },
-                    spag: { score: 5 },
-                  }),
-                  t_002: createSubmissionItem('t_002', {
-                    completeness: { score: 5 },
-                    accuracy: { score: 5 },
-                    spag: { score: 5 },
-                  }),
-                }),
-                createSubmission('s_002', 'Bob', 'a_001', {
-                  t_001: createSubmissionItem('t_001', {
-                    completeness: { score: 1 },
-                    accuracy: { score: 2 },
-                    spag: { score: 3 },
-                  }),
-                }),
-              ],
-            }),
-          ],
+          assignments: [assignment],
         },
       ]);
 
@@ -340,29 +336,28 @@ describe('AveragingAnalyser', () => {
     });
 
     it('produces correct discriminated union states throughout output', () => {
+      const assignment = createAssignmentPartial({
+        assignmentId: 'a_001',
+        definitionKey: 'dk_algebra',
+        tasks: [createTaskPartial('t_001'), createTaskPartial('t_002')],
+        submissions: [
+          createSubmission('s_001', 'Alice', 'a_001', {
+            t_001: createSubmissionItem('t_001', {
+              completeness: { score: 3 },
+              accuracy: { score: 4 },
+              spag: { score: 5 },
+            }),
+          }),
+          createSubmission('s_002', 'Bob', 'a_002', {
+            // Bob has no items at all
+          }),
+        ],
+      });
       const input = buildInput([
         {
           classId: 'c_001',
           studentIds: ['s_001', 's_002'],
-          assignments: [
-            createAssignmentPartial({
-              assignmentId: 'a_001',
-              definitionKey: 'dk_algebra',
-              tasks: [createTaskPartial('t_001'), createTaskPartial('t_002')],
-              submissions: [
-                createSubmission('s_001', 'Alice', 'a_001', {
-                  t_001: createSubmissionItem('t_001', {
-                    completeness: { score: 3 },
-                    accuracy: { score: 4 },
-                    spag: { score: 5 },
-                  }),
-                }),
-                createSubmission('s_002', 'Bob', 'a_002', {
-                  // Bob has no items at all
-                }),
-              ],
-            }),
-          ],
+          assignments: [assignment],
         },
       ]);
 
@@ -393,22 +388,21 @@ describe('AveragingAnalyser', () => {
     });
 
     it('echoes constructor weightings in appliedCriterionWeightings output', () => {
+      const assignment = createAssignmentPartial({
+        assignmentId: 'a_001',
+        definitionKey: 'dk_algebra',
+        tasks: [createTaskPartial('t_001')],
+        submissions: [
+          createSubmission('s_001', 'Alice', 'a_001', {
+            t_001: createSubmissionItem('t_001', { accuracy: { score: 4 } }),
+          }),
+        ],
+      });
       const input = buildInput([
         {
           classId: 'c_001',
           studentIds: ['s_001'],
-          assignments: [
-            createAssignmentPartial({
-              assignmentId: 'a_001',
-              definitionKey: 'dk_algebra',
-              tasks: [createTaskPartial('t_001')],
-              submissions: [
-                createSubmission('s_001', 'Alice', 'a_001', {
-                  t_001: createSubmissionItem('t_001', { accuracy: { score: 4 } }),
-                }),
-              ],
-            }),
-          ],
+          assignments: [assignment],
         },
       ]);
 
@@ -542,33 +536,32 @@ describe('per-class rollup unification', () => {
     // Regression check: once analyseClass uses rollupAccumulators for the
     // per-class rollup, the output must remain correct. This test exercises
     // a class with populated per-student-task data to verify the single path.
+    const assignment = createAssignmentPartial({
+      assignmentId: 'a_001',
+      definitionKey: 'dk_algebra',
+      tasks: [createTaskPartial('t_001')],
+      submissions: [
+        createSubmission('s_001', 'Alice', 'a_001', {
+          t_001: createSubmissionItem('t_001', {
+            completeness: { score: 3 },
+            accuracy: { score: 4 },
+            spag: { score: 5 },
+          }),
+        }),
+        createSubmission('s_002', 'Bob', 'a_001', {
+          t_001: createSubmissionItem('t_001', {
+            completeness: { score: 5 },
+            accuracy: { score: 5 },
+            spag: { score: 5 },
+          }),
+        }),
+      ],
+    });
     const input = buildInput([
       {
         classId: 'c_001',
         studentIds: ['s_001', 's_002'],
-        assignments: [
-          createAssignmentPartial({
-            assignmentId: 'a_001',
-            definitionKey: 'dk_algebra',
-            tasks: [createTaskPartial('t_001')],
-            submissions: [
-              createSubmission('s_001', 'Alice', 'a_001', {
-                t_001: createSubmissionItem('t_001', {
-                  completeness: { score: 3 },
-                  accuracy: { score: 4 },
-                  spag: { score: 5 },
-                }),
-              }),
-              createSubmission('s_002', 'Bob', 'a_001', {
-                t_001: createSubmissionItem('t_001', {
-                  completeness: { score: 5 },
-                  accuracy: { score: 5 },
-                  spag: { score: 5 },
-                }),
-              }),
-            ],
-          }),
-        ],
+        assignments: [assignment],
       },
     ]);
 

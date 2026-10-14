@@ -26,10 +26,12 @@ const { getAuthorisationStatusMock, warmStartupQueriesMock, getApplicationAccess
     return createAppAuthGateMocks();
   });
 
-vi.mock('../../services/authService/authService', () => ({
-  getAuthorisationStatus: getAuthorisationStatusMock,
-  getApplicationAccess: getApplicationAccessMock,
-}));
+vi.mock('../../services/authService/authService', () => {
+  return {
+    hasScriptAuthorisation: getAuthorisationStatusMock,
+    getApplicationAccess: getApplicationAccessMock,
+  };
+});
 
 vi.mock('../../query/sharedQueries', async () => {
   const actual = await vi.importActual<typeof SharedQueriesModule>('../../query/sharedQueries');
@@ -60,7 +62,7 @@ function AccessGateProbe() {
 
 const forbiddenWarmupError = new ApiTransportError({
   requestId: 'req-warmup-forbidden',
-  error: { code: 'FORBIDDEN', message: 'Access denied.', retriable: false },
+  error: { code: 'FORBIDDEN', message: 'Access denied.', isRetriable: false },
 });
 
 /**

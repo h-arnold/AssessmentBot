@@ -24,29 +24,37 @@ import type { ClassPageContent as ClassPageContentType } from './ClassPageConten
 
 const { mockUseClassPageData } = vi.hoisted(() => ({ mockUseClassPageData: vi.fn() }));
 
-const { mockClassPageContent } = vi.hoisted(() => ({
-  mockClassPageContent: vi.fn(function MockClassPageContent() {
-    return createElement('div', { 'data-testid': 'class-page-content' });
-  }),
-}));
+const { mockClassPageContent } = vi.hoisted(() => {
+  return {
+    mockClassPageContent: vi.fn(function MockClassPageContent() {
+      return createElement('div', { 'data-testid': 'class-page-content' });
+    }),
+  };
+});
 
-const { mockAssessTaskModal } = vi.hoisted(() => ({
-  mockAssessTaskModal: vi.fn(function MockAssessTaskModal() {
-    return createElement('div', { 'data-testid': 'assess-task-modal' });
-  }),
-}));
+const { mockAssessTaskModal } = vi.hoisted(() => {
+  return {
+    mockAssessTaskModal: vi.fn(function MockAssessTaskModal() {
+      return createElement('div', { 'data-testid': 'assess-task-modal' });
+    }),
+  };
+});
 
-const { mockStudentAveragesTableCard } = vi.hoisted(() => ({
-  mockStudentAveragesTableCard: vi.fn(function MockStudentAveragesTableCard() {
-    return createElement('div', { 'data-testid': 'student-averages-table-card' });
-  }),
-}));
+const { mockStudentAveragesTableCard } = vi.hoisted(() => {
+  return {
+    mockStudentAveragesTableCard: vi.fn(function MockStudentAveragesTableCard() {
+      return createElement('div', { 'data-testid': 'student-averages-table-card' });
+    }),
+  };
+});
 
-const { mockTaskHeatmapTable } = vi.hoisted(() => ({
-  mockTaskHeatmapTable: vi.fn(function MockTaskHeatmapTable() {
-    return createElement('div', { 'data-testid': 'task-heatmap-table' });
-  }),
-}));
+const { mockTaskHeatmapTable } = vi.hoisted(() => {
+  return {
+    mockTaskHeatmapTable: vi.fn(function MockTaskHeatmapTable() {
+      return createElement('div', { 'data-testid': 'task-heatmap-table' });
+    }),
+  };
+});
 
 const { mockGetAssignment } = vi.hoisted(() => ({ mockGetAssignment: vi.fn() }));
 mockGetAssignment.mockResolvedValue({
@@ -82,53 +90,73 @@ mockGetAssignment.mockResolvedValue({
   },
 } satisfies AssignmentFull);
 
-const { mockUseClassSelection } = vi.hoisted(() => ({
-  mockUseClassSelection: vi.fn(() => ({
-    selectedClassId: DEFAULT_CLASS_ID,
-    className: CLASS_NAME,
-    onSelectClass: vi.fn(),
-    onNavigateToClasses: vi.fn(),
-  })),
-}));
+const { mockUseClassSelection } = vi.hoisted(() => {
+  return {
+    mockUseClassSelection: vi.fn(() => {
+      return {
+        selectedClassId: DEFAULT_CLASS_ID,
+        className: CLASS_NAME,
+        onSelectClass: vi.fn(),
+        onNavigateToClasses: vi.fn(),
+      };
+    }),
+  };
+});
 
-vi.mock('../../services/assignmentAssessment/assignmentAssessmentService', () => ({
-  getAssignment: mockGetAssignment,
-}));
+vi.mock('../../services/assignmentAssessment/assignmentAssessmentService', () => {
+  return {
+    getAssignment: mockGetAssignment,
+  };
+});
 
-vi.mock('./useClassPageData', () => ({
-  useClassPageData: mockUseClassPageData,
-}));
+vi.mock('./useClassPageData', () => {
+  return {
+    useClassPageData: mockUseClassPageData,
+  };
+});
 
-vi.mock('./ClassPageContent', () => ({
-  ClassPageContent: mockClassPageContent,
-}));
+vi.mock('./ClassPageContent', () => {
+  return {
+    ClassPageContent: mockClassPageContent,
+  };
+});
 
-vi.mock('../classes/AssessTaskModal/AssessTaskModal', () => ({
-  AssessTaskModal: mockAssessTaskModal,
-}));
+vi.mock('../classes/AssessTaskModal/AssessTaskModal', () => {
+  return {
+    AssessTaskModal: mockAssessTaskModal,
+  };
+});
 
-vi.mock('../../pages/pageContent', () => ({
-  pageContent: {
-    classDetail: {
-      heading: 'Class Overview',
-      summary: 'Review assessment performance for this class.',
-      recentAssignmentsEmpty: 'No recent assessments yet',
-      searchEmpty: 'No students match your search',
+vi.mock('../../pages/pageContent', () => {
+  return {
+    pageContent: {
+      classDetail: {
+        heading: 'Class Overview',
+        summary: 'Review assessment performance for this class.',
+        recentAssignmentsEmpty: 'No recent assessments yet',
+        searchEmpty: 'No students match your search',
+      },
     },
-  },
-}));
+  };
+});
 
-vi.mock('../../ClassSelectionContext', () => ({
-  useClassSelection: mockUseClassSelection,
-}));
+vi.mock('../../ClassSelectionContext', () => {
+  return {
+    useClassSelection: mockUseClassSelection,
+  };
+});
 
-vi.mock('./StudentAveragesTableCard', () => ({
-  StudentAveragesTableCard: mockStudentAveragesTableCard,
-}));
+vi.mock('./StudentAveragesTableCard', () => {
+  return {
+    StudentAveragesTableCard: mockStudentAveragesTableCard,
+  };
+});
 
-vi.mock('../taskHeatmap/TaskHeatmapTable', () => ({
-  TaskHeatmapTable: mockTaskHeatmapTable,
-}));
+vi.mock('../taskHeatmap/TaskHeatmapTable', () => {
+  return {
+    TaskHeatmapTable: mockTaskHeatmapTable,
+  };
+});
 
 // ===========================================================================
 // Fixture helpers
@@ -148,12 +176,9 @@ const DEFAULT_CLASS_FULL: Partial<ClassFull> = {
 /**
  * Create a minimal `ClassPageAdapterResult` fixture for ready-state tests.
  *
- * @param {Partial<ClassPageAdapterResult>} [overrides] - Optional overrides.
  * @returns {ClassPageAdapterResult} A fixture with default empty arrays.
  */
-function createAdapterResult(
-  overrides?: Partial<ClassPageAdapterResult>
-): ClassPageAdapterResult {
+function createAdapterResult(): ClassPageAdapterResult {
   return {
     recentAssignments: [],
     studentAverages: [],
@@ -187,7 +212,6 @@ function createAdapterResult(
         totalDataPoints: 1,
       },
     },
-    ...overrides,
   };
 }
 
@@ -240,11 +264,10 @@ function createReadyClassPageData(overrides?: Partial<ClassPageData>): ClassPage
  * Extract the last call's first argument as a record.
  * Returns an empty object if the mock has not been called.
  *
- * @param {import('vitest').Mock} mock - The mock function to inspect.
  * @returns {Record<string, unknown>} The first argument of the last call.
  */
-function getLastCallArguments(mock: ReturnType<typeof vi.fn>): Record<string, unknown> {
-  const allCalls = [...mock.mock.calls];
+function getLastCallArguments(): Record<string, unknown> {
+  const allCalls = [...mockAssessTaskModal.mock.calls] as unknown as unknown[][];
   const lastCall = allCalls.pop();
   if (!lastCall || lastCall.length === 0) {
     return {};
@@ -384,7 +407,7 @@ describe('ClassPage', () => {
 
     // After clicking, AssessTaskModal should be rendered
     expect(mockAssessTaskModal).toHaveBeenCalled();
-    const modalCallArguments = getLastCallArguments(mockAssessTaskModal);
+    const modalCallArguments = getLastCallArguments();
     expect(modalCallArguments.classId).toBe(DEFAULT_CLASS_ID);
     expect(modalCallArguments.className).toBe(CLASS_NAME);
     expect(modalCallArguments.onClose).toBeTypeOf('function');
@@ -413,7 +436,7 @@ describe('ClassPage', () => {
 
     // After clicking, AssessTaskModal should be rendered
     expect(mockAssessTaskModal).toHaveBeenCalled();
-    const modalCallArguments = getLastCallArguments(mockAssessTaskModal);
+    const modalCallArguments = getLastCallArguments();
     expect(modalCallArguments.classId).toBe(DEFAULT_CLASS_ID);
     expect(modalCallArguments.className).toBe(CLASS_NAME);
     expect(modalCallArguments.onClose).toBeTypeOf('function');
@@ -437,7 +460,7 @@ describe('ClassPage', () => {
     expect(mockAssessTaskModal).toHaveBeenCalled();
 
     // Get the onClose callback from the modal's props and call it
-    const modalCallArguments = getLastCallArguments(mockAssessTaskModal);
+    const modalCallArguments = getLastCallArguments();
     const onClose = modalCallArguments.onClose as () => void;
 
     act(() => {

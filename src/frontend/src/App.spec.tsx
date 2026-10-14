@@ -40,14 +40,14 @@ type ApiResponseEnvelope =
       error: {
         code: string;
         message: string;
-        retriable?: boolean;
+        isRetriable?: boolean;
       };
     };
 
-type ApiMethodResponse = ApiResponseEnvelope | { transportFailure: unknown } | 'pending';
+type ApiMethodResponse = ApiResponseEnvelope | 'pending' | { transportFailure: unknown };
 type ApiMethodResponseMap = Partial<Record<string, ApiMethodResponse>>;
 
-const authStatusMethodName = 'getAuthorisationStatus';
+const authStatusMethodName = 'hasScriptAuthorisation';
 const applicationAccessMethodName = 'getApplicationAccess';
 const classPartialsMethodName = 'getABClassPartials';
 const assignmentTopicsMethodName = 'getAssignmentTopics';
@@ -133,11 +133,11 @@ function createApiHandlerInstaller(
     dispatchMockTransportResponse(response, failureHandler, successHandler);
   });
 
-  (globalThis as { google?: unknown }).google = {
+  vi.stubGlobal('google', {
     script: {
       run: runMock,
     },
-  };
+  });
 
   return {
     methodCallCounts,
@@ -370,7 +370,7 @@ async function expectUnauthorisedOutcome(
 
 describe('App', () => {
   afterEach(() => {
-    delete (globalThis as { google?: unknown }).google;
+    vi.unstubAllGlobals();
     document.querySelector('#root')?.remove();
     vi.restoreAllMocks();
     vi.resetModules();
@@ -510,28 +510,29 @@ describe('App', () => {
   it('uses the shared appNavigation render contract for selected page rendering', async () => {
     vi.resetModules();
 
-    const renderNavigationPageSpy = vi.fn(() => (
-      <div data-testid="mock-render-contract-page">render contract page</div>
-    ));
+    const renderNavigationPageSpy = vi.fn(() => {
+      return (
+        <div data-testid="mock-render-contract-page">render contract page</div>
+      );
+    });
 
-    vi.doMock('./navigation/appNavigation', () => ({
-      appBreadcrumbBaseLabel: 'AssessmentBot Frontend',
-      defaultNavigationKey: 'dashboard',
-      getBreadcrumbItems: () => [
-        { title: 'Dashboard' },
-      ],
-      isAppNavigationKey: (key: string) =>
-        key === 'dashboard' || key === 'assignments' || key === 'settings',
-      navigationItems: [
-        {
-          key: 'dashboard',
-          label: 'Dashboard',
-          icon: <span aria-hidden className="app-navigation-icon" />,
-          children: [],
-        },
-      ],
-      renderNavigationPage: renderNavigationPageSpy,
-    }));
+    vi.doMock('./navigation/appNavigation', () => {
+      return {
+        appBreadcrumbBaseLabel: 'AssessmentBot Frontend',
+        defaultNavigationKey: 'dashboard',
+        getBreadcrumbItems: () => [{ title: 'Dashboard' }],
+        isAppNavigationKey: (key: string) => ['dashboard', 'assignments', 'settings'].includes(key),
+        navigationItems: [
+          {
+            key: 'dashboard',
+            label: 'Dashboard',
+            icon: <span aria-hidden className="app-navigation-icon" />,
+            children: [],
+          },
+        ],
+        renderNavigationPage: renderNavigationPageSpy,
+      };
+    });
 
     const { AppShell } = await import('./AppShell');
     const dashboardContent = <div data-testid="mock-dashboard-slot">dashboard slot</div>;
@@ -878,7 +879,7 @@ describe('App', () => {
         error: {
           code: 'RATE_LIMITED',
           message: 'Rate limited.',
-          retriable: true,
+          isRetriable: true,
         },
       },
     });
@@ -891,6 +892,7 @@ describe('App', () => {
   });
 
   it('shows runtime failure message when google.script.run is unavailable', async () => {
+    vi.stubGlobal('google', undefined);
     renderApp();
 
     await expectUnauthorisedOutcome(null, {

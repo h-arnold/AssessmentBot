@@ -168,24 +168,25 @@ export function HeatmapSelectionBar({
 
   useEffect(() => {
     for (const assignmentId of omittedAssignmentIds) {
-      if (!warnedOmittedAssignmentIds.current.has(assignmentId)) {
-        warnedOmittedAssignmentIds.current.add(assignmentId);
-        logFrontendEvent('warn', {
-          context: 'HeatmapSelectionBar',
-          errorMessage: `Assignment "${assignmentId}" omitted from Heatmaps selectors: no resolvable assignment-definition partial`,
-          metadata: { assignmentId },
-        });
+      if (warnedOmittedAssignmentIds.current.has(assignmentId)) {
+        continue;
       }
+      warnedOmittedAssignmentIds.current.add(assignmentId);
+      logFrontendEvent('warn', {
+        context: 'HeatmapSelectionBar',
+        errorMessage: `Assignment "${assignmentId}" omitted from Heatmaps selectors: no resolvable assignment-definition partial`,
+        metadata: { assignmentId },
+      });
     }
   }, [omittedAssignmentIds]);
 
-  const dependentsDisabled = classFull === null;
+  const areDependentsDisabled = classFull === null;
 
   // Disabled-state affordances derived once to keep the JSX branch-free (complexity rule).
-  const disabledTooltipTitle = dependentsDisabled
+  const disabledTooltipTitle = areDependentsDisabled
     ? pageContent.heatmaps.selectionDisabledReason
     : undefined;
-  const disabledDescribedBy = dependentsDisabled ? DISABLED_REASON_ID : undefined;
+  const disabledDescribedBy = areDependentsDisabled ? DISABLED_REASON_ID : undefined;
 
   // Memoised membership sets (P-N4): O(1) `has` lookups in option renders and the
   // class-value selector instead of O(n) `includes`/`some` rescans on every repaint.
@@ -200,10 +201,12 @@ export function HeatmapSelectionBar({
       return [];
     }
     return classPartials
-      .map((classPartial) => ({
-        value: classPartial.classId,
-        label: classPartial.className ?? '(unnamed class)',
-      }))
+      .map((classPartial) => {
+        return {
+          value: classPartial.classId,
+          label: classPartial.className ?? '(unnamed class)',
+        };
+      })
       .toSorted((left, right) => left.label.localeCompare(right.label));
   }, [classPartials]);
 
@@ -226,10 +229,7 @@ export function HeatmapSelectionBar({
         assignmentDefinitionPartials,
         assignment.assignmentDefinitionKey
       );
-      if (partial === null) {
-        continue;
-      }
-      if (seen.has(partial.primaryTopicKey)) {
+      if (partial === null || seen.has(partial.primaryTopicKey)) {
         continue;
       }
       seen.add(partial.primaryTopicKey);
@@ -288,7 +288,7 @@ export function HeatmapSelectionBar({
             }
             loading={selection.classId !== null && classFull === null}
             options={classOptions}
-            onChange={(value: string | null) => onSelectClass(value ?? null)}
+            onChange={(value: string | null = null) => onSelectClass(value)}
             style={{ width: '100%' }}
           />
         </Flex>
@@ -300,7 +300,7 @@ export function HeatmapSelectionBar({
               <Select
                 aria-labelledby="heatmap-topics-label"
                 aria-describedby={disabledDescribedBy}
-                disabled={dependentsDisabled}
+                disabled={areDependentsDisabled}
                 mode="multiple"
                 allowClear
                 showSearch={{ optionFilterProp: 'label' }}
@@ -312,10 +312,10 @@ export function HeatmapSelectionBar({
                 onChange={(value: string[]) => handleTopicsChange(value)}
                 notFoundContent="No topics available"
                 optionRender={(oriOption): JSX.Element => {
-                  const checked = selectedTopicKeys.has(String(oriOption.value));
+                  const isChecked = selectedTopicKeys.has(String(oriOption.value));
                   return (
                     <Space>
-                      <Checkbox checked={checked} />
+                      <Checkbox checked={isChecked} />
                       <span>{oriOption.label}</span>
                     </Space>
                   );
@@ -333,7 +333,7 @@ export function HeatmapSelectionBar({
               <Select
                 aria-labelledby="heatmap-assignments-label"
                 aria-describedby={disabledDescribedBy}
-                disabled={dependentsDisabled}
+                disabled={areDependentsDisabled}
                 mode="multiple"
                 allowClear
                 showSearch={{ optionFilterProp: 'label' }}
@@ -345,10 +345,10 @@ export function HeatmapSelectionBar({
                 onChange={(value: string[]) => onChangeAssignments(value)}
                 notFoundContent="No assignments available"
                 optionRender={(oriOption): JSX.Element => {
-                  const checked = selectedAssignmentIds.has(String(oriOption.value));
+                  const isChecked = selectedAssignmentIds.has(String(oriOption.value));
                   return (
                     <Space>
-                      <Checkbox checked={checked} />
+                      <Checkbox checked={isChecked} />
                       <span>{oriOption.label}</span>
                     </Space>
                   );

@@ -81,12 +81,14 @@ const navigationDefinitionByKey = new Map(
 );
 
 export const navigationItems: AppNavigationItem[] = navigationDefinitions.map(
-  ({ key, label, icon }) => ({
-    key,
-    label,
-    icon,
-    children: [],
-  })
+  ({ key, label, icon }) => {
+    return {
+      key,
+      label,
+      icon,
+      children: [],
+    };
+  }
 );
 
 const appNavigationKeys = new Set<AppNavigationKey>(navigationItems.map(({ key }) => key));
@@ -132,7 +134,7 @@ export function renderNavigationPage(key: AppNavigationKey, contentSlot?: ReactN
       return <SettingsPage />;
     }
     default: {
-      throw buildUnknownPageKeyError(String(key));
+      throw buildUnknownPageKeyError(key);
     }
   }
 }

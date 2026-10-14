@@ -28,9 +28,7 @@ class SpreadsheetTaskArtifact extends BaseTaskArtifact {
    * @returns {Array<Array<any>>|null} Normalised rows.
    */
   normalizeContent(content) {
-    if (content == null) return null;
-    if (Validate.isString(content)) return null;
-    if (!Array.isArray(content)) return null;
+    if (content == null || Validate.isString(content) || !Array.isArray(content)) return null;
     const rows = content.map((row) =>
       Array.isArray(row) ? row.map((cell) => this._normCell(cell)) : []
     );
@@ -96,7 +94,7 @@ class SpreadsheetTaskArtifact extends BaseTaskArtifact {
    * @returns {boolean} True when the row is empty.
    */
   _rowEmpty(row) {
-    return !row.some((c) => !(c == null || c === ''));
+    return row.every((c) => c == null || c === '');
   }
   /**
    * Canonicalise a formula string for consistent spreadsheet comparison.

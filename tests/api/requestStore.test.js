@@ -29,10 +29,10 @@ describe('Api/requestStore', () => {
     it('returns a record with requestId, method, status "started", and a numeric startedAtMs', () => {
       const { createStartedRecord_ } = loadRequestStoreModule();
 
-      const record = createStartedRecord_('req-001', 'getAuthorisationStatus');
+      const record = createStartedRecord_('req-001', 'hasScriptAuthorisation');
 
       expect(record.requestId).toBe('req-001');
-      expect(record.method).toBe('getAuthorisationStatus');
+      expect(record.method).toBe('hasScriptAuthorisation');
       expect(record.status).toBe('started');
       expect(record.startedAtMs).toBeTypeOf('number');
       expect(record.startedAtMs).toBeGreaterThan(0);
@@ -41,7 +41,7 @@ describe('Api/requestStore', () => {
     it('uses a provided startedAtMs value without calling Date.now again', () => {
       const { createStartedRecord_ } = loadRequestStoreModule();
 
-      const record = createStartedRecord_('req-001', 'getAuthorisationStatus', 12345);
+      const record = createStartedRecord_('req-001', 'hasScriptAuthorisation', 12345);
 
       expect(record.startedAtMs).toBe(12345);
     });
@@ -200,13 +200,13 @@ describe('Api/requestStore', () => {
       const store = {
         'stale-req-1': {
           requestId: 'stale-req-1',
-          method: 'getAuthorisationStatus',
+          method: 'hasScriptAuthorisation',
           status: 'started',
           startedAtMs: 1000,
         },
         'recent-req-1': {
           requestId: 'recent-req-1',
-          method: 'getAuthorisationStatus',
+          method: 'hasScriptAuthorisation',
           status: 'started',
           startedAtMs: 9000,
         },
@@ -226,19 +226,19 @@ describe('Api/requestStore', () => {
       const store = {
         'stale-contract-1': {
           requestId: 'stale-contract-1',
-          method: 'getAuthorisationStatus',
+          method: 'hasScriptAuthorisation',
           status: 'started',
           startedAtMs: 1000,
         },
         'recent-contract-1': {
           requestId: 'recent-contract-1',
-          method: 'getAuthorisationStatus',
+          method: 'hasScriptAuthorisation',
           status: 'started',
           startedAtMs: 9000,
         },
         'completed-contract-1': {
           requestId: 'completed-contract-1',
-          method: 'getAuthorisationStatus',
+          method: 'hasScriptAuthorisation',
           status: 'success',
           startedAtMs: 1000,
           finishedAtMs: 2000,

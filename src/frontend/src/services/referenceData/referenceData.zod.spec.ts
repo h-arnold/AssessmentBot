@@ -44,27 +44,27 @@ describe('referenceData.zod keyed schemas', () => {
   });
 
   it.each(['', '   '])('CohortSchema rejects empty or whitespace-only keyed names: %j', (name) => {
-    expect(() =>
-      CohortSchema.parse({
+    expect(() => {
+      return CohortSchema.parse({
         key: 'cohort-2025',
         name,
         active: true,
         startYear: 2025,
         startMonth: 9,
-      })
-    ).toThrow();
+      });
+    }).toThrow();
   });
 
   it.each(['', '   '])('CohortSchema rejects empty or whitespace-only keys: %j', (key) => {
-    expect(() =>
-      CohortSchema.parse({
+    expect(() => {
+      return CohortSchema.parse({
         key,
         name: '2025 Cohort',
         active: true,
         startYear: 2025,
         startMonth: 9,
-      })
-    ).toThrow();
+      });
+    }).toThrow();
   });
 
   it('CohortSchema rejects backend cohort payloads that omit keyed metadata', () => {
@@ -74,29 +74,29 @@ describe('referenceData.zod keyed schemas', () => {
   });
 
   it('CohortSchema rejects non-boolean active within keyed cohort payloads', () => {
-    expect(() =>
-      CohortSchema.parse({
+    expect(() => {
+      return CohortSchema.parse({
         key: 'cohort-2025',
         name: '2025 Cohort',
         active: 'yes',
         startYear: 2025,
         startMonth: 9,
-      })
-    ).toThrow();
+      });
+    }).toThrow();
   });
 
   it.each([INVALID_MONTH_BELOW_RANGE, INVALID_MONTH_ABOVE_RANGE])(
     'CohortSchema rejects invalid startMonth values: %j',
     (startMonth) => {
-      expect(() =>
-        CohortSchema.parse({
+      expect(() => {
+        return CohortSchema.parse({
           key: 'cohort-2025',
           name: '2025 Cohort',
           active: true,
           startYear: 2025,
           startMonth,
-        })
-      ).toThrow();
+        });
+      }).toThrow();
     }
   );
 
@@ -145,17 +145,17 @@ describe('referenceData.zod keyed schemas', () => {
       record: { name: '2025 Cohort', active: true },
     });
 
-    expect(() =>
-      UpdateCohortInputSchema.parse({
+    expect(() => {
+      return UpdateCohortInputSchema.parse({
         record: { name: '2025 Cohort', active: true },
-      })
-    ).toThrow();
-    expect(() =>
-      UpdateCohortInputSchema.parse({
+      });
+    }).toThrow();
+    expect(() => {
+      return UpdateCohortInputSchema.parse({
         key: 'cohort-2024',
         record: { name: '2025 Cohort' },
-      })
-    ).toThrow();
+      });
+    }).toThrow();
   });
 
   it('DeleteCohortInputSchema accepts only key-addressed identity payloads', () => {
@@ -179,19 +179,21 @@ describe('referenceData.zod keyed schemas', () => {
     ],
     [
       'UpdateYearGroupInputSchema key',
-      () =>
-        UpdateYearGroupInputSchema.parse({
+      () => {
+        return UpdateYearGroupInputSchema.parse({
           key: '   ',
           record: { name: 'Year 10' },
-        }),
+        });
+      },
     ],
     [
       'UpdateYearGroupInputSchema record.name',
-      () =>
-        UpdateYearGroupInputSchema.parse({
+      () => {
+        return UpdateYearGroupInputSchema.parse({
           key: 'year-9',
           record: { name: '   ' },
-        }),
+        });
+      },
     ],
     ['DeleteYearGroupInputSchema', () => DeleteYearGroupInputSchema.parse({ key: '' })],
   ])('%s rejects malformed names', (_, parseInvalidInput) => {
@@ -209,11 +211,11 @@ describe('referenceData.zod keyed schemas', () => {
       record: { name: 'Year 10' },
     });
 
-    expect(() =>
-      UpdateYearGroupInputSchema.parse({
+    expect(() => {
+      return UpdateYearGroupInputSchema.parse({
         record: { name: 'Year 10' },
-      })
-    ).toThrow();
+      });
+    }).toThrow();
 
     expect(DeleteYearGroupInputSchema.parse({ key: 'year-10' })).toEqual({ key: 'year-10' });
     expect(() => DeleteYearGroupInputSchema.parse({})).toThrow();
@@ -272,33 +274,33 @@ describe('referenceData.zod AssignmentTopic schemas', () => {
   });
 
   it.each(['', '   '])('AssignmentTopicSchema rejects empty string for name: %j', (name) => {
-    expect(() =>
-      AssignmentTopicSchema.parse({
+    expect(() => {
+      return AssignmentTopicSchema.parse({
         key: 'test',
         name,
         yearGroupKeys: [],
-      })
-    ).toThrow();
+      });
+    }).toThrow();
   });
 
   it.each(['', '   '])('AssignmentTopicSchema rejects empty string for key: %j', (key) => {
-    expect(() =>
-      AssignmentTopicSchema.parse({
+    expect(() => {
+      return AssignmentTopicSchema.parse({
         key,
         name: 'Test Topic',
         yearGroupKeys: [],
-      })
-    ).toThrow();
+      });
+    }).toThrow();
   });
 
   it('AssignmentTopicSchema rejects array with empty strings in yearGroupKeys', () => {
-    expect(() =>
-      AssignmentTopicSchema.parse({
+    expect(() => {
+      return AssignmentTopicSchema.parse({
         key: 'test',
         name: 'Test Topic',
         yearGroupKeys: ['yg1', ''],
-      })
-    ).toThrow();
+      });
+    }).toThrow();
   });
 
   it('AssignmentTopicListResponseSchema validates array of valid topics', () => {
@@ -336,11 +338,11 @@ describe('referenceData.zod AssignmentTopic schemas', () => {
   });
 
   it('UpdateAssignmentTopicInputSchema rejects missing key', () => {
-    expect(() =>
-      UpdateAssignmentTopicInputSchema.parse({
+    expect(() => {
+      return UpdateAssignmentTopicInputSchema.parse({
         record: { name: 'Updated', yearGroupKeys: ['yg1'] },
-      })
-    ).toThrow();
+      });
+    }).toThrow();
   });
 
   it('DeleteAssignmentTopicInputSchema validates input', () => {

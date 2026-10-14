@@ -86,10 +86,11 @@ export function TaskMetricPreviewContent({
   sourceAnchorRef,
 }: Readonly<TaskMetricPreviewContentProperties>): JSX.Element | null {
   const previewData = useMemo(
-    () =>
-      isLoading || hasError
+    () => {
+      return isLoading || hasError
         ? null
-        : assembleTaskPreviewData(cellData, metricResult, metricKey, taskId),
+        : assembleTaskPreviewData(cellData, metricResult, metricKey, taskId);
+    },
     [cellData, metricResult, metricKey, taskId, isLoading, hasError]
   );
 

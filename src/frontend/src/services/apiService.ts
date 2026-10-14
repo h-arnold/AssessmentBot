@@ -8,13 +8,14 @@ const ApiRequestSchema = z.object({
 });
 
 const JobNameSchema = z.string().min(1);
+const StringKeyedUnknownRecordSchema = z.record(z.string(), z.unknown());
 
 const ApiSuccessResponseSchema = z
   .object({
     ok: z.literal(true),
     requestId: z.string(),
     data: z.unknown(),
-    meta: z.record(z.string(), z.unknown()).optional(),
+    meta: StringKeyedUnknownRecordSchema.optional(),
   })
   .superRefine((response, context) => {
     if (!Object.prototype.hasOwnProperty.call(response, 'data')) {
@@ -33,10 +34,10 @@ const ApiErrorResponseSchema = z.object({
   error: z.object({
     code: z.string(),
     message: z.string(),
-    retriable: z.boolean().optional(),
-    details: z.record(z.string(), z.unknown()).optional(),
+    isRetriable: z.boolean().optional(),
+    details: StringKeyedUnknownRecordSchema.optional(),
   }),
-  meta: z.record(z.string(), z.unknown()).optional(),
+  meta: StringKeyedUnknownRecordSchema.optional(),
 });
 
 const ApiResponseSchema = z.discriminatedUnion('ok', [
@@ -83,16 +84,18 @@ const ZOD_ERROR_PREVIEW_LENGTH = 200;
 
 /**
  * Builds a truncated preview string for logging/diagnostics from an arbitrary
- * value, serialising objects to JSON first. Truncates to `maxLen` characters
- * (preserving the ellipsis behaviour used across the transport layer).
+ * value, serialising objects to JSON first. Truncates to
+ * `ZOD_ERROR_PREVIEW_LENGTH` characters, preserving the ellipsis behaviour used
+ * across the transport layer.
  *
  * @param {unknown} value - The value to preview.
- * @param {number} maxLength - Maximum preview length in characters.
  * @returns {string} A truncated, log-safe preview string.
  */
-function truncateForPreview(value: unknown, maxLength: number): string {
+function truncateForPreview(value: unknown): string {
   const source = typeof value === 'string' ? value : JSON.stringify(value);
-  return source.length > maxLength ? `${source.slice(0, maxLength)}…` : source;
+  return source.length > ZOD_ERROR_PREVIEW_LENGTH
+    ? `${source.slice(0, ZOD_ERROR_PREVIEW_LENGTH)}…`
+    : source;
 }
 
 /**
@@ -102,7 +105,7 @@ function truncateForPreview(value: unknown, maxLength: number): string {
  */
 function randomJitterMs(): number {
   const buf = new Uint32Array(1);
-  globalThis.crypto.getRandomValues(buf);
+  crypto.getRandomValues(buf);
   return (buf[0] / UINT32_MAX) * JITTER_MS;
 }
 
@@ -146,10 +149,8 @@ function parseApiEnvelope(deserialisedResponse: unknown): z.infer<typeof ApiResp
     return ApiResponseSchema.parse(deserialisedResponse);
   } catch (schemaError: unknown) {
     if (schemaError instanceof z.ZodError && deserialisedResponse !== undefined) {
-      (schemaError as unknown as { preview: string }).preview = truncateForPreview(
-        deserialisedResponse,
-        ZOD_ERROR_PREVIEW_LENGTH
-      );
+      (schemaError as unknown as { preview: string }).preview =
+        truncateForPreview(deserialisedResponse);
     }
     throw schemaError;
   }
@@ -174,7 +175,7 @@ export function parseApiResponse<TResponse>(
     return schema.parse(data);
   } catch (error: unknown) {
     if (error instanceof z.ZodError) {
-      const responsePreview = truncateForPreview(data, ZOD_ERROR_PREVIEW_LENGTH);
+      const responsePreview = truncateForPreview(data);
 
       logFrontendError('services/apiService.parseApiResponse', error, {
         method,
@@ -228,8 +229,8 @@ async function dispatchAttempt<TResponse>(requestPayload: unknown): Promise<TRes
 function shouldRetry(error: unknown, attempt: number): boolean {
   return (
     error instanceof ApiTransportError &&
-    String(error.code) === 'RATE_LIMITED' &&
-    error.retriable === true &&
+    error.code === 'RATE_LIMITED' &&
+    error.isRetriable === true &&
     attempt < MAX_ATTEMPTS - 1
   );
 }
@@ -278,7 +279,7 @@ function buildFailureMetadata(
  * Calls the backend API handler and returns parsed response data.
  *
  * Automatically retries up to MAX_ATTEMPTS total attempts when the backend
- * responds with a RATE_LIMITED error that is marked as retriable.
+ * responds with a RATE_LIMITED error that is marked as isRetriable.
  * Each retry waits for a bounded exponential backoff with jitter.
  *
  * @template TResponse
@@ -394,10 +395,9 @@ export function callApiQueued<TResponse>(
     });
 
     // Synchronously mark active before any await, preventing duplicate loops
-    if (wasIdle) {
-      targetQueue.active = true;
-      void processQueue(targetQueue);
-    }
+    if (!wasIdle) return;
+    targetQueue.active = true;
+    void processQueue(targetQueue);
   });
 }
 

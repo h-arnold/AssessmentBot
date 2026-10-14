@@ -28,12 +28,14 @@ import { mockTopics, mockYearGroups, mockFullAssignmentDefinition } from './shar
 export function createMockTopics(overrides: Partial<AssignmentTopic>[] = []): AssignmentTopic[] {
   return [
     ...mockTopics,
-    ...overrides.map((override, index) => ({
-      key: `topic-custom-${index}`,
-      name: `Custom Topic ${index}`,
-      yearGroupKeys: [],
-      ...override,
-    })),
+    ...overrides.map((override, index) => {
+      return {
+        key: `topic-custom-${index}`,
+        name: `Custom Topic ${index}`,
+        yearGroupKeys: [],
+        ...override,
+      };
+    }),
   ];
 }
 
@@ -54,11 +56,13 @@ export function createMockTopics(overrides: Partial<AssignmentTopic>[] = []): As
 export function createMockYearGroups(overrides: Partial<YearGroup>[] = []): YearGroup[] {
   return [
     ...mockYearGroups,
-    ...overrides.map((override, index) => ({
-      key: `year-group-custom-${index}`,
-      name: `Custom Year ${index}`,
-      ...override,
-    })),
+    ...overrides.map((override, index) => {
+      return {
+        key: `year-group-custom-${index}`,
+        name: `Custom Year ${index}`,
+        ...override,
+      };
+    }),
   ];
 }
 

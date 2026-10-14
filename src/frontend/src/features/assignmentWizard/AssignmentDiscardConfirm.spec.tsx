@@ -48,12 +48,10 @@ async function loadDiscardConfirmComponent(): Promise<ComponentType<Record<strin
  * Renders the shared discard confirmation in its open state.
  *
  * @param {ComponentType<Record<string, unknown>>} component Shared confirmation component.
- * @param {Record<string, unknown>} [overrides] Per-test property overrides.
  * @returns {{ onKeepEditing: ReturnType<typeof vi.fn>; onDiscard: ReturnType<typeof vi.fn> }} Mock callbacks.
  */
 function renderDiscardConfirm(
-  component: ComponentType<Record<string, unknown>>,
-  overrides: Record<string, unknown> = {}
+  component: ComponentType<Record<string, unknown>>
 ): { onKeepEditing: ReturnType<typeof vi.fn>; onDiscard: ReturnType<typeof vi.fn> } {
   const onKeepEditing = vi.fn();
   const onDiscard = vi.fn();
@@ -62,7 +60,6 @@ function renderDiscardConfirm(
       open: true,
       onKeepEditing,
       onDiscard,
-      ...overrides,
     })
   );
   return { onKeepEditing, onDiscard };

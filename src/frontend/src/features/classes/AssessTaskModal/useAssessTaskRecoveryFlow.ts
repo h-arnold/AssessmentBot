@@ -18,7 +18,7 @@ import { buildReparseRequest } from '../../assignmentWizard/assignmentWizardOrch
 import {
   buildTopicOptions,
   buildYearGroupOptions,
-  calculateDirtyState,
+  hasWizardDirtyEdits,
   hydrateFormFromDefinition,
   type DocumentChangeState,
   type TaskRow,
@@ -30,7 +30,7 @@ import {
   isGenerationObsolete,
   isSaveBlocked,
   readReviewFormValues,
-  settleApprovalFailure,
+  hasSettledApprovalFailure,
   settleMissingCapture,
   settleResumeFailure,
   settleSaveThrow,
@@ -153,7 +153,7 @@ export function useAssessTaskRecoveryFlow(
   const watchedFormValues = Form.useWatch([], form);
   const formValues = useMemo(() => watchedFormValues ?? {}, [watchedFormValues]);
   const hasDirtyEdits = useMemo(
-    () => calculateDirtyState(formValues, null, definition, taskRows, false, true),
+    () => hasWizardDirtyEdits(formValues, null, definition, taskRows, false, true),
     [formValues, definition, taskRows]
   );
 
@@ -365,8 +365,12 @@ export function useAssessTaskRecoveryFlow(
           actionType: 'save',
         },
       });
-      if (isGenerationObsolete(generation, generationReference.current)) return;
-      if (settleApprovalFailure(result, setErrorMessage, setPhase, setSaveErrorMessage)) return;
+      if (
+        isGenerationObsolete(generation, generationReference.current) ||
+        hasSettledApprovalFailure(result, setErrorMessage, setPhase, setSaveErrorMessage)
+      ) {
+        return;
+      }
       await resumeAssessment(currentDefinition.definitionKey, generation);
     } catch (error: unknown) {
       settleSaveThrow(error, generation, generationReference.current, setSaveErrorMessage);
@@ -381,11 +385,11 @@ export function useAssessTaskRecoveryFlow(
    * @returns {void}
    */
   function handleTaskWeightingChange(taskId: string, value: number | null): void {
-    setTaskRows((previous) =>
-      previous.map((row) =>
+    setTaskRows((previous) => {
+      return previous.map((row) =>
         row.taskId === taskId ? { ...row, taskWeighting: value ?? DEFAULT_WEIGHTING_VALUE } : row
-      )
-    );
+      );
+    });
   }
 
   const onTopicEntityCreated = (): void => {

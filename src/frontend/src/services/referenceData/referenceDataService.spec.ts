@@ -7,10 +7,12 @@ const { callApiMock, parseApiResponseMock } = await vi.hoisted(async () => {
   return createApiServiceMockScaffold();
 });
 
-vi.mock('../apiService', () => ({
-  callApi: callApiMock,
-  parseApiResponse: parseApiResponseMock,
-}));
+vi.mock('../apiService', () => {
+  return {
+    callApi: callApiMock,
+    parseApiResponse: parseApiResponseMock,
+  };
+});
 
 const validCohorts = [
   { key: 'cohort-2025', name: '2025 Cohort', active: true, startYear: 2025, startMonth: 9 },
@@ -300,7 +302,7 @@ describe('referenceDataService keyed contracts', () => {
         error: {
           code: 'IN_USE',
           message: 'Cohort is in use by one or more classes and cannot be deleted.',
-          retriable: false,
+          isRetriable: false,
         },
       });
       callApiMock.mockRejectedValueOnce(inUseError);
@@ -315,7 +317,7 @@ describe('referenceDataService keyed contracts', () => {
         error: {
           code: 'IN_USE',
           message: 'Year group is in use by one or more classes and cannot be deleted.',
-          retriable: false,
+          isRetriable: false,
         },
       });
       callApiMock.mockRejectedValueOnce(inUseError);
@@ -330,7 +332,7 @@ describe('referenceDataService keyed contracts', () => {
         error: {
           code: 'IN_USE',
           message: 'Assignment topic is referenced by one or more assignment definitions',
-          retriable: false,
+          isRetriable: false,
         },
       });
       callApiMock.mockRejectedValueOnce(inUseError);

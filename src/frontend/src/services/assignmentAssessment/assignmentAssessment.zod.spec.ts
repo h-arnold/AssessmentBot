@@ -30,22 +30,22 @@ describe('assignmentAssessment.zod schemas', () => {
     });
 
     it('rejects a request with missing definitionKey', () => {
-      expect(() =>
-        StartAssessmentRunRequestSchema.parse({
+      expect(() => {
+        return StartAssessmentRunRequestSchema.parse({
           assignmentId: 'assign-123',
           courseId: 'course-456',
-        })
-      ).toThrow();
+        });
+      }).toThrow();
     });
 
     it('rejects a request with non-string assignmentId', () => {
-      expect(() =>
-        StartAssessmentRunRequestSchema.parse({
+      expect(() => {
+        return StartAssessmentRunRequestSchema.parse({
           definitionKey: 'algebra-baseline',
           assignmentId: 123,
           courseId: 'course-456',
-        })
-      ).toThrow();
+        });
+      }).toThrow();
     });
   });
 
@@ -125,13 +125,13 @@ describe('assignmentAssessment.zod schemas', () => {
     });
 
     it('rejects extra fields (strict mode)', () => {
-      expect(() =>
-        GetAssignmentRequestSchema.parse({
+      expect(() => {
+        return GetAssignmentRequestSchema.parse({
           courseId: 'course-1',
           assignmentId: 'assign-1',
           extraField: 'should-not-be-allowed',
-        })
-      ).toThrow();
+        });
+      }).toThrow();
     });
   });
 
@@ -177,27 +177,27 @@ describe('assignmentAssessment.zod schemas', () => {
     });
 
     it('rejects an item with numeric id', () => {
-      expect(() =>
-        StudentSubmissionItemSchema.parse({
+      expect(() => {
+        return StudentSubmissionItemSchema.parse({
           id: 123,
           taskId: 'task-1',
           artifact: validBaseArtifact,
           assessments: {},
           feedback: {},
-        })
-      ).toThrow();
+        });
+      }).toThrow();
     });
 
     it('rejects an item with numeric taskId', () => {
-      expect(() =>
-        StudentSubmissionItemSchema.parse({
+      expect(() => {
+        return StudentSubmissionItemSchema.parse({
           id: 'item-1',
           taskId: 456,
           artifact: validBaseArtifact,
           assessments: {},
           feedback: {},
-        })
-      ).toThrow();
+        });
+      }).toThrow();
     });
 
     it('accepts an item with valid assessments', () => {
@@ -212,15 +212,15 @@ describe('assignmentAssessment.zod schemas', () => {
     });
 
     it('rejects an item with assessments where score is a string instead of number', () => {
-      expect(() =>
-        StudentSubmissionItemSchema.parse({
+      expect(() => {
+        return StudentSubmissionItemSchema.parse({
           id: 'item-1',
           taskId: 'task-1',
           artifact: validBaseArtifact,
           assessments: { clarity: { score: '3', reasoning: 'good' } },
           feedback: {},
-        })
-      ).toThrow();
+        });
+      }).toThrow();
     });
 
     it('accepts an item with valid feedback', () => {
@@ -264,8 +264,8 @@ describe('assignmentAssessment.zod schemas', () => {
     });
 
     it('rejects a submission with numeric studentId', () => {
-      expect(() =>
-        StudentSubmissionSchema.parse({
+      expect(() => {
+        return StudentSubmissionSchema.parse({
           studentId: 456,
           studentName: 'Student One',
           assignmentId: 'assign-1',
@@ -281,13 +281,13 @@ describe('assignmentAssessment.zod schemas', () => {
           },
           createdAt: '2026-05-02T00:00:00.000Z',
           updatedAt: '2026-05-02T00:00:00.000Z',
-        })
-      ).toThrow();
+        });
+      }).toThrow();
     });
 
     it('rejects a submission with createdAt: null', () => {
-      expect(() =>
-        StudentSubmissionSchema.parse({
+      expect(() => {
+        return StudentSubmissionSchema.parse({
           studentId: 'student-1',
           studentName: 'Student One',
           assignmentId: 'assign-1',
@@ -303,13 +303,13 @@ describe('assignmentAssessment.zod schemas', () => {
           },
           createdAt: null,
           updatedAt: '2026-05-02T00:00:00.000Z',
-        })
-      ).toThrow();
+        });
+      }).toThrow();
     });
 
     it('rejects a submission with numeric documentId', () => {
-      expect(() =>
-        StudentSubmissionSchema.parse({
+      expect(() => {
+        return StudentSubmissionSchema.parse({
           studentId: 'student-1',
           studentName: 'Student One',
           assignmentId: 'assign-1',
@@ -325,8 +325,8 @@ describe('assignmentAssessment.zod schemas', () => {
           },
           createdAt: '2026-05-02T00:00:00.000Z',
           updatedAt: '2026-05-02T00:00:00.000Z',
-        })
-      ).toThrow();
+        });
+      }).toThrow();
     });
   });
 
@@ -355,8 +355,8 @@ describe('assignmentAssessment.zod schemas', () => {
     });
 
     it('rejects a definition with primaryTitle as a number', () => {
-      expect(() =>
-        AssignmentDefinitionSchema.parse({
+      expect(() => {
+        return AssignmentDefinitionSchema.parse({
           primaryTitle: 42,
           primaryTopic: null,
           primaryTopicKey: null,
@@ -374,13 +374,13 @@ describe('assignmentAssessment.zod schemas', () => {
           tasks: {},
           createdAt: '2026-04-01T00:00:00.000Z',
           updatedAt: '2026-04-01T00:00:00.000Z',
-        })
-      ).toThrow();
+        });
+      }).toThrow();
     });
 
     it('rejects a definition with assignmentWeighting as a string', () => {
-      expect(() =>
-        AssignmentDefinitionSchema.parse({
+      expect(() => {
+        return AssignmentDefinitionSchema.parse({
           primaryTitle: 'Algebra',
           primaryTopic: null,
           primaryTopicKey: null,
@@ -398,13 +398,13 @@ describe('assignmentAssessment.zod schemas', () => {
           tasks: {},
           createdAt: '2026-04-01T00:00:00.000Z',
           updatedAt: '2026-04-01T00:00:00.000Z',
-        })
-      ).toThrow();
+        });
+      }).toThrow();
     });
 
     it('rejects a definition with alternateTitles as a string', () => {
-      expect(() =>
-        AssignmentDefinitionSchema.parse({
+      expect(() => {
+        return AssignmentDefinitionSchema.parse({
           primaryTitle: 'Algebra',
           primaryTopic: null,
           primaryTopicKey: null,
@@ -422,13 +422,13 @@ describe('assignmentAssessment.zod schemas', () => {
           tasks: {},
           createdAt: '2026-04-01T00:00:00.000Z',
           updatedAt: '2026-04-01T00:00:00.000Z',
-        })
-      ).toThrow();
+        });
+      }).toThrow();
     });
 
     it('rejects a definition with alternateTitles containing numbers', () => {
-      expect(() =>
-        AssignmentDefinitionSchema.parse({
+      expect(() => {
+        return AssignmentDefinitionSchema.parse({
           primaryTitle: 'Algebra',
           primaryTopic: null,
           primaryTopicKey: null,
@@ -446,8 +446,8 @@ describe('assignmentAssessment.zod schemas', () => {
           tasks: {},
           createdAt: '2026-04-01T00:00:00.000Z',
           updatedAt: '2026-04-01T00:00:00.000Z',
-        })
-      ).toThrow();
+        });
+      }).toThrow();
     });
   });
 });

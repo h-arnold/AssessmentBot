@@ -32,47 +32,61 @@ const {
   mockGetAssignment,
   mockStudentAveragesTableCard,
   mockTaskHeatmapTable,
-} = vi.hoisted(() => ({
-  mockUseClassPageData: vi.fn(),
-  mockAssessTaskModal: vi.fn(function MockAssessTaskModal() {
-    return createElement('div', { 'data-testid': 'assess-task-modal' });
-  }),
-  mockUseClassSelection: vi.fn(() => ({
-    selectedClassId: 'class-1',
-    className: 'Class A',
-    onSelectClass: vi.fn(),
-    onNavigateToClasses: vi.fn(),
-  })),
-  mockGetAssignment: vi.fn(),
-  mockStudentAveragesTableCard: vi.fn(function MockStudentAveragesTableCard() {
-    return createElement('div', { 'data-testid': 'student-averages-table-card' });
-  }),
-  mockTaskHeatmapTable: vi.fn(function MockTaskHeatmapTable() {
-    return createElement('div', { 'data-testid': 'task-heatmap-table' });
-  }),
-}));
+} = vi.hoisted(() => {
+  return {
+    mockUseClassPageData: vi.fn(),
+    mockAssessTaskModal: vi.fn(function MockAssessTaskModal() {
+      return createElement('div', { 'data-testid': 'assess-task-modal' });
+    }),
+    mockUseClassSelection: vi.fn(() => {
+      return {
+        selectedClassId: 'class-1',
+        className: 'Class A',
+        onSelectClass: vi.fn(),
+        onNavigateToClasses: vi.fn(),
+      };
+    }),
+    mockGetAssignment: vi.fn(),
+    mockStudentAveragesTableCard: vi.fn(function MockStudentAveragesTableCard() {
+      return createElement('div', { 'data-testid': 'student-averages-table-card' });
+    }),
+    mockTaskHeatmapTable: vi.fn(function MockTaskHeatmapTable() {
+      return createElement('div', { 'data-testid': 'task-heatmap-table' });
+    }),
+  };
+});
 
 vi.mock('./useClassPageData', () => ({ useClassPageData: mockUseClassPageData }));
 
-vi.mock('../classes/AssessTaskModal/AssessTaskModal', () => ({
-  AssessTaskModal: mockAssessTaskModal,
-}));
+vi.mock('../classes/AssessTaskModal/AssessTaskModal', () => {
+  return {
+    AssessTaskModal: mockAssessTaskModal,
+  };
+});
 
-vi.mock('../../ClassSelectionContext', () => ({
-  useClassSelection: mockUseClassSelection,
-}));
+vi.mock('../../ClassSelectionContext', () => {
+  return {
+    useClassSelection: mockUseClassSelection,
+  };
+});
 
-vi.mock('../../services/assignmentAssessment/assignmentAssessmentService', () => ({
-  getAssignment: mockGetAssignment,
-}));
+vi.mock('../../services/assignmentAssessment/assignmentAssessmentService', () => {
+  return {
+    getAssignment: mockGetAssignment,
+  };
+});
 
-vi.mock('./StudentAveragesTableCard', () => ({
-  StudentAveragesTableCard: mockStudentAveragesTableCard,
-}));
+vi.mock('./StudentAveragesTableCard', () => {
+  return {
+    StudentAveragesTableCard: mockStudentAveragesTableCard,
+  };
+});
 
-vi.mock('../taskHeatmap/TaskHeatmapTable', () => ({
-  TaskHeatmapTable: mockTaskHeatmapTable,
-}));
+vi.mock('../taskHeatmap/TaskHeatmapTable', () => {
+  return {
+    TaskHeatmapTable: mockTaskHeatmapTable,
+  };
+});
 
 /** Zero-data display metric used by the recent-assignment card fixture. */
 const NO_DATA_METRIC: ClassPageAdapterResult['studentAverages'][number]['metrics']['completeness'] =

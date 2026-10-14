@@ -53,7 +53,7 @@ export type ResponseItem = Readonly<
  * Runtime scenario type for API method queues.
  */
 export type RuntimeScenario = Readonly<{
-  getAuthorisationStatus?: ReadonlyArray<ResponseItem>;
+  hasScriptAuthorisation?: ReadonlyArray<ResponseItem>;
   getApplicationAccess?: ReadonlyArray<ResponseItem>;
   getAuthenticationSettings?: ReadonlyArray<ResponseItem>;
   setAuthenticationSettings?: ReadonlyArray<ResponseItem>;
@@ -236,7 +236,7 @@ export function createAuthenticationSettingsScenario(
 
   return {
     ...scenario,
-    getAuthorisationStatus: [
+    hasScriptAuthorisation: [
       { kind: 'success', data: true },
       { kind: 'success', data: true },
     ],
@@ -276,7 +276,7 @@ export function createAuthorisationScenario(
   ) as Pick<RuntimeScenario, AuthorisationWarmupMethod>;
 
   return {
-    getAuthorisationStatus: [authorisationStatus, authorisationStatus],
+    hasScriptAuthorisation: [authorisationStatus, authorisationStatus],
     getApplicationAccess: [applicationAccess, applicationAccess],
     ...warmupResponses,
   };
@@ -286,12 +286,12 @@ export function createAuthorisationScenario(
  * Add auth response to scenario if requested.
  *
  * @param {RuntimeScenario} scenario The scenario to populate.
- * @param {boolean} includeAuth Whether to include auth response.
+ * @param {boolean} shouldIncludeAuth Whether to include auth response.
  * @returns {void}
  */
-function addAuthToScenario(scenario: RuntimeScenario, includeAuth: boolean): void {
-  if (includeAuth) {
-    scenario.getAuthorisationStatus = [{ kind: 'success', data: true }];
+function addAuthToScenario(scenario: RuntimeScenario, shouldIncludeAuth: boolean): void {
+  if (shouldIncludeAuth) {
+    scenario.hasScriptAuthorisation = [{ kind: 'success', data: true }];
   }
 }
 
@@ -299,14 +299,14 @@ function addAuthToScenario(scenario: RuntimeScenario, includeAuth: boolean): voi
  * Add class partials response to scenario if requested.
  *
  * @param {RuntimeScenario} scenario The scenario to populate.
- * @param {boolean} includeClassPartials Whether to include class partials response.
+ * @param {boolean} shouldIncludeClassPartials Whether to include class partials response.
  * @returns {void}
  */
 function addClassPartialsToScenario(
   scenario: RuntimeScenario,
-  includeClassPartials: boolean
+  shouldIncludeClassPartials: boolean
 ): void {
-  if (includeClassPartials) {
+  if (shouldIncludeClassPartials) {
     scenario.getABClassPartials = [{ kind: 'success', data: [] }];
   }
 }
@@ -315,11 +315,11 @@ function addClassPartialsToScenario(
  * Add cohorts response to scenario if requested.
  *
  * @param {RuntimeScenario} scenario The scenario to populate.
- * @param {boolean} includeCohorts Whether to include cohorts response.
+ * @param {boolean} shouldIncludeCohorts Whether to include cohorts response.
  * @returns {void}
  */
-function addCohortsToScenario(scenario: RuntimeScenario, includeCohorts: boolean): void {
-  if (includeCohorts) {
+function addCohortsToScenario(scenario: RuntimeScenario, shouldIncludeCohorts: boolean): void {
+  if (shouldIncludeCohorts) {
     scenario.getCohorts = [{ kind: 'success', data: mockCohorts }];
   }
 }
@@ -328,11 +328,14 @@ function addCohortsToScenario(scenario: RuntimeScenario, includeCohorts: boolean
  * Add year groups response to scenario if requested.
  *
  * @param {RuntimeScenario} scenario The scenario to populate.
- * @param {boolean} includeYearGroups Whether to include year groups response.
+ * @param {boolean} shouldIncludeYearGroups Whether to include year groups response.
  * @returns {void}
  */
-function addYearGroupsToScenario(scenario: RuntimeScenario, includeYearGroups: boolean): void {
-  if (includeYearGroups) {
+function addYearGroupsToScenario(
+  scenario: RuntimeScenario,
+  shouldIncludeYearGroups: boolean
+): void {
+  if (shouldIncludeYearGroups) {
     scenario.getYearGroups = [{ kind: 'success', data: mockYearGroups }];
   }
 }
@@ -341,14 +344,14 @@ function addYearGroupsToScenario(scenario: RuntimeScenario, includeYearGroups: b
  * Add assignment topics response to scenario if requested.
  *
  * @param {RuntimeScenario} scenario The scenario to populate.
- * @param {boolean} includeAssignmentTopics Whether to include assignment topics response.
+ * @param {boolean} shouldIncludeAssignmentTopics Whether to include assignment topics response.
  * @returns {void}
  */
 function addAssignmentTopicsToScenario(
   scenario: RuntimeScenario,
-  includeAssignmentTopics: boolean
+  shouldIncludeAssignmentTopics: boolean
 ): void {
-  if (includeAssignmentTopics) {
+  if (shouldIncludeAssignmentTopics) {
     scenario.getAssignmentTopics = [{ kind: 'success', data: mockTopics }];
   }
 }
@@ -376,18 +379,18 @@ function addReferenceDataToScenario(
   }
 ): void {
   const {
-    includeAuth = true,
-    includeClassPartials = true,
-    includeCohorts = true,
-    includeYearGroups = true,
-    includeAssignmentTopics = true,
+    includeAuth: shouldIncludeAuth = true,
+    includeClassPartials: shouldIncludeClassPartials = true,
+    includeCohorts: shouldIncludeCohorts = true,
+    includeYearGroups: shouldIncludeYearGroups = true,
+    includeAssignmentTopics: shouldIncludeAssignmentTopics = true,
   } = options;
 
-  addAuthToScenario(scenario, includeAuth);
-  addClassPartialsToScenario(scenario, includeClassPartials);
-  addCohortsToScenario(scenario, includeCohorts);
-  addYearGroupsToScenario(scenario, includeYearGroups);
-  addAssignmentTopicsToScenario(scenario, includeAssignmentTopics);
+  addAuthToScenario(scenario, shouldIncludeAuth);
+  addClassPartialsToScenario(scenario, shouldIncludeClassPartials);
+  addCohortsToScenario(scenario, shouldIncludeCohorts);
+  addYearGroupsToScenario(scenario, shouldIncludeYearGroups);
+  addAssignmentTopicsToScenario(scenario, shouldIncludeAssignmentTopics);
 }
 
 /**
@@ -404,21 +407,21 @@ export function createAssignmentsScenario(
     postMutationPartials,
     // Backend _success() converts undefined → null; must match here to survive JSON.stringify
     deleteResponses = [{ kind: 'success', data: null }],
-    includeAuth,
-    includeClassPartials,
-    includeCohorts,
-    includeYearGroups,
-    includeAssignmentTopics,
+    includeAuth: shouldIncludeAuth,
+    includeClassPartials: shouldIncludeClassPartials,
+    includeCohorts: shouldIncludeCohorts,
+    includeYearGroups: shouldIncludeYearGroups,
+    includeAssignmentTopics: shouldIncludeAssignmentTopics,
   } = options;
 
   const scenario: RuntimeScenario = {};
 
   addReferenceDataToScenario(scenario, {
-    includeAuth,
-    includeClassPartials,
-    includeCohorts,
-    includeYearGroups,
-    includeAssignmentTopics,
+    includeAuth: shouldIncludeAuth,
+    includeClassPartials: shouldIncludeClassPartials,
+    includeCohorts: shouldIncludeCohorts,
+    includeYearGroups: shouldIncludeYearGroups,
+    includeAssignmentTopics: shouldIncludeAssignmentTopics,
   });
 
   scenario.getAssignmentDefinitionPartials = [
@@ -467,21 +470,21 @@ export function createWizardScenario(options: CreateWizardScenarioOptions = {}):
     postMutationPartials,
     assignmentDefinitions = [{ kind: 'success', data: mockFullDefinition }],
     upsertResponses = [{ kind: 'success', data: mockFullDefinition }],
-    includeAuth,
-    includeClassPartials,
-    includeCohorts,
-    includeYearGroups,
-    includeAssignmentTopics,
+    includeAuth: shouldIncludeAuth,
+    includeClassPartials: shouldIncludeClassPartials,
+    includeCohorts: shouldIncludeCohorts,
+    includeYearGroups: shouldIncludeYearGroups,
+    includeAssignmentTopics: shouldIncludeAssignmentTopics,
   } = options;
 
   const scenario: RuntimeScenario = {};
 
   addReferenceDataToScenario(scenario, {
-    includeAuth,
-    includeClassPartials,
-    includeCohorts,
-    includeYearGroups,
-    includeAssignmentTopics,
+    includeAuth: shouldIncludeAuth,
+    includeClassPartials: shouldIncludeClassPartials,
+    includeCohorts: shouldIncludeCohorts,
+    includeYearGroups: shouldIncludeYearGroups,
+    includeAssignmentTopics: shouldIncludeAssignmentTopics,
   });
 
   scenario.getAssignmentDefinitionPartials = [
@@ -512,7 +515,7 @@ export function createFailedRefreshScenario(
   const { message = 'Could not refresh after mutation', code = 'REFRESH_FAILED' } = options;
 
   return {
-    getAuthorisationStatus: [{ kind: 'success', data: true }],
+    hasScriptAuthorisation: [{ kind: 'success', data: true }],
     getABClassPartials: [{ kind: 'success', data: [] }],
     getCohorts: [{ kind: 'success', data: [] }],
     getYearGroups: [{ kind: 'success', data: mockYearGroups }],
@@ -571,7 +574,7 @@ export async function installRuntimeMock(
   // Build the response queues from the scenario
   const responseQueues: Record<string, ResponseItem[]> = {};
   const allMethods = [
-    'getAuthorisationStatus',
+    'hasScriptAuthorisation',
     'getApplicationAccess',
     'getAuthenticationSettings',
     'setAuthenticationSettings',
@@ -647,7 +650,7 @@ export async function installRuntimeMock(
           error: {
             code: response.code ?? 'INTERNAL_ERROR',
             message: response.message,
-            retriable: false,
+            isRetriable: false,
           },
         });
       }

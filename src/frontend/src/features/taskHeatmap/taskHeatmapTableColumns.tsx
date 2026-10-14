@@ -189,14 +189,15 @@ function buildMetricSorter(
   taskIndex: number,
   metric: HeatmapMetricKey
 ): (a: TaskHeatmapRow, b: TaskHeatmapRow) => number {
-  return (a: TaskHeatmapRow, b: TaskHeatmapRow): number =>
-    compareMetricsByStateRank(
+  return (a: TaskHeatmapRow, b: TaskHeatmapRow): number => {
+    return compareMetricsByStateRank(
       getCellMetric(a.cells[taskIndex], metric),
       getCellMetric(b.cells[taskIndex], metric),
       a.studentId,
       b.studentId,
       'asc'
     );
+  };
 }
 
 /**
@@ -213,21 +214,21 @@ function buildMetricSorter(
  *
  * @param {string} taskKey - The task column's composite task key.
  * @param {ReadonlyMap<string, PreviewStatus> | undefined} previewStatusByTaskKey - Per-task-key status map (optional).
- * @param {boolean} aggregateLoading - Aggregate loading boolean (embedded path).
- * @param {boolean} aggregateError - Aggregate error boolean (embedded path).
+ * @param {boolean} isAggregateLoading - Aggregate loading boolean (embedded path).
+ * @param {boolean} hasAggregateError - Aggregate error boolean (embedded path).
  * @returns {PreviewStatus} The resolved per-column status.
  */
 export function resolveColumnPreviewStatus(
   taskKey: string,
   previewStatusByTaskKey: ReadonlyMap<string, PreviewStatus> | undefined,
-  aggregateLoading: boolean,
-  aggregateError: boolean
+  isAggregateLoading: boolean,
+  hasAggregateError: boolean
 ): PreviewStatus {
   const entry = previewStatusByTaskKey?.get(taskKey);
   if (entry) {
     return entry;
   }
-  return { isLoading: aggregateLoading, hasError: aggregateError };
+  return { isLoading: isAggregateLoading, hasError: hasAggregateError };
 }
 
 /**
@@ -246,8 +247,8 @@ export function resolveColumnPreviewStatus(
  * @param {number} taskIndex - The index of the task within the heatmap.
  * @param {Record<string, FilterValue | null>} tableFilters - Current filter state.
  * @param {CellPreviewLookup | null} cellPreviewLookup - Assignment lookup keyed by studentId × taskKey.
- * @param {boolean} columnIsLoading - Per-column resolved loading status.
- * @param {boolean} columnHasError - Per-column resolved error status.
+ * @param {boolean} isColumnLoading - Per-column resolved loading status.
+ * @param {boolean} hasColumnError - Per-column resolved error status.
  * @returns {TableColumnsType<TaskHeatmapRow>} Three metric sub-column definitions.
  */
 export function buildTaskMetricSubColumns(
@@ -255,8 +256,8 @@ export function buildTaskMetricSubColumns(
   taskIndex: number,
   tableFilters: Record<string, FilterValue | null>,
   cellPreviewLookup: CellPreviewLookup | null,
-  columnIsLoading: boolean,
-  columnHasError: boolean
+  isColumnLoading: boolean,
+  hasColumnError: boolean
 ): TableColumnsType<TaskHeatmapRow> {
   const taskTitle = taskColumn.taskTitle ?? taskColumn.taskId;
 
@@ -323,8 +324,8 @@ export function buildTaskMetricSubColumns(
             metricResult={m}
             metricKey={metric}
             taskId={taskColumn.taskId}
-            isLoading={columnIsLoading}
-            hasError={columnHasError}
+            isLoading={isColumnLoading}
+            hasError={hasColumnError}
           />
         );
       },
@@ -392,9 +393,11 @@ export function buildAdaptiveTierGroups(
     }
   }
 
-  return groups.map((group) => ({
-    key: group.definitionKey,
-    title: group.count > 1 ? `${group.firstName}${SHARED_DEFINITION_SUFFIX}` : group.firstName,
-    columnIndices: columnIndicesByDefinitionKey.get(group.definitionKey) ?? [],
-  }));
+  return groups.map((group) => {
+    return {
+      key: group.definitionKey,
+      title: group.count > 1 ? `${group.firstName}${SHARED_DEFINITION_SUFFIX}` : group.firstName,
+      columnIndices: columnIndicesByDefinitionKey.get(group.definitionKey) ?? [],
+    };
+  });
 }

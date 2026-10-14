@@ -77,12 +77,14 @@ async function loadReviewContentComponent(): Promise<ComponentType<Record<string
  * @returns {TaskRow[]} Task rows for the wizard content properties.
  */
 function buildSeedTaskRows(definition: AssignmentDefinition): TaskRow[] {
-  return definition.tasks.map((task) => ({
-    key: task.taskId,
-    taskId: task.taskId,
-    taskTitle: task.taskTitle,
-    taskWeighting: task.taskWeighting,
-  }));
+  return definition.tasks.map((task) => {
+    return {
+      key: task.taskId,
+      taskId: task.taskId,
+      taskTitle: task.taskTitle,
+      taskWeighting: task.taskWeighting,
+    };
+  });
 }
 
 /**
@@ -186,7 +188,7 @@ describe('assignmentWizardFormState module', () => {
   it('exposes dirty-state derivations', async () => {
     const formStateModule = await loadAssignmentWizardFormState();
 
-    expect(formStateModule).toHaveProperty('calculateDirtyState');
+    expect(formStateModule).toHaveProperty('hasWizardDirtyEdits');
     expect(formStateModule).toHaveProperty('hasCreateModeDirtyEdits');
     expect(formStateModule).toHaveProperty('hasUpdateModeDirtyEdits');
   });

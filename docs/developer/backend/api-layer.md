@@ -217,9 +217,9 @@ If the payload is invalid, `apiHandler` returns an `INVALID_REQUEST` envelope an
 All responses are envelopes:
 
 - Success: `{ ok: true, requestId, data }`
-- Error: `{ ok: false, requestId, error: { code, message, retriable, details? } }`
+- Error: `{ ok: false, requestId, error: { code, message, isRetriable, details? } }`
 
-The `details` field is optional and only present when the error carries structured metadata (for example, `DefinitionStaleError` includes `definitionKey`, `referenceStale`, `templateStale`, `referenceLastModified`, `templateLastModified`). When `details` is absent, it is omitted from the envelope entirely — callers should treat it as `undefined`.
+The `details` field is optional and only present when the error carries structured metadata (for example, `DefinitionStaleError` includes `definitionKey`, `referenceStale`, `isTemplateStale`, `referenceLastModified`, `templateLastModified`). When `details` is absent, it is omitted from the envelope entirely — callers should treat it as `undefined`.
 
 **`data` coercion contract:** The `_success()` method in `z_apiHandler.js` wraps handler return data with `data: data ?? null`. This means `undefined` values (including implicit returns from void handlers) become `null` in the success envelope. The frontend transport layer (`apiService.ts`) always receives `data: null` for void backend methods, never a missing `data` key.
 
@@ -239,6 +239,23 @@ To add a new frontend-callable API method:
 
 Keep business logic in controllers or services; keep the handler closure thin.
 
+### Runtime wiring and the Node test bootstrap
+
+`z_apiHandler.js` is GAS runtime code. It reads its dependencies as concatenated-script globals: the
+`apiConstants` values (`LOCK_TIMEOUT_MS`, `LOCK_WAIT_WARN_THRESHOLD_MS`, `ACTIVE_LIMIT`,
+`STALE_REQUEST_AGE_MS`), the request-store helpers (for example `loadStore_`, `saveStore_`,
+`createStartedRecord_`), the trailing-underscore transport handlers (for example `getBackendConfig_`,
+`startAssessmentRun_`, `upsertABClass_`, `getABClass_`), and the error types (`ApiRateLimitError`,
+`ApiValidationError`, `ApiDisabledError`, `DefinitionStaleError`). The production file performs no
+Node module wiring: it contains no `require(...)` and no `globalThis.* = ...` assignments. Its only
+Node-specific code is the guarded `module.exports` block at the end of the file.
+
+Node unit tests mirror that GAS layout through `tests/setupGlobals.js`, which installs the same
+constants, request-store helpers, transport handlers, and error types before the dispatcher module
+loads. Keep this dependency wiring in the test bootstrap; do not reintroduce `require`/`globalThis`
+wiring in production backend files. The `ALLOWLISTED_METHOD_HANDLERS` registry, the auth gate, and
+the admission/completion tracking are unchanged by this boundary.
+
 ### Admission control and tracking
 
 `apiHandler` applies per-user admission control before invoking allowlisted handlers:
@@ -257,7 +274,7 @@ Known backend error types are mapped to transport error codes:
 - `ApiRateLimitError` -> `RATE_LIMITED`
 - `ApiValidationError` -> `INVALID_REQUEST`
 - `ApiDisabledError` -> `UNKNOWN_METHOD`
-- `DefinitionStaleError` -> `DEFINITION_STALE` (non-retriable; includes `details` block with `definitionKey`, `referenceStale`, `templateStale`, `referenceLastModified`, `templateLastModified`)
+- `DefinitionStaleError` -> `DEFINITION_STALE` (non-retriable; includes `details` block with `definitionKey`, `referenceStale`, `isTemplateStale`, `referenceLastModified`, `templateLastModified`)
 - errors thrown with `reason === 'IN_USE'` -> `IN_USE` (used by `ReferenceDataController` when a cohort, year group, or assignment topic cannot be deleted because it is still referenced by persisted records)
 - Auth gate denial (authenticated but not a group member) -> `FORBIDDEN` (non-retriable)
 
@@ -335,9 +352,9 @@ Reference: https://developers.google.com/apps-script/guides/html/reference/run
 - Dedicated transport tests for backend configuration live in `tests/api/backendConfigApi.test.js`.
   Keep broader dispatcher coverage in `tests/api/apiHandler/` (directory with multiple dispatcher test files).
 
-- `getAuthorisationStatus` — returns current script authorisation status.
+- `hasScriptAuthorisation` — returns current script authorisation status.
   Source: inline closure in `src/backend/z_Api/z_apiHandler.js` delegating to `new ScriptAppManager().isAuthorised()`.
-  Do not call `google.script.run.getAuthorisationStatus` from frontend feature or service modules.
+  Do not call `google.script.run.hasScriptAuthorisation` from frontend feature or service modules.
 
 - `getABClassPartials` — returns all class partial documents from the `abclass_partials` registry.
   Source: inline closure in `src/backend/z_Api/z_apiHandler.js` delegating to `new ABClassController().getAllClassPartials()`.
@@ -443,7 +460,7 @@ Reference: https://developers.google.com/apps-script/guides/html/reference/run
   Required request field: `classId`.
   Validation: transport enforces `params` as an object and rejects unsafe `classId` path characters when `classId` is a string; controller validation owns missing, non-string, and non-empty `classId` checks.
   Controller behaviour: deletes the full-class collection with `dropCollection(classId)` and removes the matching `abclass_partials` row with `deleteOne({ classId })`.
-  Response data: `{ classId, fullClassDeleted, partialDeleted }`.
+  Response data: `{ classId, hasDeletedFullClass, hasDeletedClassPartial }`.
   Idempotency: repeated deletes succeed and the boolean flags report what was deleted in that call only.
 
 - Cohort reference data — exposes `getCohorts`, `createCohort`, `updateCohort`, and `deleteCohort`.

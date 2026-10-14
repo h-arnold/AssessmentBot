@@ -96,7 +96,7 @@ A `RuntimeScenario` is a plain object mapping backend method names to arrays of 
 
 ```typescript
 type RuntimeScenario = {
-  getAuthorisationStatus?: ReadonlyArray<ResponseItem>;
+  hasScriptAuthorisation?: ReadonlyArray<ResponseItem>;
   getABClassPartials?: ReadonlyArray<ResponseItem>;
   getGoogleClassroomAssignments?: ReadonlyArray<ResponseItem>;
   // ... other backend methods

@@ -32,9 +32,11 @@ import type { WizardMutationSequenceOptions } from './assignmentWizardMutation';
 import { buildReparseRequest } from './assignmentWizardOrchestrator';
 import editableDefinitionsRaw from '../../../../../tests/__mocks__/data/synthetic-analysis/small/editableDefinitions.json?raw';
 
-vi.mock('../../services/assignmentDefinition/assignmentDefinitionService', () => ({
-  upsertAssignmentDefinition: vi.fn(),
-}));
+vi.mock('../../services/assignmentDefinition/assignmentDefinitionService', () => {
+  return {
+    upsertAssignmentDefinition: vi.fn(),
+  };
+});
 
 /** Transport mock for the single boundary under test. */
 const upsertMock = vi.mocked(upsertAssignmentDefinition);
@@ -313,10 +315,8 @@ describe('wizard mutation boundary pending-change save guard', () => {
   });
 
   it('rejects a save while another mutation is still in flight', async () => {
-    let resolveInFlight!: (value: AssignmentDefinition) => void;
-    const pendingResponse = new Promise<AssignmentDefinition>((resolve) => {
-      resolveInFlight = resolve;
-    });
+    const { promise: pendingResponse, resolve: resolveInFlight } =
+      Promise.withResolvers<AssignmentDefinition>();
     // Only the first call parks. Any later call falls through to the default
     // response so a guard regression fails on the call-count assertion below
     // instead of leaving the first promise unsettled.

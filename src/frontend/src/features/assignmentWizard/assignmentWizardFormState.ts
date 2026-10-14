@@ -1,8 +1,10 @@
 import { type FormInstance } from 'antd';
-import { DEFAULT_WEIGHTING_VALUE } from '../../services/assignmentDefinition/assignmentDefinition.zod';
+import { coerceAssignmentWeighting } from '../../services/assignmentDefinition/assignmentDefinitionUtilities';
 import { type AssignmentDefinition } from '../../services/assignmentDefinition/assignmentDefinitionService';
 import { type useStartupWarmupState } from '../auth/startupWarmupState';
 import { sortYearGroups } from '../referenceData/yearGroupSorting';
+
+export { coerceAssignmentWeighting } from '../../services/assignmentDefinition/assignmentDefinitionUtilities';
 
 export type TaskRow = Readonly<{
   key: string;
@@ -96,22 +98,6 @@ export function applyFormInitialValues(
 }
 
 /**
- * Coerces an assignment-weighting form value to its effective number.
- *
- * @remarks
- * Shared by the active weighting callers (create/update dirty-state checks,
- * the wizard save/re-parse request builders and the recovery approval
- * request) so non-numeric values fall back to the model default in one place.
- * Valid zero weightings are preserved.
- *
- * @param {unknown} value - The raw assignment-weighting value.
- * @returns {number} The numeric weighting, or the default when not a number.
- */
-export function coerceAssignmentWeighting(value: unknown): number {
-  return typeof value === 'number' ? value : DEFAULT_WEIGHTING_VALUE;
-}
-
-/**
  * Checks if metadata values differ from baseline in create mode.
  *
  * @param {Record<string, unknown>} values - Form values.
@@ -165,7 +151,7 @@ export function hydrateFormFromDefinition(
   form: FormInstance,
   definition: AssignmentDefinition,
   setTaskRows: (rows: TaskRow[]) => void,
-  setHasParsedTasks: (value: boolean) => void,
+  setHasParsedTasks: (hasParsedTasks: boolean) => void,
   setDocumentChange: (state: DocumentChangeState) => void
 ): void {
   const urls = buildDocumentUrlsFromDefinition(definition);
@@ -182,12 +168,14 @@ export function hydrateFormFromDefinition(
   });
 
   setTaskRows(
-    definition.tasks.map((t) => ({
-      key: t.taskId,
-      taskId: t.taskId,
-      taskTitle: t.taskTitle,
-      taskWeighting: t.taskWeighting,
-    }))
+    definition.tasks.map((t) => {
+      return {
+        key: t.taskId,
+        taskId: t.taskId,
+        taskTitle: t.taskTitle,
+        taskWeighting: t.taskWeighting,
+      };
+    })
   );
 
   setHasParsedTasks(true);
@@ -214,16 +202,18 @@ export function detectDocumentChange(
   urls: { referenceUrl: string; templateUrl: string },
   hasPendingChange: boolean
 ): DocumentChangeState {
-  const referenceChanged = allValues.referenceDocumentUrl !== urls.referenceUrl;
-  const templateChanged = allValues.templateDocumentUrl !== urls.templateUrl;
+  const hasReferenceChanged = allValues.referenceDocumentUrl !== urls.referenceUrl;
+  const hasTemplateChanged = allValues.templateDocumentUrl !== urls.templateUrl;
 
-  if (referenceChanged || templateChanged) {
+  if (hasReferenceChanged || hasTemplateChanged) {
     return {
       hasPendingChange: true,
       previousReferenceUrl: urls.referenceUrl,
       previousTemplateUrl: urls.templateUrl,
     };
-  } else if (hasPendingChange) {
+  }
+
+  if (hasPendingChange) {
     return {
       hasPendingChange: false,
       previousReferenceUrl: urls.referenceUrl,
@@ -280,8 +270,8 @@ export function hasUpdateModeDirtyEdits(
   const hasTaskWeightingChanges = taskRows.some((row) => {
     const tasks = definition.tasks;
     if (!Array.isArray(tasks)) return false;
-    const task = tasks.find(
-      (candidate): candidate is { taskId: string; taskWeighting: number } =>
+    const task = tasks.find((candidate): candidate is { taskId: string; taskWeighting: number } => {
+      return (
         typeof candidate === 'object' &&
         candidate !== null &&
         'taskId' in candidate &&
@@ -289,8 +279,9 @@ export function hasUpdateModeDirtyEdits(
         typeof candidate.taskId === 'string' &&
         typeof candidate.taskWeighting === 'number' &&
         candidate.taskId === row.taskId
-    );
-    return task === undefined ? false : task.taskWeighting !== row.taskWeighting;
+      );
+    });
+    return task !== undefined && task.taskWeighting !== row.taskWeighting;
   });
 
   return hasMetadataChanges || hasTaskWeightingChanges;
@@ -307,7 +298,7 @@ export function hasUpdateModeDirtyEdits(
  * @param {boolean} hasParsedTasks - Whether tasks have been parsed.
  * @returns {boolean} True if there are dirty edits.
  */
-export function calculateDirtyState(
+export function hasWizardDirtyEdits(
   values: Record<string, unknown>,
   parsedCreateBaseline: ParsedCreateBaseline | null,
   definition: Record<string, unknown> | null | undefined,
@@ -316,9 +307,11 @@ export function calculateDirtyState(
   hasParsedTasks: boolean
 ): boolean {
   if (isCreateMode) {
-    return hasParsedTasks && parsedCreateBaseline !== null
-      ? hasCreateModeDirtyEdits(values, parsedCreateBaseline, taskRows)
-      : false;
+    return (
+      hasParsedTasks &&
+      parsedCreateBaseline !== null &&
+      hasCreateModeDirtyEdits(values, parsedCreateBaseline, taskRows)
+    );
   }
 
   return definition ? hasUpdateModeDirtyEdits(values, definition, taskRows) : false;
@@ -342,12 +335,14 @@ export function buildTaskRowsFromResponse(
       ? new Map(existingTaskRows.map((row) => [row.taskId, row.taskWeighting]))
       : null;
 
-  const newTaskRows: TaskRow[] = responseTasks.map((t) => ({
-    key: t.taskId,
-    taskId: t.taskId,
-    taskTitle: t.taskTitle,
-    taskWeighting: existingWeightings?.get(t.taskId) ?? t.taskWeighting,
-  }));
+  const newTaskRows: TaskRow[] = responseTasks.map((t) => {
+    return {
+      key: t.taskId,
+      taskId: t.taskId,
+      taskTitle: t.taskTitle,
+      taskWeighting: existingWeightings?.get(t.taskId) ?? t.taskWeighting,
+    };
+  });
 
   return newTaskRows;
 }
@@ -386,10 +381,12 @@ export function buildYearGroupOptions(
   yearGroups: Array<{ key: string; name: string }> | null | undefined
 ): Array<{ value: string; label: string }> {
   if (!Array.isArray(yearGroups)) return [];
-  return sortYearGroups(yearGroups).map((yearGroup) => ({
-    value: yearGroup.key,
-    label: yearGroup.name,
-  }));
+  return sortYearGroups(yearGroups).map((yearGroup) => {
+    return {
+      value: yearGroup.key,
+      label: yearGroup.name,
+    };
+  });
 }
 
 /**
@@ -402,7 +399,7 @@ export function hasAllParseFields(values: Record<string, unknown>): boolean {
   // REQUIRED_PARSE_FIELDS contains known field names that are safe to access on values
   return REQUIRED_PARSE_FIELDS.every((field) => {
     const value = values[field];
-    return typeof value === 'string' ? value.trim() !== '' : false;
+    return typeof value === 'string' && value.trim() !== '';
   });
 }
 
@@ -414,7 +411,7 @@ export function hasAllParseFields(values: Record<string, unknown>): boolean {
  */
 export function hasYearGroupSelected(values: Record<string, unknown>): boolean {
   const yearGroup = values.yearGroup;
-  return typeof yearGroup === 'string' ? yearGroup.trim() !== '' : false;
+  return typeof yearGroup === 'string' && yearGroup.trim() !== '';
 }
 
 /**
@@ -472,14 +469,14 @@ export function derivePrimaryActionState(
  * @param {ReturnType<typeof useStartupWarmupState>} startupWarmupState - The startup warmup state.
  * @param {boolean} isTopicsLoading - Whether topics are currently loading.
  * @param {boolean} isYearGroupsLoading - Whether year groups are currently loading.
- * @param {boolean} open - Whether the modal is open.
+ * @param {boolean} isOpen - Whether the modal is open.
  * @returns {{ isReferenceDataLoading: boolean; isReferenceDataBlocked: boolean }} Reference data state.
  */
 export function deriveReferenceDataState(
   startupWarmupState: ReturnType<typeof useStartupWarmupState>,
   isTopicsLoading: boolean,
   isYearGroupsLoading: boolean,
-  open: boolean
+  isOpen: boolean
 ): {
   isReferenceDataLoading: boolean;
   isReferenceDataBlocked: boolean;
@@ -491,7 +488,7 @@ export function deriveReferenceDataState(
     !startupWarmupState.isDatasetFailed('yearGroups');
 
   const isReferenceDataLoading = isTopicsLoading || isYearGroupsLoading;
-  const isReferenceDataBlocked = open && !hasTrustworthyReferenceData && !isReferenceDataLoading;
+  const isReferenceDataBlocked = isOpen && !hasTrustworthyReferenceData && !isReferenceDataLoading;
 
   return {
     isReferenceDataLoading,

@@ -46,10 +46,9 @@ const Utils = {
    * @returns {string} The corresponding column letter.
    */
   getColumnLetter(columnIndex) {
-    let temporary;
     let letter = '';
     while (columnIndex >= 0) {
-      temporary = columnIndex % ALPHABET_LENGTH;
+      const temporary = columnIndex % ALPHABET_LENGTH;
       letter = String.fromCodePoint(temporary + UPPERCASE_A_CODE_POINT) + letter;
       columnIndex = Math.floor((columnIndex - temporary) / ALPHABET_LENGTH) - 1;
     }

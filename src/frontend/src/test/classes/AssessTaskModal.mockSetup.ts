@@ -16,28 +16,40 @@
 
 import { vi } from 'vitest';
 
-vi.mock('../../features/classes/AssessTaskModal/matchDefinitionForAssignment', () => ({
-  findMatchingDefinition: vi.fn(),
-}));
+vi.mock('../../features/classes/AssessTaskModal/matchDefinitionForAssignment', () => {
+  return {
+    findMatchingDefinition: vi.fn(),
+  };
+});
 
-vi.mock('../../services/googleClassrooms/googleClassroomAssignmentsService', () => ({
-  getGoogleClassroomAssignments: vi.fn(),
-}));
+vi.mock('../../services/googleClassrooms/googleClassroomAssignmentsService', () => {
+  return {
+    getGoogleClassroomAssignments: vi.fn(),
+  };
+});
 
-vi.mock('../../services/assignmentAssessment/assignmentAssessmentService', () => ({
-  startAssessmentRun: vi.fn(),
-}));
+vi.mock('../../services/assignmentAssessment/assignmentAssessmentService', () => {
+  return {
+    startAssessmentRun: vi.fn(),
+  };
+});
 
-vi.mock('../../services/assignmentDefinition/assignmentDefinitionService', () => ({
-  getAssignmentDefinition: vi.fn(),
-  upsertAssignmentDefinition: vi.fn(),
-}));
+vi.mock('../../services/assignmentDefinition/assignmentDefinitionService', () => {
+  return {
+    getAssignmentDefinition: vi.fn(),
+    upsertAssignmentDefinition: vi.fn(),
+  };
+});
 
-vi.mock('../../services/assignmentDefinition/assignmentTopicsService', () => ({
-  getAssignmentTopics: vi.fn(),
-}));
+vi.mock('../../services/assignmentDefinition/assignmentTopicsService', () => {
+  return {
+    getAssignmentTopics: vi.fn(),
+  };
+});
 
-vi.mock('../../services/referenceData/referenceDataService', () => ({
-  getCohorts: vi.fn(),
-  getYearGroups: vi.fn(),
-}));
+vi.mock('../../services/referenceData/referenceDataService', () => {
+  return {
+    getCohorts: vi.fn(),
+    getYearGroups: vi.fn(),
+  };
+});

@@ -92,23 +92,22 @@ export function RecentAssignmentCard({
   card,
   onOpenHeatmap,
 }: RecentAssignmentCardProperties): JSX.Element {
-  const clickable = onOpenHeatmap !== undefined;
+  const isClickable = onOpenHeatmap !== undefined;
   const handleActivate = () => { onOpenHeatmap!(card.assignmentId); };
   return (
     <Card
       size="small"
       title={card.assignmentName}
-      style={{ width: RECENT_ASSIGNMENT_CARD_WIDTH_PX, cursor: clickable ? 'pointer' : undefined }}
-      role={clickable ? 'button' : undefined}
-      tabIndex={clickable ? 0 : undefined}
-      onClick={clickable ? handleActivate : undefined}
+      style={{ width: RECENT_ASSIGNMENT_CARD_WIDTH_PX, cursor: isClickable ? 'pointer' : undefined }}
+      role={isClickable ? 'button' : undefined}
+      tabIndex={isClickable ? 0 : undefined}
+      onClick={isClickable ? handleActivate : undefined}
       onKeyDown={
-        clickable
+        isClickable
           ? (event: KeyboardEvent) => {
-              if (event.key === 'Enter' || event.key === ' ') {
-                event.preventDefault();
-                handleActivate();
-              }
+              if (event.key !== 'Enter' && event.key !== ' ') return;
+              event.preventDefault();
+              handleActivate();
             }
           : undefined
       }

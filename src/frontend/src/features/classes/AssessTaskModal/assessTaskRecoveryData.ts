@@ -49,10 +49,12 @@ export function buildRecoveryApprovalRequest(
     templateDocumentId: definition.templateDocumentId,
     documentType: definition.documentType,
     assignmentWeighting,
-    taskWeightings: taskRows.map((row) => ({
-      taskId: row.taskId,
-      taskWeighting: row.taskWeighting,
-    })),
+    taskWeightings: taskRows.map((row) => {
+      return {
+        taskId: row.taskId,
+        taskWeighting: row.taskWeighting,
+      };
+    }),
   };
   if (definition.updatedAt) {
     request.updatedAt = definition.updatedAt;
@@ -128,7 +130,7 @@ export async function readReviewFormValues(
  * @param {(message: string) => void} setSaveErrorMessage Surfaces non-stale failures.
  * @returns {boolean} True when the caller must not resume the assessment.
  */
-export function settleApprovalFailure(
+export function hasSettledApprovalFailure(
   result: ApprovalUpsertResult,
   setErrorMessage: (message: string | null) => void,
   setPhase: (phase: RecoveryPhase) => void,

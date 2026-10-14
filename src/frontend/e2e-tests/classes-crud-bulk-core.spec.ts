@@ -131,10 +131,12 @@ type BulkCoreScenario = Readonly<{
  * @returns {ReadonlyArray<BulkCoreMutationScenario>} Default success queue.
  */
 function buildDefaultMutationQueue(): ReadonlyArray<BulkCoreMutationScenario> {
-  return Array.from({ length: DEFAULT_MUTATION_QUEUE_LENGTH }, () => ({
-    kind: 'success',
-    data: { ok: true },
-  }));
+  return Array.from({ length: DEFAULT_MUTATION_QUEUE_LENGTH }, () => {
+    return {
+      kind: 'success',
+      data: { ok: true },
+    };
+  });
 }
 
 /**
@@ -152,7 +154,7 @@ function toClassesCrudScenario(scenario: BulkCoreScenario): ClassesCrudRuntimeSc
   ];
 
   return {
-    getAuthorisationStatus: strictModeSafeReadQueue([{ kind: 'success', data: true }]),
+    hasScriptAuthorisation: strictModeSafeReadQueue([{ kind: 'success', data: true }]),
     getABClassPartials: strictModeSafeReadQueue(classPartialsQueue),
     getCohorts: strictModeSafeReadQueue([
       { kind: 'success', data: scenario.cohorts ?? baseCohorts },

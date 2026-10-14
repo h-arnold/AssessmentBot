@@ -42,7 +42,7 @@
     "format:frontend": "prettier --write src/frontend",
     "format:builder": "prettier --write scripts/builder",
     "format": "prettier --write \"src/**/*.{js,json,md}\" \"**/*.{json,md}\"",
-    "builder:compile": "tsc -p scripts/builder/tsconfig.json",
+    "builder:compile": "node node_modules/@typescript/native/bin/tsc -p scripts/builder/tsconfig.json",
     "build:frontend": "npm --prefix src/frontend run build --",
     "build:gas-bundle": "node scripts/builder/dist/build-gas-bundle.js",
     "build:production": "npm run builder:compile && npm run build:gas-bundle -- --frontend-mode=production",
@@ -54,25 +54,25 @@
   "license": "AGPL-3.0-only",
   "devDependencies": {
     "@faker-js/faker": "10.6.0",
-    "@types/node": "^24.3.1",
-    "@typescript-eslint/eslint-plugin": "^8.64.0",
-    "@typescript-eslint/parser": "^8.64.0",
-    "@vitest/coverage-v8": "^4.1.11",
-    "eslint": "10.7.0",
+    "@types/node": "^26.6.4",
+    "@typescript-eslint/eslint-plugin": "^8.71.1",
+    "@typescript-eslint/parser": "^8.71.1",
+    "@vitest/coverage-v8": "^5.0.3",
+    "eslint": "10.12.0",
     "eslint-plugin-googleappsscript": "^1.0.5",
-    "eslint-plugin-jsdoc": "63.0.0",
-    "eslint-plugin-security": "^4.0.0",
-    "eslint-plugin-sonarjs": "^4.0.1",
-    "eslint-plugin-unicorn": "^63.0.0",
+    "eslint-plugin-jsdoc": "65.2.0",
+    "eslint-plugin-security": "^4.2.0",
+    "eslint-plugin-sonarjs": "^4.2.2",
+    "eslint-plugin-unicorn": "^77.0.0",
     "husky": "^9.1.7",
-    "jsdom": "^27.4.0",
-    "prettier": "^3.8.1",
-    "typescript": "npm:@typescript/typescript6@^6.0.2",
+    "jsdom": "^30.1.2",
+    "prettier": "^3.9.9",
+    "typescript": "6.0.3",
     "@typescript/native": "npm:typescript@^7.0.2",
-    "vitest": "^4.1.11",
-    "zod": "^4.3.6"
+    "vitest": "^5.0.3",
+    "zod": "^4.6.5"
   },
   "dependencies": {
-    "@google/clasp": "^3.3.0"
+    "@google/clasp": "^3.4.1"
   }
 }

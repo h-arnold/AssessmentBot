@@ -1,4 +1,4 @@
-import type { RenderWizardModalOptions } from '../../test/assignmentDefinition/wizardModalTestHelpers';
+import type { RenderWizardModalOptions } from '../../test/assignmentDefinition/wizardModalRenderingHelpers';
 import {
   mockTopics,
   mockYearGroups,
@@ -25,30 +25,38 @@ const {
   getYearGroupsMock,
   upsertAssignmentDefinitionMock,
   useStartupWarmupStateMock,
-} = vi.hoisted(() => ({
-  getAssignmentDefinitionMock: vi.fn(),
-  getAssignmentTopicsMock: vi.fn(),
-  getCohortsMock: vi.fn(),
-  getYearGroupsMock: vi.fn(),
-  upsertAssignmentDefinitionMock: vi.fn(),
-  useStartupWarmupStateMock: vi.fn(),
-}));
+} = vi.hoisted(() => {
+  return {
+    getAssignmentDefinitionMock: vi.fn(),
+    getAssignmentTopicsMock: vi.fn(),
+    getCohortsMock: vi.fn(),
+    getYearGroupsMock: vi.fn(),
+    upsertAssignmentDefinitionMock: vi.fn(),
+    useStartupWarmupStateMock: vi.fn(),
+  };
+});
 
 vi.mock('../../features/auth/startupWarmupState', async (importOriginal) => {
   const actualModule = (await importOriginal()) as Record<string, unknown>;
   return { ...actualModule, useStartupWarmupState: useStartupWarmupStateMock };
 });
-vi.mock('../../services/assignmentDefinition/assignmentDefinitionService', () => ({
-  getAssignmentDefinition: getAssignmentDefinitionMock,
-  upsertAssignmentDefinition: upsertAssignmentDefinitionMock,
-}));
-vi.mock('../../services/assignmentDefinition/assignmentTopicsService', () => ({
-  getAssignmentTopics: getAssignmentTopicsMock,
-}));
-vi.mock('../../services/referenceData/referenceDataService', () => ({
-  getCohorts: getCohortsMock,
-  getYearGroups: getYearGroupsMock,
-}));
+vi.mock('../../services/assignmentDefinition/assignmentDefinitionService', () => {
+  return {
+    getAssignmentDefinition: getAssignmentDefinitionMock,
+    upsertAssignmentDefinition: upsertAssignmentDefinitionMock,
+  };
+});
+vi.mock('../../services/assignmentDefinition/assignmentTopicsService', () => {
+  return {
+    getAssignmentTopics: getAssignmentTopicsMock,
+  };
+});
+vi.mock('../../services/referenceData/referenceDataService', () => {
+  return {
+    getCohorts: getCohortsMock,
+    getYearGroups: getYearGroupsMock,
+  };
+});
 
 const {
   renderWizardModal,
@@ -115,9 +123,7 @@ describe('AssignmentDefinitionWizardModal guarded close and errors', () => {
     await renderWizardModal(renderOptions);
 
     // Should show loading skeleton with accessible loading semantics
-    const skeleton = await waitFor(() => {
-      return screen.getByRole('status', { name: /assignment wizard loading/i });
-    });
+    const skeleton = await waitFor(() => screen.getByRole('status', { name: /assignment wizard loading/i }));
     expect(skeleton).toHaveAttribute('aria-live', 'polite');
   });
 
@@ -323,10 +329,7 @@ describe('AssignmentDefinitionWizardModal guarded close and errors', () => {
     await fillRequiredFields({ modal }, { yearGroup: 'Year 10' });
 
     // Mock a slow parse response to keep isSubmitting true
-    let resolveParse: (value: unknown) => void;
-    const parsePromise = new Promise((resolve) => {
-      resolveParse = resolve;
-    });
+    const { promise: parsePromise, resolve: resolveParse } = Promise.withResolvers<unknown>();
     upsertAssignmentDefinitionMock.mockReturnValueOnce(parsePromise);
 
     // Click Parse and continue
@@ -362,7 +365,7 @@ describe('AssignmentDefinitionWizardModal guarded close and errors', () => {
     }
 
     // Now resolve the parse to let it complete
-    resolveParse!(parseResponseForSubmittingTest);
+    resolveParse(parseResponseForSubmittingTest);
     await waitFor(() => {
       expect(parseButton).not.toBeDisabled();
     });

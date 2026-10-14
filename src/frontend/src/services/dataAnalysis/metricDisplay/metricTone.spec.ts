@@ -139,13 +139,12 @@ describe('resolveMetricTone', () => {
       return;
     }
 
-    const stylesheetRule = appStylesRaw
-      .split('}')
-      .find(
-        (rule) =>
-          rule.includes('background-color: var(--ant-color-fill-quaternary)') &&
-          rule.includes('color: var(--ant-color-text-secondary)')
+    const stylesheetRule = appStylesRaw.split('}').find((rule) => {
+      return (
+        rule.includes('background-color: var(--ant-color-fill-quaternary)') &&
+        rule.includes('color: var(--ant-color-text-secondary)')
       );
+    });
 
     expect(stylesheetRule).toBeDefined();
   });

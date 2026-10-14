@@ -12,9 +12,11 @@ import type { BatchProgressSnapshot } from './runQueuedBatchMutation';
 
 const runQueuedBatchMutationMock = vi.hoisted(() => vi.fn());
 
-vi.mock('./runQueuedBatchMutation', () => ({
-  runQueuedBatchMutation: runQueuedBatchMutationMock,
-}));
+vi.mock('./runQueuedBatchMutation', () => {
+  return {
+    runQueuedBatchMutation: runQueuedBatchMutationMock,
+  };
+});
 
 import type * as BulkSetCourseLengthFlowModule from './bulkSetCourseLengthFlow';
 

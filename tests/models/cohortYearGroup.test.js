@@ -224,6 +224,23 @@ describe('Cohort model – key contract', () => {
     expect(Cohort.fromJSON(input).toJSON()).toEqual(input);
   });
 
+  it('rejects unsafe start years while retaining month bounds', async () => {
+    const Cohort = await loadCohort();
+    for (const startYear of [
+      Number.MAX_SAFE_INTEGER + 1,
+      -(Number.MAX_SAFE_INTEGER + 1),
+      1e21,
+      -1e21,
+    ]) {
+      expect(() => new Cohort('coh-unsafe-year', '2030', true, startYear, 9)).toThrow(TypeError);
+    }
+    for (const month of [1, 12]) {
+      expect(new Cohort('coh-month', '2030', true, 2029, month).getStartMonth()).toBe(month);
+    }
+    expect(() => new Cohort('coh-month', '2030', true, 2029, 0)).toThrow(TypeError);
+    expect(() => new Cohort('coh-month', '2030', true, 2029, 13)).toThrow(TypeError);
+  });
+
   it('fromJSON() applies active: true when active is omitted', async () => {
     const Cohort = await loadCohort();
 

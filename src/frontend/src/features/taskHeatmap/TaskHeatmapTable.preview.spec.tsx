@@ -12,9 +12,11 @@ import {
 import type { CellPreviewLookup } from './buildCellPreviewLookup';
 import type * as TaskPreviewDataModule from './assembleTaskPreviewData';
 
-const { assembleTaskPreviewDataSpy } = vi.hoisted(() => ({
-  assembleTaskPreviewDataSpy: vi.fn(),
-}));
+const { assembleTaskPreviewDataSpy } = vi.hoisted(() => {
+  return {
+    assembleTaskPreviewDataSpy: vi.fn(),
+  };
+});
 
 vi.mock('./assembleTaskPreviewData', async (importOriginal) => {
   const actual = await importOriginal<typeof TaskPreviewDataModule>();

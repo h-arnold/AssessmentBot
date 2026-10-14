@@ -325,12 +325,12 @@ export function adaptClassPageToViewModel(input: {
 
   // Take the most recent 3 *before* rolling up (avoids ~(A-3)·T wasted rollups)
   const topAssignments = validatedAssignments
-    .toSorted((a, b) =>
-      compareAssignmentUpdatedAtDesc(
+    .toSorted((a, b) => {
+      return compareAssignmentUpdatedAtDesc(
         { updatedAt: a.validatedUpdatedAt, assignmentId: a.assignment.assignmentId },
         { updatedAt: b.validatedUpdatedAt, assignmentId: b.assignment.assignmentId }
-      )
-    )
+      );
+    })
     .slice(0, MAX_RECENT_ASSIGNMENTS);
 
   const warnedDefinitionKeys = new Set<string>();

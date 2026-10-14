@@ -83,8 +83,7 @@ function buildReasoning(
 }
 
 /**
- * Create a CellPreviewData for the given artifact type, content, reasoning
- * overrides and derived source URL.
+ * Create a CellPreviewData for the given artifact type, content and reasoning overrides.
  *
  * The `artifactType` argument is narrowed by switch case labels: the
  * identical `string | null` content branches (`TEXT`, `TABLE`, `IMAGE` and
@@ -92,21 +91,21 @@ function buildReasoning(
  * fall-through block, while `SPREADSHEET` keeps its narrower 2-D array cast.
  * Each returned object literal is still checked against the matching
  * `CellPreviewData` union members, and `sourceUrl` is written explicitly on
- * every path, so no whole-object cast can conceal an omitted required field.
+ * every path, so no whole-object cast can conceal an omitted required field. The
+ * fixture does not carry a derived source URL.
  *
  * @param {CellPreviewData['artifactType']} artifactType - The artifact type discriminator.
  * @param {unknown} artifactContent - The raw artifact content.
  * @param {Partial<CellPreviewData['reasoning']>} [overrides] - Optional per-metric reasoning overrides.
- * @param {string | null} [sourceUrl] - The derived editor source URL carried by the cell.
  * @returns {CellPreviewData} A CellPreviewData fixture.
  */
 function cellData(
   artifactType: CellPreviewData['artifactType'],
   artifactContent: unknown,
-  overrides?: Partial<CellPreviewData['reasoning']>,
-  sourceUrl: string | null = null
+  overrides?: Partial<CellPreviewData['reasoning']>
 ): CellPreviewData {
   const reasoning = buildReasoning(overrides);
+  const sourceUrl: string | null = null;
 
   switch (artifactType) {
     case 'TEXT':
@@ -234,14 +233,14 @@ describe('assembleTaskPreviewData', () => {
   it('throws when SPREADSHEET artifact content is null', () => {
     const data = cellData('SPREADSHEET', null);
 
-    expect(() =>
-      assembleTaskPreviewData(
+    expect(() => {
+      return assembleTaskPreviewData(
         data,
         createComputedMetricResult({ value: TEXT_SCORE }),
         'completeness',
         'task-15'
-      )
-    ).toThrow(TypeError);
+      );
+    }).toThrow(TypeError);
   });
 
   it('handles TEXT artifact with null content by coercing to empty string', () => {

@@ -15,12 +15,65 @@ import {
   getParseButton,
   getSaveButton,
   fillRequiredFields,
+} from '../../test/assignmentDefinition/wizardModalInteractionHelpers';
+import {
   assertParseButtonEnabled,
   assertSharedEditSurfaceHydrated,
-} from '../../test/assignmentDefinition/wizardModalTestHelpers';
-import type { RenderWizardModalOptions } from '../../test/assignmentDefinition/wizardModalTestHelpers';
+} from '../../test/assignmentDefinition/wizardModalAssertionHelpers';
+import type { RenderWizardModalOptions } from '../../test/assignmentDefinition/wizardModalRenderingHelpers';
 
-export * from '../../test/assignmentDefinition/wizardModalTestHelpers';
+export {
+  createUpdateWizardOptions,
+  renderWizardModal,
+  waitForCreateModal,
+  waitForUpdateModal,
+  waitForWizardModal,
+  type RenderWizardModalOptions,
+  type WizardModalMode,
+  type WizardModalRenderResult,
+} from '../../test/assignmentDefinition/wizardModalRenderingHelpers';
+export {
+  changeReferenceUrl,
+  changeTemplateUrl,
+  dismissModalByMaskClick,
+  fillRequiredFields,
+  getAllTaskWeightingInputs,
+  getAssignmentWeightingInput,
+  getFooterCancelButton,
+  getFormElements,
+  getModalCloseButton,
+  getParseButton,
+  getReparseActionRow,
+  getReparseButton,
+  getReparseCancelButton,
+  getSaveButton,
+  getTaskTable,
+  getTaskWeightingInputs,
+  selectTopic,
+  selectYearGroup,
+  type FillRequiredFieldsOptions,
+  type ModalElementQueries,
+} from '../../test/assignmentDefinition/wizardModalInteractionHelpers';
+export {
+  assertAllRequiredFieldsPresent,
+  assertConflictingControlsDisabled,
+  assertConflictingControlsEnabled,
+  assertDocumentChangePromptNotVisible,
+  assertDocumentChangePromptVisible,
+  assertDocumentUrlFieldsDisabled,
+  assertDocumentUrlFieldsEnabled,
+  assertMetadataAndTaskWeightingsDisabled,
+  assertMetadataAndTaskWeightingsEnabled,
+  assertParseButtonDisabled,
+  assertParseButtonEnabled,
+  assertParseButtonPresent,
+  assertSharedEditSurfaceHydrated,
+  assertTaskEditingHidden,
+  assertTaskNotVisible,
+  assertTaskVisible,
+  getReferenceUrlValue,
+  getTemplateUrlValue,
+} from '../../test/assignmentDefinition/wizardModalAssertionHelpers';
 export {
   mockTopics,
   mockYearGroups,

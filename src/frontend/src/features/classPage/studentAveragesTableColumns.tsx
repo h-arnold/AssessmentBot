@@ -127,14 +127,16 @@ function buildMetricColumn(
         'aria-label': ariaLabel,
       };
     },
-    render: (_: unknown, record: StudentAverageRowModel): JSX.Element => (
+    render: (_: unknown, record: StudentAverageRowModel): JSX.Element => {
+      return (
       <span>
         {formatMetricDisplayText(
           getStudentMetric(record.metrics, key),
           CLASS_PAGE_SCORE_PRECISION
         )}
       </span>
-    ),
+      );
+    },
   };
 }
 

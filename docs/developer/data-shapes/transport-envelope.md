@@ -35,9 +35,9 @@ payload inside this envelope.
                           //         'FORBIDDEN' | 'INTERNAL_ERROR', or a stable
                           //         authentication-settings save code (see below)
     message: string,      // Human-readable error string
-    retriable: boolean,   // always present; true only for RATE_LIMITED
+    isRetriable: boolean, // always present; true only for RATE_LIMITED
     details?: object,     // Structured metadata (e.g. for DEFINITION_STALE:
-                          //   { definitionKey, referenceStale, templateStale,
+                          //   { definitionKey, referenceStale, isTemplateStale,
                           //     referenceLastModified, templateLastModified })
   },
 }
@@ -45,16 +45,16 @@ payload inside this envelope.
 
 ### Error code mapping
 
-| Error type                                         | Code                  | retriable |
-| -------------------------------------------------- | --------------------- | --------- |
-| `ApiRateLimitError`                                | `RATE_LIMITED`        | `true`    |
-| `ApiValidationError`                               | `INVALID_REQUEST`     | `false`   |
-| `ApiValidationError` carrying a stable `code`      | that code (see below) | `false`   |
-| `ApiDisabledError`                                 | `UNKNOWN_METHOD`      | `false`   |
-| `DefinitionStaleError`                             | `DEFINITION_STALE`    | `false`   |
-| `error.reason === 'IN_USE'`                        | `IN_USE`              | `false`   |
-| Auth gate denial (authenticated but not permitted) | `FORBIDDEN`           | `false`   |
-| Any other error                                    | `INTERNAL_ERROR`      | `false`   |
+| Error type                                         | Code                  | isRetriable |
+| -------------------------------------------------- | --------------------- | ----------- |
+| `ApiRateLimitError`                                | `RATE_LIMITED`        | `true`      |
+| `ApiValidationError`                               | `INVALID_REQUEST`     | `false`     |
+| `ApiValidationError` carrying a stable `code`      | that code (see below) | `false`     |
+| `ApiDisabledError`                                 | `UNKNOWN_METHOD`      | `false`     |
+| `DefinitionStaleError`                             | `DEFINITION_STALE`    | `false`     |
+| `error.reason === 'IN_USE'`                        | `IN_USE`              | `false`     |
+| Auth gate denial (authenticated but not permitted) | `FORBIDDEN`           | `false`     |
+| Any other error                                    | `INTERNAL_ERROR`      | `false`     |
 
 ### Stable authentication-settings save codes
 
@@ -107,7 +107,7 @@ The following semantics are the canonical implemented behaviour.
    `AssignmentDefinitionRecoveryRules.assertRecoveryPreconditions_` throws
    `ApiValidationError` without a custom `code`, so `_mapErrorToFailureEnvelope` maps
    it to `INVALID_REQUEST` (`ok: false`, `error.code === 'INVALID_REQUEST'`,
-   `retriable: false`).
+   `isRetriable: false`).
 
 2. **Only recognised content failures map to `DEFINITION_PARSE_FAILED`.**
    `AssignmentDefinitionRecoveryRules.parseTasksOrThrow_` classifies an unclassified
@@ -133,8 +133,14 @@ the admin-required method set. Denied requests never reach the admission phase, 
 no lock is consumed and the request is not counted against rate limits.
 
 For `DEFINITION_STALE`, the error envelope includes a `details` block with
-`definitionKey`, `referenceStale`, `templateStale`, `referenceLastModified`,
+`definitionKey`, `referenceStale`, `isTemplateStale`, `referenceLastModified`,
 and `templateLastModified`.
+
+`isTemplateStale` is `true` when the template document modification timestamp is
+newer than the definition timestamp. The freshness check short-circuits: the template
+is only evaluated when `referenceStale` is `false`, so `isTemplateStale: false` reported
+alongside a stale reference does not prove the template was verified as fresh.
+`referenceStale` is unchanged.
 
 ## Envelope validation (frontend)
 
@@ -159,17 +165,20 @@ z.object({
   error: z.object({
     code: z.string(),
     message: z.string(),
-    retriable: z.boolean().optional(),
+    isRetriable: z.boolean().optional(),
     details: z.record(z.string(), z.unknown()).optional(),
   }),
   meta: z.record(z.string(), z.unknown()).optional(),
 });
 ```
 
-> **`retriable` optionality:** the backend always emits `retriable` on every error envelope
+> **`isRetriable` optionality:** the backend always emits `isRetriable` on every error envelope
 > (`_failure()` in `z_apiHandler.js` includes it unconditionally; it is `true` only for
 > `RATE_LIMITED`). The frontend `z.boolean().optional()` is a defensive tolerance so a
 > missing field does not break envelope parsing. The backend contract remains authoritative.
+> Automatic frontend retry additionally requires an `ApiTransportError`, code
+> `RATE_LIMITED`, and remaining attempt budget (`shouldRetry()` in `apiService.ts`);
+> the flag alone does not trigger another attempt.
 
 ## Key contract notes
 
@@ -205,7 +214,7 @@ Canonical frontend contract:
   `details?: Record<string, unknown>`, and `ApiTransportError` exposes
   `public readonly details: Record<string, unknown> | undefined`.
 - `DEFINITION_STALE` remains the only code that populates `details` today, with the
-  documented shape `{ definitionKey, referenceStale, templateStale,
+  documented shape `{ definitionKey, referenceStale, isTemplateStale,
 referenceLastModified, templateLastModified }`. The field stays optional and open
   because the envelope contract permits future codes to attach their own structured
   metadata.

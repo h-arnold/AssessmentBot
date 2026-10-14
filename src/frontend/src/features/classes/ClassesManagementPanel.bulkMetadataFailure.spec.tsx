@@ -38,20 +38,26 @@ const runQueuedBulkActionMock = vi.fn(
 
 const UPDATED_COURSE_LENGTH = 6;
 
-vi.mock('./useClassesManagement', () => ({
-  useClassesManagement: classesManagementStateMock,
-}));
+vi.mock('./useClassesManagement', () => {
+  return {
+    useClassesManagement: classesManagementStateMock,
+  };
+});
 
-vi.mock('./useClassesBulkMutationQueue', () => ({
-  useClassesBulkMutationQueue: () => ({
-    isQueueActive: false,
-    progress: { currentItem: null, completed: 0, pendingCount: 0, total: 0, isInProgress: false },
-    isProgressModalOpen: false,
-    onDismissProgressModal: vi.fn(),
-    onCancelQueue: vi.fn(),
-    runQueuedBulkAction: runQueuedBulkActionMock,
-  }),
-}));
+vi.mock('./useClassesBulkMutationQueue', () => {
+  return {
+    useClassesBulkMutationQueue: () => {
+      return {
+        isQueueActive: false,
+        progress: { currentItem: null, completed: 0, pendingCount: 0, total: 0, isInProgress: false },
+        isProgressModalOpen: false,
+        onDismissProgressModal: vi.fn(),
+        onCancelQueue: vi.fn(),
+        runQueuedBulkAction: runQueuedBulkActionMock,
+      };
+    },
+  };
+});
 
 vi.mock('./bulk/bulkSetCohortFlow', async () => {
   const actual = (await vi.importActual('./bulk/bulkSetCohortFlow')) as typeof BulkSetCohortFlowModule;
@@ -77,51 +83,61 @@ vi.mock('./bulk/bulkSetCourseLengthFlow', async () => {
   };
 });
 
-vi.mock('./components/ClassesSummaryCard', () => ({
-  ClassesSummaryCard() {
-    return <div>Summary</div>;
-  },
-}));
+vi.mock('./components/ClassesSummaryCard', () => {
+  return {
+    ClassesSummaryCard() {
+      return <div>Summary</div>;
+    },
+  };
+});
 
-vi.mock('./table/ClassesToolbar', () => ({
-  ClassesToolbar(properties: Readonly<{
-    onSetCohort?: () => void;
-    onSetCourseLength?: () => void;
-    onSetYearGroup?: () => void;
-  }>) {
-    return (
-      <div>
-        <button onClick={properties.onSetCohort} type="button">
-          Set cohort
-        </button>
-        <button onClick={properties.onSetYearGroup} type="button">
-          Set year group
-        </button>
-        <button onClick={properties.onSetCourseLength} type="button">
-          Set course length
-        </button>
-      </div>
-    );
-  },
-}));
+vi.mock('./table/ClassesToolbar', () => {
+  return {
+    ClassesToolbar(properties: Readonly<{
+      onSetCohort?: () => void;
+      onSetCourseLength?: () => void;
+      onSetYearGroup?: () => void;
+    }>) {
+      return (
+        <div>
+          <button onClick={properties.onSetCohort} type="button">
+            Set cohort
+          </button>
+          <button onClick={properties.onSetYearGroup} type="button">
+            Set year group
+          </button>
+          <button onClick={properties.onSetCourseLength} type="button">
+            Set course length
+          </button>
+        </div>
+      );
+    },
+  };
+});
 
-vi.mock('./table/ClassesTable', () => ({
-  ClassesTable() {
-    return <div aria-label="Classes table" role="table" />;
-  },
-}));
+vi.mock('./table/ClassesTable', () => {
+  return {
+    ClassesTable() {
+      return <div aria-label="Classes table" role="table" />;
+    },
+  };
+});
 
-vi.mock('./bulk/BulkCreateModal', () => ({
-  BulkCreateModal() {
-    return null;
-  },
-}));
+vi.mock('./bulk/BulkCreateModal', () => {
+  return {
+    BulkCreateModal() {
+      return null;
+    },
+  };
+});
 
-vi.mock('./bulk/BulkDeleteModal', () => ({
-  BulkDeleteModal() {
-    return null;
-  },
-}));
+vi.mock('./bulk/BulkDeleteModal', () => {
+  return {
+    BulkDeleteModal() {
+      return null;
+    },
+  };
+});
 
 /**
  * Renders a light-weight select modal stub for the bulk metadata failure tests.
@@ -227,13 +243,17 @@ function BulkSetCourseLengthModalStub(
 const bulkSetSelectModalMock = vi.hoisted(() => vi.fn(BulkSetSelectModalStub));
 const bulkSetCourseLengthModalMock = vi.hoisted(() => vi.fn(BulkSetCourseLengthModalStub));
 
-vi.mock('./bulk/BulkSetSelectModal', () => ({
-  BulkSetSelectModal: bulkSetSelectModalMock,
-}));
+vi.mock('./bulk/BulkSetSelectModal', () => {
+  return {
+    BulkSetSelectModal: bulkSetSelectModalMock,
+  };
+});
 
-vi.mock('./bulk/BulkSetCourseLengthModal', () => ({
-  BulkSetCourseLengthModal: bulkSetCourseLengthModalMock,
-}));
+vi.mock('./bulk/BulkSetCourseLengthModal', () => {
+  return {
+    BulkSetCourseLengthModal: bulkSetCourseLengthModalMock,
+  };
+});
 
 const rows = [
   buildClassesManagementRow({
@@ -265,10 +285,11 @@ let user: ReturnType<typeof userEvent.setup>;
  * Renders the panel with a mocked classes-management state and query client.
  *
  * @param {ReactElement} ui Panel element.
- * @param {ReturnType<typeof vi.fn>} onSelectedRowKeysChange Selection callback spy.
+ *
  * @returns {{ invalidateQueriesSpy: MockInstance; onSelectedRowKeysChange: ReturnType<typeof vi.fn> }} Render spies.
  */
-function renderPanel(ui: ReactElement, onSelectedRowKeysChange = vi.fn()) {
+function renderPanel(ui: ReactElement) {
+  const onSelectedRowKeysChange = vi.fn();
   classesManagementStateMock.mockReturnValue(
     buildClassesManagementState({
       cohorts: activeCohortOptions,
@@ -346,10 +367,11 @@ async function expectAllFailureState(
     )
   ).toBeInTheDocument();
 
-  await waitFor(() =>
-    expect(invalidateQueriesSpy).toHaveBeenCalledWith(
+  await waitFor(() => {
+    return expect(invalidateQueriesSpy).toHaveBeenCalledWith(
       expect.objectContaining({ queryKey: queryKeys.classPartials(), refetchType: 'none' })
-    )
+    );
+  }
   );
   expect(onSelectedRowKeysChange).toHaveBeenCalledWith(expectedSelectedRowKeys);
   expect(onSelectedRowKeysChange).not.toHaveBeenCalledWith([]);
@@ -366,10 +388,12 @@ describe('ClassesManagementPanel bulk metadata failure handling', () => {
 
   it('shows a panel-level alert and closes the modal after a full cohort failure', async () => {
     const { ClassesManagementPanel } = await loadPanel();
-    bulkSetCohortMock.mockImplementation(() => Promise.resolve([
-      { status: 'rejected', row: rows[0], error: new Error('Update failed.') },
-      { status: 'rejected', row: rows[1], error: new Error('Update failed.') },
-    ]));
+    bulkSetCohortMock.mockImplementation(() => {
+      return Promise.resolve([
+        { status: 'rejected', row: rows[0], error: new Error('Update failed.') },
+        { status: 'rejected', row: rows[1], error: new Error('Update failed.') },
+      ]);
+    });
     const { onSelectedRowKeysChange, invalidateQueriesSpy } = renderPanel(<ClassesManagementPanel />);
 
     await submitSelectModal('Set cohort');
@@ -386,10 +410,12 @@ describe('ClassesManagementPanel bulk metadata failure handling', () => {
 
   it('shows a panel-level alert and closes the modal after a full year-group failure', async () => {
     const { ClassesManagementPanel } = await loadPanel();
-    bulkSetYearGroupMock.mockImplementation(() => Promise.resolve([
-      { status: 'rejected', row: rows[0], error: new Error('Update failed.') },
-      { status: 'rejected', row: rows[1], error: new Error('Update failed.') },
-    ]));
+    bulkSetYearGroupMock.mockImplementation(() => {
+      return Promise.resolve([
+        { status: 'rejected', row: rows[0], error: new Error('Update failed.') },
+        { status: 'rejected', row: rows[1], error: new Error('Update failed.') },
+      ]);
+    });
     const { onSelectedRowKeysChange, invalidateQueriesSpy } = renderPanel(<ClassesManagementPanel />);
 
     await submitSelectModal('Set year group');
@@ -406,10 +432,12 @@ describe('ClassesManagementPanel bulk metadata failure handling', () => {
 
   it('closes the metadata modal and promotes warning feedback to panel scope on partial failure', async () => {
     const { ClassesManagementPanel } = await loadPanel();
-    bulkSetCohortMock.mockImplementation(() => Promise.resolve([
-      { status: 'fulfilled', row: rows[0], data: { ok: true } },
-      { status: 'rejected', row: rows[1], error: new Error('Update failed.') },
-    ]));
+    bulkSetCohortMock.mockImplementation(() => {
+      return Promise.resolve([
+        { status: 'fulfilled', row: rows[0], data: { ok: true } },
+        { status: 'rejected', row: rows[1], error: new Error('Update failed.') },
+      ]);
+    });
     const { onSelectedRowKeysChange, invalidateQueriesSpy } = renderPanel(<ClassesManagementPanel />);
 
     await submitSelectModal('Set cohort');
@@ -417,10 +445,11 @@ describe('ClassesManagementPanel bulk metadata failure handling', () => {
     await waitFor(() => {
       expect(bulkSetCohortMock).toHaveBeenCalledWith(rows, 'cohort-2025', expect.any(Function));
     });
-    await waitFor(() =>
-      expect(invalidateQueriesSpy).toHaveBeenCalledWith(
+    await waitFor(() => {
+      return expect(invalidateQueriesSpy).toHaveBeenCalledWith(
         expect.objectContaining({ queryKey: queryKeys.classPartials(), refetchType: 'none' })
-      )
+      );
+    }
     );
     await expect(screen.queryByRole('dialog', { name: 'Set cohort' })).toBeNull();
     expect(screen.getByText('Some selected classes were not updated.')).toBeInTheDocument();
@@ -430,10 +459,12 @@ describe('ClassesManagementPanel bulk metadata failure handling', () => {
 
   it('shows a panel-level alert and closes the modal after a full course-length failure', async () => {
     const { ClassesManagementPanel } = await loadPanel();
-    bulkSetCourseLengthMock.mockImplementation(() => Promise.resolve([
-      { status: 'rejected', row: rows[0], error: new Error('Update failed.') },
-      { status: 'rejected', row: rows[1], error: new Error('Update failed.') },
-    ]));
+    bulkSetCourseLengthMock.mockImplementation(() => {
+      return Promise.resolve([
+        { status: 'rejected', row: rows[0], error: new Error('Update failed.') },
+        { status: 'rejected', row: rows[1], error: new Error('Update failed.') },
+      ]);
+    });
     const { onSelectedRowKeysChange, invalidateQueriesSpy } = renderPanel(<ClassesManagementPanel />);
 
     await submitCourseLengthModal();

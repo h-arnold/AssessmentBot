@@ -109,7 +109,7 @@ test.describe('Stale assignment-definition recovery journeys', () => {
       CANONICAL_RECOVERY_DEFINITION.primaryTitle
     );
     await expect(dialog.getByRole('spinbutton', { name: /assignment weighting/i })).toHaveValue(
-      `${CANONICAL_RECOVERY_DEFINITION.assignmentWeighting}`
+      String(CANONICAL_RECOVERY_DEFINITION.assignmentWeighting)
     );
     await expect(dialog.getByRole('button', { name: ACTION_START_ASSESSMENT })).toHaveCount(0);
     await expect(dialog.getByRole('button', { name: ACTION_SAVE })).toBeVisible();

@@ -19,6 +19,7 @@ class LLMRequestManager extends BaseRequestManager {
     super();
     this.progressTracker = ProgressTracker.getInstance();
     this.retryAttempts = {}; // Tracks retry attempts for each UID
+    this.initialValidationRetryCount = 0;
     this.maxValidationRetries = 1; // Maximum retries for data validation
     this.cacheManager = new CacheManager(); // Use the CacheManager
     this.componentBuildErrorCount = 0; // Track repeated backend component build errors
@@ -144,7 +145,8 @@ class LLMRequestManager extends BaseRequestManager {
    * @param {Assignment} assignment - The Assignment instance.
    */
   handleValidationFailure(uid, request, assignment) {
-    if (!this.retryAttempts[uid]) this.retryAttempts[uid] = 0;
+    const retryCount = this.retryAttempts[uid];
+    if (!retryCount) this.retryAttempts[uid] = this.initialValidationRetryCount;
 
     if (this.retryAttempts[uid] >= this.maxValidationRetries) {
       this._handleRetryLimitReached(uid);
@@ -170,12 +172,13 @@ class LLMRequestManager extends BaseRequestManager {
    */
   validateAssessmentData(data) {
     const requiredCriteria = ['completeness', 'accuracy', 'spag'];
-    return requiredCriteria.every(
-      (criterion) =>
+    return requiredCriteria.every((criterion) => {
+      return (
         data.hasOwnProperty(criterion) &&
         typeof data[criterion].score === 'number' &&
         Validate.isString(data[criterion].reasoning)
-    );
+      );
+    });
   }
 
   /**
@@ -449,14 +452,14 @@ class LLMRequestManager extends BaseRequestManager {
    */
   _assignAndCacheAssessment(uid, assessmentData) {
     this.assignAssessmentToStudentTask(uid, this.createAssessmentFromData(assessmentData));
-    if (this.uidIndex?.[uid]) {
-      const { item, taskDefinition } = this.uidIndex[uid];
-      const reference = taskDefinition.getPrimaryReference();
-      const referenceHash = reference?.contentHash;
-      const respHash = item.artifact?.contentHash;
-      if (referenceHash && respHash) {
-        this.cacheManager.setCachedAssessment(referenceHash, respHash, assessmentData);
-      }
+    const entry = this.uidIndex?.[uid];
+    if (!entry) return;
+    const { item, taskDefinition } = entry;
+    const reference = taskDefinition.getPrimaryReference();
+    const referenceHash = reference?.contentHash;
+    const respHash = item.artifact?.contentHash;
+    if (referenceHash && respHash) {
+      this.cacheManager.setCachedAssessment(referenceHash, respHash, assessmentData);
     }
   }
 }

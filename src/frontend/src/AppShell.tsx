@@ -27,12 +27,14 @@ const darkModeLabel = 'Dark mode';
  * @returns {Required<MenuProps>['items']} Ant Design menu items for the supplied navigation tree.
  */
 function toMenuItems(items: AppNavigationItem[]): Required<MenuProps>['items'] {
-  return items.map(({ children, icon, key, label }) => ({
-    key,
-    icon,
-    label,
-    children: children.length > 0 ? toMenuItems(children) : undefined,
-  }));
+  return items.map(({ children, icon, key, label }) => {
+    return {
+      key,
+      icon,
+      label,
+      children: children.length > 0 ? toMenuItems(children) : undefined,
+    };
+  });
 }
 
 /**
@@ -41,7 +43,7 @@ function toMenuItems(items: AppNavigationItem[]): Required<MenuProps>['items'] {
 type AppShellProperties = Readonly<{
   dashboardContent?: ReactNode;
   isDarkMode: boolean;
-  onThemeModeChange: (checked: boolean) => void;
+  onThemeModeChange: (isChecked: boolean) => void;
 }>;
 
 /**
@@ -79,12 +81,14 @@ export function AppShell(properties: AppShellProperties) {
   );
   const navigationMenuItems = useMemo(() => toMenuItems(navigationItems), []);
   const contextValue = useMemo(
-    () => ({
-      selectedClassId,
-      className: selectedClassName,
-      onSelectClass: handleSelectClass,
-      onNavigateToClasses: handleNavigateToClasses,
-    }),
+    () => {
+      return {
+        selectedClassId,
+        className: selectedClassName,
+        onSelectClass: handleSelectClass,
+        onNavigateToClasses: handleNavigateToClasses,
+      };
+    },
     [selectedClassId, selectedClassName, handleSelectClass, handleNavigateToClasses]
   );
   const shellStyle: CSSProperties = {
@@ -159,7 +163,7 @@ export function AppShell(properties: AppShellProperties) {
             onClick={({ key }) => {
               if (!isAppNavigationKey(key)) {
                 throw new TypeError(
-                  `Unexpected navigation key: ${String(key)}. Valid keys are: '${navigationItems
+                  `Unexpected navigation key: ${key}. Valid keys are: '${navigationItems
                     .map(({ key: navigationKey }) => navigationKey)
                     .join("', '")}'`
                 );

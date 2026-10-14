@@ -56,13 +56,9 @@ const yearGroupsFixture: Array<Record<string, unknown>> = [];
  * Navigates to Classes page, expands all panels, and verifies the total card count.
  *
  * @param {Page} page - The Playwright page under test.
- * @param {number} [expectedCardCount] - Expected number of cards across all panels.
  * @returns {Promise<void>}
  */
-async function navigateAndExpandAllPanels(
-  page: Page,
-  expectedCardCount: number = EXPECTED_TOTAL_CARDS_COUNT
-): Promise<void> {
+async function navigateAndExpandAllPanels(page: Page): Promise<void> {
   await page.getByRole('menuitem', { name: CLASSES_LABEL }).click();
 
   // Year 9 is expanded by default; expand the remaining panels.
@@ -75,7 +71,7 @@ async function navigateAndExpandAllPanels(
 
   // Verify total card count
   const articles = page.locator('[role="article"]');
-  await expect(articles).toHaveCount(expectedCardCount);
+  await expect(articles).toHaveCount(EXPECTED_TOTAL_CARDS_COUNT);
 }
 
 /**
@@ -167,7 +163,7 @@ async function mockAuthenticatedGoogleScriptRun(page: Page) {
               return;
             }
 
-            if (request?.method === 'getAuthorisationStatus') {
+            if (request?.method === 'hasScriptAuthorisation') {
               callbacks.successHandler?.({
                 ok: true,
                 requestId: 'req-auth-status',

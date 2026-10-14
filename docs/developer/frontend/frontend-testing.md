@@ -304,6 +304,7 @@ behaviour where `google.script.run` auto-stringifies return values.
   - Vitest: `createGoogleScriptRunApiHandlerMock(invokeRequest)`
   - E2E: inject `googleScriptRunApiHandlerFactorySource` via `page.addInitScript(...)`
   - Direct assignment to `globalThis.google.script.run` that bypasses the factory is prohibited.
+  - Install the Vitest harness with `vi.stubGlobal('google', ...)` and restore it with `vi.unstubAllGlobals()`; see [Global stub installation and restoration](#global-stub-installation-and-restoration).
 
 #### Void/delete response guidance: `data: null` required
 
@@ -390,6 +391,31 @@ afterEach(() => {
 
 **Rationale:** `vi.resetAllMocks()` ensures complete isolation between tests by resetting both the call history and any mock implementations. This prevents test pollution where one test's mock setup affects subsequent tests.
 
+### Global stub installation and restoration
+
+To install a mock `google` runtime for a transport test, use `vi.stubGlobal('google', ...)` with the
+existing `createGoogleScriptRunApiHandlerMock(...)` harness, and restore it with an explicit
+`vi.unstubAllGlobals()`:
+
+```typescript
+import { afterEach, vi } from 'vitest';
+import { createGoogleScriptRunApiHandlerMock } from '../test/googleScriptRunHarness';
+
+const runner = createGoogleScriptRunApiHandlerMock((request, callbacks) => {
+  callbacks.successHandler?.({ ok: true, requestId: 'req-1', data: null });
+});
+vi.stubGlobal('google', { script: { run: runner } });
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
+```
+
+`vi.restoreAllMocks()` restores spies but does **not** remove globals installed with
+`vi.stubGlobal`, so a stub left in place leaks into later tests. Always pair the stub with an
+explicit `vi.unstubAllGlobals()` in the test cleanup, and do not assign to or delete
+`globalThis.google` directly.
+
 ### userEvent.setup() Isolation
 
 Create a fresh `userEvent` instance per test by initialising in `beforeEach` rather than at
@@ -469,8 +495,8 @@ When testing components that depend on React Query and startup warmup state, use
 ```typescript
 const { queryClient } = renderWithFrontendProviders(<MyComponent />);
 
-// Mock fetchQuery for fire-and-forget calls
-vi.spyOn(queryClient, 'fetchQuery').mockImplementation(() => Promise.resolve());
+// Mock query for fire-and-forget calls
+vi.spyOn(queryClient, 'query').mockImplementation(() => Promise.resolve([]));
 
 // Set query data for existing queries
 queryClient.setQueryData(queryKeys.assignmentTopics(), mockTopics);

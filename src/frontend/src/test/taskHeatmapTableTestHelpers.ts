@@ -205,11 +205,13 @@ export function buildNoSubmissionsResult(): HeatmapResult {
     { studentId: 's-1', studentName: 'Student One' },
     { studentId: 's-2', studentName: 'Student Two' },
     { studentId: 's-3', studentName: 'Student Three' },
-  ].map(({ studentId, studentName }) => ({
-    studentId,
-    studentName,
-    cells: TASK_COLUMNS.map(() => buildCell(notAttemptedCellOverrides)),
-  }));
+  ].map(({ studentId, studentName }) => {
+    return {
+      studentId,
+      studentName,
+      cells: TASK_COLUMNS.map(() => buildCell(notAttemptedCellOverrides)),
+    };
+  });
 
   return {
     assignmentId: 'assignment-1',
@@ -283,7 +285,7 @@ export function buildDistinctOrderHeatmapResult(): HeatmapResult {
  * @returns {string[]} Row keys in visual order.
  */
 export function getRenderedRowKeys(container: HTMLElement): string[] {
-  return [...container.querySelectorAll('tbody tr[data-row-key]')].map(
+  return [...container.querySelectorAll(':scope tbody tr[data-row-key]')].map(
     (row) => (row as HTMLElement).dataset.rowKey ?? ''
   );
 }

@@ -118,12 +118,12 @@ describe('PerStudentRowSchema', () => {
   it('rejects task-level averageContribution metadata on aggregate rows', async () => {
     const { PerStudentRowSchema } = await loadDataAnalysisZod();
 
-    expect(() =>
-      PerStudentRowSchema.parse({
+    expect(() => {
+      return PerStudentRowSchema.parse({
         ...validPerStudentRow,
         averageContribution: validAverageContribution,
-      })
-    ).toThrow();
+      });
+    }).toThrow();
   });
 });
 
@@ -167,13 +167,13 @@ describe('PerTaskRowSchema', () => {
   it('rejects task-level excluded metric states', async () => {
     const { PerTaskRowSchema } = await loadDataAnalysisZod();
 
-    expect(() =>
-      PerTaskRowSchema.parse({
+    expect(() => {
+      return PerTaskRowSchema.parse({
         ...validPerTaskRow,
         averageContribution: validAverageContribution,
         overall: excludedMetricResult,
-      })
-    ).toThrow();
+      });
+    }).toThrow();
   });
 });
 
@@ -268,8 +268,8 @@ describe('AveragingResultSchema', () => {
   it('rejects perStudentTaskMetrics when value is not an array', async () => {
     const { AveragingResultSchema } = await loadDataAnalysisZod();
 
-    expect(() =>
-      AveragingResultSchema.parse({
+    expect(() => {
+      return AveragingResultSchema.parse({
         classId: 'c-1',
         className: 'Test Class',
         perStudent: [validPerStudentRow],
@@ -277,8 +277,8 @@ describe('AveragingResultSchema', () => {
         perClass: validPerClassResult,
         appliedCriterionWeightings: validAppliedCriterionWeightings,
         perStudentTaskMetrics: 'not-an-array',
-      })
-    ).toThrow();
+      });
+    }).toThrow();
   });
 
   it('accepts perStudentTaskMetrics as an array of valid entries', async () => {
@@ -366,8 +366,8 @@ describe('PerStudentTaskMetricSchema', () => {
   it('rejects task-level excluded metric states', async () => {
     const { PerStudentTaskMetricSchema } = await loadDataAnalysisZod();
 
-    expect(() =>
-      PerStudentTaskMetricSchema.parse({
+    expect(() => {
+      return PerStudentTaskMetricSchema.parse({
         classId: 'c-1',
         studentId: 's-1',
         taskKey: 'dk_algebra::t_001',
@@ -376,15 +376,15 @@ describe('PerStudentTaskMetricSchema', () => {
         accuracy: computedMetricResult,
         spag: computedMetricResult,
         overall: excludedMetricResult,
-      })
-    ).toThrow();
+      });
+    }).toThrow();
   });
 
   it('rejects extra keys such as taskId (strict object)', async () => {
     const { PerStudentTaskMetricSchema } = await loadDataAnalysisZod();
 
-    expect(() =>
-      PerStudentTaskMetricSchema.parse({
+    expect(() => {
+      return PerStudentTaskMetricSchema.parse({
         classId: 'c-1',
         studentId: 's-1',
         taskKey: 'dk_algebra::t_001',
@@ -394,15 +394,15 @@ describe('PerStudentTaskMetricSchema', () => {
         spag: computedMetricResult,
         overall: computedMetricResult,
         taskId: 't_001',
-      })
-    ).toThrow();
+      });
+    }).toThrow();
   });
 
   it('rejects extra keys such as taskTitle (strict object)', async () => {
     const { PerStudentTaskMetricSchema } = await loadDataAnalysisZod();
 
-    expect(() =>
-      PerStudentTaskMetricSchema.parse({
+    expect(() => {
+      return PerStudentTaskMetricSchema.parse({
         classId: 'c-1',
         studentId: 's-1',
         taskKey: 'dk_algebra::t_001',
@@ -412,7 +412,7 @@ describe('PerStudentTaskMetricSchema', () => {
         spag: computedMetricResult,
         overall: computedMetricResult,
         taskTitle: 'A Task',
-      })
-    ).toThrow();
+      });
+    }).toThrow();
   });
 });

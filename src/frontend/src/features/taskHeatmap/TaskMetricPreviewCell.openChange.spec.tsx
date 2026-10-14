@@ -4,9 +4,11 @@ import { act, cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type * as AntdModule from 'antd';
 
-const popoverSeam = vi.hoisted(() => ({
-  onOpenChange: undefined as ((open: boolean) => void) | undefined,
-}));
+const popoverSeam = vi.hoisted(() => {
+  return {
+    onOpenChange: undefined as ((isOpen: boolean) => void) | undefined,
+  };
+});
 
 vi.mock('antd', async (importOriginal) => {
   const actual = await importOriginal<typeof AntdModule>();
@@ -19,7 +21,7 @@ vi.mock('antd', async (importOriginal) => {
     }: {
       children: ReactNode;
       content: ReactNode;
-      onOpenChange: (open: boolean) => void;
+      onOpenChange: (isOpen: boolean) => void;
     }) => {
       popoverSeam.onOpenChange = onOpenChange;
       return (

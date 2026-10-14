@@ -148,6 +148,27 @@ describe('ABLogger', () => {
       expect(result).not.toBe(obj); // should be a copy
     });
 
+    it('preserves nullish own properties while serialising error-shaped children', () => {
+      const input = {
+        absent: null,
+        pending: undefined,
+        problem: { name: 'CustomError', message: 'nested failure', stack: 'at test' },
+      };
+
+      const result = logger.serialiseArg(input);
+
+      expect(result).not.toBe(input);
+      expect(result).toEqual({
+        absent: null,
+        pending: undefined,
+        problem: { name: 'CustomError', message: 'nested failure', stack: 'at test' },
+      });
+      expect(console.error).not.toHaveBeenCalledWith(
+        'ABLogger.shallowSerialiseObject logging failure',
+        expect.anything()
+      );
+    });
+
     it('returns primitives as-is', () => {
       expect(logger.serialiseArg('hello')).toBe('hello');
       expect(logger.serialiseArg(42)).toBe(42);

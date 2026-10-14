@@ -22,16 +22,18 @@ const createYearGroupMock = vi.hoisted(() => vi.fn());
 const updateYearGroupMock = vi.hoisted(() => vi.fn());
 const getYearGroupsMock = vi.hoisted(() => vi.fn());
 
-vi.mock('../../services/referenceData/referenceDataService', () => ({
-  getCohorts: vi.fn(),
-  createCohort: vi.fn(),
-  updateCohort: vi.fn(),
-  deleteCohort: vi.fn(),
-  getYearGroups: getYearGroupsMock,
-  createYearGroup: createYearGroupMock,
-  updateYearGroup: updateYearGroupMock,
-  deleteYearGroup: vi.fn(),
-}));
+vi.mock('../../services/referenceData/referenceDataService', () => {
+  return {
+    getCohorts: vi.fn(),
+    createCohort: vi.fn(),
+    updateCohort: vi.fn(),
+    deleteCohort: vi.fn(),
+    getYearGroups: getYearGroupsMock,
+    createYearGroup: createYearGroupMock,
+    updateYearGroup: updateYearGroupMock,
+    deleteYearGroup: vi.fn(),
+  };
+});
 
 const onCloseMock = vi.fn();
 const yearGroupsLoadFailureCopy = 'Unable to load year groups right now.';
@@ -259,9 +261,11 @@ describe('ManageYearGroupsModal', () => {
       await within(dialog).findByRole('table', { name: /year groups/i });
 
       let releaseRefresh: (() => void) | undefined;
-      getYearGroupsMock.mockImplementationOnce(() => new Promise<YearGroup[]>((resolve) => {
-        releaseRefresh = () => resolve(seedYearGroups);
-      }));
+      getYearGroupsMock.mockImplementationOnce(() => {
+        return new Promise<YearGroup[]>((resolve) => {
+          releaseRefresh = () => resolve(seedYearGroups);
+        });
+      });
 
       try {
         await act(async () => {

@@ -154,7 +154,7 @@ describe('AssignmentController - runAssignmentPipeline throw-on-stale', () => {
     /**
      * Test 2: Stale template document → throws DefinitionStaleError
      * Asserts that when the template document has been modified since definition creation,
-     * runAssignmentPipeline throws DefinitionStaleError with templateStale: true.
+     * runAssignmentPipeline throws DefinitionStaleError with isTemplateStale: true.
      */
     it('throws DefinitionStaleError when template document is stale', () => {
       // Arrange: reference is not stale, template is stale
@@ -231,7 +231,7 @@ describe('AssignmentController - runAssignmentPipeline throw-on-stale', () => {
         );
         expect(error.definitionKey).toBe(TEST_DEFINITION_KEY);
         expect(error.referenceStale).toBe(true);
-        expect(error.templateStale).toBe(false);
+        expect(error.isTemplateStale).toBe(false);
         expect(error.referenceLastModified).toBe(REFERENCE_MODIFIED);
         // templateLastModified is null when reference is stale (lazy eval — avoids Drive API call)
         expect(error.templateLastModified).toBeNull();
@@ -261,7 +261,7 @@ describe('AssignmentController - runAssignmentPipeline throw-on-stale', () => {
         );
         expect(error.definitionKey).toBe(TEST_DEFINITION_KEY);
         expect(error.referenceStale).toBe(false);
-        expect(error.templateStale).toBe(true);
+        expect(error.isTemplateStale).toBe(true);
         expect(error.referenceLastModified).toBe(REFERENCE_MODIFIED);
         expect(error.templateLastModified).toBe(TEMPLATE_MODIFIED);
       }

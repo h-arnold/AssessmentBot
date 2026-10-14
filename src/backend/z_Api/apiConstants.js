@@ -11,6 +11,7 @@ const STALE_REQUEST_AGE_MS =
 const USER_REQUEST_STORE_KEY = 'AB_USER_REQUEST_STORE';
 
 const LOCK_TIMEOUT_MS = 1000;
+/* exported LOCK_WAIT_WARN_THRESHOLD_MS */
 const LOCK_WAIT_WARN_THRESHOLD_MS = 300;
 
 if (typeof module !== 'undefined' && module.exports) {

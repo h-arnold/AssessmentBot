@@ -56,7 +56,7 @@ async function mockTopicsCrudRuntime(page: Page) {
           run: createGoogleScriptRunApiHandlerMock((request, callbacks) => {
             const method = request?.method;
 
-            if (method === 'getAuthorisationStatus') {
+            if (method === 'hasScriptAuthorisation') {
               sendSuccess(callbacks.successHandler, true, 'req-auth-status');
               return;
             }

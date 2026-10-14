@@ -279,6 +279,19 @@ g.CacheManager = require('../src/backend/RequestHandlers/CacheManager.js').Cache
 // (`z_apiHandler.js`) calls AuthService.getInstance().checkAccess() before dispatch.
 g.AuthService = require('../src/backend/Utils/AuthService.js');
 
+// Dispatcher dependencies available as GAS globals before the dispatcher module loads.
+// Keep these in the test bootstrap rather than letting production code wire Node modules.
+const apiConstants = require('../src/backend/z_Api/apiConstants.js');
+Object.assign(g, apiConstants);
+Object.assign(g, require('../src/backend/z_Api/requestStore.js'));
+Object.assign(g, require('../src/backend/z_Api/apiConfig.js'));
+Object.assign(g, require('../src/backend/z_Api/assignmentAssessment.js'));
+Object.assign(g, require('../src/backend/z_Api/apiAuth.js'));
+Object.assign(g, require('../src/backend/z_Api/abclass/abclassMutations.js'));
+Object.assign(g, require('../src/backend/z_Api/abclass/abclassRead.js'));
+g.ApiRateLimitError = require('../src/backend/Utils/ErrorTypes/ApiRateLimitError.js');
+g.ApiDisabledError = require('../src/backend/Utils/ErrorTypes/ApiDisabledError.js');
+
 // Register the real AuthSettingsDomain delegate as a global (mirrors the GAS
 // concatenated runtime, where the top-level object in AuthSettingsDomain.js
 // becomes a script-scope global after AuthService.js evaluates). AuthService's

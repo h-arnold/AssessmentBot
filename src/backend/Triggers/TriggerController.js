@@ -34,13 +34,12 @@ class TriggerController {
           `Removed all triggers for '${functionName}'. Retrying trigger creation...`
         );
         return this.createTimeBasedTrigger(functionName);
-      } else {
-        const progressTracker = ProgressTracker.getInstance();
-        progressTracker.logAndThrowError(
-          `Error creating trigger for ${functionName}: ${error.message}`,
-          error
-        );
       }
+      const progressTracker = ProgressTracker.getInstance();
+      progressTracker.logAndThrowError(
+        `Error creating trigger for ${functionName}: ${error.message}`,
+        error
+      );
     }
   }
 
@@ -52,10 +51,9 @@ class TriggerController {
   removeTriggers(functionName) {
     const triggers = ScriptApp.getProjectTriggers();
     triggers.forEach((trigger) => {
-      if (trigger.getHandlerFunction() === functionName) {
-        ScriptApp.deleteTrigger(trigger);
-        ABLogger.getInstance().info(`Trigger for ${functionName} deleted.`);
-      }
+      if (trigger.getHandlerFunction() !== functionName) return;
+      ScriptApp.deleteTrigger(trigger);
+      ABLogger.getInstance().info(`Trigger for ${functionName} deleted.`);
     });
   }
 
@@ -67,10 +65,9 @@ class TriggerController {
   deleteTriggerById(triggerId) {
     const triggers = ScriptApp.getProjectTriggers();
     triggers.forEach((trigger) => {
-      if (trigger.getUniqueId() === triggerId) {
-        ScriptApp.deleteTrigger(trigger);
-        ABLogger.getInstance().info(`Trigger with ID ${triggerId} deleted.`);
-      }
+      if (trigger.getUniqueId() !== triggerId) return;
+      ScriptApp.deleteTrigger(trigger);
+      ABLogger.getInstance().info(`Trigger with ID ${triggerId} deleted.`);
     });
   }
 

@@ -26,35 +26,47 @@ import type { ClassFull } from '../../services/googleClassrooms/classDetail/clas
 // Mock setup
 // ===========================================================================
 
-const { mockRecentAssignmentsSection } = vi.hoisted(() => ({
-  mockRecentAssignmentsSection: vi.fn(function MockRecentAssignmentsSection() {
-    return createElement('div', { 'data-testid': 'recent-assignments-section' });
-  }),
-}));
+const { mockRecentAssignmentsSection } = vi.hoisted(() => {
+  return {
+    mockRecentAssignmentsSection: vi.fn(function MockRecentAssignmentsSection() {
+      return createElement('div', { 'data-testid': 'recent-assignments-section' });
+    }),
+  };
+});
 
-const { mockStudentAveragesTableCard } = vi.hoisted(() => ({
-  mockStudentAveragesTableCard: vi.fn(function MockStudentAveragesTableCard() {
-    return createElement('div', { 'data-testid': 'student-averages-table-card' });
-  }),
-}));
+const { mockStudentAveragesTableCard } = vi.hoisted(() => {
+  return {
+    mockStudentAveragesTableCard: vi.fn(function MockStudentAveragesTableCard() {
+      return createElement('div', { 'data-testid': 'student-averages-table-card' });
+    }),
+  };
+});
 
-const { mockTaskHeatmapPage } = vi.hoisted(() => ({
-  mockTaskHeatmapPage: vi.fn(function MockTaskHeatmapPage() {
-    return createElement('div', { 'data-testid': 'task-heatmap-page' });
-  }),
-}));
+const { mockTaskHeatmapPage } = vi.hoisted(() => {
+  return {
+    mockTaskHeatmapPage: vi.fn(function MockTaskHeatmapPage() {
+      return createElement('div', { 'data-testid': 'task-heatmap-page' });
+    }),
+  };
+});
 
-vi.mock('./RecentAssignmentsSection', () => ({
-  RecentAssignmentsSection: mockRecentAssignmentsSection,
-}));
+vi.mock('./RecentAssignmentsSection', () => {
+  return {
+    RecentAssignmentsSection: mockRecentAssignmentsSection,
+  };
+});
 
-vi.mock('./StudentAveragesTableCard', () => ({
-  StudentAveragesTableCard: mockStudentAveragesTableCard,
-}));
+vi.mock('./StudentAveragesTableCard', () => {
+  return {
+    StudentAveragesTableCard: mockStudentAveragesTableCard,
+  };
+});
 
-vi.mock('../taskHeatmap/TaskHeatmapPage', () => ({
-  TaskHeatmapPage: mockTaskHeatmapPage,
-}));
+vi.mock('../taskHeatmap/TaskHeatmapPage', () => {
+  return {
+    TaskHeatmapPage: mockTaskHeatmapPage,
+  };
+});
 
 // ===========================================================================
 // Fixture helpers
@@ -63,12 +75,9 @@ vi.mock('../taskHeatmap/TaskHeatmapPage', () => ({
 /**
  * Create a minimal `ClassPageAdapterResult` fixture for ready-state tests.
  *
- * @param {Partial<ClassPageAdapterResult>} [overrides] - Optional overrides.
- * @returns {ClassPageAdapterResult} A fixture with default empty arrays.
+ * @returns {ClassPageAdapterResult} The fixed ready-state fixture.
  */
-function createAdapterResult(
-  overrides?: Partial<ClassPageAdapterResult>
-): ClassPageAdapterResult {
+function createAdapterResult(): ClassPageAdapterResult {
   return {
     recentAssignments: [],
     studentAverages: [],
@@ -102,7 +111,6 @@ function createAdapterResult(
         totalDataPoints: 1,
       },
     },
-    ...overrides,
   };
 }
 

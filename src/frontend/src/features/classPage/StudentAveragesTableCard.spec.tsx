@@ -23,22 +23,28 @@ import {
 // Hoisted mock factories
 // ---------------------------------------------------------------------------
 
-const { mockBuildColumns, mockBuildViewModel } = vi.hoisted(() => ({
-  mockBuildColumns: vi.fn(),
-  mockBuildViewModel: vi.fn(),
-}));
+const { mockBuildColumns, mockBuildViewModel } = vi.hoisted(() => {
+  return {
+    mockBuildColumns: vi.fn(),
+    mockBuildViewModel: vi.fn(),
+  };
+});
 
 // ---------------------------------------------------------------------------
 // Mock internal dependencies so the component under test is isolated
 // ---------------------------------------------------------------------------
 
-vi.mock('./studentAveragesTableColumns', () => ({
-  buildStudentAveragesTableColumns: mockBuildColumns,
-}));
+vi.mock('./studentAveragesTableColumns', () => {
+  return {
+    buildStudentAveragesTableColumns: mockBuildColumns,
+  };
+});
 
-vi.mock('./classPageModel', () => ({
-  buildClassPageViewModel: mockBuildViewModel,
-}));
+vi.mock('./classPageModel', () => {
+  return {
+    buildClassPageViewModel: mockBuildViewModel,
+  };
+});
 
 // ---------------------------------------------------------------------------
 // Types
@@ -163,11 +169,13 @@ const COLUMN_TITLE_BY_KEY: Record<string, string> = {
  * @returns {MockColumn[]} An array of mock column definitions.
  */
 function buildMockColumns(): MockColumn[] {
-  return COLUMN_KEYS.map((key: string) => ({
-    key,
-    title: COLUMN_TITLE_BY_KEY[key] ?? key,
-    sorter: true,
-  }));
+  return COLUMN_KEYS.map((key: string) => {
+    return {
+      key,
+      title: COLUMN_TITLE_BY_KEY[key] ?? key,
+      sorter: true,
+    };
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -392,27 +400,31 @@ describe('StudentAveragesTableCard', () => {
       },
     });
     mockBuildViewModel.mockReturnValue(buildViewModel({ studentAverages: [excludedRow] }));
-    mockBuildColumns.mockImplementation((filters: { completeness: readonly string[] }) => [{
-      key: 'completeness',
-      title: 'Completeness',
-      filters: [{ text: 'Include Excluded', value: INCLUDE_EXCLUDED_KEY }],
-      filterDropdown: ({ setSelectedKeys, confirm }: Parameters<NonNullable<MockColumn['filterDropdown']>>[0]) => (
-        <div>
-          <label>
-            <input
-              type="checkbox"
-              aria-label="Include Excluded"
-              checked={filters.completeness.includes(INCLUDE_EXCLUDED_KEY)}
-              onChange={(event) => {
-                setSelectedKeys(event.target.checked ? [INCLUDE_EXCLUDED_KEY] : []);
-                confirm();
-              }}
-            />
-            Include Excluded
-          </label>
-        </div>
-      ),
-    }]);
+    mockBuildColumns.mockImplementation((filters: { completeness: readonly string[] }) => {
+      return [{
+        key: 'completeness',
+        title: 'Completeness',
+        filters: [{ text: 'Include Excluded', value: INCLUDE_EXCLUDED_KEY }],
+        filterDropdown: ({ setSelectedKeys, confirm }: Parameters<NonNullable<MockColumn['filterDropdown']>>[0]) => {
+          return (
+            <div>
+              <label>
+                <input
+                  type="checkbox"
+                  aria-label="Include Excluded"
+                  checked={filters.completeness.includes(INCLUDE_EXCLUDED_KEY)}
+                  onChange={(event) => {
+                    setSelectedKeys(event.target.checked ? [INCLUDE_EXCLUDED_KEY] : []);
+                    confirm();
+                  }}
+                />
+                Include Excluded
+              </label>
+            </div>
+          );
+        },
+      }];
+    });
     const { container } = renderCard({ adapterResult: { studentAverages: [excludedRow] } });
     const filterTrigger = container.querySelector('.ant-table-filter-trigger');
     expect(filterTrigger).not.toBeNull();

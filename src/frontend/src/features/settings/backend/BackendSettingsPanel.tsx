@@ -128,10 +128,12 @@ function mapBackendSettingsFieldErrorsToFormRecords(
     message: string;
   }>
 ): Array<{ name: [BackendSettingsFieldName]; errors: [string] }> {
-  return fieldErrors.map((fieldError) => ({
-    name: [fieldError.fieldName],
-    errors: [fieldError.message],
-  }));
+  return fieldErrors.map((fieldError) => {
+    return {
+      name: [fieldError.fieldName],
+      errors: [fieldError.message],
+    };
+  });
 }
 
 /**
@@ -230,44 +232,10 @@ export function BackendSettingsPanel() {
   const [form] = Form.useForm<BackendSettingsForm>();
 
   useEffect(() => {
-    if (backendSettingsFormValues !== null) {
-      form.setFieldsValue(backendSettingsFormValues);
-      clearBackendSettingsFieldErrors(form, backendSettingsFieldNames);
-    }
-  }, [backendSettingsFormValues, form]);
-
-  const handleFinish = async (): Promise<void> => {
-    const formValues = {
-      ...form.getFieldsValue(true),
-      hasApiKey,
-    } satisfies BackendSettingsForm;
-
-    const validationResult = BackendSettingsFormSchema.safeParse(formValues);
-    if (!validationResult.success) {
-      form.setFields(
-        mapBackendSettingsFieldErrorsToFormRecords(
-          validationResult.error.issues.flatMap((issue) => {
-            const [fieldName] = issue.path;
-
-            if (typeof fieldName !== 'string' || fieldName === 'hasApiKey') {
-              return [];
-            }
-
-            return [
-              {
-                fieldName: fieldName as BackendSettingsFieldName,
-                message: issue.message,
-              },
-            ];
-          })
-        )
-      );
-      return;
-    }
-
+    if (backendSettingsFormValues === null) return;
+    form.setFieldsValue(backendSettingsFormValues);
     clearBackendSettingsFieldErrors(form, backendSettingsFieldNames);
-    await saveBackendSettings(validationResult.data);
-  };
+  }, [backendSettingsFormValues, form]);
 
   if (loadError !== null) {
     return (
@@ -295,6 +263,39 @@ export function BackendSettingsPanel() {
     );
   }
 
+  const handleFinish = async (): Promise<void> => {
+    const formValues = {
+      ...form.getFieldsValue(true),
+      hasApiKey,
+    } satisfies BackendSettingsForm;
+
+    const validationResult = BackendSettingsFormSchema.safeParse(formValues);
+    if (!validationResult.success) {
+      const fieldErrors: Array<{ fieldName: BackendSettingsFieldName; message: string }> = [];
+
+      validationResult.error.issues.forEach((issue) => {
+        const [fieldName] = issue.path;
+
+        if (typeof fieldName !== 'string' || fieldName === 'hasApiKey') {
+          return;
+        }
+
+        fieldErrors.push({
+          fieldName: fieldName as BackendSettingsFieldName,
+          message: issue.message,
+        });
+      });
+
+      form.setFields(
+        mapBackendSettingsFieldErrorsToFormRecords(fieldErrors)
+      );
+      return;
+    }
+
+    clearBackendSettingsFieldErrors(form, backendSettingsFieldNames);
+    await saveBackendSettings(validationResult.data);
+  };
+
   return (
     <Card
       className="settings-tab-panel settings-tab-panel--backend"
@@ -313,19 +314,22 @@ export function BackendSettingsPanel() {
           scrollToFirstError={{ focus: true }}
         >
           <div style={{ display: 'flex', flexDirection: 'column', gap: APP_GAP_LG, width: '100%' }}>
-            {backendSettingsSectionOrder.map((section) => (
+            {backendSettingsSectionOrder.map((section) => {
+              return (
               <SettingsSectionCard key={section} title={section}>
                 {backendSettingsFieldDescriptors
                   .filter((fieldDescriptor) => fieldDescriptor.section === section)
-                  .map((fieldDescriptor) =>
-                    renderBackendSettingsField({
+                  .map((fieldDescriptor) => {
+                    return renderBackendSettingsField({
                       descriptor: fieldDescriptor,
                       form,
                       hasApiKey,
-                    })
+                    });
+                  }
                   )}
               </SettingsSectionCard>
-            ))}
+              );
+            })}
 
             <Form.Item>
               <Button

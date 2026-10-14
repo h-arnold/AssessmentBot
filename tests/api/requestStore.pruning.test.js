@@ -25,13 +25,13 @@ describe('Api/requestStore – pruneStaleEntries_', () => {
     const store = {
       'stale-req-1': {
         requestId: 'stale-req-1',
-        method: 'getAuthorisationStatus',
+        method: 'hasScriptAuthorisation',
         status: 'started',
         startedAtMs: staleTime,
       },
       'stale-req-2': {
         requestId: 'stale-req-2',
-        method: 'getAuthorisationStatus',
+        method: 'hasScriptAuthorisation',
         status: 'started',
         startedAtMs: staleTime - 5000,
       },
@@ -50,7 +50,7 @@ describe('Api/requestStore – pruneStaleEntries_', () => {
     const store = {
       'recent-req-1': {
         requestId: 'recent-req-1',
-        method: 'getAuthorisationStatus',
+        method: 'hasScriptAuthorisation',
         status: 'started',
         startedAtMs: recentTime,
       },
@@ -69,7 +69,7 @@ describe('Api/requestStore – pruneStaleEntries_', () => {
     const store = {
       'old-success-1': {
         requestId: 'old-success-1',
-        method: 'getAuthorisationStatus',
+        method: 'hasScriptAuthorisation',
         status: 'success',
         startedAtMs: veryOldTime,
         finishedAtMs: veryOldTime + 500,
@@ -89,7 +89,7 @@ describe('Api/requestStore – pruneStaleEntries_', () => {
     const store = {
       'old-error-1': {
         requestId: 'old-error-1',
-        method: 'getAuthorisationStatus',
+        method: 'hasScriptAuthorisation',
         status: 'error',
         startedAtMs: veryOldTime,
         finishedAtMs: veryOldTime + 500,
@@ -110,7 +110,7 @@ describe('Api/requestStore – pruneStaleEntries_', () => {
     const store = {
       'stale-req-mut': {
         requestId: 'stale-req-mut',
-        method: 'getAuthorisationStatus',
+        method: 'hasScriptAuthorisation',
         status: 'started',
         startedAtMs: staleTime,
       },
