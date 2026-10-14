@@ -17,11 +17,17 @@ import {
   baseCohorts,
   baseYearGroups,
   mockClassesCrudRuntime,
-  openClassesTab,
   padClassesCrudReadQueues,
   releaseClassesCrudSignal,
   type ClassesCrudRuntimeScenario,
 } from './classes-crud.shared';
+import {
+  classesTableAriaLabel,
+  buildDeferredMutationEntries,
+  buildMutationSuccessEntries,
+  clickModalConfirmAndDismiss,
+  openClassesManagementTab,
+} from './helpers/classes-crud-bulk-scaffold';
 
 // ---------------------------------------------------------------------------
 // Fixtures
@@ -89,81 +95,13 @@ const UPDATE_SIGNAL_PREFIX = 'update-row-';
 // Shared helpers
 // ---------------------------------------------------------------------------
 
-const classesTableAriaLabel = 'Classes table';
 const bulkCreateButtonLabel = 'Create ABClass';
 const bulkDeleteButtonLabel = 'Delete ABClass';
 const bulkSetCohortButtonLabel = 'Set cohort';
 const progressModalTitle = 'Bulk class update in progress';
 const THREE_ROWS = 3;
 const TWO_ROWS = 2;
-// Bounded retries for a modal confirm click swallowed by the antd v6 entrance
-// animation. The close is asynchronous, so we let Playwright auto-wait between
-// attempts rather than using a fixed sleep.
-const CONFIRM_CLICK_RETRY_ATTEMPTS = 3;
-
-/**
- * Builds deferred success entries for N rows.
- *
- * @param {number} count Number of rows.
- * @param {string} prefix Signal name prefix.
- * @returns {ReadonlyArray<object>} Deferred success entries with releaseSignal.
- */
-function buildDeferredMutationEntries(count: number, prefix: string) {
-  return Array.from({ length: count }, (_, index) => {
-    return {
-      kind: 'success' as const,
-      data: null,
-      releaseSignal: `${prefix}${index}`,
-    };
-  });
-}
-
-/**
- * Navigates to the Settings page and activates the Classes tab.
- *
- * @param {Page} page Playwright page under test.
- * @returns {Promise<void>} Resolves once the Classes tab is active and the table is visible.
- */
-async function openClassesManagementTab(page: Page): Promise<void> {
-  await openClassesTab(page);
-  await expect(page.getByRole('table', { name: classesTableAriaLabel })).toBeVisible();
-}
-
-/**
- * Clicks a modal confirm button and tolerates the antd v6 entrance-animation
- * click race.
- *
- * antd v6 `rc-dialog` mounts with an entrance transition during which a click
- * can be swallowed, leaving the modal open even though the button was enabled.
- * The modal close is asynchronous (the confirm triggers a mutation before the
- * dialog unmounts), so we must not re-click on a merely mid-close dialog.
- *
- * Strategy: wait for the confirm button to be enabled, click, then let Playwright
- * auto-wait for the dialog to dismiss. Only if it genuinely never closes (the
- * swallowed-click race) do we click again, bounded to three attempts.
- *
- * @param {ReturnType<Page['getByRole']>} dialog Dialog locator expected to dismiss.
- * @param {ReturnType<Page['getByRole']>} confirmButton Confirm button locator.
- * @returns {Promise<void>} Resolves once the dialog has dismissed.
- */
-async function clickModalConfirmAndDismiss(
-  dialog: ReturnType<Page['getByRole']>,
-  confirmButton: ReturnType<Page['getByRole']>
-): Promise<void> {
-  await expect(confirmButton).toBeEnabled();
-  for (let attempt = 0; attempt < CONFIRM_CLICK_RETRY_ATTEMPTS; attempt++) {
-    await confirmButton.click();
-    try {
-      await expect(dialog).toHaveCount(0);
-      return;
-    } catch {
-      // Dialog did not dismiss — either the click was swallowed by the entrance
-      // animation or the close is still settling. Loop will click once more.
-    }
-  }
-  await expect(dialog).toHaveCount(0);
-}
-
+const MUTATION_QUEUE_SAFETY_NET_LENGTH = 12;
 /**
  * Opens the progress modal for a bulk create action with deferred responses.
  *
@@ -365,12 +303,7 @@ test.describe('bulk progress modal', () => {
       getGoogleClassrooms: [{ kind: 'success', data: [existingGCR1, existingGCR2] }],
       deleteABClass: buildDeferredMutationEntries(TWO_ROWS, DELETE_SIGNAL_PREFIX),
       // Provide upsertABClass entries as a safety net (default queue for core tests)
-      upsertABClass: Array.from({ length: 12 }, () => {
-        return {
-          kind: 'success' as const,
-          data: null,
-        };
-      }),
+      upsertABClass: buildMutationSuccessEntries(MUTATION_QUEUE_SAFETY_NET_LENGTH),
     };
 
     await mockClassesCrudRuntime(page, padClassesCrudReadQueues(scenario));
@@ -422,12 +355,7 @@ test.describe('bulk progress modal', () => {
       getYearGroups: [{ kind: 'success', data: baseYearGroups }],
       getGoogleClassrooms: [{ kind: 'success', data: [existingGCR1, existingGCR2] }],
       updateABClass: buildDeferredMutationEntries(TWO_ROWS, UPDATE_SIGNAL_PREFIX),
-      upsertABClass: Array.from({ length: 12 }, () => {
-        return {
-          kind: 'success' as const,
-          data: null,
-        };
-      }),
+      upsertABClass: buildMutationSuccessEntries(MUTATION_QUEUE_SAFETY_NET_LENGTH),
     };
 
     await mockClassesCrudRuntime(page, padClassesCrudReadQueues(scenario));

@@ -1,91 +1,26 @@
-import { expect, type Page, test } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 import {
   baseCohorts,
   baseYearGroups,
   createSuccessfulClassesScenario,
   openClassesTabWithScenario,
 } from './classes-crud.shared';
-
-const yearGroupEligibleClassPartials = [
-  {
-    classId: 'gc-active',
-    className: 'Alpha Active',
-    cohortKey: 'cohort-2024',
-    courseLength: 30,
-    yearGroupKey: 'year-7',
-    classOwner: null,
-    teachers: [],
-    active: true,
-  },
-  {
-    classId: 'gc-inactive',
-    className: 'Beta Inactive',
-    cohortKey: 'cohort-2024',
-    courseLength: 20,
-    yearGroupKey: 'year-7',
-    classOwner: null,
-    teachers: [],
-    active: false,
-  },
-  {
-    classId: 'orphaned-legacy',
-    className: 'Legacy Orphaned',
-    cohortKey: 'cohort-2023',
-    courseLength: 25,
-    yearGroupKey: 'year-8',
-    classOwner: null,
-    teachers: [],
-    active: false,
-  },
-] as const;
-
-const yearGroupEligibleGoogleClassrooms = [
-  { classId: 'gc-active', className: 'Alpha Active' },
-  { classId: 'gc-inactive', className: 'Beta Inactive' },
-  { classId: 'gc-not-created', className: 'Gamma Not Created' },
-] as const;
+import {
+  bulkYearGroupEligibleClassPartials,
+  bulkMetadataGoogleClassrooms,
+  clearClassesCrudRowSelection,
+  getClassesCrudRow,
+  selectClassesCrudRow,
+} from './helpers/classes-crud-bulk-metadata';
 
 const yearGroupPartialsAfterPartialFailure = [
   {
-    ...yearGroupEligibleClassPartials[0],
+    ...bulkYearGroupEligibleClassPartials[0],
     yearGroupKey: 'year-8',
   },
-  yearGroupEligibleClassPartials[1],
-  yearGroupEligibleClassPartials[2],
+  bulkYearGroupEligibleClassPartials[1],
+  bulkYearGroupEligibleClassPartials[2],
 ] as const;
-
-/**
- * Returns the table row locator for one classes row.
- *
- * @param {Page} page Playwright page.
- * @param {string} rowKey Row identifier.
- * @returns {ReturnType<Page['locator']>} Row locator.
- */
-function getRow(page: Page, rowKey: string) {
-  return page.locator('tbody tr[data-row-key="' + rowKey + '"]');
-}
-
-/**
- * Selects a classes-table row by row key.
- *
- * @param {Page} page Playwright page.
- * @param {string} rowKey Row identifier.
- * @returns {Promise<void>} Completion signal.
- */
-async function selectRowByKey(page: Page, rowKey: string): Promise<void> {
-  await getRow(page, rowKey).getByRole('checkbox').check();
-}
-
-/**
- * Clears a selected classes-table row by row key.
- *
- * @param {Page} page Playwright page.
- * @param {string} rowKey Row identifier.
- * @returns {Promise<void>} Completion signal.
- */
-async function clearRowSelectionByKey(page: Page, rowKey: string): Promise<void> {
-  await getRow(page, rowKey).getByRole('checkbox').uncheck();
-}
 
 test.describe('Classes CRUD bulk year-group flow', () => {
   test('opens the bulk year-group modal from active, inactive, and mixed eligible existing selections', async ({
@@ -94,21 +29,21 @@ test.describe('Classes CRUD bulk year-group flow', () => {
     await openClassesTabWithScenario(
       page,
       createSuccessfulClassesScenario({
-        classPartials: yearGroupEligibleClassPartials,
+        classPartials: bulkYearGroupEligibleClassPartials,
         cohorts: baseCohorts,
         yearGroups: baseYearGroups,
-        googleClassrooms: yearGroupEligibleGoogleClassrooms,
+        googleClassrooms: bulkMetadataGoogleClassrooms,
       })
     );
 
-    await selectRowByKey(page, 'gc-active');
+    await selectClassesCrudRow(page, 'gc-active');
     await expect(page.getByRole('button', { name: 'Set year group' })).toBeEnabled();
 
-    await clearRowSelectionByKey(page, 'gc-active');
-    await selectRowByKey(page, 'gc-inactive');
+    await clearClassesCrudRowSelection(page, 'gc-active');
+    await selectClassesCrudRow(page, 'gc-inactive');
     await expect(page.getByRole('button', { name: 'Set year group' })).toBeEnabled();
 
-    await selectRowByKey(page, 'gc-active');
+    await selectClassesCrudRow(page, 'gc-active');
     await expect(page.getByRole('button', { name: 'Set year group' })).toBeEnabled();
 
     await page.getByRole('button', { name: 'Set year group' }).click();
@@ -125,20 +60,20 @@ test.describe('Classes CRUD bulk year-group flow', () => {
     await openClassesTabWithScenario(page, {
       hasScriptAuthorisation: [{ kind: 'success', data: true }],
       getABClassPartials: [
-        { kind: 'success', data: yearGroupEligibleClassPartials },
+        { kind: 'success', data: bulkYearGroupEligibleClassPartials },
         { kind: 'success', data: yearGroupPartialsAfterPartialFailure },
       ],
       getCohorts: [{ kind: 'success', data: baseCohorts }],
       getYearGroups: [{ kind: 'success', data: baseYearGroups }],
-      getGoogleClassrooms: [{ kind: 'success', data: yearGroupEligibleGoogleClassrooms }],
+      getGoogleClassrooms: [{ kind: 'success', data: bulkMetadataGoogleClassrooms }],
       updateABClass: [
         { kind: 'success', data: { ok: true } },
         { kind: 'failureEnvelope', message: 'Second update failed.' },
       ],
     });
 
-    await selectRowByKey(page, 'gc-active');
-    await selectRowByKey(page, 'gc-inactive');
+    await selectClassesCrudRow(page, 'gc-active');
+    await selectClassesCrudRow(page, 'gc-inactive');
     await page.getByRole('button', { name: 'Set year group' }).click();
     await page.getByRole('combobox', { name: 'Year group' }).click();
     await page.getByRole('option', { name: 'Year 8' }).click();
@@ -150,9 +85,9 @@ test.describe('Classes CRUD bulk year-group flow', () => {
     await expect(page.getByRole('dialog', { name: 'Set year group' })).toHaveCount(0);
     await expect(page.getByText('Some selected classes were not updated.')).toBeVisible();
     await expect(page.getByText(/selected classes could not be updated/i)).toBeVisible();
-    await expect(getRow(page, 'gc-active')).toContainText('Year 8');
-    await expect(getRow(page, 'gc-active').getByRole('checkbox')).not.toBeChecked();
-    await expect(getRow(page, 'gc-inactive').getByRole('checkbox')).toBeChecked();
+    await expect(getClassesCrudRow(page, 'gc-active')).toContainText('Year 8');
+    await expect(getClassesCrudRow(page, 'gc-active').getByRole('checkbox')).not.toBeChecked();
+    await expect(getClassesCrudRow(page, 'gc-inactive').getByRole('checkbox')).toBeChecked();
   });
 
   test('keeps the year-group modal open with inline feedback when all selected updates fail', async ({
@@ -160,18 +95,18 @@ test.describe('Classes CRUD bulk year-group flow', () => {
   }) => {
     await openClassesTabWithScenario(page, {
       hasScriptAuthorisation: [{ kind: 'success', data: true }],
-      getABClassPartials: [{ kind: 'success', data: yearGroupEligibleClassPartials }],
+      getABClassPartials: [{ kind: 'success', data: bulkYearGroupEligibleClassPartials }],
       getCohorts: [{ kind: 'success', data: baseCohorts }],
       getYearGroups: [{ kind: 'success', data: baseYearGroups }],
-      getGoogleClassrooms: [{ kind: 'success', data: yearGroupEligibleGoogleClassrooms }],
+      getGoogleClassrooms: [{ kind: 'success', data: bulkMetadataGoogleClassrooms }],
       updateABClass: [
         { kind: 'failureEnvelope', message: 'First update failed.' },
         { kind: 'failureEnvelope', message: 'Second update failed.' },
       ],
     });
 
-    await selectRowByKey(page, 'gc-active');
-    await selectRowByKey(page, 'gc-inactive');
+    await selectClassesCrudRow(page, 'gc-active');
+    await selectClassesCrudRow(page, 'gc-inactive');
     await page.getByRole('button', { name: 'Set year group' }).click();
     await page.getByRole('combobox', { name: 'Year group' }).click();
     await page.getByRole('option', { name: 'Year 8' }).click();
@@ -195,18 +130,18 @@ test.describe('Classes CRUD bulk year-group flow', () => {
     await openClassesTabWithScenario(
       page,
       createSuccessfulClassesScenario({
-        classPartials: yearGroupEligibleClassPartials,
+        classPartials: bulkYearGroupEligibleClassPartials,
         cohorts: baseCohorts,
         yearGroups: baseYearGroups,
-        googleClassrooms: yearGroupEligibleGoogleClassrooms,
+        googleClassrooms: bulkMetadataGoogleClassrooms,
       })
     );
 
-    await selectRowByKey(page, 'gc-not-created');
+    await selectClassesCrudRow(page, 'gc-not-created');
     await expect(page.getByRole('button', { name: 'Set year group' })).toBeDisabled();
 
-    await clearRowSelectionByKey(page, 'gc-not-created');
-    await selectRowByKey(page, 'orphaned-legacy');
+    await clearClassesCrudRowSelection(page, 'gc-not-created');
+    await selectClassesCrudRow(page, 'orphaned-legacy');
     await expect(page.getByRole('button', { name: 'Set year group' })).toBeDisabled();
   });
 });

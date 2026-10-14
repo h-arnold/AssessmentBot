@@ -11,31 +11,23 @@
  * Navigation: the Classes management panel lives under Settings > Classes tab (WS3 architecture).
  */
 
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test } from '@playwright/test';
+import { mockBulkCoreRuntime } from './helpers/classes-crud-bulk-core-scenario';
 import {
-  baseCohorts,
-  baseYearGroups,
-  mockClassesCrudRuntime,
-  openClassesTab,
-  strictModeSafeReadQueue,
-  type ClassesCrudRuntimeScenario,
-} from './classes-crud.shared';
+  classesTableAriaLabel,
+  clickModalConfirmAndDismiss,
+  openClassesManagementTab,
+} from './helpers/classes-crud-bulk-scaffold';
 
 // ---------------------------------------------------------------------------
 // Label constants (WS3 button labels)
 // ---------------------------------------------------------------------------
-const classesTableAriaLabel = 'Classes table';
 const bulkCreateButtonLabel = 'Create ABClass';
 const bulkDeleteButtonLabel = 'Delete ABClass';
 const bulkActivateButtonLabel = 'Set active';
 const bulkDeactivateButtonLabel = 'Set inactive';
 const TWO_DATA_ROWS_PLUS_HEADER = 3;
 const ONE_DATA_ROW_PLUS_HEADER = 2;
-const DEFAULT_MUTATION_QUEUE_LENGTH = 12;
-// Bounded retries for a modal confirm click swallowed by the antd v6 entrance
-// animation. The close is asynchronous, so we let Playwright auto-wait between
-// attempts rather than using a fixed sleep.
-const CONFIRM_CLICK_RETRY_ATTEMPTS = 3;
 
 // ---------------------------------------------------------------------------
 // WS3-format fixtures (cohortKey/yearGroupKey string fields)
@@ -82,151 +74,6 @@ const secondActiveClassPartial = {
   classId: 'gcr-class-active-002',
   className: 'Year 7 Art',
 };
-
-// ---------------------------------------------------------------------------
-// Shared harness adapter
-// ---------------------------------------------------------------------------
-
-type BulkCoreMutationScenario = Readonly<
-  | {
-      kind: 'success';
-      data?: unknown;
-    }
-  | {
-      kind: 'transportFailure';
-      message: string;
-    }
-  | {
-      kind: 'failureEnvelope';
-      code?: string;
-      message: string;
-    }
->;
-
-type BulkCoreScenario = Readonly<{
-  /** Google Classrooms to return for all getGoogleClassrooms calls. */
-  googleClassrooms: readonly unknown[];
-  /** Initial class partials. */
-  classPartials: readonly unknown[];
-  /** Cohorts returned for getCohorts. */
-  cohorts?: readonly unknown[];
-  /** Year groups returned for getYearGroups. */
-  yearGroups?: readonly unknown[];
-  /**
-   * Optional second class partials response, served on the second
-   * getABClassPartials call (e.g. after a mutation + refetch).
-   */
-  classPartialsAfterMutation?: readonly unknown[];
-  /** Optional queued delete responses. Defaults to success when omitted. */
-  deleteABClass?: readonly BulkCoreMutationScenario[];
-  /** Optional queued update responses. Defaults to success when omitted. */
-  updateABClass?: readonly BulkCoreMutationScenario[];
-  /** Optional queued upsert responses. Defaults to success when omitted. */
-  upsertABClass?: readonly BulkCoreMutationScenario[];
-}>;
-
-/**
- * Builds a padded queue of successful mutation responses.
- *
- * @returns {ReadonlyArray<BulkCoreMutationScenario>} Default success queue.
- */
-function buildDefaultMutationQueue(): ReadonlyArray<BulkCoreMutationScenario> {
-  return Array.from({ length: DEFAULT_MUTATION_QUEUE_LENGTH }, () => {
-    return {
-      kind: 'success',
-      data: { ok: true },
-    };
-  });
-}
-
-/**
- * Maps the bulk-core shorthand scenario onto the shared classes CRUD harness scenario.
- *
- * @param {BulkCoreScenario} scenario Bulk-core shorthand scenario.
- * @returns {ClassesCrudRuntimeScenario} Shared harness scenario.
- */
-function toClassesCrudScenario(scenario: BulkCoreScenario): ClassesCrudRuntimeScenario {
-  const classPartialsQueue: ClassesCrudRuntimeScenario['getABClassPartials'] = [
-    { kind: 'success', data: scenario.classPartials },
-    ...(scenario.classPartialsAfterMutation === undefined
-      ? []
-      : [{ kind: 'success' as const, data: scenario.classPartialsAfterMutation }]),
-  ];
-
-  return {
-    hasScriptAuthorisation: strictModeSafeReadQueue([{ kind: 'success', data: true }]),
-    getABClassPartials: strictModeSafeReadQueue(classPartialsQueue),
-    getCohorts: strictModeSafeReadQueue([
-      { kind: 'success', data: scenario.cohorts ?? baseCohorts },
-    ]),
-    getYearGroups: strictModeSafeReadQueue([
-      { kind: 'success', data: scenario.yearGroups ?? baseYearGroups },
-    ]),
-    getGoogleClassrooms: strictModeSafeReadQueue([
-      { kind: 'success', data: scenario.googleClassrooms },
-    ]),
-    deleteABClass: scenario.deleteABClass ?? buildDefaultMutationQueue(),
-    updateABClass: scenario.updateABClass ?? buildDefaultMutationQueue(),
-    upsertABClass: scenario.upsertABClass ?? buildDefaultMutationQueue(),
-  };
-}
-
-/**
- * Installs a complete `google.script.run` scenario using the shared classes CRUD harness.
- *
- * @param {Page} page Playwright page under test.
- * @param {BulkCoreScenario} scenario API scenario.
- * @returns {Promise<void>} Resolves when the init script is installed.
- */
-async function mockBulkCoreRuntime(page: Page, scenario: BulkCoreScenario): Promise<void> {
-  await mockClassesCrudRuntime(page, toClassesCrudScenario(scenario));
-}
-
-/**
- * Navigates to the Settings page and activates the Classes tab.
- *
- * @param {Page} page Playwright page under test.
- * @returns {Promise<void>} Resolves once the Classes tab is active and the table is visible.
- */
-async function openClassesManagementTab(page: Page): Promise<void> {
-  await openClassesTab(page);
-  await expect(page.getByRole('table', { name: classesTableAriaLabel })).toBeVisible();
-}
-
-/**
- * Clicks a modal confirm button and tolerates the antd v6 entrance-animation
- * click race.
- *
- * antd v6 `rc-dialog` mounts with an entrance transition during which a click
- * can be swallowed, leaving the modal open even though the button was enabled.
- * The modal close is asynchronous (the confirm triggers a mutation before the
- * dialog unmounts), so we must not re-click on a merely mid-close dialog.
- *
- * Strategy: wait for the confirm button to be enabled, click, then let Playwright
- * auto-wait for the dialog to dismiss. Only if it genuinely never closes (the
- * swallowed-click race) do we click again, bounded to three attempts.
- *
- * @param {ReturnType<Page['getByRole']>} dialog Dialog locator expected to dismiss.
- * @param {ReturnType<Page['getByRole']>} confirmButton Confirm button locator.
- * @returns {Promise<void>} Resolves once the dialog has dismissed.
- */
-async function clickModalConfirmAndDismiss(
-  dialog: ReturnType<Page['getByRole']>,
-  confirmButton: ReturnType<Page['getByRole']>
-): Promise<void> {
-  await expect(confirmButton).toBeEnabled();
-  for (let attempt = 0; attempt < CONFIRM_CLICK_RETRY_ATTEMPTS; attempt++) {
-    await confirmButton.click();
-    try {
-      await expect(dialog).toHaveCount(0);
-      return;
-    } catch {
-      // Dialog did not dismiss — either the click was swallowed by the entrance
-      // animation or the close is still settling. Loop will click once more.
-    }
-  }
-  await expect(dialog).toHaveCount(0);
-}
 
 // ---------------------------------------------------------------------------
 // Tests

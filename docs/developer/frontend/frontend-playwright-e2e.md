@@ -58,6 +58,8 @@ npm run test:frontend:e2e
 - E2E tests live in `src/frontend/e2e-tests/**/*.spec.ts`
 - Playwright config: `src/frontend/playwright.config.ts`
 - Shared E2E runtime mocks: `src/frontend/e2e-tests/shared/endToEndRuntimeMocks.ts`
+- Runtime mock response/scenario types: `src/frontend/e2e-tests/shared/runtimeMockTypes.ts`
+- Runtime scenario fixtures and factories: `src/frontend/e2e-tests/shared/runtimeMockScenarios.ts`
 - Feature-specific E2E helpers: `src/frontend/e2e-tests/helpers/**`
 - Vite dev server is used as the web server (configured in `playwright.config.ts`)
 
@@ -131,9 +133,9 @@ await page.goto('/');
 
 When adding new backend methods to the mock system, you must:
 
-1. Add the method name to the `RuntimeScenario` type
-2. Add it to `allMethods` inside `installRuntimeMock`
-3. Create scenario factory helpers for the new method's response queues
+1. Add the method name to `RuntimeScenario` in `shared/runtimeMockTypes.ts`
+2. Add it to `allMethods` inside `installRuntimeMock` in `shared/endToEndRuntimeMocks.ts`
+3. Create scenario factory helpers for the new method's response queues in `shared/runtimeMockScenarios.ts`
 
 ### Scenario Factory Pattern
 
@@ -155,8 +157,11 @@ const errorScenario = createAssessTaskScenario({
 });
 ```
 
-Factories keep test files concise and centralise fixture maintenance. When adding a new
-backend method, extend the relevant factory to include a default queue.
+Factories keep test files concise and centralise fixture maintenance. Scenario types and
+factory implementations are owned by `shared/runtimeMockTypes.ts` and
+`shared/runtimeMockScenarios.ts`; `shared/endToEndRuntimeMocks.ts` remains the installation
+module and compatibility facade. When adding a new backend method, extend the relevant factory
+to include a default queue.
 
 ### Tracking Backend Calls
 
