@@ -189,6 +189,12 @@ describe('tool runner command construction and bounded scheduling', () => {
         project: TSC_PROJECT_PATH,
       },
     });
+    const aggregateTscCheck = createCheckFixture({
+      id: 'typescript-compile-check',
+      tool: 'tsc',
+      cwd: '.',
+      run: { kind: 'npm-script', script: 'typecheck:all' },
+    });
 
     const eslintInvocation = buildRunnerInvocation({
       repoRoot: REPO_ROOT,
@@ -255,6 +261,17 @@ describe('tool runner command construction and bounded scheduling', () => {
       '--pretty',
       'false',
     ]);
+
+    const aggregateInvocation = buildRunnerInvocation({
+      repoRoot: REPO_ROOT,
+      check: aggregateTscCheck,
+      rawArtefactPath: rawArtefactPathFor(BASELINE_ARTEFACT_ROOT, aggregateTscCheck.id, '.txt'),
+    });
+    expect(aggregateInvocation).toMatchObject({
+      executable: 'npm',
+      args: ['run', 'typecheck:all'],
+      rawArtefactExtension: '.txt',
+    });
   });
 
   it('resolves command-facing output and project paths from repo root for non-root cwd checks', async () => {
@@ -453,18 +470,18 @@ describe('tool runner command construction and bounded scheduling', () => {
       })
     ).toThrow('must use run.kind=npm-script');
 
-    expect(() =>
+    expect(
       buildRunnerInvocation({
         repoRoot: REPO_ROOT,
-        rawArtefactPath: rawArtefactPathFor(BASELINE_ARTEFACT_ROOT, 'tsc-invalid', '.txt'),
+        rawArtefactPath: rawArtefactPathFor(BASELINE_ARTEFACT_ROOT, 'tsc-aggregate', '.txt'),
         check: createCheckFixture({
-          id: 'tsc-invalid',
+          id: 'tsc-aggregate',
           tool: 'tsc',
           cwd: '.',
-          run: { kind: 'npm-script', script: 'lint:builder' },
+          run: { kind: 'npm-script', script: 'typecheck:all' },
         }),
-      })
-    ).toThrow('must use run.kind=tsc');
+      }).args
+    ).toEqual(['run', 'typecheck:all']);
   });
 
   it('returns empty results for empty check sets and stringifies non-Error failures', async () => {

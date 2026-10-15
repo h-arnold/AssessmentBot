@@ -1,6 +1,6 @@
 import type { Page } from '@playwright/test';
-import type { ClassPartial } from '../../src/services/classPartials.zod';
-import type { GoogleClassroom } from '../../src/services/googleClassrooms.zod';
+import type { ClassPartial } from '@/services/googleClassrooms/classPartials.zod';
+import type { GoogleClassroom } from '@/services/googleClassrooms/googleClassrooms.zod';
 
 /** Shared Google Classroom rows used by the bulk-metadata eligibility journeys. */
 export const bulkMetadataGoogleClassrooms: readonly GoogleClassroom[] = [

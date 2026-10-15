@@ -1,9 +1,13 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
 import { describe, expect, it } from 'vitest';
 
 import type { RegressionConfigInput } from './validate-regression-config.zod.js';
 import { validateRegressionConfig } from './validate-regression-config.js';
 
-const REPO_ROOT = '/home/developer/AssessmentBot';
+const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../../..');
 const EXPECTED_CHECK_COUNT = 2;
 
 const PACKAGE_JSON_SCRIPTS_BY_DIRECTORY: Record<string, Record<string, string>> = {
@@ -41,6 +45,81 @@ function createValidConfig(): RegressionConfigInput {
 }
 
 describe('validateRegressionConfig', () => {
+  it('validates the committed regression config against the real root npm scripts', () => {
+    const repoRoot = REPO_ROOT;
+    const rawConfig: unknown = JSON.parse(
+      fs.readFileSync(path.join(repoRoot, '.ts-regression-checker/regression.config.json'), 'utf8')
+    );
+    const packageJson = JSON.parse(
+      fs.readFileSync(path.join(repoRoot, 'package.json'), 'utf8')
+    ) as {
+      scripts: Record<string, string>;
+    };
+    const frontendPackageJson = JSON.parse(
+      fs.readFileSync(path.join(repoRoot, 'src/frontend/package.json'), 'utf8')
+    ) as { scripts: Record<string, string> };
+
+    const result = validateRegressionConfig({
+      rawConfig,
+      repoRoot,
+      packageJsonScriptsByDirectory: {
+        '.': packageJson.scripts,
+        'src/frontend': frontendPackageJson.scripts,
+      },
+      logicalCpuCount: 8,
+    });
+
+    expect(result.checks).toContainEqual(
+      expect.objectContaining({
+        id: 'typescript-compile-check',
+        tool: 'tsc',
+        run: { kind: 'npm-script', script: 'typecheck:all' },
+      })
+    );
+  });
+
+  it('allows only the named aggregate for npm-script tsc and retains mutation and chain safety', () => {
+    const configForScript = (script: string) => ({
+      ...createValidConfig(),
+      checks: [
+        { id: 'aggregate-check', tool: 'tsc', cwd: '.', run: { kind: 'npm-script', script } },
+      ],
+    });
+    const options = {
+      repoRoot: REPO_ROOT,
+      packageJsonScriptsByDirectory: {
+        '.': {
+          'typecheck:all': 'npm run builder:compile && node typescript/bin/tsc -p tsconfig.json',
+          'builder:compile': 'node typescript/bin/tsc -p scripts/builder/tsconfig.json',
+          'chained:compile': 'npm run typecheck:all && npm run builder:compile',
+          'mutating:compile': 'tsc -p tsconfig.json --update',
+        },
+      },
+      logicalCpuCount: 8,
+    };
+
+    expect(
+      validateRegressionConfig({ rawConfig: configForScript('typecheck:all'), ...options }).checks
+    ).toHaveLength(1);
+    expect(() =>
+      validateRegressionConfig({
+        rawConfig: configForScript('typecheck:all'),
+        ...options,
+        packageJsonScriptsByDirectory: {
+          '.': {
+            ...options.packageJsonScriptsByDirectory['.'],
+            'typecheck:all': 'npm run builder:compile && tsc -p tsconfig.json --update',
+          },
+        },
+      })
+    ).toThrow(/mutating/i);
+    for (const script of ['builder:compile', 'chained:compile', 'mutating:compile']) {
+      expect(() =>
+        validateRegressionConfig({ rawConfig: configForScript(script), ...options })
+      ).toThrow();
+    }
+  });
+
   it('rejects mutating npm-script commands through the shared safety helper', () => {
     expect(() =>
       validateRegressionConfig({

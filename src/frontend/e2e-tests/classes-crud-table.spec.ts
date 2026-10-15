@@ -6,7 +6,7 @@ import {
   matchedClassPartials,
   openClassesTabWithScenario,
 } from './classes-crud.shared';
-import type { GoogleClassroom } from '../src/services/googleClassrooms.zod';
+import type { GoogleClassroom } from '@/services/googleClassrooms/googleClassrooms.zod';
 
 const rowCountForAllStatuses = 4;
 const extendedGoogleClassrooms: GoogleClassroom[] = [
@@ -42,10 +42,30 @@ test.describe('Classes CRUD table interactions', () => {
     });
 
     await expect(page.getByRole('table', { name: 'Classes table' })).toBeVisible();
-    await expect(page.locator('tbody td').filter({ hasText: /^active$/ }).first()).toBeVisible();
-    await expect(page.locator('tbody td').filter({ hasText: /^inactive$/ }).first()).toBeVisible();
-    await expect(page.locator('tbody td').filter({ hasText: /^notCreated$/ }).first()).toBeVisible();
-    await expect(page.locator('tbody td').filter({ hasText: /^orphaned$/ }).first()).toBeVisible();
+    await expect(
+      page
+        .locator('tbody td')
+        .filter({ hasText: /^active$/ })
+        .first()
+    ).toBeVisible();
+    await expect(
+      page
+        .locator('tbody td')
+        .filter({ hasText: /^inactive$/ })
+        .first()
+    ).toBeVisible();
+    await expect(
+      page
+        .locator('tbody td')
+        .filter({ hasText: /^notCreated$/ })
+        .first()
+    ).toBeVisible();
+    await expect(
+      page
+        .locator('tbody td')
+        .filter({ hasText: /^orphaned$/ })
+        .first()
+    ).toBeVisible();
     await expect(page.locator('tbody tr[data-row-key]')).toHaveCount(rowCountForAllStatuses);
   });
 

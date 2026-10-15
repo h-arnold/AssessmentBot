@@ -1,7 +1,7 @@
 import { expect, type Page } from '@playwright/test';
-import type { ClassPartial } from '../src/services/classPartials.zod';
-import type { Cohort, YearGroup } from '../src/services/referenceData.zod';
-import type { GoogleClassroom } from '../src/services/googleClassrooms.zod';
+import type { ClassPartial } from '@/services/googleClassrooms/classPartials.zod';
+import type { Cohort, YearGroup } from '@/services/referenceData/referenceData.zod';
+import type { GoogleClassroom } from '@/services/googleClassrooms/googleClassrooms.zod';
 import { googleScriptRunApiHandlerFactorySource } from '../src/test/googleScriptRunHarness';
 
 type ClassesCrudApiResponseScenario = Readonly<

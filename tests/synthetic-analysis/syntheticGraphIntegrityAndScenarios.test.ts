@@ -4,7 +4,6 @@ import { generateSyntheticAnalysisGraph } from '../../scripts/synthetic-test-dat
 import {
   ClassFullSchema,
   PartialAssessmentScoreSchema,
-  type AssignmentPartial,
   type ClassFull,
   type PartialAssessmentEntry,
   type StudentSubmissionItemPartial,

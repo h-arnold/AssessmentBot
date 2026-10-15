@@ -299,10 +299,10 @@ function getField(page: Page, label: string) {
 async function releaseBackendSettingsSignal(page: Page, signal: string) {
   await page.evaluate((queuedSignal) => {
     (
-      globalThis as {
-        __releaseBackendSettingsSignal: (signalName: string) => void;
+      globalThis as typeof globalThis & {
+        __releaseBackendSettingsSignal?: (signalName: string) => void;
       }
-    ).__releaseBackendSettingsSignal(queuedSignal);
+    ).__releaseBackendSettingsSignal?.(queuedSignal);
   }, signal);
 }
 
@@ -353,7 +353,11 @@ test.describe('backend settings journey', () => {
     await expect(page.getByRole('button', { name: saveButtonLabel })).toHaveCount(0);
 
     await page.evaluate((signal) => {
-      globalThis.__releaseBackendSettingsSignal(signal);
+      (
+        globalThis as typeof globalThis & {
+          __releaseBackendSettingsSignal?: (signalName: string) => void;
+        }
+      ).__releaseBackendSettingsSignal?.(signal);
     }, backendSettingsLoadReleaseSignal);
 
     await expect(page.getByRole('region', { name: backendSettingsPanelLabel })).toBeVisible();

@@ -59,9 +59,9 @@ if [ -n "$LINT_FILES" ]; then
 	fi
 fi
 
-# TypeScript build check for builder (catches type errors early)
-echo "Running TypeScript build check..."
-npm run builder:compile || exit 1
+# TypeScript build check for every project (catches type errors early)
+echo "Running TypeScript checks..."
+npm run typecheck:all || exit 1
 
 if [ -n "$LINT_FILES" ]; then
 	# Stage ESLint fixes so the committed files are the files that were checked.

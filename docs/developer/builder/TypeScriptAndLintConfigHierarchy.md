@@ -39,12 +39,43 @@ This project uses a shared configuration tree so TypeScript and linting standard
 - `src/frontend/tsconfig.node.json`
   - Extends `../../tsconfig.base.json`.
   - Adds frontend tooling specifics only: include for `vite.config.ts`, build info path.
+- `src/frontend/tsconfig.e2e.json`
+  - Extends `../../tsconfig.base.json`.
+  - Adds E2E specifics only: `playwright/test` types, `e2e-tests` include, and the frontend path aliases.
 - `scripts/builder/tsconfig.json`
   - Extends `../../tsconfig.base.json`.
   - Adds builder specifics only: `rootDir`, `outDir`, JSON module resolution, include paths.
+  - Maps `#builder/*` to builder source for compilation; `scripts/builder/package.json` maps the same package import to emitted `dist/*` for Node runtime execution, and the builder Vitest config resolves it to source during tests.
+- `scripts/builder/tsconfig.vitest.json`
+  - Extends `../../tsconfig.base.json`.
+  - Type-checks the builder Vitest config (`vitest.config.ts`) under NodeNext resolution; `noEmit`.
+- `scripts/synthetic-test-data/tsconfig.json`
+  - Extends `../../tsconfig.base.json`.
+  - Type-checks the synthetic TypeScript suites (`tests/synthetic-analysis/**/*.ts`, `tests/synthetic-analysis-stress/**/*.ts`) and includes the synthetic generator JavaScript (`scripts/synthetic-test-data/**/*.js`, via `allowJs` with `checkJs: false`); `noEmit`.
 - `.opencode/tsconfig.json`
   - Extends `../tsconfig.base.json`.
   - Lint-only project (`noEmit`) backing the type-aware ESLint rules for the OpenCode plugin tree (`.opencode/plugins/**/*.ts`).
+
+### 3) Frontend module-resolution aliases
+
+Frontend app code and tests resolve two configured aliases:
+
+| Alias          | Resolves to                                 | Used by                      |
+| -------------- | ------------------------------------------- | ---------------------------- |
+| `@/*`          | `src/frontend/src/*`                        | app source, specs, E2E tests |
+| `@synthetic/*` | `tests/__mocks__/data/synthetic-analysis/*` | specs and E2E helpers        |
+
+The mapping is declared explicitly in three places that must stay in step:
+
+- `src/frontend/tsconfig.app.json` (`compilerOptions.paths`) — app and Vitest spec compilation.
+- `src/frontend/tsconfig.e2e.json` (`compilerOptions.paths`) — E2E compilation.
+- `src/frontend/vite.config.ts` (`resolve.alias`, built with `fileURLToPath(new URL(...))`) — runtime resolution for the Vite dev server and Vitest.
+
+`@synthetic/*` resolves outside the frontend package (the repository-root `tests/` tree), so Vite's `server.fs.allow: ['../..']` also permits `?raw` reads of those fixtures from specs.
+
+`playwright.config.ts` sets `tsconfig: './tsconfig.e2e.json'`, so Playwright compiles `e2e-tests` under the E2E-specific options above — the `playwright/test` types and this alias map — rather than the app config.
+
+The alias convention for choosing between relative and alias imports is defined in the root `AGENTS.md` (Prime Directives → Coding Principles). Backend tests import backend source through the root package import `#backend/*`. The root package also declares `#synthetic/*` for the committed synthetic fixture corpus (`tests/__mocks__/data/synthetic-analysis/*`); it is available to Node-side backend tests but has no consumer yet. Production backend GAS scripts remain module-free: their files are concatenated, so these Node package aliases apply to tests only.
 
 ## ESLint hierarchy
 
@@ -183,15 +214,42 @@ Four post-55 Unicorn disables are implemented after independent research and con
 
 These suppress diagnostics only: no source, contract or runtime path changed. The configuration-only review (`PASS` on scope) verified the effective settings with `ESLint.calculateConfigForFile`; whole-upgrade verification remains `FAIL` on inherited gates. The `apiService.ts` `unicorn/no-array-front-mutation` exception above is retained and stays file-scoped. The decision record is `LINT_UPGRADE_REVIEW.md`.
 
-## Running lint checks
+## Running lint and type checks
 
 The canonical `typescript` dependency is TypeScript 6.0.3 for type-aware ESLint parsing and
 services; it remains below TypeScript 7 because the current typescript-eslint release does not
 support TypeScript 7. Project compilation uses the separately installed TypeScript 7 alias
 (`@typescript/native`) explicitly, so npm's `.bin/tsc` selection cannot change the compiler.
 The root builder compile script and frontend build script invoke
-`node node_modules/@typescript/native/bin/tsc` (from their respective package roots). For a
-manual frontend project type-check, run:
+`node node_modules/@typescript/native/bin/tsc` (from their respective package roots).
+
+### Aggregate type-check gate
+
+`npm run typecheck:all` is the canonical full type gate. It type-checks every TypeScript project in
+order and stops at the first failure:
+
+| Project                       | Config                                                                              |
+| ----------------------------- | ----------------------------------------------------------------------------------- |
+| Builder source                | `scripts/builder/tsconfig.json` (via `npm run builder:compile`)                     |
+| Builder Vitest tooling        | `scripts/builder/tsconfig.vitest.json`                                              |
+| Frontend app and Node tooling | `src/frontend/tsconfig.json` (references `tsconfig.app.json`, `tsconfig.node.json`) |
+| Frontend E2E                  | `src/frontend/tsconfig.e2e.json`                                                    |
+| OpenCode plugins              | `.opencode/tsconfig.json`                                                           |
+| Synthetic test TypeScript     | `scripts/synthetic-test-data/tsconfig.json`                                         |
+
+`typecheck:all` is the type gate for:
+
+- CI — the `Check all TypeScript projects` step in `.github/workflows/ci.yml`.
+- The regression checker — check `typescript-compile-check` (`tool: "tsc"`, `run.script: "typecheck:all"`).
+- `npm run run-all-checks`.
+- The pre-commit hook (`.husky/pre-commit`).
+
+**Playwright transpiles the E2E project; it does not type-check it.** `playwright.config.ts` points
+Playwright at `tsconfig.e2e.json` so specs get its `playwright/test` types and path aliases, but
+Playwright transpiles each spec without reporting type errors. The `tsc -b … tsconfig.e2e.json`
+segment of `typecheck:all` is what type-checks `e2e-tests`.
+
+For a manual frontend project type-check, run:
 
 ```bash
 node src/frontend/node_modules/@typescript/native/bin/tsc -b src/frontend/tsconfig.json
@@ -249,9 +307,10 @@ When updating TypeScript or lint standards:
 1. Update root shared base first (`tsconfig.base.json`, `config/eslint/ts-base-rules.cjs`, or `config/eslint/unicorn-preference-rules.cjs`) when the rule is intended to apply across components.
 2. Update leaf config only for runtime- or component-specific behaviour.
 3. Run affected validation commands:
+   - `npm run typecheck:all`
    - `npm run build:production`
    - `npm run lint:builder`
-   - `npm exec tsc -- -b src/frontend/tsconfig.json`
+   - `node src/frontend/node_modules/@typescript/native/bin/tsc -b src/frontend/tsconfig.json`
    - `npm run build:frontend`
    - `npm run lint:frontend`
 

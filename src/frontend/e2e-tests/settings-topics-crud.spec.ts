@@ -134,7 +134,7 @@ async function openSettingsTopicsTab(page: Page) {
  */
 async function openManageTopicsModal(page: Page) {
   await page.getByRole('button', { name: topicsModalConfig.managementButtonName }).click();
-  const modal = page.getByRole('dialog', topicsModalConfig.modalName);
+  const modal = page.getByRole('dialog', { name: topicsModalConfig.modalName });
   await expect(modal).toBeVisible();
   return modal;
 }

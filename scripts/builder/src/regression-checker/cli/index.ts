@@ -11,7 +11,10 @@ import {
   type TestOutcome,
   type TscDiagnostic,
 } from '../compare/index.js';
-import { validateRegressionConfig } from '../config/validate-regression-config.js';
+import {
+  RegressionConfigValidationError,
+  validateRegressionConfig,
+} from '../config/validate-regression-config.js';
 import type { RegressionConfigInput } from '../config/validate-regression-config.zod.js';
 import {
   buildRunnerInvocation,
@@ -24,8 +27,8 @@ import {
   type SessionManifest,
 } from '../storage/session-storage.js';
 import { resolveSessionContext, type SessionIdSource } from './session-resolution.js';
-import { CommandExecutionError, logError, logInfo, runCommand } from '../../lib/process.js';
-import { isErrnoExceptionWithCode } from '../../lib/fs.js';
+import { CommandExecutionError, logError, logInfo, runCommand } from '#builder/lib/process.js';
+import { isErrnoExceptionWithCode } from '#builder/lib/fs.js';
 
 type RegressionTool = 'eslint' | 'vitest' | 'playwright' | 'tsc';
 
@@ -562,9 +565,10 @@ export async function runRegressionCheckerCli(
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     return {
-      exitCode: message.includes('Regression config is invalid')
-        ? INVALID_CONFIG_EXIT_CODE
-        : UNEXPECTED_FAILURE_EXIT_CODE,
+      exitCode:
+        error instanceof RegressionConfigValidationError
+          ? INVALID_CONFIG_EXIT_CODE
+          : UNEXPECTED_FAILURE_EXIT_CODE,
       outputText: message,
       mode: 'baseline',
     };
@@ -1109,13 +1113,17 @@ export function createSessionManifestChecks(
     mode === 'baseline' ? ['baseline', 'checks'] : ['runs', runDirectorySegment, 'checks'];
 
   return config.checks.map((check) => {
-    const executionMetadata: Record<string, string | number | boolean | null> =
-      check.run.kind === 'tsc'
-        ? { project: check.run.project }
-        : {
-            reporterMode: check.reporterMode ?? 'json',
-            script: check.run.script,
-          };
+    let executionMetadata: Record<string, string | number | boolean | null>;
+    if (check.run.kind === 'tsc') {
+      executionMetadata = { project: check.run.project };
+    } else if (check.tool === 'tsc') {
+      executionMetadata = { script: check.run.script };
+    } else {
+      executionMetadata = {
+        reporterMode: check.reporterMode ?? 'json',
+        script: check.run.script,
+      };
+    }
 
     return {
       id: check.id,

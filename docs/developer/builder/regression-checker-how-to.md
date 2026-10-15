@@ -47,8 +47,7 @@ Current repository example:
 {
   "reportDirectory": ".ts-regression-checker/reports",
   "parallel": {
-    "enabled": true,
-    "maxWorkers": 2
+    "enabled": false
   },
   "checks": [
     {
@@ -61,12 +60,12 @@ Current repository example:
       }
     },
     {
-      "id": "builder-compile-check",
+      "id": "typescript-compile-check",
       "tool": "tsc",
       "cwd": ".",
       "run": {
-        "kind": "tsc",
-        "project": "scripts/builder/tsconfig.json"
+        "kind": "npm-script",
+        "script": "typecheck:all"
       }
     }
   ]
@@ -97,10 +96,10 @@ Current repository example:
 - `checks[].reporterMode` (optional):
   - Allowed only for tools with supported modes.
   - Supported values in current implementation: `json` for `eslint`, `vitest`, `playwright`.
-  - `tsc` has no supported reporter mode.
+  - `tsc` has no supported reporter mode. This covers both `tsc` run kinds, including the npm-script aggregate, which writes a plain-text artefact.
 - `checks[].run`:
   - For `eslint`, `vitest`, `playwright`: `{ "kind": "npm-script", "script": "..." }`
-  - For `tsc`: `{ "kind": "tsc", "project": "..." }`
+  - For `tsc`: `{ "kind": "tsc", "project": "..." }`, or the single allowlisted aggregate `{ "kind": "npm-script", "script": "typecheck:all" }`
 
 ### Safety and validation rules
 
@@ -109,14 +108,26 @@ The checker fails config validation before execution when any rule is violated:
 - Absolute paths or path traversal outside repo root.
 - Unsupported tool family.
 - Unsupported reporter mode for tool family.
-- `tool=tsc` with `run.kind=npm-script`.
+- `tool=tsc` with `run.kind=npm-script` unless the script is the single allowlisted aggregate `typecheck:all`; every other `tsc` npm script is rejected.
 - `run.kind=tsc` used with any non-`tsc` tool.
-- Missing npm script declaration in relevant `package.json`.
-- Mutating scripts (for example `--fix`, `--write`, `--update`, `--update-snapshots`, `-u`).
-- Chained scripts (`&&`, `||`, `;`, pipe).
+- Missing npm script declaration in relevant `package.json`. This still applies to the allowlisted aggregate: renaming `typecheck:all` fails validation loudly.
+- Mutating scripts in any check, including the allowlisted aggregate (for example `--fix`, `--write`, `--update`, `--update-snapshots`, `-u`).
+- Chained scripts (`&&`, `||`, `;`, pipe), except the allowlisted `typecheck:all` aggregate, which is `&&`-chained by design.
 - Script recursion.
 - npm script that resolves to zero or multiple supported tool families.
 - npm script resolved tool family mismatching `checks[].tool`.
+
+#### Allowlisted `tsc` aggregate trade-off
+
+`typecheck:all` is the only `tsc` npm script accepted. The validator still requires `tool: "tsc"`,
+still requires the script to be declared, and still rejects mutating commands, but for this one
+script it skips the declared-tool-family resolution that every other npm-script check must satisfy
+and tolerates the `&&` chain. As a result the checker treats the aggregate's output as `tsc` text
+without inspecting which commands the script chains. Pass/fail stays correct because it is driven by
+the process exit code, but a re-pointed `typecheck:all` that ran a non-`tsc` tool would yield an
+empty diagnostic set. The trade-off is deliberate: one aggregate gate covers every TypeScript
+project. Keep the allowlist keyed to the exact script name and keep `typecheck:all` chaining only
+TypeScript compilers.
 
 ## Running flows
 
@@ -200,6 +211,10 @@ Before comparison diffing, compatibility is validated against baseline manifest:
 - Tool families by check ID.
 - Execution metadata (for example script name or tsc project).
 
+Per-check `executionMetadata` records `{ project }` for `run.kind=tsc`, `{ script }` for the `tsc`
+npm-script aggregate (no `reporterMode`), and `{ reporterMode, script }` for the other npm-script
+tools.
+
 If incompatible, overall status becomes `BASELINE-INCOMPATIBLE` and the process exits non-zero.
 
 ### Reading `comparison.txt`
@@ -231,7 +246,11 @@ After the header, each check has a section:
 - `eslint`: JSON reporter output.
 - `vitest`: JSON reporter output.
 - `playwright`: JSON reporter output persisted from stdout.
-- `tsc`: text diagnostics (`--pretty false`).
+- `tsc`: text diagnostics. For `run.kind=tsc`, the runner passes `--pretty false` to the compiler.
+  For the allowlisted `run.kind=npm-script` aggregate, the runner invokes `npm run typecheck:all`
+  as-is — it injects no compiler arguments and no JSON reporter — and captures the script's plain
+  text output. Pass/fail still comes from the process exit code, and the captured text is parsed
+  for diagnostics.
 
 ## Typical workflows
 
@@ -275,7 +294,8 @@ Likely causes:
 - Unsafe path values.
 - Duplicate check IDs.
 - Unsupported tool or reporter mode.
-- Script is chained or mutating.
+- `tool=tsc` with `run.kind=npm-script` naming anything other than the allowlisted `typecheck:all`.
+- Script is chained or mutating (only `typecheck:all` is exempt from the chain rule).
 - Script does not map to exactly one supported tool family.
 
 Action:

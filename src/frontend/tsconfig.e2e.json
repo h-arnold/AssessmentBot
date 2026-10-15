@@ -9,9 +9,18 @@
     "moduleDetection": "force",
     "noEmit": true,
     "lib": ["ES2024", "DOM", "DOM.Iterable"],
-    "types": ["playwright/test"],
+    "types": [
+      "playwright/test",
+      "vite/client",
+      "vitest/globals",
+      "@testing-library/jest-dom/vitest"
+    ],
     "jsx": "react-jsx",
-    "rootDir": "./e2e-tests"
+    "rootDir": "..",
+    "paths": {
+      "@/*": ["./src/*"],
+      "@synthetic/*": ["../../tests/__mocks__/data/synthetic-analysis/*"]
+    }
   },
   "include": ["e2e-tests"]
 }
