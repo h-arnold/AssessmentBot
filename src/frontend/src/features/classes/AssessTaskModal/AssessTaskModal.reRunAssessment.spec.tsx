@@ -46,6 +46,7 @@ import {
   defaultProperties,
   seedAssessmentFlowQueryData,
   selectAssignment,
+  expectAssessmentSuccessSurface,
 } from '../../../test/classes/AssessTaskModal.test-utilities';
 import type { GoogleClassroomAssignmentsResponse } from '../../../services/googleClassrooms/googleClassroomAssignments.zod';
 import type { ReRunContext } from '../../shared/reRunAssessmentContext';
@@ -209,6 +210,7 @@ describe('AssessTaskModal — Re-run Assessment entry', () => {
 
     const alert = await within(dialog).findByRole('alert');
     expect(alert.className).toContain('ant-alert-success');
+    expectAssessmentSuccessSurface(dialog, 'Essay');
     expect(within(dialog).queryByRole('combobox')).toBeNull();
     expect(startAssessmentRun).toHaveBeenCalledTimes(1);
   });
@@ -234,6 +236,7 @@ describe('AssessTaskModal — Re-run Assessment entry', () => {
 
     const alert = await within(dialog).findByRole('alert');
     expect(alert.className).toContain('ant-alert-success');
+    expectAssessmentSuccessSurface(dialog, 'Renamed Essay');
     expect(findMatchingDefinition).not.toHaveBeenCalled();
     expect(startAssessmentRun).toHaveBeenCalledWith({
       definitionKey: PERSISTED_DEFINITION_KEY,
@@ -257,7 +260,7 @@ describe('AssessTaskModal — Re-run Assessment entry', () => {
       courseId: MOCK_CLASS_ID,
     });
     expect(findMatchingDefinition).toHaveBeenCalledTimes(1);
-    expect(within(dialog).getByRole('combobox')).toBeInTheDocument();
+    expect(within(dialog).getByRole('alert')).toHaveTextContent(/assessment started for 'Essay'/i);
   });
 
   it.each(RE_RUN_FAILURE_CASES)(
@@ -461,6 +464,7 @@ describe('AssessTaskModal — Re-run Assessment entry', () => {
     expect(getVisibleActionNames(dialog)).toEqual([CANCEL_BUTTON, RE_RUN_ASSESSMENT_BUTTON]);
     expect(within(dialog).getByText(/Re-run assessment for 'Essay'/)).toBeInTheDocument();
     expect(within(dialog).queryByText(new RegExp(PERSISTED_DEFINITION_KEY))).toBeNull();
+    expect(within(dialog).queryByRole('alert')).toBeNull();
 
     await act(async () => {
       pendingRun.resolvePromise(null);
@@ -469,6 +473,7 @@ describe('AssessTaskModal — Re-run Assessment entry', () => {
 
     const successAlert = await within(dialog).findByRole('alert');
     expect(successAlert.className).toContain('ant-alert-success');
+    expectAssessmentSuccessSurface(dialog, 'Essay');
     expect(getVisibleActionNames(dialog)).toContain(CLOSE_BUTTON);
     expect(within(dialog).queryByRole('button', { name: RE_RUN_ASSESSMENT_BUTTON })).toBeNull();
     expect(within(dialog).queryByRole('button', { name: START_ASSESSMENT_BUTTON })).toBeNull();

@@ -17,7 +17,10 @@ import '../../../test/classes/AssessTaskModal.mockSetup';
 import { startAssessmentRun } from '../../../services/assignmentAssessment/assignmentAssessmentService';
 import { upsertAssignmentDefinition } from '../../../services/assignmentDefinition/assignmentDefinitionService';
 import { setTextboxValue } from '../../../test/assignmentDefinition/wizardTestHelpers';
-import { MOCK_CLASS_ID } from '../../../test/classes/AssessTaskModal.test-utilities';
+import {
+  expectAssessmentSuccessSurface,
+  MOCK_CLASS_ID,
+} from '../../../test/classes/AssessTaskModal.test-utilities';
 import type { AssignmentDefinition } from '../../../services/assignmentDefinition/assignmentDefinition.zod';
 import {
   ASSIGNMENT_TITLE_PATTERN,
@@ -53,7 +56,6 @@ import {
   triggerStalePrompt,
   waitForSelectionBody,
 } from '../../../test/classes/AssessTaskModal.recovery-helpers';
-
 /**
  * Expected call count for a two-step recovery journey (reparse then retry, or
  * stale start then resumed start).
@@ -166,9 +168,7 @@ describe('AssessTaskModal reparsing state', () => {
     const { dialog } = renderRecoveryModal({
       setupMocks: () => {
         queueStartResults({ kind: 'stale' });
-        vi.mocked(upsertAssignmentDefinition)
-          .mockReset()
-          .mockReturnValue(pendingUpsert);
+        vi.mocked(upsertAssignmentDefinition).mockReset().mockReturnValue(pendingUpsert);
       },
     });
 
@@ -195,8 +195,7 @@ describe('AssessTaskModal in-modal recovery review', () => {
     await reachRecoveryReview(dialog);
 
     const reparseRequest = vi.mocked(upsertAssignmentDefinition).mock.calls[0]?.[0] as
-      | Record<string, unknown>
-      | undefined;
+      Record<string, unknown> | undefined;
     expect(reparseRequest).toMatchObject({
       definitionKey: RECOVERY_DEFINITION_KEY,
       forceReparse: true,
@@ -277,10 +276,7 @@ describe('AssessTaskModal recovery parse failure', () => {
     const { dialog } = renderRecoveryModal({
       setupMocks: () => {
         queueStartResults({ kind: 'stale' });
-        queueUpsertResults(
-          { kind: 'reject', error: buildParseFailedError() },
-          { kind: 'success' }
-        );
+        queueUpsertResults({ kind: 'reject', error: buildParseFailedError() }, { kind: 'success' });
       },
     });
 
@@ -352,16 +348,14 @@ describe('AssessTaskModal recovery approval outcomes', () => {
       courseId: MOCK_CLASS_ID,
     });
     expect(await within(dialog).findByRole('alert')).toHaveTextContent(/assessment started/i);
+    expectAssessmentSuccessSurface(dialog, 'Essay');
   });
 
   it('returns to the stale prompt when the approval save is rejected as stale', async () => {
     const { dialog } = renderRecoveryModal({
       setupMocks: () => {
         queueStartResults({ kind: 'stale' });
-        queueUpsertResults(
-          { kind: 'success' },
-          { kind: 'reject', error: buildStaleError() }
-        );
+        queueUpsertResults({ kind: 'success' }, { kind: 'reject', error: buildStaleError() });
       },
     });
 
@@ -397,10 +391,7 @@ describe('AssessTaskModal recovery approval outcomes', () => {
     const { dialog } = renderRecoveryModal({
       setupMocks: () => {
         queueStartResults({ kind: 'stale' });
-        queueUpsertResults(
-          { kind: 'success' },
-          { kind: 'reject', error: buildNonStaleError() }
-        );
+        queueUpsertResults({ kind: 'success' }, { kind: 'reject', error: buildNonStaleError() });
       },
     });
 
@@ -415,9 +406,9 @@ describe('AssessTaskModal recovery approval outcomes', () => {
     await clickAction(dialog, SAVE_BUTTON);
 
     await waitFor(() => {
-      expect(
-        within(dialog).getByRole('textbox', { name: ASSIGNMENT_TITLE_PATTERN })
-      ).toHaveValue('Edited title');
+      expect(within(dialog).getByRole('textbox', { name: ASSIGNMENT_TITLE_PATTERN })).toHaveValue(
+        'Edited title'
+      );
     });
     const errorAlert = within(dialog)
       .getAllByRole('alert')
