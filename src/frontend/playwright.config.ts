@@ -1,6 +1,8 @@
 import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
+  // Playwright selects this E2E-specific config for test files under e2e-tests.
+  tsconfig: './tsconfig.e2e.json',
   testDir: './e2e-tests',
   workers: 2,
   retries: 2,

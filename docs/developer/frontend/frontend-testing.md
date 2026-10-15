@@ -141,6 +141,17 @@ This policy is intentionally broader than the analysis graph and applies automat
 
 For frontend service round-trip tests, the Node integration spec composes the script-owned dispatcher bridge with the frontend adapter and supplies `callApi`, the service Zod schemas, and `DataAnalysisService` input. For the corpus topology, profile/view selection, commands, failure behaviour, and the full exception and extension path, see the canonical guide: [Synthetic Test Data](../testing/synthetic-test-data.md).
 
+### Importing canonical fixtures
+
+Import canonical fixtures through the `@synthetic/*` alias, which resolves to the committed corpus root `tests/__mocks__/data/synthetic-analysis/*`. The profile folder is the next path segment, for example `@synthetic/small/editableDefinitions.json`. For the alias mapping across TypeScript, Vite, and Playwright, see [TypeScript and ESLint Configuration Hierarchy](../builder/TypeScriptAndLintConfigHierarchy.md).
+
+Keep the two import forms distinct:
+
+- **Vitest specs** import the file as raw text with the `?raw` suffix (for example `@synthetic/small/editableDefinitions.json?raw`) and parse or assert on the returned string.
+- **Playwright E2E helpers** import the same `.json` file without `?raw`, which yields the parsed value directly.
+
+This split follows the Vitest/Vite and Playwright/Node runner difference; do not convert one form to the other.
+
 ## Shared test helpers
 
 Use shared helpers to keep fixtures and mocks consistent and avoid duplicate test setup code.

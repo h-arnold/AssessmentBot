@@ -11,9 +11,9 @@ import { buildRecoveryApprovalRequest } from './assessTaskRecoveryData';
 import {
   UpsertAssignmentDefinitionRequestSchema,
   type AssignmentDefinition,
-} from '../../../services/assignmentDefinition/assignmentDefinition.zod';
-import type { TaskRow } from '../../assignmentWizard/assignmentWizardFormState';
-import editableDefinitionsRaw from '../../../../../../tests/__mocks__/data/synthetic-analysis/small/editableDefinitions.json?raw';
+} from '@/services/assignmentDefinition/assignmentDefinition.zod';
+import type { TaskRow } from '@/features/assignmentWizard/assignmentWizardFormState';
+import editableDefinitionsRaw from '@synthetic/small/editableDefinitions.json?raw';
 
 /**
  * Canonical small-profile `transport.editableDefinitions` view, imported as raw

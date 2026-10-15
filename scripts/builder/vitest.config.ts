@@ -6,6 +6,11 @@ const rootDir = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
   root: rootDir,
+  resolve: {
+    alias: {
+      '#builder': path.join(rootDir, 'src'),
+    },
+  },
   test: {
     environment: 'node',
     include: ['src/**/*.spec.ts'],

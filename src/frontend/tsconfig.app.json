@@ -12,7 +12,11 @@
     "lib": ["ES2024", "DOM", "DOM.Iterable"],
     "types": ["vite/client", "vitest/globals"],
     "jsx": "react-jsx",
-    "rootDir": "./src"
+    "rootDir": "./src",
+    "paths": {
+      "@/*": ["./src/*"],
+      "@synthetic/*": ["../../tests/__mocks__/data/synthetic-analysis/*"]
+    }
   },
   "include": ["src"]
 }

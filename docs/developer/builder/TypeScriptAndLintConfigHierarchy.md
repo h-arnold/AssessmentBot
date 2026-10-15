@@ -39,12 +39,37 @@ This project uses a shared configuration tree so TypeScript and linting standard
 - `src/frontend/tsconfig.node.json`
   - Extends `../../tsconfig.base.json`.
   - Adds frontend tooling specifics only: include for `vite.config.ts`, build info path.
+- `src/frontend/tsconfig.e2e.json`
+  - Extends `../../tsconfig.base.json`.
+  - Adds E2E specifics only: `playwright/test` types, `e2e-tests` include, and the frontend path aliases.
 - `scripts/builder/tsconfig.json`
   - Extends `../../tsconfig.base.json`.
   - Adds builder specifics only: `rootDir`, `outDir`, JSON module resolution, include paths.
+  - Maps `#builder/*` to builder source for compilation; `scripts/builder/package.json` maps the same package import to emitted `dist/*` for Node runtime execution, and the builder Vitest config resolves it to source during tests.
 - `.opencode/tsconfig.json`
   - Extends `../tsconfig.base.json`.
   - Lint-only project (`noEmit`) backing the type-aware ESLint rules for the OpenCode plugin tree (`.opencode/plugins/**/*.ts`).
+
+### 3) Frontend module-resolution aliases
+
+Frontend app code and tests resolve two configured aliases:
+
+| Alias          | Resolves to                                 | Used by                      |
+| -------------- | ------------------------------------------- | ---------------------------- |
+| `@/*`          | `src/frontend/src/*`                        | app source, specs, E2E tests |
+| `@synthetic/*` | `tests/__mocks__/data/synthetic-analysis/*` | specs and E2E helpers        |
+
+The mapping is declared explicitly in three places that must stay in step:
+
+- `src/frontend/tsconfig.app.json` (`compilerOptions.paths`) — app and Vitest spec compilation.
+- `src/frontend/tsconfig.e2e.json` (`compilerOptions.paths`) — E2E compilation.
+- `src/frontend/vite.config.ts` (`resolve.alias`, built with `fileURLToPath(new URL(...))`) — runtime resolution for the Vite dev server and Vitest.
+
+`@synthetic/*` resolves outside the frontend package (the repository-root `tests/` tree), so Vite's `server.fs.allow: ['../..']` also permits `?raw` reads of those fixtures from specs.
+
+`playwright.config.ts` sets `tsconfig: './tsconfig.e2e.json'`, so Playwright compiles `e2e-tests` under the E2E-specific options above — the `playwright/test` types and this alias map — rather than the app config.
+
+The alias convention for choosing between relative and alias imports is defined in the root `AGENTS.md` (Prime Directives → Coding Principles). Backend tests import backend source through the root package import `#backend/*`. The root package also declares `#synthetic/*` for the committed synthetic fixture corpus (`tests/__mocks__/data/synthetic-analysis/*`); it is available to Node-side backend tests but has no consumer yet. Production backend GAS scripts remain module-free: their files are concatenated, so these Node package aliases apply to tests only.
 
 ## ESLint hierarchy
 

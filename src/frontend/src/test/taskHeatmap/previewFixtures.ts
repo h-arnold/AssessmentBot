@@ -19,16 +19,16 @@
  * @see docs/developer/frontend/frontend-testing.md
  */
 
-import classesByIdRaw from '../../../../../tests/__mocks__/data/synthetic-analysis/small/classesById.json?raw';
-import assignmentsByKeyRaw from '../../../../../tests/__mocks__/data/synthetic-analysis/small/assignmentsByKey.json?raw';
+import classesByIdRaw from '@synthetic/small/classesById.json?raw';
+import assignmentsByKeyRaw from '@synthetic/small/assignmentsByKey.json?raw';
 
-import { buildCellPreviewLookup } from '../../features/taskHeatmap/buildCellPreviewLookup';
-import type { CellPreviewData } from '../../features/taskHeatmap/buildCellPreviewLookup';
-import { AssignmentFullSchema } from '../../services/assignmentAssessment/assignmentAssessment.zod';
-import type { AssignmentFull } from '../../services/assignmentAssessment/assignmentAssessment.zod';
-import { ClassFullSchema } from '../../services/googleClassrooms/classDetail/classDetailService.zod';
-import type { ClassFull } from '../../services/googleClassrooms/classDetail/classDetailService.zod';
-import { buildTaskKey } from '../../services/dataAnalysis/taskKey';
+import { buildCellPreviewLookup } from '@/features/taskHeatmap/buildCellPreviewLookup';
+import type { CellPreviewData } from '@/features/taskHeatmap/buildCellPreviewLookup';
+import { AssignmentFullSchema } from '@/services/assignmentAssessment/assignmentAssessment.zod';
+import type { AssignmentFull } from '@/services/assignmentAssessment/assignmentAssessment.zod';
+import { ClassFullSchema } from '@/services/googleClassrooms/classDetail/classDetailService.zod';
+import type { ClassFull } from '@/services/googleClassrooms/classDetail/classDetailService.zod';
+import { buildTaskKey } from '@/services/dataAnalysis/taskKey';
 import {
   deepFreeze,
   requireRecord,

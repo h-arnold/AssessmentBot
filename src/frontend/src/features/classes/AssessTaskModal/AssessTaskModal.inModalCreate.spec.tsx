@@ -18,23 +18,23 @@ import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { QueryClient } from '@tanstack/react-query';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { queryKeys } from '../../../query/queryKeys';
-import { ApiTransportError } from '../../../errors/apiTransportError';
+import { queryKeys } from '@/query/queryKeys';
+import { ApiTransportError } from '@/errors/apiTransportError';
 import {
   clickCreateNewDefinition,
   clickStartAssessment,
   MOCK_CLASS_ID,
   selectAssignment,
-} from '../../../test/classes/AssessTaskModal.test-utilities';
-import { renderWithNoMatchCache } from '../../../test/classes/AssessTaskModal.link-flow-helpers';
-import { setTextboxValue } from '../../../test/assignmentDefinition/wizardTestHelpers';
+} from '@/test/classes/AssessTaskModal.test-utilities';
+import { renderWithNoMatchCache } from '@/test/classes/AssessTaskModal.link-flow-helpers';
+import { setTextboxValue } from '@/test/assignmentDefinition/wizardTestHelpers';
 import {
   mockTopics,
   mockYearGroups,
-} from '../../../test/assignmentDefinition/sharedTestFixtures';
-import type { AssignmentDefinition } from '../../../services/assignmentDefinition/assignmentDefinition.zod';
-import type { GoogleClassroomAssignmentsResponse } from '../../../services/googleClassrooms/googleClassroomAssignments.zod';
-import editableDefinitionsRaw from '../../../../../../tests/__mocks__/data/synthetic-analysis/small/editableDefinitions.json?raw';
+} from '@/test/assignmentDefinition/sharedTestFixtures';
+import type { AssignmentDefinition } from '@/services/assignmentDefinition/assignmentDefinition.zod';
+import type { GoogleClassroomAssignmentsResponse } from '@/services/googleClassrooms/googleClassroomAssignments.zod';
+import editableDefinitionsRaw from '@synthetic/small/editableDefinitions.json?raw';
 
 const {
   getGoogleClassroomAssignmentsMock,
@@ -58,32 +58,32 @@ const {
   };
 });
 
-vi.mock('../../../services/googleClassrooms/googleClassroomAssignmentsService', () => {
+vi.mock('@/services/googleClassrooms/googleClassroomAssignmentsService', () => {
   return {
     getGoogleClassroomAssignments: getGoogleClassroomAssignmentsMock,
   };
 });
 
-vi.mock('../../../services/assignmentAssessment/assignmentAssessmentService', () => {
+vi.mock('@/services/assignmentAssessment/assignmentAssessmentService', () => {
   return {
     startAssessmentRun: startAssessmentRunMock,
   };
 });
 
-vi.mock('../../../services/assignmentDefinition/assignmentDefinitionService', () => {
+vi.mock('@/services/assignmentDefinition/assignmentDefinitionService', () => {
   return {
     upsertAssignmentDefinition: upsertAssignmentDefinitionMock,
     getAssignmentDefinition: getAssignmentDefinitionMock,
   };
 });
 
-vi.mock('../../../services/assignmentDefinition/assignmentTopicsService', () => {
+vi.mock('@/services/assignmentDefinition/assignmentTopicsService', () => {
   return {
     getAssignmentTopics: getAssignmentTopicsMock,
   };
 });
 
-vi.mock('../../../services/referenceData/referenceDataService', () => {
+vi.mock('@/services/referenceData/referenceDataService', () => {
   return {
     getCohorts: getCohortsMock,
     getYearGroups: getYearGroupsMock,

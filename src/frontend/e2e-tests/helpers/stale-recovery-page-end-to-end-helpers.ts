@@ -5,9 +5,9 @@ import {
   type ResponseItem,
   type RuntimeScenario,
 } from '../shared/endToEndRuntimeMocks';
-import editableDefinitionsRaw from '../../../../tests/__mocks__/data/synthetic-analysis/small/editableDefinitions.json';
-import assignmentDefinitionPartialsRaw from '../../../../tests/__mocks__/data/synthetic-analysis/small/assignmentDefinitionPartials.json';
-import classPartialsRaw from '../../../../tests/__mocks__/data/synthetic-analysis/small/classPartials.json';
+import editableDefinitionsRaw from '@synthetic/small/editableDefinitions.json';
+import assignmentDefinitionPartialsRaw from '@synthetic/small/assignmentDefinitionPartials.json';
+import classPartialsRaw from '@synthetic/small/classPartials.json';
 
 // ============================================================================
 // Canonical fixture shapes and loading

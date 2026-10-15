@@ -38,6 +38,7 @@ These apply to all components.
 8. Do not add production code purely to satisfy tests.
 9. Keep changes minimal, localised, and consistent with existing patterns.
 10. **Default values must be set in a module's constructor only.** If defaults are found elsewhere, they should be opportunistically moved to the constructor of the module.
+11. Use `./` or `../` (including immediate-parent descendants such as `../sibling/x`) for nearby modules; use configured aliases when reaching two or more parent traversals (for example `../../x`). Builder TypeScript and Node test code support component aliases, and backend tests use aliases; production backend GAS code is concatenated and does not use Node module aliases. Opportunistically migrate noncompliant imports in files already touched, preserving import semantics.
 
 ### 2.2 Codebase Conduct
 

@@ -4,7 +4,7 @@ import { promises as fs } from 'node:fs';
 
 import { afterEach, describe, expect, it, test } from 'vitest';
 
-import { CommandExecutionError } from '../../lib/process.js';
+import { CommandExecutionError } from '#builder/lib/process.js';
 
 type SessionIdSource = 'arg' | 'git-branch';
 type RegressionTool = 'eslint' | 'vitest' | 'playwright' | 'tsc';
@@ -56,8 +56,7 @@ type ScheduledCheckResult = {
 type ComparisonResult = {
   overallStatus: 'GREEN' | 'FAILING' | 'BASELINE-INCOMPATIBLE';
   baselineCompatibility:
-    | { compatible: true }
-    | { compatible: false; reason: { code: string; message: string } };
+    { compatible: true } | { compatible: false; reason: { code: string; message: string } };
   checks: Array<{
     id: string;
     tool: RegressionTool;
@@ -173,8 +172,7 @@ type RegressionCliModule = {
         current: ScheduledCheckResult & { rawArtefact: unknown };
       }>;
       baselineCompatibility:
-        | { compatible: true }
-        | { compatible: false; reason: { code: string; message: string } };
+        { compatible: true } | { compatible: false; reason: { code: string; message: string } };
     }) => ComparisonResult;
     readRawArtefact?: (rawArtefactPath: string) => Promise<unknown>;
     writeFile?: (targetPath: string, content: string) => Promise<void>;

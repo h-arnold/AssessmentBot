@@ -11,7 +11,11 @@
     "lib": ["ES2024", "DOM", "DOM.Iterable"],
     "types": ["playwright/test"],
     "jsx": "react-jsx",
-    "rootDir": "./e2e-tests"
+    "rootDir": "./e2e-tests",
+    "paths": {
+      "@/*": ["./src/*"],
+      "@synthetic/*": ["../../tests/__mocks__/data/synthetic-analysis/*"]
+    }
   },
   "include": ["e2e-tests"]
 }

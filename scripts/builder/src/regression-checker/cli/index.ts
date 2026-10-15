@@ -24,8 +24,8 @@ import {
   type SessionManifest,
 } from '../storage/session-storage.js';
 import { resolveSessionContext, type SessionIdSource } from './session-resolution.js';
-import { CommandExecutionError, logError, logInfo, runCommand } from '../../lib/process.js';
-import { isErrnoExceptionWithCode } from '../../lib/fs.js';
+import { CommandExecutionError, logError, logInfo, runCommand } from '#builder/lib/process.js';
+import { isErrnoExceptionWithCode } from '#builder/lib/fs.js';
 
 type RegressionTool = 'eslint' | 'vitest' | 'playwright' | 'tsc';
 

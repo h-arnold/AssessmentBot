@@ -6,7 +6,7 @@ import {
   isCrossPlatformAbsolutePath,
   normalisePathSeparators,
   normaliseRelativeSegments,
-} from '../../lib/fs.js';
+} from '#builder/lib/fs.js';
 import {
   formatRegressionConfigIssues,
   regressionConfigInputSchema,

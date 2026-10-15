@@ -85,7 +85,7 @@ export default defineConfig([
         {
           patterns: [
             {
-              group: ['**/test/**'],
+              group: ['**/test/**', '@/test/**'],
               message: 'Import shared test helpers only from spec files or src/test support files.',
             },
           ],
@@ -177,12 +177,12 @@ export default defineConfig([
           ],
           patterns: [
             {
-              group: ['./services/*', './services/**'],
+              group: ['./services/*', './services/**', '@/services/*', '@/services/**'],
               message:
                 'Keep App.tsx service-free. Access services through feature hooks/components.',
             },
             {
-              group: ['./test/*', './test/**'],
+              group: ['./test/*', './test/**', '@/test/*', '@/test/**'],
               message:
                 'Keep App.tsx within production source boundaries. Import shared test helpers only from spec files or src/test support files.',
             },

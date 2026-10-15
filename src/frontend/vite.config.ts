@@ -1,8 +1,17 @@
 import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
+import { fileURLToPath, URL } from 'node:url';
 
 export default defineConfig({
   plugins: [react()],
+  resolve: {
+    alias: {
+      '@': fileURLToPath(new URL('src', import.meta.url)),
+      '@synthetic': fileURLToPath(
+        new URL('../../tests/__mocks__/data/synthetic-analysis', import.meta.url)
+      ),
+    },
+  },
   server: {
     fs: {
       // Allow `?raw` imports from outside the frontend package in specs (e.g.

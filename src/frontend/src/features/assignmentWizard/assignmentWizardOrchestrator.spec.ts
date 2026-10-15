@@ -8,9 +8,9 @@
 
 import { describe, expect, it } from 'vitest';
 import { buildReparseRequest } from './assignmentWizardOrchestrator';
-import { UpsertAssignmentDefinitionRequestSchema } from '../../services/assignmentDefinition/assignmentDefinition.zod';
-import type { AssignmentDefinition } from '../../services/assignmentDefinition/assignmentDefinition.zod';
-import editableDefinitionsRaw from '../../../../../tests/__mocks__/data/synthetic-analysis/small/editableDefinitions.json?raw';
+import { UpsertAssignmentDefinitionRequestSchema } from '@/services/assignmentDefinition/assignmentDefinition.zod';
+import type { AssignmentDefinition } from '@/services/assignmentDefinition/assignmentDefinition.zod';
+import editableDefinitionsRaw from '@synthetic/small/editableDefinitions.json?raw';
 
 /**
  * Canonical small-profile `transport.editableDefinitions` view, imported as raw
