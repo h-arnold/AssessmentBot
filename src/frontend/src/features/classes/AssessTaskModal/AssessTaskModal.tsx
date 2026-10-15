@@ -120,21 +120,24 @@ export function AssessTaskModal(properties: Readonly<AssessTaskModalProperties>)
    * @param {ModalDismissEvent} [event] The dismissal event, when supplied by Ant Design.
    * @returns {void}
    */
-  const handleModalCancel = useCallback((event?: ModalDismissEvent): void => {
-    const cancelReview = recoveryReviewCancelReference.current;
-    if (cancelReview !== null) {
-      event?.stopPropagation();
-      cancelReview();
-      return;
-    }
-    const cancelCreateWizard = createWizardCancelReference.current;
-    if (cancelCreateWizard !== null) {
-      event?.stopPropagation();
-      cancelCreateWizard();
-      return;
-    }
-    onClose();
-  }, [onClose]);
+  const handleModalCancel = useCallback(
+    (event?: ModalDismissEvent): void => {
+      const cancelReview = recoveryReviewCancelReference.current;
+      if (cancelReview !== null) {
+        event?.stopPropagation();
+        cancelReview();
+        return;
+      }
+      const cancelCreateWizard = createWizardCancelReference.current;
+      if (cancelCreateWizard !== null) {
+        event?.stopPropagation();
+        cancelCreateWizard();
+        return;
+      }
+      onClose();
+    },
+    [onClose]
+  );
 
   // The in-modal create wizard content is active only while resolving the
   // no-match choice. The recovery surface owns the body while the recovery
@@ -167,7 +170,8 @@ export function AssessTaskModal(properties: Readonly<AssessTaskModalProperties>)
     }
 
     document.addEventListener('keydown', handleCreateWizardEscape, { capture: true });
-    return () => document.removeEventListener('keydown', handleCreateWizardEscape, { capture: true });
+    return () =>
+      document.removeEventListener('keydown', handleCreateWizardEscape, { capture: true });
   }, [isCreateContentActive, handleModalCancel]);
 
   /**
@@ -180,7 +184,7 @@ export function AssessTaskModal(properties: Readonly<AssessTaskModalProperties>)
    * elements are mounted in jsdom tests (virtual list omits unmounted options).
    * This is acceptable for production as assignment lists are small (typically
    * 5-20 items). No `notFoundContent` is provided — the empty state is handled
-   * by `renderFetchBody` (the assignment list is never empty when this renders).
+   * by `renderStatusBody` (the assignment list is never empty when this renders).
    *
    * @returns {React.ReactNode} The rendered assignments selection content.
    */
@@ -193,8 +197,13 @@ export function AssessTaskModal(properties: Readonly<AssessTaskModalProperties>)
     });
 
     const assessmentAlert =
-      assessmentState === 'success' || (assessmentState === 'error' && assessmentError) ? (
-        <Alert type={assessmentAlertType} showIcon title={assessmentError} style={{ marginBottom: 16 }} />
+      assessmentState === 'error' && assessmentError ? (
+        <Alert
+          type={assessmentAlertType}
+          showIcon
+          title={assessmentError}
+          style={{ marginBottom: 16 }}
+        />
       ) : null;
 
     return (
@@ -226,9 +235,8 @@ export function AssessTaskModal(properties: Readonly<AssessTaskModalProperties>)
    * Renders the body content for the noMatchResolution 'linking' branch.
    *
    * @remarks
-   * Only renders when `noMatchResolution === 'linking'`. Handles all four
-   * `assessmentState` sub-states: 'loading' (skeleton), 'success' (Alert),
-   * 'error' (Alert), and 'idle' (LinkableDefinitionList picker). The loading
+   * Only renders when `noMatchResolution === 'linking'`. Handles loading
+   * (skeleton), error (Alert), and idle (LinkableDefinitionList picker). The loading
    * and error states mirror the patterns used by the main assessment flow.
    *
    * @returns {React.ReactNode} The linking body content.
@@ -238,12 +246,15 @@ export function AssessTaskModal(properties: Readonly<AssessTaskModalProperties>)
       return <AssignmentSelectSkeleton ariaLabel="Loading linkable definitions" />;
     }
 
-    if (assessmentState === 'success') {
-      return <Alert type="success" showIcon title={assessmentError} style={{ marginBottom: 16 }} />;
-    }
-
     if (assessmentState === 'error' && assessmentError) {
-      return <Alert type={assessmentAlertType} showIcon title={assessmentError} style={{ marginBottom: 16 }} />;
+      return (
+        <Alert
+          type={assessmentAlertType}
+          showIcon
+          title={assessmentError}
+          style={{ marginBottom: 16 }}
+        />
+      );
     }
 
     // linking + idle: render the picker
@@ -259,15 +270,18 @@ export function AssessTaskModal(properties: Readonly<AssessTaskModalProperties>)
   }
 
   /**
-   * Renders the loading, error, or empty body content for the fetch phase.
+   * Renders shared success and fetch-status body content before entry-specific content.
    *
    * The loading state renders a shape-matched skeleton of the assignment
    * selection panel: a label skeleton and a full-width input skeleton to
    * represent the Select dropdown.
    *
-   * @returns {React.ReactNode} The fetch-phase body, or null if no match.
+   * @returns {React.ReactNode} The shared status body, or null if no status applies.
    */
-  function renderFetchBody(): React.ReactNode {
+  function renderStatusBody(): React.ReactNode {
+    if (assessmentState === 'success') {
+      return <Alert type="success" showIcon title={assessmentError} style={{ marginBottom: 16 }} />;
+    }
     if (fetchState === 'loading') {
       return <AssignmentSelectSkeleton ariaLabel="Loading assignments" />;
     }
@@ -288,9 +302,9 @@ export function AssessTaskModal(properties: Readonly<AssessTaskModalProperties>)
    * @returns {React.ReactNode} The body content for the modal.
    */
   function renderBody(): React.ReactNode {
-    const fetchBody = renderFetchBody();
-    if (fetchBody !== null) {
-      return fetchBody;
+    const statusBody = renderStatusBody();
+    if (statusBody !== null) {
+      return statusBody;
     }
 
     if (reRunContext) {
@@ -365,11 +379,11 @@ export function AssessTaskModal(properties: Readonly<AssessTaskModalProperties>)
         <Button onClick={handleLinkCancel}>Cancel</Button>
         {selectedDefinitionForLink === null ? (
           <Tooltip title="Select a definition to link.">
-            <span>
-              {linkButton}
-            </span>
+            <span>{linkButton}</span>
           </Tooltip>
-        ) : linkButton}
+        ) : (
+          linkButton
+        )}
       </>
     );
   }
@@ -381,13 +395,6 @@ export function AssessTaskModal(properties: Readonly<AssessTaskModalProperties>)
    * @returns {React.ReactNode} The footer content for the modal.
    */
   function getFooterContent(): React.ReactNode {
-    if (assessmentState === 'success') {
-      return (
-        <Button type="primary" onClick={onClose}>
-          Close
-        </Button>
-      );
-    }
     if (noMatchResolution === 'linking' && assessmentState === 'idle') {
       return renderLinkingFooter();
     }
@@ -421,12 +428,19 @@ export function AssessTaskModal(properties: Readonly<AssessTaskModalProperties>)
 
   /**
    * Resolves the footer the owning modal renders while it keeps its own
-   * footer slot: the explicit re-run entry owns its footer states, and every
-   * other state uses the manual selection footer.
+   * footer slot: success uses the shared Close action, the explicit re-run entry
+   * owns its other footer states, and other entries use the manual selection footer.
    *
    * @returns {React.ReactNode} The footer content before in-modal suppression.
    */
   function getUnsuppressedFooterContent(): React.ReactNode {
+    if (assessmentState === 'success') {
+      return (
+        <Button type="primary" onClick={onClose}>
+          Close
+        </Button>
+      );
+    }
     if (reRunContext) {
       return (
         <AssessTaskReRunFooter

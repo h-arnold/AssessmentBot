@@ -205,7 +205,7 @@ Entry stage and matching:
 
 Success, failure, and recovery:
 
-- A success response means the run has been queued in the background, not that results are ready. The modal then shows only the success alert and `Close`; results appear after background processing and are reloaded by the heatmap `Refresh` action.
+- A success response means the run has been queued in the background, not that results are ready. The run uses the owning modal's single success outcome (Section 3.8); results appear after background processing and are reloaded by the heatmap `Refresh` action.
 - A missing assignment, a null definition key, an unreadable definition registry, or a key absent from the registry fails closed with an in-modal `Alert`. The modal never starts a run against a different definition.
 - Failures that a retry could clear expose `Retry`; permanently blocked input failures expose only `Cancel`, so the footer never offers an action that cannot succeed.
 - A `DEFINITION_STALE` rejection routes to the existing stale-definition recovery surface (Section 3.4/3.5); the re-run footer is suppressed while recovery owns the body.
@@ -221,6 +221,26 @@ Default decision:
 - Availability leaf: `LinkExistingDefinitionButton` in the existing feature-local `LinkableDefinitionList.tsx`
 
 The modal keeps orchestration and the `linkableDefinitions.length > 0` gate; the existing picker module owns the availability presentation — either the enabled link action or the disabled action with its explanation. The leaf is a module-level named component taking the availability boolean and the existing `handleLinkExistingDefinition` binding. It adds no hooks, state, refs or DOM wrapper, and no new module was created.
+
+### 3.8 Assess Task modal shared success outcome
+
+- Owning surface: `src/frontend/src/features/classes/AssessTaskModal/AssessTaskModal.tsx`
+
+The owning modal renders one compact success outcome for every successful entry path: matched manual, create-new-definition, link-to-existing-definition, explicit re-run, and stale-definition recovery. No entry-specific body or footer renders its own success state.
+
+Rendering contract:
+
+- While `assessmentState === 'success'`, the modal body is only the success `Alert` (its message is `assessmentError`). No assignment selector, target-assignment label, repeated in-body title, or wizard/recovery content remains.
+- The footer is only the primary `Close` action, which calls the owning `onClose`. `AssessTaskReRunFooter` does not render on success — it handles loading, the error/`Retry` state, and pre-start dismiss only, and `AssessTaskReRunBody` renders the target note or an error alert only.
+
+Semantics:
+
+- Success means the background run was accepted, not completed. Results arrive after processing and are reloaded by the heatmap `Refresh` action.
+- Loading, error, retry, definition-matching, and close/reopen behaviour are unchanged by this contract.
+
+Default decision:
+
+- Keep the single success outcome in the owning modal. Do not reintroduce per-path success rendering, and do not extract a reusable success component or helper for it; the implementation retains none.
 
 ## 4. Keep-local rules
 
