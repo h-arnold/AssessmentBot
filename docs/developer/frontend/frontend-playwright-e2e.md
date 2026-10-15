@@ -30,6 +30,18 @@ npm run test:frontend:e2e -- --headed --debug
 npm run test:frontend:e2e -- e2e-tests/classes-crud-manage-cohorts.spec.ts -g "Create cohort button" --repeat-each=10 --workers=1
 ```
 
+### Type-checking E2E tests
+
+Playwright transpiles specs using `tsconfig.e2e.json` but does not type-check them, so a type error
+in an E2E spec does not fail a Playwright run. Type-check the E2E project with:
+
+```bash
+npm run typecheck:all
+```
+
+`typecheck:all` is also run by CI and the pre-commit hook. For the full project list, see
+[TypeScript and ESLint Configuration Hierarchy](../builder/TypeScriptAndLintConfigHierarchy.md).
+
 ### Chromium Installation
 
 Before the first Playwright run on a fresh machine, dev container, or CI image:

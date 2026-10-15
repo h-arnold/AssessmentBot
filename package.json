@@ -3,10 +3,15 @@
   "version": "1.0.0",
   "description": "**A tool designed by a Digital Technology and Computer Science teacher (and head of department) to simplify tracking and assessing the work of hundreds of students.**",
   "main": "index.js",
+  "imports": {
+    "#backend/*": "./src/backend/*",
+    "#synthetic/*": "./tests/__mocks__/data/synthetic-analysis/*"
+  },
   "directories": {
     "doc": "docs"
   },
   "scripts": {
+    "install:all": "npm install && npm --prefix src/frontend install && npm --prefix scripts/builder install",
     "prepare": "husky",
     "lint:backend": "eslint --config eslint.config.js --fix src/backend tests",
     "lint:backend:check": "eslint --max-warnings 0 --config eslint.config.js src/backend tests",
@@ -43,11 +48,12 @@
     "format:builder": "prettier --write scripts/builder",
     "format": "prettier --write \"src/**/*.{js,json,md}\" \"**/*.{json,md}\"",
     "builder:compile": "node node_modules/@typescript/native/bin/tsc -p scripts/builder/tsconfig.json",
+    "typecheck:all": "npm run builder:compile && node node_modules/@typescript/native/bin/tsc -p scripts/builder/tsconfig.vitest.json && node src/frontend/node_modules/@typescript/native/bin/tsc -b src/frontend/tsconfig.json src/frontend/tsconfig.node.json src/frontend/tsconfig.e2e.json && node node_modules/@typescript/native/bin/tsc -p .opencode/tsconfig.json && node node_modules/@typescript/native/bin/tsc -p scripts/synthetic-test-data/tsconfig.json",
     "build:frontend": "npm --prefix src/frontend run build --",
     "build:gas-bundle": "node scripts/builder/dist/build-gas-bundle.js",
     "build:production": "npm run builder:compile && npm run build:gas-bundle -- --frontend-mode=production",
     "build:dev": "npm run builder:compile && npm run build:gas-bundle -- --frontend-mode=dev",
-    "run-all-checks": "npm run lint:check && npm run test:coverage && npm run build:production"
+    "run-all-checks": "npm run lint:check && npm run test:coverage && npm run typecheck:all && npm run build:production"
   },
   "keywords": [],
   "author": "",

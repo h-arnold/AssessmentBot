@@ -69,12 +69,12 @@
       }
     },
     {
-      "id": "builder-compile-check",
+      "id": "typescript-compile-check",
       "tool": "tsc",
       "cwd": ".",
       "run": {
-        "kind": "tsc",
-        "project": "scripts/builder/tsconfig.json"
+        "kind": "npm-script",
+        "script": "typecheck:all"
       }
     }
   ]

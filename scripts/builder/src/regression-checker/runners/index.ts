@@ -106,6 +106,15 @@ export function buildRunnerInvocation(options: {
       };
     }
     case 'tsc':
+      if (options.check.run.kind === 'npm-script') {
+        return {
+          executable: 'npm',
+          args: ['run', options.check.run.script],
+          cwd,
+          rawArtefactPath,
+          rawArtefactExtension: '.txt',
+        };
+      }
       return {
         executable: process.execPath,
         args: [

@@ -4,7 +4,7 @@ import { promises as fs } from 'node:fs';
 
 import { afterEach, describe, expect, it, test } from 'vitest';
 
-import { CommandExecutionError } from '../../lib/process.js';
+import { CommandExecutionError } from '#builder/lib/process.js';
 
 type SessionIdSource = 'arg' | 'git-branch';
 type RegressionTool = 'eslint' | 'vitest' | 'playwright' | 'tsc';
@@ -56,8 +56,7 @@ type ScheduledCheckResult = {
 type ComparisonResult = {
   overallStatus: 'GREEN' | 'FAILING' | 'BASELINE-INCOMPATIBLE';
   baselineCompatibility:
-    | { compatible: true }
-    | { compatible: false; reason: { code: string; message: string } };
+    { compatible: true } | { compatible: false; reason: { code: string; message: string } };
   checks: Array<{
     id: string;
     tool: RegressionTool;
@@ -173,8 +172,7 @@ type RegressionCliModule = {
         current: ScheduledCheckResult & { rawArtefact: unknown };
       }>;
       baselineCompatibility:
-        | { compatible: true }
-        | { compatible: false; reason: { code: string; message: string } };
+        { compatible: true } | { compatible: false; reason: { code: string; message: string } };
     }) => ComparisonResult;
     readRawArtefact?: (rawArtefactPath: string) => Promise<unknown>;
     writeFile?: (targetPath: string, content: string) => Promise<void>;
@@ -586,10 +584,18 @@ describe('report writer and CLI orchestration', () => {
       repoRoot: '/repo',
       createdAt: CREATED_AT,
       logicalCpuCount: 4,
-      loadRawConfig: async () => {
-        throw new Error('Regression config is invalid: checks must not be empty.');
-      },
-      packageJsonScriptsByDirectory: {},
+      loadRawConfig: async () => ({
+        reportDirectory: REPORT_DIRECTORY,
+        checks: [
+          {
+            id: 'invalid-tsc',
+            tool: 'tsc',
+            cwd: '.',
+            run: { kind: 'npm-script', script: 'not-allowed' },
+          },
+        ],
+      }),
+      packageJsonScriptsByDirectory: createPackageScriptMap(),
       resolveGitBranchName: async () => 'ignored',
       prepareSessionStorage: async () => {
         throw new Error('prepareSessionStorage should not run for invalid config.');
@@ -602,8 +608,37 @@ describe('report writer and CLI orchestration', () => {
     });
 
     expect(result.exitCode).toBe(INVALID_CONFIG_EXIT_CODE);
-    expect(result.outputText).toContain('Regression config is invalid');
+    expect(result.outputText).toContain('Regression config invalid');
     expect(runChecksCalled).toBe(false);
+  });
+
+  it('returns the invalid-config exit code for typed validation errors', async () => {
+    const { runRegressionCheckerCli } = await loadCliModule();
+    const result = await runRegressionCheckerCli({
+      positionalSessionId: SESSION_ID,
+      repoRoot: REPO_ROOT,
+      createdAt: CREATED_AT,
+      logicalCpuCount: 4,
+      loadRawConfig: async () => ({
+        reportDirectory: REPORT_DIRECTORY,
+        checks: [
+          {
+            id: 'invalid-tsc',
+            tool: 'tsc',
+            cwd: '.',
+            run: { kind: 'npm-script', script: 'not-allowed' },
+          },
+        ],
+      }),
+      packageJsonScriptsByDirectory: createPackageScriptMap(),
+      resolveGitBranchName: async () => 'ignored',
+      prepareSessionStorage: async () => {
+        throw new Error('storage must not run for invalid config');
+      },
+    });
+
+    expect(result.exitCode).toBe(INVALID_CONFIG_EXIT_CODE);
+    expect(result.outputText).toContain('Regression config invalid');
   });
 
   it('resolves compare artefact reads against the session directory for baseline and current manifests', async () => {
@@ -822,6 +857,27 @@ describe('report writer and CLI orchestration', () => {
     expect(compareChecks[0]?.rawArtefactPath).toBe(
       'runs/2026-05-13T05-00-00.000Z/checks/builder-lint/raw.json'
     );
+  });
+
+  it('records tsc aggregate script metadata without a JSON reporter mode', async () => {
+    const { createSessionManifestChecks } = await loadCliModule();
+    const checks = createSessionManifestChecks(
+      {
+        ...createConfig(),
+        checks: [
+          {
+            id: 'typescript-compile-check',
+            tool: 'tsc',
+            cwd: '.',
+            run: { kind: 'npm-script', script: 'typecheck:all' },
+          },
+        ],
+      },
+      CREATED_AT,
+      'baseline'
+    );
+
+    expect(checks[0]?.executionMetadata).toEqual({ script: 'typecheck:all' });
   });
 
   it('renders compare reports with explicit per-check details and baseline-incompatible status', async () => {

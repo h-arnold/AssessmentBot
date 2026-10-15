@@ -6,7 +6,7 @@ import {
   isCrossPlatformAbsolutePath,
   normalisePathSeparators,
   normaliseRelativeSegments,
-} from '../../lib/fs.js';
+} from '#builder/lib/fs.js';
 import {
   formatRegressionConfigIssues,
   regressionConfigInputSchema,
@@ -28,6 +28,7 @@ const CHAR_CODE_R = 114;
 const CHAR_CODE_U = 117;
 const THIRD_CHARACTER_INDEX = 2;
 const CHAINED_COMMAND_PATTERN = /&&|\|\||;|\|/;
+const APPROVED_TSC_AGGREGATE_SCRIPT = 'typecheck:all';
 const MUTATING_COMMAND_PATTERN = /(^|\s)(?:--(?:fix|write|update|update-snapshots)|-u)(?=\s|$)/i;
 
 type RegressionTool = (typeof SUPPORTED_TOOLS)[number];
@@ -65,6 +66,19 @@ type RegressionConfig = {
   checks: RegressionConfigInput['checks'];
 };
 
+/** Identifies failures caused by invalid regression-checker configuration. */
+export class RegressionConfigValidationError extends Error {
+  /**
+   * Creates a typed config-validation error.
+   * @param {string} message - Validation failure detail.
+   * @param {ErrorOptions} [options] - Underlying error information.
+   */
+  constructor(message: string, options?: ErrorOptions) {
+    super(message, options);
+    this.name = 'RegressionConfigValidationError';
+  }
+}
+
 /**
  * Validates and normalises regression-checker config for Section 1 execution.
  *
@@ -74,6 +88,26 @@ type RegressionConfig = {
 export function validateRegressionConfig(
   options: ValidateRegressionConfigOptions
 ): RegressionConfig {
+  try {
+    return validateRegressionConfigInput(options);
+  } catch (error) {
+    if (error instanceof RegressionConfigValidationError) {
+      throw error;
+    }
+
+    throw new RegressionConfigValidationError(
+      error instanceof Error ? error.message : String(error),
+      { cause: error }
+    );
+  }
+}
+
+/**
+ * Validates and normalises the regression-checker configuration.
+ * @param {ValidateRegressionConfigOptions} options - Raw config and runtime dependencies.
+ * @returns {RegressionConfig} Safe, validated regression-checker config.
+ */
+function validateRegressionConfigInput(options: ValidateRegressionConfigOptions): RegressionConfig {
   const parsedConfig = parseRegressionConfig(options.rawConfig);
   const reportDirectory = validateRepoRelativePath(
     options.repoRoot,
@@ -145,10 +179,21 @@ function normaliseRegressionCheck(
   );
 
   if (check.tool === 'tsc') {
-    if (check.run.kind !== 'tsc') {
-      throw new Error(
-        'Regression config invalid: tool=tsc requires run.kind=tsc; npm-script is not allowed.'
+    if (check.run.kind === 'npm-script') {
+      if (check.run.script !== APPROVED_TSC_AGGREGATE_SCRIPT) {
+        throw new Error('Regression config invalid: tool=tsc npm-script must be typecheck:all.');
+      }
+      validateNpmScriptCheck(
+        'tsc',
+        normalisedCwd,
+        check.run.script,
+        {
+          repoRoot: options.repoRoot,
+          packageJsonScriptsByDirectory: options.packageJsonScriptsByDirectory,
+        },
+        true
       );
+      return { ...check, cwd: normalisedCwd };
     }
 
     const normalisedProjectPath = validateRepoRelativePath(
@@ -394,13 +439,15 @@ function assertPathResolvesInsideRepoRoot(
  * @param {string} packageDirectory - Repo-relative package directory for script lookup.
  * @param {string} scriptName - npm script name.
  * @param {NpmScriptResolutionContext} resolutionContext - Package script lookup context.
+ * @param {boolean} [allowTscAggregate] - Permit the explicitly allowlisted TypeScript aggregate.
  * @returns {void}
  */
 function validateNpmScriptCheck(
   declaredTool: RegressionTool,
   packageDirectory: string,
   scriptName: string,
-  resolutionContext: NpmScriptResolutionContext
+  resolutionContext: NpmScriptResolutionContext,
+  allowTscAggregate = false
 ): void {
   const scriptCommand = getPackageJsonScriptCommand(
     resolutionContext,
@@ -411,7 +458,11 @@ function validateNpmScriptCheck(
     throw new Error(`run.kind=npm-script requires a declared package.json script: ${scriptName}`);
   }
 
-  validateNpmScriptCommandSafety(scriptCommand, scriptName);
+  validateNpmScriptCommandSafety(scriptCommand, scriptName, allowTscAggregate);
+
+  if (allowTscAggregate) {
+    return;
+  }
 
   const resolvedToolFamilies = resolveToolFamiliesFromScript({
     resolutionContext,
@@ -975,16 +1026,21 @@ function isNpmOptionToken(token: string): boolean {
  *
  * @param {string} scriptCommand - Raw npm script command.
  * @param {string} scriptName - npm script name for error messages.
+ * @param {boolean} [allowChainedTscAggregate] - Permit chaining for the trusted TypeScript aggregate.
  * @returns {void}
  */
-function validateNpmScriptCommandSafety(scriptCommand: string, scriptName: string): void {
+function validateNpmScriptCommandSafety(
+  scriptCommand: string,
+  scriptName: string,
+  allowChainedTscAggregate = false
+): void {
   if (MUTATING_COMMAND_PATTERN.test(scriptCommand)) {
     throw new Error(
       `run.kind=npm-script script ${scriptName} is mutating and not allowed (${scriptCommand}).`
     );
   }
 
-  if (CHAINED_COMMAND_PATTERN.test(scriptCommand)) {
+  if (!allowChainedTscAggregate && CHAINED_COMMAND_PATTERN.test(scriptCommand)) {
     throw new Error(
       `run.kind=npm-script script ${scriptName} must resolve to a single tool family and cannot be chained.`
     );

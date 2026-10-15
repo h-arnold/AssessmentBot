@@ -79,6 +79,7 @@ const ROOT_PACKAGE_JSON_SCRIPTS: Record<string, string> = {
   'test:frontend:e2e': 'playwright test',
   'test:frontend:e2e:update': 'playwright test --update-snapshots',
   'builder:compile': 'tsc -p scripts/builder/tsconfig.json',
+  'typecheck:all': 'npm run builder:compile && npm run typecheck:frontend',
   'lint-and-test': 'npm run lint:backend:check && npm run test:backend',
   'custom:task': 'node scripts/custom-task.js',
   'token-spoofed-tool': 'echo eslint',
@@ -612,30 +613,38 @@ describe('Section 1 regression-checker CLI contract', () => {
     ).toThrow(/relevant package.json/i);
   });
 
-  it('rejects tool=tsc when run.kind=npm-script', async () => {
+  it('allows the typecheck:all npm-script aggregate for tsc and rejects other scripts', async () => {
     const { validateRegressionConfig } = await loadConfigValidationModule();
+
+    const configForScript = (script: string) => ({
+      ...createValidConfig(),
+      checks: [
+        {
+          id: 'tsc-npm-script-check',
+          tool: 'tsc',
+          cwd: '.',
+          run: { kind: 'npm-script' as const, script },
+        },
+      ],
+    });
 
     expect(() =>
       validateRegressionConfig({
-        rawConfig: {
-          ...createValidConfig(),
-          checks: [
-            {
-              id: 'tsc-npm-script-check',
-              tool: 'tsc',
-              cwd: '.',
-              run: {
-                kind: 'npm-script',
-                script: 'builder:compile',
-              },
-            },
-          ],
-        },
+        rawConfig: configForScript('typecheck:all'),
         repoRoot: REPO_ROOT,
         packageJsonScriptsByDirectory: PACKAGE_JSON_SCRIPTS_BY_DIRECTORY,
         logicalCpuCount: 8,
       })
-    ).toThrow(/tool=tsc|run.kind=tsc|npm-script/i);
+    ).not.toThrow();
+
+    expect(() =>
+      validateRegressionConfig({
+        rawConfig: configForScript('builder:compile'),
+        repoRoot: REPO_ROOT,
+        packageJsonScriptsByDirectory: PACKAGE_JSON_SCRIPTS_BY_DIRECTORY,
+        logicalCpuCount: 8,
+      })
+    ).toThrow(/typecheck:all/i);
   });
 
   it('rejects run.kind=tsc checks when the declared tool is not tsc', async () => {

@@ -275,11 +275,13 @@ test.describe('Task Heatmap assignment summaries', () => {
   }, testInfo) => {
     const classDocument = ClassFullSchema.parse(buildClassFullDocument(false));
     classDocument.assignments[0].submissions[0].items.task_001.assessments = {};
-    const scenario = createHeatmapScenario();
-    scenario.getABClass = [
-      { kind: 'success', data: classDocument },
-      { kind: 'success', data: classDocument },
-    ];
+    const scenario = {
+      ...createHeatmapScenario(),
+      getABClass: [
+        { kind: 'success' as const, data: classDocument },
+        { kind: 'success' as const, data: classDocument },
+      ],
+    };
     await installRuntimeMock(page, scenario);
     await openHeatmapClass(page);
     await page.getByRole('button').filter({ hasText: HEATMAP_ASSIGNMENT_DISPLAY_TITLE }).click();
@@ -340,10 +342,15 @@ test.describe('Task Heatmap assignment summaries', () => {
         taskWeighting: 1,
       };
     });
-    const scenario = createHeatmapScenario();
-    scenario.getAssignmentDefinitionPartials = [
-      { kind: 'success', data: [{ ...partial, tasks: [...partial.tasks, ...additionalTasks] }] },
-    ];
+    const scenario = {
+      ...createHeatmapScenario(),
+      getAssignmentDefinitionPartials: [
+        {
+          kind: 'success' as const,
+          data: [{ ...partial, tasks: [...partial.tasks, ...additionalTasks] }],
+        },
+      ],
+    };
     await installRuntimeMock(page, scenario);
     await openHeatmapClass(page);
     await page.getByRole('button').filter({ hasText: HEATMAP_ASSIGNMENT_DISPLAY_TITLE }).click();

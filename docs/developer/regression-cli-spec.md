@@ -36,14 +36,23 @@ This feature is **not** intended to:
 7. Unsupported tool families or unsupported reporter modes fail validation before execution.
 8. The CLI stores raw tool-native outputs and compares baseline vs current using tool-specific diff logic.
 9. The report starts with a fixed-structure summary header block for deterministic first-pass parsing.
-10. `tsc` checks use direct `run.kind=tsc` mode only in v1 for stricter safety.
+10. `tsc` checks use direct `run.kind=tsc` mode only in v1 for stricter safety. _(Amended: the sole `npm-script` exception is the allowlisted aggregate `typecheck:all`; see the v1 amendment note below.)_
 11. Parallel execution defaults to `maxWorkers = min(4, logicalCpuCount)`.
 12. Playwright checks always run in a dedicated single-worker lane.
 13. The default storage root for config and report artefacts is `.ts-regression-checker`.
 14. Compare runs exit with a non-zero code when regressions are detected, so the CLI can be used in pre-commit and other hooks.
-15. `run.kind=npm-script` in v1 supports only single-tool, non-mutating scripts that map to exactly one supported tool family.
+15. `run.kind=npm-script` in v1 supports only single-tool, non-mutating scripts that map to exactly one supported tool family. _(Amended: the allowlisted `typecheck:all` aggregate is exempt from the single-tool and non-chained rules; the mutating and declared-script rules still apply.)_
 16. Baseline and compare runs must validate baseline compatibility (config/check/tool metadata) before diffing.
 17. Baselines are auto-created when missing, and baseline-mode reports must be explicitly flagged as baseline creation output.
+
+> **v1 amendment — `tsc` aggregate allowlist.** The shipped checker accepts one `npm-script` form
+> for `tsc`: `{ "kind": "npm-script", "script": "typecheck:all" }`. Every other `tool=tsc` +
+> `run.kind=npm-script` entry is rejected, the mutating-flag and declared-script guards still
+> apply, and `typecheck:all` is the only script exempt from the single-tool and non-chained rules.
+> Because the aggregate bypasses declared-tool-family resolution, the checker treats its output as
+> `tsc` text; pass/fail is still driven by the process exit code. See
+> [Regression Checker How-To](./builder/regression-checker-how-to.md) for the operational contract
+> and the trade-off.
 
 ## Existing system constraints
 
@@ -132,10 +141,10 @@ Validation rules:
 - each `checks[].cwd` must resolve to a repo-relative path under the repository root (path traversal outside repo is invalid)
 - `run.kind=npm-script` requires script existence in the relevant `package.json`
 - `run.kind=npm-script` requires the script to be non-mutating (no `--fix`, `--write`, or equivalent mutating flags)
-- `run.kind=npm-script` requires the script command to resolve to exactly one supported tool family in v1 (no chained multi-tool scripts)
+- `run.kind=npm-script` requires the script command to resolve to exactly one supported tool family in v1 (no chained multi-tool scripts), except the allowlisted `typecheck:all` aggregate
 - `run.kind=tsc` requires `tool=tsc` and a valid `project` path
-- for `tool=tsc`, `run.kind=npm-script` is invalid in v1
-- script command must resolve to the declared tool executable family
+- for `tool=tsc`, `run.kind=npm-script` is valid only for the allowlisted aggregate script `typecheck:all`; every other `tsc` npm script is invalid
+- script command must resolve to the declared tool executable family (except the allowlisted `typecheck:all` aggregate, which intentionally bypasses declared-tool-family resolution)
 - if `parallel.enabled=true`, `parallel.maxWorkers` must be an integer greater than or equal to `1`
 - when `parallel.maxWorkers` is omitted, default to `min(4, logicalCpuCount)`
 
@@ -146,9 +155,9 @@ For each check, the runner enforces tool-native structured or parseable output m
 - `eslint`: append/override formatter to JSON and write JSON file
 - `vitest`: append/override reporter to JSON and write JSON file
 - `playwright`: append/override reporter to JSON and capture JSON output file
-- `tsc`: enforce stable plain diagnostics mode (`--pretty false`) and capture text output for parser
+- `tsc`: enforce stable plain diagnostics mode (`--pretty false`) and capture text output for parser. The allowlisted npm-script aggregate is invoked as-is (no injected compiler arguments or JSON reporter), and its plain text output is captured; pass/fail comes from the exit code
 
-If the configured script cannot be validated to the declared tool family, fail before execution.
+If the configured script cannot be validated to the declared tool family, fail before execution — except for the allowlisted `typecheck:all` aggregate, whose declared-tool-family inspection is intentionally bypassed (see the v1 amendment note).
 
 ### Session storage recommendation
 
@@ -338,7 +347,7 @@ After header end marker:
 ## Error handling and safety
 
 1. Fail fast on invalid config or unsupported tool.
-2. Fail fast if script resolution does not match declared tool family.
+2. Fail fast if script resolution does not match declared tool family (the allowlisted `typecheck:all` aggregate is exempt).
 3. Do not execute arbitrary shell strings from config.
 4. Record execution errors as reportable check failures with clear error codes.
 5. Fail fast when `sessionId` is omitted and current Git branch name cannot be resolved.
@@ -350,7 +359,7 @@ After header end marker:
 1. Running `regression-checker <sessionId>` with no prior baseline creates baseline artefacts.
 2. Running the same command again creates a comparison report.
 3. Unsupported tool types are rejected before any check runs.
-4. Invalid script-to-tool mappings are rejected before execution.
+4. Invalid script-to-tool mappings are rejected before execution (the allowlisted `typecheck:all` aggregate is exempt from declared-tool-family resolution).
 5. Header includes required summary fields in deterministic order and uses the defined start/end markers.
 6. Report highlights regressions, new failures, and fixes.
 7. Raw tool-native outputs are persisted for each check.
@@ -358,7 +367,7 @@ After header end marker:
 9. Running `regression-checker` without `sessionId` uses the current Git branch as `sessionId`.
 10. Default config/report storage is under `.ts-regression-checker`.
 11. Compare runs exit with non-zero when regressions are detected.
-12. `npm-script` checks that are mutating or multi-tool are rejected in config validation.
+12. `npm-script` checks that are mutating or multi-tool are rejected in config validation (multi-tool rejection does not apply to the allowlisted `typecheck:all` aggregate; mutating rejection does).
 13. Compare mode aborts with `baseline-incompatible` when baseline metadata is incompatible with the current run inputs.
 
 ## Open decisions

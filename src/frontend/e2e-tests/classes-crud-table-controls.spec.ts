@@ -37,7 +37,7 @@ const workstreamThreeClassPartials = [
     teachers: [],
     active: false,
   },
-] as const;
+];
 
 const expectedWorkstreamThreeRowCount = 4;
 

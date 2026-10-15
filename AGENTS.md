@@ -38,6 +38,7 @@ These apply to all components.
 8. Do not add production code purely to satisfy tests.
 9. Keep changes minimal, localised, and consistent with existing patterns.
 10. **Default values must be set in a module's constructor only.** If defaults are found elsewhere, they should be opportunistically moved to the constructor of the module.
+11. Use `./` or `../` (including immediate-parent descendants such as `../sibling/x`) for nearby modules; use configured aliases when reaching two or more parent traversals (for example `../../x`). Builder TypeScript and Node test code support component aliases, and backend tests use aliases; production backend GAS code is concatenated and does not use Node module aliases. Opportunistically migrate noncompliant imports in files already touched, preserving import semantics.
 
 ### 2.2 Codebase Conduct
 
@@ -115,7 +116,9 @@ Lint runs from the repository root. The plain variants pass `--fix` and rewrite 
 
 Do not run frontend or builder files through the root backend ESLint command directly; use their leaf configs via the commands above.
 
-The complete command set is defined in `package.json`; run the full local gate with `npm run run-all-checks` (lint, coverage, and production build).
+The complete command set is defined in `package.json`; run the full local gate with `npm run run-all-checks` (lint, coverage, type checks, and production build).
+
+`npm run typecheck:all` type-checks every TypeScript project (builder source and Vitest tooling, frontend app/Node/E2E, OpenCode plugins, and the synthetic test TypeScript). It is the type gate for CI, the regression checker, `run-all-checks`, and the pre-commit hook. See `docs/developer/builder/TypeScriptAndLintConfigHierarchy.md`.
 
 ### 6.2 Shared Config Rule
 
