@@ -27,6 +27,80 @@ This policy is intentionally broader than the analysis graph and applies automat
 
 Backend tests load a committed profile view synchronously and immutably, then supply the generated transport view through the dispatcher seams described below. For the corpus topology, profile/view selection, commands, failure behaviour, and the full exception and extension path, see the canonical guide: [Synthetic Test Data](../testing/synthetic-test-data.md).
 
+## Planned ABClass canonical model-input adaptation
+
+> **Status: `Not implemented`.** Planned-only entry for the backend ABClass `metadata`
+> contract-support cycle. Reconcile against the implementation and remove the marker only as
+> the behaviour lands. Cross-reference: `docs/developer/testing/synthetic-test-data.md`
+> §Planned ABClass metadata generator capability.
+
+### `toBackendModelInputs.js` (`Not implemented`)
+
+Location (planned): `scripts/synthetic-test-data/toBackendModelInputs.js`.
+
+- Test-only adapter shared by backend model, controller and persistence tests. It adds no
+  production dependency and must never be imported by GAS runtime source.
+- Export `loadBackendModelInputs(profileName)`; require an explicit profile name. Reuse
+  `loadSyntheticAnalysisProfile(profileName, viewName)` once per view with view names
+  `classPartials`, `classesById`, `assignmentsByKey` and `editableDefinitions`. For the
+  default test selection call it with `'small'`; use `'medium'` for wider variants.
+  Each loader result is deeply frozen, not a `transport` wrapper. `classPartials` is an
+  array; `classesById` is keyed by `classId`. Clone before adaptation/mutation. Reserve
+  `transport.*` notation for the in-memory generator graph only.
+- Resolve the matching definition for each assignment and adapt transport definition keys and
+  tasks into the actual backend model JSON requirements, preserving IDs, timestamps and
+  partial/full redaction/hydration semantics.
+- Outputs include ABClass roster JSON inputs (`classOwner`, `teachers`, `students`) derived
+  from the `classesById` view, suitable for real model restoration and owner/teacher-array
+  serialisation coverage. The adapter returns `{ classPartials, classesById, assignmentsByKey }`
+  as independent cloned model-input values; it resolves `editableDefinitions` internally.
+  Preserve legacy plain teacher entries; tests specifically exercising
+  `Teacher.toJSON()` explicitly materialise canonical teacher inputs with `Teacher.fromJSON()`
+  when composing their ABClass, rather than changing production array-hydration behaviour.
+- Never feed a frontend assignment partial directly to `Assignment.fromJSON()`, and never
+  mutate the frozen loader output in place. All adaptation happens on local clones.
+
+### Test infrastructure reuse (`Not implemented`)
+
+- Add root `package.json` import mapping `"#synthetic-data/*": "./scripts/synthetic-test-data/*"`.
+  Backend `.test.js` suites use ESM named imports from
+  `#synthetic-data/toBackendModelInputs.js` and `#synthetic-data/loadSyntheticAnalysisProfile.js`,
+  not `require()` of these ESM script modules. A new node-project
+  `tests/syntheticModelInputs.node.test.js` smoke proves this path under `setupGlobals`
+  before downstream class suites consume it. Existing `#synthetic/*` continues to mean
+  committed JSON views; do not add a second loader or production import. Reconcile the
+  configuration-hierarchy alias paragraph when this planned map lands.
+- New suites use the existing `#backend/*` mapping for backend source; migrate non-compliant
+  source imports only in existing files already touched, preserving import semantics.
+  Configuration documentation must describe this as the new/touched-file convention,
+  not claim all legacy suites already use it. Nearby helpers remain relative.
+- Reuse `globalMockManager` and `apiHandlerTestUtils`, plus local external-service mocks, for
+  the wider class graph. Do not invent realistic class graphs in tests; derive them from
+  canonical data.
+- For real ABClass dispatcher contracts, the default dispatcher setup replaces both the
+  controller and transport globals. After shared setup, reinstall the real `ABClassController`
+  and real ABClass mutation/read handlers before dispatch, following the existing
+  `dispatcher-integration.test.js` real-handler pattern; restore all globals afterwards.
+  Prebuilt synthetic responses and default handler/controller stubs are not evidence of
+  real domain validation. No shared-harness refactor is planned.
+- Existing-row roster mocks provide stored `_id` and `updateOne` with vendor-faithful
+  results: `_id`-only matched/no-op patches return a match; query-filter no-op results
+  do not. Include the facade `abclassManager.saveClass`, `loadClass` and `initialise`
+  suites when changing extracted save checks or roster persistence.
+- Install the new metadata model and metadata error globals in `tests/setupGlobals.js` after
+  the existing `Validate` installation and before any ABClass-dependent module loads,
+  including suites that directly `require()` `Models/ABClass.js`.
+- In GAS runtime, the corresponding references stay inside runtime constructor/method bodies.
+  Do not add production Node imports or change stable numeric prefixes to support tests.
+
+### Boundary and integrity probes (`Not implemented`)
+
+- Invalid, legacy-missing and boundary cases remain local clones of canonical data rather
+  than generator changes.
+- Equal-timestamp ordering acceptance is a local boundary probe cloned from canonical
+  metadata. Generated source assignments have distinct timestamps, and their canonical
+  exact-timestamp linkage must not be weakened to manufacture that case.
+
 ## Backend logging test expectations
 
 When backend logging behaviour or error boundaries change, include explicit logging-focused regression coverage in backend tests.

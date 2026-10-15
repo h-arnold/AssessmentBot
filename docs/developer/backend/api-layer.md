@@ -73,6 +73,129 @@ against the current specification first.
   - Location: `toTransportPartialRow_` in `src/backend/z_Api/assignmentDefinitionTransport.js`
   - Note: Transport-boundary helper that accepts a model instance or plain object, calls `definition.toPartialJSON()`, defensively strips `yearGroup`, and normalises Date fields.
 
+## Planned ABClass metadata helpers
+
+> **Status: `Not implemented`.** This section records the reviewed helper decisions for the
+> backend ABClass `metadata` contract-support cycle. Cross-references:
+> `docs/developer/data-shapes/abclass.md` §Planned validation and
+> `docs/developer/testing/synthetic-test-data.md` §Planned ABClass metadata generator
+> capability. Reconcile each entry and remove its `Not implemented` marker only as the
+> corresponding behaviour lands.
+
+### Metadata domain model — `Models/ABClassMetadata.js` (`Not implemented`)
+
+- New dedicated metadata-domain owner holding the five named validation routines:
+  `validateAverageScore`, `validateAverageScores`, `validateClassAverages`,
+  `validateRecentAssignment` and `validateMetadata`. Keep them out of `Models/ABClass.js` and
+  generic `Validate`; do not duplicate the domain implementation in transport helpers.
+- The constructor owns the nullable field's `null` default for absence. All five routines
+  share one local exact-record/required-field/allowed-fields check rather than repeating it
+  per shape. `validateClassAverages` validates its own exact five-field record, passes an
+  extracted four-field score record to `validateAverageScores`, and validates its timestamp
+  separately.
+- Present metadata is validated, not defaulted or accepted unchecked; malformed supplied
+  non-null values never become `null` silently. Defensive copies at ownership boundaries
+  prevent shared mutable aliases between model and caller/returned objects.
+- Boundary API: `new ABClassMetadata()` owns absent-value null normalisation;
+  `new ABClassMetadata(value)` validates/copies an explicit value and rejects explicit
+  undefined. Its `toJSON()` revalidates and returns a copied plain snapshot/null. The five
+  named validators are static routines. `ABClass.metadata` holds the plain value, and
+  `ABClass.setMetadata(value)` is the single explicit replacement entry point. Model and
+  mapper boundaries distinguish actual own-property absence before using this API.
+
+### Metadata error type — `Utils/ErrorTypes/ABClassMetadataValidationError.js` (`Not implemented`)
+
+- New error type carrying a field path and a default non-request provenance.
+- Only the controller's request-validation invocation tags failures with
+  `inputSource: 'request'`. Model restoration, stored-partial validation, serialisation and
+  projection never acquire that tag; the domain layer never throws transport errors.
+
+### Canonical-UTC predicate — `Utils/Validate.js` (`Not implemented`)
+
+- Extend `Validate` with the generic predicate `isCanonicalUtcDateTime(value)`, enforcing the
+  exact canonical UTC real-calendar form `YYYY-MM-DDTHH:mm:ss.sssZ`. The metadata domain
+  validator reuses it. See `docs/developer/data-shapes/abclass.md` §Planned validation.
+- Distinguish it from the unchanged, broader `isIsoDateTimeString_` in
+  `z_Api/assignmentDefinition/assignmentDefinitionPartialRowValidation.js`, which accepts
+  timezone offsets and is owned by the later transport layer. Model-domain validation must
+  not depend on that helper; leave it and its broader contract unchanged.
+
+### Controller request gate and transport adaptation (`Not implemented`)
+
+- Extend `ABClassValidation` with `_validateRequestMetadata(parameters)`: an own-property
+  metadata gate that runs before any record read, roster refresh or write. It invokes the
+  shared domain validator for explicitly supplied metadata and tags only failures from that
+  shared-domain request invocation with `inputSource: 'request'`.
+- In the `abclassMutations.js` transport helper, add a shared narrow trailing-underscore
+  adaptation that converts only this typed request-provenance error into `ApiValidationError`,
+  preserving the field-path message and adding no new envelope fields. All other exceptions
+  propagate unchanged. The transport layer never evaluates nested domain rules.
+
+### Response mapper reuse (`Not implemented`)
+
+- `ABClassResponseMapper._normaliseClassPartial()` remains the single stored-partial metadata
+  normalisation/validation gate: legacy absence routes through the metadata-domain
+  constructor, and present invalid metadata is an integrity failure. Its existing reuse by
+  `_buildClassSummary()` covers mutation summaries, so no duplicate metadata pass is added.
+- Extend `_toReadView()` with the validated/copied metadata field while retaining its
+  assignment projection/redaction and other full-read behaviour.
+
+### Controller decomposition — `ABClassMutationOps.js` (`Not implemented`)
+
+- Decompose the oversized `ABClassController` facade — already above the 550-line hard
+  trigger — into an injected `ABClassMutationOps.js` domain owner in the existing
+  `ABClassController/` folder, covering `upsert`/`update`/`delete`.
+- Preserve the facade's public methods and signatures, its injected sub-classes and the GAS
+  sub-class load order. This decomposes an existing domain; it does not introduce a new
+  public roster or mutation API.
+- Also extract the existing `saveClass` argument checks into
+  `ABClassValidation._validateClassForSave(abClass)`, retaining the accepted model/plain-object
+  contract and error messages. The facade keeps its no-argument constructor, private
+  delegators, `saveClass` persistence delegation and return value. This coherent validation
+  extraction keeps the projected facade within the 500-line planning budget without
+  weakening its documentation.
+- Inject `{ dbManager, validation, persistence, roster, responseMapper }` into the mutation
+  owner. Its upsert invokes the shared `_validateClassForSave` then `persistClassAndPartial`,
+  without calling back through the facade. Retain public-method JSDoc on the facade;
+  extracted methods carry their own implementation-oriented documentation.
+- If the initial extraction does not reach the binding 500-line lint ceiling, additionally
+  extract raw registry retrieval/error logging into `ABClassPersistence.readClassPartials()`;
+  keep `getAllClassPartials()`'s mapping delegation and single metadata gate unchanged.
+  This is a conditional `Not implemented` extraction, not licence to compress JSDoc or
+  split unrelated files to clear existing warnings.
+
+### Persistence extension — `ABClassPersistence` (`Not implemented`)
+
+- Extend the existing `ABClassPersistence` for preprepared full/partial payloads and private
+  registry-roster preparation/write helpers. `ABClassRoster._persistRoster()` remains the
+  existing roster orchestrator and calls those helpers instead of whole-row partial upsert.
+- Prepare complete payloads before full-store mutation, preserving existing direct method
+  signatures. An existing-row registry roster patch uses its stored `_id` as the sole
+  filter and checks the vendor's `matchedCount`: `_id` matches count even when unchanged,
+  unlike the vendor's query-filter result. A true zero-match patch fails without retry or
+  classId-query/upsert fallback.
+- Whole-save preparation copies the model's full JSON or the supported plain input, never
+  mutating the caller. Normalise the caller's metadata through the domain constructor;
+  validate any present partial-projection metadata and reject invalid/different values.
+  A legacy plain projection may omit the field: populate only the prepared full/partial
+  copies from the same validated source, with independent nested metadata ownership.
+- Reuse `ABClass.serialiseOwner()` and the existing ArrayUtils serialisers for registry patch
+  values.
+- The field-scoped roster patch of an existing partial must not use, validate, copy or rewrite
+  the stored metadata value. See `docs/developer/data-shapes/abclass.md` §Planned
+  field-scoped roster persistence.
+
+### Companion deletion-documentation reconciliation (`Not implemented`)
+
+- Reconcile this page's implemented `deleteABClass` idempotency note with the factual
+  correction recorded in `docs/developer/data-shapes/abclass.md`: repeated deletes succeed,
+  but the full-collection flag is currently true after any non-throwing drop, including a
+  vendor false return for an absent collection. It does not prove a collection was removed.
+- The recognised missing-collection exception guard is not the vendor's normal absent
+  path, which returns false; every non-throwing delete currently reports the full flag true.
+- Do not change deletion code in this cycle. The user explicitly authorised the separate-round
+  flag fix tracked in [issue #332](https://github.com/h-arnold/AssessmentBot/issues/332).
+
 ## Design Rules
 
 1. Keep API functions as thin as possible.

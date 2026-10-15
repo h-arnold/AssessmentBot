@@ -139,6 +139,60 @@ This is **fixture realism only**, not a production nullable-contract change:
 - Nullable transport acceptance is covered by explicit **local null-boundary probes**, not by generated null population. `tests/synthetic-analysis/syntheticCorpusConventions.test.ts` clones a canonical class-embedded assignment partial and a canonical full assignment, sets `updatedAt = null`, and parses both through the real frontend schemas. `tests/synthetic-analysis/syntheticGraphShapeCoverage.test.ts` clones a canonical class, nulls its first assignment's `updatedAt`, and re-parses it through `ClassFullSchema`.
 - The Class page's fail-closed rejection of a null or unparseable `updatedAt` is unchanged and tested with independent local invalid probes in `src/frontend/src/features/classPage/classPageAdapter.trustValidation.spec.ts`. Do not use canonical rows to assert that rejection.
 
+## Planned ABClass metadata generator capability
+
+> **Status: `Not implemented`.** Planned-only entry recording the reviewed generator-extension
+> plan for the backend ABClass `metadata` contract-support cycle. The existing committed
+> profiles stay byte-reproducible until this stage lands. Cross-reference:
+> `docs/developer/backend/backend-testing.md` §Planned ABClass canonical model-input
+> adaptation.
+
+### `generateClassMetadata.js` stage (`Not implemented`)
+
+- New generator stage that runs after assignment generation and extends the existing graph
+  plus the `toTransportViews` projections, so raw metadata appears identically in the logical
+  `persistence.classes` records and the `transport.classPartials` / `transport.classesById`
+  views.
+- Every profile — `small`, `medium`, `large-representative` and the on-demand `large-full` —
+  runs the same stage. Existing seeds, entity counts, assignment timestamp conventions and the
+  Faker sequence stay unchanged; the stage reads no clock and consumes no Faker values.
+- Coverage across the committed `small`, `medium` and `large-representative` samples: null
+  metadata; zero, one, two and three recent entries; fractional scores; complete four-metric
+  collections with all four fields set to `N`, all four set to `E`, or all four set to
+  `excluded`; and mixed numeric/marker collections.
+- Apply each selected fixed score template to both `classAverages` and every recent entry's
+  `averages`, so canonical nested entries explicitly include all-four `N`, all-four `E`,
+  all-four `excluded`, mixed and numeric/fractional collections, not numeric-only entries.
+- Non-null samples always include complete class averages. Recent identifiers and definition
+  keys refer to real generated assignments of that class, and each entry's timestamp exactly
+  matches its source Assignment's generated `updatedAt`.
+- Every non-null fixture variant uses its class's newest generated assignment `updatedAt`
+  for `classAverages.updatedAt`, including variants with zero recent entries. This pins
+  deterministic fixture bytes; it adds no production relationship between summary and
+  entry timestamps.
+- Coverage cases are selected deterministically by profile and class/assignment indices, using
+  fixed templates and class/assignment index arithmetic. Scores are deliberately generated
+  supplied snapshots: the generator performs no averaging and derives no cross-metric
+  relationships.
+
+### `validateClassMetadata.js` helper (`Not implemented`)
+
+- New generator-owned helper validating raw generated metadata independently of the frontend
+  schemas, which currently strip the extra field.
+- Enforces strict raw shape, cross-view linkage, exact source timestamps, newest-first
+  ordering, full/partial parity and variant coverage.
+- Tests additionally validate generated raw metadata through the backend domain validator,
+  because frontend parse success alone is not sufficient.
+
+### Regeneration and scope (`Not implemented`)
+
+- Regenerate affected committed views through the existing CLI only; never hand-edit JSON.
+- The same stage covers the full graph; full-stress output is never committed.
+- Backend tests consume the raw metadata through the planned test-only
+  `scripts/synthetic-test-data/toBackendModelInputs.js` adapter described in
+  [Backend Testing](../backend/backend-testing.md).
+- No new profile or view is introduced, and no frontend adapter change is planned.
+
 ## Compact versus full lifecycle
 
 - **Compact (committed):** small, medium, and large-representative transport views plus manifests are checked in under `tests/__mocks__/data/synthetic-analysis/`. Regeneration stages and validates every profile before replacing any committed directory, and rolls every applied replacement back if a later one fails.
