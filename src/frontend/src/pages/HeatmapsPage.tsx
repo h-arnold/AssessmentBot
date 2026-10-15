@@ -10,11 +10,8 @@ import { HeatmapBuilderSurface } from '../features/taskHeatmap/HeatmapBuilderSur
  * @returns {JSX.Element} The rendered Heatmaps page composition root.
  */
 export function HeatmapsPage() {
-  // Wrap the feature surface in the shared page-width token so it matches every
-  // sibling top-level page (--app-page-width-wide-data) without reintroducing a
-  // duplicate heading or page chrome — PageTitleCard already supplies the title.
   return (
-    <div className="app-page-content">
+    <div className="app-page-content app-page-content--fluid">
       <HeatmapBuilderSurface />
     </div>
   );

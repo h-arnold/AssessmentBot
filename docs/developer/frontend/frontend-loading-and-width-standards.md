@@ -148,6 +148,17 @@ const hasTrustworthyReferenceData =
 - Do not move app-specific page or panel widths into `ConfigProvider.theme` unless the width belongs to a documented Ant Design token contract.
 - The Settings page keeps a stable outer width across tabs; the backend settings panel remains a centred narrow-width exception inside that wide frame.
 
+### 7.1 Fluid-width exception for heatmap pages and panels
+
+Heatmap pages and their heatmap content panels consume the full width of their available parent content region. They apply no fixed page or panel maximum, so on ultrawide viewports they keep consuming width instead of settling at the capped page or panel width.
+
+This is a deliberately narrow exception:
+
+- It applies only to heatmap pages and their heatmap content panels. It is **not** a change to capped sibling pages or to the centred narrow settings-panel widths.
+- Shell content padding still applies; the exception removes the width cap, not the shell frame.
+- The heatmap table keeps its own internal horizontal scrolling. The exception widens the container that holds the table; it does not force the table to fit the viewport.
+- Because the exception removes a cap rather than adding a width, it introduces no new width token. Keep named exceptions few, centralised, and named by intent.
+
 ## 8. Accessibility semantics
 
 - Initial blocking load must expose accessible loading semantics, such as a labelled `role="status"` region while the skeleton is present.
