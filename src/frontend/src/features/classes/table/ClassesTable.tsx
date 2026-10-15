@@ -63,7 +63,7 @@ export function ClassesTable(properties: Readonly<ClassesTableProperties>) {
   };
 
   const hasActiveGoogleClassroom = properties.rows.some(
-    (row) => row.status === 'active' || row.status === 'inactive' || row.status === 'notCreated',
+    (row) => ['active', 'inactive', 'notCreated'].includes(row.status),
   );
 
   return (

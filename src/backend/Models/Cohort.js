@@ -110,12 +110,12 @@ class Cohort {
 
   /**
    * Sets the cohort start year.
-   * @param {number} startYear - Academic year start
+   * @param {number} startYear - Safe integer academic year start
    */
   setStartYear(startYear) {
     Validate.requireParams({ startYear }, 'Cohort.setStartYear');
 
-    if (!Number.isInteger(startYear)) {
+    if (!Number.isSafeInteger(startYear)) {
       throw new TypeError('startYear must be an integer.');
     }
 
@@ -137,7 +137,7 @@ class Cohort {
   setStartMonth(startMonth) {
     Validate.requireParams({ startMonth }, 'Cohort.setStartMonth');
 
-    if (!Number.isInteger(startMonth) || startMonth < 1 || startMonth > MONTHS_IN_YEAR) {
+    if (!Number.isSafeInteger(startMonth) || startMonth < 1 || startMonth > MONTHS_IN_YEAR) {
       throw new TypeError(`startMonth must be an integer between 1 and ${MONTHS_IN_YEAR}.`);
     }
 

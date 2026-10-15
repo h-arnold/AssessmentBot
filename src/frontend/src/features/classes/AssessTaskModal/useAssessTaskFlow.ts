@@ -181,7 +181,15 @@ export function useAssessTaskFlow(parameters: AssessTaskFlowParameters) {
     setRecoveryDefinitionKey(null);
   }
 
-  const linkFlow = useAssessTaskLinkFlow({
+  const {
+    resetLinkSelection,
+    selectedDefinitionForLink,
+    linkableDefinitions,
+    handleLinkExistingDefinition,
+    handleLinkConfirm,
+    handleLinkCancel,
+    handleLinkSelect,
+  } = useAssessTaskLinkFlow({
     classId,
     noMatchResolution,
     selectedAssignmentForChoice,
@@ -198,18 +206,13 @@ export function useAssessTaskFlow(parameters: AssessTaskFlowParameters) {
     transitionToStaleRecovery,
   });
 
-  const { resetLinkSelection } = linkFlow;
-
   const {
-    selectedDefinitionForLink,
-    linkableDefinitions,
-    handleLinkExistingDefinition,
-    handleLinkConfirm,
-    handleLinkCancel,
-    handleLinkSelect,
-  } = linkFlow;
-
-  const createFlow = useAssessTaskCreateFlow({
+    resetCreateState,
+    wizardInitialValues,
+    handleCreateNewDefinition,
+    handleWizardCreateSuccess,
+    handleWizardClose,
+  } = useAssessTaskCreateFlow({
     classId,
     noMatchResolution,
     assignments,
@@ -226,15 +229,6 @@ export function useAssessTaskFlow(parameters: AssessTaskFlowParameters) {
     handleApiError,
   });
 
-  const { resetCreateState } = createFlow;
-
-  const {
-    wizardInitialValues,
-    handleCreateNewDefinition,
-    handleWizardCreateSuccess,
-    handleWizardClose,
-  } = createFlow;
-
   /**
    * Fetches Google Classroom assignments when the modal opens.
    *
@@ -244,9 +238,9 @@ export function useAssessTaskFlow(parameters: AssessTaskFlowParameters) {
    * google.script.run does not support cancellation.
    */
   useEffect(() => {
-    let cancelled = false;
-
     if (!open) return;
+
+    let isCancelled = false;
 
     sessionReference.current += 1;
     selectedAssignmentIdReference.current = undefined;
@@ -268,22 +262,20 @@ export function useAssessTaskFlow(parameters: AssessTaskFlowParameters) {
 
     getGoogleClassroomAssignments(classId)
       .then((data) => {
-        if (!cancelled) {
-          resetModalState();
-          setAssignments(data);
-          setFetchState('ready');
-        }
+        if (isCancelled) return;
+        resetModalState();
+        setAssignments(data);
+        setFetchState('ready');
       })
       .catch((error: unknown) => {
-        if (!cancelled) {
-          resetModalState();
-          setErrorMessage(mapErrorToUserMessage(error));
-          setFetchState('error');
-        }
+        if (isCancelled) return;
+        resetModalState();
+        setErrorMessage(mapErrorToUserMessage(error));
+        setFetchState('error');
       });
 
     return () => {
-      cancelled = true;
+      isCancelled = true;
     };
   }, [open, classId, resetLinkSelection, resetCreateState]);
 

@@ -81,7 +81,8 @@ export function BulkSetSelectModal(properties: BulkSetSelectModalProperties) {
       onFinish={handleFinish}
       fallbackErrorMessage="Unable to update the selected classes."
     >
-      {({ disabled }) => (
+      {({ disabled }) => {
+        return (
         <Form.Item
           label={properties.fieldLabel}
           name="value"
@@ -110,7 +111,8 @@ export function BulkSetSelectModal(properties: BulkSetSelectModalProperties) {
             debounceMs={300}
           />
         </Form.Item>
-      )}
+        );
+      }}
     </BulkFormModalScaffold>
   );
 }

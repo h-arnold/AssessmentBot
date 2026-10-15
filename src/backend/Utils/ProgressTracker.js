@@ -74,12 +74,12 @@ class ProgressTracker extends BaseSingleton {
   /**
    * Updates the current progress with the given step number and message.
    * @param {string} message - A descriptive message for the current step.
-   * @param {boolean} incrementStep - Whether to increment the step by 1. Defaults to true.
+   * @param {boolean} shouldIncrementStep - Whether to increment the step by 1. Defaults to true.
    */
-  updateProgress(message, incrementStep = true) {
+  updateProgress(message, shouldIncrementStep = true) {
     this.ensureInitialized();
-    if (incrementStep) {
-      // Increment the step if no specific step is provided and incrementStep is true
+    if (shouldIncrementStep) {
+      // Increment the step if no specific step is provided and shouldIncrementStep is true
       this.incrementStep();
     }
 
@@ -206,18 +206,18 @@ class ProgressTracker extends BaseSingleton {
    *
    * @param {Error} error - The error object to capture
    * @param {string} [contextMessage] - Optional context message to provide more information
-   * @param {boolean} [includeStackTrace=true] - Whether to include stack trace in developer logs
+   * @param {boolean} [shouldIncludeStackTrace=true] - Whether to include stack trace in developer logs
    * @returns {string} - The formatted error message that was logged
    */
-  captureError(error, contextMessage = '', includeStackTrace = true) {
+  captureError(error, contextMessage = '', shouldIncludeStackTrace = true) {
     // Create a user-friendly error message
     const userFacingMessage = contextMessage
       ? `${contextMessage}: ${error.message || 'Unknown error'}`
-      : `${error.message || 'Unknown error'}`;
+      : error.message || 'Unknown error';
 
     // Prepare detailed developer information
     let developerDetails;
-    if (includeStackTrace && error) {
+    if (shouldIncludeStackTrace && error) {
       developerDetails = {
         message: error.message,
         stack: error.stack,

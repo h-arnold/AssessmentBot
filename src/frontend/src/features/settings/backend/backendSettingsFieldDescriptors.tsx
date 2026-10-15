@@ -82,9 +82,11 @@ export const backendSettingsFieldDescriptors = [
   {
     name: 'jsonDbLockTimeoutMs',
     label: 'JSON DB lock timeout',
-    renderInput: () => (
-      <InputNumber min={1000} max={600_000} precision={0} style={{ width: '100%' }} />
-    ),
+    renderInput: () => {
+      return (
+        <InputNumber min={1000} max={600_000} precision={0} style={{ width: '100%' }} />
+      );
+    },
     section: 'Database',
     withSchemaValidation: true,
   },

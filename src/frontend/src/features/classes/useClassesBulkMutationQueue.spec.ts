@@ -7,13 +7,17 @@ import { useClassesBulkMutationQueue } from './useClassesBulkMutationQueue';
 
 // ── Mocks ──────────────────────────────────────────────────────────────────
 
-const { cancelApiQueuedMock } = vi.hoisted(() => ({
-  cancelApiQueuedMock: vi.fn(),
-}));
+const { cancelApiQueuedMock } = vi.hoisted(() => {
+  return {
+    cancelApiQueuedMock: vi.fn(),
+  };
+});
 
-vi.mock('../../services/apiService', () => ({
-  cancelApiQueued: cancelApiQueuedMock,
-}));
+vi.mock('../../services/apiService', () => {
+  return {
+    cancelApiQueued: cancelApiQueuedMock,
+  };
+});
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -34,12 +38,8 @@ function createDeferredPromise(): [
   Promise<RowMutationResult<ClassesManagementRow, unknown>[]>,
   (results: RowMutationResult<ClassesManagementRow, unknown>[]) => void,
 ] {
-  let resolve!: (results: RowMutationResult<ClassesManagementRow, unknown>[]) => void;
-  const promise = new Promise<RowMutationResult<ClassesManagementRow, unknown>[]>(
-    (resolveResults) => {
-      resolve = resolveResults;
-    }
-  );
+  const { promise, resolve } =
+    Promise.withResolvers<RowMutationResult<ClassesManagementRow, unknown>[]>();
   return [promise, resolve];
 }
 

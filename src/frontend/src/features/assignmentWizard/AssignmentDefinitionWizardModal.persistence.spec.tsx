@@ -1,3 +1,4 @@
+import '../../test/assignmentDefinition/AssignmentDefinitionWizardModal.mockSetup';
 import { queryKeys } from '../../query/queryKeys';
 import { mockFullAssignmentDefinition } from '../../test/assignmentDefinition/assignmentDefinitionTestFixtures';
 import { fireEvent, screen, waitFor } from '@testing-library/react';
@@ -9,37 +10,20 @@ import {
 } from '../../test/assignmentDefinition/AssignmentDefinitionWizardModal.test-harness';
 import * as wizard from '../../test/assignmentDefinition/AssignmentDefinitionWizardModal.test-harness';
 
-const {
-  getAssignmentDefinitionMock,
-  getAssignmentTopicsMock,
-  getCohortsMock,
-  getYearGroupsMock,
-  upsertAssignmentDefinitionMock,
-  useStartupWarmupStateMock,
-} = vi.hoisted(() => ({
-  getAssignmentDefinitionMock: vi.fn(),
-  getAssignmentTopicsMock: vi.fn(),
-  getCohortsMock: vi.fn(),
-  getYearGroupsMock: vi.fn(),
-  upsertAssignmentDefinitionMock: vi.fn(),
-  useStartupWarmupStateMock: vi.fn(),
-}));
+import {
+  getAssignmentDefinition,
+  upsertAssignmentDefinition,
+} from '../../services/assignmentDefinition/assignmentDefinitionService';
+import { getAssignmentTopics } from '../../services/assignmentDefinition/assignmentTopicsService';
+import { getCohorts, getYearGroups } from '../../services/referenceData/referenceDataService';
+import { useStartupWarmupState } from '../../features/auth/startupWarmupState';
 
-vi.mock('../../features/auth/startupWarmupState', async (importOriginal) => {
-  const actualModule = (await importOriginal()) as Record<string, unknown>;
-  return { ...actualModule, useStartupWarmupState: useStartupWarmupStateMock };
-});
-vi.mock('../../services/assignmentDefinition/assignmentDefinitionService', () => ({
-  getAssignmentDefinition: getAssignmentDefinitionMock,
-  upsertAssignmentDefinition: upsertAssignmentDefinitionMock,
-}));
-vi.mock('../../services/assignmentDefinition/assignmentTopicsService', () => ({
-  getAssignmentTopics: getAssignmentTopicsMock,
-}));
-vi.mock('../../services/referenceData/referenceDataService', () => ({
-  getCohorts: getCohortsMock,
-  getYearGroups: getYearGroupsMock,
-}));
+const getAssignmentDefinitionMock = vi.mocked(getAssignmentDefinition) as ReturnType<typeof vi.fn>;
+const getAssignmentTopicsMock = vi.mocked(getAssignmentTopics) as ReturnType<typeof vi.fn>;
+const getCohortsMock = vi.mocked(getCohorts) as ReturnType<typeof vi.fn>;
+const getYearGroupsMock = vi.mocked(getYearGroups) as ReturnType<typeof vi.fn>;
+const upsertAssignmentDefinitionMock = vi.mocked(upsertAssignmentDefinition) as ReturnType<typeof vi.fn>;
+const useStartupWarmupStateMock = vi.mocked(useStartupWarmupState) as ReturnType<typeof vi.fn>;
 
 const {
   renderWizardModal,

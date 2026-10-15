@@ -48,7 +48,7 @@ describe('Api/apiHandler dispatcher — auth gate (FORBIDDEN)', () => {
       error: {
         code: 'FORBIDDEN',
         message: 'Access denied.',
-        retriable: false,
+        isRetriable: false,
       },
     });
   }
@@ -104,7 +104,7 @@ describe('Api/apiHandler dispatcher — auth gate (FORBIDDEN)', () => {
       }
     });
 
-    it('treats getAuthorisationStatus as gate-exempt: runs its OAuth check only', () => {
+    it('treats hasScriptAuthorisation as gate-exempt: runs its OAuth check only', () => {
       provisionAuthEnvironment(CONFIGURED_GROUP_EMAIL);
       const checkAccessSpy = vi.spyOn(AuthService.getInstance(), 'checkAccess');
       context.scriptAppManagerInstance.isAuthorised.mockReturnValue(true);
@@ -112,7 +112,7 @@ describe('Api/apiHandler dispatcher — auth gate (FORBIDDEN)', () => {
       const { ApiDispatcher } = loadApiHandlerModule();
       const dispatcher = ApiDispatcher.getInstance();
 
-      const response = dispatcher.handle({ method: 'getAuthorisationStatus' });
+      const response = dispatcher.handle({ method: 'hasScriptAuthorisation' });
 
       expect(response).toMatchObject({ ok: true, data: true });
       expect(context.scriptAppManagerCtor).toHaveBeenCalledTimes(1);

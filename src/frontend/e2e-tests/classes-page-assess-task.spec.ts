@@ -1037,13 +1037,11 @@ test.describe('Assess Task modal', () => {
       await expect(dialog.getByRole('alert')).toContainText(/out of date/i);
       await expect(dialog.getByTestId('linkable-definition-select')).toHaveCount(0);
 
-      const actionNames = await dialog
-        .locator('button')
-        .evaluateAll((buttons) =>
-          buttons
-            .map((button) => button.textContent?.trim() ?? '')
-            .filter((name) => name === 'Cancel' || name === 'Update')
-        );
+      const actionNames = await dialog.locator('button').evaluateAll((buttons) => {
+        return buttons
+          .map((button) => button.textContent?.trim() ?? '')
+          .filter((name) => name === 'Cancel' || name === 'Update');
+      });
       expect(actionNames).toEqual(['Cancel', 'Update']);
 
       // Committed link outcome holds in idempotence-friendly form: the link

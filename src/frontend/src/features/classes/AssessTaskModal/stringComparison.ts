@@ -21,6 +21,6 @@
  * @returns {boolean} `true` when both strings are equal after trimming whitespace and
  *   lowercasing.
  */
-export function caseInsensitiveTrimmedEquals(a: string, b: string): boolean {
+export function areTrimmedStringsEqualIgnoringCase(a: string, b: string): boolean {
   return a.trim().toLowerCase() === b.trim().toLowerCase();
 }

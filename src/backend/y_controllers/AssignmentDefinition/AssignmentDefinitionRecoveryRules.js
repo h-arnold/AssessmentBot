@@ -59,19 +59,21 @@ function assertRecoveryPreconditions_(payload, isUpdate) {
  */
 function assertApprovalBaselineFresh_(existingDefinition, updatedAt, isUpdate) {
   /* global ABLogger, ApiValidationError */
-  if (isUpdate && typeof updatedAt === 'string' && updatedAt !== existingDefinition.updatedAt) {
-    ABLogger.getInstance().warn('Upsert rejected as stale approval baseline.', {
-      definitionKey: existingDefinition.definitionKey,
-    });
-    throw new ApiValidationError(
-      'The assignment definition changed since it was reviewed. Reparse the documents and try again.',
-      {
-        method: 'upsertAssignmentDefinition',
-        fieldName: 'updatedAt',
-        code: 'DEFINITION_STALE',
-      }
-    );
+  if (!isUpdate || typeof updatedAt !== 'string' || updatedAt === existingDefinition.updatedAt) {
+    return;
   }
+
+  ABLogger.getInstance().warn('Upsert rejected as stale approval baseline.', {
+    definitionKey: existingDefinition.definitionKey,
+  });
+  throw new ApiValidationError(
+    'The assignment definition changed since it was reviewed. Reparse the documents and try again.',
+    {
+      method: 'upsertAssignmentDefinition',
+      fieldName: 'updatedAt',
+      code: 'DEFINITION_STALE',
+    }
+  );
 }
 
 /**

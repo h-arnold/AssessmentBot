@@ -234,7 +234,7 @@ describe('AssignmentDefinitionController upsert — recovery error classificatio
     expect(response).toMatchObject({
       ok: false,
       requestId: 'req-recovery-001',
-      error: { code: 'INVALID_REQUEST', retriable: false },
+      error: { code: 'INVALID_REQUEST', isRetriable: false },
     });
   });
 
@@ -250,7 +250,7 @@ describe('AssignmentDefinitionController upsert — recovery error classificatio
 
     expect(response).toMatchObject({
       ok: false,
-      error: { code: 'DEFINITION_PARSE_FAILED', retriable: false },
+      error: { code: 'DEFINITION_PARSE_FAILED', isRetriable: false },
     });
   });
 
@@ -265,7 +265,7 @@ describe('AssignmentDefinitionController upsert — recovery error classificatio
 
     expect(response).toMatchObject({
       ok: false,
-      error: { code: 'RATE_LIMITED', retriable: true },
+      error: { code: 'RATE_LIMITED', isRetriable: true },
     });
   });
 });

@@ -127,7 +127,7 @@ possible about the backend:
 - **Stable envelope, no internals.** Every response uses the transport envelope documented
   in [transport-envelope.md](../data-shapes/transport-envelope.md): a success shape
   (`ok: true`, `requestId`, `data`) or an error shape (`ok: false`, `requestId`, `error: {
-code, message, retriable, details? }`). `_mapErrorToFailureEnvelope` in
+code, message, isRetriable, details? }`). `_mapErrorToFailureEnvelope` in
   `z_apiHandler.js` maps recognised error types (`ApiRateLimitError`, `ApiValidationError`,
   `ApiDisabledError`, `DefinitionStaleError`, `reason === 'IN_USE'`) to fixed codes and
   falls back to `INTERNAL_ERROR` with the generic message "Internal API error." for

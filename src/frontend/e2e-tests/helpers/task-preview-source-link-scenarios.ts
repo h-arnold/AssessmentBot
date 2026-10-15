@@ -187,8 +187,8 @@ export function createSourceLinkScenario(
 ): RuntimeScenario {
   assertWarmPrefetchCorpusProvenance();
   return {
-    getAuthorisationStatus: withTailSentinel(
-      'getAuthorisationStatus',
+    hasScriptAuthorisation: withTailSentinel(
+      'hasScriptAuthorisation',
       repeat(success(true), STARTUP_QUEUE_REPEATS)
     ),
     getABClassPartials: withTailSentinel(

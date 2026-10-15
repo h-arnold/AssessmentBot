@@ -18,7 +18,6 @@
         "dbaeumer.vscode-eslint",
         "esbenp.prettier-vscode",
         "sonarsource.sonarlint-vscode",
-        "github.copilot-chat",
         "yzhang.markdown-all-in-one",
         "ms-vscode.js-debug",
         "vscjava.vscode-java-pack",
@@ -41,9 +40,6 @@
         "git.autofetch": true,
         "git.enableSmartCommit": true,
         "keyboard.layout": "gb",
-        "github.copilot.chat.localeOverride": "en",
-        "github.copilot.chat.codesearch.enabled": true,
-        "github.copilot.chat.edits.temporalContext.enabled": true,
         "java.import.gradle.java.home": "/usr/local/sdkman/candidates/java/current",
         "java.jdt.ls.java.home": "/usr/local/sdkman/candidates/java/current"
       }

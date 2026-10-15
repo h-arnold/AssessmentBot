@@ -27,7 +27,7 @@ type ClassesCrudApiResponseScenario = Readonly<
 >;
 
 export type ClassesCrudRuntimeScenario = Readonly<{
-  getAuthorisationStatus: ReadonlyArray<ClassesCrudApiResponseScenario>;
+  hasScriptAuthorisation: ReadonlyArray<ClassesCrudApiResponseScenario>;
   getApplicationAccess?: ReadonlyArray<ClassesCrudApiResponseScenario>;
   getABClassPartials: ReadonlyArray<ClassesCrudApiResponseScenario>;
   getCohorts: ReadonlyArray<ClassesCrudApiResponseScenario>;
@@ -215,7 +215,7 @@ export function padClassesCrudReadQueues(
 ): ClassesCrudRuntimeScenario {
   return {
     ...scenario,
-    getAuthorisationStatus: strictModeSafeReadQueue(scenario.getAuthorisationStatus ?? []),
+    hasScriptAuthorisation: strictModeSafeReadQueue(scenario.hasScriptAuthorisation ?? []),
     getApplicationAccess: strictModeSafeReadQueue(
       scenario.getApplicationAccess ?? [
         {
@@ -241,7 +241,7 @@ export function createSuccessfulClassesScenario(
   data: ClassesCrudDataBundle
 ): ClassesCrudRuntimeScenario {
   return {
-    getAuthorisationStatus: strictModeSafeReadQueue([{ kind: 'success', data: true }]),
+    hasScriptAuthorisation: strictModeSafeReadQueue([{ kind: 'success', data: true }]),
     getABClassPartials: strictModeSafeReadQueue([
       { kind: 'success', data: [...data.classPartials] },
     ]),
@@ -269,7 +269,7 @@ export async function mockClassesCrudRuntime(page: Page, scenario: ClassesCrudRu
       const createGoogleScriptRunApiHandlerMock = ${googleScriptRunApiHandlerFactorySource};
       const mockScenario = ${JSON.stringify(scenario)};
       const callCounts = {
-     getAuthorisationStatus: 0,
+     hasScriptAuthorisation: 0,
         getApplicationAccess: 0,
         getABClassPartials: 0,
         getCohorts: 0,
@@ -288,7 +288,7 @@ export async function mockClassesCrudRuntime(page: Page, scenario: ClassesCrudRu
         deleteYearGroup: 0,
       };
       const responseQueues = {
-         getAuthorisationStatus: mockScenario.getAuthorisationStatus,
+          hasScriptAuthorisation: mockScenario.hasScriptAuthorisation,
          getApplicationAccess: mockScenario.getApplicationAccess ?? [
            { kind: 'success', data: { allowed: true, role: 'admin', email: 'owner@example.com', reason: 'ok' } },
          ],
@@ -356,7 +356,7 @@ export async function mockClassesCrudRuntime(page: Page, scenario: ClassesCrudRu
             error: {
               code,
               message,
-              retriable: false,
+               isRetriable: false,
             },
           });
         }
@@ -408,7 +408,7 @@ export async function mockClassesCrudRuntime(page: Page, scenario: ClassesCrudRu
         const method = request.method;
 
         if (
-           method !== 'getAuthorisationStatus' &&
+            method !== 'hasScriptAuthorisation' &&
            method !== 'getApplicationAccess' &&
           method !== 'getABClassPartials' &&
            method !== 'getCohorts' &&

@@ -319,7 +319,7 @@ now enforces the canonical contract before payload construction:
   payload and the service-side `UpsertAssignmentDefinitionRequestSchema` parse always
   satisfies the trimmed non-empty string contract.
 - The existing case-insensitive trimmed dedupe basis
-  (`caseInsensitiveTrimmedEquals`) is unchanged; the correction only normalises and
+  (`areTrimmedStringsEqualIgnoringCase`) is unchanged; the correction only normalises and
   filters the candidate before it is considered for inclusion.
 - This is a frontend request-construction correction only. It does not change
   persistence, the backend transport, the response shape, or any schema. No new

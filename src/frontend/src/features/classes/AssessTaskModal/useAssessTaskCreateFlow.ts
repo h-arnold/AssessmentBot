@@ -106,17 +106,15 @@ export function useAssessTaskCreateFlow(host: AssessTaskCreateHost) {
   );
   const yearGroupKey = classPartialsFromCache?.find((cp) => cp.classId === classId)?.yearGroupKey;
 
-  const wizardInitialValues = useMemo(
-    () =>
-      deriveWizardInitialValues({
-        noMatchResolution,
-        assignments,
-        selectedAssignmentId,
-        assignmentTopics,
-        yearGroupKey,
-      }),
-    [noMatchResolution, selectedAssignmentId, assignments, assignmentTopics, yearGroupKey]
-  );
+  const wizardInitialValues = useMemo(() => {
+    return deriveWizardInitialValues({
+      noMatchResolution,
+      assignments,
+      selectedAssignmentId,
+      assignmentTopics,
+      yearGroupKey,
+    });
+  }, [noMatchResolution, selectedAssignmentId, assignments, assignmentTopics, yearGroupKey]);
 
   /**
    * Resets the create-path state when the modal reopens. Stable across

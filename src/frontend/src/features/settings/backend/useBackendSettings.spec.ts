@@ -23,24 +23,30 @@ const {
   mapBackendConfigToBackendSettingsFormValuesMock,
   mapBackendSettingsFormValuesToBackendConfigWriteInputMock,
   messageSuccessMock,
-} = vi.hoisted(() => ({
-  getBackendConfigMock: vi.fn(),
-  setBackendConfigMock: vi.fn(),
-  mapBackendConfigToBackendSettingsFormValuesMock: vi.fn(),
-  mapBackendSettingsFormValuesToBackendConfigWriteInputMock: vi.fn(),
-  messageSuccessMock: vi.fn(),
-}));
+} = vi.hoisted(() => {
+  return {
+    getBackendConfigMock: vi.fn(),
+    setBackendConfigMock: vi.fn(),
+    mapBackendConfigToBackendSettingsFormValuesMock: vi.fn(),
+    mapBackendSettingsFormValuesToBackendConfigWriteInputMock: vi.fn(),
+    messageSuccessMock: vi.fn(),
+  };
+});
 
-vi.mock('../../../services/backendConfiguration/backendConfigurationService', () => ({
-  getBackendConfig: getBackendConfigMock,
-  setBackendConfig: setBackendConfigMock,
-}));
+vi.mock('../../../services/backendConfiguration/backendConfigurationService', () => {
+  return {
+    getBackendConfig: getBackendConfigMock,
+    setBackendConfig: setBackendConfigMock,
+  };
+});
 
-vi.mock('./backendSettingsFormMapper', () => ({
-  mapBackendConfigToBackendSettingsFormValues: mapBackendConfigToBackendSettingsFormValuesMock,
-  mapBackendSettingsFormValuesToBackendConfigWriteInput:
-    mapBackendSettingsFormValuesToBackendConfigWriteInputMock,
-}));
+vi.mock('./backendSettingsFormMapper', () => {
+  return {
+    mapBackendConfigToBackendSettingsFormValues: mapBackendConfigToBackendSettingsFormValuesMock,
+    mapBackendSettingsFormValuesToBackendConfigWriteInput:
+      mapBackendSettingsFormValuesToBackendConfigWriteInputMock,
+  };
+});
 
 vi.mock('antd', async () => {
   const actual = (await vi.importActual('antd')) as typeof Antd;
@@ -48,14 +54,16 @@ vi.mock('antd', async () => {
   return {
     ...actual,
     App: Object.assign(actual.App, {
-      useApp: () => ({
-        message: {
-          success: messageSuccessMock,
-        },
-        notification: {
-          open: vi.fn(),
-        },
-      }),
+      useApp: () => {
+        return {
+          message: {
+            success: messageSuccessMock,
+          },
+          notification: {
+            open: vi.fn(),
+          },
+        };
+      },
     }),
   };
 });
@@ -179,13 +187,7 @@ type BackendSettingsProbeHandle = {
  * @returns {{ promise: Promise<T>; resolve: (value: T) => void; reject: (reason?: unknown) => void }} Deferred promise controls.
  */
 function createDeferred<T>() {
-  let resolve!: (value: T) => void;
-  let reject!: (reason?: unknown) => void;
-
-  const promise = new Promise<T>((promiseResolve, promiseReject) => {
-    resolve = promiseResolve;
-    reject = promiseReject;
-  });
+  const { promise, resolve, reject } = Promise.withResolvers<T>();
 
   return {
     promise,
@@ -222,13 +224,11 @@ async function renderBackendSettingsHook() {
     function BackendSettingsProbe(_properties, reference) {
       const currentState = useBackendSettings();
 
-      useImperativeHandle(
-        reference,
-        () => ({
+      useImperativeHandle(reference, () => {
+        return {
           getCurrentState: () => currentState,
-        }),
-        [currentState]
-      );
+        };
+      }, [currentState]);
 
       return null;
     }
@@ -300,7 +300,7 @@ describe('useBackendSettings', () => {
         error: {
           code: 'INTERNAL_ERROR',
           message: 'Backend exploded.',
-          retriable: false,
+          isRetriable: false,
         },
       })
     );
@@ -626,7 +626,7 @@ describe('useBackendSettings', () => {
         error: {
           code: 'INTERNAL_ERROR',
           message: 'Transport exploded.',
-          retriable: false,
+          isRetriable: false,
         },
       })
     );

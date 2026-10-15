@@ -74,9 +74,11 @@ function buildTopicsColumns(options: Readonly<{
       title: 'Year Groups',
       dataIndex: 'yearGroupKeys',
       key: 'yearGroupKeys',
-      onCell: (): object => ({
-        'aria-label': 'Year Groups',
-      }),
+      onCell: (): object => {
+        return {
+          'aria-label': 'Year Groups',
+        };
+      },
       render: (_: unknown, topic: AssignmentTopic): ReactElement | string => {
         if (!topic.yearGroupKeys || topic.yearGroupKeys.length === 0) {
           return '';
@@ -87,7 +89,8 @@ function buildTopicsColumns(options: Readonly<{
     {
       title: 'Actions',
       key: 'actions',
-      render: (_: unknown, topic: AssignmentTopic) => (
+      render: (_: unknown, topic: AssignmentTopic) => {
+        return (
         <Space>
           <Button
             onClick={() => {
@@ -105,7 +108,8 @@ function buildTopicsColumns(options: Readonly<{
             Delete
           </Button>
         </Space>
-      ),
+        );
+      },
     },
   ];
 }
@@ -135,10 +139,12 @@ function YearGroupsFormField(properties: Readonly<{
   yearGroups: YearGroup[];
   disabled?: boolean;
 }>): ReactElement {
-  const yearGroupOptions = sortYearGroups(properties.yearGroups).map((yearGroup) => ({
-    value: yearGroup.key,
-    label: yearGroup.name,
-  }));
+  const yearGroupOptions = sortYearGroups(properties.yearGroups).map((yearGroup) => {
+    return {
+      value: yearGroup.key,
+      label: yearGroup.name,
+    };
+  });
 
   return (
     <Select
@@ -161,7 +167,7 @@ function YearGroupsFormField(properties: Readonly<{
  * @returns {boolean} True if the dialog should be rendered.
  */
 function shouldRenderFormDialog(editingEntity: AssignmentTopic | null, formDialogTitle: string): boolean {
-  return !(editingEntity === null && formDialogTitle !== 'Create topic');
+  return editingEntity !== null || formDialogTitle === 'Create topic';
 }
 
 /**
@@ -261,7 +267,7 @@ export function ManageTopicsModal(properties: ManageTopicsModalProperties): Reac
   const yearGroupsQueryOptions = getYearGroupsQueryOptions() as unknown as UseQueryOptions<YearGroup[]>;
   const yearGroupsQuery = useQuery({ ...yearGroupsQueryOptions });
   const yearGroupsLoadError = yearGroupsQuery.error;
-  const yearGroupsIsLoading = yearGroupsQuery.isPending && yearGroupsQuery.data === undefined;
+  const areYearGroupsLoading = yearGroupsQuery.isPending && yearGroupsQuery.data === undefined;
   const yearGroupsDataUpdatedAt = yearGroupsQuery.dataUpdatedAt;
   // Memoize yearGroups to prevent unnecessary re-renders in downstream hooks
   const yearGroups = useMemo(() => yearGroupsQuery.data ?? [], [yearGroupsQuery.data]);
@@ -275,7 +281,10 @@ export function ManageTopicsModal(properties: ManageTopicsModalProperties): Reac
 
   // Cleanup year groups blocking error when fresh data is available
   useEffect(() => {
-    if (yearGroupsPersistedBlockingError === null || yearGroupsDataUpdatedAt <= yearGroupsPersistedBlockingError.dataUpdatedAt) {
+    if (
+      yearGroupsPersistedBlockingError === null ||
+      yearGroupsDataUpdatedAt <= yearGroupsPersistedBlockingError.dataUpdatedAt
+    ) {
       return;
     }
 
@@ -284,13 +293,12 @@ export function ManageTopicsModal(properties: ManageTopicsModalProperties): Reac
 
   // Sync year groups blocking error state
   useEffect(() => {
-    if (yearGroupsLoadError !== null) {
-      const nextBlockingLoadError: BlockingLoadErrorState = {
-        dataUpdatedAt: yearGroupsDataUpdatedAt,
-        message: 'Unable to load year groups right now.',
-      };
-      setPersistedBlockingLoadError(queryClient, 'yearGroups', nextBlockingLoadError);
-    }
+    if (yearGroupsLoadError === null) return;
+    const nextBlockingLoadError: BlockingLoadErrorState = {
+      dataUpdatedAt: yearGroupsDataUpdatedAt,
+      message: 'Unable to load year groups right now.',
+    };
+    setPersistedBlockingLoadError(queryClient, 'yearGroups', nextBlockingLoadError);
   }, [yearGroupsLoadError, yearGroupsDataUpdatedAt, queryClient]);
 
   // Derived year groups load error
@@ -378,8 +386,6 @@ export function ManageTopicsModal(properties: ManageTopicsModalProperties): Reac
     renderFormDialog,
   };
 
-  const hookResult = useReferenceDataManagement(hookConfig);
-
   const {
     loadError: topicsLoadError,
     isInitialLoading: topicsIsInitialLoading,
@@ -391,10 +397,10 @@ export function ManageTopicsModal(properties: ManageTopicsModalProperties): Reac
     openEditForm,
     openDeleteDialog,
     handleModalClose,
-  } = hookResult;
+  } = useReferenceDataManagement(hookConfig);
 
   // Combined blocking state: both topics and yearGroups must be ready
-  const isInitialLoading = topicsIsInitialLoading || yearGroupsIsLoading;
+  const isInitialLoading = topicsIsInitialLoading || areYearGroupsLoading;
   const isRefreshing = !isInitialLoading && (topicsIsRefreshing || yearGroupsQuery.isFetching);
 
   // Combined load error: either topics or year groups error

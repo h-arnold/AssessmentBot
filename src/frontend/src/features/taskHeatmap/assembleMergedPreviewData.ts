@@ -86,10 +86,11 @@ function deriveOrderedAssignmentIds(columnOrder: ReadonlyArray<MergedHeatmapTask
   const ordered: string[] = [];
   const seen = new Set<string>();
   for (const column of columnOrder) {
-    if (!seen.has(column.assignmentId)) {
-      seen.add(column.assignmentId);
-      ordered.push(column.assignmentId);
+    if (seen.has(column.assignmentId)) {
+      continue;
     }
+    seen.add(column.assignmentId);
+    ordered.push(column.assignmentId);
   }
   return { ordered, seen };
 }

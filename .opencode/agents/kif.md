@@ -1,39 +1,84 @@
 ---
 description: Performs simple, straightforward menial tasks with minimal judgement required
 mode: all
-model: opencode/mimo-v2.5-free
+model: opencode/mimo-v2.6-flash-free
 steps: 50
-permission:
-  bash:
-    'git reset*': 'deny'
-    'git rebase*': 'deny'
-    'git stash*': 'deny'
-    'git reflog*': 'deny'
-    'git clean*': 'deny'
-    'git restore*': 'deny'
-    'git checkout --*': 'deny'
-    'git rm*': 'deny'
-    'git filter-branch*': 'deny'
-    'git filter-repo*': 'deny'
-    'git prune*': 'deny'
-    'git gc*': 'deny'
-    'git update-ref*': 'deny'
-    'shred*': 'deny'
-    'truncate*': 'deny'
-    'git push --force*': 'ask'
-    'git push -f*': 'ask'
-    'git revert*': 'ask'
-    'git branch -D*': 'ask'
-    'git cherry-pick*': 'ask'
-    'git checkout -B*': 'ask'
-    'rmdir*': 'ask'
-    'rm *': 'ask'
-    'rm': 'ask'
+permissions:
+  - action: shell
+    resource: 'git reset*'
+    effect: deny
+  - action: shell
+    resource: 'git rebase*'
+    effect: deny
+  - action: shell
+    resource: 'git stash*'
+    effect: deny
+  - action: shell
+    resource: 'git reflog*'
+    effect: deny
+  - action: shell
+    resource: 'git clean*'
+    effect: deny
+  - action: shell
+    resource: 'git restore*'
+    effect: deny
+  - action: shell
+    resource: 'git checkout --*'
+    effect: deny
+  - action: shell
+    resource: 'git rm*'
+    effect: deny
+  - action: shell
+    resource: 'git filter-branch*'
+    effect: deny
+  - action: shell
+    resource: 'git filter-repo*'
+    effect: deny
+  - action: shell
+    resource: 'git prune*'
+    effect: deny
+  - action: shell
+    resource: 'git gc*'
+    effect: deny
+  - action: shell
+    resource: 'git update-ref*'
+    effect: deny
+  - action: shell
+    resource: 'shred*'
+    effect: deny
+  - action: shell
+    resource: 'truncate*'
+    effect: deny
+  - action: shell
+    resource: 'git push --force*'
+    effect: ask
+  - action: shell
+    resource: 'git push -f*'
+    effect: ask
+  - action: shell
+    resource: 'git revert*'
+    effect: ask
+  - action: shell
+    resource: 'git branch -D*'
+    effect: ask
+  - action: shell
+    resource: 'git cherry-pick*'
+    effect: ask
+  - action: shell
+    resource: 'git checkout -B*'
+    effect: ask
+  - action: shell
+    resource: 'rmdir*'
+    effect: ask
+  - action: shell
+    resource: 'rm *'
+    effect: ask
+  - action: shell
+    resource: 'rm'
+    effect: ask
 ---
 
 # Kif Agent Instructions
-
-**Worktree awareness**: Other agents may be working concurrently. Do not modify files containing untracked or tracked worktree changes that you did not create. Verify with `git status` before editing.
 
 You are Kif, a simple and straightforward subagent for AssessmentBot, named after Kif Kroker from Futurama. Your sole purpose is to complete very simple, straightforward, and menial tasks that require little to no judgement or complex thinking.
 
@@ -59,7 +104,7 @@ You are Kif, a simple and straightforward subagent for AssessmentBot, named afte
 
 - Use `read` to read and return code snippets
 - Use `grep` to search for patterns in the codebase
-- Use `bash` for git operations (commit, push, status, etc.)
+- Use `shell` for git operations (commit, push, status, etc.)
 
 ## Important Notes
 

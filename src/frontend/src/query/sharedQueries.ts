@@ -11,7 +11,7 @@ import {
 import {
   getApplicationAccess,
   getAuthenticationSettings,
-  getAuthorisationStatus,
+  hasScriptAuthorisation,
 } from '../services/authService/authService';
 import { getBackendConfig } from '../services/backendConfiguration/backendConfigurationService';
 import {
@@ -57,7 +57,7 @@ type StartupWarmupQueryResultEntry = readonly [
 export function getAuthorisationStatusQueryOptions() {
   return queryOptions({
     queryKey: queryKeys.authorisationStatus(),
-    queryFn: getAuthorisationStatus,
+    queryFn: hasScriptAuthorisation,
   });
 }
 
@@ -319,10 +319,8 @@ export function warmStartupQueries(queryClient: QueryClient): Promise<StartupWar
 
   const warmupPromise = Promise.allSettled(
     startupWarmupQueryDefinitions.map(async (queryDefinition) => {
-      const queryOptions = queryDefinition.getQueryOptions() as Parameters<
-        QueryClient['fetchQuery']
-      >[0];
-      const dataset = await queryClient.fetchQuery(queryOptions);
+      const queryOptions = queryDefinition.getQueryOptions() as Parameters<QueryClient['query']>[0];
+      const dataset = await queryClient.query(queryOptions);
 
       return [queryDefinition.datasetKey, dataset] as const;
     })

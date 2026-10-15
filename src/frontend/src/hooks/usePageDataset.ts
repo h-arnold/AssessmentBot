@@ -127,7 +127,7 @@ export function computeDatasetBlockingReason(state: PageDatasetState): DatasetBl
  * @param {PageDatasetState} datasetState - Per-dataset state from {@link computePageDatasetState}.
  * @returns {boolean} `true` if the dataset should block.
  */
-export function computePageSurfaceBlocking(datasetState: PageDatasetState): boolean {
+export function shouldBlockPageSurface(datasetState: PageDatasetState): boolean {
   return computeDatasetBlockingReason(datasetState).kind !== 'none';
 }
 
@@ -140,7 +140,7 @@ export function computePageSurfaceBlocking(datasetState: PageDatasetState): bool
  * @param {PageDatasetState} datasetState - Per-dataset state.
  * @returns {boolean} `true` if the dataset data can be rendered.
  */
-export function computeDatasetRenderable(datasetState: PageDatasetState): boolean {
+export function isDatasetRenderable(datasetState: PageDatasetState): boolean {
   const { hasQueryData, isQueryError, isDatasetFailed, hasTrustworthyDataset } = datasetState;
 
   if (hasTrustworthyDataset) {
@@ -161,7 +161,7 @@ export function computeDatasetRenderable(datasetState: PageDatasetState): boolea
  * @param {readonly boolean[]} mutationFlags - Pending flags from page mutations.
  * @returns {boolean} `true` if any fetch or mutation is active.
  */
-export function computePageSurfaceBusy(
+export function isPageSurfaceBusy(
   fetchFlags: readonly boolean[],
   mutationFlags: readonly boolean[]
 ): boolean {

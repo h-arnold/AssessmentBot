@@ -156,11 +156,11 @@ function normaliseArtefact_(artefact) {
 /**
  * Maps an absent optional scalar to its canonical parsed form (null).
  *
- * @param {*} value - Field value.
+ * @param {*} [value=null] - Field value; omitted values use the canonical null form.
  * @returns {*} The value, or null when absent.
  */
-function absentToNull_(value) {
-  return value ?? null;
+function absentToNull_(value = null) {
+  return value;
 }
 
 /**
@@ -200,13 +200,13 @@ function valuesEqual_(first, second) {
     return false;
   }
 
-  const firstIsArray = Array.isArray(first);
-  const secondIsArray = Array.isArray(second);
-  if (firstIsArray !== secondIsArray) {
+  const isFirstArray = Array.isArray(first);
+  const isSecondArray = Array.isArray(second);
+  if (isFirstArray !== isSecondArray) {
     return false;
   }
 
-  if (firstIsArray && secondIsArray) {
+  if (isFirstArray && isSecondArray) {
     return (
       first.length === second.length &&
       first.every((entry, position) => valuesEqual_(entry, second[position]))

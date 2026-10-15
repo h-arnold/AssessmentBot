@@ -99,17 +99,20 @@ export function TaskHeatmapTable({
   // submissions" empty-state variant). The guard includes `taskColumns.length > 0`
   // to prevent a false caption when the assignment has zero tasks.
   const hasNoSubmissions = useMemo(
-    () =>
-      taskColumns.length > 0 &&
+    () => {
+      return taskColumns.length > 0 &&
       rows.length > 0 &&
-      rows.every((row) =>
-        row.cells.every(
-          (cell) =>
-            cell.completeness.state === 'notAttempted' &&
+      rows.every((row) => {
+        return row.cells.every(
+          (cell) => {
+            return cell.completeness.state === 'notAttempted' &&
             cell.accuracy.state === 'notAttempted' &&
-            cell.spag.state === 'notAttempted'
-        )
-      ),
+            cell.spag.state === 'notAttempted';
+          }
+        );
+      }
+      );
+    },
     [rows, taskColumns]
   );
 
@@ -117,10 +120,11 @@ export function TaskHeatmapTable({
   // its own memo keyed on `[sourceAssignments, taskColumns]` so filter and
   // cell state changes recompute only the column tree, not the grouping.
   const tierGroups = useMemo(
-    () =>
-      sourceAssignments && sourceAssignments.length > 1
+    () => {
+      return sourceAssignments && sourceAssignments.length > 1
         ? buildAdaptiveTierGroups(sourceAssignments, taskColumns)
-        : null,
+        : null;
+    },
     [sourceAssignments, taskColumns]
   );
 
@@ -162,11 +166,13 @@ export function TaskHeatmapTable({
     // Single source (including the embedded path, where `sourceAssignments`
     // is absent) renders the same two-tier DOM as today: no parent group.
     if (tierGroups) {
-      const taskTierColumns = tierGroups.map((group) => ({
-        key: group.key,
-        title: group.title,
-        children: group.columnIndices.map((index) => groupedTaskColumns[index]!),
-      }));
+      const taskTierColumns = tierGroups.map((group) => {
+        return {
+          key: group.key,
+          title: group.title,
+          children: group.columnIndices.map((index) => groupedTaskColumns[index]!),
+        };
+      });
       return [forenameColumn, surnameColumn, ...taskTierColumns];
     }
 

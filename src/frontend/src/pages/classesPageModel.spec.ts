@@ -27,18 +27,16 @@ import { buildClassesPageModel } from './classesPageModel';
 // ============================================================================
 
 /**
- * Helper to create a YearGroup with optional overrides.
+ * Helper to create a YearGroup with its key and name.
  *
  * @param {string} key - The year group key.
  * @param {string} name - The year group name.
- * @param {Partial<YearGroup>} [overrides={}] - Optional partial overrides for the year group properties.
  * @returns {YearGroup} A YearGroup instance with the specified properties.
  */
-function createYearGroup(key: string, name: string, overrides: Partial<YearGroup> = {}): YearGroup {
+function createYearGroup(key: string, name: string): YearGroup {
   return {
     key,
     name,
-    ...overrides,
   };
 }
 
@@ -178,18 +176,16 @@ function assertInvalidClassesPageDataViewModel(
  * Asserts that the result is a ClassesPagePanelViewModel with expected panel structure.
  *
  * @param {InvalidClassesPageDataViewModel | ClassesPagePanelViewModel} result - The result to assert.
- * @param {number} expectedPanelCount - Expected number of panels.
  * @param {((panel: ClassesPagePanelModel, index: number) => void) | null} [panelAssertions] - Optional per-panel assertions.
  */
 function assertClassesPagePanelViewModel(
   result: InvalidClassesPageDataViewModel | ClassesPagePanelViewModel,
-  expectedPanelCount: number,
   panelAssertions?: (panel: ClassesPagePanelModel, index: number) => void
 ): void {
   expect(result).toBeDefined();
 
   if (result && 'panels' in result) {
-    expect(result.panels).toHaveLength(expectedPanelCount);
+    expect(result.panels).toHaveLength(1);
     if (panelAssertions) {
       for (let index = 0; index < result.panels.length; index++) {
         panelAssertions(result.panels[index], index);
@@ -558,7 +554,7 @@ describe('Classes page grouped view model - buildClassesPageModel', () => {
 
       const result = buildClassesPageModel(classPartials, yearGroups);
 
-      assertClassesPagePanelViewModel(result, 1, (panel) => {
+      assertClassesPagePanelViewModel(result, (panel) => {
         const card = panel.classes[0];
         expect(card).toHaveProperty('classId', 'c1');
         expect(card).toHaveProperty('className', 'Test Class');
@@ -575,7 +571,7 @@ describe('Classes page grouped view model - buildClassesPageModel', () => {
 
       const result = buildClassesPageModel(classPartials, yearGroups);
 
-      assertClassesPagePanelViewModel(result, 1, (panel) => {
+      assertClassesPagePanelViewModel(result, (panel) => {
         expect(panel).toHaveProperty('yearGroupKey', 'yg-1');
         expect(panel).toHaveProperty('yearGroupLabel', 'Year One');
         expect(panel).toHaveProperty('classes');

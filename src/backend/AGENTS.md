@@ -317,8 +317,7 @@ When backend behaviour requires new scopes/services:
 
 ## 8. Default Values Rule
 
-- Default values must be set in a module's constructor only.
-- If defaults are found elsewhere, they should be opportunistically moved to the constructor of the module.
+- Set default values in a module's constructor only. Root `AGENTS.md` owns this rule (Prime Directives → Coding Principles).
 
 ## 9. Date handling at the transport boundary
 
@@ -340,7 +339,7 @@ before returning data.
 ## 10. Testing Delegation
 
 - Delegate all test implementation and test-debugging work to `Testing Specialist` when sub-agent delegation is available.
-- If delegation is unavailable, follow `.github/agents/Testing.agent.md` and `docs/developer/backend/backend-testing.md` before changing tests.
+- If delegation is unavailable, follow `.opencode/agents/testing-specialist.md` and `docs/developer/backend/backend-testing.md` before changing tests.
 
 ## 11. Large File Decomposition (Non-API Files)
 

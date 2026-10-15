@@ -3,13 +3,14 @@
  *
  * Renders the full heatmap view for a single assignment, consuming an already-
  * computed `AveragingResult` (no second `useClassPageData` call).  The component
- * wraps `adaptMetricsToHeatmap` in a `try`/`catch`; on error it logs the error
- * via the frontend logger and calls `onBack` (no in-view error UI).
+ * handles projection errors through the established title-error Alert or
+ * logged navigation flow. Optional summary failures are logged separately
+ * and show a local Alert while preserving the valid heatmap.
  *
  * @see SPEC.md
  */
 
-import { useMemo, type JSX } from 'react';
+import { useEffect, useMemo, type JSX } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Alert, Button, Card, Flex, App as AntdApp } from 'antd';
 import { RefreshCw, RotateCcw } from 'lucide-react';
@@ -26,14 +27,24 @@ import {
 } from '../../services/dataAnalysis/heatmapAdapter';
 import { logFrontendError, logFrontendEvent } from '../../logging/frontendLogger';
 import { useLogOnce } from '../../hooks/useLogOnce';
+import { toError } from '../../errors/normaliseUnknownError';
+import { logPipelineError } from './heatmapsPipeline';
 import { buildCellPreviewLookup } from './buildCellPreviewLookup';
 import type { CellPreviewLookup } from './buildCellPreviewLookup';
 import { getAssignmentQueryOptions } from '../../query/sharedQueries';
 import { TaskHeatmapTable } from './TaskHeatmapTable';
+import { TaskHeatmapSummaryCards } from './TaskHeatmapSummaryCards';
+import { DataAnalysisService } from '../../services/dataAnalysis/dataAnalysisService';
+import {
+  adaptAssignmentSummary,
+  type AssignmentSummaryView,
+} from '../../services/dataAnalysis/assignmentSummaryAdapter';
 import { PageTitleCard, PageNavCard } from '../../components/PageHeader/PageHeader';
 
 type HeatmapPageState = Readonly<{
   heatmapResult: ReturnType<typeof adaptMetricsToHeatmap> | null;
+  summary: AssignmentSummaryView | null;
+  summaryError: Error | null;
   error: unknown;
 }>;
 
@@ -89,16 +100,14 @@ function getHeaderLabels(
   adp: AssignmentDefinitionPartialsResponse
 ): HeaderLabels {
   const definitionKey = getAssignmentDefinitionKey(classFull, assignmentId);
-  const partial = definitionKey
-    ? adp.find((p) => p.definitionKey === definitionKey)
-    : undefined;
+  const partial = definitionKey ? adp.find((p) => p.definitionKey === definitionKey) : undefined;
   return {
     assignmentName: partial?.primaryTitle ?? '',
   };
 }
 
 /**
- * Compute the heatmap result, catching errors into state.
+ * Compute the heatmap and optional summary, keeping their errors separate.
  *
  * Called by `useMemo` so the result is recomputed whenever the inputs change
  * (e.g. after a `refetch`).
@@ -107,7 +116,7 @@ function getHeaderLabels(
  * @param {ClassFull} classFull - The full class data.
  * @param {string} assignmentId - The assignment identifier.
  * @param {AssignmentDefinitionPartialsResponse} adp - Warm-up partials.
- * @returns {HeatmapPageState} The result or error.
+ * @returns {HeatmapPageState} Projection state with an independent summary result or error.
  */
 function computeHeatmapState(
   analyserResult: AveragingResult,
@@ -115,29 +124,82 @@ function computeHeatmapState(
   assignmentId: string,
   adp: AssignmentDefinitionPartialsResponse
 ): HeatmapPageState {
+  let heatmapResult: ReturnType<typeof adaptMetricsToHeatmap>;
   try {
+    heatmapResult = adaptMetricsToHeatmap(analyserResult, classFull, assignmentId, adp);
+  } catch (error: unknown) {
+    return { heatmapResult: null, summary: null, summaryError: null, error };
+  }
+
+  try {
+    const summary = new DataAnalysisService().analyseAssignmentSummary(
+      {
+        filter: { classIds: [classFull.classId] },
+        classes: [classFull],
+        assignmentDefinitionPartials: adp,
+      },
+      classFull.classId,
+      assignmentId
+    );
     return {
-      heatmapResult: adaptMetricsToHeatmap(analyserResult, classFull, assignmentId, adp),
+      heatmapResult,
+      summary: adaptAssignmentSummary(summary, heatmapResult.taskColumns),
+      summaryError: null,
       error: null,
     };
   } catch (error: unknown) {
-    return { heatmapResult: null, error };
+    return { heatmapResult, summary: null, summaryError: toError(error), error: null };
   }
+}
+
+type HeatmapSummaryProperties = Readonly<
+  Pick<HeatmapPageState, 'summary' | 'summaryError'> & {
+    classId: string;
+    assignmentId: string;
+  }
+>;
+
+/**
+ * Render optional summary cards or a local Alert, and log summary failures.
+ * @param {HeatmapSummaryProperties} properties - Summary state and selection identifiers.
+ * @returns {JSX.Element | null} Summary content without affecting the heatmap table.
+ */
+function HeatmapSummary({
+  summary,
+  summaryError,
+  classId,
+  assignmentId,
+}: HeatmapSummaryProperties): JSX.Element | null {
+  useEffect(() => {
+    if (summaryError !== null) {
+      logPipelineError('TaskHeatmapPage.summary', summaryError, { classId, assignmentId });
+    }
+  }, [summaryError, classId, assignmentId]);
+
+  if (summaryError !== null) {
+    return <Alert type="error" showIcon title="The summary could not be built" />;
+  }
+  if (summary === null) {
+    return null;
+  }
+  return <TaskHeatmapSummaryCards summary={summary} />;
 }
 
 /**
  * Render the Task Heatmap page for a single assignment.
  *
  * Computes `HeatmapResult` via `useMemo` keyed on the four data props so the
- * result stays fresh after `refetch` brings new data.  The error catch
- * distinguishes two error types:
+ * result stays fresh after `refetch` brings new data. Projection failures
+ * retain their established handling, independently of optional summary failures:
  *
  * - {@link TaskTitlesUnavailableError}: renders an in-view `Alert` in place of
  *   the table region while keeping the header `Card` visible.  Does NOT call
  *   `onBack`.
- * - All other errors (generic `Error`, unknown `assignmentId`): logs via
+ * - Other projection errors (generic `Error`, unknown `assignmentId`): logs via
  *   `logFrontendError('TaskHeatmapPage', error)`, surfaces a user-safe
  *   toast message, then calls `onBack` exactly once — no in-view error UI.
+ * - Summary analysis or adaptation errors: logs through `logPipelineError`,
+ *   replaces the summary cards with a local `Alert`, and keeps the heatmap table.
  *
  * @param {TaskHeatmapPageProperties} properties - Component properties.
  * @param {AveragingResult} properties.analyserResult - The analyser result.
@@ -161,8 +223,9 @@ export function TaskHeatmapPage({
   onReRunAssessment,
   refetch,
 }: TaskHeatmapPageProperties): JSX.Element | null {
-  const state = useMemo<HeatmapPageState>(() =>
-    computeHeatmapState(analyserResult, classFull, assignmentId, assignmentDefinitionPartials),
+  const state = useMemo<HeatmapPageState>(
+    () =>
+      computeHeatmapState(analyserResult, classFull, assignmentId, assignmentDefinitionPartials),
     [analyserResult, classFull, assignmentId, assignmentDefinitionPartials]
   );
 
@@ -182,10 +245,10 @@ export function TaskHeatmapPage({
 
   const cellPreviewLookup = useMemo<CellPreviewLookup | null>(
     () => (assignmentQuery.data ? buildCellPreviewLookup(assignmentQuery.data) : null),
-    [assignmentQuery.data],
+    [assignmentQuery.data]
   );
 
-  const showAssignmentError: boolean = assignmentQuery.isError || assignmentQuery.data === null;
+  const isAssignmentError: boolean = assignmentQuery.isError || assignmentQuery.data === null;
   const isAssignmentLoading: boolean = assignmentQuery.isPending;
 
   // Assignment-query error logging: fires once via useLogOnce guard.
@@ -201,7 +264,7 @@ export function TaskHeatmapPage({
         context: 'TaskHeatmapPage',
         errorMessage: 'Assignment not found in AssignmentFull payload',
       });
-    },
+    }
   );
 
   // Generic errors (unknown assignmentId): log, surface user-safe message,
@@ -289,13 +352,18 @@ export function TaskHeatmapPage({
           backLabel="Back to Class overview"
           backAriaLabel="Back to Class overview"
         />
-        <Alert type="error" showIcon title="Task titles are currently unavailable." description="Please try reloading the page." />
+        <Alert
+          type="error"
+          showIcon
+          title="Task titles are currently unavailable."
+          description="Please try reloading the page."
+        />
       </Flex>
     );
   }
 
-  // Normal (successful) rendering.
-  const { heatmapResult } = state;
+  // Valid heatmap rendering, including optional summary failures.
+  const { heatmapResult, summary, summaryError } = state;
   return (
     <Flex vertical gap={APP_GAP_MD}>
       <PageTitleCard title={heatmapResult!.assignmentName} />
@@ -305,8 +373,19 @@ export function TaskHeatmapPage({
         backAriaLabel="Back to Class overview"
         actions={renderNavActions()}
       />
+      <HeatmapSummary
+        summary={summary}
+        summaryError={summaryError}
+        classId={classFull.classId}
+        assignmentId={assignmentId}
+      />
       <Card size="small">
-        <TaskHeatmapTable heatmapResult={heatmapResult!} cellPreviewLookup={cellPreviewLookup} isAssignmentLoading={isAssignmentLoading} showAssignmentError={showAssignmentError} />
+        <TaskHeatmapTable
+          heatmapResult={heatmapResult!}
+          cellPreviewLookup={cellPreviewLookup}
+          isAssignmentLoading={isAssignmentLoading}
+          showAssignmentError={isAssignmentError}
+        />
       </Card>
     </Flex>
   );

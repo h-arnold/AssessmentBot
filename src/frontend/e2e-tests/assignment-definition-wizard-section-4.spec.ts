@@ -38,10 +38,10 @@ async function fillForm(page: Page, options: { noYearGroup?: boolean } = {}) {
   await page.getByRole('textbox', { name: 'Template Document URL' }).fill(defaultTemplateUrl);
   await page.getByRole('combobox', { name: 'Assignment Topic' }).click();
   await selectVisibleOption(page, defaultTopic);
-  if (!options.noYearGroup) {
-    await page.getByRole('combobox', { name: 'Assignment Year Group' }).click();
-    await selectVisibleOption(page, defaultYearGroup);
-  }
+  if (options.noYearGroup) return;
+
+  await page.getByRole('combobox', { name: 'Assignment Year Group' }).click();
+  await selectVisibleOption(page, defaultYearGroup);
 }
 
 /**
@@ -209,7 +209,8 @@ async function assertLockedWhileUrlChangePending(dialog: Locator): Promise<void>
   await assertDisabled(dialog.getByRole('combobox', { name: 'Assignment Topic' }));
   await assertDisabled(dialog.getByRole('combobox', { name: 'Assignment Year Group' }));
   await assertDisabled(dialog.getByRole('spinbutton', { name: /assignment weighting/i }));
-  for (const taskWeightingInput of await getTaskWeightingInputs(dialog)) {
+  const taskWeightingInputs = await getTaskWeightingInputs(dialog);
+  for (const taskWeightingInput of taskWeightingInputs) {
     await assertDisabled(taskWeightingInput);
   }
   await assertDisabled(getFooterSave(dialog));
@@ -226,7 +227,8 @@ async function assertUnlocked(dialog: Locator): Promise<void> {
   await assertEnabled(dialog.getByRole('combobox', { name: 'Assignment Topic' }));
   await assertEnabled(dialog.getByRole('combobox', { name: 'Assignment Year Group' }));
   await assertEnabled(dialog.getByRole('spinbutton', { name: /assignment weighting/i }));
-  for (const taskWeightingInput of await getTaskWeightingInputs(dialog)) {
+  const taskWeightingInputs = await getTaskWeightingInputs(dialog);
+  for (const taskWeightingInput of taskWeightingInputs) {
     await assertEnabled(taskWeightingInput);
   }
   await assertEnabled(getFooterSave(dialog));

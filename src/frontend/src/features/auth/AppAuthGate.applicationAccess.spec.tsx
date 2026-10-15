@@ -1,44 +1,35 @@
+import '../../test/auth/appAuthGate.mockSetup';
 import type { QueryClient } from '@tanstack/react-query';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import type * as SharedQueriesModule from '../../query/sharedQueries';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ApiTransportError } from '../../errors/apiTransportError';
 import {
   getStartupWarmupQueryKey,
   startupWarmupDatasetKeys,
+  type StartupWarmupQueriesResult,
 } from '../../query/sharedQueries';
 import type { ApplicationAccess } from '../../services/authService/authService.zod';
 import {
   brokenConfigAccess,
   createQueryWrapper,
   deniedAccess,
+  EMPTY_STARTUP_WARMUP_RESULT,
   freshInstallAccess,
   grantedAdminAccess,
 } from '../../test/auth/appAuthGateTestHelpers';
 import { createDeferredPromise } from '../../test/shared/testDeferredPromise';
 import { useApplicationAccessContext } from './ApplicationAccessContext';
 import { AppAuthGate } from './AppAuthGate';
+import {
+  getApplicationAccess,
+  hasScriptAuthorisation,
+} from '../../services/authService/authService';
+import { warmStartupQueries } from '../../query/sharedQueries';
 
-const { getAuthorisationStatusMock, warmStartupQueriesMock, getApplicationAccessMock } =
-  await vi.hoisted(async () => {
-    const { createAppAuthGateMocks } = await import('../../test/auth/appAuthGateTestHelpers');
-    return createAppAuthGateMocks();
-  });
-
-vi.mock('../../services/authService/authService', () => ({
-  getAuthorisationStatus: getAuthorisationStatusMock,
-  getApplicationAccess: getApplicationAccessMock,
-}));
-
-vi.mock('../../query/sharedQueries', async () => {
-  const actual = await vi.importActual<typeof SharedQueriesModule>('../../query/sharedQueries');
-
-  return {
-    ...actual,
-    warmStartupQueries: warmStartupQueriesMock,
-  };
-});
+const getAuthorisationStatusMock = vi.mocked(hasScriptAuthorisation);
+const warmStartupQueriesMock = vi.mocked(warmStartupQueries);
+const getApplicationAccessMock = vi.mocked(getApplicationAccess);
 
 /**
  * Probes the application access context and renders a protected-child marker so the
@@ -60,7 +51,7 @@ function AccessGateProbe() {
 
 const forbiddenWarmupError = new ApiTransportError({
   requestId: 'req-warmup-forbidden',
-  error: { code: 'FORBIDDEN', message: 'Access denied.', retriable: false },
+  error: { code: 'FORBIDDEN', message: 'Access denied.', isRetriable: false },
 });
 
 /**
@@ -105,7 +96,7 @@ function seedReadyWarmupData(queryClient: QueryClient): void {
 }
 
 type ResolvedAccessGateOptions = Readonly<{
-  warmupPromise?: Promise<unknown>;
+  warmupPromise?: Promise<StartupWarmupQueriesResult>;
   forbiddenWarmupError?: ApiTransportError;
   seedReadyWarmup?: boolean;
 }>;
@@ -132,7 +123,9 @@ function renderResolvedAccessGate(
   }
 
   getAuthorisationStatusMock.mockResolvedValueOnce(true);
-  warmStartupQueriesMock.mockImplementationOnce(() => options.warmupPromise ?? Promise.resolve({}));
+  warmStartupQueriesMock.mockImplementationOnce(
+    () => options.warmupPromise ?? Promise.resolve(EMPTY_STARTUP_WARMUP_RESULT)
+  );
   getApplicationAccessMock.mockResolvedValueOnce(access);
 
   return {
@@ -213,7 +206,7 @@ describe('AppAuthGate application access', () => {
   });
 
   it('admits protected children immediately once the access reason is ok, without a verifying-access withhold', async () => {
-    const deferredWarmupCycle = createDeferredPromise<void>();
+    const deferredWarmupCycle = createDeferredPromise<StartupWarmupQueriesResult>();
 
     renderResolvedAccessGate(grantedAdminAccess, { warmupPromise: deferredWarmupCycle.promise });
 
@@ -235,7 +228,7 @@ describe('AppAuthGate application access', () => {
   it('does not start the warm-up prefetch while application access is still pending', async () => {
     const deferredAccess = createDeferredPromise<ApplicationAccess>();
     getAuthorisationStatusMock.mockResolvedValueOnce(true);
-    warmStartupQueriesMock.mockResolvedValueOnce({});
+    warmStartupQueriesMock.mockResolvedValueOnce(EMPTY_STARTUP_WARMUP_RESULT);
     getApplicationAccessMock.mockReturnValueOnce(deferredAccess.promise);
     const { QueryWrapper } = createQueryWrapper();
 
@@ -280,7 +273,7 @@ describe('AppAuthGate application access', () => {
 
   it('renders an error Result and retries the access query when getApplicationAccess fails', async () => {
     getAuthorisationStatusMock.mockResolvedValueOnce(true);
-    warmStartupQueriesMock.mockResolvedValueOnce({});
+    warmStartupQueriesMock.mockResolvedValueOnce(EMPTY_STARTUP_WARMUP_RESULT);
     getApplicationAccessMock.mockRejectedValueOnce(new Error('Access lookup failed'));
     getApplicationAccessMock.mockResolvedValueOnce(grantedAdminAccess);
     const { QueryWrapper } = createQueryWrapper();

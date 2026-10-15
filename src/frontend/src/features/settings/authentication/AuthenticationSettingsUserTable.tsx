@@ -82,21 +82,24 @@ export function AuthenticationSettingsUserTable(
           dataIndex="role"
           key="role"
           title="Role"
-          render={(role: AuthUserRole, user: AuthUserEntry) => (
-            <Select<AuthUserRole>
-              aria-label="Role"
-              disabled={isDisabled}
-              options={[...authUserRoleOptions]}
-              value={role}
-              onChange={(value) => onChangeUserRole(user.email, value)}
-              style={{ width: 120 }}
-            />
-          )}
+          render={(role: AuthUserRole, user: AuthUserEntry) => {
+            return (
+              <Select<AuthUserRole>
+                aria-label="Role"
+                disabled={isDisabled}
+                options={[...authUserRoleOptions]}
+                value={role}
+                onChange={(value) => onChangeUserRole(user.email, value)}
+                style={{ width: 120 }}
+              />
+            );
+          }}
         />
         <Table.Column<AuthUserEntry>
           key="actions"
           title="Actions"
-          render={(user: AuthUserEntry) => (
+          render={(user: AuthUserEntry) => {
+            return (
             <Popconfirm
               cancelText="Cancel"
               okText="Confirm removal"
@@ -107,7 +110,8 @@ export function AuthenticationSettingsUserTable(
                 {`Remove ${user.email}`}
               </Button>
             </Popconfirm>
-          )}
+            );
+          }}
         />
       </Table>
     </Flex>

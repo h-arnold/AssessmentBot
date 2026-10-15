@@ -172,9 +172,7 @@ export const NullableIsoDateTimeWithTimezoneSchema = IsoDateTimeWithTimezoneSche
 const AssignmentDefinitionPartialTasksSchema = z.array(TaskPartialSchema);
 
 const SafeDeleteDefinitionKeySchema = TrimmedNonEmptyStringSchema.refine(
-  (value) => {
-    return !DELETE_UNSAFE_PATH_CHARACTERS_PATTERN.test(value) && !hasControlCharacters(value);
-  },
+  (value) => !DELETE_UNSAFE_PATH_CHARACTERS_PATTERN.test(value) && !hasControlCharacters(value),
   {
     message: 'Expected a safe definition key without path traversal/control characters.',
   }

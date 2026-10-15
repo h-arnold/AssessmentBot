@@ -215,6 +215,13 @@ Default decision:
 
 - reuse `AssessTaskModal` for the explicit re-run entry; do not add a confirmation step, a parallel modal, or a second assessment surface
 
+### 3.7 Assess Task definition-link availability action
+
+- Owning surface: `src/frontend/src/features/classes/AssessTaskModal/AssessTaskModal.tsx`
+- Availability leaf: `LinkExistingDefinitionButton` in the existing feature-local `LinkableDefinitionList.tsx`
+
+The modal keeps orchestration and the `linkableDefinitions.length > 0` gate; the existing picker module owns the availability presentation — either the enabled link action or the disabled action with its explanation. The leaf is a module-level named component taking the availability boolean and the existing `handleLinkExistingDefinition` binding. It adds no hooks, state, refs or DOM wrapper, and no new module was created.
+
 ## 4. Keep-local rules
 
 Keep a modal implementation local to one file when any of these are true:

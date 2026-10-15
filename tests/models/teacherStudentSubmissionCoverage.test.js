@@ -41,32 +41,18 @@ describe('Teacher behaviour', () => {
     expect(teacher.userId).toBe('user-123');
   });
 
-  it('validates through an injected validator when available', () => {
+  it('validates setter values with the canonical validator', () => {
     const teacher = new Teacher('a@example.com');
-    teacher._Validate = {
-      isString: (value) => typeof value === 'string' && value !== 'bad-name',
-      isEmail: (value) => value === 'good@example.com',
-      isGoogleUserId: (value) => value === 'good-id',
-    };
+    teacher.setTeacherName('Valid Name');
+    teacher.setEmail('valid@example.com');
+    teacher.setUserId('12345678901234567890');
 
-    teacher.setTeacherName('Good Name');
-    expect(teacher.teacherName).toBe('Good Name');
-    expect(() => teacher.setTeacherName('bad-name')).toThrow('Invalid teacherName');
-
-    teacher.setEmail('good@example.com');
-    expect(() => teacher.setEmail('bad@example.com')).toThrow('Invalid email');
-
-    teacher.setUserId('good-id');
-    expect(() => teacher.setUserId('bad-id')).toThrow('Invalid userId');
-  });
-
-  it('ignores validators without the expected methods', () => {
-    const teacher = new Teacher('a@example.com');
-    teacher._Validate = {};
-    teacher.setTeacherName('Any Name');
-    teacher.setEmail('any@example.com');
-    teacher.setUserId('any-id');
-    expect(teacher.teacherName).toBe('Any Name');
+    expect(() => teacher.setTeacherName(123)).toThrow('Invalid teacherName');
+    expect(() => teacher.setEmail('not-an-email')).toThrow('Invalid email');
+    expect(() => teacher.setUserId('!@#')).toThrow('Invalid userId');
+    expect(teacher.teacherName).toBe('Valid Name');
+    expect(teacher.email).toBe('valid@example.com');
+    expect(teacher.userId).toBe('12345678901234567890');
   });
 
   it('serialises with optional names and rehydrates', () => {

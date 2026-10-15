@@ -1,30 +1,23 @@
+import '../../test/auth/appAuthGate.mockSetup';
 import { render, screen, waitFor } from '@testing-library/react';
-import type * as SharedQueriesModule from '../../query/sharedQueries';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ApplicationAccess } from '../../services/authService/authService.zod';
-import { createQueryWrapper, grantedAdminAccess } from '../../test/auth/appAuthGateTestHelpers';
+import {
+  createQueryWrapper,
+  EMPTY_STARTUP_WARMUP_RESULT,
+  grantedAdminAccess,
+} from '../../test/auth/appAuthGateTestHelpers';
 import { useApplicationAccessContext } from './ApplicationAccessContext';
 import { AppAuthGate } from './AppAuthGate';
+import {
+  getApplicationAccess,
+  hasScriptAuthorisation,
+} from '../../services/authService/authService';
+import { warmStartupQueries } from '../../query/sharedQueries';
 
-const { getAuthorisationStatusMock, warmStartupQueriesMock, getApplicationAccessMock } =
-  await vi.hoisted(async () => {
-    const { createAppAuthGateMocks } = await import('../../test/auth/appAuthGateTestHelpers');
-    return createAppAuthGateMocks();
-  });
-
-vi.mock('../../services/authService/authService', () => ({
-  getAuthorisationStatus: getAuthorisationStatusMock,
-  getApplicationAccess: getApplicationAccessMock,
-}));
-
-vi.mock('../../query/sharedQueries', async () => {
-  const actual = await vi.importActual<typeof SharedQueriesModule>('../../query/sharedQueries');
-
-  return {
-    ...actual,
-    warmStartupQueries: warmStartupQueriesMock,
-  };
-});
+const getAuthorisationStatusMock = vi.mocked(hasScriptAuthorisation);
+const warmStartupQueriesMock = vi.mocked(warmStartupQueries);
+const getApplicationAccessMock = vi.mocked(getApplicationAccess);
 
 /**
  * Probes the application access context delivered to the gate's children subtree.
@@ -34,9 +27,7 @@ vi.mock('../../query/sharedQueries', async () => {
 function AccessGateContextProbe() {
   const access = useApplicationAccessContext();
   return (
-    <output data-testid="access-context">
-      {access ? JSON.stringify(access) : 'no-provider'}
-    </output>
+    <output data-testid="access-context">{access ? JSON.stringify(access) : 'no-provider'}</output>
   );
 }
 
@@ -48,7 +39,7 @@ function AccessGateContextProbe() {
  */
 function renderGateWithResolvedAccess(access: ApplicationAccess) {
   getAuthorisationStatusMock.mockResolvedValueOnce(true);
-  warmStartupQueriesMock.mockResolvedValueOnce({});
+  warmStartupQueriesMock.mockResolvedValueOnce(EMPTY_STARTUP_WARMUP_RESULT);
   getApplicationAccessMock.mockResolvedValueOnce(access);
   const { QueryWrapper } = createQueryWrapper();
 

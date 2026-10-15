@@ -19,16 +19,18 @@ import { ManageCohortsModal } from './ManageCohortsModal';
 const deleteCohortMock = vi.hoisted(() => vi.fn());
 const getCohortsMock = vi.hoisted(() => vi.fn());
 
-vi.mock('../../services/referenceData/referenceDataService', () => ({
-  getCohorts: getCohortsMock,
-  createCohort: vi.fn(),
-  updateCohort: vi.fn(),
-  deleteCohort: deleteCohortMock,
-  getYearGroups: vi.fn(),
-  createYearGroup: vi.fn(),
-  updateYearGroup: vi.fn(),
-  deleteYearGroup: vi.fn(),
-}));
+vi.mock('../../services/referenceData/referenceDataService', () => {
+  return {
+    getCohorts: getCohortsMock,
+    createCohort: vi.fn(),
+    updateCohort: vi.fn(),
+    deleteCohort: deleteCohortMock,
+    getYearGroups: vi.fn(),
+    createYearGroup: vi.fn(),
+    updateYearGroup: vi.fn(),
+    deleteYearGroup: vi.fn(),
+  };
+});
 
 const onCloseMock = vi.fn();
 const cohortsLoadFailureCopy = 'Unable to load cohorts right now.';
@@ -53,16 +55,15 @@ const seedCohorts: Cohort[] = [
 /**
  * Builds an ApiTransportError representing a blocked delete (cohort in use).
  *
- * @param {string} [code] Error code from the API envelope.
- * @returns {ApiTransportError} Transport error with the given code.
+ * @returns {ApiTransportError} Transport error for a cohort already in use.
  */
-function buildDeleteBlockedError(code = 'IN_USE'): ApiTransportError {
+function buildDeleteBlockedError(): ApiTransportError {
   return new ApiTransportError({
     requestId: 'req-delete-blocked',
     error: {
-      code,
+      code: 'IN_USE',
       message: 'Cohort is in use by one or more classes and cannot be deleted.',
-      retriable: false,
+      isRetriable: false,
     },
   });
 }
@@ -190,7 +191,7 @@ describe('ManageCohortsModal — delete flow', () => {
 
   describe('blocked delete — cohort in use', () => {
     it('keeps the delete confirmation open when the API returns an IN_USE error', async () => {
-      deleteCohortMock.mockRejectedValue(buildDeleteBlockedError('IN_USE'));
+      deleteCohortMock.mockRejectedValue(buildDeleteBlockedError());
       renderManageCohortsModal();
 
       await openDeleteConfirmationForFirstRow();
@@ -203,7 +204,7 @@ describe('ManageCohortsModal — delete flow', () => {
     });
 
     it('shows an inline Alert explaining that the cohort is in use when delete is blocked', async () => {
-      deleteCohortMock.mockRejectedValue(buildDeleteBlockedError('IN_USE'));
+      deleteCohortMock.mockRejectedValue(buildDeleteBlockedError());
       renderManageCohortsModal();
 
       await openDeleteConfirmationForFirstRow();
@@ -217,7 +218,7 @@ describe('ManageCohortsModal — delete flow', () => {
     });
 
     it('disables the destructive delete button when the cohort is blocked', async () => {
-      deleteCohortMock.mockRejectedValue(buildDeleteBlockedError('IN_USE'));
+      deleteCohortMock.mockRejectedValue(buildDeleteBlockedError());
       renderManageCohortsModal();
 
       await openDeleteConfirmationForFirstRow();

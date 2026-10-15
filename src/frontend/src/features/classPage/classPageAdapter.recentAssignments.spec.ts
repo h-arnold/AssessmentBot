@@ -60,25 +60,21 @@ describe('adaptClassPageToViewModel', () => {
               assignmentId: 'a-D',
               updatedAt: '2026-04-01T00:00:00.000Z',
               definitionKey: 'dk-d',
-              taskIds: ['t1'],
             }),
             assignment({
               assignmentId: 'a-C',
               updatedAt: '2026-03-01T00:00:00.000Z',
               definitionKey: 'dk-c',
-              taskIds: ['t1'],
             }),
             assignment({
               assignmentId: 'a-B',
               updatedAt: '2026-05-01T00:00:00.000Z',
               definitionKey: 'dk-b',
-              taskIds: ['t1'],
             }),
             assignment({
               assignmentId: 'a-A',
               updatedAt: '2026-06-01T00:00:00.000Z',
               definitionKey: 'dk-a',
-              taskIds: ['t1'],
             }),
           ],
         }),
@@ -107,19 +103,16 @@ describe('adaptClassPageToViewModel', () => {
               assignmentId: 'a-3',
               updatedAt: '2026-01-01T00:00:00.002Z',
               definitionKey: 'dk-3',
-              taskIds: ['t1'],
             }),
             assignment({
               assignmentId: 'a-1',
               updatedAt: '2026-01-01T00:00:00.000Z',
               definitionKey: 'dk-1',
-              taskIds: ['t1'],
             }),
             assignment({
               assignmentId: 'a-2',
               updatedAt: '2026-01-01T00:00:00.001Z',
               definitionKey: 'dk-2',
-              taskIds: ['t1'],
             }),
           ],
         }),
@@ -145,7 +138,6 @@ describe('adaptClassPageToViewModel', () => {
               assignmentId: 'a-1',
               updatedAt: '2025-11-05T00:00:00.000Z',
               definitionKey: 'dk1',
-              taskIds: ['t1'],
             }),
           ],
         }),
@@ -180,13 +172,11 @@ describe('adaptClassPageToViewModel', () => {
             assignmentId: 'a-1',
             updatedAt: DEFAULT_TS,
             definitionKey: 'shared-dk',
-            taskIds: ['t1'],
           }),
           assignment({
             assignmentId: 'a-2',
             updatedAt: DEFAULT_TS,
             definitionKey: 'shared-dk',
-            taskIds: ['t2'],
           }),
         ],
       }),
@@ -220,7 +210,7 @@ describe('adaptClassPageToViewModel', () => {
   it('produces all-notAttempted metrics when analyserResult.perTask is empty', () => {
     // A single assignment with definitionKey 'dk1' but no per-task rows.
     // The adapter should fall back to noDataMetric() for each criterion.
-    const result = adaptClassPageToViewModel(singleAssignmentAdapterInput([], ['t1']));
+    const result = adaptClassPageToViewModel(singleAssignmentAdapterInput([]));
 
     expect(result.recentAssignments).toHaveLength(1);
     const card = result.recentAssignments[0];
@@ -233,8 +223,8 @@ describe('adaptClassPageToViewModel', () => {
   });
 
   it('throws TaskTitlesUnavailableError when assignmentDefinitionPartials has no matching entry for the assignment definitionKey', () => {
-    expect(() =>
-      adaptClassPageToViewModel({
+    expect(() => {
+      return adaptClassPageToViewModel({
         analyserResult: averagingResult(),
         classFull: classFull({
           students: [student('s-1', 'Alice')],
@@ -243,12 +233,11 @@ describe('adaptClassPageToViewModel', () => {
               assignmentId: 'a-1',
               updatedAt: DEFAULT_TS,
               definitionKey: 'DEF_MISSING',
-              taskIds: ['t1'],
             }),
           ],
         }),
         assignmentDefinitionPartials: [createDefinitionPartial({ definitionKey: 'DEF_OTHER' })],
-      })
-    ).toThrow(TaskTitlesUnavailableError);
+      });
+    }).toThrow(TaskTitlesUnavailableError);
   });
 });

@@ -39,15 +39,15 @@ export function isClassesWorkflowMutationBoundaryActive(
 /**
  * Returns whether stale rows should be hidden until classes are refreshed.
  *
- * @param {boolean} suppressStaleTableData Local suppress flag from mutation outcomes.
+ * @param {boolean} shouldSuppressStaleTableData Local suppress flag from mutation outcomes.
  * @param {string | null} refreshRequiredMessage Refresh-required message from the hook.
  * @returns {boolean} True when stale rows should stay hidden.
  */
 export function shouldSuppressClassesTableData(
-  suppressStaleTableData: boolean,
+  shouldSuppressStaleTableData: boolean,
   refreshRequiredMessage: string | null
 ): boolean {
-  return suppressStaleTableData || refreshRequiredMessage !== null;
+  return shouldSuppressStaleTableData || refreshRequiredMessage !== null;
 }
 
 /**

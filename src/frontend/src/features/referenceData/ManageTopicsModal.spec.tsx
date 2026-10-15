@@ -25,23 +25,27 @@ const getAssignmentTopicsMock = vi.hoisted(() => vi.fn());
 const getYearGroupsMock = vi.hoisted(() => vi.fn());
 let user: ReturnType<typeof userEvent.setup>;
 
-vi.mock('../../services/assignmentDefinition/assignmentTopicsService', () => ({
-  getAssignmentTopics: getAssignmentTopicsMock,
-}));
+vi.mock('../../services/assignmentDefinition/assignmentTopicsService', () => {
+  return {
+    getAssignmentTopics: getAssignmentTopicsMock,
+  };
+});
 
-vi.mock('../../services/referenceData/referenceDataService', () => ({
-  getCohorts: vi.fn(),
-  createCohort: vi.fn(),
-  updateCohort: vi.fn(),
-  deleteCohort: vi.fn(),
-  getYearGroups: getYearGroupsMock,
-  createYearGroup: vi.fn(),
-  updateYearGroup: vi.fn(),
-  deleteYearGroup: vi.fn(),
-  createAssignmentTopic: createAssignmentTopicMock,
-  updateAssignmentTopic: updateAssignmentTopicMock,
-  deleteAssignmentTopic: deleteAssignmentTopicMock,
-}));
+vi.mock('../../services/referenceData/referenceDataService', () => {
+  return {
+    getCohorts: vi.fn(),
+    createCohort: vi.fn(),
+    updateCohort: vi.fn(),
+    deleteCohort: vi.fn(),
+    getYearGroups: getYearGroupsMock,
+    createYearGroup: vi.fn(),
+    updateYearGroup: vi.fn(),
+    deleteYearGroup: vi.fn(),
+    createAssignmentTopic: createAssignmentTopicMock,
+    updateAssignmentTopic: updateAssignmentTopicMock,
+    deleteAssignmentTopic: deleteAssignmentTopicMock,
+  };
+});
 
 const onCloseMock = vi.fn();
 const onEntityCreatedMock = vi.fn();
@@ -101,16 +105,16 @@ type RenderOptions = {
  *
  * @param {AssignmentTopic[]} topics Topics data to seed.
  * @param {YearGroup[]} yearGroups Year groups data to seed.
- * @param {boolean} seedQueryData Whether to seed query data.
+ * @param {boolean} shouldSeedQueryData Whether to seed query data.
  * @returns {ReturnType<typeof createAppQueryClient>} Configured query client.
  */
 function setupTestQueryClient(
   topics: AssignmentTopic[],
   yearGroups: YearGroup[],
-  seedQueryData: boolean,
+  shouldSeedQueryData: boolean,
 ): ReturnType<typeof createAppQueryClient> {
   const queryClient = createAppQueryClient();
-  if (seedQueryData) {
+  if (shouldSeedQueryData) {
     queryClient.setQueryData(queryKeys.assignmentTopics(), topics);
     queryClient.setQueryData(queryKeys.yearGroups(), yearGroups);
   }
@@ -124,18 +128,18 @@ function setupTestQueryClient(
  * @returns {ReturnType<typeof renderWithFrontendProviders>} Render result and query client.
  */
 function renderManageTopicsModal(options: RenderOptions = {}): ReturnType<typeof renderWithFrontendProviders> {
-  const open = options.open ?? true;
+  const isOpen = options.open ?? true;
   const topics = options.topics ?? seedTopics;
   const yearGroups = options.yearGroups ?? seedYearGroups;
-  const seedQueryData = options.seedQueryData ?? true;
+  const shouldSeedQueryData = options.seedQueryData ?? true;
   const onEntityCreated = options.onEntityCreated ?? onEntityCreatedMock;
-  const queryClient = setupTestQueryClient(topics, yearGroups, seedQueryData);
+  const queryClient = setupTestQueryClient(topics, yearGroups, shouldSeedQueryData);
 
   getAssignmentTopicsMock.mockResolvedValue(topics);
   getYearGroupsMock.mockResolvedValue(yearGroups);
 
   return renderWithFrontendProviders(
-    <ManageTopicsModal open={open} onClose={onCloseMock} onEntityCreated={onEntityCreated} />,
+    <ManageTopicsModal open={isOpen} onClose={onCloseMock} onEntityCreated={onEntityCreated} />,
     { queryClient },
   );
 }
@@ -373,13 +377,12 @@ function assertFormHasNameTextbox(formDialog: HTMLElement): void {
 }
 
 /**
- * Asserts that the edit form dialog has a name textbox with a specific value.
+ * Asserts that the seeded Mathematics topic name is shown in the edit form.
  *
  * @param {HTMLElement} formDialog - The form dialog element.
- * @param {string} expectedValue - The expected value of the name textbox.
  */
-function assertEditFormNameValue(formDialog: HTMLElement, expectedValue: string): void {
-  expect(within(formDialog).getByRole('textbox', { name: /name/i })).toHaveValue(expectedValue);
+function assertEditFormNameValue(formDialog: HTMLElement): void {
+  expect(within(formDialog).getByRole('textbox', { name: /name/i })).toHaveValue('Mathematics');
 }
 
 /**
@@ -556,10 +559,11 @@ describe('ManageTopicsModal', () => {
 
       let releaseRefresh: (() => void) | undefined;
       getAssignmentTopicsMock.mockImplementationOnce(
-        () =>
-          new Promise<AssignmentTopic[]>((resolve) => {
+        () => {
+          return new Promise<AssignmentTopic[]>((resolve) => {
             releaseRefresh = () => resolve(seedTopics);
-          }),
+          });
+        },
       );
 
       try {
@@ -773,12 +777,12 @@ describe('ManageTopicsModal', () => {
 
     it('Edit form includes year group multi-select field with pre-selected existing yearGroupKeys', async () => {
       const { formDialog } = await openEditMathsForm();
-      assertEditFormNameValue(formDialog, 'Mathematics');
+      assertEditFormNameValue(formDialog);
     });
 
     it('Edit form year group multi-select allows changing selected year groups', async () => {
       const { formDialog } = await openEditMathsForm();
-      assertEditFormNameValue(formDialog, 'Mathematics');
+      assertEditFormNameValue(formDialog);
     });
 
     it('calls updateAssignmentTopic and refetches the active topics query after a successful edit', async () => {

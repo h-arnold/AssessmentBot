@@ -444,7 +444,7 @@ Current state: `startProcessing` stores context via `GASPropertiesUtils.getUserP
   1. Gets reference and template modification times from Drive
   2. Checks per-document staleness via `DateUtils.isNewer(referenceModified, definition.referenceLastModified)` and `DateUtils.isNewer(templateModified, definition.templateLastModified)`
   3. If either document is stale:
-     - Throws `DefinitionStaleError` with `definitionKey`, `referenceStale`, `templateStale`, `referenceLastModified`, `templateLastModified`
+     - Throws `DefinitionStaleError` with `definitionKey`, `referenceStale`, `isTemplateStale`, `referenceLastModified`, `templateLastModified`
      - The error is caught by `processSelectedAssignment`'s try/catch and surfaced via `ProgressTracker.logAndThrowError`
   4. If neither is stale: proceeds with cached tasks from the definition
 - **Why re-check here?**: The pipeline re-evaluates freshness at trigger time so any edits to the reference or template slides made after the `startAssessmentRun` API call are caught. When the definition is stale the pipeline now throws `DefinitionStaleError` instead of silently re-parsing, which surfaces the stale state via `ProgressTracker.logAndThrowError`.
@@ -646,7 +646,7 @@ assignment.submissions = [
 - **Purpose**: Batch-processes images for LLM consumption
 - **Methods**:
   - `collectAllImageArtifacts(assignment)`: Gathers all image artifact references
-  - `fetchImagesAsBlobs(entries)`: Downloads images in batches
+  - `fetchImagesAsBlobs(entries)`: Downloads images in batches; empty input returns an empty array before reading the batch-size configuration, so empty input does not acquire configuration or trigger its failures. Non-empty fetching is unchanged.
   - `writeBackBlobs(assignment, blobs)`: Updates artifacts with base64 content
 
 ##### Stage 6: Assess Responses (lines 317-323)

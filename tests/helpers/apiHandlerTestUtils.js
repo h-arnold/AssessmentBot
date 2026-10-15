@@ -28,7 +28,7 @@ function getApiDispatcherInstance() {
 
 function callAuthorisationStatus(dispatcher, request = {}) {
   return dispatcher.handle({
-    method: 'getAuthorisationStatus',
+    method: 'hasScriptAuthorisation',
     ...request,
   });
 }
@@ -321,7 +321,7 @@ function teardownApiHandlerTestContext(vi, context) {
 /**
  * Builds a request-store object containing started entries.
  */
-function buildStartedStore(count, prefix, startedAtMs, method = 'getAuthorisationStatus') {
+function buildStartedStore(count, prefix, startedAtMs, method = 'hasScriptAuthorisation') {
   const store = {};
   for (let index = 0; index < count; index++) {
     const id = `${prefix}-${index}`;

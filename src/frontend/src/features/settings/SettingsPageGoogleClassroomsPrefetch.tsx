@@ -7,9 +7,9 @@ import { queryKeys } from '../../query/queryKeys';
 import { getGoogleClassroomsQueryOptions } from '../../query/sharedQueries';
 
 /**
- * Logs Google Classrooms prefetch failures for background diagnostics.
+ * Logs Google Classrooms query failures for background diagnostics.
  *
- * @param {unknown} error Prefetch failure.
+ * @param {unknown} error Query failure.
  * @returns {void} Nothing.
  */
 function logGoogleClassroomsPrefetchFailure(error: unknown) {
@@ -42,16 +42,21 @@ export function SettingsPageGoogleClassroomsPrefetch() {
     let isMounted = true;
 
     void (async () => {
-      await queryClient.prefetchQuery(getGoogleClassroomsQueryOptions());
+      try {
+        await queryClient.query(getGoogleClassroomsQueryOptions());
+      } catch (error: unknown) {
+        if (!isMounted) return;
+        logGoogleClassroomsPrefetchFailure(error);
+        return;
+      }
 
-      if (isMounted) {
-        const googleClassroomsQueryState = queryClient.getQueryState(
-          queryKeys.googleClassrooms()
-        );
+      if (!isMounted) return;
+      const googleClassroomsQueryState = queryClient.getQueryState(
+        queryKeys.googleClassrooms()
+      );
 
-        if (googleClassroomsQueryState?.status === 'error') {
-          logGoogleClassroomsPrefetchFailure(googleClassroomsQueryState.error);
-        }
+      if (googleClassroomsQueryState?.status === 'error') {
+        logGoogleClassroomsPrefetchFailure(googleClassroomsQueryState.error);
       }
     })();
 

@@ -113,57 +113,46 @@ describe('MetricResultSchema', () => {
   it('rejects a mismatched shape (state: "computed" with value: "N")', async () => {
     const { MetricResultSchema } = await loadDataAnalysisZod();
 
-    expect(() =>
-      MetricResultSchema.parse({
+    expect(() => {
+      return MetricResultSchema.parse({
         state: 'computed',
         value: 'N',
         totalWeight: 1,
         applicableDataPoints: 1,
         totalDataPoints: 1,
-      })
-    ).toThrow();
+      });
+    }).toThrow();
   });
 
   it('rejects computed state with applicableDataPoints = 0', async () => {
     const { MetricResultSchema } = await loadDataAnalysisZod();
 
-    expect(() =>
-      MetricResultSchema.parse({
+    expect(() => {
+      return MetricResultSchema.parse({
         state: 'computed',
         value: 5,
         totalWeight: 1,
         applicableDataPoints: 0,
         totalDataPoints: 1,
-      })
-    ).toThrow();
+      });
+    }).toThrow();
   });
 
-  it('rejects notAttempted state with applicableDataPoints > 0', async () => {
+  it.each([
+    ['notAttempted', 'N'],
+    ['error', 'E'],
+  ] as const)('rejects %s state with applicableDataPoints > 0', async (state, value) => {
     const { MetricResultSchema } = await loadDataAnalysisZod();
 
-    expect(() =>
-      MetricResultSchema.parse({
-        state: 'notAttempted',
-        value: 'N',
+    expect(() => {
+      return MetricResultSchema.parse({
+        state,
+        value,
         totalWeight: 0,
         applicableDataPoints: 1,
         totalDataPoints: 1,
-      })
-    ).toThrow();
-  });
-
-  it('rejects error state with applicableDataPoints > 0', async () => {
-    const { MetricResultSchema } = await loadDataAnalysisZod();
-
-    expect(() =>
-      MetricResultSchema.parse({
-        state: 'error',
-        value: 'E',
-        totalWeight: 0,
-        applicableDataPoints: 1,
-        totalDataPoints: 1,
-      })
-    ).toThrow();
+      });
+    }).toThrow();
   });
 
   it('accepts a valid excluded aggregate shape', async () => {

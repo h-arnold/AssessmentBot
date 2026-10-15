@@ -33,7 +33,7 @@ describe('Api/apiHandler – stale-entry pruning during admission', () => {
       ACTIVE_LIMIT,
       'stale-seed',
       staleTime,
-      'getAuthorisationStatus'
+      'hasScriptAuthorisation'
     );
     persistUserRequestStore(store);
 
@@ -54,7 +54,7 @@ describe('Api/apiHandler – stale-entry pruning during admission', () => {
       ACTIVE_LIMIT,
       'recent-seed',
       recentTime,
-      'getAuthorisationStatus'
+      'hasScriptAuthorisation'
     );
     persistUserRequestStore(store);
 
@@ -64,7 +64,7 @@ describe('Api/apiHandler – stale-entry pruning during admission', () => {
 
     expect(result).toMatchObject({
       ok: false,
-      error: { code: 'RATE_LIMITED', retriable: true },
+      error: { code: 'RATE_LIMITED', isRetriable: true },
     });
     expect(context.scriptAppManagerInstance.isAuthorised).not.toHaveBeenCalled();
   });
@@ -72,7 +72,7 @@ describe('Api/apiHandler – stale-entry pruning during admission', () => {
   it('calls ABLogger.warn once for each stale entry that is pruned', () => {
     const staleTime = Date.now() - STALE_REQUEST_AGE_MS - 1000;
     const staleCount = 3;
-    const store = buildStartedStore(staleCount, 'stale-warn', staleTime, 'getAuthorisationStatus');
+    const store = buildStartedStore(staleCount, 'stale-warn', staleTime, 'hasScriptAuthorisation');
     persistUserRequestStore(store);
 
     const dispatcher = getApiDispatcherInstance();
@@ -90,7 +90,7 @@ describe('Api/apiHandler – stale-entry pruning during admission', () => {
     // One stale entry that will be pruned.
     store['stale-one'] = {
       requestId: 'stale-one',
-      method: 'getAuthorisationStatus',
+      method: 'hasScriptAuthorisation',
       status: 'started',
       startedAtMs: staleTime,
     };
@@ -100,7 +100,7 @@ describe('Api/apiHandler – stale-entry pruning during admission', () => {
       const id = `recent-limit-${i}`;
       store[id] = {
         requestId: id,
-        method: 'getAuthorisationStatus',
+        method: 'hasScriptAuthorisation',
         status: 'started',
         startedAtMs: recentTime,
       };
@@ -114,7 +114,7 @@ describe('Api/apiHandler – stale-entry pruning during admission', () => {
 
     expect(result).toMatchObject({
       ok: false,
-      error: { code: 'RATE_LIMITED', retriable: true },
+      error: { code: 'RATE_LIMITED', isRetriable: true },
     });
   });
 
@@ -128,7 +128,7 @@ describe('Api/apiHandler – stale-entry pruning during admission', () => {
       const id = `stale-excess-${i}`;
       store[id] = {
         requestId: id,
-        method: 'getAuthorisationStatus',
+        method: 'hasScriptAuthorisation',
         status: 'started',
         startedAtMs: staleTime,
       };
@@ -139,7 +139,7 @@ describe('Api/apiHandler – stale-entry pruning during admission', () => {
       const id = `recent-excess-${i}`;
       store[id] = {
         requestId: id,
-        method: 'getAuthorisationStatus',
+        method: 'hasScriptAuthorisation',
         status: 'started',
         startedAtMs: recentTime,
       };
@@ -153,7 +153,7 @@ describe('Api/apiHandler – stale-entry pruning during admission', () => {
 
     expect(result).toMatchObject({
       ok: false,
-      error: { code: 'RATE_LIMITED', retriable: true },
+      error: { code: 'RATE_LIMITED', isRetriable: true },
     });
   });
 
@@ -166,7 +166,7 @@ describe('Api/apiHandler – stale-entry pruning during admission', () => {
       const id = `stale-only-${i}`;
       store[id] = {
         requestId: id,
-        method: 'getAuthorisationStatus',
+        method: 'hasScriptAuthorisation',
         status: 'started',
         startedAtMs: staleTime,
       };

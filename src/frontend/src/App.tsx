@@ -6,8 +6,6 @@ import { AuthStatusCard } from './features/auth/AuthStatusCard';
  *
  * @returns {JSX.Element} The composed application element.
  */
-function App() {
+export default function App() {
   return <AppThemeShell dashboardContent={<AuthStatusCard />} />;
 }
-
-export default App;

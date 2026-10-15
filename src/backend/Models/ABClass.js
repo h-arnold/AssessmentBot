@@ -47,7 +47,7 @@ class ABClass {
     this.cohortKey = hasCohortKey ? null : String(cohortKey);
 
     // courseLength in years (integer)
-    this.courseLength = Number.isInteger(courseLength)
+    this.courseLength = Number.isSafeInteger(courseLength)
       ? courseLength
       : ABClass._parseNullableInt(courseLength, 1);
 
@@ -106,17 +106,22 @@ class ABClass {
   }
 
   /**
-   * Parses a value to an integer, returning a default if parsing fails.
+   * Parses a value to a safe integer, returning a default for unsafe numeric inputs or if parsing fails.
    * @param {*} value - The value to parse
    * @param {number|null} defaultValue - The default value to return if parsing fails
    * @returns {number|null} The parsed integer, or defaultValue if parsing fails
    * @private
    */
   static _parseNullableInt(value, defaultValue) {
-    if (value === null || value === undefined) return defaultValue;
-    if (Number.isInteger(value)) return value;
+    if (
+      value === null ||
+      value === undefined ||
+      (typeof value === 'number' && Math.abs(value) > Number.MAX_SAFE_INTEGER)
+    )
+      return defaultValue;
+    if (Number.isSafeInteger(value)) return value;
     const parsed = Number.parseInt(value, 10);
-    if (Number.isNaN(parsed)) return defaultValue;
+    if (!Number.isSafeInteger(parsed)) return defaultValue;
     return parsed;
   }
 
@@ -315,7 +320,7 @@ class ABClass {
   /**
    * Deserialises a JSON object to an ABClass instance.
    * @param {Object|null} json - The serialised class object
-   * @returns {ABClass|null} A new ABClass instance, or null if json is falsy
+   * @returns {ABClass|null} A new ABClass instance, or null if the JSON input is falsy
    */
   static fromJSON(json) {
     if (!json || typeof json !== 'object') return null;
@@ -324,7 +329,7 @@ class ABClass {
     inst.className = json.className || null;
     inst.cohortKey =
       json.cohortKey !== undefined && json.cohortKey !== null ? String(json.cohortKey) : null;
-    inst.courseLength = Number.isInteger(json.courseLength)
+    inst.courseLength = Number.isSafeInteger(json.courseLength)
       ? json.courseLength
       : ABClass._parseNullableInt(json.courseLength, 1);
     inst.yearGroupKey =

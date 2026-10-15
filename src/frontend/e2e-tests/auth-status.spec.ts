@@ -52,7 +52,7 @@ test.describe('auth status flow', () => {
 
   test('shows "Permissions required" when backend returns false', async ({ page }) => {
     await installRuntimeMock(page, {
-      getAuthorisationStatus: [{ kind: 'success', data: false }],
+      hasScriptAuthorisation: [{ kind: 'success', data: false }],
     });
 
     await page.goto('/');
@@ -66,7 +66,7 @@ test.describe('auth status flow', () => {
     page,
   }) => {
     await installRuntimeMock(page, {
-      getAuthorisationStatus: [
+      hasScriptAuthorisation: [
         {
           kind: 'failureEnvelope',
           code: 'INTERNAL_ERROR',

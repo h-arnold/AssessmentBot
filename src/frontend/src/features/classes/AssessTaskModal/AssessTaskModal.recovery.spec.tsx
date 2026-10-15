@@ -160,10 +160,8 @@ describe('AssessTaskModal recovery definition load failure', () => {
 
 describe('AssessTaskModal reparsing state', () => {
   it('shows the accessible busy skeleton with a Cancel-only footer', async () => {
-    let resolveUpsert!: (value: AssignmentDefinition) => void;
-    const pendingUpsert = new Promise<AssignmentDefinition>((resolve) => {
-      resolveUpsert = resolve;
-    });
+    const { promise: pendingUpsert, resolve: resolveUpsert } =
+      Promise.withResolvers<AssignmentDefinition>();
 
     const { dialog } = renderRecoveryModal({
       setupMocks: () => {
@@ -321,10 +319,8 @@ describe('AssessTaskModal recovery parse failure', () => {
 
 describe('AssessTaskModal recovery approval outcomes', () => {
   it('shows the save busy treatment and resumes assessment with the captured identifiers on success', async () => {
-    let resolveSave!: (value: AssignmentDefinition) => void;
-    const pendingSave = new Promise<AssignmentDefinition>((resolve) => {
-      resolveSave = resolve;
-    });
+    const { promise: pendingSave, resolve: resolveSave } =
+      Promise.withResolvers<AssignmentDefinition>();
 
     const { dialog } = renderRecoveryModal({
       setupMocks: () => {

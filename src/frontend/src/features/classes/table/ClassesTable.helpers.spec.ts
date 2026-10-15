@@ -44,12 +44,16 @@ const rows: ClassesManagementRow[] = [
 
 describe('ClassesTable helper coverage', () => {
   it('normalises sorter/filter state and recognises filter keys', () => {
-    expect(classesTableHelpers.getPrimarySorter({ columnKey: 'className', order: 'ascend' })).toEqual({
+    expect(
+      classesTableHelpers.getPrimarySorter({ columnKey: 'className', order: 'ascend' })
+    ).toEqual({
       columnKey: 'className',
       order: 'ascend',
     });
     expect(classesTableHelpers.getPrimarySorter([])).toBeNull();
-    expect(classesTableHelpers.getPrimarySorter({ columnKey: 'className', order: null })).toBeNull();
+    expect(
+      classesTableHelpers.getPrimarySorter({ columnKey: 'className', order: null })
+    ).toBeNull();
 
     expect(classesTableHelpers.normaliseFilters()).toEqual({
       status: null,
@@ -66,7 +70,7 @@ describe('ClassesTable helper coverage', () => {
         courseLength: ['2'],
         yearGroupLabel: ['Year 10'],
         active: ['true'],
-      }),
+      })
     ).toEqual({
       status: ['active'],
       cohortLabel: ['Cohort A'],
@@ -81,7 +85,9 @@ describe('ClassesTable helper coverage', () => {
 
   it('returns default rows in status-priority then case-insensitive class-name order', () => {
     expect(
-      classesTableHelpers.getDefaultSortedRows([rows[2], rows[3], rows[1], rows[0]]).map((row) => row.classId),
+      classesTableHelpers
+        .getDefaultSortedRows([rows[2], rows[3], rows[1], rows[0]])
+        .map((row) => row.classId)
     ).toEqual(['active-a', 'active-b', 'inactive-c', 'not-created']);
   });
 
@@ -107,7 +113,7 @@ describe('ClassesTable helper coverage', () => {
       {
         columnKey: 'className',
         order: 'descend',
-      },
+      }
     );
 
     const statusColumn = controlledColumns.find((column) => column.key === 'status');
@@ -116,44 +122,58 @@ describe('ClassesTable helper coverage', () => {
     expect(statusColumn?.filteredValue).toEqual(['active']);
     expect(classNameColumn?.sortOrder).toBe('descend');
 
-    const filteredRows = classesTableHelpers.applyColumnFilters(
-      rows,
-      baseColumns,
-      {
-        status: ['active'],
-        cohortLabel: null,
-        courseLength: null,
-        yearGroupLabel: null,
-        active: null,
-      },
-    );
+    const filteredRows = classesTableHelpers.applyColumnFilters(rows, baseColumns, {
+      status: ['active'],
+      cohortLabel: null,
+      courseLength: null,
+      yearGroupLabel: null,
+      active: null,
+    });
     expect(filteredRows.map((row) => row.classId)).toEqual(['active-a', 'active-b']);
 
     const unknownColumns = [{ title: 'Unknown', key: 'unknown' }];
     expect(
-      classesTableHelpers.getSortedRows(rows, unknownColumns, {
-        columnKey: 'className',
-        order: 'ascend',
-      }).map((row) => row.classId),
+      classesTableHelpers
+        .getSortedRows(rows, unknownColumns, {
+          columnKey: 'className',
+          order: 'ascend',
+        })
+        .map((row) => row.classId)
     ).toEqual(classesTableHelpers.getDefaultSortedRows(rows).map((row) => row.classId));
+  });
+
+  it('preserves numeric Ant Design column keys without applying controlled filters', () => {
+    const numericKeyColumn = { title: 'Numeric key', key: 1, filteredValue: ['existing'] };
+
+    const [controlledColumn] = classesTableHelpers.getControlledColumns(
+      [numericKeyColumn],
+      classesTableHelpers.EMPTY_FILTER_STATE,
+      null
+    );
+
+    expect(controlledColumn).toMatchObject({
+      key: 1,
+      filteredValue: ['existing'],
+      sortOrder: null,
+    });
   });
 
   it('sorts via every comparator branch and deterministic tie-break', () => {
     expect(classesTableHelpers.getSortComparator('status')(rows[0], rows[2])).toBeLessThan(0);
     expect(classesTableHelpers.getSortComparator('className')(rows[0], rows[1])).toBe(0);
-    expect(classesTableHelpers.getSortComparator('cohortLabel')(rows[0], rows[3])).toBeGreaterThan(0);
+    expect(classesTableHelpers.getSortComparator('cohortLabel')(rows[0], rows[3])).toBeGreaterThan(
+      0
+    );
     expect(classesTableHelpers.getSortComparator('courseLength')(rows[3], rows[0])).toBeLessThan(0);
-    expect(classesTableHelpers.getSortComparator('yearGroupLabel')(rows[0], rows[3])).toBeGreaterThan(0);
+    expect(
+      classesTableHelpers.getSortComparator('yearGroupLabel')(rows[0], rows[3])
+    ).toBeGreaterThan(0);
     expect(classesTableHelpers.getSortComparator('active')(rows[0], rows[3])).toBeGreaterThan(0);
 
-    const classNameSortedRows = classesTableHelpers.getSortedRows(
-      rows,
-      getClassesTableColumns(),
-      {
-        columnKey: 'className',
-        order: 'ascend',
-      },
-    );
+    const classNameSortedRows = classesTableHelpers.getSortedRows(rows, getClassesTableColumns(), {
+      columnKey: 'className',
+      order: 'ascend',
+    });
 
     expect(classNameSortedRows.map((row) => row.classId)).toEqual([
       'active-a',
@@ -164,11 +184,11 @@ describe('ClassesTable helper coverage', () => {
   });
 
   it('builds filter option values deterministically', () => {
-    expect(classesTableHelpers.getUniqueSortedFilterOptions(['10', null, '2']).map((option) => option.value)).toEqual([
-      '2',
-      '10',
-      'null',
-    ]);
+    expect(
+      classesTableHelpers
+        .getUniqueSortedFilterOptions(['10', null, '2'])
+        .map((option) => option.value)
+    ).toEqual(['2', '10', 'null']);
 
     expect(classesTableHelpers.getFilterOptions(rows)).toEqual({
       cohortLabel: [

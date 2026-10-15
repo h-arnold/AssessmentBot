@@ -4,7 +4,7 @@ export type ApiErrorEnvelope = {
   error: {
     code: string;
     message: string;
-    retriable?: boolean;
+    isRetriable?: boolean;
     details?: Record<string, unknown>;
   };
   meta?: Record<string, unknown>;
@@ -17,7 +17,7 @@ export type ApiErrorEnvelope = {
 export class ApiTransportError extends Error {
   public readonly requestId: string;
   public readonly code: string;
-  public readonly retriable: boolean | undefined;
+  public readonly isRetriable: boolean | undefined;
   public readonly meta: Record<string, unknown> | undefined;
   public readonly details: Record<string, unknown> | undefined;
 
@@ -31,7 +31,7 @@ export class ApiTransportError extends Error {
     this.name = 'ApiTransportError';
     this.requestId = response.requestId;
     this.code = response.error.code;
-    this.retriable = response.error.retriable;
+    this.isRetriable = response.error.isRetriable;
     this.meta = response.meta;
     this.details = response.error.details;
   }

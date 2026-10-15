@@ -68,8 +68,8 @@ function buildForbiddenUpdatePayload(overrides = {}) {
 function buildDeleteSummary(overrides = {}) {
   return {
     classId: 'class-001',
-    fullClassDeleted: true,
-    partialDeleted: true,
+    hasDeletedFullClass: true,
+    hasDeletedClassPartial: true,
     ...overrides,
   };
 }

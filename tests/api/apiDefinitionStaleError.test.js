@@ -11,7 +11,7 @@ describe('DefinitionStaleError', () => {
     const err = new DefinitionStaleError('Definition is stale', {
       definitionKey: 'def-123',
       referenceStale: true,
-      templateStale: false,
+      isTemplateStale: false,
       referenceLastModified: '2024-01-15T10:00:00Z',
       templateLastModified: null,
     });
@@ -20,7 +20,7 @@ describe('DefinitionStaleError', () => {
     expect(err.message).toBe('Definition is stale');
   });
 
-  it('stores definitionKey, referenceStale, templateStale, referenceLastModified, templateLastModified', () => {
+  it('stores definitionKey, referenceStale, isTemplateStale, referenceLastModified, templateLastModified', () => {
     const DefinitionStaleError = require(DefinitionStaleErrorPath);
 
     const referenceLastModified = '2024-01-15T10:00:00Z';
@@ -29,7 +29,7 @@ describe('DefinitionStaleError', () => {
     const err = new DefinitionStaleError('Definition is stale', {
       definitionKey: 'def-123',
       referenceStale: true,
-      templateStale: true,
+      isTemplateStale: true,
       referenceLastModified,
       templateLastModified,
     });
@@ -37,7 +37,7 @@ describe('DefinitionStaleError', () => {
     expect(err.message).toBe('Definition is stale');
     expect(err.definitionKey).toBe('def-123');
     expect(err.referenceStale).toBe(true);
-    expect(err.templateStale).toBe(true);
+    expect(err.isTemplateStale).toBe(true);
     expect(err.referenceLastModified).toBe(referenceLastModified);
     expect(err.templateLastModified).toBe(templateLastModified);
   });
@@ -48,7 +48,7 @@ describe('DefinitionStaleError', () => {
     const err = new DefinitionStaleError('Definition is stale', {
       definitionKey: 'def-123',
       referenceStale: true,
-      templateStale: false,
+      isTemplateStale: false,
       referenceLastModified: null,
       templateLastModified: null,
     });
@@ -63,7 +63,7 @@ describe('DefinitionStaleError', () => {
     const err = new DefinitionStaleError('Definition is stale', {
       definitionKey: 'def-123',
       referenceStale: true,
-      templateStale: false,
+      isTemplateStale: false,
       referenceLastModified: '2024-01-15T10:00:00Z',
       templateLastModified: null,
     });
@@ -74,13 +74,13 @@ describe('DefinitionStaleError', () => {
     expect(err.message).toBe('Definition is stale');
   });
 
-  it('handles referenceStale=false and templateStale=true combination', () => {
+  it('handles referenceStale=false and isTemplateStale=true combination', () => {
     const DefinitionStaleError = require(DefinitionStaleErrorPath);
 
     const err = new DefinitionStaleError('Definition is stale', {
       definitionKey: 'def-456',
       referenceStale: false,
-      templateStale: true,
+      isTemplateStale: true,
       referenceLastModified: '2024-01-15T10:00:00Z',
       templateLastModified: '2024-01-16T10:00:00Z',
     });
@@ -89,7 +89,7 @@ describe('DefinitionStaleError', () => {
     expect(err.message).toBe('Definition is stale');
     expect(err.definitionKey).toBe('def-456');
     expect(err.referenceStale).toBe(false);
-    expect(err.templateStale).toBe(true);
+    expect(err.isTemplateStale).toBe(true);
     expect(err.referenceLastModified).toBe('2024-01-15T10:00:00Z');
     expect(err.templateLastModified).toBe('2024-01-16T10:00:00Z');
   });

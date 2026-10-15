@@ -32,7 +32,7 @@ async function setUpBackgroundRefreshScenario(
   refreshedClassPartials: typeof matchedClassPartials
 ) {
   await mockClassesCrudRuntime(page, {
-    getAuthorisationStatus: [{ kind: 'success', data: true }],
+    hasScriptAuthorisation: [{ kind: 'success', data: true }],
     getABClassPartials: [
       { kind: 'success', data: matchedClassPartials },
       {
@@ -64,7 +64,7 @@ async function startSetActiveRefreshWorkflow(page: Parameters<typeof mockClasses
 test.describe('Classes CRUD harness journey', () => {
   test('shows ready state when all startup warm-up queries succeed', async ({ page }) => {
     await mockClassesCrudRuntime(page, {
-      getAuthorisationStatus: [{ kind: 'success', data: true }],
+      hasScriptAuthorisation: [{ kind: 'success', data: true }],
       getABClassPartials: [{ kind: 'success', data: baseClassPartials }],
       getCohorts: [{ kind: 'success', data: baseCohorts }],
       getYearGroups: [{ kind: 'success', data: baseYearGroups }],
@@ -82,7 +82,7 @@ test.describe('Classes CRUD harness journey', () => {
     page,
   }) => {
     await mockClassesCrudRuntime(page, {
-      getAuthorisationStatus: [{ kind: 'success', data: false }],
+      hasScriptAuthorisation: [{ kind: 'success', data: false }],
       getABClassPartials: [{ kind: 'success', data: [] }],
       getCohorts: [{ kind: 'success', data: [] }],
       getYearGroups: [{ kind: 'success', data: [] }],
@@ -99,7 +99,7 @@ test.describe('Classes CRUD harness journey', () => {
     page,
   }) => {
     await mockClassesCrudRuntime(page, {
-      getAuthorisationStatus: [{ kind: 'success', data: true }],
+      hasScriptAuthorisation: [{ kind: 'success', data: true }],
       getABClassPartials: [{ kind: 'transportFailure', message: 'Class partials fetch failed.' }],
       getCohorts: [{ kind: 'success', data: baseCohorts }],
       getYearGroups: [{ kind: 'success', data: baseYearGroups }],
@@ -113,7 +113,7 @@ test.describe('Classes CRUD harness journey', () => {
 
   test('shows blocking classes state when Google Classrooms fetch fails', async ({ page }) => {
     await mockClassesCrudRuntime(page, {
-      getAuthorisationStatus: [{ kind: 'success', data: true }],
+      hasScriptAuthorisation: [{ kind: 'success', data: true }],
       getABClassPartials: [{ kind: 'success', data: baseClassPartials }],
       getCohorts: [{ kind: 'success', data: baseCohorts }],
       getYearGroups: [{ kind: 'success', data: baseYearGroups }],
@@ -133,7 +133,7 @@ test.describe('Classes CRUD harness journey', () => {
 
   test('shows no-active-classrooms empty state for fully empty datasets', async ({ page }) => {
     await mockClassesCrudRuntime(page, {
-      getAuthorisationStatus: [{ kind: 'success', data: true }],
+      hasScriptAuthorisation: [{ kind: 'success', data: true }],
       getABClassPartials: [{ kind: 'success', data: [] }],
       getCohorts: [{ kind: 'success', data: [] }],
       getYearGroups: [{ kind: 'success', data: [] }],
@@ -206,7 +206,7 @@ test.describe('Classes CRUD harness journey', () => {
     page,
   }) => {
     await mockClassesCrudRuntime(page, {
-      getAuthorisationStatus: [{ kind: 'success', data: true }],
+      hasScriptAuthorisation: [{ kind: 'success', data: true }],
       getABClassPartials: [{ kind: 'success', data: matchedClassPartials }],
       getCohorts: [{ kind: 'success', data: baseCohorts }],
       getYearGroups: [{ kind: 'success', data: baseYearGroups }],
@@ -242,7 +242,7 @@ test.describe('Classes CRUD harness journey', () => {
     page,
   }) => {
     await mockClassesCrudRuntime(page, {
-      getAuthorisationStatus: [{ kind: 'success', data: true }],
+      hasScriptAuthorisation: [{ kind: 'success', data: true }],
       getABClassPartials: [{ kind: 'success', data: [] }],
       getCohorts: [{ kind: 'success', data: [] }],
       getYearGroups: [{ kind: 'success', data: [] }],

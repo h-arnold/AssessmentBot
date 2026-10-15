@@ -6,10 +6,12 @@ const { callApiMock, parseApiResponseMock } = await vi.hoisted(async () => {
   return createApiServiceMockScaffold();
 });
 
-vi.mock('../apiService', () => ({
-  callApi: callApiMock,
-  parseApiResponse: parseApiResponseMock,
-}));
+vi.mock('../apiService', () => {
+  return {
+    callApi: callApiMock,
+    parseApiResponse: parseApiResponseMock,
+  };
+});
 
 /**
  * Loads the auth service module under test.
@@ -24,40 +26,40 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-describe('authService.getAuthorisationStatus', () => {
+describe('authService.hasScriptAuthorisation', () => {
   it('rejects when backend returns a non-boolean value', async () => {
     callApiMock.mockResolvedValueOnce('yes');
 
-    const { getAuthorisationStatus } = await loadAuthService();
+    const { hasScriptAuthorisation } = await loadAuthService();
 
-    const authorisationStatusPromise = getAuthorisationStatus();
+    const authorisationStatusPromise = hasScriptAuthorisation();
 
     await expect(authorisationStatusPromise).rejects.toThrow(ZodError);
     await expect(authorisationStatusPromise).rejects.toThrow(/expected boolean/i);
-    expect(callApiMock).toHaveBeenCalledWith('getAuthorisationStatus');
+    expect(callApiMock).toHaveBeenCalledWith('hasScriptAuthorisation');
     expect(callApiMock).toHaveBeenCalledTimes(1);
   });
 
   it('rejects when backend returns null', async () => {
     callApiMock.mockResolvedValueOnce(null);
 
-    const { getAuthorisationStatus } = await loadAuthService();
+    const { hasScriptAuthorisation } = await loadAuthService();
 
-    const authorisationStatusPromise = getAuthorisationStatus();
+    const authorisationStatusPromise = hasScriptAuthorisation();
 
     await expect(authorisationStatusPromise).rejects.toThrow(ZodError);
     await expect(authorisationStatusPromise).rejects.toThrow(/expected boolean/i);
-    expect(callApiMock).toHaveBeenCalledWith('getAuthorisationStatus');
+    expect(callApiMock).toHaveBeenCalledWith('hasScriptAuthorisation');
     expect(callApiMock).toHaveBeenCalledTimes(1);
   });
 
-  it('calls callApi with getAuthorisationStatus and returns the backend value', async () => {
+  it('calls callApi with hasScriptAuthorisation and returns the backend value', async () => {
     callApiMock.mockResolvedValueOnce(true);
 
-    const { getAuthorisationStatus } = await loadAuthService();
+    const { hasScriptAuthorisation } = await loadAuthService();
 
-    await expect(getAuthorisationStatus()).resolves.toBe(true);
-    expect(callApiMock).toHaveBeenCalledWith('getAuthorisationStatus');
+    await expect(hasScriptAuthorisation()).resolves.toBe(true);
+    expect(callApiMock).toHaveBeenCalledWith('hasScriptAuthorisation');
     expect(callApiMock).toHaveBeenCalledTimes(1);
   });
 });
@@ -66,7 +68,7 @@ describe('authService.getAuthorisationStatus', () => {
 // surface in authService.ts: each typed call routes through callApi with the
 // matching backend method name and validates the payload through the co-located
 // Zod schemas, surfacing transport envelope rejections unchanged. The
-// getAuthorisationStatus coverage above stays unchanged.
+// hasScriptAuthorisation coverage above stays unchanged.
 describe('authService.getApplicationAccess', () => {
   it('calls callApi with getApplicationAccess and returns the parsed access status', async () => {
     const okApplicationAccess = {

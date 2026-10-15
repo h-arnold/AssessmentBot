@@ -77,10 +77,12 @@ function getDatasetWarmupState(
 function createWarmupSnapshotFromQueryClient(queryClient: QueryClient): StartupWarmupSnapshot {
   return {
     datasets: Object.fromEntries(
-      startupWarmupDatasetKeys.map((datasetKey) => [
-        datasetKey,
-        getDatasetWarmupState(queryClient, datasetKey),
-      ])
+      startupWarmupDatasetKeys.map((datasetKey) => {
+        return [
+          datasetKey,
+          getDatasetWarmupState(queryClient, datasetKey),
+        ];
+      })
     ) as StartupWarmupSnapshot['datasets'],
   };
 }
@@ -178,8 +180,8 @@ function adoptWarmupCycleOutcome(options: AdoptWarmupCycleOutcomeOptions): void 
     logFailure,
   } = options;
 
-  void promise.then(
-    () => {
+  void promise
+    .then(() => {
       const nextSnapshot = resolveNextWarmupSnapshot(queryClient, 'ready');
       const nextStatus = deriveWarmupStatus(nextSnapshot);
       cycle.status = nextStatus;
@@ -192,8 +194,8 @@ function adoptWarmupCycleOutcome(options: AdoptWarmupCycleOutcomeOptions): void 
       if (getIsMounted()) {
         setWarmupCycleState({ status: nextStatus, snapshot: nextSnapshot });
       }
-    },
-    (error: unknown) => {
+    })
+    .catch((error: unknown) => {
       const nextSnapshot = resolveNextWarmupSnapshot(queryClient, 'failed');
       const nextStatus = deriveWarmupStatus(nextSnapshot);
       cycle.status = nextStatus;
@@ -215,8 +217,7 @@ function adoptWarmupCycleOutcome(options: AdoptWarmupCycleOutcomeOptions): void 
           failureError: error,
         });
       }
-    }
-  );
+    });
 }
 
 /**

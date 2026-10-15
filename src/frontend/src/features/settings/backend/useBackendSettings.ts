@@ -335,15 +335,13 @@ export function useBackendSettings(): BackendSettingsHookValue {
     backendConfigQuery.dataUpdatedAt
   );
   const isRefreshing = backendConfigQuery.isFetching && !backendConfigQuery.isPending;
-  const backendSettingsFormValues = useMemo(
-    (): BackendSettingsForm | null =>
-      getBackendSettingsFormValues({
-        backendConfig,
-        blockingLoadError,
-        partialLoadError,
-      }),
-    [backendConfig, blockingLoadError, partialLoadError]
-  );
+  const backendSettingsFormValues = useMemo((): BackendSettingsForm | null => {
+    return getBackendSettingsFormValues({
+      backendConfig,
+      blockingLoadError,
+      partialLoadError,
+    });
+  }, [backendConfig, blockingLoadError, partialLoadError]);
   const hasApiKey = backendConfig?.hasApiKey ?? false;
   const loadError = getCurrentBackendSettingsLoadError({
     backendConfigQuery,

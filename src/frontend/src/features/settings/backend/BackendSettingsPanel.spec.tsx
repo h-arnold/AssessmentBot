@@ -3,6 +3,8 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { BackendSettingsPanel } from './BackendSettingsPanel';
 import type { BackendSettingsForm } from './backendSettingsForm.zod';
+import type * as BackendSettingsFieldDescriptors from './backendSettingsFieldDescriptors';
+import { BackendSettingsFormSchema } from './backendSettingsForm.zod';
 import type { useBackendSettings } from './useBackendSettings';
 
 type BackendSettingsPanelHookState = ReturnType<typeof useBackendSettings>;
@@ -46,14 +48,36 @@ const booleanBindingBackendSettingsFormValues = {
   jsonDbBackupOnInitialise: false,
 };
 
-const { useBackendSettingsMock } = vi.hoisted(() => ({
-  useBackendSettingsMock: vi.fn(),
-}));
+const { useBackendSettingsMock } = vi.hoisted(() => {
+  return {
+    useBackendSettingsMock: vi.fn(),
+  };
+});
+const { bypassBackendSettingsFieldValidation } = vi.hoisted(() => {
+  return {
+    bypassBackendSettingsFieldValidation: { current: false },
+  };
+});
 const slowPanelInteractionTimeoutMs = 30_000;
+const NON_STRING_PATH_SEGMENT = 7;
 
-vi.mock('./useBackendSettings', () => ({
-  useBackendSettings: useBackendSettingsMock,
-}));
+vi.mock('./useBackendSettings', () => {
+  return {
+    useBackendSettings: useBackendSettingsMock,
+  };
+});
+
+vi.mock('./backendSettingsFieldDescriptors', async (importOriginal) => {
+  const actual = await importOriginal<typeof BackendSettingsFieldDescriptors>();
+  return {
+    ...actual,
+    createBackendSettingsFieldValidator: (...arguments_: Parameters<typeof actual.createBackendSettingsFieldValidator>) => {
+      return bypassBackendSettingsFieldValidation.current
+        ? () => Promise.resolve()
+        : actual.createBackendSettingsFieldValidator(...arguments_);
+    },
+  };
+});
 
 let user: ReturnType<typeof userEvent.setup>;
 
@@ -79,11 +103,10 @@ function getField(label: string) {
 /**
  * Returns the Ant Design extra region for the form item labelled by the provided name.
  *
- * @param {string} label The visible field label.
  * @returns {HTMLElement | null} The form item's extra region, or null when absent.
  */
-function getFormItemExtraRegion(label: string): HTMLElement | null {
-  return getField(label).closest('.ant-form-item')?.querySelector('.ant-form-item-extra') ?? null;
+function getFormItemExtraRegion(): HTMLElement | null {
+  return getField('API key').closest('.ant-form-item')?.querySelector('.ant-form-item-extra') ?? null;
 }
 
 /**
@@ -111,15 +134,19 @@ describe('BackendSettingsPanel', () => {
   });
 
   afterEach(() => {
+    bypassBackendSettingsFieldValidation.current = false;
+    vi.restoreAllMocks();
     useBackendSettingsMock.mockReset();
     saveBackendSettingsMock.mockReset();
   });
 
   it('renders the backend panel skeleton inside the owned announced status region before the form is available', () => {
-    useBackendSettingsMock.mockImplementation(() => ({
-      ...backendSettingsHookState,
-      isInitialLoading: true,
-    }));
+    useBackendSettingsMock.mockImplementation(() => {
+      return {
+        ...backendSettingsHookState,
+        isInitialLoading: true,
+      };
+    });
 
     renderBackendSettingsPanel();
     const panel = screen.getByRole('region', { name: 'Backend settings panel' });
@@ -136,10 +163,12 @@ describe('BackendSettingsPanel', () => {
   });
 
   it('renders a blocking load failure inside the owned backend panel region', () => {
-    useBackendSettingsMock.mockImplementation(() => ({
-      ...backendSettingsHookState,
-      loadError: 'Unable to load backend settings right now.',
-    }));
+    useBackendSettingsMock.mockImplementation(() => {
+      return {
+        ...backendSettingsHookState,
+        loadError: 'Unable to load backend settings right now.',
+      };
+    });
 
     renderBackendSettingsPanel();
     const panel = screen.getByRole('region', { name: 'Backend settings panel' });
@@ -153,13 +182,15 @@ describe('BackendSettingsPanel', () => {
   it(
     'suppresses the form and save action when the backend config payload is incomplete',
     () => {
-      useBackendSettingsMock.mockImplementation(() => ({
-        ...backendSettingsHookState,
-        backendSettingsFormValues: null,
-        hasApiKey: true,
-        isSaveBlocked: true,
-        loadError: 'apiKey: REDACTED',
-      }));
+      useBackendSettingsMock.mockImplementation(() => {
+        return {
+          ...backendSettingsHookState,
+          backendSettingsFormValues: null,
+          hasApiKey: true,
+          isSaveBlocked: true,
+          loadError: 'apiKey: REDACTED',
+        };
+      });
 
       renderBackendSettingsPanel();
       const panel = screen.getByRole('region', { name: 'Backend settings panel' });
@@ -175,11 +206,13 @@ describe('BackendSettingsPanel', () => {
   );
 
   it('renders the planned section cards and visible field labels', () => {
-    useBackendSettingsMock.mockImplementation(() => ({
-      ...backendSettingsHookState,
-      backendSettingsFormValues: readyBackendSettingsFormValues,
-      hasApiKey: true,
-    }));
+    useBackendSettingsMock.mockImplementation(() => {
+      return {
+        ...backendSettingsHookState,
+        backendSettingsFormValues: readyBackendSettingsFormValues,
+        hasApiKey: true,
+      };
+    });
 
     renderBackendSettingsPanel();
 
@@ -202,12 +235,14 @@ describe('BackendSettingsPanel', () => {
   });
 
   it('disables the save button while saving is blocked', () => {
-    useBackendSettingsMock.mockImplementation(() => ({
-      ...backendSettingsHookState,
-      backendSettingsFormValues: readyBackendSettingsFormValues,
-      isSaveBlocked: true,
-      hasApiKey: true,
-    }));
+    useBackendSettingsMock.mockImplementation(() => {
+      return {
+        ...backendSettingsHookState,
+        backendSettingsFormValues: readyBackendSettingsFormValues,
+        isSaveBlocked: true,
+        hasApiKey: true,
+      };
+    });
 
     renderBackendSettingsPanel();
 
@@ -215,12 +250,14 @@ describe('BackendSettingsPanel', () => {
   });
 
   it('shows save-button loading while a save is in flight without publishing post-save refresh busy state yet', () => {
-    useBackendSettingsMock.mockImplementation(() => ({
-      ...backendSettingsHookState,
-      backendSettingsFormValues: readyBackendSettingsFormValues,
-      isSaving: true,
-      hasApiKey: true,
-    }));
+    useBackendSettingsMock.mockImplementation(() => {
+      return {
+        ...backendSettingsHookState,
+        backendSettingsFormValues: readyBackendSettingsFormValues,
+        isSaving: true,
+        hasApiKey: true,
+      };
+    });
 
     renderBackendSettingsPanel();
 
@@ -235,11 +272,12 @@ describe('BackendSettingsPanel', () => {
   });
 
   it('keeps populated settings visible while publishing panel busy state during a post-save refresh', () => {
-    useBackendSettingsMock.mockImplementation(() =>
-      buildRefreshingBackendSettingsState({
+    useBackendSettingsMock.mockImplementation(() => {
+      return buildRefreshingBackendSettingsState({
         backendSettingsFormValues: readyBackendSettingsFormValues,
         hasApiKey: true,
-      })
+      });
+    }
     );
 
     renderBackendSettingsPanel();
@@ -260,11 +298,13 @@ describe('BackendSettingsPanel', () => {
   it(
     'moves focus to the first invalid field after submit failure',
     async () => {
-      useBackendSettingsMock.mockImplementation(() => ({
-        ...backendSettingsHookState,
-        backendSettingsFormValues: noStoredKeyBackendSettingsFormValues,
-        hasApiKey: false,
-      }));
+      useBackendSettingsMock.mockImplementation(() => {
+        return {
+          ...backendSettingsHookState,
+          backendSettingsFormValues: noStoredKeyBackendSettingsFormValues,
+          hasApiKey: false,
+        };
+      });
 
       renderBackendSettingsPanel();
 
@@ -277,30 +317,65 @@ describe('BackendSettingsPanel', () => {
     slowPanelInteractionTimeoutMs
   );
 
+  it('maps schema field errors and ignores hasApiKey and non-string paths without saving', async () => {
+    bypassBackendSettingsFieldValidation.current = true;
+    useBackendSettingsMock.mockImplementation(() => {
+      return {
+        ...backendSettingsHookState,
+        backendSettingsFormValues: readyBackendSettingsFormValues,
+        hasApiKey: true,
+      };
+    });
+    vi.spyOn(BackendSettingsFormSchema, 'safeParse').mockReturnValue({
+      success: false,
+      error: {
+        issues: [
+          { path: ['apiKey'], message: 'API key rejected' },
+          { path: ['backendUrl'], message: 'Backend URL rejected' },
+          { path: ['hasApiKey'], message: 'Internal flag rejected' },
+          { path: [NON_STRING_PATH_SEGMENT], message: 'Non-string path rejected' },
+        ],
+      },
+    } as ReturnType<typeof BackendSettingsFormSchema.safeParse>);
+
+    renderBackendSettingsPanel();
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(await screen.findByText('API key rejected')).toBeInTheDocument();
+    expect(await screen.findByText('Backend URL rejected')).toBeInTheDocument();
+    expect(screen.queryByText('Internal flag rejected')).not.toBeInTheDocument();
+    expect(screen.queryByText('Non-string path rejected')).not.toBeInTheDocument();
+    expect(saveBackendSettingsMock).not.toHaveBeenCalled();
+  });
+
   it('shows stored-key helper text when an API key already exists', () => {
-    useBackendSettingsMock.mockImplementation(() => ({
-      ...backendSettingsHookState,
-      backendSettingsFormValues: readyBackendSettingsFormValues,
-      hasApiKey: true,
-    }));
+    useBackendSettingsMock.mockImplementation(() => {
+      return {
+        ...backendSettingsHookState,
+        backendSettingsFormValues: readyBackendSettingsFormValues,
+        hasApiKey: true,
+      };
+    });
 
     const { rerender } = renderBackendSettingsPanel();
 
-    const apiKeyFormItemExtra = getFormItemExtraRegion('API key');
+    const apiKeyFormItemExtra = getFormItemExtraRegion();
 
     expect(apiKeyFormItemExtra).not.toBeNull();
     expect(apiKeyFormItemExtra as HTMLElement).toHaveTextContent(/stored api key already exists/i);
     expect(apiKeyFormItemExtra as HTMLElement).toHaveTextContent(/leave this field blank to keep it/i);
 
-    useBackendSettingsMock.mockImplementation(() => ({
-      ...backendSettingsHookState,
-      backendSettingsFormValues: noStoredKeyBackendSettingsFormValues,
-      hasApiKey: false,
-    }));
+    useBackendSettingsMock.mockImplementation(() => {
+      return {
+        ...backendSettingsHookState,
+        backendSettingsFormValues: noStoredKeyBackendSettingsFormValues,
+        hasApiKey: false,
+      };
+    });
 
     rerender(<BackendSettingsPanel />);
 
-    const refreshedApiKeyFormItemExtra = getFormItemExtraRegion('API key');
+    const refreshedApiKeyFormItemExtra = getFormItemExtraRegion();
 
     expect(refreshedApiKeyFormItemExtra).not.toBeNull();
     expect(refreshedApiKeyFormItemExtra as HTMLElement).not.toHaveTextContent(
@@ -310,11 +385,13 @@ describe('BackendSettingsPanel', () => {
   });
 
   it('binds boolean and numeric fields through Ant Design form state', async () => {
-    useBackendSettingsMock.mockImplementation(() => ({
-      ...backendSettingsHookState,
-      backendSettingsFormValues: booleanBindingBackendSettingsFormValues,
-      hasApiKey: true,
-    }));
+    useBackendSettingsMock.mockImplementation(() => {
+      return {
+        ...backendSettingsHookState,
+        backendSettingsFormValues: booleanBindingBackendSettingsFormValues,
+        hasApiKey: true,
+      };
+    });
 
     renderBackendSettingsPanel();
 
@@ -339,12 +416,14 @@ describe('BackendSettingsPanel', () => {
   });
 
   it('renders persistent inline feedback for save failures', () => {
-    useBackendSettingsMock.mockImplementation(() => ({
-      ...backendSettingsHookState,
-      backendSettingsFormValues: readyBackendSettingsFormValues,
-      hasApiKey: true,
-      saveError: 'Unable to save backend settings right now.',
-    }));
+    useBackendSettingsMock.mockImplementation(() => {
+      return {
+        ...backendSettingsHookState,
+        backendSettingsFormValues: readyBackendSettingsFormValues,
+        hasApiKey: true,
+        saveError: 'Unable to save backend settings right now.',
+      };
+    });
 
     renderBackendSettingsPanel();
 
@@ -356,11 +435,13 @@ describe('BackendSettingsPanel', () => {
   // Contract: the auth surface moved out of the backend settings panel entirely, so neither
   // the auth fields render nor the auth form values reach the save payload.
   it('renders the panel without the authentication fields', () => {
-    useBackendSettingsMock.mockImplementation(() => ({
-      ...backendSettingsHookState,
-      backendSettingsFormValues: readyBackendSettingsFormValues,
-      hasApiKey: true,
-    }));
+    useBackendSettingsMock.mockImplementation(() => {
+      return {
+        ...backendSettingsHookState,
+        backendSettingsFormValues: readyBackendSettingsFormValues,
+        hasApiKey: true,
+      };
+    });
 
     renderBackendSettingsPanel();
 
@@ -371,11 +452,13 @@ describe('BackendSettingsPanel', () => {
   it(
     'sends a save payload that excludes the authentication fields',
     async () => {
-      useBackendSettingsMock.mockImplementation(() => ({
-        ...backendSettingsHookState,
-        backendSettingsFormValues: readyBackendSettingsFormValues,
-        hasApiKey: true,
-      }));
+      useBackendSettingsMock.mockImplementation(() => {
+        return {
+          ...backendSettingsHookState,
+          backendSettingsFormValues: readyBackendSettingsFormValues,
+          hasApiKey: true,
+        };
+      });
 
       renderBackendSettingsPanel();
 

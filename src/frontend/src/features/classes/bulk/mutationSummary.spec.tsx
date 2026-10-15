@@ -18,15 +18,15 @@ const runQueuedBulkActionMock = vi.fn(
   },
 );
 const LAST_OPTION_OFFSET = 1;
-const bulkSetSelectModalMock = vi.hoisted(() =>
-  vi.fn(
+const bulkSetSelectModalMock = vi.hoisted(() => {
+  return vi.fn(
     (properties: Readonly<{
       open: boolean;
       options: ReadonlyArray<{ label: string; value: string }>;
       title: string;
       onConfirm: (value: string) => Promise<void>;
     }>) => {
-      if (properties.open === false) {
+      if (!properties.open) {
         return null;
       }
       const selectedValue = properties.options.at(-LAST_OPTION_OFFSET)?.value ?? '';
@@ -44,12 +44,15 @@ const bulkSetSelectModalMock = vi.hoisted(() =>
         </dialog>
       );
     },
-  ),
+  );
+},
 );
 
-vi.mock('../useClassesManagement', () => ({
-  useClassesManagement: classesManagementStateMock,
-}));
+vi.mock('../useClassesManagement', () => {
+  return {
+    useClassesManagement: classesManagementStateMock,
+  };
+});
 
 vi.mock('./bulkSetCohortFlow', async () => {
   const actual = (await vi.importActual('./bulkSetCohortFlow')) as typeof BulkSetCohortFlowModule;
@@ -60,66 +63,86 @@ vi.mock('./bulkSetCohortFlow', async () => {
   };
 });
 
-vi.mock('../useClassesBulkMutationQueue', () => ({
-  useClassesBulkMutationQueue: () => ({
-    isQueueActive: false,
-    progress: { currentItem: null, completed: 0, pendingCount: 0, total: 0, isInProgress: false },
-    isProgressModalOpen: false,
-    onDismissProgressModal: vi.fn(),
-    onCancelQueue: vi.fn(),
-    runQueuedBulkAction: runQueuedBulkActionMock,
-  }),
-}));
+vi.mock('../useClassesBulkMutationQueue', () => {
+  return {
+    useClassesBulkMutationQueue: () => {
+      return {
+        isQueueActive: false,
+        progress: { currentItem: null, completed: 0, pendingCount: 0, total: 0, isInProgress: false },
+        isProgressModalOpen: false,
+        onDismissProgressModal: vi.fn(),
+        onCancelQueue: vi.fn(),
+        runQueuedBulkAction: runQueuedBulkActionMock,
+      };
+    },
+  };
+});
 
-vi.mock('../components/ClassesSummaryCard', () => ({
-  ClassesSummaryCard() {
-    return <div>Summary</div>;
-  },
-}));
+vi.mock('../components/ClassesSummaryCard', () => {
+  return {
+    ClassesSummaryCard() {
+      return <div>Summary</div>;
+    },
+  };
+});
 
-vi.mock('../table/ClassesToolbar', () => ({
-  ClassesToolbar(properties: Readonly<{ onSetCohort?: () => void }>) {
-    return (
-      <button onClick={properties.onSetCohort} type="button">
-        Set cohort
-      </button>
-    );
-  },
-}));
+vi.mock('../table/ClassesToolbar', () => {
+  return {
+    ClassesToolbar(properties: Readonly<{ onSetCohort?: () => void }>) {
+      return (
+        <button onClick={properties.onSetCohort} type="button">
+          Set cohort
+        </button>
+      );
+    },
+  };
+});
 
-vi.mock('../table/ClassesTable', () => ({
-  ClassesTable() {
-    return <table aria-label="Classes table"><thead><tr><th /></tr></thead></table>;
-  },
-}));
+vi.mock('../table/ClassesTable', () => {
+  return {
+    ClassesTable() {
+      return <table aria-label="Classes table"><thead><tr><th /></tr></thead></table>;
+    },
+  };
+});
 
-vi.mock('./BulkCreateModal', () => ({
-  BulkCreateModal() {
-    return null;
-  },
-}));
+vi.mock('./BulkCreateModal', () => {
+  return {
+    BulkCreateModal() {
+      return null;
+    },
+  };
+});
 
-vi.mock('./BulkDeleteModal', () => ({
-  BulkDeleteModal() {
-    return null;
-  },
-}));
+vi.mock('./BulkDeleteModal', () => {
+  return {
+    BulkDeleteModal() {
+      return null;
+    },
+  };
+});
 
-vi.mock('./BulkSetCourseLengthModal', () => ({
-  BulkSetCourseLengthModal() {
-    return null;
-  },
-}));
+vi.mock('./BulkSetCourseLengthModal', () => {
+  return {
+    BulkSetCourseLengthModal() {
+      return null;
+    },
+  };
+});
 
-vi.mock('./BulkSetSelectModal', () => ({
-  BulkSetSelectModal: bulkSetSelectModalMock,
-}));
+vi.mock('./BulkSetSelectModal', () => {
+  return {
+    BulkSetSelectModal: bulkSetSelectModalMock,
+  };
+});
 
-vi.mock('../bulk/ClassesBulkProgressModal', () => ({
-  ClassesBulkProgressModal() {
-    return null;
-  },
-}));
+vi.mock('../bulk/ClassesBulkProgressModal', () => {
+  return {
+    ClassesBulkProgressModal() {
+      return null;
+    },
+  };
+});
 
 const metadataRows = [
   buildClassesManagementRow({
@@ -218,7 +241,7 @@ describe('mutationSummary', () => {
         error: {
           code: 'RATE_LIMITED',
           message: 'Transport refresh text.',
-          retriable: true,
+          isRetriable: true,
         },
       }),
     );

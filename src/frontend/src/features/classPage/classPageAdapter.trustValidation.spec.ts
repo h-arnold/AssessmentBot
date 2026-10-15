@@ -27,19 +27,18 @@ describe('adaptClassPageToViewModel', () => {
         assignmentId: 'a-bad',
         updatedAt: null, // null is a data bug
         definitionKey: 'dk1',
-        taskIds: ['t1'],
       });
 
-      expect(() =>
-        adaptClassPageToViewModel({
+      expect(() => {
+        return adaptClassPageToViewModel({
           analyserResult: averagingResult(),
           classFull: classFull({
             students: [student('s-1', 'Alice')],
             assignments: [nullUpdatedAtAssignment],
           }),
           assignmentDefinitionPartials: [],
-        })
-      ).toThrow(/a-bad/);
+        });
+      }).toThrow(/a-bad/);
     });
 
     it('throws on unparseable updatedAt with an error referencing the assignmentId', () => {
@@ -47,19 +46,18 @@ describe('adaptClassPageToViewModel', () => {
         assignmentId: 'a-bad-format',
         updatedAt: 'not-a-valid-iso-string',
         definitionKey: 'dk1',
-        taskIds: ['t1'],
       });
 
-      expect(() =>
-        adaptClassPageToViewModel({
+      expect(() => {
+        return adaptClassPageToViewModel({
           analyserResult: averagingResult(),
           classFull: classFull({
             students: [student('s-1', 'Alice')],
             assignments: [badUpdatedAtAssignment],
           }),
           assignmentDefinitionPartials: [],
-        })
-      ).toThrow(/a-bad-format/);
+        });
+      }).toThrow(/a-bad-format/);
     });
 
     it('throws on duplicate studentId', () => {
@@ -76,7 +74,6 @@ describe('adaptClassPageToViewModel', () => {
                 assignmentId: 'a-1',
                 updatedAt: DEFAULT_TS,
                 definitionKey: 'dk1',
-                taskIds: ['t1'],
               }),
             ],
           }),
@@ -96,13 +93,11 @@ describe('adaptClassPageToViewModel', () => {
                 assignmentId: 'a-1',
                 updatedAt: DEFAULT_TS,
                 definitionKey: 'dk1',
-                taskIds: ['t1'],
               }),
               assignment({
                 assignmentId: 'a-1',
                 updatedAt: DEFAULT_TS,
                 definitionKey: 'dk2',
-                taskIds: ['t1'],
               }), // duplicate id
             ],
           }),

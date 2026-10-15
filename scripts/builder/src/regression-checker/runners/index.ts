@@ -1,4 +1,5 @@
 import path from 'node:path';
+import process from 'node:process';
 
 type RegressionTool = 'eslint' | 'vitest' | 'playwright' | 'tsc';
 
@@ -106,8 +107,9 @@ export function buildRunnerInvocation(options: {
     }
     case 'tsc':
       return {
-        executable: 'tsc',
+        executable: process.execPath,
         args: [
+          path.resolve(options.repoRoot, 'node_modules/@typescript/native/bin/tsc'),
           '-p',
           path.resolve(options.repoRoot, getTscProjectPath(options.check)),
           '--pretty',

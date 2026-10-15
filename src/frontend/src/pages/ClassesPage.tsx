@@ -2,9 +2,9 @@ import { Alert, Button, Card, Col, Collapse, Empty, Row, Skeleton, Space, Toolti
 import { AuditOutlined } from '@ant-design/icons';
 import { type JSX, useMemo, useState } from 'react';
 import {
-  computeDatasetRenderable,
-  computePageSurfaceBlocking,
-  computePageSurfaceBusy,
+  isDatasetRenderable,
+  shouldBlockPageSurface,
+  isPageSurfaceBusy,
   usePageDataset,
   type PageDatasetState,
 } from '../hooks/usePageDataset';
@@ -39,8 +39,8 @@ const CLASSES_MOBILE_BREAKPOINT_PX = 768;
 /**
  * Resolves whether classes surface should show loading or blocking states.
  *
- * Composes per-dataset decisions from the shared {@link computePageSurfaceBlocking}
- * and {@link computeDatasetRenderable} helpers.
+ * Composes per-dataset decisions from the shared {@link shouldBlockPageSurface}
+ * and {@link isDatasetRenderable} helpers.
  *
  * @param {Readonly<{ classPartials: object; yearGroups: object; }>} input Dataset and query state.
  * @returns {Readonly<{ shouldRenderBlockingState: boolean; shouldRenderLoadingState: boolean; }>} Surface state.
@@ -52,8 +52,8 @@ function getClassesSurfaceState(
   }>
 ): Readonly<{ shouldRenderBlockingState: boolean; shouldRenderLoadingState: boolean }> {
   const isBlocking =
-    computePageSurfaceBlocking(input.classPartials) ||
-    computePageSurfaceBlocking(input.yearGroups);
+    shouldBlockPageSurface(input.classPartials) ||
+    shouldBlockPageSurface(input.yearGroups);
 
   if (isBlocking) {
     return {
@@ -62,8 +62,8 @@ function getClassesSurfaceState(
     };
   }
 
-  const hasRenderableClassPartials = computeDatasetRenderable(input.classPartials);
-  const hasRenderableYearGroups = computeDatasetRenderable(input.yearGroups);
+  const hasRenderableClassPartials = isDatasetRenderable(input.classPartials);
+  const hasRenderableYearGroups = isDatasetRenderable(input.yearGroups);
   const hasRenderableDatasets = hasRenderableClassPartials && hasRenderableYearGroups;
 
   return {
@@ -155,7 +155,8 @@ function renderYearGroupCollapse(
                 {panel.classes.length > 0 ? (
                   <div style={{ display: 'flex', justifyContent: 'center' }}>
                     <Row gutter={[APP_GAP_MD, APP_GAP_MD]}>
-                      {panel.classes.map((card) => (
+                      {panel.classes.map((card) => {
+                        return (
                         <Col key={card.classId}>
                           <Card
                             role="article"
@@ -185,7 +186,8 @@ function renderYearGroupCollapse(
                             </div>
                           </Card>
                         </Col>
-                      ))}
+                        );
+                      })}
                     </Row>
                   </div>
                 ) : (
@@ -270,19 +272,19 @@ function getFinalClassesPageStates(
   shouldRenderLoadingState: boolean;
   shouldRenderEmptyState: boolean;
 }> {
-  const finalShouldRenderBlockingState =
+  const shouldRenderFinalBlockingState =
     input.classesSurfaceState.shouldRenderBlockingState || isModelInvalid(input.modelResult);
   const shouldRenderLoadingState = input.classesSurfaceState.shouldRenderLoadingState;
   const hasTrustworthyDatasets =
     input.hasTrustworthyClassPartials && input.hasTrustworthyYearGroups;
   const shouldRenderEmptyState =
-    !finalShouldRenderBlockingState &&
+    !shouldRenderFinalBlockingState &&
     !shouldRenderLoadingState &&
     hasTrustworthyDatasets &&
     isModelEmpty(input.modelResult);
 
   return {
-    finalShouldRenderBlockingState,
+    finalShouldRenderBlockingState: shouldRenderFinalBlockingState,
     shouldRenderLoadingState,
     shouldRenderEmptyState,
   };
@@ -317,7 +319,7 @@ export function ClassesPage() {
   const [assessModalClassName, setAssessModalClassName] = useState<string | null>(null);
 
   // Compute busy state
-  const isClassesSurfaceBusy = computePageSurfaceBusy(
+  const isClassesSurfaceBusy = isPageSurfaceBusy(
     [classPartialsQuery.isFetching, yearGroupsQuery.isFetching],
     []
   );

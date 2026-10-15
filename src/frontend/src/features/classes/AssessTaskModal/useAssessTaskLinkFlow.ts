@@ -93,16 +93,14 @@ export function useAssessTaskLinkFlow(host: AssessTaskLinkHost) {
     enabled: false,
   });
 
-  const linkableDefinitions = useMemo(
-    () =>
-      deriveLinkableDefinitions({
-        noMatchResolution,
-        yearGroupKey,
-        selectedAssignmentForChoice,
-        definitionPartials: definitionPartialsFromCache ?? [],
-      }),
-    [noMatchResolution, yearGroupKey, selectedAssignmentForChoice, definitionPartialsFromCache]
-  );
+  const linkableDefinitions = useMemo(() => {
+    return deriveLinkableDefinitions({
+      noMatchResolution,
+      yearGroupKey,
+      selectedAssignmentForChoice,
+      definitionPartials: definitionPartialsFromCache ?? [],
+    });
+  }, [noMatchResolution, yearGroupKey, selectedAssignmentForChoice, definitionPartialsFromCache]);
 
   /**
    * Resets the link selection slot when the modal reopens. Stable across
@@ -133,7 +131,7 @@ export function useAssessTaskLinkFlow(host: AssessTaskLinkHost) {
    * @param {unknown} error The caught error.
    * @returns {boolean} True when the error was routed to stale recovery.
    */
-  function routeLinkStaleRecovery(error: unknown): boolean {
+  function hasRoutedLinkStaleRecovery(error: unknown): boolean {
     if (!(error instanceof ApiTransportError) || error.code !== 'DEFINITION_STALE') return false;
     const pendingDefinitionKey = getPendingStartContext()?.definitionKey;
     if (pendingDefinitionKey === undefined) return false;
@@ -150,15 +148,15 @@ export function useAssessTaskLinkFlow(host: AssessTaskLinkHost) {
    * whether the upsert committed.
    *
    * @param {unknown} error The caught error.
-   * @param {boolean} linkWasCommitted Whether the upsert completed successfully.
+   * @param {boolean} hasCommittedLink Whether the upsert completed successfully.
    * @returns {void}
    */
-  function handleLinkConfirmError(error: unknown, linkWasCommitted: boolean): void {
-    if (routeLinkStaleRecovery(error)) return;
+  function handleLinkConfirmError(error: unknown, hasCommittedLink: boolean): void {
+    if (hasRoutedLinkStaleRecovery(error)) return;
 
     // Invalidate cache on any failure (SPEC Decision 10)
     queryClient.invalidateQueries({ queryKey: queryKeys.assignmentDefinitionPartials() });
-    if (linkWasCommitted) {
+    if (hasCommittedLink) {
       setAssessmentAsError(
         'error',
         `Link was committed but assessment could not be started: ${mapErrorToUserMessage(error)}`
@@ -256,7 +254,7 @@ export function useAssessTaskLinkFlow(host: AssessTaskLinkHost) {
     // extra state update — React state cannot be read synchronously in the
     // same async closure, and the link flow does not need `flushSync` (per
     // SPEC Decision 11).
-    let linkWasCommitted = false;
+    let hasCommittedLink = false;
 
     try {
       const alternateTitles = buildDeduplicatedAlternateTitles(
@@ -293,7 +291,7 @@ export function useAssessTaskLinkFlow(host: AssessTaskLinkHost) {
       queryClient.invalidateQueries({ queryKey: queryKeys.assignmentDefinitionPartials() });
 
       // Mark the link as committed (local variable)
-      linkWasCommitted = true;
+      hasCommittedLink = true;
 
       // Capture the start context, then start the assessment run. Both read
       // the attempt identity (itself captured from
@@ -314,7 +312,7 @@ export function useAssessTaskLinkFlow(host: AssessTaskLinkHost) {
       completeLinkConfirmSuccess(attempt, selectedAssignmentForChoice.title);
     } catch (error: unknown) {
       if (isAttemptObsolete(attempt)) return;
-      handleLinkConfirmError(error, linkWasCommitted);
+      handleLinkConfirmError(error, hasCommittedLink);
     }
   }
 

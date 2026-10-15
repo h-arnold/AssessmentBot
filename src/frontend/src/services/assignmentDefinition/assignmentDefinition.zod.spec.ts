@@ -101,18 +101,18 @@ describe('assignmentDefinition.zod schemas', () => {
     };
 
     expect(upsertRequestSchema.parse(validInput)).toEqual(validInput);
-    expect(() =>
-      upsertRequestSchema.parse({
+    expect(() => {
+      return upsertRequestSchema.parse({
         ...validInput,
         assignmentWeighting: 11,
-      })
-    ).toThrow();
-    expect(() =>
-      upsertRequestSchema.parse({
+      });
+    }).toThrow();
+    expect(() => {
+      return upsertRequestSchema.parse({
         ...validInput,
         taskWeightings: [{ taskId: 'task-001', taskWeighting: -1 }],
-      })
-    ).toThrow();
+      });
+    }).toThrow();
   });
 
   describe('backend contract consistency for timestamps', () => {
@@ -223,24 +223,24 @@ describe('assignmentDefinition.zod schemas', () => {
       const schemas = await loadAssignmentDefinitionSchemas();
       const assignmentDefinitionSchema = asParserSchema(schemas.AssignmentDefinitionSchema);
 
-      expect(() =>
-        assignmentDefinitionSchema.parse({
+      expect(() => {
+        return assignmentDefinitionSchema.parse({
           ...validFullDefinition,
           assignmentWeighting: -1,
-        })
-      ).toThrow();
+        });
+      }).toThrow();
     });
 
     it('rejects assignmentWeighting values greater than 10', async () => {
       const schemas = await loadAssignmentDefinitionSchemas();
       const assignmentDefinitionSchema = asParserSchema(schemas.AssignmentDefinitionSchema);
 
-      expect(() =>
-        assignmentDefinitionSchema.parse({
+      expect(() => {
+        return assignmentDefinitionSchema.parse({
           ...validFullDefinition,
           assignmentWeighting: 11,
-        })
-      ).toThrow();
+        });
+      }).toThrow();
     });
 
     it('accepts assignmentWeighting at boundary values 0 and 10', async () => {
@@ -347,12 +347,12 @@ describe('assignmentDefinition.zod schemas', () => {
     async function expectRejectsIdShapeOverride(overrides: Record<string, unknown>): Promise<void> {
       const schemas = await loadAssignmentDefinitionSchemas();
       const upsertRequestSchema = asParserSchema(schemas.UpsertAssignmentDefinitionRequestSchema);
-      expect(() =>
-        upsertRequestSchema.parse({
+      expect(() => {
+        return upsertRequestSchema.parse({
           ...baseRequired,
           ...overrides,
-        })
-      ).toThrow();
+        });
+      }).toThrow();
     }
 
     const NON_STRING_TOPIC_ENTRY = 123;
@@ -398,92 +398,92 @@ describe('assignmentDefinition.zod schemas', () => {
       const schemas = await loadAssignmentDefinitionSchemas();
       const upsertRequestSchema = asParserSchema(schemas.UpsertAssignmentDefinitionRequestSchema);
 
-      expect(() =>
-        upsertRequestSchema.parse({
+      expect(() => {
+        return upsertRequestSchema.parse({
           ...baseRequired,
           referenceDocumentId: 'reference-doc-id',
-        })
-      ).toThrow();
+        });
+      }).toThrow();
     });
 
     it('rejects a payload with only templateDocumentId (missing referenceDocumentId and documentType)', async () => {
       const schemas = await loadAssignmentDefinitionSchemas();
       const upsertRequestSchema = asParserSchema(schemas.UpsertAssignmentDefinitionRequestSchema);
 
-      expect(() =>
-        upsertRequestSchema.parse({
+      expect(() => {
+        return upsertRequestSchema.parse({
           ...baseRequired,
           templateDocumentId: 'template-doc-id',
-        })
-      ).toThrow();
+        });
+      }).toThrow();
     });
 
     it('rejects a payload with only documentType (missing referenceDocumentId and templateDocumentId)', async () => {
       const schemas = await loadAssignmentDefinitionSchemas();
       const upsertRequestSchema = asParserSchema(schemas.UpsertAssignmentDefinitionRequestSchema);
 
-      expect(() =>
-        upsertRequestSchema.parse({
+      expect(() => {
+        return upsertRequestSchema.parse({
           ...baseRequired,
           documentType: 'SLIDES',
-        })
-      ).toThrow();
+        });
+      }).toThrow();
     });
 
     it('rejects a payload with only referenceDocumentUrl (missing templateDocumentUrl)', async () => {
       const schemas = await loadAssignmentDefinitionSchemas();
       const upsertRequestSchema = asParserSchema(schemas.UpsertAssignmentDefinitionRequestSchema);
 
-      expect(() =>
-        upsertRequestSchema.parse({
+      expect(() => {
+        return upsertRequestSchema.parse({
           ...baseRequired,
           referenceDocumentUrl: 'https://docs.google.com/presentation/d/ref-doc-id/edit',
-        })
-      ).toThrow();
+        });
+      }).toThrow();
     });
 
     it('rejects a payload that mixes URL-shape and ID-shape fields', async () => {
       const schemas = await loadAssignmentDefinitionSchemas();
       const upsertRequestSchema = asParserSchema(schemas.UpsertAssignmentDefinitionRequestSchema);
 
-      expect(() =>
-        upsertRequestSchema.parse({
+      expect(() => {
+        return upsertRequestSchema.parse({
           ...baseRequired,
           referenceDocumentUrl: 'https://docs.google.com/presentation/d/ref-doc-id/edit',
           templateDocumentUrl: 'https://docs.google.com/presentation/d/tpl-doc-id/edit',
           referenceDocumentId: 'reference-doc-id',
           templateDocumentId: 'template-doc-id',
           documentType: 'SLIDES',
-        })
-      ).toThrow();
+        });
+      }).toThrow();
     });
 
     it('rejects alternateTitles that are not an array of trimmed non-empty strings', async () => {
       const schemas = await loadAssignmentDefinitionSchemas();
       const upsertRequestSchema = asParserSchema(schemas.UpsertAssignmentDefinitionRequestSchema);
 
-      expect(() =>
-        upsertRequestSchema.parse({
+      expect(() => {
+        return upsertRequestSchema.parse({
           ...baseRequired,
           referenceDocumentUrl: 'https://docs.google.com/presentation/d/ref-doc-id/edit',
           templateDocumentUrl: 'https://docs.google.com/presentation/d/tpl-doc-id/edit',
           alternateTitles: 'not an array',
-        })
-      ).toThrow();
+        });
+      }).toThrow();
     });
 
     it('rejects alternateTopics containing non-string entries', async () => {
       const schemas = await loadAssignmentDefinitionSchemas();
       const upsertRequestSchema = asParserSchema(schemas.UpsertAssignmentDefinitionRequestSchema);
 
-      expect(() =>
-        upsertRequestSchema.parse({
+      expect(() => {
+        return upsertRequestSchema.parse({
           ...baseRequired,
           referenceDocumentUrl: 'https://docs.google.com/presentation/d/ref-doc-id/edit',
           templateDocumentUrl: 'https://docs.google.com/presentation/d/tpl-doc-id/edit',
           alternateTopics: [NON_STRING_TOPIC_ENTRY],
-        })
-      ).toThrow();
+        });
+      }).toThrow();
     });
 
     it.each([
@@ -527,14 +527,14 @@ describe('assignmentDefinition.zod schemas', () => {
       const schemas = await loadAssignmentDefinitionSchemas();
       const upsertRequestSchema = asParserSchema(schemas.UpsertAssignmentDefinitionRequestSchema);
 
-      expect(() =>
-        upsertRequestSchema.parse({
+      expect(() => {
+        return upsertRequestSchema.parse({
           ...baseRequired,
           referenceDocumentUrl: 'https://docs.google.com/presentation/d/ref-doc-id/edit',
           templateDocumentUrl: 'https://docs.google.com/presentation/d/tpl-doc-id/edit',
           unexpectedField: 'should be rejected',
-        })
-      ).toThrow();
+        });
+      }).toThrow();
     });
 
     it('accepts an empty alternateTitles array (full array may be empty)', async () => {

@@ -41,13 +41,15 @@ export async function bulkCreate(
 
   const { cohortKey, yearGroupKey, courseLength = 1 } = options;
 
-  const items: QueuedBatchItem[] = rows.map((row) => ({
-    row,
-    method: 'upsertABClass' as const,
-    parameters: { classId: row.classId, cohortKey, yearGroupKey, courseLength },
-    verb: 'Creating',
-    className: row.className,
-  }));
+  const items: QueuedBatchItem[] = rows.map((row) => {
+    return {
+      row,
+      method: 'upsertABClass' as const,
+      parameters: { classId: row.classId, cohortKey, yearGroupKey, courseLength },
+      verb: 'Creating',
+      className: row.className,
+    };
+  });
 
   return runQueuedBatchMutation(items, { jobName: 'classesBulkMutation', onProgress });
 }

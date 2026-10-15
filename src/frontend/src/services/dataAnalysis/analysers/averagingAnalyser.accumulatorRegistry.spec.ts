@@ -61,7 +61,11 @@ describe('accumulator registry', () => {
     existing.accuracy.displaySum = FOUR;
     preRegisterTasks([createTaskPartial('t_001')], definitionKey, taskAccums);
 
-    expect([...taskAccums.keys()]).toEqual([taskKey, `${definitionKey}::t_002`]);
+    const keys: string[] = [];
+    taskAccums.forEach((_accumulator, key) => {
+      keys.push(key);
+    });
+    expect(keys).toEqual([taskKey, `${definitionKey}::t_002`]);
     expect(taskAccums.get(taskKey)).toBe(existing);
     expect(taskAccums.get(taskKey)?.accuracy.displaySum).toBe(FOUR);
   });

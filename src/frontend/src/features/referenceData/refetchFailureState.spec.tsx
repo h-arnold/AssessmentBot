@@ -5,9 +5,11 @@ import type { ClassesManagementState } from '../classes/useClassesManagement';
 
 const classesManagementStateMock = vi.fn();
 
-vi.mock('../classes/useClassesManagement', () => ({
-  useClassesManagement: classesManagementStateMock,
-}));
+vi.mock('../classes/useClassesManagement', () => {
+  return {
+    useClassesManagement: classesManagementStateMock,
+  };
+});
 
 const staleRows: ClassesManagementState['rows'] = [
   {

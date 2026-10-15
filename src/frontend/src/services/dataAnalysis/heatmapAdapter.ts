@@ -261,15 +261,16 @@ export function groupMetricsByStudent(
   }
 
   for (const metric of perStudentTaskMetrics) {
-    if (metric.classId === classId && columnTaskKeys.has(metric.taskKey)) {
-      let studentMetrics = metricsByStudent.get(metric.studentId);
-      if (!studentMetrics) {
-        studentMetrics = new Map<string, PerStudentTaskMetric>();
-        metricsByStudent.set(metric.studentId, studentMetrics);
-      }
-      if (!studentMetrics.has(metric.taskKey)) {
-        studentMetrics.set(metric.taskKey, metric);
-      }
+    if (metric.classId !== classId || !columnTaskKeys.has(metric.taskKey)) {
+      continue;
+    }
+    let studentMetrics = metricsByStudent.get(metric.studentId);
+    if (!studentMetrics) {
+      studentMetrics = new Map<string, PerStudentTaskMetric>();
+      metricsByStudent.set(metric.studentId, studentMetrics);
+    }
+    if (!studentMetrics.has(metric.taskKey)) {
+      studentMetrics.set(metric.taskKey, metric);
     }
   }
   return metricsByStudent;
@@ -382,14 +383,14 @@ export function adaptMetricsToHeatmap(
     );
   }
 
-  const rows: HeatmapRow[] = classFull.students.map((student) =>
-    buildCellsForStudent(
+  const rows: HeatmapRow[] = classFull.students.map((student) => {
+    return buildCellsForStudent(
       student.id,
       student.name,
       metricsByStudent.get(student.id) ?? new Map<string, PerStudentTaskMetric>(),
       taskColumns
-    )
-  );
+    );
+  });
 
   return {
     assignmentId,

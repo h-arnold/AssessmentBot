@@ -159,7 +159,8 @@ export function useAssessTaskReRunFlow(host: AssessTaskReRunHost): AssessTaskReR
   useEffect(() => {
     if (!open || fetchState !== 'ready' || !reRunContext) return;
 
-    const { assignmentId, definitionKey } = reRunContext;
+    const assignmentId = reRunContext.assignmentId;
+    const definitionKey = reRunContext.definitionKey;
     const contextKey = `${sessionReference.current}|${assignmentId}|${definitionKey ?? ''}`;
     if (processedContextReference.current === contextKey) return;
     processedContextReference.current = contextKey;

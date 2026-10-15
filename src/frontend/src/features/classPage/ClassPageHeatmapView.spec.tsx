@@ -17,7 +17,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createElement, useState } from 'react';
 import { App } from 'antd';
@@ -86,27 +86,37 @@ function buildDefaultAssignmentFixture(): AssignmentFull {
 const { mockGetAssignment } = vi.hoisted(() => ({ mockGetAssignment: vi.fn() }));
 mockGetAssignment.mockResolvedValue(buildDefaultAssignmentFixture());
 
-const { mockStudentAveragesTableCard } = vi.hoisted(() => ({
-  mockStudentAveragesTableCard: vi.fn(function MockStudentAveragesTableCard() {
-    return createElement('div', { 'data-testid': 'student-averages-table-card' });
-  }),
-}));
+const { mockStudentAveragesTableCard } = vi.hoisted(() => {
+  return {
+    mockStudentAveragesTableCard: vi.fn(function MockStudentAveragesTableCard() {
+      return createElement('div', { 'data-testid': 'student-averages-table-card' });
+    }),
+  };
+});
 
-const { logFrontendError: mockLogFrontendError } = vi.hoisted(() => ({
-  logFrontendError: vi.fn(),
-}));
+const { logFrontendError: mockLogFrontendError } = vi.hoisted(() => {
+  return {
+    logFrontendError: vi.fn(),
+  };
+});
 
-vi.mock('../../services/assignmentAssessment/assignmentAssessmentService', () => ({
-  getAssignment: mockGetAssignment,
-}));
+vi.mock('../../services/assignmentAssessment/assignmentAssessmentService', () => {
+  return {
+    getAssignment: mockGetAssignment,
+  };
+});
 
-vi.mock('./StudentAveragesTableCard', () => ({
-  StudentAveragesTableCard: mockStudentAveragesTableCard,
-}));
+vi.mock('./StudentAveragesTableCard', () => {
+  return {
+    StudentAveragesTableCard: mockStudentAveragesTableCard,
+  };
+});
 
-vi.mock('../../logging/frontendLogger', () => ({
-  logFrontendError: mockLogFrontendError,
-}));
+vi.mock('../../logging/frontendLogger', () => {
+  return {
+    logFrontendError: mockLogFrontendError,
+  };
+});
 
 /**
  * Creates a fresh QueryClient for test isolation.
@@ -309,9 +319,9 @@ describe('ClassPage heatmap view-state wiring', () => {
 
   it('opens the heatmap view when a RecentAssignmentCard is clicked', async () => {
     const queryClient = createTestQueryClient();
-    render(createElement(QueryClientProvider, { client: queryClient },
-      createElement(App, null, createElement(Harness, { initialView: 'overview' }))
-    ));
+    const harness = createElement(Harness, { initialView: 'overview' });
+    const app = createElement(App, null, harness);
+    render(createElement(QueryClientProvider, { client: queryClient }, app));
 
     // The overview should render a RecentAssignmentCard for "Assignment One"
     // with role="button" — the card is clickable via onOpenHeatmap.
@@ -344,9 +354,9 @@ describe('ClassPage heatmap view-state wiring', () => {
 
   it('returns to the overview when the Back button is clicked', async () => {
     const queryClient = createTestQueryClient();
-    render(createElement(QueryClientProvider, { client: queryClient },
-      createElement(App, null, createElement(Harness, { initialView: 'heatmap', assignmentId: 'a-1' }))
-    ));
+    const harness = createElement(Harness, { initialView: 'heatmap', assignmentId: 'a-1' });
+    const app = createElement(App, null, harness);
+    render(createElement(QueryClientProvider, { client: queryClient }, app));
 
     // The heatmap should render — the TaskHeatmapTable with aria-label="Task Heatmap"
     // and the Back button with aria-label "Back to Class overview" should be present.
@@ -367,16 +377,16 @@ describe('ClassPage heatmap view-state wiring', () => {
   // Unknown assignmentId auto-navigates back, no error UI
   // -----------------------------------------------------------------------
 
-  it('auto-navigates back and logs when assignmentId is unknown, with no in-view error UI', () => {
+  it('auto-navigates back, logs, and shows transient feedback when assignmentId is unknown', async () => {
     // Constraint: adaptMetricsToHeatmap throws on unknown assignmentId.
     // TaskHeatmapPage catches, logs via logFrontendError('TaskHeatmapPage', error),
     // and calls onBack (returning to overview). No Ant Design Alert/Result error
     // is rendered in the heatmap view.
     const queryClient = createTestQueryClient();
 
-    render(createElement(QueryClientProvider, { client: queryClient },
-      createElement(App, null, createElement(Harness, { initialView: 'heatmap', assignmentId: 'missing-id' }))
-    ));
+    const harness = createElement(Harness, { initialView: 'heatmap', assignmentId: 'missing-id' });
+    const app = createElement(App, null, harness);
+    const { container } = render(createElement(QueryClientProvider, { client: queryClient }, app));
 
     // The catch-and-navigate behaviour means:
     //   - logFrontendError was called with first argument 'TaskHeatmapPage'
@@ -394,9 +404,11 @@ describe('ClassPage heatmap view-state wiring', () => {
     // The overview card should be visible (returned to overview).
     expect(screen.getByRole('button', { name: /assignment one/i })).toBeInTheDocument();
 
-    // No in-view error message should be present.
-    // Ant Design Alert renders with role="alert", Result renders as a region.
-    // We check for any text that suggests an in-view error.
-    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    // A transient message portal is outside the owned page container; only
+    // assert that no error alert remains in the rendered class-page surface.
+    expect(within(container).queryByRole('alert')).not.toBeInTheDocument();
+    expect(
+      await screen.findByText('Something went wrong while loading the heatmap. Returning to class overview.')
+    ).toBeInTheDocument();
   });
 });

@@ -70,8 +70,8 @@ export function logAndMapWizardMutationError(
     mode: context.mode,
     definitionKey: context.definitionKey,
     actionType: context.actionType,
-    ...(requestId === null ? {} : { requestId }),
-    ...(errorCode === null ? {} : { errorCode }),
+    ...(requestId !== null && { requestId }),
+    ...(errorCode !== null && { errorCode }),
   });
   return mapErrorToUserMessage(error);
 }
@@ -203,10 +203,10 @@ export interface WizardMutationSequenceOptions {
   onCreateSuccess?: (definitionKey: string) => void;
   storeParseBaseline: (response: UpsertAssignmentDefinitionResponse) => void;
   setTaskRows: (rows: TaskRow[]) => void;
-  setHasParsedTasks: (value: boolean) => void;
+  setHasParsedTasks: (hasParsedTasks: boolean) => void;
   setDocumentChange: (state: DocumentChangeState) => void;
   setLocalDefinitionKey: (key: string | null) => void;
-  setHasDirtyEdits: (value: boolean) => void;
+  setHasDirtyEdits: (hasDirtyEdits: boolean) => void;
   setSubmitBlockingError: (error: string | null) => void;
 }
 

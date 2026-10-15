@@ -66,13 +66,13 @@ describe('backendSettingsForm.zod schema', () => {
   });
 
   it('requires an API key when no stored key exists', () => {
-    expect(() =>
-      BackendSettingsFormSchema.parse({
+    expect(() => {
+      return BackendSettingsFormSchema.parse({
         ...validStoredKeyFormValues,
         hasApiKey: false,
         apiKey: '',
-      })
-    ).toThrow(ZodError);
+      });
+    }).toThrow(ZodError);
   });
 
   // Lockstep contract: the form schema no longer declares `authGroupEmail`/`authMode`, so
@@ -106,11 +106,11 @@ describe('backendSettingsForm.zod schema', () => {
     ['JSON DB log level', { jsonDbLogLevel: 'TRACE' }],
     ['JSON DB root folder ID', { jsonDbRootFolderId: 'short' }],
   ])('rejects invalid %s input', (_, patch) => {
-    expect(() =>
-      BackendSettingsFormSchema.parse({
+    expect(() => {
+      return BackendSettingsFormSchema.parse({
         ...validFormValues,
         ...patch,
-      })
-    ).toThrow(ZodError);
+      });
+    }).toThrow(ZodError);
   });
 });

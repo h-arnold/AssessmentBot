@@ -145,10 +145,10 @@ export function TaskMetricPreviewCell({
    * focus nowhere.
    */
   const handleOpenChange = useCallback(
-    (nextOpen: boolean): void => {
-      setIsPreviewOpen(nextOpen);
+    (isNextOpen: boolean): void => {
+      setIsPreviewOpen(isNextOpen);
 
-      if (nextOpen) {
+      if (isNextOpen) {
         // A body that was already mounted for this session offers its action
         // again without a fresh mount, so this opening re-decides the transfer.
         scheduleSourceFocusTransfer();
@@ -221,10 +221,9 @@ export function TaskMetricPreviewCell({
    */
   const handlePreviewKeyDown = useCallback(
     (event: KeyboardEvent<HTMLDialogElement>): void => {
-      if (event.key === 'Escape') {
-        event.preventDefault();
-        handleOpenChange(false);
-      }
+      if (event.key !== 'Escape') return;
+      event.preventDefault();
+      handleOpenChange(false);
     },
     [handleOpenChange]
   );
@@ -248,17 +247,19 @@ export function TaskMetricPreviewCell({
   );
 
   const buildContent = useCallback(
-    () => (
-      <TaskMetricPreviewContent
-        cellData={cellData}
-        metricResult={metricResult}
-        metricKey={metricKey}
-        taskId={taskId}
-        isLoading={isLoading}
-        hasError={hasError}
-        sourceAnchorRef={handleSourceActionMounted}
-      />
-    ),
+    () => {
+      return (
+        <TaskMetricPreviewContent
+          cellData={cellData}
+          metricResult={metricResult}
+          metricKey={metricKey}
+          taskId={taskId}
+          isLoading={isLoading}
+          hasError={hasError}
+          sourceAnchorRef={handleSourceActionMounted}
+        />
+      );
+    },
     [cellData, metricResult, metricKey, taskId, isLoading, hasError, handleSourceActionMounted]
   );
 

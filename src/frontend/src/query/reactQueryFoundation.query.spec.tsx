@@ -64,12 +64,12 @@ afterEach(() => {
 });
 
 describe('React Query foundation', () => {
-  it('pins @tanstack/react-query to 5.90.21 in the frontend package', () => {
+  it('pins @tanstack/react-query to 5.104.1 in the frontend package', () => {
     const packageJson = JSON.parse(packageJsonText) as {
       dependencies?: Record<string, string>;
     };
 
-    expect(packageJson.dependencies?.['@tanstack/react-query']).toBe('5.90.21');
+    expect(packageJson.dependencies?.['@tanstack/react-query']).toBe('5.104.1');
   });
 
   it('renders children inside QueryClientProvider via the dedicated app query provider', async () => {

@@ -294,14 +294,14 @@ export async function openMergedHeatmap(
 
   let selection = Promise.resolve();
   assignmentTitles.forEach((assignmentTitle) => {
-    selection = selection.then(() =>
-      selectBuilderOption(
+    selection = selection.then(() => {
+      return selectBuilderOption(
         page,
         HEATMAPS_ASSIGNMENTS_COMBOBOX_INDEX,
         assignmentTitle,
         controlActivation
-      )
-    );
+      );
+    });
   });
   await selection;
 

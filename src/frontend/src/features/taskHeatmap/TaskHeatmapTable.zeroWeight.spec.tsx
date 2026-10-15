@@ -35,13 +35,14 @@ function renderEmbeddedZeroWeightTable() {
   const base = buildHeatmapResult();
   const result = {
     ...base,
-    taskColumns: base.taskColumns.map((column, index) =>
-      index === 0
+    taskColumns: base.taskColumns.map((column, index) => {
+      return index === 0
         ? {
             ...column,
             averageContribution: { effectiveWeight: 0, includedInAverage: false },
           }
-        : { ...column }
+        : { ...column };
+    }
     ),
     rows: base.rows.map((row) => ({ ...row, cells: [...row.cells] })),
   };
@@ -163,7 +164,7 @@ describe('TaskHeatmapTable zero-weight presentation', () => {
     expect(metricHeaders[2]).toHaveClass(ZERO_WEIGHT_LAST_CLASS);
     expect(metricHeaders[3]).not.toHaveClass(ZERO_WEIGHT_FIRST_CLASS);
 
-    const bodyCells = [...container.querySelectorAll('tbody tr[data-row-key="s-1"] td')];
+    const bodyCells = [...container.querySelectorAll(':scope tbody tr[data-row-key="s-1"] td')];
     expect(bodyCells[2]).toHaveClass(ZERO_WEIGHT_FIRST_CLASS);
     expect(bodyCells[4]).toHaveClass(ZERO_WEIGHT_LAST_CLASS);
     expect(bodyCells[5]).not.toHaveClass(ZERO_WEIGHT_FIRST_CLASS);
@@ -174,10 +175,11 @@ describe('TaskHeatmapTable zero-weight presentation', () => {
     const base = buildHeatmapResult();
     const result = {
       ...base,
-      taskColumns: base.taskColumns.map((column, index) =>
-        index === 0
+      taskColumns: base.taskColumns.map((column, index) => {
+        return index === 0
           ? { ...column, averageContribution: { effectiveWeight: 0, includedInAverage: false } }
-          : { ...column }
+          : { ...column };
+      }
       ),
     };
     render(
@@ -215,10 +217,11 @@ describe('TaskHeatmapTable zero-weight presentation', () => {
 
     const excludedColumnResult = {
       ...baseline,
-      taskColumns: baseline.taskColumns.map((column, index) =>
-        index === 0
+      taskColumns: baseline.taskColumns.map((column, index) => {
+        return index === 0
           ? { ...column, averageContribution: { effectiveWeight: 0, includedInAverage: false } }
-          : { ...column }
+          : { ...column };
+      }
       ),
     };
     render(
@@ -268,7 +271,7 @@ describe('TaskHeatmapTable zero-weight presentation', () => {
     expect(completeness[0]).toHaveClass(ZERO_WEIGHT_FIRST_CLASS);
     expect(completeness[1]).not.toHaveClass(ZERO_WEIGHT_FIRST_CLASS);
 
-    const studentRow = container.querySelector('tbody tr[data-row-key="student-1"]');
+    const studentRow = container.querySelector(':scope tbody tr[data-row-key="student-1"]');
     expect(studentRow).not.toBeNull();
     const scoreMatches = within(studentRow as HTMLElement).getAllByLabelText(
       'Student One, Merged zero-weight task, Completeness: 4'

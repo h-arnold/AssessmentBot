@@ -93,12 +93,12 @@ describe('assignmentDefinitionPartials.zod schemas', () => {
       schemas.AssignmentDefinitionPartialSchema
     );
 
-    expect(() =>
-      assignmentDefinitionPartialSchema.parse({
+    expect(() => {
+      return assignmentDefinitionPartialSchema.parse({
         ...validAssignmentDefinitionPartialRow,
         yearGroup: 10,
-      })
-    ).toThrow();
+      });
+    }).toThrow();
   });
 
   it.each([
@@ -259,7 +259,7 @@ describe('assignmentDefinitionPartials.zod schemas', () => {
       deleteRequestSchema.parse({ definitionKey: String.raw`algebra\baseline` })
     ).toThrow();
     expect(() => deleteRequestSchema.parse({ definitionKey: 'algebra..baseline' })).toThrow();
-    expect(() => deleteRequestSchema.parse({ definitionKey: 'algebra\u0007baseline' })).toThrow();
+    expect(() => deleteRequestSchema.parse({ definitionKey: 'algebra\u{7}baseline' })).toThrow();
   });
 
   it('DeleteAssignmentDefinitionResponseSchema accepts only an omitted/undefined backend success payload', async () => {
@@ -323,12 +323,12 @@ describe('assignmentDefinitionPartials.zod schemas', () => {
           schemas.AssignmentDefinitionPartialSchema
         );
 
-        expect(() =>
-          assignmentDefinitionPartialSchema.parse({
+        expect(() => {
+          return assignmentDefinitionPartialSchema.parse({
             ...validAssignmentDefinitionPartialRow,
             createdAt: timestamp,
-          })
-        ).toThrow();
+          });
+        }).toThrow();
       }
     );
 
@@ -393,12 +393,12 @@ describe('assignmentDefinitionPartials.zod schemas', () => {
         schemas.AssignmentDefinitionPartialSchema
       );
 
-      expect(() =>
-        assignmentDefinitionPartialSchema.parse({
+      expect(() => {
+        return assignmentDefinitionPartialSchema.parse({
           ...validAssignmentDefinitionPartialRow,
           assignmentWeighting: 'five',
-        })
-      ).toThrow();
+        });
+      }).toThrow();
     });
   });
 
@@ -440,12 +440,12 @@ describe('assignmentDefinitionPartials.zod schemas', () => {
         schemas.AssignmentDefinitionPartialSchema
       );
 
-      expect(() =>
-        assignmentDefinitionPartialSchema.parse({
+      expect(() => {
+        return assignmentDefinitionPartialSchema.parse({
           ...validAssignmentDefinitionPartialRow,
           tasks: null,
-        })
-      ).toThrow();
+        });
+      }).toThrow();
     });
 
     it('rejects a partial with extra fields in inner task objects', async () => {
@@ -454,12 +454,12 @@ describe('assignmentDefinitionPartials.zod schemas', () => {
         schemas.AssignmentDefinitionPartialSchema
       );
 
-      expect(() =>
-        assignmentDefinitionPartialSchema.parse({
+      expect(() => {
+        return assignmentDefinitionPartialSchema.parse({
           ...validAssignmentDefinitionPartialRow,
           tasks: [{ taskId: 't_abc123', taskWeighting: 2, taskTitle: null, extra: 'x' }],
-        } as Record<string, unknown>)
-      ).toThrow();
+        } as Record<string, unknown>);
+      }).toThrow();
     });
 
     it('accepts a partial with nullable taskTitle on inner task objects', async () => {
@@ -515,12 +515,12 @@ describe('assignmentDefinitionPartials.zod schemas', () => {
         schemas.AssignmentDefinitionPartialSchema
       );
 
-      expect(() =>
-        assignmentDefinitionPartialSchema.parse({
+      expect(() => {
+        return assignmentDefinitionPartialSchema.parse({
           ...validAssignmentDefinitionPartialRow,
           tasks,
-        })
-      ).toThrow();
+        });
+      }).toThrow();
     });
   });
 
@@ -565,12 +565,12 @@ describe('assignmentDefinitionPartials.zod schemas', () => {
           updatedAt: timestamp,
         });
       } else {
-        expect(() =>
-          assignmentDefinitionPartialSchema.parse({
+        expect(() => {
+          return assignmentDefinitionPartialSchema.parse({
             ...validAssignmentDefinitionPartialRow,
             createdAt: timestamp,
-          })
-        ).toThrow();
+          });
+        }).toThrow();
       }
     });
   });
@@ -645,12 +645,12 @@ describe('assignmentDefinitionPartials.zod schemas', () => {
       ).toBeTruthy();
 
       // Invalid pattern (missing milliseconds) should fail
-      expect(() =>
-        assignmentDefinitionPartialSchema.parse({
+      expect(() => {
+        return assignmentDefinitionPartialSchema.parse({
           ...validAssignmentDefinitionPartialRow,
           createdAt: '2026-01-05T10:00:00Z',
-        })
-      ).toThrow();
+        });
+      }).toThrow();
     });
   });
 });

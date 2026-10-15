@@ -58,7 +58,7 @@ function extractSupportedDocumentDescriptor_(urlValue, fieldName) {
   }
 
   const trailingPath = pathname.slice(matchingPrefix.length);
-  const documentId = trailingPath.split('/')[0];
+  const documentId = trailingPath.split('/', 1)[0];
 
   if (!documentId) {
     throwUpsertValidationError_(`${fieldName} must include a document id segment.`, fieldName);

@@ -82,11 +82,13 @@ function taskKeyFor(definitionKey: string, taskId: string): string {
  * @returns {Array<{id: string, name: string, email: string}>} Student summaries.
  */
 function buildStudentSummaries() {
-  return STUDENT_IDS.map((id, index) => ({
-    id,
-    name: STUDENT_NAMES[index],
-    email: `${id}@school.edu`,
-  }));
+  return STUDENT_IDS.map((id, index) => {
+    return {
+      id,
+      name: STUDENT_NAMES[index],
+      email: `${id}@school.edu`,
+    };
+  });
 }
 
 /**
@@ -155,13 +157,12 @@ function buildPartials(): AssignmentDefinitionPartialsResponse {
 /**
  * Build a ClassFull fixture with the four fixture assignment instances.
  *
- * @param {string | null} [className] - Optional class name override (default CLASS_NAME).
  * @returns {ClassFull} A fully typed ClassFull fixture.
  */
-function buildClassFull(className: string | null = CLASS_NAME): ClassFull {
+function buildClassFull(): ClassFull {
   return {
     classId: CLASS_ID,
-    className,
+    className: CLASS_NAME,
     cohortKey: null,
     courseLength: 1,
     yearGroupKey: 'yg-10',
@@ -181,22 +182,15 @@ function buildClassFull(className: string | null = CLASS_NAME): ClassFull {
 /**
  * Build a PerStudentTaskMetric fixture for a given student, definition, and task.
  *
- * @param {string} studentId - The student identifier.
- * @param {string} definitionKey - The definition key.
  * @param {string} taskId - The stable task identifier.
- * @param {number} [value] - Base metric value (completeness=value, accuracy=value+1, spag=value+2).
  * @returns {Object} A PerStudentTaskMetric-shaped object with computed metric results.
  */
-function buildPerStudentTaskMetric(
-  studentId: string,
-  definitionKey: string,
-  taskId: string,
-  value: number = DEFAULT_METRIC_BASE_VALUE
-) {
+function buildPerStudentTaskMetric(taskId: string) {
+  const value = DEFAULT_METRIC_BASE_VALUE;
   return {
     classId: CLASS_ID,
-    studentId,
-    taskKey: taskKeyFor(definitionKey, taskId),
+    studentId: STUDENT_IDS[0],
+    taskKey: taskKeyFor(QUADRATICS_DEFINITION_KEY, taskId),
     averageContribution: { effectiveWeight: 1, includedInAverage: true },
     completeness: createComputedMetricResult({ value }),
     accuracy: createComputedMetricResult({ value: value + 1 }),
@@ -317,8 +311,8 @@ describe('adaptMetricsToMergedHeatmap — merged column construction and identit
 describe('adaptMetricsToMergedHeatmap — cell mapping and roster completeness', () => {
   it('maps computed metrics and falls back to notAttempted for missing (student, taskKey) pairs, covering all students', () => {
     // Only Alice (s_001) has metrics, on both quadratics tasks; Bob and Carol have none.
-    const aliceQ1 = buildPerStudentTaskMetric('s_001', QUADRATICS_DEFINITION_KEY, QUAD_TASK_IDS[0]);
-    const aliceQ2 = buildPerStudentTaskMetric('s_001', QUADRATICS_DEFINITION_KEY, QUAD_TASK_IDS[1]);
+    const aliceQ1 = buildPerStudentTaskMetric(QUAD_TASK_IDS[0]);
+    const aliceQ2 = buildPerStudentTaskMetric(QUAD_TASK_IDS[1]);
     const analyserResult = minimalAveragingResult([aliceQ1, aliceQ2]);
     const classFull = buildClassFull();
     const partials = buildPartials();

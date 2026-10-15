@@ -223,7 +223,7 @@ function buildPreviewInput(
  * @param {ReadonlyArray<UseQueryResult<AssignmentFull | null, Error>>} assignmentQueryResults - Per-assignment queries.
  * @returns {boolean} `true` while any owned query is fetching.
  */
-function deriveIsRefreshing(
+function isAnyHeatmapQueryFetching(
   classFullQuery: UseQueryResult<ClassFull | null, Error>,
   adpQuery: UseQueryResult<AssignmentDefinitionPartialsResponse>,
   assignmentQueryResults: ReadonlyArray<UseQueryResult<AssignmentFull | null, Error>>
@@ -309,18 +309,11 @@ export function useHeatmapsPageData(): HeatmapsPageData {
 
   const [analyserResult, analyserError, mergedResult, adapterError] = useMemo<
     readonly [AveragingResult | null, Error | null, MergedHeatmapResult | null, Error | null]
-  >(
-    () =>
-      shouldRunPipeline
-        ? runHeatmapsPipeline(
-            classFull,
-            assignmentDefinitionPartials,
-            classId,
-            selectedAssignmentIds
-          )
-        : [null, null, null, null],
-    [shouldRunPipeline, classFull, assignmentDefinitionPartials, classId, selectedAssignmentIds]
-  );
+  >(() => {
+    return shouldRunPipeline
+      ? runHeatmapsPipeline(classFull, assignmentDefinitionPartials, classId, selectedAssignmentIds)
+      : [null, null, null, null];
+  }, [shouldRunPipeline, classFull, assignmentDefinitionPartials, classId, selectedAssignmentIds]);
 
   // -----------------------------------------------------------------------
   // 6. Per-selected-assignment preview queries (enablement keyed to selection)
@@ -355,15 +348,19 @@ export function useHeatmapsPageData(): HeatmapsPageData {
     ),
     combine: (
       results: ReadonlyArray<UseQueryResult<AssignmentFull | null, Error>>
-    ): AssignmentPreviewCombined => ({
-      previewResults: results.map((result, index: number) => ({
-        assignmentId: selectedAssignmentIds[index],
-        isPending: result.isPending,
-        isError: result.isError,
-        data: result.data ?? null,
-      })),
-      rawResults: results,
-    }),
+    ): AssignmentPreviewCombined => {
+      return {
+        previewResults: results.map((result, index: number) => {
+          return {
+            assignmentId: selectedAssignmentIds[index],
+            isPending: result.isPending,
+            isError: result.isError,
+            data: result.data ?? null,
+          };
+        }),
+        rawResults: results,
+      };
+    },
   });
 
   // -----------------------------------------------------------------------
@@ -404,20 +401,8 @@ export function useHeatmapsPageData(): HeatmapsPageData {
   // branch, taking precedence over any empty analyser error when both are absent.
   const effectiveAdapterError: Error | null = assemblyError ?? adapterError;
 
-  const surfaceState: HeatmapsSurfaceState = useMemo<HeatmapsSurfaceState>(
-    () =>
-      computeHeatmapsSurfaceState(
-        classId,
-        classFull,
-        classFullQuery.isSuccess,
-        classFullQuery.isError,
-        classFullQuery.error,
-        classFullQuery.isPending,
-        adpDatasetState,
-        analyserError,
-        effectiveAdapterError
-      ),
-    [
+  const surfaceState: HeatmapsSurfaceState = useMemo<HeatmapsSurfaceState>(() => {
+    return computeHeatmapsSurfaceState(
       classId,
       classFull,
       classFullQuery.isSuccess,
@@ -426,9 +411,19 @@ export function useHeatmapsPageData(): HeatmapsPageData {
       classFullQuery.isPending,
       adpDatasetState,
       analyserError,
-      effectiveAdapterError,
-    ]
-  );
+      effectiveAdapterError
+    );
+  }, [
+    classId,
+    classFull,
+    classFullQuery.isSuccess,
+    classFullQuery.isError,
+    classFullQuery.error,
+    classFullQuery.isPending,
+    adpDatasetState,
+    analyserError,
+    effectiveAdapterError,
+  ]);
 
   const error: HeatmapsPageError | null =
     surfaceState.status === 'blocking' ? surfaceState.error : null;
@@ -437,7 +432,7 @@ export function useHeatmapsPageData(): HeatmapsPageData {
   // 9. Refresh — re-run class query, ADP dataset, and enabled assignment queries
   // -----------------------------------------------------------------------
 
-  const isRefreshing: boolean = deriveIsRefreshing(
+  const isRefreshing: boolean = isAnyHeatmapQueryFetching(
     classFullQuery,
     adpQuery,
     assignmentPreviewCombined.rawResults

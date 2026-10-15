@@ -136,16 +136,17 @@ const SEED_FIRST_TASK_TITLE = CANONICAL_EDITABLE_DEFINITION_SEED.tasks[0].taskTi
 /**
  * Builds shell-shaped task rows from the canonical seed definition.
  *
- * @param {AssignmentDefinition} definition Canonical full-definition seed.
  * @returns {TaskRow[]} Task rows for the wizard content properties.
  */
-function buildSeedTaskRows(definition: AssignmentDefinition): TaskRow[] {
-  return definition.tasks.map((task) => ({
-    key: task.taskId,
-    taskId: task.taskId,
-    taskTitle: task.taskTitle,
-    taskWeighting: task.taskWeighting,
-  }));
+function buildSeedTaskRows(): TaskRow[] {
+  return CANONICAL_EDITABLE_DEFINITION_SEED.tasks.map((task) => {
+    return {
+      key: task.taskId,
+      taskId: task.taskId,
+      taskTitle: task.taskTitle,
+      taskWeighting: task.taskWeighting,
+    };
+  });
 }
 
 /**
@@ -200,7 +201,7 @@ function ShellHarness(properties: Readonly<{
     isClosable: properties.isClosable ?? true,
     hasDirtyEdits: false,
     hasParsedTasks: true,
-    taskRows: buildSeedTaskRows(CANONICAL_EDITABLE_DEFINITION_SEED),
+    taskRows: buildSeedTaskRows(),
     documentChange: {
       hasPendingChange: false,
       previousReferenceUrl: '',
@@ -229,7 +230,7 @@ function ReviewContentHarness(): JSX.Element {
   return createElement(AssignmentDefinitionWizardReviewContent, {
     mode: 'update',
     hasParsedTasks: true,
-    taskRows: buildSeedTaskRows(CANONICAL_EDITABLE_DEFINITION_SEED),
+    taskRows: buildSeedTaskRows(),
     documentChange: {
       hasPendingChange: false,
       previousReferenceUrl: '',

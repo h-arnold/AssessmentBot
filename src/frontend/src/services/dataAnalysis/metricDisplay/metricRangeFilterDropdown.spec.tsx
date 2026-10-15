@@ -11,7 +11,7 @@ import userEvent from '@testing-library/user-event';
 import type { FilterDropdownProps } from 'antd/es/table/interface';
 
 import { MetricRangeFilterDropdown } from './metricRangeFilterDropdown';
-import { buildMetricRangeFilter, metricInRange } from './metricRangeFilter';
+import { buildMetricRangeFilter, isMetricInRange } from './metricRangeFilter';
 import type { MetricRangeFilterFlags } from './metricRangeKey';
 import { createExcludedMetricResult, createNotAttemptedMetricResult, createErrorMetricResult } from '../../../test/dataAnalysis/fixtures';
 
@@ -398,13 +398,13 @@ describe('MetricRangeFilterDropdown', () => {
 
   it('includes excluded only when its fifth toggle is enabled, independently of other states and range', () => {
     const excluded = createExcludedMetricResult();
-    expect(metricInRange(excluded, FILTER_TEST_MINIMUM, FILTER_TEST_MAXIMUM, NO_NON_COMPUTED_FLAGS)).toBe(false);
-    expect(metricInRange(excluded, FILTER_TEST_MINIMUM, FILTER_TEST_MAXIMUM, INCLUDE_EXCLUDED_FLAGS)).toBe(true);
+    expect(isMetricInRange(excluded, FILTER_TEST_MINIMUM, FILTER_TEST_MAXIMUM, NO_NON_COMPUTED_FLAGS)).toBe(false);
+    expect(isMetricInRange(excluded, FILTER_TEST_MINIMUM, FILTER_TEST_MAXIMUM, INCLUDE_EXCLUDED_FLAGS)).toBe(true);
     const filter = buildMetricRangeFilter({ range: DEFAULT_RANGE, activeRange: [], getMetric: (row: { metric: typeof excluded }) => row.metric });
     expect(filter.onFilter('2|3|0|0|1', { metric: excluded })).toBe(true);
     expect(filter.onFilter('2|3|0|0|0', { metric: excluded })).toBe(false);
-    expect(metricInRange(createNotAttemptedMetricResult(), FILTER_TEST_MINIMUM, FILTER_TEST_MAXIMUM, INCLUDE_NOT_ATTEMPTED_FLAGS)).toBe(true);
-    expect(metricInRange(createErrorMetricResult(), FILTER_TEST_MINIMUM, FILTER_TEST_MAXIMUM, INCLUDE_ERROR_FLAGS)).toBe(true);
+    expect(isMetricInRange(createNotAttemptedMetricResult(), FILTER_TEST_MINIMUM, FILTER_TEST_MAXIMUM, INCLUDE_NOT_ATTEMPTED_FLAGS)).toBe(true);
+    expect(isMetricInRange(createErrorMetricResult(), FILTER_TEST_MINIMUM, FILTER_TEST_MAXIMUM, INCLUDE_ERROR_FLAGS)).toBe(true);
   });
 
   // ---------------------------------------------------------------------------

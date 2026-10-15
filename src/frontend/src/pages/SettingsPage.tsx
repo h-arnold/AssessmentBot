@@ -24,32 +24,34 @@ export function SettingsPage() {
   const isAuthenticationTabVisible = applicationAccessContext.role === 'admin';
 
   const settingsTabs = useMemo<NonNullable<TabsProps['items']>>(
-    () => [
-      {
-        key: 'classes',
-        label: 'Classes',
-        children: <ClassesManagementPanel key={`classes-management-panel-${classesPanelInstanceKey}`} />,
-      },
-      {
-        key: 'backend-settings',
-        label: 'Backend settings',
-        children: <BackendSettingsPanel />,
-      },
-      ...(isAuthenticationTabVisible
-        ? [
-            {
-              key: 'authentication' as const,
-              label: 'Authentication',
-              children: <AuthenticationSettingsTab />,
-            },
-          ]
-        : []),
-      {
-        key: 'reference-data',
-        label: 'Reference Data',
-        children: <ReferenceDataSettingsPanel />,
-      },
-    ],
+    () => {
+      return [
+        {
+          key: 'classes',
+          label: 'Classes',
+          children: <ClassesManagementPanel key={`classes-management-panel-${classesPanelInstanceKey}`} />,
+        },
+        {
+          key: 'backend-settings',
+          label: 'Backend settings',
+          children: <BackendSettingsPanel />,
+        },
+        ...(isAuthenticationTabVisible
+          ? [
+              {
+                key: 'authentication' as const,
+                label: 'Authentication',
+                children: <AuthenticationSettingsTab />,
+              },
+            ]
+          : []),
+        {
+          key: 'reference-data',
+          label: 'Reference Data',
+          children: <ReferenceDataSettingsPanel />,
+        },
+      ];
+    },
     [classesPanelInstanceKey, isAuthenticationTabVisible]
   );
 

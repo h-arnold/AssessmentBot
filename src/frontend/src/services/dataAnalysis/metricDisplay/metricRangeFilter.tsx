@@ -46,7 +46,7 @@ const DEFAULT_NON_COMPUTED_FILTER_FLAGS: MetricRangeFilterFlags =
  *   flags. Omission uses {@link DEFAULT_NON_COMPUTED_FILTER_FLAGS}.
  * @returns {boolean} `true` when the metric passes the filter.
  */
-export function metricInRange(
+export function isMetricInRange(
   metric: MetricResult,
   min: number,
   max: number,
@@ -117,7 +117,7 @@ export type MetricRangeFilterProperties = {
  * `showExcludedToggle` is enabled. Selecting a range (or toggling one of these
  * states) writes a single encoded filter key into `selectedKeys` and confirms;
  * **Reset** clears it.
- * `onFilter` decodes that key and applies {@link metricInRange} to each row.
+ * `onFilter` decodes that key and applies {@link isMetricInRange} to each row.
  *
  * @param {MetricRangeFilterOptions<RecordType>} options - Range filter options.
  * @returns {MetricRangeFilterProperties} The column filter props.
@@ -145,26 +145,28 @@ export function buildMetricRangeFilter<RecordType>(
     ];
   }
 
-  const filterDropdown = (properties: FilterDropdownProps): JSX.Element => (
-    <MetricRangeFilterDropdown
-      {...properties}
-      range={range}
-      step={step}
-      showExcludedToggle={showExcludedToggle}
-    />
-  );
+  const filterDropdown = (properties: FilterDropdownProps): JSX.Element => {
+    return (
+      <MetricRangeFilterDropdown
+        {...properties}
+        range={range}
+        step={step}
+        showExcludedToggle={showExcludedToggle}
+      />
+    );
+  };
 
-  const onFilter = (value: unknown, record: unknown): boolean => {
+  const isMetricFilterMatch = (value: unknown, record: unknown): boolean => {
     const decoded = decodeMetricFilter(value);
     if (!decoded) {
       return true;
     }
-    return metricInRange(getMetric(record as RecordType), decoded.min, decoded.max, decoded);
+    return isMetricInRange(getMetric(record as RecordType), decoded.min, decoded.max, decoded);
   };
 
   return {
     filterDropdown,
-    onFilter,
+    onFilter: isMetricFilterMatch,
     filteredValue,
     filterMultiple: false,
   };

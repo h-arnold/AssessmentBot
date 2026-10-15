@@ -3,20 +3,26 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiTransportError } from '../../errors/apiTransportError';
 import { useClassesManagement } from './useClassesManagement';
 
-const { useQueryMock, useStartupWarmupStateMock } = vi.hoisted(() => ({
-  useQueryMock: vi.fn(),
-  useStartupWarmupStateMock: vi.fn(),
-}));
+const { useQueryMock, useStartupWarmupStateMock } = vi.hoisted(() => {
+  return {
+    useQueryMock: vi.fn(),
+    useStartupWarmupStateMock: vi.fn(),
+  };
+});
 const readyClassesCount = 2;
 
-vi.mock('@tanstack/react-query', () => ({
-  useQuery: useQueryMock,
-  queryOptions: <TOptions>(options: TOptions) => options,
-}));
+vi.mock('@tanstack/react-query', () => {
+  return {
+    useQuery: useQueryMock,
+    queryOptions: <TOptions>(options: TOptions) => options,
+  };
+});
 
-vi.mock('../auth/startupWarmupState', () => ({
-  useStartupWarmupState: useStartupWarmupStateMock,
-}));
+vi.mock('../auth/startupWarmupState', () => {
+  return {
+    useStartupWarmupState: useStartupWarmupStateMock,
+  };
+});
 
 /**
  * Creates a startup warmup state where all datasets are ready and trustworthy.
@@ -98,9 +104,7 @@ describe('useClassesManagement', () => {
       .mockReturnValueOnce({
         isFetching: true,
         isPending: false,
-        data: [
-          { classId: 'class-1', className: 'Alpha' },
-        ],
+        data: [{ classId: 'class-1', className: 'Alpha' }],
       })
       .mockReturnValueOnce({
         isFetching: false,
@@ -122,7 +126,9 @@ describe('useClassesManagement', () => {
 
     expect(result.current.classesManagementViewState).toBe('ready');
     expect(result.current.isRefreshing).toBe(true);
-    expect(result.current.nonBlockingWarningMessage).toBe('Classes data is refreshing in the background.');
+    expect(result.current.nonBlockingWarningMessage).toBe(
+      'Classes data is refreshing in the background.'
+    );
   });
 
   it('does not publish the classes refresh message when only reference-data queries refetch', () => {
@@ -130,9 +136,7 @@ describe('useClassesManagement', () => {
       .mockReturnValueOnce({
         isFetching: false,
         isPending: false,
-        data: [
-          { classId: 'class-1', className: 'Alpha' },
-        ],
+        data: [{ classId: 'class-1', className: 'Alpha' }],
       })
       .mockReturnValueOnce({
         isFetching: false,
@@ -166,7 +170,7 @@ describe('useClassesManagement', () => {
           error: {
             code: 'RATE_LIMITED',
             message: 'Too many requests.',
-            retriable: true,
+            isRetriable: true,
           },
         }),
       })
@@ -186,7 +190,9 @@ describe('useClassesManagement', () => {
     const { result } = renderHook(() => useClassesManagement());
 
     expect(result.current.classesManagementViewState).toBe('error');
-    expect(result.current.blockingErrorMessage).toBe('Unable to load active Google Classrooms right now.');
+    expect(result.current.blockingErrorMessage).toBe(
+      'Unable to load active Google Classrooms right now.'
+    );
     expect(result.current.classesCount).toBeNull();
     expect(result.current.errorMessage).toBe('Unable to load classes right now.');
     expect(result.current.nonBlockingWarningMessage).toBeNull();
@@ -218,11 +224,12 @@ describe('useClassesManagement', () => {
     const { result } = renderHook(() => useClassesManagement());
 
     expect(result.current.classesManagementViewState).toBe('error');
-    expect(result.current.blockingErrorMessage).toBe('Unable to load active Google Classrooms right now.');
+    expect(result.current.blockingErrorMessage).toBe(
+      'Unable to load active Google Classrooms right now.'
+    );
     expect(result.current.nonBlockingWarningMessage).toBeNull();
     expect(result.current.rows).toHaveLength(0);
   });
-
 
   it('does not surface refresh guidance from a later class-partials query error when data is already available', () => {
     useQueryMock
@@ -237,12 +244,10 @@ describe('useClassesManagement', () => {
           error: {
             code: 'INTERNAL_ERROR',
             message: 'Class partials refetch failed.',
-            retriable: false,
+            isRetriable: false,
           },
         }),
-        data: [
-          { classId: 'class-1', className: 'Alpha' },
-        ],
+        data: [{ classId: 'class-1', className: 'Alpha' }],
       })
       .mockReturnValueOnce({
         isPending: false,

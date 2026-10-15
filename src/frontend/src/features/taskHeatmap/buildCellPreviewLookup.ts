@@ -224,23 +224,24 @@ export function buildCellPreviewLookup(assignment: AssignmentFull): CellPreviewL
     for (const item of Object.values(submission.items)) {
       const taskKey = buildTaskKey(definitionKey, item.taskId);
       // First-wins: only set if this taskKey has not been encountered yet
-      if (!innerMap.has(taskKey)) {
-        const sourceUrl = resolveSourceUrl(
-          assignment.documentType,
-          item.artifact.documentId,
-          item.artifact.pageId,
-          submission.documentId
-        );
-        innerMap.set(
-          taskKey,
-          createCellPreviewData(
-            item.artifact.type,
-            item.artifact.content,
-            item.assessments,
-            sourceUrl
-          )
-        );
+      if (innerMap.has(taskKey)) {
+        continue;
       }
+      const sourceUrl = resolveSourceUrl(
+        assignment.documentType,
+        item.artifact.documentId,
+        item.artifact.pageId,
+        submission.documentId
+      );
+      innerMap.set(
+        taskKey,
+        createCellPreviewData(
+          item.artifact.type,
+          item.artifact.content,
+          item.assessments,
+          sourceUrl
+        )
+      );
     }
 
     outerMap.set(submission.studentId, innerMap);

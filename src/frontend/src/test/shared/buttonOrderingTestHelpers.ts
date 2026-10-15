@@ -18,9 +18,9 @@ import { screen } from '@testing-library/react';
  * @returns {string[]} The accessible button names, in document order.
  */
 export function getAccessibleButtonNames(): string[] {
-  return screen.getAllByRole('button').map((button) => {
-    return (button.getAttribute('aria-label') ?? button.textContent ?? '').trim();
-  });
+  return screen
+    .getAllByRole('button')
+    .map((button) => (button.getAttribute('aria-label') ?? button.textContent ?? '').trim());
 }
 
 /**

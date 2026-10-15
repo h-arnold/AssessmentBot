@@ -153,7 +153,7 @@ Use shared helpers to keep fixtures and mocks consistent and avoid duplicate tes
 - Classes fixture/state helper: `src/frontend/src/test/classes/classesTestHelpers.ts` (shared rows, ready-state builders, and batch-result builders for Classes table/toolbar/panel specs).
 - Classes modal test helpers: `src/frontend/src/test/classes/modalTestHelpers.tsx` (shared interaction helpers, assertion utilities, and mock creators for Classes modal components).
 - Classes Page test helpers: `src/frontend/src/test/classes/classesPageTestHelpers.tsx` (shared ClassPartial/YearGroup fixtures, rendering helpers, assertion utilities, and E2E serialisation helpers for ClassesPage component tests).
-- Classes bulk-set flow test helpers: `src/frontend/src/test/classes/bulkFlowTestHelpers.ts` (exports `makeRow`, `assertQueuedBatchMutationCalledOnce`, and `assertSingleSelectedRowEdit`; shared by the `bulkSetYearGroup` and `bulkSetCohort` specs to keep the row-fixture and queued-batch-call assertion logic DRY).
+- Classes bulk test helpers and registration-only mock setup modules: `src/frontend/src/test/classes/bulkFlowTestHelpers.ts` exports the row fixture `makeRow` and the queued-batch assertions `assertQueuedBatchMutationCalledOnce` and `assertSingleSelectedRowEdit` (shared by the `bulkSetYearGroup` and `bulkSetCohort` flow specs), plus `createBulkPanelMocks`, `createBulkQueueModuleMock`, and `BULK_PANEL_COMPONENT_MOCKS` (shared by the `bulkActiveState` and `bulkDelete` panel specs); the six `*.mockSetup.ts` files under `src/frontend/src/test/` — `classes/AssessTaskModal`, `classes/ClassesManagementPanel`, `classes/bulkPanel`, `assignmentDefinition/AssignmentDefinitionWizardModal`, `classPage/useClassPageData`, and `auth/appAuthGate` — are registration-only modules that register identical `vi.mock` doubles and export nothing (see [Shared mock-registration pattern](#shared-mock-registration-pattern)).
 - Builder fixture helpers: `scripts/builder/src/test/builder-fixture-test-helpers.ts` (shared by builder specs to build release archives, create path fixtures, and write release files/manifests).
 
 When adding test scenarios, prefer extending an existing helper before copying setup logic into each spec. In particular, Classes feature specs should reuse `src/frontend/src/test/classes/classesTestHelpers.ts` for row fixtures and state builders, `src/frontend/src/test/classes/modalTestHelpers.tsx` for modal interaction patterns, and `src/frontend/src/test/classes/classesPageTestHelpers.tsx` for ClassesPage fixtures and rendering, rather than redefining near-identical test utilities in each file.
@@ -165,6 +165,25 @@ Shared frontend test helpers belong under `src/frontend/src/test/**`. Feature-sc
 - Synthetic analysis API round-trip adapter: `src/frontend/src/test/syntheticApiRoundTripAdapter.ts` — exports `createSyntheticApiRoundTripRunner(invokeRequest)`, a thin test-only adapter that composes the script-owned synthetic `apiHandler` bridge with `googleScriptRunHarness`. It preserves the harness's single success JSON serialisation, raw failures, and per-request callback isolation, and it imports no `scripts/` code. Status: **Implemented** (synthetic analysis test-data delivery). See [Synthetic Test Data](../testing/synthetic-test-data.md).
 - Task-preview fixture selection: `src/frontend/src/test/taskHeatmap/previewFixtures.ts` — selects the canonical `small` `class-2` roster and its populated Slides `assignment-2-1` and Sheets `assignment-2-2` records through the frontend raw-JSON import convention, validates every selected full record through `ClassFullSchema` / `AssignmentFullSchema`, and derives and deep-freezes the preview identifiers, labels, metric values and content so the suites assert real record data rather than restated literals. It also exposes clone/build helpers so callers never mutate the shared records. Status: **Implemented**.
 - Task-preview source-action and focus-session helper: `src/frontend/src/test/taskHeatmap/previewSourceActionTestHelpers.ts` — owns the single shared contract for the issue #19 source action and the metric cell's preview focus session: the action's accessible name, the canonical editor URL derived through the production lookup, a no-source boundary cell, and a harness that renders the real `TaskMetricPreviewCell` between focusable neighbours with focus-transfer observation and overlay open/dismiss waits. Its four callers are `TaskPreviewCard.sourceLink.spec.tsx`, `TaskMetricPreviewContent.spec.tsx`, `TaskMetricPreviewCell.focus.spec.tsx` and `TaskMetricPreviewCell.focusSession.spec.tsx`. Status: **Implemented**.
+- Heatmaps hook ready-dataset mock factory: `src/frontend/src/test/taskHeatmap/hookMockFactories.ts` — exports `createReadyHeatmapsDatasetResult(datasetKey)` to build the ready query and dataset-state pair returned by the mocked `usePageDataset`, selecting `classPartials` or `assignmentDefinitionPartials` data for the requested key; shared by `useHeatmapsPageData.spec.ts` and `useHeatmapsPageData.preview.spec.ts`. Status: **Implemented**.
+- Class-page test helpers: `src/frontend/src/test/classPage/classPageFixtures.ts` exports `createReadyClassPageData(overrides?)` plus the shared class/identifier fixtures for the Class page composition specs (`ClassPage.spec.tsx`, `ClassPageContent.spec.tsx`); `useClassPageDataTestFixtures.ts` provides the pure query/dataset builders and the shared `createClassPageDataWrapper` provider wrapper for the hook suites; and `useClassPageDataMockHandles.ts` exports `createUseClassPageDataMockHandles()`, which binds typed `vi.mocked` handles for the hook's mocked dependencies (`useQuery`, `usePageDataset`, `getABClassQueryOptions`, `DataAnalysisService.analyse`, `adaptClassPageToViewModel`) for the main, blocking, and memoisation hook specs. The hook suites register their doubles through the registration-only `useClassPageData.mockSetup.ts`; `useClassPageData.assignmentQueries.spec.ts` keeps its own handle bindings, and `useClassPageData.diagnostics.spec.ts` declares local hoisted mocks and consumes only `createReadyClassQueryResult`. Status: **Implemented**.
+- Classes management panel test helpers: `src/frontend/src/test/classes/classesManagementPanelMockFactories.tsx` — `createClassesManagementPanelMocks()` builds the isolated panel module mocks (management state, batch mutation, queue, progress modal, bulk create, bulk delete); registered once by `ClassesManagementPanel.mockSetup.ts` for the `ClassesManagementPanel.*.spec.tsx` specs. The sibling `src/frontend/src/test/classes/classesManagementPanelHarness.tsx` exports `createClassesManagementPanelHarness(...)`, which owns those specs' `reset()` queue/modal behaviour, binds `buildClassesManagementState` to the hook mock, dynamically renders the real panel, and exports the shared `MutableQueueState` type; `ClassesManagementPanel.mockSetup.ts` stays a separate export-free registration module. Status: **Implemented**.
+- Auth gate test helpers: `src/frontend/src/test/auth/appAuthGateTestHelpers.tsx` — exports the access-result fixtures (`grantedAdminAccess`, `freshInstallAccess`, `brokenConfigAccess`, `deniedAccess`), `EMPTY_STARTUP_WARMUP_RESULT`, and `createQueryWrapper()`. The auth-gate specs import them statically and register their doubles through `auth/appAuthGate.mockSetup.ts` (`AppAuthGate.auth.spec.tsx` keeps its local hoisted mocks). Status: **Implemented**.
+- Focused analysis input builder: `buildSingleStudentInput(assessments, additionalOverrides?)` in `src/frontend/src/test/dataAnalysis/fixtures.ts` — builds a one-class, one-student `AveragingAnalyserInput` from a criterion-score map for focused analyser/service cases. Status: **Implemented**.
+
+### Shared mock-registration pattern
+
+When several specs mock the same modules identically, prefer a **registration-only mock setup module** over repeating the registrations in each file.
+
+- The module contains only imports and `vi.mock(...)` calls, and exports nothing. Importing it exists solely to register the doubles.
+- Import it before the production or test-harness modules it mocks, so registration precedes their first instantiation.
+- Obtain typed handles in each spec with `vi.mocked(<service import>)`, then seed and assert on them as usual.
+- Keep each spec's own isolation hooks, resetting with `vi.resetAllMocks()` per [Mock Reset Best Practices](#mock-reset-best-practices). Vitest evaluates the setup module once per spec file, so each file gets its own registered doubles; resetting per file keeps implementations and call history clean. Do not substitute `vi.clearAllMocks()`, which clears call history only and leaves mock implementations in place.
+- Do not add `eslint-disable` comments to make the pattern fit. The setup module passes the frontend ESLint config unchanged, and disabling a lint rule to accommodate it is not acceptable.
+
+The setup modules named in the helper bullet list above are the current examples. Apply the pattern when you add or touch a spec whose registrations are identical to a sibling's, migrating that spec opportunistically instead of repeating the block locally. Specs that still inline identical registrations — for example `AssessTaskModal.inModalCreate.spec.tsx` — remain transitional; migrate them when you next touch them, not as a wholesale conversion.
+
+When specs need genuinely different registrations — different mocked modules, module shapes, or hoist-time configuration — keep the mocks local instead: build them in a pure factory or `vi.hoisted(...)` block and register them with a local `vi.mock(...)`. `useClassPageData.diagnostics.spec.ts` and `AppAuthGate.auth.spec.tsx` follow this local approach.
 
 ### Classes Modal Test Helpers
 
@@ -304,6 +323,7 @@ behaviour where `google.script.run` auto-stringifies return values.
   - Vitest: `createGoogleScriptRunApiHandlerMock(invokeRequest)`
   - E2E: inject `googleScriptRunApiHandlerFactorySource` via `page.addInitScript(...)`
   - Direct assignment to `globalThis.google.script.run` that bypasses the factory is prohibited.
+  - Install the Vitest harness with `vi.stubGlobal('google', ...)` and restore it with `vi.unstubAllGlobals()`; see [Global stub installation and restoration](#global-stub-installation-and-restoration).
 
 #### Void/delete response guidance: `data: null` required
 
@@ -390,6 +410,31 @@ afterEach(() => {
 
 **Rationale:** `vi.resetAllMocks()` ensures complete isolation between tests by resetting both the call history and any mock implementations. This prevents test pollution where one test's mock setup affects subsequent tests.
 
+### Global stub installation and restoration
+
+To install a mock `google` runtime for a transport test, use `vi.stubGlobal('google', ...)` with the
+existing `createGoogleScriptRunApiHandlerMock(...)` harness, and restore it with an explicit
+`vi.unstubAllGlobals()`:
+
+```typescript
+import { afterEach, vi } from 'vitest';
+import { createGoogleScriptRunApiHandlerMock } from '../test/googleScriptRunHarness';
+
+const runner = createGoogleScriptRunApiHandlerMock((request, callbacks) => {
+  callbacks.successHandler?.({ ok: true, requestId: 'req-1', data: null });
+});
+vi.stubGlobal('google', { script: { run: runner } });
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
+```
+
+`vi.restoreAllMocks()` restores spies but does **not** remove globals installed with
+`vi.stubGlobal`, so a stub left in place leaks into later tests. Always pair the stub with an
+explicit `vi.unstubAllGlobals()` in the test cleanup, and do not assign to or delete
+`globalThis.google` directly.
+
 ### userEvent.setup() Isolation
 
 Create a fresh `userEvent` instance per test by initialising in `beforeEach` rather than at
@@ -469,8 +514,8 @@ When testing components that depend on React Query and startup warmup state, use
 ```typescript
 const { queryClient } = renderWithFrontendProviders(<MyComponent />);
 
-// Mock fetchQuery for fire-and-forget calls
-vi.spyOn(queryClient, 'fetchQuery').mockImplementation(() => Promise.resolve());
+// Mock query for fire-and-forget calls
+vi.spyOn(queryClient, 'query').mockImplementation(() => Promise.resolve([]));
 
 // Set query data for existing queries
 queryClient.setQueryData(queryKeys.assignmentTopics(), mockTopics);
@@ -880,4 +925,4 @@ indicate bugs in application code, but they clutter output and obscure real fail
 
 - Frontend unit/component tests run in the frontend package (`src/frontend`) through root scripts.
 - For Playwright E2E tests, see `docs/developer/frontend/frontend-playwright-e2e.md`.
-- If frontend architecture changes substantially, update this file, `frontend-playwright-e2e.md`, `.github/agents/Testing.agent.md`, and `.opencode/agents/testing-specialist.md` together.
+- If frontend architecture changes substantially, update this file, `frontend-playwright-e2e.md`, and `.opencode/agents/testing-specialist.md` together.

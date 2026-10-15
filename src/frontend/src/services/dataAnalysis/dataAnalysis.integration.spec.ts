@@ -28,31 +28,27 @@ import {
  */
 function expectOverallEqualsAccuracy(overall: MetricResult, accuracy: MetricResult): void {
   expect(overall.state).toBe('computed');
-  if (accuracy.state === 'computed') {
-    const ov = overall as Extract<MetricResult, { state: 'computed' }>;
-    expect(ov.value).toBeCloseTo(accuracy.value, FLOAT_TOLERANCE);
-    expect(ov.totalWeight).toBeCloseTo(accuracy.totalWeight, FLOAT_TOLERANCE);
-    expect(ov.applicableDataPoints).toBe(accuracy.applicableDataPoints);
-    expect(ov.totalDataPoints).toBe(accuracy.totalDataPoints);
+  if (accuracy.state !== 'computed') {
+    return;
   }
+
+  const ov = overall as Extract<MetricResult, { state: 'computed' }>;
+  expect(ov.value).toBeCloseTo(accuracy.value, FLOAT_TOLERANCE);
+  expect(ov.totalWeight).toBeCloseTo(accuracy.totalWeight, FLOAT_TOLERANCE);
+  expect(ov.applicableDataPoints).toBe(accuracy.applicableDataPoints);
+  expect(ov.totalDataPoints).toBe(accuracy.totalDataPoints);
 }
 
 /**
  * Assert that a MetricResult is in the error state.
  *
  * @param {MetricResult} actual - The actual MetricResult to check.
- * @param {number} totalWeight - The expected totalWeight value.
- * @param {number} totalDataPoints - The expected totalDataPoints value.
  */
-function expectErrorMetric(
-  actual: MetricResult,
-  totalWeight: number,
-  totalDataPoints: number
-): void {
+function expectErrorMetric(actual: MetricResult): void {
   expectMetricResultStateAware(actual, {
     state: 'error',
-    totalWeight,
-    totalDataPoints,
+    totalWeight: 0,
+    totalDataPoints: 0,
   });
 }
 
@@ -63,25 +59,24 @@ function expectErrorMetric(
 describe('DataAnalysisService integration', () => {
   describe('live assignment weighting wins over embedded value', () => {
     it('uses assignmentWeighting from live partials (2) instead of stale embedded value (0)', () => {
+      const assignment = createAssignmentPartial({
+        assignmentId: 'a_001',
+        definitionKey: 'dk_algebra',
+        assignmentWeighting: 0,
+        tasks: [createTaskPartial('t_001', 1)],
+        submissions: [
+          createSubmission('s_001', 'Alice', 'a_001', {
+            t_001: createSubmissionItem('t_001', { accuracy: { score: 4 } }),
+          }),
+        ],
+      });
       const input = buildInput(
         [
           {
             classId: 'c_001',
             className: 'Test Class',
             studentIds: ['s_001'],
-            assignments: [
-              createAssignmentPartial({
-                assignmentId: 'a_001',
-                definitionKey: 'dk_algebra',
-                assignmentWeighting: 0,
-                tasks: [createTaskPartial('t_001', 1)],
-                submissions: [
-                  createSubmission('s_001', 'Alice', 'a_001', {
-                    t_001: createSubmissionItem('t_001', { accuracy: { score: 4 } }),
-                  }),
-                ],
-              }),
-            ],
+            assignments: [assignment],
           },
         ],
         {
@@ -114,8 +109,8 @@ describe('DataAnalysisService integration', () => {
       expect(results[0].perStudent).toHaveLength(1);
       expectMetricResultStateAware(results[0].perStudent[0].accuracy, accuracyExpected);
 
-      expectErrorMetric(results[0].perStudent[0].completeness, 0, 0);
-      expectErrorMetric(results[0].perStudent[0].spag, 0, 0);
+      expectErrorMetric(results[0].perStudent[0].completeness);
+      expectErrorMetric(results[0].perStudent[0].spag);
 
       expectOverallEqualsAccuracy(
         results[0].perStudent[0].overall,
@@ -131,26 +126,25 @@ describe('DataAnalysisService integration', () => {
 
   describe('live task weightings affect outcomes', () => {
     it('applies different task weightings from live partials proportionally', () => {
+      const assignment = createAssignmentPartial({
+        assignmentId: 'a_001',
+        definitionKey: 'dk_algebra',
+        assignmentWeighting: 1,
+        tasks: [createTaskPartial('t_001', 1), createTaskPartial('t_002', 1)],
+        submissions: [
+          createSubmission('s_001', 'Alice', 'a_001', {
+            t_001: createSubmissionItem('t_001', { accuracy: { score: 4 } }),
+            t_002: createSubmissionItem('t_002', { accuracy: { score: 2 } }),
+          }),
+        ],
+      });
       const input = buildInput(
         [
           {
             classId: 'c_001',
             className: 'Test Class',
             studentIds: ['s_001'],
-            assignments: [
-              createAssignmentPartial({
-                assignmentId: 'a_001',
-                definitionKey: 'dk_algebra',
-                assignmentWeighting: 1,
-                tasks: [createTaskPartial('t_001', 1), createTaskPartial('t_002', 1)],
-                submissions: [
-                  createSubmission('s_001', 'Alice', 'a_001', {
-                    t_001: createSubmissionItem('t_001', { accuracy: { score: 4 } }),
-                    t_002: createSubmissionItem('t_002', { accuracy: { score: 2 } }),
-                  }),
-                ],
-              }),
-            ],
+            assignments: [assignment],
           },
         ],
         {
@@ -209,24 +203,23 @@ describe('DataAnalysisService integration', () => {
 
   describe('missing definition key is skipped gracefully', () => {
     it('returns empty result when assignmentDefinitionPartials lacks the required definition key', () => {
+      const assignment = createAssignmentPartial({
+        assignmentId: 'a_001',
+        definitionKey: 'dk_missing',
+        tasks: [createTaskPartial('t_001')],
+        submissions: [
+          createSubmission('s_001', 'Alice', 'a_001', {
+            t_001: createSubmissionItem('t_001', { accuracy: { score: 4 } }),
+          }),
+        ],
+      });
       const input = buildInput(
         [
           {
             classId: 'c_001',
             className: 'Test Class',
             studentIds: ['s_001'],
-            assignments: [
-              createAssignmentPartial({
-                assignmentId: 'a_001',
-                definitionKey: 'dk_missing',
-                tasks: [createTaskPartial('t_001')],
-                submissions: [
-                  createSubmission('s_001', 'Alice', 'a_001', {
-                    t_001: createSubmissionItem('t_001', { accuracy: { score: 4 } }),
-                  }),
-                ],
-              }),
-            ],
+            assignments: [assignment],
           },
         ],
         {
@@ -270,25 +263,24 @@ describe('DataAnalysisService integration', () => {
 
   describe('null assignmentWeighting in partials defaults to 1', () => {
     it('defaults assignmentWeighting to 1 when live partial has null', () => {
+      const assignment = createAssignmentPartial({
+        assignmentId: 'a_001',
+        definitionKey: 'dk_algebra',
+        assignmentWeighting: null,
+        tasks: [createTaskPartial('t_001', 1)],
+        submissions: [
+          createSubmission('s_001', 'Alice', 'a_001', {
+            t_001: createSubmissionItem('t_001', { accuracy: { score: 4 } }),
+          }),
+        ],
+      });
       const input = buildInput(
         [
           {
             classId: 'c_001',
             className: 'Test Class',
             studentIds: ['s_001'],
-            assignments: [
-              createAssignmentPartial({
-                assignmentId: 'a_001',
-                definitionKey: 'dk_algebra',
-                assignmentWeighting: null,
-                tasks: [createTaskPartial('t_001', 1)],
-                submissions: [
-                  createSubmission('s_001', 'Alice', 'a_001', {
-                    t_001: createSubmissionItem('t_001', { accuracy: { score: 4 } }),
-                  }),
-                ],
-              }),
-            ],
+            assignments: [assignment],
           },
         ],
         {

@@ -1,58 +1,58 @@
-import type { Hooks, Plugin } from '@opencode-ai/plugin';
-
-const FRESH_CONTEXT_NOTE = [
-  'Subagent sessions are never resumed in this project: every invocation starts with a fresh context,',
-  'so the `task_id` parameter is unavailable and any previous context must be restated in the prompt.',
-].join(' ');
+import { Plugin } from '@opencode/plugin';
+import { Schema } from 'effect';
 
 const STRIPPED_NOTICE = [
-  '<notice>The task_id you supplied was ignored and a brand new subagent session was created,',
+  '<notice>The sessionID you supplied was ignored and a brand new subagent session was created,',
   'so this result comes from a fresh context rather than a continuation of the earlier session.',
   'Restate any needed context in the next prompt instead of relying on resumption.</notice>',
 ].join(' ');
 
-type JsonSchemaLike = {
-  properties?: Record<string, unknown>;
-};
-
-type ToolDefinitionOutput = {
-  description: string;
-  parameters: unknown;
-  jsonSchema?: JsonSchemaLike;
-};
-
 /**
- * Strip the `task_id` argument from Task tool invocations so that every
- * subagent runs in a fresh session, and tell the orchestrator when this
- * happened.
- *
- * OpenCode exposes no configuration option to disable Task tool session
- * resumption, so the behaviour is enforced here for every agent in the
- * project. The model-facing JSON Schema is `output.jsonSchema`; `parameters`
- * is an opaque Effect schema. When `experimentalBackgroundSubagents` is
- * enabled, the Task tool provides no `jsonSchema`, so only argument stripping
- * applies.
- * @returns {Promise<Hooks>} The opencode plugin hooks enforcing fresh subagent contexts.
+ * Narrow unknown tool arguments to an object record.
+ * @param {unknown} value - The value to inspect.
+ * @returns {value is Record<string, unknown>} Whether the value is a record.
  */
-export default (async (): Promise<Hooks> => {
-  const strippedCalls = new Set<string>();
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
 
-  return {
-    'tool.definition': async (input, output): Promise<void> => {
-      if (input.toolID !== 'task') return;
-      const definition = output as unknown as ToolDefinitionOutput;
-      const properties = definition.jsonSchema?.properties;
-      if (properties) delete properties.task_id;
-      output.description = `${output.description}\n\n${FRESH_CONTEXT_NOTE}`;
-    },
-    'tool.execute.before': async (input, output): Promise<void> => {
-      if (input.tool !== 'task' || !output.args.task_id) return;
-      strippedCalls.add(input.callID);
-      delete output.args.task_id;
-    },
-    'tool.execute.after': async (input, output): Promise<void> => {
-      if (input.tool !== 'task' || !strippedCalls.delete(input.callID)) return;
-      output.output = `${output.output}\n\n${STRIPPED_NOTICE}`;
-    },
-  };
-}) satisfies Plugin;
+export default Plugin.define({
+  id: 'assessmentbot-no-task-resume',
+  async setup(ctx) {
+    const strippedCalls = new Set<string>();
+
+    await ctx.tool.transform((tools) => {
+      tools.update('subagent', (tool) => {
+        const input = tool.input as unknown as Schema.Struct<Schema.Struct.Fields>;
+        const fields = { ...input.fields };
+        delete fields.sessionID;
+        tool.input = Schema.Struct(fields) as unknown as typeof tool.input;
+        tool.description = `${tool.description}\n\nSubagent sessions are never resumed in this project: every invocation starts with a fresh context, so the sessionID parameter is unavailable and any previous context must be restated in the prompt.`;
+      });
+    });
+
+    await ctx.tool.hook('execute.before', (event) => {
+      if (event.tool !== 'subagent' || !isRecord(event.input)) return;
+      const sessionID = event.input.sessionID;
+      if (typeof sessionID !== 'string' || sessionID.length === 0) return;
+      strippedCalls.add(event.id);
+      delete event.input.sessionID;
+    });
+
+    await ctx.tool.hook('execute.after', (event) => {
+      if (event.tool !== 'subagent') return;
+      const wasStripped = strippedCalls.delete(event.id);
+      if (event.status !== 'completed' || !wasStripped) return;
+      const content = event.result.content;
+      if (typeof content === 'string') {
+        Object.assign(event.result, { content: `${content}\n\n${STRIPPED_NOTICE}` });
+      } else if (Array.isArray(content)) {
+        Object.assign(event.result, {
+          content: [...content, { type: 'text' as const, text: STRIPPED_NOTICE }],
+        });
+      } else {
+        Object.assign(event.result, { content: STRIPPED_NOTICE });
+      }
+    });
+  },
+});

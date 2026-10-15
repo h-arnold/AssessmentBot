@@ -5,6 +5,10 @@ const unicorn = require('eslint-plugin-unicorn').default;
 const sonarjs = require('eslint-plugin-sonarjs');
 const { unicodeSecurityRules } = require('./config/eslint/unicode-security-rules.cjs');
 const {
+  crossRuntimeUnicornPreferenceRules,
+  unicornPreferenceRules,
+} = require('./config/eslint/unicorn-preference-rules.cjs');
+const {
   security,
   securityRecommendedErrorRules,
   nodeToolingRules,
@@ -92,6 +96,8 @@ module.exports = [
       // instead.
       'security/detect-object-injection': 'off',
       ...unicodeSecurityRules,
+      ...unicornPreferenceRules,
+      ...crossRuntimeUnicornPreferenceRules,
       ...sonarjs.configs.recommended.rules,
       // Temporarily disabled for the backend section only; re-enable requires explicit user approval before modifying these helpers.
       'sonarjs/prefer-single-boolean-return': 'off',
@@ -100,24 +106,19 @@ module.exports = [
       'unicorn/prefer-global-this': 'error',
       // insist on Number.parseInt, Number.parseFloat, etc., instead of globals
       'unicorn/prefer-number-properties': 'error',
-      // Standardize on error names only (catch clauses should use 'error')
-      'unicorn/catch-error-name': 'error',
-      'unicorn/prevent-abbreviations': [
-        'error',
-        {
-          allowList: {
-            DbManager: true,
-            Utils: true,
-          },
-        },
-      ],
       'unicorn/no-array-callback-reference': 'warn',
-      // Disable rules that conflict with GAS naming conventions and preferences
-      'unicorn/no-null': 'off',
-      'unicorn/no-keyword-prefix': 'off',
-      'unicorn/filename-case': 'off',
-      'unicorn/no-array-for-each': 'off',
+      // Preserve the documented per-singleton getInstance forwarding convention.
+      'unicorn/no-useless-override': 'off',
+      // Keep the Node 24 Buffer test fallback; Uint8Array#toBase64 is unavailable there.
+      'unicorn/prefer-uint8array-base64': 'off',
       'unicorn/numeric-separators-style': 'off',
+      // GAS rejects private fields; underscore-prefixed hooks must remain accessible to subclasses.
+      'unicorn/prefer-private-class-fields': 'off',
+      // Object helpers and prototype getters legitimately use receiver-bound `this` outside classes.
+      'unicorn/no-this-outside-of-class': 'off',
+      // Personal preference: preserve explicit class/prototype/helper bindings alongside
+      // receiver-relative singleton inheritance; replacing either changes static call semantics.
+      'unicorn/class-reference-in-static-methods': 'off',
       // Prevent accidental redefinition of BaseSingleton outside the canonical file.
       'no-restricted-syntax': [
         'error',
@@ -185,6 +186,52 @@ module.exports = [
     },
   },
   {
+    files: ['src/backend/AssignmentProcessor/Assignment/index.js'],
+    rules: {
+      // Lazy prototype helpers support constructor-free rehydration; the rule cannot see them.
+      'unicorn/no-undeclared-class-members': 'off',
+    },
+  },
+  {
+    files: ['src/backend/Models/ABClass.js'],
+    rules: {
+      // Preserve setClassName's empty-string-to-null contract; parameter defaults replace undefined only.
+      'unicorn/prefer-default-parameters': 'off',
+    },
+  },
+  {
+    files: ['src/backend/y_controllers/AssignmentDefinition/AssignmentDefinitionValidation.js'],
+    rules: {
+      // Preserve falsy persisted-title normalisation to avoid false duplicate-title collisions.
+      'unicorn/prefer-default-parameters': 'off',
+    },
+  },
+  {
+    files: [
+      'src/backend/00_BaseSingleton.js',
+      'src/backend/Assessors/0_SpreadsheetFormulaEquivalence.js',
+      'src/backend/ConfigurationManager/98_ConfigurationManagerClass.js',
+      'src/backend/Models/Artifacts/0_BaseTaskArtifact.js',
+      'src/backend/Models/Artifacts/1_TextTaskArtifact.js',
+      'src/backend/Models/Artifacts/2_TableTaskArtifact.js',
+      'src/backend/Models/Artifacts/3_SpreadsheetTaskArtifact.js',
+      'src/backend/Models/Artifacts/4_ImageTaskArtifact.js',
+      'src/backend/Models/Artifacts/5_ArtifactFactory.js',
+      'src/backend/Utils/ABLogger.js',
+      'src/backend/Utils/AuthService.js',
+      'src/backend/Utils/BatchUpdateUtility.js',
+      'src/backend/Utils/GoogleGroupsAuthService.js',
+      'src/backend/Utils/ProgressTracker.js',
+      'src/backend/Utils/ScriptAppManager.js',
+      'src/backend/Utils/ScriptPropertiesAuthService.js',
+      'src/backend/Utils/Utils.js',
+    ],
+    rules: {
+      // Intentional GAS namespace and proxy exports publish properties on the global object.
+      'unicorn/no-global-object-property-assignment': 'off',
+    },
+  },
+  {
     files: ['tests/**/*.js'],
     languageOptions: {
       ecmaVersion: 'latest',
@@ -237,22 +284,6 @@ module.exports = [
     rules: {
       ...unicodeSecurityRules,
       'max-lines': ['warn', 500],
-    },
-  },
-  {
-    // Backend-specific rules
-    files: ['src/backend/DbManager/DbManager.js', 'src/backend/Utils/Utils.js'],
-    rules: {
-      'unicorn/prevent-abbreviations': [
-        'error',
-        {
-          checkFilenames: false,
-          allowList: {
-            DbManager: true,
-            Utils: true,
-          },
-        },
-      ],
     },
   },
 ];

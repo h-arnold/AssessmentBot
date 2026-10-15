@@ -62,10 +62,10 @@ function validateAuthUserEntry_(entry, seenEmails) {
     throw new Error('Each Auth Users entry must be an object with email and role.');
   }
   const keys = Object.keys(entry);
-  if (keys.length !== AUTH_USER_ALLOWED_KEYS.length) {
-    throw new Error('Each Auth Users entry must contain only email and role.');
-  }
-  if (!keys.every((key) => AUTH_USER_ALLOWED_KEYS.includes(key))) {
+  if (
+    keys.length !== AUTH_USER_ALLOWED_KEYS.length ||
+    keys.some((key) => !AUTH_USER_ALLOWED_KEYS.includes(key))
+  ) {
     throw new Error('Each Auth Users entry must contain only email and role.');
   }
   const { email, role } = entry;
@@ -187,13 +187,14 @@ function validateAuthRevision_(value) {
 const CONFIG_SCHEMA = Object.freeze({
   [CONFIG_KEYS.BACKEND_ASSESSOR_BATCH_SIZE]: {
     storage: 'script',
-    validate: (v) =>
-      Validate.validateIntegerInRange(
+    validate: (v) => {
+      return Validate.validateIntegerInRange(
         'Backend Assessor Batch Size',
         v,
         1,
         BACKEND_ASSESSOR_BATCH_MAX
-      ),
+      );
+    },
   },
   [CONFIG_KEYS.SLIDES_FETCH_BATCH_SIZE]: {
     storage: 'script',
@@ -224,13 +225,14 @@ const CONFIG_SCHEMA = Object.freeze({
   },
   [CONFIG_KEYS.JSON_DB_LOCK_TIMEOUT_MS]: {
     storage: 'script',
-    validate: (v) =>
-      Validate.validateIntegerInRange(
+    validate: (v) => {
+      return Validate.validateIntegerInRange(
         'JSON DB Lock Timeout (ms)',
         v,
         JSON_DB_LOCK_TIMEOUT_MIN_MS,
         JSON_DB_LOCK_TIMEOUT_MAX_MS
-      ),
+      );
+    },
   },
   [CONFIG_KEYS.JSON_DB_LOG_LEVEL]: {
     storage: 'script',
@@ -316,9 +318,9 @@ function validateAuthStateStrict_(authConfig) {
   const config = authConfig || {};
   const authMode = config.authMode;
   const authGroupEmail = config.authGroupEmail;
-  const groupEmailBlank = authGroupEmail == null || String(authGroupEmail).trim() === '';
+  const isGroupEmailBlank = authGroupEmail == null || String(authGroupEmail).trim() === '';
 
-  if (!groupEmailBlank && !Validate.isEmail(String(authGroupEmail).trim())) {
+  if (!isGroupEmailBlank && !Validate.isEmail(String(authGroupEmail).trim())) {
     throw new Error('Auth Group Email must be a valid email address.');
   }
 
@@ -332,7 +334,7 @@ function validateAuthStateStrict_(authConfig) {
     // Constant message: the raw stored value is not needed for diagnosis and must
     // never be interpolated into the error-level audit trail.
     throw new Error('Unrecognised stored authentication mode.');
-  } else if (groupEmailBlank) {
+  } else if (isGroupEmailBlank) {
     throw new Error('Auth configuration is incomplete: missing auth mode or group email.');
   } else {
     // Absent mode with a non-blank group email → legacy groups install.
@@ -340,7 +342,7 @@ function validateAuthStateStrict_(authConfig) {
   }
 
   if (resolvedMode === 'googleGroups') {
-    if (groupEmailBlank) {
+    if (isGroupEmailBlank) {
       throw new Error('Google Groups auth mode requires a non-blank group email.');
     }
     return {

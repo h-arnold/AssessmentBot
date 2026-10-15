@@ -94,7 +94,7 @@ async function assertModalWidth(dialog: Locator): Promise<void> {
   expect(style?.toLowerCase()).toContain('width:');
 
   const computedWidth = await dialog.evaluate((element) => {
-    const style = globalThis.getComputedStyle(element);
+    const style = getComputedStyle(element);
     return style.width;
   });
   expect(computedWidth).not.toBe('0px');

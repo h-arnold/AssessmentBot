@@ -78,7 +78,7 @@ the delivery mechanism, so a read-evidence gate adds no value.
 
 ### 3.3 Sub-Agent Delegation Constraints
 
-**Critical:** Sub-agents cannot spawn their own sub-agents via the `task` tool. The orchestrator **must** handle all agent coordination. When delegating to a sub-agent:
+**Critical:** Sub-agents cannot spawn their own sub-agents via the `subagent` tool. The orchestrator **must** handle all agent coordination. When delegating to a sub-agent:
 
 - Specify only the immediate, single task for that sub-agent
 - Do not instruct the sub-agent to call, delegate to, or spawn other agents
@@ -256,7 +256,7 @@ Follow these patterns when delegating to each subagent type:
 - Use Kif for: searching codebase for patterns, locating files, finding snippets, running simple commands (`git status`, `ls`, basic `grep`), exploring directory structures
 - "Kif, find all usages of `calculateScore` in the backend codebase."
 - "Kif, run `git diff` and show me the current changes."
-- "Kif, locate the AGENTS.md files in the project."
+- "Kif, list every file under `src/backend/Assessors/`."
 
 **Do not use Kif for:** architectural decisions, code review, implementation of non-trivial logic, documentation writing, or any task requiring the agent to apply project standards and conventions.
 
@@ -393,7 +393,7 @@ When returning work to the user, always provide:
 
 ## 11. Guardrails
 
-- **Never instruct sub-agents to spawn other agents** — Sub-agents cannot use the `task` tool to delegate to other agents. The orchestrator must handle all agent coordination. When delegating, specify only the immediate task for that sub-agent.
+- **Never instruct sub-agents to spawn other agents** — Sub-agents cannot use the `subagent` tool to delegate to other agents. The orchestrator must handle all agent coordination. When delegating, specify only the immediate task for that sub-agent.
 - **Never bypass review for non-trivial changes** — clean review is mandatory
 - **Never introduce regressions** — baseline must be maintained for code/test changes
 - **Select the right agent for the job** — Testing Specialist for Vitest/backend tests, Playwright for E2E tests, Implementation for code, Docs for documentation, Kif for menial tasks

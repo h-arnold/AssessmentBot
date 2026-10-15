@@ -89,7 +89,8 @@ export function BulkCreateModal(properties: BulkCreateModalProperties) {
       fallbackErrorMessage="Unable to create the selected classes."
       initialValues={{ courseLength: 1 }}
     >
-      {({ disabled }) => (
+      {({ disabled }) => {
+        return (
         <>
           <Form.Item
             label="Cohort"
@@ -170,7 +171,8 @@ export function BulkCreateModal(properties: BulkCreateModalProperties) {
             />
           </Form.Item>
         </>
-      )}
+        );
+      }}
     </BulkFormModalScaffold>
   );
 }

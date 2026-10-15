@@ -293,10 +293,12 @@ class AssignmentDefinition {
     }
 
     const tasks = Object.fromEntries(
-      Object.entries(this.tasks).map(([taskId, task]) => [
-        taskId,
-        task.toJSON ? task.toJSON() : task,
-      ])
+      Object.entries(this.tasks).map(([taskId, task]) => {
+        return [
+          taskId,
+          task.toJSON ? task.toJSON() : task,
+        ];
+      })
     );
     return {
       primaryTitle: this.primaryTitle,
@@ -363,25 +365,29 @@ class AssignmentDefinition {
       return [];
     }
     if (Array.isArray(this.tasks)) {
-      return this.tasks.map((task) => ({
-        taskId: task.taskId,
+      return this.tasks.map((task) => {
+        return {
+          taskId: task.taskId,
+          taskWeighting: task.taskWeighting,
+          taskTitle: task.taskTitle,
+        };
+      });
+    }
+    return Object.values(this.tasks).map((task) => {
+      return {
+        taskId: task.taskId ?? task.id,
         taskWeighting: task.taskWeighting,
         taskTitle: task.taskTitle,
-      }));
-    }
-    return Object.values(this.tasks).map((task) => ({
-      taskId: task.taskId ?? task.id,
-      taskWeighting: task.taskWeighting,
-      taskTitle: task.taskTitle,
-    }));
+      };
+    });
   }
 
   /**
    * Deserialises a JSON object to an AssignmentDefinition instance.
    * @param {Object} json - The serialised assignment definition object
    * @returns {AssignmentDefinition} A new AssignmentDefinition instance
-   * @throws {Error} If json is falsy
-   * @throws {TypeError} If json contains deprecated yearGroup field
+   * @throws {Error} If the JSON input is falsy
+   * @throws {TypeError} If the JSON input contains a deprecated yearGroup field
    * @throws {TypeError} If json.yearGroupKey is not a string
    * @remarks This method enforces fail-fast validation per SPEC.md v1.9.0: throws TypeError if the input JSON
    * contains a `yearGroup` field (detecting missed migration entries). The `yearGroupKey` field must be a string

@@ -7,7 +7,7 @@ import {
   applyFormInitialValues,
   buildDocumentUrlsFromDefinition,
   buildTaskRowsFromResponse,
-  calculateDirtyState,
+  hasWizardDirtyEdits,
   detectDocumentChange,
   hasCreateModeDirtyEdits,
   hasUpdateModeDirtyEdits,
@@ -88,12 +88,14 @@ function buildSeedFormValues(): Record<string, unknown> {
  * @returns {TaskRow[]} Seed task rows.
  */
 function buildSeedTaskRows(): TaskRow[] {
-  return CANONICAL_EDITABLE_DEFINITION_SEED.tasks.map((task) => ({
-    key: task.taskId,
-    taskId: task.taskId,
-    taskTitle: task.taskTitle,
-    taskWeighting: task.taskWeighting,
-  }));
+  return CANONICAL_EDITABLE_DEFINITION_SEED.tasks.map((task) => {
+    return {
+      key: task.taskId,
+      taskId: task.taskId,
+      taskTitle: task.taskTitle,
+      taskWeighting: task.taskWeighting,
+    };
+  });
 }
 
 describe('buildDocumentUrlsFromDefinition', () => {
@@ -204,16 +206,16 @@ describe('applyFormInitialValues', () => {
   });
 });
 
-describe('calculateDirtyState', () => {
+describe('hasWizardDirtyEdits', () => {
   it('returns false in create mode before tasks have been parsed', () => {
     expect(
-      calculateDirtyState(buildSeedFormValues(), buildSeedBaseline(), null, [], true, false)
+      hasWizardDirtyEdits(buildSeedFormValues(), buildSeedBaseline(), null, [], true, false)
     ).toBe(false);
   });
 
   it('returns false in create mode when values match the parsed baseline', () => {
     expect(
-      calculateDirtyState(
+      hasWizardDirtyEdits(
         buildSeedFormValues(),
         buildSeedBaseline(),
         null,
@@ -226,7 +228,7 @@ describe('calculateDirtyState', () => {
 
   it('returns true in create mode when the title differs from the baseline', () => {
     expect(
-      calculateDirtyState(
+      hasWizardDirtyEdits(
         { ...buildSeedFormValues(), title: 'Edited title' },
         buildSeedBaseline(),
         null,
@@ -239,7 +241,7 @@ describe('calculateDirtyState', () => {
 
   it('returns false in update mode when values match the definition', () => {
     expect(
-      calculateDirtyState(
+      hasWizardDirtyEdits(
         buildSeedFormValues(),
         null,
         { ...CANONICAL_EDITABLE_DEFINITION_SEED },
@@ -257,7 +259,7 @@ describe('calculateDirtyState', () => {
     );
 
     expect(
-      calculateDirtyState(
+      hasWizardDirtyEdits(
         buildSeedFormValues(),
         null,
         { ...CANONICAL_EDITABLE_DEFINITION_SEED },
@@ -269,7 +271,7 @@ describe('calculateDirtyState', () => {
   });
 
   it('returns false in update mode without a definition', () => {
-    expect(calculateDirtyState(buildSeedFormValues(), null, null, [], false, true)).toBe(false);
+    expect(hasWizardDirtyEdits(buildSeedFormValues(), null, null, [], false, true)).toBe(false);
   });
 });
 
@@ -443,7 +445,7 @@ describe('assignment wizard presentation hygiene', () => {
       },
       isTopicsLoading: boolean,
       isYearGroupsLoading: boolean,
-      open: boolean
+      isOpen: boolean
     ) => Record<string, unknown>;
 
     const state = deriveReferenceDataState(

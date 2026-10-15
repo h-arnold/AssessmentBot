@@ -1,4 +1,5 @@
-import type { RenderWizardModalOptions } from '../../test/assignmentDefinition/wizardModalTestHelpers';
+import '../../test/assignmentDefinition/AssignmentDefinitionWizardModal.mockSetup';
+import type { RenderWizardModalOptions } from '../../test/assignmentDefinition/wizardModalRenderingHelpers';
 import {
   mockTopics,
   mockYearGroups,
@@ -18,37 +19,20 @@ import {
 } from '../../test/assignmentDefinition/AssignmentDefinitionWizardModal.test-harness';
 import * as wizard from '../../test/assignmentDefinition/AssignmentDefinitionWizardModal.test-harness';
 
-const {
-  getAssignmentDefinitionMock,
-  getAssignmentTopicsMock,
-  getCohortsMock,
-  getYearGroupsMock,
-  upsertAssignmentDefinitionMock,
-  useStartupWarmupStateMock,
-} = vi.hoisted(() => ({
-  getAssignmentDefinitionMock: vi.fn(),
-  getAssignmentTopicsMock: vi.fn(),
-  getCohortsMock: vi.fn(),
-  getYearGroupsMock: vi.fn(),
-  upsertAssignmentDefinitionMock: vi.fn(),
-  useStartupWarmupStateMock: vi.fn(),
-}));
+import {
+  getAssignmentDefinition,
+  upsertAssignmentDefinition,
+} from '../../services/assignmentDefinition/assignmentDefinitionService';
+import { getAssignmentTopics } from '../../services/assignmentDefinition/assignmentTopicsService';
+import { getCohorts, getYearGroups } from '../../services/referenceData/referenceDataService';
+import { useStartupWarmupState } from '../../features/auth/startupWarmupState';
 
-vi.mock('../../features/auth/startupWarmupState', async (importOriginal) => {
-  const actualModule = (await importOriginal()) as Record<string, unknown>;
-  return { ...actualModule, useStartupWarmupState: useStartupWarmupStateMock };
-});
-vi.mock('../../services/assignmentDefinition/assignmentDefinitionService', () => ({
-  getAssignmentDefinition: getAssignmentDefinitionMock,
-  upsertAssignmentDefinition: upsertAssignmentDefinitionMock,
-}));
-vi.mock('../../services/assignmentDefinition/assignmentTopicsService', () => ({
-  getAssignmentTopics: getAssignmentTopicsMock,
-}));
-vi.mock('../../services/referenceData/referenceDataService', () => ({
-  getCohorts: getCohortsMock,
-  getYearGroups: getYearGroupsMock,
-}));
+const getAssignmentDefinitionMock = vi.mocked(getAssignmentDefinition) as ReturnType<typeof vi.fn>;
+const getAssignmentTopicsMock = vi.mocked(getAssignmentTopics) as ReturnType<typeof vi.fn>;
+const getCohortsMock = vi.mocked(getCohorts) as ReturnType<typeof vi.fn>;
+const getYearGroupsMock = vi.mocked(getYearGroups) as ReturnType<typeof vi.fn>;
+const upsertAssignmentDefinitionMock = vi.mocked(upsertAssignmentDefinition) as ReturnType<typeof vi.fn>;
+const useStartupWarmupStateMock = vi.mocked(useStartupWarmupState) as ReturnType<typeof vi.fn>;
 
 const {
   renderWizardModal,
@@ -115,9 +99,7 @@ describe('AssignmentDefinitionWizardModal guarded close and errors', () => {
     await renderWizardModal(renderOptions);
 
     // Should show loading skeleton with accessible loading semantics
-    const skeleton = await waitFor(() => {
-      return screen.getByRole('status', { name: /assignment wizard loading/i });
-    });
+    const skeleton = await waitFor(() => screen.getByRole('status', { name: /assignment wizard loading/i }));
     expect(skeleton).toHaveAttribute('aria-live', 'polite');
   });
 
@@ -323,10 +305,7 @@ describe('AssignmentDefinitionWizardModal guarded close and errors', () => {
     await fillRequiredFields({ modal }, { yearGroup: 'Year 10' });
 
     // Mock a slow parse response to keep isSubmitting true
-    let resolveParse: (value: unknown) => void;
-    const parsePromise = new Promise((resolve) => {
-      resolveParse = resolve;
-    });
+    const { promise: parsePromise, resolve: resolveParse } = Promise.withResolvers<unknown>();
     upsertAssignmentDefinitionMock.mockReturnValueOnce(parsePromise);
 
     // Click Parse and continue
@@ -362,7 +341,7 @@ describe('AssignmentDefinitionWizardModal guarded close and errors', () => {
     }
 
     // Now resolve the parse to let it complete
-    resolveParse!(parseResponseForSubmittingTest);
+    resolveParse(parseResponseForSubmittingTest);
     await waitFor(() => {
       expect(parseButton).not.toBeDisabled();
     });

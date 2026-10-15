@@ -17,9 +17,9 @@ import type { FilterDropdownProps, FilterValue } from 'antd/es/table/interface';
 import { useCallback, useMemo, useState, type ReactElement } from 'react';
 import { useStartupWarmupState } from '../features/auth/startupWarmupState';
 import {
-  computePageSurfaceBlocking,
-  computeDatasetRenderable,
-  computePageSurfaceBusy,
+  shouldBlockPageSurface,
+  isDatasetRenderable,
+  isPageSurfaceBusy,
   usePageDataset,
   type PageDatasetState,
 } from '../hooks/usePageDataset';
@@ -166,9 +166,9 @@ function getDefaultSortedRows(
 ): AssignmentDefinitionPartial[] {
   return [...rows].toSorted((left, right) => {
     const leftUpdatedAt =
-      left.updatedAt === null ? Number.NEGATIVE_INFINITY : new Date(left.updatedAt).getTime();
+      left.updatedAt === null ? -Infinity : new Date(left.updatedAt).getTime();
     const rightUpdatedAt =
-      right.updatedAt === null ? Number.NEGATIVE_INFINITY : new Date(right.updatedAt).getTime();
+      right.updatedAt === null ? -Infinity : new Date(right.updatedAt).getTime();
 
     if (leftUpdatedAt !== rightUpdatedAt) {
       return rightUpdatedAt - leftUpdatedAt;
@@ -195,7 +195,7 @@ function getDefaultSortedRows(
  * @param {string} rowValue Row label.
  * @returns {boolean} `true` when the row should remain visible.
  */
-function matchesFilterSelection(selectedValues: FilterValue | null, rowValue: string): boolean {
+function isFilterSelectionMatch(selectedValues: FilterValue | null, rowValue: string): boolean {
   if (selectedValues === null || selectedValues.length === 0) {
     return true;
   }
@@ -231,7 +231,7 @@ function getAssignmentsSurfaceState(
   datasetState: PageDatasetState,
   isAssignmentsQueryPending: boolean
 ): AssignmentsSurfaceState {
-  const isBlocking = computePageSurfaceBlocking(datasetState);
+  const isBlocking = shouldBlockPageSurface(datasetState);
 
   if (isBlocking) {
     return {
@@ -241,7 +241,7 @@ function getAssignmentsSurfaceState(
     };
   }
 
-  const hasRenderableAssignmentsDataset = computeDatasetRenderable(datasetState);
+  const hasRenderableAssignmentsDataset = isDatasetRenderable(datasetState);
 
   return {
     shouldRenderActionLoadingState: !hasRenderableAssignmentsDataset,
@@ -267,7 +267,7 @@ function isAssignmentsSurfaceBusyState(
 ): boolean {
   return (
     input.surfaceState.shouldRenderTableLoadingState ||
-    computePageSurfaceBusy([input.isQueryFetching], [input.isDeletePending])
+    isPageSurfaceBusy([input.isQueryFetching], [input.isDeletePending])
   );
 }
 
@@ -592,97 +592,98 @@ export function AssignmentsPage() {
     return nextFilterOptions;
   }, [sortedRows]);
 
-  const visibleRows = useMemo(
-    () =>
-      sortedRows.filter((row) =>
+  const visibleRows = useMemo(() => {
+    return sortedRows.filter((row) => {
+      return (
         ASSIGNMENTS_FILTER_DESCRIPTORS.every((descriptor) =>
-          matchesFilterSelection(filters[descriptor.key], descriptor.getFilterValue(row))
+          isFilterSelectionMatch(filters[descriptor.key], descriptor.getFilterValue(row))
         )
-      ),
-    [filters, sortedRows]
-  );
+      );
+    });
+  }, [filters, sortedRows]);
 
   const handleSelectFilter = useCallback((columnKey: AssignmentsFilterColumnKey, value: string) => {
     setFilters((currentFilters) => getNextFilters(currentFilters, columnKey, [value]));
   }, []);
 
-  const tableColumns: TableColumnsType<AssignmentDefinitionPartial> = useMemo(
-    () => [
-      ...ASSIGNMENTS_FILTER_DESCRIPTORS.map((descriptor) => ({
-        title: descriptor.title,
-        dataIndex: descriptor.key,
-        key: descriptor.key,
-        ...(descriptor.renderCell === undefined
-          ? {}
-          : {
-              render: (_: unknown, row: AssignmentDefinitionPartial) => descriptor.renderCell!(row),
-            }),
-        filterDropdown: createFilterDropdownRenderer({
-          onSelectOption: (value) => {
-            handleSelectFilter(descriptor.key, value);
-          },
-          options: filterOptions[descriptor.key],
-          selectedValues: filters[descriptor.key],
-        }),
-        filterDropdownProps: FILTER_DROPDOWN_PROPERTIES,
-        filterIcon: createFilterIconRenderer(descriptor.filterLabel),
-        filteredValue: filters[descriptor.key],
-        onHeaderCell: () => ({ 'aria-label': descriptor.title }),
-      })),
+  const tableColumns: TableColumnsType<AssignmentDefinitionPartial> = useMemo(() => {
+    return [
+      ...ASSIGNMENTS_FILTER_DESCRIPTORS.map((descriptor) => {
+        return {
+          title: descriptor.title,
+          dataIndex: descriptor.key,
+          key: descriptor.key,
+          ...(descriptor.renderCell !== undefined && {
+            render: (_: unknown, row: AssignmentDefinitionPartial) => descriptor.renderCell!(row),
+          }),
+          filterDropdown: createFilterDropdownRenderer({
+            onSelectOption: (value) => {
+              handleSelectFilter(descriptor.key, value);
+            },
+            options: filterOptions[descriptor.key],
+            selectedValues: filters[descriptor.key],
+          }),
+          filterDropdownProps: FILTER_DROPDOWN_PROPERTIES,
+          filterIcon: createFilterIconRenderer(descriptor.filterLabel),
+          filteredValue: filters[descriptor.key],
+          onHeaderCell: () => ({ 'aria-label': descriptor.title }),
+        };
+      }),
       {
         title: 'Actions',
         key: 'actions',
         onHeaderCell: () => ({ 'aria-label': 'Actions' }),
-        render: (_, row) => (
-          <Space wrap>
-            <Button
-              disabled={
-                deleteMutation.isPending ||
-                !hasTrustworthyAssignmentsDataset ||
-                !hasTrustworthyReferenceData
-              }
-              onClick={() => {
-                setWizardMode('update');
-                setWizardDefinitionKey(row.definitionKey);
-                setWizardOpen(true);
-              }}
-            >
-              Update
-            </Button>
-            <Button
-              danger
-              disabled={
-                deleteMutation.isPending ||
-                !hasTrustworthyAssignmentsDataset ||
-                !isSafeDefinitionKey(row.definitionKey)
-              }
-              onClick={() => {
-                setDeleteError(null);
-                setDeleteOutcome(null);
-                setDeleteTarget(row);
-              }}
-            >
-              Delete
-            </Button>
-          </Space>
-        ),
+        render: (_, row) => {
+          return (
+            <Space wrap>
+              <Button
+                disabled={
+                  deleteMutation.isPending ||
+                  !hasTrustworthyAssignmentsDataset ||
+                  !hasTrustworthyReferenceData
+                }
+                onClick={() => {
+                  setWizardMode('update');
+                  setWizardDefinitionKey(row.definitionKey);
+                  setWizardOpen(true);
+                }}
+              >
+                Update
+              </Button>
+              <Button
+                danger
+                disabled={
+                  deleteMutation.isPending ||
+                  !hasTrustworthyAssignmentsDataset ||
+                  !isSafeDefinitionKey(row.definitionKey)
+                }
+                onClick={() => {
+                  setDeleteError(null);
+                  setDeleteOutcome(null);
+                  setDeleteTarget(row);
+                }}
+              >
+                Delete
+              </Button>
+            </Space>
+          );
+        },
       },
-    ],
-    [
-      deleteMutation.isPending,
-      filterOptions,
-      filters,
-      handleSelectFilter,
-      hasTrustworthyAssignmentsDataset,
-      hasTrustworthyReferenceData,
-      setDeleteError,
-      setDeleteOutcome,
-      setDeleteTarget,
-      setWizardDefinitionKey,
-      setWizardMode,
-      setWizardOpen,
-    ]
-  );
+    ];
+  }, [
+    deleteMutation.isPending,
+    filterOptions,
+    filters,
+    handleSelectFilter,
+    hasTrustworthyAssignmentsDataset,
+    hasTrustworthyReferenceData,
+    setDeleteError,
+    setDeleteOutcome,
+    setDeleteTarget,
+    setWizardDefinitionKey,
+    setWizardMode,
+    setWizardOpen,
+  ]);
 
   const assignmentsSurfaceState = getAssignmentsSurfaceState(
     assignmentsDatasetState,
@@ -749,11 +750,11 @@ export function AssignmentsPage() {
     setDeleteError(null);
     setDeleteOutcome(null);
 
-    let deleteCompleted = false;
+    let hasDeleteCompleted = false;
 
     try {
       await deleteMutation.mutateAsync({ definitionKey: deleteTarget.definitionKey });
-      deleteCompleted = true;
+      hasDeleteCompleted = true;
       setDeleteTarget(null);
 
       await refetchAfterStaleInvalidate(queryClient, queryKeys.assignmentDefinitionPartials());
@@ -761,10 +762,10 @@ export function AssignmentsPage() {
     } catch (error: unknown) {
       logFrontendError('pages/AssignmentsPage.handleConfirmDelete', error, {
         definitionKey: deleteTarget.definitionKey,
-        deleteCompleted,
+        deleteCompleted: hasDeleteCompleted,
       });
 
-      if (!deleteCompleted) {
+      if (!hasDeleteCompleted) {
         setDeleteError(DELETE_FAILURE_MESSAGE);
       }
     }

@@ -10,7 +10,7 @@ import {
   type SetAuthenticationSettingsResult,
 } from './authService.zod';
 
-const GET_AUTHORISATION_STATUS_METHOD = 'getAuthorisationStatus';
+const SCRIPT_AUTHORISATION_METHOD = 'hasScriptAuthorisation';
 const GET_APPLICATION_ACCESS_METHOD = 'getApplicationAccess';
 const GET_AUTHENTICATION_SETTINGS_METHOD = 'getAuthenticationSettings';
 const SET_AUTHENTICATION_SETTINGS_METHOD = 'setAuthenticationSettings';
@@ -20,11 +20,11 @@ const SET_AUTHENTICATION_SETTINGS_METHOD = 'setAuthenticationSettings';
  *
  * @returns {Promise<boolean>} Whether the current user is authorised.
  */
-export async function getAuthorisationStatus(): Promise<boolean> {
+export async function hasScriptAuthorisation(): Promise<boolean> {
   return parseApiResponse(
     AuthorisationStatusSchema,
-    GET_AUTHORISATION_STATUS_METHOD,
-    await callApi<boolean>(GET_AUTHORISATION_STATUS_METHOD)
+    SCRIPT_AUTHORISATION_METHOD,
+    await callApi<boolean>(SCRIPT_AUTHORISATION_METHOD)
   );
 }
 

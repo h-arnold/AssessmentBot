@@ -304,10 +304,8 @@ describe('Cleanup on close', () => {
   it('closing the modal mid-fetch does not apply the stale result to state', async () => {
     // Create a deferred promise for the first fetch so we can control
     // when it resolves (after the modal is closed).
-    let resolveFirstFetch!: (value: GoogleClassroomAssignmentsResponse) => void;
-    const firstDeferred = new Promise<GoogleClassroomAssignmentsResponse>((resolve) => {
-      resolveFirstFetch = resolve;
-    });
+    const { promise: firstDeferred, resolve: resolveFirstFetch } =
+      Promise.withResolvers<GoogleClassroomAssignmentsResponse>();
 
     // Second fetch stays pending so we can observe the state before it resolves.
     const secondDeferred = new Promise<GoogleClassroomAssignmentsResponse>(() => {});
@@ -607,10 +605,7 @@ describe('Assessment run interaction', () => {
 
   it('shows loading on Start Assessment button during API call, reverts on completion', async () => {
     const matchedDefinition = createDefinitionPartial();
-    let resolveRun!: (value: null) => void;
-    const pendingRun = new Promise<null>((resolve) => {
-      resolveRun = resolve;
-    });
+    const { promise: pendingRun, resolve: resolveRun } = Promise.withResolvers<null>();
     vi.mocked(startAssessmentRun).mockReturnValue(pendingRun);
 
     const { dialog } = renderWithCache({
@@ -1153,10 +1148,7 @@ describe('No-match resolution — creating state and in-modal create path', () =
   });
 
   it('shows correct UI during auto-assessment loading and final state after resolution', async () => {
-    let resolveRun!: (value: null) => void;
-    const pendingRun = new Promise<null>((resolve) => {
-      resolveRun = resolve;
-    });
+    const { promise: pendingRun, resolve: resolveRun } = Promise.withResolvers<null>();
     vi.mocked(startAssessmentRun).mockReturnValue(pendingRun);
 
     const { dialog, queryClient } = await setupWizardTest({

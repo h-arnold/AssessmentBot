@@ -1,9 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { createElement } from 'react';
 import { App } from 'antd';
-import { QueryClientProvider } from '@tanstack/react-query';
 import {
   mockGetAssignment,
   mockLogFrontendError,
@@ -18,6 +16,7 @@ import {
   VALID_ASSIGNMENT_PARTIAL,
 } from '../../test/taskHeatmapPageFixtures';
 import { createTestQueryClient } from '../../test/dataAnalysis/heatmapFixtures';
+import { renderWithFrontendProviders } from '../../test/renderWithFrontendProviders';
 
 /**
  * Extracts the props from the most recent TaskHeatmapTable mock call.
@@ -34,6 +33,28 @@ function getHeatmapTableProperties(): Record<string, unknown> {
 
 let user: ReturnType<typeof userEvent.setup>;
 
+/**
+ * Renders TaskHeatmapPage with its Ant Design and query-client providers.
+ *
+ * @param {() => void} [refetch] Parent refetch callback.
+ * @returns {ReturnType<typeof renderWithFrontendProviders>} Render result and query client.
+ */
+function renderTaskHeatmapPage(refetch: () => void) {
+  return renderWithFrontendProviders(
+    <App>
+      <TaskHeatmapPage
+        analyserResult={analyserResultFixture}
+        classFull={classFullFixture}
+        assignmentId="a-1"
+        assignmentDefinitionPartials={[VALID_ASSIGNMENT_PARTIAL]}
+        onBack={vi.fn()}
+        refetch={refetch}
+      />
+    </App>,
+    { queryClient: createTestQueryClient() }
+  );
+}
+
 beforeEach(() => {
   user = userEvent.setup();
   mockGetAssignment.mockImplementation(() => Promise.resolve(buildDefaultAssignmentFixture()));
@@ -46,24 +67,7 @@ afterEach(() => {
 describe('TaskHeatmapPage — assignment useQuery wiring', () => {
   it('calls getAssignment with correct courseId and assignmentId on mount', async () => {
     const refetch = vi.fn();
-    render(
-      createElement(
-        QueryClientProvider,
-        { client: createTestQueryClient() },
-        createElement(
-          App,
-          null,
-          createElement(TaskHeatmapPage, {
-            analyserResult: analyserResultFixture,
-            classFull: classFullFixture,
-            assignmentId: 'a-1',
-            assignmentDefinitionPartials: [VALID_ASSIGNMENT_PARTIAL],
-            onBack: vi.fn(),
-            refetch,
-          })
-        )
-      )
-    );
+    renderTaskHeatmapPage(refetch);
 
     await waitFor(() => {
       expect(mockGetAssignment).toHaveBeenCalledWith(
@@ -74,24 +78,7 @@ describe('TaskHeatmapPage — assignment useQuery wiring', () => {
 
   it('passes null cellPreviewLookup and true isAssignmentLoading to TaskHeatmapTable while query is pending', async () => {
     mockGetAssignment.mockImplementation(() => new Promise<never>(() => {}));
-    render(
-      createElement(
-        QueryClientProvider,
-        { client: createTestQueryClient() },
-        createElement(
-          App,
-          null,
-          createElement(TaskHeatmapPage, {
-            analyserResult: analyserResultFixture,
-            classFull: classFullFixture,
-            assignmentId: 'a-1',
-            assignmentDefinitionPartials: [VALID_ASSIGNMENT_PARTIAL],
-            onBack: vi.fn(),
-            refetch: vi.fn(),
-          })
-        )
-      )
-    );
+    renderTaskHeatmapPage(vi.fn());
 
     await waitFor(() => expect(mockTaskHeatmapTable).toHaveBeenCalled());
     const properties = getHeatmapTableProperties();
@@ -100,24 +87,7 @@ describe('TaskHeatmapPage — assignment useQuery wiring', () => {
   });
 
   it('passes a non-null cellPreviewLookup to TaskHeatmapTable on query success', async () => {
-    render(
-      createElement(
-        QueryClientProvider,
-        { client: createTestQueryClient() },
-        createElement(
-          App,
-          null,
-          createElement(TaskHeatmapPage, {
-            analyserResult: analyserResultFixture,
-            classFull: classFullFixture,
-            assignmentId: 'a-1',
-            assignmentDefinitionPartials: [VALID_ASSIGNMENT_PARTIAL],
-            onBack: vi.fn(),
-            refetch: vi.fn(),
-          })
-        )
-      )
-    );
+    renderTaskHeatmapPage(vi.fn());
 
     await waitFor(() => {
       expect(getHeatmapTableProperties().cellPreviewLookup).toBeInstanceOf(Map);
@@ -126,72 +96,21 @@ describe('TaskHeatmapPage — assignment useQuery wiring', () => {
 
   it('passes showAssignmentError as true to TaskHeatmapTable when getAssignment rejects', async () => {
     mockGetAssignment.mockImplementation(() => Promise.reject(new Error('Network error')));
-    render(
-      createElement(
-        QueryClientProvider,
-        { client: createTestQueryClient() },
-        createElement(
-          App,
-          null,
-          createElement(TaskHeatmapPage, {
-            analyserResult: analyserResultFixture,
-            classFull: classFullFixture,
-            assignmentId: 'a-1',
-            assignmentDefinitionPartials: [VALID_ASSIGNMENT_PARTIAL],
-            onBack: vi.fn(),
-            refetch: vi.fn(),
-          })
-        )
-      )
-    );
+    renderTaskHeatmapPage(vi.fn());
 
     await waitFor(() => expect(getHeatmapTableProperties().showAssignmentError).toBe(true));
   });
 
   it('passes showAssignmentError as true to TaskHeatmapTable when getAssignment returns null', async () => {
     mockGetAssignment.mockImplementation(() => Promise.resolve(null));
-    render(
-      createElement(
-        QueryClientProvider,
-        { client: createTestQueryClient() },
-        createElement(
-          App,
-          null,
-          createElement(TaskHeatmapPage, {
-            analyserResult: analyserResultFixture,
-            classFull: classFullFixture,
-            assignmentId: 'a-1',
-            assignmentDefinitionPartials: [VALID_ASSIGNMENT_PARTIAL],
-            onBack: vi.fn(),
-            refetch: vi.fn(),
-          })
-        )
-      )
-    );
+    renderTaskHeatmapPage(vi.fn());
 
     await waitFor(() => expect(getHeatmapTableProperties().showAssignmentError).toBe(true));
   });
 
   it('calls both parent refetch and assignment refetch when Refresh button is clicked', async () => {
     const parentRefetch = vi.fn();
-    render(
-      createElement(
-        QueryClientProvider,
-        { client: createTestQueryClient() },
-        createElement(
-          App,
-          null,
-          createElement(TaskHeatmapPage, {
-            analyserResult: analyserResultFixture,
-            classFull: classFullFixture,
-            assignmentId: 'a-1',
-            assignmentDefinitionPartials: [VALID_ASSIGNMENT_PARTIAL],
-            onBack: vi.fn(),
-            refetch: parentRefetch,
-          })
-        )
-      )
-    );
+    renderTaskHeatmapPage(parentRefetch);
 
     await waitFor(() => expect(mockTaskHeatmapTable).toHaveBeenCalled());
     await user.click(screen.getByRole('button', { name: /refresh/i }));
@@ -202,24 +121,7 @@ describe('TaskHeatmapPage — assignment useQuery wiring', () => {
 
   it('logs the assignment fetch error exactly once via logFrontendError', async () => {
     mockGetAssignment.mockImplementation(() => Promise.reject(new Error('Fetch failed')));
-    render(
-      createElement(
-        QueryClientProvider,
-        { client: createTestQueryClient() },
-        createElement(
-          App,
-          null,
-          createElement(TaskHeatmapPage, {
-            analyserResult: analyserResultFixture,
-            classFull: classFullFixture,
-            assignmentId: 'a-1',
-            assignmentDefinitionPartials: [VALID_ASSIGNMENT_PARTIAL],
-            onBack: vi.fn(),
-            refetch: vi.fn(),
-          })
-        )
-      )
-    );
+    renderTaskHeatmapPage(vi.fn());
 
     await waitFor(() => {
       expect(mockLogFrontendError).toHaveBeenCalledWith('TaskHeatmapPage', expect.any(Error));
@@ -232,24 +134,7 @@ describe('TaskHeatmapPage — assignment useQuery wiring', () => {
 
   it('logs a warning when getAssignment returns null (not found)', async () => {
     mockGetAssignment.mockImplementation(() => Promise.resolve(null));
-    render(
-      createElement(
-        QueryClientProvider,
-        { client: createTestQueryClient() },
-        createElement(
-          App,
-          null,
-          createElement(TaskHeatmapPage, {
-            analyserResult: analyserResultFixture,
-            classFull: classFullFixture,
-            assignmentId: 'a-1',
-            assignmentDefinitionPartials: [VALID_ASSIGNMENT_PARTIAL],
-            onBack: vi.fn(),
-            refetch: vi.fn(),
-          })
-        )
-      )
-    );
+    renderTaskHeatmapPage(vi.fn());
 
     await waitFor(() => {
       expect(mockLogFrontendEvent).toHaveBeenCalledWith(
@@ -264,24 +149,7 @@ describe('TaskHeatmapPage — assignment useQuery wiring', () => {
 
   it('does not throw when Refresh is clicked while assignment query is pending; mock invoked at most once during the pre-first-settle window', async () => {
     mockGetAssignment.mockImplementation(() => new Promise<never>(() => {}));
-    render(
-      createElement(
-        QueryClientProvider,
-        { client: createTestQueryClient() },
-        createElement(
-          App,
-          null,
-          createElement(TaskHeatmapPage, {
-            analyserResult: analyserResultFixture,
-            classFull: classFullFixture,
-            assignmentId: 'a-1',
-            assignmentDefinitionPartials: [VALID_ASSIGNMENT_PARTIAL],
-            onBack: vi.fn(),
-            refetch: vi.fn(),
-          })
-        )
-      )
-    );
+    renderTaskHeatmapPage(vi.fn());
 
     await waitFor(() => expect(mockTaskHeatmapTable).toHaveBeenCalled());
     const refreshButton = screen.getByRole('button', { name: /refresh/i });

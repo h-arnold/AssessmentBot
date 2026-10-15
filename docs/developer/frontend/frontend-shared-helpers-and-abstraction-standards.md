@@ -65,6 +65,8 @@ Do not create a new helper only to move code out of a large file.
 - Classes batch-mutation shared types: `src/frontend/src/features/classes/bulk/batchMutationEngine.ts`
 - Classes metadata bulk-update helper: `src/frontend/src/features/classes/bulk/bulkMetadataUpdateFlow.ts`
 - Classes query refresh and invalidation contract helpers: `src/frontend/src/features/classes/bulk/queryInvalidation.ts`
+- Classes bulk-mutation outcome resolution: `src/frontend/src/features/classes/bulk/bulkMutationResolution.ts` — turns settled batch results into the alert, close and refresh-required UI state.
+- Classes bulk-mutation failure copy: `src/frontend/src/features/classes/bulk/bulkMutationFailureMessages.ts` — owns the `BulkFailureMessageCopy` type and the six pure action-specific failure-message builders (shared, create, delete, set-active, set-inactive, metadata) plus their user-facing copy. `bulkMutationResolution.ts` re-exports these bindings unchanged for compatibility, so existing consumers keep importing through it; new call sites import the failure-copy helpers from the owning module.
 - Reference-data workflow helpers: `src/frontend/src/features/referenceData/manageReferenceDataHelpers.ts`
 - Year-group presentation ordering: `src/frontend/src/features/referenceData/yearGroupSorting.ts` — source of truth for immutable, natural year-group ordering.
 - Classes bulk form modal scaffold: `src/frontend/src/features/classes/bulk/BulkFormModalScaffold.tsx` — three-caller shell owning reset-on-cancel, submit-on-OK, inline submission error rendering, and busy semantics.
@@ -79,9 +81,10 @@ Feature-scoped helpers should stay feature-scoped unless there is proven cross-f
 - `google.script.run` harness: `src/frontend/src/test/googleScriptRunHarness.ts`
 - Shared classes test fixtures/builders: `src/frontend/src/test/classes/classesTestHelpers.ts`
 - Classes Page test fixtures and rendering helpers (including `createFixtureClassPartial`, `createFixtureYearGroup`, `renderClassesPage`, `toPlainClassPartials`, and shared fixture constants): `src/frontend/src/test/classes/classesPageTestHelpers.tsx`
-- Classes bulk-set flow test helpers (exports `makeRow`, `assertQueuedBatchMutationCalledOnce`, `assertSingleSelectedRowEdit`): `src/frontend/src/test/classes/bulkFlowTestHelpers.ts` — shared by the `bulkSetYearGroup` and `bulkSetCohort` specs to keep the row-fixture and queued-batch-call assertion logic DRY.
-
-- Shared data-analysis test fixtures and assertion helpers: `src/frontend/src/test/dataAnalysis/` (fixtures, averaging analyser assertions). Placement follows the shared test helpers convention; cross-referenced from `docs/developer/frontend/frontend-testing.md`.
+- Classes panel and bulk test infrastructure: registration-only mock setup modules (the six `*.mockSetup.ts` files under `src/frontend/src/test/`) register identical `vi.mock` doubles once per spec family (pattern detail in `docs/developer/frontend/frontend-testing.md`); the panel family's doubles come from `createClassesManagementPanelMocks` (`classes/classesManagementPanelMockFactories.tsx`) and the bulk-panel factories `createBulkPanelMocks` / `createBulkQueueModuleMock` / `BULK_PANEL_COMPONENT_MOCKS` alongside `makeRow`, `assertQueuedBatchMutationCalledOnce` and `assertSingleSelectedRowEdit` in `classes/bulkFlowTestHelpers.ts`. The panel harness `createClassesManagementPanelHarness` (`classes/classesManagementPanelHarness.tsx`) owns the `ClassesManagementPanel.*.spec.tsx` `reset()` queue/modal behaviour, the `buildClassesManagementState` binding, the dynamic panel render, and the shared `MutableQueueState` type.
+- Class-page fixtures and hook helpers: `src/frontend/src/test/classPage/classPageFixtures.ts` (ready `ClassPageData` and adapter fixtures, imported statically by the Class page composition specs), `useClassPageDataTestFixtures.ts` (pure query/dataset builders plus the shared `createClassPageDataWrapper` provider wrapper, imported statically by the hook specs), and `useClassPageDataMockHandles.ts` (`createUseClassPageDataMockHandles()` binds the typed mocked hook dependencies for the main, blocking, and memoisation hook specs; the assignment-queries spec keeps its own bindings and the diagnostics spec declares local hoisted mocks).
+- Auth gate test helpers: `src/frontend/src/test/auth/appAuthGateTestHelpers.tsx` — the access-result fixtures, `EMPTY_STARTUP_WARMUP_RESULT`, and `createQueryWrapper()`, imported statically by the auth-gate specs; `auth/appAuthGate.mockSetup.ts` registers their doubles (`AppAuthGate.auth` keeps its local hoisted mocks).
+- Shared data-analysis test fixtures and assertion helpers: `src/frontend/src/test/dataAnalysis/` (fixtures, averaging analyser assertions), including the focused one-class/one-student `buildSingleStudentInput` builder. Placement follows the shared test helpers convention; cross-referenced from `docs/developer/frontend/frontend-testing.md`.
 - Shared document-order button-name helpers for placement assertions: `src/frontend/src/test/shared/buttonOrderingTestHelpers.ts` (exports `getAccessibleButtonNames` and `getAccessibleButtonIndex`), so specs assert relative action placement against the same accessible names.
 - Production page copy for assertions: `src/frontend/src/pages/pageContent.ts` — reuse the stable headings and summaries from here instead of mirroring them in tests.
 
@@ -112,6 +115,7 @@ Test helper placement rules remain governed by `docs/developer/frontend/frontend
 
 - Assignment transport: `src/frontend/src/services/assignmentAssessment/` — the `getAssignment` service (`assignmentAssessmentService.ts`) plus `AssignmentFullSchema` / `AssignmentFullResponseSchema` validation (`assignmentAssessment.zod.ts`).
 - Effective weighting: `src/frontend/src/services/assignmentDefinition/assignmentDefinitionUtilities.ts` — `TaskWeightingIndex` and `computeEffectiveWeight`, the single effective-weight resolver for analyser accumulation and heatmap column projection.
+- Assignment-weighting coercion: `src/frontend/src/services/assignmentDefinition/assignmentDefinitionUtilities.ts` — `coerceAssignmentWeighting(value: unknown): number`, which returns every primitive number unchanged and falls back to the schema-owned `DEFAULT_WEIGHTING_VALUE` only for non-numbers. It is **distinct from `computeEffectiveWeight`** (different nullable/validation semantics) and is the form-level coercion consumed by the wizard dirty checks, the save/reparse builders and recovery approval. The legacy `assignmentWizardFormState.ts` export path re-exports the same binding and must be retained for existing consumers.
 
 ## 4. Extraction decision rules
 
@@ -197,7 +201,7 @@ Rules for new entries:
 - **9.8 One-off destructive confirmations** — `src/frontend/src/features/classes/bulk/BulkDeleteModal.tsx` and `src/frontend/src/pages/AssignmentsPage.tsx` stay workflow-specific; no shared confirmation wrapper.
 - **9.11 Classes page grouped view-model** — keep local to `src/frontend/src/pages/classesPageModel.ts`; do not widen the Settings Classes helper family, which serves different merge and workflow needs.
 - **9.14 Topic existence check** — single-caller one-liner in `src/frontend/src/features/classes/AssessTaskModal/AssessTaskModal.tsx`; no existing helper matches the contract.
-- **9.16 / 9.16a AssessTask link and skeleton helpers** — `matchDefinitionForAssignment.ts`, `getLinkableDefinitionsForModal.ts`, `LinkableDefinitionList.tsx`, `AssignmentSelectSkeleton.tsx`, and `stringComparison.ts` stay in `src/frontend/src/features/classes/AssessTaskModal/`; two or three in-modal callers each, so they are not promoted.
+- **9.16 / 9.16a AssessTask link and skeleton helpers** — `matchDefinitionForAssignment.ts`, `getLinkableDefinitionsForModal.ts`, `LinkableDefinitionList.tsx` (which also exports the `LinkExistingDefinitionButton` availability leaf), `AssignmentSelectSkeleton.tsx`, and `stringComparison.ts` stay in `src/frontend/src/features/classes/AssessTaskModal/`; two or three in-modal callers each, so they are not promoted.
 - **9.19 Class page and task-heatmap surface** — every adapter, model, hook, dispatcher, presentational component, zero-weight header, and E2E scenario helper under `src/frontend/src/features/classPage/**` and `src/frontend/src/features/taskHeatmap/**` stays feature-local per Section 6; promotion requires a documented cross-feature caller.
 
 ### Rejected and superseded designs
@@ -237,10 +241,10 @@ Delivered design decisions for the issue #19 task-preview source link; each entr
 
 ## 10. Frontend utils folder convention
 
-The `src/frontend/src/utils/` folder exists for pure formatting / utility functions that are shared across the frontend. This folder is a separate convention from `src/frontend/AGENTS.md` §13, which governs only `services/` subfolder organisation.
+The `src/frontend/src/utils/` folder exists for pure formatting / utility functions that are shared across the frontend. This folder is a separate convention from `src/frontend/AGENTS.md` §14, which governs only `services/` subfolder organisation.
 
 ### Rules
 
 - **Pure functions only.** Files in `utils/` must have no React, Ant Design, I/O, or state dependencies. They are plain TypeScript modules exporting typed pure functions.
-- **No `src/frontend/AGENTS.md` §13 governance.** The §13 subfolder-by-domain-prefix rule applies only to `services/`. The `utils/` folder is a flat namespace; files are named by the domain they format (e.g. `dateFormatting.ts`). A future subfolder reorganisation may be considered if the folder exceeds 5–6 files, but no barrel exports (`index.ts`) are created in v1 — consumers import directly.
+- **No `src/frontend/AGENTS.md` §14 governance.** The §14 subfolder-by-domain-prefix rule applies only to `services/`. The `utils/` folder is a flat namespace; files are named by the domain they format (e.g. `dateFormatting.ts`). A future subfolder reorganisation may be considered if the folder exceeds 5–6 files, but no barrel exports (`index.ts`) are created in v1 — consumers import directly.
 - **First entry:** `dateFormatting.ts` — exports `formatUpdatedAtLabel(updatedAt: string | null): string` (`en-GB`, date-only, rendered in UTC; em-dash fallback for null or unparseable input). The Class page adapter deliberately does not use the fallback: it throws upstream on null or unparseable input.

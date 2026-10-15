@@ -52,7 +52,7 @@ Object.defineProperty(globalThis, 'matchMedia', {
   writable: true,
 });
 
-Object.defineProperty(globalThis.window, 'matchMedia', {
+Object.defineProperty(document.defaultView, 'matchMedia', {
   configurable: true,
   value: createMatchMediaMock,
   writable: true,
@@ -112,12 +112,12 @@ function readInlineStyles(element: Element): Record<string, string> {
 
   for (const declaration of styleAttribute.split(';')) {
     const colonIndex = declaration.indexOf(':');
-    if (colonIndex > 0) {
-      const property = declaration.slice(0, Math.max(0, colonIndex)).trim();
-      const value = declaration.slice(Math.max(0, colonIndex + 1)).trim();
-      if (property && value) {
-        styles[property] = value;
-      }
+    if (colonIndex <= 0) continue;
+
+    const property = declaration.slice(0, Math.max(0, colonIndex)).trim();
+    const value = declaration.slice(Math.max(0, colonIndex + 1)).trim();
+    if (property && value) {
+      styles[property] = value;
     }
   }
   return styles;
@@ -217,7 +217,7 @@ Object.defineProperty(globalThis, 'getComputedStyle', {
   writable: true,
 });
 
-Object.defineProperty(globalThis.window, 'getComputedStyle', {
+Object.defineProperty(document.defaultView, 'getComputedStyle', {
   configurable: true,
   value: getComputedStyleMock,
   writable: true,

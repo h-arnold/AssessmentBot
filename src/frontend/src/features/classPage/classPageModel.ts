@@ -48,14 +48,15 @@ function buildMetricComparator(
   column: MetricColumnKey,
   direction: 'asc' | 'desc'
 ): (a: StudentAverageRowModel, b: StudentAverageRowModel) => number {
-  return (a, b) =>
-    compareMetricsByStateRank(
+  return (a, b) => {
+    return compareMetricsByStateRank(
       getStudentMetric(a.metrics, column),
       getStudentMetric(b.metrics, column),
       a.studentId,
       b.studentId,
       direction
     );
+  };
 }
 
 // ---------------------------------------------------------------------------

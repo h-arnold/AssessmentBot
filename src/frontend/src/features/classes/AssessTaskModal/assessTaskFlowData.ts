@@ -44,8 +44,12 @@ export type CacheValidationError = {
 };
 
 export type ValidatedCachedData =
-  | { kind: 'valid'; classPartial: ClassPartial; definitionPartials: AssignmentDefinitionPartial[] }
-  | CacheValidationError;
+  | CacheValidationError
+  | {
+      kind: 'valid';
+      classPartial: ClassPartial;
+      definitionPartials: AssignmentDefinitionPartial[];
+    };
 
 export type WizardInitialValues = Readonly<{
   title?: string;
@@ -55,7 +59,7 @@ export type WizardInitialValues = Readonly<{
 
 /** Either the validated definition partials or the cache failure that blocks them. */
 export type ValidatedDefinitionPartials =
-  { kind: 'valid'; definitionPartials: AssignmentDefinitionPartial[] } | CacheValidationError;
+  CacheValidationError | { kind: 'valid'; definitionPartials: AssignmentDefinitionPartial[] };
 
 /**
  * Reads definition partials from the React Query cache and validates that
@@ -279,8 +283,8 @@ export function resolveReRunTarget(parameters: {
   }
 
   if (
-    !definitionValidation.definitionPartials.some(
-      (partial) => partial.definitionKey === definitionKey
+    definitionValidation.definitionPartials.every(
+      (partial) => partial.definitionKey !== definitionKey
     )
   ) {
     return {

@@ -141,10 +141,11 @@ function pruneStaleEntries_(store, stalenessThresholdMs, referenceTimeMs = Date.
   const cutoffMs = referenceTimeMs - stalenessThresholdMs;
   const prunedIds = [];
   for (const [id, entry] of Object.entries(store)) {
-    if (entry.status === 'started' && entry.startedAtMs < cutoffMs) {
-      delete store[id];
-      prunedIds.push(id);
+    if (entry.status !== 'started' || entry.startedAtMs >= cutoffMs) {
+      continue;
     }
+    delete store[id];
+    prunedIds.push(id);
   }
   return { store, prunedIds };
 }

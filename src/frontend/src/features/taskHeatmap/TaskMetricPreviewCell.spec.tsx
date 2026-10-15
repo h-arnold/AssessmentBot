@@ -16,7 +16,6 @@
 import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest';
 import { render, cleanup, waitFor, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import type { ComponentProps } from 'react';
 
 import { TaskMetricPreviewCell } from './TaskMetricPreviewCell';
 import { buildMetricCellAccessibleLabel } from './taskHeatmapTableColumns';
@@ -29,9 +28,11 @@ import { formatMetricDisplayText } from '../../services/dataAnalysis/metricDispl
 import { APP_GAP_XS } from '../../theme/spacing';
 import type * as TaskPreviewDataModule from './assembleTaskPreviewData';
 
-const { assembleTaskPreviewDataSpy } = vi.hoisted(() => ({
-  assembleTaskPreviewDataSpy: vi.fn(),
-}));
+const { assembleTaskPreviewDataSpy } = vi.hoisted(() => {
+  return {
+    assembleTaskPreviewDataSpy: vi.fn(),
+  };
+});
 
 vi.mock('./assembleTaskPreviewData', async (importOriginal) => {
   const actual = await importOriginal<typeof TaskPreviewDataModule>();
@@ -66,15 +67,12 @@ afterEach(() => {
   cleanup();
 });
 
-type CellProperties = ComponentProps<typeof TaskMetricPreviewCell>;
-
 /**
  * Render `TaskMetricPreviewCell` with the inputs the column builder supplies.
  *
- * @param {Partial<CellProperties>} [overrides] - Per-test prop overrides.
  * @returns {ReturnType<typeof render>} The Testing Library render result.
  */
-function renderCell(overrides: Partial<CellProperties> = {}): ReturnType<typeof render> {
+function renderCell(): ReturnType<typeof render> {
   return render(
     <TaskMetricPreviewCell
       accessibleLabel={ACCESSIBLE_LABEL}
@@ -85,7 +83,6 @@ function renderCell(overrides: Partial<CellProperties> = {}): ReturnType<typeof 
       taskId={TASK_ID}
       isLoading={false}
       hasError={false}
-      {...overrides}
     />
   );
 }

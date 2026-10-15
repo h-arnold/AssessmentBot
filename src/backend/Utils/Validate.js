@@ -57,8 +57,8 @@ const Validate = {
     // Basic RFC 5322-ish regex adapted for practicality (no catastrophic backtracking)
     // eslint-disable-next-line security/detect-unsafe-regex -- anchored practical email validation with no nested unbounded alternation; false positive.
     const emailPattern = /^[\w!#$%&'*+./=?^`{|}~-]+@[\dA-Za-z-]+(?:\.[\dA-Za-z-]+)*$/u;
-    const result = emailPattern.test(email.trim());
-    if (!result) {
+    const isEmailValid = emailPattern.test(email.trim());
+    if (!isEmailValid) {
       try {
         ProgressTracker.getInstance().logError(`Invalid teacher email: ${email}`);
       } catch (error) {
@@ -66,7 +66,7 @@ const Validate = {
         ABLogger.getInstance().warn('Invalid teacher email', error);
       }
     }
-    return result;
+    return isEmailValid;
   },
 
   /**
@@ -85,8 +85,8 @@ const Validate = {
     // Fallback: alphanumeric identifiers (allow -, _ and .) with reasonable length
     const alnum = /^[\w.-]{6,64}$/u;
 
-    const result = digitsOnly.test(string_) || alnum.test(string_);
-    if (!result) {
+    const isUserIdValid = digitsOnly.test(string_) || alnum.test(string_);
+    if (!isUserIdValid) {
       try {
         ProgressTracker.getInstance().logError(`Invalid Google userId: ${userId}`);
       } catch (error) {
@@ -94,14 +94,14 @@ const Validate = {
         ABLogger.getInstance().warn('Invalid Google userId', error);
       }
     }
-    return result;
+    return isUserIdValid;
   },
 
   /**
    * Validates an HTTPS URL string.
    *
    * Rules:
-   * - Protocol must be https
+   * - Protocol must be HTTPS
    * - Host must be a DNS hostname (not an IP address and not localhost)
    * - Port numbers are not permitted
    *
@@ -112,8 +112,7 @@ const Validate = {
     if (typeof url !== 'string') return false;
 
     const trimmed = url.trim();
-    if (trimmed.length === 0) return false;
-    if (/\s/u.test(trimmed)) return false;
+    if (trimmed.length === 0 || /\s/u.test(trimmed)) return false;
 
     const match = /^https:\/\/([\d.A-Za-z-]+)(?:[#/?]|$)/u.exec(trimmed);
     if (!match) {
@@ -126,8 +125,7 @@ const Validate = {
     }
 
     const hostname = match[1].toLowerCase();
-    if (hostname.length === 0) return false;
-    if (hostname === 'localhost') return false;
+    if (hostname === 'localhost' || hostname.length === 0) return false;
 
     // Reject IP addresses (including public) - we only accept hostnames.
     if (Validate._isIPv4(hostname)) return false;
@@ -135,13 +133,12 @@ const Validate = {
     // Minimal DNS hostname validation.
     if (hostname.length > HOSTNAME_MAX_LENGTH) return false;
     const labels = hostname.split('.');
-    if (labels.length < MIN_HOSTNAME_LABEL_COUNT) return false;
-    if (labels.some((label) => label.length === 0 || label.length > HOSTNAME_LABEL_MAX_LENGTH))
-      return false;
-    if (labels.some((label) => label.startsWith('-') || label.endsWith('-'))) return false;
-    if (labels.some((label) => !/^[\da-z-]+$/u.test(label))) return false;
-
-    return true;
+    return !(
+      labels.length < MIN_HOSTNAME_LABEL_COUNT ||
+      labels.some((label) => label.length === 0 || label.length > HOSTNAME_LABEL_MAX_LENGTH) ||
+      labels.some((label) => label.startsWith('-') || label.endsWith('-')) ||
+      labels.some((label) => !/^[\da-z-]+$/u.test(label))
+    );
   },
 
   /**
@@ -153,8 +150,7 @@ const Validate = {
     const ipv4Exec = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/u.exec(hostname);
     if (!ipv4Exec) return false;
     const octets = [ipv4Exec[1], ipv4Exec[2], ipv4Exec[3], ipv4Exec[4]].map(Number);
-    if (octets.some((o) => Number.isNaN(o) || o < 0 || o > IPV4_OCTET_MAX_VALUE)) return false;
-    return true;
+    return octets.every((o) => !Number.isNaN(o) && o >= 0 && o <= IPV4_OCTET_MAX_VALUE);
   },
 
   /**
@@ -183,7 +179,7 @@ const Validate = {
   },
 
   /**
-   * Validates that a value is an integer within a specified range.
+   * Validates that a value parses to a safe integer within a specified range. Unsafe numeric inputs are rejected before prefix parsing.
    * @param {string} label - Human-readable label for error messaging.
    * @param {*} value - Value to validate.
    * @param {number} min - Minimum allowed value (inclusive).
@@ -192,8 +188,11 @@ const Validate = {
    * @throws {Error} If value is not an integer or is outside the specified range.
    */
   validateIntegerInRange(label, value, min, max) {
+    if (typeof value === 'number' && Math.abs(value) > Number.MAX_SAFE_INTEGER) {
+      throw new Error(`${label} must be an integer between ${min} and ${max}.`);
+    }
     const parsed = Number.parseInt(value, 10);
-    if (!Number.isInteger(parsed) || parsed < min || parsed > max) {
+    if (!Number.isSafeInteger(parsed) || parsed < min || parsed > max) {
       throw new Error(`${label} must be an integer between ${min} and ${max}.`);
     }
     return parsed;

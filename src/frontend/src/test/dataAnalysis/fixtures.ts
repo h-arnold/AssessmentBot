@@ -391,12 +391,12 @@ function buildLiveDefinitionPartials(
     }
   }
 
-  return [...taskIdsByDefinitionKey].map(([definitionKey, taskIds]) =>
-    createDefinitionPartial({
+  return [...taskIdsByDefinitionKey].map(([definitionKey, taskIds]) => {
+    return createDefinitionPartial({
       definitionKey,
       tasks: [...taskIds].map((taskId) => createTaskPartial(taskId)),
-    })
-  );
+    });
+  });
 }
 
 /**
@@ -429,4 +429,39 @@ export function buildInput(
       additionalOverrides?.assignmentDefinitionPartials ?? uniqueDefinitionPartials,
     ...additionalOverrides,
   };
+}
+
+/**
+ * Build a one-class, one-student input for focused service/analyser cases.
+ * @param {Record<string, { score: number | 'N' }>} assessments - Criterion scores.
+ * @param {Partial<AveragingAnalyserInput>} [additionalOverrides] - Optional input overrides.
+ * @returns {AveragingAnalyserInput} A valid focused analysis input.
+ */
+export function buildSingleStudentInput(
+  assessments: Record<string, { score: number | 'N' }>,
+  additionalOverrides?: Partial<AveragingAnalyserInput>
+): AveragingAnalyserInput {
+  const classId = 'c_001';
+  const studentId = 's_001';
+  const studentName = 'Alice';
+  const assignmentId = 'a_001';
+  const item = createSubmissionItem('t_001', assessments);
+  const submission = createSubmission(studentId, studentName, assignmentId, { t_001: item });
+  const assignment = createAssignmentPartial({
+    assignmentId,
+    definitionKey: 'dk_algebra',
+    tasks: [createTaskPartial('t_001')],
+    submissions: [submission],
+  });
+  return buildInput(
+    [
+      {
+        classId,
+        className: 'Test Class',
+        studentIds: [studentId],
+        assignments: [assignment],
+      },
+    ],
+    additionalOverrides
+  );
 }

@@ -42,7 +42,7 @@ export function useAuthorisationStatus(): AuthorisationStatus {
     };
   }
 
-  const isAuthorised = authQuery.data === true;
+  const isAuthorised = authQuery.data;
 
   return {
     isAuthorised,

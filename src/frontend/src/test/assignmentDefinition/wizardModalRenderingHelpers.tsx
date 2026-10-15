@@ -107,7 +107,7 @@ function getModalNamePattern(mode: WizardModalMode): RegExp {
  * @param {WizardModalMode} mode The modal mode.
  * @param {string | null} definitionKey The definition key.
  * @param {() => void} onClose The onClose handler.
- * @param {boolean} open Whether the modal is open.
+ * @param {boolean} isOpen Whether the modal is open.
  * @param {FrontendProvidersOptions['warmupState']} warmupState Warmup state.
  * @param {Record<string, unknown>} [extraProperties] Optional extra props to pass to the component.
  * @returns {Promise<ReturnType<typeof renderWithFrontendProviders>>} Render result.
@@ -116,7 +116,7 @@ async function renderModalComponent(
   mode: WizardModalMode,
   definitionKey: string | null,
   onClose: () => void,
-  open: boolean,
+  isOpen: boolean,
   warmupState: FrontendProvidersOptions['warmupState'],
   extraProperties?: Record<string, unknown>
 ): Promise<ReturnType<typeof renderWithFrontendProviders>> {
@@ -126,7 +126,7 @@ async function renderModalComponent(
     mode,
     definitionKey,
     onClose,
-    open,
+    open: isOpen,
     ...extraProperties,
   };
 

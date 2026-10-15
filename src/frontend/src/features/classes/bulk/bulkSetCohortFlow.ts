@@ -13,10 +13,12 @@ import type { ClassesManagementRow } from '../classesManagementViewModel';
 export function getActiveCohortOptions(cohorts: Cohort[]): Array<{ label: string; value: string }> {
   return cohorts
     .filter((cohort) => cohort.active)
-    .map((cohort) => ({
-      label: cohort.name,
-      value: cohort.key,
-    }));
+    .map((cohort) => {
+      return {
+        label: cohort.name,
+        value: cohort.key,
+      };
+    });
 }
 
 /**

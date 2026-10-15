@@ -111,7 +111,7 @@ async function mockPendingGoogleScriptRun(page: Page) {
               return;
             }
 
-            if (request?.method === 'getAuthorisationStatus') {
+            if (request?.method === 'hasScriptAuthorisation') {
                // AppAuthGate (wrapping the whole app in main.tsx) blocks the shell until
                // authorisation and startup warm-up have resolved, so this shell fixture supplies
                // valid empty responses for every warm-up dataset.

@@ -18,7 +18,7 @@ export function ClassesAlertStack(properties: Readonly<ClassesAlertStackProperti
     properties.nonBlockingWarningMessage != null ||
     properties.refreshRequiredMessage != null;
 
-  if (hasAnyAlert === false) {
+  if (!hasAnyAlert) {
     return null;
   }
 

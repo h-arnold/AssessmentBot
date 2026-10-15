@@ -124,7 +124,7 @@ function buildModalProperties(overrides: ReRunModalProperties = {}) {
   return {
     ...defaultProperties(),
     open,
-    ...(reRunContext === undefined ? {} : { reRunContext }),
+    ...(reRunContext !== undefined && { reRunContext }),
   };
 }
 
@@ -176,10 +176,12 @@ beforeEach(() => {
   vi.mocked(getGoogleClassroomAssignments).mockImplementation(() =>
     Promise.resolve(MOCK_ASSIGNMENTS)
   );
-  vi.mocked(findMatchingDefinition).mockImplementation(() => ({
-    kind: 'matched',
-    definition: createDefinitionPartial({ definitionKey: PERSISTED_DEFINITION_KEY }),
-  }));
+  vi.mocked(findMatchingDefinition).mockImplementation(() => {
+    return {
+      kind: 'matched',
+      definition: createDefinitionPartial({ definitionKey: PERSISTED_DEFINITION_KEY }),
+    };
+  });
   vi.mocked(startAssessmentRun).mockImplementation(() => Promise.resolve(null));
   vi.mocked(getAssignmentDefinition).mockImplementation(() => Promise.resolve(RECOVERY_DEFINITION));
   vi.mocked(getAssignmentTopics).mockImplementation(() => Promise.resolve([]));
@@ -215,14 +217,16 @@ describe('AssessTaskModal — Re-run Assessment entry', () => {
     vi.mocked(getGoogleClassroomAssignments).mockImplementation(() =>
       Promise.resolve(RENAMED_ASSIGNMENTS)
     );
-    vi.mocked(findMatchingDefinition).mockImplementation(() => ({
-      kind: 'matched',
-      definition: createDefinitionPartial({
-        definitionKey: DECOY_DEFINITION_KEY,
-        primaryTitle: 'Renamed Essay',
-        primaryTopic: 'Renamed Topic',
-      }),
-    }));
+    vi.mocked(findMatchingDefinition).mockImplementation(() => {
+      return {
+        kind: 'matched',
+        definition: createDefinitionPartial({
+          definitionKey: DECOY_DEFINITION_KEY,
+          primaryTitle: 'Renamed Essay',
+          primaryTopic: 'Renamed Topic',
+        }),
+      };
+    });
 
     const { dialog } = renderReRunModal({
       reRunContext: RE_RUN_CONTEXT,

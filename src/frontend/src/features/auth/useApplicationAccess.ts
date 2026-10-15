@@ -15,9 +15,9 @@ import type { ApplicationAccess } from '../../services/authService/authService.z
  * resolves, so `getApplicationAccess` only fires after authorisation rather than on the
  * first render.
  *
- * @param {boolean} enabled Whether the access query should run. Defaults to `true`.
+ * @param {boolean} isEnabled Whether the access query should run. Defaults to `true`.
  * @returns {UseQueryResult<ApplicationAccess>} The application access query result.
  */
-export function useApplicationAccess(enabled = true): UseQueryResult<ApplicationAccess> {
-  return useQuery({ ...getApplicationAccessQueryOptions(), enabled });
+export function useApplicationAccess(isEnabled = true): UseQueryResult<ApplicationAccess> {
+  return useQuery({ ...getApplicationAccessQueryOptions(), enabled: isEnabled });
 }

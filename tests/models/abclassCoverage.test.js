@@ -75,6 +75,29 @@ describe('ABClass construction behaviour', () => {
     expect(ABClass._parseNullableInt('6', 9)).toBe(6);
     expect(ABClass._parseNullableInt('bad', 9)).toBe(9);
   });
+
+  it('rejects unsafe numeric course lengths without prefix-parsing them', () => {
+    for (const courseLength of [
+      Number.MAX_SAFE_INTEGER + 1,
+      -(Number.MAX_SAFE_INTEGER + 1),
+      1e21,
+      -1e21,
+    ]) {
+      expect(ABClass._parseNullableInt(courseLength, 7)).toBe(7);
+      expect(new ABClass({ classId: 'unsafe-course', courseLength }).courseLength).toBe(1);
+      expect(ABClass.fromJSON({ classId: 'unsafe-course', courseLength }).courseLength).toBe(1);
+    }
+    expect(ABClass._parseNullableInt('3years', 7)).toBe(3);
+    expect(ABClass._parseNullableInt('1e21', 7)).toBe(1);
+    expect(ABClass._parseNullableInt(3.9, 7)).toBe(3);
+    expect(ABClass._parseNullableInt(Infinity, 7)).toBe(7);
+    expect(ABClass._parseNullableInt(NaN, 7)).toBe(7);
+    expect(ABClass._parseNullableInt(null, 7)).toBe(7);
+    expect(ABClass._parseNullableInt(undefined, 7)).toBe(7);
+    expect(ABClass._parseNullableInt(Number.MAX_SAFE_INTEGER, 7)).toBe(Number.MAX_SAFE_INTEGER);
+    expect(ABClass._parseNullableInt(Number.MIN_SAFE_INTEGER, 7)).toBe(Number.MIN_SAFE_INTEGER);
+    expect(new ABClass({ classId: 'missing-course' }).courseLength).toBe(1);
+  });
 });
 
 describe('ABClass owner behaviour', () => {

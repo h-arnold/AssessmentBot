@@ -45,7 +45,8 @@ export function BulkSetCourseLengthModal(properties: BulkSetCourseLengthModalPro
       onFinish={handleFinish}
       fallbackErrorMessage="Unable to update the selected classes."
     >
-      {({ disabled }) => (
+      {({ disabled }) => {
+        return (
         <Form.Item
           label="Course length"
           name="courseLength"
@@ -67,7 +68,8 @@ export function BulkSetCourseLengthModal(properties: BulkSetCourseLengthModalPro
             style={{ width: '100%' }}
           />
         </Form.Item>
-      )}
+        );
+      }}
     </BulkFormModalScaffold>
   );
 }

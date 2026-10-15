@@ -34,16 +34,16 @@ Do not combine these concerns in a single string.
 Use the backend API envelope as the frontend transport contract:
 
 - Success: `{ ok: true, requestId, data, meta? }`
-- Error: `{ ok: false, requestId, error: { code, message, retriable?, details? }, meta? }`
+- Error: `{ ok: false, requestId, error: { code, message, isRetriable?, details? }, meta? }`
 
 `callApi` is the only transport boundary for frontend feature code. Keep backend method wiring and envelope parsing there.
 
-`ApiTransportError` exposes the typed envelope fields (`requestId`, `code`, `retriable`, `meta`) and preserves the optional structured `error.details` block, so feature code can consume structured diagnostics without reaching back into the raw envelope.
+`ApiTransportError` exposes the typed envelope fields (`requestId`, `code`, `isRetriable`, `meta`) and preserves the optional structured `error.details` block, so feature code can consume structured diagnostics without reaching back into the raw envelope.
 
 Recommended flow:
 
 1. `callApi` validates request and response envelopes.
-2. `callApi` throws typed transport errors with request metadata (`requestId`, `code`, `retriable`, `meta`).
+2. `callApi` throws typed transport errors with request metadata (`requestId`, `code`, `isRetriable`, `meta`).
 3. Feature hooks/services map transport errors into UI-safe view models.
 4. Components render only mapped user-safe copy.
 

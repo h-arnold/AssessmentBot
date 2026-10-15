@@ -75,16 +75,19 @@ const MERGED_SECONDARY_TASK_SCORE = 3;
 function buildMergedRows(taskCount: number): MergedHeatmapResult['rows'] {
   const studentNames = ['Student One', 'Student Two', 'Student Three'];
   const studentIds = ['s-1', 's-2', 's-3'];
-  return studentIds.map((studentId, index) => ({
-    studentId,
-    studentName: studentNames[index]!,
-    cells: Array.from({ length: taskCount }, (_, taskIndex) =>
-      buildCell({
-        completenessValue:
-          taskIndex === 0 ? MERGED_PRIMARY_TASK_SCORE : MERGED_SECONDARY_TASK_SCORE,
-      })
-    ),
-  }));
+  return studentIds.map((studentId, index) => {
+    return {
+      studentId,
+      studentName: studentNames[index]!,
+      cells: Array.from({ length: taskCount }, (_, taskIndex) => {
+        return buildCell({
+          completenessValue:
+            taskIndex === 0 ? MERGED_PRIMARY_TASK_SCORE : MERGED_SECONDARY_TASK_SCORE,
+        });
+      }
+      ),
+    };
+  });
 }
 
 /**

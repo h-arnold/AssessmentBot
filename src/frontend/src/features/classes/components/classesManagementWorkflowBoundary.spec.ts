@@ -20,7 +20,7 @@ import {
 
 describe('isClassesWorkflowMutationBoundaryActive', () => {
   it('returns false when all submitting flags are false', () => {
-    const result = isClassesWorkflowMutationBoundaryActive({
+    const isBoundaryActive = isClassesWorkflowMutationBoundaryActive({
       createSubmitting: false,
       deleteSubmitting: false,
       setActiveSubmitting: false,
@@ -30,11 +30,11 @@ describe('isClassesWorkflowMutationBoundaryActive', () => {
       setYearGroupSubmitting: false,
     });
 
-    expect(result).toBe(false);
+    expect(isBoundaryActive).toBe(false);
   });
 
   it('returns true when any submitting flag is true', () => {
-    const result = isClassesWorkflowMutationBoundaryActive({
+    const isBoundaryActive = isClassesWorkflowMutationBoundaryActive({
       createSubmitting: false,
       deleteSubmitting: true,
       setActiveSubmitting: false,
@@ -44,11 +44,11 @@ describe('isClassesWorkflowMutationBoundaryActive', () => {
       setYearGroupSubmitting: false,
     });
 
-    expect(result).toBe(true);
+    expect(isBoundaryActive).toBe(true);
   });
 
   it('returns true when a different submitting flag is true', () => {
-    const result = isClassesWorkflowMutationBoundaryActive({
+    const isBoundaryActive = isClassesWorkflowMutationBoundaryActive({
       createSubmitting: false,
       deleteSubmitting: false,
       setActiveSubmitting: false,
@@ -58,33 +58,33 @@ describe('isClassesWorkflowMutationBoundaryActive', () => {
       setYearGroupSubmitting: false,
     });
 
-    expect(result).toBe(true);
+    expect(isBoundaryActive).toBe(true);
   });
 });
 
 describe('shouldSuppressClassesTableData', () => {
   it('returns true when suppressStaleTableData is true', () => {
-    const result = shouldSuppressClassesTableData(true, null);
+    const shouldSuppressTableData = shouldSuppressClassesTableData(true, null);
 
-    expect(result).toBe(true);
+    expect(shouldSuppressTableData).toBe(true);
   });
 
   it('returns true when refreshRequiredMessage is non-null', () => {
-    const result = shouldSuppressClassesTableData(false, 'Please refresh.');
+    const shouldSuppressTableData = shouldSuppressClassesTableData(false, 'Please refresh.');
 
-    expect(result).toBe(true);
+    expect(shouldSuppressTableData).toBe(true);
   });
 
   it('returns false when both inputs are falsy', () => {
-    const result = shouldSuppressClassesTableData(false, null);
+    const shouldSuppressTableData = shouldSuppressClassesTableData(false, null);
 
-    expect(result).toBe(false);
+    expect(shouldSuppressTableData).toBe(false);
   });
 
   it('returns true when both inputs are truthy', () => {
-    const result = shouldSuppressClassesTableData(true, 'Please refresh.');
+    const shouldSuppressTableData = shouldSuppressClassesTableData(true, 'Please refresh.');
 
-    expect(result).toBe(true);
+    expect(shouldSuppressTableData).toBe(true);
   });
 });
 

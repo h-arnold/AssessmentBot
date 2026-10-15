@@ -40,7 +40,7 @@ const DELETE_DIALOG_LABEL_ID = 'manage-cohorts-delete-dialog-title';
 function buildCohortColumns(options: Readonly<{
   onEdit: (cohort: Cohort) => void;
   onDelete: (cohort: Cohort) => void;
-  onToggleActive: (cohort: Cohort, checked: boolean) => void;
+  onToggleActive: (cohort: Cohort, isChecked: boolean) => void;
 }>): TableColumnType<Cohort>[] {
   return [
     {
@@ -61,19 +61,22 @@ function buildCohortColumns(options: Readonly<{
     {
       title: 'Active',
       key: 'active',
-      render: (_value: unknown, cohort: Cohort) => (
-        <Switch
-          checked={cohort.active}
-          onChange={(checked) => {
-            options.onToggleActive(cohort, checked);
-          }}
-        />
-      ),
+      render: (_value: unknown, cohort: Cohort) => {
+        return (
+          <Switch
+            checked={cohort.active}
+            onChange={(checked) => {
+              options.onToggleActive(cohort, checked);
+            }}
+          />
+        );
+      },
     },
     {
       title: 'Actions',
       key: 'actions',
-      render: (_value: unknown, cohort: Cohort) => (
+      render: (_value: unknown, cohort: Cohort) => {
+        return (
         <Space>
           <Button
             onClick={() => {
@@ -91,7 +94,8 @@ function buildCohortColumns(options: Readonly<{
             Delete
           </Button>
         </Space>
-      ),
+        );
+      },
     },
   ];
 }

@@ -14,13 +14,13 @@ describe('per-student row naming boundaries', () => {
       ],
     ]);
 
-    expect(() =>
-      buildPerStudentRows(studentAccums, new Map(), {
+    expect(() => {
+      return buildPerStudentRows(studentAccums, new Map(), {
         completeness: 0.4,
         accuracy: 0.4,
         spag: 0.2,
-      })
-    ).toThrow(/s_single/);
+      });
+    }).toThrow(/s_single/);
   });
 });
 

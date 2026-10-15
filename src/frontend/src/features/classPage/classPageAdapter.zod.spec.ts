@@ -237,7 +237,6 @@ describe('ClassPageAdapterResultSchema', () => {
             assignmentId: 'a-empty',
             updatedAt: DEFAULT_TS,
             definitionKey: 'dk-empty',
-            taskIds: [],
           }),
         ],
       }),

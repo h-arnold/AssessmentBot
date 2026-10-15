@@ -145,70 +145,70 @@ describe('AnalysisFilterSchema', () => {
   it('rejects dateRange.from > dateRange.to', async () => {
     const { AnalysisFilterSchema } = await loadDataAnalysisZod();
 
-    expect(() =>
-      AnalysisFilterSchema.parse({
+    expect(() => {
+      return AnalysisFilterSchema.parse({
         classIds: ['c1'],
         dateRange: {
           from: validIsoTimestampLater,
           to: validIsoTimestamp,
         },
-      })
-    ).toThrow();
+      });
+    }).toThrow();
   });
 
   it('rejects criterionWeightings not summing to 1.0', async () => {
     const { AnalysisFilterSchema } = await loadDataAnalysisZod();
 
-    expect(() =>
-      AnalysisFilterSchema.parse({
+    expect(() => {
+      return AnalysisFilterSchema.parse({
         classIds: ['c1'],
         criterionWeightings: {
           completeness: 0.5,
           accuracy: 0.5,
           spag: 0.5,
         },
-      })
-    ).toThrow();
+      });
+    }).toThrow();
   });
 
   it('rejects criterionWeightings with negative values', async () => {
     const { AnalysisFilterSchema } = await loadDataAnalysisZod();
 
-    expect(() =>
-      AnalysisFilterSchema.parse({
+    expect(() => {
+      return AnalysisFilterSchema.parse({
         classIds: ['c1'],
         criterionWeightings: {
           completeness: -0.1,
           accuracy: 0.5,
           spag: 0.6,
         },
-      })
-    ).toThrow();
+      });
+    }).toThrow();
   });
 
   it('rejects extra fields (strict mode)', async () => {
     const { AnalysisFilterSchema } = await loadDataAnalysisZod();
 
-    expect(() =>
-      AnalysisFilterSchema.parse({
+    expect(() => {
+      return AnalysisFilterSchema.parse({
         classIds: ['c1'],
         extraField: 'should not be allowed',
-      })
-    ).toThrow();
+      });
+    }).toThrow();
   });
 
   it('rejects dateRange with non-strict ISO timestamp (missing milliseconds)', async () => {
     const { AnalysisFilterSchema } = await loadDataAnalysisZod();
 
-    expect(() =>
-      AnalysisFilterSchema.parse({
+    expect(() => {
+      return AnalysisFilterSchema.parse({
         classIds: ['c1'],
         dateRange: {
           from: '2026-01-05T10:00:00Z',
           to: validIsoTimestampLater,
         },
-      })
-    ).toThrow();
+      });
+    }).toThrow();
   });
 });
 
@@ -297,30 +297,30 @@ describe('StudentSubmissionItemPartialSchema.assessments', () => {
   });
 
   it('rejects score above 5', () => {
-    expect(() =>
-      StudentSubmissionItemPartialSchema.parse({
+    expect(() => {
+      return StudentSubmissionItemPartialSchema.parse({
         ...validItemBase,
         assessments: { completeness: { score: 6 } },
-      })
-    ).toThrow();
+      });
+    }).toThrow();
   });
 
   it('rejects negative score', () => {
-    expect(() =>
-      StudentSubmissionItemPartialSchema.parse({
+    expect(() => {
+      return StudentSubmissionItemPartialSchema.parse({
         ...validItemBase,
         assessments: { accuracy: { score: -1 } },
-      })
-    ).toThrow();
+      });
+    }).toThrow();
   });
 
   it('rejects non-integer score', () => {
-    expect(() =>
-      StudentSubmissionItemPartialSchema.parse({
+    expect(() => {
+      return StudentSubmissionItemPartialSchema.parse({
         ...validItemBase,
         assessments: { completeness: { score: 3.5 } },
-      })
-    ).toThrow();
+      });
+    }).toThrow();
   });
 });
 
@@ -357,8 +357,8 @@ describe('StudentSubmissionPartialSchema', () => {
   });
 
   it('rejects items as a flat array (the pre-existing bug shape)', () => {
-    expect(() =>
-      StudentSubmissionPartialSchema.parse({
+    expect(() => {
+      return StudentSubmissionPartialSchema.parse({
         studentId: 's-1',
         studentName: 'Alice',
         assignmentId: 'a-1',
@@ -366,7 +366,7 @@ describe('StudentSubmissionPartialSchema', () => {
         items: [validItemBase],
         createdAt: '2026-01-15T10:00:00.000Z',
         updatedAt: '2026-01-15T10:00:00.000Z',
-      })
-    ).toThrow();
+      });
+    }).toThrow();
   });
 });

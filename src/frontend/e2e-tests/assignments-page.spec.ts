@@ -84,6 +84,7 @@ const expectedNullTokenCellCount = 1;
 const newestRowIndex = 0;
 const archiveRowIndex = 1;
 const exactMatchRowIndex = 2;
+const assignmentTitleForDelete = 'Algebra foundations';
 
 /**
  * Waits for the Assignments page to finish loading by asserting that
@@ -100,14 +101,13 @@ async function waitForAssignmentsPageReady(page: Page): Promise<void> {
 }
 
 /**
- * Opens and confirms delete for the assignment row matching the supplied title.
+ * Opens and confirms delete for the assignment row matching the seeded title.
  *
  * @param {Page} page Playwright page.
- * @param {string} title Assignment title used to locate the row.
  * @returns {Promise<void>} Resolves once the delete confirm action has been triggered.
  */
-async function confirmDeleteForAssignmentTitle(page: Page, title: string): Promise<void> {
-  const matchingRow = getAssignmentsRowByTitle(page, title);
+async function confirmDeleteForAssignmentTitle(page: Page): Promise<void> {
+  const matchingRow = getAssignmentsRowByTitle(page, assignmentTitleForDelete);
   await expect(matchingRow).toHaveCount(1);
   await matchingRow.getByRole('button', { name: /delete/i }).click();
   await page.getByRole('button', { name: 'Delete definition' }).click();
@@ -137,7 +137,7 @@ test.describe('assignments page browser journeys', () => {
     // Wait for table to be visible
     await expect(page.getByRole('table', { name: 'Assignment definitions table' })).toBeVisible();
 
-    await confirmDeleteForAssignmentTitle(page, 'Algebra foundations');
+    await confirmDeleteForAssignmentTitle(page);
 
     await expect(page.getByText(/assignment definition deleted/i)).toBeVisible();
     await expect(page.getByRole('dialog', { name: 'Delete assignment definition' })).toHaveCount(0);
@@ -220,7 +220,7 @@ test.describe('assignments page browser journeys', () => {
 
     await waitForAssignmentsPageReady(page);
 
-    await confirmDeleteForAssignmentTitle(page, 'Algebra foundations');
+    await confirmDeleteForAssignmentTitle(page);
 
     const confirmDeleteButton = page.getByRole('button', { name: 'Delete definition' });
     await expect(confirmDeleteButton).toBeDisabled();
@@ -253,7 +253,7 @@ test.describe('assignments page browser journeys', () => {
 
     await waitForAssignmentsPageReady(page);
 
-    await confirmDeleteForAssignmentTitle(page, 'Algebra foundations');
+    await confirmDeleteForAssignmentTitle(page);
 
     await expect(page.getByText(/could not delete assignment definition/i)).toBeVisible();
     await expect(getAssignmentsRowByTitle(page, 'Algebra foundations')).toHaveCount(1);

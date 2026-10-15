@@ -5,13 +5,17 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createAppQueryClient } from '../../query/queryClient';
 import { useApplicationAccess } from './useApplicationAccess';
 
-const { getApplicationAccessMock } = vi.hoisted(() => ({
-  getApplicationAccessMock: vi.fn(),
-}));
+const { getApplicationAccessMock } = vi.hoisted(() => {
+  return {
+    getApplicationAccessMock: vi.fn(),
+  };
+});
 
-vi.mock('../../services/authService/authService', () => ({
-  getApplicationAccess: getApplicationAccessMock,
-}));
+vi.mock('../../services/authService/authService', () => {
+  return {
+    getApplicationAccess: getApplicationAccessMock,
+  };
+});
 
 /**
  * Renders the application access probe that surfaces the resolved access payload.

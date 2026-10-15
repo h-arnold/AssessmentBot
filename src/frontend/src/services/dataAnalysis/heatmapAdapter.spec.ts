@@ -48,11 +48,13 @@ function taskKey(taskId: string): string {
  * @returns {Array<{id: string, name: string, email: string}>} An array of student-summary objects.
  */
 function buildStudentSummaries() {
-  return STUDENT_IDS.map((id, index) => ({
-    id,
-    name: STUDENT_NAMES[index],
-    email: `${id}@school.edu`,
-  }));
+  return STUDENT_IDS.map((id, index) => {
+    return {
+      id,
+      name: STUDENT_NAMES[index],
+      email: `${id}@school.edu`,
+    };
+  });
 }
 
 /**
@@ -144,11 +146,13 @@ function buildPartials(
   return [
     {
       ...buildDefinition(),
-      tasks: TASK_IDS.map((id, index) => ({
-        taskId: id,
-        taskWeighting: 1,
-        taskTitle: titles[index]?.taskTitle ?? null,
-      })),
+      tasks: TASK_IDS.map((id, index) => {
+        return {
+          taskId: id,
+          taskWeighting: 1,
+          taskTitle: titles[index]?.taskTitle ?? null,
+        };
+      }),
     },
   ] as AssignmentDefinitionPartialsResponse;
 }

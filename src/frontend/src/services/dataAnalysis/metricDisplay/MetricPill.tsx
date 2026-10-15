@@ -72,22 +72,22 @@ type MetricPillProperties = {
 /**
  * Build the CSS style object for a `MetricPill` Tag based on display variant.
  *
- * @param {boolean} muted - When true applies reduced opacity.
- * @param {boolean} emphasised - When true applies larger font and bold weight.
- * @param {boolean} compact - When true applies smaller font and tighter padding.
+ * @param {boolean} isMuted - When true applies reduced opacity.
+ * @param {boolean} isEmphasised - When true applies larger font and bold weight.
+ * @param {boolean} isCompact - When true applies smaller font and tighter padding.
  * @returns {CSSProperties} The merged style object.
  */
-function buildPillStyle(muted: boolean, emphasised: boolean, compact: boolean): CSSProperties {
+function buildPillStyle(isMuted: boolean, isEmphasised: boolean, isCompact: boolean): CSSProperties {
   const style: CSSProperties = {};
 
-  if (muted) {
+  if (isMuted) {
     style.opacity = 0.55;
   }
 
-  if (emphasised) {
+  if (isEmphasised) {
     style.fontSize = '17.5px';
     style.fontWeight = 600;
-  } else if (compact) {
+  } else if (isCompact) {
     style.fontSize = '12px';
     style.padding = '2px 4px';
   }

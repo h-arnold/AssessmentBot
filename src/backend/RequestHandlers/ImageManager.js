@@ -29,7 +29,7 @@ class ImageManager extends BaseRequestManager {
 
   /**
    * Collect all image artifacts (reference, template, submission) across the assignment.
-   * Returns entries containing uid, url (metadata.sourceUrl), documentId, scope, taskId, and optional itemId.
+   * Returns entries containing uid, `url` (metadata.sourceUrl), documentId, scope, taskId, and optional itemId.
    * @param {Assignment} assignment - The assignment containing tasks and submissions.
    * @returns {Array<{uid:string,url:string,documentId:string,scope:'reference'|'template'|'submission',taskId:string,itemId?:string}>} Array of image artefact entries.
    */
@@ -68,23 +68,22 @@ class ImageManager extends BaseRequestManager {
       Object.values(items).forEach((item) => {
         if (!item?.artifact) return;
         const art = item.artifact;
-        if (this.isImageArtifact(art)) {
-          const sourceUrl = art.metadata?.sourceUrl;
-          if (Validate.isValidUrl(sourceUrl)) {
-            results.push({
-              uid: art.getUid(),
-              url: sourceUrl,
-              documentId: sub.documentId,
-              scope: 'submission',
-              taskId: item.taskId,
-              itemId: item.id,
-            });
-          } else {
-            ABLogger.getInstance().warn(
-              'Submission image artifact has no valid sourceUrl; it will not be hydrated and content stays null',
-              { uid: art.getUid?.(), taskId: item.taskId, sourceUrl }
-            );
-          }
+        if (!this.isImageArtifact(art)) return;
+        const sourceUrl = art.metadata?.sourceUrl;
+        if (Validate.isValidUrl(sourceUrl)) {
+          results.push({
+            uid: art.getUid(),
+            url: sourceUrl,
+            documentId: sub.documentId,
+            scope: 'submission',
+            taskId: item.taskId,
+            itemId: item.id,
+          });
+        } else {
+          ABLogger.getInstance().warn(
+            'Submission image artifact has no valid sourceUrl; it will not be hydrated and content stays null',
+            { uid: art.getUid?.(), taskId: item.taskId, sourceUrl }
+          );
         }
       });
     });
@@ -97,25 +96,22 @@ class ImageManager extends BaseRequestManager {
    * @returns {Array<{uid:string, blob:GoogleAppsScript.Base.Blob}>} Array of fetched image blobs with their UIDs.
    */
   fetchImagesAsBlobs(entries) {
-    const maxBatchSize = ConfigurationManager.getInstance().getSlidesFetchBatchSize();
-
     if (!entries?.length) return [];
+
+    const maxBatchSize = ConfigurationManager.getInstance().getSlidesFetchBatchSize();
     // Group by documentId
-    const byDocument = {};
-    for (const entry of entries) {
-      byDocument[entry.documentId] = byDocument[entry.documentId] || [];
-      byDocument[entry.documentId].push(entry);
-    }
+    const byDocument = Object.groupBy(entries, (entry) => entry.documentId);
     // Round-robin merge
     const merged = [];
     const documentLists = Object.values(byDocument);
-    let added = true;
-    while (added) {
-      added = false;
+    let rounds = 0;
+    for (const list of documentLists) {
+      rounds = Math.max(rounds, list.length);
+    }
+    for (let round = 0; round < rounds; round += 1) {
       for (const list of documentLists) {
-        if (list.length > 0) {
-          merged.push(list.shift());
-          added = true;
+        if (round < list.length) {
+          merged.push(list[round]);
         }
       }
     }
@@ -128,12 +124,14 @@ class ImageManager extends BaseRequestManager {
         )}`,
         false
       );
-      const requests = batch.map((entry) => ({
-        url: entry.url,
-        method: 'get',
-        headers: { Authorization: 'Bearer ' + ScriptApp.getOAuthToken() },
-        muteHttpExceptions: true,
-      }));
+      const requests = batch.map((entry) => {
+        return {
+          url: entry.url,
+          method: 'get',
+          headers: { Authorization: 'Bearer ' + ScriptApp.getOAuthToken() },
+          muteHttpExceptions: true,
+        };
+      });
       const responses = this.sendRequestsInBatches(requests, maxBatchSize);
       responses.forEach((resp, index) => {
         const entry = batch[index];
@@ -186,10 +184,9 @@ class ImageManager extends BaseRequestManager {
     Object.values(assignment.assignmentDefinition.tasks).forEach((taskDefinition) => {
       ['reference', 'template'].forEach((role) => {
         taskDefinition.artifacts[role].forEach((artifact) => {
-          if (this.isImageArtifact(artifact)) {
-            const uid = artifact.getUid();
-            artifactMap[uid] = artifact;
-          }
+          if (!this.isImageArtifact(artifact)) return;
+          const uid = artifact.getUid();
+          artifactMap[uid] = artifact;
         });
       });
     });
@@ -197,10 +194,9 @@ class ImageManager extends BaseRequestManager {
     assignment.submissions.forEach((submission) => {
       Object.values(submission.items).forEach((item) => {
         const artifact = item.artifact;
-        if (this.isImageArtifact(artifact)) {
-          const uid = artifact.getUid();
-          artifactMap[uid] = artifact;
-        }
+        if (!this.isImageArtifact(artifact)) return;
+        const uid = artifact.getUid();
+        artifactMap[uid] = artifact;
       });
     });
 

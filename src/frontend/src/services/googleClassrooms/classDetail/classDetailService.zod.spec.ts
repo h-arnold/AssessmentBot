@@ -128,7 +128,7 @@ describe('ClassFullResponseSchema', () => {
   });
 
   it('rejects undefined', () => {
-    // eslint-disable-next-line unicorn/no-useless-undefined -- value matters for parse() test
+    // The undefined argument is deliberate: this asserts the schema rejects undefined.
     expect(() => ClassFullResponseSchema.parse(undefined)).toThrow();
   });
 });
@@ -344,12 +344,12 @@ describe('StudentSubmissionPartialSchema', () => {
   // REGRESSION guard: the .optional() loosening must NOT also accept types
   // that were previously rejected (e.g. a number instead of string).
   it('rejects non-string, non-null documentId (number)', () => {
-    expect(() =>
-      StudentSubmissionPartialSchema.parse({
+    expect(() => {
+      return StudentSubmissionPartialSchema.parse({
         ...validStudentSubmissionPartial,
         documentId: 42,
-      })
-    ).toThrow();
+      });
+    }).toThrow();
   });
 });
 
@@ -414,12 +414,12 @@ describe('BaseTaskArtifactPartialSchema', () => {
 
 describe('AssignmentDefinitionPartialSchema', () => {
   it('rejects a partial with tasks set to null', () => {
-    expect(() =>
-      AssignmentDefinitionPartialSchema.parse({
+    expect(() => {
+      return AssignmentDefinitionPartialSchema.parse({
         ...validAssignmentDefinitionPartial,
         tasks: null,
-      } as Record<string, unknown>)
-    ).toThrow();
+      } as Record<string, unknown>);
+    }).toThrow();
   });
 
   it('rejects a definition missing primaryTitle', () => {
@@ -460,14 +460,14 @@ describe('AssignmentDefinitionPartialSchema', () => {
   // (WeightingSchema.nullable()) and assignmentDefinitionPartials.zod.ts
   // (z.number().nullable()) already marks assignmentWeighting as nullable.
   it('accepts null for referenceDocumentId, templateDocumentId, and assignmentWeighting', () => {
-    expect(() =>
-      AssignmentDefinitionPartialSchema.parse({
+    expect(() => {
+      return AssignmentDefinitionPartialSchema.parse({
         ...validAssignmentDefinitionPartial,
         referenceDocumentId: null,
         templateDocumentId: null,
         assignmentWeighting: null,
-      })
-    ).not.toThrow();
+      });
+    }).not.toThrow();
   });
 
   it('rejects undefined for referenceDocumentId, templateDocumentId, and assignmentWeighting', () => {
@@ -479,27 +479,27 @@ describe('AssignmentDefinitionPartialSchema', () => {
   });
 
   it('still rejects non-null, non-string values for referenceDocumentId and templateDocumentId', () => {
-    expect(() =>
-      AssignmentDefinitionPartialSchema.parse({
+    expect(() => {
+      return AssignmentDefinitionPartialSchema.parse({
         ...validAssignmentDefinitionPartial,
         referenceDocumentId: 42,
-      })
-    ).toThrow();
-    expect(() =>
-      AssignmentDefinitionPartialSchema.parse({
+      });
+    }).toThrow();
+    expect(() => {
+      return AssignmentDefinitionPartialSchema.parse({
         ...validAssignmentDefinitionPartial,
         templateDocumentId: { id: 'oops' },
-      })
-    ).toThrow();
+      });
+    }).toThrow();
   });
 
   it('still rejects non-null, non-number values for assignmentWeighting', () => {
-    expect(() =>
-      AssignmentDefinitionPartialSchema.parse({
+    expect(() => {
+      return AssignmentDefinitionPartialSchema.parse({
         ...validAssignmentDefinitionPartial,
         assignmentWeighting: 'not-a-number',
-      })
-    ).toThrow();
+      });
+    }).toThrow();
   });
 
   it('canonical AssignmentDefinitionPartialSchema accepts null referenceDocumentId (import identity)', () => {
@@ -507,12 +507,12 @@ describe('AssignmentDefinitionPartialSchema', () => {
     // has .nullable() for referenceDocumentId and templateDocumentId. This test
     // verifies the unification succeeded: both the local import and the canonical
     // schema are the same object, and both accept null doc IDs.
-    expect(() =>
-      AssignmentDefinitionPartialSchema.parse({
+    expect(() => {
+      return AssignmentDefinitionPartialSchema.parse({
         ...validAssignmentDefinitionPartial,
         referenceDocumentId: null,
         templateDocumentId: null,
-      })
-    ).not.toThrow();
+      });
+    }).not.toThrow();
   });
 });

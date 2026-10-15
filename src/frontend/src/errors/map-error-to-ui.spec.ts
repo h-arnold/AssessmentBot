@@ -87,7 +87,7 @@ describe('extractErrorCode', () => {
   it('returns FORBIDDEN from an ApiTransportError instance', () => {
     const error = new ApiTransportError({
       requestId: 'req-forbidden',
-      error: { code: 'FORBIDDEN', message: 'Access denied.', retriable: false },
+      error: { code: 'FORBIDDEN', message: 'Access denied.', isRetriable: false },
     });
 
     expect(extractErrorCode(error)).toBe('FORBIDDEN');
@@ -185,7 +185,7 @@ describe('mapErrorCodeToUserMessage stale recovery codes', () => {
       error: {
         code: 'DEFINITION_PARSE_FAILED',
         message: 'Parser diagnostic detail.',
-        retriable: false,
+        isRetriable: false,
       },
     });
 
