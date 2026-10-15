@@ -11,9 +11,7 @@ import {
   type ClassesTableFilterState,
   type SortState,
 } from './ClassesTable.helpers';
-import {
-  getClassesTableColumns,
-} from './ClassesTableColumns';
+import { getClassesTableColumns } from './ClassesTableColumns';
 import { ClassesNoActiveClassroomsEmptyState } from '../components/ClassesEmptyStates';
 import type { ClassesManagementRow } from '../classesManagementViewModel';
 
@@ -35,13 +33,10 @@ export function ClassesTable(properties: Readonly<ClassesTableProperties>) {
   const [sortState, setSortState] = useState<SortState | null>(null);
 
   const filterOptions = useMemo(() => getFilterOptions(properties.rows), [properties.rows]);
-  const baseColumns = useMemo(
-    () => getClassesTableColumns({ filterOptions }),
-    [filterOptions],
-  );
+  const baseColumns = useMemo(() => getClassesTableColumns({ filterOptions }), [filterOptions]);
   const columns = useMemo(
     () => getControlledColumns(baseColumns, filters, sortState),
-    [baseColumns, filters, sortState],
+    [baseColumns, filters, sortState]
   );
 
   const visibleRows = useMemo(() => {
@@ -62,15 +57,16 @@ export function ClassesTable(properties: Readonly<ClassesTableProperties>) {
     },
   };
 
-  const hasActiveGoogleClassroom = properties.rows.some(
-    (row) => ['active', 'inactive', 'notCreated'].includes(row.status),
+  const hasActiveGoogleClassroom = properties.rows.some((row) =>
+    ['active', 'inactive', 'notCreated'].includes(row.status)
   );
 
   return (
     <Card
       size="small"
+      classNames={{ header: 'app-card-header--controls' }}
       title="Classes table"
-      extra={(
+      extra={
         <Space>
           <Button
             onClick={() => {
@@ -81,7 +77,7 @@ export function ClassesTable(properties: Readonly<ClassesTableProperties>) {
             Reset sort and filters
           </Button>
         </Space>
-      )}
+      }
     >
       <Table<ClassesManagementRow>
         aria-label="Classes table"

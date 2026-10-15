@@ -113,6 +113,14 @@ body {
   width: min(var(--app-page-width-wide-data), calc(100% - 1rem));
 }
 
+.app-page-content--fluid {
+  width: 100%;
+}
+
+.ant-card-small > .app-card-header--controls {
+  padding-block: var(--app-spacing-sm);
+}
+
 .app-tabbed-page {
   width: 100%;
 }

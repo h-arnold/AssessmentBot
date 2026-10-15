@@ -90,7 +90,9 @@ The page content container centres content and applies a max-width:
 }
 ```
 
-This does **not** add additional padding — it constrains width only. Pages share this container identically via the `PageSection` component.
+This does **not** add additional padding — it constrains width only. Pages share this container identically via the `PageSection` component, except for the heatmap fluid-width exception below.
+
+> **Fluid-width exception (heatmap pages):** Heatmap pages render the page-content container in a fluid variant that consumes the full available parent width with no fixed maximum, so no `--app-page-width-*` cap applies. This is a narrow, intent-named exception scoped to heatmap surfaces only; sibling pages keep the capped width above and shell padding is unchanged. See `docs/developer/frontend/frontend-loading-and-width-standards.md` §7.1.
 
 ### 3.3 Breadcrumb (`.app-breadcrumb`)
 
@@ -151,6 +153,14 @@ When using `Flex` with `gap`, use token-aligned values:
 <Flex vertical gap={18}>
 ```
 
+### 4.4 Card Header Clearance for Inline Action Buttons
+
+A small (`size="small"`) data card whose header contains a normal-sized action button (a default or `primary` button, not an icon-only button) must give that button at least 8px of vertical clearance above and below. The tight small-card header does not leave enough room by default, so a normal-sized button can sit flush against, or overflow, the header chrome.
+
+- Apply the clearance narrowly through the card's semantic header styling: set `classNames={{ header: 'app-card-header--controls' }}` so the shared `.ant-card-small > .app-card-header--controls` rule gives the header block padding `var(--app-spacing-sm)` (8px).
+- Leave Ant's other header defaults intact: inline padding, background, height behaviour, and title typography stay as Ant renders them.
+- Do not change the card body padding or the button size. The fix is header block padding on the affected cards only, not a global override of Ant's card header token.
+
 ### 4.5 Card Inner Spacing
 
 When a `Card` contains multiple child sections, prefer Ant Design's built-in `Card` padding over additional wrapper padding. Children inside a `Card` body should use `Space` or `Flex` with token-aligned gaps rather than wrapping in extra `<div>` elements with margins.
@@ -176,8 +186,16 @@ All inter-element gaps/spacings expressed in TSX must come from a single constan
   | `APP_SPACE_SIZE_DEFAULT` | `'middle'` | 16px Space size                    |
   | `APP_SPACE_SIZE_TIGHT`   | `'small'`  | 8px Space size                     |
 
-- **Rule:** Replace magic-number `gap`/`margin`/`padding` literals and implicit `<Space>` sizes with these constants. The `<Space size={0}>` skeleton list pattern in `AssignmentsPage.tsx` is a documented exception (zero-gap skeleton) and need not use a constant.
+- **Rule:** Replace magic-number `gap`/`margin`/`padding` literals and implicit `<Space>` sizes with these constants. The `<Space size={0}>` zero-gap option list in `AssignmentDefinitionsTable.tsx` (the table filter dropdown) is a documented exception and need not use a constant.
 - **Relationship to CSS tokens:** These constants mirror the existing `--app-spacing-*` CSS custom properties defined in `src/frontend/src/index.css`. The TS module is the TypeScript-side source of truth for component code.
+
+### 4.8 Settings Form Section-to-Submit Spacing
+
+In a settings layout that uses a single `Form` with a single submit `Form.Item`, the gap between the form body (the section cards) and the submit row is `APP_GAP_LG` (24px, `var(--app-spacing-lg)`). This matches the gap used between the section cards above, so the submit row reads as the next item in the same vertical stack.
+
+- Current examples: the Backend settings panel and the Authentication settings tab both wrap their section cards and their submit `Form.Item` in one vertical flex container whose `gap` is `APP_GAP_LG`.
+- Keep the layout to one form and one submit action; do not add per-section submit buttons.
+- Use the canonical `theme/spacing.ts` constant rather than a literal.
 
 ## 5. Inline Style Rules
 
@@ -202,7 +220,7 @@ style={{ marginTop: 18 }}
 
 The 4px (`var(--app-spacing-xs)`) value is permitted **only** for tight inner-element spacing where 8px would be visually too loose. Examples:
 
-- Filter dropdown items: `padding: '4px 8px'` (tight vertical, standard horizontal) — confirmed in `AssignmentsPage.tsx`
+- Filter dropdown items: `padding: '4px 8px'` (tight vertical, standard horizontal) — confirmed in `AssignmentDefinitionsTable.tsx`
 - Metric pill compact mode: `padding: '2px 4px'` (tighter still, compact-only) — confirmed in `MetricPill.tsx`
 - Icon-to-text inline gap in compact controls
 
@@ -230,13 +248,13 @@ The following inconsistencies were identified in the initial audit. These should
 
 The following inline values are already on the 8px grid and should not be changed:
 
-- `padding: '4px 8px'` in `AssignmentsPage.tsx` filter dropdowns — 4px is a permitted half-unit exception
+- `padding: '4px 8px'` in `AssignmentDefinitionsTable.tsx` filter dropdowns — 4px is a permitted half-unit exception
 - `padding: 24` in `InlineDialog.tsx` — maps to `var(--app-spacing-lg)`
 - `marginBottom: 16` in Alert components across the codebase — maps to `var(--app-spacing-md)`; migrated instances now use `APP_GAP_MD` (see §4.7)
-- `gap: 12` in `ClassesManagementPanel.tsx` and `AssignmentsPage.tsx` — 12px is accepted within the 8px system (8 + 4 half-step, permitted for Flex gap); now `APP_GAP_COMPACT` (see §4.7)
+- `gap: 12` in `ClassesManagementPanel.tsx` and `AssignmentsManagementSurface.tsx` — 12px is accepted within the 8px system (8 + 4 half-step, permitted for Flex gap); now `APP_GAP_COMPACT` (see §4.7)
 - `marginTop: 16` in `InlineDialog.tsx` — maps to `var(--app-spacing-md)`
 - `marginTop: 8` in `AssignmentDefinitionWizardModalShell.tsx` — maps to `var(--app-spacing-sm)`
-- `gap: 16` in `TaskHeatmapPage.tsx` and `AssignmentsPage.tsx` — maps to `var(--app-spacing-md)`; now `APP_GAP_MD` (see §4.7)
+- `gap: 16` in `TaskHeatmapPage.tsx` and `AssignmentsManagementSurface.tsx` — maps to `var(--app-spacing-md)`; now `APP_GAP_MD` (see §4.7)
 - `gap: 24` in `BackendSettingsPanel.tsx` — maps to `var(--app-spacing-lg)`; now `APP_GAP_LG` (see §4.7)
 
 > These literals have been replaced with the canonical `theme/spacing.ts` constants (see §4.7).
