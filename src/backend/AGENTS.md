@@ -64,7 +64,7 @@ if (typeof module !== 'undefined' && module.exports) {
 }
 ```
 
-This pattern is now used by `getGoogleClassrooms_`, `getAssignmentDefinitionPartials_`, `deleteAssignmentDefinition_`, `getBackendConfig_`, `setBackendConfig_`, `upsertABClass_`, `updateABClass_`, and `deleteABClass_` in their respective `z_Api` files.
+For the current set of trailing-underscore handlers, see `docs/developer/backend/api-layer.md`.
 
 ### 1.2 Validation ownership
 
@@ -95,7 +95,7 @@ Use GAS-native services where applicable:
 - HTTP: `UrlFetchApp`
 - Workspace data access: `SpreadsheetApp`, `SlidesApp`, `DriveApp`, advanced services in manifest
 
-**Important**: Many of these GAS services alrady have wrapper modules. Check the codebase for these before using them directly.
+**Important**: Many of these GAS services already have wrapper modules. Check the codebase for these before using them directly.
 
 Do not replace GAS service calls with Node/browser equivalents that do not execute in Apps Script.
 
@@ -117,7 +117,7 @@ if (typeof module !== 'undefined' && module.exports) {
 - Keep this block at the end of the file.
 - Keep it minimal: export only what tests need from that file.
 - If tests need older paths, aliases, or globals, fix the tests first, usually in `tests/setupGlobals.js` or the relevant test helper.
-- Exposing GAS globals in the test harness. **NEVER** add Node fallback code to production files.
+- Expose GAS globals only in the test harness; **NEVER** add Node fallback code to production files.
 - Do not add top-of-file Node compatibility snippets such as guarded `require(...)` blocks, alias variables for globals, or mixed runtime/module initialisation unless there is no safer alternative and the user explicitly accepts it.
 - Treat any non-export Node-specific production code as an exception case that requires justification, not the default pattern.
 
@@ -151,7 +151,7 @@ Rules:
   access-attempt audit logging.
 - Access resolution fails closed for empty or broken configuration. A genuinely fresh
   install (no `__CONFIG_STORE_KEY__` blob) is claimed by the first eligible interactive
-  caller with a non-blank resolved identity through the Section 4 atomic bootstrap claim;
+  caller with a non-blank resolved identity through the atomic bootstrap claim;
   trigger execution passes `bypassCache: true` and an explicit `neverClaim: true` context,
   so it fails closed and never bootstraps an admin.
 - Access the service with `AuthService.getInstance()`; do not instantiate it directly.
@@ -160,7 +160,7 @@ Rules:
   unrecognised mode, so the access gate fails closed rather than disabling it. The stored valid
   modes are `'googleGroups'` and `'scriptProperties'`. A genuinely fresh install bootstraps to
   `'scriptProperties'` (the first eligible interactive caller becomes the sole admin via the
-  Section 4 claim). The single documented leniency reads an absent or blank `authMode` paired
+  bootstrap claim). The single documented leniency reads an absent or blank `authMode` paired
   with a non-blank `authGroupEmail` as `'googleGroups'`, preserving legacy hand-edited or cloned
   blobs; every other broken configuration denies fail-closed and never falls back to Google
   Groups.
@@ -169,11 +169,11 @@ Rules:
 ### 2.4 Backend function exposure and security audit
 
 Backend functions are private by default: every top-level backend function **must** have a trailing
-underscore (`_`) so Google Apps Script does not expose it to `google.script.run`. The exceptions are
-the public entrypoints `apiHandler`, `doGet`, and `triggerHandler`, plus functions explicitly named
-in `ALLOWLISTED_METHOD_HANDLERS` when that constant is present. The Section 7 security audit deleted
-six dead wrappers and renamed 20 required functions to this convention; the static global-exposure
-guard test protects the boundary.
+underscore (`_`) so Google Apps Script does not expose it to `google.script.run`. The only exceptions
+are the public entrypoints `apiHandler`, `doGet`, and `triggerHandler`. Allowlisted handlers are
+anonymous closures and are already private, so they need no special treatment. An earlier security
+audit removed six dead wrappers and renamed 20 required functions to this convention; the static
+global-exposure guard test protects the boundary.
 
 ### 2.5 Web-app deployment block
 
@@ -192,7 +192,7 @@ deployment must be reviewed with the deploying administrator before rollout.
 - `triggerHandler()` owns cleanup for resolved trigger IDs: it clears context and deletes the fired
   trigger, including when dispatch throws.
 
-## 3. Validation Contract (Backend Only)
+## 3. Validation and Utility Contracts (Backend Only)
 
 Use `src/backend/Utils/Validate.js` for generic validation.
 
@@ -211,11 +211,11 @@ Rules:
 - See § 1.2 above for the transport-vs-domain validation ownership rules that apply specifically
   to `z_Api` files.
 
-## 3.1 Utility Classes (Backend Only)
+### 3.1 Utility Classes (Backend Only)
 
 Use `src/backend/Utils/00_ArrayUtils.js` for generic array operations.
 
-### ArrayUtils Class
+#### ArrayUtils Class
 
 `ArrayUtils` is a utility class that provides generic array helper methods as static functions. It follows the same pattern as `Validate.js` and is designed for reuse across the codebase.
 
@@ -271,7 +271,7 @@ User-facing failures:
 
 Developer diagnostics:
 
-- `ABLogger.getInstance().debugUi/info/warn/error(...)`
+- `ABLogger.getInstance().debug/debugUi/info/warn/error(...)`
 
 Rules:
 
@@ -319,11 +319,29 @@ When backend behaviour requires new scopes/services:
 
 - Set default values in a module's constructor only. Root `AGENTS.md` owns this rule (Prime Directives → Coding Principles).
 
-## 9. Date handling at the transport boundary
+## 9. Prohibited types at the transport boundary
 
-`google.script.run` prohibits `Date` objects in return values (see `src/frontend/AGENTS.md` §5.3
-for the full rules). All API handler functions must convert live `Date` objects to ISO strings
-before returning data.
+`google.script.run` **prohibits** `Date`, `Function`, and DOM elements in both **parameters and
+return values** — including inside nested objects and arrays. If any value in the response graph
+is a `Date` object (not an ISO string), GAS falls back to `Object.toString()` serialisation,
+producing non-JSON output that breaks the frontend's `JSON.parse()` and delivers `null`.
+
+Reference: https://developers.google.com/apps-script/guides/html/reference/run
+(myFunction section: "Requests fail if you attempt to pass a Date, Function, DOM element
+besides a form, or other prohibited type, including prohibited types inside objects or arrays."
+Return value note: "return types are subject to the same restrictions as parameter types".)
+
+Rules:
+
+1. Never return live `Date` objects from any method callable via `google.script.run`. Convert to
+   ISO 8601 strings at the API boundary.
+2. Never return `Function` instances or DOM element references.
+3. Validate that all array/object fields are plain JS arrays/objects, not Java-backed types
+   (e.g. `[Ljava.lang.Object;@...`) that GAS cannot serialise.
+4. Apply these rules at the controller-to-transport boundary (e.g. `_getFullAssignmentDefinition`)
+   before the response reaches `apiHandler`.
+
+For `Date` conversion, use `DateUtils` rather than inlining conversion:
 
 - Use `DateUtils.normaliseDateFields(response, ['field1', 'field2'])` for shallow or known
   date fields. Apply the call after the controller returns and before the handler returns.
@@ -335,6 +353,9 @@ before returning data.
   controllers or models.
 - `DateUtils` lives at `src/backend/Utils/DateUtils.js` and exports `normaliseDateFields`,
   `deepConvertDates`, `isNewer`, `definitionNeedsRefresh`, `getFormattedDate`, and `getFutureDate`.
+
+These rules are also documented in `docs/developer/backend/api-layer.md` § "Critical: prohibited
+types in `google.script.run` return values".
 
 ## 10. Testing Delegation
 
@@ -394,8 +415,8 @@ Rules:
 When two or more `z_Api` files share a common domain prefix, group them into a domain folder
 named after that prefix.
 
-Domain prefix is the leading part of the filename before the first capital letter or second
-conceptual segment (e.g. `abclass` in `abclassMutations.js`, `abclassRead.js`, and
+The domain prefix is the leading lowercase segment of the filename, up to but not including the
+first capital letter (for example, `abclass` in `abclassMutations.js`, `abclassRead.js`, and
 `abclassValidation.js`).
 
 Example — currently grouped `z_Api` files for a domain:

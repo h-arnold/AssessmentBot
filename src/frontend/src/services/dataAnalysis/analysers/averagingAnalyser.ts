@@ -12,7 +12,7 @@ import type { DataPointAccumulator } from './averagingAnalyser.types';
 
 /**
  * Default criterion weightings: completeness=0.4, accuracy=0.4, spag=0.2.
- * Set in the constructor only (AGENTS §11 / frontend §11).
+ * Set in the constructor only (root `AGENTS.md` Prime Directive 2.1.10 / `src/frontend/AGENTS.md` §2).
  */
 export const DEFAULT_CRITERION_WEIGHTINGS = {
   completeness: 0.4,

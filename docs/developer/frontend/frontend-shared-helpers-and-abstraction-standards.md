@@ -153,6 +153,7 @@ Reject these patterns during implementation and review:
 - Keep feature-specific helpers inside the owning feature folder.
 - Name helpers by the contract they provide, not by where they were extracted from.
 - Prefer explicit function exports and typed return contracts.
+- Service-folder grouping conventions: `docs/developer/frontend/frontend-architecture.md`.
 
 ## 7. Review and PR checks
 
@@ -164,7 +165,7 @@ For frontend changes that add or modify helpers, include a short helper audit in
 
 Reviewer checks:
 
-1. no unjustified one-caller abstraction extraction
+1. no unjustified one-caller abstraction extraction, and no duplicated shared-helper logic (treat duplicated helper logic as a Critical review issue)
 2. no duplicated orchestration added where descriptor/config derivation is feasible
 3. no duplicate source of truth for routing/render mapping
 4. no duplicated validation-error source of truth without explicit contract boundaries
@@ -241,10 +242,10 @@ Delivered design decisions for the issue #19 task-preview source link; each entr
 
 ## 10. Frontend utils folder convention
 
-The `src/frontend/src/utils/` folder exists for pure formatting / utility functions that are shared across the frontend. This folder is a separate convention from `src/frontend/AGENTS.md` §14, which governs only `services/` subfolder organisation.
+The `src/frontend/src/utils/` folder exists for pure formatting / utility functions that are shared across the frontend. This folder is a separate convention from the service-folder rules in `frontend-architecture.md`, which govern only `services/` subfolder organisation.
 
 ### Rules
 
 - **Pure functions only.** Files in `utils/` must have no React, Ant Design, I/O, or state dependencies. They are plain TypeScript modules exporting typed pure functions.
-- **No `src/frontend/AGENTS.md` §14 governance.** The §14 subfolder-by-domain-prefix rule applies only to `services/`. The `utils/` folder is a flat namespace; files are named by the domain they format (e.g. `dateFormatting.ts`). A future subfolder reorganisation may be considered if the folder exceeds 5–6 files, but no barrel exports (`index.ts`) are created in v1 — consumers import directly.
+- **No service-folder governance.** The subfolder-by-domain-prefix rule in `frontend-architecture.md` applies only to `services/`. The `utils/` folder is a flat namespace; files are named by the domain they format (e.g. `dateFormatting.ts`). A future subfolder reorganisation may be considered if the folder exceeds 5–6 files, but no barrel exports (`index.ts`) are created in v1 — consumers import directly.
 - **First entry:** `dateFormatting.ts` — exports `formatUpdatedAtLabel(updatedAt: string | null): string` (`en-GB`, date-only, rendered in UTC; em-dash fallback for null or unparseable input). The Class page adapter deliberately does not use the fallback: it throws upstream on null or unparseable input.

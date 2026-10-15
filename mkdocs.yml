@@ -77,6 +77,7 @@ nav:
           - Request Store: developer/data-shapes/request-store.md
           - Trigger Context: developer/data-shapes/trigger-context.md
       - Frontend:
+          - Frontend Architecture: developer/frontend/frontend-architecture.md
           - Frontend Testing: developer/frontend/frontend-testing.md
           - Frontend Playwright E2E: developer/frontend/frontend-playwright-e2e.md
           - Frontend Loading and Width Standards: developer/frontend/frontend-loading-and-width-standards.md

@@ -10,7 +10,7 @@
  *
  * The heavy lifting is delegated to feature-local helpers (kept in separate modules
  * to honour the 500-LOC module-size gate
- * (per `src/frontend/AGENTS.md` §3.3)):
+ * (per `docs/developer/frontend/frontend-architecture.md`)):
  *
  * - `heatmapsSurfaceState.ts` — pure surface-state / blocking-error derivation.
  * - `heatmapsPipeline.ts` — synchronous analyser + merged-adapter pipeline

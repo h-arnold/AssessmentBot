@@ -6,7 +6,7 @@
  * input-shaped assignments and the merged-adapter projection. Extracted from
  * `useHeatmapsPageData.ts` to keep that module under the 500-LOC module-size gate, and to
  * isolate the analyser/adapter orchestration (per
- * `src/frontend/AGENTS.md` §3.3).
+ * `docs/developer/frontend/frontend-architecture.md`).
  *
  * The full input-shaping and memoisation rationale lives in `useHeatmapsPageData.ts`'s
  * module JSDoc; this helper owns the synchronous orchestration, structured

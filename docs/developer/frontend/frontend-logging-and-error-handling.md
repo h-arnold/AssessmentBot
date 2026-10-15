@@ -126,7 +126,7 @@ Use Ant Design feedback components according to UI persistence and user intent:
 
 Use context-aware APIs (`App.useApp`, `message.useMessage`, `notification.useNotification`) rather than static methods, so ConfigProvider tokens and context are respected.
 
-**Documented deviation — Heatmaps blocking state:** the standalone Heatmaps builder surface (`HeatmapBuilderSurface.tsx`) intentionally renders an Ant Design `Result` (rather than the default `Alert`) for its blocking state. This is a documented deviation recorded in the `@remarks` at `HeatmapBuilderSurface.tsx:14`; it satisfies the `src/frontend/AGENTS.md` §6.1 escape clause and is not a violation of this policy. Future reviewers should treat it as an accepted exception rather than a missing `Alert`.
+**Documented deviation — Heatmaps blocking state:** the standalone Heatmaps builder surface (`HeatmapBuilderSurface.tsx`) intentionally renders an Ant Design `Result` (rather than the default `Alert`) for its blocking state. This is a documented deviation recorded in the `@remarks` at `HeatmapBuilderSurface.tsx:14`; it satisfies the documented-deviation escape clause in `docs/developer/frontend/frontend-loading-and-width-standards.md` (§2.2) and is not a violation of this policy. Future reviewers should treat it as an accepted exception rather than a missing `Alert`.
 
 ## 5. Mapping rules (developer detail vs user-safe copy)
 
@@ -143,6 +143,8 @@ Keep raw technical details in logs only.
 Current auth status UI behaviour follows this by mapping failures to user-safe copy rather than displaying raw transport error messages.
 
 ## 6. Location and shape of custom frontend error types
+
+Prefer shared error contracts and mapping utilities. Add feature-specific error mapping only when a feature has genuinely unique error semantics.
 
 For consistency, keep custom frontend error types in a dedicated error module tree:
 

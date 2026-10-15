@@ -64,6 +64,8 @@ Consult these resources before and during review. Local docs contain project-spe
 
 **Frontend Reviews**:
 
+- Local: [frontend-architecture.md](../../docs/developer/frontend/frontend-architecture.md)
+- Local: [data-analysis-architecture.md](../../docs/developer/frontend/data-analysis-architecture.md)
 - Local: [frontend-testing.md](../../docs/developer/frontend/frontend-testing.md)
 - Local: [frontend-playwright-e2e.md](../../docs/developer/frontend/frontend-playwright-e2e.md)
 - Local: [frontend-loading-and-width-standards.md](../../docs/developer/frontend/frontend-loading-and-width-standards.md)
@@ -173,7 +175,7 @@ You will fail the task unless you read _the entirety_ of the relevant context be
 - **Backend boundary**: Do not import anything from `src/backend/` into frontend code. Treat the interface as an API boundary.
 - **Error handling**: Fail loudly in development. No broad catch-and-ignore logic.
 - **Builder compatibility**: Avoid CDN-dependent runtime assets. Keep `index.html` asset wiring compatible with builder inlining into HtmlService output.
-- **Shared helpers and testing**: See `src/frontend/AGENTS.md` Sections 3.2 and 8 for shared helpers reuse requirements and testing delegation guidance.
+- **Shared helpers and testing**: See `src/frontend/AGENTS.md` §3 for the required-docs gate covering shared helpers, and §8 for testing delegation guidance.
 - **Export functions as functions**: Functions should be declared as such, not exported constants with arrow functions. Fail the code review unless there is a very good reason to export a constant over a function.
 
 ### 4.3 Builder (`scripts/builder/`)

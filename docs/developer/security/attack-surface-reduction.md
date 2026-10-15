@@ -102,7 +102,7 @@ then funnel every meaningful operation through exactly one dispatch path each:
   calls (backend AGENTS §1.1). On the frontend side the hard rule is that _all_
   frontend-to-backend calls must route through `callApi` in
   `src/frontend/src/services/apiService.ts` — never `google.script.run` directly from
-  feature code (frontend AGENTS §5.1). The two halves meet at the allowlisted method name:
+  feature code (frontend AGENTS §2). The two halves meet at the allowlisted method name:
   the frontend passes a method string and `apiHandler` looks it up in
   `ALLOWLISTED_METHOD_HANDLERS`.
 - **Sole transport registry:** `ALLOWLISTED_METHOD_HANDLERS` in `z_apiHandler.js` is the
@@ -151,8 +151,8 @@ code, message, isRetriable, details? }`). `_mapErrorToFailureEnvelope` in
   `Date`, `Function` and DOM elements in return values; a live `Date` degrades GAS
   serialisation to non-JSON output that the frontend parses as `null`. Handlers therefore
   convert live `Date` objects to ISO 8601 strings before returning, via
-  `DateUtils.normaliseDateFields` or `DateUtils.deepConvertDates` (backend AGENTS §9,
-  frontend AGENTS §5.3, and `docs/developer/backend/api-layer.md`). This keeps the
+  `DateUtils.normaliseDateFields` or `DateUtils.deepConvertDates` (backend AGENTS §9 and
+  `docs/developer/backend/api-layer.md`). This keeps the
   transport boundary JSON-clean.
 - **Logging hygiene.** `ABLogger` is the mandatory logging primitive for backend code,
   and the policy forbids logging secrets, credentials, tokens or API keys
