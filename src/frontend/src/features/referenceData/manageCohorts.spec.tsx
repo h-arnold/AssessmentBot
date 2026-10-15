@@ -20,16 +20,18 @@ const createCohortMock = vi.hoisted(() => vi.fn());
 const updateCohortMock = vi.hoisted(() => vi.fn());
 const getCohortsMock = vi.hoisted(() => vi.fn());
 
-vi.mock('../../services/referenceData/referenceDataService', () => ({
-  getCohorts: getCohortsMock,
-  createCohort: createCohortMock,
-  updateCohort: updateCohortMock,
-  deleteCohort: vi.fn(),
-  getYearGroups: vi.fn(),
-  createYearGroup: vi.fn(),
-  updateYearGroup: vi.fn(),
-  deleteYearGroup: vi.fn(),
-}));
+vi.mock('../../services/referenceData/referenceDataService', () => {
+  return {
+    getCohorts: getCohortsMock,
+    createCohort: createCohortMock,
+    updateCohort: updateCohortMock,
+    deleteCohort: vi.fn(),
+    getYearGroups: vi.fn(),
+    createYearGroup: vi.fn(),
+    updateYearGroup: vi.fn(),
+    deleteYearGroup: vi.fn(),
+  };
+});
 
 const onCloseMock = vi.fn();
 const cohortsLoadFailureCopy = 'Unable to load cohorts right now.';
@@ -301,9 +303,11 @@ describe('ManageCohortsModal', () => {
       await within(dialog).findByRole('table', { name: /cohorts/i });
 
       let releaseRefresh: (() => void) | undefined;
-      getCohortsMock.mockImplementationOnce(() => new Promise<Cohort[]>((resolve) => {
-        releaseRefresh = () => resolve(seedCohorts);
-      }));
+      getCohortsMock.mockImplementationOnce(() => {
+        return new Promise<Cohort[]>((resolve) => {
+          releaseRefresh = () => resolve(seedCohorts);
+        });
+      });
 
       try {
         await act(async () => {

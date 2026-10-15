@@ -2,9 +2,9 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { StartupWarmupDatasetKey } from '../query/sharedQueries';
 import {
   computePageDatasetState,
-  computePageSurfaceBlocking,
-  computeDatasetRenderable,
-  computePageSurfaceBusy,
+  shouldBlockPageSurface,
+  isDatasetRenderable,
+  isPageSurfaceBusy,
   usePageDataset,
   type PageDatasetState,
 } from './usePageDataset';
@@ -22,11 +22,13 @@ import type { UseQueryResult } from '@tanstack/react-query';
 // ---------------------------------------------------------------------------
 
 const { mockUseQuery, mockUseStartupWarmupState, mockGetStartupWarmupQueryOptions } = vi.hoisted(
-  () => ({
-    mockUseQuery: vi.fn(),
-    mockUseStartupWarmupState: vi.fn(),
-    mockGetStartupWarmupQueryOptions: vi.fn(),
-  })
+  () => {
+    return {
+      mockUseQuery: vi.fn(),
+      mockUseStartupWarmupState: vi.fn(),
+      mockGetStartupWarmupQueryOptions: vi.fn(),
+    };
+  }
 );
 
 vi.mock('@tanstack/react-query', async (importOriginal) => {
@@ -37,9 +39,11 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
   };
 });
 
-vi.mock('../features/auth/startupWarmupState', () => ({
-  useStartupWarmupState: mockUseStartupWarmupState,
-}));
+vi.mock('../features/auth/startupWarmupState', () => {
+  return {
+    useStartupWarmupState: mockUseStartupWarmupState,
+  };
+});
 
 vi.mock('../query/sharedQueries', async (importOriginal) => {
   const actual = (await importOriginal()) as Record<string, unknown>;
@@ -65,21 +69,21 @@ interface WarmupStateDouble {
  * Creates a warmup-state test double with per-dataset readiness, failure, and
  * trustworthiness controls.
  *
- * @param {boolean} ready - Whether `isDatasetReady` returns true for the key.
- * @param {boolean} failed - Whether `isDatasetFailed` returns true for the key.
- * @param {boolean} trustworthy - Trustworthiness stored in the dataset snapshot.
+ * @param {boolean} isReady - Whether `isDatasetReady` returns true for the key.
+ * @param {boolean} hasFailed - Whether `isDatasetFailed` returns true for the key.
+ * @param {boolean} isTrustworthy - Trustworthiness stored in the dataset snapshot.
  * @param {StartupWarmupDatasetKey} datasetKey - Dataset key the double answers for.
  * @returns {WarmupStateDouble} A warmup-state test double.
  */
 function createWarmupStateDouble(
-  ready: boolean,
-  failed: boolean,
-  trustworthy: boolean,
+  isReady: boolean,
+  hasFailed: boolean,
+  isTrustworthy: boolean,
   datasetKey: StartupWarmupDatasetKey = 'classPartials'
 ): WarmupStateDouble {
   return {
-    isDatasetReady: (key: StartupWarmupDatasetKey) => key === datasetKey && ready,
-    isDatasetFailed: (key: StartupWarmupDatasetKey) => key === datasetKey && failed,
+    isDatasetReady: (key: StartupWarmupDatasetKey) => key === datasetKey && isReady,
+    isDatasetFailed: (key: StartupWarmupDatasetKey) => key === datasetKey && hasFailed,
     snapshot: {
       datasets: {
         classPartials: { isTrustworthy: false },
@@ -87,7 +91,7 @@ function createWarmupStateDouble(
         assignmentTopics: { isTrustworthy: false },
         cohorts: { isTrustworthy: false },
         yearGroups: { isTrustworthy: false },
-        [datasetKey]: { isTrustworthy: trustworthy },
+        [datasetKey]: { isTrustworthy: isTrustworthy },
       },
     },
   };
@@ -249,10 +253,10 @@ describe('computePageDatasetState', () => {
 });
 
 // ---------------------------------------------------------------------------
-// computePageSurfaceBlocking
+// shouldBlockPageSurface
 // ---------------------------------------------------------------------------
 
-describe('computePageSurfaceBlocking', () => {
+describe('shouldBlockPageSurface', () => {
   it('blocks when the dataset has failed and there is no query data', () => {
     const datasetState: PageDatasetState = {
       hasQueryData: false,
@@ -263,7 +267,7 @@ describe('computePageSurfaceBlocking', () => {
       hasTrustworthyDataset: false,
     };
 
-    expect(computePageSurfaceBlocking(datasetState)).toBe(true);
+    expect(shouldBlockPageSurface(datasetState)).toBe(true);
   });
 
   it('does not block when the dataset has failed but data was recovered with no query error', () => {
@@ -276,7 +280,7 @@ describe('computePageSurfaceBlocking', () => {
       hasTrustworthyDataset: false,
     };
 
-    expect(computePageSurfaceBlocking(datasetState)).toBe(false);
+    expect(shouldBlockPageSurface(datasetState)).toBe(false);
   });
 
   it('blocks when the dataset has failed, data is present, but the query is errored', () => {
@@ -289,7 +293,7 @@ describe('computePageSurfaceBlocking', () => {
       hasTrustworthyDataset: false,
     };
 
-    expect(computePageSurfaceBlocking(datasetState)).toBe(true);
+    expect(shouldBlockPageSurface(datasetState)).toBe(true);
   });
 
   it('blocks when the dataset is ready but untrustworthy', () => {
@@ -302,7 +306,7 @@ describe('computePageSurfaceBlocking', () => {
       hasTrustworthyDataset: false,
     };
 
-    expect(computePageSurfaceBlocking(datasetState)).toBe(true);
+    expect(shouldBlockPageSurface(datasetState)).toBe(true);
   });
 
   it('blocks when the dataset is ready, trustworthy, but the query is errored', () => {
@@ -315,7 +319,7 @@ describe('computePageSurfaceBlocking', () => {
       hasTrustworthyDataset: true,
     };
 
-    expect(computePageSurfaceBlocking(datasetState)).toBe(true);
+    expect(shouldBlockPageSurface(datasetState)).toBe(true);
   });
 
   it('blocks when the dataset is ready, trustworthy, the query is errored, and no query data is present', () => {
@@ -328,7 +332,7 @@ describe('computePageSurfaceBlocking', () => {
       hasTrustworthyDataset: true,
     };
 
-    expect(computePageSurfaceBlocking(datasetState)).toBe(true);
+    expect(shouldBlockPageSurface(datasetState)).toBe(true);
   });
 
   it('does not block when the dataset is ready, trustworthy, and the query is not errored', () => {
@@ -341,15 +345,15 @@ describe('computePageSurfaceBlocking', () => {
       hasTrustworthyDataset: true,
     };
 
-    expect(computePageSurfaceBlocking(datasetState)).toBe(false);
+    expect(shouldBlockPageSurface(datasetState)).toBe(false);
   });
 });
 
 // ---------------------------------------------------------------------------
-// computeDatasetRenderable
+// isDatasetRenderable
 // ---------------------------------------------------------------------------
 
-describe('computeDatasetRenderable', () => {
+describe('isDatasetRenderable', () => {
   it('marks a trustworthy dataset as renderable', () => {
     const datasetState: PageDatasetState = {
       hasQueryData: true,
@@ -360,7 +364,7 @@ describe('computeDatasetRenderable', () => {
       hasTrustworthyDataset: true,
     };
 
-    expect(computeDatasetRenderable(datasetState)).toBe(true);
+    expect(isDatasetRenderable(datasetState)).toBe(true);
   });
 
   it('marks a recovered dataset (failed with data and no error) as renderable', () => {
@@ -373,7 +377,7 @@ describe('computeDatasetRenderable', () => {
       hasTrustworthyDataset: false,
     };
 
-    expect(computeDatasetRenderable(datasetState)).toBe(true);
+    expect(isDatasetRenderable(datasetState)).toBe(true);
   });
 
   it('marks a failed dataset with no query data as not renderable', () => {
@@ -386,7 +390,7 @@ describe('computeDatasetRenderable', () => {
       hasTrustworthyDataset: false,
     };
 
-    expect(computeDatasetRenderable(datasetState)).toBe(false);
+    expect(isDatasetRenderable(datasetState)).toBe(false);
   });
 
   it('marks a failed dataset with data and a query error as not renderable', () => {
@@ -399,7 +403,7 @@ describe('computeDatasetRenderable', () => {
       hasTrustworthyDataset: false,
     };
 
-    expect(computeDatasetRenderable(datasetState)).toBe(false);
+    expect(isDatasetRenderable(datasetState)).toBe(false);
   });
 
   it('marks a not-ready, untrustworthy dataset as not renderable', () => {
@@ -412,29 +416,29 @@ describe('computeDatasetRenderable', () => {
       hasTrustworthyDataset: false,
     };
 
-    expect(computeDatasetRenderable(datasetState)).toBe(false);
+    expect(isDatasetRenderable(datasetState)).toBe(false);
   });
 });
 
 // ---------------------------------------------------------------------------
-// computePageSurfaceBusy
+// isPageSurfaceBusy
 // ---------------------------------------------------------------------------
 
-describe('computePageSurfaceBusy', () => {
+describe('isPageSurfaceBusy', () => {
   it('returns busy when at least one fetch flag is true', () => {
-    expect(computePageSurfaceBusy([true], [false])).toBe(true);
+    expect(isPageSurfaceBusy([true], [false])).toBe(true);
   });
 
   it('returns busy when at least one mutation flag is true', () => {
-    expect(computePageSurfaceBusy([false], [true])).toBe(true);
+    expect(isPageSurfaceBusy([false], [true])).toBe(true);
   });
 
   it('returns not busy when all fetch and mutation flags are false', () => {
-    expect(computePageSurfaceBusy([false, false], [false])).toBe(false);
+    expect(isPageSurfaceBusy([false, false], [false])).toBe(false);
   });
 
   it('returns not busy when both arrays are empty', () => {
-    expect(computePageSurfaceBusy([], [])).toBe(false);
+    expect(isPageSurfaceBusy([], [])).toBe(false);
   });
 });
 
@@ -472,17 +476,13 @@ function createTestWrapper(queryClient: QueryClient) {
 /**
  * Builds a minimal {@link UseQueryResult} double for the mocked useQuery.
  *
- * Only the fields consumed by {@link computePageDatasetState} (`data` and
- * `isError`) are meaningful; the rest are present to satisfy the shape.
+ * The successful result fields consumed by {@link computePageDatasetState} are
+ * meaningful; the rest are present to satisfy the shape.
  *
  * @param {TData} [data] Optional query data.
- * @param {boolean} [isError=false] Whether the query is in an error state.
  * @returns {UseQueryResult<TData>} A mock query result.
  */
-function createMockUseQueryResult<TData>(
-  data?: TData,
-  isError: boolean = false
-): UseQueryResult<TData> {
+function createMockUseQueryResult<TData>(data?: TData): UseQueryResult<TData> {
   return {
     data,
     dataUpdatedAt: 0,
@@ -491,7 +491,7 @@ function createMockUseQueryResult<TData>(
     failureCount: 0,
     failureReason: null,
     fetchStatus: 'idle' as const,
-    isError,
+    isError: false,
     isFetched: true,
     isFetchedAfterMount: false,
     isFetching: false,
@@ -504,8 +504,8 @@ function createMockUseQueryResult<TData>(
     isRefetchError: false,
     isRefetching: false,
     isStale: false,
-    isSuccess: !isError,
-    status: isError ? ('error' as const) : ('success' as const),
+    isSuccess: true,
+    status: 'success' as const,
     refetch: vi.fn(),
     promise: Promise.resolve(data as TData),
   } as unknown as UseQueryResult<TData>;
@@ -514,16 +514,16 @@ function createMockUseQueryResult<TData>(
 /**
  * Derives a warmup status string from ready/failed flags.
  *
- * @param {boolean} ready Whether the dataset is ready.
- * @param {boolean} failed Whether the dataset has failed.
+ * @param {boolean} isReady Whether the dataset is ready.
+ * @param {boolean} hasFailed Whether the dataset has failed.
  * @returns {'ready' | 'failed' | 'loading'} Warmup status.
  */
-function resolveWarmupStatus(ready: boolean, failed: boolean): 'ready' | 'failed' | 'loading' {
-  if (ready) {
+function resolveWarmupStatus(isReady: boolean, hasFailed: boolean): 'ready' | 'failed' | 'loading' {
+  if (isReady) {
     return 'ready';
   }
 
-  if (failed) {
+  if (hasFailed) {
     return 'failed';
   }
 
@@ -710,11 +710,14 @@ describe('usePageDataset', () => {
       });
       mockUseQuery.mockReturnValue(createMockUseQueryResult<string[]>());
 
-      expect(() =>
-        renderHook(() => usePageDataset<string[]>('invalid-key' as StartupWarmupDatasetKey), {
-          wrapper,
-        })
-      ).toThrow('Unknown startup warm-up dataset key: invalid-key.');
+      expect(() => {
+        return renderHook(
+          () => usePageDataset<string[]>('invalid-key' as StartupWarmupDatasetKey),
+          {
+            wrapper,
+          }
+        );
+      }).toThrow('Unknown startup warm-up dataset key: invalid-key.');
     });
   });
 });

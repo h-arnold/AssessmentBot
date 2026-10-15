@@ -31,17 +31,21 @@ import {
 import { AuthenticationSettingsTab } from './AuthenticationSettingsTab';
 
 const { getAuthenticationSettingsMock, setAuthenticationSettingsMock, messageSuccessMock, messageErrorMock } =
-  vi.hoisted(() => ({
-    getAuthenticationSettingsMock: vi.fn(),
-    setAuthenticationSettingsMock: vi.fn(),
-    messageSuccessMock: vi.fn(),
-    messageErrorMock: vi.fn(),
-  }));
+  vi.hoisted(() => {
+    return {
+      getAuthenticationSettingsMock: vi.fn(),
+      setAuthenticationSettingsMock: vi.fn(),
+      messageSuccessMock: vi.fn(),
+      messageErrorMock: vi.fn(),
+    };
+  });
 
-vi.mock('../../../services/authService/authService', () => ({
-  getAuthenticationSettings: getAuthenticationSettingsMock,
-  setAuthenticationSettings: setAuthenticationSettingsMock,
-}));
+vi.mock('../../../services/authService/authService', () => {
+  return {
+    getAuthenticationSettings: getAuthenticationSettingsMock,
+    setAuthenticationSettings: setAuthenticationSettingsMock,
+  };
+});
 
 vi.mock('antd', async () => {
   const actual = (await vi.importActual('antd')) as typeof Antd;
@@ -49,15 +53,17 @@ vi.mock('antd', async () => {
   return {
     ...actual,
     App: Object.assign(actual.App, {
-      useApp: () => ({
-        message: {
-          success: messageSuccessMock,
-          error: messageErrorMock,
-        },
-        notification: {
-          open: vi.fn(),
-        },
-      }),
+      useApp: () => {
+        return {
+          message: {
+            success: messageSuccessMock,
+            error: messageErrorMock,
+          },
+          notification: {
+            open: vi.fn(),
+          },
+        };
+      },
     }),
   };
 });
@@ -120,7 +126,7 @@ const successfulSaveResult = {
 function createAuthSettingsSaveError(code: string, message: string): ApiTransportError {
   return new ApiTransportError({
     requestId: `req-${code.toLowerCase()}`,
-    error: { code, message, retriable: code === 'RATE_LIMITED' },
+    error: { code, message, isRetriable: code === 'RATE_LIMITED' },
   });
 }
 
@@ -130,12 +136,11 @@ let user: ReturnType<typeof userEvent.setup>;
  * Renders the authentication settings tab inside the application access context
  * and the shared frontend providers.
  *
- * @param {ApplicationAccessContextValue} accessContextValue The access role context to mount.
  * @returns {ReturnType<typeof render>} The render result.
  */
-function renderAuthenticationSettingsTab(accessContextValue: ApplicationAccessContextValue) {
+function renderAuthenticationSettingsTab() {
   return renderWithFrontendProviders(
-    <ApplicationAccessContext.Provider value={accessContextValue}>
+    <ApplicationAccessContext.Provider value={administratorAccessContextValue}>
       <AuthenticationSettingsTab />
     </ApplicationAccessContext.Provider>
   );
@@ -149,7 +154,7 @@ function renderAuthenticationSettingsTab(accessContextValue: ApplicationAccessCo
  */
 async function renderTabAndClickSave(settings: AuthenticationSettings): Promise<void> {
   getAuthenticationSettingsMock.mockImplementationOnce(() => Promise.resolve(settings));
-  renderAuthenticationSettingsTab(administratorAccessContextValue);
+  renderAuthenticationSettingsTab();
 
   await waitFor(() => {
     expect(screen.getByRole('button', { name: /save/i })).toBeInTheDocument();
@@ -251,7 +256,7 @@ describe('Authentication mode region rendering', () => {
   it('shows the group email and membership note in googleGroups mode and hides the user list', async () => {
     getAuthenticationSettingsMock.mockImplementationOnce(() => Promise.resolve(groupsModeSettings));
 
-    renderAuthenticationSettingsTab(administratorAccessContextValue);
+    renderAuthenticationSettingsTab();
 
     await waitFor(() => {
       expect(screen.getByLabelText(/auth group email/i)).toBeInTheDocument();
@@ -266,7 +271,7 @@ describe('Authentication mode region rendering', () => {
   it('shows the authorised-user list in scriptProperties mode and hides the group email field', async () => {
     getAuthenticationSettingsMock.mockImplementationOnce(() => Promise.resolve(scriptPropertiesModeSettings));
 
-    renderAuthenticationSettingsTab(administratorAccessContextValue);
+    renderAuthenticationSettingsTab();
 
     await waitFor(() => {
       expect(screen.getByRole('columnheader', { name: /email/i })).toBeInTheDocument();
@@ -282,7 +287,7 @@ describe('Authentication mode region rendering', () => {
   it('blocks clearing a configured group email and keeps the form usable', async () => {
     getAuthenticationSettingsMock.mockImplementationOnce(() => Promise.resolve(groupsModeSettings));
 
-    renderAuthenticationSettingsTab(administratorAccessContextValue);
+    renderAuthenticationSettingsTab();
 
     const groupEmailInput = await screen.findByLabelText(/auth group email/i);
     expect(groupEmailInput).toHaveValue('teachers@example.com');
@@ -301,7 +306,7 @@ describe('Authentication mode region rendering', () => {
       Promise.resolve(scriptPropertiesModeSettings)
     );
 
-    renderAuthenticationSettingsTab(administratorAccessContextValue);
+    renderAuthenticationSettingsTab();
 
     const modeSelect = await screen.findByRole('combobox', { name: /authentication mode/i });
     await user.click(modeSelect);
@@ -332,7 +337,7 @@ describe('Script Properties staged user-list editing', () => {
   it('normalises the email when a user is added', async () => {
     getAuthenticationSettingsMock.mockImplementationOnce(() => Promise.resolve(scriptPropertiesModeSettings));
 
-    renderAuthenticationSettingsTab(administratorAccessContextValue);
+    renderAuthenticationSettingsTab();
 
     await waitFor(() => {
       expect(screen.getByRole('columnheader', { name: /email/i })).toBeInTheDocument();
@@ -347,7 +352,7 @@ describe('Script Properties staged user-list editing', () => {
   it('shows the at-least-one-administrator explanation when the staged user list is empty', async () => {
     getAuthenticationSettingsMock.mockImplementationOnce(() => Promise.resolve(emptyUserListSettings));
 
-    renderAuthenticationSettingsTab(administratorAccessContextValue);
+    renderAuthenticationSettingsTab();
 
     await waitFor(() => {
       expect(screen.getByRole('columnheader', { name: /email/i })).toBeInTheDocument();
@@ -361,7 +366,7 @@ describe('Script Properties staged user-list editing', () => {
   it('blocks adding a duplicate staged email without creating a second row', async () => {
     getAuthenticationSettingsMock.mockImplementationOnce(() => Promise.resolve(scriptPropertiesModeSettings));
 
-    renderAuthenticationSettingsTab(administratorAccessContextValue);
+    renderAuthenticationSettingsTab();
 
     await waitFor(() => {
       expect(screen.getByRole('columnheader', { name: /email/i })).toBeInTheDocument();
@@ -377,7 +382,7 @@ describe('Script Properties staged user-list editing', () => {
   it('stages a role change through the inline role select', async () => {
     getAuthenticationSettingsMock.mockImplementationOnce(() => Promise.resolve(scriptPropertiesModeSettings));
 
-    renderAuthenticationSettingsTab(administratorAccessContextValue);
+    renderAuthenticationSettingsTab();
 
     await waitFor(() => {
       expect(screen.getByRole('columnheader', { name: /role/i })).toBeInTheDocument();
@@ -396,7 +401,7 @@ describe('Script Properties staged user-list editing', () => {
   it('stages a removal through the row confirm action', async () => {
     getAuthenticationSettingsMock.mockImplementationOnce(() => Promise.resolve(scriptPropertiesModeSettings));
 
-    renderAuthenticationSettingsTab(administratorAccessContextValue);
+    renderAuthenticationSettingsTab();
 
     await waitFor(() => {
       expect(screen.getByText('teacher@example.com')).toBeInTheDocument();
@@ -417,7 +422,7 @@ describe('Script Properties staged user-list editing', () => {
   it('keeps the staged row when the removal confirmation is cancelled', async () => {
     getAuthenticationSettingsMock.mockImplementationOnce(() => Promise.resolve(scriptPropertiesModeSettings));
 
-    renderAuthenticationSettingsTab(administratorAccessContextValue);
+    renderAuthenticationSettingsTab();
 
     await waitFor(() => {
       expect(screen.getByText('teacher@example.com')).toBeInTheDocument();
@@ -434,7 +439,7 @@ describe('Script Properties staged user-list editing', () => {
   it('preserves staged edits across a re-render', async () => {
     getAuthenticationSettingsMock.mockImplementationOnce(() => Promise.resolve(scriptPropertiesModeSettings));
 
-    const renderResult = renderAuthenticationSettingsTab(administratorAccessContextValue);
+    const renderResult = renderAuthenticationSettingsTab();
 
     await waitFor(() => {
       expect(screen.getByRole('columnheader', { name: /email/i })).toBeInTheDocument();
@@ -464,7 +469,7 @@ describe('Authentication mode-switch confirmation modal', () => {
   it('opens the confirmation modal when the baseline mode is changed', async () => {
     getAuthenticationSettingsMock.mockImplementationOnce(() => Promise.resolve(scriptPropertiesModeSettings));
 
-    renderAuthenticationSettingsTab(administratorAccessContextValue);
+    renderAuthenticationSettingsTab();
 
     const modeSelect = await screen.findByRole('combobox', { name: /authentication mode/i });
     await user.click(modeSelect);
@@ -480,7 +485,7 @@ describe('Authentication mode-switch confirmation modal', () => {
   it('reverts the mode select when the modal is cancelled', async () => {
     getAuthenticationSettingsMock.mockImplementationOnce(() => Promise.resolve(scriptPropertiesModeSettings));
 
-    renderAuthenticationSettingsTab(administratorAccessContextValue);
+    renderAuthenticationSettingsTab();
 
     const modeSelect = await screen.findByRole('combobox', { name: /authentication mode/i });
     await user.click(modeSelect);
@@ -496,7 +501,7 @@ describe('Authentication mode-switch confirmation modal', () => {
   it('swaps the visible regions and seeds the candidate list when the switch is confirmed', async () => {
     getAuthenticationSettingsMock.mockImplementationOnce(() => Promise.resolve(groupsModeSettings));
 
-    renderAuthenticationSettingsTab(administratorAccessContextValue);
+    renderAuthenticationSettingsTab();
 
     const modeSelect = await screen.findByRole('combobox', { name: /authentication mode/i });
     await user.click(modeSelect);
@@ -616,8 +621,10 @@ describe('Authentication settings save failure mapping', () => {
 
       const alert = await screen.findByRole('alert');
       expect(alert).toHaveTextContent(expectedAlert);
-      for (const pattern of unexpectedInAlert ?? []) {
-        expect(alert).not.toHaveTextContent(pattern);
+      if (unexpectedInAlert) {
+        for (const pattern of unexpectedInAlert) {
+          expect(alert).not.toHaveTextContent(pattern);
+        }
       }
       if (unexpectedInDocument) {
         expect(screen.queryByText(unexpectedInDocument)).not.toBeInTheDocument();
@@ -660,7 +667,7 @@ describe('Authentication settings load failure blocking treatment', () => {
       new Error('UNAUTHORIZED: unable to read authentication settings.')
     );
 
-    renderAuthenticationSettingsTab(administratorAccessContextValue);
+    renderAuthenticationSettingsTab();
 
     const panel = await screen.findByRole('region', { name: /authentication settings panel/i });
     await waitFor(() => expect(within(panel).getByRole('alert')).toBeInTheDocument());

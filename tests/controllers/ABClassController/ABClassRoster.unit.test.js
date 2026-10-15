@@ -1,6 +1,8 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import { withGlobalMocks } from '../../helpers/globalMockManager.js';
 
 const MODULE_PATH = '../../../src/backend/y_controllers/ABClassController/ABClassRoster';
+const { ABClass: RealABClass } = require('../../../src/backend/Models/ABClass');
 
 describe('ABClassRoster sub-class', () => {
   it('is available in GREEN phase (module exists)', () => {
@@ -47,5 +49,42 @@ describe('ABClassRoster sub-class', () => {
         expect(typeof instance[methodName]).toBe('function');
       });
     });
+  });
+
+  it('retains the existing course length when an unsafe update cannot be parsed', () => {
+    const ABClassRoster = require(MODULE_PATH);
+    class ExistingClassState {
+      constructor() {
+        this.courseLength = 4;
+        this.assignments = [];
+      }
+
+      static _parseNullableInt(value, defaultValue) {
+        return RealABClass._parseNullableInt(value, defaultValue);
+      }
+
+      addAssignment() {}
+    }
+    const restore = withGlobalMocks({
+      ABClass: () => ExistingClassState,
+      ClassroomApiClient: () => ({
+        fetchCourse: vi.fn(() => ({})),
+        fetchTeachers: vi.fn(() => []),
+        fetchAllStudents: vi.fn(() => []),
+      }),
+    }).restore;
+    try {
+      const roster = new ABClassRoster({ dbManager: {}, validation: {}, persistence: {} });
+      const updated = roster.initialise('course-unsafe', {
+        courseLength: Number.MAX_SAFE_INTEGER + 1,
+      });
+      expect(updated.courseLength).toBe(4);
+
+      expect(roster.initialise('course-safe', { courseLength: 6 }).courseLength).toBe(6);
+      expect(roster.initialise('course-prefix', { courseLength: '7 years' }).courseLength).toBe(7);
+      expect(roster.initialise('course-fractional', { courseLength: 8.5 }).courseLength).toBe(8);
+    } finally {
+      restore();
+    }
   });
 });

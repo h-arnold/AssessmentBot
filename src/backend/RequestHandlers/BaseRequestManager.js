@@ -51,7 +51,7 @@ class BaseRequestManager {
     // - 401: Unauthorised (invalid API key)
     // - 403: Forbidden (insufficient permissions)
     // - 404: Not Found (resource missing / incorrect endpoint)
-    return statusCode === 401 || statusCode === 403 || statusCode === 404;
+    return [401, 403, 404].includes(statusCode);
   }
 
   /**
@@ -174,14 +174,16 @@ class BaseRequestManager {
         `${currentMessage}: Sending batch ${index + 1} of ${batches.length}.`,
         false
       );
-      const fetchAllRequests = batch.map((request) => ({
-        url: request.url,
-        method: request.method || 'get',
-        contentType: request.contentType || 'application/json',
-        payload: request.payload || null,
-        headers: request.headers || {},
-        muteHttpExceptions: request.muteHttpExceptions || true,
-      }));
+      const fetchAllRequests = batch.map((request) => {
+        return {
+          url: request.url,
+          method: request.method || 'get',
+          contentType: request.contentType || 'application/json',
+          payload: request.payload || null,
+          headers: request.headers || {},
+          muteHttpExceptions: request.muteHttpExceptions || true,
+        };
+      });
 
       const responses = UrlFetchApp.fetchAll(fetchAllRequests);
 

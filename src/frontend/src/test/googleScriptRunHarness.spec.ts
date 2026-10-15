@@ -13,12 +13,12 @@ describe('googleScriptRunHarness', () => {
       const invokeRequest = vi.fn();
       const runner = createGoogleScriptRunApiHandlerMock(invokeRequest);
 
-      expect(() =>
-        runner.apiHandler({
+      expect(() => {
+        return runner.apiHandler({
           method: 'upsertAssignmentDefinition',
           params: { nested: { updatedAt: new Date('2026-01-06T12:30:00.000Z') } },
-        })
-      ).toThrow(TypeError);
+        });
+      }).toThrow(TypeError);
       expect(invokeRequest).not.toHaveBeenCalled();
     });
 
@@ -55,6 +55,43 @@ describe('googleScriptRunHarness', () => {
 
       expect(() => runner.apiHandler(new Date('2026-01-06T12:30:00.000Z'))).toThrow(TypeError);
     });
+
+    it.each(['request', 'success response'])(
+      'checks nested %s Dates before reading a later sibling',
+      (boundary) => {
+        const child = { updatedAt: new Date('2026-01-06T12:30:00.000Z') };
+        const siblingGetter = vi.fn(() => {
+          child.updatedAt = '2026-01-06T12:30:00.000Z' as unknown as Date;
+          return null;
+        });
+        const graph = {
+          child,
+          get sibling() {
+            return siblingGetter();
+          },
+        };
+        const invokeRequest = vi.fn((_request, callbacks) => {
+          if (boundary === 'success response') {
+            callbacks.successHandler?.({ ok: true, requestId: 'req-live-date', data: graph });
+          }
+        });
+        const successHandler = vi.fn();
+        const runner = createGoogleScriptRunApiHandlerMock(invokeRequest);
+        const invoke = () => {
+          return runner
+            .withSuccessHandler(successHandler)
+            .apiHandler(boundary === 'request' ? graph : { method: 'get' });
+        };
+
+        expect(invoke).toThrow(/live Date.*ISO 8601 strings/s);
+        expect(siblingGetter).not.toHaveBeenCalled();
+        if (boundary === 'request') {
+          expect(invokeRequest).not.toHaveBeenCalled();
+        } else {
+          expect(successHandler).not.toHaveBeenCalled();
+        }
+      }
+    );
   });
 
   describe('ISO-string handling and serialisation fidelity', () => {

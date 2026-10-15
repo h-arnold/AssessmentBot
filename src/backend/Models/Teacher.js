@@ -1,4 +1,5 @@
 // Teacher.js
+/* global Validate */
 
 /**
  * Represents a teacher referenced in classroom sheets.
@@ -29,17 +30,12 @@ class Teacher {
    * Set the teacher's name.
    * @param {string|null} name - The teacher's name, or null to clear
    */
-  setTeacherName(name = null) {
+  setTeacherName(name) {
     if (!name) {
       this.teacherName = null;
       return;
     }
-    if (
-      this._Validate &&
-      typeof this._Validate.isString === 'function' &&
-      !this._Validate.isString(name)
-    )
-      throw new TypeError('Invalid teacherName');
+    if (!Validate.isString(name)) throw new TypeError('Invalid teacherName');
     this.teacherName = name;
   }
 
@@ -55,17 +51,12 @@ class Teacher {
    * Set the teacher's email address.
    * @param {string|null} email - The teacher's email, or null to clear
    */
-  setEmail(email = null) {
+  setEmail(email) {
     if (!email) {
       this.email = null;
       return;
     }
-    if (
-      this._Validate &&
-      typeof this._Validate.isEmail === 'function' &&
-      !this._Validate.isEmail(email)
-    )
-      throw new TypeError('Invalid email');
+    if (!Validate.isEmail(email)) throw new TypeError('Invalid email');
     this.email = email;
   }
 
@@ -81,17 +72,12 @@ class Teacher {
    * Set the teacher's Google userId.
    * @param {string|null} userId - The teacher's Google userId, or null to clear
    */
-  setUserId(userId = null) {
+  setUserId(userId) {
     if (!userId) {
       this.userId = null;
       return;
     }
-    if (
-      this._Validate &&
-      typeof this._Validate.isGoogleUserId === 'function' &&
-      !this._Validate.isGoogleUserId(userId)
-    )
-      throw new TypeError('Invalid userId');
+    if (!Validate.isGoogleUserId(userId)) throw new TypeError('Invalid userId');
     this.userId = userId;
   }
 
@@ -103,20 +89,20 @@ class Teacher {
     return {
       email: this.email,
       userId: this.userId,
-      ...(this.teacherName == null ? {} : { teacherName: this.teacherName }),
+      ...(this.teacherName != null && { teacherName: this.teacherName }),
     };
   }
 
   /**
    * Deserialises a JSON object to a Teacher instance.
    * @param {Object|null} json - The serialised teacher object
-   * @returns {Teacher|null} A new Teacher instance, or null if json is falsy
+   * @returns {Teacher|null} A new Teacher instance, or null if the JSON input is falsy
    */
   static fromJSON(json) {
     if (!json || typeof json !== 'object') return null;
     const { email, userId, teacherName } = json;
-    if ('teacherName' in json) return new Teacher(email || null, userId || null, teacherName);
-    return new Teacher(email || null, userId || null);
+    if ('teacherName' in json) return new Teacher(email, userId, teacherName);
+    return new Teacher(email, userId);
   }
 }
 

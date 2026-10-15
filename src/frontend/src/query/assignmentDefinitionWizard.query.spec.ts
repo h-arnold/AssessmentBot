@@ -2,18 +2,24 @@ import { describe, expect, it, vi } from 'vitest';
 import { createAppQueryClient } from './queryClient';
 import { createStartupWarmupSnapshotForStatus } from '../features/auth/startupWarmupState';
 
-const { getAssignmentTopicsMock, getAssignmentDefinitionMock } = vi.hoisted(() => ({
-  getAssignmentTopicsMock: vi.fn(),
-  getAssignmentDefinitionMock: vi.fn(),
-}));
+const { getAssignmentTopicsMock, getAssignmentDefinitionMock } = vi.hoisted(() => {
+  return {
+    getAssignmentTopicsMock: vi.fn(),
+    getAssignmentDefinitionMock: vi.fn(),
+  };
+});
 
-vi.mock('../services/assignmentDefinition/assignmentTopicsService', () => ({
-  getAssignmentTopics: getAssignmentTopicsMock,
-}));
+vi.mock('../services/assignmentDefinition/assignmentTopicsService', () => {
+  return {
+    getAssignmentTopics: getAssignmentTopicsMock,
+  };
+});
 
-vi.mock('../services/assignmentDefinition/assignmentDefinitionService', () => ({
-  getAssignmentDefinition: getAssignmentDefinitionMock,
-}));
+vi.mock('../services/assignmentDefinition/assignmentDefinitionService', () => {
+  return {
+    getAssignmentDefinition: getAssignmentDefinitionMock,
+  };
+});
 
 /**
  * Reads a query-key factory from the shared query-key exports.
@@ -56,13 +62,12 @@ describe('assignment definition query wiring', () => {
     const sharedQueriesModule = await import('./sharedQueries');
     const sharedQueriesRecord = sharedQueriesModule as Record<string, unknown>;
     const getAssignmentTopicsQueryOptions = sharedQueriesRecord.getAssignmentTopicsQueryOptions as
-      | (() => Parameters<ReturnType<typeof createAppQueryClient>['fetchQuery']>[0])
-      | undefined;
+      (() => Parameters<ReturnType<typeof createAppQueryClient>['query']>[0]) | undefined;
     const getAssignmentDefinitionQueryOptions =
       sharedQueriesRecord.getAssignmentDefinitionQueryOptions as
         | ((
             definitionKey: string
-          ) => Parameters<ReturnType<typeof createAppQueryClient>['fetchQuery']>[0])
+          ) => Parameters<ReturnType<typeof createAppQueryClient>['query']>[0])
         | undefined;
 
     expect(getAssignmentTopicsQueryOptions).toBeTypeOf('function');
@@ -79,10 +84,10 @@ describe('assignment definition query wiring', () => {
 
     const queryClient = createAppQueryClient();
 
-    await expect(queryClient.fetchQuery(assignmentTopicsQueryOptions)).resolves.toEqual([
+    await expect(queryClient.query(assignmentTopicsQueryOptions)).resolves.toEqual([
       { key: 'topic-algebra', name: 'Algebra' },
     ]);
-    await expect(queryClient.fetchQuery(assignmentDefinitionQueryOptions)).resolves.toEqual({
+    await expect(queryClient.query(assignmentDefinitionQueryOptions)).resolves.toEqual({
       definitionKey: 'algebra-baseline',
       primaryTitle: 'Algebra Baseline',
     });
@@ -92,11 +97,9 @@ describe('assignment definition query wiring', () => {
     const sharedQueriesModule = await import('./sharedQueries');
     const sharedQueriesRecord = sharedQueriesModule as Record<string, unknown>;
     const startupWarmupDatasetKeys = sharedQueriesRecord.startupWarmupDatasetKeys as
-      | readonly string[]
-      | undefined;
+      readonly string[] | undefined;
     const getStartupWarmupQueryKey = sharedQueriesRecord.getStartupWarmupQueryKey as
-      | ((datasetKey: string) => readonly unknown[])
-      | undefined;
+      ((datasetKey: string) => readonly unknown[]) | undefined;
 
     expect(startupWarmupDatasetKeys).toContain('assignmentTopics');
     expect(getStartupWarmupQueryKey).toBeTypeOf('function');

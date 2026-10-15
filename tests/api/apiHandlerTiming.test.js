@@ -56,7 +56,7 @@ describe('Api/apiHandler – lock timing observability and logging', () => {
     expect(meta).toBeDefined();
     expect(meta).toMatchObject({
       phase: 'admission',
-      method: 'getAuthorisationStatus',
+      method: 'hasScriptAuthorisation',
       lockWaitMs: 100,
       stateUpdateMs: 150,
       totalPhaseMs: 250,
@@ -77,7 +77,7 @@ describe('Api/apiHandler – lock timing observability and logging', () => {
     expect(meta).toBeDefined();
     expect(meta).toMatchObject({
       phase: 'completion',
-      method: 'getAuthorisationStatus',
+      method: 'hasScriptAuthorisation',
       lockWaitMs: 80,
       stateUpdateMs: 220,
       totalPhaseMs: 300,
@@ -186,7 +186,7 @@ describe('Api/apiHandler – lock timing observability and logging', () => {
       'API request failed.',
       expect.objectContaining({
         requestId: result.requestId,
-        method: 'getAuthorisationStatus',
+        method: 'hasScriptAuthorisation',
       }),
       thrownError
     );

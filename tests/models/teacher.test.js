@@ -1,9 +1,5 @@
 import { describe, it, expect } from 'vitest';
 import { Teacher } from '../../src/backend/Models/Teacher.js';
-import { Validate } from '../../src/backend/Utils/Validate.js';
-
-// Ensure model validation hooks are present for tests that assert validation behavior
-Teacher.prototype._Validate = Validate;
 
 describe('Teacher model', () => {
   it('constructor sets email and userId', () => {
@@ -69,9 +65,10 @@ describe('Teacher model', () => {
       expect(t.getTeacherName()).toBeNull();
     });
 
-    it('throws TypeError for non-string name when Validate is present', () => {
-      const t = new Teacher(null, null);
+    it('always throws TypeError for a non-string name without changing teacherName', () => {
+      const t = new Teacher(null, null, 'Jane Doe');
       expect(() => t.setTeacherName(123)).toThrow(TypeError);
+      expect(t.getTeacherName()).toBe('Jane Doe');
     });
   });
 
@@ -88,9 +85,10 @@ describe('Teacher model', () => {
       expect(t.getEmail()).toBeNull();
     });
 
-    it('throws TypeError for invalid email when Validate is present', () => {
-      const t = new Teacher(null, null);
+    it('always throws TypeError for an invalid email without changing email', () => {
+      const t = new Teacher('teacher@school.edu', null);
       expect(() => t.setEmail('not-an-email')).toThrow(TypeError);
+      expect(t.getEmail()).toBe('teacher@school.edu');
     });
   });
 
@@ -107,9 +105,10 @@ describe('Teacher model', () => {
       expect(t.getUserId()).toBeNull();
     });
 
-    it('throws TypeError for invalid userId when Validate is present', () => {
-      const t = new Teacher(null, null);
+    it('always throws TypeError for an invalid userId without changing userId', () => {
+      const t = new Teacher(null, '12345678901234567890');
       expect(() => t.setUserId('!@#')).toThrow(TypeError);
+      expect(t.getUserId()).toBe('12345678901234567890');
     });
   });
 

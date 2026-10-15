@@ -276,11 +276,11 @@ Removes both the main class document and the partial registry entry.
 
 **Response:**
 
-| Field              | Type      | Required | Notes                                        |
-| ------------------ | --------- | -------- | -------------------------------------------- |
-| `classId`          | `string`  | yes      |                                              |
-| `fullClassDeleted` | `boolean` | yes      | Whether the main document was deleted        |
-| `partialDeleted`   | `boolean` | yes      | Whether the partial registry row was deleted |
+| Field                    | Type      | Required | Notes                                                         |
+| ------------------------ | --------- | -------- | ------------------------------------------------------------- |
+| `classId`                | `string`  | yes      |                                                               |
+| `hasDeletedFullClass`    | `boolean` | yes      | `true` when this delete removed the main document collection. |
+| `hasDeletedClassPartial` | `boolean` | yes      | `true` when this delete removed the partial registry row.     |
 
 Key contract notes:
 
@@ -288,7 +288,7 @@ Key contract notes:
   `dropCollection(classId)` and the `abclass_partials` registry row via
   `deleteOne({ classId })`.
 - Repeated deletes are idempotent and still succeed with updated flag values.
-- The response does not use `ClassPartialSchema`; it is a plain `{ classId, fullClassDeleted, partialDeleted }` object.
+- The response does not use `ClassPartialSchema`; it is a plain `{ classId, hasDeletedFullClass, hasDeletedClassPartial }` object.
 
 ---
 
@@ -301,11 +301,11 @@ Frontend Zod: `src/frontend/src/services/googleClassrooms/classPartials.zod.ts` 
 
 `Teacher.toJSON()` emits:
 
-| Field         | Type           | Backend toJSON()                                                                      | Frontend Zod                                                 | Notes                                                                                                                                      |
-| ------------- | -------------- | ------------------------------------------------------------------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| `email`       | `string\|null` | Always emitted                                                                        | `z.string().nullable()`                                      | Null when email is unset on the model.                                                                                                     |
-| `userId`      | `string\|null` | Always emitted                                                                        | `z.string().nullable()`                                      | Google userId. Null when unset.                                                                                                            |
-| `teacherName` | `string\|null` | **Conditionally emitted:** omitted when `this.teacherName == null`; present otherwise | `z.string().nullable().optional().transform(v => v ?? null)` | The field is entirely absent from the JSON when null. Frontend Zod handles both absent and null states via `.optional()` + `.transform()`. |
+| Field         | Type           | Backend toJSON()                                                                      | Frontend Zod                                                          | Notes                                                                                                                                      |
+| ------------- | -------------- | ------------------------------------------------------------------------------------- | --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `email`       | `string\|null` | Always emitted                                                                        | `z.string().nullable()`                                               | Null when email is unset on the model.                                                                                                     |
+| `userId`      | `string\|null` | Always emitted                                                                        | `z.string().nullable()`                                               | Google userId. Null when unset.                                                                                                            |
+| `teacherName` | `string\|null` | **Conditionally emitted:** omitted when `this.teacherName == null`; present otherwise | `z.string().nullable().optional().transform((value = null) => value)` | The field is entirely absent from the JSON when null. Frontend Zod handles both absent and null states via `.optional()` + `.transform()`. |
 
 Key notes:
 
@@ -379,7 +379,8 @@ contract for StudentSubmission is documented in [Contract: Assignment](assignmen
 **Key domain validation rules:**
 
 - `cohortKey` and `yearGroupKey` must be present on upsertABClass requests.
-- `courseLength` must be an integer ≥ 1 on upsertABClass.
+- `courseLength` must be a positive safe integer on validated upsertABClass and updateABClass writes (`1` through `Number.MAX_SAFE_INTEGER`). Unsafe numeric values are rejected rather than accepted after precision has been lost.
+- Constructor and `fromJSON` normalisation retain the existing course-length fallback of `1`; roster initialisation retains its existing current-value fallback. `_parseNullableInt` checks both numeric input magnitudes and parsed results for safety. Existing prefix parsing of safe values is unchanged (for example, `'3years'` becomes `3` and the string `'1e21'` becomes `1`); an unsafe numeric `1e21` takes the fallback before parsing.
 - On updateABClass, `active` must be a boolean or null.
 - `classOwner`, `teachers`, `students`, `assignments` are forbidden in updateABClass requests.
 - The response mapper (`_normaliseClassPartial`) throws `TypeError` if a partial document is not a plain object or lacks an array `teachers` field.
@@ -411,7 +412,7 @@ contract for StudentSubmission is documented in [Contract: Assignment](assignmen
    **Classification: Aligned** — intentional to keep each Zod file self-contained and
    avoid cross-file import coupling for a simple schema.
 
-5. **`deleteABClass` response shape (`{ classId, fullClassDeleted, partialDeleted }`) has no frontend Zod schema.**
+5. **`deleteABClass` response shape (`{ classId, hasDeletedFullClass, hasDeletedClassPartial }`) has no frontend Zod schema.**
    The response is consumed by generic `callApi` without `parseApiResponse` validation.
    **Classification: Aligned** — the delete flow does not require typed validation at
    the transport boundary; the caller receives raw `unknown` and destructures as needed.

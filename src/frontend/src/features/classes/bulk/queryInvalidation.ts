@@ -10,9 +10,12 @@ import {
   type RequiredClassPartialsRefreshSuccessOutcomeBase,
 } from './queryInvalidation.zod';
 
-const refreshRateLimitedMessage = 'The classes are busy updating right now. Please try again shortly.';
-const refreshInvalidRequestMessage = 'Unable to refresh the classes right now. Please review the selection and try again.';
-const refreshGenericFailureMessage = 'The classes could not be refreshed right now. Please reload the page and try again.';
+const refreshRateLimitedMessage =
+  'The classes are busy updating right now. Please try again shortly.';
+const refreshInvalidRequestMessage =
+  'Unable to refresh the classes right now. Please review the selection and try again.';
+const refreshGenericFailureMessage =
+  'The classes could not be refreshed right now. Please reload the page and try again.';
 
 /**
  * Maps required-refresh failures to user-safe copy.
@@ -35,14 +38,14 @@ export function mapRequiredClassPartialsRefreshFailureToUserMessage(
 }
 
 export type RequiredClassPartialsRefreshOutcome<TResult> =
-  | Readonly<{
+  | (Readonly<{
       mutationResult: TResult;
     }> &
-      RequiredClassPartialsRefreshSuccessOutcomeBase
-  | Readonly<{
+      RequiredClassPartialsRefreshSuccessOutcomeBase)
+  | (Readonly<{
       mutationResult: TResult;
     }> &
-      RequiredClassPartialsRefreshFailureOutcomeBase;
+      RequiredClassPartialsRefreshFailureOutcomeBase);
 
 /**
  * Runs a successful mutation followed by a required active class-partials refresh.
@@ -57,20 +60,25 @@ export type RequiredClassPartialsRefreshOutcome<TResult> =
  * }>} options Mutation and query-client dependencies.
  * @returns {Promise<RequiredClassPartialsRefreshOutcome<TResult>>} Composite mutation/refresh outcome.
  */
-export async function runMutationWithRequiredClassPartialsRefresh<TResult>(options: Readonly<{
-  mutate: () => Promise<TResult>;
-  queryClient: QueryClient;
-}>): Promise<RequiredClassPartialsRefreshOutcome<TResult>> {
+export async function runMutationWithRequiredClassPartialsRefresh<TResult>(
+  options: Readonly<{
+    mutate: () => Promise<TResult>;
+    queryClient: QueryClient;
+  }>
+): Promise<RequiredClassPartialsRefreshOutcome<TResult>> {
   const mutationResult = await options.mutate();
 
   try {
-    await options.queryClient.refetchQueries({
-      exact: true,
-      queryKey: queryKeys.classPartials(),
-      type: 'active',
-    }, {
-      throwOnError: true,
-    });
+    await options.queryClient.refetchQueries(
+      {
+        exact: true,
+        queryKey: queryKeys.classPartials(),
+        type: 'active',
+      },
+      {
+        throwOnError: true,
+      }
+    );
 
     return buildRequiredClassPartialsRefreshSuccessOutcome(mutationResult);
   } catch (error: unknown) {
@@ -138,7 +146,7 @@ function extractRefreshErrorMetadata(error: unknown): RefreshErrorMetadata {
     return refreshErrorMetadataSchema.parse({
       code: error.code,
       requestId: error.requestId,
-      retriable: error.retriable,
+      isRetriable: error.isRetriable,
     });
   }
 
@@ -153,7 +161,7 @@ function extractRefreshErrorMetadata(error: unknown): RefreshErrorMetadata {
  */
 function isApiTransportErrorLike(
   error: unknown
-): error is Pick<ApiTransportError, 'code' | 'requestId' | 'retriable'> {
+): error is Pick<ApiTransportError, 'code' | 'requestId' | 'isRetriable'> {
   if (error instanceof ApiTransportError) {
     return true;
   }
@@ -162,11 +170,11 @@ function isApiTransportErrorLike(
     return false;
   }
 
-  const candidate = error as Partial<Pick<ApiTransportError, 'code' | 'requestId' | 'retriable'>>;
+  const candidate = error as Partial<Pick<ApiTransportError, 'code' | 'requestId' | 'isRetriable'>>;
 
   return (
-    typeof candidate.code === 'string'
-    && typeof candidate.requestId === 'string'
-    && (typeof candidate.retriable === 'boolean' || candidate.retriable === undefined)
+    typeof candidate.code === 'string' &&
+    typeof candidate.requestId === 'string' &&
+    (typeof candidate.isRetriable === 'boolean' || candidate.isRetriable === undefined)
   );
 }

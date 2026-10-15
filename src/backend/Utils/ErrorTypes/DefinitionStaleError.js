@@ -21,7 +21,7 @@ class DefinitionStaleError extends Error {
    * @param {Object} options - Structured metadata
    * @param {string} options.definitionKey - The definition key that is stale
    * @param {boolean} options.referenceStale - Whether the reference document has changed
-   * @param {boolean} options.templateStale - Whether the template document has changed
+   * @param {boolean} options.isTemplateStale - Whether the template document has changed
    * @param {string|null} options.referenceLastModified - Current ISO timestamp from Drive for the reference document
    * @param {string|null} options.templateLastModified - Current ISO timestamp from Drive for the template document
    */
@@ -30,7 +30,7 @@ class DefinitionStaleError extends Error {
     this.name = 'DefinitionStaleError';
     this.definitionKey = options.definitionKey;
     this.referenceStale = options.referenceStale;
-    this.templateStale = options.templateStale;
+    this.isTemplateStale = options.isTemplateStale;
     this.referenceLastModified = options.referenceLastModified;
     this.templateLastModified = options.templateLastModified;
   }

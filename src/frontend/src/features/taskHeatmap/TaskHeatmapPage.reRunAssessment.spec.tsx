@@ -47,13 +47,10 @@ function buildHeatmapProperties(overrides: ReRunSpecProperties = {}) {
  * @returns {void}
  */
 function renderHeatmapPage(overrides: ReRunSpecProperties = {}): void {
-  render(
-    createElement(
-      QueryClientProvider,
-      { client: createTestQueryClient() },
-      createElement(App, null, createElement(TaskHeatmapPage, buildHeatmapProperties(overrides)))
-    )
-  );
+  const queryClient = createTestQueryClient();
+  const page = createElement(TaskHeatmapPage, buildHeatmapProperties(overrides));
+  const app = createElement(App, null, page);
+  render(createElement(QueryClientProvider, { client: queryClient }, app));
 }
 
 beforeEach(() => {

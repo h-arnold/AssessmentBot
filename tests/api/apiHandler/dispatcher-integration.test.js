@@ -84,7 +84,7 @@ describe('Api/apiHandler dispatcher — integration, VM context and delegation',
         error: {
           code: 'INVALID_REQUEST',
           message: expect.any(String),
-          retriable: false,
+          isRetriable: false,
         },
       });
     });
@@ -116,7 +116,7 @@ describe('Api/apiHandler dispatcher — integration, VM context and delegation',
           error: {
             code: 'INVALID_REQUEST',
             message: expect.any(String),
-            retriable: false,
+            isRetriable: false,
           },
         });
       } finally {
@@ -151,7 +151,7 @@ describe('Api/apiHandler dispatcher — integration, VM context and delegation',
         error: {
           code: 'INTERNAL_ERROR',
           message: 'Internal API error.',
-          retriable: false,
+          isRetriable: false,
         },
       });
     });
@@ -197,6 +197,48 @@ describe('Api/apiHandler dispatcher — integration, VM context and delegation',
   });
 
   describe('VM context', () => {
+    it('evaluates the CommonJS module without requiring modules or overwriting preinstalled helpers', () => {
+      const { readFileSync } = require('node:fs');
+      const vm = require('node:vm');
+      const source = readFileSync(
+        require.resolve('../../../src/backend/z_Api/z_apiHandler.js'),
+        'utf8'
+      );
+      const preinstalled = {
+        getBackendConfig_: () => 'test-config',
+        setBackendConfig_: () => 'test-config-set',
+        startAssessmentRun_: () => 'test-assessment',
+        getAssignment_: () => 'test-assignment',
+        getApplicationAccess_: () => 'test-access',
+        getAuthenticationSettings_: () => 'test-auth-settings',
+        setAuthenticationSettings_: () => 'test-auth-settings-set',
+        upsertABClass_: () => 'test-upsert',
+        updateABClass_: () => 'test-update',
+        deleteABClass_: () => 'test-delete',
+        getABClass_: () => 'test-read',
+      };
+      const sandbox = makeVmGlobals(preinstalled);
+      const requireSpy = vi.fn(() => {
+        throw new Error('CommonJS evaluation must not require modules');
+      });
+      sandbox.module = { exports: {} };
+      sandbox.require = requireSpy;
+      sandbox.globalThis = sandbox;
+
+      vm.createContext(sandbox);
+      vm.runInContext(source, sandbox, { filename: 'z_apiHandler.js' });
+
+      expect(requireSpy).not.toHaveBeenCalled();
+      for (const [name, value] of Object.entries(preinstalled)) {
+        expect(sandbox[name]).toBe(value);
+      }
+      expect(Object.keys(sandbox.module.exports)).toEqual([
+        'apiHandler',
+        'ApiDispatcher',
+        'ALLOWLISTED_METHOD_HANDLERS',
+      ]);
+    });
+
     it('operates correctly via BaseSingleton in a GAS-like VM context', () => {
       const { ApiDispatcher } = loadApiHandlerInVmContext({
         globals: makeVmGlobals({
@@ -215,7 +257,7 @@ describe('Api/apiHandler dispatcher — integration, VM context and delegation',
       expect(first).toBe(second);
       expect(
         first.handle({
-          method: 'getAuthorisationStatus',
+          method: 'hasScriptAuthorisation',
         })
       ).toMatchObject({ ok: true, requestId: 'uuid-vm-singleton' });
     });
@@ -236,7 +278,7 @@ describe('Api/apiHandler dispatcher — integration, VM context and delegation',
       const dispatcher = ApiDispatcher.getInstance();
 
       const response = dispatcher.handle({
-        method: 'getAuthorisationStatus',
+        method: 'hasScriptAuthorisation',
       });
 
       expect(response).toMatchObject({
@@ -245,7 +287,7 @@ describe('Api/apiHandler dispatcher — integration, VM context and delegation',
         error: {
           code: 'INTERNAL_ERROR',
           message: 'Internal API error.',
-          retriable: false,
+          isRetriable: false,
         },
       });
     });
@@ -256,7 +298,7 @@ describe('Api/apiHandler dispatcher — integration, VM context and delegation',
       const { apiHandler, ApiDispatcher } = loadApiHandlerModule();
 
       const request = {
-        method: 'getAuthorisationStatus',
+        method: 'hasScriptAuthorisation',
       };
       const handle = vi.fn(() => ({
         ok: true,

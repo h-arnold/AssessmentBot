@@ -148,10 +148,11 @@ function buildCanonicalReferenceData(): {
         yearGroupKeys: [definition.yearGroupKey],
       });
     }
-    if (!seenYearGroups.has(definition.yearGroupKey)) {
-      seenYearGroups.add(definition.yearGroupKey);
-      yearGroups.push({ key: definition.yearGroupKey, name: definition.yearGroupLabel });
+    if (seenYearGroups.has(definition.yearGroupKey)) {
+      continue;
     }
+    seenYearGroups.add(definition.yearGroupKey);
+    yearGroups.push({ key: definition.yearGroupKey, name: definition.yearGroupLabel });
   }
 
   return { topics, yearGroups };
@@ -301,7 +302,7 @@ function repeat(entry: ResponseItem, count: number): ResponseItem[] {
  */
 function buildCanonicalScenario(assignments: ReadonlyArray<unknown>): RuntimeScenario {
   return {
-    getAuthorisationStatus: repeat(success(true), STARTUP_QUEUE_REPEATS),
+    hasScriptAuthorisation: repeat(success(true), STARTUP_QUEUE_REPEATS),
     getApplicationAccess: repeat(
       success({ allowed: true, role: 'admin', email: 'owner@example.com', reason: 'ok' }),
       STARTUP_QUEUE_REPEATS

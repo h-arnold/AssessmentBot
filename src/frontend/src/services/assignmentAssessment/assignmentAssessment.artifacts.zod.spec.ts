@@ -39,8 +39,8 @@ describe('assignmentAssessment.zod schemas', () => {
     });
 
     it('rejects an artifact missing taskId', () => {
-      expect(() =>
-        BaseTaskArtifactSchema.parse({
+      expect(() => {
+        return BaseTaskArtifactSchema.parse({
           role: 'reference',
           pageId: 'page-1',
           documentId: 'doc-ref',
@@ -49,13 +49,13 @@ describe('assignmentAssessment.zod schemas', () => {
           content: null,
           contentHash: null,
           metadata: {},
-        })
-      ).toThrow();
+        });
+      }).toThrow();
     });
 
     it('rejects an artifact with contentHash as a number', () => {
-      expect(() =>
-        BaseTaskArtifactSchema.parse({
+      expect(() => {
+        return BaseTaskArtifactSchema.parse({
           taskId: 'task-1',
           role: 'reference',
           pageId: 'page-1',
@@ -65,8 +65,8 @@ describe('assignmentAssessment.zod schemas', () => {
           content: null,
           contentHash: 123,
           metadata: {},
-        })
-      ).toThrow();
+        });
+      }).toThrow();
     });
 
     it('accepts a TEXT artifact with string content', () => {
@@ -107,22 +107,22 @@ describe('assignmentAssessment.zod schemas', () => {
     });
 
     it('rejects a SPREADSHEET artifact with string content', () => {
-      expect(() =>
-        BaseTaskArtifactSchema.parse({
+      expect(() => {
+        return BaseTaskArtifactSchema.parse({
           ...CANONICAL_TEXT_ARTIFACT,
           type: 'SPREADSHEET',
           content: 'string instead of 2D array',
-        })
-      ).toThrow();
+        });
+      }).toThrow();
     });
 
     it('rejects an artifact with an unrecognised type', () => {
-      expect(() =>
-        BaseTaskArtifactSchema.parse({
+      expect(() => {
+        return BaseTaskArtifactSchema.parse({
           ...CANONICAL_TEXT_ARTIFACT,
           type: 'BOGUS',
-        })
-      ).toThrow();
+        });
+      }).toThrow();
     });
   });
 
@@ -160,8 +160,8 @@ describe('assignmentAssessment.zod schemas', () => {
     });
 
     it('rejects an artifact missing pageId', () => {
-      expect(() =>
-        BaseTaskArtifactSchema.parse({
+      expect(() => {
+        return BaseTaskArtifactSchema.parse({
           taskId: 'task-1',
           role: 'submission',
           documentId: 'doc-1',
@@ -170,13 +170,13 @@ describe('assignmentAssessment.zod schemas', () => {
           content: null,
           contentHash: null,
           metadata: {},
-        })
-      ).toThrow();
+        });
+      }).toThrow();
     });
 
     it('rejects an artifact missing documentId', () => {
-      expect(() =>
-        BaseTaskArtifactSchema.parse({
+      expect(() => {
+        return BaseTaskArtifactSchema.parse({
           taskId: 'task-1',
           role: 'submission',
           pageId: 'page-1',
@@ -185,8 +185,8 @@ describe('assignmentAssessment.zod schemas', () => {
           content: null,
           contentHash: null,
           metadata: {},
-        })
-      ).toThrow();
+        });
+      }).toThrow();
     });
 
     it('rejects a pageId that is a number', () => {
@@ -196,12 +196,12 @@ describe('assignmentAssessment.zod schemas', () => {
     });
 
     it('rejects a documentId that is an object', () => {
-      expect(() =>
-        BaseTaskArtifactSchema.parse({
+      expect(() => {
+        return BaseTaskArtifactSchema.parse({
           ...CANONICAL_TEXT_ARTIFACT,
           documentId: { id: 'doc-1' },
-        })
-      ).toThrow();
+        });
+      }).toThrow();
     });
   });
 
@@ -212,21 +212,21 @@ describe('assignmentAssessment.zod schemas', () => {
     });
 
     it('rejects a definition with taskWeighting as a string', () => {
-      expect(() =>
-        TaskDefinitionSchema.parse({
+      expect(() => {
+        return TaskDefinitionSchema.parse({
           ...CANONICAL_TASK_DEFINITION,
           taskWeighting: 'heavy',
-        })
-      ).toThrow();
+        });
+      }).toThrow();
     });
 
     it('rejects a definition with index as a string', () => {
-      expect(() =>
-        TaskDefinitionSchema.parse({
+      expect(() => {
+        return TaskDefinitionSchema.parse({
           ...CANONICAL_TASK_DEFINITION,
           index: 'first',
-        })
-      ).toThrow();
+        });
+      }).toThrow();
     });
   });
 });

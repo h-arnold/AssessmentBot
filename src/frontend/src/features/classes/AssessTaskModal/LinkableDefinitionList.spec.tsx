@@ -5,20 +5,22 @@ import type { LinkableDefinition } from './getLinkableDefinitionsForModal';
 
 const createLinkable = (
   overrides: Partial<LinkableDefinition> = {}
-): LinkableDefinition => ({
-  definitionKey: 'def-001',
-  primaryTitle: 'Essay',
-  primaryTopic: 'Writing',
-  yearGroupKey: 'year-10',
-  yearGroupLabel: 'Year 10',
-  updatedAt: '2025-01-01T00:00:00.000Z',
-  alternateTitles: [],
-  alternateTopics: [],
-  documentType: 'SLIDES',
-  referenceDocumentId: 'ref-001',
-  templateDocumentId: 'tpl-001',
-  ...overrides,
-});
+): LinkableDefinition => {
+  return {
+    definitionKey: 'def-001',
+    primaryTitle: 'Essay',
+    primaryTopic: 'Writing',
+    yearGroupKey: 'year-10',
+    yearGroupLabel: 'Year 10',
+    updatedAt: '2025-01-01T00:00:00.000Z',
+    alternateTitles: [],
+    alternateTopics: [],
+    documentType: 'SLIDES',
+    referenceDocumentId: 'ref-001',
+    templateDocumentId: 'tpl-001',
+    ...overrides,
+  };
+};
 
 describe('LinkableDefinitionList', () => {
   it('renders the Alert with the updated copy', () => {

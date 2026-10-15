@@ -91,6 +91,41 @@ describe('Validate utility', () => {
         /Test Value must be an integer between 1 and 10/
       );
     });
+
+    it('rejects unsafe numeric inputs before parsing a fitting decimal prefix', () => {
+      for (const value of [
+        Number.MAX_SAFE_INTEGER + 1,
+        -(Number.MAX_SAFE_INTEGER + 1),
+        1e21,
+        -1e21,
+      ]) {
+        expect(() => Validate.validateIntegerInRange('Test Value', value, -10, 10)).toThrow(
+          /Test Value must be an integer between -10 and 10/
+        );
+      }
+      expect(
+        Validate.validateIntegerInRange(
+          'Test Value',
+          Number.MAX_SAFE_INTEGER,
+          Number.MIN_SAFE_INTEGER,
+          Number.MAX_SAFE_INTEGER
+        )
+      ).toBe(Number.MAX_SAFE_INTEGER);
+      expect(
+        Validate.validateIntegerInRange(
+          'Test Value',
+          Number.MIN_SAFE_INTEGER,
+          Number.MIN_SAFE_INTEGER,
+          Number.MAX_SAFE_INTEGER
+        )
+      ).toBe(Number.MIN_SAFE_INTEGER);
+      expect(Validate.validateIntegerInRange('Test Value', '3years', 1, 10)).toBe(3);
+      expect(Validate.validateIntegerInRange('Test Value', '1e21', 1, 10)).toBe(1);
+      expect(Validate.validateIntegerInRange('Test Value', 3.9, 1, 10)).toBe(3);
+      expect(() => Validate.validateIntegerInRange('Test Value', 11, 1, 10)).toThrow(
+        /Test Value must be an integer between 1 and 10/
+      );
+    });
   });
 
   describe('validateNonEmptyString', () => {

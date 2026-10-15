@@ -37,52 +37,62 @@ const readyBackendSettingsFormValues = {
   jsonDbRootFolderId: 'folder-1234',
 } satisfies BackendSettingsForm;
 
-const { useBackendSettingsMock } = vi.hoisted(() => ({
-  useBackendSettingsMock: vi.fn(),
-}));
+const { useBackendSettingsMock } = vi.hoisted(() => {
+  return {
+    useBackendSettingsMock: vi.fn(),
+  };
+});
 
-vi.mock('../features/classes/ClassesManagementPanel', () => ({
-  ClassesManagementPanel() {
-    const [selectedRows, setSelectedRows] = React.useState(0);
+vi.mock('../features/classes/ClassesManagementPanel', () => {
+  return {
+    ClassesManagementPanel() {
+      const [selectedRows, setSelectedRows] = React.useState(0);
 
-    return (
-      <div role="region" aria-label="Classes management panel">
-        <div>Summary</div>
-        <div>Bulk actions</div>
-        <div role="table" aria-label="Classes table">
-          <label>
-            <input
-              aria-label="Select Year 10 Maths"
-              checked={selectedRows === 1}
-              onChange={(event) => {
-                setSelectedRows(event.currentTarget.checked ? 1 : 0);
-              }}
-              type="checkbox"
-            />
-            Year 10 Maths
-          </label>
+      return (
+        <div role="region" aria-label="Classes management panel">
+          <div>Summary</div>
+          <div>Bulk actions</div>
+          <div role="table" aria-label="Classes table">
+            <label>
+              <input
+                aria-label="Select Year 10 Maths"
+                checked={selectedRows === 1}
+                onChange={(event) => {
+                  setSelectedRows(event.currentTarget.checked ? 1 : 0);
+                }}
+                type="checkbox"
+              />
+              Year 10 Maths
+            </label>
+          </div>
+          <div>{`Selected rows: ${selectedRows}`}</div>
+          <button disabled type="button">
+            Create ABClass
+          </button>
         </div>
-        <div>{`Selected rows: ${selectedRows}`}</div>
-        <button disabled type="button">
-          Create ABClass
-        </button>
-      </div>
-    );
-  },
-}));
+      );
+    },
+  };
+});
 
-vi.mock('../features/settings/backend/useBackendSettings', () => ({
-  useBackendSettings: useBackendSettingsMock,
-}));
+vi.mock('../features/settings/backend/useBackendSettings', () => {
+  return {
+    useBackendSettings: useBackendSettingsMock,
+  };
+});
 
 // RED phase: ReferenceDataSettingsPanel doesn't exist yet, so we mock it
-vi.mock('../features/referenceData/ReferenceDataSettingsPanel', () => ({
-  ReferenceDataSettingsPanel: () => (
-    <section aria-label={referenceDataPanelLabel}>
-      <div>Reference Data Settings Placeholder</div>
-    </section>
-  ),
-}));
+vi.mock('../features/referenceData/ReferenceDataSettingsPanel', () => {
+  return {
+    ReferenceDataSettingsPanel: () => {
+      return (
+        <section aria-label={referenceDataPanelLabel}>
+          <div>Reference Data Settings Placeholder</div>
+        </section>
+      );
+    },
+  };
+});
 
 const backendSettingsHookState = {
   backendSettingsFormValues: readyBackendSettingsFormValues,
@@ -112,6 +122,20 @@ function getSettingsPageContent(container: HTMLElement) {
   return settingsPageContent;
 }
 
+const renderSettingsPage = (queryClient = createAppQueryClient()) => {
+  const querySpy = vi.spyOn(queryClient, 'query').mockImplementation(() => Promise.resolve([]));
+
+  return {
+    querySpy,
+    ...renderWithFrontendProviders(
+      <ApplicationAccessContext.Provider value={standardUserAccessContextValue}>
+        <SettingsPage />
+      </ApplicationAccessContext.Provider>,
+      { queryClient }
+    ),
+  };
+};
+
 describe('SettingsPage', () => {
   beforeEach(() => {
     useBackendSettingsMock.mockImplementation(() => backendSettingsHookState);
@@ -122,22 +146,6 @@ describe('SettingsPage', () => {
     useBackendSettingsMock.mockReset();
     vi.clearAllMocks();
   });
-
-  const renderSettingsPage = (queryClient = createAppQueryClient()) => {
-    const prefetchQuerySpy = vi
-      .spyOn(queryClient, 'prefetchQuery')
-      .mockImplementation(() => Promise.resolve());
-
-    return {
-      prefetchQuerySpy,
-      ...renderWithFrontendProviders(
-        <ApplicationAccessContext.Provider value={standardUserAccessContextValue}>
-          <SettingsPage />
-        </ApplicationAccessContext.Provider>,
-        { queryClient }
-      ),
-    };
-  };
 
   it('renders the shared settings heading and summary copy', () => {
     renderSettingsPage();
@@ -252,7 +260,7 @@ describe('SettingsPage', () => {
 
   it('prefetches Google Classrooms on page load without blocking the initial classes tab render', async () => {
     const queryClient = createAppQueryClient();
-    const { prefetchQuerySpy } = renderSettingsPage(queryClient);
+    const { querySpy } = renderSettingsPage(queryClient);
 
     expect(screen.getByRole('tab', { name: 'Classes' })).toHaveAttribute('aria-selected', 'true');
     expect(screen.getByText('Summary')).toBeInTheDocument();
@@ -262,7 +270,7 @@ describe('SettingsPage', () => {
     expect(screen.getByRole('button', { name: 'Create ABClass' })).toBeDisabled();
 
     await waitFor(() => {
-      expect(prefetchQuerySpy).toHaveBeenCalledWith(
+      expect(querySpy).toHaveBeenCalledWith(
         expect.objectContaining({
           queryKey: expect.any(Array),
           queryFn: expect.any(Function),

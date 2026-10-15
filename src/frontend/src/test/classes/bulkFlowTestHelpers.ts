@@ -10,10 +10,85 @@
  * parameters so each spec keeps ownership of its own module mock and flow loader.
  */
 
-import type { vi } from 'vitest';
+import { vi } from 'vitest';
 import type { ClassesManagementRow } from '../../features/classes/classesManagementViewModel';
 import type { BatchProgressSnapshot } from '../../features/classes/bulk/runQueuedBatchMutation';
 import type { RowMutationResult } from '../../features/classes/bulk/batchMutationEngine';
+
+/**
+ * Mocks shared by the bulk active-state and delete panel specs.
+ * @returns {object} Fresh panel-level mock functions.
+ */
+export function createBulkPanelMocks() {
+  return {
+    classesManagementStateMock: vi.fn(),
+    runQueuedBatchMutationMock: vi.fn(),
+    runQueuedBulkActionMock: vi.fn(
+      async ({
+        mutate,
+        onComplete,
+      }: {
+        mutate: (onProgress: (snapshot: unknown) => void) => Promise<unknown[]>;
+        onComplete: (results: unknown[]) => Promise<void>;
+      }) => onComplete(await mutate(vi.fn()))
+    ),
+  };
+}
+
+/**
+ * Builds the hook module mock using fresh queue callbacks for each spec.
+ * @param {ReturnType<typeof vi.fn>} runQueuedBulkAction The mocked queue action.
+ * @returns {object} The mocked queue hook module.
+ */
+export function createBulkQueueModuleMock(runQueuedBulkAction: ReturnType<typeof vi.fn>) {
+  return {
+    useClassesBulkMutationQueue: () => {
+      return {
+        isQueueActive: false,
+        progress: {
+          currentItem: null,
+          completed: 0,
+          pendingCount: 0,
+          total: 0,
+          isInProgress: false,
+        },
+        isProgressModalOpen: false,
+        onDismissProgressModal: vi.fn(),
+        onCancelQueue: vi.fn(),
+        runQueuedBulkAction,
+      };
+    },
+  };
+}
+
+/** Component-only module shapes used by the panel specs. */
+export const BULK_PANEL_COMPONENT_MOCKS = {
+  bulkCreate: {
+    BulkCreateModal() {
+      return null;
+    },
+  },
+  bulkSetSelect: {
+    BulkSetSelectModal() {
+      return null;
+    },
+  },
+  bulkSetCourseLength: {
+    BulkSetCourseLengthModal() {
+      return null;
+    },
+  },
+  manageCohorts: {
+    ManageCohortsModal() {
+      return null;
+    },
+  },
+  manageYearGroups: {
+    ManageYearGroupsModal() {
+      return null;
+    },
+  },
+};
 
 /** A bulk-set flow entry point shared by `bulkSetYearGroup` and `bulkSetCohort`. */
 export type BulkSetFlow = (

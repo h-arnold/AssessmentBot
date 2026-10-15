@@ -159,7 +159,7 @@ placement is deliberate:
    of service against legitimate users.
 
 - **Gate-exempt methods.** Two methods skip the group/user check entirely:
-  - `getAuthorisationStatus` runs its OAuth-only handler
+  - `hasScriptAuthorisation` runs its OAuth-only handler
     (`() => new ScriptAppManager().isAuthorised()`) because the frontend must distinguish
     _OAuth-scope denial_ from _membership denial_.
   - `getApplicationAccess` skips the deny gate and instead runs the shared access-resolution
@@ -349,7 +349,7 @@ secrets in log output and mandates `ABLogger` for all backend code — see
   children (the dashboard, including `AuthStatusCard`):
 
   1. **OAuth admission first.** `useAuthorisationStatus` runs the gate-exempt
-     `getAuthorisationStatus` OAuth-only check. While it resolves, the gate paints an
+     `hasScriptAuthorisation` OAuth-only check. While it resolves, the gate paints an
      accessible "Loading authorisation status" surface. An OAuth transport error renders a
      retryable `Result`, and an unresolved OAuth scope (`isAuthorised === false`) renders the
      "Permissions required" result. The dashboard is never revealed solely because the OAuth
@@ -369,11 +369,11 @@ secrets in log output and mandates `ABLogger` for all backend code — see
 
   The first-admin bootstrap claim (a fresh install with no stored configuration) fires through
   the gate-exempt `getApplicationAccess` path, and is distinct from the OAuth-only
-  `getAuthorisationStatus` check.
+  `hasScriptAuthorisation` check.
 
 - **`useAuthorisationStatus`** (`src/frontend/src/features/auth/useAuthorisationStatus.ts`)
   returns `{ isAuthorised, isLoading, error }`. It resolves OAuth scope status through
-  the gate-exempt `getAuthorisationStatus` method (query definition in
+  the gate-exempt `hasScriptAuthorisation` method (query definition in
   `src/frontend/src/query/sharedQueries.ts`, service call in
   `src/frontend/src/services/authService/authService.ts`) and deliberately does **not**
   observe `FORBIDDEN` — the group/user-denial case is owned by the application-access gate, so

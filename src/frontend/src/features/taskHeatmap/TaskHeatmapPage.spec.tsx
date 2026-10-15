@@ -40,24 +40,28 @@ const { mockGetAssignment } = vi.hoisted(() => ({ mockGetAssignment: vi.fn() }))
 const { mockLogFrontendError } = vi.hoisted(() => ({ mockLogFrontendError: vi.fn() }));
 const { mockLogFrontendEvent } = vi.hoisted(() => ({ mockLogFrontendEvent: vi.fn() }));
 
-const { mockTaskHeatmapTable } = vi.hoisted(() => ({
-  mockTaskHeatmapTable: vi.fn<typeof TaskHeatmapTable>(() =>
-    createElement('div', { 'data-testid': 'task-heatmap-table' })
-  ),
-}));
+const { mockTaskHeatmapTable } = vi.hoisted(() => {
+  return {
+    mockTaskHeatmapTable: vi.fn<typeof TaskHeatmapTable>(() =>
+      createElement('div', { 'data-testid': 'task-heatmap-table' })
+    ),
+  };
+});
 
-vi.mock('../../services/assignmentAssessment/assignmentAssessmentService', () => ({
-  getAssignment: mockGetAssignment,
-}));
+vi.mock('../../services/assignmentAssessment/assignmentAssessmentService', () => {
+  return {
+    getAssignment: mockGetAssignment,
+  };
+});
 
-vi.mock('../../logging/frontendLogger', () => ({
-  logFrontendError: mockLogFrontendError,
-  logFrontendEvent: mockLogFrontendEvent,
-}));
+vi.mock('../../logging/frontendLogger', () => {
+  return {
+    logFrontendError: mockLogFrontendError,
+    logFrontendEvent: mockLogFrontendEvent,
+  };
+});
 
-vi.mock('./TaskHeatmapTable', () => ({
-  TaskHeatmapTable: mockTaskHeatmapTable,
-}));
+vi.mock('./TaskHeatmapTable', () => ({ TaskHeatmapTable: mockTaskHeatmapTable }));
 
 const { TaskHeatmapTable: RealTaskHeatmapTable } = await vi.importActual<{
   TaskHeatmapTable: typeof TaskHeatmapTable;
@@ -199,22 +203,18 @@ describe('TaskHeatmapPage — TaskTitlesUnavailableError and generic Error handl
 
     const queryClient = createTestQueryClient();
     render(
-      createElement(
-        QueryClientProvider,
-        { client: queryClient },
-        createElement(
-          App,
-          null,
-          createElement(TaskHeatmapPage, {
-            analyserResult: analyserResultFixture,
-            classFull: classFullFixture,
-            assignmentId: 'a-1',
-            assignmentDefinitionPartials: partials,
-            onBack,
-            refetch,
-          })
-        )
-      )
+      <QueryClientProvider client={queryClient}>
+        <App>
+          <TaskHeatmapPage
+            analyserResult={analyserResultFixture}
+            classFull={classFullFixture}
+            assignmentId="a-1"
+            assignmentDefinitionPartials={partials}
+            onBack={onBack}
+            refetch={refetch}
+          />
+        </App>
+      </QueryClientProvider>
     );
 
     // The title Card stays visible (assignment name is empty because the
@@ -247,29 +247,25 @@ describe('TaskHeatmapPage — TaskTitlesUnavailableError and generic Error handl
   // Generic Error — logFrontendError + onBack, no Alert
   // -----------------------------------------------------------------------
 
-  it('logs via logFrontendError and calls onBack for a generic Error (unknown assignmentId); no Alert rendered', () => {
+  it('logs via logFrontendError and calls onBack for a generic Error (unknown assignmentId); no Alert rendered', async () => {
     const onBack = vi.fn();
     const refetch = vi.fn();
 
     // Pass an unknown assignmentId that the adapter will reject with a generic Error
     const queryClient = createTestQueryClient();
     render(
-      createElement(
-        QueryClientProvider,
-        { client: queryClient },
-        createElement(
-          App,
-          null,
-          createElement(TaskHeatmapPage, {
-            analyserResult: analyserResultFixture,
-            classFull: classFullFixture,
-            assignmentId: 'nonexistent-id',
-            assignmentDefinitionPartials: [],
-            onBack,
-            refetch,
-          })
-        )
-      )
+      <QueryClientProvider client={queryClient}>
+        <App>
+          <TaskHeatmapPage
+            analyserResult={analyserResultFixture}
+            classFull={classFullFixture}
+            assignmentId="nonexistent-id"
+            assignmentDefinitionPartials={[]}
+            onBack={onBack}
+            refetch={refetch}
+          />
+        </App>
+      </QueryClientProvider>
     );
 
     // The error should be logged via logFrontendError('TaskHeatmapPage', ...)
@@ -278,7 +274,12 @@ describe('TaskHeatmapPage — TaskTitlesUnavailableError and generic Error handl
     // onBack should be called exactly once (auto-navigate)
     expect(onBack).toHaveBeenCalledTimes(1);
 
-    // No Ant Design Alert should be rendered (in-view error)
-    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    // The user-safe toast is expected, but the generic failure renders no in-view heatmap.
+    expect(
+      await screen.findByText(
+        'Something went wrong while loading the heatmap. Returning to class overview.'
+      )
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('table', { name: 'Task Heatmap' })).not.toBeInTheDocument();
   });
 });

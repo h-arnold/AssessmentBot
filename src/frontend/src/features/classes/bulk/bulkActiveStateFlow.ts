@@ -15,17 +15,18 @@ import type { ClassesManagementRow } from '../classesManagementViewModel';
  * - its current `active` value already equals `targetState`.
  *
  * @param {ClassesManagementRow[]} rows Candidate rows.
- * @param {boolean} targetState `true` to activate; `false` to deactivate.
+ * @param {boolean} isTargetActive `true` to activate; `false` to deactivate.
  * @returns {ClassesManagementRow[]} Rows eligible for the requested transition.
  */
 export function filterEligibleForActiveState(
   rows: ClassesManagementRow[],
-  targetState: boolean,
+  isTargetActive: boolean
 ): ClassesManagementRow[] {
-  return rows.filter(
-    (row) =>
+  return rows.filter((row) => {
+    return (
       (row.status === 'active' || row.status === 'inactive') &&
       row.active !== null &&
-      row.active !== targetState,
-  );
+      row.active !== isTargetActive
+    );
+  });
 }

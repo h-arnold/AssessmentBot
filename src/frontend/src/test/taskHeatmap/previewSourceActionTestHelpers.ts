@@ -275,10 +275,10 @@ export async function waitForPreviewContent(): Promise<void> {
 export async function waitForPreviewDismissed(): Promise<void> {
   await waitFor(() => {
     const overlay = document.querySelector('.ant-popover');
-    const dismissed =
+    const isDismissed =
       overlay === null ||
       (overlay instanceof HTMLElement && overlay.style.pointerEvents === 'none');
-    expect(dismissed).toBe(true);
+    expect(isDismissed).toBe(true);
   });
 }
 

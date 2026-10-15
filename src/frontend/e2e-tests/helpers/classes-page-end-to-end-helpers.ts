@@ -150,13 +150,13 @@ export function createClassesScenario(options: CreateClassesScenarioOptions = {}
   } = options;
 
   return {
-    getAuthorisationStatus: [{ kind: 'success', data: true }],
+    hasScriptAuthorisation: [{ kind: 'success', data: true }],
     getABClassPartials: [{ kind: 'success', data: classPartials }],
     getCohorts: [{ kind: 'success', data: [] }],
     getYearGroups: [{ kind: 'success', data: yearGroups }],
     getAssignmentTopics: [{ kind: 'success', data: [] }],
     getAssignmentDefinitionPartials: [{ kind: 'success', data: [] }],
-    ...(getGoogleClassroomAssignments === undefined ? {} : { getGoogleClassroomAssignments }),
+    ...(getGoogleClassroomAssignments !== undefined && { getGoogleClassroomAssignments }),
   };
 }
 
@@ -319,8 +319,8 @@ export function createLinkableScenario(
   return {
     ...scenario,
     getAssignmentDefinitionPartials: [entry, entry],
-    ...(upsertEntry === undefined ? {} : { upsertAssignmentDefinition: upsertEntry }),
-    ...(runEntry === undefined ? {} : { startAssessmentRun: runEntry }),
+    ...(upsertEntry !== undefined && { upsertAssignmentDefinition: upsertEntry }),
+    ...(runEntry !== undefined && { startAssessmentRun: runEntry }),
   };
 }
 

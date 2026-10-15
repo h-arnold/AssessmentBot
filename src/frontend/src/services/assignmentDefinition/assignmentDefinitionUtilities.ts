@@ -3,6 +3,7 @@ import type {
   AssignmentDefinitionPartialsResponse,
 } from './assignmentDefinitionPartials.zod';
 import type { TaskPartial } from './taskPartial.zod';
+import { DEFAULT_WEIGHTING_VALUE } from './assignmentDefinition.zod';
 
 /**
  * Locate a warm-up assignment-definition partial by its `definitionKey`.
@@ -23,6 +24,22 @@ export function getAssignmentDefinitionPartial(
   definitionKey: string
 ): AssignmentDefinitionPartial | null {
   return partials.find((p) => p.definitionKey === definitionKey) ?? null;
+}
+
+/**
+ * Coerces an assignment-weighting form value to its effective number.
+ *
+ * @remarks
+ * Shared by the active weighting callers (create/update dirty-state checks,
+ * the wizard save/re-parse request builders and the recovery approval
+ * request) so non-numeric values fall back to the model default in one place.
+ * Valid zero weightings are preserved.
+ *
+ * @param {unknown} value - The raw assignment-weighting value.
+ * @returns {number} The numeric weighting, or the default when not a number.
+ */
+export function coerceAssignmentWeighting(value: unknown): number {
+  return typeof value === 'number' ? value : DEFAULT_WEIGHTING_VALUE;
 }
 
 /** Pre-indexed live weighting data used for constant-time task lookups. */

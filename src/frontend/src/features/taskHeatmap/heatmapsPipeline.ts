@@ -201,10 +201,7 @@ export function shouldRunHeatmapsPipeline(
   selectedAssignmentIds: readonly string[],
   adpDatasetState: PageDatasetState
 ): boolean {
-  if (classFull === null) {
-    return false;
-  }
-  if (selectedAssignmentIds.length === 0) {
+  if (classFull === null || selectedAssignmentIds.length === 0) {
     return false;
   }
   // Don't run on untrustworthy or failed data (parity with useClassPageData).

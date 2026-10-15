@@ -285,15 +285,15 @@ export function createStartupWarmupState(
     isLoading = false,
   } = options;
 
-  const anyDatasetFailed = isAnyDatasetFailed(options);
-  const anyDatasetLoading = isAnyDatasetLoading(options);
-  const combinedIsFailed = isFailed || anyDatasetFailed;
-  const combinedIsLoading = isLoading || anyDatasetLoading;
+  const hasAnyDatasetFailed = isAnyDatasetFailed(options);
+  const areAnyDatasetsLoading = isAnyDatasetLoading(options);
+  const hasCombinedFailure = isFailed || hasAnyDatasetFailed;
+  const isCombinedLoading = isLoading || areAnyDatasetsLoading;
 
   return {
-    isFailed: combinedIsFailed,
-    isLoading: combinedIsLoading,
-    isReady: !combinedIsLoading && !combinedIsFailed,
+    isFailed: hasCombinedFailure,
+    isLoading: isCombinedLoading,
+    isReady: !isCombinedLoading && !hasCombinedFailure,
     warmupState,
     snapshot: createDatasetSnapshot(options),
     isDatasetReady: isDatasetReady ?? createDefaultIsDatasetReady(options),

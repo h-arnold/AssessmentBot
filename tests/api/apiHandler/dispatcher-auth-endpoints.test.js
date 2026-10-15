@@ -4,7 +4,7 @@
  * These tests pin the `z_apiHandler.js` gate behaviour for the three auth
  * endpoints to the settled mechanism:
  *
- *   - `getApplicationAccess` joins `getAuthorisationStatus` in the gate-exempt
+ *   - `getApplicationAccess` joins `hasScriptAuthorisation` in the gate-exempt
  *     set: the ordinary access gate must NOT run for it, so a caller the gate
  *     would deny still reaches the allowlisted handler (which routes through the
  *     shared access-resolution path itself).
@@ -158,7 +158,7 @@ describe('Api/apiHandler dispatcher — auth endpoint gate wiring', () => {
         error: {
           code: 'FORBIDDEN',
           message: 'Access denied.',
-          retriable: false,
+          isRetriable: false,
         },
       });
       // The admission-phase admin check must use a fresh access resolution
@@ -191,7 +191,7 @@ describe('Api/apiHandler dispatcher — auth endpoint gate wiring', () => {
         error: {
           code: 'FORBIDDEN',
           message: 'Access denied.',
-          retriable: false,
+          isRetriable: false,
         },
       });
       expect(checkAccessSpy).toHaveBeenCalledWith(
@@ -264,7 +264,7 @@ describe('Api/apiHandler dispatcher — auth endpoint gate wiring', () => {
         {
           code: 'INVALID_REQUEST',
           message: 'Stale auth revision.',
-          retriable: false,
+          isRetriable: false,
         },
       ],
       [
@@ -273,7 +273,7 @@ describe('Api/apiHandler dispatcher — auth endpoint gate wiring', () => {
         {
           code: 'INTERNAL_ERROR',
           message: 'Internal API error.',
-          retriable: false,
+          isRetriable: false,
         },
       ],
     ])(

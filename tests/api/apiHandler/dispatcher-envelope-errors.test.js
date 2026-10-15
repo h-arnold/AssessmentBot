@@ -85,7 +85,7 @@ describe('Api/apiHandler dispatcher — envelope errors (IN_USE and INVALID_REQU
         ok: false,
         error: {
           code: 'INTERNAL_ERROR',
-          retriable: false,
+          isRetriable: false,
         },
       });
     });

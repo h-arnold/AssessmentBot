@@ -37,9 +37,12 @@ function summariseTask(
   ).length;
   const notAttemptedCount = countNotAttempted(completeness);
   const completenessErrorCount = completeness.filter((metric) => metric?.state === 'error').length;
-  const accuracyValues = accuracy.flatMap((metric) =>
-    metric?.state === 'computed' ? [metric.value] : []
-  );
+  const accuracyValues = accuracy
+    .filter(
+      (metric): metric is Extract<TaskDisplayMetric, { state: 'computed' }> =>
+        metric?.state === 'computed'
+    )
+    .map((metric) => metric.value);
   const accuracyAssessedCount = accuracyValues.length;
   const accuracyAverage =
     accuracyAssessedCount > 0
@@ -140,17 +143,19 @@ export class AssignmentSummaryAnalyser {
     });
     const metricsByStudent = indexStudentMetrics(result.perStudentTaskMetrics ?? []);
     const studentIds = classFull.students.map((student) => student.id);
-    const tasks = partial.tasks.map((task) =>
-      summariseTask(
+    const tasks = partial.tasks.map((task) => {
+      return summariseTask(
         buildTaskKey(partial.definitionKey, task.taskId),
         studentIds,
         metricsByStudent,
         this.thresholds
+      );
+    });
+    const averages = tasks
+      .filter(
+        (task): task is TaskSummary & { accuracyAverage: number } => task.accuracyAverage !== null
       )
-    );
-    const averages = tasks.flatMap((task) =>
-      task.accuracyAverage === null ? [] : [task.accuracyAverage]
-    );
+      .map((task) => task.accuracyAverage);
     const highest = averages.length > 0 ? Math.max(...averages) : null;
     const lowest = averages.length > 0 ? Math.min(...averages) : null;
     return {

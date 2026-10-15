@@ -28,7 +28,7 @@ describe('Api/apiHandler dispatcher — DefinitionStaleError transport mapping',
         {
           definitionKey: 'algebra-baseline',
           referenceStale: true,
-          templateStale: false,
+          isTemplateStale: false,
           referenceLastModified: '2025-06-01T10:00:00.000Z',
           templateLastModified: '2025-05-15T08:30:00.000Z',
         }
@@ -45,7 +45,7 @@ describe('Api/apiHandler dispatcher — DefinitionStaleError transport mapping',
       });
     });
 
-    it('includes details block with definitionKey, referenceStale, templateStale, referenceLastModified, templateLastModified', () => {
+    it('includes details block with definitionKey, referenceStale, isTemplateStale, referenceLastModified, templateLastModified', () => {
       const DefinitionStaleError = globalThis.DefinitionStaleError;
       const { ApiDispatcher } = loadApiHandlerModule();
       const dispatcher = ApiDispatcher.getInstance();
@@ -53,7 +53,7 @@ describe('Api/apiHandler dispatcher — DefinitionStaleError transport mapping',
       const staleError = new DefinitionStaleError('Definition is stale.', {
         definitionKey: 'geometry-test',
         referenceStale: false,
-        templateStale: true,
+        isTemplateStale: true,
         referenceLastModified: '2025-05-01T09:00:00.000Z',
         templateLastModified: '2025-06-10T14:30:00.000Z',
       });
@@ -63,7 +63,7 @@ describe('Api/apiHandler dispatcher — DefinitionStaleError transport mapping',
       expect(result.error.details).toEqual({
         definitionKey: 'geometry-test',
         referenceStale: false,
-        templateStale: true,
+        isTemplateStale: true,
         referenceLastModified: '2025-05-01T09:00:00.000Z',
         templateLastModified: '2025-06-10T14:30:00.000Z',
       });
@@ -77,7 +77,7 @@ describe('Api/apiHandler dispatcher — DefinitionStaleError transport mapping',
       const staleError = new DefinitionStaleError('Definition is stale.', {
         definitionKey: 'science-baseline',
         referenceStale: true,
-        templateStale: true,
+        isTemplateStale: true,
         referenceLastModified: null,
         templateLastModified: null,
       });
@@ -86,7 +86,7 @@ describe('Api/apiHandler dispatcher — DefinitionStaleError transport mapping',
 
       expect(result.error).toMatchObject({
         code: 'DEFINITION_STALE',
-        retriable: false,
+        isRetriable: false,
       });
     });
 
@@ -98,7 +98,7 @@ describe('Api/apiHandler dispatcher — DefinitionStaleError transport mapping',
       const staleError = new DefinitionStaleError('', {
         definitionKey: 'physics-baseline',
         referenceStale: true,
-        templateStale: false,
+        isTemplateStale: false,
         referenceLastModified: '2025-07-01T10:00:00.000Z',
         templateLastModified: null,
       });
@@ -122,7 +122,7 @@ describe('Api/apiHandler dispatcher — DefinitionStaleError transport mapping',
       const details = {
         definitionKey: 'algebra-baseline',
         referenceStale: true,
-        templateStale: false,
+        isTemplateStale: false,
         referenceLastModified: '2025-06-01T10:00:00.000Z',
         templateLastModified: null,
       };
@@ -140,7 +140,7 @@ describe('Api/apiHandler dispatcher — DefinitionStaleError transport mapping',
         error: {
           code: 'DEFINITION_STALE',
           message: 'Definition is stale.',
-          retriable: false,
+          isRetriable: false,
           details,
         },
       });
@@ -163,7 +163,7 @@ describe('Api/apiHandler dispatcher — DefinitionStaleError transport mapping',
         error: {
           code: 'INVALID_REQUEST',
           message: 'Bad request.',
-          retriable: false,
+          isRetriable: false,
         },
       });
       expect(result.error).not.toHaveProperty('details');
@@ -187,7 +187,7 @@ describe('Api/apiHandler dispatcher — DefinitionStaleError transport mapping',
         error: {
           code: 'DEFINITION_STALE',
           message: 'Definition is stale.',
-          retriable: false,
+          isRetriable: false,
         },
       });
       expect(result.error).not.toHaveProperty('details');
@@ -211,7 +211,7 @@ describe('Api/apiHandler dispatcher — DefinitionStaleError transport mapping',
         error: {
           code: 'INVALID_REQUEST',
           message: 'Bad request.',
-          retriable: false,
+          isRetriable: false,
           details: {},
         },
       });
@@ -233,7 +233,7 @@ describe('Api/apiHandler dispatcher — DefinitionStaleError transport mapping',
         ok: false,
         error: {
           code: 'RATE_LIMITED',
-          retriable: true,
+          isRetriable: true,
         },
       });
     });
@@ -252,7 +252,7 @@ describe('Api/apiHandler dispatcher — DefinitionStaleError transport mapping',
         ok: false,
         error: {
           code: 'INVALID_REQUEST',
-          retriable: false,
+          isRetriable: false,
         },
       });
     });
@@ -271,7 +271,7 @@ describe('Api/apiHandler dispatcher — DefinitionStaleError transport mapping',
         ok: false,
         error: {
           code: 'UNKNOWN_METHOD',
-          retriable: false,
+          isRetriable: false,
         },
       });
     });
@@ -290,7 +290,7 @@ describe('Api/apiHandler dispatcher — DefinitionStaleError transport mapping',
         error: {
           code: 'INTERNAL_ERROR',
           message: 'Internal API error.',
-          retriable: false,
+          isRetriable: false,
         },
       });
     });
@@ -308,7 +308,7 @@ describe('Api/apiHandler dispatcher — DefinitionStaleError transport mapping',
         ok: false,
         error: {
           code: 'IN_USE',
-          retriable: false,
+          isRetriable: false,
         },
       });
     });

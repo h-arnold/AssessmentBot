@@ -7,7 +7,7 @@ export const TeacherSummarySchema = z.object({
     .string()
     .nullable()
     .optional()
-    .transform((value) => value ?? null),
+    .transform((value = null) => value),
 });
 
 export type TeacherSummary = z.infer<typeof TeacherSummarySchema>;

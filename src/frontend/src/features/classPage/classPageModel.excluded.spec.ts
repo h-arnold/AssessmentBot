@@ -75,10 +75,12 @@ describe('Class page model excluded state ordering and passthrough', () => {
 
   it('uses ascending studentId tie-breaking for excluded rows and passes aggregate fields through', () => {
     const excludedMetric = createMetricResult('excluded');
-    const recentAssignments = buildAdapterResult().recentAssignments.map((assignment) => ({
-      ...assignment,
-      metrics: { ...assignment.metrics, completeness: excludedMetric, average: excludedMetric },
-    }));
+    const recentAssignments = buildAdapterResult().recentAssignments.map((assignment) => {
+      return {
+        ...assignment,
+        metrics: { ...assignment.metrics, completeness: excludedMetric, average: excludedMetric },
+      };
+    });
     const classMetrics = {
       completeness: excludedMetric,
       accuracy: createMetricResult('computed'),

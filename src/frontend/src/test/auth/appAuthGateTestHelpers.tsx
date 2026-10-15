@@ -1,30 +1,19 @@
 import { QueryClientProvider } from '@tanstack/react-query';
 import type { PropsWithChildren } from 'react';
-import { vi } from 'vitest';
 import { createAppQueryClient } from '../../query/queryClient';
 import type { ApplicationAccess } from '../../services/authService/authService.zod';
-
-export type AppAuthGateMocks = Readonly<{
-  getAuthorisationStatusMock: ReturnType<typeof vi.fn>;
-  getApplicationAccessMock: ReturnType<typeof vi.fn>;
-  warmStartupQueriesMock: ReturnType<typeof vi.fn>;
-}>;
+import type { StartupWarmupQueriesResult } from '../../query/sharedQueries';
 
 /**
- * Creates the shared service mocks consumed by the auth gate specs.
- *
- * Call this inside `vi.hoisted` so the returned mocks can be referenced by the
- * hoisted `vi.mock` factories for the auth service and shared queries.
- *
- * @returns {AppAuthGateMocks} The `getAuthorisationStatus`, `getApplicationAccess`, and `warmStartupQueries` mocks.
+ * Contract-shaped empty warm-up result used as the startup-query mock response.
  */
-export function createAppAuthGateMocks(): AppAuthGateMocks {
-  return {
-    getAuthorisationStatusMock: vi.fn(),
-    getApplicationAccessMock: vi.fn(),
-    warmStartupQueriesMock: vi.fn(),
-  };
-}
+export const EMPTY_STARTUP_WARMUP_RESULT: StartupWarmupQueriesResult = {
+  classPartials: [],
+  assignmentDefinitionPartials: [],
+  assignmentTopics: [],
+  cohorts: [],
+  yearGroups: [],
+};
 
 /**
  * The admitted access result used by the shared auth gate specs.

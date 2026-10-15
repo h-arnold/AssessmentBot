@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { ClassesTable } from './ClassesTable';
 import { statusCoverageRows } from '../../../test/classes/classesTestHelpers';
@@ -12,7 +13,7 @@ const filterableColumnHeaderNames = ['Status', 'Cohort', 'Course length', 'Year 
  * @returns {string[]} Row keys in displayed order.
  */
 function getRenderedRowKeys(container: HTMLElement): string[] {
-  return [...container.querySelectorAll('tbody tr[data-row-key]')].map(
+  return [...container.querySelectorAll(':scope tbody tr[data-row-key]')].map(
     (row) => (row as HTMLElement).dataset.rowKey ?? '',
   );
 }
@@ -30,14 +31,11 @@ function getColumnFilterTrigger(columnHeaderName: string): HTMLElement {
 /**
  * Renders the table against the shared classes status-coverage rows.
  *
- * @param {string[]} [selectedRowKeys] Selected row identifiers.
- * @param {(selectedRowKeys: string[]) => void} [onSelectedRowKeysChange] Selection callback.
  * @returns {{ onSelectedRowKeysChange: typeof onSelectedRowKeysChange } & ReturnType<typeof render>} Render result plus selection spy.
  */
-function renderClassesTable(
-  selectedRowKeys: string[] = [],
-  onSelectedRowKeysChange = vi.fn(),
-) {
+function renderClassesTable() {
+  const selectedRowKeys: string[] = [];
+  const onSelectedRowKeysChange = vi.fn();
   return {
     onSelectedRowKeysChange,
     ...render(
@@ -76,6 +74,31 @@ function renderClassesTableWithSelectionFrozen(
 
 
 describe('ClassesTable', () => {
+  it('shows the no-active-classrooms empty state when filtering the orphaned-only rows', async () => {
+    const user = userEvent.setup();
+    const orphanedRows = statusCoverageRows.filter((row) => row.status === 'orphaned');
+    const { container } = render(
+      <ClassesTable
+        rows={orphanedRows}
+        selectedRowKeys={[]}
+        onSelectedRowKeysChange={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText('orphaned')).toBeInTheDocument();
+    expect(getRenderedRowKeys(container)).toEqual(orphanedRows.map((row) => row.classId));
+
+    await user.click(getColumnFilterTrigger('Status'));
+    const filterPopup = await screen.findByRole('menu');
+    await user.click(within(within(filterPopup).getByRole('menuitem', { name: 'active' })).getByRole('checkbox'));
+    await user.click(screen.getByRole('button', { name: 'OK' }));
+
+    await waitFor(() => {
+      expect(getRenderedRowKeys(container)).toEqual([]);
+    });
+    expect(await screen.findByText('No active Google Classrooms are available.')).toBeInTheDocument();
+  });
+
   it('renders representative active/inactive/notCreated/orphaned rows as explicit contracts', () => {
     renderClassesTable();
 

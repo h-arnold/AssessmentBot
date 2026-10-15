@@ -37,11 +37,13 @@ const ClassroomApiClient = {
           courseStates: ['ACTIVE'],
         });
         if (response.courses && response.courses.length > 0) {
-          const activeCourses = response.courses.map((course) => ({
-            id: course.id,
-            name: course.name,
-            enrollmentCode: course.enrollmentCode,
-          }));
+          const activeCourses = response.courses.map((course) => {
+            return {
+              id: course.id,
+              name: course.name,
+              enrollmentCode: course.enrollmentCode,
+            };
+          });
           courses = [...courses, ...activeCourses];
         }
         pageToken = response.nextPageToken;
@@ -154,13 +156,15 @@ const ClassroomApiClient = {
           : Classroom.Courses.CourseWork.list(courseId);
 
         if (response.courseWork && response.courseWork.length > 0) {
-          const mapped = response.courseWork.map((cw) => ({
-            id: cw.id,
-            title: cw.title,
-            updateTime: cw.updateTime,
-            creationTime: cw.creationTime,
-            topicId: cw.topicId || null,
-          }));
+          const mapped = response.courseWork.map((cw) => {
+            return {
+              id: cw.id,
+              title: cw.title,
+              updateTime: cw.updateTime,
+              creationTime: cw.creationTime,
+              topicId: cw.topicId || null,
+            };
+          });
           allCourseWork.push(...mapped);
         }
 

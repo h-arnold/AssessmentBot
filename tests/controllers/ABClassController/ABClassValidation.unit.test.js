@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { ABClass } from '../../../src/backend/Models/ABClass.js';
 
 const MODULE_PATH = '../../../src/backend/y_controllers/ABClassController/ABClassValidation';
 
@@ -35,5 +36,19 @@ describe('ABClassValidation sub-class', () => {
         expect(typeof instance[methodName]).toBe('function');
       });
     });
+  });
+
+  it('requires safe positive course-length integers while accepting the safe upper boundary', () => {
+    const ABClassValidation = require(MODULE_PATH);
+    const validation = new ABClassValidation();
+    expect(validation._validateCourseLength(Number.MAX_SAFE_INTEGER, 'updateABClass')).toBe(
+      Number.MAX_SAFE_INTEGER
+    );
+    for (const value of [Number.MAX_SAFE_INTEGER + 1, 1e21]) {
+      expect(() => validation._validateCourseLength(value, 'updateABClass')).toThrow(TypeError);
+    }
+    expect(() => validation._validateCourseLength(3.9, 'updateABClass')).toThrow(TypeError);
+    expect(() => validation._validateCourseLength(0, 'updateABClass')).toThrow(TypeError);
+    expect(ABClass._parseNullableInt('3years', 1)).toBe(3);
   });
 });

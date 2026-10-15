@@ -66,7 +66,7 @@ export const BackendSettingsFormSchema = z
       .string()
       .trim()
       .optional()
-      .transform((value) => value ?? '')
+      .transform((value = '') => value)
       .refine((value) => value === '' || isDriveFolderId(value), {
         message: 'JSON DB Root Folder ID must match the backend Drive folder identifier contract.',
       }),

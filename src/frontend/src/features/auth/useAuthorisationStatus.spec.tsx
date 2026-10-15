@@ -6,13 +6,17 @@ import { ApiTransportError } from '../../errors/apiTransportError';
 import { createAppQueryClient } from '../../query/queryClient';
 import { useAuthorisationStatus } from './useAuthorisationStatus';
 
-const { getAuthorisationStatusMock } = vi.hoisted(() => ({
-  getAuthorisationStatusMock: vi.fn(),
-}));
+const { getAuthorisationStatusMock } = vi.hoisted(() => {
+  return {
+    getAuthorisationStatusMock: vi.fn(),
+  };
+});
 
-vi.mock('../../services/authService/authService', () => ({
-  getAuthorisationStatus: getAuthorisationStatusMock,
-}));
+vi.mock('../../services/authService/authService', () => {
+  return {
+    hasScriptAuthorisation: getAuthorisationStatusMock,
+  };
+});
 
 /**
  * Creates a fresh React Query wrapper for each test.
@@ -98,7 +102,7 @@ describe('useAuthorisationStatus', () => {
         error: {
           code: 'RATE_LIMITED',
           message: 'Rate limited.',
-          retriable: true,
+          isRetriable: true,
         },
       })
     );

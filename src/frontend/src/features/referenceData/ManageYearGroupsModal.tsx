@@ -54,7 +54,8 @@ function buildYearGroupColumns(options: Readonly<{
     {
       title: 'Actions',
       key: 'actions',
-      render: (_value: unknown, yearGroup: YearGroup) => (
+      render: (_value: unknown, yearGroup: YearGroup) => {
+        return (
         <Space>
           <Button
             onClick={() => {
@@ -72,7 +73,8 @@ function buildYearGroupColumns(options: Readonly<{
             Delete
           </Button>
         </Space>
-      ),
+        );
+      },
     },
   ];
 }

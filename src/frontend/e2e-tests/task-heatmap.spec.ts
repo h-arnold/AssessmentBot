@@ -230,8 +230,8 @@ test.describe('Task Heatmap E2E journey', () => {
     expect(excludedGeometry.textTop).toBeGreaterThanOrEqual(excludedGeometry.cellTop - 1);
     expect(excludedGeometry.textBottom).toBeLessThanOrEqual(excludedGeometry.cellBottom + 1);
     expect(excludedGeometry.textRight).toBeLessThanOrEqual(excludedGeometry.cellRight + 1);
-    const readResolvedColours = async (cell: typeof excludedCell) =>
-      cell.evaluate((element) => {
+    const readResolvedColours = async () => {
+      return excludedCell.evaluate((element) => {
         const style = getComputedStyle(element);
         const originalComputedBackground = style.backgroundColor;
         const originalComputedText = style.color;
@@ -252,8 +252,9 @@ test.describe('Task Heatmap E2E journey', () => {
         element.style.color = originalText;
         return colours;
       });
+    };
 
-    const lightColours = await readResolvedColours(excludedCell);
+    const lightColours = await readResolvedColours();
     expect(lightColours.tokenBackgroundValue).not.toBe('');
     expect(lightColours.tokenTextValue).not.toBe('');
     expect(lightColours.background).toBe(lightColours.tokenBackground);
@@ -264,11 +265,11 @@ test.describe('Task Heatmap E2E journey', () => {
 
     await expect
       .poll(async () => {
-        const colours = await readResolvedColours(excludedCell);
+        const colours = await readResolvedColours();
         return colours.background !== lightColours.background && colours.text !== lightColours.text;
       })
       .toBe(true);
-    const darkColours = await readResolvedColours(excludedCell);
+    const darkColours = await readResolvedColours();
     expect(darkColours.tokenBackgroundValue).not.toBe('');
     expect(darkColours.tokenTextValue).not.toBe('');
     expect(darkColours.background).toBe(darkColours.tokenBackground);

@@ -54,11 +54,11 @@ const workstreamThreeGoogleClassrooms = [
  * @returns {Promise<string[]>} Row keys.
  */
 async function getVisibleRowKeys(page: Page): Promise<string[]> {
-  return page.locator('tbody tr[data-row-key]').evaluateAll((rows) =>
-    rows
-      .map((row) => row instanceof HTMLElement ? row.dataset.rowKey ?? null : null)
-      .filter((key): key is string => key !== null),
-  );
+  return page.locator('tbody tr[data-row-key]').evaluateAll((rows) => {
+    return rows
+      .map((row) => (row instanceof HTMLElement ? (row.dataset.rowKey ?? null) : null))
+      .filter((key): key is string => key !== null);
+  });
 }
 
 /**
@@ -85,7 +85,7 @@ async function openColumnFilter(page: Page, columnName: string): Promise<Locator
 async function applyColumnFilter(
   page: Page,
   columnName: string,
-  optionLabel: string,
+  optionLabel: string
 ): Promise<void> {
   const dropdown = await openColumnFilter(page, columnName);
   await dropdown.getByRole('menuitem', { name: optionLabel, exact: true }).click();
@@ -115,9 +115,7 @@ async function clearRowSelectionByKey(page: Page, rowKey: string): Promise<void>
 }
 
 test.describe('Classes CRUD table controls', () => {
-  test('applies status column filtering and reset with visible row changes', async ({
-    page,
-  }) => {
+  test('applies status column filtering and reset with visible row changes', async ({ page }) => {
     await openClassesTabWithScenario(
       page,
       createSuccessfulClassesScenario({
@@ -125,10 +123,12 @@ test.describe('Classes CRUD table controls', () => {
         cohorts: baseCohorts,
         yearGroups: baseYearGroups,
         googleClassrooms: workstreamThreeGoogleClassrooms,
-      }),
+      })
     );
 
-    await expect(page.locator('tbody tr[data-row-key]')).toHaveCount(expectedWorkstreamThreeRowCount);
+    await expect(page.locator('tbody tr[data-row-key]')).toHaveCount(
+      expectedWorkstreamThreeRowCount
+    );
     await expect(await getVisibleRowKeys(page)).toEqual([
       'gc-active',
       'gc-inactive',
@@ -156,7 +156,7 @@ test.describe('Classes CRUD table controls', () => {
         cohorts: baseCohorts,
         yearGroups: baseYearGroups,
         googleClassrooms: workstreamThreeGoogleClassrooms,
-      }),
+      })
     );
 
     await expect(page.getByRole('button', { name: 'Create ABClass' })).toBeDisabled();
@@ -165,7 +165,9 @@ test.describe('Classes CRUD table controls', () => {
     await expect(page.getByRole('button', { name: 'Delete ABClass' })).toBeDisabled();
     await expect(page.getByText('Orphaned rows are deletion-only.')).toHaveCount(0);
     await expect(
-      page.getByText('Mixed selection includes orphaned rows. Delete is the only allowed bulk action.'),
+      page.getByText(
+        'Mixed selection includes orphaned rows. Delete is the only allowed bulk action.'
+      )
     ).toHaveCount(0);
   });
 
@@ -177,7 +179,7 @@ test.describe('Classes CRUD table controls', () => {
         cohorts: baseCohorts,
         yearGroups: baseYearGroups,
         googleClassrooms: workstreamThreeGoogleClassrooms,
-      }),
+      })
     );
 
     await selectRowByKey(page, 'gc-inactive');
@@ -201,9 +203,7 @@ test.describe('Classes CRUD table controls', () => {
     await expect(page.getByRole('button', { name: 'Delete ABClass' })).toBeEnabled();
   });
 
-  test('keeps mixed orphaned selections constrained to delete-only actions', async ({
-    page,
-  }) => {
+  test('keeps mixed orphaned selections constrained to delete-only actions', async ({ page }) => {
     await openClassesTabWithScenario(page, {
       ...createSuccessfulClassesScenario({
         classPartials: workstreamThreeClassPartials,
@@ -230,7 +230,9 @@ test.describe('Classes CRUD table controls', () => {
     await selectRowByKey(page, 'gc-active');
     await expect(page.getByRole('button', { name: 'Delete ABClass' })).toBeEnabled();
     await expect(
-      page.getByText('Mixed selection includes orphaned rows. Delete is the only allowed bulk action.'),
+      page.getByText(
+        'Mixed selection includes orphaned rows. Delete is the only allowed bulk action.'
+      )
     ).toBeVisible();
   });
 });

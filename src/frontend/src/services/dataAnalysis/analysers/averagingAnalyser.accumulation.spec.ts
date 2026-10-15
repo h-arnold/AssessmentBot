@@ -35,43 +35,42 @@ function analyseSingleTask(options: {
   scores: Array<number | 'N'>;
 }) {
   const { assignmentWeighting = 1, taskWeighting = 1, scores } = options;
-  const submissions = scores.map((score, index) =>
-    createSubmission(`s_${index}`, `Student ${index}`, 'a_001', {
-      t_001: createSubmissionItem('t_001', {
-        completeness: { score },
-        accuracy: { score },
-        spag: { score },
-      }),
-    })
-  );
-  return new AveragingAnalyser().analyse(
-    buildInput(
-      [
-        {
-          classId: 'c_001',
-          studentIds: scores.map((_, index) => `s_${index}`),
-          assignments: [
-            createAssignmentPartial({
-              assignmentId: 'a_001',
-              definitionKey: 'dk_zero_weight',
-              assignmentWeighting,
-              tasks: [createTaskPartial('t_001', taskWeighting)],
-              submissions,
-            }),
-          ],
-        },
-      ],
+  const submissions = scores.map((score, index) => {
+    const item = createSubmissionItem('t_001', {
+      completeness: { score },
+      accuracy: { score },
+      spag: { score },
+    });
+    return createSubmission(`s_${index}`, `Student ${index}`, 'a_001', { t_001: item });
+  });
+  const analyser = new AveragingAnalyser();
+  const input = buildInput(
+    [
       {
-        assignmentDefinitionPartials: [
-          createDefinitionPartial({
+        classId: 'c_001',
+        studentIds: scores.map((_, index) => `s_${index}`),
+        assignments: [
+          createAssignmentPartial({
+            assignmentId: 'a_001',
             definitionKey: 'dk_zero_weight',
             assignmentWeighting,
             tasks: [createTaskPartial('t_001', taskWeighting)],
+            submissions,
           }),
         ],
-      }
-    )
-  )[0];
+      },
+    ],
+    {
+      assignmentDefinitionPartials: [
+        createDefinitionPartial({
+          definitionKey: 'dk_zero_weight',
+          assignmentWeighting,
+          tasks: [createTaskPartial('t_001', taskWeighting)],
+        }),
+      ],
+    }
+  );
+  return analyser.analyse(input)[0];
 }
 
 /**
@@ -81,31 +80,30 @@ function analyseSingleTask(options: {
  * @returns {ReturnType<AveragingAnalyser['analyse']>[number]} The analysed class result.
  */
 function analyseWithUnknownSubmissionTask() {
+  const assignment = createAssignmentPartial({
+    assignmentId: 'a_001',
+    definitionKey: 'dk_unknown_task',
+    submissions: [
+      createSubmission('s_001', 'Alice', 'a_001', {
+        t_known: createSubmissionItem('t_known', {
+          completeness: { score: 2 },
+          accuracy: { score: 2 },
+          spag: { score: 2 },
+        }),
+        t_unknown: createSubmissionItem('t_unknown', {
+          completeness: { score: 10 },
+          accuracy: { score: 10 },
+          spag: { score: 10 },
+        }),
+      }),
+    ],
+  });
   const input = buildInput(
     [
       {
         classId: 'c_001',
         studentIds: ['s_001'],
-        assignments: [
-          createAssignmentPartial({
-            assignmentId: 'a_001',
-            definitionKey: 'dk_unknown_task',
-            submissions: [
-              createSubmission('s_001', 'Alice', 'a_001', {
-                t_known: createSubmissionItem('t_known', {
-                  completeness: { score: 2 },
-                  accuracy: { score: 2 },
-                  spag: { score: 2 },
-                }),
-                t_unknown: createSubmissionItem('t_unknown', {
-                  completeness: { score: 10 },
-                  accuracy: { score: 10 },
-                  spag: { score: 10 },
-                }),
-              }),
-            ],
-          }),
-        ],
+        assignments: [assignment],
       },
     ],
     {
@@ -335,24 +333,23 @@ describe('AveragingAnalyser zero-weight display and contribution boundaries', ()
   });
 
   it('excludes zero-weight numeric observations from the mixed numerator and denominator', () => {
+    const assignment = createAssignmentPartial({
+      assignmentId: 'a_001',
+      definitionKey: 'dk_mixed',
+      tasks: [createTaskPartial('positive'), createTaskPartial('zero', 0)],
+      submissions: [
+        createSubmission('s_001', 'Alice', 'a_001', {
+          positive: createSubmissionItem('positive', { completeness: { score: 2 } }),
+          zero: createSubmissionItem('zero', { completeness: { score: 10 } }),
+        }),
+      ],
+    });
     const input = buildInput(
       [
         {
           classId: 'c_001',
           studentIds: ['s_001'],
-          assignments: [
-            createAssignmentPartial({
-              assignmentId: 'a_001',
-              definitionKey: 'dk_mixed',
-              tasks: [createTaskPartial('positive'), createTaskPartial('zero', 0)],
-              submissions: [
-                createSubmission('s_001', 'Alice', 'a_001', {
-                  positive: createSubmissionItem('positive', { completeness: { score: 2 } }),
-                  zero: createSubmissionItem('zero', { completeness: { score: 10 } }),
-                }),
-              ],
-            }),
-          ],
+          assignments: [assignment],
         },
       ],
       {

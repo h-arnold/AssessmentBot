@@ -93,17 +93,21 @@ function _refetchClassPartial(classId: string, className: string, yearGroupKey: 
 }
 
 // Hoisted mock data for refetch scenarios
-const refetchClassPartials = vi.hoisted(() => [
-  _refetchClassPartial('class-math-10a', 'Mathematics 10A', 'year-group-10'),
-  _refetchClassPartial('class-math-10b', 'Mathematics 10B', 'year-group-10'),
-  _refetchClassPartial('class-science-11', 'Science 11', 'year-group-11'),
-] as const);
+const refetchClassPartials = vi.hoisted(() => {
+  return [
+    _refetchClassPartial('class-math-10a', 'Mathematics 10A', 'year-group-10'),
+    _refetchClassPartial('class-math-10b', 'Mathematics 10B', 'year-group-10'),
+    _refetchClassPartial('class-science-11', 'Science 11', 'year-group-11'),
+  ] as const;
+});
 
-const refetchYearGroups = vi.hoisted(() => [
-  { key: 'year-group-10', name: 'Year 10' },
-  { key: 'year-group-11', name: 'Year 11' },
-  { key: 'year-group-9', name: 'Year 9' },
-] as const);
+const refetchYearGroups = vi.hoisted(() => {
+  return [
+    { key: 'year-group-10', name: 'Year 10' },
+    { key: 'year-group-11', name: 'Year 11' },
+    { key: 'year-group-9', name: 'Year 9' },
+  ] as const;
+});
 
 // Mock @tanstack/react-query to support Section 6 refetch tests
 // This mock is controlled by mockRefetchEnabled.value flag
@@ -113,11 +117,14 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
   return {
     ...actualModule,
     useQuery: vi.fn((options: unknown) => {
-      const options_ = options as { queryKey: Array<unknown> };
-      const isClassPartials = options_.queryKey[0] === 'classPartials';
-      const isYearGroups = options_.queryKey[0] === 'yearGroups';
+      if (!mockRefetchEnabled.value) {
+        // For non-refetch tests, pass through to the actual implementation
+        // This allows other tests to work normally with queryClient.setQueryData()
+        return (actualModule as { useQuery: (options: unknown) => unknown }).useQuery(options);
+      }
 
-      if (mockRefetchEnabled.value && isClassPartials) {
+      const options_ = options as { queryKey: Array<unknown> };
+      if (options_.queryKey[0] === 'classPartials') {
         return {
           data: [...refetchClassPartials],
           isFetching: true,
@@ -129,7 +136,7 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
           refetch: vi.fn().mockResolvedValue({ data: [...refetchClassPartials] }),
         };
       }
-      if (mockRefetchEnabled.value && isYearGroups) {
+      if (options_.queryKey[0] === 'yearGroups') {
         return {
           data: [...refetchYearGroups],
           isFetching: true,
@@ -141,9 +148,6 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
           refetch: vi.fn().mockResolvedValue({ data: [...refetchYearGroups] }),
         };
       }
-      // For non-refetch tests, pass through to the actual implementation
-      // This allows other tests to work normally with queryClient.setQueryData()
-       
       return (actualModule as { useQuery: (options: unknown) => unknown }).useQuery(options);
     }),
   };
@@ -172,14 +176,16 @@ const {
   getAssignmentTopicsMock,
   getAssignmentDefinitionPartialsMock,
   useStartupWarmupStateMock,
-} = vi.hoisted(() => ({
-  getABClassPartialsMock: vi.fn(),
-  getYearGroupsMock: vi.fn(),
-  getCohortsMock: vi.fn(),
-  getAssignmentTopicsMock: vi.fn(),
-  getAssignmentDefinitionPartialsMock: vi.fn(),
-  useStartupWarmupStateMock: vi.fn(),
-}));
+} = vi.hoisted(() => {
+  return {
+    getABClassPartialsMock: vi.fn(),
+    getYearGroupsMock: vi.fn(),
+    getCohortsMock: vi.fn(),
+    getAssignmentTopicsMock: vi.fn(),
+    getAssignmentDefinitionPartialsMock: vi.fn(),
+    useStartupWarmupStateMock: vi.fn(),
+  };
+});
 
 vi.mock('../features/auth/startupWarmupState', async (importOriginal) => {
   const actualModule = (await importOriginal()) as Record<string, unknown>;
@@ -190,45 +196,63 @@ vi.mock('../features/auth/startupWarmupState', async (importOriginal) => {
   };
 });
 
-vi.mock('../services/googleClassrooms/classPartialsService', () => ({
-  getABClassPartials: getABClassPartialsMock,
-}));
+vi.mock('../services/googleClassrooms/classPartialsService', () => {
+  return {
+    getABClassPartials: getABClassPartialsMock,
+  };
+});
 
-vi.mock('../services/referenceData/referenceDataService', () => ({
-  getYearGroups: getYearGroupsMock,
-  getCohorts: getCohortsMock,
-}));
+vi.mock('../services/referenceData/referenceDataService', () => {
+  return {
+    getYearGroups: getYearGroupsMock,
+    getCohorts: getCohortsMock,
+  };
+});
 
-vi.mock('../services/assignmentDefinition/assignmentDefinitionPartialsService', () => ({
-  getAssignmentDefinitionPartials: getAssignmentDefinitionPartialsMock,
-}));
+vi.mock('../services/assignmentDefinition/assignmentDefinitionPartialsService', () => {
+  return {
+    getAssignmentDefinitionPartials: getAssignmentDefinitionPartialsMock,
+  };
+});
 
-vi.mock('../services/assignmentDefinition/assignmentTopicsService', () => ({
-  getAssignmentTopics: getAssignmentTopicsMock,
-}));
+vi.mock('../services/assignmentDefinition/assignmentTopicsService', () => {
+  return {
+    getAssignmentTopics: getAssignmentTopicsMock,
+  };
+});
 
 // Mock ClassPage component for shell integration tests
-const { mockClassPage } = vi.hoisted(() => ({
-  mockClassPage: vi.fn().mockReturnValue(null),
-}));
+const { mockClassPage } = vi.hoisted(() => {
+  return {
+    mockClassPage: vi.fn().mockReturnValue(null),
+  };
+});
 
-vi.mock('../features/classPage/ClassPage', () => ({
-  ClassPage: mockClassPage,
-}));
+vi.mock('../features/classPage/ClassPage', () => {
+  return {
+    ClassPage: mockClassPage,
+  };
+});
 
 // Mock ClassSelectionContext for shell integration tests
-const { mockUseClassSelection } = vi.hoisted(() => ({
-  mockUseClassSelection: vi.fn(() => ({
-    selectedClassId: null as string | null,
-    className: null as string | null,
-    onSelectClass: vi.fn(),
-    onNavigateToClasses: vi.fn(),
-  })),
-}));
+const { mockUseClassSelection } = vi.hoisted(() => {
+  return {
+    mockUseClassSelection: vi.fn(() => {
+      return {
+        selectedClassId: null as string | null,
+        className: null as string | null,
+        onSelectClass: vi.fn(),
+        onNavigateToClasses: vi.fn(),
+      };
+    }),
+  };
+});
 
-vi.mock('../ClassSelectionContext', () => ({
-  useClassSelection: mockUseClassSelection,
-}));
+vi.mock('../ClassSelectionContext', () => {
+  return {
+    useClassSelection: mockUseClassSelection,
+  };
+});
 
 /**
  * Helper to determine dataset status based on ready/failed state.
@@ -1163,7 +1187,7 @@ describe('ClassesPage', () => {
 
         for (const card of cards) {
           // JSDOM getComputedStyle may not resolve inline styles; check inline style as fallback
-          const { maxWidth } = globalThis.getComputedStyle(card);
+          const { maxWidth } = getComputedStyle(card);
           let maxWidthPx: number;
           if (maxWidth && maxWidth !== 'none') {
             maxWidthPx = Number.parseInt(maxWidth, 10);
@@ -1171,7 +1195,7 @@ describe('ClassesPage', () => {
             const inlineMaxWidth = (card as HTMLElement).style.maxWidth;
             maxWidthPx = inlineMaxWidth && inlineMaxWidth !== 'none'
               ? Number.parseInt(inlineMaxWidth, 10)
-              : Number.POSITIVE_INFINITY;
+              : Infinity;
           }
           expect(maxWidthPx).toBeLessThanOrEqual(MAX_CARD_WIDTH_PX);
         }

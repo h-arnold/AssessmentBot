@@ -204,8 +204,8 @@ describe('ClassesBulkProgressModal', () => {
   });
 
   it('renders without error when closed', () => {
-    expect(() =>
-      render(
+    expect(() => {
+      return render(
         <ClassesBulkProgressModal
           open={false}
           progress={createProgress()}
@@ -213,7 +213,8 @@ describe('ClassesBulkProgressModal', () => {
           onCancel={vi.fn()}
           onDismiss={vi.fn()}
         />,
-      ),
+      );
+    },
     ).not.toThrow();
   });
 

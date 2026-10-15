@@ -333,11 +333,13 @@ test.describe('Task Heatmap assignment summaries', () => {
     const partial = AssignmentDefinitionPartialSchema.parse(
       buildAssignmentDefinitionPartial(false, false)
     );
-    const additionalTasks = Array.from({ length: LARGE_TASK_COUNT - TASK_COUNT }, (_, index) => ({
-      taskId: `task_extra_${index + 1}`,
-      taskTitle: `Task ${index + TASK_COUNT + 1}`,
-      taskWeighting: 1,
-    }));
+    const additionalTasks = Array.from({ length: LARGE_TASK_COUNT - TASK_COUNT }, (_, index) => {
+      return {
+        taskId: `task_extra_${index + 1}`,
+        taskTitle: `Task ${index + TASK_COUNT + 1}`,
+        taskWeighting: 1,
+      };
+    });
     const scenario = createHeatmapScenario();
     scenario.getAssignmentDefinitionPartials = [
       { kind: 'success', data: [{ ...partial, tasks: [...partial.tasks, ...additionalTasks] }] },

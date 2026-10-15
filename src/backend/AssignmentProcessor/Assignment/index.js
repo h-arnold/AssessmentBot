@@ -1,14 +1,14 @@
 /**
  * Assignment — Facade
  *
- * Thin facade over 7 focused sub-classes, each injected via the constructor,
- * plus a private lifecycle initialiser (fetchAssignmentName).
+ * Thin facade over 7 focused sub-classes plus a private lifecycle initialiser
+ * (fetchAssignmentName).
  *
  * @remarks This class follows the facade decomposition pattern described in
- * src/backend/AGENTS.md §11. It delegates to 7 sub-classes injected at
- * construction time: AssignmentSerialisation, AssignmentFactory (static),
- * AssignmentRehydration (static), AssignmentTimestamps, AssignmentSubmissions,
- * AssignmentAssessmentBase, and AssignmentLLMOrchestration.
+ * src/backend/AGENTS.md §11. It delegates to AssignmentFactory and
+ * AssignmentRehydration through static methods, and to AssignmentSerialisation,
+ * AssignmentTimestamps, AssignmentSubmissions, AssignmentAssessmentBase, and
+ * AssignmentLLMOrchestration through lazily cached prototype getters.
  *
  * Public API contract is preserved from the original monolithic class.
  */
@@ -18,6 +18,9 @@
  * Assignment class.
  */
 class Assignment {
+  /** @type {Date} Populated from Classroom creationTime by fetchAssignmentName(). */
+  createdAt;
+
   /**
    * Constructs an Assignment instance.
    * @param {string} courseId - The ID of the course.
@@ -31,8 +34,6 @@ class Assignment {
     this.dueDate = null; //to be implemented later with the homework tracker.
     // Timestamp for when this assignment was last updated. Use Date or null.
     this.updatedAt = null;
-    // Timestamp from Google Classroom indicating when the assignment was created.
-    // Set by fetchAssignmentName() during construction.
 
     // Embedded definition copy (source of truth for tasks, doc IDs, weighting, documentType)
     this.assignmentDefinition = assignmentDefinition;
@@ -358,8 +359,9 @@ class Assignment {
 // ---------------------------------------------------------------------------
 // Lazy sub-class getters — handle bare prototype instances created via
 // Object.create(Assignment.prototype) without running the constructor
-// (e.g. in _baseFromJSON or test code). Constructor-created instances have
-// own properties set in the constructor, which shadow these prototype getters.
+// (e.g. in _baseFromJSON or test code). The first access defines a
+// non-enumerable own property that caches the instance and shadows the
+// prototype getter for subsequent accesses.
 // ---------------------------------------------------------------------------
 
 /**

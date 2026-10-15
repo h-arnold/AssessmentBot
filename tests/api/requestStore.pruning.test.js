@@ -9,6 +9,17 @@ function loadRequestStoreModule() {
   return require(requestStorePath);
 }
 
+function createCompletedRequestEntry(requestId, status, startedAtMs, extra = {}) {
+  return {
+    requestId,
+    method: 'hasScriptAuthorisation',
+    status,
+    startedAtMs,
+    finishedAtMs: startedAtMs + 500,
+    ...extra,
+  };
+}
+
 describe('Api/requestStore – pruneStaleEntries_', () => {
   beforeEach(() => {
     globalThis.PropertiesService._resetUserProperties();
@@ -25,13 +36,13 @@ describe('Api/requestStore – pruneStaleEntries_', () => {
     const store = {
       'stale-req-1': {
         requestId: 'stale-req-1',
-        method: 'getAuthorisationStatus',
+        method: 'hasScriptAuthorisation',
         status: 'started',
         startedAtMs: staleTime,
       },
       'stale-req-2': {
         requestId: 'stale-req-2',
-        method: 'getAuthorisationStatus',
+        method: 'hasScriptAuthorisation',
         status: 'started',
         startedAtMs: staleTime - 5000,
       },
@@ -50,7 +61,7 @@ describe('Api/requestStore – pruneStaleEntries_', () => {
     const store = {
       'recent-req-1': {
         requestId: 'recent-req-1',
-        method: 'getAuthorisationStatus',
+        method: 'hasScriptAuthorisation',
         status: 'started',
         startedAtMs: recentTime,
       },
@@ -67,13 +78,7 @@ describe('Api/requestStore – pruneStaleEntries_', () => {
 
     const veryOldTime = Date.now() - STALE_REQUEST_AGE_MS * 10;
     const store = {
-      'old-success-1': {
-        requestId: 'old-success-1',
-        method: 'getAuthorisationStatus',
-        status: 'success',
-        startedAtMs: veryOldTime,
-        finishedAtMs: veryOldTime + 500,
-      },
+      'old-success-1': createCompletedRequestEntry('old-success-1', 'success', veryOldTime),
     };
 
     pruneStaleEntries_(store, STALE_REQUEST_AGE_MS);
@@ -87,14 +92,9 @@ describe('Api/requestStore – pruneStaleEntries_', () => {
 
     const veryOldTime = Date.now() - STALE_REQUEST_AGE_MS * 10;
     const store = {
-      'old-error-1': {
-        requestId: 'old-error-1',
-        method: 'getAuthorisationStatus',
-        status: 'error',
-        startedAtMs: veryOldTime,
-        finishedAtMs: veryOldTime + 500,
+      'old-error-1': createCompletedRequestEntry('old-error-1', 'error', veryOldTime, {
         errorMessage: 'something failed',
-      },
+      }),
     };
 
     pruneStaleEntries_(store, STALE_REQUEST_AGE_MS);
@@ -110,7 +110,7 @@ describe('Api/requestStore – pruneStaleEntries_', () => {
     const store = {
       'stale-req-mut': {
         requestId: 'stale-req-mut',
-        method: 'getAuthorisationStatus',
+        method: 'hasScriptAuthorisation',
         status: 'started',
         startedAtMs: staleTime,
       },

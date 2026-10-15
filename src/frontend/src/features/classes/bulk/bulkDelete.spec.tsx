@@ -6,71 +6,25 @@
  * integration with runQueuedBatchMutation.
  */
 
+import '../../../test/classes/bulkPanel.mockSetup';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { BulkDeleteModal, type BulkDeleteModalProperties } from './BulkDeleteModal';
-import type { ClassesManagementRow } from '../classesManagementViewModel';
 import { renderWithFrontendProviders } from '../../../test/renderWithFrontendProviders';
 import {
   buildClassesManagementState,
   createFulfilledClassResult,
 } from '../../../test/classes/classesTestHelpers';
-import type { BatchProgressSnapshot } from './runQueuedBatchMutation';
+import type { ClassesManagementRow } from '../classesManagementViewModel';
+import { makeRow as sharedMakeRow } from '../../../test/classes/bulkFlowTestHelpers';
+import { useClassesManagement } from '../useClassesManagement';
+import { runQueuedBatchMutation } from './runQueuedBatchMutation';
 
 const TWO_SELECTED_ROWS = 2;
 
-const classesManagementStateMock = vi.fn();
-const runQueuedBatchMutationMock = vi.hoisted(() => vi.fn());
-const runQueuedBulkActionMock = vi.fn(
-  async ({ mutate, onComplete }: { mutate: (onProgress: (snapshot: BatchProgressSnapshot) => void) => Promise<unknown[]>; onComplete: (results: unknown[]) => Promise<void> }) => {
-    const results = await mutate(vi.fn());
-    await onComplete(results);
-  },
-);
-
-vi.mock('../../services/apiService', () => ({
-  callApi: vi.fn(),
-}));
-
-vi.mock('../useClassesManagement', () => ({
-  useClassesManagement: classesManagementStateMock,
-}));
-
-vi.mock('./runQueuedBatchMutation', () => ({
-  runQueuedBatchMutation: runQueuedBatchMutationMock,
-}));
-
-vi.mock('../useClassesBulkMutationQueue', () => ({
-  useClassesBulkMutationQueue: () => ({
-    isQueueActive: false,
-    progress: { currentItem: null, completed: 0, pendingCount: 0, total: 0, isInProgress: false },
-    isProgressModalOpen: false,
-    onDismissProgressModal: vi.fn(),
-    onCancelQueue: vi.fn(),
-    runQueuedBulkAction: runQueuedBulkActionMock,
-  }),
-}));
-
-vi.mock('./BulkCreateModal', () => ({
-  BulkCreateModal() { return null; },
-}));
-
-vi.mock('./BulkSetSelectModal', () => ({
-  BulkSetSelectModal() { return null; },
-}));
-
-vi.mock('./BulkSetCourseLengthModal', () => ({
-  BulkSetCourseLengthModal() { return null; },
-}));
-
-vi.mock('../referenceData/ManageCohortsModal', () => ({
-  ManageCohortsModal() { return null; },
-}));
-
-vi.mock('../referenceData/ManageYearGroupsModal', () => ({
-  ManageYearGroupsModal() { return null; },
-}));
+const classesManagementStateMock = vi.mocked(useClassesManagement);
+const runQueuedBatchMutationMock = vi.mocked(runQueuedBatchMutation);
 
 /**
  * Builds a test ClassesManagementRow with sensible defaults and optional overrides.
@@ -79,18 +33,14 @@ vi.mock('../referenceData/ManageYearGroupsModal', () => ({
  * @returns {ClassesManagementRow} The composed test row.
  */
 function makeRow(overrides: Partial<ClassesManagementRow> = {}): ClassesManagementRow {
-  return {
-    classId: 'class-001',
-    className: 'Year 10 Maths',
-    status: 'active',
+  return sharedMakeRow({
     cohortKey: '2025',
     cohortLabel: 'Cohort 2025',
     yearGroupKey: 'yg-10',
     yearGroupLabel: 'Year 10',
     courseLength: 1,
-    active: true,
     ...overrides,
-  };
+  });
 }
 
 /**
@@ -157,20 +107,20 @@ describe('BulkDeleteModal', () => {
   });
 });
 
+/**
+ * Loads and renders the panel with shared frontend providers.
+ *
+ * @returns {Promise<void>} Completion signal.
+ */
+async function renderPanel() {
+  const { ClassesManagementPanel } = await import('../ClassesManagementPanel');
+  return renderWithFrontendProviders(<ClassesManagementPanel />);
+}
+
 describe('bulk delete handler integration', () => {
   afterEach(() => {
-    vi.clearAllMocks();
+    vi.resetAllMocks();
   });
-
-  /**
-   * Loads and renders the panel with shared frontend providers.
-   *
-   * @returns {Promise<void>} Completion signal.
-   */
-  async function renderPanel() {
-    const { ClassesManagementPanel } = await import('../ClassesManagementPanel');
-    return renderWithFrontendProviders(<ClassesManagementPanel />);
-  }
 
   it('calls runQueuedBatchMutation with correct items when deleting', async () => {
     const onSelectedRowKeysChange = vi.fn();
@@ -178,7 +128,7 @@ describe('bulk delete handler integration', () => {
       buildClassesManagementState({
         onSelectedRowKeysChange,
         selectedRowKeys: ['active-1', 'orphaned-1'],
-      }),
+      })
     );
     runQueuedBatchMutationMock.mockResolvedValue([
       createFulfilledClassResult('active-1'),
@@ -196,9 +146,9 @@ describe('bulk delete handler integration', () => {
       expect(runQueuedBatchMutationMock).toHaveBeenCalled();
     });
 
-    const [items] = runQueuedBatchMutationMock.mock.calls[0] as [unknown[]];
+    const [items] = runQueuedBatchMutationMock.mock.calls[0];
     expect(items).toHaveLength(TWO_SELECTED_ROWS);
-    const firstItem = items[0] as Record<string, unknown>;
+    const firstItem = items[0];
     expect(firstItem.method).toBe('deleteABClass');
     expect(firstItem.verb).toBe('Deleting');
   });

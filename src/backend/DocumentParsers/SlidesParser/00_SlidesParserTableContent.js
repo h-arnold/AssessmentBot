@@ -76,8 +76,6 @@ class SlidesParserTableContent {
    */
   extractTableCells(table, context) {
     Validate.requireParams({ context }, 'SlidesParser.extractTableCells');
-    let numberRows;
-    let numberCols;
     const rows = [];
     // Unset until iteration begins so dimension-read failures cannot be
     // mistaken for a first-cell failure in the contextual log.
@@ -85,8 +83,8 @@ class SlidesParserTableContent {
     let currentColumn = null;
     let mergedCellCount = 0;
     try {
-      numberRows = table.getNumRows();
-      numberCols = table.getNumColumns();
+      const numberRows = table.getNumRows();
+      const numberCols = table.getNumColumns();
       for (currentRow = 0; currentRow < numberRows; currentRow++) {
         const row = [];
         for (currentColumn = 0; currentColumn < numberCols; currentColumn++) {

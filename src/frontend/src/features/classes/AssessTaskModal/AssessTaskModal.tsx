@@ -5,7 +5,7 @@ import { useAssessTaskReRunFlow } from './useAssessTaskReRunFlow';
 import { AssessTaskCreateReview } from './AssessTaskCreateReview';
 import { AssessTaskRecoverySurface } from './AssessTaskRecoverySurface';
 import { AssessTaskReRunBody, AssessTaskReRunFooter } from './AssessTaskReRunSurface';
-import { LinkableDefinitionList } from './LinkableDefinitionList';
+import { LinkableDefinitionList, LinkExistingDefinitionButton } from './LinkableDefinitionList';
 import { AssignmentSelectSkeleton } from './AssignmentSelectSkeleton';
 import type { ReRunContext } from '../../shared/reRunAssessmentContext';
 
@@ -166,8 +166,8 @@ export function AssessTaskModal(properties: Readonly<AssessTaskModalProperties>)
       handleModalCancel(event);
     }
 
-    document.addEventListener('keydown', handleCreateWizardEscape, true);
-    return () => document.removeEventListener('keydown', handleCreateWizardEscape, true);
+    document.addEventListener('keydown', handleCreateWizardEscape, { capture: true });
+    return () => document.removeEventListener('keydown', handleCreateWizardEscape, { capture: true });
   }, [isCreateContentActive, handleModalCancel]);
 
   /**
@@ -185,10 +185,12 @@ export function AssessTaskModal(properties: Readonly<AssessTaskModalProperties>)
    * @returns {React.ReactNode} The rendered assignments selection content.
    */
   function renderAssignmentsContent(): React.ReactNode {
-    const selectOptions = assignments.map((assignment) => ({
-      value: assignment.assignmentId,
-      label: assignment.title,
-    }));
+    const selectOptions = assignments.map((assignment) => {
+      return {
+        value: assignment.assignmentId,
+        label: assignment.title,
+      };
+    });
 
     const assessmentAlert =
       assessmentState === 'success' || (assessmentState === 'error' && assessmentError) ? (
@@ -217,29 +219,6 @@ export function AssessTaskModal(properties: Readonly<AssessTaskModalProperties>)
           </Typography.Text>
         )}
       </Space>
-    );
-  }
-
-  /**
-   * Renders the Link to Existing Definition button (enabled or disabled with
-   * Tooltip) for the choice prompt.
-   *
-   * @returns {React.ReactNode} The rendered button.
-   */
-  function renderChoiceLinkButton(): React.ReactNode {
-    if (linkableDefinitions.length > 0) {
-      return (
-        <Button onClick={handleLinkExistingDefinition}>
-          Link to Existing Definition
-        </Button>
-      );
-    }
-    return (
-      <Tooltip title="No assignment definitions exist for this class's year group.">
-        <span>
-          <Button disabled>Link to Existing Definition</Button>
-        </span>
-      </Tooltip>
     );
   }
 
@@ -343,7 +322,10 @@ export function AssessTaskModal(properties: Readonly<AssessTaskModalProperties>)
             <Button type="primary" onClick={handleCreateNewDefinition}>
               Create New Definition
             </Button>
-            {renderChoiceLinkButton()}
+            <LinkExistingDefinitionButton
+              hasLinkableDefinitions={linkableDefinitions.length > 0}
+              onLink={handleLinkExistingDefinition}
+            />
           </Space>
         </Space>
       );

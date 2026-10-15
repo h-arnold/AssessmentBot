@@ -35,11 +35,10 @@ describe('adaptClassPageToViewModel', () => {
         }),
         averageContribution: { effectiveWeight: 0, includedInAverage: false },
       };
-      const result = adaptClassPageToViewModel(
-        singleAssignmentAdapterInput([zeroWeightedRow], ['t1'])
-      );
+      const result = adaptClassPageToViewModel(singleAssignmentAdapterInput([zeroWeightedRow]));
 
-      for (const metric of Object.values(result.recentAssignments[0].metrics)) {
+      const assignmentMetrics = Object.values(result.recentAssignments[0].metrics);
+      for (const metric of assignmentMetrics) {
         expect(metric).toMatchObject({
           state: 'excluded',
           value: null,
@@ -62,9 +61,7 @@ describe('adaptClassPageToViewModel', () => {
         }),
         averageContribution: { effectiveWeight: 0, includedInAverage: false },
       };
-      const result = adaptClassPageToViewModel(
-        singleAssignmentAdapterInput([zeroWeightedN], ['t1'])
-      );
+      const result = adaptClassPageToViewModel(singleAssignmentAdapterInput([zeroWeightedN]));
 
       expect(zeroWeightedN.completeness).toMatchObject({ state: 'notAttempted', value: 'N' });
       expect(result.recentAssignments[0].metrics.completeness.state).toBe('excluded');
@@ -79,7 +76,7 @@ describe('adaptClassPageToViewModel', () => {
         accuracy: createMetricResult('error'),
         spag: createMetricResult('error'),
       });
-      const result = adaptClassPageToViewModel(singleAssignmentAdapterInput([errors], ['t1']));
+      const result = adaptClassPageToViewModel(singleAssignmentAdapterInput([errors]));
 
       expect(result.recentAssignments[0].metrics.completeness.state).toBe('error');
       expect(result.recentAssignments[0].metrics.average.state).toBe('error');
@@ -104,7 +101,7 @@ describe('adaptClassPageToViewModel', () => {
         averageContribution: { effectiveWeight: 0, includedInAverage: false },
       };
       const result = adaptClassPageToViewModel(
-        singleAssignmentAdapterInput([positiveRow, zeroRow], ['t-positive', 't-zero'])
+        singleAssignmentAdapterInput([positiveRow, zeroRow])
       );
       const metrics = result.recentAssignments[0].metrics;
 
@@ -126,9 +123,7 @@ describe('adaptClassPageToViewModel', () => {
         computedPerTaskRow('dk1', 't2', { completeness: 5, accuracy: 4, spag: 3 }),
       ];
 
-      const result = adaptClassPageToViewModel(
-        singleAssignmentAdapterInput(perTaskRows, ['t1', 't2'])
-      );
+      const result = adaptClassPageToViewModel(singleAssignmentAdapterInput(perTaskRows));
 
       expect(result.recentAssignments).toHaveLength(1);
       const assignmentMetrics = result.recentAssignments[0].metrics;
@@ -168,7 +163,7 @@ describe('adaptClassPageToViewModel', () => {
         computedPerTaskRow('dk1', 't1', { completeness: 5, accuracy: 3, spag: 2 }),
       ];
 
-      const result = adaptClassPageToViewModel(singleAssignmentAdapterInput(perTaskRows, ['t1']));
+      const result = adaptClassPageToViewModel(singleAssignmentAdapterInput(perTaskRows));
 
       const average = result.recentAssignments[0].metrics.average;
       // Expected: 0.4 * 5 + 0.4 * 3 + 0.2 * 2 = 2.0 + 1.2 + 0.4 = 3.6
@@ -190,14 +185,11 @@ describe('adaptClassPageToViewModel', () => {
         }),
       ];
 
-      const result = adaptClassPageToViewModel(singleAssignmentAdapterInput(perTaskRows, ['t1']));
+      const result = adaptClassPageToViewModel(singleAssignmentAdapterInput(perTaskRows));
 
       const COMPOSITE_NUMERATOR = 2.6;
       const COMPOSITE_DENOMINATOR = 0.6;
       const EXPECTED_AVERAGE_VALUE = COMPOSITE_NUMERATOR / COMPOSITE_DENOMINATOR;
-      const EXPECTED_SUM_TOTAL_WEIGHT = 2;
-      const EXPECTED_SUM_AP = 2;
-      const EXPECTED_SUM_TDP = 3;
       const average = result.recentAssignments[0].metrics.average;
       // completeness rollup → computed(5, tw=1), accuracy rollup → error, spag rollup → computed(3, tw=1)
       // computeAverageMetric with error-exclusion:
@@ -206,12 +198,17 @@ describe('adaptClassPageToViewModel', () => {
       // denominator = 0.4 + 0.2 = 0.6
       // value = 2.6 / 0.6 = 4.333...
       expect(average.state).toBe('computed');
-      if (average.state === 'computed') {
-        expect(average.value).toBeCloseTo(EXPECTED_AVERAGE_VALUE);
-        expect(average.totalWeight).toBe(EXPECTED_SUM_TOTAL_WEIGHT);
-        expect(average.applicableDataPoints).toBe(EXPECTED_SUM_AP);
-        expect(average.totalDataPoints).toBe(EXPECTED_SUM_TDP);
+      if (average.state !== 'computed') {
+        return;
       }
+
+      const EXPECTED_SUM_TOTAL_WEIGHT = 2;
+      const EXPECTED_SUM_AP = 2;
+      const EXPECTED_SUM_TDP = 3;
+      expect(average.value).toBeCloseTo(EXPECTED_AVERAGE_VALUE);
+      expect(average.totalWeight).toBe(EXPECTED_SUM_TOTAL_WEIGHT);
+      expect(average.applicableDataPoints).toBe(EXPECTED_SUM_AP);
+      expect(average.totalDataPoints).toBe(EXPECTED_SUM_TDP);
     });
 
     it('sets per-assignment average to error only when all three criteria are error', () => {
@@ -225,7 +222,7 @@ describe('adaptClassPageToViewModel', () => {
         }),
       ];
 
-      const result = adaptClassPageToViewModel(singleAssignmentAdapterInput(perTaskRows, ['t1']));
+      const result = adaptClassPageToViewModel(singleAssignmentAdapterInput(perTaskRows));
 
       // All three rows are error → rollupMetric(all error) → error for each criterion
       // then computeAverageMetric(all three error) → error
@@ -243,7 +240,7 @@ describe('adaptClassPageToViewModel', () => {
         }),
       ];
 
-      const result = adaptClassPageToViewModel(singleAssignmentAdapterInput(perTaskRows, ['t1']));
+      const result = adaptClassPageToViewModel(singleAssignmentAdapterInput(perTaskRows));
 
       expect(result.recentAssignments[0].metrics.average).toMatchObject({
         state: 'excluded',
@@ -264,7 +261,7 @@ describe('adaptClassPageToViewModel', () => {
         }),
       ];
 
-      const result = adaptClassPageToViewModel(singleAssignmentAdapterInput(perTaskRows, ['t1']));
+      const result = adaptClassPageToViewModel(singleAssignmentAdapterInput(perTaskRows));
 
       const expectedTotalWeight = positiveWeight * CRITERION_COUNT;
       expect(result.recentAssignments[0].metrics.average).toMatchObject({
@@ -284,7 +281,7 @@ describe('adaptClassPageToViewModel', () => {
         }),
       ];
 
-      const result = adaptClassPageToViewModel(singleAssignmentAdapterInput(perTaskRows, ['t1']));
+      const result = adaptClassPageToViewModel(singleAssignmentAdapterInput(perTaskRows));
 
       const average = result.recentAssignments[0].metrics.average;
       // SPaG is notAttempted → excluded.  Renormalised weights: 0.4/0.8 = 0.5 for each

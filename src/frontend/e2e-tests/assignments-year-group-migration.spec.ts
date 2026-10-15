@@ -49,7 +49,7 @@ async function mockAssignmentsRuntime(page: Page) {
     (() => {
       const createGoogleScriptRunApiHandlerMock = ${googleScriptRunApiHandlerFactorySource};
       const responseQueues = {
-        getAuthorisationStatus: [{ kind: 'success', data: true }],
+        hasScriptAuthorisation: [{ kind: 'success', data: true }],
         getApplicationAccess: [
           { kind: 'success', data: { allowed: true, role: 'admin', email: 'owner@example.com', reason: 'ok' } },
           { kind: 'success', data: { allowed: true, role: 'admin', email: 'owner@example.com', reason: 'ok' } },
@@ -62,7 +62,7 @@ async function mockAssignmentsRuntime(page: Page) {
         deleteAssignmentDefinition: [],
       };
       const callCounts = {
-        getAuthorisationStatus: 0,
+        hasScriptAuthorisation: 0,
         getApplicationAccess: 0,
         getABClassPartials: 0,
          getCohorts: 0,

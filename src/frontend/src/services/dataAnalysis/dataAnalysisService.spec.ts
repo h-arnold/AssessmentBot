@@ -7,6 +7,7 @@ import {
 } from './dataAnalysis.zod';
 import {
   buildInput,
+  buildSingleStudentInput,
   createAssignmentPartial,
   createSubmission,
   createSubmissionItem,
@@ -26,25 +27,7 @@ describe('DataAnalysisService', () => {
     // 1) Valid input returns a non-null array of AveragingResult
     // -----------------------------------------------------------------------
     it('returns a non-null array of AveragingResult for valid input', () => {
-      const input = buildInput([
-        {
-          classId: 'c_001',
-          className: 'Test Class',
-          studentIds: ['s_001'],
-          assignments: [
-            createAssignmentPartial({
-              assignmentId: 'a_001',
-              definitionKey: 'dk_algebra',
-              tasks: [createTaskPartial('t_001')],
-              submissions: [
-                createSubmission('s_001', 'Alice', 'a_001', {
-                  t_001: createSubmissionItem('t_001', { accuracy: { score: 4 } }),
-                }),
-              ],
-            }),
-          ],
-        },
-      ]);
+      const input = buildSingleStudentInput({ accuracy: { score: 4 } });
 
       const service = new DataAnalysisService();
       const results = service.analyse(input);
@@ -59,29 +42,11 @@ describe('DataAnalysisService', () => {
     // 2) Result passes DataAnalysisResponseSchema.parse() round-trip
     // -----------------------------------------------------------------------
     it('result passes DataAnalysisResponseSchema.parse() round-trip', () => {
-      const input = buildInput([
-        {
-          classId: 'c_001',
-          className: 'Test Class',
-          studentIds: ['s_001'],
-          assignments: [
-            createAssignmentPartial({
-              assignmentId: 'a_001',
-              definitionKey: 'dk_algebra',
-              tasks: [createTaskPartial('t_001')],
-              submissions: [
-                createSubmission('s_001', 'Alice', 'a_001', {
-                  t_001: createSubmissionItem('t_001', {
-                    completeness: { score: 3 },
-                    accuracy: { score: 4 },
-                    spag: { score: 5 },
-                  }),
-                }),
-              ],
-            }),
-          ],
-        },
-      ]);
+      const input = buildSingleStudentInput({
+        completeness: { score: 3 },
+        accuracy: { score: 4 },
+        spag: { score: 5 },
+      });
 
       const service = new DataAnalysisService();
       const results = service.analyse(input);
@@ -115,23 +80,22 @@ describe('DataAnalysisService', () => {
     // 4) appliedCriterionWeightings echoes constructor defaults
     // -----------------------------------------------------------------------
     it('appliedCriterionWeightings echoes defaults (0.4, 0.4, 0.2) when no custom filtering', () => {
+      const assignment = createAssignmentPartial({
+        assignmentId: 'a_001',
+        definitionKey: 'dk_algebra',
+        tasks: [createTaskPartial('t_001')],
+        submissions: [
+          createSubmission('s_001', 'Alice', 'a_001', {
+            t_001: createSubmissionItem('t_001', { accuracy: { score: 4 } }),
+          }),
+        ],
+      });
       const input = buildInput([
         {
           classId: 'c_001',
           className: 'Test Class',
           studentIds: ['s_001'],
-          assignments: [
-            createAssignmentPartial({
-              assignmentId: 'a_001',
-              definitionKey: 'dk_algebra',
-              tasks: [createTaskPartial('t_001')],
-              submissions: [
-                createSubmission('s_001', 'Alice', 'a_001', {
-                  t_001: createSubmissionItem('t_001', { accuracy: { score: 4 } }),
-                }),
-              ],
-            }),
-          ],
+          assignments: [assignment],
         },
       ]);
 
@@ -217,40 +181,38 @@ describe('DataAnalysisService', () => {
     it('returns results sorted by classId ascending', () => {
       const CLASS_COUNT = 2;
 
+      const aliceAssignment = createAssignmentPartial({
+        assignmentId: 'a_001',
+        definitionKey: 'dk_algebra',
+        tasks: [createTaskPartial('t_001')],
+        submissions: [
+          createSubmission('s_001', 'Alice', 'a_001', {
+            t_001: createSubmissionItem('t_001', { accuracy: { score: 4 } }),
+          }),
+        ],
+      });
+      const bobAssignment = createAssignmentPartial({
+        assignmentId: 'a_002',
+        definitionKey: 'dk_geometry',
+        tasks: [createTaskPartial('t_001')],
+        submissions: [
+          createSubmission('s_002', 'Bob', 'a_002', {
+            t_001: createSubmissionItem('t_001', { accuracy: { score: 3 } }),
+          }),
+        ],
+      });
       const input = buildInput([
         {
           classId: 'c_002',
           className: 'Second Class',
           studentIds: ['s_001'],
-          assignments: [
-            createAssignmentPartial({
-              assignmentId: 'a_001',
-              definitionKey: 'dk_algebra',
-              tasks: [createTaskPartial('t_001')],
-              submissions: [
-                createSubmission('s_001', 'Alice', 'a_001', {
-                  t_001: createSubmissionItem('t_001', { accuracy: { score: 4 } }),
-                }),
-              ],
-            }),
-          ],
+          assignments: [aliceAssignment],
         },
         {
           classId: 'c_001',
           className: 'First Class',
           studentIds: ['s_002'],
-          assignments: [
-            createAssignmentPartial({
-              assignmentId: 'a_002',
-              definitionKey: 'dk_geometry',
-              tasks: [createTaskPartial('t_001')],
-              submissions: [
-                createSubmission('s_002', 'Bob', 'a_002', {
-                  t_001: createSubmissionItem('t_001', { accuracy: { score: 3 } }),
-                }),
-              ],
-            }),
-          ],
+          assignments: [bobAssignment],
         },
       ]);
 
@@ -266,27 +228,26 @@ describe('DataAnalysisService', () => {
     // 10) Orchestrator's analyse returns the new MetricResult discriminated union shape
     // -----------------------------------------------------------------------
     it('returns the new MetricResult discriminated union shape on public output', () => {
+      const assignment = createAssignmentPartial({
+        assignmentId: 'a_001',
+        definitionKey: 'dk_algebra',
+        tasks: [createTaskPartial('t_001')],
+        submissions: [
+          createSubmission('s_001', 'Alice', 'a_001', {
+            t_001: createSubmissionItem('t_001', {
+              completeness: { score: 3 },
+              accuracy: { score: 4 },
+              spag: { score: 5 },
+            }),
+          }),
+        ],
+      });
       const input = buildInput([
         {
           classId: 'c_001',
           className: 'Test Class',
           studentIds: ['s_001'],
-          assignments: [
-            createAssignmentPartial({
-              assignmentId: 'a_001',
-              definitionKey: 'dk_algebra',
-              tasks: [createTaskPartial('t_001')],
-              submissions: [
-                createSubmission('s_001', 'Alice', 'a_001', {
-                  t_001: createSubmissionItem('t_001', {
-                    completeness: { score: 3 },
-                    accuracy: { score: 4 },
-                    spag: { score: 5 },
-                  }),
-                }),
-              ],
-            }),
-          ],
+          assignments: [assignment],
         },
       ]);
 

@@ -30,7 +30,7 @@ class ConfigurationManager extends BaseSingleton {
    * @returns {void} No return value. */
   ensureInitialized() {
     if (this._initialized) return;
-    this.scriptProperties = this.scriptProperties || GASPropertiesUtils.getScriptProperties();
+    this.scriptProperties ||= GASPropertiesUtils.getScriptProperties();
     if (globalThis.__TRACE_SINGLETON__)
       ABLogger.getInstance().debug('[TRACE][HeavyInit] ConfigurationManager.ensureInitialized');
     this._initialized = true;
@@ -419,7 +419,7 @@ class ConfigurationManager extends BaseSingleton {
   ) {
     const raw = this.getProperty(key);
     const parsed = Number.parseInt(raw, 10);
-    if (Number.isInteger(parsed) && parsed >= min && parsed <= max) return parsed;
+    if (Number.isSafeInteger(parsed) && parsed >= min && parsed <= max) return parsed;
     return fallback;
   }
 }

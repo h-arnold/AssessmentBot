@@ -193,13 +193,14 @@ type ShapeDiscriminatorFields = Pick<
 export function validateUpsertShape(value: ShapeDiscriminatorFields): string | null {
   const hasReferenceUrl = value.referenceDocumentUrl !== undefined;
   const hasTemplateUrl = value.templateDocumentUrl !== undefined;
-  const hasReferenceId = value.referenceDocumentId !== undefined;
-  const hasTemplateId = value.templateDocumentId !== undefined;
-  const hasDocumentType = value.documentType !== undefined;
 
   if (hasReferenceUrl !== hasTemplateUrl) {
     return 'referenceDocumentUrl and templateDocumentUrl must be provided together.';
   }
+
+  const hasReferenceId = value.referenceDocumentId !== undefined;
+  const hasTemplateId = value.templateDocumentId !== undefined;
+  const hasDocumentType = value.documentType !== undefined;
 
   if (hasReferenceUrl) {
     if (hasAnyIdField(hasReferenceId, hasTemplateId, hasDocumentType)) {

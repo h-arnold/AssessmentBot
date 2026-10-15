@@ -123,8 +123,8 @@ class AssignmentController {
     const assignment = this.createAssignmentInstance(definition, courseId, assignmentId);
 
     const students = abClass.students;
-    const includeImages = definition.documentType === 'SLIDES';
-    this.runAssignmentPipeline(assignment, students, { includeImages });
+    const shouldIncludeImages = definition.documentType === 'SLIDES';
+    this.runAssignmentPipeline(assignment, students, { includeImages: shouldIncludeImages });
 
     // Update updatedAt value and persist assignment data
 
@@ -266,19 +266,19 @@ class AssignmentController {
     const referenceStale = DateUtils.isNewer(referenceModified, definition.referenceLastModified);
 
     let templateModified = null;
-    let templateStale = false;
+    let isTemplateStale = false;
     if (!referenceStale) {
       templateModified = DriveManager.getFileModifiedTime(definition.templateDocumentId);
-      templateStale = DateUtils.isNewer(templateModified, definition.templateLastModified);
+      isTemplateStale = DateUtils.isNewer(templateModified, definition.templateLastModified);
     }
 
-    if (referenceStale || templateStale) {
+    if (referenceStale || isTemplateStale) {
       throw new DefinitionStaleError(
         'Assignment definition is stale: reference or template document has changed.',
         {
           definitionKey: definition.definitionKey,
           referenceStale,
-          templateStale,
+          isTemplateStale,
           referenceLastModified: referenceModified,
           templateLastModified: templateModified,
         }
@@ -385,10 +385,7 @@ class AssignmentController {
     const abClass = abClassController.loadClass(courseId);
 
     // Resolve yearGroupKey from input or abClass.yearGroupKey
-    const resolvedYearGroupKey =
-      yearGroupKey !== undefined && yearGroupKey !== null
-        ? yearGroupKey
-        : (abClass?.yearGroupKey ?? null);
+    const resolvedYearGroupKey = yearGroupKey ?? abClass?.yearGroupKey ?? null;
 
     // Fail fast if yearGroupKey cannot be resolved
     if (resolvedYearGroupKey === null || resolvedYearGroupKey === undefined) {

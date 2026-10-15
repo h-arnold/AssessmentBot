@@ -64,7 +64,7 @@ describe('setAuthenticationSettings — configuration-lock contention envelope',
     // Contention is transient: it must reach the caller as a retriable
     // validation/rate-limit envelope, never a non-retriable INTERNAL_ERROR.
     expect(response.ok).toBe(false);
-    expect(response.error).toMatchObject({ code: 'RATE_LIMITED', retriable: true });
+    expect(response.error).toMatchObject({ code: 'RATE_LIMITED', isRetriable: true });
     expect(response.error.code).not.toBe('INTERNAL_ERROR');
     expect(response.error.message).not.toBe('Internal API error.');
     // No partial write occurred: the stored config blob is byte-for-byte unchanged.

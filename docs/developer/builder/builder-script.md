@@ -308,7 +308,7 @@ Treat these modes as diagnostics controls, not separate runtime contracts.
 
 ### What must not differ by mode
 
-- API envelope contracts (`ok`, `requestId`, `error.code`, `error.message`, `retriable`).
+- API envelope contracts (`ok`, `requestId`, `error.code`, `error.message`, `isRetriable`).
 - Error-mapping semantics from transport failures to user-facing UI states.
 - Build failure signalling (non-zero exit code and stage-aware failure output).
 

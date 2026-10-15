@@ -14,11 +14,7 @@ export function getBlockingLoadErrorMessage(
   blockingLoadError: BlockingLoadErrorState | null,
   dataUpdatedAt: number
 ): string | null {
-  if (blockingLoadError === null) {
-    return null;
-  }
-
-  if (dataUpdatedAt > blockingLoadError.dataUpdatedAt) {
+  if (blockingLoadError === null || dataUpdatedAt > blockingLoadError.dataUpdatedAt) {
     return null;
   }
 

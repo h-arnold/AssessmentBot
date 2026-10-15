@@ -112,9 +112,9 @@ function buildAuthenticationSettingsSaveRequest(
     return {
       authMode: 'scriptProperties',
       authUsers: dependencies.authUsers,
-      ...(dependencies.authRevision === null
-        ? {}
-        : { expectedAuthRevision: dependencies.authRevision }),
+      ...(dependencies.authRevision !== null && {
+        expectedAuthRevision: dependencies.authRevision,
+      }),
     };
   }
 
@@ -322,8 +322,8 @@ export function useAuthenticationSettings(): AuthenticationSettingsHookValue {
     seedFromSettings(authenticationSettingsQuery.data);
   }, [authenticationSettingsQuery.data]);
 
-  return useMemo<AuthenticationSettingsHookValue>(
-    () => ({
+  return useMemo<AuthenticationSettingsHookValue>(() => {
+    return {
       isInitialLoading,
       isRefreshing,
       loadError,
@@ -343,27 +343,26 @@ export function useAuthenticationSettings(): AuthenticationSettingsHookValue {
       confirmModeSwitch,
       cancelModeSwitch,
       save,
-    }),
-    [
-      isInitialLoading,
-      isRefreshing,
-      loadError,
-      stagedAuthMode,
-      authGroupEmail,
-      authUsers,
-      authRevision,
-      isSaving,
-      staleRevisionWarning,
-      saveError,
-      pendingModeSwitch,
-      addUser,
-      changeUserRole,
-      removeUser,
-      setAuthGroupEmail,
-      requestModeSwitch,
-      confirmModeSwitch,
-      cancelModeSwitch,
-      save,
-    ]
-  );
+    };
+  }, [
+    isInitialLoading,
+    isRefreshing,
+    loadError,
+    stagedAuthMode,
+    authGroupEmail,
+    authUsers,
+    authRevision,
+    isSaving,
+    staleRevisionWarning,
+    saveError,
+    pendingModeSwitch,
+    addUser,
+    changeUserRole,
+    removeUser,
+    setAuthGroupEmail,
+    requestModeSwitch,
+    confirmModeSwitch,
+    cancelModeSwitch,
+    save,
+  ]);
 }

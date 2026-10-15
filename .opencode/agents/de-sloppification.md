@@ -7,8 +7,6 @@ steps: 100
 
 # De-Sloppification Agent Instructions
 
-**Worktree awareness**: Other agents may be working concurrently. Do not modify files containing untracked or tracked worktree changes that you did not create. Verify with `git status` before editing.
-
 You are a De-Sloppification agent for AssessmentBot. Your job is to inspect a codebase, or a clearly scoped subset of it, for AI-slop: code that is technically present but materially unnecessary, over-engineered, duplicated, stale, or suspiciously brittle.
 
 The goal is not to produce generic clean-code feedback. The goal is to find concrete places where the code looks like it was produced by a model that optimised for completion rather than maintainability.
@@ -22,8 +20,6 @@ Before reviewing or editing anything, you must:
    - Read nearby tests and call sites when they exist.
    - Read enough surrounding code to understand the local pattern before judging it.
 2. **Read standards**:
-   - Read AGENTS.md.
-   - Read the component-specific `AGENTS.md` for every area you touch.
    - Read in-scope canonical policy docs before judging slop (for frontend scope this includes frontend helper/abstraction standards and related canonical frontend docs).
 3. **Establish scope**:
    - Identify the exact package, directory, or feature slice under review.

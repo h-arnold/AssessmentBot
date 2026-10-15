@@ -53,10 +53,7 @@ function makeCell(tag: string, sourceUrl: string | null = null): CellPreviewData
 function buildLookup(entries: Record<string, Record<string, CellPreviewData>>): CellPreviewLookup {
   const outer = new Map<string, Map<string, CellPreviewData>>();
   for (const [studentId, tasks] of Object.entries(entries)) {
-    const inner = new Map<string, CellPreviewData>();
-    for (const [taskKey, cell] of Object.entries(tasks)) {
-      inner.set(taskKey, cell);
-    }
+    const inner = new Map<string, CellPreviewData>(Object.entries(tasks));
     outer.set(studentId, inner);
   }
   return outer;
@@ -68,24 +65,44 @@ function buildLookup(entries: Record<string, Record<string, CellPreviewData>>): 
  * @param {string} assignmentId - Contributing assignment ID.
  * @param {string} definitionKey - Definition key.
  * @param {string} taskId - Task ID.
- * @param {string | null} taskTitle - Task title.
  * @returns {MergedHeatmapTaskColumn} A merged column descriptor.
  */
-function col(
-  assignmentId: string,
-  definitionKey: string,
-  taskId: string,
-  taskTitle: string | null
-): MergedHeatmapTaskColumn {
+function col(assignmentId: string, definitionKey: string, taskId: string): MergedHeatmapTaskColumn {
   return {
     taskKey: `${definitionKey}::${taskId}`,
     taskId,
-    taskTitle,
+    taskTitle: null,
     averageContribution: { effectiveWeight: 1, includedInAverage: true },
     assignmentId,
     definitionKey,
     assignmentName: assignmentId,
   };
+}
+
+/**
+ * Build equivalent assignment preview inputs for status-map contract cases.
+ * @param {ReadonlyArray<{ assignmentId: string; isLoading: boolean; hasError: boolean }>} states - Query states.
+ * @returns {ReadonlyArray<AssignmentPreviewInput>} Preview inputs with empty lookups.
+ */
+function previewInputs(
+  states: ReadonlyArray<{ assignmentId: string; isLoading: boolean; hasError: boolean }>
+): ReadonlyArray<AssignmentPreviewInput> {
+  return states.map(({ assignmentId, isLoading, hasError }) => {
+    return {
+      assignmentId,
+      lookup: buildLookup({}),
+      isLoading,
+      hasError,
+    };
+  });
+}
+
+/**
+ * Build the task columns used by the repeated shared-task-key status cases.
+ * @returns {ReadonlyArray<MergedHeatmapTaskColumn>} Two columns with one shared task key.
+ */
+function sharedTaskColumns(): ReadonlyArray<MergedHeatmapTaskColumn> {
+  return [col('a1', 'def1', 'tA'), col('a2', 'def1', 'tA')];
 }
 
 describe('assembleMergedPreviewData — merged lookup', () => {
@@ -101,8 +118,8 @@ describe('assembleMergedPreviewData — merged lookup', () => {
       { assignmentId: 'a1', lookup: a1Lookup, isLoading: false, hasError: false },
     ];
     const columnOrder: ReadonlyArray<MergedHeatmapTaskColumn> = [
-      col('a1', 'def1', 'tA', null),
-      col('a2', 'def1', 'tA', null),
+      col('a1', 'def1', 'tA'),
+      col('a2', 'def1', 'tA'),
     ];
 
     const result: MergedPreviewAssemblyResult = assembleMergedPreviewData(inputs, columnOrder);
@@ -121,8 +138,8 @@ describe('assembleMergedPreviewData — merged lookup', () => {
       { assignmentId: 'a2', lookup: a2Lookup, isLoading: false, hasError: false },
     ];
     const columnOrder: ReadonlyArray<MergedHeatmapTaskColumn> = [
-      col('a1', 'def1', 'tA', null),
-      col('a2', 'def2', 'tB', null),
+      col('a1', 'def1', 'tA'),
+      col('a2', 'def2', 'tB'),
     ];
 
     const result: MergedPreviewAssemblyResult = assembleMergedPreviewData(inputs, columnOrder);
@@ -149,8 +166,8 @@ describe('assembleMergedPreviewData — first-wins sourceUrl', () => {
       { assignmentId: 'a2', lookup: a2Lookup, isLoading: false, hasError: false },
     ];
     const columnOrder: ReadonlyArray<MergedHeatmapTaskColumn> = [
-      col('a1', 'def1', 'tA', null),
-      col('a2', 'def1', 'tA', null),
+      col('a1', 'def1', 'tA'),
+      col('a2', 'def1', 'tA'),
     ];
 
     const result: MergedPreviewAssemblyResult = assembleMergedPreviewData(inputs, columnOrder);
@@ -172,8 +189,8 @@ describe('assembleMergedPreviewData — first-wins sourceUrl', () => {
       { assignmentId: 'a2', lookup: a2Lookup, isLoading: false, hasError: false },
     ];
     const columnOrder: ReadonlyArray<MergedHeatmapTaskColumn> = [
-      col('a1', 'def1', 'tA', null),
-      col('a2', 'def1', 'tA', null),
+      col('a1', 'def1', 'tA'),
+      col('a2', 'def1', 'tA'),
     ];
 
     const result: MergedPreviewAssemblyResult = assembleMergedPreviewData(inputs, columnOrder);
@@ -187,14 +204,11 @@ describe('assembleMergedPreviewData — first-wins sourceUrl', () => {
 
 describe('assembleMergedPreviewData — previewStatusByTaskKey', () => {
   it('covers every selected assignment taskKeys, first occurrence wins for a shared taskKey', () => {
-    const columnOrder: ReadonlyArray<MergedHeatmapTaskColumn> = [
-      col('a1', 'def1', 'tA', null),
-      col('a2', 'def1', 'tA', null),
-    ];
-    const inputs: ReadonlyArray<AssignmentPreviewInput> = [
-      { assignmentId: 'a1', lookup: buildLookup({}), isLoading: true, hasError: false },
-      { assignmentId: 'a2', lookup: buildLookup({}), isLoading: false, hasError: true },
-    ];
+    const columnOrder = sharedTaskColumns();
+    const inputs = previewInputs([
+      { assignmentId: 'a1', isLoading: true, hasError: false },
+      { assignmentId: 'a2', isLoading: false, hasError: true },
+    ]);
 
     const result: MergedPreviewAssemblyResult = assembleMergedPreviewData(inputs, columnOrder);
 
@@ -207,14 +221,14 @@ describe('assembleMergedPreviewData — previewStatusByTaskKey', () => {
 
   it('populates a status entry for every distinct taskKey across distinct assignments', () => {
     const columnOrder: ReadonlyArray<MergedHeatmapTaskColumn> = [
-      col('a1', 'def1', 'tA', null),
-      col('a1', 'def1', 'tB', null),
-      col('a2', 'def2', 'tC', null),
+      col('a1', 'def1', 'tA'),
+      col('a1', 'def1', 'tB'),
+      col('a2', 'def2', 'tC'),
     ];
-    const inputs: ReadonlyArray<AssignmentPreviewInput> = [
-      { assignmentId: 'a1', lookup: buildLookup({}), isLoading: false, hasError: false },
-      { assignmentId: 'a2', lookup: buildLookup({}), isLoading: true, hasError: false },
-    ];
+    const inputs = previewInputs([
+      { assignmentId: 'a1', isLoading: false, hasError: false },
+      { assignmentId: 'a2', isLoading: true, hasError: false },
+    ]);
 
     const result: MergedPreviewAssemblyResult = assembleMergedPreviewData(inputs, columnOrder);
 
@@ -235,13 +249,13 @@ describe('assembleMergedPreviewData — previewStatusByTaskKey', () => {
 
   it('maps per-assignment query state onto that assignment taskKeys (errored assignment only flags its own)', () => {
     const columnOrder: ReadonlyArray<MergedHeatmapTaskColumn> = [
-      col('a1', 'def1', 'tA', null),
-      col('a2', 'def2', 'tB', null),
+      col('a1', 'def1', 'tA'),
+      col('a2', 'def2', 'tB'),
     ];
-    const inputs: ReadonlyArray<AssignmentPreviewInput> = [
-      { assignmentId: 'a1', lookup: buildLookup({}), isLoading: false, hasError: false },
-      { assignmentId: 'a2', lookup: buildLookup({}), isLoading: false, hasError: true },
-    ];
+    const inputs = previewInputs([
+      { assignmentId: 'a1', isLoading: false, hasError: false },
+      { assignmentId: 'a2', isLoading: false, hasError: true },
+    ]);
 
     const result: MergedPreviewAssemblyResult = assembleMergedPreviewData(inputs, columnOrder);
 
@@ -259,14 +273,12 @@ describe('assembleMergedPreviewData — previewStatusByTaskKey', () => {
 describe('assembleMergedPreviewData — fail-fast on missing preview input (T-8 / E-1)', () => {
   it('throws when a column assignmentId has no matching preview input (never silently falls back to healthy)', () => {
     const columnOrder: ReadonlyArray<MergedHeatmapTaskColumn> = [
-      col('a1', 'def1', 'tA', null),
-      col('a2', 'def1', 'tB', null),
+      col('a1', 'def1', 'tA'),
+      col('a2', 'def1', 'tB'),
     ];
     // inputs omit the preview for 'a2' — a wiring regression that previously
     // silently yielded { isLoading: false, hasError: false } for the column.
-    const inputs: ReadonlyArray<AssignmentPreviewInput> = [
-      { assignmentId: 'a1', lookup: buildLookup({}), isLoading: false, hasError: false },
-    ];
+    const inputs = previewInputs([{ assignmentId: 'a1', isLoading: false, hasError: false }]);
 
     expect(() => assembleMergedPreviewData(inputs, columnOrder)).toThrow(
       /no preview input for assignmentId "a2" \(taskKey "def1::tB"\)/
@@ -275,13 +287,13 @@ describe('assembleMergedPreviewData — fail-fast on missing preview input (T-8 
 
   it('does not throw when every column assignmentId has a matching input (status map populated)', () => {
     const columnOrder: ReadonlyArray<MergedHeatmapTaskColumn> = [
-      col('a1', 'def1', 'tA', null),
-      col('a2', 'def1', 'tB', null),
+      col('a1', 'def1', 'tA'),
+      col('a2', 'def1', 'tB'),
     ];
-    const inputs: ReadonlyArray<AssignmentPreviewInput> = [
-      { assignmentId: 'a1', lookup: buildLookup({}), isLoading: false, hasError: false },
-      { assignmentId: 'a2', lookup: buildLookup({}), isLoading: true, hasError: false },
-    ];
+    const inputs = previewInputs([
+      { assignmentId: 'a1', isLoading: false, hasError: false },
+      { assignmentId: 'a2', isLoading: true, hasError: false },
+    ]);
 
     expect(() => assembleMergedPreviewData(inputs, columnOrder)).not.toThrow();
     const result: MergedPreviewAssemblyResult = assembleMergedPreviewData(inputs, columnOrder);

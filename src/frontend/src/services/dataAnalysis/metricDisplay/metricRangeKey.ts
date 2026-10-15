@@ -86,7 +86,7 @@ export function encodeMetricFilter(state: MetricRangeFilterState): string {
  * @param {string | undefined} value - The raw key part.
  * @returns {boolean} `true` only for the literal `'1'`.
  */
-function parseFlag(value: string | undefined): boolean {
+function isRangeFlagSet(value: string | undefined): boolean {
   return value === '1';
 }
 
@@ -126,8 +126,8 @@ export function decodeMetricFilter(key?: unknown): MetricRangeFilterState | null
   return {
     min,
     max,
-    includeNotAttempted: parseFlag(parts[2]),
-    includeError: parseFlag(parts[3]),
-    includeExcluded: parseFlag(parts[4]),
+    includeNotAttempted: isRangeFlagSet(parts[2]),
+    includeError: isRangeFlagSet(parts[3]),
+    includeExcluded: isRangeFlagSet(parts[4]),
   };
 }

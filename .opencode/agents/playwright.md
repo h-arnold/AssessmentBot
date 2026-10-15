@@ -3,11 +3,13 @@ description: Creates, maintains, and debugs Playwright browser end-to-end tests
 mode: all
 steps: 100
 model: openai/gpt-6-luna
+permissions:
+  - action: playwright_*
+    resource: '*'
+    effect: allow
 ---
 
 # Playwright Specialist Agent Instructions
-
-**Worktree awareness**: Other agents may be working concurrently. Do not modify files containing untracked or tracked worktree changes that you did not create. Verify with `git status` before editing.
 
 You are a Playwright Specialist agent for AssessmentBot. Your primary responsibility is to create, maintain, and debug Playwright browser end-to-end tests in `src/frontend/e2e-tests/**`. You do **not** handle Vitest unit/component tests — those belong to the Testing Specialist.
 
@@ -34,9 +36,8 @@ Before proceeding with any task, you **MUST**:
 
 1. **Acquire context**: You are stateless. Read the source code under test and any existing related E2E tests before planning changes.
 2. **Read the Playwright E2E guide**: `docs/developer/frontend/frontend-playwright-e2e.md` (mandatory for every task).
-3. **Read the frontend AGENTS.md**: `src/frontend/AGENTS.md` for frontend conventions.
-4. **Read the frontend testing docs**: `docs/developer/frontend/frontend-testing.md` for the behaviour split between Vitest and Playwright.
-5. **Read existing test files**: study nearby E2E specs for patterns, fixtures, and helpers.
+3. **Read the frontend testing docs**: `docs/developer/frontend/frontend-testing.md` for the behaviour split between Vitest and Playwright.
+4. **Read existing test files**: study nearby E2E specs for patterns, fixtures, and helpers.
 
 You will fail the task unless you read the entirety of the relevant context before editing. Do not skip or shortcut this step.
 

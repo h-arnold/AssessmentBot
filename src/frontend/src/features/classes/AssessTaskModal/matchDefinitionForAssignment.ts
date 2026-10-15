@@ -1,5 +1,5 @@
 import type { AssignmentDefinitionPartial } from '../../../services/assignmentDefinition/assignmentDefinitionPartials.zod';
-import { caseInsensitiveTrimmedEquals } from './stringComparison';
+import { areTrimmedStringsEqualIgnoringCase } from './stringComparison';
 
 /**
  * Discriminated union representing the result of matching a Google Classroom
@@ -26,19 +26,19 @@ export type MatchResult =
  *
  * @remarks
  * Title and topic comparisons use case-insensitive trimmed equality (via
- * `caseInsensitiveTrimmedEquals`) against `primaryTitle`/`alternateTitles`
+ * `areTrimmedStringsEqualIgnoringCase`) against `primaryTitle`/`alternateTitles`
  * and `primaryTopic`/`alternateTopics` respectively. The `alternateTopics`
  * topic check only runs when `selectedAssignment.topicName !== null`;
  * the early return for `topicName === null` is preserved.
  *
- * @param {object} selectedAssignment The selected Google Classroom assignment with title, assignment ID, and topic name.
+ * @param {{ title: string; topicName: string | null }} selectedAssignment The selected Google Classroom assignment title and topic name.
  * @param {{ yearGroupKey: string | null }} classPartial The class partial containing the year group key.
  * @param {{ yearGroupKey: string | null }} classPartial.yearGroupKey The year group key, or `null` when the class has no year group.
  * @param {AssignmentDefinitionPartial[]} definitionPartials The list of assignment definition partials to match against.
  * @returns {MatchResult} A discriminated union result indicating match, no-match, or ambiguous.
  */
 export function findMatchingDefinition(
-  selectedAssignment: { assignmentId: string; title: string; topicName: string | null },
+  selectedAssignment: { title: string; topicName: string | null },
   classPartial: { yearGroupKey: string | null },
   definitionPartials: AssignmentDefinitionPartial[]
 ): MatchResult {
@@ -49,19 +49,19 @@ export function findMatchingDefinition(
   const topicName = selectedAssignment.topicName;
 
   const matches = definitionPartials.filter((partial) => {
-    const titleMatch =
-      caseInsensitiveTrimmedEquals(partial.primaryTitle, selectedAssignment.title) ||
+    const isTitleMatch =
+      areTrimmedStringsEqualIgnoringCase(partial.primaryTitle, selectedAssignment.title) ||
       partial.alternateTitles.some((alternate) =>
-        caseInsensitiveTrimmedEquals(alternate, selectedAssignment.title)
+        areTrimmedStringsEqualIgnoringCase(alternate, selectedAssignment.title)
       );
 
-    const topicMatch =
-      caseInsensitiveTrimmedEquals(partial.primaryTopic, topicName) ||
+    const isTopicMatch =
+      areTrimmedStringsEqualIgnoringCase(partial.primaryTopic, topicName) ||
       partial.alternateTopics.some((alternate) =>
-        caseInsensitiveTrimmedEquals(alternate, topicName)
+        areTrimmedStringsEqualIgnoringCase(alternate, topicName)
       );
 
-    return titleMatch && topicMatch && classPartial.yearGroupKey === partial.yearGroupKey;
+    return isTitleMatch && isTopicMatch && classPartial.yearGroupKey === partial.yearGroupKey;
   });
 
   if (matches.length === 0) {

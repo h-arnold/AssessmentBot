@@ -120,7 +120,10 @@ describe('buildCellPreviewLookup', () => {
     const inner = lookup.get(CANONICAL_READY_CELL.studentId);
     expect(inner).toBeDefined();
 
-    const keys = [...inner!.keys()];
+    const keys: string[] = [];
+    inner!.forEach((_value, key) => {
+      keys.push(key);
+    });
     expect(keys).toEqual(
       itemTaskIds.map((taskId) => buildTaskKey(CANONICAL_READY_CELL.definitionKey, taskId))
     );

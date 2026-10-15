@@ -31,12 +31,12 @@ describe('googleClassrooms.zod schemas', () => {
       },
     ]);
 
-    expect(() =>
-      GoogleClassroomsResponseSchema.parse([
+    expect(() => {
+      return GoogleClassroomsResponseSchema.parse([
         {
           classId: 'course-002',
         },
-      ])
-    ).toThrow(ZodError);
+      ]);
+    }).toThrow(ZodError);
   });
 });

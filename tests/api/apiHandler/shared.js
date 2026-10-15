@@ -49,7 +49,7 @@ const ASSIGNMENT_DEFINITION_API_METHOD_NAMES = Object.freeze([
 ]);
 
 const EXPECTED_ALLOWLISTED_METHOD_HANDLER_KEYS = Object.freeze([
-  'getAuthorisationStatus',
+  'hasScriptAuthorisation',
   'getABClassPartials',
   ...ASSIGNMENT_DEFINITION_API_METHOD_NAMES,
   'upsertAssignmentDefinition',
@@ -231,7 +231,7 @@ function expectFailureEnvelope(response, { code, message, withRequestId = false 
       error: {
         code,
         message,
-        retriable: false,
+        isRetriable: false,
       },
     });
     expect(response.requestId).toEqual(expect.any(String));
@@ -243,7 +243,7 @@ function expectFailureEnvelope(response, { code, message, withRequestId = false 
     error: {
       code,
       message,
-      retriable: false,
+      isRetriable: false,
     },
   });
 }

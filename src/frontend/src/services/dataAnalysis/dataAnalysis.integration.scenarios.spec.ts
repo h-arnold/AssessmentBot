@@ -24,25 +24,22 @@ describe('DataAnalysisService integration — advanced scenarios', () => {
     it('drops submitted items with a warn and returns a schema-valid empty-task result', () => {
       const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
       const submittedTaskId = 't_missing';
+      const submittedItem = createSubmissionItem(submittedTaskId, { accuracy: { score: 4 } });
+      const submitted = createSubmission('s_001', 'Alice', 'a_001', {
+        [submittedTaskId]: submittedItem,
+      });
+      const assignment = createAssignmentPartial({
+        assignmentId: 'a_001',
+        definitionKey: 'dk_algebra',
+        submissions: [submitted],
+      });
       const input = buildInput(
         [
           {
             classId: 'c_001',
             className: 'Test Class',
             studentIds: ['s_001'],
-            assignments: [
-              createAssignmentPartial({
-                assignmentId: 'a_001',
-                definitionKey: 'dk_algebra',
-                submissions: [
-                  createSubmission('s_001', 'Alice', 'a_001', {
-                    [submittedTaskId]: createSubmissionItem(submittedTaskId, {
-                      accuracy: { score: 4 },
-                    }),
-                  }),
-                ],
-              }),
-            ],
+            assignments: [assignment],
           },
         ],
         {
@@ -90,36 +87,33 @@ describe('DataAnalysisService integration — advanced scenarios', () => {
 
   describe('multiple assignments with different weightings', () => {
     it('weights scores from different assignments according to their live partial weightings', () => {
+      const algebraItem = createSubmissionItem('t_001', { accuracy: { score: 4 } });
+      const geometryItem = createSubmissionItem('t_001', { accuracy: { score: 2 } });
+      const algebraSubmission = createSubmission('s_001', 'Alice', 'a_001', { t_001: algebraItem });
+      const geometrySubmission = createSubmission('s_001', 'Alice', 'a_002', {
+        t_001: geometryItem,
+      });
+      const algebraAssignment = createAssignmentPartial({
+        assignmentId: 'a_001',
+        definitionKey: 'dk_algebra',
+        assignmentWeighting: 1,
+        tasks: [createTaskPartial('t_001', 1)],
+        submissions: [algebraSubmission],
+      });
+      const geometryAssignment = createAssignmentPartial({
+        assignmentId: 'a_002',
+        definitionKey: 'dk_geometry',
+        assignmentWeighting: 1,
+        tasks: [createTaskPartial('t_001', 1)],
+        submissions: [geometrySubmission],
+      });
       const input = buildInput(
         [
           {
             classId: 'c_001',
             className: 'Test Class',
             studentIds: ['s_001'],
-            assignments: [
-              createAssignmentPartial({
-                assignmentId: 'a_001',
-                definitionKey: 'dk_algebra',
-                assignmentWeighting: 1,
-                tasks: [createTaskPartial('t_001', 1)],
-                submissions: [
-                  createSubmission('s_001', 'Alice', 'a_001', {
-                    t_001: createSubmissionItem('t_001', { accuracy: { score: 4 } }),
-                  }),
-                ],
-              }),
-              createAssignmentPartial({
-                assignmentId: 'a_002',
-                definitionKey: 'dk_geometry',
-                assignmentWeighting: 1,
-                tasks: [createTaskPartial('t_001', 1)],
-                submissions: [
-                  createSubmission('s_001', 'Alice', 'a_002', {
-                    t_001: createSubmissionItem('t_001', { accuracy: { score: 2 } }),
-                  }),
-                ],
-              }),
-            ],
+            assignments: [algebraAssignment, geometryAssignment],
           },
         ],
         {
@@ -156,50 +150,49 @@ describe('DataAnalysisService integration — advanced scenarios', () => {
 
   describe('full end-to-end scenario', () => {
     it('produces correct numeric outcomes for a multi-student, multi-assignment scenario', () => {
+      const algebraAssignment = createAssignmentPartial({
+        assignmentId: 'a_001',
+        definitionKey: 'dk_algebra',
+        assignmentWeighting: 1,
+        tasks: [createTaskPartial('t_001', 1)],
+        submissions: [
+          createSubmission('s_001', 'Alice', 'a_001', {
+            t_001: createSubmissionItem('t_001', {
+              accuracy: { score: 4 },
+              completeness: { score: 3 },
+            }),
+          }),
+          createSubmission('s_002', 'Bob', 'a_001', {
+            t_001: createSubmissionItem('t_001', {
+              accuracy: { score: 3 },
+              completeness: { score: 4 },
+              spag: { score: 5 },
+            }),
+          }),
+        ],
+      });
+      const geometryAssignment = createAssignmentPartial({
+        assignmentId: 'a_002',
+        definitionKey: 'dk_geometry',
+        assignmentWeighting: 1,
+        tasks: [createTaskPartial('t_001', 1)],
+        submissions: [
+          createSubmission('s_001', 'Alice', 'a_002', {
+            t_001: createSubmissionItem('t_001', {
+              accuracy: { score: 5 },
+              completeness: { score: 5 },
+              spag: { score: 5 },
+            }),
+          }),
+        ],
+      });
       const input = buildInput(
         [
           {
             classId: 'c_001',
             className: 'Year 10 Maths',
             studentIds: ['s_001', 's_002'],
-            assignments: [
-              createAssignmentPartial({
-                assignmentId: 'a_001',
-                definitionKey: 'dk_algebra',
-                assignmentWeighting: 1,
-                tasks: [createTaskPartial('t_001', 1)],
-                submissions: [
-                  createSubmission('s_001', 'Alice', 'a_001', {
-                    t_001: createSubmissionItem('t_001', {
-                      accuracy: { score: 4 },
-                      completeness: { score: 3 },
-                    }),
-                  }),
-                  createSubmission('s_002', 'Bob', 'a_001', {
-                    t_001: createSubmissionItem('t_001', {
-                      accuracy: { score: 3 },
-                      completeness: { score: 4 },
-                      spag: { score: 5 },
-                    }),
-                  }),
-                ],
-              }),
-              createAssignmentPartial({
-                assignmentId: 'a_002',
-                definitionKey: 'dk_geometry',
-                assignmentWeighting: 1,
-                tasks: [createTaskPartial('t_001', 1)],
-                submissions: [
-                  createSubmission('s_001', 'Alice', 'a_002', {
-                    t_001: createSubmissionItem('t_001', {
-                      accuracy: { score: 5 },
-                      completeness: { score: 5 },
-                      spag: { score: 5 },
-                    }),
-                  }),
-                ],
-              }),
-            ],
+            assignments: [algebraAssignment, geometryAssignment],
           },
         ],
         {

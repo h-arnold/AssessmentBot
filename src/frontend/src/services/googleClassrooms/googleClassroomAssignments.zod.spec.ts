@@ -47,18 +47,18 @@ describe('GoogleClassroomAssignmentsResponseSchema', () => {
   const NON_STRING_ID = 100 as unknown as string;
 
   it('rejects topicId that is not a string', () => {
-    expect(() =>
-      GoogleClassroomAssignmentsResponseSchema.parse([
+    expect(() => {
+      return GoogleClassroomAssignmentsResponseSchema.parse([
         { assignmentId: 'a1', title: 'Essay', topicId: NON_STRING_ID, topicName: 'Algebra' },
-      ])
-    ).toThrow(ZodError);
+      ]);
+    }).toThrow(ZodError);
   });
 
   it('rejects topicName that is not a string', () => {
-    expect(() =>
-      GoogleClassroomAssignmentsResponseSchema.parse([
+    expect(() => {
+      return GoogleClassroomAssignmentsResponseSchema.parse([
         { assignmentId: 'a1', title: 'Essay', topicId: null, topicName: NON_STRING_ID },
-      ])
-    ).toThrow(ZodError);
+      ]);
+    }).toThrow(ZodError);
   });
 });

@@ -62,3 +62,10 @@ fi
 # TypeScript build check for builder (catches type errors early)
 echo "Running TypeScript build check..."
 npm run builder:compile || exit 1
+
+if [ -n "$LINT_FILES" ]; then
+	# Stage ESLint fixes so the committed files are the files that were checked.
+	echo "$LINT_FILES" | while IFS= read -r file; do
+		git add "$file"
+	done
+fi

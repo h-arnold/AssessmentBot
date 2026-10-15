@@ -98,7 +98,7 @@ describe('setAuthenticationSettings — scriptProperties to googleGroups saving-
     expect(response.ok).toBe(false);
     expect(response.error).toMatchObject({
       code: 'AUTH_SETTINGS_SAVING_ADMIN_DENIED',
-      retriable: false,
+      isRetriable: false,
     });
     expect(ctx.groupsApp.getGroupByEmail).toHaveBeenCalledWith(GROUP_EMAIL);
     expect(rawStoreBlob(ctx.store)).toBe(before);
@@ -116,7 +116,7 @@ describe('setAuthenticationSettings — scriptProperties to googleGroups saving-
     expect(response.ok).toBe(false);
     expect(response.error).toMatchObject({
       code: 'AUTH_SETTINGS_SAVING_ADMIN_DENIED',
-      retriable: false,
+      isRetriable: false,
     });
     expect(rawStoreBlob(ctx.store)).toBe(before);
   });
@@ -137,7 +137,7 @@ describe('setAuthenticationSettings — scriptProperties to googleGroups saving-
     // An external GroupsApp failure is a transient service failure, NOT a
     // non-retriable saving-admin role denial.
     expect(response.ok).toBe(false);
-    expect(response.error).toMatchObject({ code: 'RATE_LIMITED', retriable: true });
+    expect(response.error).toMatchObject({ code: 'RATE_LIMITED', isRetriable: true });
     expect(response.error.code).not.toBe('AUTH_SETTINGS_SAVING_ADMIN_DENIED');
     expect(rawStoreBlob(ctx.store)).toBe(before);
   });
@@ -162,7 +162,7 @@ describe('setAuthenticationSettings — scriptProperties to googleGroups saving-
     expect(response.ok).toBe(false);
     expect(response.error).toMatchObject({
       code: 'AUTH_SETTINGS_SAVING_ADMIN_DENIED',
-      retriable: false,
+      isRetriable: false,
     });
     expect(ctx.groupsApp.getGroupByEmail).toHaveBeenCalledWith(GROUP_EMAIL);
     expect(rawStoreBlob(ctx.store)).toBe(before);
@@ -201,7 +201,7 @@ describe('setAuthenticationSettings — groups-mode group email validation', () 
     const response = dispatchAuthApi('setAuthenticationSettings', { authMode: 'googleGroups' });
 
     expect(response.ok).toBe(false);
-    expect(response.error).toMatchObject({ code: 'INVALID_REQUEST', retriable: false });
+    expect(response.error).toMatchObject({ code: 'INVALID_REQUEST', isRetriable: false });
     expect(rawStoreBlob(ctx.store)).toBe(before);
   });
 
@@ -215,7 +215,7 @@ describe('setAuthenticationSettings — groups-mode group email validation', () 
     });
 
     expect(response.ok).toBe(false);
-    expect(response.error).toMatchObject({ code: 'INVALID_REQUEST', retriable: false });
+    expect(response.error).toMatchObject({ code: 'INVALID_REQUEST', isRetriable: false });
     expect(rawStoreBlob(ctx.store)).toBe(before);
   });
 });

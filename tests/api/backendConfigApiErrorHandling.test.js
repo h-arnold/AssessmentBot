@@ -88,7 +88,7 @@ describe('backend configuration API transport — locked-write failure propagati
     // rate-limit envelope, not a non-retriable INTERNAL_ERROR and not a
     // domain-level `{ success: false }` success envelope.
     expect(response.ok).toBe(false);
-    expect(response.error).toMatchObject({ code: 'RATE_LIMITED', retriable: true });
+    expect(response.error).toMatchObject({ code: 'RATE_LIMITED', isRetriable: true });
     // The internal lock signal text is not frontend-safe and must not leak.
     expect(response.error.message).not.toContain('Script lock could not be acquired');
   });

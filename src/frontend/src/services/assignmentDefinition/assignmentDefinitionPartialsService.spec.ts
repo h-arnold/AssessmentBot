@@ -3,9 +3,11 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const callApiMock = vi.fn();
 
-vi.mock('../apiService', () => ({
-  callApi: callApiMock,
-}));
+vi.mock('../apiService', () => {
+  return {
+    callApi: callApiMock,
+  };
+});
 
 const validAssignmentDefinitionPartialsResponse = [
   {
@@ -126,7 +128,7 @@ describe('assignmentDefinitionPartialsService', () => {
     { definitionKey: 'algebra/baseline' },
     { definitionKey: String.raw`algebra\baseline` },
     { definitionKey: 'algebra..baseline' },
-    { definitionKey: 'algebra\u0007baseline' },
+    { definitionKey: 'algebra\u{7}baseline' },
     {},
   ])(
     'deleteAssignmentDefinition() rejects malformed definitionKey payloads before callApi: %j',

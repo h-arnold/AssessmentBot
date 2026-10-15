@@ -82,6 +82,7 @@ Key notes:
   on every write. Contention yields `CONFIG_LOCK_CONTENTION` (retriable); an over-cap blob yields
   `CONFIG_BLOB_TOO_LARGE` (non-retriable).
 - All values are stored as strings in the JSON blob. Typed getters convert on read.
+- Integer validation and getters require safe parsed integers as well as their existing bounds. Unsafe numeric inputs are rejected before prefix parsing by `Validate.validateIntegerInRange`; malformed/out-of-range stored values retain the existing getter fallback. Decimal prefix parsing of strings remains unchanged, including `'1e21'` parsing as `1`; field ranges, defaults and transport shapes are unchanged.
 - The locked write path is a **persistence-layer** contract. `setBackendConfig_()` stages every
   supplied ordinary field through the manager-owned `preparePropertyValue` seam and commits the whole
   patch through one `writeConfigurationLocked` call — under the lock the raw blob is re-read, merged,
@@ -244,7 +245,7 @@ Key contract notes:
 - **Configuration-lock contention is a transport-layer failure, not part of this result union.**
   `commitBackendConfigPatch_()` rethrows `CONFIG_LOCK_CONTENTION` as an `ApiRateLimitError`, so the
   response is the standard `apiHandler` error envelope with `code: 'RATE_LIMITED'` and
-  `retriable: true` rather than `{ success: false }`. `CONFIG_BLOB_TOO_LARGE` stays in the aggregate
+  `isRetriable: true` rather than `{ success: false }`. `CONFIG_BLOB_TOO_LARGE` stays in the aggregate
   `{ success: false, error }` path.
 - The frontend form mapper (`mapBackendSettingsFormValuesToBackendConfigWriteInput`) only includes
   `apiKey` when the form value is non-empty, preventing accidental clearing of the stored key.
@@ -422,7 +423,7 @@ None. BackendConfig is a standalone contract with no embedded sub-entities.
     `CONFIG_BLOB_TOO_LARGE`) and a `retriable` boolean.
     `commitBackendConfigPatch_()` now catches `CONFIG_LOCK_CONTENTION` and rethrows it as an
     `ApiRateLimitError`, so the dispatcher emits the standard error envelope with
-    `code: 'RATE_LIMITED'` and `retriable: true` — a client can distinguish a retriable contention
+    `code: 'RATE_LIMITED'` and `isRetriable: true` — a client can distinguish a retriable contention
     from a permanent validation rejection. `CONFIG_BLOB_TOO_LARGE` is not special-cased and still
     surfaces through the aggregate `{ success: false, error }` string, which carries no
     `code`/`retriable`; it is non-retriable by nature (the payload must shrink) and the write is

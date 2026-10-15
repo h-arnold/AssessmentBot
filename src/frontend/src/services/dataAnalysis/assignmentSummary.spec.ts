@@ -78,24 +78,21 @@ describe('assignment summaries', () => {
 
   it('isolates another assignment using the same definition', () => {
     const input = buildBoundaryInput();
-    input.classes[0].assignments.push(
-      createAssignmentPartial({
-        assignmentId: 'a_002',
-        definitionKey: 'dk_algebra',
-        submissions: [
-          createSubmission('s_001', 'One', 'a_002', {
-            t_001: createSubmissionItem('t_001', {
-              completeness: { score: 5 },
-              accuracy: { score: 5 },
-            }),
+    const secondAssignment = createAssignmentPartial({
+      assignmentId: 'a_002',
+      definitionKey: 'dk_algebra',
+      submissions: [
+        createSubmission('s_001', 'One', 'a_002', {
+          t_001: createSubmissionItem('t_001', {
+            completeness: { score: 5 },
+            accuracy: { score: 5 },
           }),
-        ],
-      })
-    );
-    expect(
-      new DataAnalysisService().analyseAssignmentSummary(input, 'c_001', 'a_001').tasks[0]
-        .accuracyAverage
-    ).toBe(EXPECTED_ACCURACY_AVERAGE);
+        }),
+      ],
+    });
+    input.classes[0].assignments.push(secondAssignment);
+    const summary = new DataAnalysisService().analyseAssignmentSummary(input, 'c_001', 'a_001');
+    expect(summary.tasks[0].accuracyAverage).toBe(EXPECTED_ACCURACY_AVERAGE);
   });
 
   it('retains zero-weight scores and does not flag an average exactly at the threshold', () => {

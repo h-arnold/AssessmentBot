@@ -171,7 +171,7 @@ describe('backend configuration API transport — request-shape and legacy regre
           error: {
             code: 'INVALID_REQUEST',
             message: 'params must be an object.',
-            retriable: false,
+            isRetriable: false,
           },
         });
         expect(response.requestId).toEqual(expect.any(String));
@@ -215,7 +215,7 @@ describe('backend configuration API transport — request-shape and legacy regre
           error: {
             code: 'INTERNAL_ERROR',
             message: 'Internal API error.',
-            retriable: false,
+            isRetriable: false,
           },
         });
         expect(response.requestId).toEqual(expect.any(String));
@@ -281,7 +281,7 @@ describe('backend configuration API transport — auth-field write rejection fro
         // INVALID_REQUEST), not an aggregate per-field failure with success:false.
         expect(response).toMatchObject({
           ok: false,
-          error: { code: 'INVALID_REQUEST', retriable: false },
+          error: { code: 'INVALID_REQUEST', isRetriable: false },
         });
         expect(response.data).toBeUndefined();
       } finally {
@@ -309,7 +309,7 @@ describe('backend configuration API transport — auth-field write rejection fro
         expect(configurationManagerMock.manager.setAuthMode).not.toHaveBeenCalled();
         expect(response).toMatchObject({
           ok: false,
-          error: { code: 'INVALID_REQUEST', retriable: false },
+          error: { code: 'INVALID_REQUEST', isRetriable: false },
         });
         expect(response.data).toBeUndefined();
       } finally {
@@ -343,7 +343,7 @@ describe('backend configuration API transport — auth-field write rejection fro
       expect(configurationManagerMock.manager.setAuthGroupEmail).not.toHaveBeenCalled();
       expect(response).toMatchObject({
         ok: false,
-        error: { code: 'INVALID_REQUEST', retriable: false },
+        error: { code: 'INVALID_REQUEST', isRetriable: false },
       });
       expect(response.data).toBeUndefined();
     } finally {

@@ -171,7 +171,7 @@ class ABLogger extends BaseSingleton {
  * @returns {boolean} True if the value is error-like.
  */
 function isErrorLike_(value) {
-  return value instanceof Error || (value?.name && value?.message && value?.stack);
+  return value instanceof Error || (value?.name && value.message && value.stack);
 }
 
 if (typeof module !== 'undefined' && module.exports) {

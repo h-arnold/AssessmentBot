@@ -90,10 +90,10 @@ class SheetsParser extends DocumentParser {
 
       // Iterate through each key in referenceTasks
       for (const taskName in referenceTasks) {
-        if (!templateTasks[taskName]) continue;
+        const templateSheet = templateTasks[taskName];
+        if (!templateSheet) continue;
 
         const referenceSheet = referenceTasks[taskName];
-        const templateSheet = templateTasks[taskName];
 
         if (!referenceSheet.formulaArray || !templateSheet.formulaArray) continue;
 
@@ -143,7 +143,7 @@ class SheetsParser extends DocumentParser {
       const temporaryRow = row < templateArray.length ? templateArray[row] : [];
 
       for (const [col, element] of referenceRow.entries()) {
-        const referenceFormula = element || '';
+        const referenceFormula = element;
         // Template cell might not exist if template row is shorter
         const temporaryFormula = temporaryRow[col] || '';
 
@@ -259,7 +259,7 @@ class SheetsParser extends DocumentParser {
       let grid = [];
       if (bbox) {
         grid = Array.from({ length: bbox.numRows }, () =>
-          Array.from({ length: bbox.numColumns }).fill(null)
+          Array.from({ length: bbox.numColumns }, () => null)
         );
         sheetData.formulas.forEach((f) => {
           const [absR, absC] = f.location;

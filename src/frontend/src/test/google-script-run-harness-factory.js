@@ -59,9 +59,11 @@ export function createGoogleScriptRunApiHandlerMock(invokeRequest) {
       return;
     }
 
-    for (const key of Object.keys(value)) {
+    // Snapshot keys, but read each child only when descending into it.
+    const keys = Object.keys(value);
+    keys.forEach((key) => {
       assertNoLiveDates(value[key], boundary, visited);
-    }
+    });
   }
 
   /**

@@ -94,7 +94,7 @@ describe('RecentAssignmentCard', () => {
 
     // Use querySelector on the rendered container's ownerDocument because
     // neither getByLabelText nor getByRole('img') resolve
-    // <svg aria-label="…"> in the happy‑dom stack (MetricIconLabel renders
+    // <svg aria-label="…"> in the happy-dom stack (MetricIconLabel renders
     // aria-label on an <svg> element).
     expect(
       container.ownerDocument.querySelector('[aria-label="Completeness"]')

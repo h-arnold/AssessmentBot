@@ -68,7 +68,7 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe('ABClassController delete orchestration (Section 4 RED)', () => {
+describe('ABClassController delete orchestration', () => {
   it('deletes the full class collection via dropCollection(classId)', () => {
     const controller = new ABClassController();
 
@@ -95,8 +95,8 @@ describe('ABClassController delete orchestration (Section 4 RED)', () => {
 
     expect(controller.deleteABClass({ classId: 'class-001' })).toEqual({
       classId: 'class-001',
-      fullClassDeleted: true,
-      partialDeleted: true,
+      hasDeletedFullClass: true,
+      hasDeletedClassPartial: true,
     });
   });
 
@@ -112,8 +112,8 @@ describe('ABClassController delete orchestration (Section 4 RED)', () => {
 
     expect(controller.deleteABClass({ classId: 'class-001' })).toEqual({
       classId: 'class-001',
-      fullClassDeleted: false,
-      partialDeleted: false,
+      hasDeletedFullClass: false,
+      hasDeletedClassPartial: false,
     });
     expect(partialsCollection.deleteOne).not.toHaveBeenCalled();
     expect(partialsCollection.save).not.toHaveBeenCalled();
@@ -126,8 +126,8 @@ describe('ABClassController delete orchestration (Section 4 RED)', () => {
 
     expect(controller.deleteABClass({ classId: 'class-001' })).toEqual({
       classId: 'class-001',
-      fullClassDeleted: true,
-      partialDeleted: false,
+      hasDeletedFullClass: true,
+      hasDeletedClassPartial: false,
     });
   });
 
@@ -143,8 +143,8 @@ describe('ABClassController delete orchestration (Section 4 RED)', () => {
 
     expect(controller.deleteABClass({ classId: 'class-001' })).toEqual({
       classId: 'class-001',
-      fullClassDeleted: false,
-      partialDeleted: true,
+      hasDeletedFullClass: false,
+      hasDeletedClassPartial: true,
     });
     expect(partialsCollection.deleteOne).toHaveBeenCalledWith({ classId: 'class-001' });
     expect(partialsCollection.save).toHaveBeenCalledTimes(1);

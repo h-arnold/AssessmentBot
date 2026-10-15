@@ -191,6 +191,48 @@ describe('ImageManager fetching behaviour', () => {
     expect(manager.sendRequestsInBatches).not.toHaveBeenCalled();
   });
 
+  it('does not read batch-size configuration for empty entry lists', () => {
+    const configurationError = new Error('configuration unavailable');
+    const getBatchSize = vi.fn(() => {
+      throw configurationError;
+    });
+    const mockContext = withGlobalMocks({
+      ConfigurationManager: () => ({
+        getInstance: () => ({ getSlidesFetchBatchSize: getBatchSize }),
+      }),
+    });
+    const manager = buildManager();
+    manager.sendRequestsInBatches = vi.fn();
+
+    expect(manager.fetchImagesAsBlobs([])).toEqual([]);
+    expect(getBatchSize).not.toHaveBeenCalled();
+    expect(manager.sendRequestsInBatches).not.toHaveBeenCalled();
+    mockContext.restore();
+  });
+
+  it('reads batch-size configuration and propagates its failure for non-empty entries', () => {
+    const configurationError = new Error('configuration unavailable');
+    const getBatchSize = vi.fn(() => {
+      throw configurationError;
+    });
+    const mockContext = withGlobalMocks({
+      ConfigurationManager: () => ({
+        getInstance: () => ({ getSlidesFetchBatchSize: getBatchSize }),
+      }),
+    });
+    const manager = buildManager();
+    manager.sendRequestsInBatches = vi.fn();
+
+    expect(() =>
+      manager.fetchImagesAsBlobs([
+        { uid: 'uid-one', url: 'https://example.com/one.png', documentId: 'doc-a' },
+      ])
+    ).toThrow(configurationError);
+    expect(getBatchSize).toHaveBeenCalledTimes(1);
+    expect(manager.sendRequestsInBatches).not.toHaveBeenCalled();
+    mockContext.restore();
+  });
+
   it('fetches blobs across documents with progress updates', () => {
     const manager = buildManager();
     manager.progressTracker = { updateProgress: vi.fn() };
@@ -211,6 +253,108 @@ describe('ImageManager fetching behaviour', () => {
     const sentUrls = manager.sendRequestsInBatches.mock.calls[0][0].map((item) => item.url);
     expect(sentUrls).toContain('https://example.com/one.png');
   });
+
+  it('fetches a single document group in input order', () => {
+    const manager = buildManager();
+    manager.progressTracker = { updateProgress: vi.fn() };
+    manager.sendRequestsInBatches = vi.fn((requests) =>
+      requests.map(() => ({ getResponseCode: () => 200, getBlob: () => 'blob' }))
+    );
+    const entries = [
+      { uid: 'first', url: 'https://example.com/first', documentId: 'doc' },
+      { uid: 'second', url: 'https://example.com/second', documentId: 'doc' },
+    ];
+
+    const result = manager.fetchImagesAsBlobs(entries);
+
+    expect(manager.sendRequestsInBatches.mock.calls[0][0].map(({ url }) => url)).toEqual(
+      entries.map(({ url }) => url)
+    );
+    expect(result.map(({ uid }) => uid)).toEqual(['first', 'second']);
+  });
+
+  it('round-robins uneven document groups across batches and keeps each response with its UID', () => {
+    const manager = buildManager();
+    manager.progressTracker = { updateProgress: vi.fn() };
+    const entries = [
+      { uid: 'a0', url: 'https://images.example/a0', documentId: 'a' },
+      { uid: 'b0', url: 'https://images.example/b0', documentId: 'b' },
+      { uid: 'a1', url: 'https://images.example/a1', documentId: 'a' },
+      { uid: 'c0', url: 'https://images.example/c0', documentId: 'c' },
+      { uid: 'b1', url: 'https://images.example/b1', documentId: 'b' },
+      { uid: 'a2', url: 'https://images.example/a2', documentId: 'a' },
+      { uid: 'c1', url: 'https://images.example/c1', documentId: 'c' },
+      { uid: 'c2', url: 'https://images.example/c2', documentId: 'c' },
+      { uid: 'c3', url: 'https://images.example/c3', documentId: 'c' },
+    ];
+    const sentBatches = [];
+    manager.sendRequestsInBatches = vi.fn((requests) => {
+      sentBatches.push(requests.map(({ url }) => url));
+      return requests.map(({ url }) => ({
+        getResponseCode: () => 200,
+        getBlob: () => ({ sourceUrl: url }),
+      }));
+    });
+    const configuration = withGlobalMocks({
+      ConfigurationManager: () => ({ getInstance: () => ({ getSlidesFetchBatchSize: () => 2 }) }),
+    });
+
+    try {
+      const result = manager.fetchImagesAsBlobs(entries);
+
+      expect(sentBatches).toEqual([
+        ['https://images.example/a0', 'https://images.example/b0'],
+        ['https://images.example/c0', 'https://images.example/a1'],
+        ['https://images.example/b1', 'https://images.example/c1'],
+        ['https://images.example/a2', 'https://images.example/c2'],
+        ['https://images.example/c3'],
+      ]);
+      expect(result.map(({ uid, blob }) => [uid, blob.sourceUrl])).toEqual(
+        ['a0', 'b0', 'c0', 'a1', 'b1', 'c1', 'a2', 'c2', 'c3'].map((uid) => [
+          uid,
+          `https://images.example/${uid}`,
+        ])
+      );
+    } finally {
+      configuration.restore();
+    }
+  });
+
+  it('fetches a bounded large number of distinct document groups without argument spreading', () => {
+    const groupCount = 150_000;
+    const configuration = withGlobalMocks({
+      ConfigurationManager: () => ({
+        getInstance: () => ({ getSlidesFetchBatchSize: () => groupCount }),
+      }),
+    });
+    const manager = buildManager();
+    manager.progressTracker = { updateProgress: vi.fn() };
+    manager.sendRequestsInBatches = vi.fn((requests) =>
+      requests.map(({ url }) => ({
+        getResponseCode: () => 200,
+        getBlob: () => url,
+      }))
+    );
+    const entries = Array.from({ length: groupCount }, (_, index) => ({
+      uid: `uid-${index}`,
+      url: `https://images.example/${index}`,
+      documentId: `document-${index}`,
+    }));
+
+    try {
+      const result = manager.fetchImagesAsBlobs(entries);
+
+      expect(result).toHaveLength(groupCount);
+      expect(result[0]).toEqual({ uid: 'uid-0', blob: 'https://images.example/0' });
+      expect(result.at(-1)).toEqual({
+        uid: `uid-${groupCount - 1}`,
+        blob: `https://images.example/${groupCount - 1}`,
+      });
+      expect(manager.sendRequestsInBatches).toHaveBeenCalledTimes(1);
+    } finally {
+      configuration.restore();
+    }
+  }, 20_000);
 
   it('warns when blob reads fail or responses are not successful', () => {
     const warnings = [];

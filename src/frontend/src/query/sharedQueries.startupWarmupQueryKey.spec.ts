@@ -9,10 +9,12 @@ import { queryKeys } from './queryKeys';
 describe('getStartupWarmupQueryKey', () => {
   it('maps every startup warm-up dataset key to the matching shared query key', () => {
     expect(
-      startupWarmupDatasetKeys.map((datasetKey) => [
-        datasetKey,
-        getStartupWarmupQueryKey(datasetKey),
-      ])
+      startupWarmupDatasetKeys.map((datasetKey) => {
+        return [
+          datasetKey,
+          getStartupWarmupQueryKey(datasetKey),
+        ];
+      })
     ).toEqual([
       ['classPartials', queryKeys.classPartials()],
       ['assignmentDefinitionPartials', queryKeys.assignmentDefinitionPartials()],

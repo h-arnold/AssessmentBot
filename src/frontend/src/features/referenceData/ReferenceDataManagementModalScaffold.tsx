@@ -82,9 +82,9 @@ export function ReferenceDataManagementModalScaffold<T extends { key: string }>(
   // Note: setTimeout is used to defer DOM query to allow Ant Design classes to be applied
   // in test environments like HappyDOM where useEffect may run before class application is complete
   useEffect(() => {
-    const currentIsRefreshing = properties.isRefreshing;
+    const isCurrentRefreshing = properties.isRefreshing;
     const wasRefreshing = previousIsRefreshingReference.current;
-    const shouldSyncBusyState = currentIsRefreshing !== wasRefreshing && properties.open;
+    const shouldSyncBusyState = isCurrentRefreshing !== wasRefreshing && properties.open;
 
     if (shouldSyncBusyState) {
       // Clear any existing timeout to prevent stale timer firing
@@ -96,20 +96,19 @@ export function ReferenceDataManagementModalScaffold<T extends { key: string }>(
       busyStateTimeoutReference.current = setTimeout(() => {
         syncReferenceDataModalBusyState(
           '.reference-data-modal-scaffold-wrapper [role="dialog"]',
-          currentIsRefreshing
+          isCurrentRefreshing
         );
         busyStateTimeoutReference.current = null;
       }, 0);
     }
 
-    previousIsRefreshingReference.current = currentIsRefreshing;
+    previousIsRefreshingReference.current = isCurrentRefreshing;
 
     // Cleanup: clear the timeout if it is still pending on unmount
     return () => {
-      if (busyStateTimeoutReference.current !== null) {
-        clearTimeout(busyStateTimeoutReference.current);
-        busyStateTimeoutReference.current = null;
-      }
+      if (busyStateTimeoutReference.current === null) return;
+      clearTimeout(busyStateTimeoutReference.current);
+      busyStateTimeoutReference.current = null;
     };
   }, [properties.isRefreshing, properties.open]);
 

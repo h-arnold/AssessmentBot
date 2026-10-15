@@ -6,6 +6,7 @@
  * integration with runQueuedBatchMutation.
  */
 
+import '../../../test/classes/bulkPanel.mockSetup';
 import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -17,63 +18,12 @@ import {
   createFulfilledClassResult,
   createRejectedClassResult,
 } from '../../../test/classes/classesTestHelpers';
-import type { BatchProgressSnapshot } from './runQueuedBatchMutation';
+import { makeRow as sharedMakeRow } from '../../../test/classes/bulkFlowTestHelpers';
+import { useClassesManagement } from '../useClassesManagement';
+import { runQueuedBatchMutation } from './runQueuedBatchMutation';
 
-const classesManagementStateMock = vi.fn();
-const runQueuedBatchMutationMock = vi.hoisted(() => vi.fn());
-const runQueuedBulkActionMock = vi.fn(
-  async ({ mutate, onComplete }: { mutate: (onProgress: (snapshot: BatchProgressSnapshot) => void) => Promise<unknown[]>; onComplete: (results: unknown[]) => Promise<void> }) => {
-    const results = await mutate(vi.fn());
-    await onComplete(results);
-  },
-);
-
-vi.mock('../../services/apiService', () => ({
-  callApi: vi.fn(),
-}));
-
-vi.mock('../useClassesManagement', () => ({
-  useClassesManagement: classesManagementStateMock,
-}));
-
-vi.mock('./runQueuedBatchMutation', () => ({
-  runQueuedBatchMutation: runQueuedBatchMutationMock,
-}));
-
-vi.mock('../useClassesBulkMutationQueue', () => ({
-  useClassesBulkMutationQueue: () => ({
-    isQueueActive: false,
-    progress: { currentItem: null, completed: 0, pendingCount: 0, total: 0, isInProgress: false },
-    isProgressModalOpen: false,
-    onDismissProgressModal: vi.fn(),
-    onCancelQueue: vi.fn(),
-    runQueuedBulkAction: runQueuedBulkActionMock,
-  }),
-}));
-
-vi.mock('./BulkCreateModal', () => ({
-  BulkCreateModal() { return null; },
-}));
-
-vi.mock('./BulkDeleteModal', () => ({
-  BulkDeleteModal() { return null; },
-}));
-
-vi.mock('./BulkSetSelectModal', () => ({
-  BulkSetSelectModal() { return null; },
-}));
-
-vi.mock('./BulkSetCourseLengthModal', () => ({
-  BulkSetCourseLengthModal() { return null; },
-}));
-
-vi.mock('../referenceData/ManageCohortsModal', () => ({
-  ManageCohortsModal() { return null; },
-}));
-
-vi.mock('../referenceData/ManageYearGroupsModal', () => ({
-  ManageYearGroupsModal() { return null; },
-}));
+const classesManagementStateMock = vi.mocked(useClassesManagement);
+const runQueuedBatchMutationMock = vi.mocked(runQueuedBatchMutation);
 
 /**
  * Builds a canonical classes-management row for active-state flow tests.
@@ -82,18 +32,14 @@ vi.mock('../referenceData/ManageYearGroupsModal', () => ({
  * @returns {ClassesManagementRow} The composed test row.
  */
 function makeRow(overrides: Partial<ClassesManagementRow> = {}): ClassesManagementRow {
-  return {
-    classId: 'class-001',
-    className: 'Year 10 Maths',
-    status: 'active',
+  return sharedMakeRow({
     cohortKey: 'cohort-2024',
     cohortLabel: 'Cohort 2024',
     yearGroupKey: 'year-10',
     yearGroupLabel: 'Year 10',
     courseLength: 1,
-    active: true,
     ...overrides,
-  };
+  });
 }
 
 describe('filterEligibleForActiveState', () => {
@@ -102,7 +48,16 @@ describe('filterEligibleForActiveState', () => {
       makeRow({ classId: 'active-1', status: 'active', active: true }),
       makeRow({ classId: 'inactive-1', status: 'inactive', active: false }),
       makeRow({ classId: 'orphaned-1', status: 'orphaned', active: false }),
-      makeRow({ classId: 'missing-1', status: 'notCreated', active: null, cohortKey: null, cohortLabel: null, yearGroupKey: null, yearGroupLabel: null, courseLength: null }),
+      makeRow({
+        classId: 'missing-1',
+        status: 'notCreated',
+        active: null,
+        cohortKey: null,
+        cohortLabel: null,
+        yearGroupKey: null,
+        yearGroupLabel: null,
+        courseLength: null,
+      }),
     ];
 
     const eligibleForActivate = filterEligibleForActiveState(rows, true);
@@ -113,74 +68,66 @@ describe('filterEligibleForActiveState', () => {
   });
 });
 
+/**
+ * Loads and renders the panel with shared frontend providers.
+ *
+ * @returns {Promise<void>} Completion signal.
+ */
+async function renderPanel() {
+  const { ClassesManagementPanel } = await import('../ClassesManagementPanel');
+  return renderWithFrontendProviders(<ClassesManagementPanel />);
+}
+
 describe('bulk active-state handler integration', () => {
   afterEach(() => {
-    vi.clearAllMocks();
+    vi.resetAllMocks();
   });
 
-  /**
-   * Loads and renders the panel with shared frontend providers.
-   *
-   * @returns {Promise<void>} Completion signal.
-   */
-  async function renderPanel() {
-    const { ClassesManagementPanel } = await import('../ClassesManagementPanel');
-    return renderWithFrontendProviders(<ClassesManagementPanel />);
-  }
+  it.each([
+    {
+      action: 'active',
+      selectedRow: 'inactive-1',
+      method: 'updateABClass',
+      verb: 'Activating',
+      button: 'Set active',
+    },
+    {
+      action: 'inactive',
+      selectedRow: 'active-1',
+      method: 'updateABClass',
+      verb: 'Deactivating',
+      button: 'Set inactive',
+    },
+  ])(
+    'calls runQueuedBatchMutation with correct items when setting $action',
+    async ({ action, selectedRow, method, verb, button }) => {
+      const onSelectedRowKeysChange = vi.fn();
+      classesManagementStateMock.mockReturnValue(
+        buildClassesManagementState({
+          onSelectedRowKeysChange,
+          selectedRowKeys: [selectedRow],
+        })
+      );
+      runQueuedBatchMutationMock.mockResolvedValue([
+        action === 'active'
+          ? createFulfilledClassResult(selectedRow)
+          : createRejectedClassResult(selectedRow),
+      ]);
 
-  it('calls runQueuedBatchMutation with correct items when setting active', async () => {
-    const onSelectedRowKeysChange = vi.fn();
-    classesManagementStateMock.mockReturnValue(
-      buildClassesManagementState({
-        onSelectedRowKeysChange,
-        selectedRowKeys: ['inactive-1'],
-      }),
-    );
-    runQueuedBatchMutationMock.mockResolvedValue([
-      createFulfilledClassResult('inactive-1'),
-    ]);
+      const { queryClient } = await renderPanel();
+      vi.spyOn(queryClient, 'invalidateQueries');
 
-    const { queryClient } = await renderPanel();
-    vi.spyOn(queryClient, 'invalidateQueries');
+      fireEvent.click(screen.getByRole('button', { name: button }));
 
-    fireEvent.click(screen.getByRole('button', { name: 'Set active' }));
+      await waitFor(() => {
+        expect(runQueuedBatchMutationMock).toHaveBeenCalled();
+      });
 
-    await waitFor(() => {
-      expect(runQueuedBatchMutationMock).toHaveBeenCalled();
-    });
-
-    const [items] = runQueuedBatchMutationMock.mock.calls[0] as [unknown[]];
-    expect(items).toHaveLength(1);
-    const firstItem = items[0] as Record<string, unknown>;
-    expect(firstItem.method).toBe('updateABClass');
-    expect(firstItem.verb).toBe('Activating');
-  });
-
-  it('calls runQueuedBatchMutation with correct items when setting inactive', async () => {
-    const onSelectedRowKeysChange = vi.fn();
-    classesManagementStateMock.mockReturnValue(
-      buildClassesManagementState({
-        onSelectedRowKeysChange,
-        selectedRowKeys: ['active-1'],
-      }),
-    );
-    runQueuedBatchMutationMock.mockResolvedValue([
-      createRejectedClassResult('active-1'),
-    ]);
-
-    const { queryClient } = await renderPanel();
-    vi.spyOn(queryClient, 'invalidateQueries');
-
-    fireEvent.click(screen.getByRole('button', { name: 'Set inactive' }));
-
-    await waitFor(() => {
-      expect(runQueuedBatchMutationMock).toHaveBeenCalled();
-    });
-
-    const [items] = runQueuedBatchMutationMock.mock.calls[0] as [unknown[]];
-    expect(items).toHaveLength(1);
-    const firstItem = items[0] as Record<string, unknown>;
-    expect(firstItem.method).toBe('updateABClass');
-    expect(firstItem.verb).toBe('Deactivating');
-  });
+      const [items] = runQueuedBatchMutationMock.mock.calls[0];
+      expect(items).toHaveLength(1);
+      const firstItem = items[0];
+      expect(firstItem.method).toBe(method);
+      expect(firstItem.verb).toBe(verb);
+    }
+  );
 });

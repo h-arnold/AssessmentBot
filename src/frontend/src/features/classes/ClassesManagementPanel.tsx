@@ -101,7 +101,7 @@ export function ClassesManagementPanel() {
     suppressStaleTableData,
     classesManagement.refreshRequiredMessage,
   );
-  const workflowMutationBoundaryActive = isClassesWorkflowMutationBoundaryActive({
+  const isWorkflowMutationBoundaryActive = isClassesWorkflowMutationBoundaryActive({
     createSubmitting,
     deleteSubmitting,
     setActiveSubmitting,
@@ -131,7 +131,7 @@ export function ClassesManagementPanel() {
   }, []);
 
   const handleCohortEntityCreated = useCallback(
-    (entity: { key: string; name: string }) => {
+    (entity: { key: string }) => {
       setPendingCreatedCohortKey(entity.key);
       // Invalidate cohorts query so the dropdown refreshes
       queryClient.invalidateQueries({ queryKey: queryKeys.cohorts() });
@@ -140,7 +140,7 @@ export function ClassesManagementPanel() {
   );
 
   const handleYearGroupEntityCreated = useCallback(
-    (entity: { key: string; name: string }) => {
+    (entity: { key: string }) => {
       setPendingCreatedYearGroupKey(entity.key);
       // Invalidate yearGroups query so the dropdown refreshes
       queryClient.invalidateQueries({ queryKey: queryKeys.yearGroups() });
@@ -211,13 +211,15 @@ export function ClassesManagementPanel() {
       partialFailureTitle: 'Some selected classes were not deleted.',
       closeSurface: () => setDeleteModalOpen(false),
       mutateRows: (rows: ClassesManagementRow[], onProgress?: (snapshot: BatchProgressSnapshot) => void) => {
-        const items: QueuedBatchItem[] = rows.map((row) => ({
-          row,
-          method: 'deleteABClass' as const,
-          parameters: { classId: row.classId },
-          verb: 'Deleting',
-          className: row.className,
-        }));
+        const items: QueuedBatchItem[] = rows.map((row) => {
+          return {
+            row,
+            method: 'deleteABClass' as const,
+            parameters: { classId: row.classId },
+            verb: 'Deleting',
+            className: row.className,
+          };
+        });
         return runQueuedBatchMutation(items, { jobName: 'classesBulkMutation', onProgress });
       },
       setSubmitting: setDeleteSubmitting,
@@ -229,13 +231,15 @@ export function ClassesManagementPanel() {
       partialFailureTitle: 'Some selected classes were not set to active.',
       mutateRows: (rows: ClassesManagementRow[], onProgress?: (snapshot: BatchProgressSnapshot) => void) => {
         const eligibleRows = filterEligibleForActiveState(rows, true);
-        const items: QueuedBatchItem[] = eligibleRows.map((row) => ({
-          row,
-          method: 'updateABClass' as const,
-          parameters: { classId: row.classId, active: true },
-          verb: 'Activating',
-          className: row.className,
-        }));
+        const items: QueuedBatchItem[] = eligibleRows.map((row) => {
+          return {
+            row,
+            method: 'updateABClass' as const,
+            parameters: { classId: row.classId, active: true },
+            verb: 'Activating',
+            className: row.className,
+          };
+        });
         return runQueuedBatchMutation(items, { jobName: 'classesBulkMutation', onProgress });
       },
       setSubmitting: setSetActiveSubmitting,
@@ -247,13 +251,15 @@ export function ClassesManagementPanel() {
       partialFailureTitle: 'Some selected classes were not set to inactive.',
       mutateRows: (rows: ClassesManagementRow[], onProgress?: (snapshot: BatchProgressSnapshot) => void) => {
         const eligibleRows = filterEligibleForActiveState(rows, false);
-        const items: QueuedBatchItem[] = eligibleRows.map((row) => ({
-          row,
-          method: 'updateABClass' as const,
-          parameters: { classId: row.classId, active: false },
-          verb: 'Deactivating',
-          className: row.className,
-        }));
+        const items: QueuedBatchItem[] = eligibleRows.map((row) => {
+          return {
+            row,
+            method: 'updateABClass' as const,
+            parameters: { classId: row.classId, active: false },
+            verb: 'Deactivating',
+            className: row.className,
+          };
+        });
         return runQueuedBatchMutation(items, { jobName: 'classesBulkMutation', onProgress });
       },
       setSubmitting: setSetInactiveSubmitting,
@@ -475,7 +481,7 @@ export function ClassesManagementPanel() {
               onSetCourseLength={() => setSetCourseLengthModalOpen(true)}
               onManageCohorts={() => setManageCohortsModalOpen(true)}
               onManageYearGroups={() => setManageYearGroupsModalOpen(true)}
-              mutationInFlight={workflowMutationBoundaryActive}
+              mutationInFlight={isWorkflowMutationBoundaryActive}
               setActiveLoading={setActiveSubmitting}
               setInactiveLoading={setInactiveSubmitting}
             />
@@ -483,7 +489,7 @@ export function ClassesManagementPanel() {
               rows={classesManagement.rows}
               selectedRowKeys={classesManagement.selectedRowKeys}
               onSelectedRowKeysChange={classesManagement.onSelectedRowKeysChange}
-              selectionFrozen={workflowMutationBoundaryActive}
+              selectionFrozen={isWorkflowMutationBoundaryActive}
             />
           </Flex>
         </section>

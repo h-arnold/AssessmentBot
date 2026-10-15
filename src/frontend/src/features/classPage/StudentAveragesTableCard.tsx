@@ -183,12 +183,13 @@ export function StudentAveragesTableCard(
   // ── Memoised derived values ────────────────────────────────────────────
 
   const viewModel = useMemo(
-    () =>
-      buildClassPageViewModel({
+    () => {
+      return buildClassPageViewModel({
         adapterResult,
         filters: { searchTerm },
         sort,
-      }),
+      });
+    },
     [adapterResult, searchTerm, sort]
   );
 

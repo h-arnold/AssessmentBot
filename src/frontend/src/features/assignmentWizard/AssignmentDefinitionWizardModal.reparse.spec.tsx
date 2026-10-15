@@ -7,6 +7,7 @@
  * true` with no weighting patch), in-place task refresh, the busy affordance,
  * its settled state, and the existing blocking-error treatment on failure.
  */
+import '../../test/assignmentDefinition/AssignmentDefinitionWizardModal.mockSetup';
 
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -26,64 +27,46 @@ import {
   assertDocumentUrlFieldsDisabled,
   assertTaskNotVisible,
   assertTaskVisible,
+} from '../../test/assignmentDefinition/wizardModalAssertionHelpers';
+import {
   changeReferenceUrl,
-  getFormElements,
   getFooterCancelButton,
+  getFormElements,
   getSaveButton,
   getTaskWeightingInputs,
+} from '../../test/assignmentDefinition/wizardModalInteractionHelpers';
+import {
   createUpdateWizardOptions,
   renderWizardModal,
-} from '../../test/assignmentDefinition/wizardModalTestHelpers';
-import type { RenderWizardModalOptions } from '../../test/assignmentDefinition/wizardModalTestHelpers';
+  type RenderWizardModalOptions,
+} from '../../test/assignmentDefinition/wizardModalRenderingHelpers';
 import {
   createStartupWarmupState,
   setTextboxValue,
 } from '../../test/assignmentDefinition/wizardTestHelpers';
 import editableDefinitionsRaw from '../../../../../tests/__mocks__/data/synthetic-analysis/small/editableDefinitions.json?raw';
 
-const {
-  getAssignmentDefinitionMock,
-  getAssignmentTopicsMock,
-  getCohortsMock,
-  getYearGroupsMock,
-  upsertAssignmentDefinitionMock,
-  useStartupWarmupStateMock,
-} = vi.hoisted(() => ({
-  getAssignmentDefinitionMock: vi.fn(),
-  getAssignmentTopicsMock: vi.fn(),
-  getCohortsMock: vi.fn(),
-  getYearGroupsMock: vi.fn(),
-  upsertAssignmentDefinitionMock: vi.fn(),
-  useStartupWarmupStateMock: vi.fn(),
-}));
+import {
+  getAssignmentDefinition,
+  upsertAssignmentDefinition,
+} from '../../services/assignmentDefinition/assignmentDefinitionService';
+import { getAssignmentTopics } from '../../services/assignmentDefinition/assignmentTopicsService';
+import { getCohorts, getYearGroups } from '../../services/referenceData/referenceDataService';
+import { useStartupWarmupState } from '../../features/auth/startupWarmupState';
 
-vi.mock('../../features/auth/startupWarmupState', async (importOriginal) => {
-  const actualModule = (await importOriginal()) as Record<string, unknown>;
+const getAssignmentDefinitionMock = vi.mocked(getAssignmentDefinition) as ReturnType<typeof vi.fn>;
+const getAssignmentTopicsMock = vi.mocked(getAssignmentTopics) as ReturnType<typeof vi.fn>;
+const getCohortsMock = vi.mocked(getCohorts) as ReturnType<typeof vi.fn>;
+const getYearGroupsMock = vi.mocked(getYearGroups) as ReturnType<typeof vi.fn>;
+const upsertAssignmentDefinitionMock = vi.mocked(upsertAssignmentDefinition) as ReturnType<typeof vi.fn>;
+const useStartupWarmupStateMock = vi.mocked(useStartupWarmupState) as ReturnType<typeof vi.fn>;
 
+vi.mock('../../logging/frontendLogger', () => {
   return {
-    ...actualModule,
-    useStartupWarmupState: useStartupWarmupStateMock,
+    logFrontendError: vi.fn(),
+    logFrontendEvent: vi.fn(),
   };
 });
-
-vi.mock('../../services/assignmentDefinition/assignmentDefinitionService', () => ({
-  getAssignmentDefinition: getAssignmentDefinitionMock,
-  upsertAssignmentDefinition: upsertAssignmentDefinitionMock,
-}));
-
-vi.mock('../../services/assignmentDefinition/assignmentTopicsService', () => ({
-  getAssignmentTopics: getAssignmentTopicsMock,
-}));
-
-vi.mock('../../services/referenceData/referenceDataService', () => ({
-  getCohorts: getCohortsMock,
-  getYearGroups: getYearGroupsMock,
-}));
-
-vi.mock('../../logging/frontendLogger', () => ({
-  logFrontendError: vi.fn(),
-  logFrontendEvent: vi.fn(),
-}));
 
 /** Accessible name of the action under test. */
 const REPARSE_DOCUMENTS_ACTION = /reparse documents/i;
@@ -125,15 +108,13 @@ const NEW_TASK_TITLE = 'Newly parsed task';
 /**
  * Builds update-mode render options seeded with the canonical definition fixture.
  *
- * @param {AssignmentDefinition} [definition] - Definition to hydrate the wizard with.
  * @param {Partial<RenderWizardModalOptions>} [overrides] - Per-test option overrides.
  * @returns {RenderWizardModalOptions} Render options for the update wizard.
  */
 function createUpdateOptions(
-  definition: AssignmentDefinition = UPDATE_DEFINITION,
   overrides: Partial<RenderWizardModalOptions> = {}
 ): RenderWizardModalOptions {
-  return createUpdateWizardOptions(definition, { cohorts: [...mockCohorts], ...overrides });
+  return createUpdateWizardOptions(UPDATE_DEFINITION, { cohorts: [...mockCohorts], ...overrides });
 }
 
 /**
@@ -187,7 +168,7 @@ describe('Reparse documents action placement', () => {
 
   it('does not reparse documents on modal open or a background refetch', async () => {
     const { modal, queryClient } = await renderWizardModal(
-      createUpdateOptions(UPDATE_DEFINITION, { mockInvalidateQueries: false })
+      createUpdateOptions({ mockInvalidateQueries: false })
     );
 
     expect(getReparseDocumentsAction(modal)).toBeInTheDocument();
@@ -237,7 +218,7 @@ describe('Reparse documents action gating', () => {
     getAssignmentDefinitionMock.mockRejectedValue(new Error('definition load failed'));
 
     const { modal } = await renderWizardModal(
-      createUpdateOptions(UPDATE_DEFINITION, {
+      createUpdateOptions({
         assignmentDefinition: undefined,
         waitForFormFields: false,
       })
@@ -296,10 +277,8 @@ describe('Reparse documents action behaviour', () => {
     const { modal } = await renderWizardModal(createUpdateOptions());
     assertTaskVisible({ modal }, ORIGINAL_FIRST_TASK_TITLE);
 
-    let resolveReparse: (value: AssignmentDefinition) => void;
-    const pendingReparse = new Promise<AssignmentDefinition>((resolve) => {
-      resolveReparse = resolve;
-    });
+    const { promise: pendingReparse, resolve: resolveReparse } =
+      Promise.withResolvers<AssignmentDefinition>();
     upsertAssignmentDefinitionMock.mockImplementationOnce(() => pendingReparse);
 
     fireEvent.click(getReparseDocumentsAction(modal));
@@ -317,7 +296,7 @@ describe('Reparse documents action behaviour', () => {
     expect(getFooterCancelButton({ modal })).toBeDisabled();
 
     await act(async () => {
-      resolveReparse!({ ...UPDATE_DEFINITION });
+      resolveReparse({ ...UPDATE_DEFINITION });
       await pendingReparse;
     });
 

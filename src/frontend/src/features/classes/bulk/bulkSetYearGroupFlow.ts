@@ -14,10 +14,12 @@ import { sortYearGroups } from '../../referenceData/yearGroupSorting';
 export function getYearGroupOptions(
   yearGroups: YearGroup[]
 ): Array<{ label: string; value: string }> {
-  return sortYearGroups(yearGroups).map((yearGroup) => ({
-    label: yearGroup.name,
-    value: yearGroup.key,
-  }));
+  return sortYearGroups(yearGroups).map((yearGroup) => {
+    return {
+      label: yearGroup.name,
+      value: yearGroup.key,
+    };
+  });
 }
 
 /**

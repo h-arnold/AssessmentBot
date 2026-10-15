@@ -74,7 +74,7 @@ describe('SelectWithAddNew - Basic Rendering', () => {
 
     // SelectWithAddNew renders the add-new icon via LucideIcon with lucide Plus.
     // The antd Select dropdown is rendered as a portal, so locate the "Add new"
-    // option and assert it contains an svg rather than relying on lucide's
+    // option and assert it contains an SVG rather than relying on lucide's
     // internal `.lucide-plus` class.
     const addNewOption = screen.getByText('Add new');
     const icon = addNewOption.querySelector('svg');
@@ -114,21 +114,6 @@ describe('SelectWithAddNew - Option Position and Content', () => {
 });
 
 describe('SelectWithAddNew - Custom Labels', () => {
-  it('\'Add new\' option has proper default label', () => {
-    render(
-      <SelectWithAddNew
-        options={standardOptions}
-        onAddNew={mockOnAddNew}
-        entityType="cohort"
-      />
-    );
-
-    const select = screen.getByRole('combobox');
-    fireEvent.mouseDown(select);
-
-    expect(screen.getByText('Add new cohort')).toBeInTheDocument();
-  });
-
   it('\'Add new\' option uses custom label when provided', () => {
     render(
       <SelectWithAddNew
@@ -144,34 +129,23 @@ describe('SelectWithAddNew - Custom Labels', () => {
     expect(screen.getByText('Create new item')).toBeInTheDocument();
   });
 
-  it('\'Add new\' option uses entityType for yearGroup', () => {
+  it.each([
+    ['cohort', 'Add new cohort'],
+    ['yearGroup', 'Add new year group'],
+    ['topic', 'Add new topic'],
+  ] as const)('\'Add new\' option derives its label from entityType %s', (entityType, expectedLabel) => {
     render(
       <SelectWithAddNew
         options={standardOptions}
         onAddNew={mockOnAddNew}
-        entityType="yearGroup"
+        entityType={entityType}
       />
     );
 
     const select = screen.getByRole('combobox');
     fireEvent.mouseDown(select);
 
-    expect(screen.getByText('Add new year group')).toBeInTheDocument();
-  });
-
-  it('\'Add new\' option uses entityType for topic', () => {
-    render(
-      <SelectWithAddNew
-        options={standardOptions}
-        onAddNew={mockOnAddNew}
-        entityType="topic"
-      />
-    );
-
-    const select = screen.getByRole('combobox');
-    fireEvent.mouseDown(select);
-
-    expect(screen.getByText('Add new topic')).toBeInTheDocument();
+    expect(screen.getByText(expectedLabel)).toBeInTheDocument();
   });
 });
 
@@ -280,9 +254,7 @@ describe('SelectWithAddNew - Prop Forwarding', () => {
 
 describe('SelectWithAddNew - Debounce Configuration', () => {
   it('debounceMs defaults to 300 when not provided', () => {
-    const mockUseDebounce = vi.fn((callback: () => void) => {
-      return callback;
-    });
+    const mockUseDebounce = vi.fn((callback: () => void) => callback);
     vi.spyOn(useDebounceModule, 'useDebounce').mockImplementationOnce(mockUseDebounce);
 
     render(
@@ -296,9 +268,7 @@ describe('SelectWithAddNew - Debounce Configuration', () => {
   });
 
   it('uses custom debounceMs when provided', () => {
-    const mockUseDebounce = vi.fn((callback: () => void) => {
-      return callback;
-    });
+    const mockUseDebounce = vi.fn((callback: () => void) => callback);
     const customDelay = 500;
     vi.spyOn(useDebounceModule, 'useDebounce').mockImplementationOnce(mockUseDebounce);
 

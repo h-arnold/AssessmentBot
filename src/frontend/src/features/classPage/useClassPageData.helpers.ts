@@ -129,7 +129,7 @@ export function computeServiceError(
  * @param {ClassPageAdapterResult | null} adapterResult - The adapter result (null when pipeline hasn't run).
  * @returns {boolean} True if any loading condition applies.
  */
-export function computeIsLoading(
+export function isClassPageLoading(
   isPending: boolean,
   isDatasetReady: boolean,
   isDatasetFailed: boolean,

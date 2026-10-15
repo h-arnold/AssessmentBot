@@ -16,6 +16,7 @@ import {
   createMockCollection,
   setupControllerTestMocks,
 } from '../helpers/mockFactories.js';
+import { withGlobalMocks } from '../helpers/globalMockManager.js';
 
 const originalValidate = globalThis.Validate;
 const originalCohort = globalThis.Cohort;
@@ -156,8 +157,10 @@ describe('ReferenceDataController – cohort key-based persistence', () => {
     expect(result).toEqual([]);
   });
 
-  it('creating cohort generates a UUID key and persists { key, name, active, startYear, startMonth }', () => {
+  it('creating cohort uses the GAS UUID and persists { key, name, active, startYear, startMonth }', () => {
     primeCollectionLookupByKey(cohortsCollection, []);
+    const generatedUuid = 'cohort-gas-uuid';
+    vi.spyOn(globalThis.Utilities, 'getUuid').mockReturnValue(generatedUuid);
 
     const result = new ReferenceDataController().createCohort({
       name: '2028',
@@ -169,7 +172,7 @@ describe('ReferenceDataController – cohort key-based persistence', () => {
     expect(mockDbManager.getCollection).toHaveBeenCalledWith('cohorts');
     expect(cohortsCollection.insertOne).toHaveBeenCalledTimes(1);
     const persisted = cohortsCollection.insertOne.mock.calls[0][0];
-    expect(persisted).toHaveProperty('key');
+    expect(persisted.key).toBe(generatedUuid);
     expect(typeof persisted.key).toBe('string');
     expect(persisted.key.length).toBeGreaterThan(0);
     expect(persisted.name).toBe('2028');
@@ -180,6 +183,27 @@ describe('ReferenceDataController – cohort key-based persistence', () => {
     expect(result.key).toBe(persisted.key);
     expect(result.name).toBe('2028');
     expect(result.active).toBe(false);
+  });
+
+  it('creating cohort fails without the GAS UUID service and does not persist a fabricated key', () => {
+    primeCollectionLookupByKey(cohortsCollection, []);
+    const utilitiesWithoutUuid = { ...globalThis.Utilities, getUuid: undefined };
+    const { restore } = withGlobalMocks({ Utilities: utilitiesWithoutUuid });
+
+    try {
+      expect(() =>
+        new ReferenceDataController().createCohort({
+          name: '2032',
+          active: true,
+          startYear: 2031,
+          startMonth: 9,
+        })
+      ).toThrow(/Utilities\.getUuid/i);
+      expect(cohortsCollection.insertOne).not.toHaveBeenCalled();
+      expect(cohortsCollection.save).not.toHaveBeenCalled();
+    } finally {
+      restore();
+    }
   });
 
   it('creating cohort with omitted active persists active: true', () => {
@@ -381,15 +405,17 @@ describe('ReferenceDataController – year-group key-based persistence', () => {
     expect(result).toEqual([]);
   });
 
-  it('creating year group generates a UUID key and persists { key, name }', () => {
+  it('creating year group uses the GAS UUID and persists { key, name }', () => {
     primeCollectionLookupByKey(yearGroupsCollection, []);
+    const generatedUuid = 'year-group-gas-uuid';
+    vi.spyOn(globalThis.Utilities, 'getUuid').mockReturnValue(generatedUuid);
 
     const result = new ReferenceDataController().createYearGroup({ name: 'Year 10' });
 
     expect(mockDbManager.getCollection).toHaveBeenCalledWith('year_groups');
     expect(yearGroupsCollection.insertOne).toHaveBeenCalledTimes(1);
     const persisted = yearGroupsCollection.insertOne.mock.calls[0][0];
-    expect(persisted).toHaveProperty('key');
+    expect(persisted.key).toBe(generatedUuid);
     expect(typeof persisted.key).toBe('string');
     expect(persisted.name).toBe('Year 10');
     expect(yearGroupsCollection.save).toHaveBeenCalledTimes(1);

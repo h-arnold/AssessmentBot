@@ -9,51 +9,68 @@ import { queryKeys } from '../../query/queryKeys';
 import type { UseAssignmentDefinitionWizardReturn } from './useAssignmentDefinitionWizard';
 
 // Mock dependencies
-vi.mock('../../services/apiService', () => ({
-  callApi: vi.fn(),
-}));
+vi.mock('../../services/apiService', () => {
+  return {
+    callApi: vi.fn(),
+  };
+});
 
-vi.mock('../../logging/frontendLogger', () => ({
-  logFrontendError: vi.fn(),
-}));
+vi.mock('../../logging/frontendLogger', () => {
+  return {
+    logFrontendError: vi.fn(),
+  };
+});
 
-vi.mock('../../errors/map-error-to-ui', () => ({
-  mapErrorToUserMessage: vi.fn(() => 'Error message'),
-  extractErrorCode: vi.fn(() => null),
-  extractRequestId: vi.fn(() => null),
-}));
+vi.mock('../../errors/map-error-to-ui', () => {
+  return {
+    mapErrorToUserMessage: vi.fn(() => 'Error message'),
+    extractErrorCode: vi.fn(() => null),
+    extractRequestId: vi.fn(() => null),
+  };
+});
 
-vi.mock('../../features/auth/startupWarmupState', () => ({
-  useStartupWarmupState: () => ({
-    isDatasetReady: vi.fn(
-      (datasetKey: string) =>
-        datasetKey === 'assignmentDefinitionPartials' ||
-        datasetKey === 'assignmentTopics' ||
-        datasetKey === 'yearGroups'
-    ),
-    isDatasetFailed: vi.fn(() => false),
-    isFailed: false,
-    isLoading: false,
-    isReady: true,
-    warmupState: 'ready',
-  }),
-}));
+vi.mock('../../features/auth/startupWarmupState', () => {
+  return {
+    useStartupWarmupState: () => {
+      return {
+        isDatasetReady: vi.fn((datasetKey: string) => {
+          return ['assignmentDefinitionPartials', 'assignmentTopics', 'yearGroups'].includes(
+            datasetKey
+          );
+        }),
+        isDatasetFailed: vi.fn(() => false),
+        isFailed: false,
+        isLoading: false,
+        isReady: true,
+        warmupState: 'ready',
+      };
+    },
+  };
+});
 
-vi.mock('../../query/sharedQueries', () => ({
-  getAssignmentDefinitionQueryOptions: vi.fn(() => ({
-    queryKey: ['assignmentDefinition'],
-    queryFn: vi.fn(),
-  })),
-  getAssignmentTopicsQueryOptions: vi.fn(() => ({
-    queryKey: ['assignmentTopics'],
-    queryFn: vi.fn(),
-  })),
-  getYearGroupsQueryOptions: vi.fn(() => ({ queryKey: ['yearGroups'], queryFn: vi.fn() })),
-}));
+vi.mock('../../query/sharedQueries', () => {
+  return {
+    getAssignmentDefinitionQueryOptions: vi.fn(() => {
+      return {
+        queryKey: ['assignmentDefinition'],
+        queryFn: vi.fn(),
+      };
+    }),
+    getAssignmentTopicsQueryOptions: vi.fn(() => {
+      return {
+        queryKey: ['assignmentTopics'],
+        queryFn: vi.fn(),
+      };
+    }),
+    getYearGroupsQueryOptions: vi.fn(() => ({ queryKey: ['yearGroups'], queryFn: vi.fn() })),
+  };
+});
 
-vi.mock('../../services/assignmentDefinition/assignmentDefinitionService', () => ({
-  upsertAssignmentDefinition: vi.fn(),
-}));
+vi.mock('../../services/assignmentDefinition/assignmentDefinitionService', () => {
+  return {
+    upsertAssignmentDefinition: vi.fn(),
+  };
+});
 
 /**
  * Creates a fresh React Query wrapper for each test.
@@ -89,13 +106,9 @@ async function loadUseAssignmentDefinitionWizard() {
  * The default definitionKey is 'test-create-key'.
  *
  * @param {string} [definitionKey='test-create-key'] - The definition key for the mock response.
- * @param {Partial<Record<string, unknown>>} [overrides={}] - Optional overrides to merge into the default.
  * @returns {Record<string, unknown>} The mock parse response.
  */
-function createParseResponse(
-  definitionKey = 'test-create-key',
-  overrides: Partial<Record<string, unknown>> = {}
-): Record<string, unknown> {
+function createParseResponse(definitionKey = 'test-create-key'): Record<string, unknown> {
   return {
     definitionKey,
     primaryTitle: 'Test',
@@ -114,7 +127,6 @@ function createParseResponse(
     tasks: [{ taskId: 't1', taskTitle: 'Task 1', taskWeighting: 1 }],
     createdAt: '2025-01-01T00:00:00.000Z',
     updatedAt: '2025-01-01T00:00:00.000Z',
-    ...overrides,
   };
 }
 

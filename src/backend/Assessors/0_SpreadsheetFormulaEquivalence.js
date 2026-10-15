@@ -23,11 +23,13 @@ const SpreadsheetFormulaEquivalence = {
       return false;
     }
 
-    if (!this._canUseSimpleAdditionEquivalence(studentFormula, referenceFormula)) {
-      return false;
-    }
-
-    const studentSignature = this._getSimpleAdditionSignature(studentFormula);
+    const canUseSimpleAddition = this._canUseSimpleAdditionEquivalence(
+      studentFormula,
+      referenceFormula
+    );
+    const studentSignature = canUseSimpleAddition
+      ? this._getSimpleAdditionSignature(studentFormula)
+      : null;
     if (!studentSignature) {
       return false;
     }
@@ -43,18 +45,18 @@ const SpreadsheetFormulaEquivalence = {
    * @returns {boolean} Whether the pair is worth attempting to parse.
    */
   _canUseSimpleAdditionEquivalence(studentFormula, referenceFormula) {
-    const studentHasPlus = studentFormula.indexOf('+') !== NOT_FOUND_INDEX;
-    const referenceHasPlus = referenceFormula.indexOf('+') !== NOT_FOUND_INDEX;
+    const hasStudentPlus = studentFormula.indexOf('+') !== NOT_FOUND_INDEX;
+    const hasReferencePlus = referenceFormula.indexOf('+') !== NOT_FOUND_INDEX;
 
-    if (studentHasPlus && referenceHasPlus) {
+    if (hasStudentPlus && hasReferencePlus) {
       return true;
     }
 
-    if (studentHasPlus) {
+    if (hasStudentPlus) {
       return this._isSumCandidate(referenceFormula);
     }
 
-    if (referenceHasPlus) {
+    if (hasReferencePlus) {
       return this._isSumCandidate(studentFormula);
     }
 
@@ -184,25 +186,21 @@ const SpreadsheetFormulaEquivalence = {
    * @returns {string|null} Stable signature, or null when the range is unsupported.
    */
   _createTwoCellRangeSignature(startReference, endReference) {
-    if (!startReference || !endReference) {
+    if (!startReference || !endReference || startReference.sheetName !== endReference.sheetName) {
       return null;
     }
 
-    if (startReference.sheetName !== endReference.sheetName) {
+    const isSameRow = startReference.rowNumber === endReference.rowNumber;
+    const isSameColumn = startReference.columnNumber === endReference.columnNumber;
+    if (isSameRow === isSameColumn) {
       return null;
     }
 
-    const sameRow = startReference.rowNumber === endReference.rowNumber;
-    const sameColumn = startReference.columnNumber === endReference.columnNumber;
-    if (sameRow === sameColumn) {
+    if (isSameRow && Math.abs(startReference.columnNumber - endReference.columnNumber) !== 1) {
       return null;
     }
 
-    if (sameRow && Math.abs(startReference.columnNumber - endReference.columnNumber) !== 1) {
-      return null;
-    }
-
-    if (sameColumn && Math.abs(startReference.rowNumber - endReference.rowNumber) !== 1) {
+    if (isSameColumn && Math.abs(startReference.rowNumber - endReference.rowNumber) !== 1) {
       return null;
     }
 

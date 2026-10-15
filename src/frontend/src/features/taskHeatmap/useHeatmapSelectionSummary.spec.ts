@@ -24,8 +24,8 @@ const INPUT = buildInput([
   {
     classId: 'c_001',
     studentIds: ['s_001'],
-    assignments: ASSIGNMENT_IDS.map((assignmentId, index) =>
-      createAssignmentPartial({
+    assignments: ASSIGNMENT_IDS.map((assignmentId, index) => {
+      return createAssignmentPartial({
         assignmentId,
         definitionKey: 'dk_algebra',
         submissions: [
@@ -36,8 +36,8 @@ const INPUT = buildInput([
             }),
           }),
         ],
-      })
-    ),
+      });
+    }),
   },
 ]);
 
@@ -75,13 +75,14 @@ describe('Heatmaps selection summaries', () => {
     const first = selectedHeatmap([ASSIGNMENT_IDS[0]]);
     const second = selectedHeatmap([ASSIGNMENT_IDS[1]]);
     const { result, rerender } = renderHook(
-      ({ heatmap }) =>
-        useHeatmapSelectionSummary(
+      ({ heatmap }) => {
+        return useHeatmapSelectionSummary(
           INPUT.classes[0],
           INPUT.assignmentDefinitionPartials,
           heatmap,
           true
-        ),
+        );
+      },
       { initialProps: { heatmap: first } }
     );
     expect(result.current.error).toBeNull();
@@ -98,14 +99,14 @@ describe('Heatmaps selection summaries', () => {
     const analyseSummary = vi.spyOn(DataAnalysisService.prototype, 'analyseAssignmentSummary');
     for (const heatmap of heatmaps) {
       expect(heatmap.taskColumns).toHaveLength(1);
-      const { result, unmount } = renderHook(() =>
-        useHeatmapSelectionSummary(
+      const { result, unmount } = renderHook(() => {
+        return useHeatmapSelectionSummary(
           INPUT.classes[0],
           INPUT.assignmentDefinitionPartials,
           heatmap,
           true
-        )
-      );
+        );
+      });
       expect(result.current.view?.message).toContain('Multiple assignments are selected.');
       expect(result.current.view?.summary).toBeUndefined();
       expect(result.current.error).toBeNull();
@@ -126,14 +127,14 @@ describe('Heatmaps selection summaries', () => {
     const missingHeatmap = renderHook(() =>
       useHeatmapSelectionSummary(INPUT.classes[0], INPUT.assignmentDefinitionPartials, null, true)
     );
-    const loading = renderHook(() =>
-      useHeatmapSelectionSummary(
+    const loading = renderHook(() => {
+      return useHeatmapSelectionSummary(
         INPUT.classes[0],
         INPUT.assignmentDefinitionPartials,
         heatmap,
         false
-      )
-    );
+      );
+    });
     for (const hook of [missingClass, missingDefinitions, missingHeatmap, loading]) {
       expect(hook.result.current).toEqual({ view: null, error: null });
     }
@@ -147,13 +148,14 @@ describe('Heatmaps selection summaries', () => {
       const error = new Error(`Selection summary ${stage} recovery failure`);
       const logError = vi.spyOn(frontendLogger, 'logFrontendError').mockImplementation(vi.fn());
       const { result, rerender } = renderHook(
-        ({ heatmap }) =>
-          useHeatmapSelectionSummary(
+        ({ heatmap }) => {
+          return useHeatmapSelectionSummary(
             INPUT.classes[0],
             INPUT.assignmentDefinitionPartials,
             heatmap,
             true
-          ),
+          );
+        },
         { initialProps: { heatmap } }
       );
       expect(result.current.error).toBeNull();
@@ -191,13 +193,14 @@ describe('Heatmaps selection summaries', () => {
       });
     const logError = vi.spyOn(frontendLogger, 'logFrontendError').mockImplementation(vi.fn());
     const { result, rerender, unmount } = renderHook(
-      ({ heatmap }) =>
-        useHeatmapSelectionSummary(
+      ({ heatmap }) => {
+        return useHeatmapSelectionSummary(
           INPUT.classes[0],
           INPUT.assignmentDefinitionPartials,
           heatmap,
           true
-        ),
+        );
+      },
       { initialProps: { heatmap } }
     );
     expect(result.current.view).toBeNull();
@@ -207,14 +210,14 @@ describe('Heatmaps selection summaries', () => {
     expect(logError).toHaveBeenCalledTimes(1);
     unmount();
 
-    const remounted = renderHook(() =>
-      useHeatmapSelectionSummary(
+    const remounted = renderHook(() => {
+      return useHeatmapSelectionSummary(
         INPUT.classes[0],
         INPUT.assignmentDefinitionPartials,
         heatmap,
         true
-      )
-    );
+      );
+    });
     expect(remounted.result.current.view).toBeNull();
     expect(remounted.result.current.error?.message).toBe(message);
     expect(analyseSummary).toHaveBeenCalledTimes(THIRD_CALL);
@@ -232,13 +235,14 @@ describe('Heatmaps selection summaries', () => {
       });
     const logError = vi.spyOn(frontendLogger, 'logFrontendError').mockImplementation(vi.fn());
     const { result, rerender } = renderHook(
-      ({ heatmap }) =>
-        useHeatmapSelectionSummary(
+      ({ heatmap }) => {
+        return useHeatmapSelectionSummary(
           INPUT.classes[0],
           INPUT.assignmentDefinitionPartials,
           heatmap,
           true
-        ),
+        );
+      },
       { initialProps: { heatmap } }
     );
     expect(result.current).toEqual({ view: null, error: firstError });
@@ -267,13 +271,14 @@ describe('Heatmaps selection summaries', () => {
     });
     const logError = vi.spyOn(frontendLogger, 'logFrontendError').mockImplementation(vi.fn());
     const { result, rerender } = renderHook(
-      ({ heatmap }) =>
-        useHeatmapSelectionSummary(
+      ({ heatmap }) => {
+        return useHeatmapSelectionSummary(
           INPUT.classes[0],
           INPUT.assignmentDefinitionPartials,
           heatmap,
           true
-        ),
+        );
+      },
       { initialProps: { heatmap: first } }
     );
     expect(result.current).toEqual({ view: null, error });

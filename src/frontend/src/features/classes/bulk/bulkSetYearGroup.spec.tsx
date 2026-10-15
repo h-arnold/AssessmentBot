@@ -17,9 +17,11 @@ import {
 
 const runQueuedBatchMutationMock = vi.hoisted(() => vi.fn());
 
-vi.mock('./runQueuedBatchMutation', () => ({
-  runQueuedBatchMutation: runQueuedBatchMutationMock,
-}));
+vi.mock('./runQueuedBatchMutation', () => {
+  return {
+    runQueuedBatchMutation: runQueuedBatchMutationMock,
+  };
+});
 
 import type * as BulkSetYearGroupFlowModule from './bulkSetYearGroupFlow';
 

@@ -116,13 +116,13 @@ export async function runQueuedBatchMutation<TData>(
     completed++;
 
     // --- settled progress ---
-    const allDone = completed >= total;
+    const isAllDone = completed >= total;
     onProgress?.({
       currentItem: null,
       completed,
       pendingCount: total - completed,
       total,
-      isInProgress: !allDone,
+      isInProgress: !isAllDone,
     });
   }
 

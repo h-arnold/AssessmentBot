@@ -18,7 +18,7 @@ import { formatMetricDisplayText } from './metricDisplayText';
 const DISPLAY_PRECISION = 2;
 
 /** Computed fixture value used to verify precision handling. */
-const COMPUTED_VALUE = 3.14;
+const COMPUTED_VALUE = Math.PI;
 
 /** Expected computed text at {@link DISPLAY_PRECISION}. */
 const COMPUTED_TEXT = '3.14';

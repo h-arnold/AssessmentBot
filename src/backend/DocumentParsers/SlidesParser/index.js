@@ -66,7 +66,11 @@ class SlidesParser extends DocumentParser {
     this.processSlidesForDefinitions(referenceSlides, 'reference', context);
     this.processSlidesForDefinitions(templateSlides, 'template', context);
 
-    return [...definitionMap.values()];
+    const definitions = [];
+    definitionMap.forEach((definition) => {
+      definitions.push(definition);
+    });
+    return definitions;
   }
 
   /**

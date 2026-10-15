@@ -26,14 +26,14 @@ test.describe('mutation summary and refresh failure', () => {
   test('hands off a partial cohort update to the persistent summary alert and closes the modal', async ({
     page,
   }) => {
-    const refreshedClassPartials = matchedClassPartials.map((classPartial, index) =>
-      index === 0
+    const refreshedClassPartials = matchedClassPartials.map((classPartial, index) => {
+      return index === 0
         ? {
             ...classPartial,
             cohortKey: 'cohort-2025',
           }
-        : classPartial
-    );
+        : classPartial;
+    });
     const cohortOptions = [
       ...baseCohorts,
       {
@@ -46,7 +46,7 @@ test.describe('mutation summary and refresh failure', () => {
     ];
 
     await openClassesTabWithScenario(page, {
-      getAuthorisationStatus: [{ kind: 'success', data: true }],
+      hasScriptAuthorisation: [{ kind: 'success', data: true }],
       getABClassPartials: [
         { kind: 'success', data: matchedClassPartials },
         { kind: 'success', data: refreshedClassPartials },
@@ -85,7 +85,7 @@ test.describe('mutation summary and refresh failure', () => {
     page,
   }) => {
     await openClassesTabWithScenario(page, {
-      getAuthorisationStatus: [{ kind: 'success', data: true }],
+      hasScriptAuthorisation: [{ kind: 'success', data: true }],
       getABClassPartials: [
         { kind: 'success', data: matchedClassPartials },
         {
@@ -103,8 +103,8 @@ test.describe('mutation summary and refresh failure', () => {
           kind: 'success',
           data: {
             classId: 'gc-class-201',
-            fullClassDeleted: true,
-            partialDeleted: true,
+            hasDeletedFullClass: true,
+            hasDeletedClassPartial: true,
           },
         },
       ],

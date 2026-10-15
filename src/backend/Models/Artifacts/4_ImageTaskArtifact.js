@@ -20,8 +20,7 @@ class ImageTaskArtifact extends BaseTaskArtifact {
    * @returns {string|null} The normalised content or null if invalid.
    */
   normalizeContent(content) {
-    if (content == null) return null;
-    if (typeof content !== 'string') return null;
+    if (content == null || typeof content !== 'string') return null;
     const trimmed = content.trim();
     return trimmed === '' ? null : trimmed;
   }

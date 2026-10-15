@@ -85,8 +85,8 @@ describe('shared student-name table column presentation', () => {
     ]);
     expect(heatmapNameColumnWidths).toEqual(classNameColumnWidths);
 
-    const classDataRow = classTable.querySelector('tbody tr[data-row-key]');
-    const heatmapDataRow = heatmapTable.querySelector('tbody tr[data-row-key]');
+    const classDataRow = classTable.querySelector(':scope tbody tr[data-row-key]');
+    const heatmapDataRow = heatmapTable.querySelector(':scope tbody tr[data-row-key]');
     if (!(classDataRow instanceof HTMLElement) || !(heatmapDataRow instanceof HTMLElement)) {
       throw new TypeError('Expected both student-name tables to render a data row.');
     }

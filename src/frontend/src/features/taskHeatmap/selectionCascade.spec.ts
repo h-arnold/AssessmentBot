@@ -16,13 +16,14 @@ import * as selectionCascadeModule from './selectionCascade';
 import type { SelectionCascadeAction, SelectionState } from './selectionCascade';
 
 const selectionCascadeReducer = selectionCascadeModule.selectionCascadeReducer;
-const INITIAL_SELECTION_STATE = selectionCascadeModule.INITIAL_SELECTION_STATE;
 
 if (typeof selectionCascadeReducer !== 'function') {
   throw new TypeError(
     'selectionCascade.ts has not been implemented (selectionCascadeReducer export missing)'
   );
 }
+
+const INITIAL_SELECTION_STATE = selectionCascadeModule.INITIAL_SELECTION_STATE;
 
 /**
  * Builds a topic → assignmentId map fixture for cascade validation.

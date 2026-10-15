@@ -45,17 +45,21 @@ import {
 import type { MergedHeatmapResult } from '../../services/dataAnalysis/heatmapAdapter.merged';
 import { createMalformedAnalyserOutput } from '../../test/dataAnalysis/diagnosticsFixtures';
 
-const { mockAnalyse, mockAdaptMergedHeatmap, mockLogFrontendError } = vi.hoisted(() => ({
-  mockAnalyse: vi.fn(),
-  mockAdaptMergedHeatmap: vi.fn(),
-  mockLogFrontendError: vi.fn(),
-}));
+const { mockAnalyse, mockAdaptMergedHeatmap, mockLogFrontendError } = vi.hoisted(() => {
+  return {
+    mockAnalyse: vi.fn(),
+    mockAdaptMergedHeatmap: vi.fn(),
+    mockLogFrontendError: vi.fn(),
+  };
+});
 
-vi.mock('../../services/dataAnalysis/dataAnalysisService', () => ({
-  DataAnalysisService: vi.fn().mockImplementation(function () {
-    return { analyse: mockAnalyse };
-  }),
-}));
+vi.mock('../../services/dataAnalysis/dataAnalysisService', () => {
+  return {
+    DataAnalysisService: vi.fn().mockImplementation(function () {
+      return { analyse: mockAnalyse };
+    }),
+  };
+});
 
 vi.mock('../../services/dataAnalysis/heatmapAdapter.merged', async (importOriginal) => {
   const actual = (await importOriginal()) as Record<string, unknown>;
@@ -65,10 +69,12 @@ vi.mock('../../services/dataAnalysis/heatmapAdapter.merged', async (importOrigin
   };
 });
 
-vi.mock('../../logging/frontendLogger', () => ({
-  logFrontendError: mockLogFrontendError,
-  logFrontendEvent: vi.fn(),
-}));
+vi.mock('../../logging/frontendLogger', () => {
+  return {
+    logFrontendError: mockLogFrontendError,
+    logFrontendEvent: vi.fn(),
+  };
+});
 
 afterEach(() => {
   vi.resetAllMocks();

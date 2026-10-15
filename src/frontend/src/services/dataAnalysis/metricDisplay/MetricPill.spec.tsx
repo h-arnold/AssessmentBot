@@ -29,7 +29,7 @@ const COMPACT_TAG_FONT_SIZE_PX = 12;
 const EMPHASISED_TAG_FONT_SIZE_PX = 17.5;
 
 /** Computed value used by the state-to-text consistency table. */
-const STATE_TEXT_COMPUTED_VALUE = 3.14;
+const STATE_TEXT_COMPUTED_VALUE = Math.PI;
 
 /** Expected computed text at the default precision. */
 const STATE_TEXT_COMPUTED_OUTPUT = '3.14';
@@ -40,7 +40,7 @@ describe('MetricPill', () => {
   // -------------------------------------------------------------------------
 
   it('renders the computed value formatted with default precision of 2', () => {
-    const metric: MetricResult = createComputedMetricResult({ value: 3.14 });
+    const metric: MetricResult = createComputedMetricResult({ value: Math.PI });
 
     const { container } = render(<MetricPill metric={metric} />);
 
@@ -129,7 +129,7 @@ describe('MetricPill', () => {
   // -------------------------------------------------------------------------
 
   it('formats a computed value using the precision prop', () => {
-    const metric: MetricResult = createComputedMetricResult({ value: 2.718 });
+    const metric: MetricResult = createComputedMetricResult({ value: Math.E });
 
     render(<MetricPill metric={metric} precision={3} />);
 

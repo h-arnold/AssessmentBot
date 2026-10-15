@@ -90,11 +90,13 @@ describe('findMatchingDefinition', () => {
     );
 
     expect(result.kind).toBe('ambiguous');
-    if (result.kind === 'ambiguous') {
-      // eslint-disable-next-line @typescript-eslint/no-magic-numbers
-      expect(result.matches).toHaveLength(2);
-      expect(result.matches).toEqual(definitionPartials);
+    if (result.kind !== 'ambiguous') {
+      return;
     }
+
+    // eslint-disable-next-line @typescript-eslint/no-magic-numbers
+    expect(result.matches).toHaveLength(2);
+    expect(result.matches).toEqual(definitionPartials);
   });
 
   it('returns no-match when definitionPartials is an empty array', () => {

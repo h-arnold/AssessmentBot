@@ -12,6 +12,10 @@ import { defineConfig, globalIgnores } from 'eslint/config';
 const require = createRequire(import.meta.url);
 const { unicodeSecurityRules } = require('../../config/eslint/unicode-security-rules.cjs');
 const {
+  crossRuntimeUnicornPreferenceRules,
+  unicornPreferenceRules,
+} = require('../../config/eslint/unicorn-preference-rules.cjs');
+const {
   security: securityPlugin,
   tsBaseRules,
   sonarjs: sonarjsPlugin,
@@ -21,6 +25,13 @@ export default defineConfig([
   globalIgnores(['dist', 'playwright-report', 'coverage']),
   // Apply unicorn's complete rule set (modern JS preferences + more)
   unicorn.configs.all,
+  {
+    rules: {
+      ...unicornPreferenceRules,
+      // Iterator.concat is absent from Node 24 and the project's ES2024 TypeScript typings.
+      'unicorn/prefer-iterator-concat': 'off',
+    },
+  },
   {
     files: ['**/*.{ts,tsx}'],
     extends: [
@@ -44,16 +55,10 @@ export default defineConfig([
     },
     rules: {
       ...tsBaseRules,
+      ...crossRuntimeUnicornPreferenceRules,
       // TypeScript's compiler enforces this check; the base ESLint rule is disabled
       // as recommended by https://eslint.org/docs/latest/rules/no-unreachable#handled_by_typescript
       'no-unreachable': 'off',
-      // unicorn rules customization for frontend
-      'unicorn/no-array-for-each': 'off',
-      'unicorn/catch-error-name': 'error',
-      'unicorn/no-null': 'off',
-      'unicorn/prevent-abbreviations': 'warn',
-      'unicorn/no-keyword-prefix': 'off',
-      'unicorn/filename-case': 'off',
       // Disabled by explicit user authorisation: this rule produces hideous workarounds
       // that are no better, and can be worse, than the flagged access. Frontend security
       // relies on sanitising and validating inputs at the relevant boundaries instead.
@@ -70,15 +75,6 @@ export default defineConfig([
           message: 'Use the frontend logger module as the only browser console emission boundary.',
         },
       ],
-    },
-  },
-  {
-    // Playwright CSS-loader shims. `e2e` is the standard Playwright abbreviation,
-    // so the filename finding is a false positive; keep in-file abbreviation
-    // checks and silence the filename check only.
-    files: ['e2e-css-loader.mjs', 'e2e-css-loader-bootstrap.mjs'],
-    rules: {
-      'unicorn/prevent-abbreviations': ['warn', { checkFilenames: false }],
     },
   },
   {
@@ -104,6 +100,25 @@ export default defineConfig([
     },
   },
   {
+    files: ['src/**/*.spec.{ts,tsx}', 'src/test/**', 'e2e-tests/**'],
+    rules: {
+      // Fresh fixtures and mocks are intentionally reassigned by test setup and reset hooks.
+      'unicorn/no-top-level-assignment-in-function': 'off',
+    },
+  },
+  {
+    files: [
+      'eslint.config.js',
+      'playwright.config.ts',
+      'vite.config.ts',
+      'src/test/taskHeatmapPageMocks.ts',
+    ],
+    rules: {
+      // Tool configs are evaluated at load time; shared Vitest mocks must register before imports.
+      'unicorn/no-top-level-side-effects': 'off',
+    },
+  },
+  {
     // This file is the canonical TS-side mapping of --app-spacing-* CSS tokens
     // (see src/frontend/src/theme/spacing.ts). Every export is a named constant
     // whose literal value IS the documented purpose of the module; extracting
@@ -118,6 +133,20 @@ export default defineConfig([
     rules: {
       'no-console': 'off',
       'no-restricted-properties': 'off',
+    },
+  },
+  {
+    files: ['src/features/taskHeatmap/TaskPreviewCard.tsx'],
+    rules: {
+      // Preserve the reasoning fallback for empty strings; destructuring defaults replace undefined only.
+      'unicorn/prefer-default-parameters': 'off',
+    },
+  },
+  {
+    files: ['src/services/apiService.ts'],
+    rules: {
+      // FIFO head removal is clearer with shift(); splice conflicts with no-unnecessary-splice.
+      'unicorn/no-array-front-mutation': 'off',
     },
   },
   {
@@ -208,7 +237,6 @@ export default defineConfig([
           ? tsBaseRules['@typescript-eslint/no-magic-numbers'].slice(1)
           : []),
       ],
-      'unicorn/prevent-abbreviations': 'warn',
     },
   },
   {

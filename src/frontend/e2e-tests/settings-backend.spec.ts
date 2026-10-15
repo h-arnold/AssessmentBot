@@ -35,6 +35,7 @@ type BackendSettingsRuntimeScenario = Readonly<{
 
 const settingsMenuLabel = 'Settings';
 const settingsPageHeading = 'Settings';
+const MAX_KEYBOARD_FOCUS_STEPS = 20;
 const backendSettingsTabLabel = 'Backend settings';
 const backendSettingsPanelLabel = 'Backend settings panel';
 const loadingBackendSettingsLabel = 'Loading backend settings';
@@ -140,7 +141,7 @@ async function mockBackendSettingsRuntime(page: Page, scenario: BackendSettingsR
             error: {
               code,
               message,
-              retriable: false,
+              isRetriable: false,
             },
           });
         }
@@ -167,7 +168,7 @@ async function mockBackendSettingsRuntime(page: Page, scenario: BackendSettingsR
       };
 
       function handleStaticMethod(method, handler) {
-        if (method === 'getAuthorisationStatus') {
+        if (method === 'hasScriptAuthorisation') {
           sendSuccess(handler, true, 'req-auth-status');
           return true;
         }
@@ -306,25 +307,28 @@ async function releaseBackendSettingsSignal(page: Page, signal: string) {
 }
 
 /**
- * Edits the backend assessor batch size using keyboard navigation.
+ * Uses keyboard navigation to reach and edit a backend settings field.
  *
  * @param {Page} page The Playwright page under test.
- * @param {object} options Keyboard navigation and batch size options.
- * @param {number} options.tabCount Number of tabs needed to reach the assessor batch size field.
- * @param {string} options.batchSizeValue Batch size value to enter.
- * @returns {Promise<void>} A promise that resolves once both fields are edited.
+ * @param {object} options Keyboard navigation and field edit options.
+ * @param {string} options.fieldLabel Accessible label of the field to edit.
+ * @param {string} options.value Value to enter.
+ * @returns {Promise<void>} A promise that resolves once the field is edited.
  */
-async function editBackendAssessorBatchSizeViaKeyboard(
-  page: Page,
-  options: { tabCount: number; batchSizeValue: string }
-) {
-  for (let index = 0; index < options.tabCount; index += 1) {
+async function editFieldViaKeyboard(page: Page, options: { fieldLabel: string; value: string }) {
+  const field = getField(page, options.fieldLabel);
+  let hasReachedField = false;
+
+  for (let index = 0; index < MAX_KEYBOARD_FOCUS_STEPS; index += 1) {
     await page.keyboard.press('Tab');
+    hasReachedField = await field.evaluate((element) => element === document.activeElement);
+    if (hasReachedField) break;
   }
 
-  await expect(getField(page, backendAssessorBatchSizeLabel)).toBeFocused();
+  expect(hasReachedField).toBe(true);
+  await expect(field).toBeFocused();
   await page.keyboard.press('Control+A');
-  await page.keyboard.type(options.batchSizeValue);
+  await page.keyboard.type(options.value);
 }
 
 test.describe('backend settings journey', () => {
@@ -398,14 +402,13 @@ test.describe('backend settings journey', () => {
     await page.keyboard.press('Tab');
     await expect(getField(page, apiKeyLabel)).toBeFocused();
 
-    await page.keyboard.press('Tab');
-    await expect(getField(page, backendUrlLabel)).toBeFocused();
-    await page.keyboard.press('Control+A');
-    await page.keyboard.type('https://backend-settings.example.com');
-
-    await editBackendAssessorBatchSizeViaKeyboard(page, {
-      tabCount: 1,
-      batchSizeValue: '45',
+    await editFieldViaKeyboard(page, {
+      fieldLabel: backendUrlLabel,
+      value: 'https://backend-settings.example.com',
+    });
+    await editFieldViaKeyboard(page, {
+      fieldLabel: backendAssessorBatchSizeLabel,
+      value: '45',
     });
 
     await page.getByRole('button', { name: saveButtonLabel }).click();
@@ -461,9 +464,9 @@ test.describe('backend settings journey', () => {
 
     await expect(page.getByText(storedApiKeyHelperCopy)).toBeVisible();
 
-    await editBackendAssessorBatchSizeViaKeyboard(page, {
-      tabCount: 4,
-      batchSizeValue: '45',
+    await editFieldViaKeyboard(page, {
+      fieldLabel: backendAssessorBatchSizeLabel,
+      value: '45',
     });
 
     await page.getByRole('button', { name: saveButtonLabel }).click();
@@ -508,9 +511,9 @@ test.describe('backend settings journey', () => {
 
     await expect(page.getByText(storedApiKeyHelperCopy)).toBeVisible();
 
-    await editBackendAssessorBatchSizeViaKeyboard(page, {
-      tabCount: 4,
-      batchSizeValue: '45',
+    await editFieldViaKeyboard(page, {
+      fieldLabel: backendAssessorBatchSizeLabel,
+      value: '45',
     });
 
     try {
@@ -551,9 +554,9 @@ test.describe('backend settings journey', () => {
     await page.goto('/');
     await openBackendSettings(page);
 
-    await editBackendAssessorBatchSizeViaKeyboard(page, {
-      tabCount: 4,
-      batchSizeValue: '46',
+    await editFieldViaKeyboard(page, {
+      fieldLabel: backendAssessorBatchSizeLabel,
+      value: '46',
     });
 
     await page.getByRole('button', { name: saveButtonLabel }).click();

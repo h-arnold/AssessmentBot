@@ -25,14 +25,14 @@
  * logic.  When `surfaceState.status === 'ready'`, it sorts
  * `classFull.assignments` via the shared {@link compareAssignmentUpdatedAtDesc}
  * comparator, takes the top 3, and calls
- * `queryClient.prefetchQuery(getAssignmentQueryOptions(...))` for each.
- * Prefetch rejections are logged (not silently swallowed) but never affect the
+ * `queryClient.query(getAssignmentQueryOptions(...))` for each.
+ * Query rejections are logged (not silently swallowed) but never affect the
  * page surface.  A `useRef<string | null>`
  * guard (`prefetchedClassIdReference`) persists across React StrictMode's
- * mount/unmount/remount cycle and prevents double-dispatch; `prefetchQuery`
- * idempotency provides a secondary safeguard against duplicate in-flight
- * requests. The guard resets on cross-class navigation (new `classId` differs
- * from the ref).
+ * mount/unmount/remount cycle and prevents double-dispatch; `query`'s
+ * keyed-cache in-flight deduplication provides a secondary safeguard against
+ * duplicate in-flight requests. The guard resets on cross-class navigation
+ * (new `classId` differs from the ref).
  *
  * @see SPEC_CLASS_PAGE.md — "useClassPageData — data orchestrator hook"
  */
@@ -55,7 +55,7 @@ import {
   computeQueryBlockingError,
   computeDatasetBlockingError,
   computeServiceError,
-  computeIsLoading,
+  isClassPageLoading,
 } from './useClassPageData.helpers';
 
 // ---------------------------------------------------------------------------
@@ -364,7 +364,7 @@ export function useClassPageData(classId: string): ClassPageData {
     // Loading check — if no blocking condition applies, check if any inputs
     // are still loading (including the pipeline itself)
     if (
-      computeIsLoading(classFullQuery.isPending, isDatasetReady, isDatasetFailed, adapterResult)
+      isClassPageLoading(classFullQuery.isPending, isDatasetReady, isDatasetFailed, adapterResult)
     ) {
       return { status: 'loading' };
     }
@@ -394,22 +394,22 @@ export function useClassPageData(classId: string): ClassPageData {
   //
   // Fires once when `surfaceState.status === 'ready'` and `classFull` is
   // non-null.  Sorts `classFull.assignments` using the shared comparator,
-  // takes the first 3 (or fewer), and calls `queryClient.prefetchQuery`
+  // takes the first 3 (or fewer), and calls `queryClient.query`
   // for each.  A `useRef` guard ensures exactly one dispatch per classId;
   // navigating to a different class resets the guard (the new `classId`
   // differs from the ref).  This is intentionally fire-and-forget:
-  // prefetch rejections are logged but never affect the page surface.
+  // query rejections are logged but never affect the page surface.
   // -----------------------------------------------------------------------
 
   const queryClient = useQueryClient();
   const prefetchedClassIdReference = useRef<string | null>(null);
 
   useEffect(() => {
-    if (surfaceState.status !== 'ready' || classFull === null) {
-      return;
-    }
-
-    if (prefetchedClassIdReference.current === classId) {
+    if (
+      surfaceState.status !== 'ready' ||
+      classFull === null ||
+      prefetchedClassIdReference.current === classId
+    ) {
       return;
     }
 
@@ -425,7 +425,7 @@ export function useClassPageData(classId: string): ClassPageData {
     }
 
     // Set the guard only after the invariant check succeeds, so a thrown violation
-    // (or a rejected prefetch) does not permanently disable prefetch for this classId.
+    // does not permanently disable prefetch for this classId.
     prefetchedClassIdReference.current = classId;
 
     const sorted = (classFull.assignments as Array<{ assignmentId: string; updatedAt: string }>)
@@ -434,7 +434,7 @@ export function useClassPageData(classId: string): ClassPageData {
 
     for (const assignment of sorted) {
       void queryClient
-        .prefetchQuery(getAssignmentQueryOptions(classFull.classId, assignment.assignmentId))
+        .query(getAssignmentQueryOptions(classFull.classId, assignment.assignmentId))
         .catch((error) => {
           logFrontendError('useClassPageData.prefetch', error, {
             courseId: classFull.classId,

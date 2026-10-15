@@ -87,9 +87,7 @@ describe('useDebounce', () => {
     const argumentTestDelay = 100;
 
     it('works with void callbacks without arguments', () => {
-      const callback = vi.fn(() => {
-        return 'no-args';
-      });
+      const callback = vi.fn(() => 'no-args');
       const { result } = renderHook(() => useDebounce(callback, argumentTestDelay));
 
       result.current();
@@ -99,9 +97,7 @@ describe('useDebounce', () => {
     });
 
     it('handles rapid calls with no arguments', () => {
-      const callback = vi.fn(() => {
-        return 'rapid-calls';
-      });
+      const callback = vi.fn(() => 'rapid-calls');
       const { result } = renderHook(() => useDebounce(callback, argumentTestDelay));
 
       result.current();

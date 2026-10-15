@@ -47,9 +47,6 @@ class DriveManagerFolderOperations {
     Validate.requireParams({ destinationFolderId }, 'shareFolder');
 
     const details = [];
-    let successCount = 0;
-    let failCount = 0;
-
     if (!emails || emails.size === 0) {
       const noEmailsMessage = 'No emails provided; nothing to share.';
       ABLogger.getInstance().info(noEmailsMessage);
@@ -59,6 +56,9 @@ class DriveManagerFolderOperations {
         details,
       };
     }
+
+    let successCount = 0;
+    let failCount = 0;
 
     // Validate the folder exists (fail fast).
     this._folderValidator.validateFolderExists(destinationFolderId);

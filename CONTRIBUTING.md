@@ -49,9 +49,9 @@ npm run test:backend:coverage   # with coverage
 ### Frontend
 
 ```bash
-npm run frontend:test
-npm run frontend:test:coverage
-npm run frontend:test:e2e   # Playwright end-to-end tests
+npm run test:frontend
+npm run test:frontend:coverage
+npm run test:frontend:e2e   # Playwright end-to-end tests
 ```
 
 ### Builder
@@ -68,16 +68,21 @@ npm run test:builder:coverage
 Style and most code quality rules are enforced automatically by ESLint and CI. Run checks locally before pushing:
 
 ```bash
-npm run lint              # backend GAS JavaScript
-npm run frontend:lint     # frontend TypeScript/React
-npm run builder:lint      # builder TypeScript
+npm run lint:backend      # backend GAS JavaScript
+npm run lint:frontend     # frontend TypeScript/React
+npm run lint:builder      # builder TypeScript
+npm run lint:synthetic    # synthetic test-data scripts
 ```
+
+Run every scope at once with `npm run lint`.
+
+These commands pass `--fix` and rewrite files. To check without modifying anything, use the matching `:check` variants (`npm run lint:backend:check`, `npm run lint:frontend:check`, `npm run lint:builder:check`, `npm run lint:synthetic:check`) or `npm run lint:check` for every scope at once.
 
 TypeScript compile checks:
 
 ```bash
-npm exec tsc -- -b src/frontend/tsconfig.json
-npm run build
+npm run build:frontend    # frontend TypeScript build and Vite bundle
+npm run builder:compile   # builder TypeScript compile
 ```
 
 The backend CI job uses `npm run lint:backend:errors-only`. This intentionally allows the
@@ -162,7 +167,7 @@ If a class has no `fromJSON()` method and you need constructor behaviour, mock t
 
 ## Pre-Submission Checklist
 
-- [ ] All relevant lint checks pass (`npm run lint:backend`, `npm run lint:frontend`, `npm run lint:builder`)
+- [ ] All relevant lint checks pass (`npm run lint:check` runs every scope without modifying files)
 - [ ] TypeScript compiles cleanly (frontend and builder)
 - [ ] Tests pass and new logic has test coverage
 - [ ] No `console.*` calls introduced
@@ -187,7 +192,7 @@ If a class has no `fromJSON()` method and you need constructor behaviour, mock t
 
 ## Git Hooks (Husky)
 
-`npm install` installs a `pre-commit` hook that runs `npm run lint` automatically. Node.js v18 or later is required.
+`npm install` installs a `pre-commit` hook that formats and lints staged files (Prettier, then ESLint with the per-component config) and runs the builder TypeScript compile check. Node.js v18 or later is required.
 
 To reinstall hooks manually:
 

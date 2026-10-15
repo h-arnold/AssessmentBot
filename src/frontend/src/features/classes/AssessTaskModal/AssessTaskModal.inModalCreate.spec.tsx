@@ -45,42 +45,56 @@ const {
   getCohortsMock,
   getYearGroupsMock,
   findMatchingDefinitionMock,
-} = vi.hoisted(() => ({
-  getGoogleClassroomAssignmentsMock: vi.fn(),
-  startAssessmentRunMock: vi.fn(),
-  upsertAssignmentDefinitionMock: vi.fn(),
-  getAssignmentDefinitionMock: vi.fn(),
-  getAssignmentTopicsMock: vi.fn(),
-  getCohortsMock: vi.fn(),
-  getYearGroupsMock: vi.fn(),
-  findMatchingDefinitionMock: vi.fn(),
-}));
+} = vi.hoisted(() => {
+  return {
+    getGoogleClassroomAssignmentsMock: vi.fn(),
+    startAssessmentRunMock: vi.fn(),
+    upsertAssignmentDefinitionMock: vi.fn(),
+    getAssignmentDefinitionMock: vi.fn(),
+    getAssignmentTopicsMock: vi.fn(),
+    getCohortsMock: vi.fn(),
+    getYearGroupsMock: vi.fn(),
+    findMatchingDefinitionMock: vi.fn(),
+  };
+});
 
-vi.mock('../../../services/googleClassrooms/googleClassroomAssignmentsService', () => ({
-  getGoogleClassroomAssignments: getGoogleClassroomAssignmentsMock,
-}));
+vi.mock('../../../services/googleClassrooms/googleClassroomAssignmentsService', () => {
+  return {
+    getGoogleClassroomAssignments: getGoogleClassroomAssignmentsMock,
+  };
+});
 
-vi.mock('../../../services/assignmentAssessment/assignmentAssessmentService', () => ({
-  startAssessmentRun: startAssessmentRunMock,
-}));
+vi.mock('../../../services/assignmentAssessment/assignmentAssessmentService', () => {
+  return {
+    startAssessmentRun: startAssessmentRunMock,
+  };
+});
 
-vi.mock('../../../services/assignmentDefinition/assignmentDefinitionService', () => ({
-  upsertAssignmentDefinition: upsertAssignmentDefinitionMock,
-  getAssignmentDefinition: getAssignmentDefinitionMock,
-}));
+vi.mock('../../../services/assignmentDefinition/assignmentDefinitionService', () => {
+  return {
+    upsertAssignmentDefinition: upsertAssignmentDefinitionMock,
+    getAssignmentDefinition: getAssignmentDefinitionMock,
+  };
+});
 
-vi.mock('../../../services/assignmentDefinition/assignmentTopicsService', () => ({
-  getAssignmentTopics: getAssignmentTopicsMock,
-}));
+vi.mock('../../../services/assignmentDefinition/assignmentTopicsService', () => {
+  return {
+    getAssignmentTopics: getAssignmentTopicsMock,
+  };
+});
 
-vi.mock('../../../services/referenceData/referenceDataService', () => ({
-  getCohorts: getCohortsMock,
-  getYearGroups: getYearGroupsMock,
-}));
+vi.mock('../../../services/referenceData/referenceDataService', () => {
+  return {
+    getCohorts: getCohortsMock,
+    getYearGroups: getYearGroupsMock,
+  };
+});
 
-vi.mock('./matchDefinitionForAssignment', () => ({
-  findMatchingDefinition: findMatchingDefinitionMock,
-}));
+vi.mock('./matchDefinitionForAssignment', () => {
+  return {
+    findMatchingDefinition: findMatchingDefinitionMock,
+  };
+});
 
 /**
  * Approved shared modal-width exception token applied while wizard content is active.

@@ -1,25 +1,28 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { renderHook } from '@testing-library/react';
-import { QueryClient, QueryClientProvider, type UseQueryResult } from '@tanstack/react-query';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createElement, StrictMode, type ReactNode } from 'react';
 import { z } from 'zod';
 import { DataAnalysisResponseSchema } from '../../services/dataAnalysis/dataAnalysis.zod';
 import { createHeatmapClassFull } from '../../test/dataAnalysis/heatmapFixtures';
 import { createMalformedAnalyserOutput } from '../../test/dataAnalysis/diagnosticsFixtures';
-import { useClassPageData } from './useClassPageData';
 import type { ClassFull } from '../../services/googleClassrooms/classDetail/classDetailService.zod';
+import { useClassPageData } from './useClassPageData';
+import { createReadyClassQueryResult } from '../../test/classPage/useClassPageDataTestFixtures';
 
 const CLASS_ID = 'class-abc-123';
 const STRICT_MODE_DOUBLED_CALL_COUNT = 2;
 const DISTINCT_ERROR_TOTAL_LOG_COUNT = 2;
 
 const { mockUseQuery, mockUsePageDataset, mockGetABClassQueryOptions, mockAnalyse } = vi.hoisted(
-  () => ({
-    mockUseQuery: vi.fn(),
-    mockUsePageDataset: vi.fn(),
-    mockGetABClassQueryOptions: vi.fn(),
-    mockAnalyse: vi.fn(),
-  })
+  () => {
+    return {
+      mockUseQuery: vi.fn(),
+      mockUsePageDataset: vi.fn(),
+      mockGetABClassQueryOptions: vi.fn(),
+      mockAnalyse: vi.fn(),
+    };
+  }
 );
 
 vi.mock('@tanstack/react-query', async (importOriginal) => {
@@ -46,35 +49,18 @@ vi.mock('../../query/sharedQueries', async (importOriginal) => {
   };
 });
 
-vi.mock('../../services/dataAnalysis/dataAnalysisService', () => ({
-  DataAnalysisService: vi.fn().mockImplementation(function () {
-    return { analyse: mockAnalyse };
-  }),
-}));
+vi.mock('../../services/dataAnalysis/dataAnalysisService', () => {
+  return {
+    DataAnalysisService: vi.fn().mockImplementation(function () {
+      return { analyse: mockAnalyse };
+    }),
+  };
+});
 
 afterEach(() => {
   vi.restoreAllMocks();
   vi.resetAllMocks();
 });
-
-/**
- * Build a ready class query result for the hook pipeline.
- *
- * @param {ClassFull} classFull - The class payload returned by the query.
- * @returns {UseQueryResult<ClassFull | null, Error>} A ready query result.
- */
-function createReadyClassQueryResult(
-  classFull: ClassFull
-): UseQueryResult<ClassFull | null, Error> {
-  return {
-    data: classFull,
-    isPending: false,
-    isError: false,
-    error: null,
-    isSuccess: true,
-    refetch: vi.fn(),
-  } as unknown as UseQueryResult<ClassFull | null, Error>;
-}
 
 /**
  * Parse the shared malformed analyser output into the error seen by consumers.
@@ -202,13 +188,15 @@ describe('useClassPageData analyser diagnostics ownership', () => {
       error: { type: 'analyserError', cause: distinctError },
     });
     expect(consoleErrorSpy).toHaveBeenCalledTimes(DISTINCT_ERROR_TOTAL_LOG_COUNT);
-    const loggedEntries = consoleErrorSpy.mock.calls.map(([context, rawEntry]) => ({
-      context,
-      entry: rawEntry as {
-        level?: unknown;
-        metadata?: Record<string, unknown>;
-      },
-    }));
+    const loggedEntries = consoleErrorSpy.mock.calls.map(([context, rawEntry]) => {
+      return {
+        context,
+        entry: rawEntry as {
+          level?: unknown;
+          metadata?: Record<string, unknown>;
+        },
+      };
+    });
     expect(loggedEntries.map(({ context }) => context)).toEqual([
       'useClassPageData.runAnalyserStep',
       'useClassPageData.runAnalyserStep',

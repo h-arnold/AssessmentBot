@@ -142,18 +142,18 @@ class ABClassController {
    * Returns idempotent deletion flags for each persistence layer.
    * @param {Object} parameters - Delete parameters object.
    * @param {string} parameters.classId - Classroom course identifier (required).
-   * @returns {{classId: string, fullClassDeleted: boolean, partialDeleted: boolean}} Deletion result for the full-class collection and the partial registry row.
+   * @returns {{classId: string, hasDeletedFullClass: boolean, hasDeletedClassPartial: boolean}} Deletion result for the full-class collection and the partial registry row.
    */
   deleteABClass(parameters) {
     Validate.requireParams({ classId: parameters?.classId }, 'deleteABClass');
 
     const classId = this._validation._validateDeleteClassId(parameters.classId, 'deleteABClass');
-    let fullClassDeleted = false;
-    let partialDeleted = false;
+    let hasDeletedFullClass = false;
+    let hasDeletedClassPartial = false;
 
     try {
       this._dbManager.getDb().dropCollection(classId);
-      fullClassDeleted = true;
+      hasDeletedFullClass = true;
     } catch (error) {
       if (!this._validation._isMissingCollectionError(error)) {
         throw error;
@@ -166,13 +166,13 @@ class ABClassController {
     if (existingPartial) {
       partialsCollection.deleteOne({ classId: classId });
       partialsCollection.save();
-      partialDeleted = true;
+      hasDeletedClassPartial = true;
     }
 
     return {
       classId,
-      fullClassDeleted,
-      partialDeleted,
+      hasDeletedFullClass,
+      hasDeletedClassPartial,
     };
   }
 

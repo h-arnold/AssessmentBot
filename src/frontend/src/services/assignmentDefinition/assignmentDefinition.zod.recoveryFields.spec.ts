@@ -90,12 +90,12 @@ describe('UpsertAssignmentDefinitionRequestSchema stale recovery fields', () => 
     const upsertRequestSchema = asParserSchema(schemas.UpsertAssignmentDefinitionRequestSchema);
 
     // The request schema stays strict after extension; unexpected keys must still fail.
-    expect(() =>
-      upsertRequestSchema.parse({
+    expect(() => {
+      return upsertRequestSchema.parse({
         ...recoveryBase,
         forceReparse: true,
         unexpectedField: 'should be rejected',
-      })
-    ).toThrow();
+      });
+    }).toThrow();
   });
 });

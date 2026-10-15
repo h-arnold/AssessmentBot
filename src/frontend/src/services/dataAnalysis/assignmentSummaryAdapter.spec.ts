@@ -121,22 +121,27 @@ describe('assignment summary adaptor', () => {
   it('bounds large task lists and tied highlights without losing evidence or changing the input', () => {
     const taskCount = 30;
     const summary = structuredClone(SUMMARY);
-    summary.tasks = Array.from({ length: taskCount }, (_, index) => ({
-      ...SUMMARY.tasks[0],
-      taskKey: `key-${index}`,
-      incompleteAcrossMostStudents: index > 0,
-      belowAccuracyThreshold: index > 0,
-      completedCount: index === 0 ? 1 : 0,
-      belowThresholdCount: index === 0 ? 0 : 1,
-      accuracyAverage: index === 0 ? ABOVE_THRESHOLD_ACCURACY : BELOW_THRESHOLD_ACCURACY,
-    }));
+    summary.tasks = Array.from({ length: taskCount }, (_, index) => {
+      return {
+        ...SUMMARY.tasks[0],
+        taskKey: `key-${index}`,
+        incompleteAcrossMostStudents: index > 0,
+        belowAccuracyThreshold: index > 0,
+        completedCount: index === 0 ? 1 : 0,
+        belowThresholdCount: index === 0 ? 0 : 1,
+        accuracyAverage: index === 0 ? ABOVE_THRESHOLD_ACCURACY : BELOW_THRESHOLD_ACCURACY,
+      };
+    });
     summary.mostAccurateTaskKeys = [summary.tasks[0].taskKey];
     summary.leastAccurateTaskKeys = summary.tasks.slice(1).map((task) => task.taskKey);
-    const columns = summary.tasks.map((task, index) => ({
-      ...COLUMNS[0],
-      taskKey: task.taskKey,
-      taskTitle: `Task ${index + 1}`,
-    }));
+    const lastTaskTitle = 'Task 30';
+    const columns = summary.tasks.map((task, index) => {
+      return {
+        ...COLUMNS[0],
+        taskKey: task.taskKey,
+        taskTitle: `Task ${index + 1}`,
+      };
+    });
     const original = structuredClone(summary);
     const view = adaptAssignmentSummary(summary, columns);
     for (const card of [view.completeness, view.accuracy]) {
@@ -146,11 +151,11 @@ describe('assignment summary adaptor', () => {
       expect(card.canExpand).toBe(true);
       expect(card.showAllLabel).toBe('Show all 30 tasks');
       const boundedHighlight = card.highlights.find((highlight) =>
-        highlight.value.includes('Task 30')
+        highlight.value.includes(lastTaskTitle)
       )!;
       expect(boundedHighlight.previewValue).toContain('more)');
-      expect(boundedHighlight.previewValue).not.toContain('Task 30');
-      expect(boundedHighlight.value).toContain('Task 30');
+      expect(boundedHighlight.previewValue).not.toContain(lastTaskTitle);
+      expect(boundedHighlight.value).toContain(lastTaskTitle);
     }
     expect(summary).toEqual(original);
   });

@@ -24,7 +24,7 @@ import {
   type TaskRow,
 } from './assignmentWizardFormState';
 import {
-  deriveCanReparseDocuments,
+  canWizardReparseDocuments,
   deriveWizardCloseAction,
   isWizardPrimaryActionDisabled,
 } from './assignmentWizardDismissal';
@@ -91,8 +91,8 @@ export type UseAssignmentDefinitionWizardReturn = Readonly<{
   handleKeepEditing: () => void;
   handleTaskWeightingChange: (taskId: string, value: number | null) => void;
   handlePrimaryAction: () => void;
-  onTopicEntityCreated: (entity: { key: string; name: string; yearGroupKeys?: string[] }) => void;
-  onYearGroupEntityCreated: (entity: { key: string; name: string }) => void;
+  onTopicEntityCreated: (entity: { key: string }) => void;
+  onYearGroupEntityCreated: (entity: { key: string }) => void;
 }>;
 
 /**
@@ -242,19 +242,17 @@ export function useAssignmentDefinitionWizard(
       if (!effectiveDefinition) {
         return;
       }
-      if (!isCreateMode || hasParsedTasks) {
-        const urls = buildDocumentUrlsFromDefinition(
-          effectiveDefinition as Record<string, unknown>
-        );
-        if (!urls) return;
+      if (isCreateMode && !hasParsedTasks) return;
 
-        const newDocumentChange = detectDocumentChange(
-          allValues,
-          urls,
-          documentChange.hasPendingChange
-        );
-        setDocumentChange(newDocumentChange);
-      }
+      const urls = buildDocumentUrlsFromDefinition(effectiveDefinition as Record<string, unknown>);
+      if (!urls) return;
+
+      const newDocumentChange = detectDocumentChange(
+        allValues,
+        urls,
+        documentChange.hasPendingChange
+      );
+      setDocumentChange(newDocumentChange);
     },
     [hasParsedTasks, isCreateMode, documentChange.hasPendingChange, getEffectiveDefinition]
   );
@@ -277,7 +275,7 @@ export function useAssignmentDefinitionWizard(
     setSubmitBlockingError,
   });
 
-  const canReparseDocuments = deriveCanReparseDocuments(
+  const canReparseDocuments = canWizardReparseDocuments(
     isCreateMode,
     definition !== undefined,
     isDefinitionError,
@@ -310,10 +308,12 @@ export function useAssignmentDefinitionWizard(
       referenceDocumentUrl: values.referenceDocumentUrl as string,
       templateDocumentUrl: values.templateDocumentUrl as string,
       assignmentWeighting: coerceAssignmentWeighting(values.assignmentWeighting),
-      taskWeightings: taskRows.map((row) => ({
-        taskId: row.taskId,
-        taskWeighting: row.taskWeighting,
-      })),
+      taskWeightings: taskRows.map((row) => {
+        return {
+          taskId: row.taskId,
+          taskWeighting: row.taskWeighting,
+        };
+      }),
     };
     if (effectiveKey) {
       request.definitionKey = effectiveKey;
@@ -421,11 +421,11 @@ export function useAssignmentDefinitionWizard(
   const handleKeepEditing = useCallback(() => setShowDiscardConfirm(false), []);
 
   const handleTaskWeightingChange = useCallback((taskId: string, value: number | null) => {
-    setTaskRows((previous) =>
-      previous.map((row) =>
+    setTaskRows((previous) => {
+      return previous.map((row) =>
         row.taskId === taskId ? { ...row, taskWeighting: value ?? DEFAULT_WEIGHTING_VALUE } : row
-      )
-    );
+      );
+    });
   }, []);
 
   const handlePrimaryAction = useCallback(() => {
@@ -434,7 +434,7 @@ export function useAssignmentDefinitionWizard(
   }, [isCreateMode, hasParsedTasks, handleParseAndContinue, handleSave]);
 
   const onTopicEntityCreated = useCallback(
-    (entity: { key: string; name: string; yearGroupKeys?: string[] }) => {
+    (entity: { key: string }) => {
       setSelectedTopicKey(entity.key);
       // Invalidate assignmentTopics query so the dropdown refreshes
       queryClient.invalidateQueries({ queryKey: queryKeys.assignmentTopics() });
@@ -443,7 +443,7 @@ export function useAssignmentDefinitionWizard(
   );
 
   const onYearGroupEntityCreated = useCallback(
-    (entity: { key: string; name: string }) => {
+    (entity: { key: string }) => {
       setSelectedYearGroupKey(entity.key);
       // Invalidate yearGroups query so the dropdown refreshes
       queryClient.invalidateQueries({ queryKey: queryKeys.yearGroups() });

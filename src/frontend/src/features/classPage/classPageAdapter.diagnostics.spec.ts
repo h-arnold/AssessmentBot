@@ -31,7 +31,6 @@ describe('class page recent-assignment diagnostics', () => {
             assignmentId: 'a-no-submissions',
             updatedAt: DEFAULT_TS,
             definitionKey: DEFINITION_KEY,
-            taskIds: ['task-1'],
           }),
         ],
       }),
@@ -56,7 +55,6 @@ describe('class page recent-assignment diagnostics', () => {
         assignmentId,
         updatedAt: DEFAULT_TS,
         definitionKey: DEFINITION_KEY,
-        taskIds: ['task-1'],
       }),
       submissions: [
         createSubmission('s-1', 'Alice', assignmentId, {

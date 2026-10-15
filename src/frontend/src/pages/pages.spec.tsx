@@ -20,38 +20,50 @@ const settingsPageAccessContext: ApplicationAccessContextValue = {
 };
 
 const { getABClassPartialsMock, getCohortsMock, getGoogleClassroomsMock, getYearGroupsMock } = vi.hoisted(
-  () => ({
-    getABClassPartialsMock: vi.fn(),
-    getCohortsMock: vi.fn(),
-    getGoogleClassroomsMock: vi.fn(),
-    getYearGroupsMock: vi.fn(),
-  })
+  () => {
+    return {
+      getABClassPartialsMock: vi.fn(),
+      getCohortsMock: vi.fn(),
+      getGoogleClassroomsMock: vi.fn(),
+      getYearGroupsMock: vi.fn(),
+    };
+  }
 );
 
-vi.mock('../features/settings/backend/BackendSettingsPanel', () => ({
-  BackendSettingsPanel() {
-    return <div>Backend settings feature entry</div>;
-  },
-}));
+vi.mock('../features/settings/backend/BackendSettingsPanel', () => {
+  return {
+    BackendSettingsPanel() {
+      return <div>Backend settings feature entry</div>;
+    },
+  };
+});
 
-vi.mock('../services/googleClassrooms/classPartialsService', () => ({
-  getABClassPartials: getABClassPartialsMock,
-}));
+vi.mock('../services/googleClassrooms/classPartialsService', () => {
+  return {
+    getABClassPartials: getABClassPartialsMock,
+  };
+});
 
-vi.mock('../services/googleClassrooms/googleClassroomsService', () => ({
-  getGoogleClassrooms: getGoogleClassroomsMock,
-}));
+vi.mock('../services/googleClassrooms/googleClassroomsService', () => {
+  return {
+    getGoogleClassrooms: getGoogleClassroomsMock,
+  };
+});
 
-vi.mock('../services/referenceData/referenceDataService', () => ({
-  getCohorts: getCohortsMock,
-  getYearGroups: getYearGroupsMock,
-}));
+vi.mock('../services/referenceData/referenceDataService', () => {
+  return {
+    getCohorts: getCohortsMock,
+    getYearGroups: getYearGroupsMock,
+  };
+});
 
-vi.mock('../features/taskHeatmap/HeatmapBuilderSurface', () => ({
-  HeatmapBuilderSurface() {
-    return <div data-testid="builder-surface-stub">Builder surface stub</div>;
-  },
-}));
+vi.mock('../features/taskHeatmap/HeatmapBuilderSurface', () => {
+  return {
+    HeatmapBuilderSurface() {
+      return <div data-testid="builder-surface-stub">Builder surface stub</div>;
+    },
+  };
+});
 
 const navigationPageExpectations = [
   { key: 'dashboard', ...pageContent.dashboard },

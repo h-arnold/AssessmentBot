@@ -3,13 +3,17 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ApiTransportError } from '../../../errors/apiTransportError';
 import { createAppQueryClient } from '../../../query/queryClient';
 
-const { getABClassPartialsMock } = vi.hoisted(() => ({
-  getABClassPartialsMock: vi.fn(),
-}));
+const { getABClassPartialsMock } = vi.hoisted(() => {
+  return {
+    getABClassPartialsMock: vi.fn(),
+  };
+});
 
-vi.mock('../../../services/googleClassrooms/classPartialsService', () => ({
-  getABClassPartials: getABClassPartialsMock,
-}));
+vi.mock('../../../services/googleClassrooms/classPartialsService', () => {
+  return {
+    getABClassPartials: getABClassPartialsMock,
+  };
+});
 
 const initialAndRefreshCallCount = 2;
 
@@ -18,7 +22,7 @@ type QueryInvalidationModule = Readonly<{
     refreshError: Readonly<{
       code?: string;
       requestId?: string;
-      retriable?: boolean;
+      isRetriable?: boolean;
     }>
   ) => string;
   runMutationWithRequiredClassPartialsRefresh: <TResult>(
@@ -38,7 +42,7 @@ type QueryInvalidationModule = Readonly<{
         refreshError: Readonly<{
           code?: string;
           requestId?: string;
-          retriable?: boolean;
+          isRetriable?: boolean;
         }>;
         refreshStatus: 'failed';
       }>
@@ -119,7 +123,7 @@ describe('query invalidation orchestration', () => {
           error: {
             code: 'RATE_LIMITED',
             message: 'Too many requests.',
-            retriable: true,
+            isRetriable: true,
           },
         })
       );
@@ -140,7 +144,7 @@ describe('query invalidation orchestration', () => {
       refreshError: {
         code: 'RATE_LIMITED',
         requestId: 'request-123',
-        retriable: true,
+        isRetriable: true,
       },
       refreshStatus: 'failed',
     });
@@ -158,7 +162,7 @@ describe('query invalidation orchestration', () => {
       mapRequiredClassPartialsRefreshFailureToUserMessage({
         code: 'RATE_LIMITED',
         requestId: 'request-123',
-        retriable: true,
+        isRetriable: true,
       })
     ).toBe('The classes are busy updating right now. Please try again shortly.');
   });
@@ -171,7 +175,7 @@ describe('query invalidation orchestration', () => {
       mapRequiredClassPartialsRefreshFailureToUserMessage({
         code: 'INVALID_REQUEST',
         requestId: 'request-456',
-        retriable: false,
+        isRetriable: false,
       })
     ).toBe('Unable to refresh the classes right now. Please review the selection and try again.');
   });
@@ -184,7 +188,7 @@ describe('query invalidation orchestration', () => {
       mapRequiredClassPartialsRefreshFailureToUserMessage({
         code: 'INTERNAL_ERROR',
         requestId: 'request-456',
-        retriable: false,
+        isRetriable: false,
       })
     ).toBe('The classes could not be refreshed right now. Please reload the page and try again.');
   });

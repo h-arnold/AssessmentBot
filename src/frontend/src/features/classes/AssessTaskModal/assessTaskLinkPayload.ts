@@ -1,4 +1,4 @@
-import { caseInsensitiveTrimmedEquals } from './stringComparison';
+import { areTrimmedStringsEqualIgnoringCase } from './stringComparison';
 
 /**
  * Deduplicates and adds a new title to the alternateTitles array using
@@ -17,7 +17,9 @@ export function buildDeduplicatedAlternateTitles(
   const existing = existingAlternateTitles ?? [];
   const trimmedTitle = newTitle.trim();
   if (trimmedTitle.length === 0) return existing;
-  const isAlreadyPresent = existing.some((t) => caseInsensitiveTrimmedEquals(t, trimmedTitle));
+  const isAlreadyPresent = existing.some((t) =>
+    areTrimmedStringsEqualIgnoringCase(t, trimmedTitle)
+  );
   return isAlreadyPresent ? existing : [...existing, trimmedTitle];
 }
 
@@ -41,6 +43,8 @@ export function buildDeduplicatedAlternateTopics(
   }
   const trimmedTopic = newTopic.trim();
   if (trimmedTopic.length === 0) return existing;
-  const isAlreadyPresent = existing.some((t) => caseInsensitiveTrimmedEquals(t, trimmedTopic));
+  const isAlreadyPresent = existing.some((t) =>
+    areTrimmedStringsEqualIgnoringCase(t, trimmedTopic)
+  );
   return isAlreadyPresent ? existing : [...existing, trimmedTopic];
 }

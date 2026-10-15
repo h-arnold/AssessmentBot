@@ -11,9 +11,11 @@ import {
 const classesManagementStateMock = vi.fn();
 const unavailableCellCount = 4;
 
-vi.mock('../useClassesManagement', () => ({
-  useClassesManagement: classesManagementStateMock,
-}));
+vi.mock('../useClassesManagement', () => {
+  return {
+    useClassesManagement: classesManagementStateMock,
+  };
+});
 
 /**
  * Renders a component wrapped in a fresh QueryClientProvider for tests that
@@ -31,7 +33,7 @@ function renderWithQueryClient(ui: React.ReactElement) {
  * Installs a minimal google script run apiHandler harness for lazy reference-data consumers.
  */
 function installGoogleScriptRunHarness() {
-  (globalThis as { google?: unknown }).google = {
+  vi.stubGlobal('google', {
     script: {
       run: createGoogleScriptRunApiHandlerMock((request, callbacks) => {
         const method = (request as { method?: string }).method ?? 'unknown';
@@ -43,14 +45,14 @@ function installGoogleScriptRunHarness() {
         });
       }),
     },
-  };
+  });
 }
 
 /**
  * Removes the temporary google script run apiHandler harness after each test.
  */
 function clearGoogleScriptRunHarness() {
-  delete (globalThis as { google?: unknown }).google;
+  vi.unstubAllGlobals();
 }
 
 beforeEach(() => {

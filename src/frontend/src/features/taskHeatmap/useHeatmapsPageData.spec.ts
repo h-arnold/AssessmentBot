@@ -15,6 +15,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { act, renderHook } from '@testing-library/react';
 import type { QueryClient } from '@tanstack/react-query';
+import type { StartupWarmupDatasetKey } from '../../query/sharedQueries';
 import type { ClassFull } from '../../services/googleClassrooms/classDetail/classDetailService.zod';
 import { useHeatmapsPageData } from './useHeatmapsPageData';
 import type { HeatmapsPageError } from './useHeatmapsPageData';
@@ -32,6 +33,7 @@ import {
   createHeatmapMergedResult as createMergedResult,
   createTestQueryClient,
 } from '../../test/dataAnalysis/heatmapFixtures';
+import { createReadyHeatmapsDatasetResult } from '../../test/taskHeatmap/hookMockFactories';
 
 // ===========================================================================
 // Mock setup (hoisted)
@@ -46,16 +48,18 @@ const {
   mockAnalyse,
   mockAdaptMergedHeatmap,
   mockAssembleMergedPreviewData,
-} = vi.hoisted(() => ({
-  mockUseQuery: vi.fn(),
-  mockUseQueries: vi.fn(),
-  mockUsePageDataset: vi.fn(),
-  mockGetABClassQueryOptions: vi.fn(),
-  mockGetAssignmentQueryOptions: vi.fn(),
-  mockAnalyse: vi.fn(),
-  mockAdaptMergedHeatmap: vi.fn(),
-  mockAssembleMergedPreviewData: vi.fn(),
-}));
+} = vi.hoisted(() => {
+  return {
+    mockUseQuery: vi.fn(),
+    mockUseQueries: vi.fn(),
+    mockUsePageDataset: vi.fn(),
+    mockGetABClassQueryOptions: vi.fn(),
+    mockGetAssignmentQueryOptions: vi.fn(),
+    mockAnalyse: vi.fn(),
+    mockAdaptMergedHeatmap: vi.fn(),
+    mockAssembleMergedPreviewData: vi.fn(),
+  };
+});
 
 vi.mock('@tanstack/react-query', async (importOriginal) => {
   const actual = (await importOriginal()) as Record<string, unknown>;
@@ -117,11 +121,13 @@ vi.mock('../../query/sharedQueries', async (importOriginal) => {
   };
 });
 
-vi.mock('../../services/dataAnalysis/dataAnalysisService', () => ({
-  DataAnalysisService: vi.fn().mockImplementation(function () {
-    return { analyse: mockAnalyse };
-  }),
-}));
+vi.mock('../../services/dataAnalysis/dataAnalysisService', () => {
+  return {
+    DataAnalysisService: vi.fn().mockImplementation(function () {
+      return { analyse: mockAnalyse };
+    }),
+  };
+});
 
 vi.mock('../../services/dataAnalysis/heatmapAdapter.merged', async (importOriginal) => {
   const actual = (await importOriginal()) as Record<string, unknown>;
@@ -131,9 +137,11 @@ vi.mock('../../services/dataAnalysis/heatmapAdapter.merged', async (importOrigin
   };
 });
 
-vi.mock('./assembleMergedPreviewData', () => ({
-  assembleMergedPreviewData: mockAssembleMergedPreviewData,
-}));
+vi.mock('./assembleMergedPreviewData', () => {
+  return {
+    assembleMergedPreviewData: mockAssembleMergedPreviewData,
+  };
+});
 
 // ===========================================================================
 // Common test setup
@@ -165,18 +173,9 @@ afterEach(() => {
  * @returns {void}
  */
 function mockWarmupDatasetsReady(): void {
-  mockUsePageDataset.mockImplementation((datasetKey: string) => {
-    if (datasetKey === 'classPartials') {
-      return {
-        query: createMockQueryResult<unknown>({ data: createClassPartials() }),
-        datasetState: createDatasetState(),
-      };
-    }
-    return {
-      query: createMockQueryResult<unknown>({ data: createAssignmentDefinitionPartials() }),
-      datasetState: createDatasetState(),
-    };
-  });
+  mockUsePageDataset.mockImplementation((datasetKey: StartupWarmupDatasetKey) =>
+    createReadyHeatmapsDatasetResult(datasetKey)
+  );
 }
 
 // ===========================================================================
@@ -257,7 +256,7 @@ describe('useHeatmapsPageData — class selection', () => {
 
 describe('useHeatmapsPageData — blocking precedence', () => {
   it('classNotFound (query error) takes precedence over dataset failure when both coexist', () => {
-    mockUsePageDataset.mockImplementation((datasetKey: string) => {
+    mockUsePageDataset.mockImplementation((datasetKey: StartupWarmupDatasetKey) => {
       if (datasetKey === 'classPartials') {
         return {
           query: createMockQueryResult<unknown>({ data: createClassPartials() }),
@@ -291,7 +290,7 @@ describe('useHeatmapsPageData — blocking precedence', () => {
   });
 
   it('dataset failure takes precedence over analyser/service error when both coexist', () => {
-    mockUsePageDataset.mockImplementation((datasetKey: string) => {
+    mockUsePageDataset.mockImplementation((datasetKey: StartupWarmupDatasetKey) => {
       if (datasetKey === 'classPartials') {
         return {
           query: createMockQueryResult<unknown>({ data: createClassPartials() }),

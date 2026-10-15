@@ -20,6 +20,7 @@ const SECOND_TASK_ID = 'task-first-gap';
 const THIRD_TASK_ID = 'task-second-gap';
 const EXPECTED_WARNING_COUNT = 2;
 const EXPECTED_SCORE = 4;
+const STUDENT_ID = 'student-1';
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -34,11 +35,13 @@ afterEach(() => {
 function buildClassFull(studentIds: string[] = ['student-1']) {
   return createHeatmapClassFull({
     classId: CLASS_ID,
-    students: studentIds.map((id) => ({
-      id,
-      name: `Student ${id}`,
-      email: `${id}@test.com`,
-    })),
+    students: studentIds.map((id) => {
+      return {
+        id,
+        name: `Student ${id}`,
+        email: `${id}@test.com`,
+      };
+    }),
     assignments: [
       createAssignmentPartial({
         assignmentId: ASSIGNMENT_ID,
@@ -69,15 +72,13 @@ function buildDefinitionPartial(taskIds: string[]) {
 /**
  * Build one analyser metric for a task column.
  *
- * @param {string} taskId - The task identifier.
- * @param {string} studentId - The student identifier.
  * @returns {PerStudentTaskMetric} A computed task metric.
  */
-function buildTaskMetric(taskId: string, studentId = 'student-1'): PerStudentTaskMetric {
+function buildTaskMetric(): PerStudentTaskMetric {
   return {
     classId: CLASS_ID,
-    studentId,
-    taskKey: buildTaskKey(DEFINITION_KEY, taskId),
+    studentId: STUDENT_ID,
+    taskKey: buildTaskKey(DEFINITION_KEY, FIRST_TASK_ID),
     averageContribution: { effectiveWeight: 1, includedInAverage: true },
     completeness: createComputedMetricResult({ value: EXPECTED_SCORE }),
     accuracy: createComputedMetricResult({ value: 3 }),
@@ -113,21 +114,23 @@ describe('heatmap adapter diagnostics', () => {
   it('warns once per column with no metric for any student and keeps schema-valid notAttempted placeholders', () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const result = adaptMetricsToHeatmap(
-      buildAnalyserResult([buildTaskMetric(FIRST_TASK_ID)]),
+      buildAnalyserResult([buildTaskMetric()]),
       buildClassFull(),
       ASSIGNMENT_ID,
       [buildDefinitionPartial([FIRST_TASK_ID, SECOND_TASK_ID, THIRD_TASK_ID])]
     );
 
     expect(warnSpy).toHaveBeenCalledTimes(EXPECTED_WARNING_COUNT);
-    const warningEntries = warnSpy.mock.calls.map(([context, rawEntry]) => ({
-      context,
-      entry: rawEntry as {
-        errorMessage?: unknown;
-        level?: unknown;
-        metadata?: Record<string, unknown>;
-      },
-    }));
+    const warningEntries = warnSpy.mock.calls.map(([context, rawEntry]) => {
+      return {
+        context,
+        entry: rawEntry as {
+          errorMessage?: unknown;
+          level?: unknown;
+          metadata?: Record<string, unknown>;
+        },
+      };
+    });
     expect(warningEntries.map(({ context }) => context)).toEqual([
       expect.any(String),
       expect.any(String),
@@ -176,7 +179,7 @@ describe('heatmap adapter diagnostics', () => {
   it('does not warn for a genuine per-student gap when another student has the column metric', () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const result = adaptMetricsToHeatmap(
-      buildAnalyserResult([buildTaskMetric(FIRST_TASK_ID, 'student-1')]),
+      buildAnalyserResult([buildTaskMetric()]),
       buildClassFull(['student-1', 'student-2']),
       ASSIGNMENT_ID,
       [buildDefinitionPartial([FIRST_TASK_ID])]

@@ -13,25 +13,35 @@
 import { createElement } from 'react';
 import { vi } from 'vitest';
 
-const mocks = vi.hoisted(() => ({
-  mockGetAssignment: vi.fn(),
-  mockLogFrontendError: vi.fn(),
-  mockLogFrontendEvent: vi.fn(),
-  mockTaskHeatmapTable: vi.fn(() => createElement('div', { 'data-testid': 'task-heatmap-table' })),
-}));
+const mocks = vi.hoisted(() => {
+  return {
+    mockGetAssignment: vi.fn(),
+    mockLogFrontendError: vi.fn(),
+    mockLogFrontendEvent: vi.fn(),
+    mockTaskHeatmapTable: vi.fn(() =>
+      createElement('div', { 'data-testid': 'task-heatmap-table' })
+    ),
+  };
+});
 
-vi.mock('../services/assignmentAssessment/assignmentAssessmentService', () => ({
-  getAssignment: mocks.mockGetAssignment,
-}));
+vi.mock('../services/assignmentAssessment/assignmentAssessmentService', () => {
+  return {
+    getAssignment: mocks.mockGetAssignment,
+  };
+});
 
-vi.mock('../logging/frontendLogger', () => ({
-  logFrontendError: mocks.mockLogFrontendError,
-  logFrontendEvent: mocks.mockLogFrontendEvent,
-}));
+vi.mock('../logging/frontendLogger', () => {
+  return {
+    logFrontendError: mocks.mockLogFrontendError,
+    logFrontendEvent: mocks.mockLogFrontendEvent,
+  };
+});
 
-vi.mock('../features/taskHeatmap/TaskHeatmapTable', () => ({
-  TaskHeatmapTable: mocks.mockTaskHeatmapTable,
-}));
+vi.mock('../features/taskHeatmap/TaskHeatmapTable', () => {
+  return {
+    TaskHeatmapTable: mocks.mockTaskHeatmapTable,
+  };
+});
 
 /** Mock for `getAssignment` on the assignment assessment service. */
 export const mockGetAssignment = mocks.mockGetAssignment;

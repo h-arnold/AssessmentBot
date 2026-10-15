@@ -3,6 +3,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, renderHook } from '@testing-library/react';
 import type { QueryClient } from '@tanstack/react-query';
+import type { StartupWarmupDatasetKey } from '../../query/sharedQueries';
 import type { ClassFull } from '../../services/googleClassrooms/classDetail/classDetailService.zod';
 import { useHeatmapsPageData } from './useHeatmapsPageData';
 import type { MergedHeatmapResult } from '../../services/dataAnalysis/heatmapAdapter.merged';
@@ -20,6 +21,7 @@ import {
   createHeatmapMergedResult as createMergedResult,
   createTestQueryClient,
 } from '../../test/dataAnalysis/heatmapFixtures';
+import { createReadyHeatmapsDatasetResult } from '../../test/taskHeatmap/hookMockFactories';
 
 const {
   mockUseQuery,
@@ -30,16 +32,18 @@ const {
   mockAnalyse,
   mockAdaptMergedHeatmap,
   mockAssembleMergedPreviewData,
-} = vi.hoisted(() => ({
-  mockUseQuery: vi.fn(),
-  mockUseQueries: vi.fn(),
-  mockUsePageDataset: vi.fn(),
-  mockGetABClassQueryOptions: vi.fn(),
-  mockGetAssignmentQueryOptions: vi.fn(),
-  mockAnalyse: vi.fn(),
-  mockAdaptMergedHeatmap: vi.fn(),
-  mockAssembleMergedPreviewData: vi.fn(),
-}));
+} = vi.hoisted(() => {
+  return {
+    mockUseQuery: vi.fn(),
+    mockUseQueries: vi.fn(),
+    mockUsePageDataset: vi.fn(),
+    mockGetABClassQueryOptions: vi.fn(),
+    mockGetAssignmentQueryOptions: vi.fn(),
+    mockAnalyse: vi.fn(),
+    mockAdaptMergedHeatmap: vi.fn(),
+    mockAssembleMergedPreviewData: vi.fn(),
+  };
+});
 
 vi.mock('@tanstack/react-query', async (importOriginal) => {
   const actual = (await importOriginal()) as Record<string, unknown>;
@@ -60,20 +64,24 @@ vi.mock('../../query/sharedQueries', async (importOriginal) => {
   };
 });
 
-vi.mock('../../services/dataAnalysis/dataAnalysisService', () => ({
-  DataAnalysisService: vi.fn().mockImplementation(function () {
-    return { analyse: mockAnalyse };
-  }),
-}));
+vi.mock('../../services/dataAnalysis/dataAnalysisService', () => {
+  return {
+    DataAnalysisService: vi.fn().mockImplementation(function () {
+      return { analyse: mockAnalyse };
+    }),
+  };
+});
 
 vi.mock('../../services/dataAnalysis/heatmapAdapter.merged', async (importOriginal) => {
   const actual = (await importOriginal()) as Record<string, unknown>;
   return { ...actual, adaptMetricsToMergedHeatmap: mockAdaptMergedHeatmap };
 });
 
-vi.mock('./assembleMergedPreviewData', () => ({
-  assembleMergedPreviewData: mockAssembleMergedPreviewData,
-}));
+vi.mock('./assembleMergedPreviewData', () => {
+  return {
+    assembleMergedPreviewData: mockAssembleMergedPreviewData,
+  };
+});
 
 /** Installs the dynamic query mock, including React Query's combine callback. */
 function installUseQueriesMock(): void {
@@ -103,15 +111,9 @@ afterEach(() => {
 
 /** Configures both selector datasets as trustworthily ready. */
 function mockWarmupDatasetsReady(): void {
-  mockUsePageDataset.mockImplementation((datasetKey: string) => ({
-    query: createMockQueryResult<unknown>({
-      data:
-        datasetKey === 'classPartials'
-          ? createClassPartials()
-          : createAssignmentDefinitionPartials(),
-    }),
-    datasetState: createDatasetState(),
-  }));
+  mockUsePageDataset.mockImplementation((datasetKey: StartupWarmupDatasetKey) =>
+    createReadyHeatmapsDatasetResult(datasetKey)
+  );
 }
 
 describe('useHeatmapsPageData — preview queries and status map', () => {
@@ -188,22 +190,26 @@ describe('useHeatmapsPageData — preview queries and status map', () => {
         { assignmentId: 'a1', definitionKey: 'def1', assignmentName: 'Title def1' },
         { assignmentId: 'a3', definitionKey: 'def1', assignmentName: 'Title def1' },
       ],
-      taskColumns: ['a1', 'a3'].map((assignmentId) => ({
-        taskKey: 'def1::tA',
-        taskId: 'tA',
-        taskTitle: 'Task A',
-        averageContribution: { effectiveWeight: 1, includedInAverage: true },
-        assignmentId,
-        definitionKey: 'def1',
-        assignmentName: 'Title def1',
-      })),
+      taskColumns: ['a1', 'a3'].map((assignmentId) => {
+        return {
+          taskKey: 'def1::tA',
+          taskId: 'tA',
+          taskTitle: 'Task A',
+          averageContribution: { effectiveWeight: 1, includedInAverage: true },
+          assignmentId,
+          definitionKey: 'def1',
+          assignmentName: 'Title def1',
+        };
+      }),
       rows: [],
     };
     mockWarmupDatasetsReady();
     mockGetABClassQueryOptions.mockReturnValue({ queryKey: ['abClass', DEFAULT_CLASS_ID] });
-    mockGetAssignmentQueryOptions.mockImplementation((classId: string, assignmentId: string) => ({
-      queryKey: ['assignment', classId, assignmentId],
-    }));
+    mockGetAssignmentQueryOptions.mockImplementation((classId: string, assignmentId: string) => {
+      return {
+        queryKey: ['assignment', classId, assignmentId],
+      };
+    });
     mockUseQuery.mockReturnValue(
       createMockQueryResult<ClassFull | null>({ data: duplicateClassFull })
     );
@@ -234,22 +240,26 @@ describe('useHeatmapsPageData — refresh', () => {
       ['a1', vi.fn()],
       ['a2', vi.fn()],
     ]);
-    mockUsePageDataset.mockImplementation((datasetKey: string) => ({
-      query: {
-        ...createMockQueryResult<unknown>({
-          data:
-            datasetKey === 'classPartials'
-              ? createClassPartials()
-              : createAssignmentDefinitionPartials(),
-        }),
-        ...(datasetKey === 'classPartials' ? {} : { refetch: adpRefetch }),
-      },
-      datasetState: createDatasetState(),
-    }));
+    mockUsePageDataset.mockImplementation((datasetKey: StartupWarmupDatasetKey) => {
+      return {
+        query: {
+          ...createMockQueryResult<unknown>({
+            data:
+              datasetKey === 'classPartials'
+                ? createClassPartials()
+                : createAssignmentDefinitionPartials(),
+          }),
+          ...(datasetKey !== 'classPartials' && { refetch: adpRefetch }),
+        },
+        datasetState: createDatasetState(),
+      };
+    });
     mockGetABClassQueryOptions.mockReturnValue({ queryKey: ['abClass', DEFAULT_CLASS_ID] });
-    mockGetAssignmentQueryOptions.mockImplementation((_classId: string, assignmentId: string) => ({
-      queryKey: ['assignment', assignmentId],
-    }));
+    mockGetAssignmentQueryOptions.mockImplementation((_classId: string, assignmentId: string) => {
+      return {
+        queryKey: ['assignment', assignmentId],
+      };
+    });
     mockUseQuery.mockImplementation((options: { queryKey: unknown[] }) => {
       if (options.queryKey[0] === 'abClass') {
         return createMockQueryResult<ClassFull | null>({
@@ -305,27 +315,31 @@ describe('useHeatmapsPageData — isRefreshing real derivation', () => {
   it('reports refreshing while class query is fetching', () => {
     mockWarmupDatasetsReady();
     mockGetABClassQueryOptions.mockReturnValue({ queryKey: ['abClass', DEFAULT_CLASS_ID] });
-    mockUseQuery.mockImplementation((options: { queryKey: unknown[] }) =>
-      options.queryKey[0] === 'abClass'
-        ? createMockQueryResult<ClassFull | null>({ data: createClassFull(), isPending: true })
-        : createMockQueryResult<ClassFull | null>({ data: null })
-    );
+    mockUseQuery.mockImplementation((options: { queryKey: unknown[] }) => {
+      return createMockQueryResult<ClassFull | null>(
+        options.queryKey[0] === 'abClass'
+          ? { data: createClassFull(), isPending: true }
+          : { data: null }
+      );
+    });
     const { result } = renderHook(() => useHeatmapsPageData(), { wrapper });
     act(() => result.current.selectClass(DEFAULT_CLASS_ID));
     expect(result.current.isRefreshing).toBe(true);
   });
 
   it('reports refreshing while ADP dataset query is fetching', () => {
-    mockUsePageDataset.mockImplementation((datasetKey: string) => ({
-      query: createMockQueryResult<unknown>({
-        data:
-          datasetKey === 'classPartials'
-            ? createClassPartials()
-            : createAssignmentDefinitionPartials(),
-        isPending: datasetKey !== 'classPartials',
-      }),
-      datasetState: createDatasetState(),
-    }));
+    mockUsePageDataset.mockImplementation((datasetKey: StartupWarmupDatasetKey) => {
+      return {
+        query: createMockQueryResult<unknown>({
+          data:
+            datasetKey === 'classPartials'
+              ? createClassPartials()
+              : createAssignmentDefinitionPartials(),
+          isPending: datasetKey !== 'classPartials',
+        }),
+        datasetState: createDatasetState(),
+      };
+    });
     mockGetABClassQueryOptions.mockReturnValue({ queryKey: ['abClass', DEFAULT_CLASS_ID] });
     mockUseQuery.mockReturnValue(
       createMockQueryResult<ClassFull | null>({ data: createClassFull() })
@@ -340,14 +354,18 @@ describe('useHeatmapsPageData — isRefreshing real derivation', () => {
   it('reports refreshing while a selected-assignment preview query is fetching', () => {
     mockWarmupDatasetsReady();
     mockGetABClassQueryOptions.mockReturnValue({ queryKey: ['abClass', DEFAULT_CLASS_ID] });
-    mockGetAssignmentQueryOptions.mockImplementation((_classId: string, assignmentId: string) => ({
-      queryKey: ['assignment', assignmentId],
-    }));
-    mockUseQuery.mockImplementation((options: { queryKey: unknown[] }) =>
-      options.queryKey[0] === 'abClass'
-        ? createMockQueryResult<ClassFull | null>({ data: createClassFull() })
-        : createMockQueryResult<ClassFull | null>({ data: null, isPending: true })
-    );
+    mockGetAssignmentQueryOptions.mockImplementation((_classId: string, assignmentId: string) => {
+      return {
+        queryKey: ['assignment', assignmentId],
+      };
+    });
+    mockUseQuery.mockImplementation((options: { queryKey: unknown[] }) => {
+      return createMockQueryResult<ClassFull | null>(
+        options.queryKey[0] === 'abClass'
+          ? { data: createClassFull() }
+          : { data: null, isPending: true }
+      );
+    });
     mockAnalyse.mockReturnValue([createAveragingResult()]);
     mockAdaptMergedHeatmap.mockReturnValue(createMergedResult());
     const { result } = renderHook(() => useHeatmapsPageData(), { wrapper });
@@ -359,11 +377,11 @@ describe('useHeatmapsPageData — isRefreshing real derivation', () => {
   it('reports not refreshing when no owned query is fetching', () => {
     mockWarmupDatasetsReady();
     mockGetABClassQueryOptions.mockReturnValue({ queryKey: ['abClass', DEFAULT_CLASS_ID] });
-    mockUseQuery.mockImplementation((options: { queryKey: unknown[] }) =>
-      options.queryKey[0] === 'abClass'
-        ? createMockQueryResult<ClassFull | null>({ data: createClassFull() })
-        : createMockQueryResult<ClassFull | null>({ data: null })
-    );
+    mockUseQuery.mockImplementation((options: { queryKey: unknown[] }) => {
+      return createMockQueryResult<ClassFull | null>({
+        data: options.queryKey[0] === 'abClass' ? createClassFull() : null,
+      });
+    });
     mockAnalyse.mockReturnValue([createAveragingResult()]);
     mockAdaptMergedHeatmap.mockReturnValue(createMergedResult());
     const { result } = renderHook(() => useHeatmapsPageData(), { wrapper });

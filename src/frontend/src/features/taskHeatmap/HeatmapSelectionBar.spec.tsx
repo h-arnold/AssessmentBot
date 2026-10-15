@@ -18,10 +18,12 @@ import type { AssignmentDefinitionPartialsResponse } from '../../services/assign
 
 const { mockLogFrontendEvent } = vi.hoisted(() => ({ mockLogFrontendEvent: vi.fn() }));
 
-vi.mock('../../logging/frontendLogger', () => ({
-  logFrontendEvent: mockLogFrontendEvent,
-  logFrontendError: vi.fn(),
-}));
+vi.mock('../../logging/frontendLogger', () => {
+  return {
+    logFrontendEvent: mockLogFrontendEvent,
+    logFrontendError: vi.fn(),
+  };
+});
 
 /** The single class ID used across the fixtures below. */
 const CLASS_ID = 'class-1';

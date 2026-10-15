@@ -23,34 +23,30 @@ const COMPOSITE_SCORE_TOLERANCE_DIGITS = 5;
 
 describe('perStudentTaskMetrics conversion', () => {
   it('yields one entry per (studentId, taskKey) with classId echoed from the input class', () => {
+    const aliceItem = createSubmissionItem('t_001', {
+      completeness: { score: 5 },
+      accuracy: { score: 4 },
+      spag: { score: 3 },
+    });
+    const bobItem = createSubmissionItem('t_001', {
+      completeness: { score: 3 },
+      accuracy: { score: 5 },
+      spag: { score: 4 },
+    });
+    const aliceSubmission = createSubmission('s_001', 'Alice', 'a_001', { t_001: aliceItem });
+    const bobSubmission = createSubmission('s_002', 'Bob', 'a_001', { t_001: bobItem });
+    const assignment = createAssignmentPartial({
+      assignmentId: 'a_001',
+      definitionKey: 'dk_algebra',
+      tasks: [createTaskPartial('t_001')],
+      submissions: [aliceSubmission, bobSubmission],
+    });
     const input = buildInput([
       {
         classId: 'c_001',
         className: 'Test Class',
         studentIds: ['s_001', 's_002'],
-        assignments: [
-          createAssignmentPartial({
-            assignmentId: 'a_001',
-            definitionKey: 'dk_algebra',
-            tasks: [createTaskPartial('t_001')],
-            submissions: [
-              createSubmission('s_001', 'Alice', 'a_001', {
-                t_001: createSubmissionItem('t_001', {
-                  completeness: { score: 5 },
-                  accuracy: { score: 4 },
-                  spag: { score: 3 },
-                }),
-              }),
-              createSubmission('s_002', 'Bob', 'a_001', {
-                t_001: createSubmissionItem('t_001', {
-                  completeness: { score: 3 },
-                  accuracy: { score: 5 },
-                  spag: { score: 4 },
-                }),
-              }),
-            ],
-          }),
-        ],
+        assignments: [assignment],
       },
     ]);
 
@@ -83,27 +79,24 @@ describe('perStudentTaskMetrics conversion', () => {
   });
 
   it('populates completeness, accuracy, spag, and overall from display accumulators for that scope', () => {
+    const submissionItem = createSubmissionItem('t_001', {
+      completeness: { score: 5 },
+      accuracy: { score: 4 },
+      spag: { score: 3 },
+    });
+    const submission = createSubmission('s_001', 'Alice', 'a_001', { t_001: submissionItem });
+    const assignment = createAssignmentPartial({
+      assignmentId: 'a_001',
+      definitionKey: 'dk_algebra',
+      tasks: [createTaskPartial('t_001')],
+      submissions: [submission],
+    });
     const input = buildInput([
       {
         classId: 'c_001',
         className: 'Test Class',
         studentIds: ['s_001'],
-        assignments: [
-          createAssignmentPartial({
-            assignmentId: 'a_001',
-            definitionKey: 'dk_algebra',
-            tasks: [createTaskPartial('t_001')],
-            submissions: [
-              createSubmission('s_001', 'Alice', 'a_001', {
-                t_001: createSubmissionItem('t_001', {
-                  completeness: { score: 5 },
-                  accuracy: { score: 4 },
-                  spag: { score: 3 },
-                }),
-              }),
-            ],
-          }),
-        ],
+        assignments: [assignment],
       },
     ]);
 
@@ -139,32 +132,32 @@ describe('perStudentTaskMetrics conversion', () => {
   });
 
   it('produces one entry per (student, taskKey) across multiple tasks and students', () => {
+    const firstItem = createSubmissionItem('t_001', {
+      completeness: { score: 5 },
+      accuracy: { score: 4 },
+      spag: { score: 3 },
+    });
+    const secondItem = createSubmissionItem('t_002', {
+      completeness: { score: 2 },
+      accuracy: { score: 3 },
+      spag: { score: 4 },
+    });
+    const submission = createSubmission('s_001', 'Alice', 'a_001', {
+      t_001: firstItem,
+      t_002: secondItem,
+    });
+    const assignment = createAssignmentPartial({
+      assignmentId: 'a_001',
+      definitionKey: 'dk_physics',
+      tasks: [createTaskPartial('t_001'), createTaskPartial('t_002')],
+      submissions: [submission],
+    });
     const input = buildInput([
       {
         classId: 'c_001',
         className: 'Test Class',
         studentIds: ['s_001'],
-        assignments: [
-          createAssignmentPartial({
-            assignmentId: 'a_001',
-            definitionKey: 'dk_physics',
-            tasks: [createTaskPartial('t_001'), createTaskPartial('t_002')],
-            submissions: [
-              createSubmission('s_001', 'Alice', 'a_001', {
-                t_001: createSubmissionItem('t_001', {
-                  completeness: { score: 5 },
-                  accuracy: { score: 4 },
-                  spag: { score: 3 },
-                }),
-                t_002: createSubmissionItem('t_002', {
-                  completeness: { score: 2 },
-                  accuracy: { score: 3 },
-                  spag: { score: 4 },
-                }),
-              }),
-            ],
-          }),
-        ],
+        assignments: [assignment],
       },
     ]);
 

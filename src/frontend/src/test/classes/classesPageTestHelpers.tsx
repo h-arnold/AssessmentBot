@@ -400,14 +400,14 @@ export function assertPanelHeader(labelPattern: string | RegExp): HTMLElement {
  * Asserts that a panel header has the expected aria-expanded state.
  * 
  * @param {string | RegExp} labelPattern - Label pattern to match.
- * @param {boolean} expectedExpanded - Expected expanded state.
+ * @param {boolean} isExpectedExpanded - Expected expanded state.
  */
 export function assertPanelHeaderExpanded(
   labelPattern: string | RegExp,
-  expectedExpanded: boolean
+  isExpectedExpanded: boolean
 ): void {
   const headerButton = screen.getByRole('button', { name: labelPattern });
-  expect(headerButton).toHaveAttribute('aria-expanded', expectedExpanded ? 'true' : 'false');
+  expect(headerButton).toHaveAttribute('aria-expanded', isExpectedExpanded ? 'true' : 'false');
 }
 
 /**
@@ -546,14 +546,16 @@ export { ClassesPageTestHelpersDummy };
 export function toPlainClassPartials(
   classPartials: ClassPartial[]
 ): Array<Record<string, unknown>> {
-  return classPartials.map((cp) => ({
-    classId: cp.classId,
-    className: cp.className,
-    cohortKey: cp.cohortKey,
-    courseLength: cp.courseLength,
-    yearGroupKey: cp.yearGroupKey,
-    classOwner: cp.classOwner,
-    teachers: cp.teachers,
-    active: cp.active,
-  }));
+  return classPartials.map((cp) => {
+    return {
+      classId: cp.classId,
+      className: cp.className,
+      cohortKey: cp.cohortKey,
+      courseLength: cp.courseLength,
+      yearGroupKey: cp.yearGroupKey,
+      classOwner: cp.classOwner,
+      teachers: cp.teachers,
+      active: cp.active,
+    };
+  });
 }

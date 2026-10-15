@@ -22,38 +22,54 @@ const getYearGroupsMock = vi.fn();
 const getABClassMock = vi.fn();
 const getAssignmentMock = vi.fn();
 
-vi.mock('../services/authService/authService', () => ({
-  getAuthorisationStatus: getAuthorisationStatusMock,
-}));
+vi.mock('../services/authService/authService', () => {
+  return {
+    hasScriptAuthorisation: getAuthorisationStatusMock,
+  };
+});
 
-vi.mock('../services/googleClassrooms/classPartialsService', () => ({
-  getABClassPartials: getABClassPartialsMock,
-}));
+vi.mock('../services/googleClassrooms/classPartialsService', () => {
+  return {
+    getABClassPartials: getABClassPartialsMock,
+  };
+});
 
-vi.mock('../services/assignmentDefinition/assignmentDefinitionPartialsService', () => ({
-  getAssignmentDefinitionPartials: getAssignmentDefinitionPartialsMock,
-}));
+vi.mock('../services/assignmentDefinition/assignmentDefinitionPartialsService', () => {
+  return {
+    getAssignmentDefinitionPartials: getAssignmentDefinitionPartialsMock,
+  };
+});
 
-vi.mock('../services/googleClassrooms/googleClassroomsService', () => ({
-  getGoogleClassrooms: getGoogleClassroomsMock,
-}));
+vi.mock('../services/googleClassrooms/googleClassroomsService', () => {
+  return {
+    getGoogleClassrooms: getGoogleClassroomsMock,
+  };
+});
 
-vi.mock('../services/assignmentDefinition/assignmentTopicsService', () => ({
-  getAssignmentTopics: getAssignmentTopicsMock,
-}));
+vi.mock('../services/assignmentDefinition/assignmentTopicsService', () => {
+  return {
+    getAssignmentTopics: getAssignmentTopicsMock,
+  };
+});
 
-vi.mock('../services/referenceData/referenceDataService', () => ({
-  getCohorts: getCohortsMock,
-  getYearGroups: getYearGroupsMock,
-}));
+vi.mock('../services/referenceData/referenceDataService', () => {
+  return {
+    getCohorts: getCohortsMock,
+    getYearGroups: getYearGroupsMock,
+  };
+});
 
-vi.mock('../services/googleClassrooms/classDetail/classDetailService', () => ({
-  getABClass: getABClassMock,
-}));
+vi.mock('../services/googleClassrooms/classDetail/classDetailService', () => {
+  return {
+    getABClass: getABClassMock,
+  };
+});
 
-vi.mock('../services/assignmentAssessment/assignmentAssessmentService', () => ({
-  getAssignment: getAssignmentMock,
-}));
+vi.mock('../services/assignmentAssessment/assignmentAssessmentService', () => {
+  return {
+    getAssignment: getAssignmentMock,
+  };
+});
 
 // The configureDeferredWarmupDatasets function is imported from the shared module
 
@@ -69,7 +85,7 @@ describe('shared query definitions', () => {
     const { getAuthorisationStatusQueryOptions } = await import('./sharedQueries');
     const queryClient = createAppQueryClient();
 
-    await expect(queryClient.fetchQuery(getAuthorisationStatusQueryOptions())).resolves.toBe(true);
+    await expect(queryClient.query(getAuthorisationStatusQueryOptions())).resolves.toBe(true);
     expect(getAuthorisationStatusMock).toHaveBeenCalledTimes(1);
   });
 
@@ -82,7 +98,7 @@ describe('shared query definitions', () => {
     const queryOptions = getAssignmentDefinitionPartialsQueryOptions();
 
     expect(queryOptions.queryKey).toEqual(queryKeys.assignmentDefinitionPartials());
-    await expect(queryClient.fetchQuery(queryOptions)).resolves.toEqual(assignmentDefinitionPartials);
+    await expect(queryClient.query(queryOptions)).resolves.toEqual(assignmentDefinitionPartials);
     expect(getAssignmentDefinitionPartialsMock).toHaveBeenCalledTimes(1);
   });
 
@@ -101,9 +117,9 @@ describe('shared query definitions', () => {
     } = await import('./sharedQueries');
     const queryClient = createAppQueryClient();
 
-    await expect(queryClient.fetchQuery(getClassPartialsQueryOptions())).resolves.toEqual(classPartials);
-    await expect(queryClient.fetchQuery(getCohortsQueryOptions())).resolves.toEqual(cohorts);
-    await expect(queryClient.fetchQuery(getYearGroupsQueryOptions())).resolves.toEqual(yearGroups);
+    await expect(queryClient.query(getClassPartialsQueryOptions())).resolves.toEqual(classPartials);
+    await expect(queryClient.query(getCohortsQueryOptions())).resolves.toEqual(cohorts);
+    await expect(queryClient.query(getYearGroupsQueryOptions())).resolves.toEqual(yearGroups);
     expect(getABClassPartialsMock).toHaveBeenCalledTimes(1);
     expect(getCohortsMock).toHaveBeenCalledTimes(1);
     expect(getYearGroupsMock).toHaveBeenCalledTimes(1);
@@ -122,7 +138,7 @@ describe('shared query definitions', () => {
     const { getClassPartialsQueryOptions } = await import('./sharedQueries');
     const queryClient = createAppQueryClient();
 
-    await expect(queryClient.fetchQuery(getClassPartialsQueryOptions())).rejects.toBe(queryError);
+    await expect(queryClient.query(getClassPartialsQueryOptions())).rejects.toBe(queryError);
   });
 
   it('adds a shared Google Classrooms query definition keyed through queryKeys.googleClassrooms()', async () => {
@@ -134,7 +150,7 @@ describe('shared query definitions', () => {
     const queryOptions = getGoogleClassroomsQueryOptions();
 
     expect(queryOptions.queryKey).toEqual(queryKeys.googleClassrooms());
-    await expect(queryClient.fetchQuery(queryOptions)).resolves.toEqual(classrooms);
+    await expect(queryClient.query(queryOptions)).resolves.toEqual(classrooms);
     expect(getGoogleClassroomsMock).toHaveBeenCalledTimes(1);
   });
 
@@ -264,7 +280,7 @@ describe('shared query definitions', () => {
     const queryOptions = getABClassQueryOptions('class-001');
 
     expect(queryOptions.queryKey).toEqual(['abClass', 'class-001']);
-    await expect(queryClient.fetchQuery(queryOptions)).resolves.toEqual(expectedResult);
+    await expect(queryClient.query(queryOptions)).resolves.toEqual(expectedResult);
     expect(getABClassMock).toHaveBeenCalledWith({ classId: 'class-001' });
     expect(getABClassMock).toHaveBeenCalledTimes(1);
   });
@@ -276,7 +292,7 @@ describe('shared query definitions', () => {
     const { getABClassQueryOptions } = await import('./sharedQueries');
 
     await expect(
-      createAppQueryClient().fetchQuery(getABClassQueryOptions('class-001')),
+      createAppQueryClient().query(getABClassQueryOptions('class-001')),
     ).rejects.toThrow();
   });
 });
@@ -311,7 +327,7 @@ describe('getAssignmentQueryOptions', () => {
     const queryClient = createAppQueryClient();
 
     await expect(
-      queryClient.fetchQuery(getAssignmentQueryOptions('courseA', 'assign1')),
+      queryClient.query(getAssignmentQueryOptions('courseA', 'assign1')),
     ).resolves.toEqual(expectedResult);
     expect(getAssignmentMock).toHaveBeenCalledWith({
       courseId: 'courseA',

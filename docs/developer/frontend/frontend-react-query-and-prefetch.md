@@ -16,7 +16,7 @@ The frontend uses React Query as the shared server-state layer for cache, freshn
 Current baseline:
 
 - package: `@tanstack/react-query`
-- pinned version: `5.90.21`
+- pinned version: `5.104.1`
 - cache scope: in-memory only for the current session
 - persistence: intentionally disabled
 
@@ -66,6 +66,10 @@ Canonical backend shape definitions for all service contracts live in
 (classPartials → `abclass.md`, assignmentDefinitionPartials → `assignment-definition.md`,
 backendConfig → `backend-config.md`, etc.).
 
+### Imperative reads
+
+When orchestration must await a shared read outside an observer (startup warm-up, page-entry warm-up, or a one-off effect), call `queryClient.query(options)`. `query` resolves with the query function's data and rejects on failure, so the caller must handle or log the rejection; do not assume it absorbs failures silently. The deprecated `fetchQuery` and `prefetchQuery` methods must not be used for new code.
+
 ## 4. Startup warm-up policy
 
 Startup warm-up uses the shared lookup datasets needed across the growing interface.
@@ -76,7 +80,7 @@ Current policy:
 - trigger point: after OAuth admission is confirmed (the `useAuthorisationStatus` scope check resolves authorised) **and** `getApplicationAccess` resolves with `reason: 'ok'`; warm-up starts only once the caller is admitted. Pending, failed, `denied`, and `brokenConfig` access outcomes do not prefetch
 - ownership: the app-level auth / warm-up boundary owns startup readiness
 - scheduling: fire-and-forget from an app-level boundary outside `App.tsx`
-- query API: `fetchQuery`, so orchestration can observe failures
+- query API: `queryClient.query`, so orchestration can observe failures. Each `query` call resolves with the query function's data and rejects on failure; the warm-up aggregates the five datasets with `Promise.allSettled`, so one rejection fails the warm-up without cancelling the other datasets
 - readiness rule: startup is considered warmed only after all five shared datasets succeed
 - logging: debug-only orchestration context if warm-up fails
 
@@ -106,7 +110,8 @@ Do not add startup prefetch only to exercise React Query.
 
 ### Current view-entry prefetches
 
-- **ClassPage assignment prefetch**: a `useEffect` in `useClassPageData` fires when `surfaceState.status === 'ready'`. It sorts `classFull.assignments` using the shared `compareAssignmentUpdatedAtDesc` comparator (updatedAt descending, assignmentId ascending tie-break), takes the top 3, and calls `queryClient.prefetchQuery(getAssignmentQueryOptions(classFull.classId, assignmentId))` for each — a fire-and-forget call with `.catch(() => undefined)`. A `useRef<string | null>` guard ensures exactly one dispatch per classId and resets on cross-class navigation. `prefetchQuery` is keyed and idempotent, so React StrictMode double-fire is safe.
+- **ClassPage assignment prefetch**: a `useEffect` in `useClassPageData` fires when `surfaceState.status === 'ready'`. It sorts `classFull.assignments` using the shared `compareAssignmentUpdatedAtDesc` comparator (updatedAt descending, assignmentId ascending tie-break), takes the top 3, and calls `queryClient.query(getAssignmentQueryOptions(classFull.classId, assignmentId))` for each. Each call is fire-and-forget: a rejection is logged through `logFrontendError('useClassPageData.prefetch', error, { courseId, assignmentId })` and never affects the page surface. A `useRef<string | null>` guard ensures exactly one dispatch per classId and resets on cross-class navigation. The queries are keyed, so React StrictMode double-fire is safe.
+- **Settings Google Classrooms prefetch**: `SettingsPageGoogleClassroomsPrefetch` runs when the Settings page mounts to warm `googleClassrooms` ahead of the Classes tab's view-entry read. It awaits `queryClient.query(getGoogleClassroomsQueryOptions())`. A rejection logs once through the component's warning logger when the component is still mounted, then returns before cache inspection. On fulfilment it inspects `queryClient.getQueryState(queryKeys.googleClassrooms())` and warns if the cached state is `error`. If the component unmounts before the query settles, it neither inspects nor logs.
 
 ## 6. Freshness and invalidation expectations
 
@@ -131,7 +136,7 @@ Do not add speculative invalidation wiring beyond the feature contracts that exi
 
 ### Preferred Pattern: Let Invalidation Trigger Background Refetch
 
-**Preferred Pattern:** Use React Query's `invalidateQueries` to trigger background refetch. Do not call `fetchQuery` explicitly in mutation cleanup or after invalidation.
+**Preferred Pattern:** Use React Query's `invalidateQueries` to trigger background refetch. Do not call `queryClient.query` explicitly in mutation cleanup or after invalidation.
 
 ```typescript
 // ✅ CORRECT: Let React Query background refetch handle it
@@ -141,19 +146,19 @@ await queryClient.invalidateQueries({
 });
 ```
 
-**Rationale:** React Query's invalidation automatically triggers background refetches for active observers. Explicit `fetchQuery` calls are unnecessary and can cause errors to propagate incorrectly.
+**Rationale:** React Query's invalidation automatically triggers background refetches for active observers. Explicit `queryClient.query` calls are unnecessary and can cause errors to propagate incorrectly.
 
-### Anti-Pattern: Explicit fetchQuery in Mutation Cleanup
+### Anti-Pattern: Explicit Imperative Query in Mutation Cleanup
 
-**Anti-Pattern:** Calling `fetchQuery` explicitly after invalidation causes errors to propagate to the wrong scope (e.g., modal instead of page).
+**Anti-Pattern:** Calling `queryClient.query` explicitly after invalidation causes errors to propagate to the wrong scope (e.g., modal instead of page).
 
 ```typescript
-// ❌ AVOID: Explicit fetchQuery causes errors to propagate incorrectly
+// ❌ AVOID: Explicit queryClient.query causes errors to propagate incorrectly
 await queryClient.invalidateQueries({ queryKey: queryKeys.assignmentDefinitionPartials() });
-await queryClient.fetchQuery({ queryKey: queryKeys.assignmentDefinitionPartials() }); // ← Error propagates here
+await queryClient.query({ queryKey: queryKeys.assignmentDefinitionPartials() }); // ← Error propagates here
 ```
 
-**Why this fails:** When `fetchQuery` fails, the error is thrown at the call site. In modal contexts, this causes the modal's error handler to catch it instead of the page-level query error handler. Let React Query's automatic background refetch handle cache updates.
+**Why this fails:** When `queryClient.query` fails, the error is thrown at the call site. In modal contexts, this causes the modal's error handler to catch it instead of the page-level query error handler. Let React Query's automatic background refetch handle cache updates.
 
 ### Cache Check Anti-Pattern: Create Mode
 

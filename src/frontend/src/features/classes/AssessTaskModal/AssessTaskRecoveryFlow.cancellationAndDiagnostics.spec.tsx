@@ -94,10 +94,8 @@ const REPARSE_THEN_SAVE_CALL_COUNT = 2;
 
 describe('recovery deferred cancellation settlement', () => {
   it('never resumes the assessment when review is cancelled while the approval save is pending', async () => {
-    let resolveSave!: (value: AssignmentDefinition) => void;
-    const pendingSave = new Promise<AssignmentDefinition>((resolve) => {
-      resolveSave = resolve;
-    });
+    const { promise: pendingSave, resolve: resolveSave } =
+      Promise.withResolvers<AssignmentDefinition>();
     vi.mocked(getAssignmentDefinition).mockImplementation(() =>
       Promise.resolve(RECOVERY_DEFINITION)
     );
@@ -139,14 +137,9 @@ describe('recovery deferred cancellation settlement', () => {
   });
 
   it('never settles a success when review is cancelled while the resumed run is pending', async () => {
-    let resolveSave!: (value: AssignmentDefinition) => void;
-    const pendingSave = new Promise<AssignmentDefinition>((resolve) => {
-      resolveSave = resolve;
-    });
-    let resolveResume!: (value: null) => void;
-    const pendingResume = new Promise<null>((resolve) => {
-      resolveResume = resolve;
-    });
+    const { promise: pendingSave, resolve: resolveSave } =
+      Promise.withResolvers<AssignmentDefinition>();
+    const { promise: pendingResume, resolve: resolveResume } = Promise.withResolvers<null>();
     vi.mocked(getAssignmentDefinition).mockImplementation(() =>
       Promise.resolve(RECOVERY_DEFINITION)
     );
@@ -225,11 +218,12 @@ describe('recovery deferred cancellation settlement', () => {
 describe('assessment and link user-safe error mapping', () => {
   it('renders the shared user-safe copy instead of the raw assessment failure', async () => {
     const { dialog } = renderRecoveryModal({
-      setupMocks: () =>
-        queueStartResults({
+      setupMocks: () => {
+        return queueStartResults({
           kind: 'error',
           error: new Error('RAW_DB_CONNECTION_FAILED: sqlite connection lost'),
-        }),
+        });
+      },
     });
 
     await selectAssignment(dialog);
@@ -260,8 +254,8 @@ describe('assessment and link user-safe error mapping', () => {
 
     const setAssessmentAsError = vi.fn();
     const { result } = renderHook(
-      () =>
-        useAssessTaskLinkFlow({
+      () => {
+        return useAssessTaskLinkFlow({
           classId: MOCK_CLASS_ID,
           noMatchResolution: 'linking',
           selectedAssignmentForChoice: {
@@ -281,7 +275,8 @@ describe('assessment and link user-safe error mapping', () => {
           getPendingStartContext: () => null,
           isAttemptObsolete: () => false,
           transitionToStaleRecovery: vi.fn(),
-        }),
+        });
+      },
       { wrapper }
     );
 

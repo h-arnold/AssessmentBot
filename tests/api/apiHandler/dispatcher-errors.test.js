@@ -3,7 +3,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const {
   loadApiHandlerModule,
   getApiDispatcherInstance,
-  callAuthorisationStatus,
   handleApiRequest,
   setupApiHandlerTestContext,
   teardownApiHandlerTestContext,
@@ -17,6 +16,7 @@ const {
   ASSIGNMENT_DEFINITION_RESULTS,
   REFERENCE_DATA_PARAMS,
 } = require('./shared.js');
+const { callAuthorisationStatus } = require('../../helpers/apiHandlerTestUtils.js');
 
 describe('Api/apiHandler dispatcher — error handling, boundary logging and error type mapping', () => {
   let context;
@@ -30,16 +30,19 @@ describe('Api/apiHandler dispatcher — error handling, boundary logging and err
   });
 
   describe('unexpected handler errors', () => {
-    it('returns INTERNAL_ERROR when an allowlisted handler throws an unexpected error', () => {
+    it.each([
+      ['an unexpected error', 'dispatch exploded'],
+      ['a thrown error', 'Simulated authorisation failure'],
+    ])('returns INTERNAL_ERROR when an allowlisted handler throws %s', (_description, message) => {
       context.scriptAppManagerInstance.isAuthorised.mockImplementation(() => {
-        throw new Error('dispatch exploded');
+        throw new Error(message);
       });
 
       const { ApiDispatcher } = loadApiHandlerModule();
       const dispatcher = ApiDispatcher.getInstance();
 
       const response = dispatcher.handle({
-        method: 'getAuthorisationStatus',
+        method: 'hasScriptAuthorisation',
       });
 
       expect(response).toMatchObject({
@@ -47,7 +50,7 @@ describe('Api/apiHandler dispatcher — error handling, boundary logging and err
         error: {
           code: 'INTERNAL_ERROR',
           message: 'Internal API error.',
-          retriable: false,
+          isRetriable: false,
         },
       });
     });
@@ -67,7 +70,7 @@ describe('Api/apiHandler dispatcher — error handling, boundary logging and err
         error: {
           code: 'INTERNAL_ERROR',
           message: 'Internal API error.',
-          retriable: false,
+          isRetriable: false,
         },
       });
       expect(context.errorSpy).toHaveBeenCalledTimes(1);
@@ -75,7 +78,7 @@ describe('Api/apiHandler dispatcher — error handling, boundary logging and err
         'API request failed.',
         expect.objectContaining({
           requestId: response.requestId,
-          method: 'getAuthorisationStatus',
+          method: 'hasScriptAuthorisation',
         }),
         thrownError
       );
@@ -101,7 +104,7 @@ describe('Api/apiHandler dispatcher — error handling, boundary logging and err
         error: {
           code: 'INTERNAL_ERROR',
           message: 'Internal API error.',
-          retriable: false,
+          isRetriable: false,
         },
       });
       expect(context.consoleErrorSpy).toHaveBeenCalledTimes(1);
@@ -109,7 +112,7 @@ describe('Api/apiHandler dispatcher — error handling, boundary logging and err
         'API request failed.',
         expect.objectContaining({
           requestId: response.requestId,
-          method: 'getAuthorisationStatus',
+          method: 'hasScriptAuthorisation',
         }),
         expect.objectContaining({
           name: thrownError.name,
@@ -153,7 +156,7 @@ describe('Api/apiHandler dispatcher — error handling, boundary logging and err
 
         expectBoundaryFailureConsoleErrorLog(context.consoleErrorSpy, {
           response,
-          methodName: 'getAuthorisationStatus',
+          methodName: 'hasScriptAuthorisation',
           thrownError,
         });
       }
@@ -229,7 +232,7 @@ describe('Api/apiHandler dispatcher — error handling, boundary logging and err
       const dispatcher = ApiDispatcher.getInstance();
 
       const response = dispatcher.handle({
-        method: 'getAuthorisationStatus',
+        method: 'hasScriptAuthorisation',
       });
 
       expect(response).toMatchObject({
@@ -237,7 +240,7 @@ describe('Api/apiHandler dispatcher — error handling, boundary logging and err
         error: {
           code: 'RATE_LIMITED',
           message: 'Rate limit exceeded',
-          retriable: true,
+          isRetriable: true,
         },
       });
     });
@@ -252,7 +255,7 @@ describe('Api/apiHandler dispatcher — error handling, boundary logging and err
       const dispatcher = ApiDispatcher.getInstance();
 
       const response = dispatcher.handle({
-        method: 'getAuthorisationStatus',
+        method: 'hasScriptAuthorisation',
       });
 
       expect(response).toMatchObject({
@@ -260,7 +263,7 @@ describe('Api/apiHandler dispatcher — error handling, boundary logging and err
         error: {
           code: 'INVALID_REQUEST',
           message: 'Validation failed',
-          retriable: false,
+          isRetriable: false,
         },
       });
     });
@@ -275,7 +278,7 @@ describe('Api/apiHandler dispatcher — error handling, boundary logging and err
       const dispatcher = ApiDispatcher.getInstance();
 
       const response = dispatcher.handle({
-        method: 'getAuthorisationStatus',
+        method: 'hasScriptAuthorisation',
       });
 
       expect(response).toMatchObject({
@@ -283,7 +286,7 @@ describe('Api/apiHandler dispatcher — error handling, boundary logging and err
         error: {
           code: 'UNKNOWN_METHOD',
           message: 'Method is disabled',
-          retriable: false,
+          isRetriable: false,
         },
       });
     });
@@ -300,7 +303,7 @@ describe('Api/apiHandler dispatcher — error handling, boundary logging and err
       const dispatcher = ApiDispatcher.getInstance();
 
       const response = dispatcher.handle({
-        method: 'getAuthorisationStatus',
+        method: 'hasScriptAuthorisation',
       });
 
       expect(response).toMatchObject({
@@ -308,7 +311,7 @@ describe('Api/apiHandler dispatcher — error handling, boundary logging and err
         error: {
           code: 'INTERNAL_ERROR',
           message: 'Internal API error.',
-          retriable: false,
+          isRetriable: false,
         },
       });
     });
@@ -332,7 +335,7 @@ describe('Api/apiHandler dispatcher — error handling, boundary logging and err
         error: {
           code: 'INTERNAL_ERROR',
           message: 'Internal API error.',
-          retriable: false,
+          isRetriable: false,
         },
       });
     });
@@ -352,35 +355,13 @@ describe('Api/apiHandler dispatcher — error handling, boundary logging and err
         error: {
           code: 'INTERNAL_ERROR',
           message: 'Internal API error.',
-          retriable: false,
+          isRetriable: false,
         },
       });
       expectBoundaryFailureLog(context.errorSpy, {
         response,
-        methodName: 'getAuthorisationStatus',
+        methodName: 'hasScriptAuthorisation',
         thrownValue,
-      });
-    });
-
-    it('maps thrown errors to INTERNAL_ERROR', () => {
-      context.scriptAppManagerInstance.isAuthorised.mockImplementation(() => {
-        throw new Error('Simulated authorisation failure');
-      });
-
-      const { ApiDispatcher } = loadApiHandlerModule();
-      const dispatcher = ApiDispatcher.getInstance();
-
-      const response = dispatcher.handle({
-        method: 'getAuthorisationStatus',
-      });
-
-      expect(response).toMatchObject({
-        ok: false,
-        error: {
-          code: 'INTERNAL_ERROR',
-          message: 'Internal API error.',
-          retriable: false,
-        },
       });
     });
   });
@@ -430,7 +411,7 @@ describe('Api/apiHandler dispatcher — error handling, boundary logging and err
           error: {
             code: 'INTERNAL_ERROR',
             message: 'Internal API error.',
-            retriable: false,
+            isRetriable: false,
           },
         });
         expect(readPersistedUserRequestStore()[requestId]).toMatchObject({

@@ -2,7 +2,7 @@
 description: Provides impartial second-pass review of planning artefacts before implementation starts
 mode: all
 steps: 100
-model: opencode-go/glm-5.3-flash
+model: opencode-go/step-5-preview-free
 permissions:
   - action: edit
     resource: '*'
@@ -39,19 +39,16 @@ Your goal is to find anything that could derail implementation, create hidden am
 
 Before giving feedback, you must:
 
-1. **Read core instructions**:
-   - Read AGENTS.md.
-2. **Read the planning artefacts in scope**:
+1. **Read the planning artefacts in scope**:
    - the document being reviewed
    - any companion planning docs already written for the feature
-3. **Read the relevant planning templates**:
+2. **Read the relevant planning templates**:
    - docs/developer/SPEC_TEMPLATE.md
    - docs/developer/LAYOUT_SPEC_TEMPLATE.md
    - docs/developer/ACTION_PLAN_TEMPLATE.md
-4. **Read the code and docs the planning artefact touches**:
+3. **Read the code and docs the planning artefact touches**:
    - inspect enough source files, routes, hooks, services, models, and existing docs to ground the review in the real architecture
-   - read component-specific `AGENTS.md` files when backend, frontend, or builder behaviour is in scope
-5. **For frontend layout reviews**:
+4. **For frontend layout reviews**:
    - inspect any similar root layout docs already in the repo
    - consult the official Ant Design docs when component suitability or behaviour is materially relevant to the review
 
