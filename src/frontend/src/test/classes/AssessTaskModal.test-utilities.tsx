@@ -27,12 +27,43 @@ export const MOCK_CLASS_ID = 'class-123';
 export const MOCK_CLASS_NAME = 'My Class';
 
 export const MOCK_ASSIGNMENTS: GoogleClassroomAssignmentsResponse = [
-  { assignmentId: 'a1', title: 'Essay', creationTime: '2024-09-02T08:30:00.000Z', topicName: 'Writing', topicId: null },
+  {
+    assignmentId: 'a1',
+    title: 'Essay',
+    creationTime: '2024-09-02T08:30:00.000Z',
+    topicName: 'Writing',
+    topicId: null,
+  },
 ];
 
 export const MOCK_EMPTY_ASSIGNMENTS: GoogleClassroomAssignmentsResponse = [];
 
 export const MODAL_TITLE = `Assess Task — ${MOCK_CLASS_NAME}`;
+const SUCCESS_SURFACE_CLOSE_BUTTON_COUNT = 2;
+/**
+ * Asserts that the settled assessment surface has replaced every start/recovery surface.
+ *
+ * @remarks
+ * The count includes Ant Design's built-in modal X close button; the footer itself has one Close action.
+ *
+ * @param {HTMLElement} dialog The owning modal dialog.
+ * @param {string} assignmentTitle Assignment title displayed in the success alert.
+ * @returns {void}
+ */
+export function expectAssessmentSuccessSurface(dialog: HTMLElement, assignmentTitle: string): void {
+  const alerts = within(dialog).getAllByRole('alert');
+  expect(alerts).toHaveLength(1);
+  expect(alerts[0]).toHaveTextContent(`Assessment started for '${assignmentTitle}'.`);
+  expect(within(dialog).getAllByRole('button', { name: 'Close' })).toHaveLength(
+    SUCCESS_SURFACE_CLOSE_BUTTON_COUNT
+  );
+  expect(dialog.querySelector('.ant-modal-footer')?.textContent?.trim()).toBe('Close');
+  expect(within(dialog).queryByRole('combobox')).toBeNull();
+  expect(within(dialog).queryByText('Select assignment')).toBeNull();
+  expect(within(dialog).queryByText(assignmentTitle, { exact: true })).toBeNull();
+  expect(within(dialog).queryByRole('table')).toBeNull();
+  expect(within(dialog).queryByText(/re-run assessment/i)).toBeNull();
+}
 
 /**
  * Default resolved value for the upsertAssignmentDefinition mock.
@@ -123,9 +154,7 @@ export function seedAssessmentFlowQueryData(
  */
 export function renderAssessTaskModal(
   mockValue:
-    | GoogleClassroomAssignmentsResponse
-    | Promise<GoogleClassroomAssignmentsResponse>
-    | Error,
+    GoogleClassroomAssignmentsResponse | Promise<GoogleClassroomAssignmentsResponse> | Error,
   mockType: 'return' | 'resolve' | 'reject' = 'return'
 ): HTMLElement {
   const mockedGetAssignments = vi.mocked(getGoogleClassroomAssignments);
@@ -198,7 +227,9 @@ export function renderWithCache(options: RenderWithCacheOptions = {}): {
   if (upsertType === 'reject') {
     vi.mocked(upsertAssignmentDefinition).mockRejectedValue(upsertResult);
   } else if (upsertResult !== undefined) {
-    vi.mocked(upsertAssignmentDefinition).mockResolvedValue(upsertResult as UpsertAssignmentDefinitionResponse);
+    vi.mocked(upsertAssignmentDefinition).mockResolvedValue(
+      upsertResult as UpsertAssignmentDefinitionResponse
+    );
   }
 
   const queryClient = createAppQueryClient();
@@ -209,9 +240,10 @@ export function renderWithCache(options: RenderWithCacheOptions = {}): {
     queryClient.setQueryData(queryKeys.assignmentDefinitionPartials(), definitionPartials);
   }
 
-  const modalProperties = onCloseOption === undefined
-    ? defaultProperties()
-    : defaultProperties({ onClose: onCloseOption });
+  const modalProperties =
+    onCloseOption === undefined
+      ? defaultProperties()
+      : defaultProperties({ onClose: onCloseOption });
 
   const { queryClient: returnedClient } = renderWithFrontendProviders(
     <AssessTaskModal {...modalProperties} />,
@@ -356,9 +388,7 @@ export async function pickLinkableDefinition(
   // linkable-definition Select combobox is visible in the dialog.
   const comboboxes = within(dialog).getAllByRole('combobox');
   if (comboboxes.length === 0) {
-    throw new Error(
-      `pickLinkableDefinition: expected at least 1 combobox (linkable), found 0`
-    );
+    throw new Error(`pickLinkableDefinition: expected at least 1 combobox (linkable), found 0`);
   }
   const linkableCombobox = comboboxes[0];
   await user.click(linkableCombobox);

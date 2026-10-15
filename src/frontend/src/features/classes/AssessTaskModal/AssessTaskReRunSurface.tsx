@@ -21,9 +21,9 @@ export type AssessTaskReRunBodyProperties = Readonly<{
 }>;
 
 /**
- * Renders the body slot for the explicit re-run entry: the outcome alert once
- * the run settles, otherwise the target assignment plus a note that the
- * linked definition is reused.
+ * Renders the body slot for the explicit re-run entry: an error alert when the
+ * run fails, otherwise the target assignment plus a note that the linked
+ * definition is reused. The owning modal renders the success outcome.
  *
  * @remarks Never renders the assignment Select, so the skipped selector
  * cannot be mistaken for the manual selection path, and never renders the raw
@@ -35,10 +35,6 @@ export type AssessTaskReRunBodyProperties = Readonly<{
 export function AssessTaskReRunBody(properties: AssessTaskReRunBodyProperties): JSX.Element {
   const { context, assignments, assessmentState, assessmentError, assessmentAlertType } =
     properties;
-
-  if (assessmentState === 'success') {
-    return <Alert type="success" showIcon title={assessmentError} style={{ marginBottom: 16 }} />;
-  }
 
   if (assessmentState === 'error' && assessmentError) {
     return (
@@ -79,10 +75,11 @@ export type AssessTaskReRunFooterProperties = Readonly<{
  *
  * @remarks The re-run never offers the manual Start Assessment action. While
  * the automatic start is in flight the primary action follows the modal
- * confirm-loading pattern; a retryable failure keeps the primary action
- * available for retry (per the modal error-handling pattern); a permanently
+ * confirm-loading pattern; success is rendered by the owning modal. A retryable
+ * failure keeps the primary action available for retry (per the modal
+ * error-handling pattern); a permanently
  * blocked re-run keeps only Cancel, so the footer never offers an action that
- * cannot succeed; and success offers Close. Stale-definition recovery
+ * cannot succeed. Stale-definition recovery
  * suppresses this footer entirely in favour of the recovery surface.
  *
  * @param {AssessTaskReRunFooterProperties} properties The re-run footer state and handlers.
@@ -90,14 +87,6 @@ export type AssessTaskReRunFooterProperties = Readonly<{
  */
 export function AssessTaskReRunFooter(properties: AssessTaskReRunFooterProperties): JSX.Element {
   const { assessmentState, isRetryAvailable, onRetry, onClose } = properties;
-
-  if (assessmentState === 'success') {
-    return (
-      <Button type="primary" onClick={onClose}>
-        Close
-      </Button>
-    );
-  }
 
   if (assessmentState === 'loading') {
     return (
