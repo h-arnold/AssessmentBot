@@ -22,10 +22,8 @@ vi.mock('../../services/dataAnalysis/dataAnalysisService', () => {
     /** Shared analysis mock used by the specs. */
     public static readonly analyse = vi.fn();
 
-    /** Supplies the shared mock to hook-created service instances. */
-    constructor() {
-      return { analyse: MockDataAnalysisService.analyse };
-    }
+    /** Shared analysis mock exposed on hook-created service instances. */
+    public readonly analyse = MockDataAnalysisService.analyse;
   }
   return { DataAnalysisService: MockDataAnalysisService };
 });
