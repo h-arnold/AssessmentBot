@@ -25,13 +25,11 @@ import {
   clickStartAssessment,
   MOCK_CLASS_ID,
   selectAssignment,
+  expectAssessmentSuccessSurface,
 } from '../../../test/classes/AssessTaskModal.test-utilities';
 import { renderWithNoMatchCache } from '../../../test/classes/AssessTaskModal.link-flow-helpers';
 import { setTextboxValue } from '../../../test/assignmentDefinition/wizardTestHelpers';
-import {
-  mockTopics,
-  mockYearGroups,
-} from '../../../test/assignmentDefinition/sharedTestFixtures';
+import { mockTopics, mockYearGroups } from '../../../test/assignmentDefinition/sharedTestFixtures';
 import type { AssignmentDefinition } from '../../../services/assignmentDefinition/assignmentDefinition.zod';
 import type { GoogleClassroomAssignmentsResponse } from '../../../services/googleClassrooms/googleClassroomAssignments.zod';
 import editableDefinitionsRaw from '../../../../../../tests/__mocks__/data/synthetic-analysis/small/editableDefinitions.json?raw';
@@ -258,9 +256,7 @@ async function openDirtyCreateReview(dialog: HTMLElement): Promise<void> {
  * @param {() => Promise<void>} dismiss - The dismissal interaction to exercise.
  * @returns {Promise<void>} Resolves after the prompt is verified.
  */
-async function expectDirtyDismissalToPrompt(
-  dismiss: () => Promise<void>
-): Promise<void> {
+async function expectDirtyDismissalToPrompt(dismiss: () => Promise<void>): Promise<void> {
   await dismiss();
 
   const discardDialog = await screen.findByRole('dialog', { name: DISCARD_DIALOG_PATTERN });
@@ -347,9 +343,7 @@ describe('AssessTaskModal in-modal create path', () => {
     await user.click(cancelButton);
 
     await waitFor(() => {
-      expect(
-        within(dialog).getByRole('button', { name: CREATE_BUTTON_NAME })
-      ).toBeInTheDocument();
+      expect(within(dialog).getByRole('button', { name: CREATE_BUTTON_NAME })).toBeInTheDocument();
     });
     expect(screen.queryAllByRole('dialog')).toHaveLength(1);
     expect(dialog.style.width).not.toBe(WIDE_DATA_WIDTH);
@@ -384,9 +378,7 @@ describe('AssessTaskModal in-modal create path', () => {
     );
 
     await waitFor(() => {
-      expect(
-        within(dialog).getByRole('button', { name: CREATE_BUTTON_NAME })
-      ).toBeInTheDocument();
+      expect(within(dialog).getByRole('button', { name: CREATE_BUTTON_NAME })).toBeInTheDocument();
     });
   });
 
@@ -455,6 +447,7 @@ describe('AssessTaskModal in-modal create path', () => {
     const successAlert = await within(dialog).findByRole('alert');
     expect(successAlert).toHaveTextContent(/assessment started for/i);
     expect(successAlert).toHaveTextContent(/Essay/);
+    expectAssessmentSuccessSurface(dialog, 'Essay');
   });
 
   it('shows the blocking parse-failure alert in the owning dialog without starting an assessment', async () => {

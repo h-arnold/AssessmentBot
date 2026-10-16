@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { expectAssessmentSuccessSurface } from './helpers/assessment-success-surface';
 import {
   getMethodCalls,
   installRuntimeMock,
@@ -72,6 +73,22 @@ const EXPECTED_RECOVERY_ATTEMPTS = 2;
 const EXPECTED_RETRY_UPSERTS = 3;
 
 test.describe('Stale assignment-definition recovery journeys', () => {
+  test('matched manual assessment settles on the shared success surface', async ({ page }) => {
+    await installRuntimeMock(
+      page,
+      createStaleRecoveryScenario([MATCHED_ASSIGNMENT], {
+        startAssessmentRun: [START_SUCCESS],
+      })
+    );
+
+    const dialog = await openCanonicalAssessTaskModal(page);
+    await selectCanonicalAssignmentAndStart(dialog, page, MATCHED_ASSIGNMENT.title);
+
+    await expectAssessmentSuccessSurface(dialog, MATCHED_ASSIGNMENT.title);
+    const calls = await getMethodCalls(page);
+    expect(calls.filter((name) => name === 'startAssessmentRun')).toHaveLength(1);
+  });
+
   test('matched stale recovery: prompt, in-modal review, approval and resumed assessment', async ({
     page,
   }) => {
@@ -117,7 +134,7 @@ test.describe('Stale assignment-definition recovery journeys', () => {
 
     await dialog.getByRole('button', { name: ACTION_SAVE }).click();
 
-    await expect(dialog.getByText(/assessment started for/i)).toBeVisible();
+    await expectAssessmentSuccessSurface(dialog, MATCHED_ASSIGNMENT.title);
     await expect(page.getByRole('dialog')).toHaveCount(1);
 
     const calls = await getMethodCalls(page);
@@ -157,7 +174,7 @@ test.describe('Stale assignment-definition recovery journeys', () => {
 
     await expect(dialog.getByRole('table', { name: TASK_WEIGHTINGS_TABLE })).toBeVisible();
     await dialog.getByRole('button', { name: ACTION_SAVE }).click();
-    await expect(dialog.getByText(/assessment started for/i)).toBeVisible();
+    await expectAssessmentSuccessSurface(dialog, MATCHED_ASSIGNMENT.title);
 
     const calls = await getMethodCalls(page);
     expect(calls.filter((name) => name === 'upsertAssignmentDefinition')).toHaveLength(
@@ -228,7 +245,7 @@ test.describe('Stale assignment-definition recovery journeys', () => {
     await expect(dialog.getByRole('table', { name: TASK_WEIGHTINGS_TABLE })).toBeVisible();
     await dialog.getByRole('button', { name: ACTION_SAVE }).click();
 
-    await expect(dialog.getByText(/assessment started for/i)).toBeVisible();
+    await expectAssessmentSuccessSurface(dialog, CREATE_ASSIGNMENT.title);
     await expect(page.getByRole('dialog')).toHaveCount(1);
 
     const calls = await getMethodCalls(page);

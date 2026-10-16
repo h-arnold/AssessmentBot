@@ -4,10 +4,7 @@ import { APP_GAP_LG } from '../../../theme/spacing';
 import { useAuthenticationSettings } from './useAuthenticationSettings';
 import type { AuthMode } from './useAuthenticationSettings.helpers';
 import { AuthenticationSettingsUserTable } from './AuthenticationSettingsUserTable';
-import type {
-  AuthUserEntry,
-  AuthUserRole,
-} from '../../../services/authService/authService.zod';
+import type { AuthUserEntry, AuthUserRole } from '../../../services/authService/authService.zod';
 
 const { Text, Title } = Typography;
 
@@ -141,50 +138,44 @@ export function AuthenticationSettingsTab() {
         />
 
         <Form layout="vertical" onFinish={handleFinish}>
-          <Card
-            title={
-              <Title level={3} style={{ margin: 0 }}>
-                {authenticationProviderCardTitle}
-              </Title>
-            }
-          >
-            <Flex vertical gap={APP_GAP_LG} style={{ width: '100%' }}>
-              <Form.Item
-                extra={authenticationModeHelperCopy}
-                label="Authentication mode"
-              >
-                <Select<AuthMode>
-                  aria-label="Authentication mode"
-                  disabled={isSaving}
-                  options={[...authModeOptions]}
-                  value={stagedAuthMode}
-                  onChange={(value) => requestModeSwitch(value)}
-                />
-              </Form.Item>
-
-              <AuthenticationProviderRegions
-                authMode={stagedAuthMode}
-                authGroupEmail={authGroupEmail}
-                authUsers={authUsers}
-                isSaving={isSaving}
-                addUser={addUser}
-                changeUserRole={changeUserRole}
-                removeUser={removeUser}
-                setAuthGroupEmail={setAuthGroupEmail}
-              />
-            </Flex>
-          </Card>
-
-          <Form.Item>
-            <Button
-              disabled={isSaving}
-              htmlType="submit"
-              loading={isSaving}
-              type="primary"
+          <Flex vertical gap={APP_GAP_LG}>
+            <Card
+              title={
+                <Title level={3} style={{ margin: 0 }}>
+                  {authenticationProviderCardTitle}
+                </Title>
+              }
             >
-              Save
-            </Button>
-          </Form.Item>
+              <Flex vertical gap={APP_GAP_LG} style={{ width: '100%' }}>
+                <Form.Item extra={authenticationModeHelperCopy} label="Authentication mode">
+                  <Select<AuthMode>
+                    aria-label="Authentication mode"
+                    disabled={isSaving}
+                    options={[...authModeOptions]}
+                    value={stagedAuthMode}
+                    onChange={(value) => requestModeSwitch(value)}
+                  />
+                </Form.Item>
+
+                <AuthenticationProviderRegions
+                  authMode={stagedAuthMode}
+                  authGroupEmail={authGroupEmail}
+                  authUsers={authUsers}
+                  isSaving={isSaving}
+                  addUser={addUser}
+                  changeUserRole={changeUserRole}
+                  removeUser={removeUser}
+                  setAuthGroupEmail={setAuthGroupEmail}
+                />
+              </Flex>
+            </Card>
+
+            <Form.Item>
+              <Button disabled={isSaving} htmlType="submit" loading={isSaving} type="primary">
+                Save
+              </Button>
+            </Form.Item>
+          </Flex>
         </Form>
       </Flex>
 
@@ -247,9 +238,7 @@ type AuthenticationStatusStackProperties = Readonly<{
  * @param {AuthenticationStatusStackProperties} properties Status-stack properties.
  * @returns {ReactElement} The status stack nodes.
  */
-function AuthenticationStatusStack(
-  properties: AuthenticationStatusStackProperties
-): ReactElement {
+function AuthenticationStatusStack(properties: AuthenticationStatusStackProperties): ReactElement {
   return (
     <>
       {properties.isRefreshing ? (

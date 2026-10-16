@@ -1,4 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
+import { expectAssessmentSuccessSurface } from './helpers/assessment-success-surface';
 import {
   getMethodCalls,
   installRuntimeMock,
@@ -236,9 +237,8 @@ test.describe('Re-run Assessment from the assignment heatmap', () => {
 
     // Queued-success: the run was accepted for background processing, so the
     // success copy reports the start and the footer offers only Close.
+    await expectAssessmentSuccessSurface(dialog, HEATMAP_UPDATED_CLASSROOM_TITLE);
     await expect(dialog.getByRole('alert')).toContainText(SUCCESS_COPY);
-    await expect(footerButton(dialog, 'Close')).toBeVisible();
-    await expect(dialog.getByTestId(ASSIGNMENT_SELECT_TEST_ID)).toHaveCount(0);
     expect(await countStartAssessmentRuns(page)).toBe(1);
   });
 
@@ -270,10 +270,8 @@ test.describe('Re-run Assessment from the assignment heatmap', () => {
 
     // The retry reuses the same persisted-key request and reaches the
     // queued-success state; the failure-only Retry action disappears.
-    await expect(dialog.getByRole('alert')).toContainText(SUCCESS_COPY);
-    await expect(footerButton(dialog, 'Close')).toBeVisible();
+    await expectAssessmentSuccessSurface(dialog, HEATMAP_UPDATED_CLASSROOM_TITLE);
     await expect(footerButton(dialog, 'Retry')).toHaveCount(0);
-    await expect(dialog.getByTestId(ASSIGNMENT_SELECT_TEST_ID)).toHaveCount(0);
 
     const startRequests = [expectedStartRequest(), expectedStartRequest()];
     expect(await getStartAssessmentRequests(page)).toEqual(startRequests);
