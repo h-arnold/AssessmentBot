@@ -2,12 +2,12 @@
 
 ## Status and read-first context
 
-Planning is complete with independent clean review; the user subsequently requested implementation and authorised commits/pushes. Sections 1–3 are delivered, including Section 2's separately authorised test-infrastructure decompositions. Section 4 has clean red/green reviews and a baseline-or-better final section-end comparison; its commit/push gate is in progress. Sections 5–11 have not started. No deployment has occurred.
+Planning is complete with independent clean review; the user subsequently requested implementation and authorised commits/pushes. Sections 1–4 are delivered, including Section 2's separately authorised test-infrastructure decompositions. Each has clean independent reviews and a baseline-or-better final section-end comparison against accepted debt. Sections 5–11 have not started. No deployment has occurred.
 
 ### Implementation start-up — 15 October 2026
 
 - The user requested implementation of this plan. The worktree was clean at start-up on branch `docs/abclass-metadata-plan`, HEAD `6fc46be`.
-- Current section: Section 4 commit/push gate. The user-authorised unchanged-tree checker retry at `2026-10-16T21:26:00.240Z` reports zero regressions, zero new failures and five fixes, with all checks passing except the seven accepted existing backend lint warnings. Earlier flaky E2E evidence is retained below, not erased or silently waived. Section 3 implementation and delivery-record commits `895bdf6` and `26f5d51` are pushed on `docs/abclass-metadata-plan`, as are Section 2 commits `3586db4`/`e0cbccb` and all Section 1 commits including delivery record `097b670`.
+- Current delivery checkpoint: Section 4 implementation is committed and pushed as `7488657b196500f11a799eb90c97b18f1637ba42` (`refactor: extract ABClass mutation orchestration`) on `docs/abclass-metadata-plan`; this delivery-record update is being committed before Section 5 starts. The user-authorised unchanged-tree checker retry at `2026-10-16T21:26:00.240Z` reports zero regressions, zero new failures and five fixes, with all checks passing except the seven accepted existing backend lint warnings. Earlier flaky E2E evidence is retained below, not erased or silently waived. Section 3 commits `895bdf6`/`26f5d51`, Section 2 commits `3586db4`/`e0cbccb` and all Section 1 commits including delivery record `097b670` are pushed.
 - Baseline command: `npm run regression-checker -- abclass-metadata-contract` (1,200,000 ms timeout). Baseline created at `2026-10-15T20:45:28.439Z`; exit 1, overall `FAILING`, seven of eight checks passing, zero regressions and zero new failures. Backend lint reports zero errors and the ten pre-existing max-lines warnings documented below; these remain recorded baseline technical debt, not a clean aggregate gate. Backend tests, frontend/builder coverage, frontend E2E, frontend/builder lint and TypeScript checks passed. Correction after inspecting the saved manifest: despite its `backend-test-coverage-check` name, the checker runs `test:backend` without coverage, so this baseline did not establish backend coverage thresholds.
 - Baseline report: `.ts-regression-checker/reports/session-abclass-metadata-contract/baseline/baseline.txt`. Retain the same checker identity throughout delivery.
 - Commit authority resolved on 16 October 2026: the user explicitly authorised commits and pushes as part of delivery. This supersedes this plan's historical implementation-commit exclusion; retain all hook/review/regression gates and the deployment exclusion. No commits, pushes or deployment have occurred during implementation start-up.
@@ -503,6 +503,15 @@ Playwright diagnosis is complete: `.opencode/scratchpad/section4-e2e-diagnosis.m
 - Final comparison: `.ts-regression-checker/reports/session-abclass-metadata-contract/runs/2026-10-16T21-26-00.240Z/comparison.txt`.
 - Raw exit 1 / overall **FAILING**, seven of eight checks pass, **zero regressions, zero new failures, five fixes**. Only backend lint fails, with seven unchanged accepted max-lines warnings and zero errors/new diagnostics. The facade warning is removed. Backend tests, frontend/builder coverage, frontend E2E, frontend/builder lint and all-project TypeScript pass. Separate explicit backend coverage remains 84.06% branches against unchanged 85%, accepted pre-existing debt rather than a passing aggregate gate.
 - This completed final-tree run supersedes the first failed section comparison for completion evidence; the real initial E2E flake, diagnostic limitations and targeted retry results remain recorded above. No frontend/checker/baseline/configuration/snapshot change or new failure waiver was made. Section regression gate is satisfied against accepted baseline debt; clean red/green reviews and same-change helper documentation are complete. Commit/push and recorded evidence are required before Section 5.
+
+### Section 4 commit and push evidence
+
+- Commit: `7488657b196500f11a799eb90c97b18f1637ba42`.
+- Exact message: `refactor: extract ABClass mutation orchestration`.
+- Branch: `docs/abclass-metadata-plan`.
+- Normal pre-commit hooks passed: all ten staged files were formatter-stable, staged backend ESLint and all-project TypeScript passed. Saved pre-commit reviewed diff and committed diff match byte-for-byte; hooks introduced no unreviewed changes and no hook bypass occurred.
+- `git push origin docs/abclass-metadata-plan` succeeded, advancing `26f5d51..7488657`. Only unrelated user-owned `.opencode/agents/code-reviewer.md` and `opencode.jsonc` edits remain outside the commit.
+- Section 4 is complete against accepted baseline lint/coverage debt, with the initial E2E flake and clean full comparison retry both preserved above. This separate delivery-record documentation commit records evidence before Section 5; its own SHA/push confirmation is recorded in the delivery handoff rather than recursively embedding its hash. No deployment occurred.
 
 ## Section 5 — Prepared dual-store writes and field-scoped roster persistence
 
