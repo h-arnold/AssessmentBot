@@ -11,8 +11,8 @@ import {
   createSubmission,
   createSubmissionItem,
   createTaskPartial,
-} from '../../../test/dataAnalysis/fixtures';
-import { expectMetricResultStateAware } from '../../../test/dataAnalysis/averagingAnalyserAssertions';
+} from '@/test/dataAnalysis/fixtures';
+import { expectMetricResultStateAware } from '@/test/dataAnalysis/averagingAnalyserAssertions';
 
 const ZERO = 0;
 const CRITERION_WEIGHTINGS = { completeness: 0.4, accuracy: 0.4, spag: 0.2 };

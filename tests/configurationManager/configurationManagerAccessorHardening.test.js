@@ -11,7 +11,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createConfiguredConfigurationManager } from '../helpers/backendConfigTestHelpers.js';
 
-const ConfigurationManager = require('../../src/backend/ConfigurationManager/98_ConfigurationManagerClass.js');
+const ConfigurationManager = require('#backend/ConfigurationManager/98_ConfigurationManagerClass.js');
 
 const UNKNOWN_KEY = 'notAConfigurationKey';
 

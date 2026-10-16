@@ -9,9 +9,9 @@ import {
   createSubmission,
   createSubmissionItem,
   createTaskPartial,
-} from '../../../test/dataAnalysis/fixtures';
+} from '@/test/dataAnalysis/fixtures';
 import type { MetricResult } from '../dataAnalysis.zod';
-import { expectMetricResultStateAware } from '../../../test/dataAnalysis/averagingAnalyserAssertions';
+import { expectMetricResultStateAware } from '@/test/dataAnalysis/averagingAnalyserAssertions';
 
 describe('AveragingAnalyser', () => {
   describe('analyse — rows', () => {

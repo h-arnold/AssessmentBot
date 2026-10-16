@@ -1,4 +1,6 @@
 import { createRequire } from 'node:module';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import js from '@eslint/js';
 import jsdoc from 'eslint-plugin-jsdoc';
 import sonarjs from 'eslint-plugin-sonarjs';
@@ -10,6 +12,7 @@ import unicorn from 'eslint-plugin-unicorn';
 import { defineConfig, globalIgnores } from 'eslint/config';
 
 const require = createRequire(import.meta.url);
+const __dirname = import.meta.dirname;
 const { unicodeSecurityRules } = require('../../config/eslint/unicode-security-rules.cjs');
 const {
   crossRuntimeUnicornPreferenceRules,
@@ -20,6 +23,7 @@ const {
   tsBaseRules,
   sonarjs: sonarjsPlugin,
 } = require('../../config/eslint/ts-base-rules.cjs');
+const { importPathDepthPlugin, pathAliases } = require('../../config/eslint/import-path-rules.cjs');
 
 export default defineConfig([
   globalIgnores(['dist', 'playwright-report', 'coverage']),
@@ -272,6 +276,32 @@ export default defineConfig([
     ],
     rules: {
       '@typescript-eslint/no-magic-numbers': 'off',
+    },
+  },
+  {
+    // Enforce the import-path depth policy: `../x` is allowed, but `../../x`
+    // and deeper must use a configured alias. The fixer rewrites covered
+    // specifiers, including the Vitest `vi.mock` family, to their canonical alias.
+    files: ['src/**/*.{ts,tsx}', 'e2e-tests/**/*.{ts,tsx}'],
+    plugins: { 'import-path': importPathDepthPlugin },
+    rules: {
+      'import-path/path-depth': [
+        'error',
+        {
+          rootDir: path.resolve(__dirname, '../..'),
+          aliases: [pathAliases.frontend, pathAliases.syntheticFixtures],
+        },
+      ],
+    },
+  },
+  {
+    // These specs read non-module assets that have no canonical alias: a policy
+    // document (via `?raw`) and the frontend package manifest (via `?raw`).
+    // Both paths are intentionally relative to the frontend package and are not
+    // part of the module graph, so the depth rule does not apply.
+    files: ['src/index.css.spec.ts', 'src/query/reactQueryFoundation.query.spec.tsx'],
+    rules: {
+      'import-path/path-depth': 'off',
     },
   },
 ]);

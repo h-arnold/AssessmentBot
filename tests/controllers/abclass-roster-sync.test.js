@@ -53,8 +53,8 @@ beforeEach(async () => {
   setupMocks(classCollection, partialsCollection);
 
   // Dynamic import after globals are set to ensure globals are in place before module evaluation
-  const abClassModule = await import('../../src/backend/Models/ABClass.js');
-  const controllerModule = await import('../../src/backend/y_controllers/ABClassController');
+  const abClassModule = await import('#backend/Models/ABClass.js');
+  const controllerModule = await import('#backend/y_controllers/ABClassController/index.js');
 
   ABClass = abClassModule.ABClass;
   ABClassController = controllerModule.default ?? controllerModule;

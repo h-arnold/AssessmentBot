@@ -6,18 +6,18 @@
  * integration with runQueuedBatchMutation.
  */
 
-import '../../../test/classes/bulkPanel.mockSetup';
+import '@/test/classes/bulkPanel.mockSetup';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { BulkDeleteModal, type BulkDeleteModalProperties } from './BulkDeleteModal';
-import { renderWithFrontendProviders } from '../../../test/renderWithFrontendProviders';
+import { renderWithFrontendProviders } from '@/test/renderWithFrontendProviders';
 import {
   buildClassesManagementState,
   createFulfilledClassResult,
-} from '../../../test/classes/classesTestHelpers';
+} from '@/test/classes/classesTestHelpers';
 import type { ClassesManagementRow } from '../classesManagementViewModel';
-import { makeRow as sharedMakeRow } from '../../../test/classes/bulkFlowTestHelpers';
+import { makeRow as sharedMakeRow } from '@/test/classes/bulkFlowTestHelpers';
 import { useClassesManagement } from '../useClassesManagement';
 import { runQueuedBatchMutation } from './runQueuedBatchMutation';
 

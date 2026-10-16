@@ -38,11 +38,11 @@ import { expect } from 'vitest';
 import {
   TaskMetricPreviewCell,
   type TaskMetricPreviewCellProperties,
-} from '../../features/taskHeatmap/TaskMetricPreviewCell';
-import type { CellPreviewData } from '../../features/taskHeatmap/buildCellPreviewLookup';
-import { SOURCE_ACTION_LABEL } from '../../features/taskHeatmap/TaskPreviewCard';
-import { buildMetricCellAccessibleLabel } from '../../features/taskHeatmap/taskHeatmapTableColumns';
-import { formatMetricDisplayText } from '../../services/dataAnalysis/metricDisplay/metricDisplayText';
+} from '@/features/taskHeatmap/TaskMetricPreviewCell';
+import type { CellPreviewData } from '@/features/taskHeatmap/buildCellPreviewLookup';
+import { SOURCE_ACTION_LABEL } from '@/features/taskHeatmap/TaskPreviewCard';
+import { buildMetricCellAccessibleLabel } from '@/features/taskHeatmap/taskHeatmapTableColumns';
+import { formatMetricDisplayText } from '@/services/dataAnalysis/metricDisplay/metricDisplayText';
 import { createComputedMetricResult } from '../dataAnalysis/fixtures';
 import { CANONICAL_READY_CELL, buildCanonicalReadyCellData } from './previewFixtures';
 

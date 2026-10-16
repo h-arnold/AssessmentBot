@@ -2,8 +2,8 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { render, renderHook, screen, waitFor } from '@testing-library/react';
 import type { PropsWithChildren } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { ApiTransportError } from '../../errors/apiTransportError';
-import { createAppQueryClient } from '../../query/queryClient';
+import { ApiTransportError } from '@/errors/apiTransportError';
+import { createAppQueryClient } from '@/query/queryClient';
 import { useAuthorisationStatus } from './useAuthorisationStatus';
 
 const { getAuthorisationStatusMock } = vi.hoisted(() => {
@@ -12,7 +12,7 @@ const { getAuthorisationStatusMock } = vi.hoisted(() => {
   };
 });
 
-vi.mock('../../services/authService/authService', () => {
+vi.mock('@/services/authService/authService', () => {
   return {
     hasScriptAuthorisation: getAuthorisationStatusMock,
   };

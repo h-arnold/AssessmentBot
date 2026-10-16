@@ -56,8 +56,8 @@ import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { HeatmapsSurfaceState } from './heatmapsSurfaceState';
 import type { SelectionState } from './selectionCascade';
-import type { AssignmentDefinitionPartialsResponse } from '../../services/assignmentDefinition/assignmentDefinitionPartials.zod';
-import type { ClassFull } from '../../services/googleClassrooms/classDetail/classDetailService.zod';
+import type { AssignmentDefinitionPartialsResponse } from '@/services/assignmentDefinition/assignmentDefinitionPartials.zod';
+import type { ClassFull } from '@/services/googleClassrooms/classDetail/classDetailService.zod';
 import {
   ASSIGNMENT_DEFINITION_PARTIALS,
   ASSIGNMENTS_PLACEHOLDER,
@@ -72,7 +72,7 @@ import {
   TOPICS_PLACEHOLDER,
   buildMergedResult,
   renderSurface,
-} from '../../test/heatmapBuilderSurfaceTestHelpers';
+} from '@/test/heatmapBuilderSurfaceTestHelpers';
 
 // Mock the orchestration hook at the module seam. The stub does not import it yet,
 // so the mock is inert against the placeholder; the green surface will consume it.

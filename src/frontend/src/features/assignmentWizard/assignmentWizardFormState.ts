@@ -1,10 +1,10 @@
 import { type FormInstance } from 'antd';
-import { coerceAssignmentWeighting } from '../../services/assignmentDefinition/assignmentDefinitionUtilities';
-import { type AssignmentDefinition } from '../../services/assignmentDefinition/assignmentDefinitionService';
+import { coerceAssignmentWeighting } from '@/services/assignmentDefinition/assignmentDefinitionUtilities';
+import { type AssignmentDefinition } from '@/services/assignmentDefinition/assignmentDefinitionService';
 import { type useStartupWarmupState } from '../auth/startupWarmupState';
 import { sortYearGroups } from '../referenceData/yearGroupSorting';
 
-export { coerceAssignmentWeighting } from '../../services/assignmentDefinition/assignmentDefinitionUtilities';
+export { coerceAssignmentWeighting } from '@/services/assignmentDefinition/assignmentDefinitionUtilities';
 
 export type TaskRow = Readonly<{
   key: string;

@@ -33,7 +33,7 @@ import {
 } from './authServiceBootstrapHarness.js';
 import { buildUsersJson, flattenedLog } from './authServiceTestHarness.js';
 
-const AuthService = require('../../../src/backend/Utils/AuthService.js');
+const AuthService = require('#backend/Utils/AuthService.js');
 
 describe('AuthService fresh-install bootstrap claim', () => {
   let ctx;

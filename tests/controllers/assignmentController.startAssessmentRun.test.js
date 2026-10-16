@@ -16,7 +16,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
-const DefinitionStaleError = require('../../src/backend/Utils/ErrorTypes/DefinitionStaleError.js');
+const DefinitionStaleError = require('#backend/Utils/ErrorTypes/DefinitionStaleError.js');
 
 let AssignmentController, AssignmentDefinitionController, DriveManager, ABClassController;
 

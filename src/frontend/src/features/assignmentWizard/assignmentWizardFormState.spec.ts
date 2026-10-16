@@ -1,7 +1,7 @@
 import { type FormInstance } from 'antd';
 import { describe, expect, it, vi } from 'vitest';
-import type { AssignmentDefinition } from '../../services/assignmentDefinition/assignmentDefinition.zod';
-import editableDefinitionsRaw from '../../../../../tests/__mocks__/data/synthetic-analysis/small/editableDefinitions.json?raw';
+import type { AssignmentDefinition } from '@/services/assignmentDefinition/assignmentDefinition.zod';
+import editableDefinitionsRaw from '@synthetic/small/editableDefinitions.json?raw';
 import formStateSourceRaw from './assignmentWizardFormState.ts?raw';
 import {
   applyFormInitialValues,

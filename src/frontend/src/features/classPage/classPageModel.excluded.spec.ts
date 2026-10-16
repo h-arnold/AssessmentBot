@@ -1,11 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { createMetricResult } from '../../test/dataAnalysis/fixtures';
+import { createMetricResult } from '@/test/dataAnalysis/fixtures';
 import { buildClassPageViewModel } from './classPageModel';
-import {
-  buildAdapterResult,
-  buildStudentRow,
-} from '../../test/classPage/classPageModelTestFixtures';
-import type { MetricResult } from '../../services/dataAnalysis/dataAnalysis.zod';
+import { buildAdapterResult, buildStudentRow } from '@/test/classPage/classPageModelTestFixtures';
+import type { MetricResult } from '@/services/dataAnalysis/dataAnalysis.zod';
 
 /**
  * Make a student row with the supplied completeness metric.

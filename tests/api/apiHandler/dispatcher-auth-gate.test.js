@@ -11,7 +11,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 // The gate is exercised through the real AuthService singleton with mocked dependencies
 // (ConfigurationManager auth state, Session active email, GroupsApp registry),
 // covering the authorised, deny, broken-config, blank-email and GroupsApp-error cases.
-const AuthService = require('../../../src/backend/Utils/AuthService.js');
+const AuthService = require('#backend/Utils/AuthService.js');
 const {
   installLockServiceMock,
   loadApiHandlerModule,

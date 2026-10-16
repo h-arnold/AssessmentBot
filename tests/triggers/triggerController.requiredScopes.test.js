@@ -12,7 +12,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
-const { TriggerController } = require('../../src/backend/Triggers/TriggerController.js');
+const { TriggerController } = require('#backend/Triggers/TriggerController.js');
 
 const manifestPath = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),

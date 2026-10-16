@@ -10,14 +10,14 @@ import {
 const extractSlidesTaskDefinitionsMock = vi.fn();
 const extractSheetsTaskDefinitionsMock = vi.fn();
 
-vi.mock('../../src/backend/DbManager/DbManager.js');
-vi.mock('../../src/backend/GoogleDriveManager/DriveManager/index.js');
-vi.mock('../../src/backend/DocumentParsers/SlidesParser/index.js', () => ({
+vi.mock('#backend/DbManager/DbManager.js');
+vi.mock('#backend/GoogleDriveManager/DriveManager/index.js');
+vi.mock('#backend/DocumentParsers/SlidesParser/index.js', () => ({
   default: class {
     extractTaskDefinitions = (...a) => extractSlidesTaskDefinitionsMock(...a);
   },
 }));
-vi.mock('../../src/backend/DocumentParsers/SheetsParser.js', () => ({
+vi.mock('#backend/DocumentParsers/SheetsParser.js', () => ({
   SheetsParser: class {
     extractTaskDefinitions = (...a) => extractSheetsTaskDefinitionsMock(...a);
   },

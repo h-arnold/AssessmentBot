@@ -8,7 +8,7 @@ import {
   SINGLE_YEAR_GROUP,
   YEAR_GROUPS_WITH_EMPTY,
   toPlainClassPartials,
-} from '../../src/test/classes/classesPageTestHelpers';
+} from '@/test/classes/classesPageTestHelpers';
 
 // ============================================================================
 // Assignment Fixture Data
@@ -654,4 +654,4 @@ export {
   SINGLE_YEAR_GROUP,
   YEAR_GROUPS_WITH_EMPTY,
   toPlainClassPartials,
-} from '../../src/test/classes/classesPageTestHelpers';
+} from '@/test/classes/classesPageTestHelpers';

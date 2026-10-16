@@ -7,7 +7,7 @@ const {
   createConfigurationManagerMock,
 } = require('../helpers/backendConfigTestHelpers.js');
 
-const AuthService = require('../../src/backend/Utils/AuthService.js');
+const AuthService = require('#backend/Utils/AuthService.js');
 
 const legacyConfigurationGlobalsPath = new URL(
   '../../src/backend/ConfigurationManager/99_globals.js',
@@ -24,7 +24,7 @@ afterEach(() => {
 
 describe('backend configuration API transport — write failure and validation regression', () => {
   it('clears a stored apiKey through the real validation seam when setBackendConfig explicitly clears the API key', () => {
-    const { validateApiKey_ } = require('../../src/backend/ConfigurationManager/03_validators.js');
+    const { validateApiKey_ } = require('#backend/ConfigurationManager/03_validators.js');
     const configurationManagerMock = createConfigurationManagerMock(vi);
 
     try {
@@ -62,7 +62,7 @@ describe('backend configuration API transport — write failure and validation r
   });
 
   it('rejects an invalid non-empty apiKey through the real validation seam without a locked write', () => {
-    const { validateApiKey_ } = require('../../src/backend/ConfigurationManager/03_validators.js');
+    const { validateApiKey_ } = require('#backend/ConfigurationManager/03_validators.js');
     const configurationManagerMock = createConfigurationManagerMock(vi);
 
     try {

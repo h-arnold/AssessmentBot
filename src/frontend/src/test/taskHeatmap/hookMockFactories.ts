@@ -4,7 +4,7 @@ import {
   createDatasetState,
   createMockQueryResult,
 } from '../heatmapsPageDataFixtures';
-import type { StartupWarmupDatasetKey } from '../../query/sharedQueries';
+import type { StartupWarmupDatasetKey } from '@/query/sharedQueries';
 
 /**
  * Build the ready dataset result used by the Heatmaps page-data hook specs.

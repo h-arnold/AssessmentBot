@@ -69,7 +69,7 @@ describe('CacheManager', () => {
 
     // Load CacheManager
     delete require.cache[require.resolve('../../src/backend/RequestHandlers/CacheManager.js')];
-    const module = require('../../src/backend/RequestHandlers/CacheManager.js');
+    const module = require('#backend/RequestHandlers/CacheManager.js');
     CacheManager = module.CacheManager || module;
   });
 

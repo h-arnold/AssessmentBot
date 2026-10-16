@@ -7,11 +7,11 @@ import {
   createAssignmentPartial,
   createComputedMetricResult,
   createNotAttemptedMetricResult,
-} from '../../test/dataAnalysis/fixtures';
+} from '@/test/dataAnalysis/fixtures';
 import {
   createHeatmapClassFull,
   createHeatmapDefinitionPartial,
-} from '../../test/dataAnalysis/heatmapFixtures';
+} from '@/test/dataAnalysis/heatmapFixtures';
 
 const DEFINITION = 'shared-definition';
 const FIRST_ASSIGNMENT = 'assignment-first';

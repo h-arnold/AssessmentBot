@@ -1,5 +1,5 @@
 import { Flex, Skeleton } from 'antd';
-import { APP_GAP_COMPACT, APP_GAP_SM } from '../../../theme/spacing';
+import { APP_GAP_COMPACT, APP_GAP_SM } from '@/theme/spacing';
 
 /**
  * Renders the initial blocking-load treatment for the classes panel.

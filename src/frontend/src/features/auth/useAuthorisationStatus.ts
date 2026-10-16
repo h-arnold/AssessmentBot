@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
-import { mapErrorToUserMessage } from '../../errors/map-error-to-ui';
-import { getAuthorisationStatusQueryOptions } from '../../query/sharedQueries';
+import { mapErrorToUserMessage } from '@/errors/map-error-to-ui';
+import { getAuthorisationStatusQueryOptions } from '@/query/sharedQueries';
 
 export type AuthorisationStatus = Readonly<{
   isAuthorised: boolean;

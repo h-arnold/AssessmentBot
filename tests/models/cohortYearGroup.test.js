@@ -1,5 +1,5 @@
 import { beforeAll, afterAll, describe, it, expect } from 'vitest';
-import { Validate } from '../../src/backend/Utils/Validate.js';
+import { Validate } from '#backend/Utils/Validate.js';
 
 const originalValidate = globalThis.Validate;
 
@@ -17,12 +17,12 @@ afterAll(() => {
 });
 
 async function loadYearGroup() {
-  const module = await import('../../src/backend/Models/YearGroup.js');
+  const module = await import('#backend/Models/YearGroup.js');
   return module.YearGroup ?? module.default?.YearGroup;
 }
 
 async function loadCohort() {
-  const module = await import('../../src/backend/Models/Cohort.js');
+  const module = await import('#backend/Models/Cohort.js');
   return module.Cohort ?? module.default?.Cohort;
 }
 

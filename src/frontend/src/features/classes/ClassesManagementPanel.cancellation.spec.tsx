@@ -1,13 +1,13 @@
-import '../../test/classes/ClassesManagementPanel.mockSetup';
+import '@/test/classes/ClassesManagementPanel.mockSetup';
 import { fireEvent, screen, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { createClassesManagementPanelHarness } from '../../test/classes/classesManagementPanelHarness';
-import type { MutableQueueState } from '../../test/classes/classesManagementPanelHarness';
+import { createClassesManagementPanelHarness } from '@/test/classes/classesManagementPanelHarness';
+import type { MutableQueueState } from '@/test/classes/classesManagementPanelHarness';
 import {
   buildClassesManagementRow,
   createFulfilledClassResult,
   createRejectedClassResult,
-} from '../../test/classes/classesTestHelpers';
+} from '@/test/classes/classesTestHelpers';
 
 import { useClassesManagement } from './useClassesManagement';
 import { runQueuedBatchMutation } from './bulk/runQueuedBatchMutation';

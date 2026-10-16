@@ -4,8 +4,8 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
-import { generateSyntheticAnalysisGraph } from '../../scripts/synthetic-test-data/generateSyntheticAnalysisGraph.js';
-import { toTransportViews } from '../../scripts/synthetic-test-data/toTransportViews.js';
+import { generateSyntheticAnalysisGraph } from '#synthetic-data/generateSyntheticAnalysisGraph.js';
+import { toTransportViews } from '#synthetic-data/toTransportViews.js';
 
 const REPOSITORY_ROOT = fileURLToPath(new URL('../../', import.meta.url));
 const TRANSPORT_VIEWS_PATH = join(

@@ -3,8 +3,8 @@ import { withGlobalMocks } from '../helpers/globalMockManager.js';
 
 // Hermetic behaviour coverage for the ABClass model: construction, owner
 // handling, collection helpers, serialisation and rehydration.
-const { ABClass } = require('../../src/backend/Models/ABClass.js');
-const { Teacher } = require('../../src/backend/Models/Teacher.js');
+const { ABClass } = require('#backend/Models/ABClass.js');
+const { Teacher } = require('#backend/Models/Teacher.js');
 
 describe('ABClass construction behaviour', () => {
   it('rejects missing or malformed constructor options', () => {

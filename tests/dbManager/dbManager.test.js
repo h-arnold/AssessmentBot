@@ -33,9 +33,9 @@ function createDbManagerTestContext() {
   delete require.cache[require.resolve('../../src/backend/00_BaseSingleton.js')];
 
   // Load BaseSingleton first (dependency)
-  require('../../src/backend/00_BaseSingleton.js');
+  require('#backend/00_BaseSingleton.js');
   // Load DbManager
-  const DbManager = require('../../src/backend/DbManager/DbManager.js');
+  const DbManager = require('#backend/DbManager/DbManager.js');
 
   return { DbManager };
 }

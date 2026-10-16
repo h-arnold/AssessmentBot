@@ -4,7 +4,7 @@
  */
 
 import { vi } from 'vitest';
-import { AssignmentDefinition } from '../../src/backend/Models/AssignmentDefinition.js';
+import { AssignmentDefinition } from '#backend/Models/AssignmentDefinition.js';
 import { setupDualCollectionGetFunction } from './mockFactories.js';
 
 /**
@@ -257,7 +257,7 @@ export function setupAssignmentDefinitionTestGlobals(
   globalThis.SlidesParser = MockSlidesParser;
 
   // Create controller - use default export if available
-  const AssignmentDefinitionController = require('../../src/backend/y_controllers/AssignmentDefinition/index.js');
+  const AssignmentDefinitionController = require('#backend/y_controllers/AssignmentDefinition/index.js');
   const ControllerClass = AssignmentDefinitionController.default || AssignmentDefinitionController;
   const controller = new ControllerClass();
 

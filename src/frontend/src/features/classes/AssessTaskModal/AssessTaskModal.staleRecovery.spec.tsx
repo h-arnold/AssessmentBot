@@ -5,16 +5,16 @@ import type { PropsWithChildren } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AssessTaskModal } from './AssessTaskModal';
 import { useAssessTaskFlow } from './useAssessTaskFlow';
-import { getGoogleClassroomAssignments } from '../../../services/googleClassrooms/googleClassroomAssignmentsService';
-import { startAssessmentRun } from '../../../services/assignmentAssessment/assignmentAssessmentService';
-import { upsertAssignmentDefinition } from '../../../services/assignmentDefinition/assignmentDefinitionService';
+import { getGoogleClassroomAssignments } from '@/services/googleClassrooms/googleClassroomAssignmentsService';
+import { startAssessmentRun } from '@/services/assignmentAssessment/assignmentAssessmentService';
+import { upsertAssignmentDefinition } from '@/services/assignmentDefinition/assignmentDefinitionService';
 import { findMatchingDefinition } from './matchDefinitionForAssignment';
-import { queryKeys } from '../../../query/queryKeys';
-import { createAppQueryClient } from '../../../query/queryClient';
-import { createFixtureClassPartial } from '../../../test/classes/classesPageTestHelpers';
-import { createDefinitionPartial } from '../../../test/classes/matchDefinitionForAssignment.test-utilities';
-import { createDeferredPromise } from '../../../test/shared/testDeferredPromise';
-import type { GoogleClassroomAssignmentsResponse } from '../../../services/googleClassrooms/googleClassroomAssignments.zod';
+import { queryKeys } from '@/query/queryKeys';
+import { createAppQueryClient } from '@/query/queryClient';
+import { createFixtureClassPartial } from '@/test/classes/classesPageTestHelpers';
+import { createDefinitionPartial } from '@/test/classes/matchDefinitionForAssignment.test-utilities';
+import { createDeferredPromise } from '@/test/shared/testDeferredPromise';
+import type { GoogleClassroomAssignmentsResponse } from '@/services/googleClassrooms/googleClassroomAssignments.zod';
 import {
   MOCK_ASSIGNMENTS,
   MOCK_CLASS_ID,
@@ -23,21 +23,21 @@ import {
   defaultProperties,
   seedAssessmentFlowQueryData,
   selectAssignment,
-} from '../../../test/classes/AssessTaskModal.test-utilities';
+} from '@/test/classes/AssessTaskModal.test-utilities';
 
-vi.mock('../../../services/googleClassrooms/googleClassroomAssignmentsService', () => {
+vi.mock('@/services/googleClassrooms/googleClassroomAssignmentsService', () => {
   return {
     getGoogleClassroomAssignments: vi.fn(),
   };
 });
 
-vi.mock('../../../services/assignmentAssessment/assignmentAssessmentService', () => {
+vi.mock('@/services/assignmentAssessment/assignmentAssessmentService', () => {
   return {
     startAssessmentRun: vi.fn(),
   };
 });
 
-vi.mock('../../../services/assignmentDefinition/assignmentDefinitionService', () => {
+vi.mock('@/services/assignmentDefinition/assignmentDefinitionService', () => {
   return {
     upsertAssignmentDefinition: vi.fn(),
   };

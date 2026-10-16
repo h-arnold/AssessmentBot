@@ -8,8 +8,8 @@ import {
   createSubmission,
   createSubmissionItem,
   createTaskPartial,
-} from '../../../test/dataAnalysis/fixtures';
-import { expectMetricResultStateAware } from '../../../test/dataAnalysis/averagingAnalyserAssertions';
+} from '@/test/dataAnalysis/fixtures';
+import { expectMetricResultStateAware } from '@/test/dataAnalysis/averagingAnalyserAssertions';
 
 describe('per-class rollup unification', () => {
   it('verifies rollupAccumulators is exported from averagingAnalyser.rows for reuse in per-class rollup', async () => {

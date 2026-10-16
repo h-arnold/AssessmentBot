@@ -14,7 +14,7 @@ import { cloneElement, useEffect, useRef, type ReactElement } from 'react';
 import { Alert, Button, Flex, Modal, Table, Typography, type TableColumnType } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import { syncReferenceDataModalBusyState } from './manageReferenceDataHelpers';
-import { APP_GAP_COMPACT } from '../../theme/spacing';
+import { APP_GAP_COMPACT } from '@/theme/spacing';
 
 const { Text } = Typography;
 

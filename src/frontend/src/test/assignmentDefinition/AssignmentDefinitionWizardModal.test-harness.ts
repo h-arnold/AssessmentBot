@@ -1,26 +1,26 @@
 import { act, fireEvent, waitFor } from '@testing-library/react';
 import { vi } from 'vitest';
-import type { AssignmentDefinition } from '../../services/assignmentDefinition/assignmentDefinition.zod';
-import { createStartupWarmupState } from '../../test/assignmentDefinition/wizardTestHelpers';
+import type { AssignmentDefinition } from '@/services/assignmentDefinition/assignmentDefinition.zod';
+import { createStartupWarmupState } from '@/test/assignmentDefinition/wizardTestHelpers';
 import {
   mockTopics,
   mockYearGroups,
   mockCohorts,
-} from '../../test/assignmentDefinition/sharedTestFixtures';
+} from '@/test/assignmentDefinition/sharedTestFixtures';
 import {
   mockFullAssignmentDefinition,
   mockUpsertResponse,
-} from '../../test/assignmentDefinition/assignmentDefinitionTestFixtures';
+} from '@/test/assignmentDefinition/assignmentDefinitionTestFixtures';
 import {
   getParseButton,
   getSaveButton,
   fillRequiredFields,
-} from '../../test/assignmentDefinition/wizardModalInteractionHelpers';
+} from '@/test/assignmentDefinition/wizardModalInteractionHelpers';
 import {
   assertParseButtonEnabled,
   assertSharedEditSurfaceHydrated,
-} from '../../test/assignmentDefinition/wizardModalAssertionHelpers';
-import type { RenderWizardModalOptions } from '../../test/assignmentDefinition/wizardModalRenderingHelpers';
+} from '@/test/assignmentDefinition/wizardModalAssertionHelpers';
+import type { RenderWizardModalOptions } from '@/test/assignmentDefinition/wizardModalRenderingHelpers';
 
 export {
   createUpdateWizardOptions,
@@ -31,7 +31,7 @@ export {
   type RenderWizardModalOptions,
   type WizardModalMode,
   type WizardModalRenderResult,
-} from '../../test/assignmentDefinition/wizardModalRenderingHelpers';
+} from '@/test/assignmentDefinition/wizardModalRenderingHelpers';
 export {
   changeReferenceUrl,
   changeTemplateUrl,
@@ -53,7 +53,7 @@ export {
   selectYearGroup,
   type FillRequiredFieldsOptions,
   type ModalElementQueries,
-} from '../../test/assignmentDefinition/wizardModalInteractionHelpers';
+} from '@/test/assignmentDefinition/wizardModalInteractionHelpers';
 export {
   assertAllRequiredFieldsPresent,
   assertConflictingControlsDisabled,
@@ -73,16 +73,16 @@ export {
   assertTaskVisible,
   getReferenceUrlValue,
   getTemplateUrlValue,
-} from '../../test/assignmentDefinition/wizardModalAssertionHelpers';
+} from '@/test/assignmentDefinition/wizardModalAssertionHelpers';
 export {
   mockTopics,
   mockYearGroups,
   mockCohorts,
-} from '../../test/assignmentDefinition/sharedTestFixtures';
+} from '@/test/assignmentDefinition/sharedTestFixtures';
 export {
   mockFullAssignmentDefinition,
   mockUpsertResponse,
-} from '../../test/assignmentDefinition/assignmentDefinitionTestFixtures';
+} from '@/test/assignmentDefinition/assignmentDefinitionTestFixtures';
 
 type WizardMocks = {
   getAssignmentDefinitionMock: ReturnType<typeof vi.fn>;

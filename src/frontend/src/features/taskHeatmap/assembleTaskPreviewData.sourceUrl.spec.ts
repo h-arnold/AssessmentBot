@@ -11,7 +11,7 @@
 import { describe, it, expect } from 'vitest';
 import { assembleTaskPreviewData } from './assembleTaskPreviewData';
 import type { CellPreviewData } from './buildCellPreviewLookup';
-import { createComputedMetricResult } from '../../test/dataAnalysis/fixtures';
+import { createComputedMetricResult } from '@/test/dataAnalysis/fixtures';
 
 // ===========================================================================
 // Fixture constants

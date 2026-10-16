@@ -3,8 +3,8 @@ import { cleanup, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import { TaskHeatmapTable } from './TaskHeatmapTable';
-import type { MergedHeatmapResult } from '../../services/dataAnalysis/heatmapAdapter.merged';
-import { buildCell, buildHeatmapResult } from '../../test/taskHeatmapTableTestHelpers';
+import type { MergedHeatmapResult } from '@/services/dataAnalysis/heatmapAdapter.merged';
+import { buildCell, buildHeatmapResult } from '@/test/taskHeatmapTableTestHelpers';
 import {
   ZERO_WEIGHT_EXPLANATION,
   ZERO_WEIGHT_FIRST_CLASS,

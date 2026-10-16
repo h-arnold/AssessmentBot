@@ -33,17 +33,17 @@
 import type { JSX } from 'react';
 import { Alert, Button, Card, Empty, Flex, Result, Skeleton } from 'antd';
 import { RefreshCw } from 'lucide-react';
-import { PageTitleCard, PageNavCard } from '../../components/PageHeader/PageHeader';
-import { pageContent } from '../../pages/pageContent';
-import { APP_GAP_MD } from '../../theme/spacing';
+import { PageTitleCard, PageNavCard } from '@/components/PageHeader/PageHeader';
+import { pageContent } from '@/pages/pageContent';
+import { APP_GAP_MD } from '@/theme/spacing';
 import { TaskHeatmapTable } from './TaskHeatmapTable';
 import { HeatmapSelectionBar } from './HeatmapSelectionBar';
 import { useHeatmapsPageData } from './useHeatmapsPageData';
 import { TaskHeatmapSummaryCards } from './TaskHeatmapSummaryCards';
 import { useHeatmapSelectionSummary, type HeatmapSelectionSummaryResult } from './useHeatmapSelectionSummary';
 import type { HeatmapsPageError } from './heatmapsSurfaceState';
-import type { BlockingConfig } from '../../errors/blockingConfig';
-import { resolveBlockingResultConfig } from '../../errors/blockingConfig';
+import type { BlockingConfig } from '@/errors/blockingConfig';
+import { resolveBlockingResultConfig } from '@/errors/blockingConfig';
 
 /**
  * User-safe `Result` configuration per `HeatmapsPageError.type`.

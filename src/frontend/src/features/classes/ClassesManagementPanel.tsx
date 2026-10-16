@@ -1,8 +1,8 @@
 import { Card, Flex, Typography } from 'antd';
 import { useCallback, useMemo, useState } from 'react';
-import { APP_GAP_COMPACT } from '../../theme/spacing';
+import { APP_GAP_COMPACT } from '@/theme/spacing';
 import { useQueryClient } from '@tanstack/react-query';
-import { queryKeys } from '../../query/queryKeys';
+import { queryKeys } from '@/query/queryKeys';
 import { type RequiredClassPartialsRefreshOutcome } from './bulk/queryInvalidation';
 import { runMutationWithRequiredClassPartialsRefresh } from './bulk/queryInvalidation';
 import {

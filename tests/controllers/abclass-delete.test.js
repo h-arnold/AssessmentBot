@@ -18,7 +18,7 @@ function createMissingCollectionError() {
 
 function loadControllerModule() {
   delete require.cache[require.resolve('../../src/backend/y_controllers/ABClassController')];
-  ABClassController = require('../../src/backend/y_controllers/ABClassController');
+  ABClassController = require('#backend/y_controllers/ABClassController/index.js');
 }
 
 function createDeleteHarness({

@@ -7,9 +7,9 @@ import { PREVIEW_ERROR_TEXT } from './TaskMetricPreviewContent';
 import type {
   MergedHeatmapResult,
   MergedHeatmapTaskColumn,
-} from '../../services/dataAnalysis/heatmapAdapter.merged';
+} from '@/services/dataAnalysis/heatmapAdapter.merged';
 import type { PreviewStatus } from './assembleMergedPreviewData';
-import { buildCell } from '../../test/taskHeatmapTableTestHelpers';
+import { buildCell } from '@/test/taskHeatmapTableTestHelpers';
 
 let user: ReturnType<typeof userEvent.setup>;
 beforeEach(() => {

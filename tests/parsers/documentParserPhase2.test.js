@@ -1,5 +1,5 @@
 import { describe, test, expect, beforeAll, beforeEach, afterEach, vi } from 'vitest';
-import { TaskDefinition } from '../../src/backend/Models/TaskDefinition.js';
+import { TaskDefinition } from '#backend/Models/TaskDefinition.js';
 
 if (!globalThis.Utils || !globalThis.Utilities) {
   throw new Error('Global Utils/Utilities expected from setupGlobals.js');

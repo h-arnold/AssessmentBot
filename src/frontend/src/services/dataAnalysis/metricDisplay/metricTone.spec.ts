@@ -12,10 +12,10 @@ import {
   createNotAttemptedMetricResult,
   createErrorMetricResult,
   createExcludedMetricResult,
-} from '../../../test/dataAnalysis/fixtures';
+} from '@/test/dataAnalysis/fixtures';
 import { resolveMetricTone } from './metricTone';
 import type { MetricToneResolution } from './metricTone';
-import { appStylesRaw } from '../../../test/appStylesRaw';
+import { appStylesRaw } from '@/test/appStylesRaw';
 
 /** Value at the default range ceiling (upper bound of { lower: 0, upper: 5 }). */
 const DEFAULT_RANGE_CEILING = 5;

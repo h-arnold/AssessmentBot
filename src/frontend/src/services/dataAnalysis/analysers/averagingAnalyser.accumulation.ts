@@ -1,14 +1,14 @@
-import { logFrontendEvent } from '../../../logging/frontendLogger';
+import { logFrontendEvent } from '@/logging/frontendLogger';
 import type { AveragingAnalyserInput, AverageContribution } from '../dataAnalysis.zod';
 import type { CriterionWeightings } from './averagingAnalyser';
 import type { DataPointAccumulator } from './averagingAnalyser.types';
 import { processItemAssessments } from './averagingAnalyser.criterionAccumulation';
-import type { AssignmentDefinitionPartial } from '../../assignmentDefinition/assignmentDefinitionPartials.zod';
+import type { AssignmentDefinitionPartial } from '@/services/assignmentDefinition/assignmentDefinitionPartials.zod';
 import {
   computeEffectiveWeight,
   createTaskWeightingIndex,
   type TaskWeightingIndex,
-} from '../../assignmentDefinition/assignmentDefinitionUtilities';
+} from '@/services/assignmentDefinition/assignmentDefinitionUtilities';
 import { buildTaskKey } from '../taskKey';
 import {
   resolveAssignmentDefinitionData,

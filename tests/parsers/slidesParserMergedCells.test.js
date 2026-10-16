@@ -31,9 +31,8 @@ describe('SlidesParser - Merged Cell Handling', () => {
   }
 
   beforeAll(async () => {
-    const documentParserModule =
-      await import('../../src/backend/DocumentParsers/DocumentParser.js');
-    const taskDefinitionModule = await import('../../src/backend/Models/TaskDefinition.js');
+    const documentParserModule = await import('#backend/DocumentParsers/DocumentParser.js');
+    const taskDefinitionModule = await import('#backend/Models/TaskDefinition.js');
     const documentParser =
       documentParserModule.DocumentParser || documentParserModule.default?.DocumentParser;
     const taskDefinition =
@@ -43,8 +42,7 @@ describe('SlidesParser - Merged Cell Handling', () => {
     }
     globalThis.DocumentParser = documentParser;
     globalThis.TaskDefinition = taskDefinition;
-    const slidesParserModule =
-      await import('../../src/backend/DocumentParsers/SlidesParser/index.js');
+    const slidesParserModule = await import('#backend/DocumentParsers/SlidesParser/index.js');
     SlidesParser = slidesParserModule.SlidesParser || slidesParserModule.default?.SlidesParser;
     if (!SlidesParser) throw new Error('Failed to load SlidesParser for tests');
   });

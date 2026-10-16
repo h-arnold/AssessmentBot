@@ -13,7 +13,7 @@ const { cancelApiQueuedMock } = vi.hoisted(() => {
   };
 });
 
-vi.mock('../../services/apiService', () => {
+vi.mock('@/services/apiService', () => {
   return {
     cancelApiQueued: cancelApiQueuedMock,
   };

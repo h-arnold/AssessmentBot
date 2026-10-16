@@ -1,11 +1,8 @@
 import { vi } from 'vitest';
 import type { UseQueryResult } from '@tanstack/react-query';
-import type { ClassFull } from '../../services/googleClassrooms/classDetail/classDetailService.zod';
-import type {
-  ClassPageData,
-  ClassPageSurfaceState,
-} from '../../features/classPage/useClassPageData';
-import type { ClassPageAdapterResult } from '../../features/classPage/classPageAdapter.zod';
+import type { ClassFull } from '@/services/googleClassrooms/classDetail/classDetailService.zod';
+import type { ClassPageData, ClassPageSurfaceState } from '@/features/classPage/useClassPageData';
+import type { ClassPageAdapterResult } from '@/features/classPage/classPageAdapter.zod';
 
 export const DEFAULT_CLASS_ID = 'class-abc-123';
 export const CLASS_NAME = '7A1 Digital Technology 2025-2026';

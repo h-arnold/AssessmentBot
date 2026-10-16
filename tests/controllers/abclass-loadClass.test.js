@@ -22,9 +22,9 @@ import {
 /*  Helpers                                                            */
 /* ------------------------------------------------------------------ */
 
-const ABClassModule = require('../../src/backend/Models/ABClass.js');
-const TeacherModule = require('../../src/backend/Models/Teacher.js');
-const StudentModule = require('../../src/backend/Models/Student.js');
+const ABClassModule = require('#backend/Models/ABClass.js');
+const TeacherModule = require('#backend/Models/Teacher.js');
+const StudentModule = require('#backend/Models/Student.js');
 
 const ABClass = ABClassModule.ABClass || ABClassModule;
 const Teacher = TeacherModule.Teacher || TeacherModule;
@@ -114,7 +114,7 @@ let classroomApiClient;
 
 function loadControllerModule() {
   delete require.cache[require.resolve('../../src/backend/y_controllers/ABClassController')];
-  ABClassController = require('../../src/backend/y_controllers/ABClassController');
+  ABClassController = require('#backend/y_controllers/ABClassController/index.js');
 }
 
 /* ------------------------------------------------------------------ */
@@ -262,7 +262,7 @@ describe('ABClassController.loadClass throw-on-missing', () => {
     delete require.cache[
       require.resolve('../../src/backend/y_controllers/AssignmentController.js')
     ];
-    const AssignmentController = require('../../src/backend/y_controllers/AssignmentController.js');
+    const AssignmentController = require('#backend/y_controllers/AssignmentController.js');
 
     const controller = new AssignmentController();
     const result = controller.ensureDefinitionFromInputs({

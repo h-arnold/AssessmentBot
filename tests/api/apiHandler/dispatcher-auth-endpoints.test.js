@@ -32,7 +32,7 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const AuthService = require('../../../src/backend/Utils/AuthService.js');
+const AuthService = require('#backend/Utils/AuthService.js');
 const {
   loadApiHandlerModule,
   createDispatcherAuthEnvironment,

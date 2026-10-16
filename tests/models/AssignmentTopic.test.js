@@ -1,5 +1,5 @@
 import { beforeAll, afterAll, describe, it, expect } from 'vitest';
-import { Validate } from '../../src/backend/Utils/Validate.js';
+import { Validate } from '#backend/Utils/Validate.js';
 
 const originalValidate = globalThis.Validate;
 
@@ -17,7 +17,7 @@ afterAll(() => {
 });
 
 async function loadAssignmentTopic() {
-  const module = await import('../../src/backend/Models/AssignmentTopic.js');
+  const module = await import('#backend/Models/AssignmentTopic.js');
   return module.AssignmentTopic ?? module.default?.AssignmentTopic;
 }
 

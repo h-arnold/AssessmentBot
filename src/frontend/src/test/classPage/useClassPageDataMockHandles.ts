@@ -1,9 +1,9 @@
 import { vi } from 'vitest';
 import { useQuery } from '@tanstack/react-query';
-import { usePageDataset } from '../../hooks/usePageDataset';
-import { getABClassQueryOptions } from '../../query/sharedQueries';
-import { DataAnalysisService } from '../../services/dataAnalysis/dataAnalysisService';
-import { adaptClassPageToViewModel } from '../../features/classPage/classPageAdapter';
+import { usePageDataset } from '@/hooks/usePageDataset';
+import { getABClassQueryOptions } from '@/query/sharedQueries';
+import { DataAnalysisService } from '@/services/dataAnalysis/dataAnalysisService';
+import { adaptClassPageToViewModel } from '@/features/classPage/classPageAdapter';
 
 /**
  * Binds the mocked module exports for an individual useClassPageData spec.

@@ -2,13 +2,13 @@ import type { FormInstance } from 'antd';
 import type {
   AssignmentDefinition,
   UpsertAssignmentDefinitionRequest,
-} from '../../../services/assignmentDefinition/assignmentDefinitionService';
-import { ApiTransportError } from '../../../errors/apiTransportError';
-import { mapErrorToUserMessage } from '../../../errors/map-error-to-ui';
-import { logFrontendError } from '../../../logging/frontendLogger';
+} from '@/services/assignmentDefinition/assignmentDefinitionService';
+import { ApiTransportError } from '@/errors/apiTransportError';
+import { mapErrorToUserMessage } from '@/errors/map-error-to-ui';
+import { logFrontendError } from '@/logging/frontendLogger';
 import type { AssessTaskAssignment, AssessmentAlertType } from './assessTaskFlowData';
-import type { TaskRow } from '../../assignmentWizard/assignmentWizardFormState';
-import { coerceAssignmentWeighting } from '../../assignmentWizard/assignmentWizardFormState';
+import type { TaskRow } from '@/features/assignmentWizard/assignmentWizardFormState';
+import { coerceAssignmentWeighting } from '@/features/assignmentWizard/assignmentWizardFormState';
 
 /**
  * Recovery phases rendered inside the single owning assessment modal.

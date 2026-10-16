@@ -1,8 +1,8 @@
-const ABClassExport = require('../../src/backend/Models/ABClass.js');
+const ABClassExport = require('#backend/Models/ABClass.js');
 const ABClass = ABClassExport.ABClass || ABClassExport;
-const StudentExport = require('../../src/backend/Models/Student.js');
+const StudentExport = require('#backend/Models/Student.js');
 const Student = StudentExport.Student || StudentExport;
-const TeacherExport = require('../../src/backend/Models/Teacher.js');
+const TeacherExport = require('#backend/Models/Teacher.js');
 const Teacher = TeacherExport.Teacher || TeacherExport;
 const { createMockClassroomApiClient } = require('../helpers/mockFactories.js');
 
@@ -42,7 +42,7 @@ describe('ABClassController.initialise', () => {
 
     // Require ABClassController after supplying global DbManager mock so module init uses mock
     delete require.cache[require.resolve('../../src/backend/y_controllers/ABClassController')];
-    ABClassController = require('../../src/backend/y_controllers/ABClassController');
+    ABClassController = require('#backend/y_controllers/ABClassController/index.js');
   });
 
   afterEach(() => {

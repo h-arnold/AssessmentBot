@@ -16,12 +16,11 @@ describe('SheetsParser internal behaviour', () => {
   const savedModuleGlobals = saveGlobals(['DocumentParser', 'TaskDefinition']);
 
   beforeAll(async () => {
-    const documentParserModule =
-      await import('../../src/backend/DocumentParsers/DocumentParser.js');
-    const taskDefinitionModule = await import('../../src/backend/Models/TaskDefinition.js');
+    const documentParserModule = await import('#backend/DocumentParsers/DocumentParser.js');
+    const taskDefinitionModule = await import('#backend/Models/TaskDefinition.js');
     globalThis.DocumentParser = documentParserModule.DocumentParser;
     globalThis.TaskDefinition = taskDefinitionModule.TaskDefinition;
-    const sheetsParserModule = await import('../../src/backend/DocumentParsers/SheetsParser.js');
+    const sheetsParserModule = await import('#backend/DocumentParsers/SheetsParser.js');
     SheetsParser = sheetsParserModule.SheetsParser;
   });
 

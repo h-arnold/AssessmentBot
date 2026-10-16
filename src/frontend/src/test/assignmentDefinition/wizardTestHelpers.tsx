@@ -1,9 +1,9 @@
 import { fireEvent, screen, within } from '@testing-library/react';
 import { vi } from 'vitest';
-import { queryKeys } from '../../query/queryKeys';
+import { queryKeys } from '@/query/queryKeys';
 import { renderWithFrontendProviders } from '../renderWithFrontendProviders';
-import type { StartupWarmupContextValue, StartupWarmupSnapshot, StartupWarmupStatus } from '../../features/auth/startupWarmupState';
-import { startupWarmupDatasetKeys, type StartupWarmupDatasetKey } from '../../query/sharedQueries';
+import type { StartupWarmupContextValue, StartupWarmupSnapshot, StartupWarmupStatus } from '@/features/auth/startupWarmupState';
+import { startupWarmupDatasetKeys, type StartupWarmupDatasetKey } from '@/query/sharedQueries';
 import type { QueryClient } from '@tanstack/react-query';
 import type React from 'react';
 

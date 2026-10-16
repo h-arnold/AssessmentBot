@@ -4,8 +4,8 @@ import {
   createComputedMetricResult,
   createErrorMetricResult,
   createNotAttemptedMetricResult,
-} from '../../../test/dataAnalysis/fixtures';
-import { FLOAT_TOLERANCE } from '../../../test/dataAnalysis/averagingAnalyserAssertions';
+} from '@/test/dataAnalysis/fixtures';
+import { FLOAT_TOLERANCE } from '@/test/dataAnalysis/averagingAnalyserAssertions';
 
 const CRITERIA: RollupMetric[] = ['completeness', 'accuracy', 'spag'];
 const COMPUTED_VALUE = 4;

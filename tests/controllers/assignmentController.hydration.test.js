@@ -2,8 +2,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createMockABLogger, createMockPropertiesService } from '../helpers/mockFactories.js';
 
 // Setup global mocks
-globalThis.ABLogger = require('../../src/backend/Utils/ABLogger.js');
-const DefinitionStaleError = require('../../src/backend/Utils/ErrorTypes/DefinitionStaleError.js');
+globalThis.ABLogger = require('#backend/Utils/ABLogger.js');
+const DefinitionStaleError = require('#backend/Utils/ErrorTypes/DefinitionStaleError.js');
 
 // Mock PropertiesService
 const mockPropertiesService = createMockPropertiesService(vi);
@@ -32,9 +32,9 @@ globalThis.Classroom = {
 };
 
 // Import classes after mocks
-const AssignmentController = require('../../src/backend/y_controllers/AssignmentController.js');
+const AssignmentController = require('#backend/y_controllers/AssignmentController.js');
 
-const { AssignmentDefinition } = require('../../src/backend/Models/AssignmentDefinition.js');
+const { AssignmentDefinition } = require('#backend/Models/AssignmentDefinition.js');
 
 const createFullDefinition = function (options) {
   if (options === void 0) {

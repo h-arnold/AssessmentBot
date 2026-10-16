@@ -8,7 +8,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import type { MetricResult } from '../../services/dataAnalysis/dataAnalysis.zod';
+import type { MetricResult } from '@/services/dataAnalysis/dataAnalysis.zod';
 import {
   createMetricResult,
   createComputedMetricResult,

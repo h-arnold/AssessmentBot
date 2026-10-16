@@ -15,7 +15,7 @@
  * results — no special handling is needed.
  */
 
-import { callApiQueued } from '../../../services/apiService';
+import { callApiQueued } from '@/services/apiService';
 import type { ClassesManagementRow } from '../classesManagementViewModel';
 import type {
   RowMutationResult,

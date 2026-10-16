@@ -27,7 +27,7 @@ import { Table, Typography } from 'antd';
 import type { TableColumnsType } from 'antd';
 import type { FilterValue } from 'antd/es/table/interface';
 
-import { compareStudentNames } from '../../services/dataAnalysis/compareStudentNames';
+import { compareStudentNames } from '@/services/dataAnalysis/compareStudentNames';
 import { buildStudentNameColumns } from '../shared/studentNameTableColumns';
 import {
   buildAdaptiveTierGroups,

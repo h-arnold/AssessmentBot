@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import type { ClassPartial } from '../../services/googleClassrooms/classPartialsService';
-import type { GoogleClassroom } from '../../services/googleClassrooms/googleClassroomsService';
+import type { ClassPartial } from '@/services/googleClassrooms/classPartialsService';
+import type { GoogleClassroom } from '@/services/googleClassrooms/googleClassroomsService';
 
 type LabelsByKey = Readonly<Record<string, string>>;
 

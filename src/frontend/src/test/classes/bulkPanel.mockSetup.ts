@@ -11,37 +11,37 @@ const mocks = await vi.hoisted(async () => {
   return { ...createBulkPanelMocks(), createBulkQueueModuleMock, BULK_PANEL_COMPONENT_MOCKS };
 });
 
-vi.mock('../../services/apiService', () => ({ callApi: vi.fn() }));
-vi.mock('../../features/classes/useClassesManagement', () => {
+vi.mock('@/services/apiService', () => ({ callApi: vi.fn() }));
+vi.mock('@/features/classes/useClassesManagement', () => {
   return {
     useClassesManagement: mocks.classesManagementStateMock,
   };
 });
-vi.mock('../../features/classes/bulk/runQueuedBatchMutation', () => {
+vi.mock('@/features/classes/bulk/runQueuedBatchMutation', () => {
   return {
     runQueuedBatchMutation: mocks.runQueuedBatchMutationMock,
   };
 });
-vi.mock('../../features/classes/useClassesBulkMutationQueue', () =>
+vi.mock('@/features/classes/useClassesBulkMutationQueue', () =>
   mocks.createBulkQueueModuleMock(mocks.runQueuedBulkActionMock)
 );
 vi.mock(
-  '../../features/classes/bulk/BulkCreateModal',
+  '@/features/classes/bulk/BulkCreateModal',
   () => mocks.BULK_PANEL_COMPONENT_MOCKS.bulkCreate
 );
 vi.mock(
-  '../../features/classes/bulk/BulkSetSelectModal',
+  '@/features/classes/bulk/BulkSetSelectModal',
   () => mocks.BULK_PANEL_COMPONENT_MOCKS.bulkSetSelect
 );
 vi.mock(
-  '../../features/classes/bulk/BulkSetCourseLengthModal',
+  '@/features/classes/bulk/BulkSetCourseLengthModal',
   () => mocks.BULK_PANEL_COMPONENT_MOCKS.bulkSetCourseLength
 );
 vi.mock(
-  '../../features/classes/referenceData/ManageCohortsModal',
+  '@/features/classes/referenceData/ManageCohortsModal',
   () => mocks.BULK_PANEL_COMPONENT_MOCKS.manageCohorts
 );
 vi.mock(
-  '../../features/classes/referenceData/ManageYearGroupsModal',
+  '@/features/classes/referenceData/ManageYearGroupsModal',
   () => mocks.BULK_PANEL_COMPONENT_MOCKS.manageYearGroups
 );

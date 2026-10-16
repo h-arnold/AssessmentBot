@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { Teacher } from '../../src/backend/Models/Teacher.js';
+import { Teacher } from '#backend/Models/Teacher.js';
 
 describe('Teacher model', () => {
   it('constructor sets email and userId', () => {

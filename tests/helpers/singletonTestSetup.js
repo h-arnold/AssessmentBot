@@ -35,7 +35,7 @@ function loadSingletonsWithMocks(harness, options = {}) {
 
   if (loadConfigurationManager) {
     try {
-      let ConfigurationManager = require('../../src/backend/ConfigurationManager/98_ConfigurationManagerClass.js');
+      let ConfigurationManager = require('#backend/ConfigurationManager/98_ConfigurationManagerClass.js');
       if (ConfigurationManager.default) ConfigurationManager = ConfigurationManager.default;
       globalThis.ConfigurationManager = ConfigurationManager;
       singletons.ConfigurationManager = ConfigurationManager;
@@ -47,7 +47,7 @@ function loadSingletonsWithMocks(harness, options = {}) {
 
   if (loadProgressTracker) {
     try {
-      let ProgressTracker = require('../../src/backend/Utils/ProgressTracker.js');
+      let ProgressTracker = require('#backend/Utils/ProgressTracker.js');
       if (ProgressTracker.default) ProgressTracker = ProgressTracker.default;
       singletons.ProgressTracker = ProgressTracker;
     } catch (e) {

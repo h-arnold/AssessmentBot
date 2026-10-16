@@ -1,6 +1,6 @@
 import type { QueryClient } from '@tanstack/react-query';
-import { ApiTransportError } from '../../../errors/apiTransportError';
-import { queryKeys } from '../../../query/queryKeys';
+import { ApiTransportError } from '@/errors/apiTransportError';
+import { queryKeys } from '@/query/queryKeys';
 import {
   refreshErrorMetadataSchema,
   requiredClassPartialsRefreshFailureOutcomeSchema,

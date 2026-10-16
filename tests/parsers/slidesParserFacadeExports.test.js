@@ -2,7 +2,7 @@ import { describe, it, expect, afterAll, vi } from 'vitest';
 import { restoreGlobals } from '../helpers/globalMockManager.js';
 import SlidesParserDefault, {
   SlidesParser as SlidesParserNamed,
-} from '../../src/backend/DocumentParsers/SlidesParser/index.js';
+} from '#backend/DocumentParsers/SlidesParser/index.js';
 
 // Contract regression for the real SlidesParser CommonJS facade. No vi.mock is
 // used here: the assertions must observe the shipped module bindings so that a
@@ -15,7 +15,7 @@ import SlidesParserDefault, {
 const facadePrerequisiteGlobals = vi.hoisted(() => {
   const hadDocumentParser = Object.hasOwn(globalThis, 'DocumentParser');
   const previousDocumentParser = globalThis.DocumentParser;
-  const documentParserModule = require('../../src/backend/DocumentParsers/DocumentParser.js');
+  const documentParserModule = require('#backend/DocumentParsers/DocumentParser.js');
   globalThis.DocumentParser = documentParserModule.DocumentParser || documentParserModule;
   return { hadDocumentParser, previousDocumentParser };
 });

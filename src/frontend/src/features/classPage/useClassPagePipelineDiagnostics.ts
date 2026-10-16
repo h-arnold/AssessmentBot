@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { z } from 'zod';
-import { logFrontendError } from '../../logging/frontendLogger';
+import { logFrontendError } from '@/logging/frontendLogger';
 
 /** Maximum number of distinct Class-page pipeline diagnostics retained per hook instance. */
 const LOGGED_ERROR_KEYS_MAX = 256;

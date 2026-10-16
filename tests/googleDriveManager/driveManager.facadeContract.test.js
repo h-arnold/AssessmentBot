@@ -9,7 +9,7 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { createContext, runInContext } from 'node:vm';
-import DriveManager from '../../src/backend/GoogleDriveManager/DriveManager/index.js';
+import DriveManager from '#backend/GoogleDriveManager/DriveManager/index.js';
 
 const FACADE_PATH = new URL(
   '../../src/backend/GoogleDriveManager/DriveManager/index.js',

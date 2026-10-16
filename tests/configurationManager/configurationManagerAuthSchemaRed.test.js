@@ -33,8 +33,8 @@ const {
   CONFIG_SCHEMA,
   MAX_CONFIG_BLOB_BYTES,
   validateAuthStateStrict_,
-} = require('../../src/backend/ConfigurationManager/01_configKeysAndSchema.js');
-const ConfigurationManager = require('../../src/backend/ConfigurationManager/98_ConfigurationManagerClass.js');
+} = require('#backend/ConfigurationManager/01_configKeysAndSchema.js');
+const ConfigurationManager = require('#backend/ConfigurationManager/98_ConfigurationManagerClass.js');
 
 function buildUsersJson(entries) {
   return JSON.stringify(entries);

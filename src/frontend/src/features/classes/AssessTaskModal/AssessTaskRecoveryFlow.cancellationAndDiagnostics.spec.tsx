@@ -10,28 +10,28 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { act, renderHook, waitFor, within } from '@testing-library/react';
 import { createElement, type ReactNode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import '../../../test/classes/AssessTaskModal.mockSetup';
-import { startAssessmentRun } from '../../../services/assignmentAssessment/assignmentAssessmentService';
+import '@/test/classes/AssessTaskModal.mockSetup';
+import { startAssessmentRun } from '@/services/assignmentAssessment/assignmentAssessmentService';
 import {
   getAssignmentDefinition,
   upsertAssignmentDefinition,
-} from '../../../services/assignmentDefinition/assignmentDefinitionService';
-import type { AssignmentDefinition } from '../../../services/assignmentDefinition/assignmentDefinition.zod';
-import type { AssignmentDefinitionPartial } from '../../../services/assignmentDefinition/assignmentDefinitionPartials.zod';
-import { queryKeys } from '../../../query/queryKeys';
-import { createAppQueryClient } from '../../../query/queryClient';
-import { createFixtureClassPartial } from '../../../test/classes/classesPageTestHelpers';
+} from '@/services/assignmentDefinition/assignmentDefinitionService';
+import type { AssignmentDefinition } from '@/services/assignmentDefinition/assignmentDefinition.zod';
+import type { AssignmentDefinitionPartial } from '@/services/assignmentDefinition/assignmentDefinitionPartials.zod';
+import { queryKeys } from '@/query/queryKeys';
+import { createAppQueryClient } from '@/query/queryClient';
+import { createFixtureClassPartial } from '@/test/classes/classesPageTestHelpers';
 import {
   clickStartAssessment,
   MOCK_CLASS_ID,
   selectAssignment,
-} from '../../../test/classes/AssessTaskModal.test-utilities';
+} from '@/test/classes/AssessTaskModal.test-utilities';
 import {
   queueStartResults,
   RECOVERY_DEFINITION,
   RECOVERY_DEFINITION_KEY,
   renderRecoveryModal,
-} from '../../../test/classes/AssessTaskModal.recovery-helpers';
+} from '@/test/classes/AssessTaskModal.recovery-helpers';
 import { useAssessTaskLinkFlow } from './useAssessTaskLinkFlow';
 import { useAssessTaskRecoveryFlow } from './useAssessTaskRecoveryFlow';
 

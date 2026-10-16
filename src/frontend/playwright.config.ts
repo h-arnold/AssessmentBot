@@ -2,6 +2,10 @@ import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
   testDir: './e2e-tests',
+  // Compile E2E specs under the E2E-specific options (the `playwright/test`
+  // types and the `@/*` / `@synthetic/*` aliases). Without this, Playwright
+  // falls back to the nearest tsconfig.json, which declares no `paths`.
+  tsconfig: './tsconfig.e2e.json',
   workers: 2,
   retries: 2,
   timeout: 45_000,

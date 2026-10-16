@@ -15,8 +15,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { act, renderHook } from '@testing-library/react';
 import type { QueryClient } from '@tanstack/react-query';
-import type { StartupWarmupDatasetKey } from '../../query/sharedQueries';
-import type { ClassFull } from '../../services/googleClassrooms/classDetail/classDetailService.zod';
+import type { StartupWarmupDatasetKey } from '@/query/sharedQueries';
+import type { ClassFull } from '@/services/googleClassrooms/classDetail/classDetailService.zod';
 import { useHeatmapsPageData } from './useHeatmapsPageData';
 import type { HeatmapsPageError } from './useHeatmapsPageData';
 import {
@@ -28,12 +28,12 @@ import {
   createDatasetState,
   createMockQueryResult,
   createTestWrapper,
-} from '../../test/heatmapsPageDataFixtures';
+} from '@/test/heatmapsPageDataFixtures';
 import {
   createHeatmapMergedResult as createMergedResult,
   createTestQueryClient,
-} from '../../test/dataAnalysis/heatmapFixtures';
-import { createReadyHeatmapsDatasetResult } from '../../test/taskHeatmap/hookMockFactories';
+} from '@/test/dataAnalysis/heatmapFixtures';
+import { createReadyHeatmapsDatasetResult } from '@/test/taskHeatmap/hookMockFactories';
 
 // ===========================================================================
 // Mock setup (hoisted)
@@ -104,7 +104,7 @@ function installUseQueriesMock(): void {
 
 installUseQueriesMock();
 
-vi.mock('../../hooks/usePageDataset', async (importOriginal) => {
+vi.mock('@/hooks/usePageDataset', async (importOriginal) => {
   const actual = (await importOriginal()) as Record<string, unknown>;
   return {
     ...actual,
@@ -112,7 +112,7 @@ vi.mock('../../hooks/usePageDataset', async (importOriginal) => {
   };
 });
 
-vi.mock('../../query/sharedQueries', async (importOriginal) => {
+vi.mock('@/query/sharedQueries', async (importOriginal) => {
   const actual = (await importOriginal()) as Record<string, unknown>;
   return {
     ...actual,
@@ -121,7 +121,7 @@ vi.mock('../../query/sharedQueries', async (importOriginal) => {
   };
 });
 
-vi.mock('../../services/dataAnalysis/dataAnalysisService', () => {
+vi.mock('@/services/dataAnalysis/dataAnalysisService', () => {
   return {
     DataAnalysisService: vi.fn().mockImplementation(function () {
       return { analyse: mockAnalyse };
@@ -129,7 +129,7 @@ vi.mock('../../services/dataAnalysis/dataAnalysisService', () => {
   };
 });
 
-vi.mock('../../services/dataAnalysis/heatmapAdapter.merged', async (importOriginal) => {
+vi.mock('@/services/dataAnalysis/heatmapAdapter.merged', async (importOriginal) => {
   const actual = (await importOriginal()) as Record<string, unknown>;
   return {
     ...actual,

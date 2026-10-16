@@ -1,8 +1,8 @@
 import { QueryClient } from '@tanstack/react-query';
-import type { MergedHeatmapResult } from '../../services/dataAnalysis/heatmapAdapter.merged';
-import { buildTaskKey } from '../../services/dataAnalysis/taskKey';
-import type { AssignmentDefinitionPartial } from '../../services/assignmentDefinition/assignmentDefinitionPartials.zod';
-import type { ClassFull } from '../../services/googleClassrooms/classDetail/classDetailService.zod';
+import type { MergedHeatmapResult } from '@/services/dataAnalysis/heatmapAdapter.merged';
+import { buildTaskKey } from '@/services/dataAnalysis/taskKey';
+import type { AssignmentDefinitionPartial } from '@/services/assignmentDefinition/assignmentDefinitionPartials.zod';
+import type { ClassFull } from '@/services/googleClassrooms/classDetail/classDetailService.zod';
 import { createAssignmentPartial, createDefinitionPartial, createTaskPartial } from './fixtures';
 
 /**

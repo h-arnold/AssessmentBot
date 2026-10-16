@@ -22,7 +22,7 @@ import {
   createNotAttemptedMetricResult,
   createErrorMetricResult,
   createExcludedMetricResult,
-} from '../../test/dataAnalysis/fixtures';
+} from '@/test/dataAnalysis/fixtures';
 import { RecentAssignmentCard } from './RecentAssignmentCard';
 
 // ---------------------------------------------------------------------------

@@ -2,10 +2,10 @@ import type {
   AssessmentSchema,
   AssignmentFull,
   BaseTaskArtifactSchema,
-} from '../../services/assignmentAssessment/assignmentAssessment.zod';
-import { HEATMAP_METRIC_KEYS } from '../../services/dataAnalysis/metricDisplay/metricDisplayMeta';
-import { buildTaskKey } from '../../services/dataAnalysis/taskKey';
-import type { HeatmapMetricKey } from '../../services/dataAnalysis/metricDisplay/metricDisplayMeta';
+} from '@/services/assignmentAssessment/assignmentAssessment.zod';
+import { HEATMAP_METRIC_KEYS } from '@/services/dataAnalysis/metricDisplay/metricDisplayMeta';
+import { buildTaskKey } from '@/services/dataAnalysis/taskKey';
+import type { HeatmapMetricKey } from '@/services/dataAnalysis/metricDisplay/metricDisplayMeta';
 import type { z } from 'zod';
 
 /**

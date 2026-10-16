@@ -7,16 +7,16 @@ import {
   mockLogFrontendError,
   mockLogFrontendEvent,
   mockTaskHeatmapTable,
-} from '../../test/taskHeatmapPageMocks';
+} from '@/test/taskHeatmapPageMocks';
 import { TaskHeatmapPage } from './TaskHeatmapPage';
 import {
   analyserResultFixture,
   buildDefaultAssignmentFixture,
   classFullFixture,
   VALID_ASSIGNMENT_PARTIAL,
-} from '../../test/taskHeatmapPageFixtures';
-import { createTestQueryClient } from '../../test/dataAnalysis/heatmapFixtures';
-import { renderWithFrontendProviders } from '../../test/renderWithFrontendProviders';
+} from '@/test/taskHeatmapPageFixtures';
+import { createTestQueryClient } from '@/test/dataAnalysis/heatmapFixtures';
+import { renderWithFrontendProviders } from '@/test/renderWithFrontendProviders';
 
 /**
  * Extracts the props from the most recent TaskHeatmapTable mock call.

@@ -36,10 +36,10 @@ import {
   installScriptLockMock,
 } from '../helpers/backendConfigTestHelpers.js';
 
-const ConfigurationManager = require('../../src/backend/ConfigurationManager/98_ConfigurationManagerClass.js');
+const ConfigurationManager = require('#backend/ConfigurationManager/98_ConfigurationManagerClass.js');
 const {
   MAX_CONFIG_BLOB_BYTES,
-} = require('../../src/backend/ConfigurationManager/01_configKeysAndSchema.js');
+} = require('#backend/ConfigurationManager/01_configKeysAndSchema.js');
 
 const CONFIG_STORE_KEY = ConfigurationManager.CONFIG_STORE_KEY || '__CONFIG_STORE_KEY__';
 

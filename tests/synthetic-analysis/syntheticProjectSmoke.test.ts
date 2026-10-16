@@ -3,10 +3,10 @@ import { afterEach, describe, expect, it } from 'vitest';
 import {
   createGoogleScriptRunApiHandlerMock,
   type GoogleScriptRunApiHandler,
-} from '../../src/frontend/src/test/googleScriptRunHarness';
-import { getABClass } from '../../src/frontend/src/services/googleClassrooms/classDetail/classDetailService';
-import { getAssignmentDefinitionPartials } from '../../src/frontend/src/services/assignmentDefinition/assignmentDefinitionPartialsService';
-import { loadSyntheticAnalysisProfile } from '../../scripts/synthetic-test-data/loadSyntheticAnalysisProfile.js';
+} from '@/test/googleScriptRunHarness';
+import { getABClass } from '@/services/googleClassrooms/classDetail/classDetailService';
+import { getAssignmentDefinitionPartials } from '@/services/assignmentDefinition/assignmentDefinitionPartialsService';
+import { loadSyntheticAnalysisProfile } from '#synthetic-data/loadSyntheticAnalysisProfile.js';
 
 type GoogleScriptRunGlobal = {
   script: {

@@ -10,9 +10,9 @@ import {
   createSubmissionItem,
   createTaskPartial,
   DEFAULT_CREATED_AT,
-} from '../../../test/dataAnalysis/fixtures';
+} from '@/test/dataAnalysis/fixtures';
 import type { MetricResult } from '../dataAnalysis.zod';
-import { expectMetricResultStateAware } from '../../../test/dataAnalysis/averagingAnalyserAssertions';
+import { expectMetricResultStateAware } from '@/test/dataAnalysis/averagingAnalyserAssertions';
 
 /**
  * Validate that a discriminated-union MetricResult has a valid state

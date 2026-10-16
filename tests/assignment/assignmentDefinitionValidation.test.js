@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { AssignmentDefinition } from '../../src/backend/Models/AssignmentDefinition.js';
+import { AssignmentDefinition } from '#backend/Models/AssignmentDefinition.js';
 import { DUMMY_TASK_PARTIALS } from '../helpers/modelFactories.js';
 
 describe('AssignmentDefinition Validation', () => {

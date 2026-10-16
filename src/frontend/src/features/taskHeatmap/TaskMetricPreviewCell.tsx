@@ -41,7 +41,7 @@ import {
   type TaskMetricPreviewContentProperties,
 } from './TaskMetricPreviewContent';
 import type { SourceActionElement } from './TaskPreviewCard';
-import { APP_GAP_XS } from '../../theme/spacing';
+import { APP_GAP_XS } from '@/theme/spacing';
 import styles from './TaskMetricPreviewCell.module.css';
 
 // ---------------------------------------------------------------------------

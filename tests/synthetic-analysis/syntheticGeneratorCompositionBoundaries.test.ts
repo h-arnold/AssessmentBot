@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { assertSerialisable } from '../../scripts/synthetic-test-data/invariantGuards.js';
-import { generateAssignmentDefinitions } from '../../scripts/synthetic-test-data/generateAssignmentDefinitions.js';
-import { generateAssignments } from '../../scripts/synthetic-test-data/generateAssignments.js';
-import { generateReferenceData } from '../../scripts/synthetic-test-data/generateReferenceData.js';
-import { generateSubmissions } from '../../scripts/synthetic-test-data/generateSubmissions.js';
-import { getProfileDefinition } from '../../scripts/synthetic-test-data/profileDefinitions.js';
-import { toTransportViews } from '../../scripts/synthetic-test-data/toTransportViews.js';
+import { assertSerialisable } from '#synthetic-data/invariantGuards.js';
+import { generateAssignmentDefinitions } from '#synthetic-data/generateAssignmentDefinitions.js';
+import { generateAssignments } from '#synthetic-data/generateAssignments.js';
+import { generateReferenceData } from '#synthetic-data/generateReferenceData.js';
+import { generateSubmissions } from '#synthetic-data/generateSubmissions.js';
+import { getProfileDefinition } from '#synthetic-data/profileDefinitions.js';
+import { toTransportViews } from '#synthetic-data/toTransportViews.js';
 
 const SMALL_PROFILE = 'small';
 const LARGE_FULL_PROFILE = 'large-full';

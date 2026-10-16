@@ -1,7 +1,7 @@
 import type React from 'react';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import type { QueryClient, QueryKey } from '@tanstack/react-query';
-import { queryKeys } from '../../query/queryKeys';
+import { queryKeys } from '@/query/queryKeys';
 import { renderWithFrontendProviders } from '../renderWithFrontendProviders';
 import type { AssignmentDefinitionPartialRow } from './assignmentDefinitionTestFixtures';
 

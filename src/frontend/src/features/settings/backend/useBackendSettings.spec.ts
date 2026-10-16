@@ -8,13 +8,13 @@ import {
 } from 'react';
 import type * as Antd from 'antd';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { ApiTransportError } from '../../../errors/apiTransportError';
-import { createAppQueryClient } from '../../../query/queryClient';
+import { ApiTransportError } from '@/errors/apiTransportError';
+import { createAppQueryClient } from '@/query/queryClient';
 import type {
   BackendConfig,
   BackendConfigWriteInput,
   BackendConfigWriteResult,
-} from '../../../services/backendConfiguration/backendConfiguration.zod';
+} from '@/services/backendConfiguration/backendConfiguration.zod';
 import type { BackendSettingsForm } from './backendSettingsForm.zod';
 
 const {
@@ -33,7 +33,7 @@ const {
   };
 });
 
-vi.mock('../../../services/backendConfiguration/backendConfigurationService', () => {
+vi.mock('@/services/backendConfiguration/backendConfigurationService', () => {
   return {
     getBackendConfig: getBackendConfigMock,
     setBackendConfig: setBackendConfigMock,

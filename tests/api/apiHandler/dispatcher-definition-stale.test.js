@@ -220,7 +220,7 @@ describe('Api/apiHandler dispatcher — DefinitionStaleError transport mapping',
 
   describe('existing error mappings unchanged (regression)', () => {
     it('maps ApiRateLimitError to RATE_LIMITED with retriable true', () => {
-      const ApiRateLimitError = require('../../../src/backend/Utils/ErrorTypes/ApiRateLimitError.js');
+      const ApiRateLimitError = require('#backend/Utils/ErrorTypes/ApiRateLimitError.js');
       const { ApiDispatcher } = loadApiHandlerModule();
       const dispatcher = ApiDispatcher.getInstance();
 
@@ -239,7 +239,7 @@ describe('Api/apiHandler dispatcher — DefinitionStaleError transport mapping',
     });
 
     it('maps ApiValidationError to INVALID_REQUEST with retriable false', () => {
-      const ApiValidationError = require('../../../src/backend/Utils/ErrorTypes/ApiValidationError.js');
+      const ApiValidationError = require('#backend/Utils/ErrorTypes/ApiValidationError.js');
       const { ApiDispatcher } = loadApiHandlerModule();
       const dispatcher = ApiDispatcher.getInstance();
 
@@ -258,7 +258,7 @@ describe('Api/apiHandler dispatcher — DefinitionStaleError transport mapping',
     });
 
     it('maps ApiDisabledError to UNKNOWN_METHOD with retriable false', () => {
-      const ApiDisabledError = require('../../../src/backend/Utils/ErrorTypes/ApiDisabledError.js');
+      const ApiDisabledError = require('#backend/Utils/ErrorTypes/ApiDisabledError.js');
       const { ApiDispatcher } = loadApiHandlerModule();
       const dispatcher = ApiDispatcher.getInstance();
 

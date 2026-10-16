@@ -4,24 +4,24 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { QueryClientProvider } from '@tanstack/react-query';
 import type { PropsWithChildren } from 'react';
 import type { RenderHookResult } from '@testing-library/react';
-import { createAppQueryClient } from '../../query/queryClient';
-import { queryKeys } from '../../query/queryKeys';
+import { createAppQueryClient } from '@/query/queryClient';
+import { queryKeys } from '@/query/queryKeys';
 import type { UseAssignmentDefinitionWizardReturn } from './useAssignmentDefinitionWizard';
 
 // Mock dependencies
-vi.mock('../../services/apiService', () => {
+vi.mock('@/services/apiService', () => {
   return {
     callApi: vi.fn(),
   };
 });
 
-vi.mock('../../logging/frontendLogger', () => {
+vi.mock('@/logging/frontendLogger', () => {
   return {
     logFrontendError: vi.fn(),
   };
 });
 
-vi.mock('../../errors/map-error-to-ui', () => {
+vi.mock('@/errors/map-error-to-ui', () => {
   return {
     mapErrorToUserMessage: vi.fn(() => 'Error message'),
     extractErrorCode: vi.fn(() => null),
@@ -29,7 +29,7 @@ vi.mock('../../errors/map-error-to-ui', () => {
   };
 });
 
-vi.mock('../../features/auth/startupWarmupState', () => {
+vi.mock('@/features/auth/startupWarmupState', () => {
   return {
     useStartupWarmupState: () => {
       return {
@@ -48,7 +48,7 @@ vi.mock('../../features/auth/startupWarmupState', () => {
   };
 });
 
-vi.mock('../../query/sharedQueries', () => {
+vi.mock('@/query/sharedQueries', () => {
   return {
     getAssignmentDefinitionQueryOptions: vi.fn(() => {
       return {
@@ -66,7 +66,7 @@ vi.mock('../../query/sharedQueries', () => {
   };
 });
 
-vi.mock('../../services/assignmentDefinition/assignmentDefinitionService', () => {
+vi.mock('@/services/assignmentDefinition/assignmentDefinitionService', () => {
   return {
     upsertAssignmentDefinition: vi.fn(),
   };
@@ -136,8 +136,7 @@ function createParseResponse(definitionKey = 'test-create-key'): Record<string, 
  * @returns {Promise<ReturnType<typeof vi.fn>>} The mock function.
  */
 async function getUpsertDefinitionMock(): Promise<ReturnType<typeof vi.fn>> {
-  const serviceModule =
-    await import('../../services/assignmentDefinition/assignmentDefinitionService');
+  const serviceModule = await import('@/services/assignmentDefinition/assignmentDefinitionService');
   return serviceModule.upsertAssignmentDefinition as ReturnType<typeof vi.fn>;
 }
 

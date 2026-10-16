@@ -10,7 +10,7 @@ import { render, screen, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createElement } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import type { AssignmentFull } from '../../services/assignmentAssessment/assignmentAssessment.zod';
+import type { AssignmentFull } from '@/services/assignmentAssessment/assignmentAssessment.zod';
 import { ClassPage } from './ClassPage';
 import type { ClassPageContent as ClassPageContentType } from './ClassPageContent';
 import {
@@ -18,7 +18,7 @@ import {
   DEFAULT_CLASS_ID,
   createClassPageAdapterResult as createAdapterResult,
   createReadyClassPageData,
-} from '../../test/classPage/classPageFixtures';
+} from '@/test/classPage/classPageFixtures';
 
 // ===========================================================================
 // Mock setup (hoisted to avoid temporal dead zone issues)
@@ -105,7 +105,7 @@ const { mockUseClassSelection } = vi.hoisted(() => {
   };
 });
 
-vi.mock('../../services/assignmentAssessment/assignmentAssessmentService', () => {
+vi.mock('@/services/assignmentAssessment/assignmentAssessmentService', () => {
   return {
     getAssignment: mockGetAssignment,
   };
@@ -129,7 +129,7 @@ vi.mock('../classes/AssessTaskModal/AssessTaskModal', () => {
   };
 });
 
-vi.mock('../../pages/pageContent', () => {
+vi.mock('@/pages/pageContent', () => {
   return {
     pageContent: {
       classDetail: {
@@ -142,7 +142,7 @@ vi.mock('../../pages/pageContent', () => {
   };
 });
 
-vi.mock('../../ClassSelectionContext', () => {
+vi.mock('@/ClassSelectionContext', () => {
   return {
     useClassSelection: mockUseClassSelection,
   };

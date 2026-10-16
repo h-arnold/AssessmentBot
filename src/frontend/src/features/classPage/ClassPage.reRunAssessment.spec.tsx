@@ -19,8 +19,8 @@ import {
   buildDefaultAssignmentFixture,
   classFullFixture,
   VALID_ASSIGNMENT_PARTIAL,
-} from '../../test/taskHeatmapPageFixtures';
-import { expectReRunButtonOrdering } from '../../test/shared/buttonOrderingTestHelpers';
+} from '@/test/taskHeatmapPageFixtures';
+import { expectReRunButtonOrdering } from '@/test/shared/buttonOrderingTestHelpers';
 
 const CLASS_PAGE_CLASS_ID = 'class-1';
 const RECENT_ASSIGNMENT_NAME = 'Assignment One';
@@ -64,13 +64,13 @@ vi.mock('../classes/AssessTaskModal/AssessTaskModal', () => {
   };
 });
 
-vi.mock('../../ClassSelectionContext', () => {
+vi.mock('@/ClassSelectionContext', () => {
   return {
     useClassSelection: mockUseClassSelection,
   };
 });
 
-vi.mock('../../services/assignmentAssessment/assignmentAssessmentService', () => {
+vi.mock('@/services/assignmentAssessment/assignmentAssessmentService', () => {
   return {
     getAssignment: mockGetAssignment,
   };

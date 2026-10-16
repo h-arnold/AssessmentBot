@@ -1,8 +1,8 @@
 import { QueryClientProvider } from '@tanstack/react-query';
 import type { PropsWithChildren } from 'react';
-import { createAppQueryClient } from '../../query/queryClient';
-import type { ApplicationAccess } from '../../services/authService/authService.zod';
-import type { StartupWarmupQueriesResult } from '../../query/sharedQueries';
+import { createAppQueryClient } from '@/query/queryClient';
+import type { ApplicationAccess } from '@/services/authService/authService.zod';
+import type { StartupWarmupQueriesResult } from '@/query/sharedQueries';
 
 /**
  * Contract-shaped empty warm-up result used as the startup-query mock response.

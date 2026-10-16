@@ -20,16 +20,16 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { act, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
-import { renderWithFrontendProviders } from '../../test/renderWithFrontendProviders';
+import { renderWithFrontendProviders } from '@/test/renderWithFrontendProviders';
 import {
   createComputedMetricResult,
   createErrorMetricResult,
-} from '../../test/dataAnalysis/fixtures';
-import { NOT_ATTEMPTED_METRIC } from '../../services/dataAnalysis/heatmapAdapter';
-import { METRIC_DISPLAY_META } from '../../services/dataAnalysis/metricDisplay/metricDisplayMeta';
-import type { TaskDisplayMetric } from '../../services/dataAnalysis/dataAnalysis.zod';
-import { CANONICAL_READY_CELL } from '../../test/taskHeatmap/previewFixtures';
-import { CANONICAL_SOURCE_URL } from '../../test/taskHeatmap/previewSourceActionTestHelpers';
+} from '@/test/dataAnalysis/fixtures';
+import { NOT_ATTEMPTED_METRIC } from '@/services/dataAnalysis/heatmapAdapter';
+import { METRIC_DISPLAY_META } from '@/services/dataAnalysis/metricDisplay/metricDisplayMeta';
+import type { TaskDisplayMetric } from '@/services/dataAnalysis/dataAnalysis.zod';
+import { CANONICAL_READY_CELL } from '@/test/taskHeatmap/previewFixtures';
+import { CANONICAL_SOURCE_URL } from '@/test/taskHeatmap/previewSourceActionTestHelpers';
 import { SOURCE_ACTION_LABEL, TaskPreviewCard, type TaskPreviewData } from './TaskPreviewCard';
 
 // ---------------------------------------------------------------------------

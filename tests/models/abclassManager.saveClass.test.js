@@ -1,4 +1,4 @@
-const ABClassController = require('../../src/backend/y_controllers/ABClassController');
+const ABClassController = require('#backend/y_controllers/ABClassController/index.js');
 
 describe('ABClassController.saveClass', () => {
   let manager;

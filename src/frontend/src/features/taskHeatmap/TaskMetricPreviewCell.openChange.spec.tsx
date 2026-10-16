@@ -38,9 +38,9 @@ import { TaskMetricPreviewCell } from './TaskMetricPreviewCell';
 import {
   buildCanonicalReadyCellData,
   CANONICAL_READY_CELL,
-} from '../../test/taskHeatmap/previewFixtures';
-import { createComputedMetricResult } from '../../test/dataAnalysis/fixtures';
-import { formatMetricDisplayText } from '../../services/dataAnalysis/metricDisplay/metricDisplayText';
+} from '@/test/taskHeatmap/previewFixtures';
+import { createComputedMetricResult } from '@/test/dataAnalysis/fixtures';
+import { formatMetricDisplayText } from '@/services/dataAnalysis/metricDisplay/metricDisplayText';
 import { buildMetricCellAccessibleLabel } from './taskHeatmapTableColumns';
 import { SOURCE_ACTION_LABEL } from './TaskPreviewCard';
 

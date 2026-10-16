@@ -1,8 +1,18 @@
 // Plain config object to avoid ESM import of vite in current Node version.
+const path = require('node:path');
+
 const permanentlyExcludedDeprecatedTests = ['tests/controllers/initController.test.js'];
 const removedDeprecatedLegacyTests = ['tests/ui/**', 'tests/singletons/uiLazyProbe.test.js'];
 
 module.exports = {
+  resolve: {
+    // Synthetic-analysis suites import frontend Zod contracts and their
+    // transitive modules, which use the frontend `@/*` alias internally.
+    alias: {
+      '@synthetic': path.resolve(__dirname, 'tests/__mocks__/data/synthetic-analysis'),
+      '@': path.resolve(__dirname, 'src/frontend/src'),
+    },
+  },
   test: {
     coverage: {
       provider: 'v8',

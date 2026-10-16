@@ -19,8 +19,8 @@ import {
   expectNeverClaimCheckAccess,
 } from './authServiceTestHarness.js';
 
-const AuthService = require('../../../src/backend/Utils/AuthService.js');
-const { triggerHandler } = require('../../../src/backend/Triggers/triggerHandler.js');
+const AuthService = require('#backend/Utils/AuthService.js');
+const { triggerHandler } = require('#backend/Triggers/triggerHandler.js');
 
 const RESOLVED_TRIGGER_CONTEXT = {
   method: 'processSelectedAssignment',

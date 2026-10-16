@@ -14,32 +14,32 @@ import { useEffect, useMemo, type JSX } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Alert, Button, Card, Flex, App as AntdApp } from 'antd';
 import { RefreshCw, RotateCcw } from 'lucide-react';
-import { APP_GAP_MD } from '../../theme/spacing';
+import { APP_GAP_MD } from '@/theme/spacing';
 
 import type { ReRunContext } from '../shared/reRunAssessmentContext';
 
-import type { AveragingResult } from '../../services/dataAnalysis/dataAnalysis.zod';
-import type { ClassFull } from '../../services/googleClassrooms/classDetail/classDetailService.zod';
-import type { AssignmentDefinitionPartialsResponse } from '../../services/assignmentDefinition/assignmentDefinitionPartials.zod';
+import type { AveragingResult } from '@/services/dataAnalysis/dataAnalysis.zod';
+import type { ClassFull } from '@/services/googleClassrooms/classDetail/classDetailService.zod';
+import type { AssignmentDefinitionPartialsResponse } from '@/services/assignmentDefinition/assignmentDefinitionPartials.zod';
 import {
   adaptMetricsToHeatmap,
   TaskTitlesUnavailableError,
-} from '../../services/dataAnalysis/heatmapAdapter';
-import { logFrontendError, logFrontendEvent } from '../../logging/frontendLogger';
-import { useLogOnce } from '../../hooks/useLogOnce';
-import { toError } from '../../errors/normaliseUnknownError';
+} from '@/services/dataAnalysis/heatmapAdapter';
+import { logFrontendError, logFrontendEvent } from '@/logging/frontendLogger';
+import { useLogOnce } from '@/hooks/useLogOnce';
+import { toError } from '@/errors/normaliseUnknownError';
 import { logPipelineError } from './heatmapsPipeline';
 import { buildCellPreviewLookup } from './buildCellPreviewLookup';
 import type { CellPreviewLookup } from './buildCellPreviewLookup';
-import { getAssignmentQueryOptions } from '../../query/sharedQueries';
+import { getAssignmentQueryOptions } from '@/query/sharedQueries';
 import { TaskHeatmapTable } from './TaskHeatmapTable';
 import { TaskHeatmapSummaryCards } from './TaskHeatmapSummaryCards';
-import { DataAnalysisService } from '../../services/dataAnalysis/dataAnalysisService';
+import { DataAnalysisService } from '@/services/dataAnalysis/dataAnalysisService';
 import {
   adaptAssignmentSummary,
   type AssignmentSummaryView,
-} from '../../services/dataAnalysis/assignmentSummaryAdapter';
-import { PageTitleCard, PageNavCard } from '../../components/PageHeader/PageHeader';
+} from '@/services/dataAnalysis/assignmentSummaryAdapter';
+import { PageTitleCard, PageNavCard } from '@/components/PageHeader/PageHeader';
 
 type HeatmapPageState = Readonly<{
   heatmapResult: ReturnType<typeof adaptMetricsToHeatmap> | null;

@@ -8,7 +8,7 @@ import {
   createSubmissionItem,
   createTaskPartial,
   createDefinitionPartial,
-} from '../../test/dataAnalysis/fixtures';
+} from '@/test/dataAnalysis/fixtures';
 
 const ROSTER_SIZE = 5;
 const EXPECTED_ACCURACY_AVERAGE = 2;

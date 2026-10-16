@@ -1,6 +1,6 @@
 import { Alert, Button, Space, Typography } from 'antd';
 import type { JSX } from 'react';
-import type { ReRunContext } from '../../shared/reRunAssessmentContext';
+import type { ReRunContext } from '@/features/shared/reRunAssessmentContext';
 import type {
   AssessTaskAssignment,
   AssessmentAlertType,

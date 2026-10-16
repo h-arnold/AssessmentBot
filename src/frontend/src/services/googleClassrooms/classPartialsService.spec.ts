@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const { callApiMock, parseApiResponseMock } = await vi.hoisted(async () => {
-  const { createApiServiceMockScaffold } = await import('../../test/api/apiServiceTestMocks');
+  const { createApiServiceMockScaffold } = await import('@/test/api/apiServiceTestMocks');
   return createApiServiceMockScaffold();
 });
 

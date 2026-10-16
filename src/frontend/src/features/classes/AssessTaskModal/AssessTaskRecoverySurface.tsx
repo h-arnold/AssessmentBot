@@ -1,14 +1,14 @@
 import { Alert, Button, Space } from 'antd';
 import { useEffect, useState, type JSX } from 'react';
-import { mapErrorCodeToUserMessage, mapErrorToUserMessage } from '../../../errors/map-error-to-ui';
+import { mapErrorCodeToUserMessage, mapErrorToUserMessage } from '@/errors/map-error-to-ui';
 import {
   APP_GAP_MD,
   APP_SPACE_SIZE_DEFAULT,
-} from '../../../theme/spacing';
-import { AssignmentDiscardConfirm } from '../../assignmentWizard/AssignmentDiscardConfirm';
-import { AssignmentDefinitionWizardReviewContent } from '../../assignmentWizard/AssignmentDefinitionWizardReviewContent';
-import { ManageTopicsModal } from '../../referenceData/ManageTopicsModal';
-import { ManageYearGroupsModal } from '../../referenceData/ManageYearGroupsModal';
+} from '@/theme/spacing';
+import { AssignmentDiscardConfirm } from '@/features/assignmentWizard/AssignmentDiscardConfirm';
+import { AssignmentDefinitionWizardReviewContent } from '@/features/assignmentWizard/AssignmentDefinitionWizardReviewContent';
+import { ManageTopicsModal } from '@/features/referenceData/ManageTopicsModal';
+import { ManageYearGroupsModal } from '@/features/referenceData/ManageYearGroupsModal';
 import { RecoveryReviewSkeleton } from './RecoveryReviewSkeleton';
 import {
   useAssessTaskRecoveryFlow,

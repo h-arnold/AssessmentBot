@@ -1,6 +1,6 @@
-import { logFrontendEvent } from '../../../logging/frontendLogger';
+import { logFrontendEvent } from '@/logging/frontendLogger';
 import type { AveragingAnalyserInput } from '../dataAnalysis.zod';
-import type { AssignmentDefinitionPartial } from '../../../services/assignmentDefinition/assignmentDefinitionPartials.zod';
+import type { AssignmentDefinitionPartial } from '@/services/assignmentDefinition/assignmentDefinitionPartials.zod';
 
 /**
  * Check if a single assignment should be excluded from analysis based on

@@ -23,25 +23,25 @@ import type { FilterValue } from 'antd/es/table/interface';
 import type {
   AverageContribution,
   TaskDisplayMetric,
-} from '../../services/dataAnalysis/dataAnalysis.zod';
-import { compareMetricsByStateRank } from '../../services/dataAnalysis/metricDisplay/metricComparator';
+} from '@/services/dataAnalysis/dataAnalysis.zod';
+import { compareMetricsByStateRank } from '@/services/dataAnalysis/metricDisplay/metricComparator';
 import {
   METRIC_DISPLAY_META,
   HEATMAP_METRIC_KEYS,
-} from '../../services/dataAnalysis/metricDisplay/metricDisplayMeta';
-import type { HeatmapMetricKey } from '../../services/dataAnalysis/metricDisplay/metricDisplayMeta';
+} from '@/services/dataAnalysis/metricDisplay/metricDisplayMeta';
+import type { HeatmapMetricKey } from '@/services/dataAnalysis/metricDisplay/metricDisplayMeta';
 import {
   resolveMetricTone,
   DEFAULT_TONE_RANGE,
-} from '../../services/dataAnalysis/metricDisplay/metricTone';
-import { formatMetricDisplayText } from '../../services/dataAnalysis/metricDisplay/metricDisplayText';
-import { buildMetricRangeFilter } from '../../services/dataAnalysis/metricDisplay/metricRangeFilter';
-import { decodeFilterToRange } from '../../services/dataAnalysis/metricDisplay/metricRangeKey';
-import { MetricIconLabel } from '../../components/MetricIconLabel/MetricIconLabel';
+} from '@/services/dataAnalysis/metricDisplay/metricTone';
+import { formatMetricDisplayText } from '@/services/dataAnalysis/metricDisplay/metricDisplayText';
+import { buildMetricRangeFilter } from '@/services/dataAnalysis/metricDisplay/metricRangeFilter';
+import { decodeFilterToRange } from '@/services/dataAnalysis/metricDisplay/metricRangeKey';
+import { MetricIconLabel } from '@/components/MetricIconLabel/MetricIconLabel';
 import { TaskMetricPreviewCell } from './TaskMetricPreviewCell';
 import type { CellPreviewLookup } from './buildCellPreviewLookup';
 import type { PreviewStatus } from './assembleMergedPreviewData';
-import { APP_COL_WIDTH_METRIC } from '../../theme/spacing';
+import { APP_COL_WIDTH_METRIC } from '@/theme/spacing';
 import { getZeroWeightMetricEdgeClass } from './taskHeatmapZeroWeightHeader';
 
 // ---------------------------------------------------------------------------

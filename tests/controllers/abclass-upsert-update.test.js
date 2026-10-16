@@ -5,9 +5,9 @@ import {
   setupControllerTestMocks,
 } from '../helpers/mockFactories.js';
 
-const ABClassModule = require('../../src/backend/Models/ABClass.js');
-const TeacherModule = require('../../src/backend/Models/Teacher.js');
-const StudentModule = require('../../src/backend/Models/Student.js');
+const ABClassModule = require('#backend/Models/ABClass.js');
+const TeacherModule = require('#backend/Models/Teacher.js');
+const StudentModule = require('#backend/Models/Student.js');
 
 const ABClass = ABClassModule.ABClass || ABClassModule;
 const Teacher = TeacherModule.Teacher || TeacherModule;
@@ -149,7 +149,7 @@ beforeEach(() => {
   globalThis.ClassroomApiClient = classroomApiClient;
 
   delete require.cache[require.resolve('../../src/backend/y_controllers/ABClassController')];
-  ABClassController = require('../../src/backend/y_controllers/ABClassController');
+  ABClassController = require('#backend/y_controllers/ABClassController/index.js');
 });
 
 afterEach(() => {

@@ -2,9 +2,9 @@ import { FilterFilled } from '@ant-design/icons';
 import { Button, Card, Empty, Skeleton, Space, Table, type TableColumnsType } from 'antd';
 import type { FilterDropdownProps, FilterValue } from 'antd/es/table/interface';
 import { useCallback, useMemo, useState, type ReactElement } from 'react';
-import { formatUpdatedAtLabel } from '../../utils/dateFormatting';
-import type { AssignmentDefinitionPartial } from '../../services/assignmentDefinition/assignmentDefinitionPartialsService';
-import { DeleteAssignmentDefinitionRequestSchema } from '../../services/assignmentDefinition/assignmentDefinitionPartials.zod';
+import { formatUpdatedAtLabel } from '@/utils/dateFormatting';
+import type { AssignmentDefinitionPartial } from '@/services/assignmentDefinition/assignmentDefinitionPartialsService';
+import { DeleteAssignmentDefinitionRequestSchema } from '@/services/assignmentDefinition/assignmentDefinitionPartials.zod';
 
 const UNAVAILABLE_VALUE = '—';
 const FILTER_DROPDOWN_PROPERTIES = { transitionName: '' } as const;

@@ -1,6 +1,6 @@
 const {
   DEFAULTS: CONFIGURATION_MANAGER_DEFAULTS,
-} = require('../../src/backend/ConfigurationManager/02_defaults.js');
+} = require('#backend/ConfigurationManager/02_defaults.js');
 
 function buildBackendConfigResponse(overrides = {}) {
   // Settled 12 non-auth field read contract (SPEC Section 6): auth fields are
