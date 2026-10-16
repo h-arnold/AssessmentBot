@@ -27,7 +27,7 @@ import {
   CANONICAL_YEAR_GROUPS,
   assertWarmPrefetchCorpusProvenance,
 } from './task-preview-source-link-fixtures';
-import type { AssignmentFull } from '../../src/services/assignmentAssessment/assignmentAssessment.zod';
+import type { AssignmentFull } from '@/services/assignmentAssessment/assignmentAssessment.zod';
 
 // ---------------------------------------------------------------------------
 // Queue sizes

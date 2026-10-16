@@ -1,10 +1,10 @@
 import { Alert } from 'antd';
 import { useLayoutEffect, useRef, useState, type JSX } from 'react';
-import { useAssignmentDefinitionWizard } from '../../assignmentWizard/useAssignmentDefinitionWizard';
-import { AssignmentDiscardConfirm } from '../../assignmentWizard/AssignmentDiscardConfirm';
-import { AssignmentDefinitionWizardReviewContent } from '../../assignmentWizard/AssignmentDefinitionWizardReviewContent';
-import { ManageTopicsModal } from '../../referenceData/ManageTopicsModal';
-import { ManageYearGroupsModal } from '../../referenceData/ManageYearGroupsModal';
+import { useAssignmentDefinitionWizard } from '@/features/assignmentWizard/useAssignmentDefinitionWizard';
+import { AssignmentDiscardConfirm } from '@/features/assignmentWizard/AssignmentDiscardConfirm';
+import { AssignmentDefinitionWizardReviewContent } from '@/features/assignmentWizard/AssignmentDefinitionWizardReviewContent';
+import { ManageTopicsModal } from '@/features/referenceData/ManageTopicsModal';
+import { ManageYearGroupsModal } from '@/features/referenceData/ManageYearGroupsModal';
 
 const BLOCKING_ERROR_MESSAGE = 'Required reference data could not be trusted or loaded.';
 

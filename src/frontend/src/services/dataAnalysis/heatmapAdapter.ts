@@ -1,4 +1,4 @@
-import { logFrontendEvent } from '../../logging/frontendLogger';
+import { logFrontendEvent } from '@/logging/frontendLogger';
 import type {
   AverageContribution,
   AveragingResult,

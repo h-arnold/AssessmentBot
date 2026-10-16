@@ -2,18 +2,18 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ZodError } from 'zod';
 
 import { getApiDispatcherInstance } from '../helpers/apiHandlerTestUtils.js';
-import { type GoogleScriptRunApiHandler } from '../../src/frontend/src/test/googleScriptRunHarness';
-import { createSyntheticApiRoundTripRunner } from '../../src/frontend/src/test/syntheticApiRoundTripAdapter';
-import { createApiHandlerRoundTripBridge } from '../../scripts/synthetic-test-data/apiHandlerRoundTripBridge.js';
-import { loadSyntheticAnalysisProfile } from '../../scripts/synthetic-test-data/loadSyntheticAnalysisProfile.js';
-import { ApiTransportError } from '../../src/frontend/src/errors/apiTransportError';
-import { callApi } from '../../src/frontend/src/services/apiService';
-import { getABClass } from '../../src/frontend/src/services/googleClassrooms/classDetail/classDetailService';
+import { type GoogleScriptRunApiHandler } from '@/test/googleScriptRunHarness';
+import { createSyntheticApiRoundTripRunner } from '@/test/syntheticApiRoundTripAdapter';
+import { createApiHandlerRoundTripBridge } from '#synthetic-data/apiHandlerRoundTripBridge.js';
+import { loadSyntheticAnalysisProfile } from '#synthetic-data/loadSyntheticAnalysisProfile.js';
+import { ApiTransportError } from '@/errors/apiTransportError';
+import { callApi } from '@/services/apiService';
+import { getABClass } from '@/services/googleClassrooms/classDetail/classDetailService';
 import {
   deleteAssignmentDefinition,
   getAssignmentDefinitionPartials,
-} from '../../src/frontend/src/services/assignmentDefinition/assignmentDefinitionPartialsService';
-import { DataAnalysisService } from '../../src/frontend/src/services/dataAnalysis/dataAnalysisService';
+} from '@/services/assignmentDefinition/assignmentDefinitionPartialsService';
+import { DataAnalysisService } from '@/services/dataAnalysis/dataAnalysisService';
 
 type GoogleScriptGlobal = {
   google?: { script?: { run?: GoogleScriptRunApiHandler } };

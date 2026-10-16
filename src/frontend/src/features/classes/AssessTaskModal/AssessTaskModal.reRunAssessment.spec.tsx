@@ -13,17 +13,17 @@ import userEvent from '@testing-library/user-event';
 import { QueryClientProvider, type QueryClient } from '@tanstack/react-query';
 import { act, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import '../../../test/classes/AssessTaskModal.mockSetup';
+import '@/test/classes/AssessTaskModal.mockSetup';
 import { AssessTaskModal } from './AssessTaskModal';
 import { findMatchingDefinition } from './matchDefinitionForAssignment';
-import { getGoogleClassroomAssignments } from '../../../services/googleClassrooms/googleClassroomAssignmentsService';
-import { startAssessmentRun } from '../../../services/assignmentAssessment/assignmentAssessmentService';
-import { getAssignmentDefinition } from '../../../services/assignmentDefinition/assignmentDefinitionService';
-import { getAssignmentTopics } from '../../../services/assignmentDefinition/assignmentTopicsService';
-import { getCohorts, getYearGroups } from '../../../services/referenceData/referenceDataService';
-import { createAppQueryClient } from '../../../query/queryClient';
-import { createDefinitionPartial } from '../../../test/classes/matchDefinitionForAssignment.test-utilities';
-import { createDeferredPromise } from '../../../test/shared/testDeferredPromise';
+import { getGoogleClassroomAssignments } from '@/services/googleClassrooms/googleClassroomAssignmentsService';
+import { startAssessmentRun } from '@/services/assignmentAssessment/assignmentAssessmentService';
+import { getAssignmentDefinition } from '@/services/assignmentDefinition/assignmentDefinitionService';
+import { getAssignmentTopics } from '@/services/assignmentDefinition/assignmentTopicsService';
+import { getCohorts, getYearGroups } from '@/services/referenceData/referenceDataService';
+import { createAppQueryClient } from '@/query/queryClient';
+import { createDefinitionPartial } from '@/test/classes/matchDefinitionForAssignment.test-utilities';
+import { createDeferredPromise } from '@/test/shared/testDeferredPromise';
 import {
   buildNonStaleError,
   buildStaleError,
@@ -37,7 +37,7 @@ import {
   RETRY_BUTTON,
   START_ASSESSMENT_BUTTON,
   UPDATE_BUTTON,
-} from '../../../test/classes/AssessTaskModal.recovery-helpers';
+} from '@/test/classes/AssessTaskModal.recovery-helpers';
 import {
   MOCK_ASSIGNMENTS,
   MOCK_CLASS_ID,
@@ -47,9 +47,9 @@ import {
   seedAssessmentFlowQueryData,
   selectAssignment,
   expectAssessmentSuccessSurface,
-} from '../../../test/classes/AssessTaskModal.test-utilities';
-import type { GoogleClassroomAssignmentsResponse } from '../../../services/googleClassrooms/googleClassroomAssignments.zod';
-import type { ReRunContext } from '../../shared/reRunAssessmentContext';
+} from '@/test/classes/AssessTaskModal.test-utilities';
+import type { GoogleClassroomAssignmentsResponse } from '@/services/googleClassrooms/googleClassroomAssignments.zod';
+import type { ReRunContext } from '@/features/shared/reRunAssessmentContext';
 
 /** Definition key persisted on the previously assessed assignment. */
 const PERSISTED_DEFINITION_KEY = 'essay-def-key';

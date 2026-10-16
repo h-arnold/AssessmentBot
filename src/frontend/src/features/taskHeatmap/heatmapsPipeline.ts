@@ -14,20 +14,20 @@
  */
 
 import { z } from 'zod';
-import { DataAnalysisService } from '../../services/dataAnalysis/dataAnalysisService';
+import { DataAnalysisService } from '@/services/dataAnalysis/dataAnalysisService';
 import {
   adaptMetricsToMergedHeatmap,
   type MergedHeatmapResult,
-} from '../../services/dataAnalysis/heatmapAdapter.merged';
+} from '@/services/dataAnalysis/heatmapAdapter.merged';
 import type {
   AveragingAnalyserInput,
   AveragingResult,
-} from '../../services/dataAnalysis/dataAnalysis.zod';
-import type { ClassFull } from '../../services/googleClassrooms/classDetail/classDetailService.zod';
-import type { AssignmentDefinitionPartialsResponse } from '../../services/assignmentDefinition/assignmentDefinitionPartials.zod';
-import { logFrontendError } from '../../logging/frontendLogger';
-import { toError } from '../../errors/normaliseUnknownError';
-import type { PageDatasetState } from '../../hooks/usePageDataset';
+} from '@/services/dataAnalysis/dataAnalysis.zod';
+import type { ClassFull } from '@/services/googleClassrooms/classDetail/classDetailService.zod';
+import type { AssignmentDefinitionPartialsResponse } from '@/services/assignmentDefinition/assignmentDefinitionPartials.zod';
+import { logFrontendError } from '@/logging/frontendLogger';
+import { toError } from '@/errors/normaliseUnknownError';
+import type { PageDatasetState } from '@/hooks/usePageDataset';
 
 /**
  * Create the module-level `DataAnalysisService` instance.

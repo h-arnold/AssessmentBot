@@ -8,7 +8,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { TaskDefinition } from '../../src/backend/Models/TaskDefinition.js';
+import { TaskDefinition } from '#backend/Models/TaskDefinition.js';
 import {
   buildTestTeacher,
   buildTestStudent,
@@ -21,11 +21,11 @@ import {
 /*  Helpers                                                            */
 /* ------------------------------------------------------------------ */
 
-const ABClassModule = require('../../src/backend/Models/ABClass.js');
-const TeacherModule = require('../../src/backend/Models/Teacher.js');
-const StudentModule = require('../../src/backend/Models/Student.js');
-const AssignmentModule = require('../../src/backend/AssignmentProcessor/Assignment/index.js');
-const AssignmentDefinitionModule = require('../../src/backend/Models/AssignmentDefinition.js');
+const ABClassModule = require('#backend/Models/ABClass.js');
+const TeacherModule = require('#backend/Models/Teacher.js');
+const StudentModule = require('#backend/Models/Student.js');
+const AssignmentModule = require('#backend/AssignmentProcessor/Assignment/index.js');
+const AssignmentDefinitionModule = require('#backend/Models/AssignmentDefinition.js');
 
 const ABClass = ABClassModule.ABClass || ABClassModule;
 const Teacher = TeacherModule.Teacher || TeacherModule;
@@ -36,7 +36,7 @@ const AssignmentDefinition =
 
 let ClassNotFoundError;
 try {
-  ClassNotFoundError = require('../../src/backend/Utils/ErrorTypes/ClassNotFoundError.js');
+  ClassNotFoundError = require('#backend/Utils/ErrorTypes/ClassNotFoundError.js');
 } catch (e) {
   // RED phase — may not be resolvable yet in all environments
   if (e.code !== 'MODULE_NOT_FOUND') throw e;
@@ -183,7 +183,7 @@ let classCollection;
 
 function loadControllerModule() {
   delete require.cache[require.resolve('../../src/backend/y_controllers/ABClassController')];
-  ABClassController = require('../../src/backend/y_controllers/ABClassController');
+  ABClassController = require('#backend/y_controllers/ABClassController/index.js');
 }
 
 /* ------------------------------------------------------------------ */

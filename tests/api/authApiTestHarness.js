@@ -42,7 +42,7 @@ import {
   parseRawConfigBlob,
 } from '../utils/authService/authServiceBootstrapHarness.js';
 
-const AuthService = require('../../src/backend/Utils/AuthService.js');
+const AuthService = require('#backend/Utils/AuthService.js');
 
 /** The conservative Script Properties blob cap enforced on every config write. */
 export const MAX_CONFIG_BLOB_BYTES = 8192;

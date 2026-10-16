@@ -3,7 +3,7 @@ import {
   backendApiKeyValidationMessage,
   isBackendApiKeyToken,
   isDriveFolderId,
-} from '../../../services/backendConfiguration/backendConfigurationValidation';
+} from '@/services/backendConfiguration/backendConfigurationValidation';
 
 const backendAssessorBatchSizeMinimum = 1;
 const backendAssessorBatchSizeMaximum = 500;

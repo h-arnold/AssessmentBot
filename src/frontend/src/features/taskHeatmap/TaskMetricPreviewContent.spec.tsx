@@ -20,12 +20,12 @@ import { CARD_MAX_WIDTH, SOURCE_ACTION_LABEL } from './TaskPreviewCard';
 import {
   CANONICAL_READY_CELL,
   buildCanonicalReadyCellData,
-} from '../../test/taskHeatmap/previewFixtures';
+} from '@/test/taskHeatmap/previewFixtures';
 import {
   CANONICAL_SOURCE_URL,
   buildCanonicalCellWithoutSourceUrl,
-} from '../../test/taskHeatmap/previewSourceActionTestHelpers';
-import { createComputedMetricResult } from '../../test/dataAnalysis/fixtures';
+} from '@/test/taskHeatmap/previewSourceActionTestHelpers';
+import { createComputedMetricResult } from '@/test/dataAnalysis/fixtures';
 import type * as TaskPreviewDataModule from './assembleTaskPreviewData';
 
 const { assembleTaskPreviewDataSpy } = vi.hoisted(() => {

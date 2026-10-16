@@ -34,7 +34,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { withGlobalMocks } from '../helpers/globalMockManager.js';
 import { expectNeverClaimCheckAccess } from '../utils/authService/authServiceTestHarness.js';
 
-const AuthService = require('../../src/backend/Utils/AuthService.js');
+const AuthService = require('#backend/Utils/AuthService.js');
 
 // ── Mock handles (the pure-mock globals are installed in beforeEach) ─────────
 
@@ -77,7 +77,7 @@ const authRevision = { value: '' };
 const isFresh = { value: false };
 
 // Module under test — created in the green phase (ACTION_PLAN Section 2).
-const { triggerHandler } = require('../../src/backend/Triggers/triggerHandler.js');
+const { triggerHandler } = require('#backend/Triggers/triggerHandler.js');
 
 describe('triggerHandler', () => {
   let restoreTriggerGlobals;

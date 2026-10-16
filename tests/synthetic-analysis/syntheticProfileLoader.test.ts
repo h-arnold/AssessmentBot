@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { loadSyntheticAnalysisProfile } from '../../scripts/synthetic-test-data/loadSyntheticAnalysisProfile.js';
+import { loadSyntheticAnalysisProfile } from '#synthetic-data/loadSyntheticAnalysisProfile.js';
 
 const SMALL_PROFILE_NAME = 'small';
 const MEDIUM_PROFILE_NAME = 'medium';

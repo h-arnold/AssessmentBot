@@ -14,9 +14,9 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   ApplicationAccessContext,
   type ApplicationAccessContextValue,
-} from '../../auth/ApplicationAccessContext';
-import { renderWithFrontendProviders } from '../../../test/renderWithFrontendProviders';
-import { SettingsPage } from '../../../pages/SettingsPage';
+} from '@/features/auth/ApplicationAccessContext';
+import { renderWithFrontendProviders } from '@/test/renderWithFrontendProviders';
+import { SettingsPage } from '@/pages/SettingsPage';
 
 const administratorAccessContextValue: ApplicationAccessContextValue = {
   role: 'admin',

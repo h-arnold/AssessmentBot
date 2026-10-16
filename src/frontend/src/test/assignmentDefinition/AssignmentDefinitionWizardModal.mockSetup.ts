@@ -7,25 +7,25 @@
  */
 import { vi } from 'vitest';
 
-vi.mock('../../features/auth/startupWarmupState', async (importOriginal) => {
+vi.mock('@/features/auth/startupWarmupState', async (importOriginal) => {
   const actualModule = (await importOriginal()) as Record<string, unknown>;
   return { ...actualModule, useStartupWarmupState: vi.fn() };
 });
 
-vi.mock('../../services/assignmentDefinition/assignmentDefinitionService', () => {
+vi.mock('@/services/assignmentDefinition/assignmentDefinitionService', () => {
   return {
     getAssignmentDefinition: vi.fn(),
     upsertAssignmentDefinition: vi.fn(),
   };
 });
 
-vi.mock('../../services/assignmentDefinition/assignmentTopicsService', () => {
+vi.mock('@/services/assignmentDefinition/assignmentTopicsService', () => {
   return {
     getAssignmentTopics: vi.fn(),
   };
 });
 
-vi.mock('../../services/referenceData/referenceDataService', () => {
+vi.mock('@/services/referenceData/referenceDataService', () => {
   return {
     getCohorts: vi.fn(),
     getYearGroups: vi.fn(),

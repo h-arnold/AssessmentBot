@@ -1,10 +1,5 @@
-import {
-  createContext,
-  createElement,
-  useContext,
-  type PropsWithChildren,
-} from 'react';
-import { startupWarmupDatasetKeys, type StartupWarmupDatasetKey } from '../../query/sharedQueries';
+import { createContext, createElement, useContext, type PropsWithChildren } from 'react';
+import { startupWarmupDatasetKeys, type StartupWarmupDatasetKey } from '@/query/sharedQueries';
 
 export type StartupWarmupStatus = 'loading' | 'ready' | 'failed';
 
@@ -65,7 +60,12 @@ export function createStartupWarmupSnapshotForStatus(
 
   return {
     datasets: Object.fromEntries(
-      startupWarmupDatasetKeys.map((datasetKey) => [datasetKey, { status: warmupState, isTrustworthy }])
+      startupWarmupDatasetKeys.map((datasetKey) => {
+        return [
+          datasetKey,
+          { status: warmupState, isTrustworthy },
+        ];
+      })
     ) as Record<StartupWarmupDatasetKey, StartupWarmupDatasetState>,
   };
 }
@@ -96,10 +96,12 @@ export function createStartupWarmupContextValue(
   };
 }
 
-type StartupWarmupStateProviderProperties = Readonly<PropsWithChildren<{
-  warmupState: StartupWarmupStatus;
-  snapshot?: StartupWarmupSnapshot;
-}>>;
+type StartupWarmupStateProviderProperties = Readonly<
+  PropsWithChildren<{
+    warmupState: StartupWarmupStatus;
+    snapshot?: StartupWarmupSnapshot;
+  }>
+>;
 
 /**
  * Provides the shared startup warm-up state to descendant consumers.

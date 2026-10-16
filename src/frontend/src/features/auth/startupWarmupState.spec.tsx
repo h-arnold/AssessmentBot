@@ -1,7 +1,7 @@
 import { renderHook } from '@testing-library/react';
 import type { PropsWithChildren } from 'react';
 import { describe, expect, it } from 'vitest';
-import type { StartupWarmupDatasetKey } from '../../query/sharedQueries';
+import type { StartupWarmupDatasetKey } from '@/query/sharedQueries';
 import {
   StartupWarmupStateProvider,
   useStartupWarmupState,

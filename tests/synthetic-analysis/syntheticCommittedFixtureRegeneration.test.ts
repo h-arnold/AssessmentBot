@@ -4,8 +4,8 @@ import { fileURLToPath } from 'node:url';
 
 import { afterAll, describe, expect, it, vi } from 'vitest';
 
-import { generateCommittedProfiles } from '../../scripts/synthetic-test-data/generateSyntheticAnalysisFixtures.js';
-import { getProfileDefinition } from '../../scripts/synthetic-test-data/profileDefinitions.js';
+import { generateCommittedProfiles } from '#synthetic-data/generateSyntheticAnalysisFixtures.js';
+import { getProfileDefinition } from '#synthetic-data/profileDefinitions.js';
 
 const REPOSITORY_ROOT = fileURLToPath(new URL('../../', import.meta.url));
 const COMMITTED_FIXTURE_ROOT = 'tests/__mocks__/data/synthetic-analysis';
@@ -25,24 +25,21 @@ const INJECTED_GENERATION_FAILURE_MESSAGE = 'injected later-profile generation f
  */
 const generationFailureControl = vi.hoisted(() => ({ failedProfile: null as string | null }));
 
-vi.mock(
-  '../../scripts/synthetic-test-data/generateSyntheticAnalysisGraph.js',
-  async (importOriginal) => {
-    const actual =
-      await importOriginal<
-        typeof import('../../scripts/synthetic-test-data/generateSyntheticAnalysisGraph.js')
-      >();
-    return {
-      ...actual,
-      generateSyntheticAnalysisGraph: (profileName: string, options?: { seed?: number }) => {
-        if (profileName === generationFailureControl.failedProfile) {
-          throw new Error(INJECTED_GENERATION_FAILURE_MESSAGE);
-        }
-        return actual.generateSyntheticAnalysisGraph(profileName, options);
-      },
-    };
-  }
-);
+vi.mock('#synthetic-data/generateSyntheticAnalysisGraph.js', async (importOriginal) => {
+  const actual =
+    await importOriginal<
+      typeof import('../../scripts/synthetic-test-data/generateSyntheticAnalysisGraph.js')
+    >();
+  return {
+    ...actual,
+    generateSyntheticAnalysisGraph: (profileName: string, options?: { seed?: number }) => {
+      if (profileName === generationFailureControl.failedProfile) {
+        throw new Error(INJECTED_GENERATION_FAILURE_MESSAGE);
+      }
+      return actual.generateSyntheticAnalysisGraph(profileName, options);
+    },
+  };
+});
 
 const PROFILE_VIEW_FILE_NAMES = [
   'manifest.json',

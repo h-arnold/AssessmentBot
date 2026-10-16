@@ -13,7 +13,7 @@
  * through the getter surface or the raw property surface.
  */
 import { expect, vi } from 'vitest';
-import { withGlobalMocks } from '../../helpers/globalMockManager.js';
+import { withGlobalMocks } from '#test-helpers/globalMockManager.js';
 
 /** The Google Groups cache TTL in seconds (six hours). */
 export const SIX_HOURS_SECONDS = 6 * 60 * 60;

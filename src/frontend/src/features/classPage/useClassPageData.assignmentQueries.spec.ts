@@ -2,8 +2,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderHook } from '@testing-library/react';
 import { QueryClient } from '@tanstack/react-query';
-import type { ClassFull } from '../../services/googleClassrooms/classDetail/classDetailService.zod';
-import '../../test/classPage/useClassPageData.mockSetup';
+import type { ClassFull } from '@/services/googleClassrooms/classDetail/classDetailService.zod';
+import '@/test/classPage/useClassPageData.mockSetup';
 import { useClassPageData } from './useClassPageData';
 import {
   DEFAULT_CLASS_ID,
@@ -15,11 +15,11 @@ import {
   createClassFull,
   createMockClassQueryResult,
   createPageDatasetReturn,
-} from '../../test/classPage/useClassPageDataTestFixtures';
+} from '@/test/classPage/useClassPageDataTestFixtures';
 import { useQuery } from '@tanstack/react-query';
-import { usePageDataset } from '../../hooks/usePageDataset';
-import { getABClassQueryOptions } from '../../query/sharedQueries';
-import { DataAnalysisService } from '../../services/dataAnalysis/dataAnalysisService';
+import { usePageDataset } from '@/hooks/usePageDataset';
+import { getABClassQueryOptions } from '@/query/sharedQueries';
+import { DataAnalysisService } from '@/services/dataAnalysis/dataAnalysisService';
 import { adaptClassPageToViewModel } from './classPageAdapter';
 
 const mockUseQuery = vi.mocked(useQuery);

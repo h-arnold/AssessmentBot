@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { YearGroup } from '../../services/referenceData/referenceData.zod';
+import type { YearGroup } from '@/services/referenceData/referenceData.zod';
 import { sortYearGroups } from './yearGroupSorting';
 
 /**

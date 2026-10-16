@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { ABClass } from '../../src/backend/Models/ABClass.js';
+import { ABClass } from '#backend/Models/ABClass.js';
 
 /**
  * ABClass partial data contract – key-based metadata.

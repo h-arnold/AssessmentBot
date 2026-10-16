@@ -12,7 +12,7 @@ import {
   createNotAttemptedMetricResult,
   createErrorMetricResult,
   createExcludedMetricResult,
-} from '../../../test/dataAnalysis/fixtures';
+} from '@/test/dataAnalysis/fixtures';
 import { MetricPill } from './MetricPill';
 import { resolveMetricTone } from './metricTone';
 

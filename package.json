@@ -5,7 +5,9 @@
   "main": "index.js",
   "imports": {
     "#backend/*": "./src/backend/*",
-    "#synthetic/*": "./tests/__mocks__/data/synthetic-analysis/*"
+    "#synthetic/*": "./tests/__mocks__/data/synthetic-analysis/*",
+    "#synthetic-data/*": "./scripts/synthetic-test-data/*",
+    "#test-helpers/*": "./tests/helpers/*"
   },
   "directories": {
     "doc": "docs"

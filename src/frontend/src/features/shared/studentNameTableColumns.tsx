@@ -11,8 +11,8 @@ import type { JSX } from 'react';
 import { Typography } from 'antd';
 import type { TableColumnType } from 'antd';
 
-import { compareStudentNamePart, splitStudentName } from '../../utils/splitStudentName';
-import { APP_COL_WIDTH_FORENAME, APP_COL_WIDTH_SURNAME } from '../../theme/spacing';
+import { compareStudentNamePart, splitStudentName } from '@/utils/splitStudentName';
+import { APP_COL_WIDTH_FORENAME, APP_COL_WIDTH_SURNAME } from '@/theme/spacing';
 
 /** Structural row fields required by the shared student-name columns. */
 type StudentNameTableRow = Readonly<{

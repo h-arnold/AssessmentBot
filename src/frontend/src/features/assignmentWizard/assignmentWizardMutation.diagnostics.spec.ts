@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { ApiTransportError } from '../../errors/apiTransportError';
+import { ApiTransportError } from '@/errors/apiTransportError';
 import {
   logAndMapWizardMutationError,
   type WizardMutationErrorContext,

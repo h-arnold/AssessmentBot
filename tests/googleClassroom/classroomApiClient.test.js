@@ -53,10 +53,10 @@ describe('ClassroomApiClient (read-only methods)', () => {
       },
     };
 
-    const teacherExport = require('../../src/backend/Models/Teacher.js');
+    const teacherExport = require('#backend/Models/Teacher.js');
     globalThis.Teacher = teacherExport.Teacher || teacherExport;
 
-    const studentExport = require('../../src/backend/Models/Student.js');
+    const studentExport = require('#backend/Models/Student.js');
     globalThis.Student = studentExport.Student || studentExport;
 
     delete require.cache[require.resolve(modulePath)];

@@ -1,7 +1,7 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { startAssessmentRun } from '../../../services/assignmentAssessment/assignmentAssessmentService';
-import type { ReRunContext } from '../../shared/reRunAssessmentContext';
+import { startAssessmentRun } from '@/services/assignmentAssessment/assignmentAssessmentService';
+import type { ReRunContext } from '@/features/shared/reRunAssessmentContext';
 import { resolveReRunTarget, type StartAttempt } from './assessTaskFlowData';
 import type { useAssessTaskFlow } from './useAssessTaskFlow';
 

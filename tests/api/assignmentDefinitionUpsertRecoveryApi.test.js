@@ -72,7 +72,7 @@ describe('Api/upsertAssignmentDefinition — recovery parameter transport throug
       require.resolve('../../src/backend/z_Api/assignmentDefinitionTransport.js')
     ];
     globalThis.upsertAssignmentDefinition_ =
-      require('../../src/backend/z_Api/assignmentDefinitionTransport.js').upsertAssignmentDefinition_;
+      require('#backend/z_Api/assignmentDefinitionTransport.js').upsertAssignmentDefinition_;
   });
 
   afterEach(() => {

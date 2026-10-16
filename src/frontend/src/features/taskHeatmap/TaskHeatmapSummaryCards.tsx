@@ -17,8 +17,8 @@ import type {
   SummaryCardsView,
   SummaryCardView,
   SummaryTaskView,
-} from '../../services/dataAnalysis/assignmentSummaryAdapter';
-import { APP_GAP_MD, APP_GAP_SM } from '../../theme/spacing';
+} from '@/services/dataAnalysis/assignmentSummaryAdapter';
+import { APP_GAP_MD, APP_GAP_SM } from '@/theme/spacing';
 
 const SUMMARY_ICON_SIZE = 16;
 const SUMMARY_HALF_WIDTH = 12;

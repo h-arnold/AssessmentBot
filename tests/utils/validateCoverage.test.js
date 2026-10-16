@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { Validate } from '../../src/backend/Utils/Validate.js';
+import { Validate } from '#backend/Utils/Validate.js';
 import { withGlobalMocks } from '../helpers/globalMockManager.js';
 
 // Hermetic behaviour coverage for Validate edge branches: type guards,

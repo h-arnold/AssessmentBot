@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import SheetsFeedback from '../../src/backend/FeedbackPopulators/SheetsFeedback.js';
+import SheetsFeedback from '#backend/FeedbackPopulators/SheetsFeedback.js';
 import { withGlobalMocks } from '../helpers/globalMockManager.js';
 
 // Focused hermetic branch coverage for SheetsFeedback submission handling:

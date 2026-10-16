@@ -4,8 +4,8 @@ import { withGlobalMocks } from '../helpers/globalMockManager.js';
 // Hermetic behaviour coverage for Teacher, Student and StudentSubmission
 // models, exercising validation branches, serialisation and extraction merge
 // paths without invoking GAS services.
-const { Teacher } = require('../../src/backend/Models/Teacher.js');
-const { Student } = require('../../src/backend/Models/Student.js');
+const { Teacher } = require('#backend/Models/Teacher.js');
+const { Student } = require('#backend/Models/Student.js');
 
 describe('Teacher behaviour', () => {
   it('stores constructor values and exposes getters', () => {

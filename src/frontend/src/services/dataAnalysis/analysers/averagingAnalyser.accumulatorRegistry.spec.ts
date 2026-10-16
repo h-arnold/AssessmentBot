@@ -10,7 +10,7 @@ import {
   requireAverageContribution,
 } from './averagingAnalyser.accumulatorRegistry';
 import type { DataPointAccumulator } from './averagingAnalyser.types';
-import { createTaskPartial } from '../../../test/dataAnalysis/fixtures';
+import { createTaskPartial } from '@/test/dataAnalysis/fixtures';
 import type { AverageContribution } from '../dataAnalysis.zod';
 
 const ZERO = 0;

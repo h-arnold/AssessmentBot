@@ -1,7 +1,7 @@
 import type { CellPreviewData } from './buildCellPreviewLookup';
-import type { TaskDisplayMetric } from '../../services/dataAnalysis/dataAnalysis.zod';
-import { NOT_ATTEMPTED_METRIC } from '../../services/dataAnalysis/heatmapAdapter';
-import type { HeatmapMetricKey } from '../../services/dataAnalysis/metricDisplay/metricDisplayMeta';
+import type { TaskDisplayMetric } from '@/services/dataAnalysis/dataAnalysis.zod';
+import { NOT_ATTEMPTED_METRIC } from '@/services/dataAnalysis/heatmapAdapter';
+import type { HeatmapMetricKey } from '@/services/dataAnalysis/metricDisplay/metricDisplayMeta';
 import type { TaskPreviewData } from './TaskPreviewCard';
 import { spreadsheetToMarkdownTable } from './spreadsheetToMarkdownTable';
 

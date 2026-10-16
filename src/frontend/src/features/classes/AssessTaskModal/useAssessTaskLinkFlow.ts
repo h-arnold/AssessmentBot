@@ -1,13 +1,13 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useMemo, useState, type Dispatch, type SetStateAction } from 'react';
-import { startAssessmentRun } from '../../../services/assignmentAssessment/assignmentAssessmentService';
-import { upsertAssignmentDefinition } from '../../../services/assignmentDefinition/assignmentDefinitionService';
-import { ApiTransportError } from '../../../errors/apiTransportError';
-import { mapErrorToUserMessage } from '../../../errors/map-error-to-ui';
-import { queryKeys } from '../../../query/queryKeys';
-import { getAssignmentDefinitionPartialsQueryOptions } from '../../../query/sharedQueries';
-import type { ClassPartial } from '../../../services/googleClassrooms/classPartials.zod';
-import type { AssignmentDefinitionPartial } from '../../../services/assignmentDefinition/assignmentDefinitionPartials.zod';
+import { startAssessmentRun } from '@/services/assignmentAssessment/assignmentAssessmentService';
+import { upsertAssignmentDefinition } from '@/services/assignmentDefinition/assignmentDefinitionService';
+import { ApiTransportError } from '@/errors/apiTransportError';
+import { mapErrorToUserMessage } from '@/errors/map-error-to-ui';
+import { queryKeys } from '@/query/queryKeys';
+import { getAssignmentDefinitionPartialsQueryOptions } from '@/query/sharedQueries';
+import type { ClassPartial } from '@/services/googleClassrooms/classPartials.zod';
+import type { AssignmentDefinitionPartial } from '@/services/assignmentDefinition/assignmentDefinitionPartials.zod';
 import type { LinkableDefinition } from './getLinkableDefinitionsForModal';
 import {
   buildDeduplicatedAlternateTitles,

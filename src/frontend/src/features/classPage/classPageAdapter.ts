@@ -11,18 +11,18 @@
  * @see SPEC_CLASS_PAGE.md §"classPageAdapter"
  */
 
-import { logFrontendEvent } from '../../logging/frontendLogger';
-import { computeOverallComposite } from '../../services/dataAnalysis/analysers/averagingAnalyser.composite';
-import { DEFAULT_CRITERION_WEIGHTINGS } from '../../services/dataAnalysis/analysers/averagingAnalyser';
-import { rollupMetric } from '../../services/dataAnalysis/analysers/rollupMetric';
-import { formatUpdatedAtLabel } from '../../utils/dateFormatting';
+import { logFrontendEvent } from '@/logging/frontendLogger';
+import { computeOverallComposite } from '@/services/dataAnalysis/analysers/averagingAnalyser.composite';
+import { DEFAULT_CRITERION_WEIGHTINGS } from '@/services/dataAnalysis/analysers/averagingAnalyser';
+import { rollupMetric } from '@/services/dataAnalysis/analysers/rollupMetric';
+import { formatUpdatedAtLabel } from '@/utils/dateFormatting';
 import type {
   AveragingResult,
   MetricResult,
   PerTaskRow,
-} from '../../services/dataAnalysis/dataAnalysis.zod';
-import type { ClassFull } from '../../services/googleClassrooms/classDetail/classDetailService.zod';
-import type { AssignmentDefinitionPartialsResponse } from '../../services/assignmentDefinition/assignmentDefinitionPartials.zod';
+} from '@/services/dataAnalysis/dataAnalysis.zod';
+import type { ClassFull } from '@/services/googleClassrooms/classDetail/classDetailService.zod';
+import type { AssignmentDefinitionPartialsResponse } from '@/services/assignmentDefinition/assignmentDefinitionPartials.zod';
 import type {
   ClassPageAdapterResult,
   ClassPageDisplayMetric,
@@ -31,9 +31,9 @@ import type {
   StudentAverageRowModel,
 } from './classPageAdapter.zod';
 import { compareAssignmentUpdatedAtDesc } from './classPageModel';
-import { compareStudentNames } from '../../services/dataAnalysis/compareStudentNames';
-import { TaskTitlesUnavailableError } from '../../services/dataAnalysis/heatmapAdapter';
-import { getAssignmentDefinitionPartial } from '../../services/assignmentDefinition/assignmentDefinitionUtilities';
+import { compareStudentNames } from '@/services/dataAnalysis/compareStudentNames';
+import { TaskTitlesUnavailableError } from '@/services/dataAnalysis/heatmapAdapter';
+import { getAssignmentDefinitionPartial } from '@/services/assignmentDefinition/assignmentDefinitionUtilities';
 
 // ---------------------------------------------------------------------------
 // Constants

@@ -1,5 +1,5 @@
-import type { AssignmentDefinitionPartial } from '../../services/assignmentDefinition/assignmentDefinitionPartials.zod';
-import { findMatchingDefinition } from '../../features/classes/AssessTaskModal/matchDefinitionForAssignment';
+import type { AssignmentDefinitionPartial } from '@/services/assignmentDefinition/assignmentDefinitionPartials.zod';
+import { findMatchingDefinition } from '@/features/classes/AssessTaskModal/matchDefinitionForAssignment';
 
 // ---------------------------------------------------------------------------
 // Constants

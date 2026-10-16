@@ -117,7 +117,7 @@ globalThis.DateUtils = {
 };
 
 // Load the controller (uses globalThis globals above)
-const AssignmentController = require('../../../src/backend/y_controllers/AssignmentController.js');
+const AssignmentController = require('#backend/y_controllers/AssignmentController.js');
 
 // =========================================================================
 // Tests — direct-params contract

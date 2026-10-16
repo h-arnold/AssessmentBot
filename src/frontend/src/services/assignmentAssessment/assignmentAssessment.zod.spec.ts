@@ -13,7 +13,7 @@ import {
 import {
   validBaseArtifact,
   validFullAssignment,
-} from '../../test/assignmentAssessment/assignmentAssessment.zod.fixtures';
+} from '@/test/assignmentAssessment/assignmentAssessment.zod.fixtures';
 
 const validStartAssessmentRunRequest = {
   definitionKey: 'algebra-baseline',

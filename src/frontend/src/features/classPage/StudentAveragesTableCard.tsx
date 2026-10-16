@@ -57,10 +57,10 @@ import type { TableColumnsType, TablePaginationConfig } from 'antd';
 import type { FilterValue, SorterResult } from 'antd/es/table/interface';
 import { SearchOutlined } from '@ant-design/icons';
 import type { ClassPageAdapterResult, StudentAverageRowModel } from './classPageAdapter.zod';
-import { pageContent } from '../../pages/pageContent';
+import { pageContent } from '@/pages/pageContent';
 
 import { buildClassPageViewModel } from './classPageModel';
-import type { MetricColumnKey } from '../../services/dataAnalysis/metricDisplay/metricDisplayMeta';
+import type { MetricColumnKey } from '@/services/dataAnalysis/metricDisplay/metricDisplayMeta';
 
 // ---------------------------------------------------------------------------
 // Internal helpers

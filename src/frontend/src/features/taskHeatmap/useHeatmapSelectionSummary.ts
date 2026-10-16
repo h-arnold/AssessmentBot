@@ -1,14 +1,14 @@
 import { useEffect, useMemo } from 'react';
 import { logPipelineError } from './heatmapsPipeline';
-import { toError } from '../../errors/normaliseUnknownError';
-import { DataAnalysisService } from '../../services/dataAnalysis/dataAnalysisService';
+import { toError } from '@/errors/normaliseUnknownError';
+import { DataAnalysisService } from '@/services/dataAnalysis/dataAnalysisService';
 import {
   adaptAssignmentSummary,
   type SummaryCardsView,
-} from '../../services/dataAnalysis/assignmentSummaryAdapter';
-import type { MergedHeatmapResult } from '../../services/dataAnalysis/heatmapAdapter.merged';
-import type { ClassFull } from '../../services/googleClassrooms/classDetail/classDetailService.zod';
-import type { AssignmentDefinitionPartialsResponse } from '../../services/assignmentDefinition/assignmentDefinitionPartials.zod';
+} from '@/services/dataAnalysis/assignmentSummaryAdapter';
+import type { MergedHeatmapResult } from '@/services/dataAnalysis/heatmapAdapter.merged';
+import type { ClassFull } from '@/services/googleClassrooms/classDetail/classDetailService.zod';
+import type { AssignmentDefinitionPartialsResponse } from '@/services/assignmentDefinition/assignmentDefinitionPartials.zod';
 
 export interface HeatmapSelectionSummaryResult {
   view: SummaryCardsView | null;

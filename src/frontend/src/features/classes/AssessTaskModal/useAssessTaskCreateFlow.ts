@@ -8,10 +8,10 @@ import {
   type Dispatch,
   type SetStateAction,
 } from 'react';
-import { startAssessmentRun } from '../../../services/assignmentAssessment/assignmentAssessmentService';
-import { queryKeys } from '../../../query/queryKeys';
-import type { ClassPartial } from '../../../services/googleClassrooms/classPartials.zod';
-import type { AssignmentTopic } from '../../../services/referenceData/referenceData.zod';
+import { startAssessmentRun } from '@/services/assignmentAssessment/assignmentAssessmentService';
+import { queryKeys } from '@/query/queryKeys';
+import type { ClassPartial } from '@/services/googleClassrooms/classPartials.zod';
+import type { AssignmentTopic } from '@/services/referenceData/referenceData.zod';
 import {
   deriveWizardInitialValues,
   type AssessTaskAssignment,

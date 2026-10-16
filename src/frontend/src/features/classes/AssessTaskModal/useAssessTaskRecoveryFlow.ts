@@ -1,20 +1,17 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Form, type FormInstance } from 'antd';
 import { useMemo, useRef, useState } from 'react';
-import { startAssessmentRun } from '../../../services/assignmentAssessment/assignmentAssessmentService';
+import { startAssessmentRun } from '@/services/assignmentAssessment/assignmentAssessmentService';
 import {
   getAssignmentDefinition,
   type AssignmentDefinition,
-} from '../../../services/assignmentDefinition/assignmentDefinitionService';
-import { DEFAULT_WEIGHTING_VALUE } from '../../../services/assignmentDefinition/assignmentDefinition.zod';
-import { mapErrorToUserMessage } from '../../../errors/map-error-to-ui';
-import { queryKeys } from '../../../query/queryKeys';
-import {
-  getAssignmentTopicsQueryOptions,
-  getYearGroupsQueryOptions,
-} from '../../../query/sharedQueries';
-import { useWizardUpsertMutation } from '../../assignmentWizard/assignmentWizardMutation';
-import { buildReparseRequest } from '../../assignmentWizard/assignmentWizardOrchestrator';
+} from '@/services/assignmentDefinition/assignmentDefinitionService';
+import { DEFAULT_WEIGHTING_VALUE } from '@/services/assignmentDefinition/assignmentDefinition.zod';
+import { mapErrorToUserMessage } from '@/errors/map-error-to-ui';
+import { queryKeys } from '@/query/queryKeys';
+import { getAssignmentTopicsQueryOptions, getYearGroupsQueryOptions } from '@/query/sharedQueries';
+import { useWizardUpsertMutation } from '@/features/assignmentWizard/assignmentWizardMutation';
+import { buildReparseRequest } from '@/features/assignmentWizard/assignmentWizardOrchestrator';
 import {
   buildTopicOptions,
   buildYearGroupOptions,
@@ -22,7 +19,7 @@ import {
   hydrateFormFromDefinition,
   type DocumentChangeState,
   type TaskRow,
-} from '../../assignmentWizard/assignmentWizardFormState';
+} from '@/features/assignmentWizard/assignmentWizardFormState';
 import {
   buildRecoveryApprovalRequest,
   findResumeTitle,

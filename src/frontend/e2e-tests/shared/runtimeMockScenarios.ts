@@ -3,7 +3,7 @@ import {
   mockYearGroups,
   mockCohorts,
   mockFullDefinition,
-} from '../../src/test/assignmentDefinition/sharedTestFixtures';
+} from '@/test/assignmentDefinition/sharedTestFixtures';
 import type { ResponseItem, RuntimeScenario } from './runtimeMockTypes';
 
 type MutableRuntimeScenario = { -readonly [Key in keyof RuntimeScenario]?: RuntimeScenario[Key] };

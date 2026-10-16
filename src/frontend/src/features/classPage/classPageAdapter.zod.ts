@@ -15,7 +15,7 @@
  */
 
 import { z } from 'zod';
-import { MetricResultSchema } from '../../services/dataAnalysis/dataAnalysis.zod';
+import { MetricResultSchema } from '@/services/dataAnalysis/dataAnalysis.zod';
 
 /**
  * Exact zero-data `N` placeholder used only for empty student/recent-assignment

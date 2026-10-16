@@ -5,13 +5,13 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
-import { generateFullProfile } from '../../scripts/synthetic-test-data/generateSyntheticAnalysisFixtures.js';
+import { generateFullProfile } from '#synthetic-data/generateSyntheticAnalysisFixtures.js';
 import {
   LARGE_FULL_ASSIGNMENTS_PER_CLASS,
   LARGE_FULL_CLASS_COUNT,
   LARGE_FULL_PROFILE_NAME,
   LARGE_FULL_STUDENTS_PER_CLASS,
-} from '../../scripts/synthetic-test-data/profileDefinitions.js';
+} from '#synthetic-data/profileDefinitions.js';
 
 const REPOSITORY_ROOT = fileURLToPath(new URL('../../', import.meta.url));
 const FULL_OUTPUT_ROOT = '.opencode/scratchpad/synthetic-analysis-full';

@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderHook } from '@testing-library/react';
 import { QueryClient } from '@tanstack/react-query';
-import '../../test/classPage/useClassPageData.mockSetup';
+import '@/test/classPage/useClassPageData.mockSetup';
 import { useClassPageData } from './useClassPageData';
 import {
   DEFAULT_CLASS_ID,
@@ -13,8 +13,8 @@ import {
   createClassFull,
   createMockClassQueryResult,
   createPageDatasetReturn,
-} from '../../test/classPage/useClassPageDataTestFixtures';
-import { createUseClassPageDataMockHandles } from '../../test/classPage/useClassPageDataMockHandles';
+} from '@/test/classPage/useClassPageDataTestFixtures';
+import { createUseClassPageDataMockHandles } from '@/test/classPage/useClassPageDataMockHandles';
 
 const mocks = createUseClassPageDataMockHandles();
 let queryClient: QueryClient;

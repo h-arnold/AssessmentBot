@@ -7,7 +7,7 @@ import { AssessTaskRecoverySurface } from './AssessTaskRecoverySurface';
 import { AssessTaskReRunBody, AssessTaskReRunFooter } from './AssessTaskReRunSurface';
 import { LinkableDefinitionList, LinkExistingDefinitionButton } from './LinkableDefinitionList';
 import { AssignmentSelectSkeleton } from './AssignmentSelectSkeleton';
-import type { ReRunContext } from '../../shared/reRunAssessmentContext';
+import type { ReRunContext } from '@/features/shared/reRunAssessmentContext';
 
 export type AssessTaskModalProperties = Readonly<{
   open: boolean;

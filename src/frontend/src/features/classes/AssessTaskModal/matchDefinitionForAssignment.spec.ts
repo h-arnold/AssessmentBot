@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { AssignmentDefinitionPartial } from '../../../services/assignmentDefinition/assignmentDefinitionPartials.zod';
+import type { AssignmentDefinitionPartial } from '@/services/assignmentDefinition/assignmentDefinitionPartials.zod';
 import { findMatchingDefinition } from './matchDefinitionForAssignment';
 import {
   createFixture,
@@ -7,7 +7,7 @@ import {
   DEFAULT_CLASS_PARTIAL,
   expectMatchedWithFixture,
   expectNoMatchWithFixture,
-} from '../../../test/classes/matchDefinitionForAssignment.test-utilities';
+} from '@/test/classes/matchDefinitionForAssignment.test-utilities';
 
 describe('findMatchingDefinition', () => {
   it('returns matched when primaryTitle, topicName, and yearGroupKey all align', () => {

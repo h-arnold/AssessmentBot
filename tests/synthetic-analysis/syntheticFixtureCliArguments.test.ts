@@ -9,7 +9,7 @@ import {
   parseCliOptions,
   resolveFullOutputRoot,
   runCli,
-} from '../../scripts/synthetic-test-data/generateSyntheticAnalysisFixtures.js';
+} from '#synthetic-data/generateSyntheticAnalysisFixtures.js';
 
 const REPOSITORY_ROOT = fileURLToPath(new URL('../../', import.meta.url));
 const FULL_OUTPUT_ROOT = '.opencode/scratchpad/synthetic-analysis-full';

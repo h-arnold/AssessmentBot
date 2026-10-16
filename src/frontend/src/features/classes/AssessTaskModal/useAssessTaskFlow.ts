@@ -1,11 +1,11 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { getGoogleClassroomAssignments } from '../../../services/googleClassrooms/googleClassroomAssignmentsService';
+import { getGoogleClassroomAssignments } from '@/services/googleClassrooms/googleClassroomAssignmentsService';
 import { findMatchingDefinition } from './matchDefinitionForAssignment';
-import { startAssessmentRun } from '../../../services/assignmentAssessment/assignmentAssessmentService';
-import { ApiTransportError } from '../../../errors/apiTransportError';
-import { mapErrorToUserMessage } from '../../../errors/map-error-to-ui';
-import { queryKeys } from '../../../query/queryKeys';
+import { startAssessmentRun } from '@/services/assignmentAssessment/assignmentAssessmentService';
+import { ApiTransportError } from '@/errors/apiTransportError';
+import { mapErrorToUserMessage } from '@/errors/map-error-to-ui';
+import { queryKeys } from '@/query/queryKeys';
 import { useAssessTaskLinkFlow } from './useAssessTaskLinkFlow';
 import { useAssessTaskCreateFlow } from './useAssessTaskCreateFlow';
 import {

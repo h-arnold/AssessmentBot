@@ -1,7 +1,7 @@
 import type {
   BackendConfig,
   BackendConfigWriteInput,
-} from '../../../services/backendConfiguration/backendConfiguration.zod';
+} from '@/services/backendConfiguration/backendConfiguration.zod';
 import type { BackendSettingsForm } from './backendSettingsForm.zod';
 
 /**

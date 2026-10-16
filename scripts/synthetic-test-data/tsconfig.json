@@ -8,7 +8,11 @@
     "jsx": "react-jsx",
     "allowJs": true,
     "checkJs": false,
-    "noEmit": true
+    "noEmit": true,
+    "paths": {
+      "@/*": ["../../src/frontend/src/*"],
+      "@synthetic/*": ["../../tests/__mocks__/data/synthetic-analysis/*"]
+    }
   },
   "include": [
     "**/*.js",

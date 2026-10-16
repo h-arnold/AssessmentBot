@@ -19,7 +19,7 @@
 import type { JSX } from 'react';
 import { Button, Space, Tooltip } from 'antd';
 import { EditOutlined, PlusOutlined } from '@ant-design/icons';
-import { APP_SPACE_SIZE_TIGHT } from '../../theme/spacing';
+import { APP_SPACE_SIZE_TIGHT } from '@/theme/spacing';
 
 type ClassPageHeaderActionsProperties = Readonly<{
   /** Callback invoked when the user clicks "Start New Assessment". */

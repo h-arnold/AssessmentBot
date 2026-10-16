@@ -1,15 +1,15 @@
 import { describe, expect, it } from 'vitest';
 
-import { generateSyntheticAnalysisGraph } from '../../scripts/synthetic-test-data/generateSyntheticAnalysisGraph.js';
-import { validateSyntheticAnalysisGraph } from '../../scripts/synthetic-test-data/validateSyntheticAnalysisGraph.js';
-import { assertCompletionBands } from '../../scripts/synthetic-test-data/validateProfileInvariants.js';
+import { generateSyntheticAnalysisGraph } from '#synthetic-data/generateSyntheticAnalysisGraph.js';
+import { validateSyntheticAnalysisGraph } from '#synthetic-data/validateSyntheticAnalysisGraph.js';
+import { assertCompletionBands } from '#synthetic-data/validateProfileInvariants.js';
 import {
   type AssignmentPartial,
   type ClassFull,
   type StudentSubmissionItemPartial,
-} from '../../src/frontend/src/services/googleClassrooms/classDetail/classDetailService.zod';
-import type { AssignmentDefinitionPartial } from '../../src/frontend/src/services/assignmentDefinition/assignmentDefinitionPartials.zod';
-import type { ClassPartial } from '../../src/frontend/src/services/googleClassrooms/classPartials.zod';
+} from '@/services/googleClassrooms/classDetail/classDetailService.zod';
+import type { AssignmentDefinitionPartial } from '@/services/assignmentDefinition/assignmentDefinitionPartials.zod';
+import type { ClassPartial } from '@/services/googleClassrooms/classPartials.zod';
 
 /**
  * Generator-internal observation of a persistence class document.

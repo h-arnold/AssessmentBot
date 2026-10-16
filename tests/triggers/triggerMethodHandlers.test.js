@@ -23,7 +23,7 @@ import { withGlobalMocks } from '../helpers/globalMockManager.js';
 const mockAssignmentController = { processSelectedAssignment: vi.fn() };
 
 // Module under test — created in the green phase (ACTION_PLAN Section 8).
-const { TRIGGER_METHOD_HANDLERS } = require('../../src/backend/Triggers/triggerMethodHandlers.js');
+const { TRIGGER_METHOD_HANDLERS } = require('#backend/Triggers/triggerMethodHandlers.js');
 
 describe('TRIGGER_METHOD_HANDLERS', () => {
   let restoreAssignmentController;

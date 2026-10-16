@@ -6,12 +6,12 @@ import {
   averagingResult,
   classFull,
   student,
-} from '../../test/classPage/classPageAdapterTestFixtures';
+} from '@/test/classPage/classPageAdapterTestFixtures';
 import {
   createDefinitionPartial,
   createSubmission,
   createSubmissionItem,
-} from '../../test/dataAnalysis/fixtures';
+} from '@/test/dataAnalysis/fixtures';
 
 const DEFINITION_KEY = 'def-recent-gap';
 

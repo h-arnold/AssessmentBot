@@ -8,8 +8,8 @@ import {
   createSubmissionItem,
   createTaskPartial,
   createDefinitionPartial,
-} from '../../test/dataAnalysis/fixtures';
-import { expectMetricResultStateAware } from '../../test/dataAnalysis/averagingAnalyserAssertions';
+} from '@/test/dataAnalysis/fixtures';
+import { expectMetricResultStateAware } from '@/test/dataAnalysis/averagingAnalyserAssertions';
 
 // ---------------------------------------------------------------------------
 // Integration tests — advanced scenarios

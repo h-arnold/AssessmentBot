@@ -5,11 +5,11 @@
 
 import { waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import '../../../test/classes/AssessTaskModal.mockSetup';
-import { startAssessmentRun } from '../../../services/assignmentAssessment/assignmentAssessmentService';
-import { upsertAssignmentDefinition } from '../../../services/assignmentDefinition/assignmentDefinitionService';
+import '@/test/classes/AssessTaskModal.mockSetup';
+import { startAssessmentRun } from '@/services/assignmentAssessment/assignmentAssessmentService';
+import { upsertAssignmentDefinition } from '@/services/assignmentDefinition/assignmentDefinitionService';
 import { findMatchingDefinition } from './matchDefinitionForAssignment';
-import { createDefinitionPartial } from '../../../test/classes/matchDefinitionForAssignment.test-utilities';
+import { createDefinitionPartial } from '@/test/classes/matchDefinitionForAssignment.test-utilities';
 import {
   clickLink,
   clickLinkToExisting,
@@ -21,8 +21,8 @@ import {
   pickLinkableDefinition,
   renderWithCache,
   selectAssignment,
-} from '../../../test/classes/AssessTaskModal.test-utilities';
-import { renderWithNoMatchCache } from '../../../test/classes/AssessTaskModal.link-flow-helpers';
+} from '@/test/classes/AssessTaskModal.test-utilities';
+import { renderWithNoMatchCache } from '@/test/classes/AssessTaskModal.link-flow-helpers';
 
 const MATCHED_DEFINITION_KEY = 'matched-definition';
 

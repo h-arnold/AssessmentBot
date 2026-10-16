@@ -15,7 +15,7 @@ const upsertValidationModulePath =
   '../../src/backend/z_Api/assignmentDefinition/assignmentDefinitionUpsertValidation.js';
 const partialRowValidationModulePath =
   '../../src/backend/z_Api/assignmentDefinition/assignmentDefinitionPartialRowValidation.js';
-const ApiValidationError = require('../../src/backend/Utils/ErrorTypes/ApiValidationError.js');
+const ApiValidationError = require('#backend/Utils/ErrorTypes/ApiValidationError.js');
 
 /**
  * Creates a mock AssignmentDefinitionController and installs it globally.

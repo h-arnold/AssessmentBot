@@ -17,7 +17,7 @@ import {
   createComputedMetricResult,
   createNotAttemptedMetricResult,
   createExcludedMetricResult,
-} from '../../test/dataAnalysis/fixtures';
+} from '@/test/dataAnalysis/fixtures';
 
 // ---------------------------------------------------------------------------
 // Hoisted mock factories

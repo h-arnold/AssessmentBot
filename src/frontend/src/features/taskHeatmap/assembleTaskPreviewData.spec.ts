@@ -8,12 +8,9 @@ import { describe, it, expect } from 'vitest';
 import { assembleTaskPreviewData } from './assembleTaskPreviewData';
 import type { CellPreviewData } from './buildCellPreviewLookup';
 import { spreadsheetToMarkdownTable } from './spreadsheetToMarkdownTable';
-import { NOT_ATTEMPTED_METRIC } from '../../services/dataAnalysis/heatmapAdapter';
-import type { TaskDisplayMetric } from '../../services/dataAnalysis/dataAnalysis.zod';
-import {
-  createComputedMetricResult,
-  createErrorMetricResult,
-} from '../../test/dataAnalysis/fixtures';
+import { NOT_ATTEMPTED_METRIC } from '@/services/dataAnalysis/heatmapAdapter';
+import type { TaskDisplayMetric } from '@/services/dataAnalysis/dataAnalysis.zod';
+import { createComputedMetricResult, createErrorMetricResult } from '@/test/dataAnalysis/fixtures';
 
 // ===========================================================================
 // Fixture constants

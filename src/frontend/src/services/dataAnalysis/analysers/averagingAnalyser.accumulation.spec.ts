@@ -7,14 +7,14 @@ import {
   createSubmission,
   createSubmissionItem,
   createTaskPartial,
-} from '../../../test/dataAnalysis/fixtures';
+} from '@/test/dataAnalysis/fixtures';
 import { createAccumulator } from './averagingAnalyser.accumulatorRegistry';
 import { resolveAggregateMetric } from './averagingAnalyser.metricResolution';
 import {
   accumulateCriterion,
   accumulateMetricsToTarget,
 } from './averagingAnalyser.criterionAccumulation';
-import { expectMetricResultStateAware } from '../../../test/dataAnalysis/averagingAnalyserAssertions';
+import { expectMetricResultStateAware } from '@/test/dataAnalysis/averagingAnalyserAssertions';
 
 afterEach(() => {
   vi.restoreAllMocks();

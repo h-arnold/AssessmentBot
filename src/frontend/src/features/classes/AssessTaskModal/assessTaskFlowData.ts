@@ -1,9 +1,9 @@
 import type { QueryClient } from '@tanstack/react-query';
-import { queryKeys } from '../../../query/queryKeys';
-import type { ClassPartial } from '../../../services/googleClassrooms/classPartials.zod';
-import type { AssignmentDefinitionPartial } from '../../../services/assignmentDefinition/assignmentDefinitionPartials.zod';
-import type { AssignmentTopic } from '../../../services/referenceData/referenceData.zod';
-import type { ReRunContext } from '../../shared/reRunAssessmentContext';
+import { queryKeys } from '@/query/queryKeys';
+import type { ClassPartial } from '@/services/googleClassrooms/classPartials.zod';
+import type { AssignmentDefinitionPartial } from '@/services/assignmentDefinition/assignmentDefinitionPartials.zod';
+import type { AssignmentTopic } from '@/services/referenceData/referenceData.zod';
+import type { ReRunContext } from '@/features/shared/reRunAssessmentContext';
 import {
   getLinkableDefinitionsForModal,
   type LinkableDefinition,

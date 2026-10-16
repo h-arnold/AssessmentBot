@@ -4,7 +4,7 @@ import { withGlobalMocks } from '../helpers/globalMockManager.js';
 // Hermetic behaviour coverage for DbManager initialisation, collection access
 // and bulk writes. The suite reuses the cached module (no cache clearing) and
 // resets singleton state manually so V8 coverage accumulates across files.
-const DbManager = require('../../src/backend/DbManager/DbManager.js');
+const DbManager = require('#backend/DbManager/DbManager.js');
 
 describe('DbManager coverage behaviour', () => {
   let restoreGlobals;

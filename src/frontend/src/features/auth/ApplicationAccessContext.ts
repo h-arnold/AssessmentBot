@@ -1,5 +1,5 @@
 import { createContext, useContext } from 'react';
-import type { ApplicationAccess } from '../../services/authService/authService.zod';
+import type { ApplicationAccess } from '@/services/authService/authService.zod';
 
 export type ApplicationAccessRole = ApplicationAccess['role'];
 

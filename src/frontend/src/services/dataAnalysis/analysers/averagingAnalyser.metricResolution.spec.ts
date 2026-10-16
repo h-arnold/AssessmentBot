@@ -3,16 +3,16 @@ import { computeOverallComposite } from './averagingAnalyser.composite';
 import { createAccumulator } from './averagingAnalyser.accumulatorRegistry';
 import { resolveAggregateMetric, resolveDisplayMetric } from './averagingAnalyser.metricResolution';
 import { AveragingAnalyser } from './averagingAnalyser';
-import smallManifestRaw from '../../../../../../tests/__mocks__/data/synthetic-analysis/small/manifest.json?raw';
-import smallPartialsRaw from '../../../../../../tests/__mocks__/data/synthetic-analysis/small/assignmentDefinitionPartials.json?raw';
-import smallClassesRaw from '../../../../../../tests/__mocks__/data/synthetic-analysis/small/classesById.json?raw';
+import smallManifestRaw from '@synthetic/small/manifest.json?raw';
+import smallPartialsRaw from '@synthetic/small/assignmentDefinitionPartials.json?raw';
+import smallClassesRaw from '@synthetic/small/classesById.json?raw';
 import {
   createComputedMetricResult,
   createErrorMetricResult,
   createExcludedMetricResult,
   createNotAttemptedMetricResult,
-} from '../../../test/dataAnalysis/fixtures';
-import { FLOAT_TOLERANCE } from '../../../test/dataAnalysis/averagingAnalyserAssertions';
+} from '@/test/dataAnalysis/fixtures';
+import { FLOAT_TOLERANCE } from '@/test/dataAnalysis/averagingAnalyserAssertions';
 import {
   AveragingAnalyserInputSchema,
   AveragingResultSchema,

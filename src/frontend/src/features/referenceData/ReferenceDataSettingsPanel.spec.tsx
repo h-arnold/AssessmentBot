@@ -1,8 +1,8 @@
 import { act, fireEvent, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createAppQueryClient } from '../../query/queryClient';
-import { queryKeys } from '../../query/queryKeys';
-import { renderWithFrontendProviders } from '../../test/renderWithFrontendProviders';
+import { createAppQueryClient } from '@/query/queryClient';
+import { queryKeys } from '@/query/queryKeys';
+import { renderWithFrontendProviders } from '@/test/renderWithFrontendProviders';
 import { ReferenceDataSettingsPanel } from './ReferenceDataSettingsPanel';
 
 // Module-level render function for modal wiring tests
@@ -90,14 +90,14 @@ const updateAssignmentTopicMock = vi.hoisted(() => vi.fn());
 const deleteAssignmentTopicMock = vi.hoisted(() => vi.fn());
 
 // Mock assignmentTopicsService
-vi.mock('../../services/assignmentDefinition/assignmentTopicsService', () => {
+vi.mock('@/services/assignmentDefinition/assignmentTopicsService', () => {
   return {
     getAssignmentTopics: getAssignmentTopicsFromAssignmentTopicsServiceMock,
   };
 });
 
 // Mock referenceDataService
-vi.mock('../../services/referenceData/referenceDataService', () => {
+vi.mock('@/services/referenceData/referenceDataService', () => {
   return {
     getCohorts: vi.fn(),
     createCohort: vi.fn(),

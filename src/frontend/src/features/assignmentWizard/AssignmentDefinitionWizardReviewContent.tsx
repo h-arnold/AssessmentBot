@@ -5,14 +5,14 @@ import {
   DEFAULT_WEIGHTING_VALUE,
   MAX_WEIGHTING_VALUE,
   MIN_WEIGHTING_VALUE,
-} from '../../services/assignmentDefinition/assignmentDefinition.zod';
-import { SelectWithAddNew } from '../../components/SelectWithAddNew/SelectWithAddNew';
+} from '@/services/assignmentDefinition/assignmentDefinition.zod';
+import { SelectWithAddNew } from '@/components/SelectWithAddNew/SelectWithAddNew';
 import {
   APP_GAP_MD,
   APP_GAP_SM,
   APP_SPACE_SIZE_DEFAULT,
   APP_SPACE_SIZE_TIGHT,
-} from '../../theme/spacing';
+} from '@/theme/spacing';
 import {
   type DocumentChangeState,
   type TaskRow,

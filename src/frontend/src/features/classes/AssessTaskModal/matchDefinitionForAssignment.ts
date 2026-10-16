@@ -1,4 +1,4 @@
-import type { AssignmentDefinitionPartial } from '../../../services/assignmentDefinition/assignmentDefinitionPartials.zod';
+import type { AssignmentDefinitionPartial } from '@/services/assignmentDefinition/assignmentDefinitionPartials.zod';
 import { areTrimmedStringsEqualIgnoringCase } from './stringComparison';
 
 /**

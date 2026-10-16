@@ -4,8 +4,8 @@
  * Reduces duplication and ensures consistency across test suites.
  */
 
-import type { AssignmentDefinition } from '../../services/assignmentDefinition/assignmentDefinition.zod';
-import type { AssignmentTopic, YearGroup } from '../../services/referenceData/referenceData.zod';
+import type { AssignmentDefinition } from '@/services/assignmentDefinition/assignmentDefinition.zod';
+import type { AssignmentTopic, YearGroup } from '@/services/referenceData/referenceData.zod';
 
 /**
  * Standard mock topics for testing.

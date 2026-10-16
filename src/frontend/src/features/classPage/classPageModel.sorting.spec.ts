@@ -10,11 +10,11 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { createMetricResult } from '../../test/dataAnalysis/fixtures';
-import type { MetricResult } from '../../services/dataAnalysis/dataAnalysis.zod';
+import { createMetricResult } from '@/test/dataAnalysis/fixtures';
+import type { MetricResult } from '@/services/dataAnalysis/dataAnalysis.zod';
 import { buildClassPageViewModel, compareAssignmentUpdatedAtDesc } from './classPageModel';
 import type { StudentAverageRowModel } from './classPageAdapter.zod';
-import { buildAdapterResult, buildStudentRow } from '../../test/classPage/classPageModelTestFixtures';
+import { buildAdapterResult, buildStudentRow } from '@/test/classPage/classPageModelTestFixtures';
 
 // ===========================================================================
 // Tests

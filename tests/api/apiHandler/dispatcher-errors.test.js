@@ -16,7 +16,7 @@ const {
   ASSIGNMENT_DEFINITION_RESULTS,
   REFERENCE_DATA_PARAMS,
 } = require('./shared.js');
-const { callAuthorisationStatus } = require('../../helpers/apiHandlerTestUtils.js');
+const { callAuthorisationStatus } = require('#test-helpers/apiHandlerTestUtils.js');
 
 describe('Api/apiHandler dispatcher — error handling, boundary logging and error type mapping', () => {
   let context;
@@ -223,7 +223,7 @@ describe('Api/apiHandler dispatcher — error handling, boundary logging and err
 
   describe('error type mapping', () => {
     it('maps ApiRateLimitError to RATE_LIMITED with retriable true', () => {
-      const ApiRateLimitError = require('../../../src/backend/Utils/ErrorTypes/ApiRateLimitError.js');
+      const ApiRateLimitError = require('#backend/Utils/ErrorTypes/ApiRateLimitError.js');
       context.scriptAppManagerInstance.isAuthorised.mockImplementation(() => {
         throw new ApiRateLimitError('Rate limit exceeded', { requestId: 'req-map-rl' });
       });
@@ -246,7 +246,7 @@ describe('Api/apiHandler dispatcher — error handling, boundary logging and err
     });
 
     it('maps ApiValidationError to INVALID_REQUEST with retriable false', () => {
-      const ApiValidationError = require('../../../src/backend/Utils/ErrorTypes/ApiValidationError.js');
+      const ApiValidationError = require('#backend/Utils/ErrorTypes/ApiValidationError.js');
       context.scriptAppManagerInstance.isAuthorised.mockImplementation(() => {
         throw new ApiValidationError('Validation failed', { requestId: 'req-map-val' });
       });
@@ -269,7 +269,7 @@ describe('Api/apiHandler dispatcher — error handling, boundary logging and err
     });
 
     it('maps ApiDisabledError to UNKNOWN_METHOD with retriable false', () => {
-      const ApiDisabledError = require('../../../src/backend/Utils/ErrorTypes/ApiDisabledError.js');
+      const ApiDisabledError = require('#backend/Utils/ErrorTypes/ApiDisabledError.js');
       context.scriptAppManagerInstance.isAuthorised.mockImplementation(() => {
         throw new ApiDisabledError('Method is disabled', { requestId: 'req-map-dis' });
       });

@@ -1,6 +1,6 @@
 import type { ReactElement } from 'react';
 import { vi } from 'vitest';
-import type { BatchProgressSnapshot } from '../../features/classes/bulk/runQueuedBatchMutation';
+import type { BatchProgressSnapshot } from '@/features/classes/bulk/runQueuedBatchMutation';
 
 export interface ClassesManagementPanelMocks {
   classesManagementStateMock: ReturnType<typeof vi.fn>;

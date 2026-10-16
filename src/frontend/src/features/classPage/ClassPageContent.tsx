@@ -32,15 +32,15 @@ import type { JSX } from 'react';
 import { Space, Skeleton, Button, Result } from 'antd';
 import type { ClassPageSurfaceState, ClassPageError } from './useClassPageData';
 import type { ClassPageAdapterResult } from './classPageAdapter.zod';
-import type { AveragingResult } from '../../services/dataAnalysis/dataAnalysis.zod';
-import type { ClassFull } from '../../services/googleClassrooms/classDetail/classDetailService.zod';
-import type { AssignmentDefinitionPartialsResponse } from '../../services/assignmentDefinition/assignmentDefinitionPartials.zod';
+import type { AveragingResult } from '@/services/dataAnalysis/dataAnalysis.zod';
+import type { ClassFull } from '@/services/googleClassrooms/classDetail/classDetailService.zod';
+import type { AssignmentDefinitionPartialsResponse } from '@/services/assignmentDefinition/assignmentDefinitionPartials.zod';
 import { RecentAssignmentsSection } from './RecentAssignmentsSection';
 import { StudentAveragesTableCard } from './StudentAveragesTableCard';
 import { TaskHeatmapPage } from '../taskHeatmap/TaskHeatmapPage';
 import type { ReRunContext } from '../shared/reRunAssessmentContext';
-import type { BlockingConfig } from '../../errors/blockingConfig';
-import { resolveBlockingResultConfig } from '../../errors/blockingConfig';
+import type { BlockingConfig } from '@/errors/blockingConfig';
+import { resolveBlockingResultConfig } from '@/errors/blockingConfig';
 
 // ---------------------------------------------------------------------------
 // Types

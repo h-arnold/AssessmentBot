@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 const requestStorePath = '../../src/backend/z_Api/requestStore.js';
 
-const { STALE_REQUEST_AGE_MS } = require('../../src/backend/z_Api/apiConstants.js');
+const { STALE_REQUEST_AGE_MS } = require('#backend/z_Api/apiConstants.js');
 
 function loadRequestStoreModule() {
   delete require.cache[require.resolve(requestStorePath)];

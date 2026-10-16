@@ -1,18 +1,15 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  PROFILE_NAMES,
-  getProfileDefinition,
-} from '../../scripts/synthetic-test-data/profileDefinitions.js';
-import { generateSyntheticAnalysisGraph } from '../../scripts/synthetic-test-data/generateSyntheticAnalysisGraph.js';
+import { PROFILE_NAMES, getProfileDefinition } from '#synthetic-data/profileDefinitions.js';
+import { generateSyntheticAnalysisGraph } from '#synthetic-data/generateSyntheticAnalysisGraph.js';
 import {
   ClassFullSchema,
   type ClassFull,
-} from '../../src/frontend/src/services/googleClassrooms/classDetail/classDetailService.zod';
-import { ClassPartialsResponseSchema } from '../../src/frontend/src/services/googleClassrooms/classPartials.zod';
-import { AssignmentDefinitionPartialsResponseSchema } from '../../src/frontend/src/services/assignmentDefinition/assignmentDefinitionPartials.zod';
-import { AssignmentFullSchema } from '../../src/frontend/src/services/assignmentAssessment/assignmentAssessment.zod';
-import type { YearGroup } from '../../src/frontend/src/services/referenceData/referenceData.zod';
+} from '@/services/googleClassrooms/classDetail/classDetailService.zod';
+import { ClassPartialsResponseSchema } from '@/services/googleClassrooms/classPartials.zod';
+import { AssignmentDefinitionPartialsResponseSchema } from '@/services/assignmentDefinition/assignmentDefinitionPartials.zod';
+import { AssignmentFullSchema } from '@/services/assignmentAssessment/assignmentAssessment.zod';
+import type { YearGroup } from '@/services/referenceData/referenceData.zod';
 
 /**
  * Generator-internal observation of a profile definition. No frontend service

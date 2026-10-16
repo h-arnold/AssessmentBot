@@ -1,21 +1,21 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { vi } from 'vitest';
-import { AssessTaskModal } from '../../features/classes/AssessTaskModal/AssessTaskModal';
-import { getGoogleClassroomAssignments } from '../../services/googleClassrooms/googleClassroomAssignmentsService';
-import { startAssessmentRun } from '../../services/assignmentAssessment/assignmentAssessmentService';
-import { upsertAssignmentDefinition } from '../../services/assignmentDefinition/assignmentDefinitionService';
+import { AssessTaskModal } from '@/features/classes/AssessTaskModal/AssessTaskModal';
+import { getGoogleClassroomAssignments } from '@/services/googleClassrooms/googleClassroomAssignmentsService';
+import { startAssessmentRun } from '@/services/assignmentAssessment/assignmentAssessmentService';
+import { upsertAssignmentDefinition } from '@/services/assignmentDefinition/assignmentDefinitionService';
 import {
   findMatchingDefinition,
   type MatchResult,
-} from '../../features/classes/AssessTaskModal/matchDefinitionForAssignment';
-import { queryKeys } from '../../query/queryKeys';
+} from '@/features/classes/AssessTaskModal/matchDefinitionForAssignment';
+import { queryKeys } from '@/query/queryKeys';
 import { renderWithFrontendProviders } from '../renderWithFrontendProviders';
 import { DEFAULT_ISO_DATETIME } from './matchDefinitionForAssignment.test-utilities';
-import { createAppQueryClient } from '../../query/queryClient';
-import type { GoogleClassroomAssignmentsResponse } from '../../services/googleClassrooms/googleClassroomAssignments.zod';
-import type { AssignmentDefinitionPartial } from '../../services/assignmentDefinition/assignmentDefinitionPartials.zod';
-import type { UpsertAssignmentDefinitionResponse } from '../../services/assignmentDefinition/assignmentDefinition.zod';
+import { createAppQueryClient } from '@/query/queryClient';
+import type { GoogleClassroomAssignmentsResponse } from '@/services/googleClassrooms/googleClassroomAssignments.zod';
+import type { AssignmentDefinitionPartial } from '@/services/assignmentDefinition/assignmentDefinitionPartials.zod';
+import type { UpsertAssignmentDefinitionResponse } from '@/services/assignmentDefinition/assignmentDefinition.zod';
 import type { QueryClient } from '@tanstack/react-query';
 import { createFixtureClassPartial } from './classesPageTestHelpers';
 

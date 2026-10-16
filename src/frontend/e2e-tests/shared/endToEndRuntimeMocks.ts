@@ -1,5 +1,5 @@
 import { expect, type Locator, type Page } from '@playwright/test';
-import { googleScriptRunApiHandlerFactorySource } from '../../src/test/googleScriptRunHarness';
+import { googleScriptRunApiHandlerFactorySource } from '@/test/googleScriptRunHarness';
 import type { ResponseItem, RuntimeScenario } from './runtimeMockTypes';
 export type { ResponseItem, RuntimeScenario } from './runtimeMockTypes';
 export type {

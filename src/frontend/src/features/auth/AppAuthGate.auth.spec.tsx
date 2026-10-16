@@ -1,15 +1,15 @@
 import { render, screen, waitFor } from '@testing-library/react';
-import type * as AssignmentDefinitionPartialsServiceModule from '../../services/assignmentDefinition/assignmentDefinitionPartialsService';
-import type * as SharedQueriesModule from '../../query/sharedQueries';
+import type * as AssignmentDefinitionPartialsServiceModule from '@/services/assignmentDefinition/assignmentDefinitionPartialsService';
+import type * as SharedQueriesModule from '@/query/sharedQueries';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { ApiTransportError } from '../../errors/apiTransportError';
+import { ApiTransportError } from '@/errors/apiTransportError';
 import {
   getStartupWarmupQueryKey,
   startupWarmupDatasetKeys,
   startupWarmupQueryKeys,
-} from '../../query/sharedQueries';
-import { createQueryWrapper, grantedAdminAccess } from '../../test/auth/appAuthGateTestHelpers';
-import { createDeferredPromise } from '../../test/shared/testDeferredPromise';
+} from '@/query/sharedQueries';
+import { createQueryWrapper, grantedAdminAccess } from '@/test/auth/appAuthGateTestHelpers';
+import { createDeferredPromise } from '@/test/shared/testDeferredPromise';
 import { AuthStatusCard } from './AuthStatusCard';
 import { AppAuthGate } from './AppAuthGate';
 import {
@@ -42,46 +42,46 @@ const {
   };
 });
 
-vi.mock('../../services/authService/authService', () => {
+vi.mock('@/services/authService/authService', () => {
   return {
     hasScriptAuthorisation: getAuthorisationStatusMock,
     getApplicationAccess: getApplicationAccessMock,
   };
 });
 
-vi.mock('../../services/googleClassrooms/classPartialsService', () => {
+vi.mock('@/services/googleClassrooms/classPartialsService', () => {
   return {
     getABClassPartials: getABClassPartialsMock,
   };
 });
 
-vi.mock('../../services/assignmentDefinition/assignmentDefinitionPartialsService', () => {
+vi.mock('@/services/assignmentDefinition/assignmentDefinitionPartialsService', () => {
   return {
     getAssignmentDefinitionPartials: getAssignmentDefinitionPartialsMock,
   };
 });
 
-vi.mock('../../services/apiService', () => {
+vi.mock('@/services/apiService', () => {
   return {
     callApi: callApiMock,
   };
 });
 
-vi.mock('../../services/referenceData/referenceDataService', () => {
+vi.mock('@/services/referenceData/referenceDataService', () => {
   return {
     getCohorts: getCohortsMock,
     getYearGroups: getYearGroupsMock,
   };
 });
 
-vi.mock('../../services/assignmentDefinition/assignmentTopicsService', () => {
+vi.mock('@/services/assignmentDefinition/assignmentTopicsService', () => {
   return {
     getAssignmentTopics: getAssignmentTopicsMock,
   };
 });
 
-vi.mock('../../query/sharedQueries', async () => {
-  const actual = await vi.importActual<typeof SharedQueriesModule>('../../query/sharedQueries');
+vi.mock('@/query/sharedQueries', async () => {
+  const actual = await vi.importActual<typeof SharedQueriesModule>('@/query/sharedQueries');
 
   return {
     ...actual,
@@ -157,7 +157,7 @@ function readStartupWarmupDatasetProbeSnapshot(): StartupWarmupDatasetProbeSnaps
 async function configureAssignmentDefinitionWarmupFailure(): Promise<void> {
   const { warmStartupQueries: actualWarmStartupQueries } = await vi.importActual<
     typeof SharedQueriesModule
-  >('../../query/sharedQueries');
+  >('@/query/sharedQueries');
   getAuthorisationStatusMock.mockResolvedValueOnce(true);
   warmStartupQueriesMock.mockImplementationOnce((queryClient) =>
     actualWarmStartupQueries(queryClient)
@@ -551,10 +551,10 @@ describe('AppAuthGate', () => {
   it('keeps startup warm-up ready when assignment definitions arrive with backend-compatible non-null tasks', async () => {
     const actualAssignmentDefinitionPartialsService = await vi.importActual<
       typeof AssignmentDefinitionPartialsServiceModule
-    >('../../services/assignmentDefinition/assignmentDefinitionPartialsService');
+    >('@/services/assignmentDefinition/assignmentDefinitionPartialsService');
     const { warmStartupQueries: actualWarmStartupQueries } = await vi.importActual<
       typeof SharedQueriesModule
-    >('../../query/sharedQueries');
+    >('@/query/sharedQueries');
     const { QueryWrapper, queryClient } = createQueryWrapper();
 
     getAuthorisationStatusMock.mockResolvedValueOnce(true);

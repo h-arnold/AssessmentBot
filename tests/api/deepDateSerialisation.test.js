@@ -56,7 +56,7 @@ describe('Deep Date Serialisation Regression', () => {
     restoreGlobals = mockContext.restore;
 
     delete require.cache[require.resolve('../../src/backend/Utils/DateUtils.js')];
-    DateUtils = require('../../src/backend/Utils/DateUtils.js');
+    DateUtils = require('#backend/Utils/DateUtils.js');
 
     testData = require(TEST_DATA_PATH);
   });

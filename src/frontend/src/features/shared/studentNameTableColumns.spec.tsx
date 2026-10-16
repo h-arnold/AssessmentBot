@@ -5,9 +5,9 @@ import { Table } from 'antd';
 import { TaskHeatmapTable } from '../taskHeatmap/TaskHeatmapTable';
 import { buildStudentAveragesTableColumns } from '../classPage/studentAveragesTableColumns';
 import type { StudentAverageRowModel } from '../classPage/classPageAdapter.zod';
-import { createComputedMetricResult } from '../../test/dataAnalysis/fixtures';
-import { buildCell, buildHeatmapResult } from '../../test/taskHeatmapTableTestHelpers';
-import { APP_COL_WIDTH_FORENAME, APP_COL_WIDTH_SURNAME } from '../../theme/spacing';
+import { createComputedMetricResult } from '@/test/dataAnalysis/fixtures';
+import { buildCell, buildHeatmapResult } from '@/test/taskHeatmapTableTestHelpers';
+import { APP_COL_WIDTH_FORENAME, APP_COL_WIDTH_SURNAME } from '@/theme/spacing';
 
 const EMPTY_FILTERS = {
   completeness: [],

@@ -8,7 +8,7 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { getAuthenticationSettings_ } = require('../../src/backend/z_Api/apiAuth.js');
+const { getAuthenticationSettings_ } = require('#backend/z_Api/apiAuth.js');
 
 describe('getAuthenticationSettings transport — typed authentication-setting getters', () => {
   let originalConfigurationManager;

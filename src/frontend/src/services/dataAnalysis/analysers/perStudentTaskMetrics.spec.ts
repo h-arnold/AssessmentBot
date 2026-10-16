@@ -10,7 +10,7 @@ import {
   createSubmission,
   createSubmissionItem,
   createTaskPartial,
-} from '../../../test/dataAnalysis/fixtures';
+} from '@/test/dataAnalysis/fixtures';
 import type { PerStudentTaskMetric } from '../dataAnalysis.zod';
 
 // Number of decimal places of tolerance used when asserting composite floating-point scores.

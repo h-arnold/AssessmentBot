@@ -1,10 +1,10 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
-import { ApiTransportError } from '../../errors/apiTransportError';
-import { normaliseUnknownError } from '../../errors/normaliseUnknownError';
-import { logFrontendEvent } from '../../logging/frontendLogger';
-import { queryKeys } from '../../query/queryKeys';
-import { getGoogleClassroomsQueryOptions } from '../../query/sharedQueries';
+import { ApiTransportError } from '@/errors/apiTransportError';
+import { normaliseUnknownError } from '@/errors/normaliseUnknownError';
+import { logFrontendEvent } from '@/logging/frontendLogger';
+import { queryKeys } from '@/query/queryKeys';
+import { getGoogleClassroomsQueryOptions } from '@/query/sharedQueries';
 
 /**
  * Logs Google Classrooms query failures for background diagnostics.

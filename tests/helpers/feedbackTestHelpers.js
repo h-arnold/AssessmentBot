@@ -14,7 +14,7 @@ import { vi } from 'vitest';
 export function setupFeedbackModules() {
   // Load Feedback base class first
   delete require.cache[require.resolve('../../src/backend/Models/Feedback/0_Feedback.js')];
-  const Feedback = require('../../src/backend/Models/Feedback/0_Feedback.js');
+  const Feedback = require('#backend/Models/Feedback/0_Feedback.js');
 
   // Make Feedback available globally BEFORE loading CellReferenceFeedback
   // This is required because CellReferenceFeedback extends Feedback
@@ -24,7 +24,7 @@ export function setupFeedbackModules() {
   delete require.cache[
     require.resolve('../../src/backend/Models/Feedback/1_CellReferenceFeedback.js')
   ];
-  const CellReferenceFeedback = require('../../src/backend/Models/Feedback/1_CellReferenceFeedback.js');
+  const CellReferenceFeedback = require('#backend/Models/Feedback/1_CellReferenceFeedback.js');
 
   // Make CellReferenceFeedback available globally for Feedback.fromJSON
   globalThis.CellReferenceFeedback = CellReferenceFeedback;

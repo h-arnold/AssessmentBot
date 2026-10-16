@@ -75,20 +75,18 @@ Location (planned): `scripts/synthetic-test-data/toBackendModelInputs.js`.
 - Never feed a frontend assignment partial directly to `Assignment.fromJSON()`, and never
   mutate the frozen loader output in place. All adaptation happens on local clones.
 
-### Test infrastructure reuse (`Not implemented`)
+### Test infrastructure reuse
 
-- Add root `package.json` import mapping `"#synthetic-data/*": "./scripts/synthetic-test-data/*"`.
+- The root `package.json` `imports` map provides `"#synthetic-data/*": "./scripts/synthetic-test-data/*"`.
   Backend `.test.js` suites use ESM named imports from
   `#synthetic-data/toBackendModelInputs.js` and `#synthetic-data/loadSyntheticAnalysisProfile.js`,
-  not `require()` of these ESM script modules. A new node-project
-  `tests/syntheticModelInputs.node.test.js` smoke proves this path under `setupGlobals`
-  before downstream class suites consume it. Existing `#synthetic/*` continues to mean
-  committed JSON views; do not add a second loader or production import. Reconcile the
-  configuration-hierarchy alias paragraph when this planned map lands.
-- New suites use the existing `#backend/*` mapping for backend source; migrate non-compliant
-  source imports only in existing files already touched, preserving import semantics.
-  Configuration documentation must describe this as the new/touched-file convention,
-  not claim all legacy suites already use it. Nearby helpers remain relative.
+  not `require()` of these ESM script modules. Existing `#synthetic/*` continues to mean
+  committed JSON views; there is no second loader or production import.
+- Shared test helpers are reachable as `#test-helpers/*` (`tests/helpers/*`).
+- New and existing suites use the `#backend/*` mapping for backend source. The import-path
+  depth rule (see `TypeScriptAndLintConfigHierarchy.md`) enforces the alias convention
+  repo-wide: relative imports may traverse at most one parent, and two or more parents must
+  use a configured alias. Nearby helpers reached as `../helpers/...` remain relative.
 - Reuse `globalMockManager` and `apiHandlerTestUtils`, plus local external-service mocks, for
   the wider class graph. Do not invent realistic class graphs in tests; derive them from
   canonical data.

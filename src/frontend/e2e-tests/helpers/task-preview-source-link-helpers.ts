@@ -20,14 +20,14 @@ import {
   selectVisibleOption,
   type ResponseItem,
 } from '../shared/endToEndRuntimeMocks';
-import { pageContent } from '../../src/pages/pageContent';
+import { pageContent } from '@/pages/pageContent';
 import {
   HEATMAP_TABLE_NAME,
   SHEETS_ASSIGNMENT_TITLE,
   SLIDES_ASSIGNMENT_TITLE,
   SOURCE_LINK_CLASS_NAME,
 } from './task-preview-source-link-fixtures';
-import { SOURCE_ACTION_LABEL } from '../../src/features/taskHeatmap/TaskPreviewCard';
+import { SOURCE_ACTION_LABEL } from '@/features/taskHeatmap/TaskPreviewCard';
 import { createSourceLinkScenario } from './task-preview-source-link-scenarios';
 
 // ---------------------------------------------------------------------------

@@ -6,17 +6,17 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
   return { ...actual, useQuery: vi.fn() };
 });
 
-vi.mock('../../hooks/usePageDataset', async (importOriginal) => {
+vi.mock('@/hooks/usePageDataset', async (importOriginal) => {
   const actual = (await importOriginal()) as Record<string, unknown>;
   return { ...actual, usePageDataset: vi.fn() };
 });
 
-vi.mock('../../query/sharedQueries', async (importOriginal) => {
+vi.mock('@/query/sharedQueries', async (importOriginal) => {
   const actual = (await importOriginal()) as Record<string, unknown>;
   return { ...actual, getABClassQueryOptions: vi.fn() };
 });
 
-vi.mock('../../services/dataAnalysis/dataAnalysisService', () => {
+vi.mock('@/services/dataAnalysis/dataAnalysisService', () => {
   /** Mock analysis service with a shared method handle. */
   class MockDataAnalysisService {
     /** Shared analysis mock used by the specs. */
@@ -28,7 +28,7 @@ vi.mock('../../services/dataAnalysis/dataAnalysisService', () => {
   return { DataAnalysisService: MockDataAnalysisService };
 });
 
-vi.mock('../../features/classPage/classPageAdapter', () => {
+vi.mock('@/features/classPage/classPageAdapter', () => {
   return {
     adaptClassPageToViewModel: vi.fn(),
   };

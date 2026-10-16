@@ -31,8 +31,8 @@ import {
   teardownAuthApiTestContext,
 } from './authApiTestHarness.js';
 
-const AuthService = require('../../src/backend/Utils/AuthService.js');
-const ApiValidationError = require('../../src/backend/Utils/ErrorTypes/ApiValidationError.js');
+const AuthService = require('#backend/Utils/AuthService.js');
+const ApiValidationError = require('#backend/Utils/ErrorTypes/ApiValidationError.js');
 
 const ADMIN = 'admin@school.edu';
 const GROUP_EMAIL = 'teachers@school.edu';

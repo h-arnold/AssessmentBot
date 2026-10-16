@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
-import { withGlobalMocks } from '../../helpers/globalMockManager.js';
+import { withGlobalMocks } from '#test-helpers/globalMockManager.js';
 
 const MODULE_PATH = '../../../src/backend/y_controllers/ABClassController/ABClassRoster';
-const { ABClass: RealABClass } = require('../../../src/backend/Models/ABClass');
+const { ABClass: RealABClass } = require('#backend/Models/ABClass.js');
 
 describe('ABClassRoster sub-class', () => {
   it('is available in GREEN phase (module exists)', () => {

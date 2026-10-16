@@ -7,15 +7,15 @@ import {
   LARGE_FULL_STUDENTS_PER_CLASS,
   LARGE_FULL_YEAR_GROUP_COUNT,
   getProfileDefinition,
-} from '../../scripts/synthetic-test-data/profileDefinitions.js';
-import { generateSyntheticAnalysisGraph } from '../../scripts/synthetic-test-data/generateSyntheticAnalysisGraph.js';
-import { validateSyntheticAnalysisGraph } from '../../scripts/synthetic-test-data/validateSyntheticAnalysisGraph.js';
+} from '#synthetic-data/profileDefinitions.js';
+import { generateSyntheticAnalysisGraph } from '#synthetic-data/generateSyntheticAnalysisGraph.js';
+import { validateSyntheticAnalysisGraph } from '#synthetic-data/validateSyntheticAnalysisGraph.js';
 import {
   ClassFullSchema,
   type AssignmentPartial,
   type ClassFull,
-} from '../../src/frontend/src/services/googleClassrooms/classDetail/classDetailService.zod';
-import type { YearGroup } from '../../src/frontend/src/services/referenceData/referenceData.zod';
+} from '@/services/googleClassrooms/classDetail/classDetailService.zod';
+import type { YearGroup } from '@/services/referenceData/referenceData.zod';
 
 /**
  * Generator-internal observation of a profile definition. No frontend service

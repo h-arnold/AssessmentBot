@@ -1,12 +1,12 @@
 import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { ApiTransportError } from '../../../errors/apiTransportError';
-import { renderWithFrontendProviders } from '../../../test/renderWithFrontendProviders';
+import { ApiTransportError } from '@/errors/apiTransportError';
+import { renderWithFrontendProviders } from '@/test/renderWithFrontendProviders';
 import type * as BulkSetCohortFlowModule from './bulkSetCohortFlow';
 import {
   buildClassesManagementRow,
   buildClassesManagementState,
-} from '../../../test/classes/classesTestHelpers';
+} from '@/test/classes/classesTestHelpers';
 import type { BatchProgressSnapshot } from './runQueuedBatchMutation';
 
 const classesManagementStateMock = vi.fn();

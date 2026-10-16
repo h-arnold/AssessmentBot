@@ -17,7 +17,7 @@ import {
   averagingResult,
   classFull,
   student,
-} from '../../test/classPage/classPageAdapterTestFixtures';
+} from '@/test/classPage/classPageAdapterTestFixtures';
 import { adaptClassPageToViewModel } from './classPageAdapter';
 
 describe('adaptClassPageToViewModel', () => {

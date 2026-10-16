@@ -10,7 +10,7 @@
  */
 
 import { beforeAll, afterAll, beforeEach, afterEach, describe, it, expect, vi } from 'vitest';
-import { Validate } from '../../src/backend/Utils/Validate.js';
+import { Validate } from '#backend/Utils/Validate.js';
 import {
   cleanupControllerTestMocks,
   createMockCollection,
@@ -85,9 +85,9 @@ function primeCollectionLookupByKey(collection, records) {
 }
 
 beforeAll(async () => {
-  const cohortModule = await import('../../src/backend/Models/Cohort.js');
-  const yearGroupModule = await import('../../src/backend/Models/YearGroup.js');
-  const assignmentTopicModule = await import('../../src/backend/Models/AssignmentTopic.js');
+  const cohortModule = await import('#backend/Models/Cohort.js');
+  const yearGroupModule = await import('#backend/Models/YearGroup.js');
+  const assignmentTopicModule = await import('#backend/Models/AssignmentTopic.js');
 
   setGlobalValue('Validate', originalValidate, Validate);
   setGlobalValue('Cohort', originalCohort, cohortModule.Cohort ?? cohortModule.default?.Cohort);
@@ -134,8 +134,7 @@ beforeEach(async () => {
     assignmentDefinitionPartialsCollection
   );
 
-  const controllerModule =
-    await import('../../src/backend/y_controllers/ReferenceDataController.js');
+  const controllerModule = await import('#backend/y_controllers/ReferenceDataController.js');
   ReferenceDataController =
     controllerModule.default ?? controllerModule.ReferenceDataController ?? controllerModule;
 });

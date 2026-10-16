@@ -23,10 +23,10 @@ const {
   REFERENCE_DATA_API_METHOD_NAMES,
   setupApiHandlerTestContext,
   teardownApiHandlerTestContext,
-} = require('../../helpers/apiHandlerTestUtils.js');
-const { withGlobalMocks } = require('../../helpers/globalMockManager.js');
-const ApiValidationError = require('../../../src/backend/Utils/ErrorTypes/ApiValidationError.js');
-const AuthService = require('../../../src/backend/Utils/AuthService.js');
+} = require('#test-helpers/apiHandlerTestUtils.js');
+const { withGlobalMocks } = require('#test-helpers/globalMockManager.js');
+const ApiValidationError = require('#backend/Utils/ErrorTypes/ApiValidationError.js');
+const AuthService = require('#backend/Utils/AuthService.js');
 
 /** The default configured Google Groups email used by the dispatcher auth suites. */
 const DEFAULT_AUTH_GROUP_EMAIL = 'teachers@school.edu';
@@ -383,7 +383,7 @@ function loadModuleGlobalsInVmContext(modulePath, { globals = {} } = {}) {
 function makeVmGlobals(overrides = {}) {
   const store = {};
   return {
-    BaseSingleton: require('../../../src/backend/00_BaseSingleton.js'),
+    BaseSingleton: require('#backend/00_BaseSingleton.js'),
     LOCK_TIMEOUT_MS: 1000,
     LOCK_WAIT_WARN_THRESHOLD_MS: 300,
     ACTIVE_LIMIT: 25,
@@ -407,8 +407,7 @@ function makeVmGlobals(overrides = {}) {
     },
     Utilities: { getUuid: () => 'uuid-vm-default' },
     Validate:
-      require('../../../src/backend/Utils/Validate.js').Validate ||
-      require('../../../src/backend/Utils/Validate.js'),
+      require('#backend/Utils/Validate.js').Validate || require('#backend/Utils/Validate.js'),
     loadStore_: () => ({}),
     saveStore_: () => {},
     createStartedRecord_: (id, method) => ({

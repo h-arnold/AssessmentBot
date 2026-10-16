@@ -9,8 +9,8 @@ import { describe, it, expect } from 'vitest';
 // internals such as TableTaskArtifact _rows) never flips the decision.
 const {
   compareTaskEquivalence,
-} = require('../../src/backend/y_controllers/AssignmentDefinition/AssignmentDefinitionTaskEquivalence.js');
-const { TaskDefinition } = require('../../src/backend/Models/TaskDefinition.js');
+} = require('#backend/y_controllers/AssignmentDefinition/AssignmentDefinitionTaskEquivalence.js');
+const { TaskDefinition } = require('#backend/Models/TaskDefinition.js');
 
 // Local boundary fixtures shaped like TaskDefinition.toJSON() output. Boundary
 // cases stay local under the canonical-fixture policy, so no synthetic fixtures

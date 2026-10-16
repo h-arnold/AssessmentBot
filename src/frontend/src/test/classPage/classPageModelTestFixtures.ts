@@ -2,7 +2,7 @@ import { createMetricResult } from '../dataAnalysis/fixtures';
 import type {
   ClassPageAdapterResult,
   StudentAverageRowModel,
-} from '../../features/classPage/classPageAdapter.zod';
+} from '@/features/classPage/classPageAdapter.zod';
 
 /**
  * Build a student average row with the fixture defaults.

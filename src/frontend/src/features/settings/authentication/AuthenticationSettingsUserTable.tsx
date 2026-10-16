@@ -1,7 +1,7 @@
 import { Button, Flex, Input, Popconfirm, Select, Table, Typography } from 'antd';
 import { useState } from 'react';
-import { APP_GAP_COMPACT, APP_GAP_MD } from '../../../theme/spacing';
-import type { AuthUserEntry, AuthUserRole } from '../../../services/authService/authService.zod';
+import { APP_GAP_COMPACT, APP_GAP_MD } from '@/theme/spacing';
+import type { AuthUserEntry, AuthUserRole } from '@/services/authService/authService.zod';
 
 const { Text } = Typography;
 

@@ -1,8 +1,8 @@
 import { QueryClientProvider } from '@tanstack/react-query';
 import { render, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { ApiTransportError } from '../../errors/apiTransportError';
-import { createAppQueryClient } from '../../query/queryClient';
+import { ApiTransportError } from '@/errors/apiTransportError';
+import { createAppQueryClient } from '@/query/queryClient';
 import { SettingsPageGoogleClassroomsPrefetch } from './SettingsPageGoogleClassroomsPrefetch';
 
 /**

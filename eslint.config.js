@@ -14,6 +14,7 @@ const {
   nodeToolingRules,
   tseslint: tseslintPlugin,
 } = require('./config/eslint/ts-base-rules.cjs');
+const { importPathDepthPlugin, pathAliases } = require('./config/eslint/import-path-rules.cjs');
 
 module.exports = [
   // Ignore legacy GAS source folders entirely from linting
@@ -261,6 +262,7 @@ module.exports = [
     },
     plugins: {
       '@typescript-eslint': tseslintPlugin,
+      'import-path': importPathDepthPlugin,
       jsdoc,
       security,
       sonarjs,
@@ -284,6 +286,30 @@ module.exports = [
     rules: {
       ...unicodeSecurityRules,
       'max-lines': ['warn', 500],
+    },
+  },
+  {
+    // Enforce the import-path depth policy across the Node-side test suites:
+    // `../x` is allowed, but `../../x` and deeper must use a configured alias.
+    // The fixer rewrites covered specifiers, including the Vitest `vi.mock`
+    // family, to their canonical alias. The synthetic *scripts* are covered by
+    // the shared `nodeToolingRules` in their own scope.
+    files: ['tests/**/*.{js,ts}'],
+    plugins: { 'import-path': importPathDepthPlugin },
+    rules: {
+      'import-path/path-depth': [
+        'error',
+        {
+          rootDir: __dirname,
+          aliases: [
+            pathAliases.backend,
+            pathAliases.syntheticData,
+            pathAliases.testHelpers,
+            pathAliases.frontend,
+            pathAliases.syntheticFixtures,
+          ],
+        },
+      ],
     },
   },
 ];

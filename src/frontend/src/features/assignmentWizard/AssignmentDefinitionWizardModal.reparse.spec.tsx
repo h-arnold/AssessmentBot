@@ -7,52 +7,52 @@
  * true` with no weighting patch), in-place task refresh, the busy affordance,
  * its settled state, and the existing blocking-error treatment on failure.
  */
-import '../../test/assignmentDefinition/AssignmentDefinitionWizardModal.mockSetup';
+import '@/test/assignmentDefinition/AssignmentDefinitionWizardModal.mockSetup';
 
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { mapErrorCodeToUserMessage } from '../../errors/map-error-to-ui';
-import { queryKeys } from '../../query/queryKeys';
+import { mapErrorCodeToUserMessage } from '@/errors/map-error-to-ui';
+import { queryKeys } from '@/query/queryKeys';
 import {
   UpsertAssignmentDefinitionRequestSchema,
   type AssignmentDefinition,
-} from '../../services/assignmentDefinition/assignmentDefinition.zod';
+} from '@/services/assignmentDefinition/assignmentDefinition.zod';
 import {
   mockCohorts,
   mockTopics,
   mockYearGroups,
-} from '../../test/assignmentDefinition/sharedTestFixtures';
+} from '@/test/assignmentDefinition/sharedTestFixtures';
 import {
   assertConflictingControlsDisabled,
   assertDocumentUrlFieldsDisabled,
   assertTaskNotVisible,
   assertTaskVisible,
-} from '../../test/assignmentDefinition/wizardModalAssertionHelpers';
+} from '@/test/assignmentDefinition/wizardModalAssertionHelpers';
 import {
   changeReferenceUrl,
   getFooterCancelButton,
   getFormElements,
   getSaveButton,
   getTaskWeightingInputs,
-} from '../../test/assignmentDefinition/wizardModalInteractionHelpers';
+} from '@/test/assignmentDefinition/wizardModalInteractionHelpers';
 import {
   createUpdateWizardOptions,
   renderWizardModal,
   type RenderWizardModalOptions,
-} from '../../test/assignmentDefinition/wizardModalRenderingHelpers';
+} from '@/test/assignmentDefinition/wizardModalRenderingHelpers';
 import {
   createStartupWarmupState,
   setTextboxValue,
-} from '../../test/assignmentDefinition/wizardTestHelpers';
-import editableDefinitionsRaw from '../../../../../tests/__mocks__/data/synthetic-analysis/small/editableDefinitions.json?raw';
+} from '@/test/assignmentDefinition/wizardTestHelpers';
+import editableDefinitionsRaw from '@synthetic/small/editableDefinitions.json?raw';
 
 import {
   getAssignmentDefinition,
   upsertAssignmentDefinition,
-} from '../../services/assignmentDefinition/assignmentDefinitionService';
-import { getAssignmentTopics } from '../../services/assignmentDefinition/assignmentTopicsService';
-import { getCohorts, getYearGroups } from '../../services/referenceData/referenceDataService';
-import { useStartupWarmupState } from '../../features/auth/startupWarmupState';
+} from '@/services/assignmentDefinition/assignmentDefinitionService';
+import { getAssignmentTopics } from '@/services/assignmentDefinition/assignmentTopicsService';
+import { getCohorts, getYearGroups } from '@/services/referenceData/referenceDataService';
+import { useStartupWarmupState } from '@/features/auth/startupWarmupState';
 
 const getAssignmentDefinitionMock = vi.mocked(getAssignmentDefinition) as ReturnType<typeof vi.fn>;
 const getAssignmentTopicsMock = vi.mocked(getAssignmentTopics) as ReturnType<typeof vi.fn>;
@@ -61,7 +61,7 @@ const getYearGroupsMock = vi.mocked(getYearGroups) as ReturnType<typeof vi.fn>;
 const upsertAssignmentDefinitionMock = vi.mocked(upsertAssignmentDefinition) as ReturnType<typeof vi.fn>;
 const useStartupWarmupStateMock = vi.mocked(useStartupWarmupState) as ReturnType<typeof vi.fn>;
 
-vi.mock('../../logging/frontendLogger', () => {
+vi.mock('@/logging/frontendLogger', () => {
   return {
     logFrontendError: vi.fn(),
     logFrontendEvent: vi.fn(),

@@ -16,9 +16,9 @@
  * surface-state derivation (per `docs/developer/frontend/frontend-architecture.md`).
  */
 
-import type { ClassFull } from '../../services/googleClassrooms/classDetail/classDetailService.zod';
-import { computeDatasetBlockingReason, type PageDatasetState } from '../../hooks/usePageDataset';
-import { toError } from '../../errors/normaliseUnknownError';
+import type { ClassFull } from '@/services/googleClassrooms/classDetail/classDetailService.zod';
+import { computeDatasetBlockingReason, type PageDatasetState } from '@/hooks/usePageDataset';
+import { toError } from '@/errors/normaliseUnknownError';
 
 /**
  * Structured error for the Heatmaps surface, per the Class Page error taxonomy

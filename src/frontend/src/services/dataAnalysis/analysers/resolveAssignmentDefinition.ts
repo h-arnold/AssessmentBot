@@ -1,5 +1,5 @@
-import type { AssignmentDefinitionPartial } from '../../assignmentDefinition/assignmentDefinitionPartials.zod';
-import type { TaskPartial } from '../../assignmentDefinition/taskPartial.zod';
+import type { AssignmentDefinitionPartial } from '@/services/assignmentDefinition/assignmentDefinitionPartials.zod';
+import type { TaskPartial } from '@/services/assignmentDefinition/taskPartial.zod';
 
 /**
  * Resolved assignment definition data sourced exclusively from the live

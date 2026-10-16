@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createDefinitionPartial, createTaskPartial } from '../../test/dataAnalysis/fixtures';
+import { createDefinitionPartial, createTaskPartial } from '@/test/dataAnalysis/fixtures';
 import { buildTaskColumns } from './heatmapAdapter';
 
 const NEGATIVE_TASK_WEIGHTING = -1;

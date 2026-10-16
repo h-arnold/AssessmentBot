@@ -32,18 +32,18 @@ import type { FilterValue } from 'antd/es/table/interface';
 import { getStudentMetric } from './classPageAdapter.zod';
 import type { ClassPageDisplayMetric, StudentAverageRowModel } from './classPageAdapter.zod';
 import { buildStudentNameColumns } from '../shared/studentNameTableColumns';
-import { METRIC_DISPLAY_META } from '../../services/dataAnalysis/metricDisplay/metricDisplayMeta';
-import type { MetricColumnKey } from '../../services/dataAnalysis/metricDisplay/metricDisplayMeta';
+import { METRIC_DISPLAY_META } from '@/services/dataAnalysis/metricDisplay/metricDisplayMeta';
+import type { MetricColumnKey } from '@/services/dataAnalysis/metricDisplay/metricDisplayMeta';
 import {
   DEFAULT_TONE_RANGE,
   EXCLUDED_METRIC_ACCESSIBLE_LABEL,
   resolveMetricTone,
-} from '../../services/dataAnalysis/metricDisplay/metricTone';
-import { buildMetricRangeFilter } from '../../services/dataAnalysis/metricDisplay/metricRangeFilter';
-import { decodeFilterToRange } from '../../services/dataAnalysis/metricDisplay/metricRangeKey';
-import { formatMetricDisplayText } from '../../services/dataAnalysis/metricDisplay/metricDisplayText';
-import { MetricIconLabel } from '../../components/MetricIconLabel/MetricIconLabel';
-import { APP_COL_WIDTH_METRIC_PILL } from '../../theme/spacing';
+} from '@/services/dataAnalysis/metricDisplay/metricTone';
+import { buildMetricRangeFilter } from '@/services/dataAnalysis/metricDisplay/metricRangeFilter';
+import { decodeFilterToRange } from '@/services/dataAnalysis/metricDisplay/metricRangeKey';
+import { formatMetricDisplayText } from '@/services/dataAnalysis/metricDisplay/metricDisplayText';
+import { MetricIconLabel } from '@/components/MetricIconLabel/MetricIconLabel';
+import { APP_COL_WIDTH_METRIC_PILL } from '@/theme/spacing';
 
 // ---------------------------------------------------------------------------
 // Exported types

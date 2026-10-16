@@ -19,7 +19,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // This require will throw MODULE_NOT_FOUND at load time because the
 // production file does not exist yet. That is the intended RED behaviour.
 // The entire test file will fail to load, signalling a RED phase.
-const GASPropertiesUtils = require('../../src/backend/Utils/00_GASPropertiesUtils.js');
+const GASPropertiesUtils = require('#backend/Utils/00_GASPropertiesUtils.js');
 
 describe('GASPropertiesUtils', () => {
   let mockScriptProperties;

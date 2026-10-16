@@ -15,11 +15,11 @@ import {
   createNotAttemptedMetricResult,
   createErrorMetricResult,
   createExcludedMetricResult,
-} from '../../test/dataAnalysis/fixtures';
+} from '@/test/dataAnalysis/fixtures';
 import {
   TaskDisplayMetricSchema,
   type TaskDisplayMetric,
-} from '../../services/dataAnalysis/dataAnalysis.zod';
+} from '@/services/dataAnalysis/dataAnalysis.zod';
 import {
   buildAdaptiveTierGroups,
   buildMetricCellAccessibleLabel,
