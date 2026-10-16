@@ -75,11 +75,11 @@ against the current specification first.
 
 ## Planned ABClass metadata helpers
 
-> **Status: partially implemented.** The metadata domain owner, its typed domain error and the
-> canonical UTC predicate are implemented as backend-domain/utility helpers. The controller
-> request gate, transport adaptation, response-mapper reuse, controller decomposition,
-> persistence extension and companion deletion entries remain `Not implemented`, and no
-> `z_Api` endpoint currently accepts or emits `metadata`. Cross-references:
+> **Status: partially implemented.** The metadata domain owner, its typed domain error, the
+> canonical UTC predicate and ABClass model construction/restoration/serialization support are
+> implemented. The controller request gate, transport adaptation, response-mapper reuse,
+> controller decomposition, persistence extension and companion deletion entries remain
+> `Not implemented`; no `z_Api` endpoint currently accepts or emits `metadata`. Cross-references:
 > `docs/developer/data-shapes/abclass.md` §Planned validation and
 > `docs/developer/testing/synthetic-test-data.md` §ABClass metadata generator
 > capability. Reconcile each remaining entry and remove its `Not implemented` marker only as
@@ -107,10 +107,17 @@ against the current specification first.
 - Runtime references to `Validate` and `ABClassMetadataValidationError` resolve only inside
   method bodies, matching the concatenated GAS load model; the file performs no top-level
   dependency evaluation and no Node module wiring beyond its guarded `module.exports` block.
-- Deferred: `ABClass.metadata` plain-value storage and `ABClass.setMetadata(value)` as the
-  single explicit replacement entry point remain `Not implemented`. The model, mapper,
-  controller and persistence boundaries still neither accept nor emit `metadata`, and each
-  must distinguish actual own-property absence before using this constructor API.
+- **Implemented:** `ABClass` owns a plain metadata snapshot or `null`; construction and
+  `fromJSON()` distinguish actual own-property absence (normalised through the domain
+  constructor) from explicitly supplied values, including invalid own `undefined`.
+  `setMetadata(value)` replaces the complete snapshot or clears it with `null`, and validates
+  before changing model state.
+- **Implemented:** `toJSON()` and `toPartialJSON()` always include metadata, revalidate mutable
+  model state and return defensive copies through the domain owner. Missing/deleted model state
+  is invalid at serialization, not silently defaulted.
+- **Not implemented:** controller request validation, persistence operations, response mapping
+  and API transport integration remain pending. No `z_Api` endpoint currently accepts or emits
+  `metadata`.
 
 ### Metadata error type — `Utils/ErrorTypes/ABClassMetadataValidationError.js` (`Implemented`)
 

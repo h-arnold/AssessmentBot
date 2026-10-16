@@ -31,9 +31,10 @@ Backend tests load a committed profile view synchronously and immutably, then su
 
 > **Status: `Implemented`.** `tests/setupGlobals.js` installs the ABClass metadata domain and
 > its typed error global as part of the backend ABClass `metadata` contract-support cycle. The
-> canonical model-input adapter and the generator integrity and real-domain-acceptance probes
-> are delivered. Later model/controller/API lifecycle probes and the equal-timestamp
-> canonical-clone boundary probe remain pending; see "Canonical metadata probes" below.
+> canonical model-input adapter, generator integrity and real-domain-acceptance probes, and
+> ABClass model construction/restoration/serialization probes are delivered. Controller/API
+> lifecycle and ordering probes remain pending; see
+> "Canonical metadata probes" below.
 
 - `tests/setupGlobals.js` installs the metadata domain and typed error globals after the
   existing `Validate` installation and before any ABClass-dependent module loads, including
@@ -159,16 +160,27 @@ Location: `scripts/synthetic-test-data/toBackendModelInputs.js`.
   `ABClassMetadata.validateMetadata()` domain owner, pinning each profile's non-null and
   marker variants.
 
-**Later lifecycle and boundary probes (`Not implemented`).**
+**Model round trips and integrity (`Implemented`).** Section 3 adds
+`tests/models/abclassMetadataIntegration.test.js` to exercise canonical null and non-null
+variants through ABClass construction, restoration, replacement, and full/partial
+serialization. Metadata-only full JSON round trips use an empty assignments array because
+class-embedded assignment definitions are partial-shaped; a separate characterization keeps
+the complete canonical assignment population for existing hydration/redaction behaviour. The
+direct-mutation test also uses a cloned canonical `medium` snapshot to verify that equal
+timestamps and repeated definition keys are accepted and that supplied entry order is retained.
+These tests cover model boundaries only, not controller or API operations.
 
-- Model, controller and API lifecycle probes (construction, restoration, full/partial
-  persistence, typed request-error adaptation) remain pending until their sections deliver the
-  behaviour.
+**Controller/API lifecycle and remaining boundary probes (`Not implemented`).**
+
+- Controller persistence and API lifecycle probes (including typed request-error adaptation)
+  remain pending until those sections deliver the behaviour.
 - Invalid, legacy-missing and boundary cases remain local clones of canonical data rather
   than generator changes.
-- Equal-timestamp ordering acceptance is a local boundary probe cloned from canonical
-  metadata. Generated source assignments have distinct timestamps, and their canonical
-  exact-timestamp linkage must not be weakened to manufacture that case.
+- Controller/API-level ordering probes remain pending. The delivered equal-timestamp and
+  repeated-definition-key checks are model-boundary probes against a cloned canonical
+  `medium` snapshot, not controller/API capability. Generated source assignments have distinct
+  timestamps, and their canonical exact-timestamp linkage must not be weakened to manufacture
+  equal timestamps.
 
 ## Backend logging test expectations
 

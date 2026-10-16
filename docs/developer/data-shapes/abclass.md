@@ -4,7 +4,7 @@ Root domain object for all data about a single Google Classroom course.
 Contains class metadata, students, teachers, and partial assignment summaries.
 
 Backend model: `src/backend/Models/ABClass.js`
-Metadata domain owner: `src/backend/Models/ABClassMetadata.js` (delivered; not yet wired into ABClass storage or transport)
+Metadata domain owner: `src/backend/Models/ABClassMetadata.js`
 Collections: `abclass` (main document, keyed by `classId`), `abclass_partials` (registry, keyed by `classId`)
 API handlers: `src/backend/z_Api/abclass/abclassRead.js`, `src/backend/z_Api/abclass/abclassMutations.js`
 Response mapper: `src/backend/y_controllers/ABClassController/ABClassResponseMapper.js`
@@ -17,6 +17,7 @@ Sibling contracts:
 - [Contract: Assignment](assignment.md) — Assignment partials are embedded inside ABClass's `assignments` array.
 - [Contract: BackendConfig](backend-config.md) — No direct relationship.
 - [Contract: Reference Data](reference-data.md) — ABClass references `cohortKey` and `yearGroupKey` which resolve to Cohorts and YearGroups respectively.
+- [Transport envelope](transport-envelope.md) — ABClass API payloads use the shared `apiHandler` envelope; this contract documents only the inner payload.
 
 ---
 
@@ -29,18 +30,19 @@ and a lightweight registry stored via `ABClass.toPartialJSON()`.
 
 Stored via `ABClass.toJSON()`.
 
-| #   | Field          | Type            | Persistence                      | Transport   | Frontend Zod                                                    | Notes                                                                                                                     |
-| --- | -------------- | --------------- | -------------------------------- | ----------- | --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| 1   | `classId`      | `string`        | included                         | unchanged   | `ClassFullSchema.classId: z.string()`                           | Google Classroom course ID. Required, never null.                                                                         |
-| 2   | `className`    | `string\|null`  | included                         | unchanged   | `ClassFullSchema.className: z.string().nullable()`              | Derived from Google Classroom on write path. Null when unset.                                                             |
-| 3   | `cohortKey`    | `string\|null`  | included                         | unchanged   | `ClassFullSchema.cohortKey: z.string().nullable()`              | User-managed. `null` when unset.                                                                                          |
-| 4   | `courseLength` | `number`        | included                         | unchanged   | `ClassFullSchema.courseLength: z.number()`                      | Integer ≥ 1. Default 1 in constructor.                                                                                    |
-| 5   | `yearGroupKey` | `string\|null`  | included                         | unchanged   | `ClassFullSchema.yearGroupKey: z.string().nullable()`           | User-managed. `null` when unset.                                                                                          |
-| 6   | `classOwner`   | `Object\|null`  | included                         | unchanged   | `ClassFullSchema.classOwner: TeacherSummarySchema.nullable()`   | Teacher summary object (see [§ Sub-entities Teacher](#sub-entity-teacher)). Null when unset.                              |
-| 7   | `teachers`     | `Array`         | included                         | unchanged   | `ClassFullSchema.teachers: z.array(TeacherSummarySchema)`       | Array of Teacher summary objects. Empty array when no teachers.                                                           |
-| 8   | `students`     | `Array`         | included                         | unchanged   | `ClassFullSchema.students: z.array(StudentSummarySchema)`       | Array of Student objects (see [§ Sub-entities Student](#sub-entity-student)). Empty array when no students.               |
-| 9   | `assignments`  | `Array`         | included                         | transformed | `ClassFullSchema.assignments: z.array(AssignmentPartialSchema)` | Array of Assignment partials (see [§ Transport getABClass](#getabclass-read)). Always [] at rest in the ABClass document. |
-| 10  | `active`       | `boolean\|null` | included (`this.active ?? null`) | unchanged   | `ClassFullSchema.active: z.boolean().nullable()`                | Tri-state: `true` (active), `false` (inactive), `null` (unknown/unset).                                                   |
+| #   | Field          | Type              | Persistence                      | Transport   | Frontend Zod                                                    | Notes                                                                                                                     |
+| --- | -------------- | ----------------- | -------------------------------- | ----------- | --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| 1   | `classId`      | `string`          | included                         | unchanged   | `ClassFullSchema.classId: z.string()`                           | Google Classroom course ID. Required, never null.                                                                         |
+| 2   | `className`    | `string\|null`    | included                         | unchanged   | `ClassFullSchema.className: z.string().nullable()`              | Derived from Google Classroom on write path. Null when unset.                                                             |
+| 3   | `cohortKey`    | `string\|null`    | included                         | unchanged   | `ClassFullSchema.cohortKey: z.string().nullable()`              | User-managed. `null` when unset.                                                                                          |
+| 4   | `courseLength` | `number`          | included                         | unchanged   | `ClassFullSchema.courseLength: z.number()`                      | Integer ≥ 1. Default 1 in constructor.                                                                                    |
+| 5   | `yearGroupKey` | `string\|null`    | included                         | unchanged   | `ClassFullSchema.yearGroupKey: z.string().nullable()`           | User-managed. `null` when unset.                                                                                          |
+| 6   | `classOwner`   | `Object\|null`    | included                         | unchanged   | `ClassFullSchema.classOwner: TeacherSummarySchema.nullable()`   | Teacher summary object (see [§ Sub-entities Teacher](#sub-entity-teacher)). Null when unset.                              |
+| 7   | `teachers`     | `Array`           | included                         | unchanged   | `ClassFullSchema.teachers: z.array(TeacherSummarySchema)`       | Array of Teacher summary objects. Empty array when no teachers.                                                           |
+| 8   | `students`     | `Array`           | included                         | unchanged   | `ClassFullSchema.students: z.array(StudentSummarySchema)`       | Array of Student objects (see [§ Sub-entities Student](#sub-entity-student)). Empty array when no students.               |
+| 9   | `assignments`  | `Array`           | included                         | transformed | `ClassFullSchema.assignments: z.array(AssignmentPartialSchema)` | Array of Assignment partials (see [§ Transport getABClass](#getabclass-read)). Always [] at rest in the ABClass document. |
+| 10  | `active`       | `boolean\|null`   | included (`this.active ?? null`) | unchanged   | `ClassFullSchema.active: z.boolean().nullable()`                | Tri-state: `true` (active), `false` (inactive), `null` (unknown/unset).                                                   |
+| 11  | `metadata`     | `ABClassMetadata` | included by `toJSON()`           | omitted     | —                                                               | Model serialization always emits it. This row does not guarantee database write preparation; current API mappers omit it. |
 
 Key notes:
 
@@ -56,16 +58,17 @@ Key notes:
 
 Stored via `ABClass.toPartialJSON()`.
 
-| #   | Field          | Type            | Persistence                      | Transport | Frontend Zod                                                     | Notes                             |
-| --- | -------------- | --------------- | -------------------------------- | --------- | ---------------------------------------------------------------- | --------------------------------- |
-| 1   | `classId`      | `string`        | included                         | unchanged | `ClassPartialSchema.classId: z.string()`                         | Google Classroom course ID.       |
-| 2   | `className`    | `string\|null`  | included                         | unchanged | `ClassPartialSchema.className: z.string().nullable()`            | Null when unset.                  |
-| 3   | `cohortKey`    | `string\|null`  | included                         | unchanged | `ClassPartialSchema.cohortKey: z.string().nullable()`            | Null when unset.                  |
-| 4   | `courseLength` | `number`        | included                         | unchanged | `ClassPartialSchema.courseLength: z.number()`                    | Integer ≥ 1.                      |
-| 5   | `yearGroupKey` | `string\|null`  | included                         | unchanged | `ClassPartialSchema.yearGroupKey: z.string().nullable()`         | Null when unset.                  |
-| 6   | `classOwner`   | `Object\|null`  | included                         | unchanged | `ClassPartialSchema.classOwner: TeacherSummarySchema.nullable()` | Teacher summary. Null when unset. |
-| 7   | `teachers`     | `Array`         | included                         | unchanged | `ClassPartialSchema.teachers: z.array(TeacherSummarySchema)`     | Teacher summary objects.          |
-| 8   | `active`       | `boolean\|null` | included (`this.active ?? null`) | unchanged | `ClassPartialSchema.active: z.boolean().nullable()`              | Tri-state.                        |
+| #   | Field          | Type              | Persistence                      | Transport | Frontend Zod                                                     | Notes                                                                                                                     |
+| --- | -------------- | ----------------- | -------------------------------- | --------- | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| 1   | `classId`      | `string`          | included                         | unchanged | `ClassPartialSchema.classId: z.string()`                         | Google Classroom course ID.                                                                                               |
+| 2   | `className`    | `string\|null`    | included                         | unchanged | `ClassPartialSchema.className: z.string().nullable()`            | Null when unset.                                                                                                          |
+| 3   | `cohortKey`    | `string\|null`    | included                         | unchanged | `ClassPartialSchema.cohortKey: z.string().nullable()`            | Null when unset.                                                                                                          |
+| 4   | `courseLength` | `number`          | included                         | unchanged | `ClassPartialSchema.courseLength: z.number()`                    | Integer ≥ 1.                                                                                                              |
+| 5   | `yearGroupKey` | `string\|null`    | included                         | unchanged | `ClassPartialSchema.yearGroupKey: z.string().nullable()`         | Null when unset.                                                                                                          |
+| 6   | `classOwner`   | `Object\|null`    | included                         | unchanged | `ClassPartialSchema.classOwner: TeacherSummarySchema.nullable()` | Teacher summary. Null when unset.                                                                                         |
+| 7   | `teachers`     | `Array`           | included                         | unchanged | `ClassPartialSchema.teachers: z.array(TeacherSummarySchema)`     | Teacher summary objects.                                                                                                  |
+| 8   | `active`       | `boolean\|null`   | included (`this.active ?? null`) | unchanged | `ClassPartialSchema.active: z.boolean().nullable()`              | Tri-state.                                                                                                                |
+| 9   | `metadata`     | `ABClassMetadata` | included by `toPartialJSON()`    | omitted   | —                                                                | Model serialization always emits it. This row does not guarantee registry write preparation; current API mappers omit it. |
 
 Key notes:
 
@@ -385,6 +388,7 @@ contract for StudentSubmission is documented in [Contract: Assignment](assignmen
 - On updateABClass, `active` must be a boolean or null.
 - `classOwner`, `teachers`, `students`, `assignments` are forbidden in updateABClass requests.
 - The response mapper (`_normaliseClassPartial`) throws `TypeError` if a partial document is not a plain object or lacks an array `teachers` field.
+- ABClass model construction, restoration, explicit metadata replacement and both serializers enforce the shared strict metadata-domain contract. Controller request validation and response projection are still pending; do not infer API acceptance or response exposure from the model shape.
 
 ### Known discrepancies
 
@@ -418,6 +422,16 @@ contract for StudentSubmission is documented in [Contract: Assignment](assignmen
    **Classification: Aligned** — the delete flow does not require typed validation at
    the transport boundary; the caller receives raw `unknown` and destructures as needed.
 
+6. **ABClass model metadata is not yet carried across controller persistence or transport boundaries.**
+   `ABClass.toJSON()` and `toPartialJSON()` now emit validated defensive `metadata` snapshots,
+   but write preparation and operation-specific store behaviour remain pending. The current
+   response mapper omits metadata from partial and full class views, mutation requests do not
+   validate or accept it, and both frontend class schemas omit it (their default Zod object
+   behaviour strips unknown keys).
+   **Classification: Misaligned** — model serialization supports the field, but API request
+   and response contracts do not yet expose it. This does not establish whether database writes
+   preserve it.
+
 ---
 
 ## File Index
@@ -434,7 +448,7 @@ Teacher model:              src/backend/Models/Teacher.js
 Student model:              src/backend/Models/Student.js
   └── Student.toJSON()          — student shape
 
-Metadata domain owner:      src/backend/Models/ABClassMetadata.js   (delivered; NOT yet carried by ABClass)
+Metadata domain owner:      src/backend/Models/ABClassMetadata.js   (delivered; used by ABClass model boundaries)
   └── new ABClassMetadata()/toJSON()  — constructor-owned null default + defensive plain-snapshot boundary
   └── validateMetadata()              — top-level shape, dense 0–3 array, unique IDs, newest-first order
   └── validateClassAverages()         — five-field class summary (four scores + updatedAt)
@@ -478,7 +492,7 @@ Frontend:
 
 ---
 
-## Target contract — ABClass `metadata` (domain and test-fixture capability delivered; production persistence/transport `Not implemented`)
+## ABClass `metadata` contract — model and test-fixture capability delivered; store operations and transport pending
 
 > **Status: partially delivered.** Section 1 delivered the metadata **domain validation
 > capability** and Section 2 delivered the **test-only canonical fixture capability**:
@@ -500,35 +514,45 @@ Frontend:
 >
 > The domain primitives are exercised directly by focused backend tests and are installed in
 > the Node/`tests/setupGlobals.js` bootstrap after `Validate` and before any ABClass-dependent
-> module loads. The Section 2 capability is **test-only**: it makes no production metadata
-> accepted, persisted, restored or emitted.
+> module loads. Section 3 has since integrated the metadata domain into ABClass construction,
+> restoration, replacement and both model serialisers. The Section 2 fixture capability remains
+> test-only.
 >
-> **Not integrated yet.** No `metadata` field is persisted or transported. `ABClass.js` does
-> not store, serialise or restore metadata, `ABClass.setMetadata()` does not exist, and no
-> controller, response mapper or API handler uses the domain owner or emits `metadata`.
-> Every remaining `Not implemented` marker below therefore still stands for the model,
-> persistence, transport and companion-cleanup work: the domain and test-fixture
-> **capabilities** are real, but the **end-to-end production contract is not live**.
-> Everything above this point documents the currently implemented ABClass contract and is
-> preserved unchanged until production delivery reconciles it.
+> **Model boundary delivered; controller/store operations and transport remain pending.**
+> `ABClass` owns a plain metadata snapshot or `null`, normalises actual absence through the
+> metadata constructor, rejects explicitly supplied `undefined` or invalid values, and
+> validates/copies metadata during `toJSON()` and `toPartialJSON()`. `setMetadata(value)`
+> replaces the complete snapshot atomically. These model serialization shapes are implemented;
+> this does not establish database write preparation, roster-specific persistence, response
+> mapping, or API request acceptance.
 
-The planned change adds one compact assessment-summary field, `metadata`, to both the full
-ABClass document and the `abclass_partials` registry. It is a **supplied snapshot**: the
-backend does not calculate averages, refresh it after assessments, backfill it, reconcile it
-between stores beyond an explicit write, or repair corrupt stored values. Where the
+| Boundary                                                      | Status      | Delivered behaviour                                                                                                  |
+| ------------------------------------------------------------- | ----------- | -------------------------------------------------------------------------------------------------------------------- |
+| ABClass model construction/restoration                        | Implemented | Actual omission normalises to `null`; explicitly present `undefined` and invalid values fail validation.             |
+| Explicit replacement                                          | Implemented | `setMetadata(value)` validates/copies the complete value before replacing; `null` clears and `undefined` is invalid. |
+| Model serialisation                                           | Implemented | `toJSON()` and `toPartialJSON()` always emit independently copied, revalidated `metadata`.                           |
+| Database write preparation and operation-specific persistence | Pending     | Model output alone does not specify atomic preparation or roster-patch semantics.                                    |
+| Controller request validation                                 | Pending     | API callers are not yet accepted/rejected according to the metadata domain contract.                                 |
+| Response mapping and frontend response validation             | Pending     | Mappers omit the field and frontend class schemas strip unknown fields.                                              |
+
+The target persistence contract adds one compact assessment-summary field, `metadata`, to both
+the full ABClass document and the `abclass_partials` registry. The ABClass model's full and
+partial serialisers now emit it; persistence-operation behaviour remains pending. It is a
+**supplied snapshot**: the backend does not calculate averages, refresh it after assessments,
+backfill it, reconcile it between stores beyond an explicit write, or repair corrupt stored
+values. Where the
 implemented prose above calls `cohortKey`, `yearGroupKey` and `courseLength` "metadata",
 delivery must recast those as class-configuration/reference fields so they are not confused
 with this literal `metadata` property, and must distinguish this class-level assessment
 summary from the unrelated task-artifact `metadata`.
 
-### Sub-entity: ABClassMetadata — delivered domain owner, not yet carried by models/stores
+### Sub-entity: ABClassMetadata — delivered domain and ABClass model boundary
 
 Backend model: `src/backend/Models/ABClassMetadata.js` (the dedicated metadata-domain owner,
 delivered in Section 1; deliberately **not** part of `Models/ABClass.js` or the generic
-`Validate`). The shape rules below are enforced by that owner for direct domain use. They are
-**not yet carried** by `ABClass.toJSON()`/`toPartialJSON()`, the response mappers or any
-transport response, so an `ABClass` document or partial row does not contain a `metadata`
-property today.
+`Validate`). The shape rules below are enforced by that owner and are wired into the ABClass
+model boundary. Both `ABClass.toJSON()` and `ABClass.toPartialJSON()` include the field. The
+response mapper and API handlers do not yet expose it.
 
 Target notation (contract notation only, not a backend TypeScript requirement):
 
@@ -579,16 +603,23 @@ representations. The marker values `N`, `E` and `excluded` are exact, case-sensi
 that stay distinct and are never converted to zero (any other spelling, including lower case,
 is rejected).
 
-### Planned persistence and lifecycle (`Not implemented`)
+### Model construction, restoration, replacement and serialisation (delivered)
 
-> **`Not implemented`:** this is ABClass model/store integration (Section 3). No store carries a
-> `metadata` property yet; the notes below describe the intended contract only, not delivered
-> behaviour.
+- `new ABClass(options)` distinguishes an absent own `metadata` property from a present value. Absence is normalised by `new ABClassMetadata()` to `null`; present values, including own `undefined`, are passed explicitly to the domain constructor and validated.
+- `ABClass.fromJSON(json)` applies the same own-property distinction despite using `Object.create()` for restoration. Legacy full or partial JSON without an own `metadata` field therefore restores as an own `metadata: null`; explicitly present invalid data is rejected, not repaired.
+- `ABClass.setMetadata(value)` replaces the whole snapshot or clears it with `null`. Its argument is always explicit, so `undefined` is invalid. Validation/copying completes before assignment, leaving existing state intact on failure.
+- `toJSON()` and `toPartialJSON()` always emit `metadata`; each revalidates mutable model state through `ABClassMetadata` and returns an independently owned plain snapshot (or `null`). Input, full output, partial output and model state do not share nested metadata objects or arrays.
+- A caller that deletes `model.metadata` or assigns `undefined` has corrupted model state; serialisation rejects it rather than invoking the absence default. Unrelated legacy-field restoration and serialization behaviour remains unchanged.
+- These are model serialization contracts only. This does not establish store write preparation, identical stored writes after I/O, or operation-specific roster behaviour.
 
-Both stores carry identical metadata values after a successful metadata-bearing write:
+### Pending persistence-operation and lifecycle contract
+
+> **Pending:** controller/store write preparation and lifecycle integration remain unspecified. Model serialisation includes metadata, but this alone does not guarantee atomic preparation, identical full/partial persistence, or operation-specific write semantics.
+
+The following remain target behaviour, not guarantees of the delivered model boundary:
 
 - Full ABClass serialisation (`ABClass.toJSON()`) and the partial registry projection
-  (`ABClass.toPartialJSON()`) both include `metadata`.
+  (`ABClass.toPartialJSON()`) both include `metadata`; this describes model outputs only.
 - There is no separate `ABClassPartials` JavaScript model; `ABClass.toPartialJSON()` owns the
   partial representation.
 - Ordinary upserts, editable-field updates, roster refreshes and assignment persistence
@@ -675,11 +706,11 @@ fields it owns in each store:
   their signatures; no separate public roster API and no change to upsert/read workflows is
   introduced beyond this persistence boundary.
 
-### Planned transport (`Not implemented`)
+### Pending transport integration
 
-> **`Not implemented`:** no endpoint accepts or returns `metadata` yet. The domain owner is not
-> referenced from the response mappers or API handlers, and the current frontend Zod schemas
-> still strip the field. The notes below describe the intended contract only.
+> **Pending:** no endpoint accepts or returns `metadata`. The response mapper does not project
+> it, API handlers do not validate it, and frontend class Zod schemas strip unknown keys. The
+> notes below describe target behaviour only.
 
 Metadata contains timestamp **strings** only, so it requires no additional
 `DateUtils.deepConvertDates()` conversion in the partial-list or mutation-summary responses.
@@ -737,12 +768,12 @@ The existing full-read date-conversion behaviour for the other ABClass fields is
   nullable as a whole. Legacy absence is normalised to explicit `null`; no other field in the
   metadata shape may be `null`.
 
-### Planned validation — domain owner delivered; model/transport integration `Not implemented`
+### Validation — domain and model boundaries delivered; request/transport integration pending
 
 > **Status: partially delivered.** The five routines below exist today as static methods on
-> `src/backend/Models/ABClassMetadata.js` and are exercised directly by the focused
-> `tests/models/abclassMetadata*.test.js` suites. The ownership rules that concern the ABClass
-> model, controller request gate or transport boundary remain `Not implemented`.
+> `src/backend/Models/ABClassMetadata.js` and are exercised directly by focused backend tests.
+> ABClass model construction, restoration, explicit replacement and both serializers now use
+> the domain boundary; controller request validation and transport adaptation remain pending.
 
 One shared domain implementation owns the metadata rules:
 
@@ -756,8 +787,8 @@ One shared domain implementation owns the metadata rules:
 
 Ownership and strictness rules:
 
-- **Owner:** `src/backend/Models/ABClassMetadata.js` (delivered), intended to be shared by the
-  ABClass model, controllers and response mappers. The five routines are kept out of the
+- **Owner:** `src/backend/Models/ABClassMetadata.js`, shared by the ABClass model and intended
+  for controller/response-mapper use. The five routines are kept out of the
   existing ABClass model and out of the generic `Validate`; the domain implementation must not
   be duplicated in transport helpers.
 - `validateClassAverages` checks its own exact five-field record, passes an extracted
@@ -770,10 +801,11 @@ Ownership and strictness rules:
   snapshot/`null`; the five named validators are static routines. Internal checks are
   centralised in the private `_checkRecord`, `_validateScoreFields`, `_validateTimestamp` and
   `_copyMetadata` helpers.
-- **`Not implemented`:** `ABClass.metadata` storage and `ABClass.setMetadata(value)` as the
-  single explicit replacement entry point, plus model/restoration/mapper boundaries routing
-  absent metadata through this constructor. Those boundaries must distinguish actual
-  own-property absence before using the constructor API.
+- **Delivered:** ABClass construction/restoration, `setMetadata(value)`, `toJSON()` and
+  `toPartialJSON()` use the domain boundary as described under Model construction, restoration,
+  replacement and serialisation.
+- **Pending:** controller request validation and response-mapper boundaries. They must
+  distinguish actual own-property absence before invoking the constructor default.
 
 The following strictness rules are enforced by the delivered domain owner:
 
@@ -814,7 +846,7 @@ The following strictness rules are enforced by the delivered domain owner:
   helper and its broader contract unchanged; record this distinction and cross-reference the
   new predicate in the `api-layer.md` helper entry.
 
-#### Provenance and error rules — error type delivered; request tagging/transport adaptation `Not implemented`
+#### Provenance and error rules — error type delivered; request tagging/transport adaptation pending
 
 - **Delivered:** the domain validator reports failures through
   `ABClassMetadataValidationError`
@@ -842,12 +874,11 @@ The following strictness rules are enforced by the delivered domain owner:
   and the transport layer never evaluates nested domain rules; no exception to the canonical
   validation-ownership policy or dispatcher change is needed.
 
-#### Validation scope limits — domain delivered; model/transport boundaries `Not implemented`
+#### Validation scope limits — domain/model delivered; store/transport boundaries pending
 
-> **Status: partially delivered.** The domain owner enforces the first three limits below (no
-> repair/reorder/stamping/fetching, structural-only validation, and defensive copying of its
-> owned snapshot). The model-, store- and mapper-level boundaries in the final bullets remain
-> `Not implemented`.
+> **Status: partially delivered.** The domain owner and ABClass model enforce structural
+> validation and defensive copying at construction, restoration, replacement and
+> serialization. Store-operation and mapper boundaries remain pending.
 
 - Validation must not repair metadata, silently remove entries, reorder it, calculate scores,
   stamp dates or fetch referenced entities.
@@ -858,11 +889,12 @@ The following strictness rules are enforced by the delivered domain owner:
 - Neither the model nor its outputs retain shared mutable aliases that let caller, request or
   returned-object mutation change another representation; values are preserved by defensive
   copying at ownership boundaries.
-- Invalid stored metadata fails restoration even when the request supplies a valid
-  replacement or `null`. No API repair path bypasses stored-data integrity checks.
-- Constructors/restoration, explicit metadata replacement, metadata-bearing serialisation,
-  whole-object writes and response mapping all use the same authoritative rules; mutable
-  metadata must not bypass validation at those boundaries.
+- Invalid metadata fails ABClass restoration even if later code intends to replace it; no
+  restoration bypass is provided. Request replacement ordering and API repair behaviour remain
+  pending with controller integration.
+- Constructors/restoration, explicit metadata replacement and metadata-bearing serialization
+  use the same authoritative rules; mutable metadata cannot bypass validation at those model
+  boundaries. Whole-object write preparation and response mapping remain pending.
 - A field-scoped roster patch of an existing partial is **not** a metadata-bearing write. It
   must not use, validate, copy or rewrite the stored metadata value; the existence lookup
   required by the missing-partial path is unaffected.
@@ -887,11 +919,12 @@ The following strictness rules are enforced by the delivered domain owner:
 
 ### Delivered test-only synthetic capability (Implemented)
 
-> **Status: `Implemented`, test-only** (Section 2). The canonical corpus now generates and
+> **Status: `Implemented`, test-only** (Section 2). The canonical corpus generates and
 > validates raw class `metadata` supplied snapshots and adapts canonical views into backend
 > model inputs. This is generator/test infrastructure only: it does **not** make production
-> metadata accepted, persisted, restored or emitted, and every production marker above remains
-> `Not implemented`. Corpus policy, profile matrix and commands live in
+> metadata accepted by API requests or exposed through API responses. Section 3 subsequently
+> wired the domain into ABClass model construction/restoration and serialization; database
+> write-operation guarantees remain pending. Corpus policy, profile matrix and commands live in
 > [Synthetic Test Data](../testing/synthetic-test-data.md); this subsection records only the
 > capability's contribution to this contract and must not duplicate that guide.
 
@@ -943,8 +976,8 @@ Test-only backend model-input adapter:
 
 ### File index additions — delivered domain primitives vs planned integration
 
-Delivered in Section 1 (domain validation capability only; not yet wired into ABClass storage
-or transport):
+Delivered in Section 1 (domain validation capability; subsequently wired into ABClass model
+construction/restoration and serialization in Section 3):
 
 ```
 Metadata domain owner (delivered): src/backend/Models/ABClassMetadata.js       — five static validators, constructor/`toJSON()` snapshot boundary, _checkRecord/_copyMetadata helpers, constructor-owned null default
@@ -963,7 +996,7 @@ Test-only adapter (delivered): scripts/synthetic-test-data/toBackendModelInputs.
 Focused suites (delivered):    tests/synthetic-analysis/syntheticClassMetadata{Views,Validation,DomainAcceptance,Preservation}.test.ts, tests/synthetic-analysis/syntheticBackendModelInputs.test.ts, tests/synthetic-analysis/backendModelInputAssertions.js, tests/syntheticModelInputs.node.test.js, tests/synthetic-analysis-stress/syntheticClassMetadataFullLarge.test.ts
 ```
 
-Still `Not implemented` (model, controller and transport integration):
+Still pending (controller request, persistence-operation and transport integration):
 
 ```
 Controller request gate (planned): src/backend/y_controllers/ABClassController/ABClassValidation.js — _validateRequestMetadata(parameters)

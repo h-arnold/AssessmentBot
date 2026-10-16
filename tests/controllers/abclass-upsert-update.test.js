@@ -4,6 +4,7 @@ import {
   createMockCollection,
   setupControllerTestMocks,
 } from '../helpers/mockFactories.js';
+import { loadBackendModelInputs } from '#synthetic-data/toBackendModelInputs.js';
 
 const ABClassModule = require('#backend/Models/ABClass.js');
 const TeacherModule = require('#backend/Models/Teacher.js');
@@ -50,6 +51,22 @@ function buildExistingClassDoc(overrides = {}) {
     assignments: [{ assignmentId: 'assignment-001', title: 'Essay Draft' }],
     active: true,
     ...overrides,
+  };
+}
+
+function buildCanonicalExistingClassDoc() {
+  const inputs = loadBackendModelInputs('small');
+  const canonical = structuredClone(
+    Object.values(inputs.classesById).find((row) => row.metadata === null)
+  );
+  delete canonical.metadata;
+  return {
+    ...canonical,
+    classId: 'class-001',
+    className: '10A Computer Science',
+    cohortKey: 'coh-2025',
+    courseLength: 2,
+    yearGroupKey: 'yg-10',
   };
 }
 
@@ -148,7 +165,7 @@ beforeEach(() => {
   };
   globalThis.ClassroomApiClient = classroomApiClient;
 
-  delete require.cache[require.resolve('../../src/backend/y_controllers/ABClassController')];
+  delete require.cache[require.resolve('#backend/y_controllers/ABClassController/index.js')];
   ABClassController = require('#backend/y_controllers/ABClassController/index.js');
 });
 
@@ -159,7 +176,7 @@ afterEach(() => {
   delete globalThis.Student;
   delete globalThis.Assignment;
   delete globalThis.ClassroomApiClient;
-  delete require.cache[require.resolve('../../src/backend/y_controllers/ABClassController')];
+  delete require.cache[require.resolve('#backend/y_controllers/ABClassController/index.js')];
   vi.restoreAllMocks();
 });
 
@@ -292,7 +309,7 @@ describe('ABClassController upsert/update orchestration (key-based contract)', (
   });
 
   it('updateABClass does not alter teachers, students, classOwner, or assignments', () => {
-    const existingClassDoc = buildExistingClassDoc();
+    const existingClassDoc = buildCanonicalExistingClassDoc();
     classCollection.findOne.mockReturnValue(existingClassDoc);
     partialsCollection.findOne.mockReturnValue({ classId: 'class-001' });
 
@@ -318,6 +335,7 @@ describe('ABClassController upsert/update orchestration (key-based contract)', (
         classOwner: existingClassDoc.classOwner,
         teachers: existingClassDoc.teachers,
         active: false,
+        metadata: null,
       })
     );
     expect(result).toEqual(
@@ -357,7 +375,7 @@ describe('ABClassController upsert/update orchestration (key-based contract)', (
   });
 
   it('updateABClass preserves write-through consistency between the full record and abclass_partials', () => {
-    const existingClassDoc = buildExistingClassDoc();
+    const existingClassDoc = buildCanonicalExistingClassDoc();
     classCollection.findOne.mockReturnValue(existingClassDoc);
     partialsCollection.findOne.mockReturnValue({ classId: 'class-001' });
 
@@ -393,6 +411,7 @@ describe('ABClassController upsert/update orchestration (key-based contract)', (
         classOwner: existingClassDoc.classOwner,
         teachers: existingClassDoc.teachers,
         active: false,
+        metadata: null,
       })
     );
   });

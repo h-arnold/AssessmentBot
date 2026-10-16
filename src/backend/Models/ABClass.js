@@ -9,14 +9,18 @@
  * ABClass
  *
  * Root model that encapsulates all data about a given class (Google Classroom course).
- * Contains class metadata, students, teachers, and assignments, with simple
+ * Contains class configuration, assessment-summary metadata, students, teachers, and assignments, with simple
  * add/remove/find operations. Designed to be serializable via toJSON/fromJSON.
  */
 class ABClass {
   /**
-   * Constructs an ABClass instance with class metadata, students, teachers, and assignments.
-   * @param {Object} options - Class metadata and nested collections.
+   * Constructs an ABClass instance with class configuration, assessment-summary metadata, students, teachers, and assignments.
+   * @param {Object} options - Class configuration and nested collections; optional `metadata` is an assessment-summary snapshot, not class configuration.
+   * Actual metadata omission uses the domain constructor's null default;
+   * present values, including null, are validated and defensively copied, while
+   * an explicitly supplied undefined is invalid.
    * @throws {TypeError} If options is not a plain object or classId is missing.
+   * @throws {ABClassMetadataValidationError} If explicitly supplied metadata is invalid.
    */
   constructor(options) {
     if (!options || typeof options !== 'object' || Array.isArray(options)) {
@@ -60,6 +64,26 @@ class ABClass {
     this.assignments = Array.isArray(assignments) ? [...assignments] : [];
 
     this.active = active;
+
+    // Only actual omission invokes the domain constructor's null default.
+    const metadata = Object.hasOwn(options, 'metadata')
+      ? new ABClassMetadata(options.metadata)
+      : new ABClassMetadata();
+    this.metadata = metadata.toJSON();
+  }
+
+  /**
+   * Replaces the complete assessment-summary snapshot, or clears it with null.
+   * The supplied value is always explicit; own undefined is invalid. Failure
+   * leaves the current metadata unchanged.
+   * @param {Object|null} value - Complete metadata snapshot or null to clear it.
+   * @returns {Object|null} The independently owned replacement snapshot.
+   * @throws {ABClassMetadataValidationError} If the supplied snapshot is invalid.
+   */
+  setMetadata(value) {
+    const metadata = new ABClassMetadata(value).toJSON();
+    this.metadata = metadata;
+    return this.metadata;
   }
 
   // Owner helpers
@@ -271,8 +295,10 @@ class ABClass {
   }
 
   /**
-   * Serialises this class to a JSON object.
+   * Serialises this class to a JSON object, always including a validated,
+   * defensive assessment-summary metadata snapshot (or null).
    * @returns {Object} A plain object representation of the class and all its contents
+   * @throws {ABClassMetadataValidationError} If mutable metadata state is invalid.
    */
   toJSON() {
     return {
@@ -286,6 +312,7 @@ class ABClass {
       students: ArrayUtils.serialiseArray(this.students),
       assignments: ArrayUtils.serialiseArray(this.assignments),
       active: this.active ?? null,
+      metadata: new ABClassMetadata(this.metadata).toJSON(),
     };
   }
 
@@ -301,7 +328,11 @@ class ABClass {
    * `true` (active), `false` (inactive), or `null` (unknown/unset).
    * Only creation flows should default it explicitly.
    *
-   * @returns {Object} A partial object representation with class metadata and teachers, but no students or assignments
+   * Assessment-summary metadata is always included and revalidated/copied from
+   * the mutable model state. Legacy absence is normalised by the domain
+   * constructor during restoration; a deleted or undefined model property is invalid.
+   * @returns {Object} A partial object representation with class configuration, metadata and teachers, but no students or assignments
+   * @throws {ABClassMetadataValidationError} If mutable metadata state is invalid.
    */
   toPartialJSON() {
     return {
@@ -313,6 +344,7 @@ class ABClass {
       classOwner: this.serialiseOwner(this.classOwner),
       teachers: ArrayUtils.serialiseArray(this.teachers),
       active: this.active ?? null,
+      metadata: new ABClassMetadata(this.metadata).toJSON(),
     };
   }
 
@@ -321,10 +353,17 @@ class ABClass {
    * Deserialises a JSON object to an ABClass instance.
    * @param {Object|null} json - The serialised class object
    * @returns {ABClass|null} A new ABClass instance, or null if the JSON input is falsy
+   * @throws {ABClassMetadataValidationError} If present metadata, including explicit undefined, is invalid.
    */
   static fromJSON(json) {
     if (!json || typeof json !== 'object') return null;
     const inst = Object.create(ABClass.prototype);
+    // Object.create bypasses the constructor, so route actual absence through
+    // the same constructor-owned null default used for new instances.
+    const metadata = Object.hasOwn(json, 'metadata')
+      ? new ABClassMetadata(json.metadata)
+      : new ABClassMetadata();
+    inst.metadata = metadata.toJSON();
     inst.classId = json.classId;
     inst.className = json.className || null;
     inst.cohortKey =
