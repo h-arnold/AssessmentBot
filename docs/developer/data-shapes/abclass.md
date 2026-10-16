@@ -478,10 +478,10 @@ Frontend:
 
 ---
 
-## Target contract — ABClass `metadata` (domain owner delivered; persistence/transport `Not implemented`)
+## Target contract — ABClass `metadata` (domain and test-fixture capability delivered; production persistence/transport `Not implemented`)
 
-> **Status: partially delivered.** Section 1 has delivered the metadata **domain validation
-> capability only**:
+> **Status: partially delivered.** Section 1 delivered the metadata **domain validation
+> capability** and Section 2 delivered the **test-only canonical fixture capability**:
 >
 > - `src/backend/Models/ABClassMetadata.js` — the dedicated metadata-domain owner, holding the
 >   five static validation routines, the constructor/`toJSON()` snapshot boundary and its
@@ -490,19 +490,27 @@ Frontend:
 >   carrying `fieldPath` and a default non-request `inputSource` (`'model'`).
 > - `Validate.isCanonicalUtcDateTime()` in `src/backend/Utils/Validate.js` — the exact
 >   canonical-UTC timestamp predicate.
+> - `scripts/synthetic-test-data/generateClassMetadata.js`,
+>   `scripts/synthetic-test-data/validateClassMetadata.js` and the test-only
+>   `scripts/synthetic-test-data/toBackendModelInputs.js` adapter — generated raw supplied
+>   snapshots, generator-owned raw integrity checks and backend model-input adaptation,
+>   exercised by focused synthetic suites (see
+>   [§Delivered test-only synthetic capability](#delivered-test-only-synthetic-capability-implemented)
+>   below).
 >
-> These are exercised directly by focused backend tests and are installed in the
-> Node/`tests/setupGlobals.js` bootstrap after `Validate` and before any ABClass-dependent
-> module loads.
+> The domain primitives are exercised directly by focused backend tests and are installed in
+> the Node/`tests/setupGlobals.js` bootstrap after `Validate` and before any ABClass-dependent
+> module loads. The Section 2 capability is **test-only**: it makes no production metadata
+> accepted, persisted, restored or emitted.
 >
 > **Not integrated yet.** No `metadata` field is persisted or transported. `ABClass.js` does
 > not store, serialise or restore metadata, `ABClass.setMetadata()` does not exist, and no
-> controller, response mapper, API handler, fixture or frontend code uses the domain owner.
+> controller, response mapper or API handler uses the domain owner or emits `metadata`.
 > Every remaining `Not implemented` marker below therefore still stands for the model,
-> persistence, transport, fixture and companion-cleanup work: the domain **capability** is
-> real, but the **end-to-end contract is not live**. Everything above this point documents the
-> currently implemented ABClass contract and is preserved unchanged until delivery reconciles
-> it.
+> persistence, transport and companion-cleanup work: the domain and test-fixture
+> **capabilities** are real, but the **end-to-end production contract is not live**.
+> Everything above this point documents the currently implemented ABClass contract and is
+> preserved unchanged until production delivery reconciles it.
 
 The planned change adds one compact assessment-summary field, `metadata`, to both the full
 ABClass document and the `abclass_partials` registry. It is a **supplied snapshot**: the
@@ -867,7 +875,7 @@ The following strictness rules are enforced by the delivered domain owner:
   default `.strip()` behaviour, so they silently strip the new `metadata` field from
   responses. Existing frontend synthetic consumers therefore continue to work with the extra
   field, and parse success is not sufficient evidence of metadata correctness (see the
-  planned synthetic-fixture entry in `docs/developer/testing/synthetic-test-data.md`).
+  synthetic fixture capability in `docs/developer/testing/synthetic-test-data.md`).
 
 ### Planned exclusions (`Not implemented`)
 
@@ -876,6 +884,62 @@ The following strictness rules are enforced by the delivered domain owner:
 - No new metadata-specific endpoint; `deleteABClass` gains no metadata field.
 - No transaction emulation, rollback, automatic retry or concurrent-write recovery.
 - No layout specification: no frontend surface or workflow changes.
+
+### Delivered test-only synthetic capability (Implemented)
+
+> **Status: `Implemented`, test-only** (Section 2). The canonical corpus now generates and
+> validates raw class `metadata` supplied snapshots and adapts canonical views into backend
+> model inputs. This is generator/test infrastructure only: it does **not** make production
+> metadata accepted, persisted, restored or emitted, and every production marker above remains
+> `Not implemented`. Corpus policy, profile matrix and commands live in
+> [Synthetic Test Data](../testing/synthetic-test-data.md); this subsection records only the
+> capability's contribution to this contract and must not duplicate that guide.
+
+Supplied snapshots (no calculation):
+
+- `generateClassMetadata.js` runs once in `generateSyntheticAnalysisGraph()` after assignment
+  generation and before transport projection, assigning `metadata` in place on each
+  persistence class. It reads no clock and consumes no Faker values, so seeds, entity counts,
+  assignment timestamps and byte reproducibility are unchanged.
+- Compact profiles use a fixed per-class-index matrix of profile, template and entry count:
+  `small` is `null`, numeric/0 entries, `N`/1 entry; `medium` is `E`/2, `excluded`/3,
+  `mixed`/1 and numeric/0; and `large-representative` is `null`, numeric/3, `mixed`/2 and
+  numeric/1. Every entry's `averages` copies the same fixed four-field template as its
+  `classAverages`, drawn from the numeric, all-`N`, all-`E`, all-`excluded` and mixed
+  templates.
+- `large-full` uses a modulo-five index cycle: `index % 5 === 0` is `null`, otherwise the
+  recent count is `(index % 5) - 1` and the template index is `Math.floor(index / 5) % 5`.
+- Every non-null snapshot sets `classAverages.updatedAt` to the class's newest generated
+  assignment `updatedAt`, including zero-entry variants. Recent entries take their
+  `assignmentId`, `assignmentDefinitionKey` and `updatedAt` exactly from real generated
+  assignments of that class, newest first. These are supplied snapshot values: no averaging
+  is performed and no cross-metric relationship is derived.
+
+Raw views, parity and independent validation:
+
+- `projectClassTransportViews.toClassPartial()` adds an independently cloned `metadata` value
+  to both `transport.classPartials` and `transport.classesById` whenever the persistence class
+  owns the field, so pre-metadata stage compositions never acquire an own
+  `metadata: undefined`.
+- `validateClassMetadata.js` checks raw shape, exact keys and score union, canonical timestamp,
+  dense zero-to-three entries, unique assignment IDs, newest-first ordering,
+  assignment/class/definition linkage, exact source timestamps and three-way
+  persistence/partial/full parity, and is invoked by `validateSyntheticAnalysisGraph()`.
+- The focused synthetic suites validate every raw snapshot view through the real
+  `ABClassMetadata.validateMetadata` domain owner, because frontend schema parsing strips
+  `metadata`. This is structural contract validation only: no identifier existence, class
+  membership, stored-Assignment timestamp equality or "three most recent" claim is verified
+  live.
+
+Test-only backend model-input adapter:
+
+- `loadBackendModelInputs(profileName)` clones the committed views (including the fifth
+  `assignmentDefinitionPartials` view) and adapts them to backend model JSON. It retains all
+  partial-only assignments and definitions, resolves class-embedded definitions to partial
+  summaries, and leaves standalone full definitions with their keyed tasks and freshness
+  fields intact; class-embedded submissions stay redacted. Raw `metadata` is independently
+  cloned, and no returned representation shares mutable nodes.
+- The adapter is test-only: production `src/backend` source never imports it.
 
 ### File index additions — delivered domain primitives vs planned integration
 
@@ -886,6 +950,17 @@ or transport):
 Metadata domain owner (delivered): src/backend/Models/ABClassMetadata.js       — five static validators, constructor/`toJSON()` snapshot boundary, _checkRecord/_copyMetadata helpers, constructor-owned null default
 Error type (delivered):            src/backend/Utils/ErrorTypes/ABClassMetadataValidationError.js — fieldPath + default inputSource 'model'; extends Error, not ApiValidationError
 Utility (delivered):               src/backend/Utils/Validate.js               — isCanonicalUtcDateTime()
+```
+
+Delivered in Section 2 (test-only synthetic capability; generated fixtures and a test-only
+adapter, not production storage or transport):
+
+```
+Generator stage (delivered):   scripts/synthetic-test-data/generateClassMetadata.js — index/template supplied-snapshot stage; no clock or Faker
+Integrity helper (delivered):  scripts/synthetic-test-data/validateClassMetadata.js — raw shape/linkage/parity checks; invoked by validateSyntheticAnalysisGraph.js
+Stage integration (delivered): scripts/synthetic-test-data/generateSyntheticAnalysisGraph.js, projectClassTransportViews.js, validateSyntheticAnalysisGraph.js — thin composition/projection/validation wiring
+Test-only adapter (delivered): scripts/synthetic-test-data/toBackendModelInputs.js — loadBackendModelInputs(profileName); canonical views → backend model inputs
+Focused suites (delivered):    tests/synthetic-analysis/syntheticClassMetadata{Views,Validation,DomainAcceptance,Preservation}.test.ts, tests/synthetic-analysis/syntheticBackendModelInputs.test.ts, tests/synthetic-analysis/backendModelInputAssertions.js, tests/syntheticModelInputs.node.test.js, tests/synthetic-analysis-stress/syntheticClassMetadataFullLarge.test.ts
 ```
 
 Still `Not implemented` (model, controller and transport integration):

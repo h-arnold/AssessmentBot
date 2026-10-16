@@ -1,19 +1,7 @@
 /**
- * Shared constants and helper functions for apiHandler test files.
- * Loaded via require() by each split test file.
+ * Compatibility facade for shared apiHandler test fixtures and helpers.
+ * Keep this CommonJS path and its public exports stable for all dispatcher suites.
  */
-
-const path = require('node:path');
-const fs = require('node:fs');
-const vm = require('node:vm');
-
-const apiHandlerPath = '../../../src/backend/z_Api/z_apiHandler.js';
-const googleClassroomsHandlerPath = '../../../src/backend/z_Api/googleClassrooms.js';
-const assignmentDefinitionTransportPath =
-  '../../../src/backend/z_Api/assignmentDefinitionTransport.js';
-const apiConfigPath = '../../../src/backend/z_Api/apiConfig.js';
-const abclassMutationsPath = '../../../src/backend/z_Api/abclass/abclassMutations.js';
-
 const {
   callAuthorisationStatus,
   getApiDispatcherInstance,
@@ -24,196 +12,17 @@ const {
   setupApiHandlerTestContext,
   teardownApiHandlerTestContext,
 } = require('#test-helpers/apiHandlerTestUtils.js');
-const { withGlobalMocks } = require('#test-helpers/globalMockManager.js');
 const ApiValidationError = require('#backend/Utils/ErrorTypes/ApiValidationError.js');
-const AuthService = require('#backend/Utils/AuthService.js');
-
-/** The default configured Google Groups email used by the dispatcher auth suites. */
-const DEFAULT_AUTH_GROUP_EMAIL = 'teachers@school.edu';
-
-const ABCLASS_TRANSPORT_API_METHOD_NAMES = Object.freeze([
-  'getGoogleClassroomAssignments',
-  'getGoogleClassrooms',
-  'upsertABClass',
-  'updateABClass',
-  'deleteABClass',
-  'getABClass',
-]);
-
-const BACKEND_CONFIG_API_METHOD_NAMES = Object.freeze(['getBackendConfig', 'setBackendConfig']);
-
-const ASSIGNMENT_DEFINITION_API_METHOD_NAMES = Object.freeze([
-  'getAssignmentDefinitionPartials',
-  'getAssignmentDefinition',
-  'deleteAssignmentDefinition',
-]);
-
-const EXPECTED_ALLOWLISTED_METHOD_HANDLER_KEYS = Object.freeze([
-  'hasScriptAuthorisation',
-  'getABClassPartials',
-  ...ASSIGNMENT_DEFINITION_API_METHOD_NAMES,
-  'upsertAssignmentDefinition',
-  'getAssignment',
-  ...ABCLASS_TRANSPORT_API_METHOD_NAMES,
-  ...BACKEND_CONFIG_API_METHOD_NAMES,
-  'startAssessmentRun',
-  ...REFERENCE_DATA_API_METHOD_NAMES,
-]);
-
-const ABCLASS_TRANSPORT_PARAMS = Object.freeze({
-  getGoogleClassroomAssignments: { classId: 'course-001' },
-  getGoogleClassrooms: {},
-  upsertABClass: {
-    classId: 'class-upsert-001',
-    cohortKey: 'coh-2026',
-    yearGroupKey: 'yg-10',
-    courseLength: 2,
-  },
-  updateABClass: {
-    classId: 'class-update-001',
-    cohortKey: 'coh-2027',
-    yearGroupKey: 'yg-11',
-    courseLength: 2,
-    active: true,
-  },
-  deleteABClass: {
-    classId: 'class-delete-001',
-  },
-  getABClass: {
-    classId: 'class-read-001',
-  },
-});
-
-const ABCLASS_TRANSPORT_RESULTS = Object.freeze({
-  getGoogleClassroomAssignments: [{ assignmentId: 'a1', title: 'Essay' }],
-  getGoogleClassrooms: [{ classId: 'course-001', className: '10A Computer Science' }],
-  upsertABClass: { classId: 'class-upsert-001', saved: true },
-  updateABClass: { classId: 'class-update-001', updated: true },
-  deleteABClass: { classId: 'class-delete-001', deleted: true },
-  getABClass: { classId: 'class-read-001', className: '10A Computer Science' },
-});
-
-const REFERENCE_DATA_RESULTS = Object.freeze({
-  getCohorts: [
-    { key: 'coh-2026', name: 'Cohort 2026', active: true, startYear: 2025, startMonth: 9 },
-  ],
-  createCohort: {
-    key: 'coh-2026',
-    name: 'Cohort 2026',
-    active: true,
-    startYear: 2025,
-    startMonth: 9,
-  },
-  updateCohort: {
-    key: 'coh-2025',
-    name: 'Cohort 2026',
-    active: false,
-    startYear: 2025,
-    startMonth: 9,
-  },
-  getYearGroups: [{ key: 'yg-10', name: 'Year 10' }],
-  createYearGroup: { key: 'yg-10', name: 'Year 10' },
-  updateYearGroup: { key: 'yg-9', name: 'Year 10' },
-  getAssignmentTopics: [{ key: 'topic-algebra', name: 'Algebra' }],
-  createAssignmentTopic: { key: 'topic-algebra', name: 'Algebra' },
-  updateAssignmentTopic: { key: 'topic-algebra', name: 'Advanced Algebra' },
-  // Delete handlers are intentionally transport-void; keep explicit nulls to avoid implicit undefined stubs.
-  deleteCohort: null,
-  deleteYearGroup: null,
-  deleteAssignmentTopic: null,
-});
-
-const ASSIGNMENT_DEFINITION_RESULTS = Object.freeze({
-  getAssignmentDefinitionPartials: [
-    {
-      primaryTitle: 'Algebra Baseline',
-      primaryTopic: 'Algebra',
-      courseId: 'course-001',
-      yearGroupKey: 'year-group-10',
-      alternateTitles: ['Algebra Starter'],
-      alternateTopics: ['Linear Equations'],
-      documentType: 'SLIDES',
-      referenceDocumentId: 'ref-doc-001',
-      templateDocumentId: 'tpl-doc-001',
-      assignmentWeighting: null,
-      definitionKey: 'algebra-baseline',
-      tasks: null,
-      createdAt: '2026-01-05T10:00:00.000Z',
-      updatedAt: '2026-01-06T12:30:00.000Z',
-    },
-  ],
-  getAssignmentDefinition: {
-    definitionKey: 'algebra-baseline',
-    primaryTitle: 'Algebra Baseline',
-    primaryTopicKey: 'topic-algebra',
-    primaryTopic: 'Algebra',
-    yearGroupKey: 'year-group-10',
-    yearGroupLabel: 'Year 10',
-    alternateTitles: ['Algebra Starter'],
-    alternateTopics: ['Linear Equations'],
-    documentType: 'SLIDES',
-    referenceDocumentId: 'ref-doc-001',
-    templateDocumentId: 'tpl-doc-001',
-    assignmentWeighting: 1,
-    tasks: [{ taskId: 'task-1', taskTitle: 'Task 1', taskWeighting: 1 }],
-    createdAt: '2026-01-05T10:00:00.000Z',
-    updatedAt: '2026-01-06T12:30:00.000Z',
-  },
-  // deleteAssignmentDefinition handler returns undefined, which is coerced to null by _success()
-  deleteAssignmentDefinition: null,
-});
-
-const ASSIGNMENT_DEFINITION_PARAMS = Object.freeze({
-  getAssignmentDefinition: {
-    definitionKey: 'algebra-baseline',
-  },
-  deleteAssignmentDefinition: {
-    definitionKey: 'algebra-baseline',
-  },
-});
-
-const REFERENCE_DATA_PARAMS = Object.freeze({
-  createCohort: { record: { name: 'Cohort 2026', active: true } },
-  updateCohort: {
-    key: 'coh-2025',
-    record: { key: 'coh-2025', name: 'Cohort 2026', active: false },
-  },
-  deleteCohort: { key: 'coh-2026' },
-  createYearGroup: { record: { name: 'Year 10' } },
-  updateYearGroup: {
-    key: 'yg-9',
-    record: { key: 'yg-9', name: 'Year 10' },
-  },
-  deleteYearGroup: { key: 'yg-10' },
-  createAssignmentTopic: { record: { name: 'Algebra' } },
-  updateAssignmentTopic: {
-    key: 'topic-algebra',
-    record: { key: 'topic-algebra', name: 'Advanced Algebra' },
-  },
-  deleteAssignmentTopic: { key: 'topic-algebra' },
-});
-
-const REFERENCE_DATA_CONTROLLER_METHODS_BY_API_METHOD = Object.freeze({
-  getCohorts: 'listCohorts',
-  getYearGroups: 'listYearGroups',
-  getAssignmentTopics: 'listAssignmentTopics',
-});
-
-function getReferenceDataControllerMethodName(methodName) {
-  return REFERENCE_DATA_CONTROLLER_METHODS_BY_API_METHOD[methodName] || methodName;
-}
-
-function getReferenceDataControllerMethodSpy(context, methodName) {
-  return context.referenceDataControllerInstance[getReferenceDataControllerMethodName(methodName)];
-}
-
-function getAllowlistedHandlerSpy(context, handlerName) {
-  if (REFERENCE_DATA_API_METHOD_NAMES.includes(handlerName)) {
-    return getReferenceDataControllerMethodSpy(context, handlerName);
-  }
-
-  return context[`${handlerName}_`];
-}
+const fixtures = require('./sharedFixtures');
+const vmHelpers = require('./vmHelpers');
+const auth = require('./authTestContext');
+const {
+  apiHandlerPath,
+  googleClassroomsHandlerPath,
+  assignmentDefinitionTransportPath,
+  apiConfigPath,
+  abclassMutationsPath,
+} = fixtures;
 
 function handleApiRequest(method, params) {
   const { ApiDispatcher } = loadApiHandlerModule();
@@ -283,197 +92,27 @@ function expectBoundaryFailureConsoleErrorLog(
   return boundaryCall;
 }
 
-const INVALID_REQUEST_FAILURE_CASES = Object.freeze([
-  {
-    description:
-      'maps controller validation failures for reference-data handlers to the existing API failure envelope',
-    methodName: 'createCohort',
-    params: REFERENCE_DATA_PARAMS.createCohort,
-    handlerName: 'createCohort',
-    errorMessage: 'Invalid cohort payload',
-    requestId: 'req-create-cohort',
-    withRequestId: false,
-  },
-  {
-    description:
-      'maps ApiValidationError from upsertABClass to INVALID_REQUEST and preserves the failure envelope shape',
-    methodName: 'upsertABClass',
-    params: ABCLASS_TRANSPORT_PARAMS.upsertABClass,
-    handlerName: 'upsertABClass',
-    errorMessage: 'Invalid ABClass payload',
-    requestId: 'req-upsert-abclass',
-    withRequestId: true,
-  },
-  {
-    description:
-      'maps ApiValidationError from updateABClass to INVALID_REQUEST and preserves the failure envelope shape',
-    methodName: 'updateABClass',
-    params: ABCLASS_TRANSPORT_PARAMS.updateABClass,
-    handlerName: 'updateABClass',
-    errorMessage: 'Invalid ABClass update payload',
-    requestId: 'req-update-abclass',
-    withRequestId: true,
-  },
-]);
-
-const IN_USE_FAILURE_CASES = Object.freeze([
-  {
-    description:
-      'maps a plain Error with reason = IN_USE from deleteCohort to error.code = IN_USE (delete-blocked contract)',
-    methodName: 'deleteCohort',
-    params: REFERENCE_DATA_PARAMS.deleteCohort,
-    handlerName: 'deleteCohort',
-    errorMessage: 'Cohort record is referenced by one or more classes',
-  },
-  {
-    description:
-      'maps a plain Error with reason = IN_USE from deleteYearGroup to error.code = IN_USE (delete-blocked contract)',
-    methodName: 'deleteYearGroup',
-    params: REFERENCE_DATA_PARAMS.deleteYearGroup,
-    handlerName: 'deleteYearGroup',
-    errorMessage: 'Year group record is referenced by one or more classes',
-  },
-  {
-    description:
-      'maps a plain Error with reason = IN_USE from deleteAssignmentTopic to error.code = IN_USE (delete-blocked contract)',
-    methodName: 'deleteAssignmentTopic',
-    params: REFERENCE_DATA_PARAMS.deleteAssignmentTopic,
-    handlerName: 'deleteAssignmentTopic',
-    errorMessage: 'Assignment topic record is referenced by one or more assignment definitions',
-  },
-]);
-
-function clearGoogleClassroomsHandlerModuleCache() {
-  delete require.cache[require.resolve(googleClassroomsHandlerPath)];
-}
-
-function loadRealGoogleClassroomsHandlerWithGlobals({ classroomApiClient } = {}) {
-  clearGoogleClassroomsHandlerModuleCache();
-  globalThis.ClassroomApiClient = classroomApiClient;
-  return require(googleClassroomsHandlerPath).getGoogleClassrooms_;
-}
-
-function loadApiHandlerInVmContext({ globals = {} } = {}) {
-  const source = fs.readFileSync(require.resolve(apiHandlerPath), 'utf8');
-  const sandbox = { ...globals };
-
-  sandbox.globalThis = sandbox;
-  vm.createContext(sandbox);
-  vm.runInContext(`${source}\nthis.__exports = { apiHandler, ApiDispatcher };`, sandbox, {
-    filename: 'apiHandler.js',
-  });
-
-  return {
-    ...sandbox.__exports,
-    context: sandbox,
-  };
-}
-
-function loadModuleGlobalsInVmContext(modulePath, { globals = {} } = {}) {
-  const source = fs.readFileSync(require.resolve(modulePath), 'utf8');
-  const sandbox = { ...globals };
-
-  sandbox.globalThis = sandbox;
-  vm.createContext(sandbox);
-  vm.runInContext(source, sandbox, { filename: modulePath });
-
-  return sandbox;
-}
-
-function makeVmGlobals(overrides = {}) {
-  const store = {};
-  return {
-    BaseSingleton: require('#backend/00_BaseSingleton.js'),
-    LOCK_TIMEOUT_MS: 1000,
-    LOCK_WAIT_WARN_THRESHOLD_MS: 300,
-    ACTIVE_LIMIT: 25,
-    LockService: {
-      getUserLock() {
-        return { tryLock: () => true, releaseLock: () => {} };
-      },
-    },
-    PropertiesService: {
-      getUserProperties() {
-        return {
-          getProperty: (k) => (Object.hasOwn(store, k) ? store[k] : null),
-          setProperty: (k, v) => {
-            store[k] = v;
-          },
-        };
-      },
-    },
-    ABLogger: {
-      getInstance: () => ({ warn: () => {}, info: () => {}, error: () => {}, debug: () => {} }),
-    },
-    Utilities: { getUuid: () => 'uuid-vm-default' },
-    Validate:
-      require('#backend/Utils/Validate.js').Validate || require('#backend/Utils/Validate.js'),
-    loadStore_: () => ({}),
-    saveStore_: () => {},
-    createStartedRecord_: (id, method) => ({
-      requestId: id,
-      method,
-      status: 'started',
-      startedAtMs: Date.now(),
-    }),
-    markSuccess_: (s, id) => {
-      if (s[id]) s[id].status = 'success';
-      return s;
-    },
-    markError_: (s, id, msg) => {
-      if (s[id]) {
-        s[id].status = 'error';
-        s[id].errorMessage = msg;
-      }
-      return s;
-    },
-    compactStore_: (s) => s,
-    STALE_REQUEST_AGE_MS: 15 * 60 * 1000,
-    pruneStaleEntries_: (s) => ({ store: s, prunedIds: [] }),
-    ApiRateLimitError: function ApiRateLimitError() {},
-    ApiValidationError: function ApiValidationError() {},
-    ApiDisabledError: function ApiDisabledError() {},
-    DefinitionStaleError: function DefinitionStaleError() {},
-    ScriptAppManager: function ScriptAppManager() {
-      this.isAuthorised = () => true;
-    },
-    // GAS globals required by the ApiDispatcher auth gate (z_apiHandler.js) in the
-    // vm-simulated concatenated runtime. Defaults fail open so non-auth dispatch
-    // tests proceed normally.
-    AuthService: {
-      getInstance() {
-        return { checkAccess: () => ({ allowed: true, role: 'user' }) };
-      },
-    },
-    ConfigurationManager: {
-      getInstance() {
-        return { getAuthGroupEmail: () => '' };
-      },
-    },
-    ...overrides,
-  };
-}
-
 /**
  * Shared behaviour configuration for dispatcher test setup.
  * Provides default transport behaviours for all allowed handlers.
  */
 const DEFAULT_DISPATCHER_BEHAVIOUR = Object.freeze({
   installLogger: true,
-  googleClassroomsBehaviour: () => ABCLASS_TRANSPORT_RESULTS.getGoogleClassrooms,
+  googleClassroomsBehaviour: () => fixtures.ABCLASS_TRANSPORT_RESULTS.getGoogleClassrooms,
   googleClassroomAssignmentsBehaviour: () =>
-    ABCLASS_TRANSPORT_RESULTS.getGoogleClassroomAssignments,
+    fixtures.ABCLASS_TRANSPORT_RESULTS.getGoogleClassroomAssignments,
   abclassMutationsBehaviour: {
-    upsertABClass_: () => ABCLASS_TRANSPORT_RESULTS.upsertABClass,
-    updateABClass_: () => ABCLASS_TRANSPORT_RESULTS.updateABClass,
-    deleteABClass_: () => ABCLASS_TRANSPORT_RESULTS.deleteABClass,
-    getABClass_: () => ABCLASS_TRANSPORT_RESULTS.getABClass,
+    upsertABClass_: () => fixtures.ABCLASS_TRANSPORT_RESULTS.upsertABClass,
+    updateABClass_: () => fixtures.ABCLASS_TRANSPORT_RESULTS.updateABClass,
+    deleteABClass_: () => fixtures.ABCLASS_TRANSPORT_RESULTS.deleteABClass,
+    getABClass_: () => fixtures.ABCLASS_TRANSPORT_RESULTS.getABClass,
   },
   assignmentDefinitionBehaviour: {
     getAssignmentDefinitionPartials_: () =>
-      ASSIGNMENT_DEFINITION_RESULTS.getAssignmentDefinitionPartials,
-    getAssignmentDefinition_: () => ASSIGNMENT_DEFINITION_RESULTS.getAssignmentDefinition,
-    deleteAssignmentDefinition_: () => ASSIGNMENT_DEFINITION_RESULTS.deleteAssignmentDefinition,
+      fixtures.ASSIGNMENT_DEFINITION_RESULTS.getAssignmentDefinitionPartials,
+    getAssignmentDefinition_: () => fixtures.ASSIGNMENT_DEFINITION_RESULTS.getAssignmentDefinition,
+    deleteAssignmentDefinition_: () =>
+      fixtures.ASSIGNMENT_DEFINITION_RESULTS.deleteAssignmentDefinition,
   },
 });
 
@@ -500,41 +139,6 @@ function teardownDispatcherTest(vi, context) {
 }
 
 /**
- * Provisions a mocked ConfigurationManager whose stored auth state is a
- * googleGroups install with the supplied group email. This is what the
- * dispatcher auth gate and the auth-endpoint admission phase read to decide the
- * membership lookup target and to detect broken configuration.
- * @param {typeof import('vitest')} vi - Vitest instance.
- * @param {Object} [options] - Mock configuration.
- * @param {string} [options.groupEmail=DEFAULT_AUTH_GROUP_EMAIL] - The stored group email.
- * @returns {{ configManager: Object, restore: Function }} The installed auth environment.
- */
-function createDispatcherAuthEnvironment(vi, { groupEmail = DEFAULT_AUTH_GROUP_EMAIL } = {}) {
-  const configManager = {
-    getAuthGroupEmail: vi.fn(() => groupEmail),
-    getAuthMode: vi.fn(() => 'googleGroups'),
-    getAuthUsers: vi.fn(() => ''),
-    getAuthRevision: vi.fn(() => ''),
-    getProperty: vi.fn((key) => {
-      if (key === 'authGroupEmail') return groupEmail;
-      if (key === 'authMode') return 'googleGroups';
-      return '';
-    }),
-    getAllConfigurations: vi.fn(() => ({
-      authMode: 'googleGroups',
-      authGroupEmail: groupEmail,
-    })),
-    isFreshInstall: vi.fn(() => false),
-    writeConfigurationLocked: vi.fn(),
-    setProperty: vi.fn(),
-  };
-  const mockContext = withGlobalMocks({
-    ConfigurationManager: () => ({ getInstance: () => configManager }),
-  });
-  return { configManager, restore: mockContext.restore };
-}
-
-/**
  * Sets up the shared dispatcher test context plus the AuthService/GAS state the
  * auth suites reset around every test. The returned context carries an
  * `authEnvironment` slot for `createDispatcherAuthEnvironment`.
@@ -542,13 +146,7 @@ function createDispatcherAuthEnvironment(vi, { groupEmail = DEFAULT_AUTH_GROUP_E
  * @returns {Object} The shared dispatcher context with an authEnvironment slot.
  */
 function setupDispatcherAuthTest(vi) {
-  const context = setupDispatcherTest(vi);
-  AuthService.resetForTests();
-  globalThis.CacheService._resetScriptCache();
-  globalThis.Session._resetActiveUserEmail?.();
-  globalThis.GroupsApp._resetGroups?.();
-  context.authEnvironment = undefined;
-  return context;
+  return auth.setupDispatcherAuthTest(vi, setupDispatcherTest);
 }
 
 /**
@@ -559,14 +157,7 @@ function setupDispatcherAuthTest(vi) {
  * @returns {void}
  */
 function teardownDispatcherAuthTest(vi, context) {
-  if (context.authEnvironment) {
-    context.authEnvironment.restore();
-    context.authEnvironment = undefined;
-  }
-  teardownDispatcherTest(vi, context);
-  AuthService.resetForTests();
-  globalThis.Session._resetActiveUserEmail?.();
-  globalThis.GroupsApp._resetGroups?.();
+  auth.teardownDispatcherAuthTest(vi, context, teardownDispatcherTest);
 }
 
 module.exports = {
@@ -580,50 +171,26 @@ module.exports = {
   setupApiHandlerTestContext,
   teardownApiHandlerTestContext,
   ApiValidationError,
-
+  // Constants and fixture helpers
+  ...fixtures,
+  ...vmHelpers,
+  // Dispatcher auth-environment lifecycle
+  createDispatcherAuthEnvironment: auth.createDispatcherAuthEnvironment,
+  setupDispatcherAuthTest,
+  teardownDispatcherAuthTest,
   // Paths
   apiHandlerPath,
   googleClassroomsHandlerPath,
   assignmentDefinitionTransportPath,
   apiConfigPath,
   abclassMutationsPath,
-
-  // Constants
-  ABCLASS_TRANSPORT_API_METHOD_NAMES,
-  BACKEND_CONFIG_API_METHOD_NAMES,
-  ASSIGNMENT_DEFINITION_API_METHOD_NAMES,
-  EXPECTED_ALLOWLISTED_METHOD_HANDLER_KEYS,
-  ABCLASS_TRANSPORT_PARAMS,
-  ABCLASS_TRANSPORT_RESULTS,
-  REFERENCE_DATA_RESULTS,
-  ASSIGNMENT_DEFINITION_RESULTS,
-  ASSIGNMENT_DEFINITION_PARAMS,
-  REFERENCE_DATA_PARAMS,
-  REFERENCE_DATA_CONTROLLER_METHODS_BY_API_METHOD,
-  INVALID_REQUEST_FAILURE_CASES,
-  IN_USE_FAILURE_CASES,
-
   // Helper functions
-  getReferenceDataControllerMethodName,
-  getReferenceDataControllerMethodSpy,
-  getAllowlistedHandlerSpy,
   handleApiRequest,
   expectFailureEnvelope,
   expectBoundaryFailureLog,
   expectBoundaryFailureConsoleErrorLog,
-  clearGoogleClassroomsHandlerModuleCache,
-  loadRealGoogleClassroomsHandlerWithGlobals,
-  loadApiHandlerInVmContext,
-  loadModuleGlobalsInVmContext,
-  makeVmGlobals,
-
   // Shared dispatcher test lifecycle
   DEFAULT_DISPATCHER_BEHAVIOUR,
   setupDispatcherTest,
   teardownDispatcherTest,
-
-  // Dispatcher auth-environment lifecycle
-  createDispatcherAuthEnvironment,
-  setupDispatcherAuthTest,
-  teardownDispatcherAuthTest,
 };

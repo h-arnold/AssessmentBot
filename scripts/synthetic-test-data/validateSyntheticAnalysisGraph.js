@@ -3,6 +3,7 @@ import { buildValidationContext } from './validationContext.js';
 import { validatePersistenceGraph } from './validatePersistenceGraph.js';
 import { validateTransportGraph } from './validateTransportGraph.js';
 import { assertTransportShape } from './validateTransportViews.js';
+import { validateClassMetadata } from './validateClassMetadata.js';
 
 /**
  * Asserts a required graph container is a non-null object record.
@@ -59,7 +60,7 @@ function assertRequiredGraphContainers(graph) {
 
 /**
  * Validates all five named transport views, reference integrity, redaction,
- * serialisability, and profile counts.
+ * serialisability, profile counts, and class-metadata integrity, linkage, and parity.
  *
  * @param {unknown} graph The generated logical graph.
  * @throws {Error} When any invariant fails, with an actionable message.
@@ -78,4 +79,5 @@ export function validateSyntheticAnalysisGraph(graph) {
 
   validatePersistenceGraph({ manifest, referenceData, persistence, context });
   validateTransportGraph({ transport, assignments: persistence.assignments, context });
+  validateClassMetadata(graph);
 }

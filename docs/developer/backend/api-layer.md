@@ -81,7 +81,7 @@ against the current specification first.
 > persistence extension and companion deletion entries remain `Not implemented`, and no
 > `z_Api` endpoint currently accepts or emits `metadata`. Cross-references:
 > `docs/developer/data-shapes/abclass.md` §Planned validation and
-> `docs/developer/testing/synthetic-test-data.md` §Planned ABClass metadata generator
+> `docs/developer/testing/synthetic-test-data.md` §ABClass metadata generator
 > capability. Reconcile each remaining entry and remove its `Not implemented` marker only as
 > the corresponding behaviour lands.
 

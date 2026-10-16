@@ -17,7 +17,8 @@
         "teacherName": "Kellen Ullrich"
       }
     ],
-    "active": true
+    "active": true,
+    "metadata": null
   },
   {
     "classId": "class-1",
@@ -37,7 +38,51 @@
         "teacherName": "Pat Hoeger"
       }
     ],
-    "active": false
+    "active": false,
+    "metadata": {
+      "classAverages": {
+        "completeness": 4,
+        "accuracy": 3.5,
+        "spag": 4.5,
+        "overall": 3.9,
+        "updatedAt": "2024-01-03T13:03:00.000Z"
+      },
+      "recentAssignments": [
+        {
+          "assignmentId": "assignment-1-4",
+          "assignmentDefinitionKey": "definition-partial-0",
+          "updatedAt": "2024-01-03T13:03:00.000Z",
+          "averages": {
+            "completeness": 4,
+            "accuracy": 3.5,
+            "spag": 4.5,
+            "overall": 3.9
+          }
+        },
+        {
+          "assignmentId": "assignment-1-3",
+          "assignmentDefinitionKey": "definition-0-slides",
+          "updatedAt": "2024-01-03T12:03:00.000Z",
+          "averages": {
+            "completeness": 4,
+            "accuracy": 3.5,
+            "spag": 4.5,
+            "overall": 3.9
+          }
+        },
+        {
+          "assignmentId": "assignment-1-2",
+          "assignmentDefinitionKey": "definition-3-sheets",
+          "updatedAt": "2024-01-03T11:03:00.000Z",
+          "averages": {
+            "completeness": 4,
+            "accuracy": 3.5,
+            "spag": 4.5,
+            "overall": 3.9
+          }
+        }
+      ]
+    }
   },
   {
     "classId": "class-2",
@@ -53,7 +98,40 @@
         "teacherName": "Charlotte Hudson"
       }
     ],
-    "active": true
+    "active": true,
+    "metadata": {
+      "classAverages": {
+        "completeness": 4,
+        "accuracy": 3,
+        "spag": "N",
+        "overall": 3.5,
+        "updatedAt": "2024-01-04T13:03:00.000Z"
+      },
+      "recentAssignments": [
+        {
+          "assignmentId": "assignment-2-4",
+          "assignmentDefinitionKey": "definition-partial-0",
+          "updatedAt": "2024-01-04T13:03:00.000Z",
+          "averages": {
+            "completeness": 4,
+            "accuracy": 3,
+            "spag": "N",
+            "overall": 3.5
+          }
+        },
+        {
+          "assignmentId": "assignment-2-3",
+          "assignmentDefinitionKey": "definition-1-sheets",
+          "updatedAt": "2024-01-04T12:03:00.000Z",
+          "averages": {
+            "completeness": 4,
+            "accuracy": 3,
+            "spag": "N",
+            "overall": 3.5
+          }
+        }
+      ]
+    }
   },
   {
     "classId": "class-3",
@@ -73,6 +151,28 @@
         "teacherName": "Kyla Ritchie"
       }
     ],
-    "active": null
+    "active": null,
+    "metadata": {
+      "classAverages": {
+        "completeness": 4,
+        "accuracy": 3.5,
+        "spag": 4.5,
+        "overall": 3.9,
+        "updatedAt": "2024-01-05T13:03:00.000Z"
+      },
+      "recentAssignments": [
+        {
+          "assignmentId": "assignment-3-4",
+          "assignmentDefinitionKey": "definition-partial-0",
+          "updatedAt": "2024-01-05T13:03:00.000Z",
+          "averages": {
+            "completeness": 4,
+            "accuracy": 3.5,
+            "spag": 4.5,
+            "overall": 3.9
+          }
+        }
+      ]
+    }
   }
 ]

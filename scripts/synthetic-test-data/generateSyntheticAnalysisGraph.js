@@ -2,6 +2,7 @@ import { LARGE_FULL_PROFILE_NAME, getProfileDefinition } from './profileDefiniti
 import { generateReferenceData } from './generateReferenceData.js';
 import { generateAssignmentDefinitions } from './generateAssignmentDefinitions.js';
 import { generateAssignments } from './generateAssignments.js';
+import { generateClassMetadata } from './generateClassMetadata.js';
 import { toTransportViews } from './toTransportViews.js';
 
 const SCHEMA_VERSION = 1;
@@ -63,6 +64,7 @@ export function generateSyntheticAnalysisGraph(profileName, options = {}) {
     referenceData,
     assignmentDefinitions,
   });
+  generateClassMetadata({ profileDefinition, classes, assignments });
   const transport = toTransportViews({
     referenceData,
     classes,

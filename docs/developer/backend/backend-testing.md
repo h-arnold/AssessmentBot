@@ -31,8 +31,9 @@ Backend tests load a committed profile view synchronously and immutably, then su
 
 > **Status: `Implemented`.** `tests/setupGlobals.js` installs the ABClass metadata domain and
 > its typed error global as part of the backend ABClass `metadata` contract-support cycle. The
-> remaining canonical model-input adapter, its `#synthetic-data/*` import map and the
-> canonical-fixture probes stay planned in the section below.
+> canonical model-input adapter and the generator integrity and real-domain-acceptance probes
+> are delivered. Later model/controller/API lifecycle probes and the equal-timestamp
+> canonical-clone boundary probe remain pending; see "Canonical metadata probes" below.
 
 - `tests/setupGlobals.js` installs the metadata domain and typed error globals after the
   existing `Validate` installation and before any ABClass-dependent module loads, including
@@ -42,40 +43,73 @@ Backend tests load a committed profile view synchronously and immutably, then su
 - In GAS runtime, the corresponding references stay inside runtime constructor/method bodies.
   Do not add production Node imports or change stable numeric prefixes to support tests.
 
-## Planned ABClass canonical model-input adaptation
+## ABClass canonical model-input adaptation
 
-> **Status: `Not implemented`.** Planned-only entry for the backend ABClass `metadata`
-> contract-support cycle. Reconcile against the implementation and remove the marker only as
-> the behaviour lands. Cross-reference: `docs/developer/testing/synthetic-test-data.md`
-> §Planned ABClass metadata generator capability.
+> **Status: `Implemented` (test-only adapter).**
+> `scripts/synthetic-test-data/toBackendModelInputs.js` is delivered for the backend ABClass
+> `metadata` contract-support cycle. It is test-only infrastructure: production `src/backend`
+> source never imports it, and it changes no production contract. The delivered Section 2
+> generator integrity and real-domain-acceptance probes, and the probes that genuinely remain
+> pending, are listed under "Canonical metadata probes" below. Cross-reference:
+> `docs/developer/testing/synthetic-test-data.md` §ABClass metadata generator capability.
 
-### `toBackendModelInputs.js` (`Not implemented`)
+### `toBackendModelInputs.js` (`Implemented`)
 
-Location (planned): `scripts/synthetic-test-data/toBackendModelInputs.js`.
+Location: `scripts/synthetic-test-data/toBackendModelInputs.js`.
 
 - Test-only adapter shared by backend model, controller and persistence tests. It adds no
   production dependency and must never be imported by GAS runtime source.
-- Export `loadBackendModelInputs(profileName)`; require an explicit profile name. Reuse
+- Export `loadBackendModelInputs(profileName)`; require an explicit profile name. Call
   `loadSyntheticAnalysisProfile(profileName, viewName)` once per view with view names
-  `classPartials`, `classesById`, `assignmentsByKey` and `editableDefinitions`. For the
+  `classPartials`, `classesById`, `assignmentsByKey`, `editableDefinitions` and
+  `assignmentDefinitionPartials`. The fifth view resolves the partial-only assignments'
+  definitions, which are absent from `assignmentsByKey` and `editableDefinitions`. For the
   default test selection call it with `'small'`; use `'medium'` for wider variants.
   Each loader result is deeply frozen, not a `transport` wrapper. `classPartials` is an
   array; `classesById` is keyed by `classId`. Clone before adaptation/mutation. Reserve
   `transport.*` notation for the in-memory generator graph only.
-- Resolve the matching definition for each assignment and adapt transport definition keys and
-  tasks into the actual backend model JSON requirements, preserving IDs, timestamps and
-  partial/full redaction/hydration semantics.
-- Outputs include ABClass roster JSON inputs (`classOwner`, `teachers`, `students`) derived
-  from the `classesById` view, suitable for real model restoration and owner/teacher-array
-  serialisation coverage. The adapter returns `{ classPartials, classesById, assignmentsByKey }`
-  as independent cloned model-input values; it resolves `editableDefinitions` internally.
-  Preserve legacy plain teacher entries; tests specifically exercising
-  `Teacher.toJSON()` explicitly materialise canonical teacher inputs with `Teacher.fromJSON()`
-  when composing their ABClass, rather than changing production array-hydration behaviour.
+- Return `{ classPartials, classesById, assignmentsByKey }` as three independently cloned
+  outputs, retaining every canonical class assignment. The adapter resolves
+  `editableDefinitions` and `assignmentDefinitionPartials` internally; each output owns its
+  mutable nodes, with no shared aliases between outputs, the frozen loader views, or a second
+  adaptation.
+- Class-embedded assignments keep the raw root `assignmentDefinitionKey` and stay redacted
+  partials. The adapter resolves each assignment's definition from `editableDefinitions` when
+  it is a full definition, and from `assignmentDefinitionPartials` when it is partial-only,
+  then attaches a cloned `assignmentDefinition` whose `tasks` are the lightweight
+  array-of-summaries shape (`taskId`, `taskTitle`, `taskWeighting`) that
+  `AssignmentDefinition.fromJSON()` accepts.
+- Standalone `assignmentsByKey` records already carry their full keyed-task definitions and
+  freshness fields. The adapter validates that each resolves to a full canonical definition
+  but leaves the embedded definition in place, so `Assignment.toJSON()` still treats the
+  record as full; it never replaces the full definition with an editable summary.
+- Genuine partial-only definitions stay partial and serialise through the partial path; the
+  adapter never promotes them to full definitions and never drops their assignments.
+- Inputs preserve canonical raw values: a raw `null` `assignmentWeighting` stays `null` in the
+  adapted inputs, and any restoration-time normalisation (for example to `1`) remains the
+  model constructor's responsibility.
+- Outputs include ABClass roster JSON (`classOwner`, `teachers`, `students`) derived from the
+  `classesById` view, suitable for real model restoration and owner/teacher-array
+  serialisation coverage. Keep legacy plain teacher entries: `ABClass.fromJSON()` copies
+  `teachers[]` through unchanged and does not hydrate its entries. Wrap restoration in
+  `withTemporaryGlobals({ Teacher: () => Teacher }, () => ABClass.fromJSON(...))` to install
+  the real global for `classOwner` restoration. When a test must exercise the shared
+  teacher-array `Teacher.toJSON()` serialiser, explicitly materialise the canonical plain
+  entries with `Teacher.fromJSON()` while composing that ABClass; the scoped global install
+  alone does not hydrate `teachers[]`. Do not add production teacher-array hydration.
 - Never feed a frontend assignment partial directly to `Assignment.fromJSON()`, and never
   mutate the frozen loader output in place. All adaptation happens on local clones.
+- The adapter suite's submission assertions live in the suite-local
+  `tests/synthetic-analysis/backendModelInputAssertions.js` helper
+  (`expectFullSubmissionPreserved`, `expectPartialSubmissionRedacted`,
+  `expectPartialSubmissionMatchesRedactedSource`). It is a tests-only utility imported
+  relatively by the suite, not a runtime or shared public helper.
 
 ### Test infrastructure reuse
+
+> **Status: `Implemented`.** The adapter and the import mappings below are delivered. The
+> dispatcher-integration and roster-mock bullets record contract-sensitive guidance for the
+> later controller/API sections.
 
 - The root `package.json` `imports` map provides `"#synthetic-data/*": "./scripts/synthetic-test-data/*"`.
   Backend `.test.js` suites use ESM named imports from
@@ -83,10 +117,12 @@ Location (planned): `scripts/synthetic-test-data/toBackendModelInputs.js`.
   not `require()` of these ESM script modules. Existing `#synthetic/*` continues to mean
   committed JSON views; there is no second loader or production import.
 - Shared test helpers are reachable as `#test-helpers/*` (`tests/helpers/*`).
-- New and existing suites use the `#backend/*` mapping for backend source. The import-path
-  depth rule (see `TypeScriptAndLintConfigHierarchy.md`) enforces the alias convention
-  repo-wide: relative imports may traverse at most one parent, and two or more parents must
-  use a configured alias. Nearby helpers reached as `../helpers/...` remain relative.
+- `#backend/*` is the supported, required convention for backend source in new and touched
+  suites. The import-path depth rule (see `TypeScriptAndLintConfigHierarchy.md`) enforces the
+  alias convention repo-wide: relative imports may traverse at most one parent, and two or
+  more parents must use a configured alias. Legacy relative paths still exist in untouched
+  suites (for example non-literal `require.resolve('../../src/backend/...')` module paths) and
+  must not be copied into new work. Nearby helpers reached as `../helpers/...` remain relative.
 - Reuse `globalMockManager` and `apiHandlerTestUtils`, plus local external-service mocks, for
   the wider class graph. Do not invent realistic class graphs in tests; derive them from
   canonical data.
@@ -100,9 +136,34 @@ Location (planned): `scripts/synthetic-test-data/toBackendModelInputs.js`.
   results: `_id`-only matched/no-op patches return a match; query-filter no-op results
   do not. Include the facade `abclassManager.saveClass`, `loadClass` and `initialise`
   suites when changing extracted save checks or roster persistence.
+- The API-handler test facade remains at `tests/api/apiHandler/shared.js`; dispatcher
+  fixtures, VM helpers and auth lifecycle live in sibling `sharedFixtures.js`,
+  `vmHelpers.js` and `authTestContext.js`. Reference-data controller cases stay in
+  responsibility-focused suites: `referenceDataController.test.js` (cohorts),
+  `referenceDataController.yearGroups.test.js`,
+  `referenceDataController.assignmentTopics.test.js` and
+  `referenceDataController.transportResponses.test.js`. Their isolated setup and
+  restoration helpers are in `referenceDataTestSupport.js`. Run both groups with
+  `npm run test:backend -- 'tests/controllers/referenceDataController*.test.js' tests/api/apiHandler`.
 
-### Boundary and integrity probes (`Not implemented`)
+### Canonical metadata probes
 
+**Generator integrity and domain acceptance (`Implemented`).** These Section 2 probes are delivered:
+
+- `tests/synthetic-analysis/syntheticClassMetadataValidation.test.ts` rejects isolated raw
+  corruptions inside the compact graphs through the generator-owned `validateClassMetadata.js`
+  helper, and checks a metadata corruption through the public
+  `validateSyntheticAnalysisGraph()` boundary.
+- `tests/synthetic-analysis/syntheticClassMetadataDomainAcceptance.test.ts` validates every
+  raw persistence, `classPartials` and `classesById` snapshot through the real
+  `ABClassMetadata.validateMetadata()` domain owner, pinning each profile's non-null and
+  marker variants.
+
+**Later lifecycle and boundary probes (`Not implemented`).**
+
+- Model, controller and API lifecycle probes (construction, restoration, full/partial
+  persistence, typed request-error adaptation) remain pending until their sections deliver the
+  behaviour.
 - Invalid, legacy-missing and boundary cases remain local clones of canonical data rather
   than generator changes.
 - Equal-timestamp ordering acceptance is a local boundary probe cloned from canonical
