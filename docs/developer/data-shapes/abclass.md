@@ -4,6 +4,7 @@ Root domain object for all data about a single Google Classroom course.
 Contains class metadata, students, teachers, and partial assignment summaries.
 
 Backend model: `src/backend/Models/ABClass.js`
+Metadata domain owner: `src/backend/Models/ABClassMetadata.js` (delivered; not yet wired into ABClass storage or transport)
 Collections: `abclass` (main document, keyed by `classId`), `abclass_partials` (registry, keyed by `classId`)
 API handlers: `src/backend/z_Api/abclass/abclassRead.js`, `src/backend/z_Api/abclass/abclassMutations.js`
 Response mapper: `src/backend/y_controllers/ABClassController/ABClassResponseMapper.js`
@@ -433,6 +434,20 @@ Teacher model:              src/backend/Models/Teacher.js
 Student model:              src/backend/Models/Student.js
   └── Student.toJSON()          — student shape
 
+Metadata domain owner:      src/backend/Models/ABClassMetadata.js   (delivered; NOT yet carried by ABClass)
+  └── new ABClassMetadata()/toJSON()  — constructor-owned null default + defensive plain-snapshot boundary
+  └── validateMetadata()              — top-level shape, dense 0–3 array, unique IDs, newest-first order
+  └── validateClassAverages()         — five-field class summary (four scores + updatedAt)
+  └── validateRecentAssignment()      — complete recent entry
+  └── validateAverageScores()         — four metric fields
+  └── validateAverageScore()          — single 0–5 score or exact N/E/excluded marker
+
+Metadata error type:        src/backend/Utils/ErrorTypes/ABClassMetadataValidationError.js
+  └── fieldPath + default inputSource 'model' (extends Error, not ApiValidationError)
+
+Canonical UTC predicate:    src/backend/Utils/Validate.js
+  └── Validate.isCanonicalUtcDateTime()  — exact YYYY-MM-DDTHH:mm:ss.sssZ real-calendar predicate
+
 Controller:                 src/backend/y_controllers/ABClassController/
   ├── index.js                          — ABClassController facade
   ├── ABClassResponseMapper.js          — _toReadView(), _normaliseClassPartial(), _buildClassSummary()
@@ -463,16 +478,31 @@ Frontend:
 
 ---
 
-## Planned target contract — ABClass `metadata` (`Not implemented`)
+## Target contract — ABClass `metadata` (domain owner delivered; persistence/transport `Not implemented`)
 
-> **Status: `Not implemented`.** This section records the reviewed target contract from
-> `docs/plans/SPEC.md` before implementation. None of it exists in the codebase yet:
-> `src/backend/Models/ABClassMetadata.js` and
-> `src/backend/Utils/ErrorTypes/ABClassMetadataValidationError.js` do not exist,
-> `Validate.isCanonicalUtcDateTime()` does not exist, and no `metadata` field is persisted
-> or transported. Everything above this point documents the currently implemented contract
-> and is preserved unchanged until delivery reconciles it. This is a planning-only record;
-> it makes no claim that the behaviour is live.
+> **Status: partially delivered.** Section 1 has delivered the metadata **domain validation
+> capability only**:
+>
+> - `src/backend/Models/ABClassMetadata.js` — the dedicated metadata-domain owner, holding the
+>   five static validation routines, the constructor/`toJSON()` snapshot boundary and its
+>   defensive-copy helpers.
+> - `src/backend/Utils/ErrorTypes/ABClassMetadataValidationError.js` — the typed domain error
+>   carrying `fieldPath` and a default non-request `inputSource` (`'model'`).
+> - `Validate.isCanonicalUtcDateTime()` in `src/backend/Utils/Validate.js` — the exact
+>   canonical-UTC timestamp predicate.
+>
+> These are exercised directly by focused backend tests and are installed in the
+> Node/`tests/setupGlobals.js` bootstrap after `Validate` and before any ABClass-dependent
+> module loads.
+>
+> **Not integrated yet.** No `metadata` field is persisted or transported. `ABClass.js` does
+> not store, serialise or restore metadata, `ABClass.setMetadata()` does not exist, and no
+> controller, response mapper, API handler, fixture or frontend code uses the domain owner.
+> Every remaining `Not implemented` marker below therefore still stands for the model,
+> persistence, transport, fixture and companion-cleanup work: the domain **capability** is
+> real, but the **end-to-end contract is not live**. Everything above this point documents the
+> currently implemented ABClass contract and is preserved unchanged until delivery reconciles
+> it.
 
 The planned change adds one compact assessment-summary field, `metadata`, to both the full
 ABClass document and the `abclass_partials` registry. It is a **supplied snapshot**: the
@@ -483,11 +513,14 @@ delivery must recast those as class-configuration/reference fields so they are n
 with this literal `metadata` property, and must distinguish this class-level assessment
 summary from the unrelated task-artifact `metadata`.
 
-### Planned sub-entity: ABClassMetadata (`Not implemented`)
+### Sub-entity: ABClassMetadata — delivered domain owner, not yet carried by models/stores
 
-Backend model (planned): `src/backend/Models/ABClassMetadata.js` (dedicated metadata-domain
-owner; does **not** exist yet and is **not** to be added to `Models/ABClass.js` or the
-generic `Validate`).
+Backend model: `src/backend/Models/ABClassMetadata.js` (the dedicated metadata-domain owner,
+delivered in Section 1; deliberately **not** part of `Models/ABClass.js` or the generic
+`Validate`). The shape rules below are enforced by that owner for direct domain use. They are
+**not yet carried** by `ABClass.toJSON()`/`toPartialJSON()`, the response mappers or any
+transport response, so an `ABClass` document or partial row does not contain a `metadata`
+property today.
 
 Target notation (contract notation only, not a backend TypeScript requirement):
 
@@ -516,28 +549,33 @@ type ABClassMetadata = {
 } | null;
 ```
 
-| Field                                                  | Type                 | Planned shape rules                                                                                                        | Notes                                                                                                                                           |
-| ------------------------------------------------------ | -------------------- | -------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| `metadata`                                             | `object\|null`       | Optional on write; nullable as a whole on read                                                                             | Constructor-owned null normalisation; presence of an **own** `undefined` value is invalid, only true omission triggers preserve/new-class-null. |
-| `metadata.classAverages`                               | `object`             | Required and complete when `metadata` is non-null; never `null`                                                            | Five own fields: four scores plus `updatedAt`.                                                                                                  |
-| `metadata.classAverages.completeness`                  | `AverageScore`       | Finite number in the inclusive range 0–5, or exactly `'N'`, `'E'`, `'excluded'`                                            | Independent field; no cross-metric inference.                                                                                                   |
-| `metadata.classAverages.accuracy`                      | `AverageScore`       | As above                                                                                                                   |                                                                                                                                                 |
-| `metadata.classAverages.spag`                          | `AverageScore`       | As above                                                                                                                   |                                                                                                                                                 |
-| `metadata.classAverages.overall`                       | `AverageScore`       | As above                                                                                                                   | Retains existing weighted-scoring meaning; **not** a separate arithmetic mean.                                                                  |
-| `metadata.classAverages.updatedAt`                     | `string`             | Exact canonical UTC datetime (see Planned validation); never `null`                                                        | Records when the supplied class summary was updated.                                                                                            |
-| `metadata.recentAssignments`                           | `RecentAssignment[]` | Dense array of zero to three complete entries; sparse slots, `undefined` entries and incomplete entries are invalid        | Ordered by non-increasing `updatedAt`; equal timestamps keep caller order.                                                                      |
-| `metadata.recentAssignments[].assignmentId`            | `string`             | Non-empty, already-trimmed, unique within the list; opaque (no numeric coercion, no UUID-only or fixed-length restriction) | Identifies a distinct Google Classroom assignment.                                                                                              |
-| `metadata.recentAssignments[].assignmentDefinitionKey` | `string`             | Non-empty, already-trimmed; need **not** be unique within the list (definitions are reusable)                              |                                                                                                                                                 |
-| `metadata.recentAssignments[].averages`                | `AverageScores`      | Required and complete; the four score fields exactly, with no nesting and no timestamp                                     | A nested partial object is invalid, not a patch.                                                                                                |
-| `metadata.recentAssignments[].updatedAt`               | `string`             | Exact canonical UTC datetime; supplied as the corresponding Assignment's existing `updatedAt`, not independently generated | Not compared by the API against the stored Assignment timestamp.                                                                                |
+| Field                                                  | Type                 | Shape rules (enforced by `ABClassMetadata`)                                                                                | Notes                                                                                                                                                                                                                                                                      |
+| ------------------------------------------------------ | -------------------- | -------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `metadata`                                             | `object\|null`       | Optional on write; nullable as a whole on read                                                                             | Constructor-owned null normalisation via `new ABClassMetadata()`; an **own** `undefined` is invalid (only true omission triggers preserve/new-class-null). `new ABClassMetadata(value)` validates/copies; `toJSON()` returns an independently owned plain snapshot/`null`. |
+| `metadata.classAverages`                               | `object`             | Required and complete when `metadata` is non-null; never `null`                                                            | Five own fields: four scores plus `updatedAt`.                                                                                                                                                                                                                             |
+| `metadata.classAverages.completeness`                  | `AverageScore`       | Finite number in the inclusive range 0–5, or exactly `'N'`, `'E'`, `'excluded'`                                            | Independent field; no cross-metric inference.                                                                                                                                                                                                                              |
+| `metadata.classAverages.accuracy`                      | `AverageScore`       | As above                                                                                                                   |                                                                                                                                                                                                                                                                            |
+| `metadata.classAverages.spag`                          | `AverageScore`       | As above                                                                                                                   |                                                                                                                                                                                                                                                                            |
+| `metadata.classAverages.overall`                       | `AverageScore`       | As above                                                                                                                   | Retains existing weighted-scoring meaning; **not** a separate arithmetic mean.                                                                                                                                                                                             |
+| `metadata.classAverages.updatedAt`                     | `string`             | Exact canonical UTC datetime (see Planned validation); never `null`                                                        | Records when the supplied class summary was updated.                                                                                                                                                                                                                       |
+| `metadata.recentAssignments`                           | `RecentAssignment[]` | Dense array of zero to three complete entries; sparse slots, `undefined` entries and incomplete entries are invalid        | Ordered by non-increasing `updatedAt`; equal timestamps keep caller order.                                                                                                                                                                                                 |
+| `metadata.recentAssignments[].assignmentId`            | `string`             | Non-empty, already-trimmed, unique within the list; opaque (no numeric coercion, no UUID-only or fixed-length restriction) | Identifies a distinct Google Classroom assignment.                                                                                                                                                                                                                         |
+| `metadata.recentAssignments[].assignmentDefinitionKey` | `string`             | Non-empty, already-trimmed; need **not** be unique within the list (definitions are reusable)                              |                                                                                                                                                                                                                                                                            |
+| `metadata.recentAssignments[].averages`                | `AverageScores`      | Required and complete; the four score fields exactly, with no nesting and no timestamp                                     | A nested partial object is invalid, not a patch.                                                                                                                                                                                                                           |
+| `metadata.recentAssignments[].updatedAt`               | `string`             | Exact canonical UTC datetime; supplied as the corresponding Assignment's existing `updatedAt`, not independently generated | Not compared by the API against the stored Assignment timestamp.                                                                                                                                                                                                           |
 
 `excluded` is stored as the literal string `'excluded'`. This is a compact supplied-snapshot
 value and is **not** the frontend `MetricResult` union (which represents exclusion as
 `state: 'excluded'` with `value: null`); future consumers must map explicitly between the two
-representations. The marker values `N`, `E` and `excluded` stay distinct and are never
-converted to zero.
+representations. The marker values `N`, `E` and `excluded` are exact, case-sensitive strings
+that stay distinct and are never converted to zero (any other spelling, including lower case,
+is rejected).
 
 ### Planned persistence and lifecycle (`Not implemented`)
+
+> **`Not implemented`:** this is ABClass model/store integration (Section 3). No store carries a
+> `metadata` property yet; the notes below describe the intended contract only, not delivered
+> behaviour.
 
 Both stores carry identical metadata values after a successful metadata-bearing write:
 
@@ -631,6 +669,10 @@ fields it owns in each store:
 
 ### Planned transport (`Not implemented`)
 
+> **`Not implemented`:** no endpoint accepts or returns `metadata` yet. The domain owner is not
+> referenced from the response mappers or API handlers, and the current frontend Zod schemas
+> still strip the field. The notes below describe the intended contract only.
+
 Metadata contains timestamp **strings** only, so it requires no additional
 `DateUtils.deepConvertDates()` conversion in the partial-list or mutation-summary responses.
 The existing full-read date-conversion behaviour for the other ABClass fields is preserved.
@@ -687,11 +729,16 @@ The existing full-read date-conversion behaviour for the other ABClass fields is
   nullable as a whole. Legacy absence is normalised to explicit `null`; no other field in the
   metadata shape may be `null`.
 
-### Planned validation (`Not implemented`)
+### Planned validation — domain owner delivered; model/transport integration `Not implemented`
+
+> **Status: partially delivered.** The five routines below exist today as static methods on
+> `src/backend/Models/ABClassMetadata.js` and are exercised directly by the focused
+> `tests/models/abclassMetadata*.test.js` suites. The ownership rules that concern the ABClass
+> model, controller request gate or transport boundary remain `Not implemented`.
 
 One shared domain implementation owns the metadata rules:
 
-| Routine                                    | Required behaviour (`Not implemented`)                                                                                       |
+| Routine                                    | Delivered behaviour (static on `ABClassMetadata`)                                                                            |
 | ------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------- |
 | `validateAverageScore(value, context)`     | Enforce the exact finite 0–5 / `'N'` / `'E'` / `'excluded'` union.                                                           |
 | `validateAverageScores(scores, context)`   | Require all four own metric fields and validate each; reject unexpected fields.                                              |
@@ -701,20 +748,27 @@ One shared domain implementation owns the metadata rules:
 
 Ownership and strictness rules:
 
-- **Owner (planned):** `src/backend/Models/ABClassMetadata.js`, shared by the ABClass model,
-  controllers and response mappers. Keep these five routines out of the existing ABClass
-  model and out of the generic `Validate`; do not duplicate the domain implementation in
-  transport helpers.
+- **Owner:** `src/backend/Models/ABClassMetadata.js` (delivered), intended to be shared by the
+  ABClass model, controllers and response mappers. The five routines are kept out of the
+  existing ABClass model and out of the generic `Validate`; the domain implementation must not
+  be duplicated in transport helpers.
 - `validateClassAverages` checks its own exact five-field record, passes an extracted
   four-field score record to `validateAverageScores`, and validates its timestamp separately.
 - All metadata routines reuse one local domain record/required-field/allowed-key check rather
   than duplicating those checks per shape. Reuse `Validate` primitives where suitable.
-- Planned boundary API: `new ABClassMetadata()` owns the absent-value null default;
+- **Delivered boundary API:** `new ABClassMetadata()` owns the absent-value `null` default;
   `new ABClassMetadata(value)` validates/copies explicit input and rejects explicit
-  undefined. `toJSON()` revalidates and returns a copied plain snapshot/null; the five
-  named validators are static routines. `ABClass.metadata` stores the plain value, with
-  `ABClass.setMetadata(value)` as the single explicit replacement entry point. Other
-  boundaries distinguish actual own-property absence before using that constructor API.
+  `undefined`. `toJSON()` revalidates its owned value and returns an independently owned plain
+  snapshot/`null`; the five named validators are static routines. Internal checks are
+  centralised in the private `_checkRecord`, `_validateScoreFields`, `_validateTimestamp` and
+  `_copyMetadata` helpers.
+- **`Not implemented`:** `ABClass.metadata` storage and `ABClass.setMetadata(value)` as the
+  single explicit replacement entry point, plus model/restoration/mapper boundaries routing
+  absent metadata through this constructor. Those boundaries must distinguish actual
+  own-property absence before using the constructor API.
+
+The following strictness rules are enforced by the delivered domain owner:
+
 - Every listed property of a non-null metadata object is required and must be an **own**
   property. Only the top-level `metadata` value may be `null`; no metric, `classAverages`,
   entry, `averages`, identifier or timestamp may be `null`.
@@ -735,36 +789,41 @@ Ownership and strictness rules:
   identifiers are non-empty strings already trimmed and opaque. There is no enforced
   relationship between the class-summary timestamp and the entry timestamps.
 
-#### Planned canonical timestamp predicate (`Not implemented`)
+#### Canonical timestamp predicate — delivered (`Validate.isCanonicalUtcDateTime`)
 
-- **Owner (planned):** the new generic predicate `isCanonicalUtcDateTime(value)` in
-  `src/backend/Utils/Validate.js`, reused from the metadata-domain validator.
+- **Owner (delivered):** the generic predicate `isCanonicalUtcDateTime(value)` in
+  `src/backend/Utils/Validate.js`, reused by the metadata-domain validator through its private
+  `ABClassMetadata._validateTimestamp(value, context)` helper.
 - **Exact contract:** a metadata timestamp must be an exact canonical UTC ISO datetime of
-  the form `YYYY-MM-DDTHH:mm:ss.sssZ`, with a real calendar date and valid time components.
-  Live `Date` objects, date-only strings, timezone offsets, non-canonical precision and
-  counter-suffixed submission timestamps are rejected.
+  the form `YYYY-MM-DDTHH:mm:ss.sssZ`, with a real calendar date (Gregorian leap-year rules,
+  including the century/non-quadricentennial exceptions, are enforced) and valid time
+  components. Live `Date` objects, date-only strings, timezone offsets, non-canonical precision
+  and counter-suffixed submission timestamps are rejected.
 - **Distinction from the existing helper:** `isIsoDateTimeString_` in
   `src/backend/z_Api/assignmentDefinition/assignmentDefinitionPartialRowValidation.js`
   is **not** the target contract. It accepts timezone offsets and is owned by the later
   transport layer, which model-domain validation must not depend on. Leave that existing
   helper and its broader contract unchanged; record this distinction and cross-reference the
-  new predicate in the planned `api-layer.md` helper entry.
+  new predicate in the `api-layer.md` helper entry.
 
-#### Planned provenance and error rules (`Not implemented`)
+#### Provenance and error rules — error type delivered; request tagging/transport adaptation `Not implemented`
 
-- Supplied request metadata is fully validated **before the first mutation side effect**,
-  including roster refresh or any database write.
-- Concretely, `ABClassValidation._validateRequestMetadata(parameters)` invokes the shared
-  domain validator for explicitly supplied metadata at the start of each controller
-  mutation, before any record read, roster refresh or write.
-- The domain validator reports failures through `ABClassMetadataValidationError`, owned by
-  `src/backend/Utils/ErrorTypes/ABClassMetadataValidationError.js`, carrying a field path and
-  a default non-request provenance.
-- Only failures of that controller request-validation invocation are tagged with
-  `inputSource: 'request'`. Model restoration, stored-partial validation, serialisation and
-  projection do **not** acquire that tag.
-- Mutation transport helpers translate only this error type, with request provenance, into
-  `ApiValidationError`; all other exceptions propagate unchanged.
+- **Delivered:** the domain validator reports failures through
+  `ABClassMetadataValidationError`
+  (`src/backend/Utils/ErrorTypes/ABClassMetadataValidationError.js`), which carries a
+  `fieldPath`, appends it to the message as `"<message> (<fieldPath>)"`, and defaults to
+  non-request provenance via `inputSource = 'model'`. It extends `Error` and does **not**
+  inherit from `ApiValidationError` (and never throws one). Model restoration, stored-partial
+  validation, serialisation and projection therefore never acquire the request tag; only an
+  explicit request-time tagging step would set `inputSource: 'request'`.
+- **`Not implemented`:** supplied request metadata is fully validated **before the first
+  mutation side effect**, including roster refresh or any database write.
+- **`Not implemented`:** `ABClassValidation._validateRequestMetadata(parameters)` invokes the
+  shared domain validator for explicitly supplied metadata at the start of each controller
+  mutation, before any record read, roster refresh or write, and is the only caller that tags
+  failures with `inputSource: 'request'`.
+- **`Not implemented`:** mutation transport helpers translate only this error type, with request
+  provenance, into `ApiValidationError`; all other exceptions propagate unchanged.
 - Invalid caller-supplied metadata returns the existing `INVALID_REQUEST` envelope, with an
   actionable field path included in `error.message`. No new `fieldName`, `details` payload or
   other envelope-shape change is authorised. Invalid persisted/model metadata is an internal
@@ -775,7 +834,12 @@ Ownership and strictness rules:
   and the transport layer never evaluates nested domain rules; no exception to the canonical
   validation-ownership policy or dispatcher change is needed.
 
-#### Planned validation scope limits (`Not implemented`)
+#### Validation scope limits — domain delivered; model/transport boundaries `Not implemented`
+
+> **Status: partially delivered.** The domain owner enforces the first three limits below (no
+> repair/reorder/stamping/fetching, structural-only validation, and defensive copying of its
+> owned snapshot). The model-, store- and mapper-level boundaries in the final bullets remain
+> `Not implemented`.
 
 - Validation must not repair metadata, silently remove entries, reorder it, calculate scores,
   stamp dates or fetch referenced entities.
@@ -813,12 +877,20 @@ Ownership and strictness rules:
 - No transaction emulation, rollback, automatic retry or concurrent-write recovery.
 - No layout specification: no frontend surface or workflow changes.
 
-### Planned file index additions (`Not implemented`)
+### File index additions — delivered domain primitives vs planned integration
+
+Delivered in Section 1 (domain validation capability only; not yet wired into ABClass storage
+or transport):
 
 ```
-Persistence model (planned):   src/backend/Models/ABClassMetadata.js   — metadata-domain owner (five validators, constructor-owned null default)
-Error type (planned):          src/backend/Utils/ErrorTypes/ABClassMetadataValidationError.js — field path + default non-request provenance
-Utility (planned):             src/backend/Utils/Validate.js            — add isCanonicalUtcDateTime()
+Metadata domain owner (delivered): src/backend/Models/ABClassMetadata.js       — five static validators, constructor/`toJSON()` snapshot boundary, _checkRecord/_copyMetadata helpers, constructor-owned null default
+Error type (delivered):            src/backend/Utils/ErrorTypes/ABClassMetadataValidationError.js — fieldPath + default inputSource 'model'; extends Error, not ApiValidationError
+Utility (delivered):               src/backend/Utils/Validate.js               — isCanonicalUtcDateTime()
+```
+
+Still `Not implemented` (model, controller and transport integration):
+
+```
 Controller request gate (planned): src/backend/y_controllers/ABClassController/ABClassValidation.js — _validateRequestMetadata(parameters)
 Mutation orchestration (planned): src/backend/y_controllers/ABClassController/ABClassMutationOps.js — injected upsert/update/delete owner, preserving facade signatures
 ```

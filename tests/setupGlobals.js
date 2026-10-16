@@ -116,6 +116,9 @@ g.ScriptAppManager = class ScriptAppManager {
 };
 
 g.Validate = require('../src/backend/Utils/Validate.js').Validate;
+g.ABClassMetadataValidationError =
+  require('../src/backend/Utils/ErrorTypes/ABClassMetadataValidationError.js').ABClassMetadataValidationError;
+g.ABClassMetadata = require('../src/backend/Models/ABClassMetadata.js').ABClassMetadata;
 g.ArrayUtils = require('../src/backend/Utils/00_ArrayUtils.js');
 
 g.DateUtils = require('../src/backend/Utils/DateUtils.js');

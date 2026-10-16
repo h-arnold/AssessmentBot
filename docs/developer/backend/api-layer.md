@@ -75,50 +75,63 @@ against the current specification first.
 
 ## Planned ABClass metadata helpers
 
-> **Status: `Not implemented`.** This section records the reviewed helper decisions for the
-> backend ABClass `metadata` contract-support cycle. Cross-references:
+> **Status: partially implemented.** The metadata domain owner, its typed domain error and the
+> canonical UTC predicate are implemented as backend-domain/utility helpers. The controller
+> request gate, transport adaptation, response-mapper reuse, controller decomposition,
+> persistence extension and companion deletion entries remain `Not implemented`, and no
+> `z_Api` endpoint currently accepts or emits `metadata`. Cross-references:
 > `docs/developer/data-shapes/abclass.md` §Planned validation and
 > `docs/developer/testing/synthetic-test-data.md` §Planned ABClass metadata generator
-> capability. Reconcile each entry and remove its `Not implemented` marker only as the
-> corresponding behaviour lands.
+> capability. Reconcile each remaining entry and remove its `Not implemented` marker only as
+> the corresponding behaviour lands.
 
-### Metadata domain model — `Models/ABClassMetadata.js` (`Not implemented`)
+### Metadata domain model — `Models/ABClassMetadata.js` (`Implemented`)
 
-- New dedicated metadata-domain owner holding the five named validation routines:
+- Dedicated metadata-domain owner holding the five named validation routines:
   `validateAverageScore`, `validateAverageScores`, `validateClassAverages`,
-  `validateRecentAssignment` and `validateMetadata`. Keep them out of `Models/ABClass.js` and
-  generic `Validate`; do not duplicate the domain implementation in transport helpers.
-- The constructor owns the nullable field's `null` default for absence. All five routines
-  share one local exact-record/required-field/allowed-fields check rather than repeating it
-  per shape. `validateClassAverages` validates its own exact five-field record, passes an
-  extracted four-field score record to `validateAverageScores`, and validates its timestamp
-  separately.
-- Present metadata is validated, not defaulted or accepted unchecked; malformed supplied
-  non-null values never become `null` silently. Defensive copies at ownership boundaries
-  prevent shared mutable aliases between model and caller/returned objects.
-- Boundary API: `new ABClassMetadata()` owns absent-value null normalisation;
-  `new ABClassMetadata(value)` validates/copies an explicit value and rejects explicit
-  undefined. Its `toJSON()` revalidates and returns a copied plain snapshot/null. The five
-  named validators are static routines. `ABClass.metadata` holds the plain value, and
-  `ABClass.setMetadata(value)` is the single explicit replacement entry point. Model and
-  mapper boundaries distinguish actual own-property absence before using this API.
+  `validateRecentAssignment` and `validateMetadata`. They live outside `Models/ABClass.js` and
+  generic `Validate`; transport helpers must not duplicate the domain implementation.
+- The constructor owns the nullable field's `null` default for absence: zero arguments produce
+  `null`, while an explicitly supplied value (including explicit `undefined`) is validated and
+  then defensively copied. `toJSON()` revalidates the owned value and returns an independent
+  plain snapshot or `null`, so no shared mutable alias crosses the ownership boundary.
+  Malformed supplied non-null values never become `null` silently.
+- The five named validators are static routines. All record-shaped routines share one local
+  exact-record/required-own-field/allowed-key check; `validateAverageScore` validates a single
+  scalar score and therefore needs no record check. `validateClassAverages` validates its own
+  exact five-field record, passes an extracted four-field score record to
+  `validateAverageScores`, and validates its timestamp separately.
+- Timestamp validation delegates to the canonical UTC predicate below. `recentAssignments`
+  must hold zero to three dense entries with unique `assignmentId` values ordered by
+  non-increasing `updatedAt`.
+- Runtime references to `Validate` and `ABClassMetadataValidationError` resolve only inside
+  method bodies, matching the concatenated GAS load model; the file performs no top-level
+  dependency evaluation and no Node module wiring beyond its guarded `module.exports` block.
+- Deferred: `ABClass.metadata` plain-value storage and `ABClass.setMetadata(value)` as the
+  single explicit replacement entry point remain `Not implemented`. The model, mapper,
+  controller and persistence boundaries still neither accept nor emit `metadata`, and each
+  must distinguish actual own-property absence before using this constructor API.
 
-### Metadata error type — `Utils/ErrorTypes/ABClassMetadataValidationError.js` (`Not implemented`)
+### Metadata error type — `Utils/ErrorTypes/ABClassMetadataValidationError.js` (`Implemented`)
 
-- New error type carrying a field path and a default non-request provenance.
+- Typed domain error extending `Error` (not `ApiValidationError`), carrying `fieldPath` and
+  defaulting to the non-request provenance `inputSource: 'model'`. The rendered message appends
+  the field path, so callers receive an actionable location.
 - Only the controller's request-validation invocation tags failures with
-  `inputSource: 'request'`. Model restoration, stored-partial validation, serialisation and
-  projection never acquire that tag; the domain layer never throws transport errors.
+  `inputSource: 'request'`. That request-tagging invocation remains `Not implemented`. Model
+  restoration, stored-partial validation, serialisation and projection never acquire the
+  request tag; the domain layer never throws transport errors.
 
-### Canonical-UTC predicate — `Utils/Validate.js` (`Not implemented`)
+### Canonical-UTC predicate — `Utils/Validate.js` (`Implemented`)
 
-- Extend `Validate` with the generic predicate `isCanonicalUtcDateTime(value)`, enforcing the
-  exact canonical UTC real-calendar form `YYYY-MM-DDTHH:mm:ss.sssZ`. The metadata domain
-  validator reuses it. See `docs/developer/data-shapes/abclass.md` §Planned validation.
+- `Validate.isCanonicalUtcDateTime(value)` enforces the exact canonical UTC real-calendar form
+  `YYYY-MM-DDTHH:mm:ss.sssZ`, rejecting live `Date` objects, date-only strings, timezone
+  offsets and non-canonical precision. The metadata domain validator reuses it. See
+  `docs/developer/data-shapes/abclass.md` §Planned validation.
 - Distinguish it from the unchanged, broader `isIsoDateTimeString_` in
   `z_Api/assignmentDefinition/assignmentDefinitionPartialRowValidation.js`, which accepts
-  timezone offsets and is owned by the later transport layer. Model-domain validation must
-  not depend on that helper; leave it and its broader contract unchanged.
+  timezone offsets and is owned by the transport layer. Model-domain validation must not depend
+  on that helper; leave it and its broader contract unchanged.
 
 ### Controller request gate and transport adaptation (`Not implemented`)
 

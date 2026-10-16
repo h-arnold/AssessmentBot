@@ -27,6 +27,21 @@ This policy is intentionally broader than the analysis graph and applies automat
 
 Backend tests load a committed profile view synchronously and immutably, then supply the generated transport view through the dispatcher seams described below. For the corpus topology, profile/view selection, commands, failure behaviour, and the full exception and extension path, see the canonical guide: [Synthetic Test Data](../testing/synthetic-test-data.md).
 
+## Backend metadata bootstrap installation
+
+> **Status: `Implemented`.** `tests/setupGlobals.js` installs the ABClass metadata domain and
+> its typed error global as part of the backend ABClass `metadata` contract-support cycle. The
+> remaining canonical model-input adapter, its `#synthetic-data/*` import map and the
+> canonical-fixture probes stay planned in the section below.
+
+- `tests/setupGlobals.js` installs the metadata domain and typed error globals after the
+  existing `Validate` installation and before any ABClass-dependent module loads, including
+  suites that directly `require()` `Models/ABClass.js`: `ABClassMetadataValidationError` from
+  `src/backend/Utils/ErrorTypes/ABClassMetadataValidationError.js`, then `ABClassMetadata`
+  from `src/backend/Models/ABClassMetadata.js`.
+- In GAS runtime, the corresponding references stay inside runtime constructor/method bodies.
+  Do not add production Node imports or change stable numeric prefixes to support tests.
+
 ## Planned ABClass canonical model-input adaptation
 
 > **Status: `Not implemented`.** Planned-only entry for the backend ABClass `metadata`
@@ -87,11 +102,6 @@ Location (planned): `scripts/synthetic-test-data/toBackendModelInputs.js`.
   results: `_id`-only matched/no-op patches return a match; query-filter no-op results
   do not. Include the facade `abclassManager.saveClass`, `loadClass` and `initialise`
   suites when changing extracted save checks or roster persistence.
-- Install the new metadata model and metadata error globals in `tests/setupGlobals.js` after
-  the existing `Validate` installation and before any ABClass-dependent module loads,
-  including suites that directly `require()` `Models/ABClass.js`.
-- In GAS runtime, the corresponding references stay inside runtime constructor/method bodies.
-  Do not add production Node imports or change stable numeric prefixes to support tests.
 
 ### Boundary and integrity probes (`Not implemented`)
 
