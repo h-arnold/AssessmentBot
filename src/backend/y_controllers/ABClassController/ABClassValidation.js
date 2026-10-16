@@ -6,6 +6,38 @@
  */
 class ABClassValidation {
   /**
+   * Validates the legacy saveClass input contract shared by the facade and mutation owner.
+   * @param {ABClass|Object} abClass - Model or plain object to persist.
+   * @returns {void}
+   * @throws {TypeError} If the input is incomplete or has an unsafe classId.
+   */
+  _validateClassForSave(abClass) {
+    if (!abClass || typeof abClass !== 'object') {
+      throw new TypeError(
+        'saveClass: expected an ABClass instance or plain object with classId and toPartialJSON()'
+      );
+    }
+
+    if (!Object.hasOwn(abClass, 'classId')) {
+      throw new TypeError('saveClass: missing required classId property on abClass argument');
+    }
+
+    if (typeof abClass.classId !== 'string' || abClass.classId.trim().length === 0) {
+      throw new TypeError('saveClass: expected abClass.classId to be a non-empty string');
+    }
+
+    if (abClass.classId.includes('..') || abClass.classId.includes('/')) {
+      throw new TypeError('saveClass: invalid classId format');
+    }
+
+    if (typeof abClass.toPartialJSON !== 'function') {
+      throw new TypeError(
+        'saveClass: expected abClass.toPartialJSON() to be a function for partial persistence'
+      );
+    }
+  }
+
+  /**
    * Validates that a classId is a non-empty string.
    * @param {*} classId - The class ID to validate.
    * @param {string} methodName - The calling method name for error reporting.

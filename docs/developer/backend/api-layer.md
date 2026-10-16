@@ -77,9 +77,10 @@ against the current specification first.
 
 > **Status: partially implemented.** The metadata domain owner, its typed domain error, the
 > canonical UTC predicate and ABClass model construction/restoration/serialization support are
+> implemented. The ABClass mutation-owner decomposition and shared save validation are also
 > implemented. The controller request gate, transport adaptation, response-mapper reuse,
-> controller decomposition, persistence extension and companion deletion entries remain
-> `Not implemented`; no `z_Api` endpoint currently accepts or emits `metadata`. Cross-references:
+> persistence extension and companion deletion entries remain `Not implemented`; no `z_Api`
+> endpoint currently accepts or emits `metadata`. Cross-references:
 > `docs/developer/data-shapes/abclass.md` §Planned validation and
 > `docs/developer/testing/synthetic-test-data.md` §ABClass metadata generator
 > capability. Reconcile each remaining entry and remove its `Not implemented` marker only as
@@ -160,29 +161,22 @@ against the current specification first.
 - Extend `_toReadView()` with the validated/copied metadata field while retaining its
   assignment projection/redaction and other full-read behaviour.
 
-### Controller decomposition — `ABClassMutationOps.js` (`Not implemented`)
+### Controller decomposition — `ABClassMutationOps.js` (`Implemented`)
 
-- Decompose the oversized `ABClassController` facade — already above the 550-line hard
-  trigger — into an injected `ABClassMutationOps.js` domain owner in the existing
-  `ABClassController/` folder, covering `upsert`/`update`/`delete`.
-- Preserve the facade's public methods and signatures, its injected sub-classes and the GAS
-  sub-class load order. This decomposes an existing domain; it does not introduce a new
-  public roster or mutation API.
-- Also extract the existing `saveClass` argument checks into
-  `ABClassValidation._validateClassForSave(abClass)`, retaining the accepted model/plain-object
-  contract and error messages. The facade keeps its no-argument constructor, private
-  delegators, `saveClass` persistence delegation and return value. This coherent validation
-  extraction keeps the projected facade within the 500-line planning budget without
-  weakening its documentation.
-- Inject `{ dbManager, validation, persistence, roster, responseMapper }` into the mutation
-  owner. Its upsert invokes the shared `_validateClassForSave` then `persistClassAndPartial`,
-  without calling back through the facade. Retain public-method JSDoc on the facade;
-  extracted methods carry their own implementation-oriented documentation.
-- If the initial extraction does not reach the binding 500-line lint ceiling, additionally
-  extract raw registry retrieval/error logging into `ABClassPersistence.readClassPartials()`;
-  keep `getAllClassPartials()`'s mapping delegation and single metadata gate unchanged.
-  This is a conditional `Not implemented` extraction, not licence to compress JSDoc or
-  split unrelated files to clear existing warnings.
+- `ABClassMutationOps` owns the facade's upsert, update and delete orchestration. The
+  no-argument `ABClassController` facade constructs it with one options object containing
+  `{ dbManager, validation, persistence, roster, responseMapper }` and delegates without
+  changing the existing method signatures, results or errors.
+- `ABClassValidation._validateClassForSave(abClass)` owns the existing `saveClass` argument
+  checks. Both facade `saveClass` and mutation-owner upsert use this shared validation; upsert
+  then calls the injected persistence owner directly, without a callback through the facade.
+  The facade retains its persistence delegator and `true` return value.
+- The facade retains its public-method JSDoc and GAS sub-class load order. This decomposition
+  adds no metadata request handling, prepared-write behaviour, roster persistence changes or
+  deletion-flag correction.
+- The conditional `ABClassPersistence.readClassPartials()` extraction is **not required**:
+  the resulting facade is within the binding 500-line ceiling, so registry retrieval and
+  error logging remain in `getAllClassPartials()`.
 
 ### Persistence extension — `ABClassPersistence` (`Not implemented`)
 

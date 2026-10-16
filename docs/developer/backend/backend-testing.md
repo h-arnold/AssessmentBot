@@ -32,7 +32,8 @@ Backend tests load a committed profile view synchronously and immutably, then su
 > **Status: `Implemented`.** `tests/setupGlobals.js` installs the ABClass metadata domain and
 > its typed error global as part of the backend ABClass `metadata` contract-support cycle. The
 > canonical model-input adapter, generator integrity and real-domain-acceptance probes, and
-> ABClass model construction/restoration/serialization probes are delivered. Controller/API
+> ABClass model construction/restoration/serialization probes are delivered. The ABClass
+> mutation-owner bootstrap and delegation probes are also delivered. Metadata controller/API
 > lifecycle and ordering probes remain pending; see
 > "Canonical metadata probes" below.
 
@@ -43,6 +44,10 @@ Backend tests load a committed profile view synchronously and immutably, then su
   from `src/backend/Models/ABClassMetadata.js`.
 - In GAS runtime, the corresponding references stay inside runtime constructor/method bodies.
   Do not add production Node imports or change stable numeric prefixes to support tests.
+- `tests/setupGlobals.js` registers `ABClassMutationOps` with the other controller
+  sub-classes before the facade is loaded. The GAS-style evaluation and delegation contract is
+  covered by `tests/controllers/abclassMutationRuntime.test.js` and
+  `tests/controllers/abclassMutationDelegation.test.js`.
 
 ## ABClass canonical model-input adaptation
 
@@ -169,6 +174,14 @@ the complete canonical assignment population for existing hydration/redaction be
 direct-mutation test also uses a cloned canonical `medium` snapshot to verify that equal
 timestamps and repeated definition keys are accepted and that supplied entry order is retained.
 These tests cover model boundaries only, not controller or API operations.
+
+**Controller decomposition (`Implemented`).** Section 4's
+`tests/controllers/abclassMutationDelegation.test.js` verifies options-object dependency
+injection, facade delegation, shared save validation before persistence, and preservation of
+the validated class instance through persistence and summary mapping.
+`tests/controllers/abclassMutationRuntime.test.js` verifies bootstrap registration and
+GAS-style evaluation order. These are behaviour-preserving decomposition probes; they do not
+cover metadata request validation or persistence lifecycle behaviour.
 
 **Controller/API lifecycle and remaining boundary probes (`Not implemented`).**
 

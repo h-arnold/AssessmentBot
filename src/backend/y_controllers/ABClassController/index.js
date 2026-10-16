@@ -6,7 +6,7 @@
  *
  * Public API contract is preserved from the original monolithic class.
  */
-/* global ABClassValidation, ABClassPersistence, ABClassRoster, ABClassAssignmentOps, ABClassResponseMapper, DbManager, ABLogger, ClassroomApiClient, Teacher, ABClass, Assignment, AssignmentNotFoundError, AssignmentDefinitionController, ClassNotFoundError, Validate, TypeError, RangeError */
+/* global ABClassValidation, ABClassPersistence, ABClassRoster, ABClassAssignmentOps, ABClassResponseMapper, ABClassMutationOps, DbManager, ABLogger, ClassroomApiClient, Teacher, ABClass, Assignment, AssignmentNotFoundError, AssignmentDefinitionController, ClassNotFoundError, Validate, TypeError, RangeError */
 
 /**
  * Loads, persists, and mutates ABClass records stored in JsonDbApp-backed
@@ -14,7 +14,7 @@
  * after its classId, with plain serialized ABClass objects written via
  * ABClass.toJSON().
  *
- * Delegates to five focused sub-classes injected at construction time.
+ * Delegates to six focused sub-classes injected at construction time.
  * @class
  */
 class ABClassController {
@@ -41,6 +41,13 @@ class ABClassController {
       persistence: this._persistence,
     });
     this._responseMapper = new ABClassResponseMapper();
+    this._mutationOps = new ABClassMutationOps({
+      dbManager: databaseManager,
+      validation: this._validation,
+      persistence: this._persistence,
+      roster: this._roster,
+      responseMapper: this._responseMapper,
+    });
   }
 
   // ──────────────────────────────────────────────
@@ -48,9 +55,9 @@ class ABClassController {
   // ──────────────────────────────────────────────
 
   /**
-   * Creates a new ABClass or updates an existing one with fresh classroom data and custom metadata.
+   * Creates a new ABClass or updates an existing one with fresh classroom data and class configuration.
    * Validates all required parameters, then either creates a new class or refreshes an existing one,
-   * applying the provided metadata (cohortKey, yearGroupKey, courseLength).
+   * applying the provided class configuration (cohortKey, yearGroupKey, courseLength).
    *
    * @remarks New classes are explicitly initialised as active (`active = true`).
    * Existing classes retain their persisted `active` value unless changed through `updateABClass`.
@@ -65,43 +72,7 @@ class ABClassController {
    * @throws {Error} If required parameters are missing or validation fails.
    */
   upsertABClass(parameters) {
-    Validate.requireParams(
-      {
-        classId: parameters?.classId,
-        cohortKey: parameters?.cohortKey,
-        yearGroupKey: parameters?.yearGroupKey,
-        courseLength: parameters?.courseLength,
-      },
-      'upsertABClass'
-    );
-
-    const classId = this._validation._validateClassId(parameters.classId, 'upsertABClass');
-    const courseLength = this._validation._validateCourseLength(
-      parameters.courseLength,
-      'upsertABClass'
-    );
-    const collection = this._dbManager.getCollection(classId);
-    const existingDocument = collection.findOne({ classId: classId });
-    let abClass;
-
-    if (existingDocument) {
-      abClass = ABClass.fromJSON(existingDocument);
-      abClass.cohortKey = parameters.cohortKey === null ? null : String(parameters.cohortKey);
-      abClass.yearGroupKey =
-        parameters.yearGroupKey === null ? null : String(parameters.yearGroupKey);
-      abClass.courseLength = courseLength;
-      this._roster._refreshRoster(abClass, classId);
-    } else {
-      abClass = this._roster.initialise(classId, {
-        cohortKey: parameters.cohortKey,
-        yearGroupKey: parameters.yearGroupKey,
-        courseLength: courseLength,
-      });
-      abClass.active = true;
-    }
-
-    this.saveClass(abClass);
-    return this._responseMapper._buildClassSummary(abClass);
+    return this._mutationOps.upsertABClass(parameters);
   }
 
   /**
@@ -117,24 +88,7 @@ class ABClassController {
    * @throws {RangeError} When no stored document exists for the given classId.
    */
   updateABClass(parameters) {
-    Validate.requireParams({ classId: parameters?.classId }, 'updateABClass');
-
-    const classId = this._validation._validateClassId(parameters.classId, 'updateABClass');
-    const patch = this._validation._buildUpdatePatch(parameters);
-    const collection = this._dbManager.getCollection(classId);
-    const existingDocument = collection.findOne({ classId: classId });
-
-    if (!existingDocument) {
-      throw new RangeError(`updateABClass: class '${classId}' does not exist`);
-    }
-
-    const abClass = this._validation._applyPatchToClass(ABClass.fromJSON(existingDocument), patch);
-
-    collection.updateOne({ classId: classId }, { $set: patch });
-    collection.save();
-    this._persistence._upsertClassPartial(abClass);
-
-    return this._responseMapper._buildClassSummary(abClass);
+    return this._mutationOps.updateABClass(parameters);
   }
 
   /**
@@ -145,35 +99,7 @@ class ABClassController {
    * @returns {{classId: string, hasDeletedFullClass: boolean, hasDeletedClassPartial: boolean}} Deletion result for the full-class collection and the partial registry row.
    */
   deleteABClass(parameters) {
-    Validate.requireParams({ classId: parameters?.classId }, 'deleteABClass');
-
-    const classId = this._validation._validateDeleteClassId(parameters.classId, 'deleteABClass');
-    let hasDeletedFullClass = false;
-    let hasDeletedClassPartial = false;
-
-    try {
-      this._dbManager.getDb().dropCollection(classId);
-      hasDeletedFullClass = true;
-    } catch (error) {
-      if (!this._validation._isMissingCollectionError(error)) {
-        throw error;
-      }
-    }
-
-    const partialsCollection = this._dbManager.getCollection('abclass_partials');
-    const existingPartial = partialsCollection.findOne({ classId: classId });
-
-    if (existingPartial) {
-      partialsCollection.deleteOne({ classId: classId });
-      partialsCollection.save();
-      hasDeletedClassPartial = true;
-    }
-
-    return {
-      classId,
-      hasDeletedFullClass,
-      hasDeletedClassPartial,
-    };
+    return this._mutationOps.deleteABClass(parameters);
   }
 
   /**
@@ -254,34 +180,11 @@ class ABClassController {
    * Save a class representation to its collection named by classId.
    * Delegates to _persistClassAndPartial for write-through persistence to both full and partial stores.
    * @param {ABClass|Object} abClass - The class instance or plain object with classId property and toPartialJSON() method.
-   * @returns {void}
+   * @returns {boolean} True after the class is delegated for persistence.
    * @throws {TypeError} If abClass is missing required properties or methods.
    */
   saveClass(abClass) {
-    if (!abClass || typeof abClass !== 'object') {
-      throw new TypeError(
-        'saveClass: expected an ABClass instance or plain object with classId and toPartialJSON()'
-      );
-    }
-
-    if (!Object.hasOwn(abClass, 'classId')) {
-      throw new TypeError('saveClass: missing required classId property on abClass argument');
-    }
-
-    if (typeof abClass.classId !== 'string' || abClass.classId.trim().length === 0) {
-      throw new TypeError('saveClass: expected abClass.classId to be a non-empty string');
-    }
-
-    if (abClass.classId.includes('..') || abClass.classId.includes('/')) {
-      throw new TypeError('saveClass: invalid classId format');
-    }
-
-    if (typeof abClass.toPartialJSON !== 'function') {
-      throw new TypeError(
-        'saveClass: expected abClass.toPartialJSON() to be a function for partial persistence'
-      );
-    }
-
+    this._validation._validateClassForSave(abClass);
     this._persistClassAndPartial(abClass);
     return true;
   }

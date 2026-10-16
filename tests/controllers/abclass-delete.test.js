@@ -119,6 +119,21 @@ describe('ABClassController delete orchestration', () => {
     expect(partialsCollection.save).not.toHaveBeenCalled();
   });
 
+  it('keeps the full-deletion flag true when a non-throwing drop returns false', () => {
+    createDeleteHarness({
+      partialDoc: null,
+      dropCollectionImpl: () => false,
+    });
+    loadControllerModule();
+    const controller = new ABClassController();
+
+    expect(controller.deleteABClass({ classId: 'class-001' })).toEqual({
+      classId: 'class-001',
+      hasDeletedFullClass: true,
+      hasDeletedClassPartial: false,
+    });
+  });
+
   it('returns mixed flags when the full collection exists but the partial is already missing', () => {
     createDeleteHarness({ partialDoc: null });
     loadControllerModule();
