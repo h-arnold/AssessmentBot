@@ -53,6 +53,15 @@ module.exports = {
         },
       },
       {
+        name: 'plugins',
+        test: {
+          name: 'plugins',
+          environment: 'node',
+          globals: true,
+          include: ['.opencode/plugins/**/*.test.ts'],
+        },
+      },
+      {
         // Opt-in stress project: generates and validates the full 3,000-student /
         // 10,000-assignment large graph. It is never selected by the normal
         // `test:synthetic` or `test:synthetic:coverage` commands. The raised

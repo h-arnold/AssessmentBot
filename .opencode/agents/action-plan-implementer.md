@@ -195,7 +195,7 @@ Within a section, phases are verified with focused and section-scoped checks. Th
 ### **3.1 General Rules**
 
 - **Always pass** to sub-agents:
-  - Full context: `@ACTION_PLAN.md`, `@SPEC.md`, layout spec (if applicable), and the files changed in the current section, each as `@`-prefixed worktree-relative paths — opencode injects the line-numbered contents of every `@path` token, so never paste file contents into the prompt body.
+  - Full context: `@ACTION_PLAN.md`, `@SPEC.md`, layout spec (if applicable), and the files changed in the current section, each as `@`-prefixed paths — the `at-mention-inject` plugin attaches every `@path` token's contents to the prompt, so never paste file contents into the prompt body.
   - Section name and phase (red, green, or refactor).
   - A `Mandatory Reading` section listing task-specific mandatory documents, using `@`-prefixed paths. Do not attach agent definition files (`.opencode/agents/*.md`) or agent instruction files (`AGENTS.md`); sub-agents already have their own instructions injected. Do not re-list documentation the sub-agent is already required to read per its own instructions.
 - **Never narrow the scope** for `Code Reviewer` below the full section context.
