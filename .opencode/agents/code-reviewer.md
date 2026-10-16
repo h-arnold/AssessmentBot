@@ -96,7 +96,8 @@ Consult these resources before and during review. Local docs contain project-spe
 - Local: [singletons.md](../../docs/developer/backend/singletons.md)
 - Local: [oauth-scopes.md](../../docs/developer/backend/oauth-scopes.md)
 - Local: [Vendoring.md](../../docs/developer/backend/Vendoring.md)
-- Local: [src/backend/AGENTS.md](../../src/backend/AGENTS.md) - Contains ArrayUtils usage patterns and utility class conventions
+- Local: [backend-file-organisation.md](../../docs/developer/backend/backend-file-organisation.md) - Facade-pattern decomposition and `z_Api` domain-folder conventions
+- Local: [src/backend/AGENTS.md](../../src/backend/AGENTS.md) - Backend non-negotiables and the required-documentation read gate
 - Google Apps Script Reference: <https://developers.google.com/apps-script/reference>
 
 **Builder Reviews**:

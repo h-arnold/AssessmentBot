@@ -2,48 +2,58 @@
 
 Applies when editing `src/backend/**` and backend runtime behaviour.
 
-## 0. Key Documentation
+opencode injects this file when you touch a backend file. The docs it points to are **not** injected — read them when the trigger below applies. Keep this file to non-negotiables and the read gate; move detailed policy, rationale, and inventories into the docs.
 
-| Doc                                                            | Summary                                                 |
-| -------------------------------------------------------------- | ------------------------------------------------------- |
-| `docs/developer/backend/backend-logging-and-error-handling.md` | Logging and error handling policy for backend code      |
-| `docs/developer/backend/backend-testing.md`                    | Backend testing conventions and commands                |
-| `docs/developer/backend/api-layer.md`                          | API layer design, validation ownership rules            |
-| `docs/developer/backend/AssessmentFlow.md`                     | Assessment workflow and data flow (canonical reference) |
-| `docs/developer/data-shapes/INDEX.md`                          | Canonical data-shape specifications (contract registry) |
-| `docs/developer/backend/rehydration.md`                        | Full assignment hydration from partial class objects    |
-| `docs/developer/backend/singletons.md`                         | Singleton pattern guide and conventions                 |
-| `docs/developer/backend/oauth-scopes.md`                       | Managing OAuth scopes in appsscript.json                |
-| `docs/developer/backend/Vendoring.md`                          | Third-party asset vendoring policy                      |
+## 1. Scope
 
-## 1. Backend API Entry Layer
+- Backend code is plain Google Apps Script (V8) JavaScript under `src/backend/**`, targeting `src/backend/appsscript.json`. It is not TypeScript and not a Node module graph.
+- Backend files are concatenated into a single GAS script before execution, so definition order and numeric file prefixes are part of runtime behaviour (§5.2).
+- Use GAS services for platform operations instead of non-GAS alternatives that do not execute in Apps Script, and do not introduce Node/browser runtime dependencies.
 
-### 1.1 Required `apiHandler` pattern
+## 2. Non-negotiables
 
-- Treat `src/backend/z_Api/z_apiHandler.js` as the single frontend transport entrypoint.
-- `apiHandler` is the **sole** function callable by `google.script.run` for all active `z_Api` methods.
-- Register all frontend-callable methods as entries in `ALLOWLISTED_METHOD_HANDLERS` inside `z_apiHandler.js`. This object is the sole transport registry; do not add parallel method-name registries elsewhere.
-- Return plain response data from handler closures; envelope shaping (`ok`, `requestId`, `error`) must stay in `apiHandler`.
-- Keep admission/completion tracking (`_runAdmissionPhase`, `_runCompletionPhase`) intact for all allowlisted methods.
-- Treat `getBackendConfig` and `setBackendConfig` in `src/backend/z_Api/apiConfig.js` as the canonical backend configuration transport methods.
-- Do not reintroduce configuration transport through `src/backend/ConfigurationManager/99_globals.js`; that legacy transport file has been removed.
+- Route every frontend request through `apiHandler` in `src/backend/z_Api/z_apiHandler.js`; register all frontend-callable methods in `ALLOWLISTED_METHOD_HANDLERS`, the sole transport registry. Do not add parallel method-name registries.
+- Return plain response data from handler closures; envelope shaping (`ok`, `requestId`, `error`) stays in `apiHandler`.
+- Backend functions are private by default: every top-level backend function **must** have a trailing underscore (`_`) so GAS does not expose it to `google.script.run`. The only public entrypoints are `apiHandler`, `doGet`, and `triggerHandler`. Register frontend-callable handlers as anonymous closures in `ALLOWLISTED_METHOD_HANDLERS` — they are not globals, so they are already private. The static global-exposure guard test enforces this boundary. See `docs/developer/security/attack-surface-reduction.md` for the exposure model.
+- `google.script.run` prohibits `Date`, `Function`, and DOM values in both parameters and return values, including inside nested objects and arrays. Convert live `Date` objects to ISO 8601 strings with `DateUtils` at the transport boundary (see `docs/developer/backend/api-layer.md`).
+- Treat 550 lines as a hard decomposition trigger for any backend file in scope. Decompose it with the facade pattern in the same change; never game the threshold with formatting tricks (see §8).
+- Access singletons via `Class.getInstance()`; never construct one directly.
+- Fail loudly: validate direct inputs and let genuine wiring errors surface. Never catch-and-ignore errors, and do not hide known internal wiring behind defensive existence/type checks.
+- Set default values in a module's constructor only; root `AGENTS.md` owns this rule.
 
-#### Trivial handlers — inline closures
+## 3. Required documentation
 
-For simple one-liner controller delegations with no private helpers, inline the call as an anonymous closure directly in `ALLOWLISTED_METHOD_HANDLERS`:
+Read the matching doc before you act. When in doubt, read it.
+
+| Doc                                                            | Read before                                                                                       | Covers                                                                                      |
+| -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| `docs/developer/backend/api-layer.md`                          | adding or changing a frontend-callable method, transport validation, or the `apiHandler` registry | API layer, validation ownership rules, sole-transport registry, endpoints, prohibited types |
+| `docs/developer/backend/backend-logging-and-error-handling.md` | changing logging, error handling, or user-facing failure feedback                                 | `ABLogger`/`ProgressTracker` usage, log levels, error-boundary standards                    |
+| `docs/developer/backend/backend-testing.md`                    | writing or changing backend tests                                                                 | Vitest setup, GAS load order, mock factories, test-harness rules                            |
+| `docs/developer/backend/backend-file-organisation.md`          | splitting an oversized file or grouping `z_Api` files                                             | facade-pattern decomposition, `z_Api` domain folders                                        |
+| `docs/developer/backend/AssessmentFlow.md`                     | changing the assessment pipeline                                                                  | assessment workflow and data flow                                                           |
+| `docs/developer/backend/rehydration.md`                        | hydrating a full assignment from partial class objects                                            | rehydration model                                                                           |
+| `docs/developer/backend/singletons.md`                         | adding or changing a singleton                                                                    | singleton pattern and conventions                                                           |
+| `docs/developer/backend/oauth-scopes.md`                       | adding or changing OAuth scopes                                                                   | scopes in `appsscript.json`                                                                 |
+| `docs/developer/backend/Vendoring.md`                          | adding or changing a vendored asset                                                               | vendoring policy                                                                            |
+| `docs/developer/data-shapes/INDEX.md`                          | changing a backend-facing contract                                                                | canonical data-shape specifications                                                         |
+| `docs/developer/security/README.md`                            | changing authentication, access control, deployment, or data handling                             | security layering model and threat model                                                    |
+| `docs/developer/builder/builder-script.md`                     | changing the manifest or build inputs                                                             | manifest merge and build pipeline                                                           |
+
+## 4. API entry layer
+
+`apiHandler` is the sole frontend transport entrypoint for all active `z_Api` methods.
+
+- **Trivial handlers** — a single controller delegation with no private helpers — inline an anonymous closure directly in `ALLOWLISTED_METHOD_HANDLERS`:
 
 ```javascript
 getABClassPartials: () => new ABClassController().getAllClassPartials(),
 ```
 
-Anonymous closures in a `const` object are not exposed to `google.script.run`.
-
-#### Non-trivial handlers — trailing-underscore private helper functions
-
-For handlers that require validation helpers, multi-step logic, or data transformation, define trailing-underscore helper functions in the relevant `z_Api` file and call them from a thin closure in `ALLOWLISTED_METHOD_HANDLERS`:
+- **Non-trivial handlers** — validation helpers, multi-step logic, or data transformation — define a trailing-underscore helper in the relevant `z_Api` file and call it from a thin closure:
 
 ```javascript
-// In googleClassrooms.js — trailing underscore prevents GAS from exposing this to google.script.run
+// In googleClassrooms.js — the trailing underscore keeps this off google.script.run
 function getGoogleClassrooms_(parameters) { … }
 ```
 
@@ -52,40 +62,13 @@ function getGoogleClassrooms_(parameters) { … }
 getGoogleClassrooms: (parameters) => getGoogleClassrooms_(parameters),
 ```
 
-The official Apps Script specification excludes functions whose names end with `_` from the callable surface exposed to `google.script.run`. No IIFE or namespace-object wrapper is required; the trailing underscore is sufficient and cleaner.
+GAS excludes trailing-underscore functions from the `google.script.run` callable surface (§2), so no IIFE or namespace-object wrapper is required. Internal helpers that are not transport entries (for example `validateParametersObject_`) use the same suffix. Export trailing-underscore handlers from the guarded `module.exports` block (§5.1) so Node unit tests can reach them.
 
-Internal helper functions within a `z_Api` file that are not transport-entry functions (e.g. `validateParametersObject_`) also use the trailing underscore for consistency and to prevent accidental GAS-global exposure.
+Configuration transport: `getBackendConfig` and `setBackendConfig` in `src/backend/z_Api/apiConfig.js` are canonical; do not reintroduce transport through `src/backend/ConfigurationManager/99_globals.js`.
 
-Export trailing-underscore handlers from the guarded `module.exports` block so that Node unit tests can access them without polluting `globalThis`:
+See `docs/developer/backend/api-layer.md` for the full pattern, admission/completion tracking, the current handler inventory, and the endpoint contracts.
 
-```javascript
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { getGoogleClassrooms_ };
-}
-```
-
-For the current set of trailing-underscore handlers, see `docs/developer/backend/api-layer.md`.
-
-### 1.2 Validation ownership
-
-Transport-boundary validation belongs in API-layer trailing-underscore helpers. Domain invariants belong in the called controller, class, or manager.
-
-Rules:
-
-1. **Transport validation in API-layer trailing-underscore helpers** — shape of the incoming request, type of envelope fields, path-character safety on string identifiers, foreign-API response shape validation.
-2. **Domain invariants in the controller** — non-empty string checks, integer range checks, required-field completeness, business-rule validation. Do not reimplement these in the transport layer.
-3. **No duplication** unless an explicit security defence-in-depth guard is required; mark any deliberate duplicate with a code comment explaining the intent so it survives future de-sloppification reviews.
-4. **All new functionality must follow this rule** from the point of introduction.
-5. **Old functionality touched during a change should be opportunistically refactored** toward this rule; keep opportunistic scope local and low-risk.
-
-See `docs/developer/backend/api-layer.md` — "Validation ownership rules" — for the canonical policy and examples.
-
-## 2. Runtime Model (GAS V8 Script)
-
-- Target runtime is Google Apps Script V8 (`src/backend/appsscript.json`).
-- Write plain GAS-compatible JavaScript (script/global style), not TypeScript.
-- Do not introduce Node/browser runtime dependencies in backend runtime code.
-- Use GAS services for platform operations instead of non-GAS alternatives.
+## 5. Runtime model, load order, and the Node boundary
 
 Use GAS-native services where applicable:
 
@@ -95,11 +78,9 @@ Use GAS-native services where applicable:
 - HTTP: `UrlFetchApp`
 - Workspace data access: `SpreadsheetApp`, `SlidesApp`, `DriveApp`, advanced services in manifest
 
-**Important**: Many of these GAS services already have wrapper modules. Check the codebase for these before using them directly.
+Many of these GAS services already have wrapper modules. Check the codebase for these before using them directly.
 
-Do not replace GAS service calls with Node/browser equivalents that do not execute in Apps Script.
-
-### 2.1 Node test compatibility boundary
+### 5.1 Node test compatibility boundary
 
 - Production backend files run in a concatenated GAS script environment first, not a Node module graph.
 - Never add `require`, `import`, `export`, `module.exports`, or other Node module wiring to production backend logic just to satisfy tests.
@@ -114,14 +95,11 @@ if (typeof module !== 'undefined' && module.exports) {
 }
 ```
 
-- Keep this block at the end of the file.
-- Keep it minimal: export only what tests need from that file.
+- Keep this block at the end of the file, and keep it minimal: export only what tests need from that file.
+- Do not add any other Node compatibility code to production files — top-of-file guarded `require(...)` blocks, alias variables for globals, mixed runtime/module initialisation, or Node fallbacks. Expose GAS globals only in the test harness. Treat any such production code as a justified exception, not the default pattern.
 - If tests need older paths, aliases, or globals, fix the tests first, usually in `tests/setupGlobals.js` or the relevant test helper.
-- Expose GAS globals only in the test harness; **NEVER** add Node fallback code to production files.
-- Do not add top-of-file Node compatibility snippets such as guarded `require(...)` blocks, alias variables for globals, or mixed runtime/module initialisation unless there is no safer alternative and the user explicitly accepts it.
-- Treat any non-export Node-specific production code as an exception case that requires justification, not the default pattern.
 
-### 2.2 Concatenation and load-order model
+### 5.2 Concatenation and load-order model
 
 - Backend files are effectively evaluated as one large script in GAS, so definition order matters.
 - Assume later files can see globals created by earlier files; do not assume the reverse.
@@ -144,91 +122,48 @@ Rules:
 - Do not rename numbered files casually; tests, build steps, and runtime ordering may rely on those names.
 - Keep `y_*` and `z_*` directories/files in their established relative order when adding new backend entry surfaces or controllers.
 
-### 2.3 AuthService singleton
+## 6. Validation ownership and utilities
 
-- `src/backend/Utils/AuthService.js` is the singleton for application-level authorisation.
-- It centralises Google Group membership checks, role mapping, successful-result caching, and
-  access-attempt audit logging.
-- Access resolution fails closed for empty or broken configuration. A genuinely fresh
-  install (no `__CONFIG_STORE_KEY__` blob) is claimed by the first eligible interactive
-  caller with a non-blank resolved identity through the atomic bootstrap claim;
-  trigger execution passes `bypassCache: true` and an explicit `neverClaim: true` context,
-  so it fails closed and never bootstraps an admin.
-- Access the service with `AuthService.getInstance()`; do not instantiate it directly.
-- **Removed mode:** the `authMode` value `'none'` has been removed entirely. The strict
-  auth-state resolver (`validateAuthStateStrict_`) rejects a stored or requested `'none'` as an
-  unrecognised mode, so the access gate fails closed rather than disabling it. The stored valid
-  modes are `'googleGroups'` and `'scriptProperties'`. A genuinely fresh install bootstraps to
-  `'scriptProperties'` (the first eligible interactive caller becomes the sole admin via the
-  bootstrap claim). The single documented leniency reads an absent or blank `authMode` paired
-  with a non-blank `authGroupEmail` as `'googleGroups'`, preserving legacy hand-edited or cloned
-  blobs; every other broken configuration denies fail-closed and never falls back to Google
-  Groups.
-  See `docs/developer/data-shapes/auth-users.md` for the auth-mode contract.
+### 6.1 Validation ownership
 
-### 2.4 Backend function exposure and security audit
+Transport-boundary validation belongs in API-layer trailing-underscore helpers. Domain invariants belong in the called controller, class, or manager.
 
-Backend functions are private by default: every top-level backend function **must** have a trailing
-underscore (`_`) so Google Apps Script does not expose it to `google.script.run`. The only exceptions
-are the public entrypoints `apiHandler`, `doGet`, and `triggerHandler`. Allowlisted handlers are
-anonymous closures and are already private, so they need no special treatment. An earlier security
-audit removed six dead wrappers and renamed 20 required functions to this convention; the static
-global-exposure guard test protects the boundary.
+Rules:
 
-### 2.5 Web-app deployment block
+1. **Transport validation in API-layer trailing-underscore helpers** — shape of the incoming request, type of envelope fields, path-character safety on string identifiers, foreign-API response shape validation.
+2. **Domain invariants in the controller** — non-empty string checks, integer range checks, required-field completeness, business-rule validation. Do not reimplement these in the transport layer.
+3. **No duplication** unless an explicit security defence-in-depth guard is required; mark any deliberate duplicate with a code comment explaining the intent so it survives future de-sloppification reviews.
+4. **All new functionality must follow this rule** from the point of introduction.
+5. **Old functionality touched during a change should be opportunistically refactored** toward this rule; keep opportunistic scope local and low-risk.
 
-The backend manifest must retain `webapp.executeAs: USER_ACCESSING` and `webapp.access: DOMAIN`.
-This identity model requires deployment within a Google Workspace domain; a personal Gmail
-deployment must be reviewed with the deploying administrator before rollout.
+See `docs/developer/backend/api-layer.md` — "Validation ownership rules" — for the canonical policy and examples.
 
-### 2.6 Trigger handler architecture
+### 6.2 Validation and utility contracts
 
-- Trigger functionality lives in the `src/backend/Triggers/` domain folder.
-- `triggerHandler()` is the single public trigger entrypoint and performs validate-then-dispatch
-  with fail-closed authorisation.
-- `TriggerController` owns Script Properties context storage keyed by `triggerUid`:
-  `trigger:<uid>:method` and `trigger:<uid>:params`.
-- `TRIGGER_METHOD_HANDLERS` is the registry for dispatchable trigger methods.
-- `triggerHandler()` owns cleanup for resolved trigger IDs: it clears context and deletes the fired
-  trigger, including when dispatch throws.
-
-## 3. Validation and Utility Contracts (Backend Only)
-
-Use `src/backend/Utils/Validate.js` for generic validation.
-
-Required parameter presence pattern:
+Use `src/backend/Utils/Validate.js` for generic validation. Required parameter presence pattern:
 
 ```javascript
 Validate.requireParams({ paramName1, paramName2 }, 'methodName');
 ```
 
-Rules:
-
-- Use existing generic validators before adding new ones.
-- Add reusable generic validators to `Validate`.
-- Keep domain/business-specific validation in the owning class.
-- Do not duplicate generic validation logic across modules.
-- See § 1.2 above for the transport-vs-domain validation ownership rules that apply specifically
-  to `z_Api` files.
-
-### 3.1 Utility Classes (Backend Only)
-
 Use `src/backend/Utils/00_ArrayUtils.js` for generic array operations.
 
-#### ArrayUtils Class
+Rules:
 
-`ArrayUtils` is a utility class that provides generic array helper methods as static functions. It follows the same pattern as `Validate.js` and is designed for reuse across the codebase.
+- Reuse the existing generic validator or utility method before adding a new one.
+- Add reusable generic validators to `Validate` and reusable generic array helpers to `ArrayUtils`.
+- Keep domain/business-specific validation and array logic in the owning class.
+- Do not duplicate generic validation or array logic across modules.
+- New `ArrayUtils` methods must remain static and carry JSDoc; preserve the file's `00_` prefix and load order (see §5.2).
+- For the transport-vs-domain validation ownership rules that apply to `z_Api` files, see §6.1.
 
-**Design Pattern**:
+#### `ArrayUtils`
 
-- Defined in `src/backend/Utils/00_ArrayUtils.js` with `00_` prefix to ensure proper GAS concatenation load order (loads before `Models/ABClass.js`)
-- Static methods only - no instantiation required
-- Exported for Node/Vitest environment via guarded `module.exports` block
-- Accessed as global in GAS runtime via file concatenation
+`ArrayUtils` provides generic static array helpers and follows the same pattern as `Validate.js`.
 
 **Available utilities**:
 
-- `ArrayUtils.ITEM_NOT_FOUND_INDEX` - Constant value (-1) for "not found" index
+- `ITEM_NOT_FOUND_INDEX` - Global sentinel constant (-1) for a "not found" index, from `src/backend/00_Constants.js` (not an `ArrayUtils` member)
 - `ArrayUtils.findIndexWithPredicate(items, predicate)` - Finds index of first item matching predicate
 - `ArrayUtils.findWithPredicate(items, predicate)` - Finds first item matching predicate, returns `null` if not found
 - `ArrayUtils.serialiseArray(items)` - Serialises array by calling toJSON() on each item if available
@@ -248,196 +183,36 @@ const item = ArrayUtils.findWithPredicate(items, (item) => item.name === targetN
 **Implementation Notes**:
 
 - The `serialiseOwner` method from `ABClass.js` was intentionally kept as an instance method in `ABClass` as it is specific to that class's serialization logic
-- Array utility methods are truly generic and reusable across the codebase
+- Array utility methods are truly generic and reusable across the codebase.
 
-Rules:
+## 7. Authentication and deployment
 
-- Use existing utility methods before adding new ones.
-- Add reusable generic array helpers to `ArrayUtils`.
-- Keep domain/business-specific array logic in the owning class.
-- Do not duplicate generic array logic across modules.
-- When adding new methods to `ArrayUtils`, maintain the static method pattern and add appropriate JSDoc.
-- The `00_` prefix must be preserved to maintain GAS load ordering.
+`src/backend/Utils/AuthService.js` is the application-level authorisation singleton. Access it with `AuthService.getInstance()` and never instantiate it directly; access resolution fails closed for empty or broken configuration. See `docs/developer/security/application-authentication.md` for the access model (bootstrap claim, trigger `neverClaim` context, auth modes) and `docs/developer/data-shapes/auth-users.md` for the auth-mode contract.
 
-## 4. Error and Logging Contract (Backend Only)
+The backend manifest must retain `webapp.executeAs: USER_ACCESSING` and `webapp.access: DOMAIN`. This identity model requires deployment within a Google Workspace domain; a personal Gmail deployment must be reviewed with the deploying administrator before rollout.
 
-Canonical policy source of truth:
+## 8. File and folder organisation
 
-- `docs/developer/backend/backend-logging-and-error-handling.md`
+- Group `z_Api` files into a domain folder when two or more share a common domain prefix; keep single-file domains flat.
+- Full rules — the facade-pattern decomposition procedure and the `z_Api` domain-folder convention — are in `docs/developer/backend/backend-file-organisation.md`.
 
-User-facing failures:
+## 9. Logging and error handling
 
-- `ProgressTracker.getInstance().logError(userMessage, { devContext, err })`
+- Canonical policy: `docs/developer/backend/backend-logging-and-error-handling.md`.
+- User-facing failures: `ProgressTracker.getInstance().logError(userMessage, { devContext, err })`.
+- Developer diagnostics: `ABLogger.getInstance().info/warn/error/debug(...)`; `ABLogger` is mandatory for new backend code and direct `console.*` calls are not allowed.
+- Never add an empty `catch`, and never duplicate the same error detail in both `logError` and `ABLogger.error`.
+- The canonical doc covers log levels, boundary standards, `apiHandler` diagnostics, secret hygiene, and the error-type inventory.
 
-Developer diagnostics:
+## 10. Manifest and service changes
 
-- `ABLogger.getInstance().debug/debugUi/info/warn/error(...)`
-
-Rules:
-
-- `ABLogger` is mandatory for all new backend code in active backend areas.
-- Do not add direct `console.log/info/warn/error` calls in new backend code.
-- When touching existing backend code, opportunistically refactor nearby touched direct `console.*` calls to `ABLogger`, keeping scope local and low-risk.
-- Do not duplicate the same error details in both `logError` and `ABLogger.error`.
-- Never add empty `catch` blocks.
-- Do not suppress errors with defensive feature detection.
-- Prefer fail-fast behaviour (log and rethrow when needed).
-
-Top-level error boundary pattern:
-
-```javascript
-try {
-  // core logic
-} catch (err) {
-  ProgressTracker.getInstance().logError('Readable user message', { err });
-  ABLogger.getInstance().error('Contextual dev message', err);
-  throw err;
-}
-```
-
-## 5. Defensive-Guard Policy
-
-- Do not add existence/type/feature checks for known internal modules, singletons, logger methods, or GAS services.
-- Validate direct input parameters; do not mask internal wiring issues.
-
-## 6. Backend Conventions
-
-- Singletons: always via `Class.getInstance()`.
-- Preserve existing file/load ordering conventions (including numeric prefixes where present).
-- Keep runtime exports GAS-compatible; the guarded `if (typeof module !== 'undefined' && module.exports)` block at the end of the file is the default and preferred test-enablement pattern.
-- When tests fail because a GAS global is missing in Node, update the test harness before changing production backend code.
-
-## 7. Manifest and Service Changes
-
-When backend behaviour requires new scopes/services:
+When backend behaviour requires new scopes or services:
 
 - Update `src/backend/appsscript.json`.
-- Keep scope/service additions minimal and justified.
-- Remember builder manifest merge uses backend manifest as base.
+- Keep additions minimal and justified.
+- The builder manifest merge uses the backend manifest as its base (see `docs/developer/builder/builder-script.md`).
 
-## 8. Default Values Rule
+## 11. Testing delegation
 
-- Set default values in a module's constructor only. Root `AGENTS.md` owns this rule (Prime Directives → Coding Principles).
-
-## 9. Prohibited types at the transport boundary
-
-`google.script.run` **prohibits** `Date`, `Function`, and DOM elements in both **parameters and
-return values** — including inside nested objects and arrays. If any value in the response graph
-is a `Date` object (not an ISO string), GAS falls back to `Object.toString()` serialisation,
-producing non-JSON output that breaks the frontend's `JSON.parse()` and delivers `null`.
-
-Reference: https://developers.google.com/apps-script/guides/html/reference/run
-(myFunction section: "Requests fail if you attempt to pass a Date, Function, DOM element
-besides a form, or other prohibited type, including prohibited types inside objects or arrays."
-Return value note: "return types are subject to the same restrictions as parameter types".)
-
-Rules:
-
-1. Never return live `Date` objects from any method callable via `google.script.run`. Convert to
-   ISO 8601 strings at the API boundary.
-2. Never return `Function` instances or DOM element references.
-3. Validate that all array/object fields are plain JS arrays/objects, not Java-backed types
-   (e.g. `[Ljava.lang.Object;@...`) that GAS cannot serialise.
-4. Apply these rules at the controller-to-transport boundary (e.g. `_getFullAssignmentDefinition`)
-   before the response reaches `apiHandler`.
-
-For `Date` conversion, use `DateUtils` rather than inlining conversion:
-
-- Use `DateUtils.normaliseDateFields(response, ['field1', 'field2'])` for shallow or known
-  date fields. Apply the call after the controller returns and before the handler returns.
-- Use `DateUtils.deepConvertDates(value)` for responses with deeply nested date objects
-  (e.g. assignments with nested submissions). This recursively converts all `Date` objects
-  to ISO strings. Apply this in the specific handler rather than in `apiHandler` to avoid
-  the performance cost on endpoints that do not need it.
-- This is the canonical pattern; do not inline `instanceof Date` checks or push conversion into
-  controllers or models.
-- `DateUtils` lives at `src/backend/Utils/DateUtils.js` and exports `normaliseDateFields`,
-  `deepConvertDates`, `isNewer`, `definitionNeedsRefresh`, `getFormattedDate`, and `getFutureDate`.
-
-These rules are also documented in `docs/developer/backend/api-layer.md` § "Critical: prohibited
-types in `google.script.run` return values".
-
-## 10. Testing Delegation
-
-- Delegate all test implementation and test-debugging work to `Testing Specialist` when sub-agent delegation is available.
+- Delegate all backend test implementation and test-debugging work to `Testing Specialist` when sub-agent delegation is available.
 - If delegation is unavailable, follow `.opencode/agents/testing-specialist.md` and `docs/developer/backend/backend-testing.md` before changing tests.
-
-## 11. Large File Decomposition (Non-API Files)
-
-When a non-API backend file (`y_controllers/`, `Models/`, `DocumentParsers/`, `Assessors/`,
-`RequestHandlers/`, `GoogleDriveManager/`, etc.) exceeds **550 lines**, decomposition is
-mandatory. Do not leave a file above this threshold merely because the current change did not
-create the excess, or because the file is inconvenient to split. Decompose it using the
-**facade-pattern** established by `AssignmentDefinitionController`:
-
-1. **Create a folder** named after the original file/class (e.g. `ABClassController/`).
-2. **Create `index.js`** as the facade — it exports the original public class, which delegates
-   to sub-classes injected in the constructor.
-3. **Create sub-classes** at natural responsibility boundaries. Each sub-class file should own
-   one coherent concern (e.g. persistence, validation, response mapping, reference data).
-   Name them after their concern (e.g. `ABClassPersistence.js`, `ABClassValidation.js`).
-
-Canonical example — `AssignmentDefinition` controller:
-
-```
-y_controllers/AssignmentDefinition/
-├── index.js                               # Facade — AssignmentDefinitionController class
-├── AssignmentDefinitionValidation.js       # Domain validation
-├── AssignmentDefinitionReferenceData.js    # Reference data resolution
-├── AssignmentDefinitionTaskParser.js       # Task document parsing
-├── AssignmentDefinitionTaskWeighting.js    # Task weighting logic
-├── AssignmentDefinitionPersistence.js      # Database read/write
-├── AssignmentDefinitionUpsertOrchestrator.js  # Upsert orchestration
-└── AssignmentDefinitionResponseMapper.js   # Response shape mapping
-```
-
-Rules:
-
-- Do not split files under 550 lines unless there is a clear maintainability reason.
-- Treat 550 lines as a hard decomposition trigger for files in scope. If work touches a file
-  already above the threshold, decompose that file in the same change.
-- Never game the threshold by reformatting code, removing blank lines, joining statements,
-  shortening names, or condensing, deleting, or otherwise weakening documentation and JSDoc.
-  A lower line count is not decomposition; the file must be split into coherent responsibility
-  modules according to the rules above.
-- Keep the public API surface (method names and signatures) identical after decomposition;
-  the facade must preserve backward compatibility.
-- Do not pre-emptively split files that are approaching 550 lines; wait until the threshold
-  is crossed or a concrete maintenance need arises.
-- When splitting, keep GAS concatenation order in mind — the facade file (`index.js`) must
-  load after all sub-class files. Use numeric prefixes on sub-class files if dependency
-  ordering requires it.
-- Sub-class constructors should accept their dependencies via a single options object
-  parameter for consistency with the existing pattern.
-
-## 12. API Domain Folder Organisation (`z_Api`)
-
-When two or more `z_Api` files share a common domain prefix, group them into a domain folder
-named after that prefix.
-
-The domain prefix is the leading lowercase segment of the filename, up to but not including the
-first capital letter (for example, `abclass` in `abclassMutations.js`, `abclassRead.js`, and
-`abclassValidation.js`).
-
-Example — currently grouped `z_Api` files for a domain:
-
-```
-z_Api/abclass/
-├── abclassMutations.js        # ABClass create/update/delete transport handlers
-├── abclassRead.js             # ABClass read transport handlers
-└── abclassValidation.js       # Transport-boundary validation
-```
-
-Domain grouping need not swallow every file sharing a prefix: the assignment-definition
-validators live in `assignmentDefinition/`, while `assignmentDefinitionTransport.js`
-deliberately remains flat as a single-file-domain exception.
-
-Rules:
-
-- Create a domain folder when **at least 2 files** share a common domain prefix.
-- Keep trailing-underscore private function and `module.exports` patterns intact inside
-  the moved files (see §1.1).
-- Keep single-file domains flat in `z_Api/`. Do not create folders for them.
-- Update `ALLOWLISTED_METHOD_HANDLERS` import paths in `z_apiHandler.js` if relative paths
-  change due to folder nesting.
-- Ensure `module.exports` exports are updated to reflect the new path for test imports.

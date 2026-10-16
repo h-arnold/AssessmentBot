@@ -157,6 +157,5 @@ filtering — with the justification for each in
   [AuthCache](../data-shapes/auth-cache.md), [TriggerContext](../data-shapes/trigger-context.md),
   [AuthUsers](../data-shapes/auth-users.md), [BackendConfig](../data-shapes/backend-config.md) and the
   [transport envelope](../data-shapes/transport-envelope.md)
-- [src/backend/AGENTS.md](../../../src/backend/AGENTS.md) — sections 2.3–2.6 document the
-  `AuthService` singleton, the private-by-default convention, the `webapp` deployment
-  block and the trigger handler architecture
+- [src/backend/AGENTS.md](../../../src/backend/AGENTS.md) — §2 documents the private-by-default
+  convention, and §7 the `AuthService` singleton and the `webapp` deployment block

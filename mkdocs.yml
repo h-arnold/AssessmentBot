@@ -57,6 +57,7 @@ nav:
       - Backend:
           - API Layer: developer/backend/api-layer.md
           - Assessment Flow: developer/backend/AssessmentFlow.md
+          - Backend File Organisation: developer/backend/backend-file-organisation.md
           - Backend Logging and Error Handling: developer/backend/backend-logging-and-error-handling.md
           - Backend Testing: developer/backend/backend-testing.md
           - OAuth Scopes: developer/backend/oauth-scopes.md
