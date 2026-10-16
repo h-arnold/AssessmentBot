@@ -2,12 +2,12 @@
 
 ## Status and read-first context
 
-Planning is complete with independent clean review; the user subsequently requested implementation and authorised commits/pushes. Sections 1 and 2 are delivered, including Section 2's separately authorised test-infrastructure decompositions. Section 3 has clean red/green reviews and a baseline-or-better section-end comparison; its commit/push gate is in progress. Sections 4–11 have not started. No deployment has occurred.
+Planning is complete with independent clean review; the user subsequently requested implementation and authorised commits/pushes. Sections 1–3 are delivered, including Section 2's separately authorised test-infrastructure decompositions. Each has clean independent reviews and a baseline-or-better section-end comparison against accepted debt. Sections 4–11 have not started. No deployment has occurred.
 
 ### Implementation start-up — 15 October 2026
 
 - The user requested implementation of this plan. The worktree was clean at start-up on branch `docs/abclass-metadata-plan`, HEAD `6fc46be`.
-- Current section: Section 3 commit/push gate. Section 3's final comparison at `2026-10-16T20:25:06.474Z` reports zero regressions, zero new failures and four fixes; raw aggregate status remains FAILING solely on eight accepted existing backend lint warnings. Section 2 is committed and pushed as `3586db4d90e00a1eef415acecbf953dec5cc39e6` (`feat: add canonical class metadata fixtures and model adapter`) on `docs/abclass-metadata-plan`; delivery-record commit `e0cbccbf73881d73d26ede7dce8498554b4d0d9c` (`docs: record section two validation and delivery`) also passed normal hooks and pushed successfully, advancing `3586db4..e0cbccb`. Section 1 is complete and all delivery-record commits are pushed, including `097b670dd8e0fa25d6190a892d9a798aa258138c` (`docs: record section one validation and delivery`), confirmed by successful `git push origin docs/abclass-metadata-plan` advancing `5f411cf..097b670`.
+- Current delivery checkpoint: Section 3 implementation is committed and pushed as `895bdf645323d395c9a5ab56da6e1bcaa474e196` (`feat: carry metadata through ABClass model boundaries`) on `docs/abclass-metadata-plan`; this delivery-record update is being committed before Section 4 starts. Section 3's final comparison at `2026-10-16T20:25:06.474Z` reports zero regressions, zero new failures and four fixes; raw aggregate status remains FAILING solely on eight accepted existing backend lint warnings. Section 2 implementation and delivery-record commits `3586db4` and `e0cbccb` are pushed, as are all Section 1 commits including delivery record `097b670`.
 - Baseline command: `npm run regression-checker -- abclass-metadata-contract` (1,200,000 ms timeout). Baseline created at `2026-10-15T20:45:28.439Z`; exit 1, overall `FAILING`, seven of eight checks passing, zero regressions and zero new failures. Backend lint reports zero errors and the ten pre-existing max-lines warnings documented below; these remain recorded baseline technical debt, not a clean aggregate gate. Backend tests, frontend/builder coverage, frontend E2E, frontend/builder lint and TypeScript checks passed. Correction after inspecting the saved manifest: despite its `backend-test-coverage-check` name, the checker runs `test:backend` without coverage, so this baseline did not establish backend coverage thresholds.
 - Baseline report: `.ts-regression-checker/reports/session-abclass-metadata-contract/baseline/baseline.txt`. Retain the same checker identity throughout delivery.
 - Commit authority resolved on 16 October 2026: the user explicitly authorised commits and pushes as part of delivery. This supersedes this plan's historical implementation-commit exclusion; retain all hook/review/regression gates and the deployment exclusion. No commits, pushes or deployment have occurred during implementation start-up.
@@ -426,6 +426,15 @@ Full Section 3 independent GREEN review is **PASS**, `.opencode/scratchpad/secti
 - Comparison: `.ts-regression-checker/reports/session-abclass-metadata-contract/runs/2026-10-16T20-25-06.474Z/comparison.txt`.
 - Raw exit 1 / overall **FAILING**, seven of eight checks pass, **zero regressions, zero new failures, four fixes**. Backend lint alone fails on the same eight accepted max-lines warnings, zero errors or new diagnostics. Backend tests, frontend/builder coverage, frontend E2E, frontend/builder lint and all-project TypeScript pass. Explicit backend coverage debt remains the separately recorded 83.96% branch result because this checker invokes backend tests without coverage.
 - Section regression gate is passed against accepted baseline debt, not a clean aggregate lint/coverage claim. Clean red/green review and same-change canonical documentation gates are satisfied. Commit/push and recorded delivery evidence are next; do not begin Section 4 before completion. Exclude unrelated user-owned `.opencode/agents/code-reviewer.md` and `opencode.jsonc` changes.
+
+### Section 3 commit and push evidence
+
+- Commit: `895bdf645323d395c9a5ab56da6e1bcaa474e196`.
+- Exact message: `feat: carry metadata through ABClass model boundaries`.
+- Branch: `docs/abclass-metadata-plan`.
+- Normal pre-commit hooks passed: all seven staged files were formatter-stable, staged backend ESLint and all-project TypeScript passed. Saved pre-commit reviewed diff and committed diff match byte-for-byte; no unreviewed hook auto-fixes or hook bypass occurred.
+- `git push origin docs/abclass-metadata-plan` succeeded, advancing `e0cbccb..895bdf6`. Only unrelated user-owned `.opencode/agents/code-reviewer.md` and `opencode.jsonc` edits remain outside the commit.
+- Section 3 is complete against accepted baseline lint/coverage debt. This separate delivery-record documentation commit records evidence before starting Section 4; its own SHA/push confirmation is recorded in the delivery handoff rather than recursively embedding its hash. No deployment occurred.
 
 ## Section 4 — Decompose the oversized controller facade
 
