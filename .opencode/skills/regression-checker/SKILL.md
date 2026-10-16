@@ -37,11 +37,20 @@ The wrapper first runs `npm run builder:compile` and then launches
 
 ## How to use it with `ACTION_PLAN.md`
 
-1. Pick one session ID for the whole plan only when you need a non-branch identity; otherwise let
-   the CLI use the branch name.
-2. Run the checker before starting a phase to establish the current baseline or compare against the saved baseline.
-3. Re-run the same session ID after each completed phase or any materially risky change.
-4. Record the status and report path in your progress notes before moving on.
+1. Choose one stable session ID for the whole plan, or omit it to let the CLI use the branch name.
+   Keep that identity unchanged for every run so reports stay comparable.
+2. Run the checker once before the first section to establish the baseline.
+3. Do not run the checker between red, green or refactor phases. Use focused, section-scoped tests,
+   lint and type checks for in-section verification instead; the checker is an expensive
+   full-repository run that adds little signal mid-section.
+4. Run the checker with the same session ID once at each full section completion, before the commit
+   gate.
+5. After the final cleanup pass, run one last comparison with the same session ID if that pass
+   changed any files. If it changed nothing, record that and skip the run.
+6. Treat that final comparison as a gate. Any regressions or unaccounted new failures mean the plan
+   is not ready and its documentation commit must not proceed; fix the failures, re-review the
+   corrected tree, and re-run the comparison until it is clean.
+7. Record the status and report path in your progress notes before moving on.
 
 ## What to inspect
 
