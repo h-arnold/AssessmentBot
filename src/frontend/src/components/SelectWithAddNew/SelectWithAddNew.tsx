@@ -1,8 +1,7 @@
-import { useCallback, type ReactElement } from 'react';
+import { useCallback, useState, type ReactElement } from 'react';
 import { Select, type SelectProps } from 'antd';
 import { Plus } from 'lucide-react';
 import { LucideIcon } from '../icons/LucideIcon';
-import { useDebounce, DEFAULT_DEBOUNCE_MS } from '@/hooks/useDebounce';
 
 /**
  * Sentinel value used internally to identify the 'Add new' option.
@@ -20,7 +19,8 @@ export type EntityType = 'cohort' | 'yearGroup' | 'topic';
  */
 export interface SelectWithAddNewProperties extends Omit<SelectProps, 'options'> {
   /**
-   * Callback when 'Add new' is clicked.
+   * Callback dispatched immediately when the 'Add new' option is selected by pointer or keyboard.
+   * The command is intercepted rather than forwarded through `onChange`.
    */
   onAddNew?: () => void;
 
@@ -35,12 +35,6 @@ export interface SelectWithAddNewProperties extends Omit<SelectProps, 'options'>
    * Used when addNewLabel is not provided.
    */
   entityType?: EntityType;
-
-  /**
-   * Debounce duration for the onAddNew callback in milliseconds.
-   * Defaults to DEFAULT_DEBOUNCE_MS (300ms).
-   */
-  debounceMs?: number;
 
   /**
    * The options to display in the Select dropdown.
@@ -72,43 +66,63 @@ function getDefaultAddNewLabel(entityType: EntityType): string {
 }
 
 /**
+ * Checks the scalar or labelled Select value for the Add new sentinel.
+ * @param {unknown} value Selected value from Ant Design.
+ * @returns {boolean} Whether the selection represents the sentinel option.
+ */
+function isAddNewSelection(value: unknown): boolean {
+  if (typeof value === 'object' && value !== null && 'value' in value) {
+    return value.value === ADD_NEW_SENTINEL_VALUE;
+  }
+  return value === ADD_NEW_SENTINEL_VALUE;
+}
+
+/**
  * SelectWithAddNew component - wraps Ant Design Select with an 'Add new' option.
  *
- * @remarks This component wraps Ant Design Select with a custom sentinel option for 'Add new'.
- * The 'Add new' option appears at the bottom of the dropdown and triggers the onAddNew callback
- * when clicked. The callback is debounced to prevent rapid repeated modal opens.
+ * @remarks
+ * The 'Add new' sentinel is an immediate command: scalar and `labelInValue` sentinel selections
+ * dispatch `onAddNew` and are not adopted as a value or forwarded through `onChange`.
+ * When `value` is an own property, the parent controls selection (including explicit `undefined`,
+ * represented to Ant Design as `null`). Otherwise, the component owns normal selection state,
+ * initialised from `defaultValue`; normal, clear and labelled-value payloads are preserved.
  *
  * @param {SelectWithAddNewProperties} properties - The component props.
  * @returns {ReactElement} The rendered Select component with 'Add new' option.
  */
-export function SelectWithAddNew(
-  properties: Readonly<SelectWithAddNewProperties>
-): ReactElement {
+export function SelectWithAddNew(properties: Readonly<SelectWithAddNewProperties>): ReactElement {
   const {
     onAddNew,
     addNewLabel,
     entityType,
-    debounceMs = DEFAULT_DEBOUNCE_MS,
     options = [],
     disabled,
+    value,
+    defaultValue,
     onChange,
     ...restProperties
   } = properties;
 
-  // Generate the 'Add new' label
-  const computedAddNewLabel = addNewLabel ?? (entityType ? getDefaultAddNewLabel(entityType) : 'Add new');
+  const isControlled = Object.prototype.hasOwnProperty.call(properties, 'value');
+  const [uncontrolledValue, setUncontrolledValue] = useState<unknown>(() => defaultValue);
+  const selectedValue = isControlled ? value : uncontrolledValue;
 
-  // Debounce the onAddNew callback
-  const debouncedOnAddNew = useDebounce(onAddNew ?? (() => {}), debounceMs);
+  // Generate the 'Add new' label
+  const computedAddNewLabel =
+    addNewLabel ?? (entityType ? getDefaultAddNewLabel(entityType) : 'Add new');
 
   // Handle selection change
   const handleChange = useCallback(
     (value: unknown, option: unknown) => {
       // If the sentinel value is selected, trigger onAddNew and prevent the value from being set
-      if (value === ADD_NEW_SENTINEL_VALUE) {
-        debouncedOnAddNew();
+      if (isAddNewSelection(value)) {
+        onAddNew?.();
         // Return early to prevent the sentinel value from being used
         return;
+      }
+
+      if (!isControlled) {
+        setUncontrolledValue(value);
       }
 
       // For normal options, call the original onChange if provided
@@ -116,7 +130,7 @@ export function SelectWithAddNew(
         onChange(value, option as Parameters<NonNullable<SelectProps['onChange']>>[1]);
       }
     },
-    [debouncedOnAddNew, onChange]
+    [isControlled, onAddNew, onChange]
   );
 
   // Build options with 'Add new' at the bottom
@@ -138,6 +152,7 @@ export function SelectWithAddNew(
     <Select
       {...restProperties}
       options={optionsWithAddNew}
+      value={selectedValue ?? null}
       onChange={handleChange}
       disabled={disabled}
     />

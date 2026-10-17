@@ -96,6 +96,18 @@ The issue #19 source link moves duplicated interaction coverage to the layer tha
 
 When adding coverage to a duplicated interaction matrix, extend the unit suite. Add an E2E case only when the assertion needs a real browser: layout geometry, native navigation, tooltips, or cross-component runtime integration.
 
+### Example split for the Select Add new command
+
+`SelectWithAddNew` appends an `Add new` sentinel that dispatches a command rather than selecting a value. Keep the split strict.
+
+- **Vitest owns the command and value matrix.**
+  - `src/frontend/src/components/SelectWithAddNew/SelectWithAddNew.spec.tsx` renders the real Ant Design `Select` and pins immediate dispatch (asserted without advancing timers), sentinel interception for both scalar and `labelInValue` payloads, and controlled/`defaultValue`/`allowClear`/normal-selection preservation.
+  - `src/frontend/src/components/SelectWithAddNew/SelectWithAddNew.integration.spec.tsx` exercises the real `BulkCreateModal` boundary.
+  - `src/frontend/src/features/classes/ClassesManagementPanel.addNew.spec.tsx` exercises the real panel-owned modal state: the manager opens over the still-open create modal, and repeated selection yields exactly one manager.
+- **Playwright owns the browser journey.** `src/frontend/e2e-tests/select-with-add-new-workflow.spec.ts` must verify what only a real browser shows: the true accessible names of the stacked dialogs, real close motion, and the create-and-auto-select journey.
+
+Do not mock `useDebounce` or the `Select` for these specs, and do not add fixed sleeps, timer advances or weakened retries to make the command appear. A delayed assertion is a defect to diagnose, not to paper over.
+
 ## Test naming and traceability
 
 Name frontend tests after the behaviour, component, hook, or service they verify.
@@ -832,6 +844,36 @@ render(<Modal open={false} />);
 For Playwright-specific antd v6 patterns (StrictMode double-effect handling, `Typography.Text`
 visibility, E2E runtime mock infrastructure, `selectVisibleOption`, and modal mask clicks in
 a real browser), see `docs/developer/frontend/frontend-playwright-e2e.md`.
+
+### 6. Stacked dialogs share the test-only `aria-labelledby` id
+
+The installed `@rc-component/util` `useId` returns the constant `test-id` when
+`process.env.NODE_ENV === 'test'`, so every dialog rendered in one test shares
+`aria-labelledby="test-id"`. `getByRole('dialog', { name })` then resolves whichever title
+element comes first in the document, which is wrong as soon as two dialogs stack (for example a
+reference-data manager opened over a bulk form modal).
+
+Locate a specific stacked dialog by its visible title element instead:
+
+```typescript
+const dialog = screen
+  .getAllByRole('dialog')
+  .find((candidate) => within(candidate).queryByText(title, { selector: '.ant-modal-title' }));
+```
+
+Treat this as a bounded harness caveat, not as licence to drop accessible-name coverage. Real
+browsers assign unique ids, so the Playwright journey still asserts each dialog's true
+accessible name.
+
+### 7. rc-select reads legacy `which`/`keyCode`
+
+The installed `@rc-component/select` `OptionList.onKeyDown` switches on `event.which`, but
+`user-event` deliberately leaves the deprecated `keyCode`/`which` fields at zero, so
+`user.keyboard('{ArrowDown}')` does not navigate a Select dropdown. Dispatch `keydown` on the
+focused combobox with explicit `key`/`code` and matching `keyCode`/`which`, wrapped in `act`,
+and assert `aria-activedescendant` before pressing Enter. Keep the keyboard expectation intact;
+do not replace it with a hidden-option assertion or drop the real-browser keyboard/closemotion
+coverage.
 
 ## `act()` Warning Avoidance
 

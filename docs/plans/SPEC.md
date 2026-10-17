@@ -397,3 +397,59 @@ shapes, so no corpus extension is needed. Metadata-only empty-assignment probes 
 narrow unit coverage but are no longer the sole whole-class integration evidence; canonical
 non-empty/mixed model round trips and the real assignment-persistence workflow cover the
 corrected behaviour.
+
+## Approved frontend companion — immediate Add new command (17 October 2026)
+
+This section records a later, explicit user authorisation. It does not rewrite the product
+decisions or the planning-time scope above. The user first approved a separate bounded frontend
+fix, then, via the question tool, explicitly selected **Fix selection state (Recommended)** and
+approved extending that fix to selected-value ownership. The same authorisation, its delivery
+sequence and its actual test evidence are recorded in `ACTION_PLAN.md` (Section 6, "Separately
+authorised frontend companion — immediate Add new commands").
+
+### Authorised scope
+
+- `SelectWithAddNew` dispatches its `Add new` command immediately instead of through a 300 ms
+  trailing debounce, and no longer exposes a component-level `debounceMs` prop. The only obsolete
+  call site, `BulkSetSelectModal`'s explicit `debounceMs={300}`, is removed with it.
+- The component owns the selected value only when the parent does not control it, so an
+  intercepted sentinel never becomes the displayed selection: a controlled `value` prop
+  (presence includes explicit `undefined`) stays authoritative, an uncontrolled selection is
+  seeded from `defaultValue`, and normal selection, clear and `labelInValue` payloads keep their
+  original shape.
+- Directly associated component, owner and Playwright test changes, and this documentation
+  update, are in scope.
+
+### Relationship to the metadata contract
+
+This companion is an authorised scope exception to the backend-only exclusion in product
+decision 11. It does **not** enable frontend metadata reporting, change any `metadata` data
+shape, service or schema, and it does not recast the ABClass metadata feature as a frontend
+feature. Decision 11's exclusion of frontend reporting, service/schema changes and layout work
+otherwise stands; there is no blanket frontend scope expansion.
+
+### Explicitly unchanged
+
+- `src/frontend/src/hooks/useDebounce.ts` and its remaining callers are unchanged.
+- Modal open/close UX, focus behaviour and modal state ownership are unchanged: the caller still
+  owns the manager-modal open state, and repeated selection stays idempotent.
+- No frontend service, data contract, Zod schema, framework or configuration change.
+- No checker, retry, timeout, snapshot or regression-baseline change, and no deployment.
+  Regression coordination stays at section completion.
+- Creation-and-auto-select, disabled and standard options, accessibility semantics and
+  manager-over-create-modal behaviour are preserved.
+
+### Causal uncertainty
+
+The investigation behind this companion is read-only evidence
+(`.opencode/scratchpad/dropdown-state-investigation.md`). It proves a needlessly deferred,
+unmount-cancellable command dispatch and an actual sentinel-state defect, but the preserved
+failing browser attempt has no trace and no callback instrumentation. The debounce is therefore
+**not** a proven cause of the historical flake. This change removes a proven anti-pattern; it is
+not recorded as a confirmed root-cause fix, and the historical flake is not claimed resolved.
+
+### Delivery evidence
+
+Actual delivery status, focused test results and in-flight browser validation are recorded in
+`ACTION_PLAN.md` (Section 6), not here. Delivery remains TDD-first under the mandatory
+implementation/review loop, with documentation reconciled in the same change.
