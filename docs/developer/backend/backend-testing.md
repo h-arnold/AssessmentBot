@@ -31,10 +31,10 @@ Backend tests load a committed profile view synchronously and immutably, then su
 
 > **Status: `Implemented`.** `tests/setupGlobals.js` installs the ABClass metadata domain and
 > its typed error global as part of the backend ABClass `metadata` contract-support cycle. The
-> canonical model-input adapter, generator integrity and real-domain-acceptance probes, and
-> ABClass model construction/restoration/serialization probes are delivered. The ABClass
-> mutation-owner bootstrap and delegation probes are also delivered. Metadata controller/API
-> lifecycle and ordering probes remain pending; see
+> canonical model-input adapter, generator integrity and real-domain-acceptance probes, ABClass
+> model construction/restoration/serialization probes, mutation-owner bootstrap/delegation
+> probes, and read/mutation-summary response-mapping probes are delivered. Metadata controller
+> request validation, transport adaptation and lifecycle/ordering probes remain pending; see
 > "Canonical metadata probes" below.
 
 - `tests/setupGlobals.js` installs the metadata domain and typed error globals after the
@@ -228,11 +228,39 @@ synthetic adapter and loader (`#synthetic-data/*`), which are ESM-only. This is 
 for suites that consume bootstrap globals, not a blanket ban on ESM imports and not a
 configuration-policy change.
 
+**Response mapping and registry-only reads (`Implemented`).** Section 6 delivers validated,
+nullable `metadata` on existing read and mutation-summary responses and splits the oversized
+read suite:
+
+- `tests/controllers/abclassMetadataResponses.test.js` exercises the real
+  `ABClassResponseMapper`, controller and `getABClass_` handler: equal, detached metadata across
+  the registry (`_normaliseClassPartial`), full-read (`_toReadView`) and mutation-summary
+  (`_buildClassSummary`) projections; legacy partial/full absence and explicit `metadata: null`;
+  typed rejection of invalid stored metadata with no read-time insert, save, update or replace;
+  registry-only list reads (no full-collection load, assignment hydration, definition lookup or
+  Classroom call); and preserved not-found `null`.
+- `tests/controllers/abclassController.readClass.test.js` retains the pure-read/loading
+  characterisations (method presence, not-found, read view, no roster refresh/persist), and
+  `tests/controllers/abclassController.readClass.assignments.test.js` retains the assignment
+  projection/redaction/integrity cases, including the real-`Assignment.toPartialJSON()`
+  regression that keeps the `assignmentDefinitionKey` projection and strips the embedded
+  definition. The split preserves the original assertions and changes no data-shape contract.
+  These are read/projection probes only; they do not cover request metadata acceptance or the
+  transport error adapter.
+- Run the metadata response suite with the registry-partial read suite, both split read suites
+  and the API read suite:
+  `npm run test:backend -- tests/controllers/abclassMetadataResponses.test.js tests/controllers/abclass-partials-read.test.js 'tests/controllers/abclassController.readClass' tests/api/abclassRead.test.js`.
+- Existing exact registry and mutation-summary output expectations gained the always-emitted
+  `metadata: null` for legacy absence (for example `tests/controllers/abclass-partials-read.test.js`
+  and `tests/controllers/abclass-upsert-update.test.js`). This is an output-shape migration for
+  the new field, not new request metadata acceptance.
+
 **Controller/API lifecycle and remaining boundary probes (`Not implemented`).**
 
 - Controller/API lifecycle probes (request gate, typed request-error adaptation and transport
   adaptation) remain pending until those sections deliver the behaviour. Persistence-operation
-  probes are delivered (see immediately above).
+  and read/mutation-summary response-mapping probes are delivered (see the delivered probe
+  paragraphs above).
 - Invalid, legacy-missing and boundary cases remain local clones of canonical data rather
   than generator changes.
 - Controller/API-level ordering probes remain pending. The delivered equal-timestamp and

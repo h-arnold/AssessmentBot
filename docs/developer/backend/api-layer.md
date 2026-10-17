@@ -78,10 +78,11 @@ against the current specification first.
 > **Status: partially implemented.** The metadata domain owner, its typed domain error, the
 > canonical UTC predicate and ABClass model construction/restoration/serialization support are
 > implemented, including the partial-aware embedded-assignment projection. The ABClass
-> mutation-owner decomposition, shared save validation, prepared whole/partial persistence and
-> field-scoped roster persistence are also implemented. The controller request gate, transport
-> adaptation, response-mapper reuse and companion deletion entries remain `Not implemented`; no
-> `z_Api` endpoint currently accepts or emits `metadata`. Cross-references:
+> mutation-owner decomposition, shared save validation, prepared whole/partial persistence,
+> field-scoped roster persistence and response-mapper reuse are also implemented. The controller
+> request gate, transport adaptation and companion deletion entries remain `Not implemented`; no
+> `z_Api` request currently accepts `metadata` and no endpoint reports request-provenance
+> metadata failures. Cross-references:
 > `docs/developer/data-shapes/abclass.md` §Planned validation and
 > `docs/developer/testing/synthetic-test-data.md` §ABClass metadata generator
 > capability. Reconcile each remaining entry and remove its `Not implemented` marker only as
@@ -117,9 +118,11 @@ against the current specification first.
 - **Implemented:** `toJSON()` and `toPartialJSON()` always include metadata, revalidate mutable
   model state and return defensive copies through the domain owner. Missing/deleted model state
   is invalid at serialization, not silently defaulted.
-- **Not implemented:** controller request validation, response mapping and API transport
-  integration remain pending. No `z_Api` endpoint currently accepts or emits `metadata`.
-  Persistence preparation is delivered (see "Persistence extension" below).
+- **Implemented:** response mapping emits validated, nullable `metadata` on registry, full-read
+  and mutation-summary responses (see "Response mapper reuse" below).
+- **Not implemented:** controller request validation and API transport integration remain
+  pending. No `z_Api` request currently accepts `metadata`. Persistence preparation is delivered
+  (see "Persistence extension" below).
 
 ### ABClass partial-aware assignment projection — `Models/ABClass.js` (`Implemented`)
 
@@ -168,14 +171,21 @@ against the current specification first.
   preserving the field-path message and adding no new envelope fields. All other exceptions
   propagate unchanged. The transport layer never evaluates nested domain rules.
 
-### Response mapper reuse (`Not implemented`)
+### Response mapper reuse (`Implemented`)
 
-- `ABClassResponseMapper._normaliseClassPartial()` remains the single stored-partial metadata
-  normalisation/validation gate: legacy absence routes through the metadata-domain
-  constructor, and present invalid metadata is an integrity failure. Its existing reuse by
-  `_buildClassSummary()` covers mutation summaries, so no duplicate metadata pass is added.
-- Extend `_toReadView()` with the validated/copied metadata field while retaining its
-  assignment projection/redaction and other full-read behaviour.
+- `ABClassResponseMapper._normaliseClassPartial()` is the single stored-partial metadata gate.
+  Actual own-property absence routes through `new ABClassMetadata()` to `null`; a present value is
+  validated and defensively copied through the shared domain owner, so an invalid stored value
+  raises a typed `ABClassMetadataValidationError` integrity failure rather than dropping the row,
+  repairing it or fetching another representation. `_buildClassSummary()` reuses this same gate
+  for mutation summaries, so no duplicate metadata pass is added in `getAllClassPartials()`.
+- `_toReadView()` projects validated, detached `metadata` from mutable model state while
+  retaining its existing assignment projection/redaction and definition-key replacement.
+- Metadata carries canonical timestamp strings only, so no extra `DateUtils.deepConvertDates()`
+  conversion is needed for the partial-list or mutation-summary responses. The existing full-read
+  `DateUtils.deepConvertDates()` call for the other ABClass fields is retained.
+- Request metadata acceptance and request-provenance transport adaptation remain
+  `Not implemented` (see "Controller request gate and transport adaptation" above).
 
 ### Controller decomposition — `ABClassMutationOps.js` (`Implemented`)
 
@@ -529,7 +539,7 @@ Reference: https://developers.google.com/apps-script/guides/html/reference/run
   Source: inline closure in `src/backend/z_Api/z_apiHandler.js` delegating to `new ABClassController().getAllClassPartials()`.
   Frontend wrapper: `src/frontend/src/services/googleClassrooms/classPartialsService.ts` (`getABClassPartials()`).
   Handler behaviour: instantiates `ABClassController` inside the inline closure at call time.
-  The controller normalises stored records before returning them, so transport consumers receive only the documented class-partial fields and not storage metadata such as `_id`.
+  The controller normalises stored records before returning them, so transport consumers receive only the documented class-partial fields and not storage-only fields such as `_id`. Normalised rows include always-present nullable `metadata`, validated and detached from storage (see §Response mapper reuse).
   The frontend service models `classOwner` and `teachers` as explicit `TeacherSummary` objects (`userId`, `email`, `teacherName`).
   See `docs/developer/data-shapes/abclass.md` (§ABClassPartials) for the class partial shape and persistence strategy.
 
@@ -538,7 +548,7 @@ Reference: https://developers.google.com/apps-script/guides/html/reference/run
   Required request field: `classId`.
   Validation: the helper validates `parameters` is a plain object via the shared `validateParametersObject_` primitive. `classId` must be a non-empty, already-trimmed string without path characters (`/`, `\`, `..`) or ASCII control characters (code points 0–31 and 127). Invalid payloads are reported as `INVALID_REQUEST` by the transport.
   Handler behaviour: calls `new ABClassController().readClass(classId)`. Returns the controller's shaped response (produced by the private `_toReadView` method) on success. Catches `ClassNotFoundError` explicitly and returns `null`. Re-throws all other errors.
-  Response shape is produced by `ABClassController._toReadView()` — see `docs/developer/data-shapes/abclass.md` (§ABClass full-read) for the full shape.
+  Response shape is produced by `ABClassController._toReadView()` — see `docs/developer/data-shapes/abclass.md` (§ABClass full-read) for the full shape. It includes always-present nullable `metadata` (validated, detached from model state); an absent class still returns top-level `null`.
   Frontend wrapper: `src/frontend/src/services/googleClassrooms/classDetail/classDetailService.ts` (`getABClass()`), with response validation in `src/frontend/src/services/googleClassrooms/classDetail/classDetailService.zod.ts`.
   Query factory: `getABClassQueryOptions(classId)` in `src/frontend/src/query/sharedQueries.ts` (not included in startup warmup — per-class query).
 
@@ -612,7 +622,7 @@ Reference: https://developers.google.com/apps-script/guides/html/reference/run
   Required request fields: `classId`, `cohortKey`, `yearGroupKey`, `courseLength`.
   Validation: transport enforces `params` as an object and rejects unsafe `classId` path characters (`..`, `/`, `\`) when `classId` is supplied as a string; controller validation owns required-field completeness, non-empty `classId`, and `courseLength` integer/range checks.
   Write-path behaviour: hydrates `className`, `classOwner`, `teachers`, and `students` from Google Classroom. When the class already exists, the controller refreshes the roster and preserves existing `assignments`.
-  Response data: the partial class summary returned by `ABClass.toPartialJSON()`, not the full class document. `students` and `assignments` are not returned.
+  Response data: the partial class summary returned by `ABClass.toPartialJSON()`, not the full class document. `students` and `assignments` are not returned. The summary includes always-present nullable `metadata`; requests do not yet accept a `metadata` field.
 
 - `updateABClass` — applies a lightweight patch to editable ABClass fields.
   Source: `src/backend/z_Api/abclassMutations.js`, via the `updateABClass_()` helper called from `ALLOWLISTED_METHOD_HANDLERS` in `src/backend/z_Api/z_apiHandler.js`. Delegates to `ABClassController.updateABClass()` in `src/backend/y_controllers/ABClassController/index.js`.
@@ -622,7 +632,7 @@ Reference: https://developers.google.com/apps-script/guides/html/reference/run
   Validation: transport enforces `params` as an object, rejects unsafe `classId` path characters when `classId` is a string, blocks forbidden fields, and requires `active` to be boolean or `null` when supplied; controller validation owns non-empty `classId` and `courseLength` integer/range checks.
   Existing-class behaviour: updates only the supplied patch fields, persists the partial registry row, and does not mutate the excluded fields.
   Missing-class behaviour: throws `RangeError`; `updateABClass` is not an upsert path.
-  Response data: the same partial class summary shape used by `upsertABClass()`.
+  Response data: the same partial class summary shape used by `upsertABClass()`, including always-present nullable `metadata`. `metadata` is not yet an accepted request field.
 
 - `deleteABClass` — deletes the stored class record and its class-partial registry row.
   Source: `src/backend/z_Api/abclassMutations.js`, via the `deleteABClass_()` helper called from `ALLOWLISTED_METHOD_HANDLERS` in `src/backend/z_Api/z_apiHandler.js`. Delegates to `ABClassController.deleteABClass()` in `src/backend/y_controllers/ABClassController/index.js`.

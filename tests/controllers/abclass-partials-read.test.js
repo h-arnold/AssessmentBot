@@ -120,6 +120,7 @@ describe('ABClassController – getAllClassPartials() read path', () => {
         classOwner: { userId: 'owner-1' },
         teachers: [{ userId: 'teacher-1' }],
         active: true,
+        metadata: null,
       },
       {
         classId: 'class-002',
@@ -130,6 +131,7 @@ describe('ABClassController – getAllClassPartials() read path', () => {
         classOwner: null,
         teachers: [],
         active: false,
+        metadata: null,
       },
     ]);
     expect(result[0]).not.toHaveProperty('_id');
@@ -242,6 +244,7 @@ describe('ABClassController – getAllClassPartials() read path', () => {
       },
       teachers: [],
       active: null,
+      metadata: null,
     });
     expect(result).not.toHaveProperty('cohortLabel');
     expect(result).not.toHaveProperty('yearGroupLabel');

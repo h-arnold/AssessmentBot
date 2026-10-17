@@ -456,6 +456,7 @@ class ABClassController {
    * @param {Object} partialDocument - Raw partial document read from storage.
    * @returns {Object} Normalised class partial payload.
    * @throws {TypeError} If the document is not a plain object or lacks required fields.
+   * @throws {ABClassMetadataValidationError} If present metadata is invalid.
    */
   _normaliseClassPartial(partialDocument) {
     return this._responseMapper._normaliseClassPartial(partialDocument);

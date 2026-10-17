@@ -41,7 +41,8 @@ function validateIdentifier_(value, fieldName) {
 /**
  * Transport-boundary handler for getABClass.
  * Reads a stored class document and returns a transport-ready plain object
- * with partial assignments. No Classroom API calls, no storage mutation.
+ * with partial assignments and always-present nullable metadata. No Classroom
+ * API calls, no storage mutation.
  *
  * @remarks
  * - Not-found detection uses an `instanceof ClassNotFoundError` check.
@@ -53,6 +54,8 @@ function validateIdentifier_(value, fieldName) {
  *   values (including nested objects). The deep conversion is applied here
  *   rather than in `apiHandler` to avoid the performance cost on endpoints
  *   that do not return deeply nested Date objects.
+ * - Read-view metadata is validated and copied before transport; its UTC
+ *   timestamps are already strings, while other live dates are converted here.
  * - The handler does NOT strip `progressTracker` or `_hydrationLevel` from
  *   the response because `ABClassController._toReadView` already handles
  *   those defence-in-depth strips.

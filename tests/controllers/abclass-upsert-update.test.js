@@ -90,6 +90,7 @@ function buildExpectedSummary(overrides = {}) {
       },
     ],
     active: true,
+    metadata: null,
     ...overrides,
   };
 }
