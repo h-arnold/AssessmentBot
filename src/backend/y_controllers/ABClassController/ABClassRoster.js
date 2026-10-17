@@ -153,6 +153,10 @@ class ABClassRoster {
       : { classId: abClass.classId };
 
     try {
+      const partialsCollection = this._dbManager.getCollection('abclass_partials');
+      const existingPartial = partialsCollection.findOne({ classId: abClass.classId });
+      const preparedPartial = this._persistence._prepareRosterPartial(existingPartial, abClass);
+
       // Log intent to persist
       logger.info('_persistRoster: persisting roster', {
         classId: abClass.classId,
@@ -173,7 +177,7 @@ class ABClassRoster {
         filter,
       });
 
-      this._persistence._upsertClassPartial(abClass);
+      this._persistence._writePreparedRosterPartial(preparedPartial, abClass.classId);
     } catch (error) {
       logger.error('_persistRoster: write or partial upsert failed', {
         classId: abClass.classId,

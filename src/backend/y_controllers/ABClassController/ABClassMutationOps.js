@@ -83,10 +83,11 @@ class ABClassMutationOps {
     }
 
     const abClass = this._validation._applyPatchToClass(ABClass.fromJSON(existingDocument), patch);
+    const partialData = this._persistence._prepareClassPartial(abClass);
 
     collection.updateOne({ classId: classId }, { $set: patch });
     collection.save();
-    this._persistence._upsertClassPartial(abClass);
+    this._persistence._writePreparedClassPartial(classId, partialData);
 
     return this._responseMapper._buildClassSummary(abClass);
   }

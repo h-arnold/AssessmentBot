@@ -348,3 +348,52 @@ honour the vendor's boolean drop result and add vendor-faithful red-first regres
 coverage. This is the sole deliberately deferred correction; the present cycle must not
 fix the flag or alter deletion code. The metadata calculation/refresh/frontend exclusions
 remain excluded scope, not additional deferrals. No open product questions remain.
+
+## Approved model serialisation amendment — 17 October 2026
+
+This section records a later, explicit user authorisation. It does not rewrite the product
+decisions or the planning-time scope above; the same authorisation is recorded in
+`ACTION_PLAN.md` Section 5 ("Approved serialisation amendment — 17 October 2026").
+
+### Context
+
+Whole-class persistence prepares its full document from `ABClass.toJSON()`. A full ABClass
+document may legitimately contain class-embedded assignments that are deliberately partial:
+`ABClassAssignmentOps.persistAssignmentRun()` replaces the updated assignment in the class with
+its `toPartialJSON()` summary. The standalone `Assignment` and `AssignmentDefinition` `toJSON()`
+serialisers remain intentionally strict and reject a partial definition (tasks stored as an
+array). Eagerly full-serialising an embedded partial therefore failed a normal
+assignment-persistence workflow.
+
+### Authorised correction
+
+After the conflict was reproduced, the user explicitly approved a bounded `ABClass.toJSON()`
+correction:
+
+- `ABClass` selects the existing serialiser that matches each embedded assignment: a partial
+  definition (tasks stored as an array) serialises through the assignment's existing
+  `toPartialJSON()`, and a genuinely full assignment keeps its existing `toJSON()`.
+- Full records remain full. Genuinely full assignments and standalone `Assignment` /
+  `AssignmentDefinition` `toJSON()` calls remain strict and still reject partial definitions;
+  serialisation errors from a genuine full assignment propagate unchanged.
+- The prepared full class document therefore carries its actual non-empty assignment population
+  alongside validated metadata. This is missing Section 3 model integration delivered in
+  Section 5, not a new frontend feature.
+- No second persistence-specific class serializer is required.
+
+### Explicitly not authorised
+
+- No automatic hydration or definition fetch, and no catch-and-fallback that converts a genuine
+  full-serialisation failure into success.
+- No definition fabrication, assignment removal or workflow restructuring.
+- No new averaging or score calculation, no new request metadata semantics, no Teacher
+  serialisation change and no deletion-behaviour change.
+- No standalone full-definition relaxation, and no fixture regeneration to hide the conflict.
+
+### Fixture position
+
+The existing synthetic generator already supplies the canonical partial and full assignment
+shapes, so no corpus extension is needed. Metadata-only empty-assignment probes remain valid
+narrow unit coverage but are no longer the sole whole-class integration evidence; canonical
+non-empty/mixed model round trips and the real assignment-persistence workflow cover the
+corrected behaviour.

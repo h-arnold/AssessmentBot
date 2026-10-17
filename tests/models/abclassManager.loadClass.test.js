@@ -1,3 +1,6 @@
+import { loadBackendModelInputs } from '#synthetic-data/toBackendModelInputs.js';
+import { restoreGlobals, saveGlobals } from '../helpers/globalMockManager.js';
+
 const ABClassExport = require('#backend/Models/ABClass.js');
 const ABClass = ABClassExport.ABClass || ABClassExport;
 const StudentExport = require('#backend/Models/Student.js');
@@ -10,8 +13,17 @@ describe('ABClassController.loadClass', () => {
   let controller;
   let collectionMock;
   let dbManagerMock;
+  let savedGlobals;
 
   beforeEach(() => {
+    savedGlobals = saveGlobals([
+      'ABClass',
+      'Student',
+      'Teacher',
+      'ABLogger',
+      'DbManager',
+      'ClassroomApiClient',
+    ]);
     globalThis.ABClass = ABClass;
     globalThis.Student = Student;
     globalThis.Teacher = Teacher;
@@ -34,6 +46,7 @@ describe('ABClassController.loadClass', () => {
 
     const partialsCollectionMock = {
       findOne: vi.fn().mockReturnValue(null),
+      updateOne: vi.fn(() => ({ matchedCount: 1, modifiedCount: 0, acknowledged: true })),
       replaceOne: vi.fn(),
       insertOne: vi.fn(),
       save: vi.fn(),
@@ -54,19 +67,14 @@ describe('ABClassController.loadClass', () => {
       fetchAllStudents: vi.fn(),
     };
 
-    delete require.cache[require.resolve('../../src/backend/y_controllers/ABClassController')];
+    delete require.cache[require.resolve('#backend/y_controllers/ABClassController/index.js')];
     ABClassController = require('#backend/y_controllers/ABClassController/index.js');
     controller = new ABClassController();
   });
 
   afterEach(() => {
-    delete globalThis.ABClass;
-    delete globalThis.Student;
-    delete globalThis.Teacher;
-    delete globalThis.ABLogger;
-    delete globalThis.DbManager;
-    delete globalThis.ClassroomApiClient;
-    delete require.cache[require.resolve('../../src/backend/y_controllers/ABClassController')];
+    restoreGlobals(savedGlobals);
+    delete require.cache[require.resolve('#backend/y_controllers/ABClassController/index.js')];
   });
 
   it('refreshes roster when course update time is newer than collection metadata', () => {
@@ -181,6 +189,71 @@ describe('ABClassController.loadClass', () => {
     // teachers/students arrays should be empty after refresh.
     expect(abClass.teachers).toHaveLength(0);
     expect(abClass.students).toHaveLength(0);
+  });
+
+  it('inserts a complete canonical partial when the registry row is missing', () => {
+    const source = Object.values(loadBackendModelInputs('small').classesById)[0];
+    const storedDoc = {
+      ...structuredClone(source),
+      classId: 'course-missing-partial',
+    };
+    const originalAssignments = structuredClone(storedDoc.assignments);
+    collectionMock.findOne.mockReturnValue(storedDoc);
+    ClassroomApiClient.fetchCourse.mockReturnValue({});
+    ClassroomApiClient.fetchTeachers.mockReturnValue([]);
+    ClassroomApiClient.fetchAllStudents.mockReturnValue([]);
+    const partialCollection = dbManagerMock.getCollection('abclass_partials');
+
+    const loaded = controller.loadClass(storedDoc.classId);
+
+    expect(partialCollection.insertOne).toHaveBeenCalledTimes(1);
+    const inserted = partialCollection.insertOne.mock.calls[0][0];
+    expect(inserted).toMatchObject({
+      classId: storedDoc.classId,
+      cohortKey: storedDoc.cohortKey,
+      courseLength: storedDoc.courseLength,
+      yearGroupKey: storedDoc.yearGroupKey,
+      active: storedDoc.active,
+      metadata: storedDoc.metadata,
+    });
+    expect(inserted).not.toHaveProperty('students');
+    expect(inserted).not.toHaveProperty('assignments');
+    expect(loaded.assignments).toHaveLength(originalAssignments.length);
+    expect(loaded.assignments[0].assignmentId).toBe(originalAssignments[0].assignmentId);
+    expect(loaded.assignments[0].assignmentDefinition.tasks[0].taskTitle).toBe(
+      originalAssignments[0].assignmentDefinition.tasks[0].taskTitle
+    );
+  });
+
+  it('accepts an existing-row no-op patch using only its stored id and roster fields', () => {
+    const source = Object.values(loadBackendModelInputs('small').classesById)[0];
+    const storedDoc = {
+      ...structuredClone(source),
+      classId: 'course-noop-partial',
+    };
+    const partialCollection = dbManagerMock.getCollection('abclass_partials');
+    partialCollection.findOne.mockReturnValue({
+      _id: 'stored-partial-id',
+      classId: storedDoc.classId,
+    });
+    collectionMock.findOne.mockReturnValue(storedDoc);
+    ClassroomApiClient.fetchCourse.mockReturnValue({});
+    ClassroomApiClient.fetchTeachers.mockReturnValue([]);
+    ClassroomApiClient.fetchAllStudents.mockReturnValue([]);
+
+    const loaded = controller.loadClass(storedDoc.classId);
+
+    expect(partialCollection.updateOne).toHaveBeenCalledWith(
+      { _id: 'stored-partial-id' },
+      { $set: { className: storedDoc.className, classOwner: null, teachers: [] } }
+    );
+    expect(partialCollection.replaceOne).not.toHaveBeenCalled();
+    expect(partialCollection.insertOne).not.toHaveBeenCalled();
+    expect(loaded.assignments).toHaveLength(storedDoc.assignments.length);
+    expect(loaded.assignments[0].assignmentId).toBe(storedDoc.assignments[0].assignmentId);
+    expect(loaded.assignments[0].assignmentDefinition.tasks[0].taskTitle).toBe(
+      storedDoc.assignments[0].assignmentDefinition.tasks[0].taskTitle
+    );
   });
 
   // No fallback path: schema must support updateOne.

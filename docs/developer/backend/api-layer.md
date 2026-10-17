@@ -77,10 +77,11 @@ against the current specification first.
 
 > **Status: partially implemented.** The metadata domain owner, its typed domain error, the
 > canonical UTC predicate and ABClass model construction/restoration/serialization support are
-> implemented. The ABClass mutation-owner decomposition and shared save validation are also
-> implemented. The controller request gate, transport adaptation, response-mapper reuse,
-> persistence extension and companion deletion entries remain `Not implemented`; no `z_Api`
-> endpoint currently accepts or emits `metadata`. Cross-references:
+> implemented, including the partial-aware embedded-assignment projection. The ABClass
+> mutation-owner decomposition, shared save validation, prepared whole/partial persistence and
+> field-scoped roster persistence are also implemented. The controller request gate, transport
+> adaptation, response-mapper reuse and companion deletion entries remain `Not implemented`; no
+> `z_Api` endpoint currently accepts or emits `metadata`. Cross-references:
 > `docs/developer/data-shapes/abclass.md` §Planned validation and
 > `docs/developer/testing/synthetic-test-data.md` §ABClass metadata generator
 > capability. Reconcile each remaining entry and remove its `Not implemented` marker only as
@@ -116,9 +117,24 @@ against the current specification first.
 - **Implemented:** `toJSON()` and `toPartialJSON()` always include metadata, revalidate mutable
   model state and return defensive copies through the domain owner. Missing/deleted model state
   is invalid at serialization, not silently defaulted.
-- **Not implemented:** controller request validation, persistence operations, response mapping
-  and API transport integration remain pending. No `z_Api` endpoint currently accepts or emits
-  `metadata`.
+- **Not implemented:** controller request validation, response mapping and API transport
+  integration remain pending. No `z_Api` endpoint currently accepts or emits `metadata`.
+  Persistence preparation is delivered (see "Persistence extension" below).
+
+### ABClass partial-aware assignment projection — `Models/ABClass.js` (`Implemented`)
+
+- `ABClass.toJSON()` serialises each embedded assignment through the private
+  `ABClass._serialiseAssignmentsForClass()` helper. A partial definition (tasks stored as an
+  array) is serialised via the assignment's existing `toPartialJSON()`; a genuinely full
+  assignment keeps its existing `toJSON()`. Plain objects and other supported items retain
+  `ArrayUtils.serialiseArray()` behaviour.
+- Standalone `Assignment` and `AssignmentDefinition` `toJSON()` calls remain strict and still
+  reject a partial definition. Serialisation errors from a genuine full assignment propagate
+  unchanged.
+- This is the user-approved 17 October 2026 correction recorded in `docs/plans/SPEC.md`. It is
+  missing Section 3 model integration delivered in Section 5, not a new frontend feature. No
+  second persistence-specific class serializer, automatic hydration or catch-and-fallback is
+  added.
 
 ### Metadata error type — `Utils/ErrorTypes/ABClassMetadataValidationError.js` (`Implemented`)
 
@@ -171,33 +187,49 @@ against the current specification first.
   checks. Both facade `saveClass` and mutation-owner upsert use this shared validation; upsert
   then calls the injected persistence owner directly, without a callback through the facade.
   The facade retains its persistence delegator and `true` return value.
+- `ABClassMutationOps.updateABClass()` prepares the complete partial projection through
+  `ABClassPersistence._prepareClassPartial()` before its selective full-store `$set`, then
+  persists the prepared partial through `_writePreparedClassPartial()`. The full-store `$set`
+  stays selective and gains no unrelated fields; the selective editable path may leave
+  full-store metadata absence while rebuilding the partial with `null`. Upsert keeps its
+  whole-class `persistClassAndPartial()` path.
 - The facade retains its public-method JSDoc and GAS sub-class load order. This decomposition
-  adds no metadata request handling, prepared-write behaviour, roster persistence changes or
-  deletion-flag correction.
+  adds no metadata request handling or deletion-flag correction; prepared-write behaviour and
+  field-scoped roster persistence are delivered separately (see "Persistence extension" below).
 - The conditional `ABClassPersistence.readClassPartials()` extraction is **not required**:
   the resulting facade is within the binding 500-line ceiling, so registry retrieval and
   error logging remain in `getAllClassPartials()`.
 
-### Persistence extension — `ABClassPersistence` (`Not implemented`)
+### Persistence extension — `ABClassPersistence` (`Implemented`)
 
-- Extend the existing `ABClassPersistence` for preprepared full/partial payloads and private
-  registry-roster preparation/write helpers. `ABClassRoster._persistRoster()` remains the
-  existing roster orchestrator and calls those helpers instead of whole-row partial upsert.
-- Prepare complete payloads before full-store mutation, preserving existing direct method
-  signatures. An existing-row registry roster patch uses its stored `_id` as the sole
-  filter and checks the vendor's `matchedCount`: `_id` matches count even when unchanged,
-  unlike the vendor's query-filter result. A true zero-match patch fails without retry or
-  classId-query/upsert fallback.
-- Whole-save preparation copies the model's full JSON or the supported plain input, never
-  mutating the caller. Normalise the caller's metadata through the domain constructor;
-  validate any present partial-projection metadata and reject invalid/different values.
-  A legacy plain projection may omit the field: populate only the prepared full/partial
-  copies from the same validated source, with independent nested metadata ownership.
-- Reuse `ABClass.serialiseOwner()` and the existing ArrayUtils serialisers for registry patch
-  values.
-- The field-scoped roster patch of an existing partial must not use, validate, copy or rewrite
-  the stored metadata value. See `docs/developer/data-shapes/abclass.md` §Planned
-  field-scoped roster persistence.
+- `persistClassAndPartial(abClass)` prepares independent full and partial payloads through
+  `_prepareClassAndPartial()` **before** the first full-store mutation, then writes the full
+  document first and the prepared partial afterwards. Retained direct method signatures and the
+  full-first/partial-second order are unchanged.
+- `_prepareClassAndPartial()` copies the model's full JSON (or the supported plain-object input)
+  without mutating the caller, normalises the caller's metadata through the domain constructor,
+  and validates any present projection metadata. `_prepareClassPartial()` builds the complete
+  partial projection; `_metadataCopy()`, `_validateFullProjection()` and
+  `_validatePreparedMetadata()` own the defensive copy and consistency checks. A legacy plain
+  projection may omit the field; only the prepared copies gain `metadata`, with independent
+  nested ownership.
+- `_upsertClassPartial()` and `_writePreparedClassPartial(classId, partialData)` persist a
+  prepared partial without re-projecting the model.
+- Field-scoped roster persistence is implemented in `_prepareRosterPartial(existingPartial,
+abClass)` and `_writePreparedRosterPartial(prepared, classId)`. `ABClassRoster._persistRoster()`
+  remains the roster orchestrator: it performs the permitted existence lookup, prepares the
+  operation, writes the full-store roster `$set`, and then calls the write helper.
+- An existing row is patched with `$set` only `className`, `classOwner` (owner helper) and
+  `teachers` (array helper), filtered by the row's stored `_id`. The vendor's `matchedCount` is
+  checked: an `_id`-only filter counts a matched-but-unmodified row, so a true zero-match patch
+  fails without retry, classId-query or upsert fallback. A missing row inserts a complete
+  validated partial with independent metadata. The existing partial row's metadata and unrelated
+  fields are never used, validated, copied or rewritten.
+- The prepared full class document uses the partial-aware `ABClass.toJSON()` projection above, so
+  it carries its actual non-empty partial/full assignment population alongside validated
+  metadata. A true partial-save or patch failure keeps the existing logged propagation and
+  non-transactional partial-success risk; no rollback or retry is added.
+- See `docs/developer/data-shapes/abclass.md` §Planned field-scoped roster persistence.
 
 ### Companion deletion-documentation reconciliation (`Not implemented`)
 

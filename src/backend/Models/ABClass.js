@@ -295,8 +295,10 @@ class ABClass {
   }
 
   /**
-   * Serialises this class to a JSON object, always including a validated,
-   * defensive assessment-summary metadata snapshot (or null).
+   * Serialises this class document, always including a validated, defensive
+   * assessment-summary metadata snapshot (or null). Embedded partial
+   * assignments retain their partial representation; full assignments retain
+   * their full representation.
    * @returns {Object} A plain object representation of the class and all its contents
    * @throws {ABClassMetadataValidationError} If mutable metadata state is invalid.
    */
@@ -310,10 +312,34 @@ class ABClass {
       classOwner: this.serialiseOwner(this.classOwner),
       teachers: ArrayUtils.serialiseArray(this.teachers),
       students: ArrayUtils.serialiseArray(this.students),
-      assignments: ArrayUtils.serialiseArray(this.assignments),
+      assignments: this._serialiseAssignmentsForClass(),
       active: this.active ?? null,
       metadata: new ABClassMetadata(this.metadata).toJSON(),
     };
+  }
+
+  /**
+   * Serialises class-embedded assignments according to their existing definition shape.
+   * A partial definition is authoritatively identified by its task-summary array;
+   * serialization errors from full assignments are allowed to propagate unchanged.
+   * Plain objects and other supported items retain ArrayUtils serialisation behaviour.
+   * @returns {Array} Serialized assignment representations.
+   * @private
+   */
+  _serialiseAssignmentsForClass() {
+    return (this.assignments || []).map((assignment) => {
+      const definition = assignment?.assignmentDefinition;
+      if (
+        definition &&
+        Array.isArray(definition.tasks) &&
+        typeof assignment.toPartialJSON === 'function'
+      ) {
+        return assignment.toPartialJSON();
+      }
+      return assignment && typeof assignment.toJSON === 'function'
+        ? assignment.toJSON()
+        : assignment;
+    });
   }
 
   /**

@@ -113,9 +113,9 @@ Location: `scripts/synthetic-test-data/toBackendModelInputs.js`.
 
 ### Test infrastructure reuse
 
-> **Status: `Implemented`.** The adapter and the import mappings below are delivered. The
-> dispatcher-integration and roster-mock bullets record contract-sensitive guidance for the
-> later controller/API sections.
+> **Status: `Implemented`.** The adapter, the import mappings and the existing-row roster-mock
+> guidance below are delivered (Section 5). The dispatcher-integration bullet remains
+> contract-sensitive guidance for the later controller/API sections.
 
 - The root `package.json` `imports` map provides `"#synthetic-data/*": "./scripts/synthetic-test-data/*"`.
   Backend `.test.js` suites use ESM named imports from
@@ -183,10 +183,56 @@ the validated class instance through persistence and summary mapping.
 GAS-style evaluation order. These are behaviour-preserving decomposition probes; they do not
 cover metadata request validation or persistence lifecycle behaviour.
 
+**Prepared whole/partial writes and field-scoped roster persistence (`Implemented`).**
+Section 5 adds the persistence/roster suites and the supplemental model/workflow coverage:
+
+- `tests/controllers/abclassMetadataPersistence.test.js` covers whole-write and plain-object
+  preparation: detached equal metadata copies across canonical null/numeric/marker/mixed
+  variants, caller and projection isolation, own-undefined/invalid rejection with zero
+  mutations, throwing or differing partial projections, full-first ordering, and exact
+  full-save/partial-save failure propagation with the existing logged diagnostics.
+- `tests/controllers/abclassMetadataEditablePersistence.test.js` covers selective editable
+  preparation: the complete partial is prepared before the selective full-store `$set`, a legacy
+  full document keeps metadata absence while the rebuilt partial carries `null`, and a failed
+  projection or malformed restored snapshot writes neither store.
+- `tests/controllers/abclassRosterPersistence.test.js` covers field-scoped roster persistence:
+  the exact registry `$set` for `className`/`classOwner`/`teachers`, the stored `_id` filter, no
+  metadata accessor read or `toPartialJSON()` call on an existing row, complete missing-row
+  insertion prepared before the full-store write, vendor-faithful `matchedCount` (a
+  matched-but-unmodified `_id` patch succeeds and a true zero-match patch fails without
+  fallback), and full-first ordering with no partial write after a failed full save.
+- `tests/models/abclassEmbeddedAssignmentSerialisation.test.js` and
+  `tests/controllers/abclassEmbeddedAssignmentPersistence.test.js` add the supplemental
+  canonical non-empty/mixed model round trips and the real `persistAssignmentRun()` workflow.
+  They prove the actual partial/full embedded-assignment population survives whole-class
+  serialisation and reaches both stores with equal detached metadata. Metadata-only
+  `assignments: []` probes remain valid narrow unit coverage but are no longer the sole
+  whole-class integration evidence.
+- Load/save fixture migrations accompany the new behaviour:
+  `tests/models/abclassManager.saveClass.test.js` asserts the prepared full/partial payload
+  copies (including `metadata: null`) instead of caller identity, and
+  `tests/models/abclassManager.loadClass.test.js`, `tests/controllers/abclass-loadClass.test.js`
+  and `tests/controllers/abclass-roster-sync.test.js` carry the stored `_id`/vendor-faithful
+  `updateOne` corrections and the field-scoped roster assertion.
+- Non-transactional I/O risk stays explicit: the suites assert full-first ordering and existing
+  failure propagation, and do not emulate transactions, rollback or retry.
+
+**Backend CommonJS import identity in those suites (`Implemented`).** The three persistence
+suites resolve their backend CommonJS owners — `ABClass`, `ABClassMetadata`, `ABClassValidation`,
+`ABClassPersistence`, `ABClassRoster` and `ABClassMutationOps` — through the same `#backend/*`
+`require()` route the bootstrap uses, so they share the constructors installed by
+`tests/setupGlobals.js`. Mixing static ESM backend imports with those bootstrap CommonJS globals
+creates duplicate module identities that silently split coverage counters; the `#backend`
+require route keeps one identity. Static named ESM imports remain required for the script-owned
+synthetic adapter and loader (`#synthetic-data/*`), which are ESM-only. This is scoped guidance
+for suites that consume bootstrap globals, not a blanket ban on ESM imports and not a
+configuration-policy change.
+
 **Controller/API lifecycle and remaining boundary probes (`Not implemented`).**
 
-- Controller persistence and API lifecycle probes (including typed request-error adaptation)
-  remain pending until those sections deliver the behaviour.
+- Controller/API lifecycle probes (request gate, typed request-error adaptation and transport
+  adaptation) remain pending until those sections deliver the behaviour. Persistence-operation
+  probes are delivered (see immediately above).
 - Invalid, legacy-missing and boundary cases remain local clones of canonical data rather
   than generator changes.
 - Controller/API-level ordering probes remain pending. The delivered equal-timestamp and

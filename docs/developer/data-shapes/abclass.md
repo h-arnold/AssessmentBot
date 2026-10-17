@@ -1,7 +1,8 @@
 # Contract: ABClass
 
 Root domain object for all data about a single Google Classroom course.
-Contains class metadata, students, teachers, and partial assignment summaries.
+Contains class configuration, assessment-summary metadata, students, teachers and embedded
+assignments.
 
 Backend model: `src/backend/Models/ABClass.js`
 Metadata domain owner: `src/backend/Models/ABClassMetadata.js`
@@ -30,27 +31,34 @@ and a lightweight registry stored via `ABClass.toPartialJSON()`.
 
 Stored via `ABClass.toJSON()`.
 
-| #   | Field          | Type              | Persistence                      | Transport   | Frontend Zod                                                    | Notes                                                                                                                     |
-| --- | -------------- | ----------------- | -------------------------------- | ----------- | --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| 1   | `classId`      | `string`          | included                         | unchanged   | `ClassFullSchema.classId: z.string()`                           | Google Classroom course ID. Required, never null.                                                                         |
-| 2   | `className`    | `string\|null`    | included                         | unchanged   | `ClassFullSchema.className: z.string().nullable()`              | Derived from Google Classroom on write path. Null when unset.                                                             |
-| 3   | `cohortKey`    | `string\|null`    | included                         | unchanged   | `ClassFullSchema.cohortKey: z.string().nullable()`              | User-managed. `null` when unset.                                                                                          |
-| 4   | `courseLength` | `number`          | included                         | unchanged   | `ClassFullSchema.courseLength: z.number()`                      | Integer ≥ 1. Default 1 in constructor.                                                                                    |
-| 5   | `yearGroupKey` | `string\|null`    | included                         | unchanged   | `ClassFullSchema.yearGroupKey: z.string().nullable()`           | User-managed. `null` when unset.                                                                                          |
-| 6   | `classOwner`   | `Object\|null`    | included                         | unchanged   | `ClassFullSchema.classOwner: TeacherSummarySchema.nullable()`   | Teacher summary object (see [§ Sub-entities Teacher](#sub-entity-teacher)). Null when unset.                              |
-| 7   | `teachers`     | `Array`           | included                         | unchanged   | `ClassFullSchema.teachers: z.array(TeacherSummarySchema)`       | Array of Teacher summary objects. Empty array when no teachers.                                                           |
-| 8   | `students`     | `Array`           | included                         | unchanged   | `ClassFullSchema.students: z.array(StudentSummarySchema)`       | Array of Student objects (see [§ Sub-entities Student](#sub-entity-student)). Empty array when no students.               |
-| 9   | `assignments`  | `Array`           | included                         | transformed | `ClassFullSchema.assignments: z.array(AssignmentPartialSchema)` | Array of Assignment partials (see [§ Transport getABClass](#getabclass-read)). Always [] at rest in the ABClass document. |
-| 10  | `active`       | `boolean\|null`   | included (`this.active ?? null`) | unchanged   | `ClassFullSchema.active: z.boolean().nullable()`                | Tri-state: `true` (active), `false` (inactive), `null` (unknown/unset).                                                   |
-| 11  | `metadata`     | `ABClassMetadata` | included by `toJSON()`           | omitted     | —                                                               | Model serialization always emits it. This row does not guarantee database write preparation; current API mappers omit it. |
+| #   | Field          | Type              | Persistence                      | Transport   | Frontend Zod                                                    | Notes                                                                                                                                                                                                                                                                                                                                     |
+| --- | -------------- | ----------------- | -------------------------------- | ----------- | --------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | `classId`      | `string`          | included                         | unchanged   | `ClassFullSchema.classId: z.string()`                           | Google Classroom course ID. Required, never null.                                                                                                                                                                                                                                                                                         |
+| 2   | `className`    | `string\|null`    | included                         | unchanged   | `ClassFullSchema.className: z.string().nullable()`              | Derived from Google Classroom on write path. Null when unset.                                                                                                                                                                                                                                                                             |
+| 3   | `cohortKey`    | `string\|null`    | included                         | unchanged   | `ClassFullSchema.cohortKey: z.string().nullable()`              | User-managed. `null` when unset.                                                                                                                                                                                                                                                                                                          |
+| 4   | `courseLength` | `number`          | included                         | unchanged   | `ClassFullSchema.courseLength: z.number()`                      | Integer ≥ 1. Default 1 in constructor.                                                                                                                                                                                                                                                                                                    |
+| 5   | `yearGroupKey` | `string\|null`    | included                         | unchanged   | `ClassFullSchema.yearGroupKey: z.string().nullable()`           | User-managed. `null` when unset.                                                                                                                                                                                                                                                                                                          |
+| 6   | `classOwner`   | `Object\|null`    | included                         | unchanged   | `ClassFullSchema.classOwner: TeacherSummarySchema.nullable()`   | Teacher summary object (see [§ Sub-entities Teacher](#sub-entity-teacher)). Null when unset.                                                                                                                                                                                                                                              |
+| 7   | `teachers`     | `Array`           | included                         | unchanged   | `ClassFullSchema.teachers: z.array(TeacherSummarySchema)`       | Array of Teacher summary objects. Empty array when no teachers.                                                                                                                                                                                                                                                                           |
+| 8   | `students`     | `Array`           | included                         | unchanged   | `ClassFullSchema.students: z.array(StudentSummarySchema)`       | Array of Student objects (see [§ Sub-entities Student](#sub-entity-student)). Empty array when no students.                                                                                                                                                                                                                               |
+| 9   | `assignments`  | `Array`           | included                         | transformed | `ClassFullSchema.assignments: z.array(AssignmentPartialSchema)` | Embedded assignments (see [§ Transport getABClass](#getabclass-read)). `toJSON()` serialises each by its existing definition representation: a partial definition (task-summary array) serialises via `toPartialJSON()`, a genuine full definition keeps full `toJSON()`. Non-empty in normal persisted classes; not a fixed empty array. |
+| 10  | `active`       | `boolean\|null`   | included (`this.active ?? null`) | unchanged   | `ClassFullSchema.active: z.boolean().nullable()`                | Tri-state: `true` (active), `false` (inactive), `null` (unknown/unset).                                                                                                                                                                                                                                                                   |
+| 11  | `metadata`     | `ABClassMetadata` | included by `toJSON()`           | omitted     | —                                                               | Whole-class and selective editable persistence prepare detached copies before writing (Section 5). API requests do not yet accept it and response mappers still omit it.                                                                                                                                                                  |
 
 Key notes:
 
 - `students` and `assignments` arrays are fully stored in this collection but are heavy,
   so the partials registry exists for list-view performance.
-- `assignments` at rest in the main document always carries partial-hydration assignment
-  instances (`_hydrationLevel === 'partial'`). Full hydration records live in separate
-  `assign_full_*` collections.
+- `assignments` serialisation is representation-aware
+  (`ABClass._serialiseAssignmentsForClass()`): an embedded assignment whose definition carries a
+  task-summary array (partial definition) keeps its redacted `toPartialJSON()` output, while a
+  genuine full assignment keeps full `toJSON()` output and its serializer errors propagate
+  unchanged. Standalone `Assignment`/`AssignmentDefinition.toJSON()` remains strict (partial
+  definitions still throw). The class serializer performs no fetch, definition fabrication or
+  assignment removal, adds no second serializer and uses no catch-and-fallback.
+- Class-embedded assignments are normally partial-hydration instances; fully hydrated records live
+  in separate `assign_full_*` collections. Whatever representation the model currently holds is
+  what `toJSON()` writes.
 - `progressTracker` and `_hydrationLevel` are runtime-only flags and never persisted.
 - `active` default: `null` (tri-state). Only creation flows explicitly set it.
 
@@ -58,17 +66,17 @@ Key notes:
 
 Stored via `ABClass.toPartialJSON()`.
 
-| #   | Field          | Type              | Persistence                      | Transport | Frontend Zod                                                     | Notes                                                                                                                     |
-| --- | -------------- | ----------------- | -------------------------------- | --------- | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| 1   | `classId`      | `string`          | included                         | unchanged | `ClassPartialSchema.classId: z.string()`                         | Google Classroom course ID.                                                                                               |
-| 2   | `className`    | `string\|null`    | included                         | unchanged | `ClassPartialSchema.className: z.string().nullable()`            | Null when unset.                                                                                                          |
-| 3   | `cohortKey`    | `string\|null`    | included                         | unchanged | `ClassPartialSchema.cohortKey: z.string().nullable()`            | Null when unset.                                                                                                          |
-| 4   | `courseLength` | `number`          | included                         | unchanged | `ClassPartialSchema.courseLength: z.number()`                    | Integer ≥ 1.                                                                                                              |
-| 5   | `yearGroupKey` | `string\|null`    | included                         | unchanged | `ClassPartialSchema.yearGroupKey: z.string().nullable()`         | Null when unset.                                                                                                          |
-| 6   | `classOwner`   | `Object\|null`    | included                         | unchanged | `ClassPartialSchema.classOwner: TeacherSummarySchema.nullable()` | Teacher summary. Null when unset.                                                                                         |
-| 7   | `teachers`     | `Array`           | included                         | unchanged | `ClassPartialSchema.teachers: z.array(TeacherSummarySchema)`     | Teacher summary objects.                                                                                                  |
-| 8   | `active`       | `boolean\|null`   | included (`this.active ?? null`) | unchanged | `ClassPartialSchema.active: z.boolean().nullable()`              | Tri-state.                                                                                                                |
-| 9   | `metadata`     | `ABClassMetadata` | included by `toPartialJSON()`    | omitted   | —                                                                | Model serialization always emits it. This row does not guarantee registry write preparation; current API mappers omit it. |
+| #   | Field          | Type              | Persistence                      | Transport | Frontend Zod                                                     | Notes                                                                                                                                                                                                                           |
+| --- | -------------- | ----------------- | -------------------------------- | --------- | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | `classId`      | `string`          | included                         | unchanged | `ClassPartialSchema.classId: z.string()`                         | Google Classroom course ID.                                                                                                                                                                                                     |
+| 2   | `className`    | `string\|null`    | included                         | unchanged | `ClassPartialSchema.className: z.string().nullable()`            | Null when unset.                                                                                                                                                                                                                |
+| 3   | `cohortKey`    | `string\|null`    | included                         | unchanged | `ClassPartialSchema.cohortKey: z.string().nullable()`            | Null when unset.                                                                                                                                                                                                                |
+| 4   | `courseLength` | `number`          | included                         | unchanged | `ClassPartialSchema.courseLength: z.number()`                    | Integer ≥ 1.                                                                                                                                                                                                                    |
+| 5   | `yearGroupKey` | `string\|null`    | included                         | unchanged | `ClassPartialSchema.yearGroupKey: z.string().nullable()`         | Null when unset.                                                                                                                                                                                                                |
+| 6   | `classOwner`   | `Object\|null`    | included                         | unchanged | `ClassPartialSchema.classOwner: TeacherSummarySchema.nullable()` | Teacher summary. Null when unset.                                                                                                                                                                                               |
+| 7   | `teachers`     | `Array`           | included                         | unchanged | `ClassPartialSchema.teachers: z.array(TeacherSummarySchema)`     | Teacher summary objects.                                                                                                                                                                                                        |
+| 8   | `active`       | `boolean\|null`   | included (`this.active ?? null`) | unchanged | `ClassPartialSchema.active: z.boolean().nullable()`              | Tri-state.                                                                                                                                                                                                                      |
+| 9   | `metadata`     | `ABClassMetadata` | included by `toPartialJSON()`    | omitted   | —                                                                | Whole-class writes prepare a detached partial copy before the full-store mutation; a field-scoped roster patch never touches stored metadata (Section 5). API requests do not yet accept it and response mappers still omit it. |
 
 Key notes:
 
@@ -422,15 +430,16 @@ contract for StudentSubmission is documented in [Contract: Assignment](assignmen
    **Classification: Aligned** — the delete flow does not require typed validation at
    the transport boundary; the caller receives raw `unknown` and destructures as needed.
 
-6. **ABClass model metadata is not yet carried across controller persistence or transport boundaries.**
-   `ABClass.toJSON()` and `toPartialJSON()` now emit validated defensive `metadata` snapshots,
-   but write preparation and operation-specific store behaviour remain pending. The current
-   response mapper omits metadata from partial and full class views, mutation requests do not
-   validate or accept it, and both frontend class schemas omit it (their default Zod object
-   behaviour strips unknown keys).
-   **Classification: Misaligned** — model serialization supports the field, but API request
-   and response contracts do not yet expose it. This does not establish whether database writes
-   preserve it.
+6. **ABClass metadata is persisted by whole/editable writes but is not yet accepted or returned by the API.**
+   `ABClass.toJSON()` and `toPartialJSON()` emit validated defensive `metadata` snapshots, and the
+   Section 5 prepared writes persist equal, detached full/partial copies while the field-scoped
+   roster patch leaves stored metadata untouched. However, mutation requests still do not validate
+   or accept `metadata`, the response mapper omits it from partial and full class views, and both
+   frontend class schemas strip unknown keys (their default Zod object behaviour).
+   **Classification: Misaligned** — storage preparation preserves the field today, but the API
+   request and response contracts do not yet expose it. Request acceptance/replacement semantics
+   land in Section 7 and response exposure in Sections 6/8; no delivered behaviour reconstructs
+   metadata from a request.
 
 ---
 
@@ -438,9 +447,10 @@ contract for StudentSubmission is documented in [Contract: Assignment](assignmen
 
 ```
 Persistence model:         src/backend/Models/ABClass.js
-  └── ABClass.toJSON()          — full document shape
+  └── ABClass.toJSON()          — full document shape; representation-aware embedded assignments
   └── ABClass.toPartialJSON()   — partial registry shape
   └── ABClass.serialiseOwner()  — owner serialisation helper
+  └── ABClass._serialiseAssignmentsForClass() — partial defs via toPartialJSON(), full assignments via toJSON()
 
 Teacher model:              src/backend/Models/Teacher.js
   └── Teacher.toJSON()          — teacher summary shape
@@ -465,7 +475,9 @@ Canonical UTC predicate:    src/backend/Utils/Validate.js
 Controller:                 src/backend/y_controllers/ABClassController/
   ├── index.js                          — ABClassController facade
   ├── ABClassResponseMapper.js          — _toReadView(), _normaliseClassPartial(), _buildClassSummary()
-  ├── ABClassPersistence.js             — _persistClassAndPartial()
+  ├── ABClassPersistence.js             — persistClassAndPartial() prepared full/partial writes + field-scoped roster helpers
+  ├── ABClassRoster.js                  — roster refresh and _persistRoster() field-scoped registry patch
+  ├── ABClassMutationOps.js             — upsert/update/delete orchestration; prepared selective editable partial
   └── ABClassAssignmentOps.js           — assignment mutation operations
 
 API handlers:               src/backend/z_Api/abclass/
@@ -492,10 +504,13 @@ Frontend:
 
 ---
 
-## ABClass `metadata` contract — model and test-fixture capability delivered; store operations and transport pending
+## ABClass `metadata` contract — domain, model and prepared persistence delivered; request/transport pending
 
 > **Status: partially delivered.** Section 1 delivered the metadata **domain validation
-> capability** and Section 2 delivered the **test-only canonical fixture capability**:
+> capability**, Section 2 the **test-only canonical fixture capability**, Section 3 the model
+> boundary, and Section 5 the **prepared whole-class/editable writes, the field-scoped roster
+> patch and the approved partial-aware `ABClass.toJSON()` correction**. The controller request
+> gate and the transport/response integration are not delivered.
 >
 > - `src/backend/Models/ABClassMetadata.js` — the dedicated metadata-domain owner, holding the
 >   five static validation routines, the constructor/`toJSON()` snapshot boundary and its
@@ -510,34 +525,32 @@ Frontend:
 >   snapshots, generator-owned raw integrity checks and backend model-input adaptation,
 >   exercised by focused synthetic suites (see
 >   [§Delivered test-only synthetic capability](#delivered-test-only-synthetic-capability-implemented)
->   below).
+>   below). This capability remains test-only.
 >
-> The domain primitives are exercised directly by focused backend tests and are installed in
-> the Node/`tests/setupGlobals.js` bootstrap after `Validate` and before any ABClass-dependent
-> module loads. Section 3 has since integrated the metadata domain into ABClass construction,
-> restoration, replacement and both model serialisers. The Section 2 fixture capability remains
-> test-only.
->
-> **Model boundary delivered; controller/store operations and transport remain pending.**
-> `ABClass` owns a plain metadata snapshot or `null`, normalises actual absence through the
-> metadata constructor, rejects explicitly supplied `undefined` or invalid values, and
-> validates/copies metadata during `toJSON()` and `toPartialJSON()`. `setMetadata(value)`
-> replaces the complete snapshot atomically. These model serialization shapes are implemented;
-> this does not establish database write preparation, roster-specific persistence, response
-> mapping, or API request acceptance.
+> **Delivered: model boundaries and prepared store writes. Pending: controller request
+> validation, response mapping and API transport.** `ABClass` owns a plain metadata snapshot or
+> `null`, normalises actual absence through the metadata constructor, rejects explicitly supplied
+> `undefined` or invalid values, and validates/copies metadata during `toJSON()` and
+> `toPartialJSON()`. Whole-class and selective editable writes prepare detached, equal
+> full/partial metadata copies before the first full-store mutation; an existing registry roster
+> row is patched with three serialised fields only and never reads or rewrites its stored
+> metadata. These are storage-preparation and model-shape contracts only: no endpoint currently
+> accepts or returns `metadata`, and the response mappers and frontend class schemas still omit it.
 
-| Boundary                                                      | Status      | Delivered behaviour                                                                                                  |
-| ------------------------------------------------------------- | ----------- | -------------------------------------------------------------------------------------------------------------------- |
-| ABClass model construction/restoration                        | Implemented | Actual omission normalises to `null`; explicitly present `undefined` and invalid values fail validation.             |
-| Explicit replacement                                          | Implemented | `setMetadata(value)` validates/copies the complete value before replacing; `null` clears and `undefined` is invalid. |
-| Model serialisation                                           | Implemented | `toJSON()` and `toPartialJSON()` always emit independently copied, revalidated `metadata`.                           |
-| Database write preparation and operation-specific persistence | Pending     | Model output alone does not specify atomic preparation or roster-patch semantics.                                    |
-| Controller request validation                                 | Pending     | API callers are not yet accepted/rejected according to the metadata domain contract.                                 |
-| Response mapping and frontend response validation             | Pending     | Mappers omit the field and frontend class schemas strip unknown fields.                                              |
+| Boundary                                             | Status      | Delivered behaviour                                                                                                                                                                   |
+| ---------------------------------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ABClass model construction/restoration               | Implemented | Actual omission normalises to `null`; explicitly present `undefined` and invalid values fail validation.                                                                              |
+| Explicit replacement                                 | Implemented | `setMetadata(value)` validates/copies the complete value before replacing; `null` clears and `undefined` is invalid.                                                                  |
+| Model serialisation                                  | Implemented | `toJSON()` and `toPartialJSON()` always emit independently copied, revalidated `metadata`.                                                                                            |
+| Whole-class and selective editable write preparation | Implemented | Payloads are prepared before the first full-store mutation; the partial projection is validated against the caller snapshot and rejects with zero writes on invalid/differing values. |
+| Field-scoped roster persistence                      | Implemented | An existing registry row is patched with exactly `className`, `classOwner`, `teachers` (stored `_id` filter); its stored metadata is never read, validated, copied or rewritten.      |
+| Controller request validation                        | Pending     | API callers are not yet accepted/rejected according to the metadata domain contract.                                                                                                  |
+| Response mapping and frontend response validation    | Pending     | Mappers omit the field and frontend class schemas strip unknown fields.                                                                                                               |
 
-The target persistence contract adds one compact assessment-summary field, `metadata`, to both
-the full ABClass document and the `abclass_partials` registry. The ABClass model's full and
-partial serialisers now emit it; persistence-operation behaviour remains pending. It is a
+The delivered contract adds one compact assessment-summary field, `metadata`, to both the full
+ABClass document and the `abclass_partials` registry. The ABClass model's full and partial
+serialisers emit it, and Section 5's prepared writes persist equal, detached copies of the
+caller's snapshot. It is a
 **supplied snapshot**: the backend does not calculate averages, refresh it after assessments,
 backfill it, reconcile it between stores beyond an explicit write, or repair corrupt stored
 values. Where the
@@ -546,13 +559,15 @@ delivery must recast those as class-configuration/reference fields so they are n
 with this literal `metadata` property, and must distinguish this class-level assessment
 summary from the unrelated task-artifact `metadata`.
 
-### Sub-entity: ABClassMetadata — delivered domain and ABClass model boundary
+### Sub-entity: ABClassMetadata — delivered domain, model boundary and prepared writes
 
 Backend model: `src/backend/Models/ABClassMetadata.js` (the dedicated metadata-domain owner,
 delivered in Section 1; deliberately **not** part of `Models/ABClass.js` or the generic
 `Validate`). The shape rules below are enforced by that owner and are wired into the ABClass
-model boundary. Both `ABClass.toJSON()` and `ABClass.toPartialJSON()` include the field. The
-response mapper and API handlers do not yet expose it.
+model boundary and the Section 5 prepared writes. Both `ABClass.toJSON()` and
+`ABClass.toPartialJSON()` include the field; whole-class/editable writes persist detached,
+equal copies, and the field-scoped roster patch leaves stored metadata untouched. The response
+mapper and API handlers do not yet expose it.
 
 Target notation (contract notation only, not a backend TypeScript requirement):
 
@@ -610,24 +625,60 @@ is rejected).
 - `ABClass.setMetadata(value)` replaces the whole snapshot or clears it with `null`. Its argument is always explicit, so `undefined` is invalid. Validation/copying completes before assignment, leaving existing state intact on failure.
 - `toJSON()` and `toPartialJSON()` always emit `metadata`; each revalidates mutable model state through `ABClassMetadata` and returns an independently owned plain snapshot (or `null`). Input, full output, partial output and model state do not share nested metadata objects or arrays.
 - A caller that deletes `model.metadata` or assigns `undefined` has corrupted model state; serialisation rejects it rather than invoking the absence default. Unrelated legacy-field restoration and serialization behaviour remains unchanged.
-- These are model serialization contracts only. This does not establish store write preparation, identical stored writes after I/O, or operation-specific roster behaviour.
+- These model serialization contracts are complemented by the delivered prepared writes below: whole-class and selective editable writes prepare equal, detached metadata payloads before the first full-store mutation, and the field-scoped roster patch leaves an existing row's stored metadata untouched. Actual I/O failures still retain the existing partial-success risk (full store persisted, partial store not), with no rollback or retry.
 
-### Pending persistence-operation and lifecycle contract
+### Persistence-operation and lifecycle contract
 
-> **Pending:** controller/store write preparation and lifecycle integration remain unspecified. Model serialisation includes metadata, but this alone does not guarantee atomic preparation, identical full/partial persistence, or operation-specific write semantics.
+> **Delivered (Section 5):** prepared whole-class and selective editable writes, the field-scoped
+> roster patch, and the approved partial-aware `ABClass.toJSON()` correction for embedded
+> assignments. **Pending:** request-level metadata replacement (`upsertABClass` / `updateABClass`
+> accepting `metadata`, Section 7) and response mapping/transport (Sections 6/8).
 
-The following remain target behaviour, not guarantees of the delivered model boundary:
+Supplied-snapshot semantics:
 
-- Full ABClass serialisation (`ABClass.toJSON()`) and the partial registry projection
-  (`ABClass.toPartialJSON()`) both include `metadata`; this describes model outputs only.
+- Both `ABClass.toJSON()` and the partial registry projection `ABClass.toPartialJSON()` include
+  `metadata`; whole-class and selective editable writes persist equal, independently owned
+  copies of the caller's snapshot.
 - There is no separate `ABClassPartials` JavaScript model; `ABClass.toPartialJSON()` owns the
   partial representation.
-- Ordinary upserts, editable-field updates, roster refreshes and assignment persistence
-  preserve an existing snapshot unless metadata is explicitly replaced or cleared.
 - Assessment runs do not calculate, refresh or clear metadata, so a previously supplied
-  snapshot may become stale. The contract does not claim otherwise.
+  snapshot may become stale. The contract does not claim otherwise. Assignment persistence
+  preserves the class's existing snapshot.
 
-Write semantics for `upsertABClass` / `updateABClass` metadata:
+Delivered prepared writes (`ABClassPersistence`, Section 5):
+
+- `persistClassAndPartial(abClass)` prepares the full and partial payloads **before** the first
+  full-store mutation, so a validation failure cannot cause a split-store write. The full payload
+  is `abClass.toJSON()` when that method is present, otherwise the supported plain-object input;
+  the caller object is never mutated. A complete partial is derived from
+  `abClass.toPartialJSON()`.
+- Authoritative metadata comes from the caller's own `metadata` property: actual own-property
+  absence normalises through `new ABClassMetadata()` to `null`, while a present `undefined` or an
+  invalid value is rejected. When the full or partial projection emits `metadata`, that value
+  must validate and equal the caller snapshot; an invalid or differing projection rejects with
+  **zero** insert/update/save operations. A legacy projection that omits the field is accepted,
+  and only the prepared copies gain the equal, independently owned snapshot.
+- `ABClassMutationOps.updateABClass()` prepares its complete partial projection before the
+  selective full-store `collection.updateOne()`/`save()`, then persists that prepared partial
+  afterwards. Its full `$set` stays selective (only the supplied editable fields); it is not a
+  whole-class rewrite. A legacy full document may keep metadata absence while the rebuilt partial
+  carries `metadata: null`.
+- A metadata-bearing legacy record is projected as `null` with no read-time write. A whole-class
+  save includes the field; a selective editable-field patch may leave absence in the full
+  document while rebuilding the partial with `null`; a field-scoped roster patch changes neither
+  store's metadata. Absence and `null` stay semantically equivalent until the next explicit
+  metadata or whole-class write.
+- Full-store persistence precedes partial-registry persistence. Actual I/O failures retain the
+  existing partial-success risk: a full-store failure prevents the partial write, while a
+  partial-store failure propagates after the full store has been written. The contract adds no
+  transaction emulation, rollback, automatic retry, backfill or concurrent-write recovery.
+- Constructor-owned `null` normalisation: the metadata-domain constructor owns the nullable
+  field's `null` default. ABClass construction, restoration and legacy partial projection route
+  actual absence through it (the `Object.create` restoration path does not inherit constructor
+  defaults automatically). Present values are validated at these boundaries, not defaulted, and
+  malformed supplied non-null values never become `null` silently.
+
+Pending request-level semantics (Section 7) — no endpoint currently accepts `metadata`:
 
 | Request metadata        | New class                  | Existing class                |
 | ----------------------- | -------------------------- | ----------------------------- |
@@ -636,75 +687,46 @@ Write semantics for `upsertABClass` / `updateABClass` metadata:
 | Complete valid object   | Store supplied snapshot    | Replace entire metadata value |
 | Invalid / own undefined | Reject before side effects | Reject before side effects    |
 
-Lifecycle rules:
+#### Field-scoped roster persistence (delivered)
 
-- Legacy full/partial records with no metadata read as `null`; responses always emit
-  `metadata`. Reads do not eagerly backfill either store.
-- A no-metadata legacy record is projected as null without read-time writes. A whole-class
-  save includes the field; a selective editable-field patch may leave absence in the full
-  document while rebuilding the partial with `null`. A field-scoped roster patch leaves
-  existing metadata absence unchanged in both stores. Absence and `null` remain semantically
-  equivalent until the next explicit metadata or whole-class write.
-- Full class persistence precedes partial-registry persistence; the existing full-first /
-  partial-second write ordering and failure propagation remain. No transaction emulation,
-  rollback, automatic retry or backfill job is introduced.
-- On metadata-bearing and whole-class writes, metadata is validated and the partial
-  projection prepared **before** the first full-store mutation, so invalid metadata cannot
-  cause an avoidable split-store write. For a roster patch with a missing partial, its new
-  partial is prepared before the first full-store mutation. Actual I/O failures retain the
-  existing partial-success risk.
-- Supported plain-object whole saves retain their input contract. Prepare defensive
-  full/partial payload copies, normalising the caller's own metadata/actual absence
-  through the domain constructor. Validate present projected metadata and reject an
-  invalid/different snapshot before writes; a legacy projection may omit the field.
-  Populate only the prepared copies from the same validated source snapshot with
-  independent nested ownership, never by mutating the caller or adding a new default.
-- Constructor-owned null normalisation: the dedicated metadata-domain constructor owns the
-  nullable field's `null` default. ABClass construction, restoration and legacy partial
-  projection explicitly route absent metadata through that constructor-owned normalisation
-  (the existing `Object.create` restoration path does not inherit constructor defaults
-  automatically). Present metadata values are validated at these same boundaries, not
-  defaulted or accepted unchecked. No separate restoration-only default is added, and
-  malformed supplied non-null values never become `null` silently.
+The roster refresh keeps its full refresh responsibilities (class name, owner, teachers and
+students); it is not narrowed to students-only behaviour. `ABClassRoster._persistRoster()`
+patches only the fields it owns in each store:
 
-#### Planned field-scoped roster persistence (`Not implemented`)
+| Store                 | Delivered existing-document update                                                                                                                                   |
+| --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Full class collection | `$set` only `className`, `classOwner`, `teachers` and `students`, in the existing forms.                                                                             |
+| `abclass_partials`    | `$set` only `className`, `classOwner` and `teachers`. Never includes `students`, `assignments`, `metadata`, `cohortKey`, `yearGroupKey`, `courseLength` or `active`. |
 
-The existing roster refresh keeps its full refresh responsibilities (class name, owner,
-teachers and students); it is not narrowed to students-only behaviour. It must patch only the
-fields it owns in each store:
-
-| Store                 | Planned existing-document update (`Not implemented`)                                                                                                                                     |
-| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Full class collection | `$set` only `className`, `classOwner`, `teachers` and `students`, as today.                                                                                                              |
-| `abclass_partials`    | `$set` only `className`, `classOwner` and `teachers`. Never include `students`, `assignments`, `metadata`, `cohortKey`, `yearGroupKey`, `courseLength` or `active` in this roster patch. |
-
-- Registry patch values must match the serialised forms produced by
-  `ABClass.toPartialJSON()`: `classOwner` through the existing owner helper and each teacher
-  through the existing array-serialisation helper, retaining the class-name/`null`
-  representation. Build only these roster fields; do not call the complete metadata-bearing
-  partial projection merely to obtain them. The full-store roster payload retains its existing
-  forms and behaviour.
+- Registry patch values match the serialised forms produced by `ABClass.toPartialJSON()`:
+  `classOwner` through `ABClass.serialiseOwner()` and each teacher through
+  `ArrayUtils.serialiseArray()`, retaining the class-name/`null` representation. Only these
+  roster fields are built; the metadata-bearing partial projection is not called merely to
+  obtain them. The full-store roster payload retains its existing forms and behaviour.
 - An existing partial keeps its own metadata exactly as stored, including `null` or field
-  absence. It must not be replaced with the loaded full class's metadata, even if the two
-  values differ. Other unrelated fields also remain unchanged.
-- If the partial row is missing, insert a complete normal partial from the already loaded
-  ABClass, including validated metadata/`null`. Do not create a roster-only fragment or
-  silently lose class configuration. This is normal write-through creation, not a general
-  repair or backfill mechanism.
-- Whether creation is needed, and the creation payload, are determined and
-  validated/prepared before the full store is written, preserving write order and logged
-  failure propagation. If an existing-row patch unexpectedly cannot match its row, the write
-  fails rather than silently completing with an unsynchronised roster; no retry or
-  concurrent-write recovery mechanism is introduced.
-- An existing registry row is patched using its stored `_id` as the sole filter, obtained
-  from the permitted lookup. Check the vendor's `matchedCount`; its `_id`-only operator
-  update correctly reports a matched-but-unmodified row, unlike its query-filter no-op
-  result. Do not fall back to a classId query or mistake an unchanged row for a missing one.
-- Existing roster-only patches may no longer call the whole-row partial upsert path.
-  Whole-class saves and explicit metadata writes retain that path and its identical
-  full/partial metadata contract. Direct controller operations used by the facade retain
-  their signatures; no separate public roster API and no change to upsert/read workflows is
-  introduced beyond this persistence boundary.
+  absence, and it is never read, validated, copied or rewritten by this patch even when it
+  differs from the loaded full class's metadata. Other unrelated fields are also unchanged. The
+  permitted `findOne({ classId })` existence lookup is used only to establish existence and the
+  row's stored `_id`.
+- When the partial row is missing, a complete normal partial is prepared from the already loaded
+  ABClass, including validated metadata/`null`, and inserted after the full store is saved. No
+  roster-only fragment is written. This is write-through creation, not a general repair or
+  backfill mechanism.
+- Whether creation is needed, and the creation payload, are determined and prepared before the
+  full store is written, preserving write order and logged failure propagation. If an existing
+  row cannot match, the write fails rather than silently completing with an unsynchronised
+  roster; no retry or concurrent-write recovery is introduced.
+- An existing registry row is patched using its stored `_id` as the sole filter, obtained from
+  the permitted lookup. A stored row without an `_id` fails loudly rather than falling back to a
+  classId filter. The vendor's `matchedCount` is checked: an `_id`-only operator update
+  correctly reports a matched-but-unmodified row (`matchedCount === 1` is accepted), unlike the
+  vendor's query-filter no-op result. A zero-match result fails loudly; there is no classId-query
+  or upsert fallback.
+- Existing roster-only patches no longer call the whole-row partial upsert path. Whole-class
+  saves and explicit metadata writes retain that path and its identical full/partial metadata
+  contract. Direct controller operations used by the facade retain their signatures; no separate
+  public roster API and no change to upsert/read workflows is introduced beyond this persistence
+  boundary.
 
 ### Pending transport integration
 
@@ -874,11 +896,12 @@ The following strictness rules are enforced by the delivered domain owner:
   and the transport layer never evaluates nested domain rules; no exception to the canonical
   validation-ownership policy or dispatcher change is needed.
 
-#### Validation scope limits — domain/model delivered; store/transport boundaries pending
+#### Validation scope limits — domain/model and prepared writes delivered; request/transport boundaries pending
 
 > **Status: partially delivered.** The domain owner and ABClass model enforce structural
 > validation and defensive copying at construction, restoration, replacement and
-> serialization. Store-operation and mapper boundaries remain pending.
+> serialization, and the Section 5 prepared writes validate/copy metadata before the first
+> full-store mutation. Request and mapper boundaries remain pending.
 
 - Validation must not repair metadata, silently remove entries, reorder it, calculate scores,
   stamp dates or fetch referenced entities.
@@ -894,7 +917,8 @@ The following strictness rules are enforced by the delivered domain owner:
   pending with controller integration.
 - Constructors/restoration, explicit metadata replacement and metadata-bearing serialization
   use the same authoritative rules; mutable metadata cannot bypass validation at those model
-  boundaries. Whole-object write preparation and response mapping remain pending.
+  boundaries. Whole-object write preparation is delivered (Section 5); response mapping remains
+  pending.
 - A field-scoped roster patch of an existing partial is **not** a metadata-bearing write. It
   must not use, validate, copy or rewrite the stored metadata value; the existence lookup
   required by the missing-partial path is unaffected.
@@ -923,8 +947,9 @@ The following strictness rules are enforced by the delivered domain owner:
 > validates raw class `metadata` supplied snapshots and adapts canonical views into backend
 > model inputs. This is generator/test infrastructure only: it does **not** make production
 > metadata accepted by API requests or exposed through API responses. Section 3 subsequently
-> wired the domain into ABClass model construction/restoration and serialization; database
-> write-operation guarantees remain pending. Corpus policy, profile matrix and commands live in
+> wired the domain into ABClass model construction/restoration and serialization; Section 5
+> delivered prepared whole-class/editable writes and the field-scoped roster patch. API request
+> acceptance and response mapping remain pending. Corpus policy, profile matrix and commands live in
 > [Synthetic Test Data](../testing/synthetic-test-data.md); this subsection records only the
 > capability's contribution to this contract and must not duplicate that guide.
 
@@ -996,11 +1021,23 @@ Test-only adapter (delivered): scripts/synthetic-test-data/toBackendModelInputs.
 Focused suites (delivered):    tests/synthetic-analysis/syntheticClassMetadata{Views,Validation,DomainAcceptance,Preservation}.test.ts, tests/synthetic-analysis/syntheticBackendModelInputs.test.ts, tests/synthetic-analysis/backendModelInputAssertions.js, tests/syntheticModelInputs.node.test.js, tests/synthetic-analysis-stress/syntheticClassMetadataFullLarge.test.ts
 ```
 
-Still pending (controller request, persistence-operation and transport integration):
+Delivered in Section 5 (prepared writes, field-scoped roster patch and the approved
+partial-aware class serialisation; production storage behaviour, not transport):
+
+```
+Whole-write preparation (delivered):  src/backend/y_controllers/ABClassController/ABClassPersistence.js — persistClassAndPartial(); _prepareClassAndPartial(), _prepareClassPartial(), _metadataCopy(), _validatePreparedMetadata(), _writePreparedClassPartial(), _prepareRosterPartial(), _writePreparedRosterPartial()
+Selective editable write (delivered): src/backend/y_controllers/ABClassController/ABClassMutationOps.js — updateABClass() prepares the complete partial before the selective full $set/save
+Roster orchestration (delivered):      src/backend/y_controllers/ABClassController/ABClassRoster.js — _persistRoster() prepares the registry operation before the full roster write
+Embedded assignment serialisation (delivered): src/backend/Models/ABClass.js — _serialiseAssignmentsForClass(): partial definitions via toPartialJSON(), genuine full assignments via toJSON()
+Focused suites (delivered):    tests/models/abclassEmbeddedAssignmentSerialisation.test.js, tests/controllers/abclassEmbeddedAssignmentPersistence.test.js, tests/controllers/abclassMetadataPersistence.test.js, tests/controllers/abclassMetadataEditablePersistence.test.js, tests/controllers/abclassRosterPersistence.test.js
+```
+
+Still pending (controller request validation and transport/response integration):
 
 ```
 Controller request gate (planned): src/backend/y_controllers/ABClassController/ABClassValidation.js — _validateRequestMetadata(parameters)
-Mutation orchestration (planned): src/backend/y_controllers/ABClassController/ABClassMutationOps.js — injected upsert/update/delete owner, preserving facade signatures
+Response mapper (planned):         src/backend/y_controllers/ABClassController/ABClassResponseMapper.js — metadata projection in _normaliseClassPartial()/_toReadView()
+Transport adaptation (planned):    src/backend/z_Api/abclass/abclassMutations.js — request-provenance error adaptation
 ```
 
 ---
