@@ -2,12 +2,12 @@
 
 ## Status and read-first context
 
-Planning is complete with independent clean review; the user subsequently requested implementation and authorised commits/pushes. Sections 1–5 are committed and pushed; Section 5's reported frontend flake and explicit user instruction to proceed without a checker rerun remain recorded. Section 6 and its separately authorised dropdown companion have clean RED/GREEN reviews, canonical documentation and focused/full component/backend/browser evidence. Their combined section-end comparison has zero regressions and zero new failures; commit/push remain pending. Sections 7–11 have not started. No deployment has occurred.
+Planning is complete with independent clean review; the user subsequently requested implementation and authorised commits/pushes. Sections 1–6 and the separately authorised dropdown companion are committed and pushed. Section 6's final combined comparison has zero regressions and zero new failures; all in-scope reviews and canonical documentation are clean. Section 5's original flake and explicit user instruction to proceed without a checker rerun remain recorded, not erased. Next: Section 7 RED request-metadata semantics; Sections 7–11 have not started. No deployment has occurred.
 
 ### Implementation start-up — 15 October 2026
 
 - The user requested implementation of this plan. The worktree was clean at start-up on branch `docs/abclass-metadata-plan`, HEAD `6fc46be`.
-- Current section: Section 6 commit/push gate, including the separately authorised frontend companion. Both full green reviews are clean; the completed final-tree comparison at `2026-10-17T08:38:23.244Z` has zero regressions, zero new failures and six fixes against the original baseline. Raw status remains FAILING only on six accepted backend lint warnings. Record separate frontend/backend commits, normal hooks and push evidence before Section 7. Preserve original flake evidence and unproven historical cause; no deployment.
+- Current section: Section 7 RED next, after Section 6 and frontend companion commit/push completion. Final Section 6 comparison `2026-10-17T08:38:23.244Z` has zero regressions/new failures and six fixes; raw FAILING only on six accepted backend lint warnings. Source commits `2199bc5`/`a70a33d` are pushed on `docs/abclass-metadata-plan`; record delivery before starting Section 7 tests. Preserve original flake evidence and unproven historical cause; no deployment.
 - Baseline command: `npm run regression-checker -- abclass-metadata-contract` (1,200,000 ms timeout). Baseline created at `2026-10-15T20:45:28.439Z`; exit 1, overall `FAILING`, seven of eight checks passing, zero regressions and zero new failures. Backend lint reports zero errors and the ten pre-existing max-lines warnings documented below; these remain recorded baseline technical debt, not a clean aggregate gate. Backend tests, frontend/builder coverage, frontend E2E, frontend/builder lint and TypeScript checks passed. Correction after inspecting the saved manifest: despite its `backend-test-coverage-check` name, the checker runs `test:backend` without coverage, so this baseline did not establish backend coverage thresholds.
 - Baseline report: `.ts-regression-checker/reports/session-abclass-metadata-contract/baseline/baseline.txt`. Retain the same checker identity throughout delivery.
 - Commit authority resolved on 16 October 2026: the user explicitly authorised commits and pushes as part of delivery. This supersedes this plan's historical implementation-commit exclusion; retain all hook/review/regression gates and the deployment exclusion. No commits, pushes or deployment have occurred during implementation start-up.
@@ -714,6 +714,14 @@ Frontend companion independent full GREEN review is **PASS**, `dropdown-green-re
 - Pre-gate formatting of all twenty owned source/test/canonical-document paths plus this plan and whitespace checks passed. No executable source/test/configuration changes occurred during the checker. Original Section 5 flake, intermediate test-construction failures, corrected auto-selection proof and their artifacts remain preserved. Passing browser evidence does not retrospectively prove the historical flake's mechanism.
 - Regression gate is satisfied against accepted baseline debt. Both workstreams' clean RED/GREEN review and canonical documentation gates are complete. Separate hook-respecting frontend/backend commits and successful push evidence are next; no Section 7 before completion. Exclude user-owned `.opencode/agents/code-reviewer.md` and `opencode.jsonc` edits.
 
+### Section 6 and frontend companion commit/push evidence
+
+- Frontend: `2199bc5cff0f889d7ca2bb2157cc1c3adfbedb56` — `fix: dispatch add-new commands without changing selection`.
+- Backend Section 6: `a70a33da330bccd32ca958fbc1fc25f0aa9c1cbe` — `feat: expose validated class metadata in read responses`.
+- Branch: `docs/abclass-metadata-plan`. Both normal pre-commit hooks passed staged lint and all-project types; applicable staged formatter checks were unchanged. Explicit pre-gate formatting already covered every changed frontend/backend source/test/doc. No hook bypass or unreviewed auto-fix: saved reviewed staged patches and actual committed patches match byte-for-byte for both commits.
+- `git push origin docs/abclass-metadata-plan` succeeded, advancing `d7e5c47..a70a33d` including both commits. Only unrelated user-owned reviewer/configuration changes remain outside them.
+- Section 6 and its explicitly authorised companion are complete against recorded baseline lint/coverage debt. This separate documentation commit records delivery before Section 7; its own SHA/push confirmation belongs in the handoff rather than recursively embedding its hash. No deployment occurred; the historical flake's cause and existing `useForm` warning are not represented as resolved.
+
 ## Section 7 — Atomic request rejection and metadata mutation semantics
 
 ### Objective
@@ -755,7 +763,7 @@ Add focused `tests/controllers/abclassMetadataMutations.test.js` and `abclassMet
 
 ### JSDoc follow-through and delivery record
 
-Document omission/null/replacement, narrow request provenance, no stored-data repair and intentionally stale snapshots. Not started; record evidence during delivery.
+Document omission/null/replacement, narrow request provenance, no stored-data repair and intentionally stale snapshots. Next phase: RED tests from pushed Section 6, with no production changes yet. Split into coherent test milestones before full-section RED review: A, canonical new/existing upsert and update omission/null/replacement plus early no-read/no-roster/no-write request rejection and narrow typed provenance; B, corrupt stored-record no-repair, lifecycle preservation through unrelated updates/roster/assignment persistence and existing protected/not-found/delete compatibility. Use real controller/domain/model/persistence/mapping paths with local faithful external mocks and non-empty canonical populations. Record all five criteria, actual failure inventory and focused checks; no GREEN source until the complete RED loop is independently clean. Retain original baseline/accepted debt; no mid-phase checker.
 
 ## Section 8 — Transport error adaptation and real-dispatcher contracts
 
