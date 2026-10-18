@@ -83,19 +83,20 @@ against the current specification first.
 
 ## Planned ABClass metadata helpers
 
-> **Status: implemented, except the companion deletion entry.** The metadata domain owner, its
-> typed domain error, the canonical UTC predicate and ABClass model
+> **Status: implemented — backend contract and companion documentation delivered.** The metadata
+> domain owner, its typed domain error, the canonical UTC predicate and ABClass model
 > construction/restoration/serialization support are implemented, including the partial-aware
 > embedded-assignment projection. The ABClass mutation-owner decomposition, shared save
 > validation, prepared whole/partial persistence, field-scoped roster persistence,
 > response-mapper reuse, the controller request gate and the transport request-error adaptation
 > are also implemented. `upsertABClass` and `updateABClass` accept an optional `metadata` field
-> and now report request-provenance metadata failures as `INVALID_REQUEST`. The companion
-> deletion entry below remains `Not implemented` (Section 9). Cross-references:
+> and report request-provenance metadata failures as `INVALID_REQUEST`. The companion deletion
+> documentation reconciliation is delivered below; the deletion **code** flag fix remains
+> deferred to [issue #332](https://github.com/h-arnold/AssessmentBot/issues/332).
+> Cross-references:
 > `docs/developer/data-shapes/abclass.md` §Planned validation and
 > `docs/developer/testing/synthetic-test-data.md` §ABClass metadata generator
-> capability. Reconcile each remaining entry and remove its `Not implemented` marker only as
-> the corresponding behaviour lands.
+> capability.
 
 ### Metadata domain model — `Models/ABClassMetadata.js` (`Implemented`)
 
@@ -290,16 +291,18 @@ abClass)` and `_writePreparedRosterPartial(prepared, classId)`. `ABClassRoster._
   non-transactional partial-success risk; no rollback or retry is added.
 - See `docs/developer/data-shapes/abclass.md` §Planned field-scoped roster persistence.
 
-### Companion deletion-documentation reconciliation (`Not implemented`)
+### Companion deletion-documentation reconciliation (`Implemented`)
 
-- Reconcile this page's implemented `deleteABClass` idempotency note with the factual
-  correction recorded in `docs/developer/data-shapes/abclass.md`: repeated deletes succeed,
-  but the full-collection flag is currently true after any non-throwing drop, including a
-  vendor false return for an absent collection. It does not prove a collection was removed.
-- The recognised missing-collection exception guard is not the vendor's normal absent
-  path, which returns false; every non-throwing delete currently reports the full flag true.
-- Do not change deletion code in this cycle. The user explicitly authorised the separate-round
-  flag fix tracked in [issue #332](https://github.com/h-arnold/AssessmentBot/issues/332).
+- This page's `deleteABClass` idempotency note now matches the factual correction recorded in
+  `docs/developer/data-shapes/abclass.md`: repeated deletes succeed, a missing registry row
+  yields `hasDeletedClassPartial: false`, and the full-collection flag is currently true after
+  any non-throwing `dropCollection()`, so it does not prove the collection was removed.
+- That flag is true even when the vendor returns `false` for an absent collection. The
+  recognised `COLLECTION_NOT_FOUND` exception guard is **not** the vendor's normal absent path
+  (which returns `false` rather than throwing): every non-throwing delete currently sets the
+  full flag true, and only that exception path leaves it false. No deletion code was changed.
+- The full-collection flag fix remains deferred to
+  [issue #332](https://github.com/h-arnold/AssessmentBot/issues/332).
 
 ## Design Rules
 
@@ -691,7 +694,7 @@ Reference: https://developers.google.com/apps-script/guides/html/reference/run
   Validation: transport enforces `params` as an object and rejects unsafe `classId` path characters when `classId` is a string; controller validation owns missing, non-string, and non-empty `classId` checks.
   Controller behaviour: deletes the full-class collection with `dropCollection(classId)` and removes the matching `abclass_partials` row with `deleteOne({ classId })`.
   Response data: `{ classId, hasDeletedFullClass, hasDeletedClassPartial }`.
-  Idempotency: repeated deletes succeed and the boolean flags report what was deleted in that call only.
+  Idempotency: repeated deletes succeed. A missing registry row yields `hasDeletedClassPartial: false`. The full-collection flag is currently true after any non-throwing `dropCollection()`, including the vendor's `false` return for an absent collection, so it does not prove the collection was removed; it stays false only on the recognised `COLLECTION_NOT_FOUND` exception path, which the vendor's normal absent result does not take. This quirk is documented, not fixed: the flag correction is deferred to [issue #332](https://github.com/h-arnold/AssessmentBot/issues/332).
 
 - Cohort reference data — exposes `getCohorts`, `createCohort`, `updateCohort`, and `deleteCohort`.
   Source: inline closures in `src/backend/z_Api/z_apiHandler.js` delegating to `ReferenceDataController` CRUD helpers backed by the `cohorts` JsonDbApp collection.

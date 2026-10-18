@@ -152,6 +152,48 @@ describe('ABClassRoster field-scoped partial persistence', () => {
     expect(storedRow).not.toHaveProperty('metadata');
   });
 
+  it('writes refreshed nameless Teacher instances with explicit null names', () => {
+    const abClass = canonicalClass();
+    abClass.classOwner = new Teacher(abClass.classOwner.email, abClass.classOwner.userId);
+    abClass.teachers = abClass.teachers.map(
+      (teacher) => new Teacher(teacher.email, teacher.userId)
+    );
+    const { roster, full, partial } = makeRoster({
+      partialRow: { _id: 'stored-partial-id', classId: abClass.classId },
+      updateResult: { matchedCount: 1, modifiedCount: 1, acknowledged: true },
+      failures: {},
+    });
+
+    roster._persistRoster(full, { _id: 'full-id' }, abClass);
+
+    expect(full.updateOne.mock.calls[0][1].$set).toEqual({
+      className: abClass.className,
+      classOwner: abClass.classOwner,
+      teachers: abClass.teachers,
+      students: abClass.students,
+    });
+    expect(partial.updateOne.mock.calls[0][1].$set.teachers).toEqual(
+      abClass.teachers.map((teacher) => ({
+        email: teacher.email,
+        userId: teacher.userId,
+        teacherName: null,
+      }))
+    );
+    expect(partial.updateOne.mock.calls[0][1].$set).toEqual({
+      className: abClass.className,
+      classOwner: {
+        email: abClass.classOwner.email,
+        userId: abClass.classOwner.userId,
+        teacherName: null,
+      },
+      teachers: abClass.teachers.map((teacher) => ({
+        email: teacher.email,
+        userId: teacher.userId,
+        teacherName: null,
+      })),
+    });
+  });
+
   it('inserts a complete canonical partial when the registry row is missing', () => {
     const abClass = canonicalClass();
     const expectedPartial = abClass.toPartialJSON();

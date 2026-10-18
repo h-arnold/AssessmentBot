@@ -59,6 +59,7 @@ describe('Teacher behaviour', () => {
     expect(new Teacher('a@example.com').toJSON()).toEqual({
       email: 'a@example.com',
       userId: null,
+      teacherName: null,
     });
     expect(new Teacher('a@example.com', '123456', 'Named').toJSON()).toEqual({
       email: 'a@example.com',

@@ -6,7 +6,7 @@ assignments.
 
 Backend model: `src/backend/Models/ABClass.js`
 Metadata domain owner: `src/backend/Models/ABClassMetadata.js`
-Collections: `abclass` (main document, keyed by `classId`), `abclass_partials` (registry, keyed by `classId`)
+Collections: per-class collections named by `classId` (main documents), `abclass_partials` (fixed registry, keyed by `classId`)
 API handlers: `src/backend/z_Api/abclass/abclassRead.js`, `src/backend/z_Api/abclass/abclassMutations.js`
 Response mapper: `src/backend/y_controllers/ABClassController/ABClassResponseMapper.js`
 Frontend service: `src/frontend/src/services/googleClassrooms/classPartialsService.ts`, `src/frontend/src/services/googleClassrooms/classDetail/classDetailService.ts`
@@ -24,10 +24,11 @@ Sibling contracts:
 
 ## Persistence
 
-ABClass uses a split persistence model: a main document stored via `ABClass.toJSON()`
-and a lightweight registry stored via `ABClass.toPartialJSON()`.
+ABClass uses a split persistence model: a main document stored in a per-class collection
+named by `classId` and written via `ABClass.toJSON()`, plus a lightweight fixed registry
+`abclass_partials` written via `ABClass.toPartialJSON()`.
 
-### Collection: `abclass` (main document)
+### Collection: per-class, named by `classId` (main document)
 
 Stored via `ABClass.toJSON()`.
 
@@ -314,25 +315,35 @@ Removes both the main class document and the partial registry entry.
 
 **Error states:**
 
-| Error              | Code                                                 | Notes                        |
-| ------------------ | ---------------------------------------------------- | ---------------------------- |
-| Class not found    | `IN_USE`? — actually `RangeError` → `INTERNAL_ERROR` |                              |
-| Parameters invalid | `INVALID_REQUEST`                                    | Missing/wrong type `classId` |
+| Error              | Code              | Notes                                                                                                             |
+| ------------------ | ----------------- | ----------------------------------------------------------------------------------------------------------------- |
+| Absent stores      | — (success)       | Deleting a class whose full collection and/or registry row are already absent still succeeds; it is not an error. |
+| Parameters invalid | `INVALID_REQUEST` | Missing/wrong type `classId`.                                                                                     |
 
 **Response:**
 
-| Field                    | Type      | Required | Notes                                                         |
-| ------------------------ | --------- | -------- | ------------------------------------------------------------- |
-| `classId`                | `string`  | yes      |                                                               |
-| `hasDeletedFullClass`    | `boolean` | yes      | `true` when this delete removed the main document collection. |
-| `hasDeletedClassPartial` | `boolean` | yes      | `true` when this delete removed the partial registry row.     |
+| Field                    | Type      | Required | Notes                                                                                                                                               |
+| ------------------------ | --------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `classId`                | `string`  | yes      |                                                                                                                                                     |
+| `hasDeletedFullClass`    | `boolean` | yes      | `true` after any non-throwing `dropCollection(classId)`, including the vendor's `false` return for an absent collection (see the flag quirk below). |
+| `hasDeletedClassPartial` | `boolean` | yes      | `true` only when a registry row existed and was removed; `false` when it was already absent.                                                        |
 
 Key contract notes:
 
-- Both persistence layers are removed: the full class collection via
-  `dropCollection(classId)` and the `abclass_partials` registry row via
-  `deleteOne({ classId })`.
-- Repeated deletes are idempotent and still succeed with updated flag values.
+- Both persistence layers are removed: the per-class full collection via `dropCollection(classId)`
+  and the `abclass_partials` registry row via `deleteOne({ classId })`.
+- Repeated deletes are idempotent and always succeed. Deleting stores that do not exist never
+  produces a class-not-found error; there is no absent-record failure path.
+- A missing registry row yields `hasDeletedClassPartial: false`.
+- **Full-flag quirk (current behaviour, deliberately not fixed here):** `deleteABClass` sets
+  `hasDeletedFullClass: true` after any non-throwing `dropCollection(classId)` call. The flag is
+  only left `false` on the recognised missing-collection exception (`code === 'COLLECTION_NOT_FOUND'`),
+  but the vendor's ordinary absent-collection path returns `false` rather than throwing. Every
+  non-throwing delete therefore reports `hasDeletedFullClass: true`, including a nominal repeated
+  delete of an already-absent collection, so the flag does not prove a collection was removed.
+  Correcting this to honour the vendor's boolean return is an explicitly deferred future change
+  tracked in [issue #332](https://github.com/h-arnold/AssessmentBot/issues/332); this cycle
+  documents the quirk and does not change deletion behaviour.
 - The response does not use `ClassPartialSchema`; it is a plain `{ classId, hasDeletedFullClass, hasDeletedClassPartial }` object.
 
 ---
@@ -346,18 +357,29 @@ Frontend Zod: `src/frontend/src/services/googleClassrooms/classPartials.zod.ts` 
 
 `Teacher.toJSON()` emits:
 
-| Field         | Type           | Backend toJSON()                                                                      | Frontend Zod                                                          | Notes                                                                                                                                      |
-| ------------- | -------------- | ------------------------------------------------------------------------------------- | --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| `email`       | `string\|null` | Always emitted                                                                        | `z.string().nullable()`                                               | Null when email is unset on the model.                                                                                                     |
-| `userId`      | `string\|null` | Always emitted                                                                        | `z.string().nullable()`                                               | Google userId. Null when unset.                                                                                                            |
-| `teacherName` | `string\|null` | **Conditionally emitted:** omitted when `this.teacherName == null`; present otherwise | `z.string().nullable().optional().transform((value = null) => value)` | The field is entirely absent from the JSON when null. Frontend Zod handles both absent and null states via `.optional()` + `.transform()`. |
+| Field         | Type           | Backend toJSON()              | Frontend Zod                                                          | Notes                                                                                                                                                                                             |
+| ------------- | -------------- | ----------------------------- | --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `email`       | `string\|null` | Always emitted                | `z.string().nullable()`                                               | Null when email is unset on the model.                                                                                                                                                            |
+| `userId`      | `string\|null` | Always emitted                | `z.string().nullable()`                                               | Google userId. Null when unset.                                                                                                                                                                   |
+| `teacherName` | `string\|null` | Always emitted (own property) | `z.string().nullable().optional().transform((value = null) => value)` | Always present, including explicit `null` when unset; uses the constructor-owned `null` state. The frontend schema remains `.optional()`/nullable and also accepts legacy rows that omit the key. |
 
 Key notes:
 
-- The conditional emission of `teacherName` (absent vs `null`) is a deliberate
-  serialisation choice. The frontend Zod schema accommodates both states.
-- `Teacher.fromJSON()` detects the presence of `teacherName` in the JSON via
-  `'teacherName' in json` and only sets it when present.
+- `Teacher.toJSON()` always emits its own `teacherName` property; an unset name uses the
+  constructor-owned `null` value, never a serialiser-time default. This applies to every `Teacher`
+  instance serialised through this helper, including ABClass `classOwner`, `teachers[]` entries and
+  roster refreshes.
+- The always-present guarantee attaches to `Teacher` instances. Legacy plain-object `teachers[]`
+  entries are neither hydrated nor migrated: they pass through `ABClass.serialiseOwner()` /
+  `ArrayUtils.serialiseArray()` unchanged until actually replaced by a `Teacher` instance, so a raw
+  legacy row may still omit the key.
+- `Teacher.fromJSON()`, the constructor and the setters are unchanged. It detects `teacherName` in
+  the JSON via `'teacherName' in json` and only sets it when present, so legacy input with no
+  `teacherName` restores with the constructor-owned `null` value and then serialises with an
+  explicit `teacherName: null`.
+- `TeacherSummarySchema` is unchanged and remains `.nullable().optional().transform(...)`, so it
+  accepts both legacy absence and the new explicit `null`. No second default, raw-registry rewrite
+  or eager migration is introduced.
 
 ### Sub-entity: Student
 
@@ -433,35 +455,31 @@ contract for StudentSubmission is documented in [Contract: Assignment](assignmen
 
 ### Known discrepancies
 
-1. **`Teacher.toJSON()` conditionally omits `teacherName` when null.**
-   Frontend `TeacherSummarySchema` tolerates this via `.nullable().optional().transform(...)`.
-   **Classification: Fragile** — the optional marker and transform handle both the absent
-   and null cases for now, but this is a fragile pattern. If a consumer expects the field
-   to always be present, the conditional omission will cause issues. The recommended fix
-   would be to make backend always emit `teacherName: null` for consistency, but this has
-   not been implemented.
-
-2. **`getABClass` transport includes `courseId` and `assignmentName` on each assignment.**
+1. **`getABClass` transport includes `courseId` and `assignmentName` on each assignment.**
    Frontend `AssignmentPartialSchema` does not include these fields (Zod `.strip()` mode
    silently removes them). The frontend resolves assignment context (courseId, name)
    from other sources.
    **Classification: Aligned** — Zod's default `.strip()` behaviour means extra fields
    are tolerated, and the stripped data is unused by the frontend. No risk of breakage.
 
-3. **`ClassFullResponseSchema` is `ClassFullSchema.nullable()`**
+2. **`ClassFullResponseSchema` is `ClassFullSchema.nullable()`**
    The backend returns `null` when the class document does not exist. The frontend
    schema expects this and handles it.
    **Classification: Aligned** — documented contract.
 
-4. **`ClassPartialSchema` and `ClassFullSchema` both redundantly declare `TeacherSummarySchema`.**
+3. **`ClassPartialSchema` and `ClassFullSchema` both redundantly declare `TeacherSummarySchema`.**
    The schema is duplicated in both `classPartials.zod.ts` and `classDetailService.zod.ts`.
    **Classification: Aligned** — intentional to keep each Zod file self-contained and
    avoid cross-file import coupling for a simple schema.
 
-5. **`deleteABClass` response shape (`{ classId, hasDeletedFullClass, hasDeletedClassPartial }`) has no frontend Zod schema.**
+4. **`deleteABClass` response shape (`{ classId, hasDeletedFullClass, hasDeletedClassPartial }`) has no frontend Zod schema.**
    The response is consumed by generic `callApi` without `parseApiResponse` validation.
    **Classification: Aligned** — the delete flow does not require typed validation at
    the transport boundary; the caller receives raw `unknown` and destructures as needed.
+
+These four entries are intentional contracts, not implementation deferrals. The former
+`Teacher.toJSON()` conditional-omission discrepancy is resolved: `teacherName` is now always
+emitted with an explicit `null` (see [§ Sub-entity Teacher](#sub-entity-teacher)).
 
 ---
 
@@ -1178,109 +1196,19 @@ Real-dispatcher suites (delivered): tests/api/abclassMetadataApi.test.js (wrappe
 
 ---
 
-## Planned companion cleanup — Teacher serialisation and documentation corrections (`Not implemented`)
+## Companion cleanup — Teacher serialisation and documentation corrections (delivered)
 
-> **Status: `Not implemented`.** This is a separate, bounded companion cleanup approved
-> during action planning (see `docs/plans/SPEC.md` → "Agreed companion cleanup — Teacher
-> serialisation and documentation"). It is independent of the planned ABClass `metadata`
-> contract above. The Teacher output correction is not implemented; the two documentation
-> corrections describe existing source behaviour. Existing implemented sections and the
-> separate planned-metadata entries are retained until reconciliation; those planned
-> entries remain `Not implemented`. This section makes no claim that the new Teacher
-> serialisation behaviour is live.
+> **Status: delivered, except the deferred deletion-flag fix.** This bounded companion cleanup
+> was approved during action planning (see `docs/plans/SPEC.md` → "Agreed companion cleanup —
+> Teacher serialisation and documentation"). The one-field `Teacher.toJSON()` correction and the
+> two factual documentation corrections are applied to the implemented sections above. The
+> deletion full-flag correction remains an explicitly deferred future change tracked in
+> [issue #332](https://github.com/h-arnold/AssessmentBot/issues/332); deletion code and flags are
+> unchanged in this cycle.
 
-### Planned `Teacher.toJSON()` always emits `teacherName` (`Not implemented`)
-
-Target change: `Teacher.toJSON()` (`src/backend/Models/Teacher.js`, currently 111 lines) always
-emits its own `teacherName` property, preserving a supplied name and emitting the constructor's
-existing `null` value when no name is set.
-
-| Field         | Type           | Implemented toJSON()                         | Planned toJSON() (`Not implemented`) | Frontend Zod                                                          | Notes                                              |
-| ------------- | -------------- | -------------------------------------------- | ------------------------------------ | --------------------------------------------------------------------- | -------------------------------------------------- |
-| `email`       | `string\|null` | Always emitted                               | Unchanged                            | `z.string().nullable()`                                               | Null when unset.                                   |
-| `userId`      | `string\|null` | Always emitted                               | Unchanged                            | `z.string().nullable()`                                               | Null when unset.                                   |
-| `teacherName` | `string\|null` | **Conditionally emitted:** omitted when null | Always emitted; `null` when unset    | `z.string().nullable().optional().transform((value = null) => value)` | Own-property output replaces conditional omission. |
-
-Scope constraints (`Not implemented`):
-
-- The correction applies everywhere the shared Teacher serialiser is used — every
-  `Teacher.toJSON()` consumer, including ABClass `classOwner` and `teachers` serialisation and
-  any other call site — not only in ABClass.
-- The always-present property guarantee attaches to `Teacher` instances. Legacy plain-object
-  `teachers[]` entries restored by ABClass remain plain and pass through existing array
-  serialisation unchanged until replaced by direct construction or roster refresh. Do not
-  introduce broader teacher-array hydration or migration for this correction.
-- Normal writes/roster refreshes serialise nameless Teacher instances with explicit
-  `teacherName: null`. This is expected write-through behaviour, not permission for
-  eager rewriting; existing raw entries acquire the property only when actually
-  replaced/re-serialised through the shared Teacher helper.
-- `Teacher.fromJSON()`, the constructor and the setters remain unchanged. Legacy input with no
-  `teacherName` still restores with the constructor-owned `null` value and then serialises with
-  an explicit `teacherName: null`.
-- No second default is added in the serialiser; existing raw stored registry teachers are not
-  rewritten; stored teachers are not eagerly migrated; accepted legacy input is not tightened.
-- Existing frontend optional/nullable Teacher schemas (`TeacherSummarySchema` in both
-  `classPartials.zod.ts` and `classDetailService.zod.ts`) remain unchanged and continue to accept
-  both legacy absence and the new explicit `null` output.
-- Red-first backend tests are planned for own-property null output, unchanged named output,
-  legacy missing-name restoration and null/named round trips, plus ABClass owner and
-  teacher-array serialisation through the real model helpers. `tests/models/teacher.test.js`
-  (180 lines) is the existing suite. Named Teacher unit cases call
-  `loadSyntheticAnalysisProfile('small', 'classPartials')` (a frozen array); the class
-  source view is `loadSyntheticAnalysisProfile('small', 'classesById')` (a frozen
-  object keyed by classId). Clone before mutation; neither call returns a `transport`
-  wrapper. ABClass owner/teacher-array cases use `loadBackendModelInputs('small')`
-  from `scripts/synthetic-test-data/toBackendModelInputs.js`, selecting its adapted
-  `classesById[classId]` roster JSON. Explicitly materialise canonical teacher
-  inputs with `Teacher.fromJSON()` when composing array cases that exercise the shared
-  Teacher serialiser; ABClass restoration itself does not hydrate those plain entries.
-  Null/legacy cases are local clones of the canonical inputs.
-- Update the existing omission-based assertions in that suite (nameless round-trip
-  equality and explicit omission test) and in
-  `tests/models/teacherStudentSubmissionCoverage.test.js` (281 lines; nameless
-  serialisation equality) to require own `teacherName: null` in the red phase.
-- On reconciliation, known discrepancy 1 above (`Teacher.toJSON()` conditionally omits
-  `teacherName` when null) is resolved by this change. Update the implemented Teacher
-  field-table row and conditional-emission key notes as well as that discrepancy, and
-  document the always-present/null contract in `Teacher.toJSON()` JSDoc. Remove the
-  resolved fragile entry and renumber the four remaining intentional entries without
-  changing their contracts.
-
-### Planned factual ABClass documentation corrections (`Not implemented`)
-
-Two factual documentation corrections are recorded here for later reconciliation. They change no
-behaviour; the inaccurate statements identified below must be corrected to match the source.
-
-1. **Full class storage collection name.** The implemented prose states that full class
-   documents live in a fixed `abclass` collection (see [Persistence](#persistence)). The correct
-   statement is that full class storage uses per-class collections named by `classId`;
-   `abclass_partials` remains the fixed single registry name. Correct every implemented
-   occurrence, including the `Collections:` header and main-collection section heading.
-2. **`deleteABClass` not-found claim.** The `deleteABClass` section above claims deletion of an
-   absent record fails. That claim is incorrect: deletion of absent stores succeeds with the
-   existing flag object. A missing registry row yields `hasDeletedClassPartial: false`.
-   The current controller sets `hasDeletedFullClass: true` after any non-throwing drop,
-   including the vendor's `false` return for an absent collection; only the recognised
-   missing-collection exception leaves that flag false. The vendor's ordinary absent
-   path returns false rather than throwing, so a repeated delete reports the full flag
-   true. The exception guard is not taken by that normal absent result; every
-   non-throwing delete currently sets the full flag true. Correct every affected
-   implemented statement: the error row, flag table
-   and key notes, plus the matching `deleteABClass` idempotency statement in
-   `docs/developer/backend/api-layer.md`, to describe this actual quirk without changing
-   deletion behaviour or conflating it with `updateABClass`'s missing-class error.
-
-The user explicitly authorised deferring the full-collection flag correction to a separate
-implementation round via the question tool. [Issue #332](https://github.com/h-arnold/AssessmentBot/issues/332)
-contains the evidence, reproduction, suggested boolean-return fix and red-first tests.
-The current metadata/Teacher cycle documents, but must not fix, that flag.
-
-### Known discrepancies intentionally unchanged
-
-The remaining four known discrepancies above are intentional contracts, not implementation
-deferrals, and are left unchanged:
-
-- extra assignment wire fields (`courseId`, `assignmentName`) stripped by the frontend schemas;
-- nullable full-class not-found responses (`ClassFullResponseSchema`);
-- intentionally duplicated `TeacherSummarySchema` across the two frontend Zod files;
-- unparsed/unused frontend `deleteABClass` deletion flags.
+| Item                                                            | Status                            | Delivered behaviour / contract                                                                                                                                                                                                                                                                                                                                                                           |
+| --------------------------------------------------------------- | --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Teacher.toJSON()` always emits own `teacherName`               | Delivered                         | See [§ Sub-entity Teacher](#sub-entity-teacher). It emits `teacherName: this.teacherName`, using the constructor-owned `null` when unset (no serialiser-time default). Construction, `fromJSON()` and setters are unchanged; the guarantee attaches to `Teacher` instances only, so legacy plain-object rows still pass through uncorrupted. No second default, raw-registry rewrite or eager migration. |
+| Full class storage named by `classId`                           | Delivered (documentation)         | Applied to the `Collections:` header, the main-collection heading and the persistence prose above. `abclass_partials` remains the fixed registry name.                                                                                                                                                                                                                                                   |
+| `deleteABClass` absent-success and flag facts                   | Delivered (documentation)         | Applied to the delete error/response tables and key notes above: absent stores delete successfully (no class-not-found error), a missing registry row reports `hasDeletedClassPartial: false`, and any non-throwing drop currently reports `hasDeletedFullClass: true`.                                                                                                                                  |
+| Honour the vendor `false` drop result for `hasDeletedFullClass` | Not implemented — deferred (#332) | The current quirk is documented in the delete section but not corrected; deletion behaviour and flags are unchanged in this cycle.                                                                                                                                                                                                                                                                       |

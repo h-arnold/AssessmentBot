@@ -34,8 +34,9 @@ Backend tests load a committed profile view synchronously and immutably, then su
 > canonical model-input adapter, generator integrity and real-domain-acceptance probes, ABClass
 > model construction/restoration/serialization probes, mutation-owner bootstrap/delegation
 > probes, read/mutation-summary response-mapping probes, the Section 7 controller request-gate
-> and mutation-lifecycle probes, and the Section 8 transport-adaptation and real-dispatcher
-> request/error-envelope probes are delivered. See "Canonical metadata probes" below.
+> and mutation-lifecycle probes, the Section 8 transport-adaptation and real-dispatcher
+> request/error-envelope probes, and the Section 9 Teacher always-own-null serialisation and
+> real ABClass/roster probes are delivered. See "Canonical metadata probes" below.
 
 - `tests/setupGlobals.js` installs the metadata domain and typed error globals after the
   existing `Validate` installation and before any ABClass-dependent module loads, including
@@ -346,6 +347,34 @@ transport request-error adapter and the real-dispatcher request/error-envelope c
   helper and is not exported, and the static global-exposure guard suite stays green.
 - Run the Section 8 suites with the existing ABClass API and backend mutation/validation units:
   `npm run test:backend -- tests/api/abclassMetadataApi.test.js tests/api/apiHandler/abclassMetadataReads.test.js tests/api/apiHandler/abclassMetadataWrites.test.js tests/api/apiHandler/abclassMetadataErrors.test.js tests/api/abclassMutations.test.js tests/api/abclassRead.test.js tests/backend-api/abclassMutations.unit.test.js tests/backend-api/abclassValidation.unit.test.js tests/api/apiHandler/globalExposure.test.js`.
+
+**Teacher always-own-null serialisation and its roster path (`Implemented`).** Section 9
+delivers the approved `Teacher.toJSON()` correction with model, ABClass and roster coverage:
+
+- `tests/models/teacher.test.js` and `tests/models/teacherStudentSubmissionCoverage.test.js`
+  replace the former omission assertions with an **own** `teacherName: null` requirement, and
+  cover constructor-unset, explicit-null, cleared-name, legacy canonical rows with the name key
+  deleted, and named round trips. Named cases load the frozen
+  `loadSyntheticAnalysisProfile('small', 'classPartials')` rows. Student and StudentSubmission
+  cases in the mixed suite are unchanged.
+- `tests/models/abclassTeacherSerialisation.test.js` drives the real ABClass full/partial
+  serializers with a non-empty adapted canonical class from
+  `loadBackendModelInputs('small').classesById`: a real `Teacher` owner and materialised
+  `Teacher` instances emit their own `teacherName` (`null` when unnamed), while legacy
+  plain-object teacher rows pass through unchanged. Array cases materialise `Teacher.fromJSON()`
+  inputs inside the test; ABClass restoration still does not hydrate plain entries.
+- `tests/controllers/abclassRosterPersistence.test.js` adds the normal roster-refresh case:
+  the exact four-field full `$set`, the three-field registry `$set`, full-first ordering
+  (partial `findOne` → full `$set`/`save` → partial write) and explicit null names in the
+  serialised owner/teachers, while the existing row's stored metadata is left untouched.
+- The unchanged frontend compatibility smoke
+  (`classDetailService.zod.spec.ts`, `classPartialsService.spec.ts`) confirms the
+  optional/nullable Teacher schemas accept both legacy absence and explicit null. It is
+  schema-compatibility context only, not a live backend output round trip.
+- Deletion behaviour is unchanged and no false-drop-flag expectation is added; the documented
+  quirk and its deferred fix remain with
+  [issue #332](https://github.com/h-arnold/AssessmentBot/issues/332).
+
 - Controller/API-level ordering probes remain pending for later hardening (Section 10). The
   delivered equal-timestamp and repeated-definition-key checks are model-boundary probes against a
   cloned canonical `medium` snapshot, not controller/API capability. Generated source assignments
