@@ -1,4 +1,5 @@
 import { expect, type Locator, type Page } from '@playwright/test';
+import { waitForSelectPopupReady } from './select-popup-readiness';
 import {
   selectVisibleOption,
   waitForAssignmentsPageReady,
@@ -447,6 +448,12 @@ export async function selectCanonicalAssignmentAndStart(
   assignmentTitle: string
 ): Promise<void> {
   await dialog.getByTestId('assignment-select').click();
+  await waitForSelectPopupReady(
+    page
+      .locator('.ant-select-dropdown:not(.ant-select-dropdown-hidden)')
+      .getByText(assignmentTitle, { exact: true })
+      .nth(0)
+  );
   await selectVisibleOption(page, assignmentTitle);
   await dialog.getByRole('button', { name: ACTION_START_ASSESSMENT }).click();
 }

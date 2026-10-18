@@ -11,6 +11,7 @@
  */
 
 import { expect, test, type Page } from '@playwright/test';
+import { waitForSelectPopupReady } from './helpers/select-popup-readiness';
 import {
   baseGoogleClassrooms,
   baseCohorts,
@@ -56,6 +57,7 @@ async function openComboboxAndClickAddNew(
 
   const addNewOption = page.getByRole('option', { name: addNewOptionName });
   await expect(addNewOption).toBeVisible();
+  await waitForSelectPopupReady(addNewOption);
   await addNewOption.click();
 }
 

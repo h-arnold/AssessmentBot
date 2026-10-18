@@ -271,6 +271,43 @@ await selectVisibleOption(page, 'Algebra Homework');
 await expect(dialog.getByRole('button', { name: 'Start Assessment' })).toBeEnabled();
 ```
 
+### Select Popup Readiness Before Option Clicks
+
+antd Select renders its options in a body-portalled `.ant-select-dropdown`, outside the fixed
+modal scroll container. `toBeVisible()` passes during the entrance animation, so a click can begin
+while the popup is still moving. Playwright then retries its stability check and, after repeated
+instability, advances to a native `scrollIntoView` rather than the normal scroll-if-needed path.
+That scroll realigns the portalled popup between pointerdown and pointerup, so the press lands on a
+different option (or the shared listbox) and no selection fires.
+
+Call `waitForSelectPopupReady(option)` immediately before the ordinary option click at a
+ready-sensitive seam. Two specs do:
+
+- `src/frontend/e2e-tests/select-with-add-new-workflow.spec.ts` (`openComboboxAndClickAddNew`)
+- `src/frontend/e2e-tests/helpers/stale-recovery-page-end-to-end-helpers.ts`
+  (`selectCanonicalAssignmentAndStart`)
+
+The helper is E2E-only and lives at
+`src/frontend/e2e-tests/helpers/select-popup-readiness.ts`. It exports
+`waitForSelectPopupReady(option: Locator): Promise<void>`, and it:
+
+- re-resolves the locator on each bounded poll and requires exactly one intended option inside a
+  real `.ant-select-item-option` and the visible, non-hidden `.ant-select-dropdown`;
+- requires a visible, enabled, connected, positive-size popup, option row and target;
+- waits out rc-motion's appear/enter/leave lifecycle (including `prepare`/`start` before an
+  animation exists) and any pending or running Web Animation on the popup subtree and its
+  ancestors;
+- then requires unchanged x/y/width/height for the popup, option row and target across four
+  consecutive animation frames, so post-motion realignment also settles.
+
+The helper only observes the browser. It does not click, scroll, select, sleep, force, retry or
+disable motion, and it adds no queue entries or mock changes. The caller still performs the normal
+click with full visibility, enabled, stability and hit-target actionability checks intact.
+
+Keep this scoped. It is not a blanket requirement for every antd Select, it is not permission to
+click twice, prefer keyboard input, add sleeps or disable animation globally, and it must not move
+into the shared `selectVisibleOption` helper, which unrelated specs depend on.
+
 ### Modal Mask (Backdrop) Clicks
 
 antd v6 uses `.ant-modal-wrap` for mask click handling. Click near the edge of the wrap
@@ -410,6 +447,7 @@ deterministic responses. This keeps tests fast and eliminates flakiness from ext
 | Manual `isVisible()` assertions                             | No auto-wait, fails immediately                                                                                                          | Use `expect(...).toBeVisible()`                                        |
 | Single-entry StrictMode queues                              | Second effect call gets "Unexpected index"                                                                                               | Double every queue entry                                               |
 | `selectOption` on antd Select                               | antd uses custom dropdown, not `<select>`                                                                                                | Use `selectVisibleOption(page, ...)`                                   |
+| Clicking an antd Select option during entrance motion       | The body-portalled popup can realign between pointerdown and pointerup, so the click misses the option                                   | Call `waitForSelectPopupReady(option)` first at the affected seams     |
 | `.ant-modal-mask` click                                     | antd v6 uses `.ant-modal-wrap` for mask                                                                                                  | Click `.ant-modal-wrap` edge                                           |
 | `toBeVisible` on Typography.Text                            | Playwright may resolve as hidden                                                                                                         | Use `toHaveCount(1)` or structural                                     |
 | Mocks installed AFTER `page.goto`                           | Component renders with stale defaults                                                                                                    | Install mocks before `page.goto`                                       |
@@ -480,6 +518,7 @@ unauthorised, backend error, delayed loading) to quickly verify usability during
 
 - E2E runtime mocks: `src/frontend/e2e-tests/shared/endToEndRuntimeMocks.ts`
 - Classes E2E helpers: `src/frontend/e2e-tests/helpers/classes-page-end-to-end-helpers.ts`
+- Select popup readiness helper: `src/frontend/e2e-tests/helpers/select-popup-readiness.ts` — exports `waitForSelectPopupReady(option)`, called before the two option clicks listed in [Select Popup Readiness Before Option Clicks](#select-popup-readiness-before-option-clicks).
 - `google.script.run` harness: `src/frontend/src/test/googleScriptRunHarness.ts`
   - For Playwright init scripts, inline `googleScriptRunApiHandlerFactorySource` inside `page.addInitScript(...)`
 - Classes page test helpers (shared fixtures): `src/frontend/src/test/classes/classesPageTestHelpers.ts`
