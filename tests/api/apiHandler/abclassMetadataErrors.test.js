@@ -226,7 +226,7 @@ describe('ABClass metadata dispatcher error contracts', () => {
     };
     const response = context.realContext.api.apiHandler({
       method: 'getABClass',
-      params: { classId: source.classId, partialRows: registryRows },
+      params: { classId: source.classId },
     });
     expect.soft(response).toMatchObject({
       ok: false,
@@ -252,7 +252,7 @@ describe('ABClass metadata dispatcher error contracts', () => {
     });
     const response = context.realContext.api.apiHandler({
       method: 'getABClass',
-      params: { classId: source.classId, partialRows: registryRows },
+      params: { classId: source.classId },
     });
     expect(restoreAndCorrupt).toHaveBeenCalledTimes(1);
     expect.soft(response).toMatchObject({
@@ -384,7 +384,7 @@ describe('ABClass metadata dispatcher error contracts', () => {
     vi.spyOn(console, 'warn').mockImplementation(() => {});
     const response = context.realContext.api.apiHandler({
       method: 'getABClass',
-      params: { classId: source.classId, partialRows: registryRows },
+      params: { classId: source.classId },
     });
     expect(response).toMatchObject({
       ok: false,

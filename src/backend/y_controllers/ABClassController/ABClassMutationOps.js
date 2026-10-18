@@ -1,4 +1,4 @@
-/* global Validate, ABClass, ABLogger */
+/* global Validate, ABClass */
 
 /** Coordinates ABClass create, edit, and removal operations across injected domain owners. */
 class ABClassMutationOps {

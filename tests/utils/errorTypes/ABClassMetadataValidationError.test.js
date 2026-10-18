@@ -1,22 +1,16 @@
 import { describe, expect, it } from 'vitest';
-
-function loadErrorType() {
-  try {
-    return require('#backend/Utils/ErrorTypes/ABClassMetadataValidationError.js');
-  } catch {
-    return null;
-  }
-}
+const {
+  ABClassMetadataValidationError,
+} = require('#backend/Utils/ErrorTypes/ABClassMetadataValidationError.js');
 
 describe('ABClassMetadataValidationError', () => {
   it('is available through the backend source path', () => {
-    expect(loadErrorType()).not.toBeNull();
+    expect(ABClassMetadataValidationError).toBeTypeOf('function');
   });
 
   it('carries an actionable field path and defaults to non-request provenance', () => {
-    const ErrorType = loadErrorType()?.ABClassMetadataValidationError;
+    const ErrorType = ABClassMetadataValidationError;
     expect(typeof ErrorType).toBe('function');
-    if (!ErrorType) return;
 
     const error = new ErrorType('Invalid score', 'metadata.classAverages.overall');
     expect(error).toBeInstanceOf(Error);

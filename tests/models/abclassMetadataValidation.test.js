@@ -1,12 +1,5 @@
 import { describe, expect, it } from 'vitest';
-
-function domainType() {
-  try {
-    return require('#backend/Models/ABClassMetadata.js').ABClassMetadata;
-  } catch {
-    return null;
-  }
-}
+const { ABClassMetadata } = require('#backend/Models/ABClassMetadata.js');
 
 const at = '2024-02-29T12:34:56.789Z';
 const scores = (value = 0) => ({
@@ -29,13 +22,12 @@ const metadata = (entries = []) => ({
 
 describe('ABClassMetadata validation', () => {
   it('loads as a domain owner without requiring compatibility globals', () => {
-    expect(domainType()).toBeTypeOf('function');
+    expect(ABClassMetadata).toBeTypeOf('function');
   });
 
   it.each([0, 5, 2.75, 'N', 'E', 'excluded'])('accepts exact average score %s', (value) => {
-    const Type = domainType();
+    const Type = ABClassMetadata;
     expect(typeof Type).toBe('function');
-    if (!Type) return;
     expect(Type.validateAverageScore(value, 'score')).toBeUndefined();
   });
 
@@ -54,16 +46,14 @@ describe('ABClassMetadata validation', () => {
     'EXCLUDED',
     null,
   ])('rejects score without coercion: %s', (value) => {
-    const Type = domainType();
+    const Type = ABClassMetadata;
     expect(typeof Type).toBe('function');
-    if (!Type) return;
     expect(() => Type.validateAverageScore(value, 'metadata.classAverages.overall')).toThrow();
   });
 
   it('accepts ordinary and null-prototype exact records and mixed metric markers', () => {
-    const Type = domainType();
+    const Type = ABClassMetadata;
     expect(typeof Type).toBe('function');
-    if (!Type) return;
     const nullPrototypeScores = Object.assign(Object.create(null), {
       completeness: 0,
       accuracy: 'N',
@@ -136,9 +126,8 @@ describe('ABClassMetadata validation', () => {
   ])(
     'rejects malformed records with an actionable path',
     (makeValue, validatorName, context, expectedPath) => {
-      const Type = domainType();
+      const Type = ABClassMetadata;
       expect(typeof Type).toBe('function');
-      if (!Type) return;
       const value = makeValue();
       const validator = Type[validatorName];
       try {
@@ -155,9 +144,8 @@ describe('ABClassMetadata validation', () => {
   );
 
   it('directly validates recent entries and rejects unexpected own keys of every property kind', () => {
-    const Type = domainType();
+    const Type = ABClassMetadata;
     expect(typeof Type).toBe('function');
-    if (!Type) return;
     expect(() =>
       Type.validateRecentAssignment(entry('opaque'), 'recentAssignments[0]')
     ).not.toThrow();
@@ -214,9 +202,8 @@ describe('ABClassMetadata validation', () => {
   });
 
   it('accepts null-prototype records at each domain record level', () => {
-    const Type = domainType();
+    const Type = ABClassMetadata;
     expect(typeof Type).toBe('function');
-    if (!Type) return;
     const nullRecord = (value) => Object.assign(Object.create(null), value);
     const nullScores = nullRecord(scores());
     const nullClassAverages = nullRecord({ ...classAverages() });
@@ -235,9 +222,8 @@ describe('ABClassMetadata validation', () => {
   });
 
   it('rejects absent and inherited required fields, disallowed records, and misplaced nulls', () => {
-    const Type = domainType();
+    const Type = ABClassMetadata;
     expect(typeof Type).toBe('function');
-    if (!Type) return;
     const bad = [
       [Type.validateAverageScores, { accuracy: 1, spag: 1, overall: 1 }, 'completeness'],
       [Type.validateClassAverages, { ...classAverages(), updatedAt: undefined }, 'updatedAt'],
@@ -264,9 +250,8 @@ describe('ABClassMetadata validation', () => {
   });
 
   it('requires complete metadata and rejects misplaced null or nested undefined', () => {
-    const Type = domainType();
+    const Type = ABClassMetadata;
     expect(typeof Type).toBe('function');
-    if (!Type) return;
     for (const value of [
       undefined,
       {},
@@ -280,9 +265,8 @@ describe('ABClassMetadata validation', () => {
   });
 
   it('reports nested failures with actionable metadata paths', () => {
-    const Type = domainType();
+    const Type = ABClassMetadata;
     expect(typeof Type).toBe('function');
-    if (!Type) return;
     const invalid = metadata([entry('one')]);
     invalid.recentAssignments[0].averages.overall = undefined;
     try {
@@ -294,10 +278,9 @@ describe('ABClassMetadata validation', () => {
   });
 
   it('uses typed path-bearing integrity errors at every direct validator and constructor boundary', () => {
-    const Type = domainType();
+    const Type = ABClassMetadata;
     const ErrorType = globalThis.ABClassMetadataValidationError;
     expect(typeof Type).toBe('function');
-    if (!Type) return;
     const invalids = [
       [
         () => Type.validateAverageScore(-1, 'metadata.classAverages.overall'),
@@ -341,9 +324,8 @@ describe('ABClassMetadata validation', () => {
   });
 
   it('accepts at most three dense entries, allows repeated definition keys and equal timestamps in input order', () => {
-    const Type = domainType();
+    const Type = ABClassMetadata;
     expect(typeof Type).toBe('function');
-    if (!Type) return;
     const equalTime = metadata([entry('first'), entry('second')]);
     expect(() => Type.validateMetadata(equalTime, 'metadata')).not.toThrow();
     expect(() =>

@@ -4,14 +4,10 @@ import vm from 'node:vm';
 import { describe, expect, it } from 'vitest';
 
 const classPath = '#backend/Models/ABClass.js';
-
-function getDomain() {
-  try {
-    return require('#backend/Models/ABClassMetadata.js').ABClassMetadata;
-  } catch {
-    return null;
-  }
-}
+const { ABClassMetadata } = require('#backend/Models/ABClassMetadata.js');
+const {
+  ABClassMetadataValidationError,
+} = require('#backend/Utils/ErrorTypes/ABClassMetadataValidationError.js');
 
 const instant = '2024-02-29T12:34:56.789Z';
 const validMetadata = () => ({
@@ -64,9 +60,8 @@ describe('ABClassMetadata ownership boundary', () => {
   });
 
   it('constructs null only for omitted arguments and rejects explicit undefined', () => {
-    const Type = getDomain();
+    const Type = ABClassMetadata;
     expect(typeof Type).toBe('function');
-    if (!Type) return;
     expect(new Type().toJSON()).toBeNull();
     expect(new Type(null).toJSON()).toBeNull();
     expect(() => new Type(undefined)).toThrow();
@@ -74,9 +69,8 @@ describe('ABClassMetadata ownership boundary', () => {
   });
 
   it('isolates every constructor input and each independently returned snapshot', () => {
-    const Type = getDomain();
+    const Type = ABClassMetadata;
     expect(typeof Type).toBe('function');
-    if (!Type) return;
     for (const name of [
       'validateAverageScore',
       'validateAverageScores',
@@ -114,9 +108,8 @@ describe('ABClassMetadata ownership boundary', () => {
   });
 
   it('copies accepted Array subclasses without trusting their inherited map method', () => {
-    const Type = getDomain();
+    const Type = ABClassMetadata;
     expect(typeof Type).toBe('function');
-    if (!Type) return;
 
     class Entries extends Array {
       map() {
@@ -147,13 +140,11 @@ describe('ABClassMetadata ownership boundary', () => {
   });
 
   it('revalidates a corrupted owned snapshot during serialisation', () => {
-    const Type = getDomain();
+    const Type = ABClassMetadata;
     expect(typeof Type).toBe('function');
-    if (!Type) return;
     const domain = new Type(validMetadata());
     const owned = findOwnedSnapshot(domain);
     expect(owned).not.toBeNull();
-    if (!owned) return;
     owned.recentAssignments[0].averages.overall = 'invalid';
     let failure;
     try {
@@ -169,15 +160,8 @@ describe('ABClassMetadata ownership boundary', () => {
   });
 
   it('returns errors with metadata field provenance and no ApiValidationError inheritance', () => {
-    let ErrorType;
-    try {
-      ErrorType =
-        require('#backend/Utils/ErrorTypes/ABClassMetadataValidationError.js').ABClassMetadataValidationError;
-    } catch {
-      ErrorType = null;
-    }
+    const ErrorType = ABClassMetadataValidationError;
     expect(typeof ErrorType).toBe('function');
-    if (!ErrorType) return;
     const failure = new ErrorType('Invalid', 'metadata.recentAssignments[0].assignmentId');
     expect(failure.fieldPath).toBe('metadata.recentAssignments[0].assignmentId');
     expect(failure.inputSource).not.toBe('request');
@@ -193,7 +177,6 @@ describe('ABClassMetadata ownership boundary', () => {
     ];
     const missing = paths.filter((path) => !existsSync(path));
     expect(missing).toEqual([]);
-    if (missing.length) return;
     const context = { module: undefined, console };
     vm.createContext(context);
     for (const path of paths)
