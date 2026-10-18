@@ -81,7 +81,7 @@ against the current specification first.
   - Location: `toTransportPartialRow_` in `src/backend/z_Api/assignmentDefinitionTransport.js`
   - Note: Transport-boundary helper that accepts a model instance or plain object, calls `definition.toPartialJSON()`, defensively strips `yearGroup`, and normalises Date fields.
 
-## Planned ABClass metadata helpers
+## ABClass metadata helpers
 
 > **Status: implemented — backend contract and companion documentation delivered.** The metadata
 > domain owner, its typed domain error, the canonical UTC predicate and ABClass model
@@ -94,9 +94,8 @@ against the current specification first.
 > documentation reconciliation is delivered below; the deletion **code** flag fix remains
 > deferred to [issue #332](https://github.com/h-arnold/AssessmentBot/issues/332).
 > Cross-references:
-> `docs/developer/data-shapes/abclass.md` §Planned validation and
-> `docs/developer/testing/synthetic-test-data.md` §ABClass metadata generator
-> capability.
+> [abclass.md § Validation](../data-shapes/abclass.md#validation) and
+> [synthetic-test-data.md § ABClass metadata generator capability](../testing/synthetic-test-data.md#abclass-metadata-generator-capability).
 
 ### Metadata domain model — `Models/ABClassMetadata.js` (`Implemented`)
 
@@ -167,7 +166,7 @@ against the current specification first.
 - `Validate.isCanonicalUtcDateTime(value)` enforces the exact canonical UTC real-calendar form
   `YYYY-MM-DDTHH:mm:ss.sssZ`, rejecting live `Date` objects, date-only strings, timezone
   offsets and non-canonical precision. The metadata domain validator reuses it. See
-  `docs/developer/data-shapes/abclass.md` §Planned validation.
+  [abclass.md § Validation](../data-shapes/abclass.md#validation).
 - Distinguish it from the unchanged, broader `isIsoDateTimeString_` in
   `z_Api/assignmentDefinition/assignmentDefinitionPartialRowValidation.js`, which accepts
   timezone offsets and is owned by the transport layer. Model-domain validation must not depend
@@ -289,7 +288,7 @@ abClass)` and `_writePreparedRosterPartial(prepared, classId)`. `ABClassRoster._
   it carries its actual non-empty partial/full assignment population alongside validated
   metadata. A true partial-save or patch failure keeps the existing logged propagation and
   non-transactional partial-success risk; no rollback or retry is added.
-- See `docs/developer/data-shapes/abclass.md` §Planned field-scoped roster persistence.
+- See [abclass.md § Field-scoped roster persistence](../data-shapes/abclass.md#field-scoped-roster-persistence-delivered).
 
 ### Companion deletion-documentation reconciliation (`Implemented`)
 

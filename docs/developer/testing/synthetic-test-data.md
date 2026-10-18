@@ -145,10 +145,12 @@ This is **fixture realism only**, not a production nullable-contract change:
 
 > **Status: `Implemented` (test-only).** The canonical corpus generates, validates and adapts
 > raw class `metadata` supplied snapshots for the backend ABClass `metadata` contract-support
-> cycle. This is generator and test infrastructure only: it does not make production
-> `metadata` accepted, persisted, restored or emitted. Production integration remains planned
-> in [abclass.md](../data-shapes/abclass.md) §Target contract and
-> [api-layer.md](../backend/api-layer.md) §Planned ABClass metadata helpers.
+> cycle. The generator stage, the raw-view integrity helper and the model-input adapter are
+> test-only infrastructure: production `src/backend` source never imports them, and the fixtures
+> stay supplied snapshots that no backend code calculates or refreshes. Production acceptance,
+> persistence, read projection and transport adaptation are delivered separately in
+> [abclass.md § ABClass `metadata` contract](../data-shapes/abclass.md#abclass-metadata-contract-domain-model-prepared-persistence-response-mapping-controller-request-replacement-and-transport-adaptation-delivered)
+> and [api-layer.md § ABClass metadata helpers](../backend/api-layer.md#abclass-metadata-helpers).
 > Cross-reference: [Backend Testing](../backend/backend-testing.md) §ABClass canonical
 > model-input adaptation.
 

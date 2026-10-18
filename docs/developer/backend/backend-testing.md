@@ -115,9 +115,11 @@ Location: `scripts/synthetic-test-data/toBackendModelInputs.js`.
 
 ### Test infrastructure reuse
 
-> **Status: `Implemented`.** The adapter, the import mappings and the existing-row roster-mock
-> guidance below are delivered (Section 5). The dispatcher-integration bullet remains
-> contract-sensitive guidance for the later controller/API sections.
+> **Status: `Implemented`.** The adapter, the import mappings, the existing-row roster-mock
+> guidance and the dispatcher-integration bullet below are delivered. The dispatcher-integration
+> guidance is backed by the delivered Section 8 real-dispatcher suites
+> (`tests/api/apiHandler/abclassMetadata*`), and it stays contract-sensitive because default
+> harness stubs and prebuilt synthetic responses are not evidence of real domain validation.
 
 - The root `package.json` `imports` map provides `"#synthetic-data/*": "./scripts/synthetic-test-data/*"`.
   Backend `.test.js` suites use ESM named imports from

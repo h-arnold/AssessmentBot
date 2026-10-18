@@ -24,7 +24,7 @@ class ABClassMutationOps {
    * @param {Object} parameters - Required class configuration and optional own `metadata` value.
    * @param {Object|null} [parameters.metadata] - Optional complete snapshot replacement; omission preserves an existing value or leaves a new class at null, and null clears it.
    * @returns {Object} Partial ABClass summary.
-   * @throws {ABClassMetadataValidationError} If explicitly supplied request metadata is invalid; this controller error currently propagates without transport adaptation.
+   * @throws {ABClassMetadataValidationError} If explicitly supplied request metadata is invalid. The mutation transport adapts request-provenance failures to `ApiValidationError`/`INVALID_REQUEST`; stored, model, and internal integrity failures remain unchanged.
    */
   upsertABClass(parameters) {
     Validate.requireParams(
@@ -75,7 +75,7 @@ class ABClassMutationOps {
    * @param {Object} parameters - Class identifier and editable fields, including optional complete metadata replacement.
    * @param {Object|null} [parameters.metadata] - Optional complete snapshot replacement; omission preserves it, null clears it, and nested patching is unsupported.
    * @returns {Object} Partial ABClass summary.
-   * @throws {ABClassMetadataValidationError} If explicitly supplied request metadata is invalid; this controller error currently propagates without transport adaptation.
+   * @throws {ABClassMetadataValidationError} If explicitly supplied request metadata is invalid. The mutation transport adapts request-provenance failures to `ApiValidationError`/`INVALID_REQUEST`; stored, model, and internal integrity failures remain unchanged.
    */
   updateABClass(parameters) {
     Validate.requireParams({ classId: parameters?.classId }, 'updateABClass');

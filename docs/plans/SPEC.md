@@ -2,7 +2,19 @@
 
 ## Status
 
-Specification for independent planning sign-off. Backend contract support only; no production implementation has started. Canonical planned-only entries are recorded and marked `Not implemented` in the documentation listed below.
+Backend ABClass metadata contract support is delivered and reconciled across Sections 1–10 of
+[ACTION_PLAN.md](../../ACTION_PLAN.md), together with its explicitly approved companions: the
+always-present `Teacher.toJSON().teacherName` correction and the factual collection/deletion
+documentation corrections. Those sections and their approved companions are committed and pushed
+on the delivery branch. Section 11's final documentation audit is in progress; nothing has been
+deployed.
+
+The product decisions, authorisations, amendments and delivery records that follow are the
+historical planning record for this contract and remain authoritative for its scope. Where an
+earlier section still describes this work as planned-only or `Not implemented`, that text records
+the pre-delivery state and is superseded by the status above. The sole deliberate deferral is the
+deletion-flag correction tracked in
+[issue #332](https://github.com/h-arnold/AssessmentBot/issues/332).
 
 ## Purpose
 

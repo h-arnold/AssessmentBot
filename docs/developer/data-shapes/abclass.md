@@ -603,11 +603,10 @@ serialisers emit it, and Section 5's prepared writes persist equal, detached cop
 caller's snapshot. It is a
 **supplied snapshot**: the backend does not calculate averages, refresh it after assessments,
 backfill it, reconcile it between stores beyond an explicit write, or repair corrupt stored
-values. Where the
-implemented prose above calls `cohortKey`, `yearGroupKey` and `courseLength` "metadata",
-delivery must recast those as class-configuration/reference fields so they are not confused
-with this literal `metadata` property, and must distinguish this class-level assessment
-summary from the unrelated task-artifact `metadata`.
+values. In this contract,
+`cohortKey`, `yearGroupKey` and `courseLength` are class configuration/reference fields,
+distinct from the literal `metadata` assessment-summary property, which is in turn distinct
+from the unrelated task-artifact `metadata`.
 
 ### Sub-entity: ABClassMetadata — delivered domain, model, prepared writes, read projection, request gate and transport adaptation
 
