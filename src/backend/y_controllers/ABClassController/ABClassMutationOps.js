@@ -21,8 +21,10 @@ class ABClassMutationOps {
 
   /**
    * Creates a class or refreshes an existing class, then persists and summarises it.
-   * @param {Object} parameters - Required class configuration.
+   * @param {Object} parameters - Required class configuration and optional own `metadata` value.
+   * @param {Object|null} [parameters.metadata] - Optional complete snapshot replacement; omission preserves an existing value or leaves a new class at null, and null clears it.
    * @returns {Object} Partial ABClass summary.
+   * @throws {ABClassMetadataValidationError} If explicitly supplied request metadata is invalid; this controller error currently propagates without transport adaptation.
    */
   upsertABClass(parameters) {
     Validate.requireParams(
@@ -34,6 +36,7 @@ class ABClassMutationOps {
       },
       'upsertABClass'
     );
+    this._validation._validateRequestMetadata(parameters);
 
     const classId = this._validation._validateClassId(parameters.classId, 'upsertABClass');
     const courseLength = this._validation._validateCourseLength(
@@ -50,6 +53,7 @@ class ABClassMutationOps {
       abClass.yearGroupKey =
         parameters.yearGroupKey === null ? null : String(parameters.yearGroupKey);
       abClass.courseLength = courseLength;
+      if (Object.hasOwn(parameters, 'metadata')) abClass.setMetadata(parameters.metadata);
       this._roster._refreshRoster(abClass, classId);
     } else {
       abClass = this._roster.initialise(classId, {
@@ -57,6 +61,7 @@ class ABClassMutationOps {
         yearGroupKey: parameters.yearGroupKey,
         courseLength: courseLength,
       });
+      if (Object.hasOwn(parameters, 'metadata')) abClass.setMetadata(parameters.metadata);
       abClass.active = true;
     }
 
@@ -66,12 +71,15 @@ class ABClassMutationOps {
   }
 
   /**
-   * Applies a selective configuration patch to an existing class.
-   * @param {Object} parameters - Class identifier and editable fields.
+   * Applies a selective editable-field patch to an existing class.
+   * @param {Object} parameters - Class identifier and editable fields, including optional complete metadata replacement.
+   * @param {Object|null} [parameters.metadata] - Optional complete snapshot replacement; omission preserves it, null clears it, and nested patching is unsupported.
    * @returns {Object} Partial ABClass summary.
+   * @throws {ABClassMetadataValidationError} If explicitly supplied request metadata is invalid; this controller error currently propagates without transport adaptation.
    */
   updateABClass(parameters) {
     Validate.requireParams({ classId: parameters?.classId }, 'updateABClass');
+    this._validation._validateRequestMetadata(parameters);
 
     const classId = this._validation._validateClassId(parameters.classId, 'updateABClass');
     const patch = this._validation._buildUpdatePatch(parameters);
@@ -83,6 +91,9 @@ class ABClassMutationOps {
     }
 
     const abClass = this._validation._applyPatchToClass(ABClass.fromJSON(existingDocument), patch);
+    if (Object.hasOwn(patch, 'metadata')) {
+      patch.metadata = this._persistence._metadataCopy(abClass);
+    }
     const partialData = this._persistence._prepareClassPartial(abClass);
 
     collection.updateOne({ classId: classId }, { $set: patch });

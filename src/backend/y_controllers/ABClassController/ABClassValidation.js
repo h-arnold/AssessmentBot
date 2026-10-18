@@ -1,3 +1,5 @@
+/* global ABClassMetadata, ABClassMetadataValidationError */
+
 /**
  * ABClassValidation
  *
@@ -5,6 +7,25 @@
  * and error classification. No DB or service dependencies — pure validation.
  */
 class ABClassValidation {
+  /**
+   * Validates explicitly supplied request metadata before mutation side effects.
+   * Only failures from the shared metadata-domain validator acquire request provenance.
+   * @param {Object} parameters - Original mutation request parameters.
+   * @returns {void}
+   * @throws {ABClassMetadataValidationError} If supplied metadata is invalid.
+   * @private
+   */
+  _validateRequestMetadata(parameters) {
+    if (!Object.hasOwn(parameters, 'metadata')) return;
+
+    try {
+      ABClassMetadata.validateMetadata(parameters.metadata, 'metadata');
+    } catch (error) {
+      if (error instanceof ABClassMetadataValidationError) error.inputSource = 'request';
+      throw error;
+    }
+  }
+
   /**
    * Validates the legacy saveClass input contract shared by the facade and mutation owner.
    * @param {ABClass|Object} abClass - Model or plain object to persist.
@@ -106,6 +127,7 @@ class ABClassValidation {
    * @param {*} [parameters.yearGroupKey] - Optional year group key value.
    * @param {*} [parameters.courseLength] - Optional course length (validated).
    * @param {boolean} [parameters.active] - Optional active flag.
+   * @param {Object|null} [parameters.metadata] - Optional complete assessment-summary replacement; null clears it.
    * @returns {Object} Patch object containing only provided fields.
    */
   _buildUpdatePatch(parameters) {
@@ -128,14 +150,19 @@ class ABClassValidation {
       patch.active = parameters.active;
     }
 
+    if (Object.hasOwn(parameters, 'metadata')) {
+      patch.metadata = parameters.metadata;
+    }
+
     return patch;
   }
 
   /**
    * Applies a patch object to an ABClass instance, updating specified fields.
    * @param {ABClass} abClass - The class instance to update.
-   * @param {Object} patch - The patch object containing fields to update.
+   * @param {Object} patch - The patch object containing fields to update. A `metadata` value uses `ABClass.setMetadata()` for complete replacement; nested fields are not merged.
    * @returns {ABClass} The updated class instance.
+   * @throws {ABClassMetadataValidationError} If replacement metadata fails domain validation or model-integrity checks.
    */
   _applyPatchToClass(abClass, patch) {
     if (Object.hasOwn(patch, 'cohortKey')) {
@@ -152,6 +179,10 @@ class ABClassValidation {
 
     if (Object.hasOwn(patch, 'active')) {
       abClass.active = patch.active;
+    }
+
+    if (Object.hasOwn(patch, 'metadata')) {
+      abClass.setMetadata(patch.metadata);
     }
 
     return abClass;

@@ -33,9 +33,9 @@ Backend tests load a committed profile view synchronously and immutably, then su
 > its typed error global as part of the backend ABClass `metadata` contract-support cycle. The
 > canonical model-input adapter, generator integrity and real-domain-acceptance probes, ABClass
 > model construction/restoration/serialization probes, mutation-owner bootstrap/delegation
-> probes, and read/mutation-summary response-mapping probes are delivered. Metadata controller
-> request validation, transport adaptation and lifecycle/ordering probes remain pending; see
-> "Canonical metadata probes" below.
+> probes, read/mutation-summary response-mapping probes, and the Section 7 controller request-gate
+> and mutation-lifecycle probes are delivered. Transport error adaptation and the real-dispatcher
+> request/error-envelope probes remain pending (Section 8); see "Canonical metadata probes" below.
 
 - `tests/setupGlobals.js` installs the metadata domain and typed error globals after the
   existing `Validate` installation and before any ABClass-dependent module loads, including
@@ -178,10 +178,14 @@ These tests cover model boundaries only, not controller or API operations.
 **Controller decomposition (`Implemented`).** Section 4's
 `tests/controllers/abclassMutationDelegation.test.js` verifies options-object dependency
 injection, facade delegation, shared save validation before persistence, and preservation of
-the validated class instance through persistence and summary mapping.
-`tests/controllers/abclassMutationRuntime.test.js` verifies bootstrap registration and
+the validated class instance through persistence and summary mapping. Its direct-owner upsert
+cases were migrated in Section 7 to supply `_validateRequestMetadata` on the injected validation
+collaborator (a no-op spy for the legacy no-metadata inputs) and assert it is invoked once with
+the request parameters before persistence; production wiring is not weakened with optional-method
+fallbacks. `tests/controllers/abclassMutationRuntime.test.js` verifies bootstrap registration and
 GAS-style evaluation order. These are behaviour-preserving decomposition probes; they do not
-cover metadata request validation or persistence lifecycle behaviour.
+exercise metadata request validation on the real controller path or persistence lifecycle
+behaviour.
 
 **Prepared whole/partial writes and field-scoped roster persistence (`Implemented`).**
 Section 5 adds the persistence/roster suites and the supplemental model/workflow coverage:
@@ -255,12 +259,55 @@ read suite:
   and `tests/controllers/abclass-upsert-update.test.js`). This is an output-shape migration for
   the new field, not new request metadata acceptance.
 
-**Controller/API lifecycle and remaining boundary probes (`Not implemented`).**
+**Controller request gate and mutation lifecycle (`Implemented`).** Section 7 adds
+`tests/controllers/abclassMetadataMutations.test.js` and
+`tests/controllers/abclassMetadataLifecycle.test.js`. Both drive the real
+`ABClassController`/`ABClassMutationOps` path with the real `ABClass`/`ABClassMetadata` model
+boundary and per-store collection mocks, asserting against actual write-call arguments, restored
+model instances and returned summaries rather than clone-on-read values:
 
-- Controller/API lifecycle probes (request gate, typed request-error adaptation and transport
-  adaptation) remain pending until those sections deliver the behaviour. Persistence-operation
-  and read/mutation-summary response-mapping probes are delivered (see the delivered probe
-  paragraphs above).
+- `abclassMetadataMutations.test.js` covers the new/existing upsert and update
+  omission/null/replacement matrix over canonical `small`/`medium` snapshots: persisted full and
+  partial values, the returned mutation summary, and nested isolation between caller request,
+  restored model, full write payload, partial write payload and summary. Update omission stays a
+  true selective no-write of `metadata` (no fabricated `$set`); upsert omission preserves the
+  restored snapshot or the new-class `null`. It also proves the request gate rejects own
+  `undefined`, malformed metrics, unexpected keys, sparse/oversized recent arrays, non-canonical
+  timestamps and partial nested averages before **any** `getCollection` access, read, Classroom
+  roster call or store write, and that an invalid mixed `active`/`metadata` patch applies none of
+  its fields (collection, roster and per-store write counters aggregated into one expected-zero
+  assertion).
+- `abclassMetadataLifecycle.test.js` covers corrupt stored metadata as a non-request integrity
+  failure that is not repaired by a valid replacement or `null` (no read, roster call or write
+  after the failing restore), propagation of upstream Classroom exceptions and persistence
+  failures without request provenance, preservation of the last supplied snapshot across an
+  unrelated editable update and a `loadClass` roster refresh followed by a whole-class upsert,
+  and assessment persistence into the separate `assign_full_<courseId>_<assignmentId>` store
+  with embedded partial/full assignments and redaction retained. It pins the metadata-free roster
+  exception — the full-store roster `$set` is exactly
+  `className`/`classOwner`/`students`/`teachers` and the registry `$set` exactly
+  `className`/`classOwner`/`teachers`, with no `metadata` in either — and characterises the
+  canonical zero-entry snapshot by root/`classAverages`/array identity without inventing entries.
+  Existing missing-update, protected-field and deletion-flag behaviour (including the vendor
+  `false`-return flag quirk) is retained.
+- Both suites keep canonical `small`/`medium` class, assignment and definition identities and
+  membership, and clone only for invalid/corrupt/boundary probes. The assertion helpers
+  (`createCollection`, `writeMetadataPayload`, `expectSnapshotDetached`, `collection`, `harness`,
+  `expectOwnedSnapshots`, `expectCanonicalAssignments`) stay local to each suite; no shared helper
+  module was introduced. Snapshot staleness, no-repair and request-only provenance are asserted
+  rather than repaired.
+- Run the Section 7 request/lifecycle suites with the existing upsert/update, delete,
+  assignment-persistence and backend API mutation units:
+  `npm run test:backend -- tests/controllers/abclassMetadataMutations.test.js tests/controllers/abclassMetadataLifecycle.test.js tests/controllers/abclass-upsert-update.test.js tests/controllers/abclass-delete.test.js tests/controllers/abclassController.persistAssignment.test.js tests/backend-api/abclassMutations.unit.test.js`.
+
+**Transport adaptation and real-dispatcher probes (`Not implemented`).**
+
+- The controller request gate and its mutation-lifecycle probes are delivered (see "Controller
+  request gate and mutation lifecycle" above). The remaining pending probes are the Section 8
+  transport error adaptation (typed request-provenance `ABClassMetadataValidationError` ->
+  `ApiValidationError` -> `INVALID_REQUEST`) and the real-dispatcher request/error-envelope
+  contracts; persistence-operation and read/mutation-summary response-mapping probes are
+  delivered.
 - Invalid, legacy-missing and boundary cases remain local clones of canonical data rather
   than generator changes.
 - Controller/API-level ordering probes remain pending. The delivered equal-timestamp and

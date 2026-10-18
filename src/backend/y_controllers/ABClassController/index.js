@@ -68,8 +68,10 @@ class ABClassController {
    * @param {*} parameters.cohortKey - User-managed cohort key (required).
    * @param {*} parameters.yearGroupKey - User-managed year-group key (required).
    * @param {number} parameters.courseLength - Required course length, validated as an integer >= 1 (required).
+   * @param {Object|null} [parameters.metadata] - Optional complete assessment-summary snapshot; omission preserves an existing value (or initialises null), null clears it, and an object replaces it wholly (no nested patch).
    * @returns {Object} Partial ABClass summary from toPartialJSON().
-   * @throws {Error} If required parameters are missing or validation fails.
+   * @throws {Error} If required parameters are missing or validation fails. Invalid supplied metadata throws `ABClassMetadataValidationError` with request provenance; corrupt stored metadata remains an integrity failure and is never repaired by replacement.
+   * @remarks Metadata is a supplied snapshot and may become stale after later assessment activity.
    */
   upsertABClass(parameters) {
     return this._mutationOps.upsertABClass(parameters);
@@ -84,8 +86,11 @@ class ABClassController {
    * @param {*} [parameters.yearGroupKey] - Optional year-group-key replacement.
    * @param {*} [parameters.courseLength] - Optional validated course length.
    * @param {boolean|null} [parameters.active] - Optional active-state replacement.
+   * @param {Object|null} [parameters.metadata] - Optional complete assessment-summary snapshot; omission preserves it, null clears it, and an object replaces it wholly (no nested patch).
    * @returns {Object} Partial ABClass summary from toPartialJSON().
    * @throws {RangeError} When no stored document exists for the given classId.
+   * @throws {ABClassMetadataValidationError} For invalid request metadata (request provenance) or corrupt stored metadata (integrity failure, not repaired).
+   * @remarks Metadata is a supplied snapshot and may become stale after later assessment activity.
    */
   updateABClass(parameters) {
     return this._mutationOps.updateABClass(parameters);

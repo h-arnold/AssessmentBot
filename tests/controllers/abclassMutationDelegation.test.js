@@ -81,6 +81,7 @@ describe('ABClass mutation owner boundary', () => {
       const MutationOps = require('#backend/y_controllers/ABClassController/ABClassMutationOps.js');
       const calls = [];
       const validation = {
+        _validateRequestMetadata: vi.fn(),
         _validateClassId: vi.fn((classId) => classId),
         _validateCourseLength: vi.fn((length) => length),
         _validateClassForSave: vi.fn((value) => calls.push(['validate', value])),
@@ -126,6 +127,14 @@ describe('ABClass mutation owner boundary', () => {
       );
 
       expect(result).toBe(summary);
+      expect(validation._validateRequestMetadata).toHaveBeenCalledTimes(1);
+      expect(validation._validateRequestMetadata.mock.calls[0][0]).toEqual({
+        classId: classModel.classId,
+        cohortKey: classModel.cohortKey,
+        yearGroupKey: classModel.yearGroupKey,
+        courseLength: classModel.courseLength,
+      });
+      expect(dbManager.getCollection).toHaveBeenCalledTimes(1);
       expect(calls.map(([operation]) => operation)).toEqual(['validate', 'persist', 'summary']);
       const validatedClass = calls[0][1];
       expect(validatedClass).toBeInstanceOf(ABClass);

@@ -93,9 +93,11 @@ function validateDeleteABClassParameters_(parameters) {
  * Thin transport handler for ABClass create or refresh operations.
  * Delegates to controller after validating request parameters.
  *
- * @param {Object} parameters - Request payload with classId, cohortKey, yearGroupKey, and courseLength.
+ * @param {Object} parameters - Request payload with classId, cohortKey, yearGroupKey, courseLength, and optional whole-value metadata.
+ * @param {Object|null} [parameters.metadata] - Optional complete metadata replacement passed unchanged to controller-owned validation; omission preserves/initialises null, while null clears it.
  * @returns {Object} Partial ABClass summary from the controller.
  * @throws {ApiValidationError} If parameters fail validation.
+ * @throws {ABClassMetadataValidationError} If controller request validation rejects metadata; transport adaptation is not implemented, so this error currently propagates unmapped.
  */
 function upsertABClass_(parameters) {
   validateUpsertABClassParameters_(parameters);
@@ -106,9 +108,11 @@ function upsertABClass_(parameters) {
  * Thin transport handler for editable ABClass field updates.
  * Delegates to controller after validating request parameters.
  *
- * @param {Object} parameters - Request payload with classId and optional editable patch fields (`cohortKey`, `yearGroupKey`, `courseLength`, `active`).
+ * @param {Object} parameters - Request payload with classId and optional editable patch fields (`cohortKey`, `yearGroupKey`, `courseLength`, `active`, `metadata`).
+ * @param {Object|null} [parameters.metadata] - Optional complete metadata replacement passed unchanged to controller-owned validation; omission preserves it, null clears it, and nested patching is unsupported.
  * @returns {Object} Partial ABClass summary from the controller.
  * @throws {ApiValidationError} If parameters fail validation.
+ * @throws {ABClassMetadataValidationError} If controller request validation rejects metadata; transport adaptation is not implemented, so this error currently propagates unmapped.
  */
 function updateABClass_(parameters) {
   validateUpdateABClassParameters_(parameters);
