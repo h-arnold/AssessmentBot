@@ -22,7 +22,11 @@ function createCollection(vi, rows) {
       const index = records.findIndex((entry) =>
         Object.entries(query).every(([key, value]) => entry[key] === value)
       );
-      if (index >= 0) records[index] = structuredClone(row);
+      if (index >= 0) {
+        const replacement = structuredClone(row);
+        if (records[index]._id) replacement._id = records[index]._id;
+        records[index] = replacement;
+      }
       return {
         matchedCount: index >= 0 ? 1 : 0,
         modifiedCount: index >= 0 ? 1 : 0,
@@ -60,8 +64,17 @@ function setupRealAbclassDispatcher(vi, canonical, { classId, partialRows }) {
   const selectedId = source.classId;
   const full = createCollection(vi, [{ ...structuredClone(source), _id: 'full-row' }]);
   const partial = createCollection(vi, partialRows);
+  const assignmentCollections = new Map();
   const manager = {
-    getCollection: vi.fn((name) => (name === 'abclass_partials' ? partial : full)),
+    getCollection: vi.fn((name) => {
+      if (name === 'abclass_partials') return partial;
+      if (name.startsWith('assign_full_')) {
+        if (!assignmentCollections.has(name))
+          assignmentCollections.set(name, createCollection(vi, []));
+        return assignmentCollections.get(name);
+      }
+      return full;
+    }),
     getDb: vi.fn(() => ({ dropCollection: vi.fn(() => true) })),
   };
   globalThis.DbManager = { getInstance: () => manager };
@@ -82,6 +95,7 @@ function setupRealAbclassDispatcher(vi, canonical, { classId, partialRows }) {
     source,
     full,
     partial,
+    assignmentCollections,
     manager,
     classroom: globalThis.ClassroomApiClient,
     globals,

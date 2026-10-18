@@ -35,8 +35,9 @@ Backend tests load a committed profile view synchronously and immutably, then su
 > model construction/restoration/serialization probes, mutation-owner bootstrap/delegation
 > probes, read/mutation-summary response-mapping probes, the Section 7 controller request-gate
 > and mutation-lifecycle probes, the Section 8 transport-adaptation and real-dispatcher
-> request/error-envelope probes, and the Section 9 Teacher always-own-null serialisation and
-> real ABClass/roster probes are delivered. See "Canonical metadata probes" below.
+> request/error-envelope probes, the Section 9 Teacher always-own-null serialisation and real
+> ABClass/roster probes, and the Section 10 combined-lifecycle and controller/API ordering
+> probes are delivered. See "Canonical metadata probes" below.
 
 - `tests/setupGlobals.js` installs the metadata domain and typed error globals after the
   existing `Validate` installation and before any ABClass-dependent module loads, including
@@ -375,11 +376,32 @@ delivers the approved `Teacher.toJSON()` correction with model, ABClass and rost
   quirk and its deferred fix remain with
   [issue #332](https://github.com/h-arnold/AssessmentBot/issues/332).
 
-- Controller/API-level ordering probes remain pending for later hardening (Section 10). The
-  delivered equal-timestamp and repeated-definition-key checks are model-boundary probes against a
-  cloned canonical `medium` snapshot, not controller/API capability. Generated source assignments
-  have distinct timestamps, and their canonical exact-timestamp linkage must not be weakened to
-  manufacture equal timestamps.
+**Combined lifecycle and controller/API ordering hardening (`Implemented`).** Section 10 extends
+the existing real-dispatcher metadata suites; no new shared helper module is introduced:
+
+- `tests/api/apiHandler/abclassMetadataWrites.test.js` runs one connected real path — dispatcher
+  upsert → unrelated editable update → real `loadClass` roster refresh → real `persistAssignmentRun`
+  into a distinct `assign_full_<classId>_<assignmentId>` store → list/full reads → whole
+  replacement → `null` clear → delete — asserting the supplied snapshot is unchanged in both stores
+  and the read responses, the roster `$set` payloads stay metadata-free, and the full store is
+  written before the registry. The same suite drives both `upsertABClass` and `updateABClass` with
+  a locally cloned canonical `medium` snapshot whose two newest entry timestamps are made equal
+  and whose definition keys repeat, proving both mutation APIs preserve caller-supplied entry
+  order in the returned summary, the full-store value and the partial-store value.
+- `tests/api/apiHandler/abclassMetadataErrors.test.js` reverses a cloned canonical request snapshot
+  and proves the real dispatcher rejects descending `recentAssignments` timestamps as
+  `INVALID_REQUEST` before any collection access or store write.
+- `tests/api/apiHandler/abclassMetadataTestContext.js`, the local real-path context, gains isolated
+  `assign_full_*` collection routing and vendor-faithful stored-`_id` retention on whole-record
+  replacement; its existing `setupApiHandlerTestContext` global save/restore teardown is unchanged.
+
+The Section 3 model-boundary equal-timestamp and repeated-definition-key checks remain an
+independent layer: they prove the shared domain validator and serialisers accept and preserve that
+shape without invoking the controller or transport. Neither layer verifies live assignment
+identifier existence or equality against a stored Assignment timestamp, and the equal-timestamp
+input stays a local clone-based boundary probe rather than canonical corpus content. Generated
+source assignments keep distinct timestamps, so the canonical exact-timestamp linkage is not
+weakened to manufacture equal timestamps.
 
 ## Backend logging test expectations
 

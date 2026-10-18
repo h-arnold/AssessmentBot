@@ -141,6 +141,42 @@ describe('ABClass metadata dispatcher error contracts', () => {
     }
   );
 
+  it('rejects out-of-order request snapshots as INVALID_REQUEST before store access', () => {
+    const medium = loadBackendModelInputs('medium');
+    const ordered = Object.values(medium.classesById).find(
+      (row) => row.metadata?.recentAssignments.length >= 2
+    );
+    const rows = [
+      {
+        ...medium.classPartials.find((row) => row.classId === ordered.classId),
+        _id: 'ordered-partial',
+      },
+    ];
+    context = {
+      realContext: setupRealAbclassDispatcher(vi, medium, {
+        classId: ordered.classId,
+        partialRows: rows,
+      }),
+    };
+    const invalidMetadata = structuredClone(ordered.metadata);
+    invalidMetadata.recentAssignments.reverse();
+    const response = context.realContext.api.apiHandler({
+      method: 'updateABClass',
+      params: { classId: ordered.classId, active: false, metadata: invalidMetadata },
+    });
+    expect(response).toMatchObject({
+      ok: false,
+      error: {
+        code: 'INVALID_REQUEST',
+        isRetriable: false,
+        message: expect.stringContaining('metadata.recentAssignments'),
+      },
+    });
+    expect(context.realContext.manager.getCollection).not.toHaveBeenCalled();
+    expect(context.realContext.full.updateOne).not.toHaveBeenCalled();
+    expect(context.realContext.partial.replaceOne).not.toHaveBeenCalled();
+  });
+
   it.each([
     ['upsertABClass', 'null'],
     ['upsertABClass', 'replacement'],
