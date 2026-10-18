@@ -277,15 +277,17 @@ antd Select renders its options in a body-portalled `.ant-select-dropdown`, outs
 modal scroll container. `toBeVisible()` passes during the entrance animation, so a click can begin
 while the popup is still moving. Playwright then retries its stability check and, after repeated
 instability, advances to a native `scrollIntoView` rather than the normal scroll-if-needed path.
-That scroll realigns the portalled popup between pointerdown and pointerup, so the press lands on a
-different option (or the shared listbox) and no selection fires.
+That scroll realigns the portalled popup between pointerdown and pointerup, so the press can land
+on a different option or outside the option entirely, and no selection fires.
 
 Call `waitForSelectPopupReady(option)` immediately before the ordinary option click at a
-ready-sensitive seam. Two specs do:
+ready-sensitive seam. Three call sites do:
 
 - `src/frontend/e2e-tests/select-with-add-new-workflow.spec.ts` (`openComboboxAndClickAddNew`)
 - `src/frontend/e2e-tests/helpers/stale-recovery-page-end-to-end-helpers.ts`
   (`selectCanonicalAssignmentAndStart`)
+- `src/frontend/e2e-tests/classes-crud-bulk-progress.spec.ts`
+  (`startBulkCreateWithDeferredUpserts`, before both the Cohort and Year group option clicks)
 
 The helper is E2E-only and lives at
 `src/frontend/e2e-tests/helpers/select-popup-readiness.ts`. It exports
@@ -518,7 +520,7 @@ unauthorised, backend error, delayed loading) to quickly verify usability during
 
 - E2E runtime mocks: `src/frontend/e2e-tests/shared/endToEndRuntimeMocks.ts`
 - Classes E2E helpers: `src/frontend/e2e-tests/helpers/classes-page-end-to-end-helpers.ts`
-- Select popup readiness helper: `src/frontend/e2e-tests/helpers/select-popup-readiness.ts` — exports `waitForSelectPopupReady(option)`, called before the two option clicks listed in [Select Popup Readiness Before Option Clicks](#select-popup-readiness-before-option-clicks).
+- Select popup readiness helper: `src/frontend/e2e-tests/helpers/select-popup-readiness.ts` — exports `waitForSelectPopupReady(option)`, called before each ready-sensitive option click listed in [Select Popup Readiness Before Option Clicks](#select-popup-readiness-before-option-clicks).
 - `google.script.run` harness: `src/frontend/src/test/googleScriptRunHarness.ts`
   - For Playwright init scripts, inline `googleScriptRunApiHandlerFactorySource` inside `page.addInitScript(...)`
 - Classes page test helpers (shared fixtures): `src/frontend/src/test/classes/classesPageTestHelpers.ts`
