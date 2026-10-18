@@ -2,12 +2,14 @@
 
 ## Status
 
-Backend ABClass metadata contract support is delivered and reconciled across Sections 1–10 of
+Backend ABClass metadata contract support is delivered and reconciled across all eleven sections of
 [ACTION_PLAN.md](../../ACTION_PLAN.md), together with its explicitly approved companions: the
 always-present `Teacher.toJSON().teacherName` correction and the factual collection/deletion
-documentation corrections. Those sections and their approved companions are committed and pushed
-on the delivery branch. Section 11's final documentation audit is in progress; nothing has been
-deployed.
+documentation corrections. The numbered sections, their approved companions and the mandatory
+post-implementation cleanup are committed and pushed on the delivery branch; per-section independent
+reviews, the recorded regression comparisons and the final post-cleanup baseline comparison are
+recorded in that action plan. The final documentation handoff reconciles the delivered contracts;
+nothing has been deployed.
 
 The product decisions, authorisations, amendments and delivery records that follow are the
 historical planning record for this contract and remain authoritative for its scope. Where an
