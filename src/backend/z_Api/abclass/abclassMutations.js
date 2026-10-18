@@ -1,4 +1,4 @@
-/* global ABClassController, ApiValidationError, Validate, validateParametersObject_ */
+/* global ABClassController, ABClassMetadataValidationError, ABLogger, ApiValidationError, Validate, validateParametersObject_ */
 
 /**
  * Factory function that returns a new ABClassController instance.
@@ -7,6 +7,35 @@
  */
 function getAbClassController_() {
   return new ABClassController();
+}
+
+/**
+ * Adapts only request-originated metadata domain failures at the mutation
+ * transport boundary. Stored/model integrity failures and unrelated exceptions
+ * retain their original identity and type.
+ *
+ * @param {string} methodName - Allowlisted mutation name for diagnostics.
+ * @param {Object} parameters - Original request parameters.
+ * @param {Function} operation - Controller delegation to invoke.
+ * @returns {*} The controller result.
+ * @throws {*} The original failure, or an ApiValidationError for request metadata.
+ */
+function adaptMetadataRequestError_(methodName, parameters, operation) {
+  try {
+    return operation();
+  } catch (error) {
+    ABLogger.getInstance().error(`${methodName} failed`, {
+      method: methodName,
+      classId: parameters.classId,
+      err: error,
+    });
+
+    if (error instanceof ABClassMetadataValidationError && error.inputSource === 'request') {
+      throw new ApiValidationError(error.message, { method: methodName });
+    }
+
+    throw error;
+  }
 }
 
 /**
@@ -97,11 +126,13 @@ function validateDeleteABClassParameters_(parameters) {
  * @param {Object|null} [parameters.metadata] - Optional complete metadata replacement passed unchanged to controller-owned validation; omission preserves/initialises null, while null clears it.
  * @returns {Object} Partial ABClass summary from the controller.
  * @throws {ApiValidationError} If parameters fail validation.
- * @throws {ABClassMetadataValidationError} If controller request validation rejects metadata; transport adaptation is not implemented, so this error currently propagates unmapped.
+ * @throws {ApiValidationError} If controller request validation rejects supplied metadata.
  */
 function upsertABClass_(parameters) {
   validateUpsertABClassParameters_(parameters);
-  return getAbClassController_().upsertABClass(parameters);
+  return adaptMetadataRequestError_('upsertABClass', parameters, () =>
+    getAbClassController_().upsertABClass(parameters)
+  );
 }
 
 /**
@@ -112,11 +143,13 @@ function upsertABClass_(parameters) {
  * @param {Object|null} [parameters.metadata] - Optional complete metadata replacement passed unchanged to controller-owned validation; omission preserves it, null clears it, and nested patching is unsupported.
  * @returns {Object} Partial ABClass summary from the controller.
  * @throws {ApiValidationError} If parameters fail validation.
- * @throws {ABClassMetadataValidationError} If controller request validation rejects metadata; transport adaptation is not implemented, so this error currently propagates unmapped.
+ * @throws {ApiValidationError} If controller request validation rejects supplied metadata.
  */
 function updateABClass_(parameters) {
   validateUpdateABClassParameters_(parameters);
-  return getAbClassController_().updateABClass(parameters);
+  return adaptMetadataRequestError_('updateABClass', parameters, () =>
+    getAbClassController_().updateABClass(parameters)
+  );
 }
 
 /**

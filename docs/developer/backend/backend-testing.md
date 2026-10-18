@@ -33,9 +33,9 @@ Backend tests load a committed profile view synchronously and immutably, then su
 > its typed error global as part of the backend ABClass `metadata` contract-support cycle. The
 > canonical model-input adapter, generator integrity and real-domain-acceptance probes, ABClass
 > model construction/restoration/serialization probes, mutation-owner bootstrap/delegation
-> probes, read/mutation-summary response-mapping probes, and the Section 7 controller request-gate
-> and mutation-lifecycle probes are delivered. Transport error adaptation and the real-dispatcher
-> request/error-envelope probes remain pending (Section 8); see "Canonical metadata probes" below.
+> probes, read/mutation-summary response-mapping probes, the Section 7 controller request-gate
+> and mutation-lifecycle probes, and the Section 8 transport-adaptation and real-dispatcher
+> request/error-envelope probes are delivered. See "Canonical metadata probes" below.
 
 - `tests/setupGlobals.js` installs the metadata domain and typed error globals after the
   existing `Validate` installation and before any ABClass-dependent module loads, including
@@ -55,8 +55,8 @@ Backend tests load a committed profile view synchronously and immutably, then su
 > `scripts/synthetic-test-data/toBackendModelInputs.js` is delivered for the backend ABClass
 > `metadata` contract-support cycle. It is test-only infrastructure: production `src/backend`
 > source never imports it, and it changes no production contract. The delivered Section 2
-> generator integrity and real-domain-acceptance probes, and the probes that genuinely remain
-> pending, are listed under "Canonical metadata probes" below. Cross-reference:
+> generator integrity and real-domain-acceptance probes are listed under "Canonical metadata
+> probes" below. Cross-reference:
 > `docs/developer/testing/synthetic-test-data.md` §ABClass metadata generator capability.
 
 ### `toBackendModelInputs.js` (`Implemented`)
@@ -221,16 +221,17 @@ Section 5 adds the persistence/roster suites and the supplemental model/workflow
 - Non-transactional I/O risk stays explicit: the suites assert full-first ordering and existing
   failure propagation, and do not emulate transactions, rollback or retry.
 
-**Backend CommonJS import identity in those suites (`Implemented`).** The three persistence
-suites resolve their backend CommonJS owners — `ABClass`, `ABClassMetadata`, `ABClassValidation`,
-`ABClassPersistence`, `ABClassRoster` and `ABClassMutationOps` — through the same `#backend/*`
-`require()` route the bootstrap uses, so they share the constructors installed by
-`tests/setupGlobals.js`. Mixing static ESM backend imports with those bootstrap CommonJS globals
-creates duplicate module identities that silently split coverage counters; the `#backend`
-require route keeps one identity. Static named ESM imports remain required for the script-owned
-synthetic adapter and loader (`#synthetic-data/*`), which are ESM-only. This is scoped guidance
-for suites that consume bootstrap globals, not a blanket ban on ESM imports and not a
-configuration-policy change.
+**Backend CommonJS import identity (`Implemented`).** Suites that consume the bootstrap globals
+resolve their backend CommonJS owners — `ABClass`, `ABClassMetadata`, `ABClassValidation`,
+`ABClassPersistence`, `ABClassRoster` and `ABClassMutationOps` for the persistence suites, and
+`ABClass`, `Teacher`, `ABClassController`, `abclassMutations.js`, `abclassRead.js` and
+`z_apiHandler.js` for the Section 8 transport suites — through the same `#backend/*` `require()`
+route, so they share the constructors installed by `tests/setupGlobals.js`. Mixing static ESM
+backend imports with those bootstrap CommonJS globals creates duplicate module identities that
+silently split coverage counters; the `#backend` require route keeps one identity. Static named ESM
+imports remain required for the script-owned synthetic adapter and loader
+(`#synthetic-data/*`), which are ESM-only. This is scoped guidance for suites that consume
+bootstrap globals, not a blanket ban on ESM imports and not a configuration-policy change.
 
 **Response mapping and registry-only reads (`Implemented`).** Section 6 delivers validated,
 nullable `metadata` on existing read and mutation-summary responses and splits the oversized
@@ -300,21 +301,56 @@ model instances and returned summaries rather than clone-on-read values:
   assignment-persistence and backend API mutation units:
   `npm run test:backend -- tests/controllers/abclassMetadataMutations.test.js tests/controllers/abclassMetadataLifecycle.test.js tests/controllers/abclass-upsert-update.test.js tests/controllers/abclass-delete.test.js tests/controllers/abclassController.persistAssignment.test.js tests/backend-api/abclassMutations.unit.test.js`.
 
-**Transport adaptation and real-dispatcher probes (`Not implemented`).**
+**Transport adaptation and real-dispatcher probes (`Implemented`).** Section 8 delivers the
+transport request-error adapter and the real-dispatcher request/error-envelope contracts.
 
-- The controller request gate and its mutation-lifecycle probes are delivered (see "Controller
-  request gate and mutation lifecycle" above). The remaining pending probes are the Section 8
-  transport error adaptation (typed request-provenance `ABClassMetadataValidationError` ->
-  `ApiValidationError` -> `INVALID_REQUEST`) and the real-dispatcher request/error-envelope
-  contracts; persistence-operation and read/mutation-summary response-mapping probes are
-  delivered.
-- Invalid, legacy-missing and boundary cases remain local clones of canonical data rather
-  than generator changes.
-- Controller/API-level ordering probes remain pending. The delivered equal-timestamp and
-  repeated-definition-key checks are model-boundary probes against a cloned canonical
-  `medium` snapshot, not controller/API capability. Generated source assignments have distinct
-  timestamps, and their canonical exact-timestamp linkage must not be weakened to manufacture
-  equal timestamps.
+- `tests/api/abclassMetadataApi.test.js` exercises the mutation transport wrappers directly:
+  `upsertABClass_`/`updateABClass_` forward omitted/`null`/object/own-`undefined` metadata with the
+  original parameters object identity; only a typed `ABClassMetadataValidationError` with
+  `inputSource: 'request'` becomes an `ApiValidationError` with the same path-bearing message; and
+  model-typed, same-message-but-untagged, request-tagged generic/wrong-typed, persistence, upstream
+  and wiring failures are rethrown unchanged.
+- `tests/api/apiHandler/abclassMetadataReads.test.js` and `abclassMetadataWrites.test.js` dispatch
+  through the real allowlisted `apiHandler`, real handlers, `ABClassController`, `ABClass`,
+  `Teacher`, persistence and response mapping: registry and full reads expose raw metadata
+  (JSON-safe, timestamp strings, storage-only `_id` stripped); a missing full class stays top-level
+  `null`; an empty registry stays `[]`; update/upsert persist and summarise metadata for
+  omission/`null`/replacement; an omitted update preserves the stored snapshot; and deletion
+  results stay metadata-free.
+- `tests/api/apiHandler/abclassMetadataErrors.test.js` proves caller-versus-internal separation:
+  invalid request metadata (invalid metric, own `undefined`) returns `INVALID_REQUEST`
+  (`isRetriable: false`, path-bearing message, exactly `code`/`isRetriable`/`message` keys, no raw
+  stack) with **zero** DbManager/Classroom side effects and no store writes; corrupt stored full,
+  corrupt registry and mutable model/projection corruption stay generic `INTERNAL_ERROR` without
+  writes or full-read fallback; auth denial, request-ID tracking (`started` → `success`) and
+  boundary-before-completion diagnostic ordering keep their existing behaviour.
+- `tests/api/apiHandler/abclassMetadataTestContext.js` is the local real-path context. It runs the
+  shared dispatcher setup first (which stubs `ABClassController` and the ABClass transport
+  helpers), then reinstalls the **real** `ABClassController`, `ABClass`, `Teacher`, the real
+  `abclassMutations.js`/`abclassRead.js` exports and the real `apiHandler` module, keeping the real
+  bootstrap `Assignment` and Section 1 metadata/error globals. Only DbManager collections and
+  `ClassroomApiClient` are external mocks; auth and request tracking are exercised through the
+  existing dispatcher auth and `LockService` seams. Every overridden global is restored through
+  `globalMockManager` plus the shared dispatcher teardown, so prebuilt synthetic responses and the
+  default controller/handler stubs are never presented as the real domain path.
+- The context requires its inputs explicitly — collection `rows`, `classId` and `partialRows` at
+  every call site — with no default parameters, in-body partial-row fallback or implicit
+  canonical-class selection. This mirrors the project's constructor-only-defaults rule for test
+  helpers and closes the RED finding S8-R1.
+- Real-path suites reach backend CommonJS owners through `#backend/*` (see "Backend CommonJS import
+  identity" above) so they share the bootstrap's single module identity; script-owned synthetic
+  data and helpers stay on static ESM `#synthetic-data/*` and `#test-helpers/*`. Canonical
+  non-empty class/assignment populations are preserved, with invalid, corrupt and boundary cases
+  cloned.
+- Global exposure is unchanged: `adaptMetadataRequestError_` is a private trailing-underscore
+  helper and is not exported, and the static global-exposure guard suite stays green.
+- Run the Section 8 suites with the existing ABClass API and backend mutation/validation units:
+  `npm run test:backend -- tests/api/abclassMetadataApi.test.js tests/api/apiHandler/abclassMetadataReads.test.js tests/api/apiHandler/abclassMetadataWrites.test.js tests/api/apiHandler/abclassMetadataErrors.test.js tests/api/abclassMutations.test.js tests/api/abclassRead.test.js tests/backend-api/abclassMutations.unit.test.js tests/backend-api/abclassValidation.unit.test.js tests/api/apiHandler/globalExposure.test.js`.
+- Controller/API-level ordering probes remain pending for later hardening (Section 10). The
+  delivered equal-timestamp and repeated-definition-key checks are model-boundary probes against a
+  cloned canonical `medium` snapshot, not controller/API capability. Generated source assignments
+  have distinct timestamps, and their canonical exact-timestamp linkage must not be weakened to
+  manufacture equal timestamps.
 
 ## Backend logging test expectations
 

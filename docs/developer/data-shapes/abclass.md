@@ -43,7 +43,7 @@ Stored via `ABClass.toJSON()`.
 | 8   | `students`     | `Array`           | included                         | unchanged   | `ClassFullSchema.students: z.array(StudentSummarySchema)`       | Array of Student objects (see [§ Sub-entities Student](#sub-entity-student)). Empty array when no students.                                                                                                                                                                                                                               |
 | 9   | `assignments`  | `Array`           | included                         | transformed | `ClassFullSchema.assignments: z.array(AssignmentPartialSchema)` | Embedded assignments (see [§ Transport getABClass](#getabclass-read)). `toJSON()` serialises each by its existing definition representation: a partial definition (task-summary array) serialises via `toPartialJSON()`, a genuine full definition keeps full `toJSON()`. Non-empty in normal persisted classes; not a fixed empty array. |
 | 10  | `active`       | `boolean\|null`   | included (`this.active ?? null`) | unchanged   | `ClassFullSchema.active: z.boolean().nullable()`                | Tri-state: `true` (active), `false` (inactive), `null` (unknown/unset).                                                                                                                                                                                                                                                                   |
-| 11  | `metadata`     | `ABClassMetadata` | included by `toJSON()`           | included    | —                                                               | Whole-class and selective editable persistence prepare detached copies before writing (Section 5); the full read view emits validated, detached metadata (Section 6). Upsert/update requests now validate and replace it wholly (Section 7); transport error adaptation is pending (Section 8).                                           |
+| 11  | `metadata`     | `ABClassMetadata` | included by `toJSON()`           | included    | —                                                               | Whole-class and selective editable persistence prepare detached copies before writing (Section 5); the full read view emits validated, detached metadata (Section 6). Upsert/update requests validate and replace it wholly, and only a request-provenance typed failure becomes `INVALID_REQUEST` at the transport (Sections 7–8).       |
 
 Key notes:
 
@@ -66,17 +66,17 @@ Key notes:
 
 Stored via `ABClass.toPartialJSON()`.
 
-| #   | Field          | Type              | Persistence                      | Transport | Frontend Zod                                                     | Notes                                                                                                                                                                                                                                                                                               |
-| --- | -------------- | ----------------- | -------------------------------- | --------- | ---------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | `classId`      | `string`          | included                         | unchanged | `ClassPartialSchema.classId: z.string()`                         | Google Classroom course ID.                                                                                                                                                                                                                                                                         |
-| 2   | `className`    | `string\|null`    | included                         | unchanged | `ClassPartialSchema.className: z.string().nullable()`            | Null when unset.                                                                                                                                                                                                                                                                                    |
-| 3   | `cohortKey`    | `string\|null`    | included                         | unchanged | `ClassPartialSchema.cohortKey: z.string().nullable()`            | Null when unset.                                                                                                                                                                                                                                                                                    |
-| 4   | `courseLength` | `number`          | included                         | unchanged | `ClassPartialSchema.courseLength: z.number()`                    | Integer ≥ 1.                                                                                                                                                                                                                                                                                        |
-| 5   | `yearGroupKey` | `string\|null`    | included                         | unchanged | `ClassPartialSchema.yearGroupKey: z.string().nullable()`         | Null when unset.                                                                                                                                                                                                                                                                                    |
-| 6   | `classOwner`   | `Object\|null`    | included                         | unchanged | `ClassPartialSchema.classOwner: TeacherSummarySchema.nullable()` | Teacher summary. Null when unset.                                                                                                                                                                                                                                                                   |
-| 7   | `teachers`     | `Array`           | included                         | unchanged | `ClassPartialSchema.teachers: z.array(TeacherSummarySchema)`     | Teacher summary objects.                                                                                                                                                                                                                                                                            |
-| 8   | `active`       | `boolean\|null`   | included (`this.active ?? null`) | unchanged | `ClassPartialSchema.active: z.boolean().nullable()`              | Tri-state.                                                                                                                                                                                                                                                                                          |
-| 9   | `metadata`     | `ABClassMetadata` | included by `toPartialJSON()`    | included  | —                                                                | Whole-class writes prepare a detached partial copy before the full-store mutation; a field-scoped roster patch never touches stored metadata (Section 5). Reads emit it (Section 6); upsert/update requests now replace it wholly (Section 7), with transport error adaptation pending (Section 8). |
+| #   | Field          | Type              | Persistence                      | Transport | Frontend Zod                                                     | Notes                                                                                                                                                                                                                                                                                                                         |
+| --- | -------------- | ----------------- | -------------------------------- | --------- | ---------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | `classId`      | `string`          | included                         | unchanged | `ClassPartialSchema.classId: z.string()`                         | Google Classroom course ID.                                                                                                                                                                                                                                                                                                   |
+| 2   | `className`    | `string\|null`    | included                         | unchanged | `ClassPartialSchema.className: z.string().nullable()`            | Null when unset.                                                                                                                                                                                                                                                                                                              |
+| 3   | `cohortKey`    | `string\|null`    | included                         | unchanged | `ClassPartialSchema.cohortKey: z.string().nullable()`            | Null when unset.                                                                                                                                                                                                                                                                                                              |
+| 4   | `courseLength` | `number`          | included                         | unchanged | `ClassPartialSchema.courseLength: z.number()`                    | Integer ≥ 1.                                                                                                                                                                                                                                                                                                                  |
+| 5   | `yearGroupKey` | `string\|null`    | included                         | unchanged | `ClassPartialSchema.yearGroupKey: z.string().nullable()`         | Null when unset.                                                                                                                                                                                                                                                                                                              |
+| 6   | `classOwner`   | `Object\|null`    | included                         | unchanged | `ClassPartialSchema.classOwner: TeacherSummarySchema.nullable()` | Teacher summary. Null when unset.                                                                                                                                                                                                                                                                                             |
+| 7   | `teachers`     | `Array`           | included                         | unchanged | `ClassPartialSchema.teachers: z.array(TeacherSummarySchema)`     | Teacher summary objects.                                                                                                                                                                                                                                                                                                      |
+| 8   | `active`       | `boolean\|null`   | included (`this.active ?? null`) | unchanged | `ClassPartialSchema.active: z.boolean().nullable()`              | Tri-state.                                                                                                                                                                                                                                                                                                                    |
+| 9   | `metadata`     | `ABClassMetadata` | included by `toPartialJSON()`    | included  | —                                                                | Whole-class writes prepare a detached partial copy before the full-store mutation; a field-scoped roster patch never touches stored metadata (Section 5). Reads emit it (Section 6); upsert/update requests replace it wholly, with request-provenance failures adapted to `INVALID_REQUEST` at the transport (Sections 7–8). |
 
 Key notes:
 
@@ -248,8 +248,11 @@ Key contract notes:
   snapshot (and initialises `null` for a new class), explicit `null` clears it, and a
   complete object replaces it entirely. A supplied own `undefined` or any invalid value is
   rejected before any record read, roster refresh or write. Nested partial objects are
-  invalid, not patches. Delivered at the controller layer (Section 7); transport error
-  adaptation is pending (Section 8).
+  invalid, not patches.
+- Only a request-provenance metadata failure adapts to a non-retriable `INVALID_REQUEST`
+  envelope with the field path in `error.message`; no `fieldName`/`details` field is added
+  (Section 8). Stored/model corruption and unrelated exceptions stay generic
+  `INTERNAL_ERROR`.
 
 ### `updateABClass` (write)
 
@@ -285,8 +288,8 @@ Key contract notes:
 - `metadata` is an additional optional editable field: true omission preserves the stored
   snapshot, explicit `null` clears it, and a complete object replaces it entirely. Nested
   partial objects are invalid, not patches. An invalid mixed patch is rejected before any
-  field is applied. Delivered at the controller layer (Section 7); transport error
-  adaptation is pending (Section 8).
+  field is applied, and the request-origin failure adapts to the same non-retriable
+  `INVALID_REQUEST` envelope as `upsertABClass` (Section 8).
 - The returned summary includes validated, detached `metadata`.
 - Throws `RangeError` (maps to `INTERNAL_ERROR`) when the class does not exist — this
   is **not** an upsert path.
@@ -426,7 +429,7 @@ contract for StudentSubmission is documented in [Contract: Assignment](assignmen
 - On updateABClass, `active` must be a boolean or null.
 - `classOwner`, `teachers`, `students`, `assignments` are forbidden in updateABClass requests.
 - The response mapper (`_normaliseClassPartial`) throws `TypeError` if a partial document is not a plain object or lacks an array `teachers` field.
-- ABClass model construction, restoration, explicit metadata replacement and both serializers enforce the shared strict metadata-domain contract. The response mappers (`_normaliseClassPartial()`, `_buildClassSummary()`, `_toReadView()`) project validated, detached `metadata` on partial-list, mutation-summary and full-read responses (Section 6). `ABClassValidation._validateRequestMetadata()` now validates explicitly supplied request `metadata` before any read/roster/write and tags only those failures with request provenance (Section 7). Transport error adaptation remains pending (Section 8); do not infer `INVALID_REQUEST` transport behaviour from the delivered controller acceptance.
+- ABClass model construction, restoration, explicit metadata replacement and both serializers enforce the shared strict metadata-domain contract. The response mappers (`_normaliseClassPartial()`, `_buildClassSummary()`, `_toReadView()`) project validated, detached `metadata` on partial-list, mutation-summary and full-read responses (Section 6). `ABClassValidation._validateRequestMetadata()` now validates explicitly supplied request `metadata` before any read/roster/write and tags only those failures with request provenance (Section 7). The transport boundary (`abclassMutations.js` → `adaptMetadataRequestError_`) adapts only a request-provenance typed metadata failure to `ApiValidationError`/`INVALID_REQUEST`; stored/model, projection, persistence, upstream and wiring failures remain generic `INTERNAL_ERROR` (Section 8).
 
 ### Known discrepancies
 
@@ -459,27 +462,6 @@ contract for StudentSubmission is documented in [Contract: Assignment](assignmen
    The response is consumed by generic `callApi` without `parseApiResponse` validation.
    **Classification: Aligned** — the delete flow does not require typed validation at
    the transport boundary; the caller receives raw `unknown` and destructures as needed.
-
-6. **ABClass metadata writes are accepted at the controller layer but transport error adaptation and frontend consumption are still pending.**
-   `ABClass.toJSON()` and `toPartialJSON()` emit validated defensive `metadata` snapshots, the
-   Section 5 prepared writes persist equal, detached full/partial copies while the field-scoped
-   roster patch leaves stored metadata untouched, and the Section 6 response mappers
-   (`_normaliseClassPartial()`, `_buildClassSummary()`, `_toReadView()`) emit validated, detached
-   `metadata` on partial-list, mutation-summary and full-read responses. Section 7 now adds the
-   controller request gate: `upsertABClass`/`updateABClass` validate supplied `metadata` before
-   any record read/roster/write and apply whole-value omission/null/replacement. Two pieces
-   remain pending. First, transport error adaptation (Section 8) is not delivered: an invalid
-   supplied snapshot throws the typed `ABClassMetadataValidationError` with
-   `inputSource: 'request'`, but no mutation transport helper translates it into
-   `ApiValidationError`, so the target `INVALID_REQUEST` envelope is not produced yet (the
-   unmapped typed error currently falls through to `INTERNAL_ERROR` via the dispatcher). Second,
-   both frontend class schemas strip unknown keys (their default Zod object behaviour), so the
-   frontend never receives the field.
-   **Classification: Misaligned** — reads, storage and controller-layer writes now carry the
-   field, but the transport does not yet report caller validation failures as `INVALID_REQUEST`
-   and the frontend does not consume it. Transport error adaptation lands in Section 8 and
-   frontend consumption is out of scope; no delivered behaviour calculates, derives or fabricates
-   metadata values — a request supplies the snapshot verbatim.
 
 ---
 
@@ -522,7 +504,7 @@ Controller:                 src/backend/y_controllers/ABClassController/
 
 API handlers:               src/backend/z_Api/abclass/
   ├── abclassRead.js                    — getABClass_()
-  ├── abclassMutations.js               — upsertABClass_(), updateABClass_(), deleteABClass_()
+  ├── abclassMutations.js               — upsertABClass_(), updateABClass_(), deleteABClass_(), adaptMetadataRequestError_()
   └── abclassValidation.js              — validateParametersObject_()
 
 Transport envelope:         src/backend/z_Api/z_apiHandler.js
@@ -544,15 +526,17 @@ Frontend:
 
 ---
 
-## ABClass `metadata` contract — domain, model, prepared persistence, read response mapping and controller request replacement delivered; transport adaptation pending
+## ABClass `metadata` contract — domain, model, prepared persistence, response mapping, controller request replacement and transport adaptation delivered
 
-> **Status: partially delivered.** Section 1 delivered the metadata **domain validation
-> capability**, Section 2 the **test-only canonical fixture capability**, Section 3 the model
-> boundary, Section 5 the **prepared whole-class/editable writes, the field-scoped roster
-> patch and the approved partial-aware `ABClass.toJSON()` correction**, Section 6 the
-> **read/partial/summary response projection**, and Section 7 the **controller request gate
-> and whole-value omission/null/replacement semantics**. The API transport error adaptation
-> (Section 8) is not delivered.
+> **Status: delivered.** Section 1 delivered the metadata **domain validation capability**,
+> Section 2 the **test-only canonical fixture capability**, Section 3 the model boundary,
+> Section 5 the **prepared whole-class/editable writes, the field-scoped roster patch and the
+> approved partial-aware `ABClass.toJSON()` correction**, Section 6 the
+> **read/partial/summary response projection**, Section 7 the **controller request gate and
+> whole-value omission/null/replacement semantics**, and Section 8 the **transport error
+> adaptation** (`adaptMetadataRequestError_()` in `abclassMutations.js`). Frontend metadata
+> consumption remains excluded scope; see
+> [§Frontend position](#frontend-position-excluded-scope).
 >
 > - `src/backend/Models/ABClassMetadata.js` — the dedicated metadata-domain owner, holding the
 >   five static validation routines, the constructor/`toJSON()` snapshot boundary and its
@@ -569,9 +553,7 @@ Frontend:
 >   [§Delivered test-only synthetic capability](#delivered-test-only-synthetic-capability-implemented)
 >   below). This capability remains test-only.
 >
-> **Delivered: model boundaries, prepared store writes, read/partial/summary response
-> mapping and controller request replacement. Pending: API transport error adaptation
-> (Section 8).** `ABClass` owns a plain metadata snapshot or `null`, normalises
+> `ABClass` owns a plain metadata snapshot or `null`, normalises
 > actual absence through the metadata constructor, rejects explicitly supplied `undefined` or
 > invalid values, and validates/copies metadata during `toJSON()` and `toPartialJSON()`.
 > Whole-class and selective editable writes prepare detached, equal full/partial metadata
@@ -579,21 +561,23 @@ Frontend:
 > three serialised fields only and never reads or rewrites its stored metadata.
 > `_normaliseClassPartial()` (reused by `_buildClassSummary()`) and `_toReadView()` emit
 > validated, detached metadata on partial-list, mutation-summary and full-read responses.
-> `upsertABClass`/`updateABClass` now validate supplied request `metadata` before any record
-> read/roster/write and replace it wholly, but the typed request failure is not yet translated
-> into `INVALID_REQUEST` by the transport (Section 8), and the frontend class schemas still
-> strip the field.
+> `upsertABClass`/`updateABClass` validate supplied request `metadata` before any record
+> read/roster/write, replace it wholly, and surface a request-origin typed failure as a
+> non-retriable `INVALID_REQUEST` through the transport adapter. Published behaviour is a
+> supplied snapshot only: nothing calculates, refreshes, migrates or backfills it, so a
+> previously supplied snapshot may become stale.
 
-| Boundary                                             | Status      | Delivered behaviour                                                                                                                                                                                          |
-| ---------------------------------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| ABClass model construction/restoration               | Implemented | Actual omission normalises to `null`; explicitly present `undefined` and invalid values fail validation.                                                                                                     |
-| Explicit replacement                                 | Implemented | `setMetadata(value)` validates/copies the complete value before replacing; `null` clears and `undefined` is invalid.                                                                                         |
-| Model serialisation                                  | Implemented | `toJSON()` and `toPartialJSON()` always emit independently copied, revalidated `metadata`.                                                                                                                   |
-| Whole-class and selective editable write preparation | Implemented | Payloads are prepared before the first full-store mutation; the partial projection is validated against the caller snapshot and rejects with zero writes on invalid/differing values.                        |
-| Field-scoped roster persistence                      | Implemented | An existing registry row is patched with exactly `className`, `classOwner`, `teachers` (stored `_id` filter); its stored metadata is never read, validated, copied or rewritten.                             |
-| Controller request validation                        | Implemented | `ABClassValidation._validateRequestMetadata()` validates explicitly supplied metadata before any record read/roster/write and tags only that invocation's typed failure with request provenance (Section 7). |
-| Response mapping (partial/summary/full reads)        | Implemented | `_normaliseClassPartial()`, `_buildClassSummary()` and `_toReadView()` emit validated, detached `metadata`; absent becomes `null`, present invalid fails as an integrity error.                              |
-| Transport error adaptation and frontend consumption  | Pending     | The typed request failure is not yet translated into `ApiValidationError`/`INVALID_REQUEST` (Section 8), and frontend Zod schemas strip the field.                                                           |
+| Boundary                                             | Status      | Delivered behaviour                                                                                                                                                                                                                                        |
+| ---------------------------------------------------- | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ABClass model construction/restoration               | Implemented | Actual omission normalises to `null`; explicitly present `undefined` and invalid values fail validation.                                                                                                                                                   |
+| Explicit replacement                                 | Implemented | `setMetadata(value)` validates/copies the complete value before replacing; `null` clears and `undefined` is invalid.                                                                                                                                       |
+| Model serialisation                                  | Implemented | `toJSON()` and `toPartialJSON()` always emit independently copied, revalidated `metadata`.                                                                                                                                                                 |
+| Whole-class and selective editable write preparation | Implemented | Payloads are prepared before the first full-store mutation; the partial projection is validated against the caller snapshot and rejects with zero writes on invalid/differing values.                                                                      |
+| Field-scoped roster persistence                      | Implemented | An existing registry row is patched with exactly `className`, `classOwner`, `teachers` (stored `_id` filter); its stored metadata is never read, validated, copied or rewritten.                                                                           |
+| Controller request validation                        | Implemented | `ABClassValidation._validateRequestMetadata()` validates explicitly supplied metadata before any record read/roster/write and tags only that invocation's typed failure with request provenance (Section 7).                                               |
+| Response mapping (partial/summary/full reads)        | Implemented | `_normaliseClassPartial()`, `_buildClassSummary()` and `_toReadView()` emit validated, detached `metadata`; absent becomes `null`, present invalid fails as an integrity error.                                                                            |
+| Transport error adaptation                           | Implemented | Only a request-provenance `ABClassMetadataValidationError` adapts to `ApiValidationError`/`INVALID_REQUEST` (path-bearing `message`, `isRetriable: false`, no added envelope fields); every other failure keeps its identity and generic `INTERNAL_ERROR`. |
+| Frontend consumption                                 | Excluded    | Frontend Zod schemas strip the field by explicit backend-only scope; no frontend work is pending or promised.                                                                                                                                              |
 
 The delivered contract adds one compact assessment-summary field, `metadata`, to both the full
 ABClass document and the `abclass_partials` registry. The ABClass model's full and partial
@@ -607,7 +591,7 @@ delivery must recast those as class-configuration/reference fields so they are n
 with this literal `metadata` property, and must distinguish this class-level assessment
 summary from the unrelated task-artifact `metadata`.
 
-### Sub-entity: ABClassMetadata — delivered domain, model, prepared writes, read projection and request gate
+### Sub-entity: ABClassMetadata — delivered domain, model, prepared writes, read projection, request gate and transport adaptation
 
 Backend model: `src/backend/Models/ABClassMetadata.js` (the dedicated metadata-domain owner,
 delivered in Section 1; deliberately **not** part of `Models/ABClass.js` or the generic
@@ -617,8 +601,8 @@ model boundary, the Section 5 prepared writes and the Section 7 controller reque
 persist detached, equal copies, and the field-scoped roster patch leaves stored metadata
 untouched. The Section 6 response mappers expose it on partial-list, summary and full reads,
 and the Section 7 gate validates and replaces explicitly supplied request values before any
-read/roster/write; the transport still does not translate the typed request failure into
-`INVALID_REQUEST` (Section 8).
+read/roster/write; the Section 8 transport adapter maps only a request-provenance typed
+failure to `INVALID_REQUEST`.
 
 Target notation (contract notation only, not a backend TypeScript requirement):
 
@@ -680,11 +664,11 @@ is rejected).
 
 ### Persistence-operation and lifecycle contract
 
-> **Delivered (Sections 5–7):** prepared whole-class and selective editable writes, the
+> **Delivered (Sections 5–8):** prepared whole-class and selective editable writes, the
 > field-scoped roster patch, the approved partial-aware `ABClass.toJSON()` correction for embedded
-> assignments, the read/partial/summary response projection, and the controller request gate with
-> whole-value omission/null/replacement (`upsertABClass` / `updateABClass`). **Pending:** mutation
-> transport error adaptation and real-dispatcher contract validation (Section 8).
+> assignments, the read/partial/summary response projection, the controller request gate with
+> whole-value omission/null/replacement (`upsertABClass` / `updateABClass`), and the transport
+> request-provenance error adaptation proved through real-dispatcher read/write/error suites.
 
 Supplied-snapshot semantics:
 
@@ -815,19 +799,27 @@ patches only the fields it owns in each store:
   public roster API and no change to upsert/read workflows is introduced beyond this persistence
   boundary.
 
-### Transport integration — read projection and controller request replacement delivered; transport error adaptation pending
+### Transport integration — read projection, controller request replacement and transport error adaptation delivered
 
-> **Delivered (Sections 6/7):** `getABClassPartials` and `getABClass` return validated, detached
+> **Delivered (Sections 6–8):** `getABClassPartials` and `getABClass` return validated, detached
 > `metadata`, with explicit `null` for legacy absence; mutation summaries inherit the same
-> projection through `_buildClassSummary()`; and the controller mutations validate and replace
-> supplied request `metadata` before any read/roster/write. **Pending:** the transport
-> request-provenance error adaptation is not delivered (Section 8), so a typed request failure is
-> not yet translated into `ApiValidationError`/`INVALID_REQUEST`. Frontend class Zod schemas still
-> strip the field.
+> projection through `_buildClassSummary()`; the controller mutations validate and replace
+> supplied request `metadata` before any read/roster/write; and `abclassMutations.js` adapts only
+> the request-provenance typed failure to `ApiValidationError`/`INVALID_REQUEST`. The shared
+> `apiHandler` envelope is unchanged ([Transport envelope](transport-envelope.md)); frontend class
+> Zod schemas strip the field by explicit scope exclusion (see
+> [§Frontend position](#frontend-position-excluded-scope)).
 
 Metadata contains timestamp **strings** only, so it requires no additional
 `DateUtils.deepConvertDates()` conversion in the partial-list or mutation-summary responses.
 The existing full-read date-conversion behaviour for the other ABClass fields is preserved.
+
+The transport contract is proved by real-dispatcher suites (`tests/api/apiHandler/abclassMetadata*`)
+that install the real ABClass handlers and controller globals and mock only external seams
+(DbManager collections, Classroom, auth, tracking); the wrapper suite is
+`tests/api/abclassMetadataApi.test.js`. The synthetic bridge, which returns prebuilt transport
+data, is consumer-compatibility coverage only and is **not** evidence of real
+mutation/controller validation.
 
 #### `getABClassPartials` (delivered)
 
@@ -852,7 +844,7 @@ The existing full-read date-conversion behaviour for the other ABClass fields is
   with `metadata: null`.
 - Existing assignment redaction and definition-key projection are preserved.
 
-#### `upsertABClass` (delivered controller semantics; transport adaptation pending)
+#### `upsertABClass` (delivered)
 
 - Existing required fields and roster-refresh behaviour remain unchanged.
 - The request now accepts and validates `metadata`: true omission preserves an existing snapshot
@@ -860,10 +852,11 @@ The existing full-read date-conversion behaviour for the other ABClass fields is
   replaces it. Validation runs before any record read, roster refresh or write.
 - The returned partial summary contains validated, detached `metadata`.
 - Existing assignment and active-state preservation rules remain unchanged.
-- The transport does not yet translate the typed request failure into `INVALID_REQUEST`
-  (Section 8); `abclassMutations.js` forwards the original parameters unchanged.
+- `abclassMutations.js` forwards the original parameters unchanged and adapts only a
+  request-provenance typed metadata failure into `ApiValidationError`, which the dispatcher
+  reports as a non-retriable `INVALID_REQUEST` (Section 8).
 
-#### `updateABClass` (delivered controller semantics; transport adaptation pending)
+#### `updateABClass` (delivered)
 
 - Metadata is an additional optional editable field: true omission preserves it; explicit `null`
   clears it; a complete object replaces it; nested partial objects are invalid, not patches.
@@ -872,7 +865,7 @@ The existing full-read date-conversion behaviour for the other ABClass fields is
 - No roster refresh is introduced. The returned partial summary contains validated, detached
   `metadata`.
 - Existing missing-class and protected-field behaviour remains unchanged.
-- Transport error adaptation remains pending (Section 8), as for `upsertABClass`.
+- Transport error adaptation is delivered (Section 8), as for `upsertABClass`.
 
 #### `deleteABClass` (unchanged)
 
@@ -884,20 +877,20 @@ The existing full-read date-conversion behaviour for the other ABClass fields is
 - On read (delivered, Section 6), `metadata` is always emitted by `getABClassPartials`,
   `getABClass` and mutation summaries, and is nullable as a whole. Legacy absence is normalised
   to explicit `null`; no other field in the metadata shape may be `null`.
-- On write (delivered at the controller layer, Section 7), `metadata` is optional: true omission
+- On write (delivered, Sections 7–8), `metadata` is optional: true omission
   of the own property invokes preserve/new-class-null behaviour, while supplying the property with
   value `undefined` (or any other invalid value) is rejected. The optional request contract does
   **not** relax the always-present nullable read contract.
 
-### Validation — domain/model, prepared writes, response projection and controller request gate delivered; transport integration pending
+### Validation — domain/model, prepared writes, response projection, controller request gate and transport error adaptation delivered
 
-> **Status: partially delivered.** The five routines below exist today as static methods on
+> **Status: delivered.** The five routines below exist as static methods on
 > `src/backend/Models/ABClassMetadata.js` and are exercised directly by focused backend tests.
 > ABClass model construction, restoration, explicit replacement and both serializers use the
 > domain boundary, the Section 6 response mappers project validated, detached metadata on reads,
-> and the Section 7 `ABClassValidation._validateRequestMetadata()` gate validates explicitly
-> supplied request metadata before mutation side effects. Transport error adaptation remains
-> pending (Section 8).
+> the Section 7 `ABClassValidation._validateRequestMetadata()` gate validates explicitly
+> supplied request metadata before mutation side effects, and the Section 8 transport adapter
+> narrows only the request-provenance typed failure into `ApiValidationError`/`INVALID_REQUEST`.
 
 One shared domain implementation owns the metadata rules:
 
@@ -933,8 +926,10 @@ Ownership and strictness rules:
   only that invocation's typed failure with request provenance (Section 7). The response-mapper
   boundary is also delivered (Section 6): it distinguishes own-property absence in
   `_normaliseClassPartial()` and revalidates model state in `_toReadView()`.
-- **Pending:** transport error adaptation (Section 8) — translating the typed request-provenance
-  failure into `ApiValidationError`/`INVALID_REQUEST` without adding envelope fields.
+- **Delivered:** transport error adaptation (Section 8) — `adaptMetadataRequestError_()` in
+  `abclassMutations.js` translates only the typed request-provenance failure into
+  `ApiValidationError`/`INVALID_REQUEST` (message unchanged, no envelope field added) and
+  rethrows every other exception unchanged.
 
 The following strictness rules are enforced by the delivered domain owner:
 
@@ -975,7 +970,7 @@ The following strictness rules are enforced by the delivered domain owner:
   helper and its broader contract unchanged; record this distinction and cross-reference the
   new predicate in the `api-layer.md` helper entry.
 
-#### Provenance and error rules — request tagging delivered; transport adaptation pending
+#### Provenance and error rules — request tagging and transport adaptation delivered
 
 - **Delivered:** the domain validator reports failures through
   `ABClassMetadataValidationError`
@@ -993,14 +988,17 @@ The following strictness rules are enforced by the delivered domain owner:
   read, roster refresh or write. It is the only caller that tags failures with
   `inputSource: 'request'`, and it does so by mutating **that same typed error object**; non-typed
   exceptions propagate unchanged.
-- **`Not implemented`:** mutation transport helpers translate only this error type, with request
-  provenance, into `ApiValidationError`; all other exceptions propagate unchanged. Until then a
-  typed request failure is unmapped and surfaces as `INTERNAL_ERROR`.
-- Invalid caller-supplied metadata is _intended_ to return the existing `INVALID_REQUEST`
-  envelope, with an actionable field path included in `error.message`. No new `fieldName`,
-  `details` payload or other envelope-shape change is authorised. Invalid persisted/model
-  metadata is an internal integrity failure and returns the existing `INTERNAL_ERROR` treatment,
-  not `INVALID_REQUEST`.
+- **Delivered:** the mutation transport helper `adaptMetadataRequestError_()` in
+  `abclassMutations.js` catches the controller delegation, logs the original thrown value with
+  `method`/`classId` through `ABLogger`, translates only this error type with request provenance
+  into `ApiValidationError` (`{ method }`, message unchanged), and rethrows every other exception
+  unchanged.
+- Invalid caller-supplied metadata returns the existing `INVALID_REQUEST` envelope
+  (`isRetriable: false`), with an actionable field path included in `error.message`. No new
+  `fieldName`, `details` payload or other envelope-shape change is added. Invalid persisted/model
+  metadata is an internal integrity failure and returns the existing generic `INTERNAL_ERROR`
+  treatment, not `INVALID_REQUEST`, and cannot be repaired or bypassed by supplying a valid
+  replacement or `null`.
 - Reproduced request failures carry `inputSource: 'request'`; the same validation failure at
   restoration, projection, serialisation or persistence keeps `inputSource: 'model'` and its
   original error identity. Only that narrow tagging step distinguishes the two.
@@ -1009,14 +1007,15 @@ The following strictness rules are enforced by the delivered domain owner:
   and the transport layer never evaluates nested domain rules; no exception to the canonical
   validation-ownership policy or dispatcher change is needed.
 
-#### Validation scope limits — domain/model, prepared writes, response projection and request gate delivered; transport error boundary pending
+#### Validation scope limits — domain/model, prepared writes, response projection, request gate and transport error boundary delivered
 
-> **Status: partially delivered.** The domain owner and ABClass model enforce structural
+> **Status: delivered.** The domain owner and ABClass model enforce structural
 > validation and defensive copying at construction, restoration, replacement and
 > serialization; the Section 5 prepared writes validate/copy metadata before the first
-> full-store mutation; the Section 6 response mappers validate/copy it on reads; and the
-> Section 7 controller request gate validates supplied request metadata before side effects.
-> The transport error-adaptation boundary remains pending (Section 8).
+> full-store mutation; the Section 6 response mappers validate/copy it on reads; the
+> Section 7 controller request gate validates supplied request metadata before side effects;
+> and the Section 8 transport adapter narrows only the request-provenance typed failure to
+> `INVALID_REQUEST`, leaving every other failure as generic `INTERNAL_ERROR`.
 
 - Validation must not repair metadata, silently remove entries, reorder it, calculate scores,
   stamp dates or fetch referenced entities.
@@ -1033,24 +1032,25 @@ The following strictness rules are enforced by the delivered domain owner:
   cannot be repaired through a request.
 - Constructors/restoration, explicit metadata replacement and metadata-bearing serialization
   use the same authoritative rules; mutable metadata cannot bypass validation at those model
-  boundaries. Whole-object write preparation (Section 5), response mapping (Section 6) and the
-  write request gate (Section 7) are delivered; transport error adaptation remains pending
-  (Section 8).
+  boundaries. Whole-object write preparation (Section 5), response mapping (Section 6), the
+  write request gate (Section 7) and the transport error adaptation (Section 8) are delivered.
 - A field-scoped roster patch of an existing partial is **not** a metadata-bearing write. It
   must not use, validate, copy or rewrite the stored metadata value; the existence lookup
   required by the missing-partial path is unaffected.
 
-### Planned frontend position (`Not implemented`)
+### Frontend position (excluded scope)
 
-- This cycle is backend-only, including its test infrastructure. No frontend source, schema
-  or test changes are planned, and no frontend reporting/layout work is authorised.
+- Frontend metadata consumption is an explicit scope exclusion, not a pending implementation
+  promise. This cycle is backend-only, including its test infrastructure; no frontend source,
+  schema, service or test change is planned, and no frontend reporting/layout work is authorised.
 - The existing frontend Zod schemas (`ClassFullSchema`, `ClassPartialSchema`) use Zod's
-  default `.strip()` behaviour, so they silently strip the new `metadata` field from
-  responses. Existing frontend synthetic consumers therefore continue to work with the extra
-  field, and parse success is not sufficient evidence of metadata correctness (see the
-  synthetic fixture capability in `docs/developer/testing/synthetic-test-data.md`).
+  default `.strip()` behaviour, so they silently strip the delivered `metadata` field from
+  responses. Backend read/write/transport support is complete regardless; the stripped field is
+  simply unused by the frontend. Existing frontend synthetic consumers therefore continue to work
+  with the extra field, and parse success is not sufficient evidence of metadata correctness (see
+  the synthetic fixture capability in `docs/developer/testing/synthetic-test-data.md`).
 
-### Planned exclusions (`Not implemented`)
+### Exclusions (out of scope)
 
 - No calculation of averages or automatic refresh of metadata after assessments.
 - No eager migration, backfill or repair job for absent or corrupt stored metadata.
@@ -1067,7 +1067,7 @@ The following strictness rules are enforced by the delivered domain owner:
 > model construction/restoration and serialization; Section 5 delivered prepared
 > whole-class/editable writes and the field-scoped roster patch; Section 6 delivered the
 > read/partial/summary response projection; Section 7 delivered the controller request gate and
-> whole-value request replacement. Transport error adaptation remains pending. Corpus policy,
+> whole-value request replacement, and Section 8 delivered the transport error adaptation. Corpus policy,
 > profile matrix and commands live in
 > [Synthetic Test Data](../testing/synthetic-test-data.md); this subsection records only the
 > capability's contribution to this contract and must not duplicate that guide.
@@ -1118,7 +1118,7 @@ Test-only backend model-input adapter:
   cloned, and no returned representation shares mutable nodes.
 - The adapter is test-only: production `src/backend` source never imports it.
 
-### File index additions — delivered domain primitives vs planned integration
+### File index additions — delivered domain primitives and integration
 
 Delivered in Section 1 (domain validation capability; subsequently wired into ABClass model
 construction/restoration and serialization in Section 3):
@@ -1168,10 +1168,12 @@ Request replacement (delivered):  src/backend/y_controllers/ABClassController/AB
 Focused suites (delivered):       tests/controllers/abclassMetadataMutations.test.js, tests/controllers/abclassMetadataLifecycle.test.js
 ```
 
-Still pending (transport error adaptation and real-dispatcher contract validation):
+Delivered in Section 8 (transport error adaptation and real-dispatcher contract validation;
+transport behaviour, not storage):
 
 ```
-Transport adaptation (planned):    src/backend/z_Api/abclass/abclassMutations.js — request-provenance error adaptation to ApiValidationError/INVALID_REQUEST (Section 8)
+Transport adapter (delivered):     src/backend/z_Api/abclass/abclassMutations.js — adaptMetadataRequestError_(): request-provenance-only adaptation to ApiValidationError/INVALID_REQUEST; logs method/classId and rethrows every other failure unchanged
+Real-dispatcher suites (delivered): tests/api/abclassMetadataApi.test.js (wrapper forwarding/adaptation); tests/api/apiHandler/abclassMetadataReads.test.js + abclassMetadataWrites.test.js (real read/write envelopes); tests/api/apiHandler/abclassMetadataErrors.test.js (request vs internal errors, atomicity, auth/tracking/diagnostics); tests/api/apiHandler/abclassMetadataTestContext.js (real handler/controller installation with external-only mocks)
 ```
 
 ---

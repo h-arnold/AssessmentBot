@@ -39,7 +39,11 @@ against the current specification first.
 - ABClass request metadata gate
   - Status: `Implemented`
   - Location: `_validateRequestMetadata(parameters)` in `src/backend/y_controllers/ABClassController/ABClassValidation.js`
-  - Behaviour: own-property request gate shared by `ABClassMutationOps.upsertABClass()` and `.updateABClass()`. Delegates all nested rules to the shared `ABClassMetadata` domain validator and tags only failures from that invocation with `inputSource: 'request'`, rethrowing the same error object and `fieldPath`. Transport adaptation of that typed error into `ApiValidationError` is `Not implemented` (Section 8).
+  - Behaviour: own-property request gate shared by `ABClassMutationOps.upsertABClass()` and `.updateABClass()`. Delegates all nested rules to the shared `ABClassMetadata` domain validator and tags only failures from that invocation with `inputSource: 'request'`, rethrowing the same error object and `fieldPath`.
+- ABClass metadata request-error adapter
+  - Status: `Implemented`
+  - Location: `adaptMetadataRequestError_(methodName, parameters, operation)` in `src/backend/z_Api/abclass/abclassMutations.js`
+  - Behaviour: narrow trailing-underscore transport adapter reused by `upsertABClass_()` and `updateABClass_()` only. It logs the raw thrown value with `method` and `classId` context, converts only an `ABClassMetadataValidationError` whose `inputSource` is exactly `'request'` into an `ApiValidationError` (same path-bearing `message`, `{ method }` option, no new envelope fields), and rethrows every other thrown value with unchanged identity. It does not revalidate metadata or reproduce nested domain rules, and `deleteABClass_()` is unchanged.
 - Assignment-definition upsert request validator
   - Status: `Implemented`
   - Location: `validateUpsertParameters_()` in `src/backend/z_Api/assignmentDefinition/assignmentDefinitionUpsertValidation.js`
@@ -79,15 +83,15 @@ against the current specification first.
 
 ## Planned ABClass metadata helpers
 
-> **Status: partially implemented.** The metadata domain owner, its typed domain error, the
-> canonical UTC predicate and ABClass model construction/restoration/serialization support are
-> implemented, including the partial-aware embedded-assignment projection. The ABClass
-> mutation-owner decomposition, shared save validation, prepared whole/partial persistence,
-> field-scoped roster persistence, response-mapper reuse and the controller request gate are
-> also implemented. The transport error adaptation and the companion deletion entry remain
-> `Not implemented`. `upsertABClass` and `updateABClass` now accept an optional `metadata`
-> field, but no endpoint yet reports request-provenance metadata failures as `INVALID_REQUEST`
-> because the transport adaptation is pending. Cross-references:
+> **Status: implemented, except the companion deletion entry.** The metadata domain owner, its
+> typed domain error, the canonical UTC predicate and ABClass model
+> construction/restoration/serialization support are implemented, including the partial-aware
+> embedded-assignment projection. The ABClass mutation-owner decomposition, shared save
+> validation, prepared whole/partial persistence, field-scoped roster persistence,
+> response-mapper reuse, the controller request gate and the transport request-error adaptation
+> are also implemented. `upsertABClass` and `updateABClass` accept an optional `metadata` field
+> and now report request-provenance metadata failures as `INVALID_REQUEST`. The companion
+> deletion entry below remains `Not implemented` (Section 9). Cross-references:
 > `docs/developer/data-shapes/abclass.md` §Planned validation and
 > `docs/developer/testing/synthetic-test-data.md` §ABClass metadata generator
 > capability. Reconcile each remaining entry and remove its `Not implemented` marker only as
@@ -127,9 +131,9 @@ against the current specification first.
   and mutation-summary responses (see "Response mapper reuse" below).
 - **Implemented:** `ABClassValidation._validateRequestMetadata(parameters)` gates request
   metadata through the shared domain validator before any side effect (see "Controller request
-  gate" below). Transport error adaptation is not delivered; no endpoint returns
-  `INVALID_REQUEST` for invalid request metadata yet. Persistence preparation is delivered
-  (see "Persistence extension" below).
+  gate" below), and the transport request-error adapter converts the tagged failure into
+  `INVALID_REQUEST` (see "Transport error adaptation" below). Persistence preparation is
+  delivered (see "Persistence extension" below).
 
 ### ABClass partial-aware assignment projection — `Models/ABClass.js` (`Implemented`)
 
@@ -183,18 +187,26 @@ against the current specification first.
   their legacy `Validate.requireParams` checks and before collection access, reads, roster
   refresh or writes, so invalid request metadata fails before any side effect or partial patch
   application.
-- `abclassMutations.js` continues to pass the original `parameters` object to the controller
-  without copying or restructuring it, so a valid `metadata` request now reaches and persists
-  through the controller. The transport wrappers add no nested domain rules.
+- `abclassMutations.js` passes the original `parameters` object to the controller without
+  copying or restructuring it, so a valid `metadata` request reaches and persists through the
+  controller. The wrappers' only added behaviour is the request-error adaptation below; they add
+  no nested domain rules.
 
-### Transport error adaptation (`Not implemented`)
+### Transport error adaptation (`Implemented`)
 
-- The shared narrow trailing-underscore adaptation in `abclassMutations.js` that converts only
-  this typed request-provenance error into `ApiValidationError` (preserving the field-path
-  message and adding no new envelope fields) is not delivered. Until it lands, a
-  request-provenance `ABClassMetadataValidationError` is unmapped at the dispatcher and returns
-  the generic `INTERNAL_ERROR` envelope rather than `INVALID_REQUEST`. All other exceptions
-  continue to propagate unchanged.
+- `adaptMetadataRequestError_(methodName, parameters, operation)` in `abclassMutations.js` is the
+  narrow trailing-underscore adapter shared by `upsertABClass_()` and `updateABClass_()` only. It
+  wraps the controller delegation and logs the raw thrown value through `ABLogger` with `method`
+  and `classId` context, then converts only an `ABClassMetadataValidationError` whose
+  `inputSource` is exactly `'request'` into an `ApiValidationError` built from the unchanged
+  path-bearing `message` and the `{ method }` option. No `fieldName`, `details` or other envelope
+  field is added; the `INVALID_REQUEST` envelope code comes from the existing dispatcher mapping.
+- Every other thrown value — model-typed metadata errors, same-message but untagged errors,
+  request-tagged generic or wrong-typed errors, and persistence, upstream and wiring failures — is
+  rethrown with unchanged identity and type, so stored/user-data integrity failures keep returning
+  `INTERNAL_ERROR`.
+- The adapter does not revalidate metadata or reproduce nested domain rules, and `deleteABClass_()`
+  is unchanged.
 - No dispatcher, allowlist, authorisation, request-tracking or envelope-shape change is required
   or authorised; the transport layer never evaluates nested domain rules.
 
@@ -211,8 +223,8 @@ against the current specification first.
 - Metadata carries canonical timestamp strings only, so no extra `DateUtils.deepConvertDates()`
   conversion is needed for the partial-list or mutation-summary responses. The existing full-read
   `DateUtils.deepConvertDates()` call for the other ABClass fields is retained.
-- Request metadata acceptance is delivered at the controller layer (see "Controller request
-  gate" above); the transport request-provenance error adaptation remains `Not implemented`.
+- Request metadata acceptance and its request-provenance error adaptation are both delivered
+  (see "Controller request gate" and "Transport error adaptation" above).
 
 ### Controller decomposition — `ABClassMutationOps.js` (`Implemented`)
 
@@ -330,8 +342,8 @@ sufficient pattern for non-callable transport helpers — no IIFE or namespace-o
 required.
 
 Internal helper functions within a `z_Api` file that are not themselves transport-entry functions
-(e.g. `validateParametersObject_`, `throwValidationError_`) also use the trailing underscore for
-consistency and to prevent accidental GAS-global exposure.
+(e.g. `validateParametersObject_`, `throwValidationError_`, `adaptMetadataRequestError_`) also use
+the trailing underscore for consistency and to prevent accidental GAS-global exposure.
 
 The guarded `module.exports` block at the end of each file exports the trailing-underscore handler
 functions so that Node unit tests can access them:
@@ -661,7 +673,7 @@ Reference: https://developers.google.com/apps-script/guides/html/reference/run
   Validation: transport enforces `params` as an object and rejects unsafe `classId` path characters (`..`, `/`, `\`) when `classId` is supplied as a string; controller validation owns required-field completeness, non-empty `classId`, `courseLength` integer/range checks, and the metadata request gate (see §Controller request gate).
   Write-path behaviour: hydrates `className`, `classOwner`, `teachers`, and `students` from Google Classroom. When the class already exists, the controller refreshes the roster and preserves existing `assignments` and any omitted metadata. A corrupt stored snapshot fails before any write; a valid replacement or `null` does not repair it.
   Response data: the partial class summary returned by `ABClass.toPartialJSON()`, not the full class document. `students` and `assignments` are not returned. The summary includes always-present nullable, validated, detached `metadata`.
-  Error caveat: invalid request metadata raises a typed `ABClassMetadataValidationError` with `inputSource: 'request'`; the transport adaptation that maps it to `INVALID_REQUEST` is `Not implemented` (Section 8), so it currently surfaces as a generic `INTERNAL_ERROR` envelope.
+  Error mapping: invalid request metadata raises a typed `ABClassMetadataValidationError` with `inputSource: 'request'`, which the `abclassMutations.js` request-error adapter converts into an `ApiValidationError`; the dispatcher therefore returns `INVALID_REQUEST`/`isRetriable: false` with the path-bearing message and no extra error fields. Stored/user-data integrity failures keep the generic `INTERNAL_ERROR` envelope.
 
 - `updateABClass` — applies a lightweight patch to editable ABClass fields.
   Source: `src/backend/z_Api/abclassMutations.js`, via the `updateABClass_()` helper called from `ALLOWLISTED_METHOD_HANDLERS` in `src/backend/z_Api/z_apiHandler.js`. Delegates to `ABClassController.updateABClass()` in `src/backend/y_controllers/ABClassController/index.js`.
@@ -671,7 +683,7 @@ Reference: https://developers.google.com/apps-script/guides/html/reference/run
   Validation: transport enforces `params` as an object, rejects unsafe `classId` path characters when `classId` is a string, blocks forbidden fields, and requires `active` to be boolean or `null` when supplied; controller validation owns non-empty `classId`, `courseLength` integer/range checks, and the metadata request gate, which runs before any patch field is applied (see §Controller request gate).
   Existing-class behaviour: updates only the supplied patch fields, persists the partial registry row, and does not mutate the excluded fields. A supplied `metadata` is applied through the model setter; its detached snapshot is written to the selective full-store `$set` and the rebuilt partial. A rejected mixed patch applies none of its fields.
   Missing-class behaviour: throws `RangeError`; `updateABClass` is not an upsert path.
-  Response data: the same partial class summary shape used by `upsertABClass()`, including always-present nullable, validated, detached `metadata`. Invalid request metadata and the pending `INVALID_REQUEST` adaptation follow the same Section 8 caveat as `upsertABClass`.
+  Response data: the same partial class summary shape used by `upsertABClass()`, including always-present nullable, validated, detached `metadata`. Invalid request metadata follows the same `INVALID_REQUEST` mapping as `upsertABClass`; internal integrity failures stay `INTERNAL_ERROR`.
 
 - `deleteABClass` — deletes the stored class record and its class-partial registry row.
   Source: `src/backend/z_Api/abclassMutations.js`, via the `deleteABClass_()` helper called from `ALLOWLISTED_METHOD_HANDLERS` in `src/backend/z_Api/z_apiHandler.js`. Delegates to `ABClassController.deleteABClass()` in `src/backend/y_controllers/ABClassController/index.js`.
