@@ -37,7 +37,7 @@ describe('ABClassMetadata canonical timestamps', () => {
     '2000-02-29T00:00:00.000Z',
     '9999-12-31T23:59:59.999Z',
   ])('accepts canonical calendar timestamp %s', (value) => {
-    expect(Validate.isCanonicalUtcDateTime?.(value)).toBe(true);
+    expect(Validate.isCanonicalUtcDateTime(value)).toBe(true);
   });
 
   it.each([
@@ -53,7 +53,7 @@ describe('ABClassMetadata canonical timestamps', () => {
     ' 2024-01-01T00:00:00.000Z',
     '2024-01-01T00:00:00.000Z ',
   ])('rejects non-canonical calendar timestamp %s', (value) => {
-    expect(Validate.isCanonicalUtcDateTime?.(value)).toBe(false);
+    expect(Validate.isCanonicalUtcDateTime(value)).toBe(false);
   });
 
   it.each([
@@ -63,7 +63,6 @@ describe('ABClassMetadata canonical timestamps', () => {
     [new Date('2024-02-29T12:00:00.000Z'), 'metadata.classAverages.updatedAt'],
   ])('rejects invalid class timestamp %s with a typed domain path', (value, path) => {
     const Type = ABClassMetadata;
-    expect(typeof Type).toBe('function');
     expectTypedFailure(
       Type,
       () => Type.validateClassAverages(classAverages(value), 'metadata.classAverages'),
@@ -78,7 +77,6 @@ describe('ABClassMetadata canonical timestamps', () => {
     [undefined, 'metadata.recentAssignments[0].updatedAt'],
   ])('rejects invalid entry timestamp %s with a typed domain path', (value, path) => {
     const Type = ABClassMetadata;
-    expect(typeof Type).toBe('function');
     expectTypedFailure(
       Type,
       () => Type.validateRecentAssignment(recent('id', value), 'metadata.recentAssignments[0]'),
@@ -88,7 +86,6 @@ describe('ABClassMetadata canonical timestamps', () => {
 
   it('preserves accepted timestamp values without normalising or stamping them', () => {
     const Type = ABClassMetadata;
-    expect(typeof Type).toBe('function');
     const original = '0001-01-01T00:00:00.000Z';
     const value = classAverages(original);
     Type.validateClassAverages(value, 'metadata.classAverages');
@@ -99,7 +96,6 @@ describe('ABClassMetadata canonical timestamps', () => {
 describe('ABClassMetadata recent-assignment ordering', () => {
   it.each([0, 1, 2, 3])('accepts dense recent arrays of length %i', (length) => {
     const Type = ABClassMetadata;
-    expect(typeof Type).toBe('function');
     const entries = Array.from({ length }, (_, index) =>
       recent(`opaque-${index}`, `2024-02-2${9 - index}T12:00:00.000Z`)
     );
@@ -108,7 +104,6 @@ describe('ABClassMetadata recent-assignment ordering', () => {
 
   it('accepts unequal descending timestamps, opaque identifiers, reusable keys, and independent summary time', () => {
     const Type = ABClassMetadata;
-    expect(typeof Type).toBe('function');
     const entries = [
       recent('z / opaque', '2024-02-29T12:00:00.000Z'),
       recent('007', '2024-02-28T12:00:00.000Z'),
@@ -123,7 +118,6 @@ describe('ABClassMetadata recent-assignment ordering', () => {
 
   it('preserves reverse-lexical caller order for equal timestamps', () => {
     const Type = ABClassMetadata;
-    expect(typeof Type).toBe('function');
     const entries = [
       recent('z', '2024-02-29T12:00:00.000Z'),
       recent('a', '2024-02-29T12:00:00.000Z'),
@@ -139,7 +133,6 @@ describe('ABClassMetadata recent-assignment ordering', () => {
     'rejects invalid %s values without repair',
     (field) => {
       const Type = ABClassMetadata;
-      expect(typeof Type).toBe('function');
       for (const invalid of ['', ' ', ' id ', 7, null, undefined]) {
         const entries = [recent('valid', '2024-02-29T12:00:00.000Z')];
         entries[0][field] = invalid;
@@ -153,7 +146,6 @@ describe('ABClassMetadata recent-assignment ordering', () => {
 
   it('rejects malformed lists without sorting, dropping, or rewriting their inputs', () => {
     const Type = ABClassMetadata;
-    expect(typeof Type).toBe('function');
     const badLists = [
       [recent('older', '2024-02-28T12:00:00.000Z'), recent('newer', '2024-02-29T12:00:00.000Z')],
       [recent('same', '2024-02-29T12:00:00.000Z'), recent('same', '2024-02-28T12:00:00.000Z')],

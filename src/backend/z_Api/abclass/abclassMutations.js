@@ -1,4 +1,4 @@
-/* global ABClassController, ABClassMetadataValidationError, ABLogger, ApiValidationError, Validate, validateParametersObject_ */
+/* global ABClassController, ABClassMetadataValidationError, ABLogger, ApiValidationError, Validate, validateParametersObject_, validateSafeTrimmedIdentifier_ */
 
 /**
  * Factory function that returns a new ABClassController instance.
@@ -46,15 +46,17 @@ function adaptMetadataRequestError_(methodName, parameters, operation) {
  * @throws {ApiValidationError} If classId is invalid or contains unsafe characters.
  */
 function validateMutationClassId_(classId, methodName) {
-  if (
-    typeof classId === 'string' &&
-    (classId.includes('..') || classId.includes('/') || classId.includes('\\'))
-  ) {
-    throw new ApiValidationError('classId must not contain unsafe path characters.', {
-      method: methodName,
-      fieldName: 'classId',
-    });
-  }
+  // Defence in depth: enforce the same identifier boundary as reads before mutation delegation.
+  validateSafeTrimmedIdentifier_(classId, {
+    throwValidationError: (message, fieldName) => {
+      throw new ApiValidationError(message, { method: methodName, fieldName });
+    },
+    typeErrorMessage: 'classId must be a string.',
+    nonEmptyErrorMessage: 'classId must be a non-empty string.',
+    trimmedErrorMessage: 'classId must already be trimmed.',
+    unsafeErrorMessage: 'classId contains unsafe characters.',
+    fieldNames: { type: 'classId', nonEmpty: 'classId', trimmed: 'classId', unsafe: 'classId' },
+  });
 }
 
 /**

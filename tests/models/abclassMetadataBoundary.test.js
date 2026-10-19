@@ -61,7 +61,6 @@ describe('ABClassMetadata ownership boundary', () => {
 
   it('constructs null only for omitted arguments and rejects explicit undefined', () => {
     const Type = ABClassMetadata;
-    expect(typeof Type).toBe('function');
     expect(new Type().toJSON()).toBeNull();
     expect(new Type(null).toJSON()).toBeNull();
     expect(() => new Type(undefined)).toThrow();
@@ -70,7 +69,6 @@ describe('ABClassMetadata ownership boundary', () => {
 
   it('isolates every constructor input and each independently returned snapshot', () => {
     const Type = ABClassMetadata;
-    expect(typeof Type).toBe('function');
     for (const name of [
       'validateAverageScore',
       'validateAverageScores',
@@ -109,7 +107,6 @@ describe('ABClassMetadata ownership boundary', () => {
 
   it('copies accepted Array subclasses without trusting their inherited map method', () => {
     const Type = ABClassMetadata;
-    expect(typeof Type).toBe('function');
 
     class Entries extends Array {
       map() {
@@ -141,7 +138,6 @@ describe('ABClassMetadata ownership boundary', () => {
 
   it('revalidates a corrupted owned snapshot during serialisation', () => {
     const Type = ABClassMetadata;
-    expect(typeof Type).toBe('function');
     const domain = new Type(validMetadata());
     const owned = findOwnedSnapshot(domain);
     expect(owned).not.toBeNull();

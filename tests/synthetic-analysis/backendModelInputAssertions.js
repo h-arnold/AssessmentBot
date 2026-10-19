@@ -96,3 +96,21 @@ export function expectPartialSubmissionMatchesRedactedSource(output, sourceRows)
 
   return itemCount;
 }
+
+/** Verifies pairwise ownership isolation for populated metadata snapshots. */
+export function expectMetadataNodesDetached(snapshots) {
+  for (let leftIndex = 0; leftIndex < snapshots.length; leftIndex += 1) {
+    const left = snapshots[leftIndex];
+    for (let rightIndex = leftIndex + 1; rightIndex < snapshots.length; rightIndex += 1) {
+      const right = snapshots[rightIndex];
+      if (!left || !right) continue;
+      expect(left).not.toBe(right);
+      expect(left.classAverages).not.toBe(right.classAverages);
+      expect(left.recentAssignments).not.toBe(right.recentAssignments);
+      for (const [index, entry] of left.recentAssignments.entries()) {
+        expect(entry).not.toBe(right.recentAssignments[index]);
+        expect(entry.averages).not.toBe(right.recentAssignments[index].averages);
+      }
+    }
+  }
+}

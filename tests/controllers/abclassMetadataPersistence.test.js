@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { loadBackendModelInputs } from '#synthetic-data/toBackendModelInputs.js';
 import { saveGlobals, restoreGlobals } from '#test-helpers/globalMockManager.js';
+import { expectMetadataNodesDetached } from '../synthetic-analysis/backendModelInputAssertions.js';
 
 const { ABClass } = require('#backend/Models/ABClass.js');
 const ABClassPersistence = require('#backend/y_controllers/ABClassController/ABClassPersistence.js');
@@ -39,19 +40,6 @@ function captureThrown(callback) {
     return error;
   }
   return undefined;
-}
-
-function expectMetadataDetached(left, right) {
-  if (left === null || right === null) return;
-  expect(left).not.toBe(right);
-  expect(left.classAverages).not.toBe(right.classAverages);
-  expect(left.recentAssignments).not.toBe(right.recentAssignments);
-  for (let index = 0; index < left.recentAssignments.length; index += 1) {
-    expect(left.recentAssignments[index]).not.toBe(right.recentAssignments[index]);
-    expect(left.recentAssignments[index].averages).not.toBe(
-      right.recentAssignments[index].averages
-    );
-  }
 }
 
 function persistence({ full, partial }) {
@@ -108,9 +96,9 @@ describe('ABClass whole-write preparation', () => {
       expect(fullPayload.metadata).toStrictEqual(sourceMetadata);
       expect(partialPayload.metadata).toStrictEqual(sourceMetadata);
       if (sourceMetadata) {
-        expectMetadataDetached(fullPayload.metadata, partialPayload.metadata);
-        expectMetadataDetached(fullPayload.metadata, model.metadata);
-        expectMetadataDetached(partialPayload.metadata, model.metadata);
+        expectMetadataNodesDetached([fullPayload.metadata, partialPayload.metadata]);
+        expectMetadataNodesDetached([fullPayload.metadata, model.metadata]);
+        expectMetadataNodesDetached([partialPayload.metadata, model.metadata]);
       }
       expect(order.map(({ collection: name, method }) => `${name}.${method}`)).toEqual([
         'full.insertOne',
@@ -236,11 +224,11 @@ describe('ABClass whole-write preparation', () => {
     const partialMetadata = partial.insertOne.mock.calls[0][0].metadata;
     expect(fullMetadata).toStrictEqual(expected);
     expect(partialMetadata).toStrictEqual(expected);
-    expectMetadataDetached(fullMetadata, partialMetadata);
-    expectMetadataDetached(fullMetadata, caller.metadata);
-    expectMetadataDetached(partialMetadata, caller.metadata);
-    expectMetadataDetached(fullMetadata, projectionOutput.metadata);
-    expectMetadataDetached(partialMetadata, projectionOutput.metadata);
+    expectMetadataNodesDetached([fullMetadata, partialMetadata]);
+    expectMetadataNodesDetached([fullMetadata, caller.metadata]);
+    expectMetadataNodesDetached([partialMetadata, caller.metadata]);
+    expectMetadataNodesDetached([fullMetadata, projectionOutput.metadata]);
+    expectMetadataNodesDetached([partialMetadata, projectionOutput.metadata]);
     fullMetadata.classAverages.accuracy = 0;
     expect(partialMetadata).toStrictEqual(expected);
     expect(caller.metadata).toStrictEqual(expected);
@@ -313,7 +301,7 @@ describe('ABClass whole-write preparation', () => {
     expect(partial.insertOne).not.toHaveBeenCalled();
     expect(partial.save).not.toHaveBeenCalled();
     expect(logger.error).toHaveBeenCalledWith(
-      '_persistClassAndPartial: class collection write failed',
+      'persistClassAndPartial: class collection write failed',
       expect.objectContaining({ err: fullError })
     );
 
@@ -329,7 +317,7 @@ describe('ABClass whole-write preparation', () => {
     expect(partialNext.insertOne).toHaveBeenCalledTimes(1);
     expect(partialNext.save).toHaveBeenCalledTimes(1);
     expect(logger.error).toHaveBeenCalledWith(
-      '_upsertClassPartial: partials collection write failed',
+      '_writePreparedClassPartial: partials collection write failed',
       expect.objectContaining({ err: partialError })
     );
 
@@ -344,7 +332,7 @@ describe('ABClass whole-write preparation', () => {
     expect(partialInsert.insertOne).toHaveBeenCalledTimes(1);
     expect(partialInsert.save).not.toHaveBeenCalled();
     expect(logger.error).toHaveBeenCalledWith(
-      '_upsertClassPartial: partials collection write failed',
+      '_writePreparedClassPartial: partials collection write failed',
       expect.objectContaining({ err: insertError })
     );
   });
@@ -415,7 +403,7 @@ describe('ABClass whole-write preparation', () => {
     expect(partialStores.partial.replaceOne).toHaveBeenCalledTimes(1);
     expect(partialStores.partial.save).not.toHaveBeenCalled();
     expect(logger.error).toHaveBeenCalledWith(
-      '_upsertClassPartial: partials collection write failed',
+      '_writePreparedClassPartial: partials collection write failed',
       expect.objectContaining({ err: partialError })
     );
   });

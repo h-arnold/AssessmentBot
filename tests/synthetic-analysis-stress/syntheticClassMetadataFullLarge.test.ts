@@ -3,6 +3,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 
 import { generateSyntheticAnalysisGraph } from '#synthetic-data/generateSyntheticAnalysisGraph.js';
 import { validateSyntheticAnalysisGraph } from '#synthetic-data/validateSyntheticAnalysisGraph.js';
+import { expectMetadataNodesDetached } from '../synthetic-analysis/backendModelInputAssertions.js';
 
 type Metadata = {
   classAverages: Record<string, unknown> & { updatedAt: string };
@@ -32,24 +33,6 @@ type FullGraph = {
   };
 };
 
-function expectIndependentMetadataOwnership(snapshots: Array<Metadata | undefined>) {
-  for (let leftIndex = 0; leftIndex < snapshots.length; leftIndex += 1) {
-    const left = snapshots[leftIndex];
-    for (let rightIndex = leftIndex + 1; rightIndex < snapshots.length; rightIndex += 1) {
-      const right = snapshots[rightIndex];
-      if (!left || !right) continue;
-      expect(left).not.toBe(right);
-      expect(left.classAverages).not.toBe(right.classAverages);
-      expect(left.recentAssignments).not.toBe(right.recentAssignments);
-      for (const [index, entry] of left.recentAssignments.entries()) {
-        const otherEntry = right.recentAssignments[index];
-        expect(entry).not.toBe(otherEntry);
-        expect(entry.averages).not.toBe(otherEntry.averages);
-      }
-    }
-  }
-}
-
 const SCORE_TEMPLATES = [
   { completeness: 4, accuracy: 3.5, spag: 4.5, overall: 3.9 },
   { completeness: 'N', accuracy: 'N', spag: 'N', overall: 'N' },
@@ -76,8 +59,6 @@ describe('large-full canonical class metadata', () => {
     expect(graph.persistence.classes).toHaveLength(100);
     let nonNullCount = 0;
     const domain = (globalThis as any).ABClassMetadata;
-    expect(typeof domain?.validateMetadata).toBe('function');
-    if (typeof domain?.validateMetadata !== 'function') return;
 
     graph.persistence.classes.forEach((classDocument, index) => {
       const partial = graph.transport.classPartials.find(
@@ -92,7 +73,7 @@ describe('large-full canonical class metadata', () => {
       expect(metadata).toStrictEqual(partial?.metadata);
       expect(metadata).toStrictEqual(full?.metadata);
       const snapshots = [classDocument.metadata, partial?.metadata, full?.metadata];
-      expectIndependentMetadataOwnership(snapshots);
+      expectMetadataNodesDetached(snapshots);
       for (const snapshot of snapshots) {
         expect(() => domain.validateMetadata(snapshot)).not.toThrow();
       }

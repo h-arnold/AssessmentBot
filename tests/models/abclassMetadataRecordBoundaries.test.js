@@ -27,7 +27,6 @@ function expectDomainFailure(invoke, path) {
 describe('ABClassMetadata record boundaries', () => {
   it('rejects disallowed record types at each required shape', () => {
     const Type = ABClassMetadata;
-    expect(typeof Type).toBe('function');
     const records = [
       [Type.validateAverageScores, () => scores(), 'averages'],
       [Type.validateClassAverages, () => classAverages(), 'metadata.classAverages'],
@@ -51,7 +50,6 @@ describe('ABClassMetadata record boundaries', () => {
 
   it('accepts ordinary and null-prototype objects for all record shapes', () => {
     const Type = ABClassMetadata;
-    expect(typeof Type).toBe('function');
     const nullRecord = (value) => Object.assign(Object.create(null), value);
     const nullAverages = nullRecord(scores());
     const nullClassAverages = nullRecord(classAverages());
@@ -72,7 +70,6 @@ describe('ABClassMetadata record boundaries', () => {
 
   it('requires every own field on each otherwise valid record shape', () => {
     const Type = ABClassMetadata;
-    expect(typeof Type).toBe('function');
     const shapes = [
       [
         Type.validateAverageScores,
@@ -105,7 +102,6 @@ describe('ABClassMetadata record boundaries', () => {
 
   it('rejects enumerable, non-enumerable and Symbol extra own keys at every shape', () => {
     const Type = ABClassMetadata;
-    expect(typeof Type).toBe('function');
     const shapes = [
       [Type.validateAverageScores, 'averages', scores],
       [Type.validateClassAverages, 'metadata.classAverages', classAverages],
@@ -129,7 +125,6 @@ describe('ABClassMetadata record boundaries', () => {
 
   it('rejects null and undefined independently at every class and entry metric path', () => {
     const Type = ABClassMetadata;
-    expect(typeof Type).toBe('function');
     for (const metric of ['completeness', 'accuracy', 'spag', 'overall']) {
       for (const invalid of [null, undefined]) {
         const classValue = classAverages();
@@ -152,7 +147,6 @@ describe('ABClassMetadata record boundaries', () => {
 
   it('rejects range and type violations independently at every class and entry metric path', () => {
     const Type = ABClassMetadata;
-    expect(typeof Type).toBe('function');
     for (const metric of ['completeness', 'accuracy', 'spag', 'overall']) {
       for (const invalid of [-1, 6, false, '2']) {
         const classValue = classAverages();
@@ -176,7 +170,6 @@ describe('ABClassMetadata record boundaries', () => {
 
   it('rejects misplaced null and undefined in every nested entry component', () => {
     const Type = ABClassMetadata;
-    expect(typeof Type).toBe('function');
     for (const value of [null, undefined]) {
       const cases = [
         [{ ...entry(), assignmentId: value }, 'metadata.recentAssignments[0].assignmentId'],

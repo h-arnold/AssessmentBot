@@ -44,7 +44,7 @@ class ABClassPersistence {
 
       collection.save();
     } catch (error) {
-      logger.error('_persistClassAndPartial: class collection write failed', {
+      logger.error('persistClassAndPartial: class collection write failed', {
         classId: abClass.classId,
         err: error,
       });
@@ -206,9 +206,9 @@ class ABClassPersistence {
         partialsCollection.insertOne(partialData);
       }
       partialsCollection.save();
-      logger.info('_upsertClassPartial: partial persisted', { classId });
+      logger.info('_writePreparedClassPartial: partial persisted', { classId });
     } catch (error) {
-      logger.error('_upsertClassPartial: partials collection write failed', {
+      logger.error('_writePreparedClassPartial: partials collection write failed', {
         classId,
         err: error,
       });

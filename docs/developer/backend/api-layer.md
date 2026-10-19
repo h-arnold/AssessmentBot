@@ -36,6 +36,10 @@ against the current specification first.
   - Status: `Implemented`
   - Location: `validateParametersObject_()` in `src/backend/z_Api/abclass/abclassValidation.js`
   - Behaviour: shared primitive for the `abclass/` domain folder; validates that the parameters argument is a plain object (not an array). Referenced via `/* global validateParametersObject_ */` from `abclassMutations.js` and `abclassRead.js`.
+- ABClass mutation `classId` validator
+  - Status: `Implemented`
+  - Location: `validateMutationClassId_(classId, methodName)` in `src/backend/z_Api/abclass/abclassMutations.js`
+  - Behaviour: shared by the upsert, update and delete transport helpers. It delegates to `validateSafeTrimmedIdentifier_` (`src/backend/z_Api/assignmentDefinition/assignmentDefinitionValidation.js`), so mutations enforce the same identifier boundary as reads: string type, non-emptiness, already-trimmed shape, and rejection of path characters (`/`, `\`, `..`) and control characters, reported as `ApiValidationError`. A code comment marks the reuse as an explicit security defence-in-depth guard.
 - ABClass request metadata gate
   - Status: `Implemented`
   - Location: `_validateRequestMetadata(parameters)` in `src/backend/y_controllers/ABClassController/ABClassValidation.js`
@@ -219,7 +223,10 @@ against the current specification first.
   repairing it or fetching another representation. `_buildClassSummary()` reuses this same gate
   for mutation summaries, so no duplicate metadata pass is added in `getAllClassPartials()`.
 - `_toReadView()` projects validated, detached `metadata` from mutable model state while
-  retaining its existing assignment projection/redaction and definition-key replacement.
+  retaining its existing assignment projection/redaction. Definition-key replacement is
+  fail-fast: a missing embedded `assignmentDefinition`, or a `definitionKey` that is missing,
+  non-string or empty, raises a `TypeError` instead of projecting `null` or omitting
+  `assignmentDefinitionKey`, preserving the required-string response contract.
 - Metadata carries canonical timestamp strings only, so no extra `DateUtils.deepConvertDates()`
   conversion is needed for the partial-list or mutation-summary responses. The existing full-read
   `DateUtils.deepConvertDates()` call for the other ABClass fields is retained.
@@ -600,6 +607,7 @@ Reference: https://developers.google.com/apps-script/guides/html/reference/run
   Validation: the helper validates `parameters` is a plain object via the shared `validateParametersObject_` primitive. `classId` must be a non-empty, already-trimmed string without path characters (`/`, `\`, `..`) or ASCII control characters (code points 0–31 and 127). Invalid payloads are reported as `INVALID_REQUEST` by the transport.
   Handler behaviour: calls `new ABClassController().readClass(classId)`. Returns the controller's shaped response (produced by the private `_toReadView` method) on success. Catches `ClassNotFoundError` explicitly and returns `null`. Re-throws all other errors.
   Response shape is produced by `ABClassController._toReadView()` — see `docs/developer/data-shapes/abclass.md` (§ABClass full-read) for the full shape. It includes always-present nullable `metadata` (validated, detached from model state); an absent class still returns top-level `null`.
+  Definition-key integrity: `_toReadView()` throws a `TypeError` when an embedded assignment has no `assignmentDefinition`, or its `definitionKey` is missing, non-string or empty, rather than emitting `null` or omitting `assignmentDefinitionKey`. The read view therefore keeps the required-string `assignmentDefinitionKey` contract, and the dispatcher reports the failure as `INTERNAL_ERROR` without exposing the raw exception.
   Frontend wrapper: `src/frontend/src/services/googleClassrooms/classDetail/classDetailService.ts` (`getABClass()`), with response validation in `src/frontend/src/services/googleClassrooms/classDetail/classDetailService.zod.ts`.
   Query factory: `getABClassQueryOptions(classId)` in `src/frontend/src/query/sharedQueries.ts` (not included in startup warmup — per-class query).
 
@@ -672,7 +680,7 @@ Reference: https://developers.google.com/apps-script/guides/html/reference/run
   Source: `src/backend/z_Api/abclassMutations.js`, via the `upsertABClass_()` helper called from `ALLOWLISTED_METHOD_HANDLERS` in `src/backend/z_Api/z_apiHandler.js`. Delegates to `ABClassController.upsertABClass()` in `src/backend/y_controllers/ABClassController/index.js`.
   Required request fields: `classId`, `cohortKey`, `yearGroupKey`, `courseLength`.
   Optional request field: `metadata` — omission preserves an existing snapshot (or initialises a new class to `null`), explicit `null` clears it, and a complete object replaces it wholly (no nested patch). Supplied metadata is validated before any collection access, roster refresh or write.
-  Validation: transport enforces `params` as an object and rejects unsafe `classId` path characters (`..`, `/`, `\`) when `classId` is supplied as a string; controller validation owns required-field completeness, non-empty `classId`, `courseLength` integer/range checks, and the metadata request gate (see §Controller request gate).
+  Validation: transport enforces `params` as an object and validates `classId` through the shared `validateSafeTrimmedIdentifier_` helper, rejecting non-string, empty, untrimmed, path-character (`..`, `/`, `\`) and control-character values before delegation — the same identifier boundary used by reads. The reuse is an explicit security defence-in-depth guard, marked in a code comment. Controller validation owns required-field completeness, its own `classId` checks, `courseLength` integer/range checks, and the metadata request gate (see §Controller request gate).
   Write-path behaviour: hydrates `className`, `classOwner`, `teachers`, and `students` from Google Classroom. When the class already exists, the controller refreshes the roster and preserves existing `assignments` and any omitted metadata. A corrupt stored snapshot fails before any write; a valid replacement or `null` does not repair it.
   Response data: the partial class summary returned by `ABClass.toPartialJSON()`, not the full class document. `students` and `assignments` are not returned. The summary includes always-present nullable, validated, detached `metadata`.
   Error mapping: invalid request metadata raises a typed `ABClassMetadataValidationError` with `inputSource: 'request'`, which the `abclassMutations.js` request-error adapter converts into an `ApiValidationError`; the dispatcher therefore returns `INVALID_REQUEST`/`isRetriable: false` with the path-bearing message and no extra error fields. Stored/user-data integrity failures keep the generic `INTERNAL_ERROR` envelope.
@@ -680,17 +688,17 @@ Reference: https://developers.google.com/apps-script/guides/html/reference/run
 - `updateABClass` — applies a lightweight patch to editable ABClass fields.
   Source: `src/backend/z_Api/abclassMutations.js`, via the `updateABClass_()` helper called from `ALLOWLISTED_METHOD_HANDLERS` in `src/backend/z_Api/z_apiHandler.js`. Delegates to `ABClassController.updateABClass()` in `src/backend/y_controllers/ABClassController/index.js`.
   Required request field: `classId`.
-  Optional patch fields: `cohortKey`, `yearGroupKey`, `courseLength`, `active`, `metadata`. `metadata` is a whole-value replacement: omission preserves it, `null` clears it, and a complete object replaces it; nested partial objects are invalid, not patches.
+  Optional patch fields: `cohortKey`, `yearGroupKey`, `courseLength`, `active`, `metadata`. For `cohortKey` and `yearGroupKey`, omission preserves the stored value, `null` clears it, and a valid value replaces it; an explicitly supplied `undefined` is rejected as a domain `TypeError` before any write instead of being persisted as the string `"undefined"`. `metadata` is a whole-value replacement: omission preserves it, `null` clears it, and a complete object replaces it; nested partial objects are invalid, not patches.
   Forbidden request fields: `classOwner`, `teachers`, `students`, `assignments`.
-  Validation: transport enforces `params` as an object, rejects unsafe `classId` path characters when `classId` is a string, blocks forbidden fields, and requires `active` to be boolean or `null` when supplied; controller validation owns non-empty `classId`, `courseLength` integer/range checks, and the metadata request gate, which runs before any patch field is applied (see §Controller request gate).
-  Existing-class behaviour: updates only the supplied patch fields, persists the partial registry row, and does not mutate the excluded fields. A supplied `metadata` is applied through the model setter; its detached snapshot is written to the selective full-store `$set` and the rebuilt partial. A rejected mixed patch applies none of its fields.
+  Validation: transport enforces `params` as an object, validates `classId` through the shared `validateSafeTrimmedIdentifier_` helper (rejecting non-string, empty, untrimmed, path-character and control-character values before delegation), blocks forbidden fields, and requires `active` to be boolean or `null` when supplied. The `classId` check reuses the read-path identifier boundary as an explicit security defence-in-depth guard, marked in a code comment. Controller validation owns its own `classId` checks, `courseLength` integer/range checks, the `cohortKey`/`yearGroupKey` explicit-`undefined` rejection, and the metadata request gate, which runs before any patch field is applied (see §Controller request gate).
+  Existing-class behaviour: updates only the supplied patch fields, persists the partial registry row, and does not mutate the excluded fields. A supplied `metadata` is applied through the model setter; its detached snapshot is written to the selective full-store `$set` and the rebuilt partial. A rejected patch — including an explicitly `undefined` `cohortKey` or `yearGroupKey` — applies none of its fields and performs no write.
   Missing-class behaviour: throws `RangeError`; `updateABClass` is not an upsert path.
   Response data: the same partial class summary shape used by `upsertABClass()`, including always-present nullable, validated, detached `metadata`. Invalid request metadata follows the same `INVALID_REQUEST` mapping as `upsertABClass`; internal integrity failures stay `INTERNAL_ERROR`.
 
 - `deleteABClass` — deletes the stored class record and its class-partial registry row.
   Source: `src/backend/z_Api/abclassMutations.js`, via the `deleteABClass_()` helper called from `ALLOWLISTED_METHOD_HANDLERS` in `src/backend/z_Api/z_apiHandler.js`. Delegates to `ABClassController.deleteABClass()` in `src/backend/y_controllers/ABClassController/index.js`.
   Required request field: `classId`.
-  Validation: transport enforces `params` as an object and rejects unsafe `classId` path characters when `classId` is a string; controller validation owns missing, non-string, and non-empty `classId` checks.
+  Validation: transport enforces `params` as an object and validates `classId` through the shared `validateSafeTrimmedIdentifier_` helper, rejecting non-string, empty, untrimmed, path-character (`..`, `/`, `\`) and control-character values before delegation. This matches the read-path identifier boundary; the overlap with the controller's own missing, non-string, and non-empty `classId` checks is an explicit security defence-in-depth guard, marked in a code comment.
   Controller behaviour: deletes the full-class collection with `dropCollection(classId)` and removes the matching `abclass_partials` row with `deleteOne({ classId })`.
   Response data: `{ classId, hasDeletedFullClass, hasDeletedClassPartial }`.
   Idempotency: repeated deletes succeed. A missing registry row yields `hasDeletedClassPartial: false`. The full-collection flag is currently true after any non-throwing `dropCollection()`, including the vendor's `false` return for an absent collection, so it does not prove the collection was removed; it stays false only on the recognised `COLLECTION_NOT_FOUND` exception path, which the vendor's normal absent result does not take. This quirk is documented, not fixed: the flag correction is deferred to [issue #332](https://github.com/h-arnold/AssessmentBot/issues/332).

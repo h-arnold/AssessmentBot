@@ -157,9 +157,9 @@ Returns the full class document with assignments as partial summaries.
 
 **Request:**
 
-| Field     | Type     | Required | Notes                                               |
-| --------- | -------- | -------- | --------------------------------------------------- |
-| `classId` | `string` | yes      | Must be non-empty, already trimmed, no unsafe chars |
+| Field     | Type     | Required | Notes                                                                                       |
+| --------- | -------- | -------- | ------------------------------------------------------------------------------------------- |
+| `classId` | `string` | yes      | Safe identifier: non-empty string, already trimmed, no `/`, `\`, `..` or control characters |
 
 **Response:** `ClassFullSchema` or `null`
 
@@ -179,26 +179,33 @@ Returns the full class document with assignments as partial summaries.
 
 **`assignments[]` entry (AssignmentPartial shape):**
 
-| Field                     | Type                         | Required                                | Notes                                                                                                                                           |
-| ------------------------- | ---------------------------- | --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| `courseId`                | `string`                     | yes (backend) / stripped (frontend Zod) | Present in wire format but stripped by `ClassFullSchema` (Zod `.strip()` default).                                                              |
-| `assignmentId`            | `string`                     | yes                                     |                                                                                                                                                 |
-| `assignmentName`          | `string`                     | yes (backend) / stripped (frontend Zod) | Present in wire format but stripped by `ClassFullSchema`.                                                                                       |
-| `dueDate`                 | `string\|null`               | no (optional)                           | ISO 8601 string or `null`. Zod: `.nullable().optional()`                                                                                        |
-| `updatedAt`               | `string\|null`               | yes                                     | ISO 8601 string or `null`.                                                                                                                      |
-| `createdAt`               | `string`                     | yes                                     | ISO 8601 string.                                                                                                                                |
-| `documentType`            | `string\|null`               | yes                                     | `'SLIDES'` \| `'SHEETS'` or `null`.                                                                                                             |
-| `submissions`             | `StudentSubmissionPartial[]` | yes                                     | Array of partial submission objects (see [Contract: Assignment](assignment.md) for full shape).                                                 |
-| `assignmentDefinitionKey` | `string`                     | yes                                     | Replaces embedded `assignmentDefinition` object. The frontend resolves definition details from its own `AssignmentDefinitionPartials` registry. |
+| Field                     | Type                         | Required                                | Notes                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| ------------------------- | ---------------------------- | --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `courseId`                | `string`                     | yes (backend) / stripped (frontend Zod) | Present in wire format but stripped by `ClassFullSchema` (Zod `.strip()` default).                                                                                                                                                                                                                                                                                                                                                                    |
+| `assignmentId`            | `string`                     | yes                                     |                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| `assignmentName`          | `string`                     | yes (backend) / stripped (frontend Zod) | Present in wire format but stripped by `ClassFullSchema`.                                                                                                                                                                                                                                                                                                                                                                                             |
+| `dueDate`                 | `string\|null`               | no (optional)                           | ISO 8601 string or `null`. Zod: `.nullable().optional()`                                                                                                                                                                                                                                                                                                                                                                                              |
+| `updatedAt`               | `string\|null`               | yes                                     | ISO 8601 string or `null`.                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| `createdAt`               | `string`                     | yes                                     | ISO 8601 string.                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `documentType`            | `string\|null`               | yes                                     | `'SLIDES'` \| `'SHEETS'` or `null`.                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| `submissions`             | `StudentSubmissionPartial[]` | yes                                     | Array of partial submission objects (see [Contract: Assignment](assignment.md) for full shape).                                                                                                                                                                                                                                                                                                                                                       |
+| `assignmentDefinitionKey` | `string`                     | yes                                     | Produced only from the stored embedded definition's `definitionKey` when that value is a non-empty string; the embedded `assignmentDefinition` object is then removed. A missing embedded definition, or a missing/empty/non-string `definitionKey`, fails the whole read as a stored-integrity error rather than emitting `null` or omitting the key. The frontend resolves definition details from its own `AssignmentDefinitionPartials` registry. |
 
 Key contract notes:
 
 - The response is built by `ABClassResponseMapper._toReadView()`, which:
   1. Calls `assignment.toPartialJSON()` on each assignment to get the lightweight shape.
   2. Strips `_hydrationLevel` and `progressTracker` as defence-in-depth.
-  3. Replaces the embedded `assignmentDefinition` object with `assignmentDefinitionKey`
-     (extracted from `definitionKey` of the stored definition). This prevents serialisation
-     failures when the stored definition is partial (tasks stored as an array).
+  3. Requires each assignment's stored embedded `assignmentDefinition` to carry a
+     `definitionKey` that is a non-empty string, then replaces the object with
+     `assignmentDefinitionKey`. Consuming the partial shape (`toPartialJSON()`) keeps
+     partial-definition assignments (tasks stored as an array) transport-safe. A missing
+     embedded definition, or a missing/empty/non-string `definitionKey`, throws a
+     `TypeError` for that assignment instead of emitting `null` or an absent key: the
+     assignment is not silently dropped, and the whole read fails as a stored-integrity
+     error (generic `INTERNAL_ERROR` through `apiHandler`), not as a request validation
+     failure. The frontend `AssignmentPartialSchema` continues to require a plain
+     `z.string()`; neither side is widened to nullable/optional.
 - `_toReadView()` includes `metadata` by revalidating and defensively copying the mutable
   model state through `ABClassMetadata`. Present invalid stored metadata fails the read as
   an integrity error — it is not dropped, repaired or replaced — while absent or legacy
@@ -226,13 +233,13 @@ Creates a new class or updates an existing one. Always refreshes Google-derived 
 
 **Request:**
 
-| Field          | Type                    | Required | Notes                                       |
-| -------------- | ----------------------- | -------- | ------------------------------------------- |
-| `classId`      | `string`                | yes      | No unsafe path characters (`..`, `/`, `\\`) |
-| `cohortKey`    | `string`                | yes      |                                             |
-| `yearGroupKey` | `string`                | yes      |                                             |
-| `courseLength` | `number`                | yes      | Must be integer ≥ 1                         |
-| `metadata`     | `ABClassMetadata\|null` | no       | Optional whole-snapshot replacement         |
+| Field          | Type                    | Required | Notes                                                                                       |
+| -------------- | ----------------------- | -------- | ------------------------------------------------------------------------------------------- |
+| `classId`      | `string`                | yes      | Safe identifier: non-empty string, already trimmed, no `/`, `\`, `..` or control characters |
+| `cohortKey`    | `string`                | yes      |                                                                                             |
+| `yearGroupKey` | `string`                | yes      |                                                                                             |
+| `courseLength` | `number`                | yes      | Must be integer ≥ 1                                                                         |
+| `metadata`     | `ABClassMetadata\|null` | no       | Optional whole-snapshot replacement                                                         |
 
 **Response:** `ClassPartialSchema` (partial class summary — no students or assignments)
 
@@ -240,6 +247,12 @@ Key contract notes:
 
 - The controller hydrates `classOwner`, `teachers`, and `students` from Google Classroom
   before persisting. `students` is persisted in the main document only (not returned).
+- The transport validator `validateMutationClassId_` admits `classId` under the shared
+  safe-trimmed identifier contract (string type, non-empty, already trimmed, no `/`, `\`,
+  `..` or control characters) before controller delegation. Every failure is a
+  non-retriable `INVALID_REQUEST` envelope with `fieldName: 'classId'`. The controller's own
+  domain classId checks (for example `_validateClassId`, `_validateClassForSave`,
+  `_validateDeleteClassId`) remain in force behind it.
 - When the class already exists, the controller preserves existing `assignments` while
   refreshing roster data.
 - New-class upsert paths set `active` to `true`.
@@ -269,23 +282,45 @@ Patches editable fields on an existing class. Does **not** refresh Google-derive
 
 **Request:**
 
-| Field          | Type                    | Required | Notes                                              |
-| -------------- | ----------------------- | -------- | -------------------------------------------------- |
-| `classId`      | `string`                | yes      | No unsafe path characters                          |
-| `cohortKey`    | `string`                | no       | Optional patch field                               |
-| `yearGroupKey` | `string`                | no       | Optional patch field                               |
-| `courseLength` | `number`                | no       | Must be integer ≥ 1 if supplied                    |
-| `active`       | `boolean\|null`         | no       | Optional patch field. `null` is an explicit value. |
-| `metadata`     | `ABClassMetadata\|null` | no       | Optional whole-snapshot replacement; `null` clears |
+| Field          | Type                    | Required | Notes                                                                                                                                                    |
+| -------------- | ----------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `classId`      | `string`                | yes      | Safe identifier: non-empty string, already trimmed, no `/`, `\`, `..` or control characters                                                              |
+| `cohortKey`    | `string\|null`          | no       | Optional patch field: omitted preserves the stored key, `null` clears it, a non-null value is stored via `String(value)`; an own `undefined` is rejected |
+| `yearGroupKey` | `string\|null`          | no       | As `cohortKey`                                                                                                                                           |
+| `courseLength` | `number`                | no       | Must be integer ≥ 1 if supplied                                                                                                                          |
+| `active`       | `boolean\|null`         | no       | Optional patch field. `null` is an explicit value.                                                                                                       |
+| `metadata`     | `ABClassMetadata\|null` | no       | Optional whole-snapshot replacement; `null` clears                                                                                                       |
 
 **Forbidden request fields:** `classOwner`, `teachers`, `students`, `assignments` —
 all cause `ApiValidationError` with `INVALID_REQUEST`.
+
+**Error states:**
+
+| Error                                                     | Code              | Notes                                                                                                                                                                                                                                                         |
+| --------------------------------------------------------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Invalid `classId`                                         | `INVALID_REQUEST` | Missing, non-string, empty, untrimmed, or unsafe (`/`, `\`, `..`, control characters) per the shared safe-trimmed identifier check.                                                                                                                           |
+| Forbidden field supplied                                  | `INVALID_REQUEST` | `classOwner`, `teachers`, `students`, `assignments`.                                                                                                                                                                                                          |
+| `active` invalid                                          | `INVALID_REQUEST` | Not a boolean or `null`.                                                                                                                                                                                                                                      |
+| Invalid supplied `metadata`                               | `INVALID_REQUEST` | Request-provenance typed metadata failure only (Section 8).                                                                                                                                                                                                   |
+| Own `undefined` `cohortKey` or `yearGroupKey`             | `INTERNAL_ERROR`  | `ABClassValidation._buildUpdatePatch()` throws a domain `TypeError` before any record read or write. This is **not** a metadata request-provenance failure, so the transport adapter rethrows it unchanged and `apiHandler` reports generic `INTERNAL_ERROR`. |
+| Class does not exist                                      | `INTERNAL_ERROR`  | Controller `RangeError`; this is **not** an upsert path.                                                                                                                                                                                                      |
+| Stored/model corruption or persistence/projection failure | `INTERNAL_ERROR`  | Invalid stored metadata or other integrity failures; never reclassified as `INVALID_REQUEST`.                                                                                                                                                                 |
 
 **Response:** `ClassPartialSchema`
 
 Key contract notes:
 
 - Only supplied patch fields are updated. Omitted fields retain their stored values.
+- Reference keys follow the patch contract: an omitted `cohortKey`/`yearGroupKey` retains the
+  stored value, `null` clears it, and a non-null value is stored as `String(value)`. An own
+  `undefined` for either key is rejected by `ABClassValidation._buildUpdatePatch()` with a
+  `TypeError` before any collection is read or any store is written (and before the returned
+  summary is built). That `TypeError` is a domain failure, **not** the metadata
+  request-provenance error, so `adaptMetadataRequestError_` rethrows it unchanged and the
+  envelope is generic `INTERNAL_ERROR` — it is never adapted to `INVALID_REQUEST`.
+- `validateMutationClassId_` admits `classId` under the shared safe-trimmed identifier
+  contract before controller delegation (see the `upsertABClass` notes); failures are
+  `INVALID_REQUEST`.
 - `metadata` is an additional optional editable field: true omission preserves the stored
   snapshot, explicit `null` clears it, and a complete object replaces it entirely. Nested
   partial objects are invalid, not patches. An invalid mixed patch is rejected before any
@@ -309,16 +344,16 @@ Removes both the main class document and the partial registry entry.
 
 **Request:**
 
-| Field     | Type     | Required | Notes                     |
-| --------- | -------- | -------- | ------------------------- |
-| `classId` | `string` | yes      | No unsafe path characters |
+| Field     | Type     | Required | Notes                                                                                       |
+| --------- | -------- | -------- | ------------------------------------------------------------------------------------------- |
+| `classId` | `string` | yes      | Safe identifier: non-empty string, already trimmed, no `/`, `\`, `..` or control characters |
 
 **Error states:**
 
-| Error              | Code              | Notes                                                                                                             |
-| ------------------ | ----------------- | ----------------------------------------------------------------------------------------------------------------- |
-| Absent stores      | — (success)       | Deleting a class whose full collection and/or registry row are already absent still succeeds; it is not an error. |
-| Parameters invalid | `INVALID_REQUEST` | Missing/wrong type `classId`.                                                                                     |
+| Error              | Code              | Notes                                                                                                                                         |
+| ------------------ | ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| Absent stores      | — (success)       | Deleting a class whose full collection and/or registry row are already absent still succeeds; it is not an error.                             |
+| Parameters invalid | `INVALID_REQUEST` | Missing, non-string, empty, untrimmed or unsafe `classId` (`/`, `\`, `..`, control characters), per the shared safe-trimmed identifier check. |
 
 **Response:**
 
@@ -434,18 +469,40 @@ contract for StudentSubmission is documented in [Contract: Assignment](assignmen
 
 - `src/backend/z_Api/abclass/abclassRead.js`:
   - `validateParametersObject_(parameters, 'getABClass')` — validates parameters is a plain object.
-  - `validateIdentifier_(classId, 'classId')` — validates classId is a non-empty string, already trimmed, and contains no unsafe characters.
+  - `validateIdentifier_(classId, 'classId')` — validates classId is a string, non-empty, already trimmed, and free of unsafe characters (`/`, `\`, `..`, control characters).
 - `src/backend/z_Api/abclass/abclassValidation.js`:
   - `validateParametersObject_()` — shared primitive for all abclass endpoints.
 - `src/backend/z_Api/abclass/abclassMutations.js`:
-  - `validateMutationClassId_(classId, methodName)` — checks for unsafe path characters (`..`, `/`, `\\`).
+  - `validateMutationClassId_(classId, methodName)` — delegates to the shared
+    `validateSafeTrimmedIdentifier_` helper (the same helper the read path's
+    `validateIdentifier_` uses), enforcing a string type, non-emptiness, an already-trimmed
+    value, and the absence of `/`, `\`, `..` and control characters. Failures throw
+    `ApiValidationError` with `method` and `fieldName: 'classId'`, mapping to non-retriable
+    `INVALID_REQUEST`. The guard runs before controller delegation, so a whitespace-padded or
+    control-character `classId` can no longer pass mutation admission while being rejected on
+    reads. The controller still performs its own domain classId checks behind it.
   - `validateUpsertABClassParameters_()` — validates parameters object and classId.
   - `validateUpdateABClassParameters_()` — validates parameters object, classId, and forbids protected fields (`classOwner`, `teachers`, `students`, `assignments`).
   - `validateDeleteABClassParameters_()` — validates parameters object and classId.
+- Shared identifier helper: `validateSafeTrimmedIdentifier_` (with `hasControlCharacters_`) is
+  defined in `src/backend/z_Api/assignmentDefinition/assignmentDefinitionValidation.js` and is
+  consumed by both `abclassRead.js` and `abclassMutations.js`.
 
 **Key domain validation rules:**
 
 - `cohortKey` and `yearGroupKey` must be present on upsertABClass requests.
+- On updateABClass, `cohortKey` and `yearGroupKey` are patch fields: true omission preserves
+  the stored key, explicit `null` clears it, and a non-null value is stored via
+  `String(value)`. An own `undefined` for either key is rejected by
+  `ABClassValidation._buildUpdatePatch()` with a `TypeError` before any record read, patch
+  application or store write. Because it is a domain failure rather than the metadata
+  request-provenance error, `adaptMetadataRequestError_` rethrows it unchanged and the
+  envelope stays generic `INTERNAL_ERROR`; it is not adapted to `INVALID_REQUEST`.
+- The read-view projection requires each stored assignment's embedded
+  `assignmentDefinition.definitionKey` to be a non-empty string. A missing embedded
+  definition, or an absent/empty/non-string key, throws a `TypeError` so `getABClass` fails
+  as a stored-integrity error (generic `INTERNAL_ERROR`) instead of emitting `null` or an
+  absent `assignmentDefinitionKey`. There is no null/absent read fallback.
 - `courseLength` must be a positive safe integer on validated upsertABClass and updateABClass writes (`1` through `Number.MAX_SAFE_INTEGER`). Unsafe numeric values are rejected rather than accepted after precision has been lost.
 - Constructor and `fromJSON` normalisation retain the existing course-length fallback of `1`; roster initialisation retains its existing current-value fallback. `_parseNullableInt` checks both numeric input magnitudes and parsed results for safety. Existing prefix parsing of safe values is unchanged (for example, `'3years'` becomes `3` and the string `'1e21'` becomes `1`); an unsafe numeric `1e21` takes the fallback before parsing.
 - On updateABClass, `active` must be a boolean or null.
@@ -477,9 +534,21 @@ contract for StudentSubmission is documented in [Contract: Assignment](assignmen
    **Classification: Aligned** — the delete flow does not require typed validation at
    the transport boundary; the caller receives raw `unknown` and destructures as needed.
 
-These four entries are intentional contracts, not implementation deferrals. The former
-`Teacher.toJSON()` conditional-omission discrepancy is resolved: `teacherName` is now always
-emitted with an explicit `null` (see [§ Sub-entity Teacher](#sub-entity-teacher)).
+These four entries are intentional contracts, not implementation deferrals. Three former
+drifts are now resolved and are recorded here so they are not reintroduced:
+
+- The former `Teacher.toJSON()` conditional-omission discrepancy is resolved: `teacherName`
+  is now always emitted with an explicit `null` (see
+  [§ Sub-entity Teacher](#sub-entity-teacher)).
+- The former `assignmentDefinitionKey` mismatch — `_toReadView()` emitting `null` (or omitting
+  the key) when the stored assignment lacked a valid `definitionKey`, while the documented
+  contract and frontend `AssignmentPartialSchema` both require a plain `string` — is resolved
+  by the read-boundary integrity check above. The contract was **not** widened to
+  nullable/optional; the backend now fails loudly instead.
+- The former mutation/read identifier mismatch — `validateMutationClassId_` admitting
+  non-string, untrimmed or control-character `classId` values that `validateIdentifier_`
+  rejects on reads — is resolved by delegating both paths to
+  `validateSafeTrimmedIdentifier_` (see [§ Validation](#validation)).
 
 ---
 
@@ -514,7 +583,8 @@ Canonical UTC predicate:    src/backend/Utils/Validate.js
 
 Controller:                 src/backend/y_controllers/ABClassController/
   ├── index.js                          — ABClassController facade
-  ├── ABClassResponseMapper.js          — _toReadView(), _normaliseClassPartial(), _buildClassSummary()
+  ├── ABClassValidation.js              — classId/courseLength domain checks; _buildUpdatePatch() (own-undefined reference-key rejection)/_applyPatchToClass(); _validateRequestMetadata() request gate
+  ├── ABClassResponseMapper.js          — _toReadView() (assignment-definition-key integrity check + metadata projection), _normaliseClassPartial(), _buildClassSummary()
   ├── ABClassPersistence.js             — persistClassAndPartial() prepared full/partial writes + field-scoped roster helpers
   ├── ABClassRoster.js                  — roster refresh and _persistRoster() field-scoped registry patch
   ├── ABClassMutationOps.js             — upsert/update/delete orchestration; request metadata gate; prepared selective editable partial
@@ -522,7 +592,7 @@ Controller:                 src/backend/y_controllers/ABClassController/
 
 API handlers:               src/backend/z_Api/abclass/
   ├── abclassRead.js                    — getABClass_()
-  ├── abclassMutations.js               — upsertABClass_(), updateABClass_(), deleteABClass_(), adaptMetadataRequestError_()
+  ├── abclassMutations.js               — upsertABClass_(), updateABClass_(), deleteABClass_(), adaptMetadataRequestError_(), validateMutationClassId_()
   └── abclassValidation.js              — validateParametersObject_()
 
 Transport envelope:         src/backend/z_Api/z_apiHandler.js
@@ -540,6 +610,11 @@ Frontend:
   │       ClassFullResponseSchema
   └── src/frontend/src/services/googleClassrooms/classDetail/classDetailService.ts
         → getABClass()
+
+Identifier-integrity regression suites (this cycle):
+  ├── tests/api/abclassMutationClassIdRegression.test.js                — mutation classId safe-trimmed admission
+  ├── tests/controllers/abclassMutationReferenceKeysRegression.test.js   — own-undefined reference-key rejection and zero writes
+  └── tests/controllers/abclassAssignmentDefinitionKeyReadRegression.test.js — read-boundary definition-key integrity
 ```
 
 ---
@@ -859,7 +934,10 @@ mutation/controller validation.
   (`_toReadView()` revalidates and copies the mutable model state).
 - An absent class still returns top-level `null`, which is distinct from an existing class
   with `metadata: null`.
-- Existing assignment redaction and definition-key projection are preserved.
+- Existing assignment redaction is preserved, and the definition-key projection now enforces
+  its required-string contract at the read boundary: an assignment without a valid embedded
+  `definitionKey` fails the read as a stored-integrity error instead of emitting `null` or an
+  absent key (see [§ Transport getABClass](#getabclass-read)).
 
 #### `upsertABClass` (delivered)
 

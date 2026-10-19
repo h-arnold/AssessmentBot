@@ -278,6 +278,49 @@ describe('SelectWithAddNew - Prop Forwarding', () => {
 describe('SelectWithAddNew - Selection value ownership', () => {
   const repeatedCommandCount = 2;
 
+  it('keeps an explicitly undefined value controlled until the parent supplies a selection', async () => {
+    const user = userEvent.setup();
+    const onAddNew = vi.fn();
+    const onChange = vi.fn();
+    const { rerender } = render(
+      <SelectWithAddNew
+        options={standardOptions}
+        value={undefined}
+        onAddNew={onAddNew}
+        onChange={onChange}
+        placeholder="Select an option"
+        virtual={false}
+      />
+    );
+
+    expect(screen.getByText('Select an option')).toBeInTheDocument();
+    await user.click(screen.getByRole('combobox'));
+    await user.click(await screen.findByRole('option', { name: 'Option 1' }));
+
+    expect(onChange).toHaveBeenCalledTimes(1);
+    expect(onChange.mock.calls[0]?.[0]).toBe('option-1');
+    expect(screen.getByText('Select an option')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('combobox'));
+    await user.click(await screen.findByRole('option', { name: 'Add new' }));
+    expect(onAddNew).toHaveBeenCalledTimes(1);
+    expect(onChange).toHaveBeenCalledTimes(1);
+    expect(screen.getByText('Select an option')).toBeInTheDocument();
+
+    rerender(
+      <SelectWithAddNew
+        options={standardOptions}
+        value="option-2"
+        onAddNew={onAddNew}
+        onChange={onChange}
+        placeholder="Select an option"
+        virtual={false}
+      />
+    );
+
+    expectSelectedLabel('Option 2');
+  });
+
   it('renders a controlled selection and follows the parent value after Add new', async () => {
     const user = userEvent.setup();
     const { rerender } = render(

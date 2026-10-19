@@ -96,8 +96,20 @@ class ABClassResponseMapper {
             // transport payload that also risks serialisation failures when the
             // stored definition is partial (tasks as an array).
             if (safe.assignmentDefinition) {
-              safe.assignmentDefinitionKey = safe.assignmentDefinition.definitionKey ?? null;
+              if (
+                typeof safe.assignmentDefinition.definitionKey !== 'string' ||
+                safe.assignmentDefinition.definitionKey.length === 0
+              ) {
+                throw new TypeError(
+                  'getABClass: assignment is missing a valid assignment definition key'
+                );
+              }
+              safe.assignmentDefinitionKey = safe.assignmentDefinition.definitionKey;
               delete safe.assignmentDefinition;
+            } else {
+              throw new TypeError(
+                'getABClass: assignment is missing its embedded assignment definition'
+              );
             }
             return safe;
           })

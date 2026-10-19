@@ -107,11 +107,22 @@ Location: `scripts/synthetic-test-data/toBackendModelInputs.js`.
   alone does not hydrate `teachers[]`. Do not add production teacher-array hydration.
 - Never feed a frontend assignment partial directly to `Assignment.fromJSON()`, and never
   mutate the frozen loader output in place. All adaptation happens on local clones.
-- The adapter suite's submission assertions live in the suite-local
-  `tests/synthetic-analysis/backendModelInputAssertions.js` helper
-  (`expectFullSubmissionPreserved`, `expectPartialSubmissionRedacted`,
-  `expectPartialSubmissionMatchesRedactedSource`). It is a tests-only utility imported
-  relatively by the suite, not a runtime or shared public helper.
+- Backend model-input assertions live in the tests-only
+  `tests/synthetic-analysis/backendModelInputAssertions.js` helper, shared across the suites
+  that need it: the adapter suite imports it as `./backendModelInputAssertions.js`, and the
+  model, controller and stress suites import it as
+  `../synthetic-analysis/backendModelInputAssertions.js`. It is not a runtime dependency and is
+  not reachable through the `#test-helpers/*` alias, which maps only to `tests/helpers/*`.
+- The helper exports the submission assertions (`expectFullSubmissionPreserved`,
+  `expectPartialSubmissionRedacted`, `expectPartialSubmissionMatchesRedactedSource`) and the
+  ownership assertion `expectMetadataNodesDetached(snapshots)`, which checks pairwise `toBe`
+  identity across populated metadata snapshots at the root, `classAverages`,
+  `recentAssignments[]` and each entry's `averages`, skipping null snapshots.
+- `expectMetadataNodesDetached` is used by the controller metadata persistence suite
+  (`tests/controllers/abclassMetadataPersistence.test.js`), the model metadata integration
+  suite (`tests/models/abclassMetadataIntegration.test.js`) and the opt-in stress suite
+  (`tests/synthetic-analysis-stress/syntheticClassMetadataFullLarge.test.ts`), so the
+  ownership-isolation contract cannot drift between cloned copies.
 
 ### Test infrastructure reuse
 

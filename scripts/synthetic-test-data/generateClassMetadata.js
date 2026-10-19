@@ -74,14 +74,18 @@ function applyClassMetadata(profileName, index, classDocument, assignmentsByClas
  * @returns {object} Matrix case.
  */
 function getMatrixCase(profileName, index) {
-  const compactCase = COMPACT_MATRIX_BY_PROFILE.get(profileName)?.at(index);
+  if (profileName === 'large-full') return getFullMatrixCase(index);
+  const matrix = COMPACT_MATRIX_BY_PROFILE.get(profileName);
+  const compactCase = matrix?.at(index);
+  if (!matrix || compactCase === undefined) {
+    throw new Error(
+      `Synthetic class metadata compact matrix invariant failed for profile ${profileName} at index ${index}.`
+    );
+  }
   if (compactCase === null) {
     return { isNull: true };
   }
-  if (profileName === 'large-full') {
-    return getFullMatrixCase(index);
-  }
-  return { isNull: false, count: compactCase?.[1], templateIndex: compactCase?.[0] };
+  return { isNull: false, count: compactCase[1], templateIndex: compactCase[0] };
 }
 
 /** Resolves the five-class large-full matrix cycle.

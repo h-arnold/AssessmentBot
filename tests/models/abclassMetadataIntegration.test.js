@@ -3,23 +3,14 @@ import { ABClass } from '#backend/Models/ABClass.js';
 import { loadBackendModelInputs } from '#synthetic-data/toBackendModelInputs.js';
 import { withTemporaryGlobals } from '#test-helpers/globalMockManager.js';
 import { Teacher } from '#backend/Models/Teacher.js';
-import { expectPartialSubmissionMatchesRedactedSource } from '../synthetic-analysis/backendModelInputAssertions.js';
+import {
+  expectMetadataNodesDetached,
+  expectPartialSubmissionMatchesRedactedSource,
+} from '../synthetic-analysis/backendModelInputAssertions.js';
 
 const clone = (value) => structuredClone(value);
 const canonicalClasses = (profile) => loadBackendModelInputs(profile).classesById;
 const teacherGlobal = { Teacher: () => Teacher };
-
-function expectMetadataNodesDistinct(left, right) {
-  expect(left).not.toBe(right);
-  expect(left.classAverages).not.toBe(right.classAverages);
-  expect(left.recentAssignments).not.toBe(right.recentAssignments);
-  for (let index = 0; index < left.recentAssignments.length; index += 1) {
-    expect(left.recentAssignments[index]).not.toBe(right.recentAssignments[index]);
-    expect(left.recentAssignments[index].averages).not.toBe(
-      right.recentAssignments[index].averages
-    );
-  }
-}
 
 function invalidMetadata(canonicalMetadata) {
   const invalid = clone(canonicalMetadata);
@@ -174,11 +165,11 @@ describe('ABClass metadata construction and serialization boundaries', () => {
     const repeatedFull = model.toJSON();
     const repeatedPartial = model.toPartialJSON();
     for (const output of [full, partial, repeatedFull, repeatedPartial]) {
-      expectMetadataNodesDistinct(output.metadata, model.metadata);
+      expectMetadataNodesDetached([output.metadata, model.metadata]);
     }
-    expectMetadataNodesDistinct(full.metadata, partial.metadata);
-    expectMetadataNodesDistinct(full.metadata, repeatedFull.metadata);
-    expectMetadataNodesDistinct(partial.metadata, repeatedPartial.metadata);
+    expectMetadataNodesDetached([full.metadata, partial.metadata]);
+    expectMetadataNodesDetached([full.metadata, repeatedFull.metadata]);
+    expectMetadataNodesDetached([partial.metadata, repeatedPartial.metadata]);
 
     const fullRoundTrip = withTemporaryGlobals(teacherGlobal, () =>
       ABClass.fromJSON(JSON.parse(JSON.stringify(full)))

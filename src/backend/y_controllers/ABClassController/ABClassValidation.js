@@ -134,10 +134,14 @@ class ABClassValidation {
     const patch = {};
 
     if (Object.hasOwn(parameters, 'cohortKey')) {
+      if (parameters.cohortKey === undefined)
+        throw new TypeError('updateABClass: cohortKey must not be undefined.');
       patch.cohortKey = parameters.cohortKey === null ? null : String(parameters.cohortKey);
     }
 
     if (Object.hasOwn(parameters, 'yearGroupKey')) {
+      if (parameters.yearGroupKey === undefined)
+        throw new TypeError('updateABClass: yearGroupKey must not be undefined.');
       patch.yearGroupKey =
         parameters.yearGroupKey === null ? null : String(parameters.yearGroupKey);
     }

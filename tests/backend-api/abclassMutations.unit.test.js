@@ -217,15 +217,11 @@ describe('Api/abclassMutations retained transport-boundary validation', () => {
   });
 });
 
-describe('Api/abclassMutations mutation classId path-check type guard', () => {
-  const controllerError = new Error('controller validation should own non-string classId');
-
+describe('Api/abclassMutations mutation classId validation', () => {
   it.each([undefined, null])(
-    'upsertABClass does not crash for classId=%p before controller',
+    'upsertABClass rejects missing or null classId=%p before controller delegation',
     (classId) => {
-      const upsertSpy = vi.fn(() => {
-        throw controllerError;
-      });
+      const upsertSpy = vi.fn();
 
       class MockABClassController {
         upsertABClass(args) {
@@ -242,17 +238,15 @@ describe('Api/abclassMutations mutation classId path-check type guard', () => {
           yearGroupKey: 'yg-10',
           courseLength: 2,
         })
-      ).toThrow(controllerError);
-      expect(upsertSpy).toHaveBeenCalledTimes(1);
+      ).toThrow(ApiValidationError);
+      expect(upsertSpy).not.toHaveBeenCalled();
     }
   );
 
   it.each([undefined, null])(
-    'updateABClass does not crash for classId=%p before controller',
+    'updateABClass rejects missing or null classId=%p before controller delegation',
     (classId) => {
-      const updateSpy = vi.fn(() => {
-        throw controllerError;
-      });
+      const updateSpy = vi.fn();
 
       class MockABClassController {
         updateABClass(args) {
@@ -266,17 +260,15 @@ describe('Api/abclassMutations mutation classId path-check type guard', () => {
         updateABClass_({
           classId,
         })
-      ).toThrow(controllerError);
-      expect(updateSpy).toHaveBeenCalledTimes(1);
+      ).toThrow(ApiValidationError);
+      expect(updateSpy).not.toHaveBeenCalled();
     }
   );
 
   it.each([undefined, null])(
-    'deleteABClass does not crash for classId=%p before controller',
+    'deleteABClass rejects missing or null classId=%p before controller delegation',
     (classId) => {
-      const deleteSpy = vi.fn(() => {
-        throw controllerError;
-      });
+      const deleteSpy = vi.fn();
 
       class MockABClassController {
         deleteABClass(args) {
@@ -290,8 +282,8 @@ describe('Api/abclassMutations mutation classId path-check type guard', () => {
         deleteABClass_({
           classId,
         })
-      ).toThrow(controllerError);
-      expect(deleteSpy).toHaveBeenCalledTimes(1);
+      ).toThrow(ApiValidationError);
+      expect(deleteSpy).not.toHaveBeenCalled();
     }
   );
 });
