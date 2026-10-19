@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import SheetsAssessor from '../../src/backend/Assessors/SheetsAssessor.js';
-import { TaskDefinition } from '../../src/backend/Models/TaskDefinition.js';
-import { StudentSubmission } from '../../src/backend/Models/StudentSubmission.js';
+import SheetsAssessor from '#backend/Assessors/SheetsAssessor.js';
+import { TaskDefinition } from '#backend/Models/TaskDefinition.js';
+import { StudentSubmission } from '#backend/Models/StudentSubmission.js';
 import { createMockABLogger } from '../helpers/mockFactories.js';
 
 class TestAssessment {

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { AssignmentDefinition } from '../../src/backend/Models/AssignmentDefinition.js';
-import { generateSyntheticAnalysisGraph } from '../../scripts/synthetic-test-data/generateSyntheticAnalysisGraph.js';
+import { AssignmentDefinition } from '#backend/Models/AssignmentDefinition.js';
+import { generateSyntheticAnalysisGraph } from '#synthetic-data/generateSyntheticAnalysisGraph.js';
 
 /**
  * Generator-internal observation of a persisted assignment definition. Persistence

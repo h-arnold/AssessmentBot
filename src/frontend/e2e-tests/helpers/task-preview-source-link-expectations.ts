@@ -17,9 +17,9 @@
  * @see docs/developer/testing/synthetic-test-data.md
  */
 
-import type { AssignmentFull } from '../../src/services/assignmentAssessment/assignmentAssessment.zod';
-import { buildMetricCellAccessibleLabel } from '../../src/features/taskHeatmap/taskHeatmapTableColumns';
-import { requireTextArtifactContent } from '../../src/test/shared/canonicalFixturePrimitives';
+import type { AssignmentFull } from '@/services/assignmentAssessment/assignmentAssessment.zod';
+import { buildMetricCellAccessibleLabel } from '@/features/taskHeatmap/taskHeatmapTableColumns';
+import { requireTextArtifactContent } from '@/test/shared/canonicalFixturePrimitives';
 import {
   CANONICAL_SHEETS_ASSIGNMENT,
   CANONICAL_SLIDES_ASSIGNMENT,

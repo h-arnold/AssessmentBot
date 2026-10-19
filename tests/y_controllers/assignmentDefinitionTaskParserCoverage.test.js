@@ -3,7 +3,7 @@ import { withGlobalMocks } from '../helpers/globalMockManager.js';
 
 // Hermetic behaviour coverage for AssignmentDefinitionTaskParser dispatch and
 // validation filtering without invoking GAS document services.
-const AssignmentDefinitionTaskParser = require('../../src/backend/y_controllers/AssignmentDefinition/AssignmentDefinitionTaskParser.js');
+const AssignmentDefinitionTaskParser = require('#backend/y_controllers/AssignmentDefinition/AssignmentDefinitionTaskParser.js');
 
 describe('AssignmentDefinitionTaskParser behaviour', () => {
   let restoreGlobals;

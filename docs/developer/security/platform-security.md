@@ -48,7 +48,7 @@ The identity model has one hard prerequisite: **`access: DOMAIN` is only valid w
 Google Workspace domain**. A deployment on a personal (Gmail) identity cannot use `DOMAIN`
 access; in that case the appropriate `access` value must be confirmed with the deploying
 administrator before rollout (an explicit assumption also recorded in
-`src/backend/AGENTS.md` §2.5).
+`src/backend/AGENTS.md` §7).
 
 The builder's manifest merge uses `src/backend/appsscript.json` as its base, so the
 `webapp` block (and the OAuth scopes below) flow unchanged into the deployed

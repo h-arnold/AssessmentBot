@@ -4,7 +4,7 @@ const UPSERT_TRANSPORT_MODULE_PATH_CANDIDATES = Object.freeze([
   '../../src/backend/z_Api/assignmentDefinitionTransport.js',
   '../../src/backend/z_Api/assignmentDefinitionMutations.js',
 ]);
-const ApiValidationError = require('../../src/backend/Utils/ErrorTypes/ApiValidationError.js');
+const ApiValidationError = require('#backend/Utils/ErrorTypes/ApiValidationError.js');
 
 function clearUpsertTransportModuleCaches() {
   UPSERT_TRANSPORT_MODULE_PATH_CANDIDATES.forEach((modulePath) => {

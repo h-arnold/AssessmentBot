@@ -1,6 +1,6 @@
 import { renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { ApiTransportError } from '../../errors/apiTransportError';
+import { ApiTransportError } from '@/errors/apiTransportError';
 import { useClassesManagement } from './useClassesManagement';
 
 const { useQueryMock, useStartupWarmupStateMock } = vi.hoisted(() => {

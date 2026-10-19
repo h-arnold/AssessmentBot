@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
-import { generateSyntheticAnalysisGraph } from '../../scripts/synthetic-test-data/generateSyntheticAnalysisGraph.js';
-import { assertSerialisable } from '../../scripts/synthetic-test-data/invariantGuards.js';
-import { validateSyntheticAnalysisGraph } from '../../scripts/synthetic-test-data/validateSyntheticAnalysisGraph.js';
-import { assertYearGroupDistribution } from '../../scripts/synthetic-test-data/validateProfileInvariants.js';
-import { buildValidationContext } from '../../scripts/synthetic-test-data/validationContext.js';
-import type { AssignmentDefinitionPartial } from '../../src/frontend/src/services/assignmentDefinition/assignmentDefinitionPartials.zod';
-import type { ClassFull } from '../../src/frontend/src/services/googleClassrooms/classDetail/classDetailService.zod';
-import type { ClassPartial } from '../../src/frontend/src/services/googleClassrooms/classPartials.zod';
+import { generateSyntheticAnalysisGraph } from '#synthetic-data/generateSyntheticAnalysisGraph.js';
+import { assertSerialisable } from '#synthetic-data/invariantGuards.js';
+import { validateSyntheticAnalysisGraph } from '#synthetic-data/validateSyntheticAnalysisGraph.js';
+import { assertYearGroupDistribution } from '#synthetic-data/validateProfileInvariants.js';
+import { buildValidationContext } from '#synthetic-data/validationContext.js';
+import type { AssignmentDefinitionPartial } from '@/services/assignmentDefinition/assignmentDefinitionPartials.zod';
+import type { ClassFull } from '@/services/googleClassrooms/classDetail/classDetailService.zod';
+import type { ClassPartial } from '@/services/googleClassrooms/classPartials.zod';
 
 /**
  * Generator-internal observation of a persistence class document.

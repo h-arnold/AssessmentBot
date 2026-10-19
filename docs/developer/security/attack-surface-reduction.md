@@ -17,7 +17,7 @@ asks a different question: _what_ can be called, and _what_ leaks when it fails.
 In Google Apps Script, every top-level function whose name does **not** end in an
 underscore is automatically exposed to `google.script.run`. The official specification
 excludes trailing-underscore functions from the callable surface (see
-`src/backend/AGENTS.md` §1.1), which makes the underscore the platform's only
+`src/backend/AGENTS.md` §4), which makes the underscore the platform's only
 built-in privacy switch. A developer who forgets the underscore ships a public endpoint
 that bypasses every application-level check — including the auth gate — because the gate
 lives _inside_ `apiHandler`, not in front of the deployment.
@@ -27,7 +27,7 @@ necessary rather than merely stylistic.
 
 ## Private-by-default convention
 
-The backend convention is documented in `src/backend/AGENTS.md` §2.4: **every top-level
+The backend convention is documented in `src/backend/AGENTS.md` §2: **every top-level
 backend function must have a trailing underscore**. The only public entrypoints are:
 
 | Entrypoint       | File                                     | Purpose                                     |
@@ -65,7 +65,7 @@ are registered in `ALLOWLISTED_METHOD_HANDLERS` (`src/backend/z_Api/z_apiHandler
 keys of a frozen `const` object whose values are anonymous closures, or closures that
 delegate to trailing-underscore helpers such as `getBackendConfig_` or `getABClass_`.
 Anonymous closures in a `const` object are not globals, so they are not exposed to
-`google.script.run` (see `src/backend/AGENTS.md` §1.1).
+`google.script.run` (see `src/backend/AGENTS.md` §4).
 
 ## The guard test
 
@@ -99,14 +99,14 @@ The private-by-default convention reduces the surface to three entrypoints. Two 
 then funnel every meaningful operation through exactly one dispatch path each:
 
 - **Frontend transport:** `apiHandler` is the sole transport entrypoint for frontend
-  calls (backend AGENTS §1.1). On the frontend side the hard rule is that _all_
+  calls (backend AGENTS §4). On the frontend side the hard rule is that _all_
   frontend-to-backend calls must route through `callApi` in
   `src/frontend/src/services/apiService.ts` — never `google.script.run` directly from
-  feature code (frontend AGENTS §5.1). The two halves meet at the allowlisted method name:
+  feature code (frontend AGENTS §2). The two halves meet at the allowlisted method name:
   the frontend passes a method string and `apiHandler` looks it up in
   `ALLOWLISTED_METHOD_HANDLERS`.
 - **Sole transport registry:** `ALLOWLISTED_METHOD_HANDLERS` in `z_apiHandler.js` is the
-  single authoritative registry for frontend-callable methods. Backend AGENTS §1.1
+  single authoritative registry for frontend-callable methods. Backend AGENTS §4
   explicitly forbids parallel method-name registries. A method is reachable from the
   frontend if and only if it has an entry in this object.
 - **Trigger equivalent:** scheduled work funnels through the single `triggerHandler`
@@ -151,8 +151,8 @@ code, message, isRetriable, details? }`). `_mapErrorToFailureEnvelope` in
   `Date`, `Function` and DOM elements in return values; a live `Date` degrades GAS
   serialisation to non-JSON output that the frontend parses as `null`. Handlers therefore
   convert live `Date` objects to ISO 8601 strings before returning, via
-  `DateUtils.normaliseDateFields` or `DateUtils.deepConvertDates` (backend AGENTS §9,
-  frontend AGENTS §5.3, and `docs/developer/backend/api-layer.md`). This keeps the
+  `DateUtils.normaliseDateFields` or `DateUtils.deepConvertDates` (backend AGENTS §2 and
+  `docs/developer/backend/api-layer.md`). This keeps the
   transport boundary JSON-clean.
 - **Logging hygiene.** `ABLogger` is the mandatory logging primitive for backend code,
   and the policy forbids logging secrets, credentials, tokens or API keys
@@ -180,5 +180,5 @@ code, message, isRetriable, details? }`). `_mapErrorToFailureEnvelope` in
   envelope contract
 - [BackendConfig contract](../data-shapes/backend-config.md) — API key masking and
   `REDACTED` error aggregation
-- [`src/backend/AGENTS.md`](../../../src/backend/AGENTS.md) — §1.1 (sole-transport pattern)
-  and §2.4 (private-by-default convention and security audit)
+- [`src/backend/AGENTS.md`](../../../src/backend/AGENTS.md) — §2 (private-by-default convention)
+  and §4 (sole-transport pattern and API entry layer)

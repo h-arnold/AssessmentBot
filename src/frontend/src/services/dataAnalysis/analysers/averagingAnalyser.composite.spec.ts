@@ -3,8 +3,8 @@ import {
   createComputedMetricResult,
   createErrorMetricResult,
   createNotAttemptedMetricResult,
-} from '../../../test/dataAnalysis/fixtures';
-import { FLOAT_TOLERANCE } from '../../../test/dataAnalysis/averagingAnalyserAssertions';
+} from '@/test/dataAnalysis/fixtures';
+import { FLOAT_TOLERANCE } from '@/test/dataAnalysis/averagingAnalyserAssertions';
 import { computeOverallComposite } from './averagingAnalyser.composite';
 
 const STANDARD_WEIGHTS = { completeness: 0.4, accuracy: 0.4, spag: 0.2 };

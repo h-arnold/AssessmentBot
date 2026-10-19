@@ -117,6 +117,14 @@ Test helper placement rules remain governed by `docs/developer/frontend/frontend
 - Effective weighting: `src/frontend/src/services/assignmentDefinition/assignmentDefinitionUtilities.ts` — `TaskWeightingIndex` and `computeEffectiveWeight`, the single effective-weight resolver for analyser accumulation and heatmap column projection.
 - Assignment-weighting coercion: `src/frontend/src/services/assignmentDefinition/assignmentDefinitionUtilities.ts` — `coerceAssignmentWeighting(value: unknown): number`, which returns every primitive number unchanged and falls back to the schema-owned `DEFAULT_WEIGHTING_VALUE` only for non-numbers. It is **distinct from `computeEffectiveWeight`** (different nullable/validation semantics) and is the form-level coercion consumed by the wizard dirty checks, the save/reparse builders and recovery approval. The legacy `assignmentWizardFormState.ts` export path re-exports the same binding and must be retained for existing consumers.
 
+### 3.9 Shared input components
+
+- `SelectWithAddNew` (status: Implemented): Ant Design `Select` wrapper at `src/frontend/src/components/SelectWithAddNew/SelectWithAddNew.tsx` that appends one `Add new` sentinel option. Selecting it is an immediate **command**, not a value. Consumers: `features/classes/bulk/BulkCreateModal.tsx`, `features/classes/bulk/BulkSetSelectModal.tsx` and `features/assignmentWizard/AssignmentDefinitionWizardReviewContent.tsx`. Contract:
+  - **Dispatch is immediate.** The wrapper calls `onAddNew` synchronously from the selection change and never forwards the sentinel through the caller's `onChange`. It has no `debounceMs` prop; do not reintroduce a delay on this modal-open command. `src/frontend/src/hooks/useDebounce.ts` is unchanged for its other callers.
+  - **Value ownership.** A controlled `value` prop (detected by property presence, so explicit `undefined` counts) stays authoritative, and a nullish value is passed to Ant Design as `null` so its internal uncontrolled sentinel cannot leak. Without a `value` prop the wrapper tracks the normal selection itself, seeded from `defaultValue`; normal `onChange`, `allowClear` and `labelInValue` payloads keep their original shape, including the labelled `{ value, label }` object.
+  - **State stays with the caller.** The wrapper keeps no timers, callback registry or created-entity state. The caller owns the manager-modal open state, and its open transition is idempotent.
+  - Placement rationale: the wrapper is a cross-feature shared component with three active callers, so it belongs in `components/`; its value handling is not a general helper and must stay local to it.
+
 ## 4. Extraction decision rules
 
 ### 4.1 Keep logic local when
@@ -153,6 +161,7 @@ Reject these patterns during implementation and review:
 - Keep feature-specific helpers inside the owning feature folder.
 - Name helpers by the contract they provide, not by where they were extracted from.
 - Prefer explicit function exports and typed return contracts.
+- Service-folder grouping conventions: `docs/developer/frontend/frontend-architecture.md`.
 
 ## 7. Review and PR checks
 
@@ -164,7 +173,7 @@ For frontend changes that add or modify helpers, include a short helper audit in
 
 Reviewer checks:
 
-1. no unjustified one-caller abstraction extraction
+1. no unjustified one-caller abstraction extraction, and no duplicated shared-helper logic (treat duplicated helper logic as a Critical review issue)
 2. no duplicated orchestration added where descriptor/config derivation is feasible
 3. no duplicate source of truth for routing/render mapping
 4. no duplicated validation-error source of truth without explicit contract boundaries
@@ -207,6 +216,7 @@ Rules for new entries:
 ### Rejected and superseded designs
 
 - **9.24 Generic wizard orchestrator hook and entry-intent taxonomy — superseded and removed.** `resolveWizardEntryMode`, `useAssignmentWizardOrchestrator`, and the `{kind: ...}` recovery entry intent were deleted once `useAssessTaskRecoveryFlow` owned stale recovery. Only `buildReparseRequest` survives, in `src/frontend/src/features/assignmentWizard/assignmentWizardOrchestrator.ts`. Do not re-propose a generic entry-mode layer.
+- **9.27 Debounced `Add new` dispatch — superseded.** `src/frontend/src/components/SelectWithAddNew/SelectWithAddNew.tsx` previously routed the sentinel command through the shared `useDebounce` hook behind a `debounceMs` prop. Opening a caller-owned modal is an immediate, idempotent state transition, so dispatch is now synchronous and the prop is removed; `useDebounce` and its other callers are unchanged. Do not reinstate a debounce on this command path.
 
 ### Delivered decisions kept for existing cross-references
 
@@ -221,6 +231,7 @@ These came out of the de-sloppification passes and cannot be recovered from read
 - **Disabled-reason accessibility**: expose a disabled control's reason both as a hover `Tooltip` and as an sr-only `aria-describedby` node; mediate the antd `Tooltip` `cloneElement` wrapper with an intermediate `<span>` so the described-by binding survives.
 - **antd `Table` `defaultSortOrder`** does not apply the initial sort in the installed version; pre-sort the `dataSource` instead (for example `rows.toSorted(compareStudentNames)`).
 - **Disabled `Button` tooltips** need a `<span>` wrapper: antd v6 `Tooltip` does not trigger on a disabled button. This is the established codebase pattern.
+- **antd `Select` advances its internal selection before the wrapper's `onChange` runs.** Intercepting the `Add new` sentinel inside `onChange` is therefore too late to stop it becoming the displayed label unless the wrapper owns the value. `SelectWithAddNew` consequently tracks its own uncontrolled selection (seeded from `defaultValue`) and passes the parent value, or `null` when absent, so an intercepted command never renders as a selected value.
 
 ## 9.26 Task preview source link decisions (issue #19)
 
@@ -254,10 +265,10 @@ reference these entries.
 
 ## 10. Frontend utils folder convention
 
-The `src/frontend/src/utils/` folder exists for pure formatting / utility functions that are shared across the frontend. This folder is a separate convention from `src/frontend/AGENTS.md` §14, which governs only `services/` subfolder organisation.
+The `src/frontend/src/utils/` folder exists for pure formatting / utility functions that are shared across the frontend. This folder is a separate convention from the service-folder rules in `frontend-architecture.md`, which govern only `services/` subfolder organisation.
 
 ### Rules
 
 - **Pure functions only.** Files in `utils/` must have no React, Ant Design, I/O, or state dependencies. They are plain TypeScript modules exporting typed pure functions.
-- **No `src/frontend/AGENTS.md` §14 governance.** The §14 subfolder-by-domain-prefix rule applies only to `services/`. The `utils/` folder is a flat namespace; files are named by the domain they format (e.g. `dateFormatting.ts`). A future subfolder reorganisation may be considered if the folder exceeds 5–6 files, but no barrel exports (`index.ts`) are created in v1 — consumers import directly.
+- **No service-folder governance.** The subfolder-by-domain-prefix rule in `frontend-architecture.md` applies only to `services/`. The `utils/` folder is a flat namespace; files are named by the domain they format (e.g. `dateFormatting.ts`). A future subfolder reorganisation may be considered if the folder exceeds 5–6 files, but no barrel exports (`index.ts`) are created in v1 — consumers import directly.
 - **First entry:** `dateFormatting.ts` — exports `formatUpdatedAtLabel(updatedAt: string | null): string` (`en-GB`, date-only, rendered in UTC; em-dash fallback for null or unparseable input). The Class page adapter deliberately does not use the fallback: it throws upstream on null or unparseable input.

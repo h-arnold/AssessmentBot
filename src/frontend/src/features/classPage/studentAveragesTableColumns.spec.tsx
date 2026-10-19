@@ -13,12 +13,12 @@ import {
 } from './studentAveragesTableColumns';
 import type { StudentAveragesTableFilters } from './studentAveragesTableColumns';
 import type { StudentAverageRowModel } from './classPageAdapter.zod';
-import { isMetricInRange } from '../../services/dataAnalysis/metricDisplay/metricRangeFilter';
+import { isMetricInRange } from '@/services/dataAnalysis/metricDisplay/metricRangeFilter';
 import {
   createComputedMetricResult,
   createNotAttemptedMetricResult,
   createErrorMetricResult,
-} from '../../test/dataAnalysis/fixtures';
+} from '@/test/dataAnalysis/fixtures';
 
 // ---------------------------------------------------------------------------
 // Constants

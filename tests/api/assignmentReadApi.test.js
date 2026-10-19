@@ -18,7 +18,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const MODULE_PATH = '../../src/backend/z_Api/assignmentAssessment.js';
-const ApiValidationError = require('../../src/backend/Utils/ErrorTypes/ApiValidationError.js');
+const ApiValidationError = require('#backend/Utils/ErrorTypes/ApiValidationError.js');
 
 /**
  * Attempts to load the assignmentAssessment transport module.
@@ -366,7 +366,7 @@ describe('Api/getAssignment transport contract', () => {
     const abLoggerSpies = { info: vi.fn(), warn: vi.fn(), error: vi.fn() };
     globalThis.ABLogger = { getInstance: () => abLoggerSpies };
 
-    const AssignmentNotFoundError = require('../../src/backend/Utils/ErrorTypes/AssignmentNotFoundError.js');
+    const AssignmentNotFoundError = require('#backend/Utils/ErrorTypes/AssignmentNotFoundError.js');
     const { readRehydrateAssignment } = installABClassControllerStub();
     const { getAssignment_ } = loadModule();
 

@@ -4,15 +4,15 @@ import userEvent from '@testing-library/user-event';
 import { createElement } from 'react';
 import { App } from 'antd';
 import { QueryClientProvider } from '@tanstack/react-query';
-import { mockGetAssignment } from '../../test/taskHeatmapPageMocks';
+import { mockGetAssignment } from '@/test/taskHeatmapPageMocks';
 import {
   analyserResultFixture,
   buildDefaultAssignmentFixture,
   classFullFixture,
   VALID_ASSIGNMENT_PARTIAL,
-} from '../../test/taskHeatmapPageFixtures';
-import { createTestQueryClient } from '../../test/dataAnalysis/heatmapFixtures';
-import { expectReRunButtonOrdering } from '../../test/shared/buttonOrderingTestHelpers';
+} from '@/test/taskHeatmapPageFixtures';
+import { createTestQueryClient } from '@/test/dataAnalysis/heatmapFixtures';
+import { expectReRunButtonOrdering } from '@/test/shared/buttonOrderingTestHelpers';
 import { TaskHeatmapPage } from './TaskHeatmapPage';
 import type { ReRunContext } from '../shared/reRunAssessmentContext';
 

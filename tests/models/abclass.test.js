@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { ABClass } from '../../src/backend/Models/ABClass.js';
+import { ABClass } from '#backend/Models/ABClass.js';
 
 describe('ABClass model – key-based metadata contract', () => {
   let origConfigMgr;

@@ -15,15 +15,13 @@ describe('SlidesParser extractTextFromShape invalid-shape regression', () => {
   const savedModuleGlobals = saveGlobals(['DocumentParser', 'TaskDefinition']);
 
   beforeAll(async () => {
-    const documentParserModule =
-      await import('../../src/backend/DocumentParsers/DocumentParser.js');
-    const taskDefinitionModule = await import('../../src/backend/Models/TaskDefinition.js');
+    const documentParserModule = await import('#backend/DocumentParsers/DocumentParser.js');
+    const taskDefinitionModule = await import('#backend/Models/TaskDefinition.js');
 
     globalThis.DocumentParser = documentParserModule.DocumentParser;
     globalThis.TaskDefinition = taskDefinitionModule.TaskDefinition;
 
-    const slidesParserModule =
-      await import('../../src/backend/DocumentParsers/SlidesParser/index.js');
+    const slidesParserModule = await import('#backend/DocumentParsers/SlidesParser/index.js');
     SlidesParser = slidesParserModule.SlidesParser;
   });
 

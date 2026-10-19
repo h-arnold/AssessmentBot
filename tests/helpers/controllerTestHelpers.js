@@ -260,9 +260,9 @@ export async function setupAssignmentControllerTest(vi) {
   const mocks = setupControllerTestMocks(vi);
 
   const [abClassModule, assignmentModule, abClassControllerModule] = await Promise.all([
-    import('../../src/backend/Models/ABClass.js'),
-    import('../../src/backend/AssignmentProcessor/Assignment/index.js'),
-    import('../../src/backend/y_controllers/ABClassController'),
+    import('#backend/Models/ABClass.js'),
+    import('#backend/AssignmentProcessor/Assignment/index.js'),
+    import('#backend/y_controllers/ABClassController/index.js'),
   ]);
 
   return {

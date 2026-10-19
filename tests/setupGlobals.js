@@ -116,6 +116,9 @@ g.ScriptAppManager = class ScriptAppManager {
 };
 
 g.Validate = require('../src/backend/Utils/Validate.js').Validate;
+g.ABClassMetadataValidationError =
+  require('../src/backend/Utils/ErrorTypes/ABClassMetadataValidationError.js').ABClassMetadataValidationError;
+g.ABClassMetadata = require('../src/backend/Models/ABClassMetadata.js').ABClassMetadata;
 g.ArrayUtils = require('../src/backend/Utils/00_ArrayUtils.js');
 
 g.DateUtils = require('../src/backend/Utils/DateUtils.js');
@@ -414,6 +417,7 @@ g.AssignmentDefinitionResponseMapper = require('../src/backend/y_controllers/Ass
 // Load ABClassController sub-classes as globals (mirroring GAS concatenation order so
 // index.js can reference them by name when require() calls are absent in production).
 g.ABClassValidation = require('../src/backend/y_controllers/ABClassController/ABClassValidation.js');
+g.ABClassMutationOps = require('../src/backend/y_controllers/ABClassController/ABClassMutationOps.js');
 g.ABClassPersistence = require('../src/backend/y_controllers/ABClassController/ABClassPersistence.js');
 g.ABClassRoster = require('../src/backend/y_controllers/ABClassController/ABClassRoster.js');
 g.ABClassAssignmentOps = require('../src/backend/y_controllers/ABClassController/ABClassAssignmentOps.js');

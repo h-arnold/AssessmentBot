@@ -13,15 +13,15 @@
 
 import { act, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import '../../../test/classes/AssessTaskModal.mockSetup';
-import { startAssessmentRun } from '../../../services/assignmentAssessment/assignmentAssessmentService';
-import { upsertAssignmentDefinition } from '../../../services/assignmentDefinition/assignmentDefinitionService';
-import { setTextboxValue } from '../../../test/assignmentDefinition/wizardTestHelpers';
+import '@/test/classes/AssessTaskModal.mockSetup';
+import { startAssessmentRun } from '@/services/assignmentAssessment/assignmentAssessmentService';
+import { upsertAssignmentDefinition } from '@/services/assignmentDefinition/assignmentDefinitionService';
+import { setTextboxValue } from '@/test/assignmentDefinition/wizardTestHelpers';
 import {
   expectAssessmentSuccessSurface,
   MOCK_CLASS_ID,
-} from '../../../test/classes/AssessTaskModal.test-utilities';
-import type { AssignmentDefinition } from '../../../services/assignmentDefinition/assignmentDefinition.zod';
+} from '@/test/classes/AssessTaskModal.test-utilities';
+import type { AssignmentDefinition } from '@/services/assignmentDefinition/assignmentDefinition.zod';
 import {
   ASSIGNMENT_TITLE_PATTERN,
   CANCEL_BUTTON,
@@ -55,7 +55,7 @@ import {
   setDefinitionLoadFailure,
   triggerStalePrompt,
   waitForSelectionBody,
-} from '../../../test/classes/AssessTaskModal.recovery-helpers';
+} from '@/test/classes/AssessTaskModal.recovery-helpers';
 /**
  * Expected call count for a two-step recovery journey (reparse then retry, or
  * stale start then resumed start).

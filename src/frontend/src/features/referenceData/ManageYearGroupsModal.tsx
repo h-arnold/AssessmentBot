@@ -15,13 +15,13 @@
 
 import { Button, Space, type TableColumnType } from 'antd';
 import type { UseQueryOptions } from '@tanstack/react-query';
-import type { YearGroup } from '../../services/referenceData/referenceData.zod';
+import type { YearGroup } from '@/services/referenceData/referenceData.zod';
 import {
   createYearGroup,
   deleteYearGroup,
   updateYearGroup,
-} from '../../services/referenceData/referenceDataService';
-import { getYearGroupsQueryOptions } from '../../query/sharedQueries';
+} from '@/services/referenceData/referenceDataService';
+import { getYearGroupsQueryOptions } from '@/query/sharedQueries';
 import { ReferenceDataInitialLoadingState } from './ReferenceDataInitialLoadingState';
 import { ReferenceDataManagementModalScaffold } from './ReferenceDataManagementModalScaffold';
 import { useReferenceDataManagement } from './useReferenceDataManagement';

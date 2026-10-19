@@ -10,7 +10,7 @@
  */
 import { describe, it, expect } from 'vitest';
 
-const AuthService = require('../../../src/backend/Utils/AuthService.js');
+const AuthService = require('#backend/Utils/AuthService.js');
 
 describe('AuthService provider architecture', () => {
   it('keeps AuthService.getInstance() as the sole caller entrypoint', () => {

@@ -31,14 +31,14 @@
 import type { JSX } from 'react';
 import { useEffect, useMemo, useRef } from 'react';
 import { Checkbox, Flex, Select, Space, Tooltip, Typography } from 'antd';
-import type { ClassFull } from '../../services/googleClassrooms/classDetail/classDetailService.zod';
-import type { ClassPartial } from '../../services/googleClassrooms/classPartialsService';
-import type { AssignmentDefinitionPartialsResponse } from '../../services/assignmentDefinition/assignmentDefinitionPartials.zod';
-import { getAssignmentDefinitionPartial } from '../../services/assignmentDefinition/assignmentDefinitionUtilities';
-import { pageContent } from '../../pages/pageContent';
-import { logFrontendEvent } from '../../logging/frontendLogger';
+import type { ClassFull } from '@/services/googleClassrooms/classDetail/classDetailService.zod';
+import type { ClassPartial } from '@/services/googleClassrooms/classPartialsService';
+import type { AssignmentDefinitionPartialsResponse } from '@/services/assignmentDefinition/assignmentDefinitionPartials.zod';
+import { getAssignmentDefinitionPartial } from '@/services/assignmentDefinition/assignmentDefinitionUtilities';
+import { pageContent } from '@/pages/pageContent';
+import { logFrontendEvent } from '@/logging/frontendLogger';
 import type { SelectionState } from './selectionCascade';
-import { APP_GAP_MD, APP_GAP_SM } from '../../theme/spacing';
+import { APP_GAP_MD, APP_GAP_SM } from '@/theme/spacing';
 
 /** Stable DOM id for the disabled-reason description node (I2). */
 const DISABLED_REASON_ID = 'heatmap-selection-disabled-reason';

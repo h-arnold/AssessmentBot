@@ -67,7 +67,7 @@ globalThis.ProgressTracker = {
 };
 
 // Load the controller
-const AssignmentController = require('../../../src/backend/y_controllers/AssignmentController.js');
+const AssignmentController = require('#backend/y_controllers/AssignmentController.js');
 
 // =========================================================================
 // Tests

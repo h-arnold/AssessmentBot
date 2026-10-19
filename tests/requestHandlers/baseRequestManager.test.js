@@ -79,7 +79,7 @@ describe('BaseRequestManager Error Handling', () => {
     };
 
     // Load AbortRequestError
-    const AbortRequestError = require('../../src/backend/Utils/ErrorTypes/AbortRequestError.js');
+    const AbortRequestError = require('#backend/Utils/ErrorTypes/AbortRequestError.js');
 
     // Mock console methods to avoid noise in test output
     const mockConsole = {
@@ -105,7 +105,7 @@ describe('BaseRequestManager Error Handling', () => {
     delete require.cache[
       require.resolve('../../src/backend/RequestHandlers/BaseRequestManager.js')
     ];
-    const module = require('../../src/backend/RequestHandlers/BaseRequestManager.js');
+    const module = require('#backend/RequestHandlers/BaseRequestManager.js');
     BaseRequestManager = module.BaseRequestManager || module;
   });
 

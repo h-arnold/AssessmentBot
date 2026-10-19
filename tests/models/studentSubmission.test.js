@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { TaskDefinition } from '../../src/backend/Models/TaskDefinition.js';
-import { StudentSubmission } from '../../src/backend/Models/StudentSubmission.js';
+import { TaskDefinition } from '#backend/Models/TaskDefinition.js';
+import { StudentSubmission } from '#backend/Models/StudentSubmission.js';
 import { createMockABLogger } from '../helpers/mockFactories.js';
 
 describe('StudentSubmission', () => {

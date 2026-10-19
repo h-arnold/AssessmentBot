@@ -1,4 +1,4 @@
-import { callApi, parseApiResponse } from '../../apiService';
+import { callApi, parseApiResponse } from '@/services/apiService';
 import { ClassFullResponseSchema, type ClassFull } from './classDetailService.zod';
 
 export type {

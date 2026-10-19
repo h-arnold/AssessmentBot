@@ -2,7 +2,7 @@ import { Button, Modal, Space, Typography } from 'antd';
 import { useCallback, type JSX } from 'react';
 import {
   APP_SPACE_SIZE_DEFAULT,
-} from '../../theme/spacing';
+} from '@/theme/spacing';
 
 const { Text } = Typography;
 

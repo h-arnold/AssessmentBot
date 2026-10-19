@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { Assessment } from '../../src/backend/Models/Assessment.js';
+import { Assessment } from '#backend/Models/Assessment.js';
 
 describe('Assessment', () => {
   beforeEach(() => {

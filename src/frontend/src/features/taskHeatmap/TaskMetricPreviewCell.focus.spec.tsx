@@ -36,7 +36,7 @@ import { describe, it, expect, afterEach, beforeEach } from 'vitest';
 import { cleanup, act, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
-import type { PreviewCellHarness } from '../../test/taskHeatmap/previewSourceActionTestHelpers';
+import type { PreviewCellHarness } from '@/test/taskHeatmap/previewSourceActionTestHelpers';
 import {
   dispatchCancelableKeydown,
   findSourceAction,
@@ -44,7 +44,7 @@ import {
   renderPreviewCell,
   waitForPreviewContent,
   waitForPreviewDismissed,
-} from '../../test/taskHeatmap/previewSourceActionTestHelpers';
+} from '@/test/taskHeatmap/previewSourceActionTestHelpers';
 
 let user: ReturnType<typeof userEvent.setup>;
 let harness: PreviewCellHarness;

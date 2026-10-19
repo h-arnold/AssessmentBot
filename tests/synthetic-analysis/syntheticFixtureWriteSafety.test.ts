@@ -13,12 +13,12 @@ import { fileURLToPath } from 'node:url';
 
 import { afterAll, describe, expect, it, vi } from 'vitest';
 
-import { writeProfileFixtures } from '../../scripts/synthetic-test-data/fixtureWriter.js';
+import { writeProfileFixtures } from '#synthetic-data/fixtureWriter.js';
 import {
   generateCommittedProfiles,
   generateFullProfile,
-} from '../../scripts/synthetic-test-data/generateSyntheticAnalysisFixtures.js';
-import { generateSyntheticAnalysisGraph } from '../../scripts/synthetic-test-data/generateSyntheticAnalysisGraph.js';
+} from '#synthetic-data/generateSyntheticAnalysisFixtures.js';
+import { generateSyntheticAnalysisGraph } from '#synthetic-data/generateSyntheticAnalysisGraph.js';
 
 const REPOSITORY_ROOT = fileURLToPath(new URL('../../', import.meta.url));
 const COMMITTED_FIXTURE_ROOT = 'tests/__mocks__/data/synthetic-analysis';

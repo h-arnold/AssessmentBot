@@ -10,7 +10,7 @@
  *
  * The heavy lifting is delegated to feature-local helpers (kept in separate modules
  * to honour the 500-LOC module-size gate
- * (per `src/frontend/AGENTS.md` §3.3)):
+ * (per `docs/developer/frontend/frontend-architecture.md`)):
  *
  * - `heatmapsSurfaceState.ts` — pure surface-state / blocking-error derivation.
  * - `heatmapsPipeline.ts` — synchronous analyser + merged-adapter pipeline
@@ -53,16 +53,16 @@ import {
   type UseQueryOptions,
   type UseQueryResult,
 } from '@tanstack/react-query';
-import { getABClassQueryOptions, getAssignmentQueryOptions } from '../../query/sharedQueries';
-import { queryKeys } from '../../query/queryKeys';
-import { usePageDataset } from '../../hooks/usePageDataset';
-import { toError } from '../../errors/normaliseUnknownError';
-import type { AveragingResult } from '../../services/dataAnalysis/dataAnalysis.zod';
-import type { ClassFull } from '../../services/googleClassrooms/classDetail/classDetailService.zod';
-import type { AssignmentFull } from '../../services/assignmentAssessment/assignmentAssessment.zod';
-import type { AssignmentDefinitionPartialsResponse } from '../../services/assignmentDefinition/assignmentDefinitionPartials.zod';
-import type { ClassPartial } from '../../services/googleClassrooms/classPartialsService';
-import type { MergedHeatmapResult } from '../../services/dataAnalysis/heatmapAdapter.merged';
+import { getABClassQueryOptions, getAssignmentQueryOptions } from '@/query/sharedQueries';
+import { queryKeys } from '@/query/queryKeys';
+import { usePageDataset } from '@/hooks/usePageDataset';
+import { toError } from '@/errors/normaliseUnknownError';
+import type { AveragingResult } from '@/services/dataAnalysis/dataAnalysis.zod';
+import type { ClassFull } from '@/services/googleClassrooms/classDetail/classDetailService.zod';
+import type { AssignmentFull } from '@/services/assignmentAssessment/assignmentAssessment.zod';
+import type { AssignmentDefinitionPartialsResponse } from '@/services/assignmentDefinition/assignmentDefinitionPartials.zod';
+import type { ClassPartial } from '@/services/googleClassrooms/classPartialsService';
+import type { MergedHeatmapResult } from '@/services/dataAnalysis/heatmapAdapter.merged';
 import {
   selectionCascadeReducer,
   INITIAL_SELECTION_STATE,

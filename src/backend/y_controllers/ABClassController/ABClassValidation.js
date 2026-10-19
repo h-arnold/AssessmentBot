@@ -1,3 +1,5 @@
+/* global ABClassMetadata, ABClassMetadataValidationError */
+
 /**
  * ABClassValidation
  *
@@ -5,6 +7,57 @@
  * and error classification. No DB or service dependencies — pure validation.
  */
 class ABClassValidation {
+  /**
+   * Validates explicitly supplied request metadata before mutation side effects.
+   * Only failures from the shared metadata-domain validator acquire request provenance.
+   * @param {Object} parameters - Original mutation request parameters.
+   * @returns {void}
+   * @throws {ABClassMetadataValidationError} If supplied metadata is invalid.
+   * @private
+   */
+  _validateRequestMetadata(parameters) {
+    if (!Object.hasOwn(parameters, 'metadata')) return;
+
+    try {
+      ABClassMetadata.validateMetadata(parameters.metadata, 'metadata');
+    } catch (error) {
+      if (error instanceof ABClassMetadataValidationError) error.inputSource = 'request';
+      throw error;
+    }
+  }
+
+  /**
+   * Validates the legacy saveClass input contract shared by the facade and mutation owner.
+   * @param {ABClass|Object} abClass - Model or plain object to persist.
+   * @returns {void}
+   * @throws {TypeError} If the input is incomplete or has an unsafe classId.
+   */
+  _validateClassForSave(abClass) {
+    if (!abClass || typeof abClass !== 'object') {
+      throw new TypeError(
+        'saveClass: expected an ABClass instance or plain object with classId and toPartialJSON()'
+      );
+    }
+
+    if (!Object.hasOwn(abClass, 'classId')) {
+      throw new TypeError('saveClass: missing required classId property on abClass argument');
+    }
+
+    if (typeof abClass.classId !== 'string' || abClass.classId.trim().length === 0) {
+      throw new TypeError('saveClass: expected abClass.classId to be a non-empty string');
+    }
+
+    if (abClass.classId.includes('..') || abClass.classId.includes('/')) {
+      throw new TypeError('saveClass: invalid classId format');
+    }
+
+    if (typeof abClass.toPartialJSON !== 'function') {
+      throw new TypeError(
+        'saveClass: expected abClass.toPartialJSON() to be a function for partial persistence'
+      );
+    }
+  }
+
   /**
    * Validates that a classId is a non-empty string.
    * @param {*} classId - The class ID to validate.
@@ -74,16 +127,21 @@ class ABClassValidation {
    * @param {*} [parameters.yearGroupKey] - Optional year group key value.
    * @param {*} [parameters.courseLength] - Optional course length (validated).
    * @param {boolean} [parameters.active] - Optional active flag.
+   * @param {Object|null} [parameters.metadata] - Optional complete assessment-summary replacement; null clears it.
    * @returns {Object} Patch object containing only provided fields.
    */
   _buildUpdatePatch(parameters) {
     const patch = {};
 
     if (Object.hasOwn(parameters, 'cohortKey')) {
+      if (parameters.cohortKey === undefined)
+        throw new TypeError('updateABClass: cohortKey must not be undefined.');
       patch.cohortKey = parameters.cohortKey === null ? null : String(parameters.cohortKey);
     }
 
     if (Object.hasOwn(parameters, 'yearGroupKey')) {
+      if (parameters.yearGroupKey === undefined)
+        throw new TypeError('updateABClass: yearGroupKey must not be undefined.');
       patch.yearGroupKey =
         parameters.yearGroupKey === null ? null : String(parameters.yearGroupKey);
     }
@@ -96,14 +154,19 @@ class ABClassValidation {
       patch.active = parameters.active;
     }
 
+    if (Object.hasOwn(parameters, 'metadata')) {
+      patch.metadata = parameters.metadata;
+    }
+
     return patch;
   }
 
   /**
    * Applies a patch object to an ABClass instance, updating specified fields.
    * @param {ABClass} abClass - The class instance to update.
-   * @param {Object} patch - The patch object containing fields to update.
+   * @param {Object} patch - The patch object containing fields to update. A `metadata` value uses `ABClass.setMetadata()` for complete replacement; nested fields are not merged.
    * @returns {ABClass} The updated class instance.
+   * @throws {ABClassMetadataValidationError} If replacement metadata fails domain validation or model-integrity checks.
    */
   _applyPatchToClass(abClass, patch) {
     if (Object.hasOwn(patch, 'cohortKey')) {
@@ -120,6 +183,10 @@ class ABClassValidation {
 
     if (Object.hasOwn(patch, 'active')) {
       abClass.active = patch.active;
+    }
+
+    if (Object.hasOwn(patch, 'metadata')) {
+      abClass.setMetadata(patch.metadata);
     }
 
     return abClass;

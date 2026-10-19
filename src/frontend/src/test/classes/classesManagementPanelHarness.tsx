@@ -1,6 +1,6 @@
 import { vi } from 'vitest';
 import { renderWithFrontendProviders } from '../renderWithFrontendProviders';
-import type { useClassesBulkMutationQueue } from '../../features/classes/useClassesBulkMutationQueue';
+import type { useClassesBulkMutationQueue } from '@/features/classes/useClassesBulkMutationQueue';
 import { buildClassesManagementState } from './classesTestHelpers';
 
 type QueueState = ReturnType<typeof useClassesBulkMutationQueue>;
@@ -35,7 +35,7 @@ export function createClassesManagementPanelHarness(
     },
     async renderPanel() {
       const { ClassesManagementPanel } =
-        await import('../../features/classes/ClassesManagementPanel');
+        await import('@/features/classes/ClassesManagementPanel');
       return renderWithFrontendProviders(<ClassesManagementPanel />);
     },
     reset() {

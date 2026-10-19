@@ -53,9 +53,9 @@ When a section is delegated to sub-agents, the plan must define the mandatory do
 For each delegated phase (`Testing Specialist`, `Implementation`, `Code Reviewer`, `Docs`, `De-Sloppification`, or planning agents when used):
 
 1. list required documentation file paths under that phase before delegation, written as
-   `@`-prefixed worktree-relative paths (e.g. `@SPEC.md`, `@src/backend/Services/AssessmentService.js`)
-   so opencode injects the line-numbered file contents into the sub-agent prompt — never paste
-   file contents into the prompt body
+   `@`-prefixed paths (e.g. `@SPEC.md`, `@src/backend/Services/AssessmentService.js`).
+   The `.opencode/plugins/at-mention-inject/` plugin attaches each `@path` token's contents
+   to the sub-agent prompt — never paste file contents into the prompt body
 
 Injection is the delivery mechanism, so no read-evidence report is required from the sub-agent.
 
@@ -91,9 +91,9 @@ When a section is likely to introduce helper reuse, helper extension, or new sha
 
 ### Delegation mandatory reads (when sub-agents are used)
 
-List every mandatory file as an `@`-prefixed worktree-relative path (e.g. `@SPEC.md`,
-`@src/backend/...`) so the orchestrator's delegation prompt injects the file contents
-automatically; do not paste file contents into the prompt body.
+List every mandatory file as an `@`-prefixed path (e.g. `@SPEC.md`,
+`@src/backend/...`) so the `at-mention-inject` plugin attaches the file contents
+to the delegation prompt automatically; do not paste file contents into the prompt body.
 
 Testing Specialist mandatory docs:
 

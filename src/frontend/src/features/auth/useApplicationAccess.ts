@@ -1,6 +1,6 @@
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
-import { getApplicationAccessQueryOptions } from '../../query/sharedQueries';
-import type { ApplicationAccess } from '../../services/authService/authService.zod';
+import { getApplicationAccessQueryOptions } from '@/query/sharedQueries';
+import type { ApplicationAccess } from '@/services/authService/authService.zod';
 
 /**
  * Resolves the caller's application access state for the active session.

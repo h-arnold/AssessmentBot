@@ -12,7 +12,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { compareStudentNames } from '../../services/dataAnalysis/compareStudentNames';
+import { compareStudentNames } from '@/services/dataAnalysis/compareStudentNames';
 
 // -----------------------------------------------------------------------
 // compareStudentNames

@@ -1,5 +1,5 @@
 import Fuse from 'fuse.js';
-import type { AssignmentDefinitionPartial } from '../../../services/assignmentDefinition/assignmentDefinitionPartials.zod';
+import type { AssignmentDefinitionPartial } from '@/services/assignmentDefinition/assignmentDefinitionPartials.zod';
 
 /**
  * Derived shape used by the `LinkableDefinitionList` picker rows.

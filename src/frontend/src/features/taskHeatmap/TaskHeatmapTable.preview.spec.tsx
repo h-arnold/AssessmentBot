@@ -8,7 +8,7 @@ import {
   getHeatmapCellByLabel,
   POPULATED_LOOKUP,
   EMPTY_LOOKUP,
-} from '../../test/taskHeatmapTableTestHelpers';
+} from '@/test/taskHeatmapTableTestHelpers';
 import type { CellPreviewLookup } from './buildCellPreviewLookup';
 import type * as TaskPreviewDataModule from './assembleTaskPreviewData';
 

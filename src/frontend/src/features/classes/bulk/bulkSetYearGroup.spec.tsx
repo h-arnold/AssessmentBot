@@ -6,14 +6,14 @@
  */
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { YearGroup } from '../../../services/referenceData/referenceData.zod';
+import type { YearGroup } from '@/services/referenceData/referenceData.zod';
 import type { ClassesManagementRow } from '../classesManagementViewModel';
 import type { BatchProgressSnapshot } from './runQueuedBatchMutation';
 import {
   assertQueuedBatchMutationCalledOnce,
   assertSingleSelectedRowEdit,
   makeRow,
-} from '../../../test/classes/bulkFlowTestHelpers';
+} from '@/test/classes/bulkFlowTestHelpers';
 
 const runQueuedBatchMutationMock = vi.hoisted(() => vi.fn());
 

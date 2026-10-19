@@ -10,7 +10,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 // The new file does NOT exist yet — this is the RED-phase failure point.
 const validationModulePath = '../../src/backend/z_Api/abclass/abclassValidation.js';
-const ApiValidationError = require('../../src/backend/Utils/ErrorTypes/ApiValidationError.js');
+const ApiValidationError = require('#backend/Utils/ErrorTypes/ApiValidationError.js');
 
 let abclassValidationModule;
 

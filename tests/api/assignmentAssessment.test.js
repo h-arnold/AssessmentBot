@@ -11,7 +11,7 @@
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-const ApiValidationError = require('../../src/backend/Utils/ErrorTypes/ApiValidationError.js');
+const ApiValidationError = require('#backend/Utils/ErrorTypes/ApiValidationError.js');
 
 const MODULE_PATH = '../../src/backend/z_Api/assignmentAssessment.js';
 

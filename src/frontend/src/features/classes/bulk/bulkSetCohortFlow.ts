@@ -1,4 +1,4 @@
-import type { Cohort } from '../../../services/referenceData/referenceData.zod';
+import type { Cohort } from '@/services/referenceData/referenceData.zod';
 import type { RowMutationResult } from './batchMutationEngine';
 import type { BatchProgressSnapshot } from './runQueuedBatchMutation';
 import { bulkMetadataUpdate } from './bulkMetadataUpdateFlow';

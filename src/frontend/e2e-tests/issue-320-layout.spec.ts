@@ -7,8 +7,7 @@ import {
   selectVisibleOption,
 } from './shared/endToEndRuntimeMocks';
 import { createHeatmapScenario } from './helpers/task-heatmap-end-to-end-helpers';
-// Playwright's Node test worker does not resolve the TypeScript-only @synthetic alias.
-import editableDefinitions from '../../../tests/__mocks__/data/synthetic-analysis/small/editableDefinitions.json';
+import editableDefinitions from '@synthetic/small/editableDefinitions.json';
 import {
   baseCohorts,
   baseYearGroups,

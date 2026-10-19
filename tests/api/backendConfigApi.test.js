@@ -7,7 +7,7 @@ const {
   createConfigurationManagerMock,
 } = require('../helpers/backendConfigTestHelpers.js');
 
-const AuthService = require('../../src/backend/Utils/AuthService.js');
+const AuthService = require('#backend/Utils/AuthService.js');
 
 /**
  * Asserts that no per-field configuration setter was invoked (the whole save is

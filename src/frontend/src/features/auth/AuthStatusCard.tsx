@@ -1,5 +1,5 @@
 import { Card, Result, Space } from 'antd';
-import { APP_SPACE_SIZE_DEFAULT } from '../../theme/spacing';
+import { APP_SPACE_SIZE_DEFAULT } from '@/theme/spacing';
 
 /**
  * Renders the auth status card content for the authorised surface.

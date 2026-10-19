@@ -15,9 +15,9 @@
 
 import { Button, Space, Switch, type TableColumnType } from 'antd';
 import type { UseQueryOptions } from '@tanstack/react-query';
-import type { Cohort } from '../../services/referenceData/referenceData.zod';
-import { createCohort, deleteCohort, updateCohort } from '../../services/referenceData/referenceDataService';
-import { getCohortsQueryOptions } from '../../query/sharedQueries';
+import type { Cohort } from '@/services/referenceData/referenceData.zod';
+import { createCohort, deleteCohort, updateCohort } from '@/services/referenceData/referenceDataService';
+import { getCohortsQueryOptions } from '@/query/sharedQueries';
 import { ReferenceDataInitialLoadingState } from './ReferenceDataInitialLoadingState';
 import { ReferenceDataManagementModalScaffold } from './ReferenceDataManagementModalScaffold';
 import { useReferenceDataManagement } from './useReferenceDataManagement';

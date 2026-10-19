@@ -2,13 +2,13 @@ import { App } from 'antd';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { flushSync } from 'react-dom';
 import { useCallback, useMemo, useState, type Dispatch, type SetStateAction } from 'react';
-import { ApiTransportError } from '../../../errors/apiTransportError';
+import { ApiTransportError } from '@/errors/apiTransportError';
 import {
   getBlockingLoadErrorMessage,
   type BlockingLoadErrorState,
-} from '../../../errors/blockingLoadError';
-import { getBackendConfigQueryOptions } from '../../../query/sharedQueries';
-import { setBackendConfig } from '../../../services/backendConfiguration/backendConfigurationService';
+} from '@/errors/blockingLoadError';
+import { getBackendConfigQueryOptions } from '@/query/sharedQueries';
+import { setBackendConfig } from '@/services/backendConfiguration/backendConfigurationService';
 import {
   mapBackendConfigToBackendSettingsFormValues,
   mapBackendSettingsFormValuesToBackendConfigWriteInput,

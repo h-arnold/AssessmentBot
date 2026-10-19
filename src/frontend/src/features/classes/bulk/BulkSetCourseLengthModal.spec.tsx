@@ -6,7 +6,7 @@ import {
   changeCourseLength,
   assertMessage,
   assertControlDisabled,
-} from '../../../test/classes/modalTestHelpers';
+} from '@/test/classes/modalTestHelpers';
 
 const submittedCourseLength = 4;
 

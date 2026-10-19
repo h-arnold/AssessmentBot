@@ -12,7 +12,7 @@
  */
 
 import { expect } from 'vitest';
-import type { MetricResult } from '../../services/dataAnalysis/dataAnalysis.zod';
+import type { MetricResult } from '@/services/dataAnalysis/dataAnalysis.zod';
 
 // ---------------------------------------------------------------------------
 // Floating-point tolerance

@@ -1,5 +1,5 @@
 import type { AverageContribution } from '../dataAnalysis.zod';
-import type { TaskPartial } from '../../assignmentDefinition/taskPartial.zod';
+import type { TaskPartial } from '@/services/assignmentDefinition/taskPartial.zod';
 import type { DataPointAccumulator, MetricAccumulator } from './averagingAnalyser.types';
 import { buildTaskKey } from '../taskKey';
 

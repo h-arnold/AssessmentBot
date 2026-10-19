@@ -17,7 +17,7 @@ reference.
 
 | Contract                            | File                                                                       | Persistence                                                        | API Endpoints                                                                                                                                                                                                                            | Sub-entities                                                                                                                  |
 | ----------------------------------- | -------------------------------------------------------------------------- | ------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| **ABClass**                         | [`abclass.md`](abclass.md)                                                 | Main doc + `abclass_partials` registry                             | `getABClassPartials`, `getABClass`, `upsertABClass`, `updateABClass`, `deleteABClass`                                                                                                                                                    | Teacher, Student                                                                                                              |
+| **ABClass**                         | [`abclass.md`](abclass.md)                                                 | Main doc + `abclass_partials` registry                             | `getABClassPartials`, `getABClass`, `upsertABClass`, `updateABClass`, `deleteABClass`                                                                                                                                                    | Teacher, Student, ABClassMetadata (embedded, nullable snapshot)                                                               |
 | **AssignmentDefinition**            | [`assignment-definition.md`](assignment-definition.md)                     | `assignment_definitions` registry + `assdef_full_*` full cache     | `getAssignmentDefinitionPartials`, `getAssignmentDefinition`, `upsertAssignmentDefinition`, `deleteAssignmentDefinition`                                                                                                                 | TaskDefinition, BaseTaskArtifact                                                                                              |
 | **Assignment**                      | [`assignment.md`](assignment.md)                                           | `assign_full_*` full records                                       | `getAssignment`, `startAssessmentRun`                                                                                                                                                                                                    | StudentSubmission, StudentSubmissionItem, Assessment, Feedback, AssignmentDefinition (embedded), BaseTaskArtifact (cross-ref) |
 | **BackendConfig**                   | [`backend-config.md`](backend-config.md)                                   | Singleton document                                                 | `getBackendConfig`, `setBackendConfig`                                                                                                                                                                                                   | —                                                                                                                             |
@@ -43,7 +43,7 @@ reference.
 
 ## Containment Hierarchy
 
-- **ABClass** embeds **Teacher**, **Student**, and **Assignment** partials.
+- **ABClass** embeds **Teacher**, **Student**, **Assignment** partials, and the nullable **ABClassMetadata** assessment-summary snapshot.
 - **Assignment** embeds **StudentSubmission**, **StudentSubmissionItem** (which embeds **BaseTaskArtifact**), **Assessment**, **Feedback**, and a full/partial **AssignmentDefinition**.
 - **AssignmentDefinition** embeds **TaskDefinition** (which embeds **BaseTaskArtifact**).
 - **BackendConfig** is standalone — no embedded sub-entities.
@@ -84,4 +84,4 @@ structure.
 ## Agent Instructions
 
 The process for creating and maintaining these specs is defined in
-[`.opencode/agents/data-shapes-agent.md`](../../.opencode/agents/data-shapes-agent.md).
+[`.opencode/agents/data-shapes-agent.md`](../../../.opencode/agents/data-shapes-agent.md).

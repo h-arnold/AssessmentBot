@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { AssignmentDefinition } from '../../src/backend/Models/AssignmentDefinition.js';
-import AssignmentDefinitionController from '../../src/backend/y_controllers/AssignmentDefinition/index.js';
-import DbManager from '../../src/backend/DbManager/DbManager.js';
-import DriveManager from '../../src/backend/GoogleDriveManager/DriveManager/index.js';
-import ClassroomApiClient from '../../src/backend/GoogleClassroom/ClassroomApiClient.js';
+import { AssignmentDefinition } from '#backend/Models/AssignmentDefinition.js';
+import AssignmentDefinitionController from '#backend/y_controllers/AssignmentDefinition/index.js';
+import DbManager from '#backend/DbManager/DbManager.js';
+import DriveManager from '#backend/GoogleDriveManager/DriveManager/index.js';
+import ClassroomApiClient from '#backend/GoogleClassroom/ClassroomApiClient.js';
 import {
   setupAssignmentDefinitionMocks,
   createSamplePartialDefinitionDocs,
@@ -12,9 +12,9 @@ import {
 } from '../helpers/assignmentDefinitionTestHelpers.js';
 
 // Mock the modules
-vi.mock('../../src/backend/DbManager/DbManager.js');
-vi.mock('../../src/backend/GoogleDriveManager/DriveManager/index.js');
-vi.mock('../../src/backend/GoogleClassroom/ClassroomApiClient.js');
+vi.mock('#backend/DbManager/DbManager.js');
+vi.mock('#backend/GoogleDriveManager/DriveManager/index.js');
+vi.mock('#backend/GoogleClassroom/ClassroomApiClient.js');
 
 // Shared test context configuration
 const SHARED_TEST_OPTIONS = {

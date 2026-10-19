@@ -12,7 +12,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import type { AssignmentFull } from '../../services/assignmentAssessment/assignmentAssessment.zod';
+import type { AssignmentFull } from '@/services/assignmentAssessment/assignmentAssessment.zod';
 import {
   BASE_ARTIFACT_FIELDS,
   DEFAULT_DATE,

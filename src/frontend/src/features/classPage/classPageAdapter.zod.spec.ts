@@ -5,7 +5,7 @@ import {
   StudentAverageRowModelSchema,
   ClassPageAdapterResultSchema,
 } from './classPageAdapter.zod';
-import { MetricResultSchema } from '../../services/dataAnalysis/dataAnalysis.zod';
+import { MetricResultSchema } from '@/services/dataAnalysis/dataAnalysis.zod';
 import { adaptClassPageToViewModel } from './classPageAdapter';
 import {
   averagingResult,
@@ -13,9 +13,9 @@ import {
   student,
   assignment,
   DEFAULT_TS,
-} from '../../test/classPage/classPageAdapterTestFixtures';
-import { createDefinitionPartial } from '../../test/dataAnalysis/fixtures';
-import { createMetricResult } from '../../test/dataAnalysis/fixtures';
+} from '@/test/classPage/classPageAdapterTestFixtures';
+import { createDefinitionPartial } from '@/test/dataAnalysis/fixtures';
+import { createMetricResult } from '@/test/dataAnalysis/fixtures';
 
 // ---------------------------------------------------------------------------
 // Fixtures

@@ -1,25 +1,25 @@
 import { describe, expect, it } from 'vitest';
 
-import { getProfileDefinition } from '../../scripts/synthetic-test-data/profileDefinitions.js';
-import { generateReferenceData } from '../../scripts/synthetic-test-data/generateReferenceData.js';
-import { generateAssignmentDefinitions } from '../../scripts/synthetic-test-data/generateAssignmentDefinitions.js';
-import { generateAssignments } from '../../scripts/synthetic-test-data/generateAssignments.js';
-import { generateSubmissions } from '../../scripts/synthetic-test-data/generateSubmissions.js';
-import { toTransportViews } from '../../scripts/synthetic-test-data/toTransportViews.js';
-import { generateSyntheticAnalysisGraph } from '../../scripts/synthetic-test-data/generateSyntheticAnalysisGraph.js';
-import { validateSyntheticAnalysisGraph } from '../../scripts/synthetic-test-data/validateSyntheticAnalysisGraph.js';
+import { getProfileDefinition } from '#synthetic-data/profileDefinitions.js';
+import { generateReferenceData } from '#synthetic-data/generateReferenceData.js';
+import { generateAssignmentDefinitions } from '#synthetic-data/generateAssignmentDefinitions.js';
+import { generateAssignments } from '#synthetic-data/generateAssignments.js';
+import { generateSubmissions } from '#synthetic-data/generateSubmissions.js';
+import { toTransportViews } from '#synthetic-data/toTransportViews.js';
+import { generateSyntheticAnalysisGraph } from '#synthetic-data/generateSyntheticAnalysisGraph.js';
+import { validateSyntheticAnalysisGraph } from '#synthetic-data/validateSyntheticAnalysisGraph.js';
 import {
   type ClassFull,
   type StudentSummary,
-} from '../../src/frontend/src/services/googleClassrooms/classDetail/classDetailService.zod';
-import type { AssignmentDefinitionPartial } from '../../src/frontend/src/services/assignmentDefinition/assignmentDefinitionPartials.zod';
-import type { AssignmentFull } from '../../src/frontend/src/services/assignmentAssessment/assignmentAssessment.zod';
-import type { ClassPartial } from '../../src/frontend/src/services/googleClassrooms/classPartials.zod';
+} from '@/services/googleClassrooms/classDetail/classDetailService.zod';
+import type { AssignmentDefinitionPartial } from '@/services/assignmentDefinition/assignmentDefinitionPartials.zod';
+import type { AssignmentFull } from '@/services/assignmentAssessment/assignmentAssessment.zod';
+import type { ClassPartial } from '@/services/googleClassrooms/classPartials.zod';
 import type {
   AssignmentTopic,
   Cohort,
   YearGroup,
-} from '../../src/frontend/src/services/referenceData/referenceData.zod';
+} from '@/services/referenceData/referenceData.zod';
 
 /** Full-assignment submission type derived from the production schema. */
 type AssignmentSubmission = AssignmentFull['submissions'][number];

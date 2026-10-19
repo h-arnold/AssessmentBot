@@ -5,14 +5,14 @@
  */
 import { vi } from 'vitest';
 
-vi.mock('../../services/authService/authService', () => {
+vi.mock('@/services/authService/authService', () => {
   return {
     hasScriptAuthorisation: vi.fn(),
     getApplicationAccess: vi.fn(),
   };
 });
 
-vi.mock('../../query/sharedQueries', async (importOriginal) => {
+vi.mock('@/query/sharedQueries', async (importOriginal) => {
   const actual = await importOriginal<Record<string, unknown>>();
   return { ...actual, warmStartupQueries: vi.fn() };
 });

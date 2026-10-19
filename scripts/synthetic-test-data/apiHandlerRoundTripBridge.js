@@ -2,7 +2,7 @@ import {
   loadApiHandlerModule,
   setupApiHandlerTestContext,
   teardownApiHandlerTestContext,
-} from '../../tests/helpers/apiHandlerTestUtils.js';
+} from '#test-helpers/apiHandlerTestUtils.js';
 import { loadSyntheticAnalysisProfile } from './loadSyntheticAnalysisProfile.js';
 
 /**

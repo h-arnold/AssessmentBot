@@ -35,7 +35,7 @@ beforeEach(async () => {
   };
 
   // Dynamically import controller
-  const controllerModule = await import('../../src/backend/y_controllers/AssignmentController.js');
+  const controllerModule = await import('#backend/y_controllers/AssignmentController.js');
   AssignmentController = controllerModule.default || controllerModule;
 });
 

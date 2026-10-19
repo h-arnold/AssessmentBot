@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ABClass } from '../../../src/backend/Models/ABClass.js';
+import { ABClass } from '#backend/Models/ABClass.js';
 
 const MODULE_PATH = '../../../src/backend/y_controllers/ABClassController/ABClassValidation';
 

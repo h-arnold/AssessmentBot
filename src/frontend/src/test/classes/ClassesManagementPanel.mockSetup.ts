@@ -10,27 +10,27 @@ const panelMocks = vi.hoisted(async () => {
   return createClassesManagementPanelMocks();
 });
 
-vi.mock('../../features/classes/useClassesManagement', async () => {
+vi.mock('@/features/classes/useClassesManagement', async () => {
   const mocks = await panelMocks;
   return mocks.useClassesManagementModule;
 });
-vi.mock('../../features/classes/bulk/runQueuedBatchMutation', async () => {
+vi.mock('@/features/classes/bulk/runQueuedBatchMutation', async () => {
   const mocks = await panelMocks;
   return mocks.batchMutationModule;
 });
-vi.mock('../../features/classes/useClassesBulkMutationQueue', async () => {
+vi.mock('@/features/classes/useClassesBulkMutationQueue', async () => {
   const mocks = await panelMocks;
   return mocks.queueModule;
 });
-vi.mock('../../features/classes/bulk/ClassesBulkProgressModal', async () => {
+vi.mock('@/features/classes/bulk/ClassesBulkProgressModal', async () => {
   const mocks = await panelMocks;
   return mocks.progressModalModule;
 });
-vi.mock('../../features/classes/bulk/BulkCreateModal', async () => {
+vi.mock('@/features/classes/bulk/BulkCreateModal', async () => {
   const mocks = await panelMocks;
   return mocks.bulkCreateModule;
 });
-vi.mock('../../features/classes/bulk/BulkDeleteModal', async () => {
+vi.mock('@/features/classes/bulk/BulkDeleteModal', async () => {
   const mocks = await panelMocks;
   return mocks.bulkDeleteModule;
 });

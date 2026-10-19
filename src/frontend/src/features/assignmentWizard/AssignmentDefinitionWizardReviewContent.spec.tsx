@@ -10,8 +10,8 @@ import { render, screen } from '@testing-library/react';
 import { Form } from 'antd';
 import { createElement, type ComponentType, type JSX } from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import type { AssignmentDefinition } from '../../services/assignmentDefinition/assignmentDefinition.zod';
-import editableDefinitionsRaw from '../../../../../tests/__mocks__/data/synthetic-analysis/small/editableDefinitions.json?raw';
+import type { AssignmentDefinition } from '@/services/assignmentDefinition/assignmentDefinition.zod';
+import editableDefinitionsRaw from '@synthetic/small/editableDefinitions.json?raw';
 import reviewContentSourceRaw from './AssignmentDefinitionWizardReviewContent.tsx?raw';
 import type { TaskRow } from './useAssignmentDefinitionWizard';
 

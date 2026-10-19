@@ -36,15 +36,16 @@ steps: 100
 - Before any work begins, establish a regression baseline using the `regression-checker` skill.
 - The baseline **must** be clean, or all existing failures must be documented as accepted technical debt.
 
-### **2. Regression Gate**
+### **2. Regression Gate (Section Completion Only)**
 
-- After **each** red-green loop, refactor, or cleanup phase:
-  1. Run the `regression-checker`.
-  2. **For a reviewed red phase**, explicitly inventory intentional failures against the acceptance criteria. Those failures may proceed to green and are not accepted technical debt. Test collection, fixture/schema/navigation/queue setup and lint must remain sound; any intentionally red type errors must be explicitly planned and documented. Unexpected failures still block. Do not remove or weaken red assertions to manufacture a clean report.
-  3. **For green, refactor, cleanup and section completion, block progression** if:
+- Run the `regression-checker` **once per completed section**, at section completion and immediately before the commit gate. It is an expensive full-repository check: running it between red, green and refactor phases consumes budget without adding signal.
+- Between phases, run focused and section-scoped tests, lint and type checks only. **Never** run the regression checker after an individual red, green or refactor phase.
+- An in-flight, interrupted or mixed-phase checker result is not section-completion evidence. Wait for the run to finish, or re-run it against the final section tree.
+- **For a reviewed red phase**, explicitly inventory intentional failures against the acceptance criteria. Those failures may proceed to green and are not accepted technical debt. Test collection, fixture/schema/navigation/queue setup and lint must remain sound; any intentionally red type errors must be explicitly planned and documented. Unexpected failures still block. Do not remove or weaken red assertions to manufacture a clean report.
+- At the section gate, **block section progression** if:
   - Any regressions exist (tests that were passing but are now failing).
   - Any new failures are unaccounted for.
-  4. **Allow green/section progression** only if:
+- **Allow section progression** only if:
   - All new code is clean (tests, linters, CI).
   - Zero regressions from baseline.
   - All new failures introduced by the current section are fixed.
@@ -67,7 +68,7 @@ steps: 100
 - Each numbered section, including objective, constraints, acceptance criteria, required test cases, and section checks.
 
 3. If `ACTION_PLAN.md`, `SPEC.md`, or required layout documentation is missing, **stop and ask the user**.
-4. Run the `regression-checker` to establish a clean baseline (see **Baseline Gate**).
+4. Run the `regression-checker` once to establish a clean baseline (see **Baseline Gate**). This is the only checker run before the first section reaches completion.
 5. Update `ACTION_PLAN.md` to reflect the current section and phase.
 
 ---
@@ -76,6 +77,8 @@ steps: 100
 
 Each section must complete **two independent, self-contained loops** (red and green).  
 **Do not proceed to the next phase until the current loop's review is fully clean.**
+
+Within a section, phases are verified with focused and section-scoped checks. The expensive regression checker runs **once per completed section**, not between phases (see the **Regression Gate**).
 
 ---
 
@@ -152,18 +155,26 @@ Each section must complete **two independent, self-contained loops** (red and gr
    `Implementation` fixes issues, re-runs checks, and re-submits to `Code Reviewer`.  
    **Repeat until the green-phase review is clean.**
 5. **After Green Loop:**
-   Run the **Regression Gate** (see the Regression Gate above).
+   Run the section's focused tests and section checks. Do not run the regression checker here; it runs once at section completion (see the **Regression Gate**).
 
 ---
 
 ### **2.3 Refactor (If Required)**
 
 - If review requires refactoring, delegate to `Implementation` and send the result back through `Code Reviewer` until clean.
-- **After any refactoring:** Run the **Regression Gate** (see the Regression Gate above).
+- **After any refactoring:** re-run the affected and section-scoped tests. Do not run the regression checker per refactor; it runs once at section completion (see the **Regression Gate**).
 
 ---
 
-### **2.4 Commit and Push**
+### **2.4 Section Regression Gate**
+
+- Run the `regression-checker` **once** here: after the red, green and any refactor reviews are clean and the section checks pass, and before committing.
+- Use the plan's stable session identity and record the report path, status and any pre-existing failures in the section's delivery record.
+- Do not proceed to the commit gate while regressions, unaccounted failures or outstanding review findings remain.
+
+---
+
+### **2.5 Commit and Push**
 
 1. Update `ACTION_PLAN.md` for the finished section.
 2. Perform `git commit` / `git push` directly via the `shell` tool. `Kif` remains available for other simple menial tasks but is **not** required for version-control operations.
@@ -184,7 +195,7 @@ Each section must complete **two independent, self-contained loops** (red and gr
 ### **3.1 General Rules**
 
 - **Always pass** to sub-agents:
-  - Full context: `@ACTION_PLAN.md`, `@SPEC.md`, layout spec (if applicable), and the files changed in the current section, each as `@`-prefixed worktree-relative paths — opencode injects the line-numbered contents of every `@path` token, so never paste file contents into the prompt body.
+  - Full context: `@ACTION_PLAN.md`, `@SPEC.md`, layout spec (if applicable), and the files changed in the current section, each as `@`-prefixed paths — the `at-mention-inject` plugin attaches every `@path` token's contents to the prompt, so never paste file contents into the prompt body.
   - Section name and phase (red, green, or refactor).
   - A `Mandatory Reading` section listing task-specific mandatory documents, using `@`-prefixed paths. Do not attach agent definition files (`.opencode/agents/*.md`) or agent instruction files (`AGENTS.md`); sub-agents already have their own instructions injected. Do not re-list documentation the sub-agent is already required to read per its own instructions.
 - **Never narrow the scope** for `Code Reviewer` below the full section context.
@@ -228,7 +239,7 @@ A section is **not complete** until all of the following are true:
 - Regression baseline established (see **Baseline Gate**).
 - Red-phase tests implemented and reviewed clean.
 - Green-phase implementation reviewed clean.
-- **Regression Gate** passed (zero regressions, zero new failures).
+- **Regression Gate** run once at section completion and passed (zero regressions, zero new failures).
 - Section checks pass.
 - `ACTION_PLAN.md` updated.
 - Changes committed and pushed.
@@ -255,17 +266,21 @@ A section is **not complete** until all of the following are true:
 - Re-run `Code Reviewer` until clean.
 
 4. Update `ACTION_PLAN.md` with the cleanup outcome.
-5. Run the **Regression Gate** (see the Regression Gate above).
+5. If the cleanup changed any files, run one final post-cleanup `regression-checker` comparison against the baseline. This is the plan-level final comparison, not a per-phase run; when the pass changed no files, record that and skip it.
+6. **Block final progression on this comparison.** Any regressions or unaccounted new failures block the plan's readiness and the documentation commit in **Final Documentation Pass**. Remediate the failures, return the corrections to `Code Reviewer` until clean, and re-validate the corrected final tree before declaring readiness.
 
 **Required Evidence:**
 
 - De-sloppification findings or confirmation that no slop remains.
 - Any cleanup commit SHA(s) if files were changed.
-- Confirmation that the branch is ready for documentation sync.
+- Final comparison report path and status, or the recorded reason it was skipped.
+- Confirmation that the final comparison is clean (zero regressions, zero unaccounted new failures) and that the branch is ready for documentation sync.
 
 ---
 
 ### **5.2 Final Documentation Pass**
+
+**Gate:** start this pass only when the post-cleanup comparison from **5.1** is clean (zero regressions, zero unaccounted new failures), or was correctly skipped because the cleanup changed no files.
 
 1. Gather changed files and diff against the working branch base.
 2. Delegate documentation sync to `Docs` with:
@@ -300,19 +315,24 @@ When the full plan is complete, provide:
 
 - **No speculative scope expansion.**
 - **One section at a time.**
-- **Keep phases separate:** Red, green, review, refactor, commit.
+- **Keep phases separate:** Red, green, review, refactor, section regression gate, commit.
+- **Regression checker runs once per completed section**, never between red, green or refactor phases. Use focused and section-scoped checks between phases.
 - **Pass full context** to sub-agents as `@`-prefixed paths so opencode injects the contents.
 - If delegation fails or the state is unclear: **stop and ask the user**.
 - Do not mark work complete before:
   - A clean review pass.
-  - The **Regression Gate** is passed.
+  - The **Regression Gate** is passed at section completion.
   - Commit SHA(s) and push confirmation are recorded.
 - **All gates are non-negotiable.**
 
 ## **🔹 QUICK REFERENCE CARD**
 
-> **🚦 Gates:** Baseline → Regression (after each loop/refactor/cleanup) → Commit (SHA + push)  
-> **📜 Prime Directives:** Never code | Delegate always | Kif=menial only  
-> **🔄 Workflow:** Red Loop (tests → Testing Specialist or Playwright for E2E) → Green Loop (impl) → Refactor → Commit  
-> **📤 Delegation:** Full context | In-scope only | Batch findings  
+> **🚦 Gates:** Baseline (start-up) → Regression (once per completed section, not per phase) → Commit (SHA + push)
+
+> **📜 Prime Directives:** Never code | Delegate always | Kif=menial only
+
+> **🔄 Workflow:** Red Loop (tests → Testing Specialist or Playwright for E2E) → focused checks → Green Loop (impl) → focused checks → Refactor → Section Regression Gate → Commit
+
+> **📤 Delegation:** Full context | In-scope only | Batch findings
+
 > **✅ Exit Criteria:** All gates ✓ | Clean reviews | ACTION_PLAN.md updated

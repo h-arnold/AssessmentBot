@@ -35,7 +35,7 @@
  */
 
 import { expect, type Locator, type Page } from '@playwright/test';
-import { SOURCE_ACTION_LABEL } from '../../src/features/taskHeatmap/TaskPreviewCard';
+import { SOURCE_ACTION_LABEL } from '@/features/taskHeatmap/TaskPreviewCard';
 import { openPreviewPopover } from './task-preview-source-link-helpers';
 import {
   PREVIEW_HEADER_REGION_SELECTORS,

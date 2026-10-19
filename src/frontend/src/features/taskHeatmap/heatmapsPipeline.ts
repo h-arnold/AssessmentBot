@@ -6,7 +6,7 @@
  * input-shaped assignments and the merged-adapter projection. Extracted from
  * `useHeatmapsPageData.ts` to keep that module under the 500-LOC module-size gate, and to
  * isolate the analyser/adapter orchestration (per
- * `src/frontend/AGENTS.md` §3.3).
+ * `docs/developer/frontend/frontend-architecture.md`).
  *
  * The full input-shaping and memoisation rationale lives in `useHeatmapsPageData.ts`'s
  * module JSDoc; this helper owns the synchronous orchestration, structured
@@ -14,20 +14,20 @@
  */
 
 import { z } from 'zod';
-import { DataAnalysisService } from '../../services/dataAnalysis/dataAnalysisService';
+import { DataAnalysisService } from '@/services/dataAnalysis/dataAnalysisService';
 import {
   adaptMetricsToMergedHeatmap,
   type MergedHeatmapResult,
-} from '../../services/dataAnalysis/heatmapAdapter.merged';
+} from '@/services/dataAnalysis/heatmapAdapter.merged';
 import type {
   AveragingAnalyserInput,
   AveragingResult,
-} from '../../services/dataAnalysis/dataAnalysis.zod';
-import type { ClassFull } from '../../services/googleClassrooms/classDetail/classDetailService.zod';
-import type { AssignmentDefinitionPartialsResponse } from '../../services/assignmentDefinition/assignmentDefinitionPartials.zod';
-import { logFrontendError } from '../../logging/frontendLogger';
-import { toError } from '../../errors/normaliseUnknownError';
-import type { PageDatasetState } from '../../hooks/usePageDataset';
+} from '@/services/dataAnalysis/dataAnalysis.zod';
+import type { ClassFull } from '@/services/googleClassrooms/classDetail/classDetailService.zod';
+import type { AssignmentDefinitionPartialsResponse } from '@/services/assignmentDefinition/assignmentDefinitionPartials.zod';
+import { logFrontendError } from '@/logging/frontendLogger';
+import { toError } from '@/errors/normaliseUnknownError';
+import type { PageDatasetState } from '@/hooks/usePageDataset';
 
 /**
  * Create the module-level `DataAnalysisService` instance.

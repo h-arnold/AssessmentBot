@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { generateSyntheticAnalysisGraph } from '../../scripts/synthetic-test-data/generateSyntheticAnalysisGraph.js';
-import { loadSyntheticAnalysisProfile } from '../../scripts/synthetic-test-data/loadSyntheticAnalysisProfile.js';
+import { generateSyntheticAnalysisGraph } from '#synthetic-data/generateSyntheticAnalysisGraph.js';
+import { loadSyntheticAnalysisProfile } from '#synthetic-data/loadSyntheticAnalysisProfile.js';
 
 const COMMITTED_PROFILE_NAMES = ['small', 'medium', 'large-representative'] as const;
 

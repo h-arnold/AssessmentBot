@@ -21,8 +21,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const MODULE_PATH = '../../src/backend/z_Api/abclass/abclassRead.js';
-const ApiValidationError = require('../../src/backend/Utils/ErrorTypes/ApiValidationError.js');
-const ClassNotFoundError = require('../../src/backend/Utils/ErrorTypes/ClassNotFoundError.js');
+const ApiValidationError = require('#backend/Utils/ErrorTypes/ApiValidationError.js');
+const ClassNotFoundError = require('#backend/Utils/ErrorTypes/ClassNotFoundError.js');
 
 /**
  * Attempts to load the abclassRead transport module.

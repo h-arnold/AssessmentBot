@@ -1,7 +1,7 @@
 import { Button, Space } from 'antd';
 import type { JSX } from 'react';
 import { derivePrimaryActionState } from './assignmentWizardFormState';
-import { APP_SPACE_SIZE_DEFAULT } from '../../theme/spacing';
+import { APP_SPACE_SIZE_DEFAULT } from '@/theme/spacing';
 import type { AssignmentDefinitionWizardReviewContentProperties } from './AssignmentDefinitionWizardReviewContent';
 
 /**

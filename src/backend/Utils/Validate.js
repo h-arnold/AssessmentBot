@@ -4,6 +4,30 @@ const HOSTNAME_MAX_LENGTH = 253;
 const MIN_HOSTNAME_LABEL_COUNT = 2;
 const HOSTNAME_LABEL_MAX_LENGTH = 63;
 const IPV4_OCTET_MAX_VALUE = 255;
+const CANONICAL_UTC_MONTH_COUNT = 12;
+const CANONICAL_UTC_MAX_HOUR = 23;
+const CANONICAL_UTC_MAX_MINUTE_OR_SECOND = 59;
+const GREGORIAN_LEAP_CYCLE_QUADRENNIAL = 4;
+const GREGORIAN_LEAP_CYCLE_CENTENNIAL = 100;
+const GREGORIAN_LEAP_CYCLE_QUATERCENTENNIAL = 400;
+const CANONICAL_UTC_DAYS_IN_31_DAY_MONTH = 31;
+const CANONICAL_UTC_DAYS_IN_30_DAY_MONTH = 30;
+const CANONICAL_UTC_DAYS_IN_FEBRUARY = 28;
+const CANONICAL_UTC_MONTH_DAYS = [
+  CANONICAL_UTC_DAYS_IN_31_DAY_MONTH,
+  CANONICAL_UTC_DAYS_IN_FEBRUARY,
+  CANONICAL_UTC_DAYS_IN_31_DAY_MONTH,
+  CANONICAL_UTC_DAYS_IN_30_DAY_MONTH,
+  CANONICAL_UTC_DAYS_IN_31_DAY_MONTH,
+  CANONICAL_UTC_DAYS_IN_30_DAY_MONTH,
+  CANONICAL_UTC_DAYS_IN_31_DAY_MONTH,
+  CANONICAL_UTC_DAYS_IN_31_DAY_MONTH,
+  CANONICAL_UTC_DAYS_IN_30_DAY_MONTH,
+  CANONICAL_UTC_DAYS_IN_31_DAY_MONTH,
+  CANONICAL_UTC_DAYS_IN_30_DAY_MONTH,
+  CANONICAL_UTC_DAYS_IN_31_DAY_MONTH,
+];
+const CANONICAL_UTC_LEAP_FEBRUARY_DAYS = 29;
 
 /**
  * Validate Utility
@@ -45,6 +69,42 @@ const Validate = {
    */
   isBoolean(value) {
     return typeof value === 'boolean';
+  },
+
+  /**
+   * Checks for an exact canonical UTC datetime with a real Gregorian calendar date.
+   *
+   * @param {*} value - Timestamp candidate.
+   * @returns {boolean} True for `YYYY-MM-DDTHH:mm:ss.sssZ` with valid components.
+   */
+  isCanonicalUtcDateTime(value) {
+    if (typeof value !== 'string') return false;
+    const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})\.(\d{3})Z$/u.exec(value);
+    if (!match) return false;
+
+    const [, yearText, monthText, dayText, hourText, minuteText, secondText] = match;
+    const year = Number(yearText);
+    const month = Number(monthText);
+    const day = Number(dayText);
+    const hour = Number(hourText);
+    const minute = Number(minuteText);
+    const second = Number(secondText);
+    if (
+      month < 1 ||
+      month > CANONICAL_UTC_MONTH_COUNT ||
+      hour > CANONICAL_UTC_MAX_HOUR ||
+      minute > CANONICAL_UTC_MAX_MINUTE_OR_SECOND ||
+      second > CANONICAL_UTC_MAX_MINUTE_OR_SECOND
+    )
+      return false;
+
+    const isLeapYear =
+      year % GREGORIAN_LEAP_CYCLE_QUADRENNIAL === 0 &&
+      (year % GREGORIAN_LEAP_CYCLE_CENTENNIAL !== 0 ||
+        year % GREGORIAN_LEAP_CYCLE_QUATERCENTENNIAL === 0);
+    const monthDays = [...CANONICAL_UTC_MONTH_DAYS];
+    if (isLeapYear) monthDays[1] = CANONICAL_UTC_LEAP_FEBRUARY_DAYS;
+    return day >= 1 && day <= monthDays[month - 1];
   },
 
   /**

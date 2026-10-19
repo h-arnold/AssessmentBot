@@ -22,15 +22,15 @@ import userEvent from '@testing-library/user-event';
 import { createElement, useState } from 'react';
 import { App } from 'antd';
 import { QueryClientProvider, QueryClient } from '@tanstack/react-query';
-import type { AssignmentFull } from '../../services/assignmentAssessment/assignmentAssessment.zod';
+import type { AssignmentFull } from '@/services/assignmentAssessment/assignmentAssessment.zod';
 import { ClassPageContent } from './ClassPageContent';
 import type { ClassPageSurfaceState } from './useClassPageData';
 import type { ClassPageAdapterResult } from './classPageAdapter.zod';
-import type { AveragingResult } from '../../services/dataAnalysis/dataAnalysis.zod';
-import type { ClassFull } from '../../services/googleClassrooms/classDetail/classDetailService.zod';
+import type { AveragingResult } from '@/services/dataAnalysis/dataAnalysis.zod';
+import type { ClassFull } from '@/services/googleClassrooms/classDetail/classDetailService.zod';
 import {
   createComputedMetricResult,
-} from '../../test/dataAnalysis/fixtures';
+} from '@/test/dataAnalysis/fixtures';
 
 // ===========================================================================
 // Mock setup
@@ -100,7 +100,7 @@ const { logFrontendError: mockLogFrontendError } = vi.hoisted(() => {
   };
 });
 
-vi.mock('../../services/assignmentAssessment/assignmentAssessmentService', () => {
+vi.mock('@/services/assignmentAssessment/assignmentAssessmentService', () => {
   return {
     getAssignment: mockGetAssignment,
   };
@@ -112,7 +112,7 @@ vi.mock('./StudentAveragesTableCard', () => {
   };
 });
 
-vi.mock('../../logging/frontendLogger', () => {
+vi.mock('@/logging/frontendLogger', () => {
   return {
     logFrontendError: mockLogFrontendError,
   };

@@ -6,11 +6,11 @@ import {
   createAssignmentPartial,
   createComputedMetricResult,
   createTaskPartial,
-} from '../../test/dataAnalysis/fixtures';
+} from '@/test/dataAnalysis/fixtures';
 import {
   createHeatmapClassFull,
   createHeatmapDefinitionPartial,
-} from '../../test/dataAnalysis/heatmapFixtures';
+} from '@/test/dataAnalysis/heatmapFixtures';
 
 const CLASS_ID = 'class-abc-123';
 const DEFINITION_KEY = 'def-gap';

@@ -44,15 +44,15 @@ import { describe, it, expect, afterEach, beforeEach } from 'vitest';
 import { cleanup, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
-import type { PreviewCellHarness } from '../../test/taskHeatmap/previewSourceActionTestHelpers';
+import type { PreviewCellHarness } from '@/test/taskHeatmap/previewSourceActionTestHelpers';
 import {
   buildCanonicalCellWithoutSourceUrl,
   findSourceAction,
   renderPreviewCell,
   waitForPreviewContent,
   waitForPreviewDismissed,
-} from '../../test/taskHeatmap/previewSourceActionTestHelpers';
-import { CANONICAL_READY_CELL } from '../../test/taskHeatmap/previewFixtures';
+} from '@/test/taskHeatmap/previewSourceActionTestHelpers';
+import { CANONICAL_READY_CELL } from '@/test/taskHeatmap/previewFixtures';
 import { SOURCE_ACTION_LABEL } from './TaskPreviewCard';
 import { LOADING_PREVIEW_LABEL, PREVIEW_ERROR_TEXT } from './TaskMetricPreviewContent';
 

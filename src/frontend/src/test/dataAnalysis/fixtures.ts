@@ -11,9 +11,9 @@
 import type {
   AveragingAnalyserInput,
   MetricResult,
-} from '../../services/dataAnalysis/dataAnalysis.zod';
-import type { AssignmentDefinitionPartial } from '../../services/assignmentDefinition/assignmentDefinitionPartials.zod';
-import type { AssignmentPartial } from '../../services/googleClassrooms/classDetail/classDetailService.zod';
+} from '@/services/dataAnalysis/dataAnalysis.zod';
+import type { AssignmentDefinitionPartial } from '@/services/assignmentDefinition/assignmentDefinitionPartials.zod';
+import type { AssignmentPartial } from '@/services/googleClassrooms/classDetail/classDetailService.zod';
 
 // ---------------------------------------------------------------------------
 // Constants

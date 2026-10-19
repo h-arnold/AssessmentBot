@@ -1,7 +1,7 @@
 import {
   type AssignmentDefinition,
   type UpsertAssignmentDefinitionRequest,
-} from '../../services/assignmentDefinition/assignmentDefinitionService';
+} from '@/services/assignmentDefinition/assignmentDefinitionService';
 
 /**
  * Builds the ID-shaped request fields shared by explicit reparse requests.

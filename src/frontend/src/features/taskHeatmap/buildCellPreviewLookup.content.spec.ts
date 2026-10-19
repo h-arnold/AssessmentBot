@@ -22,14 +22,14 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import type { AssignmentFull } from '../../services/assignmentAssessment/assignmentAssessment.zod';
+import type { AssignmentFull } from '@/services/assignmentAssessment/assignmentAssessment.zod';
 import { buildCellPreviewLookup } from './buildCellPreviewLookup';
 import type { CellPreviewLookup, CellPreviewData } from './buildCellPreviewLookup';
 import {
   CANONICAL_READY_CELL,
   cloneCanonicalSlidesAssignment,
-} from '../../test/taskHeatmap/previewFixtures';
-import { buildExpectedSourceUrl } from '../../test/taskHeatmap/buildCellPreviewLookupTestFixtures';
+} from '@/test/taskHeatmap/previewFixtures';
+import { buildExpectedSourceUrl } from '@/test/taskHeatmap/buildCellPreviewLookupTestFixtures';
 
 /** Submission-item shape carried by an `AssignmentFull` submission. */
 type AssignmentSubmissionItem = AssignmentFull['submissions'][number]['items'][string];

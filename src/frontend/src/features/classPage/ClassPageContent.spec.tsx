@@ -18,12 +18,12 @@ import userEvent from '@testing-library/user-event';
 import { createElement } from 'react';
 import { ClassPageContent } from './ClassPageContent';
 import type { ClassPageSurfaceState, ClassPageError } from './useClassPageData';
-import type { AveragingResult } from '../../services/dataAnalysis/dataAnalysis.zod';
-import type { ClassFull } from '../../services/googleClassrooms/classDetail/classDetailService.zod';
+import type { AveragingResult } from '@/services/dataAnalysis/dataAnalysis.zod';
+import type { ClassFull } from '@/services/googleClassrooms/classDetail/classDetailService.zod';
 import {
   createClassPageAdapterResult as createAdapterResult,
   createReadyClassPageData,
-} from '../../test/classPage/classPageFixtures';
+} from '@/test/classPage/classPageFixtures';
 
 // ===========================================================================
 // Mock setup

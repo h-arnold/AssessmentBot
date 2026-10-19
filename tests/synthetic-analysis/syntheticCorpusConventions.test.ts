@@ -16,24 +16,24 @@
 
 import { describe, expect, it } from 'vitest';
 
-import { createSeededFaker } from '../../scripts/synthetic-test-data/deterministicPrimitives.js';
-import { generateClassRosters } from '../../scripts/synthetic-test-data/generateClassRosters.js';
-import { generateReferenceData } from '../../scripts/synthetic-test-data/generateReferenceData.js';
-import { generateSyntheticAnalysisGraph } from '../../scripts/synthetic-test-data/generateSyntheticAnalysisGraph.js';
-import { loadSyntheticAnalysisProfile } from '../../scripts/synthetic-test-data/loadSyntheticAnalysisProfile.js';
+import { createSeededFaker } from '#synthetic-data/deterministicPrimitives.js';
+import { generateClassRosters } from '#synthetic-data/generateClassRosters.js';
+import { generateReferenceData } from '#synthetic-data/generateReferenceData.js';
+import { generateSyntheticAnalysisGraph } from '#synthetic-data/generateSyntheticAnalysisGraph.js';
+import { loadSyntheticAnalysisProfile } from '#synthetic-data/loadSyntheticAnalysisProfile.js';
 import {
   LARGE_FULL_CLASS_COUNT,
   LARGE_FULL_PROFILE_NAME,
   LARGE_FULL_STUDENTS_PER_CLASS,
   PROFILE_NAMES,
   getProfileDefinition,
-} from '../../scripts/synthetic-test-data/profileDefinitions.js';
-import { buildClassTransportViews } from '../../scripts/synthetic-test-data/projectClassTransportViews.js';
-import { AssignmentFullSchema } from '../../src/frontend/src/services/assignmentAssessment/assignmentAssessment.zod';
+} from '#synthetic-data/profileDefinitions.js';
+import { buildClassTransportViews } from '#synthetic-data/projectClassTransportViews.js';
+import { AssignmentFullSchema } from '@/services/assignmentAssessment/assignmentAssessment.zod';
 import {
   AssignmentPartialSchema,
   ClassFullSchema,
-} from '../../src/frontend/src/services/googleClassrooms/classDetail/classDetailService.zod';
+} from '@/services/googleClassrooms/classDetail/classDetailService.zod';
 
 /** Fictional 21-digit Classroom-shaped sample; never a real identifier. */
 const SAMPLE_STUDENT_ID = '109876543210987654321';

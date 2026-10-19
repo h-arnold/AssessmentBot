@@ -43,12 +43,12 @@ describe('ClassroomManager', () => {
     };
 
     // Load the Student class first
-    const StudentExport = require('../../src/backend/Models/Student.js');
+    const StudentExport = require('#backend/Models/Student.js');
     Student = StudentExport.Student || StudentExport;
     globalThis.Student = Student;
 
     // Load the ClassroomApiClient class (merged implementation)
-    const ClassroomApiClientExport = require('../../src/backend/GoogleClassroom/ClassroomApiClient.js');
+    const ClassroomApiClientExport = require('#backend/GoogleClassroom/ClassroomApiClient.js');
     ClassroomManager = ClassroomApiClientExport.ClassroomApiClient || ClassroomApiClientExport;
   });
 

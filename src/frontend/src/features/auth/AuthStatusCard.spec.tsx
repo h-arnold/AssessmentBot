@@ -1,7 +1,7 @@
 import { screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { renderWithFrontendProviders } from '../../test/renderWithFrontendProviders';
-import { getCssRuleBlock } from '../../test/appStylesRaw';
+import { renderWithFrontendProviders } from '@/test/renderWithFrontendProviders';
+import { getCssRuleBlock } from '@/test/appStylesRaw';
 import { AuthStatusCard } from './AuthStatusCard';
 
 describe('AuthStatusCard', () => {

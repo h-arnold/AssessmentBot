@@ -8,8 +8,8 @@
  * @see useClassPageData
  */
 
-import type { ClassFull } from '../../services/googleClassrooms/classDetail/classDetailService.zod';
-import { computeDatasetBlockingReason, type PageDatasetState } from '../../hooks/usePageDataset';
+import type { ClassFull } from '@/services/googleClassrooms/classDetail/classDetailService.zod';
+import { computeDatasetBlockingReason, type PageDatasetState } from '@/hooks/usePageDataset';
 import type { ClassPageAdapterResult } from './classPageAdapter.zod';
 
 // ---------------------------------------------------------------------------

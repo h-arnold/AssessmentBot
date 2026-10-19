@@ -13,13 +13,13 @@
 
 import { expect, vi } from 'vitest';
 import { createMockCollection } from '../helpers/mockFactories.js';
-import AssignmentDefinitionController from '../../src/backend/y_controllers/AssignmentDefinition/index.js';
-import { AssignmentDefinition } from '../../src/backend/Models/AssignmentDefinition.js';
-import { TaskDefinition } from '../../src/backend/Models/TaskDefinition.js';
-import DbManager from '../../src/backend/DbManager/DbManager.js';
-import DriveManager from '../../src/backend/GoogleDriveManager/DriveManager/index.js';
-import SlidesParser from '../../src/backend/DocumentParsers/SlidesParser/index.js';
-import { SheetsParser } from '../../src/backend/DocumentParsers/SheetsParser.js';
+import AssignmentDefinitionController from '#backend/y_controllers/AssignmentDefinition/index.js';
+import { AssignmentDefinition } from '#backend/Models/AssignmentDefinition.js';
+import { TaskDefinition } from '#backend/Models/TaskDefinition.js';
+import DbManager from '#backend/DbManager/DbManager.js';
+import DriveManager from '#backend/GoogleDriveManager/DriveManager/index.js';
+import SlidesParser from '#backend/DocumentParsers/SlidesParser/index.js';
+import { SheetsParser } from '#backend/DocumentParsers/SheetsParser.js';
 
 /**
  * Creates a mock parsed task definition

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { AssignmentDefinition } from '../../src/backend/Models/AssignmentDefinition.js';
-import { TaskDefinition } from '../../src/backend/Models/TaskDefinition.js';
+import { AssignmentDefinition } from '#backend/Models/AssignmentDefinition.js';
+import { TaskDefinition } from '#backend/Models/TaskDefinition.js';
 
 describe('AssignmentDefinition', () => {
   // Base valid params for testing

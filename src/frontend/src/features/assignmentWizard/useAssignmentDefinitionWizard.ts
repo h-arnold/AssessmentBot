@@ -1,15 +1,15 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Form, type FormInstance } from 'antd';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useStartupWarmupState } from '../../features/auth/startupWarmupState';
-import { queryKeys } from '../../query/queryKeys';
+import { useStartupWarmupState } from '@/features/auth/startupWarmupState';
+import { queryKeys } from '@/query/queryKeys';
 import {
   getAssignmentDefinitionQueryOptions,
   getAssignmentTopicsQueryOptions,
   getYearGroupsQueryOptions,
-} from '../../query/sharedQueries';
-import { DEFAULT_WEIGHTING_VALUE } from '../../services/assignmentDefinition/assignmentDefinition.zod';
-import { type UpsertAssignmentDefinitionRequest } from '../../services/assignmentDefinition/assignmentDefinitionService';
+} from '@/query/sharedQueries';
+import { DEFAULT_WEIGHTING_VALUE } from '@/services/assignmentDefinition/assignmentDefinition.zod';
+import { type UpsertAssignmentDefinitionRequest } from '@/services/assignmentDefinition/assignmentDefinitionService';
 import {
   applyFormInitialValues,
   buildDocumentUrlsFromDefinition,

@@ -33,6 +33,7 @@ Technical documentation for developers contributing to the AssessmentBot codebas
 - [**API Layer**](./developer/backend/api-layer.md) – Backend transport handlers, validation ownership, `apiHandler` standards, and endpoint documentation
 - [**Backend Logging and Error Handling**](./developer/backend/backend-logging-and-error-handling.md) – Canonical standards for `ABLogger` usage, validation ownership, and error-boundary patterns
 - [**Backend Testing Structure**](./developer/backend/backend-testing.md) – Comprehensive guide to backend testing patterns and practices
+- [**Backend File Organisation**](./developer/backend/backend-file-organisation.md) – Facade-pattern decomposition and `z_Api` domain-folder conventions
 - [**Data Shapes**](./developer/data-shapes/INDEX.md) – Canonical data-shape specifications for all API contracts
 - [**Rehydration**](./developer/backend/rehydration.md) – Guide to deserialising and reconstructing objects
 - [**Singleton Pattern**](./developer/backend/singletons.md) – How to work with singletons in the codebase
@@ -42,6 +43,8 @@ Technical documentation for developers contributing to the AssessmentBot codebas
 
 ### Frontend
 
+- [**Frontend Architecture**](./developer/frontend/frontend-architecture.md) – Service-folder, feature-directory, file-splitting, and transport-boundary conventions
+- [**Data Analysis Architecture**](./developer/frontend/data-analysis-architecture.md) – Analyser pipeline and heatmap projection architecture
 - [**Frontend Testing Guidelines**](./developer/frontend/frontend-testing.md) – Lightweight guide to frontend unit and E2E testing
 - [**Frontend Logging and Error Handling**](./developer/frontend/frontend-logging-and-error-handling.md) – Canonical standards for frontend diagnostics, error mapping, and user-facing feedback
 - [**Frontend Loading and Width Standards**](./developer/frontend/frontend-loading-and-width-standards.md) – Loading states, width-token system, and accessibility-semantics rules

@@ -203,6 +203,8 @@ The entrypoint is `scripts/builder/src/build-gas-bundle.ts`. It resolves config 
 - Fails if unresolved asset references remain, or if any module script still has an unresolved external `src` after transform.
 - Handles module script attributes in quoted or unquoted form, and supports either `src`/`type` attribute order.
 
+**Frontend authoring constraint:** frontend source must not rely on external (CDN) runtime assets or asset references the transform cannot inline. Keep `index.html` stylesheet and module-script wiring as local references produced by the Vite build; Stage 4 replaces them with inline blocks and fails the build on unresolved external references.
+
 ### Stage 5: Backend copy
 
 - Recursively copies runtime `.js` files from `src/backend` to `build/gas`.

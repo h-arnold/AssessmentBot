@@ -1,15 +1,15 @@
 import { type QueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
-import { ApiTransportError } from '../../errors/apiTransportError';
-import { normaliseUnknownError } from '../../errors/normaliseUnknownError';
-import { logFrontendError } from '../../logging/frontendLogger';
+import { ApiTransportError } from '@/errors/apiTransportError';
+import { normaliseUnknownError } from '@/errors/normaliseUnknownError';
+import { logFrontendError } from '@/logging/frontendLogger';
 import {
   getStartupWarmupQueryKey,
   startupWarmupDatasetKeys,
   startupWarmupQueryKeys,
   type StartupWarmupDatasetKey,
   warmStartupQueries,
-} from '../../query/sharedQueries';
+} from '@/query/sharedQueries';
 import {
   createStartupWarmupSnapshotForStatus,
   type StartupWarmupSnapshot,
@@ -77,12 +77,7 @@ function getDatasetWarmupState(
 function createWarmupSnapshotFromQueryClient(queryClient: QueryClient): StartupWarmupSnapshot {
   return {
     datasets: Object.fromEntries(
-      startupWarmupDatasetKeys.map((datasetKey) => {
-        return [
-          datasetKey,
-          getDatasetWarmupState(queryClient, datasetKey),
-        ];
-      })
+      startupWarmupDatasetKeys.map((datasetKey) => [datasetKey, getDatasetWarmupState(queryClient, datasetKey)])
     ) as StartupWarmupSnapshot['datasets'],
   };
 }

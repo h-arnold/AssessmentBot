@@ -11,18 +11,18 @@
  */
 
 import { createDefinitionPartial, createMetricResult } from '../dataAnalysis/fixtures';
-import type { MetricResult } from '../../services/dataAnalysis/dataAnalysis.zod';
 import type {
   AveragingResult,
   PerTaskRow,
   PerStudentRow,
   PerClassResult,
-} from '../../services/dataAnalysis/dataAnalysis.zod';
+  MetricResult,
+} from '@/services/dataAnalysis/dataAnalysis.zod';
 import type {
   ClassFull,
   AssignmentPartial,
   StudentSummary,
-} from '../../services/googleClassrooms/classDetail/classDetailService.zod';
+} from '@/services/googleClassrooms/classDetail/classDetailService.zod';
 
 // ---------------------------------------------------------------------------
 // Constants

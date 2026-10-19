@@ -1,16 +1,16 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { renderHook } from '@testing-library/react';
 import { useHeatmapSelectionSummary } from './useHeatmapSelectionSummary';
-import { DataAnalysisService } from '../../services/dataAnalysis/dataAnalysisService';
-import { adaptMetricsToMergedHeatmap } from '../../services/dataAnalysis/heatmapAdapter.merged';
-import * as frontendLogger from '../../logging/frontendLogger';
-import * as summaryAdapter from '../../services/dataAnalysis/assignmentSummaryAdapter';
+import { DataAnalysisService } from '@/services/dataAnalysis/dataAnalysisService';
+import { adaptMetricsToMergedHeatmap } from '@/services/dataAnalysis/heatmapAdapter.merged';
+import * as frontendLogger from '@/logging/frontendLogger';
+import * as summaryAdapter from '@/services/dataAnalysis/assignmentSummaryAdapter';
 import {
   buildInput,
   createAssignmentPartial,
   createSubmission,
   createSubmissionItem,
-} from '../../test/dataAnalysis/fixtures';
+} from '@/test/dataAnalysis/fixtures';
 
 const FIRST_ACCURACY = 4;
 const SECOND_ACCURACY = 1;

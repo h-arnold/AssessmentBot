@@ -15,7 +15,7 @@
  * primitives — never the transport read — are consolidated here.
  */
 
-import type { AssignmentFull } from '../../services/assignmentAssessment/assignmentAssessment.zod';
+import type { AssignmentFull } from '@/services/assignmentAssessment/assignmentAssessment.zod';
 
 /**
  * Deep-freeze a selected canonical record so any in-place mutation fails

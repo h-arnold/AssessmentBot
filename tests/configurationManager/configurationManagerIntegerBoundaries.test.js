@@ -4,7 +4,7 @@ import {
   installStoredConfig,
 } from '../helpers/backendConfigTestHelpers.js';
 
-const ConfigurationManager = require('../../src/backend/ConfigurationManager/98_ConfigurationManagerClass.js');
+const ConfigurationManager = require('#backend/ConfigurationManager/98_ConfigurationManagerClass.js');
 
 describe('ConfigurationManager integer boundaries', () => {
   let mocks;

@@ -6,11 +6,11 @@ import {
   getGoogleClassroomsQueryOptions,
   getYearGroupsQueryOptions,
   type StartupWarmupDatasetKey,
-} from '../../query/sharedQueries';
+} from '@/query/sharedQueries';
 import { useStartupWarmupState, type StartupWarmupContextValue } from '../auth/startupWarmupState';
-import type { ClassPartial } from '../../services/googleClassrooms/classPartialsService';
-import type { GoogleClassroom } from '../../services/googleClassrooms/googleClassroomsService';
-import type { Cohort, YearGroup } from '../../services/referenceData/referenceData.zod';
+import type { ClassPartial } from '@/services/googleClassrooms/classPartialsService';
+import type { GoogleClassroom } from '@/services/googleClassrooms/googleClassroomsService';
+import type { Cohort, YearGroup } from '@/services/referenceData/referenceData.zod';
 import {
   buildClassesManagementRows,
   type ClassesManagementRow,

@@ -19,8 +19,8 @@
  * CacheManager (6-hour TTL, auth:<groupEmail>:<email> key), and logs every
  * attempt through ABLogger.
  */
-const AuthService = require('../../../src/backend/Utils/AuthService.js');
-const { withGlobalMocks } = require('../../helpers/globalMockManager.js');
+const AuthService = require('#backend/Utils/AuthService.js');
+const { withGlobalMocks } = require('#test-helpers/globalMockManager.js');
 const { createGroupsAppMock, createSessionMock } = require('./authServiceTestHarness.js');
 
 /** The 6-hour TTL (in seconds) AuthService passes to CacheManager.put(). */

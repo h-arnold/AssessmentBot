@@ -22,7 +22,7 @@
  * `defaultWriteConfigurationLocked` for a subsequent retry.
  */
 import { vi } from 'vitest';
-import { withGlobalMocks } from '../../helpers/globalMockManager.js';
+import { withGlobalMocks } from '#test-helpers/globalMockManager.js';
 import {
   createAbLoggerSpy,
   createSessionMock,

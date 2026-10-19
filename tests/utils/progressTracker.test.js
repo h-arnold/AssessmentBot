@@ -5,7 +5,7 @@
  * via setupGlobals.js (in-memory store). The ABLogger global mock
  * prevents spurious console output.
  */
-const ProgressTracker = require('../../src/backend/Utils/ProgressTracker.js');
+const ProgressTracker = require('#backend/Utils/ProgressTracker.js');
 const { withGlobalMocks } = require('../helpers/globalMockManager.js');
 
 describe('ProgressTracker', () => {

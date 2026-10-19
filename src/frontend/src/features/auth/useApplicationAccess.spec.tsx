@@ -2,7 +2,7 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { render, screen, waitFor } from '@testing-library/react';
 import type { PropsWithChildren } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createAppQueryClient } from '../../query/queryClient';
+import { createAppQueryClient } from '@/query/queryClient';
 import { useApplicationAccess } from './useApplicationAccess';
 
 const { getApplicationAccessMock } = vi.hoisted(() => {
@@ -11,7 +11,7 @@ const { getApplicationAccessMock } = vi.hoisted(() => {
   };
 });
 
-vi.mock('../../services/authService/authService', () => {
+vi.mock('@/services/authService/authService', () => {
   return {
     getApplicationAccess: getApplicationAccessMock,
   };

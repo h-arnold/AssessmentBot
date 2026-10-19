@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { Tooltip } from 'antd';
 
-import type { AverageContribution } from '../../services/dataAnalysis/dataAnalysis.zod';
+import type { AverageContribution } from '@/services/dataAnalysis/dataAnalysis.zod';
 
 export const ZERO_WEIGHT_EXPLANATION =
   'Zero weighting — scores are shown but do not contribute to averages.';

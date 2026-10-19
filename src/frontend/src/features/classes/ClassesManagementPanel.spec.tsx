@@ -1,15 +1,15 @@
-import '../../test/classes/ClassesManagementPanel.mockSetup';
+import '@/test/classes/ClassesManagementPanel.mockSetup';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi, type MockInstance } from 'vitest';
-import { ApiTransportError } from '../../errors/apiTransportError';
-import { queryKeys } from '../../query/queryKeys';
-import { createClassesManagementPanelHarness } from '../../test/classes/classesManagementPanelHarness';
-import type { MutableQueueState } from '../../test/classes/classesManagementPanelHarness';
+import { ApiTransportError } from '@/errors/apiTransportError';
+import { queryKeys } from '@/query/queryKeys';
+import { createClassesManagementPanelHarness } from '@/test/classes/classesManagementPanelHarness';
+import type { MutableQueueState } from '@/test/classes/classesManagementPanelHarness';
 import {
   buildClassesManagementState,
   createFulfilledClassResult,
   createRejectedClassResult,
-} from '../../test/classes/classesTestHelpers';
+} from '@/test/classes/classesTestHelpers';
 import type { ClassesManagementState } from './useClassesManagement';
 import { useClassesManagement } from './useClassesManagement';
 import { runQueuedBatchMutation } from './bulk/runQueuedBatchMutation';

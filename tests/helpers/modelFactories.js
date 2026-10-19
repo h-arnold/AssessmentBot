@@ -3,11 +3,11 @@
  * Reduces duplication of model creation logic across tests
  */
 
-const { TaskDefinition } = require('../../src/backend/Models/TaskDefinition.js');
-const { StudentSubmission } = require('../../src/backend/Models/StudentSubmission.js');
-const { ArtifactFactory } = require('../../src/backend/Models/Artifacts/index.js');
-const { AssignmentDefinition } = require('../../src/backend/Models/AssignmentDefinition.js');
-const Assignment = require('../../src/backend/AssignmentProcessor/Assignment/index.js');
+const { TaskDefinition } = require('#backend/Models/TaskDefinition.js');
+const { StudentSubmission } = require('#backend/Models/StudentSubmission.js');
+const { ArtifactFactory } = require('#backend/Models/Artifacts/index.js');
+const { AssignmentDefinition } = require('#backend/Models/AssignmentDefinition.js');
+const Assignment = require('#backend/AssignmentProcessor/Assignment/index.js');
 
 /**
  * Create a TaskDefinition for testing with sensible defaults

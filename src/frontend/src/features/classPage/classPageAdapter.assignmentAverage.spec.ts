@@ -11,14 +11,14 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { createMetricResult } from '../../test/dataAnalysis/fixtures';
+import { createMetricResult } from '@/test/dataAnalysis/fixtures';
 import {
   computedPerTaskRow,
   perTaskRow,
   singleAssignmentAdapterInput,
-} from '../../test/classPage/classPageAdapterTestFixtures';
+} from '@/test/classPage/classPageAdapterTestFixtures';
 import { adaptClassPageToViewModel } from './classPageAdapter';
-import type { PerTaskRow } from '../../services/dataAnalysis/dataAnalysis.zod';
+import type { PerTaskRow } from '@/services/dataAnalysis/dataAnalysis.zod';
 
 describe('adaptClassPageToViewModel', () => {
   const CRITERION_COUNT = 3;

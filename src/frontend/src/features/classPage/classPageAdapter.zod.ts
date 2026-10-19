@@ -2,7 +2,7 @@
  * Zod schemas for the Class page adapter's canonical output.
  *
  * This module defines the trust boundary between the analyser and the UI.
- * Per `src/frontend/AGENTS.md` §9, Zod-first validation is mandatory for
+ * Per the frontend validation rules in `src/frontend/AGENTS.md`, Zod-first validation is mandatory for
  * trust boundaries: the schema is defined first, and all TypeScript types
  * are derived via `z.infer<typeof ...>`.
  *
@@ -15,7 +15,7 @@
  */
 
 import { z } from 'zod';
-import { MetricResultSchema } from '../../services/dataAnalysis/dataAnalysis.zod';
+import { MetricResultSchema } from '@/services/dataAnalysis/dataAnalysis.zod';
 
 /**
  * Exact zero-data `N` placeholder used only for empty student/recent-assignment

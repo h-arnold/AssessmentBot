@@ -28,11 +28,11 @@ import { Flex } from 'antd';
 import { ClassPageContent } from './ClassPageContent';
 import { ClassPageHeaderActions } from './ClassPageHeaderActions';
 import { useClassPageData } from './useClassPageData';
-import { AssessTaskModal } from '../../features/classes/AssessTaskModal/AssessTaskModal';
-import { pageContent } from '../../pages/pageContent';
-import { useClassSelection } from '../../ClassSelectionContext';
-import { APP_GAP_MD } from '../../theme/spacing';
-import { PageTitleCard, PageNavCard } from '../../components/PageHeader/PageHeader';
+import { AssessTaskModal } from '@/features/classes/AssessTaskModal/AssessTaskModal';
+import { pageContent } from '@/pages/pageContent';
+import { useClassSelection } from '@/ClassSelectionContext';
+import { APP_GAP_MD } from '@/theme/spacing';
+import { PageTitleCard, PageNavCard } from '@/components/PageHeader/PageHeader';
 import type { ReRunContext } from '../shared/reRunAssessmentContext';
 
 type ClassPageProperties = Readonly<{

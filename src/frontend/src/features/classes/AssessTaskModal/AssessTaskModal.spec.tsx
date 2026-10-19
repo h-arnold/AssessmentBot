@@ -2,22 +2,22 @@ import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testi
 import userEvent from '@testing-library/user-event';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import '../../../test/classes/AssessTaskModal.mockSetup';
+import '@/test/classes/AssessTaskModal.mockSetup';
 import { AssessTaskModal } from './AssessTaskModal';
-import { getGoogleClassroomAssignments } from '../../../services/googleClassrooms/googleClassroomAssignmentsService';
-import { startAssessmentRun } from '../../../services/assignmentAssessment/assignmentAssessmentService';
+import { getGoogleClassroomAssignments } from '@/services/googleClassrooms/googleClassroomAssignmentsService';
+import { startAssessmentRun } from '@/services/assignmentAssessment/assignmentAssessmentService';
 import {
   getAssignmentDefinition,
   upsertAssignmentDefinition,
-} from '../../../services/assignmentDefinition/assignmentDefinitionService';
+} from '@/services/assignmentDefinition/assignmentDefinitionService';
 import { findMatchingDefinition } from './matchDefinitionForAssignment';
-import { queryKeys } from '../../../query/queryKeys';
-import { renderWithFrontendProviders } from '../../../test/renderWithFrontendProviders';
-import { createAppQueryClient } from '../../../query/queryClient';
-import { ApiTransportError } from '../../../errors/apiTransportError';
-import { createFixtureClassPartial } from '../../../test/classes/classesPageTestHelpers';
-import type { AssignmentTopic } from '../../../services/referenceData/referenceData.zod';
-import type { GoogleClassroomAssignmentsResponse } from '../../../services/googleClassrooms/googleClassroomAssignments.zod';
+import { queryKeys } from '@/query/queryKeys';
+import { renderWithFrontendProviders } from '@/test/renderWithFrontendProviders';
+import { createAppQueryClient } from '@/query/queryClient';
+import { ApiTransportError } from '@/errors/apiTransportError';
+import { createFixtureClassPartial } from '@/test/classes/classesPageTestHelpers';
+import type { AssignmentTopic } from '@/services/referenceData/referenceData.zod';
+import type { GoogleClassroomAssignmentsResponse } from '@/services/googleClassrooms/googleClassroomAssignments.zod';
 import {
   type RenderWithCacheOptions,
   MOCK_CLASS_ID,
@@ -36,15 +36,15 @@ import {
   expectLinkButtonDisabled,
   expectStartAssessmentDisabled,
   expectCancelButtonPresent,
-} from '../../../test/classes/AssessTaskModal.test-utilities';
+} from '@/test/classes/AssessTaskModal.test-utilities';
 import {
   renderWithNoMatchCache,
   performLinkFlow,
-} from '../../../test/classes/AssessTaskModal.link-flow-helpers';
-import { createDefinitionPartial } from '../../../test/classes/matchDefinitionForAssignment.test-utilities';
-import { setTextboxValue } from '../../../test/assignmentDefinition/wizardTestHelpers';
-import { getAssignmentTopics } from '../../../services/assignmentDefinition/assignmentTopicsService';
-import { getYearGroups } from '../../../services/referenceData/referenceDataService';
+} from '@/test/classes/AssessTaskModal.link-flow-helpers';
+import { createDefinitionPartial } from '@/test/classes/matchDefinitionForAssignment.test-utilities';
+import { setTextboxValue } from '@/test/assignmentDefinition/wizardTestHelpers';
+import { getAssignmentTopics } from '@/services/assignmentDefinition/assignmentTopicsService';
+import { getYearGroups } from '@/services/referenceData/referenceDataService';
 
 let user: ReturnType<typeof userEvent.setup>;
 

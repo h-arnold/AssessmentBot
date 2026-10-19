@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-const ApiValidationError = require('../../src/backend/Utils/ErrorTypes/ApiValidationError.js');
+const ApiValidationError = require('#backend/Utils/ErrorTypes/ApiValidationError.js');
 
 const TRANSPORT_PATH = '../../src/backend/z_Api/assignmentDefinitionTransport.js';
 const UPSERT_VALIDATION_PATH =

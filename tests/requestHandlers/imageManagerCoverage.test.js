@@ -21,8 +21,8 @@ afterAll(() => {
   restoreSavedGlobals(savedBaseRequestManagerGlobals);
 });
 
-const { ArtifactFactory } = require('../../src/backend/Models/Artifacts/index.js');
-const ImageManager = require('../../src/backend/RequestHandlers/ImageManager.js');
+const { ArtifactFactory } = require('#backend/Models/Artifacts/index.js');
+const ImageManager = require('#backend/RequestHandlers/ImageManager.js');
 
 function buildManager(overrides = {}) {
   const manager = new ImageManager();

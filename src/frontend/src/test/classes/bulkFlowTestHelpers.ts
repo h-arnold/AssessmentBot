@@ -11,9 +11,9 @@
  */
 
 import { vi } from 'vitest';
-import type { ClassesManagementRow } from '../../features/classes/classesManagementViewModel';
-import type { BatchProgressSnapshot } from '../../features/classes/bulk/runQueuedBatchMutation';
-import type { RowMutationResult } from '../../features/classes/bulk/batchMutationEngine';
+import type { ClassesManagementRow } from '@/features/classes/classesManagementViewModel';
+import type { BatchProgressSnapshot } from '@/features/classes/bulk/runQueuedBatchMutation';
+import type { RowMutationResult } from '@/features/classes/bulk/batchMutationEngine';
 
 /**
  * Mocks shared by the bulk active-state and delete panel specs.

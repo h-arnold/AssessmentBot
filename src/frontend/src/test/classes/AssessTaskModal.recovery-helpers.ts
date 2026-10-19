@@ -18,20 +18,20 @@ import userEvent from '@testing-library/user-event';
 import { createElement } from 'react';
 import type { QueryClient } from '@tanstack/react-query';
 import { vi } from 'vitest';
-import { AssessTaskModal } from '../../features/classes/AssessTaskModal/AssessTaskModal';
-import { findMatchingDefinition } from '../../features/classes/AssessTaskModal/matchDefinitionForAssignment';
-import { getGoogleClassroomAssignments } from '../../services/googleClassrooms/googleClassroomAssignmentsService';
-import { startAssessmentRun } from '../../services/assignmentAssessment/assignmentAssessmentService';
+import { AssessTaskModal } from '@/features/classes/AssessTaskModal/AssessTaskModal';
+import { findMatchingDefinition } from '@/features/classes/AssessTaskModal/matchDefinitionForAssignment';
+import { getGoogleClassroomAssignments } from '@/services/googleClassrooms/googleClassroomAssignmentsService';
+import { startAssessmentRun } from '@/services/assignmentAssessment/assignmentAssessmentService';
 import {
   getAssignmentDefinition,
   upsertAssignmentDefinition,
-} from '../../services/assignmentDefinition/assignmentDefinitionService';
-import { getAssignmentTopics } from '../../services/assignmentDefinition/assignmentTopicsService';
-import { getCohorts, getYearGroups } from '../../services/referenceData/referenceDataService';
-import { mapErrorCodeToUserMessage } from '../../errors/map-error-to-ui';
-import { ApiTransportError } from '../../errors/apiTransportError';
-import { queryKeys } from '../../query/queryKeys';
-import { createAppQueryClient } from '../../query/queryClient';
+} from '@/services/assignmentDefinition/assignmentDefinitionService';
+import { getAssignmentTopics } from '@/services/assignmentDefinition/assignmentTopicsService';
+import { getCohorts, getYearGroups } from '@/services/referenceData/referenceDataService';
+import { mapErrorCodeToUserMessage } from '@/errors/map-error-to-ui';
+import { ApiTransportError } from '@/errors/apiTransportError';
+import { queryKeys } from '@/query/queryKeys';
+import { createAppQueryClient } from '@/query/queryClient';
 import { renderWithFrontendProviders } from '../renderWithFrontendProviders';
 import { createFixtureClassPartial } from './classesPageTestHelpers';
 import {
@@ -41,11 +41,11 @@ import {
   defaultProperties,
   selectAssignment,
 } from './AssessTaskModal.test-utilities';
-import type { AssignmentDefinition } from '../../services/assignmentDefinition/assignmentDefinition.zod';
-import type { AssignmentDefinitionPartial } from '../../services/assignmentDefinition/assignmentDefinitionPartials.zod';
-import type { GoogleClassroomAssignmentsResponse } from '../../services/googleClassrooms/googleClassroomAssignments.zod';
-import type { AssignmentTopic, YearGroup } from '../../services/referenceData/referenceData.zod';
-import editableDefinitionsRaw from '../../../../../tests/__mocks__/data/synthetic-analysis/small/editableDefinitions.json?raw';
+import type { AssignmentDefinition } from '@/services/assignmentDefinition/assignmentDefinition.zod';
+import type { AssignmentDefinitionPartial } from '@/services/assignmentDefinition/assignmentDefinitionPartials.zod';
+import type { GoogleClassroomAssignmentsResponse } from '@/services/googleClassrooms/googleClassroomAssignments.zod';
+import type { AssignmentTopic, YearGroup } from '@/services/referenceData/referenceData.zod';
+import editableDefinitionsRaw from '@synthetic/small/editableDefinitions.json?raw';
 
 /**
  * Canonical small-profile `transport.editableDefinitions` view, imported as raw

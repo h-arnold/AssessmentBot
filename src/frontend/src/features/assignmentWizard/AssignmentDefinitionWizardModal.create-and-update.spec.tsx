@@ -1,29 +1,29 @@
-import '../../test/assignmentDefinition/AssignmentDefinitionWizardModal.mockSetup';
-import type { RenderWizardModalOptions } from '../../test/assignmentDefinition/wizardModalRenderingHelpers';
+import '@/test/assignmentDefinition/AssignmentDefinitionWizardModal.mockSetup';
+import type { RenderWizardModalOptions } from '@/test/assignmentDefinition/wizardModalRenderingHelpers';
 import {
   mockFullAssignmentDefinition,
   mockUpsertResponse,
-} from '../../test/assignmentDefinition/assignmentDefinitionTestFixtures';
+} from '@/test/assignmentDefinition/assignmentDefinitionTestFixtures';
 import {
   createStartupWarmupState,
   setTextboxValue,
-} from '../../test/assignmentDefinition/wizardTestHelpers';
+} from '@/test/assignmentDefinition/wizardTestHelpers';
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   setupAssignmentDefinitionWizardMocks,
   resetAssignmentDefinitionWizardMocks,
   setWizardMocks,
-} from '../../test/assignmentDefinition/AssignmentDefinitionWizardModal.test-harness';
-import * as wizard from '../../test/assignmentDefinition/AssignmentDefinitionWizardModal.test-harness';
+} from '@/test/assignmentDefinition/AssignmentDefinitionWizardModal.test-harness';
+import * as wizard from '@/test/assignmentDefinition/AssignmentDefinitionWizardModal.test-harness';
 
 import {
   getAssignmentDefinition,
   upsertAssignmentDefinition,
-} from '../../services/assignmentDefinition/assignmentDefinitionService';
-import { getAssignmentTopics } from '../../services/assignmentDefinition/assignmentTopicsService';
-import { getCohorts, getYearGroups } from '../../services/referenceData/referenceDataService';
-import { useStartupWarmupState } from '../../features/auth/startupWarmupState';
+} from '@/services/assignmentDefinition/assignmentDefinitionService';
+import { getAssignmentTopics } from '@/services/assignmentDefinition/assignmentTopicsService';
+import { getCohorts, getYearGroups } from '@/services/referenceData/referenceDataService';
+import { useStartupWarmupState } from '@/features/auth/startupWarmupState';
 
 const getAssignmentDefinitionMock = vi.mocked(getAssignmentDefinition) as ReturnType<typeof vi.fn>;
 const getAssignmentTopicsMock = vi.mocked(getAssignmentTopics) as ReturnType<typeof vi.fn>;

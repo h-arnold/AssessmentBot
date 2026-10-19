@@ -1,12 +1,12 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import DriveManager from '../../src/backend/GoogleDriveManager/DriveManager/index.js';
-import { AssignmentDefinition } from '../../src/backend/Models/AssignmentDefinition.js';
+import DriveManager from '#backend/GoogleDriveManager/DriveManager/index.js';
+import { AssignmentDefinition } from '#backend/Models/AssignmentDefinition.js';
 import { withGlobalMocks } from '../helpers/globalMockManager.js';
 import { createDriveManagerMocks } from '../helpers/driveManagerFacadeMocks.js';
 
-import DbManager from '../../src/backend/DbManager/DbManager.js';
+import DbManager from '#backend/DbManager/DbManager.js';
 
-vi.mock('../../src/backend/DbManager/DbManager.js');
+vi.mock('#backend/DbManager/DbManager.js');
 
 describe('DriveManager - Definition Refresh Integration', () => {
   let mockCollection;

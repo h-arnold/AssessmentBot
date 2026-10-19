@@ -2,10 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 const requestStorePath = '../../src/backend/z_Api/requestStore.js';
 
-const {
-  USER_REQUEST_STORE_KEY,
-  MAX_TRACKED_REQUESTS,
-} = require('../../src/backend/z_Api/apiConstants.js');
+const { USER_REQUEST_STORE_KEY, MAX_TRACKED_REQUESTS } = require('#backend/z_Api/apiConstants.js');
 
 function loadRequestStoreModule() {
   delete require.cache[require.resolve(requestStorePath)];

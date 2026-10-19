@@ -11,7 +11,7 @@ import {
   createNotAttemptedMetricResult,
   createErrorMetricResult,
   createExcludedMetricResult,
-} from '../../../test/dataAnalysis/fixtures';
+} from '@/test/dataAnalysis/fixtures';
 import { formatMetricDisplayText } from './metricDisplayText';
 
 /** Precision used by the formatter tests. */

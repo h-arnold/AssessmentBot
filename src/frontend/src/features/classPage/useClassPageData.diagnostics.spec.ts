@@ -3,12 +3,12 @@ import { renderHook } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createElement, StrictMode, type ReactNode } from 'react';
 import { z } from 'zod';
-import { DataAnalysisResponseSchema } from '../../services/dataAnalysis/dataAnalysis.zod';
-import { createHeatmapClassFull } from '../../test/dataAnalysis/heatmapFixtures';
-import { createMalformedAnalyserOutput } from '../../test/dataAnalysis/diagnosticsFixtures';
-import type { ClassFull } from '../../services/googleClassrooms/classDetail/classDetailService.zod';
+import { DataAnalysisResponseSchema } from '@/services/dataAnalysis/dataAnalysis.zod';
+import { createHeatmapClassFull } from '@/test/dataAnalysis/heatmapFixtures';
+import { createMalformedAnalyserOutput } from '@/test/dataAnalysis/diagnosticsFixtures';
+import type { ClassFull } from '@/services/googleClassrooms/classDetail/classDetailService.zod';
 import { useClassPageData } from './useClassPageData';
-import { createReadyClassQueryResult } from '../../test/classPage/useClassPageDataTestFixtures';
+import { createReadyClassQueryResult } from '@/test/classPage/useClassPageDataTestFixtures';
 
 const CLASS_ID = 'class-abc-123';
 const STRICT_MODE_DOUBLED_CALL_COUNT = 2;
@@ -33,7 +33,7 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
   };
 });
 
-vi.mock('../../hooks/usePageDataset', async (importOriginal) => {
+vi.mock('@/hooks/usePageDataset', async (importOriginal) => {
   const actual = (await importOriginal()) as Record<string, unknown>;
   return {
     ...actual,
@@ -41,7 +41,7 @@ vi.mock('../../hooks/usePageDataset', async (importOriginal) => {
   };
 });
 
-vi.mock('../../query/sharedQueries', async (importOriginal) => {
+vi.mock('@/query/sharedQueries', async (importOriginal) => {
   const actual = (await importOriginal()) as Record<string, unknown>;
   return {
     ...actual,
@@ -49,7 +49,7 @@ vi.mock('../../query/sharedQueries', async (importOriginal) => {
   };
 });
 
-vi.mock('../../services/dataAnalysis/dataAnalysisService', () => {
+vi.mock('@/services/dataAnalysis/dataAnalysisService', () => {
   return {
     DataAnalysisService: vi.fn().mockImplementation(function () {
       return { analyse: mockAnalyse };

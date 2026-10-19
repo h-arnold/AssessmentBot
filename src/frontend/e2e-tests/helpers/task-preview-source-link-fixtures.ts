@@ -27,17 +27,17 @@
 import {
   AssignmentFullSchema,
   type AssignmentFull,
-} from '../../src/services/assignmentAssessment/assignmentAssessment.zod';
+} from '@/services/assignmentAssessment/assignmentAssessment.zod';
 import { HEATMAP_UNSUPPORTED_ARTIFACT_CONTENT } from './task-heatmap-fixtures';
 import {
   ClassFullSchema,
   type ClassFull,
-} from '../../src/services/googleClassrooms/classDetail/classDetailService.zod';
-import { deepFreeze, requireRecord } from '../../src/test/shared/canonicalFixturePrimitives';
-import classPartialsRaw from '../../../../tests/__mocks__/data/synthetic-analysis/small/classPartials.json';
-import classesByIdRaw from '../../../../tests/__mocks__/data/synthetic-analysis/small/classesById.json';
-import assignmentDefinitionPartialsRaw from '../../../../tests/__mocks__/data/synthetic-analysis/small/assignmentDefinitionPartials.json';
-import assignmentsByKeyRaw from '../../../../tests/__mocks__/data/synthetic-analysis/small/assignmentsByKey.json';
+} from '@/services/googleClassrooms/classDetail/classDetailService.zod';
+import { deepFreeze, requireRecord } from '@/test/shared/canonicalFixturePrimitives';
+import classPartialsRaw from '@synthetic/small/classPartials.json';
+import classesByIdRaw from '@synthetic/small/classesById.json';
+import assignmentDefinitionPartialsRaw from '@synthetic/small/assignmentDefinitionPartials.json';
+import assignmentsByKeyRaw from '@synthetic/small/assignmentsByKey.json';
 
 // ---------------------------------------------------------------------------
 // Canonical fixture shapes

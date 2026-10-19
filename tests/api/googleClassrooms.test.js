@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const googleClassroomsModulePath = '../../src/backend/z_Api/googleClassrooms.js';
-const ApiValidationError = require('../../src/backend/Utils/ErrorTypes/ApiValidationError.js');
+const ApiValidationError = require('#backend/Utils/ErrorTypes/ApiValidationError.js');
 const originalClassroomApiClient = globalThis.ClassroomApiClient;
 
 function clearGoogleClassroomsModuleCache() {
@@ -26,7 +26,7 @@ afterEach(() => {
 
 describe('Api/googleClassrooms exports', () => {
   it('exports getGoogleClassrooms_ in Node test runtime', () => {
-    const googleClassroomsModule = require('../../src/backend/z_Api/googleClassrooms.js');
+    const googleClassroomsModule = require('#backend/z_Api/googleClassrooms.js');
 
     expect(googleClassroomsModule).toEqual(
       expect.objectContaining({

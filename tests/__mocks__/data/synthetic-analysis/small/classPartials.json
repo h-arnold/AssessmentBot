@@ -17,7 +17,8 @@
         "teacherName": "Leola Kassulke"
       }
     ],
-    "active": true
+    "active": true,
+    "metadata": null
   },
   {
     "classId": "class-1",
@@ -37,7 +38,17 @@
         "teacherName": "Eldora Schulist"
       }
     ],
-    "active": false
+    "active": false,
+    "metadata": {
+      "classAverages": {
+        "completeness": 4,
+        "accuracy": 3.5,
+        "spag": 4.5,
+        "overall": 3.9,
+        "updatedAt": "2024-01-03T12:03:00.000Z"
+      },
+      "recentAssignments": []
+    }
   },
   {
     "classId": "class-2",
@@ -53,6 +64,28 @@
         "teacherName": "Jolie Conn"
       }
     ],
-    "active": null
+    "active": null,
+    "metadata": {
+      "classAverages": {
+        "completeness": "N",
+        "accuracy": "N",
+        "spag": "N",
+        "overall": "N",
+        "updatedAt": "2024-01-04T12:03:00.000Z"
+      },
+      "recentAssignments": [
+        {
+          "assignmentId": "assignment-2-3",
+          "assignmentDefinitionKey": "definition-partial-0",
+          "updatedAt": "2024-01-04T12:03:00.000Z",
+          "averages": {
+            "completeness": "N",
+            "accuracy": "N",
+            "spag": "N",
+            "overall": "N"
+          }
+        }
+      ]
+    }
   }
 ]

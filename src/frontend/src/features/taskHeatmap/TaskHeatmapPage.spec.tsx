@@ -16,17 +16,17 @@ import { createElement } from 'react';
 import { App } from 'antd';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { TaskHeatmapPage } from './TaskHeatmapPage';
-import { logFrontendError } from '../../logging/frontendLogger';
-import { DataAnalysisService } from '../../services/dataAnalysis/dataAnalysisService';
-import * as summaryAdapter from '../../services/dataAnalysis/assignmentSummaryAdapter';
+import { logFrontendError } from '@/logging/frontendLogger';
+import { DataAnalysisService } from '@/services/dataAnalysis/dataAnalysisService';
+import * as summaryAdapter from '@/services/dataAnalysis/assignmentSummaryAdapter';
 import type { TaskHeatmapTable } from './TaskHeatmapTable';
 import {
   analyserResultFixture,
   buildDefaultAssignmentFixture,
   classFullFixture,
   VALID_ASSIGNMENT_PARTIAL,
-} from '../../test/taskHeatmapPageFixtures';
-import { createTestQueryClient } from '../../test/dataAnalysis/heatmapFixtures';
+} from '@/test/taskHeatmapPageFixtures';
+import { createTestQueryClient } from '@/test/dataAnalysis/heatmapFixtures';
 
 // ===========================================================================
 // Helpers
@@ -48,13 +48,13 @@ const { mockTaskHeatmapTable } = vi.hoisted(() => {
   };
 });
 
-vi.mock('../../services/assignmentAssessment/assignmentAssessmentService', () => {
+vi.mock('@/services/assignmentAssessment/assignmentAssessmentService', () => {
   return {
     getAssignment: mockGetAssignment,
   };
 });
 
-vi.mock('../../logging/frontendLogger', () => {
+vi.mock('@/logging/frontendLogger', () => {
   return {
     logFrontendError: mockLogFrontendError,
     logFrontendEvent: mockLogFrontendEvent,
