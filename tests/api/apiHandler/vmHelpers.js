@@ -18,6 +18,8 @@ function loadApiHandlerInVmContext({ globals = {} } = {}) {
 
   sandbox.globalThis = sandbox;
   vm.createContext(sandbox);
+  // Evaluate only the fixed repository-controlled apiHandler source and constant export suffix.
+  // Globals are test stubs/data, not interpolated source; this VM is not a security sandbox.
   vm.runInContext(`${source}\nthis.__exports = { apiHandler, ApiDispatcher };`, sandbox, {
     filename: 'apiHandler.js',
   });
@@ -26,17 +28,6 @@ function loadApiHandlerInVmContext({ globals = {} } = {}) {
     ...sandbox.__exports,
     context: sandbox,
   };
-}
-
-function loadModuleGlobalsInVmContext(modulePath, { globals = {} } = {}) {
-  const source = fs.readFileSync(require.resolve(modulePath), 'utf8');
-  const sandbox = { ...globals };
-
-  sandbox.globalThis = sandbox;
-  vm.createContext(sandbox);
-  vm.runInContext(source, sandbox, { filename: modulePath });
-
-  return sandbox;
 }
 
 function makeVmGlobals(overrides = {}) {
@@ -116,6 +107,5 @@ module.exports = {
   clearGoogleClassroomsHandlerModuleCache,
   loadRealGoogleClassroomsHandlerWithGlobals,
   loadApiHandlerInVmContext,
-  loadModuleGlobalsInVmContext,
   makeVmGlobals,
 };

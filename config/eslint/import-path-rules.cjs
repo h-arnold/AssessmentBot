@@ -254,7 +254,7 @@ const importPathDepthRule = {
      * @returns {void}
      */
     function checkSpecifier(node) {
-      if (!node || node.type !== 'Literal' || typeof node.value !== 'string') {
+      if (node?.type !== 'Literal' || typeof node.value !== 'string') {
         return;
       }
       if (!traversesTwoOrMoreParents(node.value)) {

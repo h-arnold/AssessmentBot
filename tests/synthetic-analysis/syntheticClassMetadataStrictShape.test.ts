@@ -151,7 +151,7 @@ describe('generator-owned strict raw metadata shape', () => {
     delete record[required];
     Object.setPrototypeOf(record, { [required]: inherited });
     synchroniseMetadataViews(graph);
-    const recordPath = path.replace(/[.[\]]/gu, '\\$&');
+    const recordPath = path.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&');
     const fieldPath = `${recordPath}\\.${required}`;
     checkBothValidators(
       graph,

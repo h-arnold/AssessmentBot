@@ -103,7 +103,7 @@ export function SelectWithAddNew(properties: Readonly<SelectWithAddNewProperties
     ...restProperties
   } = properties;
 
-  const isControlled = Object.prototype.hasOwnProperty.call(properties, 'value');
+  const isControlled = Object.hasOwn(properties, 'value');
   const [uncontrolledValue, setUncontrolledValue] = useState<unknown>(() => defaultValue);
   const selectedValue = isControlled ? value : uncontrolledValue;
 

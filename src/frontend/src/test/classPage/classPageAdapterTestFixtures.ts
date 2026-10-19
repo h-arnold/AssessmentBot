@@ -11,12 +11,12 @@
  */
 
 import { createDefinitionPartial, createMetricResult } from '../dataAnalysis/fixtures';
-import type { MetricResult } from '@/services/dataAnalysis/dataAnalysis.zod';
 import type {
   AveragingResult,
   PerTaskRow,
   PerStudentRow,
   PerClassResult,
+  MetricResult,
 } from '@/services/dataAnalysis/dataAnalysis.zod';
 import type {
   ClassFull,

@@ -12,7 +12,9 @@ export function expectFullSubmissionPreserved(output, sourceRows) {
   for (const submission of output) {
     const source = sourceRows.find((row) => row.studentId === submission.studentId);
     expect(source).toBeDefined();
-    expect(Object.keys(submission.items).sort()).toEqual(Object.keys(source.items).sort());
+    expect(Object.keys(submission.items).sort((left, right) => left.localeCompare(right))).toEqual(
+      Object.keys(source.items).sort((left, right) => left.localeCompare(right))
+    );
     for (const [taskId, item] of Object.entries(submission.items)) {
       const original = source.items[taskId];
       expect(item.artifact.content).toBe(original.artifact.content);
@@ -34,7 +36,9 @@ export function expectPartialSubmissionRedacted(output, sourceRows) {
     const source = sourceRows.find((row) => row.studentId === submission.studentId);
     expect(source).toBeDefined();
     expect(submission.documentId).toBe(source.documentId);
-    expect(Object.keys(submission.items).sort()).toEqual(Object.keys(source.items).sort());
+    expect(Object.keys(submission.items).sort((left, right) => left.localeCompare(right))).toEqual(
+      Object.keys(source.items).sort((left, right) => left.localeCompare(right))
+    );
     for (const [taskId, item] of Object.entries(submission.items)) {
       const original = source.items[taskId];
       expect(item.artifact.content).toBeNull();
@@ -75,7 +79,9 @@ export function expectPartialSubmissionMatchesRedactedSource(output, sourceRows)
     expect(submission.createdAt).toBe(source.createdAt);
     expect(submission.updatedAt).toBe(source.updatedAt);
     expect(output[index].studentId).toBe(sourceRows[index].studentId);
-    expect(Object.keys(submission.items).sort()).toEqual(Object.keys(source.items).sort());
+    expect(Object.keys(submission.items).sort((left, right) => left.localeCompare(right))).toEqual(
+      Object.keys(source.items).sort((left, right) => left.localeCompare(right))
+    );
 
     for (const [taskId, item] of Object.entries(submission.items)) {
       const original = source.items[taskId];

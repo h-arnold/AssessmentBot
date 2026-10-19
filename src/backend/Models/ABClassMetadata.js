@@ -227,10 +227,8 @@ class ABClassMetadata {
    */
   static _copyMetadata(value) {
     if (value === null) return null;
-    const recentAssignments = [];
-    for (let index = 0; index < value.recentAssignments.length; index += 1) {
-      const entry = value.recentAssignments[index];
-      recentAssignments.push({
+    const recentAssignments = Array.from(value.recentAssignments, (entry) => {
+      return {
         assignmentId: entry.assignmentId,
         assignmentDefinitionKey: entry.assignmentDefinitionKey,
         averages: {
@@ -240,8 +238,8 @@ class ABClassMetadata {
           overall: entry.averages.overall,
         },
         updatedAt: entry.updatedAt,
-      });
-    }
+      };
+    });
     return {
       classAverages: {
         completeness: value.classAverages.completeness,
