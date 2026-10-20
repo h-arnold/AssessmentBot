@@ -43,7 +43,7 @@ describe('DateUtils', () => {
 
     // Load the DateUtils module (already exists in production)
     delete require.cache[require.resolve('../../src/backend/Utils/DateUtils.js')];
-    DateUtils = require('../../src/backend/Utils/DateUtils.js');
+    DateUtils = require('#backend/Utils/DateUtils.js');
   });
 
   afterEach(() => {

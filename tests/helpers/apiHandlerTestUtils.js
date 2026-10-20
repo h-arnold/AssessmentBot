@@ -1,5 +1,5 @@
 const apiHandlerPath = '../../src/backend/z_Api/z_apiHandler.js';
-const { USER_REQUEST_STORE_KEY } = require('../../src/backend/z_Api/apiConstants.js');
+const { USER_REQUEST_STORE_KEY } = require('#backend/z_Api/apiConstants.js');
 
 const REFERENCE_DATA_API_METHOD_NAMES = Object.freeze([
   'getCohorts',
@@ -223,7 +223,7 @@ function installAbLoggerSpies(vi) {
 
 function installRealAbLoggerSpies(vi) {
   const originalABLogger = globalThis.ABLogger;
-  const ABLogger = require('../../src/backend/Utils/ABLogger.js');
+  const ABLogger = require('#backend/Utils/ABLogger.js');
 
   if (typeof ABLogger.resetForTests === 'function') {
     ABLogger.resetForTests();

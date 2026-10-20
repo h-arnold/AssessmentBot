@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const modulePath = '../../src/backend/z_Api/assignmentDefinitionTransport.js';
-const ApiValidationError = require('../../src/backend/Utils/ErrorTypes/ApiValidationError.js');
+const ApiValidationError = require('#backend/Utils/ErrorTypes/ApiValidationError.js');
 
 function loadAssignmentDefinitionPartialsModule() {
   delete require.cache[require.resolve(modulePath)];

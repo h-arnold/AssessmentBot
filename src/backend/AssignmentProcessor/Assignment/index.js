@@ -5,7 +5,7 @@
  * (fetchAssignmentName).
  *
  * @remarks This class follows the facade decomposition pattern described in
- * src/backend/AGENTS.md §11. It delegates to AssignmentFactory and
+ * docs/developer/backend/backend-file-organisation.md. It delegates to AssignmentFactory and
  * AssignmentRehydration through static methods, and to AssignmentSerialisation,
  * AssignmentTimestamps, AssignmentSubmissions, AssignmentAssessmentBase, and
  * AssignmentLLMOrchestration through lazily cached prototype getters.

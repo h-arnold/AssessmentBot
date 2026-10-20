@@ -18,7 +18,7 @@ import {
   createNotAttemptedMetricResult,
   createErrorMetricResult,
   createExcludedMetricResult,
-} from '../../../test/dataAnalysis/fixtures';
+} from '@/test/dataAnalysis/fixtures';
 import { compareMetricsByStateRank } from './metricComparator';
 
 // Fixture scores chosen so value ordering within the computed band is

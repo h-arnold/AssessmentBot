@@ -1,4 +1,4 @@
-const ABClassController = require('../../src/backend/y_controllers/ABClassController');
+const ABClassController = require('#backend/y_controllers/ABClassController/index.js');
 
 describe('ABClassController.saveClass', () => {
   let manager;
@@ -49,10 +49,17 @@ describe('ABClassController.saveClass', () => {
     const result = manager.saveClass(abClass);
 
     expect(collectionMock.findOne).toHaveBeenCalledWith({ classId: 'class-1' });
-    expect(collectionMock.replaceOne).toHaveBeenCalledWith({ classId: 'class-1' }, abClass);
+    expect(collectionMock.replaceOne).toHaveBeenCalledWith(
+      { classId: 'class-1' },
+      expect.objectContaining({ classId: 'class-1', name: 'Test', metadata: null })
+    );
+    expect(collectionMock.replaceOne.mock.calls[0][1]).not.toBe(abClass);
     expect(collectionMock.insertOne).not.toHaveBeenCalled();
     expect(collectionMock.save).toHaveBeenCalled();
-    expect(partialsCollectionMock.insertOne).toHaveBeenCalledWith({ classId: 'class-1' });
+    expect(partialsCollectionMock.insertOne).toHaveBeenCalledWith({
+      classId: 'class-1',
+      metadata: null,
+    });
     expect(result).toBe(true);
   });
 
@@ -67,10 +74,16 @@ describe('ABClassController.saveClass', () => {
     const result = manager.saveClass(abClass);
 
     expect(collectionMock.findOne).toHaveBeenCalledWith({ classId: 'class-2' });
-    expect(collectionMock.insertOne).toHaveBeenCalledWith(abClass);
+    expect(collectionMock.insertOne).toHaveBeenCalledWith(
+      expect.objectContaining({ classId: 'class-2', name: 'Test 2', metadata: null })
+    );
+    expect(collectionMock.insertOne.mock.calls[0][0]).not.toBe(abClass);
     expect(collectionMock.replaceOne).not.toHaveBeenCalled();
     expect(collectionMock.save).toHaveBeenCalled();
-    expect(partialsCollectionMock.insertOne).toHaveBeenCalledWith({ classId: 'class-2' });
+    expect(partialsCollectionMock.insertOne).toHaveBeenCalledWith({
+      classId: 'class-2',
+      metadata: null,
+    });
     expect(result).toBe(true);
   });
 

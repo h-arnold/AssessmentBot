@@ -420,7 +420,7 @@ secrets in log output and mandates `ABLogger` for all backend code — see
   the auth service depends on
 - [Backend logging and error handling](../backend/backend-logging-and-error-handling.md) —
   logging policy that governs the audit trail
-- [src/backend/AGENTS.md](../../../src/backend/AGENTS.md) section 2.3 — the `AuthService`
+- [src/backend/AGENTS.md](../../../src/backend/AGENTS.md) §7 — the `AuthService`
   singleton contract for backend development
 - [AUTHENTICATION_SETTINGS_LAYOUT.md](../../../AUTHENTICATION_SETTINGS_LAYOUT.md) — the
   admin Authentication tab layout contract

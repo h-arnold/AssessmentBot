@@ -1,7 +1,7 @@
 import path from 'node:path';
 import { promises as fs } from 'node:fs';
 
-import { normalisePathSeparators, pathExists } from '../../lib/fs.js';
+import { normalisePathSeparators, pathExists } from '#builder/lib/fs.js';
 
 const MANIFEST_FILE_NAME = 'manifest.json';
 const MANIFEST_JSON_INDENT_SPACES = 2;

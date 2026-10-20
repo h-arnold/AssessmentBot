@@ -20,19 +20,19 @@ import { act, renderHook } from '@testing-library/react';
 import type { RenderHookResult } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { PropsWithChildren } from 'react';
-import { createAppQueryClient } from '../../query/queryClient';
-import { upsertAssignmentDefinition } from '../../services/assignmentDefinition/assignmentDefinitionService';
+import { createAppQueryClient } from '@/query/queryClient';
+import { upsertAssignmentDefinition } from '@/services/assignmentDefinition/assignmentDefinitionService';
 import type {
   UpsertAssignmentDefinitionRequest,
   UpsertAssignmentDefinitionResponse,
-} from '../../services/assignmentDefinition/assignmentDefinitionService';
-import type { AssignmentDefinition } from '../../services/assignmentDefinition/assignmentDefinition.zod';
+} from '@/services/assignmentDefinition/assignmentDefinitionService';
+import type { AssignmentDefinition } from '@/services/assignmentDefinition/assignmentDefinition.zod';
 import { useWizardMutationSequence } from './assignmentWizardMutation';
 import type { WizardMutationSequenceOptions } from './assignmentWizardMutation';
 import { buildReparseRequest } from './assignmentWizardOrchestrator';
-import editableDefinitionsRaw from '../../../../../tests/__mocks__/data/synthetic-analysis/small/editableDefinitions.json?raw';
+import editableDefinitionsRaw from '@synthetic/small/editableDefinitions.json?raw';
 
-vi.mock('../../services/assignmentDefinition/assignmentDefinitionService', () => {
+vi.mock('@/services/assignmentDefinition/assignmentDefinitionService', () => {
   return {
     upsertAssignmentDefinition: vi.fn(),
   };

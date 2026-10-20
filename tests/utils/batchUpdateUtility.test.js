@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { withGlobalMocks } from '../helpers/globalMockManager.js';
 
 // Load the module under test
-const { BatchUpdateUtility } = require('../../src/backend/Utils/BatchUpdateUtility.js');
+const { BatchUpdateUtility } = require('#backend/Utils/BatchUpdateUtility.js');
 
 // Global mock context - will be set up in beforeEach and torn down in afterEach
 let restoreBatchUtilityGlobals;

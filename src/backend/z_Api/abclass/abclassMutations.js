@@ -1,4 +1,4 @@
-/* global ABClassController, ApiValidationError, Validate, validateParametersObject_ */
+/* global ABClassController, ABClassMetadataValidationError, ABLogger, ApiValidationError, Validate, validateParametersObject_, validateSafeTrimmedIdentifier_ */
 
 /**
  * Factory function that returns a new ABClassController instance.
@@ -10,6 +10,35 @@ function getAbClassController_() {
 }
 
 /**
+ * Adapts only request-originated metadata domain failures at the mutation
+ * transport boundary. Stored/model integrity failures and unrelated exceptions
+ * retain their original identity and type.
+ *
+ * @param {string} methodName - Allowlisted mutation name for diagnostics.
+ * @param {Object} parameters - Original request parameters.
+ * @param {Function} operation - Controller delegation to invoke.
+ * @returns {*} The controller result.
+ * @throws {*} The original failure, or an ApiValidationError for request metadata.
+ */
+function adaptMetadataRequestError_(methodName, parameters, operation) {
+  try {
+    return operation();
+  } catch (error) {
+    ABLogger.getInstance().error(`${methodName} failed`, {
+      method: methodName,
+      classId: parameters.classId,
+      err: error,
+    });
+
+    if (error instanceof ABClassMetadataValidationError && error.inputSource === 'request') {
+      throw new ApiValidationError(error.message, { method: methodName });
+    }
+
+    throw error;
+  }
+}
+
+/**
  * Validates a mutation classId used across create, update, and delete flows, disallowing unsafe path characters.
  *
  * @param {*} classId - The class ID to validate.
@@ -17,15 +46,17 @@ function getAbClassController_() {
  * @throws {ApiValidationError} If classId is invalid or contains unsafe characters.
  */
 function validateMutationClassId_(classId, methodName) {
-  if (
-    typeof classId === 'string' &&
-    (classId.includes('..') || classId.includes('/') || classId.includes('\\'))
-  ) {
-    throw new ApiValidationError('classId must not contain unsafe path characters.', {
-      method: methodName,
-      fieldName: 'classId',
-    });
-  }
+  // Defence in depth: enforce the same identifier boundary as reads before mutation delegation.
+  validateSafeTrimmedIdentifier_(classId, {
+    throwValidationError: (message, fieldName) => {
+      throw new ApiValidationError(message, { method: methodName, fieldName });
+    },
+    typeErrorMessage: 'classId must be a string.',
+    nonEmptyErrorMessage: 'classId must be a non-empty string.',
+    trimmedErrorMessage: 'classId must already be trimmed.',
+    unsafeErrorMessage: 'classId contains unsafe characters.',
+    fieldNames: { type: 'classId', nonEmpty: 'classId', trimmed: 'classId', unsafe: 'classId' },
+  });
 }
 
 /**
@@ -93,26 +124,34 @@ function validateDeleteABClassParameters_(parameters) {
  * Thin transport handler for ABClass create or refresh operations.
  * Delegates to controller after validating request parameters.
  *
- * @param {Object} parameters - Request payload with classId, cohortKey, yearGroupKey, and courseLength.
+ * @param {Object} parameters - Request payload with classId, cohortKey, yearGroupKey, courseLength, and optional whole-value metadata.
+ * @param {Object|null} [parameters.metadata] - Optional complete metadata replacement passed unchanged to controller-owned validation; omission preserves/initialises null, while null clears it.
  * @returns {Object} Partial ABClass summary from the controller.
  * @throws {ApiValidationError} If parameters fail validation.
+ * @throws {ApiValidationError} If controller request validation rejects supplied metadata.
  */
 function upsertABClass_(parameters) {
   validateUpsertABClassParameters_(parameters);
-  return getAbClassController_().upsertABClass(parameters);
+  return adaptMetadataRequestError_('upsertABClass', parameters, () =>
+    getAbClassController_().upsertABClass(parameters)
+  );
 }
 
 /**
  * Thin transport handler for editable ABClass field updates.
  * Delegates to controller after validating request parameters.
  *
- * @param {Object} parameters - Request payload with classId and optional editable patch fields (`cohortKey`, `yearGroupKey`, `courseLength`, `active`).
+ * @param {Object} parameters - Request payload with classId and optional editable patch fields (`cohortKey`, `yearGroupKey`, `courseLength`, `active`, `metadata`).
+ * @param {Object|null} [parameters.metadata] - Optional complete metadata replacement passed unchanged to controller-owned validation; omission preserves it, null clears it, and nested patching is unsupported.
  * @returns {Object} Partial ABClass summary from the controller.
  * @throws {ApiValidationError} If parameters fail validation.
+ * @throws {ApiValidationError} If controller request validation rejects supplied metadata.
  */
 function updateABClass_(parameters) {
   validateUpdateABClassParameters_(parameters);
-  return getAbClassController_().updateABClass(parameters);
+  return adaptMetadataRequestError_('updateABClass', parameters, () =>
+    getAbClassController_().updateABClass(parameters)
+  );
 }
 
 /**

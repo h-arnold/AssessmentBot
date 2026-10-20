@@ -4,8 +4,8 @@ import { setupGlobalGASMocks } from '../helpers/mockFactories.js';
 const {
   CONFIG_KEYS,
   CONFIG_SCHEMA,
-} = require('../../src/backend/ConfigurationManager/01_configKeysAndSchema.js');
-const ConfigurationManager = require('../../src/backend/ConfigurationManager/98_ConfigurationManagerClass.js');
+} = require('#backend/ConfigurationManager/01_configKeysAndSchema.js');
+const ConfigurationManager = require('#backend/ConfigurationManager/98_ConfigurationManagerClass.js');
 
 describe('ConfigurationManager Section 1 red contract', () => {
   let mocks;

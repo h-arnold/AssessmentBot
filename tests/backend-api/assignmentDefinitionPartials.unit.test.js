@@ -15,7 +15,7 @@ import {
 const transportModulePath = '../../src/backend/z_Api/assignmentDefinitionTransport.js';
 const validationModulePath =
   '../../src/backend/z_Api/assignmentDefinition/assignmentDefinitionValidation.js';
-const ApiValidationError = require('../../src/backend/Utils/ErrorTypes/ApiValidationError.js');
+const ApiValidationError = require('#backend/Utils/ErrorTypes/ApiValidationError.js');
 
 // Test URLs similar to but not exactly the same as the example:
 // https://docs.google.com/presentation/d/1udlgDTkZlHB6Xh4GKlOk6I0zJI-dvAF4iFAun09yW0k/edit
@@ -1908,8 +1908,8 @@ describe('toPartialJSON emits taskTitle per task', () => {
   afterEach(afterEachHandler);
 
   it('emits taskTitle per task in toPartialJSON tasks array', () => {
-    const { AssignmentDefinition } = require('../../src/backend/Models/AssignmentDefinition.js');
-    const { TaskDefinition } = require('../../src/backend/Models/TaskDefinition.js');
+    const { AssignmentDefinition } = require('#backend/Models/AssignmentDefinition.js');
+    const { TaskDefinition } = require('#backend/Models/TaskDefinition.js');
 
     const task = new TaskDefinition({ taskTitle: 'My Task Title', pageId: 'p1' }, 3);
     const def = new AssignmentDefinition({

@@ -13,6 +13,7 @@
  */
 
 import { expect, test, type Page } from '@playwright/test';
+import { waitForSelectPopupReady } from './helpers/select-popup-readiness';
 import {
   baseCohorts,
   baseYearGroups,
@@ -126,8 +127,10 @@ async function startBulkCreateWithDeferredUpserts(page: Page) {
   const createDialog = page.getByRole('dialog', { name: bulkCreateButtonLabel });
   await expect(createDialog).toBeVisible();
   await createDialog.getByRole('combobox', { name: 'Cohort' }).click();
+  await waitForSelectPopupReady(page.getByRole('option', { name: 'Cohort 2025' }));
   await page.getByRole('option', { name: 'Cohort 2025' }).click();
   await createDialog.getByRole('combobox', { name: 'Year group' }).click();
+  await waitForSelectPopupReady(page.getByRole('option', { name: 'Year 11' }));
   await page.getByRole('option', { name: 'Year 11' }).click();
   await createDialog.getByRole('spinbutton', { name: 'Course length' }).fill('2');
   const createOkButton = createDialog.getByRole('button', { name: 'OK' });

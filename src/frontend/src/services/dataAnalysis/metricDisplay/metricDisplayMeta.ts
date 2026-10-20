@@ -8,7 +8,7 @@
  */
 
 import { ListTodo, Merge, SpellCheck, Target } from 'lucide-react';
-import type { LucideIconComponent } from '../../../components/icons/LucideIcon';
+import type { LucideIconComponent } from '@/components/icons/LucideIcon';
 
 // ---------------------------------------------------------------------------
 // Exported types

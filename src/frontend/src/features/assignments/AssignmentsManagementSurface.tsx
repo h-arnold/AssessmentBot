@@ -8,17 +8,17 @@ import {
   isPageSurfaceBusy,
   usePageDataset,
   type PageDatasetState,
-} from '../../hooks/usePageDataset';
-import { logFrontendError } from '../../logging/frontendLogger';
-import { queryKeys } from '../../query/queryKeys';
-import { refetchAfterStaleInvalidate } from '../../query/queryInvalidationHelpers';
+} from '@/hooks/usePageDataset';
+import { logFrontendError } from '@/logging/frontendLogger';
+import { queryKeys } from '@/query/queryKeys';
+import { refetchAfterStaleInvalidate } from '@/query/queryInvalidationHelpers';
 import {
   deleteAssignmentDefinition,
   type AssignmentDefinitionPartial,
-} from '../../services/assignmentDefinition/assignmentDefinitionPartialsService';
+} from '@/services/assignmentDefinition/assignmentDefinitionPartialsService';
 import { AssignmentDefinitionWizardModal } from '../assignmentWizard/AssignmentDefinitionWizardModal';
 import { AssignmentDefinitionsTable } from './AssignmentDefinitionsTable';
-import { APP_GAP_COMPACT, APP_GAP_MD, APP_GAP_SM, APP_SPACE_SIZE_TIGHT } from '../../theme/spacing';
+import { APP_GAP_COMPACT, APP_GAP_MD, APP_GAP_SM, APP_SPACE_SIZE_TIGHT } from '@/theme/spacing';
 
 const { Text } = Typography;
 

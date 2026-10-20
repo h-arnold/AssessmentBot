@@ -7,13 +7,14 @@ import { toPartialSubmission } from './projectSubmissionViews.js';
  * @remarks
  * The class view embeds the persisted roster and redacted partial assignments;
  * submission and artefact redaction is delegated to `projectSubmissionViews.js`.
+ * Raw class metadata is defensively cloned into both class projections.
  */
 
 /**
  * Projects a persistence class document into a class partial.
  *
  * @param {object} classDocument Persistence class document.
- * @returns {object} ClassPartial transport view.
+ * @returns {object} ClassPartial transport view with defensively cloned raw metadata, when present.
  */
 function toClassPartial(classDocument) {
   return {
@@ -25,6 +26,9 @@ function toClassPartial(classDocument) {
     classOwner: classDocument.classOwner,
     teachers: classDocument.teachers,
     active: classDocument.active,
+    ...(Object.hasOwn(classDocument, 'metadata')
+      ? { metadata: structuredClone(classDocument.metadata) }
+      : {}),
   };
 }
 

@@ -25,21 +25,23 @@ Out of scope:
 
 ## Topology and ownership
 
-| Concern                       | Location                                                           | Notes                                                                                        |
-| ----------------------------- | ------------------------------------------------------------------ | -------------------------------------------------------------------------------------------- |
-| Profile definitions and seeds | `scripts/synthetic-test-data/profileDefinitions.js`                | `PROFILE_NAMES`, `getProfileDefinition`, large-full constants and completion bands.          |
-| Graph generators              | `scripts/synthetic-test-data/generate*.js`                         | Deterministic reference data, definitions, rosters, assignments, submissions.                |
-| Transport projection          | `scripts/synthetic-test-data/toTransportViews.js`                  | Projects the persistence graph into the five named transport views.                          |
-| Validation                    | `scripts/synthetic-test-data/validateSyntheticAnalysisGraph.js`    | Reference integrity, redaction, serialisability, and profile-count invariants.               |
-| Staged writer                 | `scripts/synthetic-test-data/fixtureWriter.js`                     | Validates, stages, and atomically replaces committed profiles.                               |
-| Regeneration CLI              | `scripts/synthetic-test-data/generateSyntheticAnalysisFixtures.js` | Compact regeneration and the explicit full mode.                                             |
-| Immutable loader              | `scripts/synthetic-test-data/loadSyntheticAnalysisProfile.js`      | Synchronously reads a named committed view and deep-freezes it.                              |
-| Dispatcher round-trip bridge  | `scripts/synthetic-test-data/apiHandlerRoundTripBridge.js`         | Installs `apiHandlerTestUtils` seams, dispatches the real `apiHandler`, restores every seam. |
-| Frontend round-trip adapter   | `src/frontend/src/test/syntheticApiRoundTripAdapter.ts`            | Composes the in-tree `googleScriptRunHarness`; imports no `scripts/` code.                   |
-| Committed fixtures            | `tests/__mocks__/data/synthetic-analysis/<profile>/`               | Transport views and manifest only.                                                           |
-| Ignored full output           | `.opencode/scratchpad/synthetic-analysis-full/`                    | On-demand large-full transport/manifest output; never committed.                             |
-| Integration project           | `tests/synthetic-analysis/**/*.test.ts`                            | Node Vitest project with the GAS globals from `tests/setupGlobals.js`.                       |
-| Stress project                | `tests/synthetic-analysis-stress/**/*.test.ts`                     | Opt-in full-large suite with a raised timeout budget.                                        |
+| Concern                       | Location                                                           | Notes                                                                                                                                                                                                                       |
+| ----------------------------- | ------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Profile definitions and seeds | `scripts/synthetic-test-data/profileDefinitions.js`                | `PROFILE_NAMES`, `getProfileDefinition`, large-full constants and completion bands.                                                                                                                                         |
+| Graph generators              | `scripts/synthetic-test-data/generate*.js`                         | Deterministic reference data, definitions, rosters, assignments, submissions, and fixed supplied class `metadata` snapshots.                                                                                                |
+| Transport projection          | `scripts/synthetic-test-data/toTransportViews.js`                  | Projects the persistence graph into the five named transport views; class `metadata` is copied by `projectClassTransportViews.js`.                                                                                          |
+| Validation                    | `scripts/synthetic-test-data/validateSyntheticAnalysisGraph.js`    | Reference integrity, redaction, serialisability, profile-count invariants, and class-`metadata` integrity via `validateClassMetadata.js`.                                                                                   |
+| Metadata integrity helper     | `scripts/synthetic-test-data/validateClassMetadata.js`             | Generator-owned raw `metadata` shape, linkage, timestamp and cross-view parity checks.                                                                                                                                      |
+| Test-only model-input adapter | `scripts/synthetic-test-data/toBackendModelInputs.js`              | Adapts canonical views into backend ABClass/Assignment/definition model inputs; imported only by tests.                                                                                                                     |
+| Staged writer                 | `scripts/synthetic-test-data/fixtureWriter.js`                     | Validates, stages, and atomically replaces committed profiles.                                                                                                                                                              |
+| Regeneration CLI              | `scripts/synthetic-test-data/generateSyntheticAnalysisFixtures.js` | Compact regeneration and the explicit full mode.                                                                                                                                                                            |
+| Immutable loader              | `scripts/synthetic-test-data/loadSyntheticAnalysisProfile.js`      | Synchronously reads a named committed view and deep-freezes it.                                                                                                                                                             |
+| Dispatcher round-trip bridge  | `scripts/synthetic-test-data/apiHandlerRoundTripBridge.js`         | Installs `apiHandlerTestUtils` seams, dispatches the real `apiHandler`, restores every seam.                                                                                                                                |
+| Frontend round-trip adapter   | `src/frontend/src/test/syntheticApiRoundTripAdapter.ts`            | Composes the in-tree `googleScriptRunHarness`; imports no `scripts/` code.                                                                                                                                                  |
+| Committed fixtures            | `tests/__mocks__/data/synthetic-analysis/<profile>/`               | Transport views and manifest only.                                                                                                                                                                                          |
+| Ignored full output           | `.opencode/scratchpad/synthetic-analysis-full/`                    | On-demand large-full transport/manifest output; never committed.                                                                                                                                                            |
+| Integration project           | `tests/synthetic-analysis/**/*.test.ts`                            | Node Vitest project with the GAS globals from `tests/setupGlobals.js`; the Node-project `tests/syntheticModelInputs.node.test.js` smoke and the shared tests-only `backendModelInputAssertions.js` helper sit alongside it. |
+| Stress project                | `tests/synthetic-analysis-stress/**/*.test.ts`                     | Opt-in full-large suite with a raised timeout budget.                                                                                                                                                                       |
 
 Dependency direction:
 
@@ -138,6 +140,78 @@ This is **fixture realism only**, not a production nullable-contract change:
 - `updatedAt` stays a nullable transport field. `AssignmentFullSchema.updatedAt` and `AssignmentPartialSchema.updatedAt` still accept `string | null`; production schemas and backend behaviour are untouched.
 - Nullable transport acceptance is covered by explicit **local null-boundary probes**, not by generated null population. `tests/synthetic-analysis/syntheticCorpusConventions.test.ts` clones a canonical class-embedded assignment partial and a canonical full assignment, sets `updatedAt = null`, and parses both through the real frontend schemas. `tests/synthetic-analysis/syntheticGraphShapeCoverage.test.ts` clones a canonical class, nulls its first assignment's `updatedAt`, and re-parses it through `ClassFullSchema`.
 - The Class page's fail-closed rejection of a null or unparseable `updatedAt` is unchanged and tested with independent local invalid probes in `src/frontend/src/features/classPage/classPageAdapter.trustValidation.spec.ts`. Do not use canonical rows to assert that rejection.
+
+## ABClass metadata generator capability
+
+> **Status: `Implemented` (test-only).** The canonical corpus generates, validates and adapts
+> raw class `metadata` supplied snapshots for the backend ABClass `metadata` contract-support
+> cycle. The generator stage, the raw-view integrity helper and the model-input adapter are
+> test-only infrastructure: production `src/backend` source never imports them, and the fixtures
+> stay supplied snapshots that no backend code calculates or refreshes. Production acceptance,
+> persistence, read projection and transport adaptation are delivered separately in
+> [abclass.md § ABClass `metadata` contract](../data-shapes/abclass.md#abclass-metadata-contract-domain-model-prepared-persistence-response-mapping-controller-request-replacement-and-transport-adaptation-delivered)
+> and [api-layer.md § ABClass metadata helpers](../backend/api-layer.md#abclass-metadata-helpers).
+> Cross-reference: [Backend Testing](../backend/backend-testing.md) §ABClass canonical
+> model-input adaptation.
+
+### `generateClassMetadata.js` stage (`Implemented`)
+
+- `scripts/synthetic-test-data/generateClassMetadata.js` runs once inside
+  `generateSyntheticAnalysisGraph()`, after assignment generation and before
+  `toTransportViews()`. It assigns `metadata` in place to each persistence class, so the
+  existing projection copies it into `transport.classPartials` and `transport.classesById` as
+  an independently cloned value.
+- Every profile — `small`, `medium`, `large-representative` and the on-demand `large-full` —
+  runs the same stage. It reads no clock and consumes no Faker values, so existing seeds,
+  entity counts, assignment timestamp conventions and byte reproducibility are unchanged.
+- Values are deliberately generated supplied snapshots: the stage performs no averaging and
+  derives no cross-metric relationship. Each selected template fills both `classAverages` and
+  every recent entry's `averages`, so committed entries explicitly cover numeric/fractional,
+  all-four `N`, all-four `E`, all-four `excluded` and mixed collections.
+- Non-null samples always include complete class averages. Each non-null variant uses its
+  class's newest generated assignment `updatedAt` for `classAverages.updatedAt`, including
+  zero-entry variants. Every entry's `assignmentId`, `assignmentDefinitionKey` and `updatedAt`
+  come exactly from a real generated assignment of that class, newest first. This pins
+  deterministic fixture bytes; it adds no production relationship between summary and entry
+  timestamps.
+- Coverage cases are selected deterministically by profile and class index:
+
+  | Profile                | Class-index cases (template / recent entries)                       |
+  | ---------------------- | ------------------------------------------------------------------- |
+  | `small`                | 0: `null`; 1: numeric / 0; 2: all `N` / 1                           |
+  | `medium`               | 0: all `E` / 2; 1: all `excluded` / 3; 2: mixed / 1; 3: numeric / 0 |
+  | `large-representative` | 0: `null`; 1: numeric / 3; 2: mixed / 2; 3: numeric / 1             |
+
+- `large-full` selects `null` when `index % 5 === 0`; otherwise the recent count is
+  `(index % 5) - 1` and the template index is `Math.floor(index / 5) % 5`.
+- A compact profile whose class index falls outside its configured matrix throws an explicit
+  invariant error naming the profile and index, instead of resolving to an undefined template
+  and entry count. Current profiles match their matrices exactly, so this guards configuration
+  drift rather than repairing existing fixtures.
+
+### `validateClassMetadata.js` helper (`Implemented`)
+
+- `scripts/synthetic-test-data/validateClassMetadata.js` validates raw generated metadata
+  independently of the frontend schemas, which strip the extra field.
+- It enforces strict raw shape and score union, canonical UTC timestamps, dense zero-to-three
+  entries, unique assignment IDs, newest-first ordering, assignment/class/definition linkage,
+  exact source timestamps and three-way persistence/partial/full parity.
+- It runs from `validateSyntheticAnalysisGraph()` after validation-context construction, so
+  every generator and committed-fixture path checks it. Focused tests additionally validate
+  every raw snapshot view through the real `ABClassMetadata.validateMetadata` domain owner,
+  because frontend parse success alone is not sufficient evidence of correctness.
+
+### Regeneration and scope (`Implemented`)
+
+- Only `classPartials.json` and `classesById.json` change for each compact profile; the other
+  four committed views carry no class `metadata` and are rewritten byte-identically.
+- Regenerate through the existing CLI only; never hand-edit JSON. The same stage covers the
+  full graph, and full-stress output is never committed.
+- No new profile or view was introduced, and no frontend adapter change was required.
+- The compact synthetic project, the opt-in full-large stress project and the
+  committed-fixture regeneration comparison all exercise the metadata stage. Synthetic
+  coverage is restricted to `scripts/synthetic-test-data/**/*.js`, and the Node-project
+  `tests/syntheticModelInputs.node.test.js` smoke covers the adapter import path.
 
 ## Compact versus full lifecycle
 

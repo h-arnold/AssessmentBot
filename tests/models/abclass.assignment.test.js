@@ -7,7 +7,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { ABClass } from '../../src/backend/Models/ABClass.js';
+import { ABClass } from '#backend/Models/ABClass.js';
 import {
   createSlidesAssignment,
   createSheetsAssignment,

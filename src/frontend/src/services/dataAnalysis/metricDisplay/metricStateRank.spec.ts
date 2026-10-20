@@ -17,7 +17,7 @@ import {
   createNotAttemptedMetricResult,
   createErrorMetricResult,
   createExcludedMetricResult,
-} from '../../../test/dataAnalysis/fixtures';
+} from '@/test/dataAnalysis/fixtures';
 import {
   METRIC_STATE_RANK_ASC,
   METRIC_STATE_RANK_DESC,

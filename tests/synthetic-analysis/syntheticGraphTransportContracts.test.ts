@@ -3,26 +3,26 @@ import { describe, expect, it } from 'vitest';
 import {
   AssignmentDefinitionPartialsResponseSchema,
   type AssignmentDefinitionPartial,
-} from '../../src/frontend/src/services/assignmentDefinition/assignmentDefinitionPartials.zod';
+} from '@/services/assignmentDefinition/assignmentDefinitionPartials.zod';
 import {
   ClassFullSchema,
   type ClassFull,
   type StudentSubmissionItemPartial,
-} from '../../src/frontend/src/services/googleClassrooms/classDetail/classDetailService.zod';
+} from '@/services/googleClassrooms/classDetail/classDetailService.zod';
 import {
   ClassPartialsResponseSchema,
   type ClassPartial,
-} from '../../src/frontend/src/services/googleClassrooms/classPartials.zod';
+} from '@/services/googleClassrooms/classPartials.zod';
 import {
   AssignmentFullSchema,
   type AssignmentFull,
-} from '../../src/frontend/src/services/assignmentAssessment/assignmentAssessment.zod';
+} from '@/services/assignmentAssessment/assignmentAssessment.zod';
 import type {
   AssignmentTopic,
   Cohort,
   YearGroup,
-} from '../../src/frontend/src/services/referenceData/referenceData.zod';
-import { generateSyntheticAnalysisGraph } from '../../scripts/synthetic-test-data/generateSyntheticAnalysisGraph.js';
+} from '@/services/referenceData/referenceData.zod';
+import { generateSyntheticAnalysisGraph } from '#synthetic-data/generateSyntheticAnalysisGraph.js';
 
 /** Full-assignment submission item type derived from the production schema. */
 type FullAssignmentSubmissionItem = AssignmentFull['submissions'][number]['items'][string];

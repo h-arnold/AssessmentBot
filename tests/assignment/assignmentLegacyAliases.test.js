@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import Assignment from '../../src/backend/AssignmentProcessor/Assignment/index.js';
-import { AssignmentDefinition } from '../../src/backend/Models/AssignmentDefinition.js';
+import Assignment from '#backend/AssignmentProcessor/Assignment/index.js';
+import { AssignmentDefinition } from '#backend/Models/AssignmentDefinition.js';
 import { DUMMY_TASK_PARTIALS } from '../helpers/modelFactories.js';
 
 describe('Assignment (legacy alias removal)', () => {

@@ -14,10 +14,10 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const ConfigurationManager = require('../../src/backend/ConfigurationManager/98_ConfigurationManagerClass.js');
+const ConfigurationManager = require('#backend/ConfigurationManager/98_ConfigurationManagerClass.js');
 const {
   ConfigurationManagerStorage,
-} = require('../../src/backend/ConfigurationManager/96_ConfigurationManagerStorage.js');
+} = require('#backend/ConfigurationManager/96_ConfigurationManagerStorage.js');
 
 const CONFIG_STORE_KEY = ConfigurationManager.CONFIG_STORE_KEY;
 

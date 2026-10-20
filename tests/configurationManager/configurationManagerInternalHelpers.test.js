@@ -3,13 +3,13 @@ import { createConfiguredConfigurationManager } from '../helpers/backendConfigTe
 const {
   CONFIG_KEYS: CONFIG_MANAGER_CONFIG_KEYS,
   CONFIG_SCHEMA: CONFIG_MANAGER_CONFIG_SCHEMA,
-} = require('../../src/backend/ConfigurationManager/01_configKeysAndSchema.js');
+} = require('#backend/ConfigurationManager/01_configKeysAndSchema.js');
 const {
   DEFAULTS: CONFIG_MANAGER_DEFAULTS,
-} = require('../../src/backend/ConfigurationManager/02_defaults.js');
+} = require('#backend/ConfigurationManager/02_defaults.js');
 
 let mocks;
-const ConfigurationManager = require('../../src/backend/ConfigurationManager/98_ConfigurationManagerClass.js');
+const ConfigurationManager = require('#backend/ConfigurationManager/98_ConfigurationManagerClass.js');
 
 describe('ConfigurationManager internal helper branches', () => {
   let configManager;

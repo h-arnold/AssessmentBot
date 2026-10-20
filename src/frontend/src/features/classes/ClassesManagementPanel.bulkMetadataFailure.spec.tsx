@@ -12,8 +12,8 @@ import type { ReactElement } from 'react';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi, type MockInstance } from 'vitest';
-import { queryKeys } from '../../query/queryKeys';
-import { renderWithFrontendProviders } from '../../test/renderWithFrontendProviders';
+import { queryKeys } from '@/query/queryKeys';
+import { renderWithFrontendProviders } from '@/test/renderWithFrontendProviders';
 import type * as BulkSetCohortFlowModule from './bulk/bulkSetCohortFlow';
 import type * as BulkSetYearGroupFlowModule from './bulk/bulkSetYearGroupFlow';
 import type * as BulkSetCourseLengthFlowModule from './bulk/bulkSetCourseLengthFlow';
@@ -22,7 +22,7 @@ import {
   buildClassesManagementRow,
   buildClassesManagementState,
   yearGroupOptions,
-} from '../../test/classes/classesTestHelpers';
+} from '@/test/classes/classesTestHelpers';
 import type { BatchProgressSnapshot } from './bulk/runQueuedBatchMutation';
 
 const classesManagementStateMock = vi.fn();

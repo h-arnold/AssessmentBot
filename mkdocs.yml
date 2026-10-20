@@ -57,6 +57,7 @@ nav:
       - Backend:
           - API Layer: developer/backend/api-layer.md
           - Assessment Flow: developer/backend/AssessmentFlow.md
+          - Backend File Organisation: developer/backend/backend-file-organisation.md
           - Backend Logging and Error Handling: developer/backend/backend-logging-and-error-handling.md
           - Backend Testing: developer/backend/backend-testing.md
           - OAuth Scopes: developer/backend/oauth-scopes.md
@@ -77,6 +78,7 @@ nav:
           - Request Store: developer/data-shapes/request-store.md
           - Trigger Context: developer/data-shapes/trigger-context.md
       - Frontend:
+          - Frontend Architecture: developer/frontend/frontend-architecture.md
           - Frontend Testing: developer/frontend/frontend-testing.md
           - Frontend Playwright E2E: developer/frontend/frontend-playwright-e2e.md
           - Frontend Loading and Width Standards: developer/frontend/frontend-loading-and-width-standards.md

@@ -5,7 +5,7 @@ import { TaskHeatmapTable } from './TaskHeatmapTable';
 import {
   buildNoSubmissionsResult,
   buildZeroTasksResult,
-} from '../../test/taskHeatmapTableTestHelpers';
+} from '@/test/taskHeatmapTableTestHelpers';
 
 afterEach(() => {
   cleanup();

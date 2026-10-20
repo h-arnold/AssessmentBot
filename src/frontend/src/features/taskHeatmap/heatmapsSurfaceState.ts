@@ -13,12 +13,12 @@
  *
  * These helpers are extracted from `useHeatmapsPageData.ts` to keep that module under the
  * 500-LOC module-size gate, and to isolate the pure
- * surface-state derivation (per `src/frontend/AGENTS.md` §3.3 folder conventions).
+ * surface-state derivation (per `docs/developer/frontend/frontend-architecture.md`).
  */
 
-import type { ClassFull } from '../../services/googleClassrooms/classDetail/classDetailService.zod';
-import { computeDatasetBlockingReason, type PageDatasetState } from '../../hooks/usePageDataset';
-import { toError } from '../../errors/normaliseUnknownError';
+import type { ClassFull } from '@/services/googleClassrooms/classDetail/classDetailService.zod';
+import { computeDatasetBlockingReason, type PageDatasetState } from '@/hooks/usePageDataset';
+import { toError } from '@/errors/normaliseUnknownError';
 
 /**
  * Structured error for the Heatmaps surface, per the Class Page error taxonomy

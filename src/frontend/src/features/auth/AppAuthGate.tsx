@@ -1,9 +1,9 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { Button, Result, Spin } from 'antd';
 import type { PropsWithChildren } from 'react';
-import { mapErrorToUserMessage } from '../../errors/map-error-to-ui';
-import { getAuthorisationStatusQueryOptions } from '../../query/sharedQueries';
-import type { ApplicationAccess } from '../../services/authService/authService.zod';
+import { mapErrorToUserMessage } from '@/errors/map-error-to-ui';
+import { getAuthorisationStatusQueryOptions } from '@/query/sharedQueries';
+import type { ApplicationAccess } from '@/services/authService/authService.zod';
 import { StartupWarmupStateProvider } from './startupWarmupState';
 import { useAuthorisationStatus } from './useAuthorisationStatus';
 import { useApplicationAccess } from './useApplicationAccess';

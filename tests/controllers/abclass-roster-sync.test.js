@@ -3,12 +3,9 @@
  *
  * Behaviour under test: roster persistence writes through to class partials
  *
- * Tests validating that _persistRoster() also upserts the abclass_partials doc
- * after successfully writing the roster to the class collection.
+ * Tests validating roster write-through to the abclass_partials registry.
  *
- * All tests MUST FAIL until _persistRoster() is updated to call the partial
- * upsert (e.g. by delegating to _persistClassAndPartial or writing to
- * abclass_partials directly).
+ * Existing registry rows are updated in place; missing rows are inserted.
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
@@ -53,8 +50,8 @@ beforeEach(async () => {
   setupMocks(classCollection, partialsCollection);
 
   // Dynamic import after globals are set to ensure globals are in place before module evaluation
-  const abClassModule = await import('../../src/backend/Models/ABClass.js');
-  const controllerModule = await import('../../src/backend/y_controllers/ABClassController');
+  const abClassModule = await import('#backend/Models/ABClass.js');
+  const controllerModule = await import('#backend/y_controllers/ABClassController/index.js');
 
   ABClass = abClassModule.ABClass;
   ABClassController = controllerModule.default ?? controllerModule;
@@ -93,9 +90,9 @@ describe('ABClassController – roster sync to abclass_partials', () => {
   });
 
   // -------------------------------------------------------------------------
-  // Test 2: Two consecutive _persistRoster() calls do not duplicate partials
+  // Test 2: Existing registry rows use a scoped patch, not replacement
   // -------------------------------------------------------------------------
-  it('second _persistRoster() call uses replaceOne (not insertOne) on abclass_partials', () => {
+  it('second _persistRoster() call patches the existing row by its stored id', () => {
     const controller = new ABClassController();
     const abClass = new ABClass({ classId: 'class-r02', className: 'No Duplicate Class' });
 
@@ -106,19 +103,25 @@ describe('ABClassController – roster sync to abclass_partials', () => {
     // Second call: partial already exists
     partialsCollection.findOne.mockReturnValueOnce({
       classId: 'class-r02',
+      _id: 'partial-r02',
       className: 'No Duplicate Class',
+    });
+    partialsCollection.updateOne.mockReturnValue({
+      matchedCount: 1,
+      modifiedCount: 0,
+      acknowledged: true,
     });
 
     controller._persistRoster(classCollection, existingDoc, abClass);
     controller._persistRoster(classCollection, existingDoc, abClass);
 
-    // RED: _persistRoster currently never touches abclass_partials,
-    // so neither insertOne nor replaceOne will be called at all
     expect(partialsCollection.insertOne).toHaveBeenCalledTimes(1);
-    expect(partialsCollection.replaceOne).toHaveBeenCalledTimes(1);
-
-    // insertOne must not be called on the second save
-    expect(partialsCollection.insertOne).not.toHaveBeenCalledTimes(2);
+    expect(partialsCollection.updateOne).toHaveBeenCalledTimes(1);
+    expect(partialsCollection.updateOne).toHaveBeenCalledWith(
+      { _id: 'partial-r02' },
+      { $set: { className: 'No Duplicate Class', classOwner: null, teachers: [] } }
+    );
+    expect(partialsCollection.replaceOne).not.toHaveBeenCalled();
   });
 
   // -------------------------------------------------------------------------
@@ -138,7 +141,6 @@ describe('ABClassController – roster sync to abclass_partials', () => {
 
     controller._persistRoster(classCollection, existingDoc, abClass);
 
-    // RED: _persistRoster does not write to abclass_partials yet
     expect(partialsCollection.insertOne).toHaveBeenCalledTimes(1);
 
     const writtenPartial = partialsCollection.insertOne.mock.calls[0][0];
@@ -165,9 +167,7 @@ describe('ABClassController – roster sync to abclass_partials', () => {
     );
 
     // Partial upsert must never be reached when roster write fails
-    // RED: this assertion passes trivially today (partials never touched),
-    // but will correctly guard the ordering once roster partial write-through is implemented —
-    // at that point the test ensures the write sequence is roster-first, partial-second.
+    // The registry must not be touched after the full roster write fails.
     expect(partialsCollection.insertOne).not.toHaveBeenCalled();
     expect(partialsCollection.replaceOne).not.toHaveBeenCalled();
 

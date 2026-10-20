@@ -4,19 +4,19 @@ import { fileURLToPath } from 'node:url';
 
 import { afterAll, beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 
-import { generateSyntheticAnalysisGraph } from '../../scripts/synthetic-test-data/generateSyntheticAnalysisGraph.js';
-import { validateSyntheticAnalysisGraph } from '../../scripts/synthetic-test-data/validateSyntheticAnalysisGraph.js';
-import { generateCommittedProfiles } from '../../scripts/synthetic-test-data/generateSyntheticAnalysisFixtures.js';
-import { loadSyntheticAnalysisProfile } from '../../scripts/synthetic-test-data/loadSyntheticAnalysisProfile.js';
-import { createApiHandlerRoundTripBridge } from '../../scripts/synthetic-test-data/apiHandlerRoundTripBridge.js';
-import { AssignmentDefinitionSchema } from '../../src/frontend/src/services/assignmentDefinition/assignmentDefinition.zod';
+import { generateSyntheticAnalysisGraph } from '#synthetic-data/generateSyntheticAnalysisGraph.js';
+import { validateSyntheticAnalysisGraph } from '#synthetic-data/validateSyntheticAnalysisGraph.js';
+import { generateCommittedProfiles } from '#synthetic-data/generateSyntheticAnalysisFixtures.js';
+import { loadSyntheticAnalysisProfile } from '#synthetic-data/loadSyntheticAnalysisProfile.js';
+import { createApiHandlerRoundTripBridge } from '#synthetic-data/apiHandlerRoundTripBridge.js';
+import { AssignmentDefinitionSchema } from '@/services/assignmentDefinition/assignmentDefinition.zod';
 import {
   AssignmentDefinitionPartialsResponseSchema,
   type AssignmentDefinitionPartial,
-} from '../../src/frontend/src/services/assignmentDefinition/assignmentDefinitionPartials.zod';
-import { getAssignmentDefinition } from '../../src/frontend/src/services/assignmentDefinition/assignmentDefinitionService';
-import type { GoogleScriptRunApiHandler } from '../../src/frontend/src/test/googleScriptRunHarness';
-import { createSyntheticApiRoundTripRunner } from '../../src/frontend/src/test/syntheticApiRoundTripAdapter';
+} from '@/services/assignmentDefinition/assignmentDefinitionPartials.zod';
+import { getAssignmentDefinition } from '@/services/assignmentDefinition/assignmentDefinitionService';
+import type { GoogleScriptRunApiHandler } from '@/test/googleScriptRunHarness';
+import { createSyntheticApiRoundTripRunner } from '@/test/syntheticApiRoundTripAdapter';
 
 // RED PHASE (Section 2, issue #301): every test below fails until `toTransportViews.js`
 // projects `transport.editableDefinitions` and the view is wired through the writer,

@@ -11,7 +11,7 @@ import {
   createSubmissionItem,
   createTaskPartial,
   createComputedMetricResult,
-} from '../../../test/dataAnalysis/fixtures';
+} from '@/test/dataAnalysis/fixtures';
 describe('contribution-aware parent precedence', () => {
   it('keeps positive-weight raw N ahead of an excluded zero-weight observation', () => {
     const result = rollupMetric(
@@ -83,12 +83,7 @@ describe('contribution-aware parent precedence', () => {
     ]);
 
     expect(
-      result.perTask.map((task) => {
-        return [
-          `${task.definitionKey}::${task.taskId}`,
-          task.averageContribution,
-        ];
-      })
+      result.perTask.map((task) => [`${task.definitionKey}::${task.taskId}`, task.averageContribution])
     ).toEqual([...expected]);
     expect(
       result.perStudentTaskMetrics?.map((task) => [task.taskKey, task.averageContribution])

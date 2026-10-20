@@ -14,7 +14,7 @@ describe('backend API WebApp doGet', () => {
     };
 
     delete require.cache[require.resolve('../../src/backend/z_Api/WebApp.js')];
-    ({ doGet } = require('../../src/backend/z_Api/WebApp.js'));
+    ({ doGet } = require('#backend/z_Api/WebApp.js'));
   });
 
   afterEach(() => {

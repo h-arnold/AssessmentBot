@@ -9,7 +9,7 @@
 
 import { ZodError } from 'zod';
 import { describe, expect, it } from 'vitest';
-import { ApiTransportError } from '../../../errors/apiTransportError';
+import { ApiTransportError } from '@/errors/apiTransportError';
 import {
   mapAuthenticationSettingsSaveError,
   type AuthenticationSettingsSaveErrorMapping,

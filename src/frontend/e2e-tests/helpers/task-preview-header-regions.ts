@@ -30,7 +30,7 @@
  */
 
 import type { Locator } from '@playwright/test';
-import { SOURCE_ACTION_LABEL } from '../../src/features/taskHeatmap/TaskPreviewCard';
+import { SOURCE_ACTION_LABEL } from '@/features/taskHeatmap/TaskPreviewCard';
 
 // ---------------------------------------------------------------------------
 // Region contract

@@ -20,14 +20,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   ApplicationAccessContext,
   type ApplicationAccessContextValue,
-} from '../../auth/ApplicationAccessContext';
-import { StartupWarmupStateProvider } from '../../auth/startupWarmupState';
-import { ApiTransportError } from '../../../errors/apiTransportError';
-import { renderWithFrontendProviders } from '../../../test/renderWithFrontendProviders';
+} from '@/features/auth/ApplicationAccessContext';
+import { StartupWarmupStateProvider } from '@/features/auth/startupWarmupState';
+import { ApiTransportError } from '@/errors/apiTransportError';
+import { renderWithFrontendProviders } from '@/test/renderWithFrontendProviders';
 import {
   SetAuthenticationSettingsRequestSchema,
   type AuthenticationSettings,
-} from '../../../services/authService/authService.zod';
+} from '@/services/authService/authService.zod';
 import { AuthenticationSettingsTab } from './AuthenticationSettingsTab';
 
 const { getAuthenticationSettingsMock, setAuthenticationSettingsMock, messageSuccessMock, messageErrorMock } =
@@ -40,7 +40,7 @@ const { getAuthenticationSettingsMock, setAuthenticationSettingsMock, messageSuc
     };
   });
 
-vi.mock('../../../services/authService/authService', () => {
+vi.mock('@/services/authService/authService', () => {
   return {
     getAuthenticationSettings: getAuthenticationSettingsMock,
     setAuthenticationSettings: setAuthenticationSettingsMock,

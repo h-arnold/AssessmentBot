@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import type { BackendConfig } from '../../../services/backendConfiguration/backendConfiguration.zod';
-import { BackendConfigWriteInputSchema } from '../../../services/backendConfiguration/backendConfiguration.zod';
+import type { BackendConfig } from '@/services/backendConfiguration/backendConfiguration.zod';
+import { BackendConfigWriteInputSchema } from '@/services/backendConfiguration/backendConfiguration.zod';
 import type { BackendSettingsForm } from './backendSettingsForm.zod';
 import {
   mapBackendConfigToBackendSettingsFormValues,

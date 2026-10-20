@@ -29,8 +29,8 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import type { AssignmentFull } from '../../services/assignmentAssessment/assignmentAssessment.zod';
-import { buildTaskKey } from '../../services/dataAnalysis/taskKey';
+import type { AssignmentFull } from '@/services/assignmentAssessment/assignmentAssessment.zod';
+import { buildTaskKey } from '@/services/dataAnalysis/taskKey';
 import { buildCellPreviewLookup } from './buildCellPreviewLookup';
 import type { CellPreviewLookup } from './buildCellPreviewLookup';
 import {
@@ -38,12 +38,12 @@ import {
   DEFAULT_DATE,
   buildExpectedSourceUrl,
   createAssignment,
-} from '../../test/taskHeatmap/buildCellPreviewLookupTestFixtures';
+} from '@/test/taskHeatmap/buildCellPreviewLookupTestFixtures';
 import {
   CANONICAL_CLASS,
   CANONICAL_READY_CELL,
   cloneCanonicalSlidesAssignment,
-} from '../../test/taskHeatmap/previewFixtures';
+} from '@/test/taskHeatmap/previewFixtures';
 
 describe('buildCellPreviewLookup', () => {
   // -----------------------------------------------------------------------

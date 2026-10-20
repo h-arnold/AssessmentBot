@@ -16,38 +16,38 @@
 
 import { vi } from 'vitest';
 
-vi.mock('../../features/classes/AssessTaskModal/matchDefinitionForAssignment', () => {
+vi.mock('@/features/classes/AssessTaskModal/matchDefinitionForAssignment', () => {
   return {
     findMatchingDefinition: vi.fn(),
   };
 });
 
-vi.mock('../../services/googleClassrooms/googleClassroomAssignmentsService', () => {
+vi.mock('@/services/googleClassrooms/googleClassroomAssignmentsService', () => {
   return {
     getGoogleClassroomAssignments: vi.fn(),
   };
 });
 
-vi.mock('../../services/assignmentAssessment/assignmentAssessmentService', () => {
+vi.mock('@/services/assignmentAssessment/assignmentAssessmentService', () => {
   return {
     startAssessmentRun: vi.fn(),
   };
 });
 
-vi.mock('../../services/assignmentDefinition/assignmentDefinitionService', () => {
+vi.mock('@/services/assignmentDefinition/assignmentDefinitionService', () => {
   return {
     getAssignmentDefinition: vi.fn(),
     upsertAssignmentDefinition: vi.fn(),
   };
 });
 
-vi.mock('../../services/assignmentDefinition/assignmentTopicsService', () => {
+vi.mock('@/services/assignmentDefinition/assignmentTopicsService', () => {
   return {
     getAssignmentTopics: vi.fn(),
   };
 });
 
-vi.mock('../../services/referenceData/referenceDataService', () => {
+vi.mock('@/services/referenceData/referenceDataService', () => {
   return {
     getCohorts: vi.fn(),
     getYearGroups: vi.fn(),

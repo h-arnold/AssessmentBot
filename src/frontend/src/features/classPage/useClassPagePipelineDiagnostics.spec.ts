@@ -15,7 +15,7 @@ const { mockLogFrontendError } = vi.hoisted(() => {
   };
 });
 
-vi.mock('../../logging/frontendLogger', () => {
+vi.mock('@/logging/frontendLogger', () => {
   return {
     logFrontendError: mockLogFrontendError,
   };

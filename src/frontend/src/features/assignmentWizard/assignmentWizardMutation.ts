@@ -6,14 +6,14 @@ import {
   extractRequestId,
   mapErrorToUserMessage,
   type ErrorCode,
-} from '../../errors/map-error-to-ui';
-import { logFrontendError } from '../../logging/frontendLogger';
-import { queryKeys } from '../../query/queryKeys';
+} from '@/errors/map-error-to-ui';
+import { logFrontendError } from '@/logging/frontendLogger';
+import { queryKeys } from '@/query/queryKeys';
 import {
   upsertAssignmentDefinition,
   type UpsertAssignmentDefinitionRequest,
   type UpsertAssignmentDefinitionResponse,
-} from '../../services/assignmentDefinition/assignmentDefinitionService';
+} from '@/services/assignmentDefinition/assignmentDefinitionService';
 import {
   buildDocumentUrlsFromDefinition,
   buildTaskRowsFromResponse,

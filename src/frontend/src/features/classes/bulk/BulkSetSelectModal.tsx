@@ -2,7 +2,7 @@ import { Form } from 'antd';
 import { useEffect, useMemo } from 'react';
 import { BulkFormModalScaffold } from './BulkFormModalScaffold';
 import { bulkReferenceKeySchema } from './bulkEditValidation.zod';
-import { SelectWithAddNew } from '../../../components/SelectWithAddNew/SelectWithAddNew';
+import { SelectWithAddNew } from '@/components/SelectWithAddNew/SelectWithAddNew';
 
 type SelectOption = Readonly<{
   label: string;
@@ -35,7 +35,7 @@ export function BulkSetSelectModal(properties: BulkSetSelectModalProperties) {
   const [form] = Form.useForm<FormValues>();
   const allowedValues = useMemo(
     () => new Set(properties.options.map((option) => option.value)),
-    [properties.options],
+    [properties.options]
   );
   const requiredMessage = `Please select a ${properties.fieldLabel.toLowerCase()}.`;
   const invalidMessage = `Please select a valid ${properties.fieldLabel.toLowerCase()}.`;
@@ -83,34 +83,33 @@ export function BulkSetSelectModal(properties: BulkSetSelectModalProperties) {
     >
       {({ disabled }) => {
         return (
-        <Form.Item
-          label={properties.fieldLabel}
-          name="value"
-          rules={[
-            {
-              validator: async (_, value: unknown) => {
-                const parsedValue = bulkReferenceKeySchema.safeParse(value);
-                if (!parsedValue.success) {
-                  throw new Error(requiredMessage);
-                }
-                if (!allowedValues.has(parsedValue.data)) {
-                  throw new Error(invalidMessage);
-                }
+          <Form.Item
+            label={properties.fieldLabel}
+            name="value"
+            rules={[
+              {
+                validator: async (_, value: unknown) => {
+                  const parsedValue = bulkReferenceKeySchema.safeParse(value);
+                  if (!parsedValue.success) {
+                    throw new Error(requiredMessage);
+                  }
+                  if (!allowedValues.has(parsedValue.data)) {
+                    throw new Error(invalidMessage);
+                  }
+                },
               },
-            },
-          ]}
-        >
-          <SelectWithAddNew
-            disabled={disabled}
-            options={properties.options}
-            optionRender={(option) => option.data.label}
-            placeholder={`Select a ${properties.fieldLabel.toLowerCase()}`}
-            virtual={false}
-            onAddNew={properties.onAddNew}
-            entityType={entityType}
-            debounceMs={300}
-          />
-        </Form.Item>
+            ]}
+          >
+            <SelectWithAddNew
+              disabled={disabled}
+              options={properties.options}
+              optionRender={(option) => option.data.label}
+              placeholder={`Select a ${properties.fieldLabel.toLowerCase()}`}
+              virtual={false}
+              onAddNew={properties.onAddNew}
+              entityType={entityType}
+            />
+          </Form.Item>
         );
       }}
     </BulkFormModalScaffold>

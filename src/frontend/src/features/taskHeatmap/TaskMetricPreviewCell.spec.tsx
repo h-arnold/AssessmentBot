@@ -22,10 +22,10 @@ import { buildMetricCellAccessibleLabel } from './taskHeatmapTableColumns';
 import {
   CANONICAL_READY_CELL,
   buildCanonicalReadyCellData,
-} from '../../test/taskHeatmap/previewFixtures';
-import { createComputedMetricResult } from '../../test/dataAnalysis/fixtures';
-import { formatMetricDisplayText } from '../../services/dataAnalysis/metricDisplay/metricDisplayText';
-import { APP_GAP_XS } from '../../theme/spacing';
+} from '@/test/taskHeatmap/previewFixtures';
+import { createComputedMetricResult } from '@/test/dataAnalysis/fixtures';
+import { formatMetricDisplayText } from '@/services/dataAnalysis/metricDisplay/metricDisplayText';
+import { APP_GAP_XS } from '@/theme/spacing';
 import type * as TaskPreviewDataModule from './assembleTaskPreviewData';
 
 const { assembleTaskPreviewDataSpy } = vi.hoisted(() => {

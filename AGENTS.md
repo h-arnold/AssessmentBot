@@ -66,11 +66,15 @@ Sub-agents are stateless. Provide explicit context in prompts:
 - concrete requirements
 - error/output details
 - exact changes already made
-- mandatory documentation that must be read for the task, written as `@`-prefixed
-  worktree-relative paths (e.g. `@SPEC.md`, `@src/backend/Services/AssessmentService.js`)
-  so opencode injects the line-numbered file contents into the sub-agent's context.
-  Bare paths in prose are not injected; only `@path` tokens are, and they must not be
-  immediately preceded by a word character or backtick.
+- mandatory documentation that must be read for the task, written as `@`-prefixed paths
+  (e.g. `@SPEC.md`, `@src/backend/Services/AssessmentService.js`); bare paths in prose are
+  not injected. The `.opencode/plugins/at-mention-inject/` plugin runs on every prompt —
+  ordinary messages, slash commands, and subagent prompts — and attaches each `@path` token
+  that exists inside the session's location root; files over 200 KiB are skipped. The child
+  receives `Attached file: <name>` followed by the raw contents, with no line numbers. Always
+  follow the token with a space: it ends only at whitespace, a comma, a backtick or a period,
+  so any other trailing punctuation (a quote, bracket, semicolon or colon) becomes part of the
+  path and the mention is silently skipped.
 - Do not attach agent definition files (`.opencode/agents/*.md`) or agent instruction files (`AGENTS.md`).
   Sub-agents already have their own instructions injected.
 

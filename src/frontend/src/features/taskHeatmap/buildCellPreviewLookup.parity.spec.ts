@@ -14,14 +14,14 @@
 
 import { describe, it, expect } from 'vitest';
 import { buildCellPreviewLookup } from './buildCellPreviewLookup';
-import { adaptMetricsToHeatmap } from '../../services/dataAnalysis/heatmapAdapter';
-import { adaptMetricsToMergedHeatmap } from '../../services/dataAnalysis/heatmapAdapter.merged';
-import type { MergedHeatmapResult } from '../../services/dataAnalysis/heatmapAdapter.merged';
-import type { ClassFull } from '../../services/googleClassrooms/classDetail/classDetailService.zod';
-import type { AssignmentFull } from '../../services/assignmentAssessment/assignmentAssessment.zod';
-import type { AssignmentDefinitionPartialsResponse } from '../../services/assignmentDefinition/assignmentDefinitionPartials.zod';
-import type { AveragingResult } from '../../services/dataAnalysis/dataAnalysis.zod';
-import { createComputedMetricResult } from '../../test/dataAnalysis/fixtures';
+import { adaptMetricsToHeatmap } from '@/services/dataAnalysis/heatmapAdapter';
+import { adaptMetricsToMergedHeatmap } from '@/services/dataAnalysis/heatmapAdapter.merged';
+import type { MergedHeatmapResult } from '@/services/dataAnalysis/heatmapAdapter.merged';
+import type { ClassFull } from '@/services/googleClassrooms/classDetail/classDetailService.zod';
+import type { AssignmentFull } from '@/services/assignmentAssessment/assignmentAssessment.zod';
+import type { AssignmentDefinitionPartialsResponse } from '@/services/assignmentDefinition/assignmentDefinitionPartials.zod';
+import type { AveragingResult } from '@/services/dataAnalysis/dataAnalysis.zod';
+import { createComputedMetricResult } from '@/test/dataAnalysis/fixtures';
 
 const DEFINITION_KEY = 'def-xyz';
 const ASSIGNMENT_ID = 'a-1';

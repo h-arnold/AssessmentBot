@@ -9,7 +9,7 @@ import {
   StudentSummarySchema,
   TeacherSummarySchema,
 } from './classDetailService.zod';
-import { AssignmentDefinitionPartialSchema } from '../../assignmentDefinition/assignmentDefinitionPartials.zod';
+import { AssignmentDefinitionPartialSchema } from '@/services/assignmentDefinition/assignmentDefinitionPartials.zod';
 
 const validStudentSummary = {
   name: 'Alice Johnson',

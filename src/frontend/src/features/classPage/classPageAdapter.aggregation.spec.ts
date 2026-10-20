@@ -11,7 +11,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { createMetricResult, createDefinitionPartial } from '../../test/dataAnalysis/fixtures';
+import { createMetricResult, createDefinitionPartial } from '@/test/dataAnalysis/fixtures';
 import {
   DEFAULT_TS,
   assignment,
@@ -20,9 +20,9 @@ import {
   perClassResult,
   perStudentRow,
   student,
-} from '../../test/classPage/classPageAdapterTestFixtures';
+} from '@/test/classPage/classPageAdapterTestFixtures';
 import { adaptClassPageToViewModel } from './classPageAdapter';
-import type { PerStudentRow } from '../../services/dataAnalysis/dataAnalysis.zod';
+import type { PerStudentRow } from '@/services/dataAnalysis/dataAnalysis.zod';
 
 describe('adaptClassPageToViewModel — aggregation', () => {
   describe('studentAverages', () => {

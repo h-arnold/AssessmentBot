@@ -85,14 +85,13 @@ function installSlidesParserGlobals(vi, mockLogger) {
  * @returns {Promise<Function>} - The loaded SlidesParser class.
  */
 async function loadSlidesParserModules() {
-  const documentParserModule = await import('../../src/backend/DocumentParsers/DocumentParser.js');
-  const taskDefinitionModule = await import('../../src/backend/Models/TaskDefinition.js');
+  const documentParserModule = await import('#backend/DocumentParsers/DocumentParser.js');
+  const taskDefinitionModule = await import('#backend/Models/TaskDefinition.js');
   globalThis.DocumentParser =
     documentParserModule.DocumentParser || documentParserModule.default?.DocumentParser;
   globalThis.TaskDefinition =
     taskDefinitionModule.TaskDefinition || taskDefinitionModule.default?.TaskDefinition;
-  const slidesParserModule =
-    await import('../../src/backend/DocumentParsers/SlidesParser/index.js');
+  const slidesParserModule = await import('#backend/DocumentParsers/SlidesParser/index.js');
   const SlidesParser = slidesParserModule.SlidesParser || slidesParserModule.default?.SlidesParser;
   if (!SlidesParser) {
     throw new Error('Failed to load SlidesParser for tests');

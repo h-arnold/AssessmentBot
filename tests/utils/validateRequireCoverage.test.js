@@ -6,7 +6,7 @@ import { withGlobalMocks } from '../helpers/globalMockManager.js';
 // production globals so the reported copy reflects the exercised branches.
 // Vitest functions use ESM imports; `require` is retained only for the
 // CommonJS loader-path assertion below.
-const { Validate } = require('../../src/backend/Utils/Validate.js');
+const { Validate } = require('#backend/Utils/Validate.js');
 
 // Require-loader behaviour coverage for Validate edges. This suite mirrors the
 // ESM import coverage through the CommonJS loader used by setupGlobals and

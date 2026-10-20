@@ -3,9 +3,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   ApplicationAccessContext,
   type ApplicationAccessContextValue,
-} from '../../auth/ApplicationAccessContext';
-import { renderWithFrontendProviders } from '../../../test/renderWithFrontendProviders';
-import type { AuthenticationSettings } from '../../../services/authService/authService.zod';
+} from '@/features/auth/ApplicationAccessContext';
+import { renderWithFrontendProviders } from '@/test/renderWithFrontendProviders';
+import type { AuthenticationSettings } from '@/services/authService/authService.zod';
 import { AuthenticationSettingsTab } from './AuthenticationSettingsTab';
 
 const { getAuthenticationSettingsMock, setAuthenticationSettingsMock } = vi.hoisted(() => {
@@ -15,7 +15,7 @@ const { getAuthenticationSettingsMock, setAuthenticationSettingsMock } = vi.hois
   };
 });
 
-vi.mock('../../../services/authService/authService', () => {
+vi.mock('@/services/authService/authService', () => {
   return {
     getAuthenticationSettings: getAuthenticationSettingsMock,
     setAuthenticationSettings: setAuthenticationSettingsMock,

@@ -9,11 +9,11 @@
  */
 
 import { getStudentMetric } from './classPageAdapter.zod';
-import { compareStudentNames } from '../../services/dataAnalysis/compareStudentNames';
-import { compareMetricsByStateRank } from '../../services/dataAnalysis/metricDisplay/metricComparator';
-import { compareStudentNamePart } from '../../utils/splitStudentName';
+import { compareStudentNames } from '@/services/dataAnalysis/compareStudentNames';
+import { compareMetricsByStateRank } from '@/services/dataAnalysis/metricDisplay/metricComparator';
+import { compareStudentNamePart } from '@/utils/splitStudentName';
 import type { ClassPageAdapterResult, StudentAverageRowModel } from './classPageAdapter.zod';
-import type { MetricColumnKey } from '../../services/dataAnalysis/metricDisplay/metricDisplayMeta';
+import type { MetricColumnKey } from '@/services/dataAnalysis/metricDisplay/metricDisplayMeta';
 
 // ---------------------------------------------------------------------------
 // Exported types

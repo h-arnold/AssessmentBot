@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import type { FilterDropdownProps } from 'antd/es/table/interface';
 import { buildStudentAveragesTableColumns } from './studentAveragesTableColumns';
-import { createComputedMetricResult, createNotAttemptedMetricResult, createErrorMetricResult, createMetricResult } from '../../test/dataAnalysis/fixtures';
+import { createComputedMetricResult, createNotAttemptedMetricResult, createErrorMetricResult, createMetricResult } from '@/test/dataAnalysis/fixtures';
 import type { StudentAverageRowModel } from './classPageAdapter.zod';
 
 const EMPTY_FILTERS = { completeness: [], accuracy: [], spag: [], average: [] } as const;

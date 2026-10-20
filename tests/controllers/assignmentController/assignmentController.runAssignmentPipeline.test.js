@@ -66,8 +66,8 @@ function setupModuleMocks() {
 
 // Load the controller and error type
 setupModuleMocks();
-const AssignmentController = require('../../../src/backend/y_controllers/AssignmentController.js');
-const DefinitionStaleError = require('../../../src/backend/Utils/ErrorTypes/DefinitionStaleError.js');
+const AssignmentController = require('#backend/y_controllers/AssignmentController.js');
+const DefinitionStaleError = require('#backend/Utils/ErrorTypes/DefinitionStaleError.js');
 
 // =========================================================================
 // Tests

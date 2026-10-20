@@ -12,7 +12,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { createDefinitionPartial } from '../../test/dataAnalysis/fixtures';
+import { createDefinitionPartial } from '@/test/dataAnalysis/fixtures';
 import {
   DEFAULT_TS,
   assignment,
@@ -21,10 +21,10 @@ import {
   computedPerTaskRow,
   singleAssignmentAdapterInput,
   student,
-} from '../../test/classPage/classPageAdapterTestFixtures';
+} from '@/test/classPage/classPageAdapterTestFixtures';
 import { adaptClassPageToViewModel } from './classPageAdapter';
-import { TaskTitlesUnavailableError } from '../../services/dataAnalysis/heatmapAdapter';
-import type { PerTaskRow } from '../../services/dataAnalysis/dataAnalysis.zod';
+import { TaskTitlesUnavailableError } from '@/services/dataAnalysis/heatmapAdapter';
+import type { PerTaskRow } from '@/services/dataAnalysis/dataAnalysis.zod';
 
 describe('adaptClassPageToViewModel', () => {
   describe('recentAssignments', () => {

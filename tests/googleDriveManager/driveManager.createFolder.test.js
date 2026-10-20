@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import DriveManager from '../../src/backend/GoogleDriveManager/DriveManager/index.js';
+import DriveManager from '#backend/GoogleDriveManager/DriveManager/index.js';
 import { createDriveManagerMocks, createIterator } from '../helpers/driveManagerFacadeMocks.js';
 
 const PARENT_FOLDER_ID = 'parent-folder-id';

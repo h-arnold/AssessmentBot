@@ -23,7 +23,7 @@ import {
   computeServiceError,
   computeHeatmapsSurfaceState,
 } from './heatmapsSurfaceState';
-import type { PageDatasetState } from '../../hooks/usePageDataset';
+import type { PageDatasetState } from '@/hooks/usePageDataset';
 
 /**
  * Build a `PageDatasetState` from overrides, defaulting to a ready +

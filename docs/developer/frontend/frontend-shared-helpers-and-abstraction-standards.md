@@ -117,6 +117,14 @@ Test helper placement rules remain governed by `docs/developer/frontend/frontend
 - Effective weighting: `src/frontend/src/services/assignmentDefinition/assignmentDefinitionUtilities.ts` — `TaskWeightingIndex` and `computeEffectiveWeight`, the single effective-weight resolver for analyser accumulation and heatmap column projection.
 - Assignment-weighting coercion: `src/frontend/src/services/assignmentDefinition/assignmentDefinitionUtilities.ts` — `coerceAssignmentWeighting(value: unknown): number`, which returns every primitive number unchanged and falls back to the schema-owned `DEFAULT_WEIGHTING_VALUE` only for non-numbers. It is **distinct from `computeEffectiveWeight`** (different nullable/validation semantics) and is the form-level coercion consumed by the wizard dirty checks, the save/reparse builders and recovery approval. The legacy `assignmentWizardFormState.ts` export path re-exports the same binding and must be retained for existing consumers.
 
+### 3.9 Shared input components
+
+- `SelectWithAddNew` (status: Implemented): Ant Design `Select` wrapper at `src/frontend/src/components/SelectWithAddNew/SelectWithAddNew.tsx` that appends one `Add new` sentinel option. Selecting it is an immediate **command**, not a value. Consumers: `features/classes/bulk/BulkCreateModal.tsx`, `features/classes/bulk/BulkSetSelectModal.tsx` and `features/assignmentWizard/AssignmentDefinitionWizardReviewContent.tsx`. Contract:
+  - **Dispatch is immediate.** The wrapper calls `onAddNew` synchronously from the selection change and never forwards the sentinel through the caller's `onChange`. It has no `debounceMs` prop; do not reintroduce a delay on this modal-open command. `src/frontend/src/hooks/useDebounce.ts` is unchanged for its other callers.
+  - **Value ownership.** A controlled `value` prop (detected by property presence, so explicit `undefined` counts) stays authoritative, and a nullish value is passed to Ant Design as `null` so its internal uncontrolled sentinel cannot leak. Without a `value` prop the wrapper tracks the normal selection itself, seeded from `defaultValue`; normal `onChange`, `allowClear` and `labelInValue` payloads keep their original shape, including the labelled `{ value, label }` object.
+  - **State stays with the caller.** The wrapper keeps no timers, callback registry or created-entity state. The caller owns the manager-modal open state, and its open transition is idempotent.
+  - Placement rationale: the wrapper is a cross-feature shared component with three active callers, so it belongs in `components/`; its value handling is not a general helper and must stay local to it.
+
 ## 4. Extraction decision rules
 
 ### 4.1 Keep logic local when
@@ -153,6 +161,7 @@ Reject these patterns during implementation and review:
 - Keep feature-specific helpers inside the owning feature folder.
 - Name helpers by the contract they provide, not by where they were extracted from.
 - Prefer explicit function exports and typed return contracts.
+- Service-folder grouping conventions: `docs/developer/frontend/frontend-architecture.md`.
 
 ## 7. Review and PR checks
 
@@ -164,7 +173,7 @@ For frontend changes that add or modify helpers, include a short helper audit in
 
 Reviewer checks:
 
-1. no unjustified one-caller abstraction extraction
+1. no unjustified one-caller abstraction extraction, and no duplicated shared-helper logic (treat duplicated helper logic as a Critical review issue)
 2. no duplicated orchestration added where descriptor/config derivation is feasible
 3. no duplicate source of truth for routing/render mapping
 4. no duplicated validation-error source of truth without explicit contract boundaries
@@ -207,6 +216,7 @@ Rules for new entries:
 ### Rejected and superseded designs
 
 - **9.24 Generic wizard orchestrator hook and entry-intent taxonomy — superseded and removed.** `resolveWizardEntryMode`, `useAssignmentWizardOrchestrator`, and the `{kind: ...}` recovery entry intent were deleted once `useAssessTaskRecoveryFlow` owned stale recovery. Only `buildReparseRequest` survives, in `src/frontend/src/features/assignmentWizard/assignmentWizardOrchestrator.ts`. Do not re-propose a generic entry-mode layer.
+- **9.27 Debounced `Add new` dispatch — superseded.** `src/frontend/src/components/SelectWithAddNew/SelectWithAddNew.tsx` previously routed the sentinel command through the shared `useDebounce` hook behind a `debounceMs` prop. Opening a caller-owned modal is an immediate, idempotent state transition, so dispatch is now synchronous and the prop is removed; `useDebounce` and its other callers are unchanged. Do not reinstate a debounce on this command path.
 
 ### Delivered decisions kept for existing cross-references
 
@@ -221,6 +231,7 @@ These came out of the de-sloppification passes and cannot be recovered from read
 - **Disabled-reason accessibility**: expose a disabled control's reason both as a hover `Tooltip` and as an sr-only `aria-describedby` node; mediate the antd `Tooltip` `cloneElement` wrapper with an intermediate `<span>` so the described-by binding survives.
 - **antd `Table` `defaultSortOrder`** does not apply the initial sort in the installed version; pre-sort the `dataSource` instead (for example `rows.toSorted(compareStudentNames)`).
 - **Disabled `Button` tooltips** need a `<span>` wrapper: antd v6 `Tooltip` does not trigger on a disabled button. This is the established codebase pattern.
+- **antd `Select` advances its internal selection before the wrapper's `onChange` runs.** Intercepting the `Add new` sentinel inside `onChange` is therefore too late to stop it becoming the displayed label unless the wrapper owns the value. `SelectWithAddNew` consequently tracks its own uncontrolled selection (seeded from `defaultValue`) and passes the parent value, or `null` when absent, so an intercepted command never renders as a selected value.
 
 ## 9.26 Task preview source link decisions (issue #19)
 
@@ -239,12 +250,25 @@ Delivered design decisions for the issue #19 task-preview source link; each entr
 
 6. E2E expected-URL oracle — **keep feature-local and deliberately independent**, in `src/frontend/e2e-tests/helpers/task-preview-source-link-expectations.ts`. The walkthroughs drive the real client pipeline (mocked transport → `callApi` → assignment service Zod schema → `buildCellPreviewLookup`) and compare the rendered `href` and the captured new-tab navigation against an expectation this helper derives from the raw stored identifiers against a fixed HTTPS host and path. It deliberately imports neither the private production `resolveSourceUrl` nor the Vitest-only `buildExpectedSourceUrl`, so the assertion cannot validate the resolver against itself. Production resolution stays private to `features/taskHeatmap/buildCellPreviewLookup.ts`; do not introduce a generic runtime URL abstraction for either test layer. **Status: Implemented.**
 
+## 9.27 Attempt-baseline analysis mode (issue #305) — planned-only entries
+
+Planned shared-helper decisions for the top-decile attempt-baseline mode. All
+entries below are **`Not implemented`**; the implementation pass updates each
+status as it delivers, and the action plan's shared-helper planning blocks
+reference these entries.
+
+1. Baseline selection module — **new**, `src/frontend/src/services/dataAnalysis/analysers/attemptBaselineSelection.ts`. Derives, per class, the candidate set (roster students with ≥ 1 attempted task), the pool (`min(|candidates|, max(2, ceil(0.1 × rosterSize)))` ranked by distinct attempted task keys, ties by `studentId` asc), and the baseline task set (intersection of pool attempt sets). Recommended as a **post-accumulation derivation** over the analyser's `perStudentTaskAccums` (whose per-criterion `displayCount` already encodes the attempt signal and whose keys already encode definition resolution) rather than a second raw-data walk. **Status: `Not implemented`**.
+2. Shared attempt predicate — **new export from `src/frontend/src/services/dataAnalysis/analysers/attemptBaselineSelection.ts`**, input type **`ReadonlyArray<PerStudentTaskMetric>`**: the availability side consumes the retained result's `perStudentTaskMetrics` directly; the analyser's candidacy projects its internal accumulators through the existing `buildPerStudentTaskMetrics` before the predicate runs, so one function serves both consumers with one shared test. Roster-scoped by intersecting the metrics' student ids with `classFull.students[].id`. **Status: `Not implemented`**.
+3. Mode-aware `excluded` accessible label — **extend** `src/frontend/src/services/dataAnalysis/metricDisplay/`: `metricTone.ts` (`EXCLUDED_METRIC_ACCESSIBLE_LABEL`), `MetricPill.tsx` (**optional** `analysisMode` prop — absent renders today's weighting wording, which stays correct for the three-state task-display metrics `TaskPreviewCard.tsx` renders, which structurally cannot be `excluded`; **Class-page consumers pass it explicitly**, enforced by a red-phase unit assertion on `RecentAssignmentCard` rather than by the type system), and `studentAveragesTableColumns.tsx` (students-table `aria-label` builder). Mode reaches the label by **explicit prop threading** with the full chain: `ClassPage` → `ClassPageContent` → `renderReadyContent` (options object) → `ClassPageReady` (properties) → `RecentAssignmentsSection` → `RecentAssignmentCard`, and `ClassPageReady` → `StudentAveragesTableCard` → `studentAveragesTableColumns.tsx` column builder; no React context; `features/taskHeatmap/**` stays untouched. **Baseline-mode wording** (the label is chosen by mode alone, with no cause field): it names **both** possible causes in one truthful sentence — zero weighting and outside the baseline task set — so an already-`excluded` zero-weight rollup left unconverted by the baseline rules is still announced truthfully. **Status: `Not implemented`**.
+4. `HeatmapTaskColumn.includedInAttemptBaseline` — **extend** the heatmap projection (`heatmapAdapter.ts`): `buildTaskColumns` gains a **required second parameter** typed `ReadonlySet<string> | null`, where `null` means "absolute mode: every column included". **The supplier is `adaptMetricsToHeatmap`** — the only caller that receives a mode-bearing `analyserResult` and therefore the only caller that can supply a non-null baseline set: baseline mode → `new Set(analyserResult.attemptBaseline.baselineTaskKeys)` under the Baseline narrowing rule's fail-fast; absolute mode → `null`. This needs no new props anywhere because `adaptMetricsToHeatmap` is called only from `TaskHeatmapPage`, which runs only inside the Class page. The merged chain is three links deep (`adaptMetricsToMergedHeatmap` → `buildMergedTaskColumnsInClassOrder` → `buildMergedTaskColumns` → `buildTaskColumns`); those links pass `null` **explicitly** at each hop. `MergedHeatmapTaskColumn` inherits via the existing spread; `HeatmapCell` unchanged (column-level marking only in v1). Rendering of the flag is a `features/taskHeatmap` presentational change driven by data — no mode props or mode state enter that feature. **Status: `Not implemented`**.
+5. Availability resolver — **pure function extended into the existing `src/frontend/src/features/classPage/useClassPageData.helpers.ts`**: composes the shared attempt predicate (entry 2) with `classFull.students[].id` rostering and result retention (`analyserResult ?? retainedAnalyserResult` precedence, computed **during render**) into the `baselineAvailability` literal — `'ready' | 'awaiting-data' | 'ineligible'` plus `reason` display copy populated for both disabled statuses (neutral "Waiting for class data" for `'awaiting-data'`; named unmet condition for `'ineligible'`). Retention uses React's documented **previous-render state pattern** (`seenAnalyserResult`/`retainedAnalyserResult` state pairs updated conditionally during render, converging): `react-hooks/refs` and `react-hooks/set-state-in-effect` — both `"error"` in `src/frontend/eslint.config.js`'s flat `recommended` set — forbid the ref-read-during-render and effect+`useState` alternatives, so this pattern is a **lint requirement**, not a preference. Status enumeration: `'awaiting-data'` until the first successful analysis result within the current mount (pre-ready renders, pipeline-not-run, adapter throw, baseline throw); `'ready'`/`'ineligible'` only thereafter. Existing helper surface, not a new abstraction; kept in the helper file so the hook's growth is limited to wiring (the 550-line trigger is per-file). **Status: `Not implemented`**.
+
 ## 10. Frontend utils folder convention
 
-The `src/frontend/src/utils/` folder exists for pure formatting / utility functions that are shared across the frontend. This folder is a separate convention from `src/frontend/AGENTS.md` §14, which governs only `services/` subfolder organisation.
+The `src/frontend/src/utils/` folder exists for pure formatting / utility functions that are shared across the frontend. This folder is a separate convention from the service-folder rules in `frontend-architecture.md`, which govern only `services/` subfolder organisation.
 
 ### Rules
 
 - **Pure functions only.** Files in `utils/` must have no React, Ant Design, I/O, or state dependencies. They are plain TypeScript modules exporting typed pure functions.
-- **No `src/frontend/AGENTS.md` §14 governance.** The §14 subfolder-by-domain-prefix rule applies only to `services/`. The `utils/` folder is a flat namespace; files are named by the domain they format (e.g. `dateFormatting.ts`). A future subfolder reorganisation may be considered if the folder exceeds 5–6 files, but no barrel exports (`index.ts`) are created in v1 — consumers import directly.
+- **No service-folder governance.** The subfolder-by-domain-prefix rule in `frontend-architecture.md` applies only to `services/`. The `utils/` folder is a flat namespace; files are named by the domain they format (e.g. `dateFormatting.ts`). A future subfolder reorganisation may be considered if the folder exceeds 5–6 files, but no barrel exports (`index.ts`) are created in v1 — consumers import directly.
 - **First entry:** `dateFormatting.ts` — exports `formatUpdatedAtLabel(updatedAt: string | null): string` (`en-GB`, date-only, rendered in UTC; em-dash fallback for null or unparseable input). The Class page adapter deliberately does not use the fallback: it throws upstream on null or unparseable input.

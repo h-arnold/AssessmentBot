@@ -8,12 +8,12 @@
 import { useMemo, type JSX, type RefCallback } from 'react';
 import { Alert, Skeleton } from 'antd';
 
-import type { TaskDisplayMetric } from '../../services/dataAnalysis/dataAnalysis.zod';
-import type { HeatmapMetricKey } from '../../services/dataAnalysis/metricDisplay/metricDisplayMeta';
+import type { TaskDisplayMetric } from '@/services/dataAnalysis/dataAnalysis.zod';
+import type { HeatmapMetricKey } from '@/services/dataAnalysis/metricDisplay/metricDisplayMeta';
 import type { CellPreviewData } from './buildCellPreviewLookup';
 import { assembleTaskPreviewData } from './assembleTaskPreviewData';
 import { TaskPreviewCard, CARD_MAX_WIDTH, type SourceActionElement } from './TaskPreviewCard';
-import { APP_GAP_MD } from '../../theme/spacing';
+import { APP_GAP_MD } from '@/theme/spacing';
 
 // ---------------------------------------------------------------------------
 // Public types

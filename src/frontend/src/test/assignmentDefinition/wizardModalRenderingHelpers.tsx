@@ -1,6 +1,6 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import { vi } from 'vitest';
-import { queryKeys } from '../../query/queryKeys';
+import { queryKeys } from '@/query/queryKeys';
 import { renderWithFrontendProviders } from '../renderWithFrontendProviders';
 import type { FrontendProvidersOptions } from '../renderWithFrontendProviders';
 import type { QueryClient } from '@tanstack/react-query';
@@ -10,7 +10,7 @@ import {
   type TestRenderResult,
 } from './wizardTestHelpers';
 import { mockTopics, mockYearGroups } from './sharedTestFixtures';
-import type { AssignmentDefinition } from '../../services/assignmentDefinition/assignmentDefinition.zod';
+import type { AssignmentDefinition } from '@/services/assignmentDefinition/assignmentDefinition.zod';
 
 /**
  * Assignment Definition Wizard Modal test helpers module.
@@ -120,7 +120,7 @@ async function renderModalComponent(
   warmupState: FrontendProvidersOptions['warmupState'],
   extraProperties?: Record<string, unknown>
 ): Promise<ReturnType<typeof renderWithFrontendProviders>> {
-  const { AssignmentDefinitionWizardModal } = await import('../../features/assignmentWizard/AssignmentDefinitionWizardModal');
+  const { AssignmentDefinitionWizardModal } = await import('@/features/assignmentWizard/AssignmentDefinitionWizardModal');
 
   const componentProperties: Record<string, unknown> = {
     mode,

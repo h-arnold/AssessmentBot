@@ -39,16 +39,16 @@
 
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useQuery, useQueryClient, type UseQueryResult } from '@tanstack/react-query';
-import { getABClassQueryOptions, getAssignmentQueryOptions } from '../../query/sharedQueries';
-import { usePageDataset } from '../../hooks/usePageDataset';
-import { DataAnalysisService } from '../../services/dataAnalysis/dataAnalysisService';
+import { getABClassQueryOptions, getAssignmentQueryOptions } from '@/query/sharedQueries';
+import { usePageDataset } from '@/hooks/usePageDataset';
+import { DataAnalysisService } from '@/services/dataAnalysis/dataAnalysisService';
 import { adaptClassPageToViewModel } from './classPageAdapter';
 import { useClassPagePipelineDiagnostics } from './useClassPagePipelineDiagnostics';
 import { compareAssignmentUpdatedAtDesc } from './classPageModel';
-import { logFrontendError } from '../../logging/frontendLogger';
-import type { ClassFull } from '../../services/googleClassrooms/classDetail/classDetailService.zod';
-import type { AveragingResult } from '../../services/dataAnalysis/dataAnalysis.zod';
-import type { AssignmentDefinitionPartialsResponse } from '../../services/assignmentDefinition/assignmentDefinitionPartials.zod';
+import { logFrontendError } from '@/logging/frontendLogger';
+import type { ClassFull } from '@/services/googleClassrooms/classDetail/classDetailService.zod';
+import type { AveragingResult } from '@/services/dataAnalysis/dataAnalysis.zod';
+import type { AssignmentDefinitionPartialsResponse } from '@/services/assignmentDefinition/assignmentDefinitionPartials.zod';
 import type { ClassPageAdapterResult } from './classPageAdapter.zod';
 import type { ClassPageError } from './useClassPageData.helpers';
 import {

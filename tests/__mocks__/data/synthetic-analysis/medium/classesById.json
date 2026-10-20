@@ -18,6 +18,39 @@
       }
     ],
     "active": true,
+    "metadata": {
+      "classAverages": {
+        "completeness": "E",
+        "accuracy": "E",
+        "spag": "E",
+        "overall": "E",
+        "updatedAt": "2024-01-02T14:03:00.000Z"
+      },
+      "recentAssignments": [
+        {
+          "assignmentId": "assignment-0-5",
+          "assignmentDefinitionKey": "definition-partial-0",
+          "updatedAt": "2024-01-02T14:03:00.000Z",
+          "averages": {
+            "completeness": "E",
+            "accuracy": "E",
+            "spag": "E",
+            "overall": "E"
+          }
+        },
+        {
+          "assignmentId": "assignment-0-4",
+          "assignmentDefinitionKey": "definition-0-slides",
+          "updatedAt": "2024-01-02T13:03:00.000Z",
+          "averages": {
+            "completeness": "E",
+            "accuracy": "E",
+            "spag": "E",
+            "overall": "E"
+          }
+        }
+      ]
+    },
     "students": [
       {
         "id": "100000000000000000000",
@@ -2419,6 +2452,50 @@
       }
     ],
     "active": false,
+    "metadata": {
+      "classAverages": {
+        "completeness": "excluded",
+        "accuracy": "excluded",
+        "spag": "excluded",
+        "overall": "excluded",
+        "updatedAt": "2024-01-03T14:03:00.000Z"
+      },
+      "recentAssignments": [
+        {
+          "assignmentId": "assignment-1-5",
+          "assignmentDefinitionKey": "definition-partial-0",
+          "updatedAt": "2024-01-03T14:03:00.000Z",
+          "averages": {
+            "completeness": "excluded",
+            "accuracy": "excluded",
+            "spag": "excluded",
+            "overall": "excluded"
+          }
+        },
+        {
+          "assignmentId": "assignment-1-4",
+          "assignmentDefinitionKey": "definition-2-slides",
+          "updatedAt": "2024-01-03T13:03:00.000Z",
+          "averages": {
+            "completeness": "excluded",
+            "accuracy": "excluded",
+            "spag": "excluded",
+            "overall": "excluded"
+          }
+        },
+        {
+          "assignmentId": "assignment-1-3",
+          "assignmentDefinitionKey": "definition-1-sheets",
+          "updatedAt": "2024-01-03T12:03:00.000Z",
+          "averages": {
+            "completeness": "excluded",
+            "accuracy": "excluded",
+            "spag": "excluded",
+            "overall": "excluded"
+          }
+        }
+      ]
+    },
     "students": [
       {
         "id": "100000000010000000000",
@@ -4816,6 +4893,28 @@
       }
     ],
     "active": true,
+    "metadata": {
+      "classAverages": {
+        "completeness": 4,
+        "accuracy": 3,
+        "spag": "N",
+        "overall": 3.5,
+        "updatedAt": "2024-01-04T14:03:00.000Z"
+      },
+      "recentAssignments": [
+        {
+          "assignmentId": "assignment-2-5",
+          "assignmentDefinitionKey": "definition-partial-0",
+          "updatedAt": "2024-01-04T14:03:00.000Z",
+          "averages": {
+            "completeness": 4,
+            "accuracy": 3,
+            "spag": "N",
+            "overall": 3.5
+          }
+        }
+      ]
+    },
     "students": [
       {
         "id": "100000000020000000000",
@@ -7217,6 +7316,16 @@
       }
     ],
     "active": null,
+    "metadata": {
+      "classAverages": {
+        "completeness": 4,
+        "accuracy": 3.5,
+        "spag": 4.5,
+        "overall": 3.9,
+        "updatedAt": "2024-01-05T14:03:00.000Z"
+      },
+      "recentAssignments": []
+    },
     "students": [
       {
         "id": "100000000030000000000",

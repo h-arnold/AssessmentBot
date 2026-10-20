@@ -2,7 +2,21 @@
 
 ## Status
 
-Specification for independent planning sign-off. Backend contract support only; no production implementation has started. Canonical planned-only entries are recorded and marked `Not implemented` in the documentation listed below.
+Backend ABClass metadata contract support is delivered and reconciled across all eleven sections of
+[ACTION_PLAN.md](../../ACTION_PLAN.md), together with its explicitly approved companions: the
+always-present `Teacher.toJSON().teacherName` correction and the factual collection/deletion
+documentation corrections. The numbered sections, their approved companions and the mandatory
+post-implementation cleanup are committed and pushed on the delivery branch; per-section independent
+reviews, the recorded regression comparisons and the final post-cleanup baseline comparison are
+recorded in that action plan. The final documentation handoff reconciles the delivered contracts;
+nothing has been deployed.
+
+The product decisions, authorisations, amendments and delivery records that follow are the
+historical planning record for this contract and remain authoritative for its scope. Where an
+earlier section still describes this work as planned-only or `Not implemented`, that text records
+the pre-delivery state and is superseded by the status above. The sole deliberate deferral is the
+deletion-flag correction tracked in
+[issue #332](https://github.com/h-arnold/AssessmentBot/issues/332).
 
 ## Purpose
 
@@ -126,13 +140,13 @@ Example, using the existing 40/40/20 weighting solely to illustrate values:
 
 One shared domain implementation defines these routines:
 
-| Routine | Required behaviour |
-| --- | --- |
-| `validateAverageScore(value, context)` | Enforce the exact finite 0–5 / `N` / `E` / `excluded` union. |
-| `validateAverageScores(scores, context)` | Require all four own metric fields and validate each; reject unexpected fields. |
-| `validateClassAverages(value, context)` | Require exactly the four scores plus valid `updatedAt`; reuse score validation without rejecting the permitted timestamp. |
-| `validateRecentAssignment(value, context)` | Require exactly both identifiers, complete `averages` and valid `updatedAt`. |
-| `validateMetadata(value, context)` | Accept null, otherwise enforce complete shape, dense zero-to-three array, unique assignment IDs and newest-first ordering. |
+| Routine                                    | Required behaviour                                                                                                         |
+| ------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------- |
+| `validateAverageScore(value, context)`     | Enforce the exact finite 0–5 / `N` / `E` / `excluded` union.                                                               |
+| `validateAverageScores(scores, context)`   | Require all four own metric fields and validate each; reject unexpected fields.                                            |
+| `validateClassAverages(value, context)`    | Require exactly the four scores plus valid `updatedAt`; reuse score validation without rejecting the permitted timestamp.  |
+| `validateRecentAssignment(value, context)` | Require exactly both identifiers, complete `averages` and valid `updatedAt`.                                               |
+| `validateMetadata(value, context)`         | Accept null, otherwise enforce complete shape, dense zero-to-three array, unique assignment IDs and newest-first ordering. |
 
 - `validateClassAverages` checks its own exact five-field record, passes an extracted four-field score record to `validateAverageScores`, and validates its timestamp separately. All metadata routines reuse one local domain record/required-field/allowed-key check rather than duplicating those checks per shape.
 - Reuse `Validate` primitives where suitable. The dedicated model-domain owner is `src/backend/Models/ABClassMetadata.js`, shared by the ABClass model, controllers and response mappers. Keep its five routines out of the existing ABClass model and generic `Validate`; do not duplicate the domain implementation in transport helpers.
@@ -170,12 +184,12 @@ Return metadata in the full read view using the same shape and validation. An ab
 
 Existing required fields and roster-refresh behaviour remain unchanged.
 
-| Request metadata | New class | Existing class |
-| --- | --- | --- |
-| Omitted | Initialise null | Preserve existing metadata |
-| Null | Store null | Clear metadata |
-| Complete valid object | Store supplied snapshot | Replace entire metadata value |
-| Invalid / own undefined | Reject before side effects | Reject before side effects |
+| Request metadata        | New class                  | Existing class                |
+| ----------------------- | -------------------------- | ----------------------------- |
+| Omitted                 | Initialise null            | Preserve existing metadata    |
+| Null                    | Store null                 | Clear metadata                |
+| Complete valid object   | Store supplied snapshot    | Replace entire metadata value |
+| Invalid / own undefined | Reject before side effects | Reject before side effects    |
 
 The returned partial summary contains metadata. Existing assignment and active-state preservation rules remain unchanged.
 
@@ -202,9 +216,9 @@ The existing deletion flags and removal of both stores remain unchanged. No meta
 
 The existing roster refresh continues to fetch and update the class name, owner, teachers and students. It is not narrowed to students-only behaviour.
 
-| Store | Existing document update |
-| --- | --- |
-| Full class collection | `$set` only `className`, `classOwner`, `teachers` and `students`, as today. |
+| Store                       | Existing document update                                                                                                                                                                 |
+| --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Full class collection       | `$set` only `className`, `classOwner`, `teachers` and `students`, as today.                                                                                                              |
 | `abclass_partials` registry | `$set` only `className`, `classOwner` and `teachers`. Never include `students`, `assignments`, `metadata`, `cohortKey`, `yearGroupKey`, `courseLength` or `active` in this roster patch. |
 
 - Registry patch values must match the serialised forms produced by `ABClass.toPartialJSON()`: serialise `classOwner` through the existing owner helper and each teacher through the existing array-serialisation helper, retaining the class-name/null representation. Build only these roster fields; do not call the complete metadata-bearing partial projection just to obtain them. The full-store roster payload retains its existing forms and behaviour.
@@ -250,12 +264,12 @@ Extend `scripts/synthetic-test-data/` and its existing profiles/views. No new pr
 - During delivery, reconcile `docs/developer/data-shapes/abclass.md`, `docs/developer/backend/api-layer.md`, `docs/developer/backend/backend-testing.md` and `docs/developer/testing/synthetic-test-data.md`, plus JSDoc on the touched model/controller/API methods. Explain optional-write versus always-present nullable-read semantics, field-scoped roster persistence and snapshot staleness; remove planned-only markers only as the corresponding behaviour is implemented.
 - In the `getABClassPartials` key notes of `docs/developer/data-shapes/abclass.md`, replace the existing rationale that timestamps are absent from the partial shape: metadata introduces timestamps, but they are validated strings rather than live Dates, so no additional `DateUtils.deepConvertDates()` call is needed. Preserve that distinction during reconciliation.
 - Where touched prose currently calls `cohortKey`, `yearGroupKey` and `courseLength` “metadata”, describe them as class configuration/reference fields so they are not confused with the new literal `metadata` property. Also distinguish this class-level assessment summary from unrelated task-artifact `metadata`. Document the compact `excluded` representation and the absence of an API repair path for corrupt stored metadata.
-- No eager migration, live deployment, commits or frontend work is authorised by this planning request.
+- No eager migration, live deployment, production implementation or frontend work is authorised by this planning request. The user subsequently authorised committing and pushing the completed planning artefacts only; this does not authorise implementation or deployment.
 - A layout spec is not required: no frontend surface or workflow changes.
 
 ## Planning handoff notes
 
-- Work exclusively in `/home/developer/AssessmentBot-metadata-planning`; the original worktree has unrelated concurrent changes.
+- Workspace override explicitly approved by the user during action planning: use the current clean-start worktree `/home/developer/.local/share/opencode/worktree/7f924f/nimble-otter`. This supersedes the historical instruction to work exclusively in `/home/developer/AssessmentBot-metadata-planning`, which no longer exists. Recheck status before edits and do not overwrite unrelated work.
 - Later delivery must be TDD-first with explicit canonical profile/view choices and the mandatory implementation/review loop.
 - Planned-only contract/helper entries must exist in `docs/developer/data-shapes/abclass.md`, `docs/developer/backend/api-layer.md`, `docs/developer/backend/backend-testing.md` and `docs/developer/testing/synthetic-test-data.md` before the action plan is finalised and before any implementation. Those entries are now recorded as `Not implemented`; the action plan must reference them as prerequisites, not postpone their creation to rollout.
 - Assess module size before implementation, including the model and dedicated validator owner, not just the controller facade. Current physical line counts and planning estimates are: `Models/ABClass.js` 370, projected approximately 430–470 with metadata integration; new `Models/ABClassMetadata.js` 0, projected approximately 250–350; `Utils/Validate.js` 299, projected approximately 330–350; `ABClassController/index.js` 581, projected above 600 without separation. The Planner workflow requires the action plan to record checked counts, projected increases and an explicit domain-separation plan for every materially changed file projected above 500 lines. Separately, backend instructions make actual decomposition mandatory when a touched non-API file exceeds 550 lines; the facade already crosses that hard trigger. The 500-line planning obligation must not be used to waive or delay the 550-line implementation rule, nor treated as permission for unrelated pre-emptive refactors.
@@ -263,3 +277,193 @@ Extend `scripts/synthetic-test-data/` and its existing profiles/views. No new pr
 - The action plan must check GAS load order for the new metadata model and error class plus the extended `Validate` utility. ABClass references to the later metadata model, and metadata-model references to later `Validate`/error definitions, must stay inside runtime constructor/method bodies; there must be no premature top-level evaluation of those dependencies. In `tests/setupGlobals.js`, retain the existing `Validate` installation and add the new error and `ABClassMetadata` globals before tests load any ABClass-dependent module, including suites that directly require `Models/ABClass.js`. Do not add production Node imports or change stable numeric prefixes merely to support tests.
 - Calculation, automatic refresh and frontend reporting are excluded scope, not unresolved decisions or authorised implementation deferrals.
 - No core product questions remain for this contract-support cycle.
+
+## Agreed companion cleanup — Teacher serialisation and documentation
+
+The user explicitly approved the following bounded addition during action planning.
+The reviewed metadata contract above remains unchanged. This addendum authorises one
+additional backend output correction and two factual documentation corrections; it
+does not authorise frontend changes or production implementation during planning.
+
+### Always-present Teacher name on model serialisation
+
+- `Teacher.toJSON()` always emits its own `teacherName` property, preserving a supplied
+  name and emitting the constructor's existing `null` value when no name is set.
+  This applies wherever the shared Teacher serialiser is used, not just in ABClass.
+- The guarantee applies to `Teacher` instances. Legacy plain-object `teachers[]` entries
+  pass through existing ABClass/array serialisation unchanged until replaced; do not
+  broaden this cleanup into teacher-array hydration or a stored-data migration.
+- Normal new writes and roster refreshes serialise nameless Teacher instances with
+  `teacherName: null` through the existing helpers. This expected write-through change
+  is not an eager backfill: existing raw entries remain untouched until actually
+  replaced/re-serialised through `Teacher.toJSON()`.
+- Keep Teacher construction, setters and `fromJSON()` legacy acceptance unchanged.
+  Legacy input with no `teacherName` still restores with the constructor-owned null
+  value and serialises with explicit `teacherName: null`.
+- Do not add a second default in the serialiser, rewrite existing raw registry rows,
+  eagerly migrate stored teachers or tighten accepted legacy input. Existing frontend
+  optional/nullable Teacher schemas remain unchanged and continue to accept both
+  legacy absence and the new explicit null output.
+- Add red-first backend tests for own-property null output, unchanged named output,
+  legacy missing-name restoration and null/named round trips, plus ABClass owner and
+  teacher-array serialisation through the real model helpers. Named Teacher unit cases
+  use `loadSyntheticAnalysisProfile('small', 'classPartials')`, a frozen array of rows;
+  class inputs originate from `loadSyntheticAnalysisProfile('small', 'classesById')`,
+  a frozen object keyed by `classId`. Clone before mutation. ABClass owner/array cases
+  use `loadBackendModelInputs('small')` from
+  `scripts/synthetic-test-data/toBackendModelInputs.js`, which resolves the matching
+  definitions and exposes adapted ABClass roster JSON under `classesById[classId]`.
+  The loader returns one named view per call, not a `transport` wrapper. For array
+  cases that must exercise the Teacher serialiser, explicitly
+  materialise canonical teacher inputs with `Teacher.fromJSON()` when composing the
+  test's ABClass; do not assume ABClass restoration hydrates plain teacher-array entries.
+  Null/legacy cases are local clones of those canonical inputs.
+- Update the existing omission-based assertions in `tests/models/teacher.test.js`
+  (the nameless round-trip equality and explicit omission test) and
+  `tests/models/teacherStudentSubmissionCoverage.test.js` (nameless serialisation equality)
+  to the always-present contract in the red phase. These intended expectation changes
+  accompany the new cases; they are not regressions to retain or mask.
+- Update `Teacher.toJSON()` JSDoc to state that `teacherName` is always emitted and
+  uses the existing constructor-null value when unset. Reconcile the implemented
+  Teacher field table, conditional-emission key notes and known discrepancy 1, not
+  merely the appended planned entry. Remove that resolved fragile entry and renumber
+  the four remaining intentional entries without changing their contracts.
+
+### Correct inaccurate ABClass documentation
+
+- Describe full class storage as per-class collections named by `classId`, not a fixed
+  `abclass` collection; `abclass_partials` remains the fixed registry name. Correct
+  every implemented occurrence, including the `Collections:` header and main-collection
+  section heading in `abclass.md`.
+- Remove the incorrect delete-not-found error claim. Deletion of absent stores succeeds
+  with the existing flag object, rather than update's missing-class error. A missing
+  registry row yields `hasDeletedClassPartial: false`. The current controller sets
+  `hasDeletedFullClass: true` after any non-throwing `dropCollection()` return, even
+  when the vendor returns `false` for an absent collection; that flag stays false only
+  on the recognised missing-collection exception path. The normal vendor absent path
+  returns false rather than throwing, so a repeated delete reports the full flag true.
+  That exception guard is not taken by the vendor's normal absent result; every
+  non-throwing delete today sets the full flag true.
+  Document this quirk in every affected implemented statement: the delete error row,
+  implemented flag table/key notes and the matching `deleteABClass` idempotency note
+  in `docs/developer/backend/api-layer.md`, without changing deletion behaviour.
+- Resolve the existing Teacher conditional-output discrepancy after the serialiser
+  change is implemented. Leave the other four known-discrepancy contracts unchanged:
+  extra assignment wire fields stripped by frontend schemas, nullable full-class
+  not-found responses, intentionally duplicated Teacher schemas and unparsed/unused
+  frontend deletion flags. These are intentional contracts, not implementation deferrals.
+
+### Explicitly authorised separate-round fix
+
+Via the question tool, the user requested documenting the current deletion-flag behaviour
+and raising a GitHub issue with the problem and suggested fix for another implementation
+round. [Issue #332](https://github.com/h-arnold/AssessmentBot/issues/332) records that fix:
+honour the vendor's boolean drop result and add vendor-faithful red-first regression
+coverage. This is the sole deliberately deferred correction; the present cycle must not
+fix the flag or alter deletion code. The metadata calculation/refresh/frontend exclusions
+remain excluded scope, not additional deferrals. No open product questions remain.
+
+## Approved model serialisation amendment — 17 October 2026
+
+This section records a later, explicit user authorisation. It does not rewrite the product
+decisions or the planning-time scope above; the same authorisation is recorded in
+`ACTION_PLAN.md` Section 5 ("Approved serialisation amendment — 17 October 2026").
+
+### Context
+
+Whole-class persistence prepares its full document from `ABClass.toJSON()`. A full ABClass
+document may legitimately contain class-embedded assignments that are deliberately partial:
+`ABClassAssignmentOps.persistAssignmentRun()` replaces the updated assignment in the class with
+its `toPartialJSON()` summary. The standalone `Assignment` and `AssignmentDefinition` `toJSON()`
+serialisers remain intentionally strict and reject a partial definition (tasks stored as an
+array). Eagerly full-serialising an embedded partial therefore failed a normal
+assignment-persistence workflow.
+
+### Authorised correction
+
+After the conflict was reproduced, the user explicitly approved a bounded `ABClass.toJSON()`
+correction:
+
+- `ABClass` selects the existing serialiser that matches each embedded assignment: a partial
+  definition (tasks stored as an array) serialises through the assignment's existing
+  `toPartialJSON()`, and a genuinely full assignment keeps its existing `toJSON()`.
+- Full records remain full. Genuinely full assignments and standalone `Assignment` /
+  `AssignmentDefinition` `toJSON()` calls remain strict and still reject partial definitions;
+  serialisation errors from a genuine full assignment propagate unchanged.
+- The prepared full class document therefore carries its actual non-empty assignment population
+  alongside validated metadata. This is missing Section 3 model integration delivered in
+  Section 5, not a new frontend feature.
+- No second persistence-specific class serializer is required.
+
+### Explicitly not authorised
+
+- No automatic hydration or definition fetch, and no catch-and-fallback that converts a genuine
+  full-serialisation failure into success.
+- No definition fabrication, assignment removal or workflow restructuring.
+- No new averaging or score calculation, no new request metadata semantics, no Teacher
+  serialisation change and no deletion-behaviour change.
+- No standalone full-definition relaxation, and no fixture regeneration to hide the conflict.
+
+### Fixture position
+
+The existing synthetic generator already supplies the canonical partial and full assignment
+shapes, so no corpus extension is needed. Metadata-only empty-assignment probes remain valid
+narrow unit coverage but are no longer the sole whole-class integration evidence; canonical
+non-empty/mixed model round trips and the real assignment-persistence workflow cover the
+corrected behaviour.
+
+## Approved frontend companion — immediate Add new command (17 October 2026)
+
+This section records a later, explicit user authorisation. It does not rewrite the product
+decisions or the planning-time scope above. The user first approved a separate bounded frontend
+fix, then, via the question tool, explicitly selected **Fix selection state (Recommended)** and
+approved extending that fix to selected-value ownership. The same authorisation, its delivery
+sequence and its actual test evidence are recorded in `ACTION_PLAN.md` (Section 6, "Separately
+authorised frontend companion — immediate Add new commands").
+
+### Authorised scope
+
+- `SelectWithAddNew` dispatches its `Add new` command immediately instead of through a 300 ms
+  trailing debounce, and no longer exposes a component-level `debounceMs` prop. The only obsolete
+  call site, `BulkSetSelectModal`'s explicit `debounceMs={300}`, is removed with it.
+- The component owns the selected value only when the parent does not control it, so an
+  intercepted sentinel never becomes the displayed selection: a controlled `value` prop
+  (presence includes explicit `undefined`) stays authoritative, an uncontrolled selection is
+  seeded from `defaultValue`, and normal selection, clear and `labelInValue` payloads keep their
+  original shape.
+- Directly associated component, owner and Playwright test changes, and this documentation
+  update, are in scope.
+
+### Relationship to the metadata contract
+
+This companion is an authorised scope exception to the backend-only exclusion in product
+decision 11. It does **not** enable frontend metadata reporting, change any `metadata` data
+shape, service or schema, and it does not recast the ABClass metadata feature as a frontend
+feature. Decision 11's exclusion of frontend reporting, service/schema changes and layout work
+otherwise stands; there is no blanket frontend scope expansion.
+
+### Explicitly unchanged
+
+- `src/frontend/src/hooks/useDebounce.ts` and its remaining callers are unchanged.
+- Modal open/close UX, focus behaviour and modal state ownership are unchanged: the caller still
+  owns the manager-modal open state, and repeated selection stays idempotent.
+- No frontend service, data contract, Zod schema, framework or configuration change.
+- No checker, retry, timeout, snapshot or regression-baseline change, and no deployment.
+  Regression coordination stays at section completion.
+- Creation-and-auto-select, disabled and standard options, accessibility semantics and
+  manager-over-create-modal behaviour are preserved.
+
+### Causal uncertainty
+
+The investigation behind this companion is read-only evidence
+(`.opencode/scratchpad/dropdown-state-investigation.md`). It proves a needlessly deferred,
+unmount-cancellable command dispatch and an actual sentinel-state defect, but the preserved
+failing browser attempt has no trace and no callback instrumentation. The debounce is therefore
+**not** a proven cause of the historical flake. This change removes a proven anti-pattern; it is
+not recorded as a confirmed root-cause fix, and the historical flake is not claimed resolved.
+
+### Delivery evidence
+
+Actual delivery status, focused test results and in-flight browser validation are recorded in
+`ACTION_PLAN.md` (Section 6), not here. Delivery remains TDD-first under the mandatory
+implementation/review loop, with documentation reconciled in the same change.

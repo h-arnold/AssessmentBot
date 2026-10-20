@@ -9,14 +9,14 @@
 import type { JSX, RefCallback } from 'react';
 import { Button, Card, Typography, Divider, Flex, Tooltip } from 'antd';
 import { ExternalLink } from 'lucide-react';
-import { MetricPill } from '../../services/dataAnalysis/metricDisplay/MetricPill';
-import { METRIC_DISPLAY_META } from '../../services/dataAnalysis/metricDisplay/metricDisplayMeta';
-import { formatMetricDisplayText } from '../../services/dataAnalysis/metricDisplay/metricDisplayText';
-import type { TaskDisplayMetric } from '../../services/dataAnalysis/dataAnalysis.zod';
-import { ImageRenderer } from '../../components/ImageRenderer/ImageRenderer';
-import { MarkdownRenderer } from '../../components/MarkdownRenderer/MarkdownRenderer';
-import { LucideIcon } from '../../components/icons/LucideIcon';
-import { APP_GAP_SM } from '../../theme/spacing';
+import { MetricPill } from '@/services/dataAnalysis/metricDisplay/MetricPill';
+import { METRIC_DISPLAY_META } from '@/services/dataAnalysis/metricDisplay/metricDisplayMeta';
+import { formatMetricDisplayText } from '@/services/dataAnalysis/metricDisplay/metricDisplayText';
+import type { TaskDisplayMetric } from '@/services/dataAnalysis/dataAnalysis.zod';
+import { ImageRenderer } from '@/components/ImageRenderer/ImageRenderer';
+import { MarkdownRenderer } from '@/components/MarkdownRenderer/MarkdownRenderer';
+import { LucideIcon } from '@/components/icons/LucideIcon';
+import { APP_GAP_SM } from '@/theme/spacing';
 
 // ---------------------------------------------------------------------------
 // Public types

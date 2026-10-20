@@ -10,77 +10,30 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import {
-  buildTestTeacher,
-  buildTestStudent,
-  cleanupControllerTestMocks,
-  createMockCollection,
-  setupControllerTestMocks,
-} from '../helpers/mockFactories.js';
+import { createMockCollection, setupControllerTestMocks } from '../helpers/mockFactories.js';
+import { loadBackendModelInputs } from '#synthetic-data/toBackendModelInputs.js';
+import { restoreGlobals, saveGlobals } from '../helpers/globalMockManager.js';
 
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                            */
 /* ------------------------------------------------------------------ */
 
-const ABClassModule = require('../../src/backend/Models/ABClass.js');
-const TeacherModule = require('../../src/backend/Models/Teacher.js');
-const StudentModule = require('../../src/backend/Models/Student.js');
+const ABClassModule = require('#backend/Models/ABClass.js');
+const TeacherModule = require('#backend/Models/Teacher.js');
+const StudentModule = require('#backend/Models/Student.js');
 
 const ABClass = ABClassModule.ABClass || ABClassModule;
 const Teacher = TeacherModule.Teacher || TeacherModule;
 const Student = StudentModule.Student || StudentModule;
 
-function buildTeacher(overrides = {}) {
-  return buildTestTeacher(Teacher, overrides);
-}
-
-function buildStudent(overrides = {}) {
-  return buildTestStudent(Student, overrides);
-}
-
 /**
- * Returns a plain object matching the shape stored in the DB for an existing class.
+ * Returns a cloned canonical backend class input for an existing class.
  */
 function buildExistingClassDoc(overrides = {}) {
-  const teacherObj = buildTeacher({
-    email: 'teacher.existing@example.com',
-    userId: 'teacher-existing',
-    teacherName: 'Teacher Existing',
-  });
-  const studentObj = buildStudent({
-    name: 'Student Existing',
-    email: 'student.existing@example.com',
-    id: 'student-existing',
-  });
+  const source = Object.values(loadBackendModelInputs('small').classesById)[0];
   return {
+    ...structuredClone(source),
     classId: 'class-existing',
-    className: '10A Computer Science',
-    cohortKey: 'coh-2025',
-    courseLength: 2,
-    yearGroupKey: 'yg-10',
-    classOwner: teacherObj.toJSON
-      ? teacherObj.toJSON()
-      : {
-          email: teacherObj.getEmail(),
-          userId: teacherObj.getUserId(),
-          teacherName: teacherObj.getName(),
-        },
-    teachers: [
-      teacherObj.toJSON
-        ? teacherObj.toJSON()
-        : {
-            email: teacherObj.getEmail(),
-            userId: teacherObj.getUserId(),
-            teacherName: teacherObj.getName(),
-          },
-    ],
-    students: [
-      studentObj.toJSON
-        ? studentObj.toJSON()
-        : { name: studentObj.getName(), email: studentObj.getEmail(), id: studentObj.getId() },
-    ],
-    assignments: [{ assignmentId: 'assignment-001', title: 'Essay Draft' }],
-    active: true,
     ...overrides,
   };
 }
@@ -111,10 +64,11 @@ let ABClassController;
 let classCollection;
 let partialsCollection;
 let classroomApiClient;
+let savedGlobals;
 
 function loadControllerModule() {
-  delete require.cache[require.resolve('../../src/backend/y_controllers/ABClassController')];
-  ABClassController = require('../../src/backend/y_controllers/ABClassController');
+  delete require.cache[require.resolve('#backend/y_controllers/ABClassController/index.js')];
+  ABClassController = require('#backend/y_controllers/ABClassController/index.js');
 }
 
 /* ------------------------------------------------------------------ */
@@ -122,8 +76,28 @@ function loadControllerModule() {
 /* ------------------------------------------------------------------ */
 
 beforeEach(() => {
+  savedGlobals = saveGlobals([
+    'ABClass',
+    'Teacher',
+    'Student',
+    'Assignment',
+    'ABClassController',
+    'DbManager',
+    'ABLogger',
+    'ProgressTracker',
+    'ConfigurationManager',
+    'AssignmentDefinitionController',
+    'ClassroomApiClient',
+    'Classroom',
+    'DriveApp',
+  ]);
   classCollection = createMockCollection(vi);
   partialsCollection = createMockCollection(vi);
+  partialsCollection.updateOne.mockReturnValue({
+    matchedCount: 1,
+    modifiedCount: 0,
+    acknowledged: true,
+  });
 
   setupControllerTestMocks(vi);
   setupCollectionRouter(classCollection, partialsCollection);
@@ -142,18 +116,10 @@ beforeEach(() => {
       ownerId: 'teacher-existing',
     })),
     fetchTeachers: vi.fn(() => [
-      buildTeacher({
-        email: 'teacher.existing@example.com',
-        userId: 'teacher-existing',
-        teacherName: 'Teacher Existing',
-      }),
+      new Teacher('teacher.existing@example.com', 'teacher-existing', 'Teacher Existing'),
     ]),
     fetchAllStudents: vi.fn(() => [
-      buildStudent({
-        name: 'Student Existing',
-        email: 'student.existing@example.com',
-        id: 'student-existing',
-      }),
+      new Student('Student Existing', 'student.existing@example.com', 'student-existing'),
     ]),
   };
   globalThis.ClassroomApiClient = classroomApiClient;
@@ -162,17 +128,9 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  cleanupControllerTestMocks();
-  delete globalThis.ABClass;
-  delete globalThis.Teacher;
-  delete globalThis.Student;
-  delete globalThis.Assignment;
-  delete globalThis.ClassroomApiClient;
-  delete globalThis.ABClassController;
-  delete globalThis.Classroom;
-  delete globalThis.DriveApp;
-  delete require.cache[require.resolve('../../src/backend/y_controllers/ABClassController')];
-  delete require.cache[require.resolve('../../src/backend/y_controllers/AssignmentController.js')];
+  restoreGlobals(savedGlobals);
+  delete require.cache[require.resolve('#backend/y_controllers/ABClassController/index.js')];
+  delete require.cache[require.resolve('#backend/y_controllers/AssignmentController.js')];
   vi.restoreAllMocks();
 });
 
@@ -202,7 +160,10 @@ describe('ABClassController.loadClass throw-on-missing', () => {
   it('returns an ABClass instance when a stored class document exists', () => {
     const existingDoc = buildExistingClassDoc();
     classCollection.findOne.mockReturnValue(existingDoc);
-    partialsCollection.findOne.mockReturnValue({ classId: 'class-existing' });
+    partialsCollection.findOne.mockReturnValue({
+      _id: 'partial-existing',
+      classId: 'class-existing',
+    });
 
     const controller = new ABClassController();
     const result = controller.loadClass('class-existing');
@@ -210,6 +171,11 @@ describe('ABClassController.loadClass throw-on-missing', () => {
     expect(result).toBeInstanceOf(ABClass);
     expect(result.classId).toBe('class-existing');
     expect(result.getClassName()).toBe('10A Computer Science');
+    expect(result.assignments).toHaveLength(4);
+    expect(result.assignments[0].assignmentId).toBe(existingDoc.assignments[0].assignmentId);
+    expect(result.assignments[0].assignmentDefinition.tasks[0].taskTitle).toBe(
+      existingDoc.assignments[0].assignmentDefinition.tasks[0].taskTitle
+    );
     expect(classCollection.findOne).toHaveBeenCalledWith({ classId: 'class-existing' });
   });
 
@@ -220,7 +186,10 @@ describe('ABClassController.loadClass throw-on-missing', () => {
     // Set up the DB to return an existing class document
     const existingDoc = buildExistingClassDoc();
     classCollection.findOne.mockReturnValue(existingDoc);
-    partialsCollection.findOne.mockReturnValue({ classId: 'class-existing' });
+    partialsCollection.findOne.mockReturnValue({
+      _id: 'partial-existing',
+      classId: 'class-existing',
+    });
 
     // Mock global Classroom API for ensureDefinitionFromInputs
     globalThis.Classroom = {
@@ -259,10 +228,8 @@ describe('ABClassController.loadClass throw-on-missing', () => {
     globalThis.ABClassController = ABClassController;
 
     // Import AssignmentController after all mocks are in place
-    delete require.cache[
-      require.resolve('../../src/backend/y_controllers/AssignmentController.js')
-    ];
-    const AssignmentController = require('../../src/backend/y_controllers/AssignmentController.js');
+    delete require.cache[require.resolve('#backend/y_controllers/AssignmentController.js')];
+    const AssignmentController = require('#backend/y_controllers/AssignmentController.js');
 
     const controller = new AssignmentController();
     const result = controller.ensureDefinitionFromInputs({
@@ -282,6 +249,10 @@ describe('ABClassController.loadClass throw-on-missing', () => {
     expect(result).toHaveProperty('abClass');
     expect(result.abClass).toBeInstanceOf(ABClass);
     expect(result.abClass.classId).toBe('class-existing');
+    expect(result.abClass.assignments).toHaveLength(4);
+    expect(result.abClass.assignments[0].assignmentId).toBe(
+      existingDoc.assignments[0].assignmentId
+    );
     expect(result.definition).toEqual(mockDefinition);
   });
 

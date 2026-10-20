@@ -7,7 +7,7 @@ import {
   assertMessage,
   assertControlDisabled,
   CreateModalResetHarness,
-} from '../../../test/classes/modalTestHelpers';
+} from '@/test/classes/modalTestHelpers';
 
 const cohortOptions = [
   { label: 'Cohort 2025', value: 'cohort-2025' },

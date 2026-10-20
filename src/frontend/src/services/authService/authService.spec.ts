@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ZodError } from 'zod';
 
 const { callApiMock, parseApiResponseMock } = await vi.hoisted(async () => {
-  const { createApiServiceMockScaffold } = await import('../../test/api/apiServiceTestMocks');
+  const { createApiServiceMockScaffold } = await import('@/test/api/apiServiceTestMocks');
   return createApiServiceMockScaffold();
 });
 

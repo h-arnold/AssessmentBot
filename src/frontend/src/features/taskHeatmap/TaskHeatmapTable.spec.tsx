@@ -31,7 +31,7 @@ import {
   buildZeroTasksResult,
   getHeatmapCellByLabel,
   getRenderedRowKeys,
-} from '../../test/taskHeatmapTableTestHelpers';
+} from '@/test/taskHeatmapTableTestHelpers';
 
 // ---------------------------------------------------------------------------
 // Setup

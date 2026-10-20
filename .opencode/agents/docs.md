@@ -195,6 +195,7 @@ Provide a concise handoff summary including:
 │   │   ├── backend/
 │   │   │   ├── api-layer.md                           # Canonical: API layer, transport handlers, validation ownership, apiHandler standards, endpoints
 │   │   │   ├── AssessmentFlow.md                     # Canonical: Assessment workflow and data flow
+│   │   │   ├── backend-file-organisation.md           # Canonical: facade-pattern decomposition, z_Api domain folders
 │   │   │   ├── backend-logging-and-error-handling.md # Canonical: ABLogger usage, validation ownership, error-boundary standards, apiHandler diagnostics
 │   │   │   ├── backend-testing.md                     # Vitest setup, GAS load order, test categories, mock factories, anti-patterns
 │   │   │   ├── oauth-scopes.md                         # OAuth scopes required by the application
@@ -222,6 +223,8 @@ Provide a concise handoff summary including:
 │   │   │   └── TypeScriptAndLintConfigHierarchy.md      # TypeScript and ESLint configuration hierarchy
 │   │   │
 │   │   ├── frontend/
+│   │   │   ├── data-analysis-architecture.md            # Canonical: analyser pipeline and heatmap projection architecture
+│   │   │   ├── frontend-architecture.md                 # Canonical: service-folder, feature-directory, file-splitting, and transport-boundary conventions
 │   │   │   ├── frontend-loading-and-width-standards.md    # Canonical: Loading states, width-token system, accessibility-semantics rules
 │   │   │   ├── frontend-logging-and-error-handling.md  # Canonical: Environment-specific logging, Ant Design feedback, error mapping, React patterns
 │   │   │   ├── frontend-modal-patterns.md               # Modal component patterns
@@ -284,7 +287,7 @@ Provide a concise handoff summary including:
 .
 ├── AGENTS.md                                         # Root: cross-component rules, delegation protocol, agentic workflow, lint commands
 ├── scripts/builder/AGENTS.md                         # Builder-specific: purpose, modes, constraints, validation rules
-├── src/backend/AGENTS.md                             # Backend-specific: coding standards, file organisation, GAS patterns
+├── src/backend/AGENTS.md                             # Backend-specific: non-negotiables and required-documentation read gate
 ├── src/frontend/AGENTS.md                            # Frontend-specific: React patterns, TypeScript conventions, Ant Design usage
 └── docs/developer/data-shapes/                       # Canonical data-shape specifications (persistence, transport, validation)
 ```

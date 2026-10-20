@@ -673,6 +673,154 @@ Class-page adapter:
    observed numeric and raw `N` inputs in computed and not-attempted aggregate
    `totalDataPoints`.
 
+## Planned contract additions (Not implemented, issue #305)
+
+**Status: `Not implemented`** — planned-only entries to support the top-decile
+attempt-baseline analysis mode. These describe the target contract; update this
+section to remove the marker as each addition is implemented and verified.
+
+1. **`AnalysisFilterSchema.analysisMode`** — required enum field
+   `z.enum(['absolute', 'topDecileBaseline'])` on the existing strict filter
+   object. There is no default; every caller states the mode explicitly.
+   `'absolute'` is the explicit representation of current behaviour.
+
+2. **`AveragingResultSchema.appliedAnalysisMode`** — required echo enum
+   (same two values) recording the mode actually applied to the per-class
+   result.
+
+3. **`AveragingResultSchema.attemptBaseline`** — optional strict object present
+   only when `appliedAnalysisMode` is `'topDecileBaseline'`:
+
+   ```ts
+   attemptBaseline: z.strictObject({
+     poolStudentIds: z.array(z.string()).min(2),
+     baselineTaskKeys: z.array(z.string().min(1)).min(1),
+   }).optional(),
+   ```
+
+   Domain rules (produced by the planned baseline-selection
+   post-accumulation derivation; not Zod refinements):
+   - Candidates = roster students with at least one attempted task within the
+     analysis input's in-scope assignments; pool = top
+     `min(|candidates|, max(2, ceil(0.1 × rosterSize)))` candidates by count of
+     **distinct** attempted task keys (same `buildTaskKey` unit as
+     `baselineTaskKeys`); ranking ties break by `studentId` ascending. The mode
+     is unavailable when fewer than 2 candidates exist or the roster is below
+     3 students.
+   - Attempted = the submission item yields at least one numeric criterion
+     score; all-`N` items, missing assessment criteria (the `E` condition), and
+     absent items are not attempts. Criterion weighting plays no part.
+   - Baseline task keys = intersection of the attempt sets across the whole
+     pool. An empty intersection throws (descriptive error naming the class)
+     before any result is produced, so the schema `min(1)` is protected.
+   - The baseline-selection derivation is recommended as a
+     **post-accumulation** pass over the analyser's accumulators (whose
+     per-criterion `displayCount` already encodes the attempt signal); it is
+     not a separate raw-data pre-pass.
+   - Applies to all four metric aggregates (per-student, per-class) built from
+     per-(student, task) accumulators restricted to the baseline task set.
+   - Students whose observed tasks fall entirely outside the baseline resolve
+     each aggregate metric to the existing aggregate-only `excluded` state
+     using **observed** evidence semantics — roll up the unfiltered
+     per-(student, task) accumulators per criterion with the existing
+     `rollupMetric` path (which resolves `totalDataPoints` itself: from
+     `allTotalDataPoints` on the `error`/`notAttempted`/`excluded` terminal
+     states, and `Math.max(finalTotalDataPoints, observedDataPoints)` on the
+     `computed` path) and convert **only `computed` and `notAttempted`**
+     results to `excluded`, **preserving the resolved `totalDataPoints`**
+     (never the weight-gated counter, which would violate
+     `totalDataPoints >= 1` for zero-weight-only work, and never a hand-rolled
+     display-count sum). An already-`excluded` zero-weight rollup is left
+     untouched (its cause survives; the baseline-mode accessible label names
+     both causes). The row's `overall` composite is never converted directly:
+     it is derived from the converted criteria through the existing
+     `computeOverallComposite`, so its resolved `totalDataPoints` is the sum
+     of the converted criteria's resolved counts (>= 1 whenever any criterion
+     converted); all-`error` rows stay `error` and any mixture with a
+     converted criterion converges on `excluded`. A criterion with no
+     observed evidence keeps `error`; a student with no per-(student, task)
+     accumulators at all follows today's absolute-mode path (`error` metrics)
+     and is never converted.
+
+4. **`PerTaskRowSchema.includedInAttemptBaseline`** — required boolean always
+   present on task rows. `true` for every row in `absolute` mode; in baseline
+   mode it marks baseline-set membership. Per-task row _values_ stay absolute
+   in both modes. **Per-student cell metrics carry no flag:** columns are the
+   only marked heatmap unit (column-level marking in v1; see item 8), so
+   `PerStudentTaskMetric` is unchanged. The array's **contents are also
+   mode-independent**: baseline filtering restricts only the aggregation step,
+   so `perStudentTaskMetrics` carries every observed (student, task) pair in
+   both modes (byte-identical arrays, pinned by a red-first analyser test) —
+   availability and heatmap substitution paths therefore see identical
+   evidence regardless of mode.
+
+   **Baseline narrowing rule.** `attemptBaseline` is optional on the result
+   because absolute mode omits it; the analyser always emits it in baseline
+   mode. Consumers narrow by mode and treat a baseline-mode result without
+   `attemptBaseline` as an invariant violation — fail fast with a throw; an
+   `attemptBaseline?.baselineTaskKeys ?? []` fallback is forbidden (it would
+   silently mark every column excluded).
+
+5. **Assignment summary contract unchanged.** `AssignmentSummarySchema` and the
+   summary analyser remain mode-independent: task summaries are absolute
+   per-task evidence in both modes. The summary analyser's internal averaging
+   delegation states `analysisMode: 'absolute'` explicitly (task-level
+   evidence must never invoke baseline selection), while the public summary
+   input continues to validate the caller's supplied `analysisMode`.
+
+6. **Downstream aggregate consumers.** Per-assignment aggregates on the Class
+   page (recent-assignment cards) are recomputed in baseline mode from
+   baseline-restricted per-task evidence: the adapter reads
+   `analyserResult.appliedAnalysisMode` and rolls up the filtered rows; when
+   the filtered set is empty it rolls up the unfiltered rows per criterion and
+   converts **only `computed` and `notAttempted`** results to `excluded`,
+   preserving observed `totalDataPoints` and constructed with the
+   `ExcludedMetricSchema` literals (`value: null`, `totalWeight: 0`,
+   `applicableDataPoints: 0`; the conversion assumes a source rollup whose
+   resolved `totalDataPoints` is ≥ 1 — the accumulator path guarantees this)
+   with the same observed-evidence semantics as
+   item 3; an already-`excluded` zero-weight rollup keeps its weighting
+   cause. Criteria with no observed evidence stay `error` (no `excluded` is
+   synthesised), the existing `rows.length === 0 → N` no-per-task-rows
+   placeholder branch is untouched, and the converted **per-criterion**
+   results flow through the existing `computeOverallComposite` (the composite
+   itself is never converted): the card `average`'s resolved `totalDataPoints`
+   is the sum of the converted criteria's counts, all-`error` rows stay
+   `error`, and any mixture with a converted criterion converges on
+   `excluded`.
+
+7. **Display-only additions (no schema change):** the `excluded` aggregate
+   state now legitimately carries two causes (zero weighting vs baseline
+   exclusion); the accessible label is made mode-aware at the `metricDisplay`
+   layer (`metricTone`/`MetricPill`/`studentAveragesTableColumns`) without
+   widening any shape — in baseline mode the label names **both** possible
+   causes in one truthful wording, so no cause field exists. The Heatmaps-page
+   pipeline (`heatmapsPipeline.ts`)
+   never enters baseline mode (its input states
+   `analysisMode: 'absolute'`), so its `includedInAttemptBaseline` flags are
+   always `true` there. The Class page's embedded single-assignment heatmap
+   inherits the Class page's analysis result and therefore may render `false`
+   markers in baseline mode while keeping absolute cell values.
+
+8. **Heatmap projection addition (planned, `Not implemented`):**
+   `HeatmapTaskColumn` gains `includedInAttemptBaseline: boolean`, set in
+   `heatmapAdapter.ts` from a required second `buildTaskColumns` parameter
+   typed `ReadonlySet<string> | null` (`null` = absolute mode: every column
+   included). **The supplier is `adaptMetricsToHeatmap`** — the only caller
+   that receives a mode-bearing `analyserResult` and therefore the only
+   caller that can supply a non-null baseline set: baseline mode →
+   `new Set(analyserResult.attemptBaseline.baselineTaskKeys)` under the
+   Baseline narrowing rule's fail-fast; absolute mode → `null`. No props
+   change hands because `adaptMetricsToHeatmap` is called only from
+   `TaskHeatmapPage`, which runs only inside the Class page. The merged chain
+   (three links: `adaptMetricsToMergedHeatmap` →
+   `buildMergedTaskColumnsInClassOrder` → `buildMergedTaskColumns` →
+   `buildTaskColumns`) passes `null` explicitly at each hop.
+   `MergedHeatmapTaskColumn` inherits the field via
+   its existing spread of the base projection. `HeatmapCell` is unchanged:
+   marking is **column-level only in v1**, and cell values stay absolute in
+   both modes.
+
 ## File Index
 
 Persistence model: none (frontend-only contract).

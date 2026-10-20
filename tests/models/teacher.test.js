@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { Teacher } from '../../src/backend/Models/Teacher.js';
+import { Teacher } from '#backend/Models/Teacher.js';
+import { loadSyntheticAnalysisProfile } from '#synthetic-data/loadSyntheticAnalysisProfile.js';
 
 describe('Teacher model', () => {
   it('constructor sets email and userId', () => {
@@ -29,13 +30,15 @@ describe('Teacher model', () => {
   });
 
   it('toJSON and fromJSON roundtrip', () => {
-    const t = new Teacher('me@you.org', 'u-abc');
+    const row = loadSyntheticAnalysisProfile('small', 'classPartials')[0].teachers[0];
+    const t = Teacher.fromJSON(structuredClone(row));
     const json = t.toJSON();
-    expect(json).toEqual({ email: 'me@you.org', userId: 'u-abc' });
+    expect(json).toEqual(row);
+    expect(Object.hasOwn(json, 'teacherName')).toBe(true);
     const restored = Teacher.fromJSON(json);
     expect(restored).toBeInstanceOf(Teacher);
-    expect(restored.getEmail()).toBe('me@you.org');
-    expect(restored.getUserId()).toBe('u-abc');
+    expect(restored.getEmail()).toBe(row.email);
+    expect(restored.getUserId()).toBe(row.userId);
   });
 
   it('fromJSON returns null for invalid input', () => {
@@ -160,12 +163,35 @@ describe('Teacher model', () => {
       });
     });
 
-    it('omits teacherName when not set', () => {
+    it('emits an own null teacherName when not set', () => {
       const t = new Teacher('a@b.com', 'u1');
       const json = t.toJSON();
       expect(json.email).toBe('a@b.com');
       expect(json.userId).toBe('u1');
-      expect(json.teacherName).toBeUndefined();
+      expect(json).toHaveProperty('teacherName', null);
+      expect(Object.hasOwn(json, 'teacherName')).toBe(true);
+    });
+
+    it.each(['unset', 'explicit null', 'cleared'])('emits null when name is %s', (state) => {
+      const teacher = new Teacher('a@b.com', 'u1', state === 'cleared' ? 'Jane' : null);
+      if (state === 'cleared') teacher.setTeacherName(null);
+      const json = teacher.toJSON();
+      expect(Object.hasOwn(json, 'teacherName')).toBe(true);
+      expect(json.teacherName).toBeNull();
+      expect(json.email).toBe('a@b.com');
+      expect(json.userId).toBe('u1');
+    });
+
+    it('restores a legacy canonical teacher row without a name and emits null', () => {
+      const row = structuredClone(
+        loadSyntheticAnalysisProfile('small', 'classPartials')[0].teachers[0]
+      );
+      delete row.teacherName;
+      const json = Teacher.fromJSON(row).toJSON();
+      expect(Object.hasOwn(json, 'teacherName')).toBe(true);
+      expect(json.teacherName).toBeNull();
+      expect(json.email).toBe(row.email);
+      expect(json.userId).toBe(row.userId);
     });
 
     it('roundtrips with fromJSON', () => {

@@ -26,7 +26,7 @@ import { describe, it, expect } from 'vitest';
 // that differing weightings never flip the decision.
 const {
   compareTaskEquivalence,
-} = require('../../src/backend/y_controllers/AssignmentDefinition/AssignmentDefinitionTaskEquivalence.js');
+} = require('#backend/y_controllers/AssignmentDefinition/AssignmentDefinitionTaskEquivalence.js');
 
 // Local boundary fixtures shaped like TaskDefinition.toJSON() output with
 // BaseTaskArtifact.toJSON() artefacts. Boundary cases stay local under the

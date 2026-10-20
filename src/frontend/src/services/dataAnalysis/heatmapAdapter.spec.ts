@@ -13,7 +13,7 @@ import type { AveragingResult } from './dataAnalysis.zod';
 import type { ClassFull } from '../googleClassrooms/classDetail/classDetailService.zod';
 import type { AssignmentDefinitionPartialsResponse } from '../assignmentDefinition/assignmentDefinitionPartials.zod';
 import { adaptMetricsToHeatmap, TaskTitlesUnavailableError } from './heatmapAdapter';
-import { createComputedMetricResult, createTaskPartial } from '../../test/dataAnalysis/fixtures';
+import { createComputedMetricResult, createTaskPartial } from '@/test/dataAnalysis/fixtures';
 
 // ---------------------------------------------------------------------------
 // Fixture helpers

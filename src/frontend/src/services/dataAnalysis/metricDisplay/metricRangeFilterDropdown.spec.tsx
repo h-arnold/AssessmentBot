@@ -13,7 +13,7 @@ import type { FilterDropdownProps } from 'antd/es/table/interface';
 import { MetricRangeFilterDropdown } from './metricRangeFilterDropdown';
 import { buildMetricRangeFilter, isMetricInRange } from './metricRangeFilter';
 import type { MetricRangeFilterFlags } from './metricRangeKey';
-import { createExcludedMetricResult, createNotAttemptedMetricResult, createErrorMetricResult } from '../../../test/dataAnalysis/fixtures';
+import { createExcludedMetricResult, createNotAttemptedMetricResult, createErrorMetricResult } from '@/test/dataAnalysis/fixtures';
 
 /** Default scoring range used in tests. */
 const DEFAULT_RANGE = { lower: 0, upper: 5 };

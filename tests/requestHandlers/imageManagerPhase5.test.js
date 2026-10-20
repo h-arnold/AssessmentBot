@@ -50,8 +50,8 @@ DummyBaseRequestManager.HTTP_STATUS_CREATED = 201;
 globalThis.BaseRequestManager = DummyBaseRequestManager;
 
 // Import artifacts & ImageManager
-const { ArtifactFactory } = require('../../src/backend/Models/Artifacts/index.js');
-const ImageManager = require('../../src/backend/RequestHandlers/ImageManager.js');
+const { ArtifactFactory } = require('#backend/Models/Artifacts/index.js');
+const ImageManager = require('#backend/RequestHandlers/ImageManager.js');
 
 function buildImageManager() {
   const mgr = new ImageManager();

@@ -6,7 +6,7 @@
  */
 
 import { Flex, Skeleton } from 'antd';
-import { APP_GAP_COMPACT } from '../../theme/spacing';
+import { APP_GAP_COMPACT } from '@/theme/spacing';
 
 export type ReferenceDataInitialLoadingStateProperties = Readonly<{
   ariaLabel: string;

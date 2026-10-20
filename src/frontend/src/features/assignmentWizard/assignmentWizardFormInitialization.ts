@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { type QueryClient } from '@tanstack/react-query';
 import { type FormInstance } from 'antd';
-import { queryKeys } from '../../query/queryKeys';
+import { queryKeys } from '@/query/queryKeys';
 import {
   type AssignmentDefinition,
   type UpsertAssignmentDefinitionResponse,
-} from '../../services/assignmentDefinition/assignmentDefinitionService';
+} from '@/services/assignmentDefinition/assignmentDefinitionService';
 import {
   buildDocumentUrlsFromDefinition,
   hasWizardDirtyEdits,

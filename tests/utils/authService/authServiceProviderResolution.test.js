@@ -21,7 +21,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { provisionAuthContext, buildUsersJson, createCacheSpy } from './authServiceTestHarness.js';
 
-const AuthService = require('../../../src/backend/Utils/AuthService.js');
+const AuthService = require('#backend/Utils/AuthService.js');
 
 describe('AuthService provider resolution', () => {
   let ctx;

@@ -1,9 +1,9 @@
-import type { YearGroup } from '../../../services/referenceData/referenceData.zod';
+import type { YearGroup } from '@/services/referenceData/referenceData.zod';
 import type { RowMutationResult } from './batchMutationEngine';
 import type { BatchProgressSnapshot } from './runQueuedBatchMutation';
 import { bulkMetadataUpdate } from './bulkMetadataUpdateFlow';
 import type { ClassesManagementRow } from '../classesManagementViewModel';
-import { sortYearGroups } from '../../referenceData/yearGroupSorting';
+import { sortYearGroups } from '@/features/referenceData/yearGroupSorting';
 
 /**
  * Builds select options using stable year-group keys as option values.

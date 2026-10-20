@@ -56,26 +56,38 @@ This project uses a shared configuration tree so TypeScript and linting standard
   - Extends `../tsconfig.base.json`.
   - Lint-only project (`noEmit`) backing the type-aware ESLint rules for the OpenCode plugin tree (`.opencode/plugins/**/*.ts`).
 
-### 3) Frontend module-resolution aliases
+### 3) Module-resolution aliases
 
-Frontend app code and tests resolve two configured aliases:
+Two alias families resolve non-relative module specifiers:
 
-| Alias          | Resolves to                                 | Used by                      |
-| -------------- | ------------------------------------------- | ---------------------------- |
-| `@/*`          | `src/frontend/src/*`                        | app source, specs, E2E tests |
-| `@synthetic/*` | `tests/__mocks__/data/synthetic-analysis/*` | specs and E2E helpers        |
+- **Bundler aliases** (`@…`), declared as TypeScript `paths` and Vite `resolve.alias`, for frontend code.
+- **Node package imports** (`#…`), declared in a `package.json` `imports` map, for Node-side code (backend tests, synthetic tooling, builder).
 
-The mapping is declared explicitly in three places that must stay in step:
+| Alias               | Resolves to                                 | Declared in                                                                                                    | Used by                                       |
+| ------------------- | ------------------------------------------- | -------------------------------------------------------------------------------------------------------------- | --------------------------------------------- |
+| `@/*`               | `src/frontend/src/*`                        | `tsconfig.app.json`, `tsconfig.e2e.json`, `vite.config.ts`, root `vitest.config.js`, synthetic `tsconfig.json` | app source, specs, E2E tests, synthetic tests |
+| `@synthetic/*`      | `tests/__mocks__/data/synthetic-analysis/*` | `tsconfig.app.json`, `tsconfig.e2e.json`, `vite.config.ts`, root `vitest.config.js`, synthetic `tsconfig.json` | specs, E2E helpers, synthetic tests           |
+| `#backend/*`        | `src/backend/*`                             | root `package.json` `imports`                                                                                  | backend tests                                 |
+| `#synthetic/*`      | `tests/__mocks__/data/synthetic-analysis/*` | root `package.json` `imports`                                                                                  | fixture corpus (no consumer yet)              |
+| `#synthetic-data/*` | `scripts/synthetic-test-data/*`             | root `package.json` `imports`                                                                                  | synthetic tests                               |
+| `#test-helpers/*`   | `tests/helpers/*`                           | root `package.json` `imports`                                                                                  | backend tests, synthetic tooling              |
+| `#builder/*`        | `scripts/builder/src/*`                     | `scripts/builder/package.json` `imports`, `scripts/builder/vitest.config.ts`                                   | builder source                                |
+
+The frontend aliases are declared in the places that must stay in step:
 
 - `src/frontend/tsconfig.app.json` (`compilerOptions.paths`) — app and Vitest spec compilation.
 - `src/frontend/tsconfig.e2e.json` (`compilerOptions.paths`) — E2E compilation.
 - `src/frontend/vite.config.ts` (`resolve.alias`, built with `fileURLToPath(new URL(...))`) — runtime resolution for the Vite dev server and Vitest.
+- `vitest.config.js` (`resolve.alias`, at the repository root) — runtime resolution for the Node-side test projects that import frontend source.
+- `scripts/synthetic-test-data/tsconfig.json` (`compilerOptions.paths`) — type-checking the synthetic suites that import frontend contracts.
 
 `@synthetic/*` resolves outside the frontend package (the repository-root `tests/` tree), so Vite's `server.fs.allow: ['../..']` also permits `?raw` reads of those fixtures from specs.
 
-`playwright.config.ts` sets `tsconfig: './tsconfig.e2e.json'`, so Playwright compiles `e2e-tests` under the E2E-specific options above — the `playwright/test` types and this alias map — rather than the app config.
+`playwright.config.ts` sets `tsconfig: './tsconfig.e2e.json'`, so Playwright compiles `e2e-tests` under the E2E-specific options above — the `playwright/test` types and this alias map — rather than the app config. Without that option, Playwright falls back to the nearest `tsconfig.json` (`src/frontend/tsconfig.json`), which declares no `paths`.
 
-The alias convention for choosing between relative and alias imports is defined in the root `AGENTS.md` (Prime Directives → Coding Principles). Backend tests import backend source through the root package import `#backend/*`. The root package also declares `#synthetic/*` for the committed synthetic fixture corpus (`tests/__mocks__/data/synthetic-analysis/*`); it is available to Node-side backend tests but has no consumer yet. Production backend GAS scripts remain module-free: their files are concatenated, so these Node package aliases apply to tests only.
+Node package imports resolve without extension or directory-index guessing, so `#…` specifiers must name the concrete file (for example `#backend/Models/ABClass.js`). Bundler aliases are extensionless because Vite and TypeScript resolve them.
+
+The alias convention for choosing between relative and alias imports is defined in the root `AGENTS.md` (Prime Directives → Coding Principles). Production backend GAS scripts remain module-free: their files are concatenated, so these Node package aliases apply to tests only.
 
 ## ESLint hierarchy
 
@@ -152,6 +164,16 @@ The alias convention for choosing between relative and alias imports is defined 
   - Disables `unicorn/prefer-simple-condition-first` for the same semantic guard-order reason. For example, moving the missing-document-ID check ahead of `Validate.isValidUrl` in `ImageManager` would skip URL validation and its failure logging when the ID is absent.
   - Disables `unicorn/class-reference-in-static-methods` for backend files only. Explicit class references preserve fixed hydration prototypes, shared configuration fields and helper bindings, while singleton factories intentionally use receiver-relative `this`/`super` for inheritance. Enforcing either style everywhere can change inherited or unbound static calls; existing bindings are retained. Frontend enforcement remains enabled.
   - Disables `unicorn/prefer-default-parameters` only for `src/backend/Models/ABClass.js` and `src/backend/y_controllers/AssignmentDefinition/AssignmentDefinitionValidation.js`. Their falsy normalisation preserves empty class names as null and prevents malformed persisted titles from falsely matching legitimate titles. Parameter defaults handle undefined only; enforcement remains enabled in other backend files.
+
+### 4) Shared import-path depth rule
+
+- `config/eslint/import-path-rules.cjs`
+  - Holds the canonical import-path depth rule and its plugin wrapper as one shared definition, implementing root `AGENTS.md` §2.1 rule 11: relative imports may traverse at most one parent directory (`./x`, `../x`, `../sibling/x`); reaching two or more parents (`../../x`) must use a configured alias.
+  - A custom rule is used because the core rules cannot express the policy across every specifier form. `no-restricted-imports` only inspects static ESM `import`/`export`; `no-restricted-modules`, which covers `require()`, was deprecated in ESLint v7, is removed in v11, and cannot express a regex. The custom rule covers static ESM imports/exports, dynamic `import()`, CommonJS `require()`, and the Vitest mock family (`vi.mock`, `vi.doMock`, `vi.unmock`, `vi.importActual`, `vi.importMock`, `vi.requireActual`) from one definition.
+  - It is enabled in every enforced config: the frontend config (`src/frontend/eslint.config.js`), the Node-side `tests/**` scope in the root config, and the shared `nodeToolingRules` (builder source, `.opencode/plugins`, and the synthetic scripts).
+  - It autofixes a flagged specifier to a canonical alias when the specifier resolves inside a configured alias target, preserving any `?raw` query suffix and the source quote style. It never invents an alias and never rewrites a specifier that no configured alias covers, so unresolved cases stay visible as errors. Node package-import aliases (`#…`) are emitted with the concrete file because Node resolves them without extension guessing.
+  - The canonical alias registry (`pathAliases` in the same module) is the single source the configs compose, keeping the rule in step with the alias table in section 3.
+  - The two frontend specs that read non-module assets with no canonical alias (`src/index.css.spec.ts`, `src/query/reactQueryFoundation.query.spec.tsx`) switch the rule off with a comment explaining why.
 
 ### Scoped default-ownership permission
 
@@ -299,6 +321,8 @@ npm run lint:builder:check
 npm run lint:synthetic
 npm run lint:synthetic:check
 ```
+
+The shared import-path depth rule runs as part of every scope above; there is no separate discovery command.
 
 ## Change policy
 

@@ -1,15 +1,15 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { generateSyntheticAnalysisGraph } from '../../scripts/synthetic-test-data/generateSyntheticAnalysisGraph.js';
+import { generateSyntheticAnalysisGraph } from '#synthetic-data/generateSyntheticAnalysisGraph.js';
 import {
   ClassFullSchema,
   type ClassFull,
-} from '../../src/frontend/src/services/googleClassrooms/classDetail/classDetailService.zod';
+} from '@/services/googleClassrooms/classDetail/classDetailService.zod';
 import {
   AssignmentDefinitionPartialsResponseSchema,
   type AssignmentDefinitionPartial,
-} from '../../src/frontend/src/services/assignmentDefinition/assignmentDefinitionPartials.zod';
-import type { AssignmentFull } from '../../src/frontend/src/services/assignmentAssessment/assignmentAssessment.zod';
+} from '@/services/assignmentDefinition/assignmentDefinitionPartials.zod';
+import type { AssignmentFull } from '@/services/assignmentAssessment/assignmentAssessment.zod';
 
 /**
  * Generator-internal observation of a persisted submission artefact. Persistence

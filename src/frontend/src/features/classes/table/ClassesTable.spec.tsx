@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { ClassesTable } from './ClassesTable';
-import { statusCoverageRows } from '../../../test/classes/classesTestHelpers';
+import { statusCoverageRows } from '@/test/classes/classesTestHelpers';
 
 const filterableColumnHeaderNames = ['Status', 'Cohort', 'Course length', 'Year group', 'Active'] as const;
 

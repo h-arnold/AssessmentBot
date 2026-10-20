@@ -26,7 +26,7 @@ import { Button, Card, Empty, Flex } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import type { RecentAssignmentCardModel } from './classPageAdapter.zod';
 import { RecentAssignmentCard } from './RecentAssignmentCard';
-import { pageContent } from '../../pages/pageContent';
+import { pageContent } from '@/pages/pageContent';
 
 type RecentAssignmentsSectionProperties = Readonly<{
   /** The list of recent assignment cards to render (up to 3). */

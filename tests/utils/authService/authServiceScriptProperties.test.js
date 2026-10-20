@@ -21,7 +21,7 @@ import {
   flattenedLog,
 } from './authServiceTestHarness.js';
 
-const AuthService = require('../../../src/backend/Utils/AuthService.js');
+const AuthService = require('#backend/Utils/AuthService.js');
 
 /**
  * True when the resolver consulted any stored-auth read surface on the

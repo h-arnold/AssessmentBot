@@ -65,8 +65,8 @@ When delegating to subagents, specify **WHAT** needs to be accomplished and **WH
 Every subagent handoff **must** include:
 
 - `Mandatory Reading` section with explicit `@`-prefixed file paths (e.g. `@SPEC.md`,
-  `@src/backend/Services/AssessmentService.js`) — opencode injects the line-numbered
-  contents of each `@path` token into the sub-agent's prompt automatically; never paste
+  `@src/backend/Services/AssessmentService.js`) — the `at-mention-inject` plugin attaches
+  each `@path` token's contents to the sub-agent's prompt automatically; never paste
   file contents into the prompt body (mandatory)
 - All mandatory documentation required by the subagent's own instructions
 - Constraints and scope boundaries
@@ -90,9 +90,9 @@ the delivery mechanism, so a read-evidence gate adds no value.
 
 **What to include in `Mandatory Reading`:**
 
-**Mechanism:** For every `✅ Yes` row below, pass the files as `@`-prefixed worktree-relative
-paths in the `Mandatory Reading` list (e.g. `@SPEC.md`, `@src/frontend/.../ScoringDialog.tsx`).
-opencode injects the line-numbered contents of each `@path` token; do not paste contents.
+**Mechanism:** For every `✅ Yes` row below, pass the files as `@`-prefixed paths in the
+`Mandatory Reading` list (e.g. `@SPEC.md`, `@src/frontend/.../ScoringDialog.tsx`).
+The `at-mention-inject` plugin attaches each `@path` token's contents; do not paste contents.
 URLs stay plain text — they are not injected and the sub-agent fetches them itself.
 
 | Documentation Type                                             | Include? | Mechanism                                        | Rationale                                 |
@@ -280,7 +280,7 @@ Process changes in logical units. For each unit, select the appropriate agent(s)
 
 For changes with unclear scope or dependencies, first use Kif to discover relevant documentation
 (see Section 4). Use the scratchpad output to build the task-specific `Mandatory reading` list,
-written as `@`-prefixed worktree-relative paths.
+written as `@`-prefixed paths.
 
 ### 6.2 Task Execution Phase
 

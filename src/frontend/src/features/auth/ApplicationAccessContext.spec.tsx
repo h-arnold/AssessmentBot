@@ -1,19 +1,19 @@
-import '../../test/auth/appAuthGate.mockSetup';
+import '@/test/auth/appAuthGate.mockSetup';
 import { render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { ApplicationAccess } from '../../services/authService/authService.zod';
+import type { ApplicationAccess } from '@/services/authService/authService.zod';
 import {
   createQueryWrapper,
   EMPTY_STARTUP_WARMUP_RESULT,
   grantedAdminAccess,
-} from '../../test/auth/appAuthGateTestHelpers';
+} from '@/test/auth/appAuthGateTestHelpers';
 import { useApplicationAccessContext } from './ApplicationAccessContext';
 import { AppAuthGate } from './AppAuthGate';
 import {
   getApplicationAccess,
   hasScriptAuthorisation,
-} from '../../services/authService/authService';
-import { warmStartupQueries } from '../../query/sharedQueries';
+} from '@/services/authService/authService';
+import { warmStartupQueries } from '@/query/sharedQueries';
 
 const getAuthorisationStatusMock = vi.mocked(hasScriptAuthorisation);
 const warmStartupQueriesMock = vi.mocked(warmStartupQueries);

@@ -82,14 +82,15 @@ class Teacher {
   }
 
   /**
-   * Serialises this teacher to a JSON object.
+   * Serialises this teacher to a JSON object, always including teacherName.
+   * An unset name uses the null value already owned by the constructor.
    * @returns {Object} A plain object representation of the teacher
    */
   toJSON() {
     return {
       email: this.email,
       userId: this.userId,
-      ...(this.teacherName != null && { teacherName: this.teacherName }),
+      teacherName: this.teacherName,
     };
   }
 

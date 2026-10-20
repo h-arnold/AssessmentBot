@@ -1,13 +1,14 @@
 import { expect, type Locator, type Page } from '@playwright/test';
+import { waitForSelectPopupReady } from './select-popup-readiness';
 import {
   selectVisibleOption,
   waitForAssignmentsPageReady,
   type ResponseItem,
   type RuntimeScenario,
 } from '../shared/endToEndRuntimeMocks';
-import editableDefinitionsRaw from '../../../../tests/__mocks__/data/synthetic-analysis/small/editableDefinitions.json';
-import assignmentDefinitionPartialsRaw from '../../../../tests/__mocks__/data/synthetic-analysis/small/assignmentDefinitionPartials.json';
-import classPartialsRaw from '../../../../tests/__mocks__/data/synthetic-analysis/small/classPartials.json';
+import editableDefinitionsRaw from '@synthetic/small/editableDefinitions.json';
+import assignmentDefinitionPartialsRaw from '@synthetic/small/assignmentDefinitionPartials.json';
+import classPartialsRaw from '@synthetic/small/classPartials.json';
 
 // ============================================================================
 // Canonical fixture shapes and loading
@@ -447,6 +448,12 @@ export async function selectCanonicalAssignmentAndStart(
   assignmentTitle: string
 ): Promise<void> {
   await dialog.getByTestId('assignment-select').click();
+  await waitForSelectPopupReady(
+    page
+      .locator('.ant-select-dropdown:not(.ant-select-dropdown-hidden)')
+      .getByText(assignmentTitle, { exact: true })
+      .nth(0)
+  );
   await selectVisibleOption(page, assignmentTitle);
   await dialog.getByRole('button', { name: ACTION_START_ASSESSMENT }).click();
 }

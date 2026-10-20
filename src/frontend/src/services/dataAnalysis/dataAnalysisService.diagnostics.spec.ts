@@ -3,8 +3,8 @@ import { z } from 'zod';
 import { AveragingAnalyser } from './analysers/averagingAnalyser';
 import { DataAnalysisService } from './dataAnalysisService';
 import { DataAnalysisResponseSchema, type DataAnalysisResponse } from './dataAnalysis.zod';
-import { buildInput } from '../../test/dataAnalysis/fixtures';
-import { createMalformedAnalyserOutput } from '../../test/dataAnalysis/diagnosticsFixtures';
+import { buildInput } from '@/test/dataAnalysis/fixtures';
+import { createMalformedAnalyserOutput } from '@/test/dataAnalysis/diagnosticsFixtures';
 
 afterEach(() => {
   vi.restoreAllMocks();

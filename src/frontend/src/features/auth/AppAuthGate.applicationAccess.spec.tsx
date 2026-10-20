@@ -1,15 +1,15 @@
-import '../../test/auth/appAuthGate.mockSetup';
+import '@/test/auth/appAuthGate.mockSetup';
 import type { QueryClient } from '@tanstack/react-query';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { ApiTransportError } from '../../errors/apiTransportError';
+import { ApiTransportError } from '@/errors/apiTransportError';
 import {
   getStartupWarmupQueryKey,
   startupWarmupDatasetKeys,
   type StartupWarmupQueriesResult,
-} from '../../query/sharedQueries';
-import type { ApplicationAccess } from '../../services/authService/authService.zod';
+} from '@/query/sharedQueries';
+import type { ApplicationAccess } from '@/services/authService/authService.zod';
 import {
   brokenConfigAccess,
   createQueryWrapper,
@@ -17,15 +17,15 @@ import {
   EMPTY_STARTUP_WARMUP_RESULT,
   freshInstallAccess,
   grantedAdminAccess,
-} from '../../test/auth/appAuthGateTestHelpers';
-import { createDeferredPromise } from '../../test/shared/testDeferredPromise';
+} from '@/test/auth/appAuthGateTestHelpers';
+import { createDeferredPromise } from '@/test/shared/testDeferredPromise';
 import { useApplicationAccessContext } from './ApplicationAccessContext';
 import { AppAuthGate } from './AppAuthGate';
 import {
   getApplicationAccess,
   hasScriptAuthorisation,
-} from '../../services/authService/authService';
-import { warmStartupQueries } from '../../query/sharedQueries';
+} from '@/services/authService/authService';
+import { warmStartupQueries } from '@/query/sharedQueries';
 
 const getAuthorisationStatusMock = vi.mocked(hasScriptAuthorisation);
 const warmStartupQueriesMock = vi.mocked(warmStartupQueries);

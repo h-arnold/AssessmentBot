@@ -1,4 +1,4 @@
-import type { YearGroup } from '../../services/referenceData/referenceData.zod';
+import type { YearGroup } from '@/services/referenceData/referenceData.zod';
 
 /**
  * Compares year groups in their natural presentation order.

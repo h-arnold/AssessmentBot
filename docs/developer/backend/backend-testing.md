@@ -27,6 +27,395 @@ This policy is intentionally broader than the analysis graph and applies automat
 
 Backend tests load a committed profile view synchronously and immutably, then supply the generated transport view through the dispatcher seams described below. For the corpus topology, profile/view selection, commands, failure behaviour, and the full exception and extension path, see the canonical guide: [Synthetic Test Data](../testing/synthetic-test-data.md).
 
+## Backend metadata bootstrap installation
+
+> **Status: `Implemented`.** `tests/setupGlobals.js` installs the ABClass metadata domain and
+> its typed error global as part of the backend ABClass `metadata` contract-support cycle. The
+> canonical model-input adapter, generator integrity and real-domain-acceptance probes, ABClass
+> model construction/restoration/serialization probes, mutation-owner bootstrap/delegation
+> probes, read/mutation-summary response-mapping probes, the Section 7 controller request-gate
+> and mutation-lifecycle probes, the Section 8 transport-adaptation and real-dispatcher
+> request/error-envelope probes, the Section 9 Teacher always-own-null serialisation and real
+> ABClass/roster probes, and the Section 10 combined-lifecycle and controller/API ordering
+> probes are delivered. See "Canonical metadata probes" below.
+
+- `tests/setupGlobals.js` installs the metadata domain and typed error globals after the
+  existing `Validate` installation and before any ABClass-dependent module loads, including
+  suites that directly `require()` `Models/ABClass.js`: `ABClassMetadataValidationError` from
+  `src/backend/Utils/ErrorTypes/ABClassMetadataValidationError.js`, then `ABClassMetadata`
+  from `src/backend/Models/ABClassMetadata.js`.
+- In GAS runtime, the corresponding references stay inside runtime constructor/method bodies.
+  Do not add production Node imports or change stable numeric prefixes to support tests.
+- `tests/setupGlobals.js` registers `ABClassMutationOps` with the other controller
+  sub-classes before the facade is loaded. The GAS-style evaluation and delegation contract is
+  covered by `tests/controllers/abclassMutationRuntime.test.js` and
+  `tests/controllers/abclassMutationDelegation.test.js`.
+
+## ABClass canonical model-input adaptation
+
+> **Status: `Implemented` (test-only adapter).**
+> `scripts/synthetic-test-data/toBackendModelInputs.js` is delivered for the backend ABClass
+> `metadata` contract-support cycle. It is test-only infrastructure: production `src/backend`
+> source never imports it, and it changes no production contract. The delivered Section 2
+> generator integrity and real-domain-acceptance probes are listed under "Canonical metadata
+> probes" below. Cross-reference:
+> `docs/developer/testing/synthetic-test-data.md` §ABClass metadata generator capability.
+
+### `toBackendModelInputs.js` (`Implemented`)
+
+Location: `scripts/synthetic-test-data/toBackendModelInputs.js`.
+
+- Test-only adapter shared by backend model, controller and persistence tests. It adds no
+  production dependency and must never be imported by GAS runtime source.
+- Export `loadBackendModelInputs(profileName)`; require an explicit profile name. Call
+  `loadSyntheticAnalysisProfile(profileName, viewName)` once per view with view names
+  `classPartials`, `classesById`, `assignmentsByKey`, `editableDefinitions` and
+  `assignmentDefinitionPartials`. The fifth view resolves the partial-only assignments'
+  definitions, which are absent from `assignmentsByKey` and `editableDefinitions`. For the
+  default test selection call it with `'small'`; use `'medium'` for wider variants.
+  Each loader result is deeply frozen, not a `transport` wrapper. `classPartials` is an
+  array; `classesById` is keyed by `classId`. Clone before adaptation/mutation. Reserve
+  `transport.*` notation for the in-memory generator graph only.
+- Return `{ classPartials, classesById, assignmentsByKey }` as three independently cloned
+  outputs, retaining every canonical class assignment. The adapter resolves
+  `editableDefinitions` and `assignmentDefinitionPartials` internally; each output owns its
+  mutable nodes, with no shared aliases between outputs, the frozen loader views, or a second
+  adaptation.
+- Class-embedded assignments keep the raw root `assignmentDefinitionKey` and stay redacted
+  partials. The adapter resolves each assignment's definition from `editableDefinitions` when
+  it is a full definition, and from `assignmentDefinitionPartials` when it is partial-only,
+  then attaches a cloned `assignmentDefinition` whose `tasks` are the lightweight
+  array-of-summaries shape (`taskId`, `taskTitle`, `taskWeighting`) that
+  `AssignmentDefinition.fromJSON()` accepts.
+- Standalone `assignmentsByKey` records already carry their full keyed-task definitions and
+  freshness fields. The adapter validates that each resolves to a full canonical definition
+  but leaves the embedded definition in place, so `Assignment.toJSON()` still treats the
+  record as full; it never replaces the full definition with an editable summary.
+- Genuine partial-only definitions stay partial and serialise through the partial path; the
+  adapter never promotes them to full definitions and never drops their assignments.
+- Inputs preserve canonical raw values: a raw `null` `assignmentWeighting` stays `null` in the
+  adapted inputs, and any restoration-time normalisation (for example to `1`) remains the
+  model constructor's responsibility.
+- Outputs include ABClass roster JSON (`classOwner`, `teachers`, `students`) derived from the
+  `classesById` view, suitable for real model restoration and owner/teacher-array
+  serialisation coverage. Keep legacy plain teacher entries: `ABClass.fromJSON()` copies
+  `teachers[]` through unchanged and does not hydrate its entries. Wrap restoration in
+  `withTemporaryGlobals({ Teacher: () => Teacher }, () => ABClass.fromJSON(...))` to install
+  the real global for `classOwner` restoration. When a test must exercise the shared
+  teacher-array `Teacher.toJSON()` serialiser, explicitly materialise the canonical plain
+  entries with `Teacher.fromJSON()` while composing that ABClass; the scoped global install
+  alone does not hydrate `teachers[]`. Do not add production teacher-array hydration.
+- Never feed a frontend assignment partial directly to `Assignment.fromJSON()`, and never
+  mutate the frozen loader output in place. All adaptation happens on local clones.
+- Backend model-input assertions live in the tests-only
+  `tests/synthetic-analysis/backendModelInputAssertions.js` helper, shared across the suites
+  that need it: the adapter suite imports it as `./backendModelInputAssertions.js`, and the
+  model, controller and stress suites import it as
+  `../synthetic-analysis/backendModelInputAssertions.js`. It is not a runtime dependency and is
+  not reachable through the `#test-helpers/*` alias, which maps only to `tests/helpers/*`.
+- The helper exports the submission assertions (`expectFullSubmissionPreserved`,
+  `expectPartialSubmissionRedacted`, `expectPartialSubmissionMatchesRedactedSource`) and the
+  ownership assertion `expectMetadataNodesDetached(snapshots)`, which checks pairwise `toBe`
+  identity across populated metadata snapshots at the root, `classAverages`,
+  `recentAssignments[]` and each entry's `averages`, skipping null snapshots.
+- `expectMetadataNodesDetached` is used by the controller metadata persistence suite
+  (`tests/controllers/abclassMetadataPersistence.test.js`), the model metadata integration
+  suite (`tests/models/abclassMetadataIntegration.test.js`) and the opt-in stress suite
+  (`tests/synthetic-analysis-stress/syntheticClassMetadataFullLarge.test.ts`), so the
+  ownership-isolation contract cannot drift between cloned copies.
+
+### Test infrastructure reuse
+
+> **Status: `Implemented`.** The adapter, the import mappings, the existing-row roster-mock
+> guidance and the dispatcher-integration bullet below are delivered. The dispatcher-integration
+> guidance is backed by the delivered Section 8 real-dispatcher suites
+> (`tests/api/apiHandler/abclassMetadata*`), and it stays contract-sensitive because default
+> harness stubs and prebuilt synthetic responses are not evidence of real domain validation.
+
+- The root `package.json` `imports` map provides `"#synthetic-data/*": "./scripts/synthetic-test-data/*"`.
+  Backend `.test.js` suites use ESM named imports from
+  `#synthetic-data/toBackendModelInputs.js` and `#synthetic-data/loadSyntheticAnalysisProfile.js`,
+  not `require()` of these ESM script modules. Existing `#synthetic/*` continues to mean
+  committed JSON views; there is no second loader or production import.
+- Shared test helpers are reachable as `#test-helpers/*` (`tests/helpers/*`).
+- `#backend/*` is the supported, required convention for backend source in new and touched
+  suites. The import-path depth rule (see `TypeScriptAndLintConfigHierarchy.md`) enforces the
+  alias convention repo-wide: relative imports may traverse at most one parent, and two or
+  more parents must use a configured alias. Legacy relative paths still exist in untouched
+  suites (for example non-literal `require.resolve('../../src/backend/...')` module paths) and
+  must not be copied into new work. Nearby helpers reached as `../helpers/...` remain relative.
+- Reuse `globalMockManager` and `apiHandlerTestUtils`, plus local external-service mocks, for
+  the wider class graph. Do not invent realistic class graphs in tests; derive them from
+  canonical data.
+- For real ABClass dispatcher contracts, the default dispatcher setup replaces both the
+  controller and transport globals. After shared setup, reinstall the real `ABClassController`
+  and real ABClass mutation/read handlers before dispatch, following the existing
+  `dispatcher-integration.test.js` real-handler pattern; restore all globals afterwards.
+  Prebuilt synthetic responses and default handler/controller stubs are not evidence of
+  real domain validation. No shared-harness refactor is planned.
+- Existing-row roster mocks provide stored `_id` and `updateOne` with vendor-faithful
+  results: `_id`-only matched/no-op patches return a match; query-filter no-op results
+  do not. Include the facade `abclassManager.saveClass`, `loadClass` and `initialise`
+  suites when changing extracted save checks or roster persistence.
+- The API-handler test facade remains at `tests/api/apiHandler/shared.js`; dispatcher
+  fixtures, VM helpers and auth lifecycle live in sibling `sharedFixtures.js`,
+  `vmHelpers.js` and `authTestContext.js`. Reference-data controller cases stay in
+  responsibility-focused suites: `referenceDataController.test.js` (cohorts),
+  `referenceDataController.yearGroups.test.js`,
+  `referenceDataController.assignmentTopics.test.js` and
+  `referenceDataController.transportResponses.test.js`. Their isolated setup and
+  restoration helpers are in `referenceDataTestSupport.js`. Run both groups with
+  `npm run test:backend -- 'tests/controllers/referenceDataController*.test.js' tests/api/apiHandler`.
+
+### Canonical metadata probes
+
+**Generator integrity and domain acceptance (`Implemented`).** These Section 2 probes are delivered:
+
+- `tests/synthetic-analysis/syntheticClassMetadataValidation.test.ts` rejects isolated raw
+  corruptions inside the compact graphs through the generator-owned `validateClassMetadata.js`
+  helper, and checks a metadata corruption through the public
+  `validateSyntheticAnalysisGraph()` boundary.
+- `tests/synthetic-analysis/syntheticClassMetadataDomainAcceptance.test.ts` validates every
+  raw persistence, `classPartials` and `classesById` snapshot through the real
+  `ABClassMetadata.validateMetadata()` domain owner, pinning each profile's non-null and
+  marker variants.
+
+**Model round trips and integrity (`Implemented`).** Section 3 adds
+`tests/models/abclassMetadataIntegration.test.js` to exercise canonical null and non-null
+variants through ABClass construction, restoration, replacement, and full/partial
+serialization. Metadata-only full JSON round trips use an empty assignments array because
+class-embedded assignment definitions are partial-shaped; a separate characterization keeps
+the complete canonical assignment population for existing hydration/redaction behaviour. The
+direct-mutation test also uses a cloned canonical `medium` snapshot to verify that equal
+timestamps and repeated definition keys are accepted and that supplied entry order is retained.
+These tests cover model boundaries only, not controller or API operations.
+
+**Controller decomposition (`Implemented`).** Section 4's
+`tests/controllers/abclassMutationDelegation.test.js` verifies options-object dependency
+injection, facade delegation, shared save validation before persistence, and preservation of
+the validated class instance through persistence and summary mapping. Its direct-owner upsert
+cases were migrated in Section 7 to supply `_validateRequestMetadata` on the injected validation
+collaborator (a no-op spy for the legacy no-metadata inputs) and assert it is invoked once with
+the request parameters before persistence; production wiring is not weakened with optional-method
+fallbacks. `tests/controllers/abclassMutationRuntime.test.js` verifies bootstrap registration and
+GAS-style evaluation order. These are behaviour-preserving decomposition probes; they do not
+exercise metadata request validation on the real controller path or persistence lifecycle
+behaviour.
+
+**Prepared whole/partial writes and field-scoped roster persistence (`Implemented`).**
+Section 5 adds the persistence/roster suites and the supplemental model/workflow coverage:
+
+- `tests/controllers/abclassMetadataPersistence.test.js` covers whole-write and plain-object
+  preparation: detached equal metadata copies across canonical null/numeric/marker/mixed
+  variants, caller and projection isolation, own-undefined/invalid rejection with zero
+  mutations, throwing or differing partial projections, full-first ordering, and exact
+  full-save/partial-save failure propagation with the existing logged diagnostics.
+- `tests/controllers/abclassMetadataEditablePersistence.test.js` covers selective editable
+  preparation: the complete partial is prepared before the selective full-store `$set`, a legacy
+  full document keeps metadata absence while the rebuilt partial carries `null`, and a failed
+  projection or malformed restored snapshot writes neither store.
+- `tests/controllers/abclassRosterPersistence.test.js` covers field-scoped roster persistence:
+  the exact registry `$set` for `className`/`classOwner`/`teachers`, the stored `_id` filter, no
+  metadata accessor read or `toPartialJSON()` call on an existing row, complete missing-row
+  insertion prepared before the full-store write, vendor-faithful `matchedCount` (a
+  matched-but-unmodified `_id` patch succeeds and a true zero-match patch fails without
+  fallback), and full-first ordering with no partial write after a failed full save.
+- `tests/models/abclassEmbeddedAssignmentSerialisation.test.js` and
+  `tests/controllers/abclassEmbeddedAssignmentPersistence.test.js` add the supplemental
+  canonical non-empty/mixed model round trips and the real `persistAssignmentRun()` workflow.
+  They prove the actual partial/full embedded-assignment population survives whole-class
+  serialisation and reaches both stores with equal detached metadata. Metadata-only
+  `assignments: []` probes remain valid narrow unit coverage but are no longer the sole
+  whole-class integration evidence.
+- Load/save fixture migrations accompany the new behaviour:
+  `tests/models/abclassManager.saveClass.test.js` asserts the prepared full/partial payload
+  copies (including `metadata: null`) instead of caller identity, and
+  `tests/models/abclassManager.loadClass.test.js`, `tests/controllers/abclass-loadClass.test.js`
+  and `tests/controllers/abclass-roster-sync.test.js` carry the stored `_id`/vendor-faithful
+  `updateOne` corrections and the field-scoped roster assertion.
+- Non-transactional I/O risk stays explicit: the suites assert full-first ordering and existing
+  failure propagation, and do not emulate transactions, rollback or retry.
+
+**Backend CommonJS import identity (`Implemented`).** Suites that consume the bootstrap globals
+resolve their backend CommonJS owners — `ABClass`, `ABClassMetadata`, `ABClassValidation`,
+`ABClassPersistence`, `ABClassRoster` and `ABClassMutationOps` for the persistence suites, and
+`ABClass`, `Teacher`, `ABClassController`, `abclassMutations.js`, `abclassRead.js` and
+`z_apiHandler.js` for the Section 8 transport suites — through the same `#backend/*` `require()`
+route, so they share the constructors installed by `tests/setupGlobals.js`. Mixing static ESM
+backend imports with those bootstrap CommonJS globals creates duplicate module identities that
+silently split coverage counters; the `#backend` require route keeps one identity. Static named ESM
+imports remain required for the script-owned synthetic adapter and loader
+(`#synthetic-data/*`), which are ESM-only. This is scoped guidance for suites that consume
+bootstrap globals, not a blanket ban on ESM imports and not a configuration-policy change.
+
+**Response mapping and registry-only reads (`Implemented`).** Section 6 delivers validated,
+nullable `metadata` on existing read and mutation-summary responses and splits the oversized
+read suite:
+
+- `tests/controllers/abclassMetadataResponses.test.js` exercises the real
+  `ABClassResponseMapper`, controller and `getABClass_` handler: equal, detached metadata across
+  the registry (`_normaliseClassPartial`), full-read (`_toReadView`) and mutation-summary
+  (`_buildClassSummary`) projections; legacy partial/full absence and explicit `metadata: null`;
+  typed rejection of invalid stored metadata with no read-time insert, save, update or replace;
+  registry-only list reads (no full-collection load, assignment hydration, definition lookup or
+  Classroom call); and preserved not-found `null`.
+- `tests/controllers/abclassController.readClass.test.js` retains the pure-read/loading
+  characterisations (method presence, not-found, read view, no roster refresh/persist), and
+  `tests/controllers/abclassController.readClass.assignments.test.js` retains the assignment
+  projection/redaction/integrity cases, including the real-`Assignment.toPartialJSON()`
+  regression that keeps the `assignmentDefinitionKey` projection and strips the embedded
+  definition. The split preserves the original assertions and changes no data-shape contract.
+  These are read/projection probes only; they do not cover request metadata acceptance or the
+  transport error adapter.
+- Run the metadata response suite with the registry-partial read suite, both split read suites
+  and the API read suite:
+  `npm run test:backend -- tests/controllers/abclassMetadataResponses.test.js tests/controllers/abclass-partials-read.test.js 'tests/controllers/abclassController.readClass' tests/api/abclassRead.test.js`.
+- Existing exact registry and mutation-summary output expectations gained the always-emitted
+  `metadata: null` for legacy absence (for example `tests/controllers/abclass-partials-read.test.js`
+  and `tests/controllers/abclass-upsert-update.test.js`). This is an output-shape migration for
+  the new field, not new request metadata acceptance.
+
+**Controller request gate and mutation lifecycle (`Implemented`).** Section 7 adds
+`tests/controllers/abclassMetadataMutations.test.js` and
+`tests/controllers/abclassMetadataLifecycle.test.js`. Both drive the real
+`ABClassController`/`ABClassMutationOps` path with the real `ABClass`/`ABClassMetadata` model
+boundary and per-store collection mocks, asserting against actual write-call arguments, restored
+model instances and returned summaries rather than clone-on-read values:
+
+- `abclassMetadataMutations.test.js` covers the new/existing upsert and update
+  omission/null/replacement matrix over canonical `small`/`medium` snapshots: persisted full and
+  partial values, the returned mutation summary, and nested isolation between caller request,
+  restored model, full write payload, partial write payload and summary. Update omission stays a
+  true selective no-write of `metadata` (no fabricated `$set`); upsert omission preserves the
+  restored snapshot or the new-class `null`. It also proves the request gate rejects own
+  `undefined`, malformed metrics, unexpected keys, sparse/oversized recent arrays, non-canonical
+  timestamps and partial nested averages before **any** `getCollection` access, read, Classroom
+  roster call or store write, and that an invalid mixed `active`/`metadata` patch applies none of
+  its fields (collection, roster and per-store write counters aggregated into one expected-zero
+  assertion).
+- `abclassMetadataLifecycle.test.js` covers corrupt stored metadata as a non-request integrity
+  failure that is not repaired by a valid replacement or `null` (no read, roster call or write
+  after the failing restore), propagation of upstream Classroom exceptions and persistence
+  failures without request provenance, preservation of the last supplied snapshot across an
+  unrelated editable update and a `loadClass` roster refresh followed by a whole-class upsert,
+  and assessment persistence into the separate `assign_full_<courseId>_<assignmentId>` store
+  with embedded partial/full assignments and redaction retained. It pins the metadata-free roster
+  exception — the full-store roster `$set` is exactly
+  `className`/`classOwner`/`students`/`teachers` and the registry `$set` exactly
+  `className`/`classOwner`/`teachers`, with no `metadata` in either — and characterises the
+  canonical zero-entry snapshot by root/`classAverages`/array identity without inventing entries.
+  Existing missing-update, protected-field and deletion-flag behaviour (including the vendor
+  `false`-return flag quirk) is retained.
+- Both suites keep canonical `small`/`medium` class, assignment and definition identities and
+  membership, and clone only for invalid/corrupt/boundary probes. The assertion helpers
+  (`createCollection`, `writeMetadataPayload`, `expectSnapshotDetached`, `collection`, `harness`,
+  `expectOwnedSnapshots`, `expectCanonicalAssignments`) stay local to each suite; no shared helper
+  module was introduced. Snapshot staleness, no-repair and request-only provenance are asserted
+  rather than repaired.
+- Run the Section 7 request/lifecycle suites with the existing upsert/update, delete,
+  assignment-persistence and backend API mutation units:
+  `npm run test:backend -- tests/controllers/abclassMetadataMutations.test.js tests/controllers/abclassMetadataLifecycle.test.js tests/controllers/abclass-upsert-update.test.js tests/controllers/abclass-delete.test.js tests/controllers/abclassController.persistAssignment.test.js tests/backend-api/abclassMutations.unit.test.js`.
+
+**Transport adaptation and real-dispatcher probes (`Implemented`).** Section 8 delivers the
+transport request-error adapter and the real-dispatcher request/error-envelope contracts.
+
+- `tests/api/abclassMetadataApi.test.js` exercises the mutation transport wrappers directly:
+  `upsertABClass_`/`updateABClass_` forward omitted/`null`/object/own-`undefined` metadata with the
+  original parameters object identity; only a typed `ABClassMetadataValidationError` with
+  `inputSource: 'request'` becomes an `ApiValidationError` with the same path-bearing message; and
+  model-typed, same-message-but-untagged, request-tagged generic/wrong-typed, persistence, upstream
+  and wiring failures are rethrown unchanged.
+- `tests/api/apiHandler/abclassMetadataReads.test.js` and `abclassMetadataWrites.test.js` dispatch
+  through the real allowlisted `apiHandler`, real handlers, `ABClassController`, `ABClass`,
+  `Teacher`, persistence and response mapping: registry and full reads expose raw metadata
+  (JSON-safe, timestamp strings, storage-only `_id` stripped); a missing full class stays top-level
+  `null`; an empty registry stays `[]`; update/upsert persist and summarise metadata for
+  omission/`null`/replacement; an omitted update preserves the stored snapshot; and deletion
+  results stay metadata-free.
+- `tests/api/apiHandler/abclassMetadataErrors.test.js` proves caller-versus-internal separation:
+  invalid request metadata (invalid metric, own `undefined`) returns `INVALID_REQUEST`
+  (`isRetriable: false`, path-bearing message, exactly `code`/`isRetriable`/`message` keys, no raw
+  stack) with **zero** DbManager/Classroom side effects and no store writes; corrupt stored full,
+  corrupt registry and mutable model/projection corruption stay generic `INTERNAL_ERROR` without
+  writes or full-read fallback; auth denial, request-ID tracking (`started` → `success`) and
+  boundary-before-completion diagnostic ordering keep their existing behaviour.
+- `tests/api/apiHandler/abclassMetadataTestContext.js` is the local real-path context. It runs the
+  shared dispatcher setup first (which stubs `ABClassController` and the ABClass transport
+  helpers), then reinstalls the **real** `ABClassController`, `ABClass`, `Teacher`, the real
+  `abclassMutations.js`/`abclassRead.js` exports and the real `apiHandler` module, keeping the real
+  bootstrap `Assignment` and Section 1 metadata/error globals. Only DbManager collections and
+  `ClassroomApiClient` are external mocks; auth and request tracking are exercised through the
+  existing dispatcher auth and `LockService` seams. Every overridden global is restored through
+  `globalMockManager` plus the shared dispatcher teardown, so prebuilt synthetic responses and the
+  default controller/handler stubs are never presented as the real domain path.
+- The context requires its inputs explicitly — collection `rows`, `classId` and `partialRows` at
+  every call site — with no default parameters, in-body partial-row fallback or implicit
+  canonical-class selection. This mirrors the project's constructor-only-defaults rule for test
+  helpers and closes the RED finding S8-R1.
+- Real-path suites reach backend CommonJS owners through `#backend/*` (see "Backend CommonJS import
+  identity" above) so they share the bootstrap's single module identity; script-owned synthetic
+  data and helpers stay on static ESM `#synthetic-data/*` and `#test-helpers/*`. Canonical
+  non-empty class/assignment populations are preserved, with invalid, corrupt and boundary cases
+  cloned.
+- Global exposure is unchanged: `adaptMetadataRequestError_` is a private trailing-underscore
+  helper and is not exported, and the static global-exposure guard suite stays green.
+- Run the Section 8 suites with the existing ABClass API and backend mutation/validation units:
+  `npm run test:backend -- tests/api/abclassMetadataApi.test.js tests/api/apiHandler/abclassMetadataReads.test.js tests/api/apiHandler/abclassMetadataWrites.test.js tests/api/apiHandler/abclassMetadataErrors.test.js tests/api/abclassMutations.test.js tests/api/abclassRead.test.js tests/backend-api/abclassMutations.unit.test.js tests/backend-api/abclassValidation.unit.test.js tests/api/apiHandler/globalExposure.test.js`.
+
+**Teacher always-own-null serialisation and its roster path (`Implemented`).** Section 9
+delivers the approved `Teacher.toJSON()` correction with model, ABClass and roster coverage:
+
+- `tests/models/teacher.test.js` and `tests/models/teacherStudentSubmissionCoverage.test.js`
+  replace the former omission assertions with an **own** `teacherName: null` requirement, and
+  cover constructor-unset, explicit-null, cleared-name, legacy canonical rows with the name key
+  deleted, and named round trips. Named cases load the frozen
+  `loadSyntheticAnalysisProfile('small', 'classPartials')` rows. Student and StudentSubmission
+  cases in the mixed suite are unchanged.
+- `tests/models/abclassTeacherSerialisation.test.js` drives the real ABClass full/partial
+  serializers with a non-empty adapted canonical class from
+  `loadBackendModelInputs('small').classesById`: a real `Teacher` owner and materialised
+  `Teacher` instances emit their own `teacherName` (`null` when unnamed), while legacy
+  plain-object teacher rows pass through unchanged. Array cases materialise `Teacher.fromJSON()`
+  inputs inside the test; ABClass restoration still does not hydrate plain entries.
+- `tests/controllers/abclassRosterPersistence.test.js` adds the normal roster-refresh case:
+  the exact four-field full `$set`, the three-field registry `$set`, full-first ordering
+  (partial `findOne` → full `$set`/`save` → partial write) and explicit null names in the
+  serialised owner/teachers, while the existing row's stored metadata is left untouched.
+- The unchanged frontend compatibility smoke
+  (`classDetailService.zod.spec.ts`, `classPartialsService.spec.ts`) confirms the
+  optional/nullable Teacher schemas accept both legacy absence and explicit null. It is
+  schema-compatibility context only, not a live backend output round trip.
+- Deletion behaviour is unchanged and no false-drop-flag expectation is added; the documented
+  quirk and its deferred fix remain with
+  [issue #332](https://github.com/h-arnold/AssessmentBot/issues/332).
+
+**Combined lifecycle and controller/API ordering hardening (`Implemented`).** Section 10 extends
+the existing real-dispatcher metadata suites; no new shared helper module is introduced:
+
+- `tests/api/apiHandler/abclassMetadataWrites.test.js` runs one connected real path — dispatcher
+  upsert → unrelated editable update → real `loadClass` roster refresh → real `persistAssignmentRun`
+  into a distinct `assign_full_<classId>_<assignmentId>` store → list/full reads → whole
+  replacement → `null` clear → delete — asserting the supplied snapshot is unchanged in both stores
+  and the read responses, the roster `$set` payloads stay metadata-free, and the full store is
+  written before the registry. The same suite drives both `upsertABClass` and `updateABClass` with
+  a locally cloned canonical `medium` snapshot whose two newest entry timestamps are made equal
+  and whose definition keys repeat, proving both mutation APIs preserve caller-supplied entry
+  order in the returned summary, the full-store value and the partial-store value.
+- `tests/api/apiHandler/abclassMetadataErrors.test.js` reverses a cloned canonical request snapshot
+  and proves the real dispatcher rejects descending `recentAssignments` timestamps as
+  `INVALID_REQUEST` before any collection access or store write.
+- `tests/api/apiHandler/abclassMetadataTestContext.js`, the local real-path context, gains isolated
+  `assign_full_*` collection routing and vendor-faithful stored-`_id` retention on whole-record
+  replacement; its existing `setupApiHandlerTestContext` global save/restore teardown is unchanged.
+
+The Section 3 model-boundary equal-timestamp and repeated-definition-key checks remain an
+independent layer: they prove the shared domain validator and serialisers accept and preserve that
+shape without invoking the controller or transport. Neither layer verifies live assignment
+identifier existence or equality against a stored Assignment timestamp, and the equal-timestamp
+input stays a local clone-based boundary probe rather than canonical corpus content. Generated
+source assignments keep distinct timestamps, so the canonical exact-timestamp linkage is not
+weakened to manufacture equal timestamps.
+
 ## Backend logging test expectations
 
 When backend logging behaviour or error boundaries change, include explicit logging-focused regression coverage in backend tests.

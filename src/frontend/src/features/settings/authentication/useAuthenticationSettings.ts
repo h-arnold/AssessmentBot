@@ -9,13 +9,13 @@ import {
   useRef,
   useState,
 } from 'react';
-import { setAuthenticationSettings } from '../../../services/authService/authService';
+import { setAuthenticationSettings } from '@/services/authService/authService';
 import type {
   AuthenticationSettings,
   AuthUserEntry,
   AuthUserRole,
-} from '../../../services/authService/authService.zod';
-import { getAuthenticationSettingsQueryOptions } from '../../../query/sharedQueries';
+} from '@/services/authService/authService.zod';
+import { getAuthenticationSettingsQueryOptions } from '@/query/sharedQueries';
 import {
   logAuthenticationSettingsSaveFailure,
   mapAuthenticationSettingsSaveError,

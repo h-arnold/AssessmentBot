@@ -30,7 +30,7 @@ import type { ClassFull } from '../googleClassrooms/classDetail/classDetailServi
 import type { AssignmentDefinitionPartialsResponse } from '../assignmentDefinition/assignmentDefinitionPartials.zod';
 import { adaptMetricsToMergedHeatmap } from './heatmapAdapter.merged';
 import { TaskTitlesUnavailableError } from './heatmapAdapter';
-import { createComputedMetricResult, createTaskPartial } from '../../test/dataAnalysis/fixtures';
+import { createComputedMetricResult, createTaskPartial } from '@/test/dataAnalysis/fixtures';
 
 // ---------------------------------------------------------------------------
 // Fixture constants

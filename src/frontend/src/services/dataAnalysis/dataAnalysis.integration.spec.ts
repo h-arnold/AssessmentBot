@@ -8,11 +8,11 @@ import {
   createSubmissionItem,
   createTaskPartial,
   createDefinitionPartial,
-} from '../../test/dataAnalysis/fixtures';
+} from '@/test/dataAnalysis/fixtures';
 import {
   expectMetricResultStateAware,
   FLOAT_TOLERANCE,
-} from '../../test/dataAnalysis/averagingAnalyserAssertions';
+} from '@/test/dataAnalysis/averagingAnalyserAssertions';
 
 // ---------------------------------------------------------------------------
 // Helpers

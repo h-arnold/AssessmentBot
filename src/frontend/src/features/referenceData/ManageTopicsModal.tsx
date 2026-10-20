@@ -21,14 +21,14 @@
 import { Alert, Button, Form, Input, Select, Space, type FormInstance, type TableColumnType } from 'antd';
 import type { ReactElement } from 'react';
 import type { UseQueryOptions } from '@tanstack/react-query';
-import { APP_GAP_MD } from '../../theme/spacing';
-import type { AssignmentTopic, YearGroup, TopicFormValues } from '../../services/referenceData/referenceData.zod';
+import { APP_GAP_MD } from '@/theme/spacing';
+import type { AssignmentTopic, YearGroup, TopicFormValues } from '@/services/referenceData/referenceData.zod';
 import {
   createAssignmentTopic,
   deleteAssignmentTopic,
   updateAssignmentTopic,
-} from '../../services/referenceData/referenceDataService';
-import { getAssignmentTopicsQueryOptions, getYearGroupsQueryOptions } from '../../query/sharedQueries';
+} from '@/services/referenceData/referenceDataService';
+import { getAssignmentTopicsQueryOptions, getYearGroupsQueryOptions } from '@/query/sharedQueries';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ReferenceDataInitialLoadingState } from './ReferenceDataInitialLoadingState';
 import { ReferenceDataManagementModalScaffold } from './ReferenceDataManagementModalScaffold';

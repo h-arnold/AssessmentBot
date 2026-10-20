@@ -10,7 +10,7 @@
  * own competing copy of the same assignment payload.
  */
 
-import type { AssignmentFull } from '../../services/assignmentAssessment/assignmentAssessment.zod';
+import type { AssignmentFull } from '@/services/assignmentAssessment/assignmentAssessment.zod';
 
 export const DEFAULT_DATE = '2024-01-01T00:00:00.000Z';
 

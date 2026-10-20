@@ -9,16 +9,16 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { waitFor } from '@testing-library/react';
-import { renderWithFrontendProviders } from '../../test/renderWithFrontendProviders';
+import { renderWithFrontendProviders } from '@/test/renderWithFrontendProviders';
 import { HeatmapSelectionBar } from './HeatmapSelectionBar';
 import type { SelectionState } from './selectionCascade';
-import type { ClassFull } from '../../services/googleClassrooms/classDetail/classDetailService.zod';
-import type { ClassPartial } from '../../services/googleClassrooms/classPartialsService';
-import type { AssignmentDefinitionPartialsResponse } from '../../services/assignmentDefinition/assignmentDefinitionPartials.zod';
+import type { ClassFull } from '@/services/googleClassrooms/classDetail/classDetailService.zod';
+import type { ClassPartial } from '@/services/googleClassrooms/classPartialsService';
+import type { AssignmentDefinitionPartialsResponse } from '@/services/assignmentDefinition/assignmentDefinitionPartials.zod';
 
 const { mockLogFrontendEvent } = vi.hoisted(() => ({ mockLogFrontendEvent: vi.fn() }));
 
-vi.mock('../../logging/frontendLogger', () => {
+vi.mock('@/logging/frontendLogger', () => {
   return {
     logFrontendEvent: mockLogFrontendEvent,
     logFrontendError: vi.fn(),

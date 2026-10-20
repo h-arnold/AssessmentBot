@@ -8,16 +8,16 @@ import {
   type QueryStatus,
   type UseQueryResult,
 } from '@tanstack/react-query';
-import type { ClassPageAdapterResult } from '../../features/classPage/classPageAdapter.zod';
-import type { AveragingResult } from '../../services/dataAnalysis/dataAnalysis.zod';
+import type { ClassPageAdapterResult } from '@/features/classPage/classPageAdapter.zod';
+import type { AveragingResult } from '@/services/dataAnalysis/dataAnalysis.zod';
 import type {
   AssignmentPartial,
   ClassFull,
-} from '../../services/googleClassrooms/classDetail/classDetailService.zod';
-import type { PageDatasetState } from '../../hooks/usePageDataset';
+} from '@/services/googleClassrooms/classDetail/classDetailService.zod';
+import type { PageDatasetState } from '@/hooks/usePageDataset';
 import { createElement, type ReactNode } from 'react';
-import { getABClass } from '../../services/googleClassrooms/classDetail/classDetailService';
-import { queryKeys } from '../../query/queryKeys';
+import { getABClass } from '@/services/googleClassrooms/classDetail/classDetailService';
+import { queryKeys } from '@/query/queryKeys';
 
 /** Default classId used across tests. */
 export const DEFAULT_CLASS_ID = 'class-abc-123';

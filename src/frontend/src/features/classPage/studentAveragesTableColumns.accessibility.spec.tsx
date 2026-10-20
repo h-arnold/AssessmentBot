@@ -6,7 +6,7 @@ import type { StudentAverageRowModel } from './classPageAdapter.zod';
 import {
   createComputedMetricResult,
   createExcludedMetricResult,
-} from '../../test/dataAnalysis/fixtures';
+} from '@/test/dataAnalysis/fixtures';
 
 const EMPTY_FILTERS = {
   completeness: [],

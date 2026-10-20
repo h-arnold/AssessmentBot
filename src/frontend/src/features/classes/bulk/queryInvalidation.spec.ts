@@ -1,7 +1,7 @@
 import { QueryObserver } from '@tanstack/react-query';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { ApiTransportError } from '../../../errors/apiTransportError';
-import { createAppQueryClient } from '../../../query/queryClient';
+import { ApiTransportError } from '@/errors/apiTransportError';
+import { createAppQueryClient } from '@/query/queryClient';
 
 const { getABClassPartialsMock } = vi.hoisted(() => {
   return {
@@ -9,7 +9,7 @@ const { getABClassPartialsMock } = vi.hoisted(() => {
   };
 });
 
-vi.mock('../../../services/googleClassrooms/classPartialsService', () => {
+vi.mock('@/services/googleClassrooms/classPartialsService', () => {
   return {
     getABClassPartials: getABClassPartialsMock,
   };
@@ -70,7 +70,7 @@ async function loadQueryInvalidationModule(): Promise<QueryInvalidationModule> {
  */
 async function subscribeToActiveClassPartialsQuery(): Promise<ActiveClassPartialsQuerySubscription> {
   const queryClient = createAppQueryClient();
-  const { getClassPartialsQueryOptions } = await import('../../../query/sharedQueries');
+  const { getClassPartialsQueryOptions } = await import('@/query/sharedQueries');
   const observer = new QueryObserver(queryClient, getClassPartialsQueryOptions());
   const unsubscribe = observer.subscribe(() => {});
 

@@ -11,12 +11,14 @@ const require = createRequire(import.meta.url);
 const {
   security: securityPlugin,
   nodeToolingRules,
+  importPathDepthPlugin,
   sonarjs: sonarjsPlugin,
   unicorn: unicornPlugin,
 } = require('../../config/eslint/ts-base-rules.cjs');
 
 const typescriptPlugins = {
   '@typescript-eslint': tseslint,
+  'import-path': importPathDepthPlugin,
   jsdoc,
   security: securityPlugin,
   sonarjs: sonarjsPlugin,

@@ -5,7 +5,7 @@ import {
   createErrorMetricResult,
   createExcludedMetricResult,
   createNotAttemptedMetricResult,
-} from '../../../test/dataAnalysis/fixtures';
+} from '@/test/dataAnalysis/fixtures';
 
 describe('rollupMetric excluded precedence', () => {
   it.each([

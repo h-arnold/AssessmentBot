@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import SheetsAssessor from '../../src/backend/Assessors/SheetsAssessor.js';
+import SheetsAssessor from '#backend/Assessors/SheetsAssessor.js';
 import { withGlobalMocks } from '../helpers/globalMockManager.js';
 
 // Hermetic branch coverage for the spreadsheet assessors: formula

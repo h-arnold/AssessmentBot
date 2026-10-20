@@ -9,10 +9,10 @@
  */
 
 import { ZodError } from 'zod';
-import { ApiTransportError } from '../../../errors/apiTransportError';
-import { errorCodes } from '../../../errors/map-error-to-ui';
-import { logFrontendError } from '../../../logging/frontendLogger';
-import type { AuthenticationSettings } from '../../../services/authService/authService.zod';
+import { ApiTransportError } from '@/errors/apiTransportError';
+import { errorCodes } from '@/errors/map-error-to-ui';
+import { logFrontendError } from '@/logging/frontendLogger';
+import type { AuthenticationSettings } from '@/services/authService/authService.zod';
 
 export type AuthMode = AuthenticationSettings['authMode'];
 

@@ -1,5 +1,5 @@
 import { Skeleton, Space } from 'antd';
-import { APP_SPACE_SIZE_DEFAULT } from '../../../theme/spacing';
+import { APP_SPACE_SIZE_DEFAULT } from '@/theme/spacing';
 
 export type AssignmentSelectSkeletonProperties = Readonly<{
   ariaLabel: string;

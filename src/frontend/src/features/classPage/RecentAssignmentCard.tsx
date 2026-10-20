@@ -33,10 +33,10 @@ import { Card, Flex, Typography } from 'antd';
 
 import type { RecentAssignmentCardModel } from './classPageAdapter.zod';
 import { getStudentMetric } from './classPageAdapter.zod';
-import { METRIC_DISPLAY_META } from '../../services/dataAnalysis/metricDisplay/metricDisplayMeta';
-import type { MetricColumnKey } from '../../services/dataAnalysis/metricDisplay/metricDisplayMeta';
-import { MetricPill } from '../../services/dataAnalysis/metricDisplay/MetricPill';
-import { MetricIconLabel } from '../../components/MetricIconLabel/MetricIconLabel';
+import { METRIC_DISPLAY_META } from '@/services/dataAnalysis/metricDisplay/metricDisplayMeta';
+import type { MetricColumnKey } from '@/services/dataAnalysis/metricDisplay/metricDisplayMeta';
+import { MetricPill } from '@/services/dataAnalysis/metricDisplay/MetricPill';
+import { MetricIconLabel } from '@/components/MetricIconLabel/MetricIconLabel';
 
 /** Width constant for a single Recent Assignment card.
  *
