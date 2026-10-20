@@ -6,7 +6,7 @@
       "version": "latest"
     },
     "ghcr.io/devcontainers/features/java:1": {
-      "version": "latest",
+      "version": "21",
       "jdkDistro": "ms",
       "installGradle": false,
       "installMaven": false
