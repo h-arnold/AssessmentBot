@@ -44,7 +44,7 @@
  * rules-of-hooks invariant that `useQuery` must not be called inside a loop.
  */
 
-import { useCallback, useMemo, useReducer, useState } from 'react';
+import { useCallback, useMemo, useReducer } from 'react';
 import {
   useQueries,
   useQuery,
@@ -55,8 +55,7 @@ import { getABClassQueryOptions, getAssignmentQueryOptions } from '@/query/share
 import { queryKeys } from '@/query/queryKeys';
 import { usePageDataset } from '@/hooks/usePageDataset';
 import { toError } from '@/errors/normaliseUnknownError';
-import { usePostAnalysisTasks } from '@/hooks/usePostAnalysisTasks';
-import { PostAnalysisTaskRegistry } from '@/services/dataAnalysis/postAnalysis/postAnalysisTasks';
+import { usePagePostAnalysisTasks } from '@/hooks/usePagePostAnalysisTasks';
 import type { AveragingResult } from '@/services/dataAnalysis/dataAnalysis.zod';
 import type { ClassFull } from '@/services/googleClassrooms/classDetail/classDetailService.zod';
 import type { AssignmentFull } from '@/services/assignmentAssessment/assignmentAssessment.zod';
@@ -126,30 +125,6 @@ export type HeatmapsPageData = Readonly<{
   /** Manual refresh: re-runs class query + ADP dataset + enabled assignment queries. */
   refetch: () => void;
 }>;
-
-/** Builds task context from the complete class, not the selected analysis slice.
- * @param {HeatmapsSurfaceState['status']} surfaceStatus - Current surface outcome.
- * @param {ClassFull | null} classFull - Complete class source.
- * @param {AssignmentDefinitionPartialsResponse | null} assignmentDefinitionPartials - Live definitions.
- * @param {AveragingResult | null} analyserResult - Successful averaging result.
- * @returns {object | null} Valid hook input, or null when analysis is unavailable.
- */
-function createPostAnalysisContext(
-  surfaceStatus: HeatmapsSurfaceState['status'],
-  classFull: ClassFull | null,
-  assignmentDefinitionPartials: AssignmentDefinitionPartialsResponse | null,
-  analyserResult: AveragingResult | null
-) {
-  if (
-    surfaceStatus !== 'ready' ||
-    classFull === null ||
-    assignmentDefinitionPartials === null ||
-    analyserResult === null
-  ) {
-    return null;
-  }
-  return { classFull, assignmentDefinitionPartials, averagingResult: analyserResult };
-}
 
 /**
  * Derive the global refresh-busy signal from the owned query families.
@@ -364,19 +339,13 @@ export function useHeatmapsPageData(): HeatmapsPageData {
   const error: HeatmapsPageError | null =
     surfaceState.status === 'blocking' ? surfaceState.error : null;
 
-  const [postAnalysisTasks] = useState(
-    () => new PostAnalysisTaskRegistry(() => new Date().toISOString()).tasks
+  usePagePostAnalysisTasks(
+    surfaceState.status,
+    classFull,
+    assignmentDefinitionPartials,
+    analyserResult,
+    classId
   );
-  const postAnalysisStatus = surfaceState.status;
-  const postAnalysisContext = useMemo(() => {
-    return createPostAnalysisContext(
-      postAnalysisStatus,
-      classFull,
-      assignmentDefinitionPartials,
-      analyserResult
-    );
-  }, [postAnalysisStatus, classFull, assignmentDefinitionPartials, analyserResult]);
-  usePostAnalysisTasks(postAnalysisContext, postAnalysisTasks, classId);
 
   // -----------------------------------------------------------------------
   // 9. Refresh — re-run class query, ADP dataset, and enabled assignment queries

@@ -2,7 +2,7 @@ import { act, cleanup, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import * as frontendLogger from '@/logging/frontendLogger';
 import * as metadataTask from '@/services/dataAnalysis/postAnalysis/refreshABClassMetadata';
-import { PostAnalysisTaskRegistry } from '@/services/dataAnalysis/postAnalysis/postAnalysisTasks';
+import { createPostAnalysisTaskDescriptors } from '@/services/dataAnalysis/postAnalysis/postAnalysisTasks';
 import type {
   PostAnalysisTaskDescriptor,
   PostAnalysisTaskOutcome,
@@ -17,6 +17,8 @@ import { renderPostAnalysisOwner } from '@/test/abClass/postAnalysisHookTestSupp
 
 const TWO_ATTEMPTS = 2;
 const THREE_ATTEMPTS = 3;
+const TWO_COMPLETIONS = 2;
+const FIRST_ASSIGNMENT_INDEX = 0;
 
 afterEach(() => {
   cleanup();
@@ -92,7 +94,7 @@ describe('usePostAnalysisTasks task-local attempt deduplication', () => {
           ? Promise.reject(new Error('write failed'))
           : Promise.resolve({ status: 'skipped', reason: 'unchanged' });
       });
-      const tasks = new PostAnalysisTaskRegistry(() => SUMMARY_TIME).tasks;
+      const tasks = createPostAnalysisTaskDescriptors(() => SUMMARY_TIME);
       const owner = renderPostAnalysisOwner(context, tasks, true);
       const status = terminal === 'failed' ? 'failed' : 'skipped';
       await waitFor(() => expect(owner.read().outcomes[0].data.status).toBe(status));
@@ -110,7 +112,7 @@ describe('usePostAnalysisTasks task-local attempt deduplication', () => {
     const refresh = vi
       .spyOn(metadataTask, 'refreshABClassMetadata')
       .mockImplementation(() => Promise.reject(new Error('save failed')));
-    const tasks = new PostAnalysisTaskRegistry(() => SUMMARY_TIME).tasks;
+    const tasks = createPostAnalysisTaskDescriptors(() => SUMMARY_TIME);
     const owner = renderPostAnalysisOwner(context, tasks, false);
     await waitFor(() => expect(owner.read().outcomes[0].data.status).toBe('failed'));
     const next = structuredClone(context);
@@ -129,7 +131,7 @@ describe('usePostAnalysisTasks task-local attempt deduplication', () => {
     const refresh = vi
       .spyOn(metadataTask, 'refreshABClassMetadata')
       .mockImplementation(() => Promise.reject(new Error('save failed')));
-    const tasks = new PostAnalysisTaskRegistry(() => SUMMARY_TIME).tasks;
+    const tasks = createPostAnalysisTaskDescriptors(() => SUMMARY_TIME);
     const owner = renderPostAnalysisOwner(original, tasks, false);
     await waitFor(() => expect(owner.read().outcomes[0].data.status).toBe('failed'));
     await act(async () => owner.update(createMetadataRefreshFixture('medium')));
@@ -152,7 +154,7 @@ describe('usePostAnalysisTasks task-local attempt deduplication', () => {
       return Promise.resolve({ status: 'succeeded' } as const);
     });
     const tasks: readonly PostAnalysisTaskDescriptor[] = [
-      ...new PostAnalysisTaskRegistry(() => SUMMARY_TIME).tasks,
+      ...createPostAnalysisTaskDescriptors(() => SUMMARY_TIME),
       { id: 'future-local-probe', run: future },
     ];
     const owner = renderPostAnalysisOwner(context, tasks, true);
@@ -182,10 +184,7 @@ describe('usePostAnalysisTasks task-local attempt deduplication', () => {
     const later = vi.fn(() => Promise.resolve({ status: 'succeeded' } as const));
     const owner = renderPostAnalysisOwner(
       context,
-      [
-        ...new PostAnalysisTaskRegistry(() => SUMMARY_TIME).tasks,
-        { id: 'independent', run: later },
-      ],
+      [...createPostAnalysisTaskDescriptors(() => SUMMARY_TIME), { id: 'independent', run: later }],
       false
     );
     await waitFor(() => {
@@ -195,4 +194,35 @@ describe('usePostAnalysisTasks task-local attempt deduplication', () => {
     });
     expect(later).toHaveBeenCalledWith(context);
   });
+
+  it.each([FIRST_ASSIGNMENT_INDEX, FIRST_ASSIGNMENT_INDEX + 1])(
+    'deduplicates failed metadata work with a null timestamp at position %i and continues later tasks',
+    async (nullIndex) => {
+      const context = createMetadataRefreshFixture('small');
+      context.classFull.assignments[nullIndex].updatedAt = null;
+      const diagnostic = vi.spyOn(frontendLogger, 'logFrontendError').mockImplementation(() => {});
+      const refresh = vi
+        .spyOn(metadataTask, 'refreshABClassMetadata')
+        .mockImplementation(() => Promise.reject(new Error('invalid source timestamp')));
+      const later = vi.fn(() => Promise.resolve({ status: 'succeeded' } as const));
+      const tasks: readonly PostAnalysisTaskDescriptor[] = [
+        ...createPostAnalysisTaskDescriptors(() => SUMMARY_TIME),
+        { id: 'independent-after-invalid-source', run: later },
+      ];
+      const owner = renderPostAnalysisOwner(context, tasks, false);
+      await waitFor(() => {
+        return expect(owner.read().outcomes.map(({ data }) => data.status)).toEqual([
+          'failed',
+          'succeeded',
+        ]);
+      });
+      expect(refresh).toHaveBeenCalledTimes(1);
+      expect(later).toHaveBeenCalledExactlyOnceWith(context);
+      const equalSource = structuredClone(context);
+      await act(async () => owner.update(equalSource));
+      await waitFor(() => expect(later).toHaveBeenCalledTimes(TWO_COMPLETIONS));
+      expect(refresh).toHaveBeenCalledTimes(1);
+      expect(diagnostic).toHaveBeenCalledTimes(1);
+    }
+  );
 });

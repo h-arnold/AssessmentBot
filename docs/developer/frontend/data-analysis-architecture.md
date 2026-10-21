@@ -7,7 +7,7 @@ assessment architecture and shared analysis boundaries. The metadata task and
 queued writer below are complete and independently review-clean with zero new
 regressions. The shared post-commit lifecycle, query invalidation and feedback are
 independently review-clean (5B/5C), and the consumer wiring passed independent 5D
-review. Both averaging surfaces call the hook directly. The narrow standalone
+review. Both averaging surfaces call the shared page hook directly. The narrow standalone
 keyboard seam was diagnosed and fixed in the shared E2E helper, and the full
 **303**-test browser run passed. The Section 5 regression comparison recorded zero
 regressions and zero new failures. Section 6 test-only Node dispatcher and browser
@@ -242,12 +242,12 @@ composition facade. The edge classes are defined in `src/frontend/src/index.css`
 The synchronous `DataAnalysisService` and pure analysers remain free of I/O.
 `postAnalysis/refreshABClassMetadata.ts` accepts successful averaging context and
 unsliced class data, but never persists display results or display weightings.
-It is the only task in `postAnalysis/postAnalysisTasks.ts`
-(`PostAnalysisTaskRegistry`). The generic context/outcome schemas, ordered runner and shared
+It is the only descriptor built by `createPostAnalysisTaskDescriptors` in
+`postAnalysis/postAnalysisTasks.ts`. The generic context/outcome schemas, ordered runner and shared
 `hooks/usePostAnalysisTasks.ts` passed independent 5B and 5C reviews.
-Both averaging surfaces call the hook directly. They pass the complete
+Both averaging surfaces call the shared page hook `hooks/usePagePostAnalysisTasks.ts`. It passes the complete
 unsliced class, live definition partials and the successful averaging result, or
-`null` when the surface is not ready. On the standalone Heatmaps surface the
+`null` when the surface is not ready, and always forwards the committed class ID. On the standalone Heatmaps surface the
 selected assignments drive display only; metadata calculation always uses every
 class assignment. The task never writes descriptive summary results. The narrow
 standalone keyboard seam was diagnosed and fixed in the E2E helper, and the full
@@ -303,13 +303,22 @@ matching-class averaging result. Pass null when there is no successful context;
 descriptive summaries remain read-only. The required third argument is the committed
 selected class ID, which owns feedback lifetime independently of that readiness.
 
-Both consumers bind the hook directly: `features/classPage/useClassPageData.ts` and
-`features/taskHeatmap/useHeatmapsPageData.ts` build the context only from a `ready`
-surface with those three inputs, otherwise `null`, and pass their committed class ID as
-the third argument. They memoise the context on its inputs and construct the registry
-once, so ordinary rerenders keep the same context and task-list references. Never
-rebuild the context object per render: an unstable object re-attaches the effect each
-render and was observed in a browser run to produce an attach/publish loop once cache
+`hooks/usePagePostAnalysisTasks.ts` owns the page-level eligibility gate shared by
+both surfaces. It forms and memoises the context only when the surface is `ready` and
+the complete class, live definitions and successful averaging result are all non-null;
+otherwise it passes `null`. It creates the descriptor list once per mount with a
+mount-scoped clock and forwards the committed selected class ID unchanged. Feature
+hooks call it directly and do not build their own context, descriptor list or status
+alias.
+
+Both feature hooks call `usePagePostAnalysisTasks` directly:
+`features/classPage/useClassPageData.ts` and
+`features/taskHeatmap/useHeatmapsPageData.ts` pass their surface status, complete
+unsliced class, live definition partials, successful averaging result and committed
+class ID. The page hook owns the context memo and the once-per-mount descriptor list,
+so ordinary rerenders keep the same context and task-list references. Never rebuild
+the context object per render: an unstable object re-attaches the effect each render
+and was observed in a browser run to produce an attach/publish loop once cache
 updates landed. The memo is the loop guard; metadata freshness is not a global
 eligibility gate for other tasks.
 
@@ -329,14 +338,23 @@ duplicate work. Cleanup suppresses stale state publication; it does not abort
 active work, cancel queued writes or prevent later descriptors in that work from
 finishing.
 
-The metadata descriptor keys class/newest assignment ID/source timestamp, excluding
-cached metadata, scores and live weights. Empty classes have a stable key; invalid
-source timestamps use the raw assignment ID/time signature so validation fails
-inside that task without blocking independent work. The same version is attempted
-once per mount even after failure; a new source key or remount permits another
-attempt. This is not a global freshness gate for future tasks. The registry's
-constructor receives the clock and builds descriptors without reading it; only
-preparing a changed metadata write reads that clock. Confirmed saves become
+Metadata source identity is shared rather than reimplemented per consumer.
+`compareAssignmentNewestFirst` in `metadataProjection.ts` orders canonical
+assignments newest first with ascending assignment ID as the equal-time
+tie-break; canonical target selection and metadata diagnostics use it.
+`sourceVersionSignature` in `postAnalysisTasks.ts` performs no sorting. It
+serialises the supplied assignment ID/time pairs, retaining raw values and input
+order, and `REFRESH_AB_CLASS_METADATA_TASK_ID` is the single task-ID constant used by
+the descriptor, feedback, invalidation and diagnostics. The metadata descriptor keys
+class plus the newest canonical assignment's source signature. When source timestamps
+are not canonical, the task-owned signature keeps the raw assignment ID/time identity
+so validation fails inside that task without blocking independent work. Diagnostics
+reuse the comparator only for canonical candidates after their own non-throwing
+validity filter. The same version is attempted once per mount even
+after failure; a new source key or remount permits another attempt. This is not a
+global freshness gate for future tasks. The descriptor factory receives the clock
+and builds descriptors without reading it; only preparing a changed metadata write
+reads that clock. Confirmed saves become
 `succeeded` with `confirmedPersistence: true` before the hook completes required
 invalidation. The cached attempt includes both refresh settlements, so replay and
 metadata-only cache changes repeat neither the write nor invalidation.
@@ -361,7 +379,7 @@ work can still finish and invalidate queries. See the
 
 ### Register another task
 
-Add a descriptor to `PostAnalysisTaskRegistry.tasks` in its intended order. For
+Add a descriptor to `createPostAnalysisTaskDescriptors` in its intended order. For
 example, after implementing a real task owner, registration has this shape
 (illustrative only; no second production task is shipped):
 
@@ -378,8 +396,8 @@ const descriptor: PostAnalysisTaskDescriptor = {
 - Keep eligibility and source-key semantics in that task. Omit `getAttemptKey`
   only when each new successful context object should permit work. Do not reuse
   metadata freshness as another task's eligibility rule.
-- Keep the registry/context stable across ordinary rerenders. Add the descriptor
-  to the shared registry, not separate feature effects or per-consumer lists.
+- Keep the descriptor list and context stable across ordinary rerenders. Add the
+  descriptor to the shared factory, not separate feature effects or per-consumer lists.
 - Register only independent work: ordering is not a dependency graph or retry
   policy. Reuse existing transport/queue and schema owners for persistence.
 - Add runner and hook tests for ordering, failure isolation and the new task's

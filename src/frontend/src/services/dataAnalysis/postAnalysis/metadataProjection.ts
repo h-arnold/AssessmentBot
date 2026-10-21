@@ -23,6 +23,18 @@ export type MetadataRefreshSkipped = {
 export type MetadataRefreshDecision =
   MetadataRefreshSkipped | { status: 'changed'; target: AssignmentPartial };
 
+/** Orders assignment source versions newest first, then by ascending ID.
+ * @param {Pick<AssignmentPartial, 'updatedAt' | 'assignmentId'>} a - First source.
+ * @param {Pick<AssignmentPartial, 'updatedAt' | 'assignmentId'>} b - Second source.
+ * @returns {number} Comparator result.
+ */
+export function compareAssignmentNewestFirst(
+  a: Pick<AssignmentPartial, 'updatedAt' | 'assignmentId'>,
+  b: Pick<AssignmentPartial, 'updatedAt' | 'assignmentId'>
+): number {
+  return b.updatedAt!.localeCompare(a.updatedAt!) || a.assignmentId.localeCompare(b.assignmentId);
+}
+
 /**
  * Selects the complete class's newest canonical assignment version without I/O.
  * @param {ClassFull} classFull - Complete validated class, never a display selection.
@@ -40,9 +52,9 @@ export function getMetadataRefreshDecision(classFull: ClassFull): MetadataRefres
     };
   });
   candidates.sort((a, b) => {
-    return (
-      b.updatedAt.localeCompare(a.updatedAt) ||
-      a.assignment.assignmentId.localeCompare(b.assignment.assignmentId)
+    return compareAssignmentNewestFirst(
+      { ...a.assignment, updatedAt: a.updatedAt },
+      { ...b.assignment, updatedAt: b.updatedAt }
     );
   });
   const { assignment: target, updatedAt } = candidates[0];

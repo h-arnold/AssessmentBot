@@ -37,7 +37,7 @@
  * @see SPEC_CLASS_PAGE.md — "useClassPageData — data orchestrator hook"
  */
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 import { getABClassQueryOptions } from '@/query/sharedQueries';
 import { usePageDataset } from '@/hooks/usePageDataset';
@@ -45,8 +45,7 @@ import { DataAnalysisService } from '@/services/dataAnalysis/dataAnalysisService
 import { adaptClassPageToViewModel } from './classPageAdapter';
 import { useClassPagePipelineDiagnostics } from './useClassPagePipelineDiagnostics';
 import { useClassPageAssignmentPrefetch } from './useClassPageAssignmentPrefetch';
-import { usePostAnalysisTasks } from '@/hooks/usePostAnalysisTasks';
-import { PostAnalysisTaskRegistry } from '@/services/dataAnalysis/postAnalysis/postAnalysisTasks';
+import { usePagePostAnalysisTasks } from '@/hooks/usePagePostAnalysisTasks';
 import type { ClassFull } from '@/services/googleClassrooms/classDetail/classDetailService.zod';
 import type { AveragingResult } from '@/services/dataAnalysis/dataAnalysis.zod';
 import type { AssignmentDefinitionPartialsResponse } from '@/services/assignmentDefinition/assignmentDefinitionPartials.zod';
@@ -103,30 +102,6 @@ export type ClassPageData = Readonly<{
  */
 export type ClassPageSurfaceState =
   { status: 'loading' } | { status: 'blocking'; error: ClassPageError } | { status: 'ready' };
-
-/** Builds task context only for a successful complete class analysis.
- * @param {ClassPageSurfaceState['status']} surfaceStatus - Current surface outcome.
- * @param {ClassFull | null} classFull - Complete class source.
- * @param {AssignmentDefinitionPartialsResponse | null} assignmentDefinitionPartials - Live definitions.
- * @param {AveragingResult | null} analyserResult - Successful averaging result.
- * @returns {object | null} Valid hook input, or null when analysis is unavailable.
- */
-function createPostAnalysisContext(
-  surfaceStatus: ClassPageSurfaceState['status'],
-  classFull: ClassFull | null,
-  assignmentDefinitionPartials: AssignmentDefinitionPartialsResponse | null,
-  analyserResult: AveragingResult | null
-) {
-  if (
-    surfaceStatus !== 'ready' ||
-    classFull === null ||
-    assignmentDefinitionPartials === null ||
-    analyserResult === null
-  ) {
-    return null;
-  }
-  return { classFull, assignmentDefinitionPartials, averagingResult: analyserResult };
-}
 
 /**
  * Run the analyser step of the pipeline.
@@ -421,19 +396,13 @@ export function useClassPageData(classId: string): ClassPageData {
 
   useClassPageAssignmentPrefetch(classId, classFull, surfaceState.status);
 
-  const [postAnalysisTasks] = useState(
-    () => new PostAnalysisTaskRegistry(() => new Date().toISOString()).tasks
+  usePagePostAnalysisTasks(
+    surfaceState.status,
+    classFull,
+    assignmentDefinitionPartials,
+    analyserResult,
+    classId
   );
-  const postAnalysisStatus = surfaceState.status;
-  const postAnalysisContext = useMemo(() => {
-    return createPostAnalysisContext(
-      postAnalysisStatus,
-      classFull,
-      assignmentDefinitionPartials,
-      analyserResult
-    );
-  }, [postAnalysisStatus, classFull, assignmentDefinitionPartials, analyserResult]);
-  usePostAnalysisTasks(postAnalysisContext, postAnalysisTasks, classId);
 
   // -----------------------------------------------------------------------
   // 9. Refetch — stable callback via destructured refetch dependencies.

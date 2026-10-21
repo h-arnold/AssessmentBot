@@ -21,6 +21,9 @@ import {
 } from '@/test/abClass/postAnalysisFeedbackTestSupport';
 
 const SOURCE_VERSION_COUNT = 2;
+const EQUAL_SOURCE_CONTEXT_ATTEMPTS = 2;
+const CHANGED_SOURCE_ATTEMPTS = 3;
+const FIRST_ASSIGNMENT_INDEX = 0;
 
 afterEach(() => {
   cleanup();
@@ -104,6 +107,48 @@ describe('usePostAnalysisTasks context-aware failure feedback', () => {
     expect(warning.mock.calls[1][0].key).not.toBe(initialKey);
     expect(await screen.findByRole('status')).toHaveTextContent(SAVE_TITLE);
     expect(run).toHaveBeenCalledTimes(SOURCE_VERSION_COUNT);
+  });
+
+  it('uses source identity for unkeyed feedback, remembers equal-source dismissal and warns for a changed source', async () => {
+    const user = userEvent.setup();
+    const context = createMetadataRefreshFixture('small');
+    const run = vi.fn(() => Promise.reject(new Error('save failed')));
+    const owner = renderFeedbackOwners(
+      [context],
+      [{ id: METADATA_TASK_ID, run }],
+      false,
+      createAppQueryClient()
+    );
+    const warning = vi.spyOn(owner.notification(), 'warning');
+    const notice = await screen.findByRole('status');
+    const firstKey = warning.mock.calls[0][0].key;
+    await user.click(within(notice).getByRole('button', { name: /close/i }));
+    await completeNotificationLeave(notice);
+    await act(async () => owner.update(0, structuredClone(context)));
+    await waitFor(() => expect(run).toHaveBeenCalledTimes(EQUAL_SOURCE_CONTEXT_ATTEMPTS));
+    expect(warning).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+    const changedSource = structuredClone(context);
+    newestAssignment(changedSource.classFull).updatedAt = NEW_SOURCE_TIME;
+    await act(async () => owner.update(0, changedSource));
+    await waitFor(() => expect(warning).toHaveBeenCalledTimes(SOURCE_VERSION_COUNT));
+    expect(warning.mock.calls[1][0].key).not.toBe(firstKey);
+    expect(await screen.findByRole('status')).toHaveTextContent(SAVE_TITLE);
+    expect(run).toHaveBeenCalledTimes(CHANGED_SOURCE_ATTEMPTS);
+  });
+
+  it('publishes metadata failure feedback when the raw source contains null timestamps', async () => {
+    const context = createMetadataRefreshFixture('small');
+    context.classFull.assignments[FIRST_ASSIGNMENT_INDEX].updatedAt = null;
+    const owner = renderFeedbackOwners(
+      [context],
+      [metadataDescriptor(() => Promise.reject(new Error('invalid source timestamp')))],
+      false,
+      createAppQueryClient()
+    );
+    const warning = vi.spyOn(owner.notification(), 'warning');
+    expect(await screen.findByRole('status')).toHaveTextContent(SAVE_TITLE);
+    expect(warning).toHaveBeenCalledTimes(1);
   });
 
   it('logs one bounded task diagnostic with IDs and request correlation, never full context payloads', async () => {

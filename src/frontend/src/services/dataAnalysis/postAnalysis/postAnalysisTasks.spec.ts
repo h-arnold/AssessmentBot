@@ -1,6 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import * as metadataTask from './refreshABClassMetadata';
-import { PostAnalysisTaskRegistry } from './postAnalysisTasks';
+import {
+  createPostAnalysisTaskDescriptors,
+  REFRESH_AB_CLASS_METADATA_TASK_ID,
+} from './postAnalysisTasks';
+import { compareAssignmentNewestFirst } from './metadataProjection';
 import { ClassPartialSchema } from '@/services/googleClassrooms/classPartials.zod';
 import type { PostAnalysisTaskDescriptor } from './runPostAnalysisTasks';
 import {
@@ -10,24 +14,42 @@ import {
   newestAssignment,
 } from '@/test/abClass/metadataRefreshFixtures';
 
+const LATER_SOURCE_TIME = '2026-10-21T00:00:00.000Z';
+const FIRST_ASSIGNMENT_INDEX = 0;
+
 afterEach(() => {
   vi.restoreAllMocks();
   vi.resetAllMocks();
 });
 
-describe('PostAnalysisTaskRegistry metadata-only production list', () => {
+describe('production post-analysis task descriptors', () => {
+  it('shares the canonical task ID and orders equal timestamps by ascending assignment ID', () => {
+    expect(createPostAnalysisTaskDescriptors(() => SUMMARY_TIME)[0].id).toBe(
+      REFRESH_AB_CLASS_METADATA_TASK_ID
+    );
+    const first = { assignmentId: 'a', updatedAt: SUMMARY_TIME };
+    const second = { assignmentId: 'b', updatedAt: SUMMARY_TIME };
+    expect(compareAssignmentNewestFirst(first, second)).toBeLessThan(0);
+    expect(compareAssignmentNewestFirst(second, first)).toBeGreaterThan(0);
+    expect(
+      compareAssignmentNewestFirst(
+        { assignmentId: 'z', updatedAt: LATER_SOURCE_TIME },
+        { assignmentId: 'a', updatedAt: SUMMARY_TIME }
+      )
+    ).toBeLessThan(0);
+  });
   it('registers only metadata and forwards context plus the effect-owned clock without invoking it eagerly', async () => {
     const context = createMetadataRefreshFixture('small');
     const now = vi.fn(() => SUMMARY_TIME);
     const refresh = vi
       .spyOn(metadataTask, 'refreshABClassMetadata')
       .mockImplementation(() => Promise.resolve({ status: 'skipped', reason: 'unchanged' }));
-    const registry = new PostAnalysisTaskRegistry(now);
-    expect(registry.tasks.map((task: PostAnalysisTaskDescriptor) => task.id)).toEqual([
+    const tasks = createPostAnalysisTaskDescriptors(now);
+    expect(tasks.map((task: PostAnalysisTaskDescriptor) => task.id)).toEqual([
       'refreshABClassMetadata',
     ]);
     expect(now).not.toHaveBeenCalled();
-    await expect(registry.tasks[0].run(context)).resolves.toEqual({
+    await expect(tasks[0].run(context)).resolves.toEqual({
       status: 'skipped',
       reason: 'unchanged',
     });
@@ -45,8 +67,8 @@ describe('PostAnalysisTaskRegistry metadata-only production list', () => {
         classPartial,
       });
     });
-    const registry = new PostAnalysisTaskRegistry(() => SUMMARY_TIME);
-    await expect(registry.tasks[0].run(context)).resolves.toEqual({
+    const tasks = createPostAnalysisTaskDescriptors(() => SUMMARY_TIME);
+    await expect(tasks[0].run(context)).resolves.toEqual({
       status: 'succeeded',
       confirmedPersistence: true,
     });
@@ -54,7 +76,7 @@ describe('PostAnalysisTaskRegistry metadata-only production list', () => {
 
   it('keys attempts by class and assignment source version, not metadata or live weights', () => {
     const context = createMetadataRefreshFixture('small');
-    const descriptor = new PostAnalysisTaskRegistry(() => SUMMARY_TIME).tasks[0];
+    const descriptor = createPostAnalysisTaskDescriptors(() => SUMMARY_TIME)[0];
     expect(descriptor.getAttemptKey).toBeTypeOf('function');
     const key = descriptor.getAttemptKey!(context);
     const cacheRefresh = structuredClone(context);
@@ -68,4 +90,16 @@ describe('PostAnalysisTaskRegistry metadata-only production list', () => {
     otherClass.averagingResult.classId = 'other-class';
     expect(descriptor.getAttemptKey!(otherClass)).not.toBe(key);
   });
+
+  it.each([FIRST_ASSIGNMENT_INDEX, FIRST_ASSIGNMENT_INDEX + 1])(
+    'keeps raw attempt identity total when assignment %i has a null timestamp',
+    (nullIndex) => {
+      const context = createMetadataRefreshFixture('small');
+      context.classFull.assignments[nullIndex].updatedAt = null;
+      const descriptor = createPostAnalysisTaskDescriptors(() => SUMMARY_TIME)[0];
+      const key = descriptor.getAttemptKey!(context);
+      expect(key).toContain('null');
+      expect(descriptor.getAttemptKey!(structuredClone(context))).toBe(key);
+    }
+  );
 });

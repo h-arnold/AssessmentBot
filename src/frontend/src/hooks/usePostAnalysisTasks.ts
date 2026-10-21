@@ -14,6 +14,7 @@ import {
   type PostAnalysisTaskDescriptor,
   type PostAnalysisTaskOutcome,
 } from '@/services/dataAnalysis/postAnalysis/runPostAnalysisTasks';
+import { sourceVersionSignature } from '@/services/dataAnalysis/postAnalysis/postAnalysisTasks';
 
 interface PostAnalysisState {
   outcomes: PostAnalysisTaskOutcome[];
@@ -158,13 +159,7 @@ class PostAnalysisOwner {
   ): void {
     if (generation !== this.feedbackGeneration) return;
     const source =
-      typeof key === 'string'
-        ? key
-        : JSON.stringify(
-            key.classFull.assignments.map(function sourceVersion({ assignmentId, updatedAt }) {
-              return [assignmentId, updatedAt];
-            })
-          );
+      typeof key === 'string' ? key : sourceVersionSignature(key.classFull.assignments);
     this.feedback.show(notification, source, outcome);
   }
 }
@@ -174,7 +169,7 @@ class PostAnalysisOwner {
  * @param {readonly PostAnalysisTaskDescriptor[]} tasks - Ordered unique task descriptors.
  * @param {string | null} selectedClassId - Class ownership, independent of analysis readiness.
  * @returns {PostAnalysisState} Non-blocking per-task state and local technical Errors.
- * @remarks Register a descriptor in the production registry to add a task. Each
+ * @remarks Register a descriptor in the production task factory to add a task. Each
  * task owns eligibility and an optional source-version key; unkeyed tasks run for
  * each new successful context object. Metadata-only refreshes do not retry keyed
  * work, including failures. Attempts last for this mount, across class navigation.

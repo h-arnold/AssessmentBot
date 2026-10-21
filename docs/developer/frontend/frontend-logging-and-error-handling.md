@@ -131,7 +131,7 @@ Use context-aware APIs (`App.useApp`, `message.useMessage`, `notification.useNot
 ### Post-analysis metadata failures
 
 Shared feedback/invalidation is independently review-clean (5C). Both
-production averaging consumers call the shared hook directly. The narrow
+production averaging consumers call the shared page hook directly. The narrow
 keyboard seam was diagnosed and fixed in the shared E2E helper, and the full
 **303**-test browser run passed. Independent 5D review and the Section 5
 regression comparison are complete, with zero regressions and zero new failures.

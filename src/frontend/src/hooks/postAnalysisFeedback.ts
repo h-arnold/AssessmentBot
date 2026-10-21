@@ -1,5 +1,6 @@
 import type { App } from 'antd';
 import type { PostAnalysisTaskOutcome } from '@/services/dataAnalysis/postAnalysis/runPostAnalysisTasks';
+import { REFRESH_AB_CLASS_METADATA_TASK_ID } from '@/services/dataAnalysis/postAnalysis/postAnalysisTasks';
 
 type NotificationHost = ReturnType<typeof App.useApp>['notification'];
 
@@ -80,7 +81,7 @@ export class PostAnalysisFeedback {
    * @returns {boolean} Whether this is mounted metadata work.
    */
   private isMetadataOwner(outcome: PostAnalysisTaskOutcome): boolean {
-    return this.lifetime !== null && outcome.data.taskId === 'refreshABClassMetadata';
+    return this.lifetime !== null && outcome.data.taskId === REFRESH_AB_CLASS_METADATA_TASK_ID;
   }
 
   /** Disposes this owner's visible notices only; dismissal memory lasts the mount. */

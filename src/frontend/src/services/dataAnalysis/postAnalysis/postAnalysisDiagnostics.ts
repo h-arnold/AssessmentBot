@@ -2,6 +2,8 @@ import { ApiTransportError } from '@/errors/apiTransportError';
 import { logFrontendError } from '@/logging/frontendLogger';
 import { CanonicalMetadataTimestampSchema } from '@/services/abClass/abClassMetadata.zod';
 import type { PostAnalysisContext } from './postAnalysis.zod';
+import { compareAssignmentNewestFirst } from './metadataProjection';
+import { REFRESH_AB_CLASS_METADATA_TASK_ID } from './postAnalysisTasks';
 
 /** Logs bounded identifiers only, without analysis, metadata or student snapshots.
  * @param {string} taskId - Failed descriptor identity.
@@ -18,17 +20,12 @@ export function logPostAnalysisFailure(
 ): void {
   const assignments = context.classFull.assignments;
   const target =
-    taskId === 'refreshABClassMetadata'
+    taskId === REFRESH_AB_CLASS_METADATA_TASK_ID
       ? assignments
           .filter(
             (assignment) => CanonicalMetadataTimestampSchema.safeParse(assignment.updatedAt).success
           )
-          .toSorted((a, b) => {
-            return (
-              b.updatedAt!.localeCompare(a.updatedAt!) ||
-              a.assignmentId.localeCompare(b.assignmentId)
-            );
-          })[0]
+          .toSorted(compareAssignmentNewestFirst)[0]
       : undefined;
   logFrontendError('runPostAnalysisTasks', error, {
     taskId,

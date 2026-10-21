@@ -762,8 +762,8 @@ Frontend:
   ├── src/frontend/src/services/abClass/abClassMetadataService.ts
   │     → refreshABClassMetadataInQueue(), MetadataRefreshInput, RefreshOutcome
   ├── src/frontend/src/services/dataAnalysis/postAnalysis/metadataProjection.ts
-  │     → getMetadataRefreshDecision(), projectAverageScores(), mergeClassMetadata(),
-  │       MetadataRefreshSkipped, MetadataRefreshDecision
+  │     → getMetadataRefreshDecision(), compareAssignmentNewestFirst(), projectAverageScores(),
+  │       mergeClassMetadata(), MetadataRefreshSkipped, MetadataRefreshDecision
   ├── src/frontend/src/services/dataAnalysis/postAnalysis/refreshABClassMetadata.ts
   │     → refreshABClassMetadata(), MetadataRefreshContext (local execution only)
   ├── src/frontend/src/services/dataAnalysis/postAnalysis/postAnalysis.zod.ts
@@ -771,9 +771,13 @@ Frontend:
   ├── src/frontend/src/services/dataAnalysis/postAnalysis/runPostAnalysisTasks.ts
   │     → ordered runner and local descriptor/result/outcome handles (never wire data)
   ├── src/frontend/src/services/dataAnalysis/postAnalysis/postAnalysisTasks.ts
-  │     → PostAnalysisTaskRegistry; metadata-only descriptor with task-owned source key
+  │     → REFRESH_AB_CLASS_METADATA_TASK_ID, createPostAnalysisTaskDescriptors(now),
+  │       sourceVersionSignature(); metadata-only descriptor factory with task-owned source key
   ├── src/frontend/src/hooks/usePostAnalysisTasks.ts
-  │     → mount-owned post-commit attempts/state, required selected-class ownership and post-save refresh settlement; called directly by both averaging surfaces (5D)
+  │     → mount-owned post-commit attempts/state, required selected-class ownership and post-save refresh settlement
+  ├── src/frontend/src/hooks/usePagePostAnalysisTasks.ts
+  │     → shared ready-only page eligibility/context wrapper; memoised context and once-per-mount
+  │       descriptor list, called directly by both averaging surfaces (5D)
   ├── src/frontend/src/hooks/postAnalysisInvalidation.ts
   │     → both required query invalidations; refresh failures log bounded confirmedPersistence: true and return a confirmed-persistence failed outcome
   ├── src/frontend/src/hooks/postAnalysisFeedback.ts
@@ -876,23 +880,23 @@ Identifier-integrity regression suites (this cycle):
 > supplied snapshot only: the backend never calculates, refreshes, migrates or backfills it, so a
 > previously supplied snapshot may become stale.
 
-| Boundary                                             | Status                    | Delivered behaviour / current position                                                                                                                                                                                                                                                                                      |
-| ---------------------------------------------------- | ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| ABClass model construction/restoration               | Implemented               | Actual omission normalises to `null`; explicitly present `undefined` and invalid values fail validation.                                                                                                                                                                                                                    |
-| Explicit replacement                                 | Implemented               | `setMetadata(value)` validates/copies the complete value before replacing; `null` clears and `undefined` is invalid.                                                                                                                                                                                                        |
-| Model serialisation                                  | Implemented               | `toJSON()` and `toPartialJSON()` always emit independently copied, revalidated `metadata`.                                                                                                                                                                                                                                  |
-| Whole-class and selective editable write preparation | Implemented               | Payloads are prepared before the first full-store mutation; the partial projection is validated against the caller snapshot and rejects with zero writes on invalid/differing values.                                                                                                                                       |
-| Field-scoped roster persistence                      | Implemented               | An existing registry row is patched with exactly `className`, `classOwner`, `teachers` (stored `_id` filter); its stored metadata is never read, validated, copied or rewritten.                                                                                                                                            |
-| Controller request validation                        | Implemented               | `ABClassValidation._validateRequestMetadata()` validates explicitly supplied metadata before any record read/roster/write and tags only that invocation's typed failure with request provenance (Section 7).                                                                                                                |
-| Response mapping (partial/summary/full reads)        | Implemented               | `_normaliseClassPartial()`, `_buildClassSummary()` and `_toReadView()` emit validated, detached `metadata`; absent becomes `null`, present invalid fails as an integrity error.                                                                                                                                             |
-| Transport error adaptation                           | Implemented               | Only a request-provenance `ABClassMetadataValidationError` adapts to `ApiValidationError`/`INVALID_REQUEST` (path-bearing `message`, `isRetriable: false`, no added envelope fields); every other failure keeps its identity and generic `INTERNAL_ERROR`.                                                                  |
-| Frontend shared metadata schema                      | Implemented               | `services/abClass/abClassMetadata.zod.ts` validates the complete nullable snapshot against the backend domain rules; both class read schemas consume it (frontend workstream Sections 1–2).                                                                                                                                 |
-| Frontend class-read adoption                         | Implemented               | `ClassPartialSchema`/`ClassFullSchema` require the shared nullable schema; legacy backend absence arrives as explicit `null`, missing/malformed fields fail parsing, and unrelated field-stripping plus the separate not-found response wrapper are unchanged.                                                              |
-| Frontend mutation wrappers                           | Implemented               | Strict request schemas and queued `upsertABClass`/`updateABClass` services parse partial responses (frontend Section 3 complete and independently review-clean; zero new regressions).                                                                                                                                      |
-| Frontend metadata writer/projection/task             | Implemented               | Section 4 timestamp gate, weighted projection and queued read/recheck/calculate/merge/write; complete and independently review-clean, with zero new regressions.                                                                                                                                                            |
-| Frontend shared post-analysis lifecycle              | Implemented; review-clean | 5B context/outcome Zod, ordered runner/registry and mount-owned hook; both averaging surfaces now call it directly (5D).                                                                                                                                                                                                    |
-| Frontend feedback/invalidation                       | Implemented; review-clean | 5C extends failed outcome data with optional confirmed persistence; cached attempts observe both refresh settlements and own persistent warnings.                                                                                                                                                                           |
-| Frontend consumer activation                         | Implemented; review-clean | 5D binds both averaging surfaces directly with a memoised unsliced `classFull`, live definition partials and the successful averaged result. Independent 5D review is **PASS — CLEAN 5D**; the Section 5 comparison reports 0 regressions, 0 new failures and 5 fixes (baseline overall **FAILING** only for backend lint). |
+| Boundary                                             | Status                    | Delivered behaviour / current position                                                                                                                                                                                                                                                                                                          |
+| ---------------------------------------------------- | ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ABClass model construction/restoration               | Implemented               | Actual omission normalises to `null`; explicitly present `undefined` and invalid values fail validation.                                                                                                                                                                                                                                        |
+| Explicit replacement                                 | Implemented               | `setMetadata(value)` validates/copies the complete value before replacing; `null` clears and `undefined` is invalid.                                                                                                                                                                                                                            |
+| Model serialisation                                  | Implemented               | `toJSON()` and `toPartialJSON()` always emit independently copied, revalidated `metadata`.                                                                                                                                                                                                                                                      |
+| Whole-class and selective editable write preparation | Implemented               | Payloads are prepared before the first full-store mutation; the partial projection is validated against the caller snapshot and rejects with zero writes on invalid/differing values.                                                                                                                                                           |
+| Field-scoped roster persistence                      | Implemented               | An existing registry row is patched with exactly `className`, `classOwner`, `teachers` (stored `_id` filter); its stored metadata is never read, validated, copied or rewritten.                                                                                                                                                                |
+| Controller request validation                        | Implemented               | `ABClassValidation._validateRequestMetadata()` validates explicitly supplied metadata before any record read/roster/write and tags only that invocation's typed failure with request provenance (Section 7).                                                                                                                                    |
+| Response mapping (partial/summary/full reads)        | Implemented               | `_normaliseClassPartial()`, `_buildClassSummary()` and `_toReadView()` emit validated, detached `metadata`; absent becomes `null`, present invalid fails as an integrity error.                                                                                                                                                                 |
+| Transport error adaptation                           | Implemented               | Only a request-provenance `ABClassMetadataValidationError` adapts to `ApiValidationError`/`INVALID_REQUEST` (path-bearing `message`, `isRetriable: false`, no added envelope fields); every other failure keeps its identity and generic `INTERNAL_ERROR`.                                                                                      |
+| Frontend shared metadata schema                      | Implemented               | `services/abClass/abClassMetadata.zod.ts` validates the complete nullable snapshot against the backend domain rules; both class read schemas consume it (frontend workstream Sections 1–2).                                                                                                                                                     |
+| Frontend class-read adoption                         | Implemented               | `ClassPartialSchema`/`ClassFullSchema` require the shared nullable schema; legacy backend absence arrives as explicit `null`, missing/malformed fields fail parsing, and unrelated field-stripping plus the separate not-found response wrapper are unchanged.                                                                                  |
+| Frontend mutation wrappers                           | Implemented               | Strict request schemas and queued `upsertABClass`/`updateABClass` services parse partial responses (frontend Section 3 complete and independently review-clean; zero new regressions).                                                                                                                                                          |
+| Frontend metadata writer/projection/task             | Implemented               | Section 4 timestamp gate, weighted projection and queued read/recheck/calculate/merge/write; complete and independently review-clean, with zero new regressions.                                                                                                                                                                                |
+| Frontend shared post-analysis lifecycle              | Implemented; review-clean | 5B context/outcome Zod, ordered runner/descriptor factory and mount-owned hook; both averaging surfaces call the shared page hook (5D).                                                                                                                                                                                                         |
+| Frontend feedback/invalidation                       | Implemented; review-clean | 5C extends failed outcome data with optional confirmed persistence; cached attempts observe both refresh settlements and own persistent warnings.                                                                                                                                                                                               |
+| Frontend consumer activation                         | Implemented; review-clean | 5D binds both averaging surfaces through the shared page hook with a memoised unsliced `classFull`, live definition partials and the successful averaged result. Independent 5D review is **PASS — CLEAN 5D**; the Section 5 comparison reports 0 regressions, 0 new failures and 5 fixes (baseline overall **FAILING** only for backend lint). |
 
 The delivered contract adds one compact assessment-summary field, `metadata`, to both the full
 ABClass document and the `abclass_partials` registry. The ABClass model's full and partial
@@ -1439,11 +1443,13 @@ warnings with zero errors. Overall status remains baseline **FAILING**, not an a
 Section 5 is complete with no remaining gate.
 
 Checkpoint 5D activates both averaging surfaces. `useClassPageData` and
-`useHeatmapsPageData` construct the hook context only for a `ready` surface from the complete
-unsliced `classFull`, live `assignmentDefinitionPartials` and the successful `averagingResult`;
-otherwise they pass `null`. Each memoises that context on its inputs and constructs the
-registry once per mount, so no new context object identity is manufactured per render. Shared
-metadata freshness stays task-local and is not a global eligibility gate for future tasks.
+`useHeatmapsPageData` call the shared page hook `usePagePostAnalysisTasks`, which forms the
+context only for a `ready` surface from the complete unsliced `classFull`, live
+`assignmentDefinitionPartials` and the successful `averagingResult`; otherwise it passes
+`null`. The page hook memoises that context on its inputs and creates the descriptor list once
+per mount, so no new context object identity is manufactured per render; the feature hooks keep
+no per-feature context, descriptor list or status alias. Shared metadata freshness stays
+task-local and is not a global eligibility gate for future tasks.
 No wire, backend, persistence or analyser shape changes. Supplied checkpoint evidence:
 **11** initial RED consumer-binding cases plus **2** RED context-identity regressions (the
 pre-memoisation fresh object caused a render/attach/publish loop) now pass **13** binding
@@ -1510,9 +1516,9 @@ errors; overall status remains baseline **FAILING**, not an all-green gate.
 | Full/partial class-read adoption | Implemented               | Both schemas require the shared nullable schema. Legacy backend absence must arrive as explicit `null`; missing or malformed metadata fails parsing. Unrelated unknown-field stripping and the separate not-found response wrapper are unchanged. |
 | Validated mutation wrappers      | Implemented               | Section 3C adds strict adjacent request schemas and queued services, with optional whole metadata replacement. Section 3 is complete and independently review-clean, with zero new regressions.                                                   |
 | Metadata writer/projection/task  | Implemented               | Section 4 owns pure freshness/projection, queued rolling persistence and the task entrypoint; complete and independently review-clean, with zero new regressions.                                                                                 |
-| Shared post-analysis lifecycle   | Implemented; review-clean | 5B context/outcome Zod, ordered runner/registry and shared hook; `DataAnalysisService` stays synchronous and I/O-free.                                                                                                                            |
+| Shared post-analysis lifecycle   | Implemented; review-clean | 5B context/outcome Zod, ordered runner/descriptor factory and shared hooks (`usePostAnalysisTasks`, page wrapper `usePagePostAnalysisTasks`); `DataAnalysisService` stays synchronous and I/O-free.                                               |
 | Feedback/invalidation            | Implemented; review-clean | 5C confirmed-save refresh settlement and owned persistent warnings; local outcome extension only.                                                                                                                                                 |
-| Consumer activation              | Implemented; review-clean | Both averaging surfaces call the shared hook directly with memoised unsliced class data; independent 5D review is **PASS — CLEAN 5D** and the Section 5 comparison reports 0 regressions, 0 new failures and 5 fixes.                             |
+| Consumer activation              | Implemented; review-clean | Both averaging surfaces call the shared page hook with memoised unsliced class data; independent 5D review is **PASS — CLEAN 5D** and the Section 5 comparison reports 0 regressions, 0 new failures and 5 fixes.                                 |
 
 #### Implemented shared schema
 
@@ -1603,7 +1609,8 @@ persisted comparison evidence are recorded in
 Actual owners (import directly; no facade/barrel):
 
 - `services/dataAnalysis/postAnalysis/metadataProjection.ts` — pure
-  `getMetadataRefreshDecision`, `projectAverageScores` and `mergeClassMetadata`.
+  `getMetadataRefreshDecision`, shared `compareAssignmentNewestFirst`, `projectAverageScores`
+  and `mergeClassMetadata`.
 - `services/dataAnalysis/postAnalysis/refreshABClassMetadata.ts` — task entrypoint
   `refreshABClassMetadata(context, now)` and the cheap cached-class gate.
 - `services/abClass/abClassMetadataService.ts` —
@@ -1666,11 +1673,15 @@ Replacement and persistence:
 `postAnalysis.zod.ts` validates complete class/live definitions/successful averaging context
 with matching class identities and serialisable pending/succeeded/skipped/failed outcome data.
 `runPostAnalysisTasks.ts` owns ordered unique descriptors and isolated normalised failures;
-`postAnalysisTasks.ts` constructs only the metadata descriptor with an injected clock and
-task-owned class/source-version identity. `hooks/usePostAnalysisTasks.ts` owns post-commit,
+`postAnalysisTasks.ts` exposes the descriptor factory `createPostAnalysisTaskDescriptors(now)`
+returning only the metadata descriptor, with an injected clock, the canonical
+`REFRESH_AB_CLASS_METADATA_TASK_ID` and task-owned class/source-version identity through the
+shared `sourceVersionSignature()` helper. `hooks/usePostAnalysisTasks.ts` owns post-commit,
 mount-local attempt promises, StrictMode reattachment and stale-publication cleanup, not
-network cancellation. Its required third argument, `selectedClassId`, tracks class ownership
-separately from analysis readiness. Unkeyed future tasks use input-context identity
+network cancellation. Its page-level companion `hooks/usePagePostAnalysisTasks.ts` owns the
+ready-only eligibility gate and the once-per-mount descriptor list used by both averaging
+surfaces. `usePostAnalysisTasks`'s required third argument, `selectedClassId`, tracks class
+ownership separately from analysis readiness. Unkeyed future tasks use input-context identity
 independently of metadata.
 
 Exact field tables and the separate **local**, non-wire descriptor/function/Error handles

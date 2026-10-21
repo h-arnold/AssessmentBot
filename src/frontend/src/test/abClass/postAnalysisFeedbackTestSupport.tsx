@@ -5,7 +5,7 @@ import { expect } from 'vitest';
 import { usePostAnalysisTasks } from '@/hooks/usePostAnalysisTasks';
 import type { PostAnalysisContext } from '@/services/dataAnalysis/postAnalysis/postAnalysis.zod';
 import type { PostAnalysisTaskDescriptor } from '@/services/dataAnalysis/postAnalysis/runPostAnalysisTasks';
-import { PostAnalysisTaskRegistry } from '@/services/dataAnalysis/postAnalysis/postAnalysisTasks';
+import { createPostAnalysisTaskDescriptors } from '@/services/dataAnalysis/postAnalysis/postAnalysisTasks';
 import type { createAppQueryClient } from '@/query/queryClient';
 import { renderWithFrontendProviders } from '../renderWithFrontendProviders';
 import { SUMMARY_TIME } from './metadataRefreshFixtures';
@@ -25,7 +25,7 @@ export const REFRESH_DESCRIPTION =
 export function metadataDescriptor(
   run: PostAnalysisTaskDescriptor['run']
 ): PostAnalysisTaskDescriptor {
-  return { ...new PostAnalysisTaskRegistry(() => SUMMARY_TIME).tasks[0], run };
+  return { ...createPostAnalysisTaskDescriptors(() => SUMMARY_TIME)[0], run };
 }
 
 type HookState = ReturnType<typeof usePostAnalysisTasks>;

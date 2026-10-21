@@ -244,11 +244,11 @@ npm run test:synthetic -- tests/synthetic-analysis/syntheticABClassMetadataRound
 Frontend refresh projection/task/writer owners are complete and independently
 review-clean, with zero new regressions in the Section 4 comparison. They use actual assessment evidence,
 not supplied metadata scores, for full-class and isolated-target calculation.
-The generic context/result/outcome schemas, ordered runner, metadata-only registry
-and shared post-commit hook passed independent 5B and 5C reviews, and the consumer
+The generic context/result/outcome schemas, ordered runner, metadata-only descriptor
+factory and shared post-commit hook passed independent 5B and 5C reviews, and the consumer
 wiring passed independent 5D review.
 Query invalidation and warning feedback are independently review-clean.
-Both feature consumers call the shared hook directly. The narrow standalone
+Both feature consumers call the shared page hook directly. The narrow standalone
 keyboard seam was diagnosed and fixed in the shared E2E helper, and the full
 **303**-test browser run passed. The Section 5 regression comparison recorded zero
 regressions and zero new failures. Section 6 adds test-only Node dispatcher and

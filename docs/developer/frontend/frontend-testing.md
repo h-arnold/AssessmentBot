@@ -199,9 +199,13 @@ implemented. The 5C report is
   source context, matching class identity, selected display evidence and strict
   serialisable outcome data without callbacks or technical Errors.
 - `runPostAnalysisTasks.spec.ts` in that folder: awaited ordering, duplicate-ID
-  rejection before work, empty registry, failure isolation and local Error identity.
-- `postAnalysisTasks.spec.ts`: metadata-only registration, lazy constructor-supplied
-  clock, confirmed-save mapping and source keys independent of metadata/live weights.
+  rejection before work, empty descriptor list, failure isolation and local Error identity.
+- `postAnalysisTasks.spec.ts`: canonical task ID/descriptor factory, newest-first/ascending-ID
+  comparator ordering, lazy factory-supplied clock, confirmed-save mapping and source keys
+  independent of metadata/live weights.
+- `hooks/usePagePostAnalysisTasks.spec.tsx`: shared page eligibility, memoised ready-only
+  context, `null` for each missing input, stable descriptor identity and retained
+  selected-class ownership when readiness becomes blocking.
 - `hooks/usePostAnalysisTasks.state.spec.tsx`: post-commit/null gating, pending state
   and individually reported failures without replacing successful analysis.
 - `hooks/usePostAnalysisTasks.lifecycle.spec.tsx`: pending StrictMode reattachment,
@@ -213,12 +217,12 @@ implemented. The 5C report is
   caches the failed attempt and still allows later independent work.
 - `features/classPage/useClassPageData.postAnalysis.spec.ts` (6 cases) and
   `features/taskHeatmap/useHeatmapsPageData.postAnalysis.spec.ts` (7 cases): mock
-  only the shared hook and prove each consumer passes the complete unsliced class,
-  live definitions, the successful averaging result, the committed selected class ID
-  and the stable metadata-only registry, or `null` for loading/failure/adaptation-blocking
-  surfaces. Both include a memoised-context identity case so an unstable object cannot
-  re-attach the effect each render. These bind features only; lifecycle contracts stay
-  in the hook suites.
+  only the lower-level lifecycle hook and prove each feature's shared page hook passes
+  the complete unsliced class, live definitions, the successful averaging result, the
+  committed selected class ID and the stable descriptor list from the canonical factory,
+  or `null` for loading/failure/adaptation-blocking surfaces. Both include a
+  memoised-context identity case so an unstable object cannot re-attach the effect
+  each render. These bind features only; lifecycle contracts stay in the hook suites.
 
 The harness is `src/test/abClass/postAnalysisHookTestSupport.tsx`; realistic contexts
 reuse the existing metadata refresh fixtures and their historical-source limitation.

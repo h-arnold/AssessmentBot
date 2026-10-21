@@ -278,7 +278,7 @@ Seven of eight checks passed; backend lint alone retains the same six baseline `
 warnings with zero errors. Overall status remains baseline **FAILING**, not an all-green gate.
 No Section 4 blocker remains. Checkpoint 5A is review-clean and introduces no functional
 data-shape change. Checkpoint **5B is independently review-clean**: shared
-context/outcome Zod, ordered runner/registry and mount-owned hook are documented below.
+context/outcome Zod, ordered runner/descriptor factory and mount-owned hook are documented below.
 Verdict: **PASS — CLEAN 5B**, `.opencode/scratchpad/review-section5b-final-clean.md`
 (47 lifecycle cases). 5C is implemented and independently review-clean:
 **PASS — CLEAN 5C**, `.opencode/scratchpad/review-section5c-independent.md`, with no
@@ -287,11 +287,11 @@ coverage **294 files / 2,840 tests** with all thresholds met, `npm run typecheck
 verify-only frontend lint (**zero errors / 19 baseline `max-lines` warnings**) and
 `git diff --check`. Supplied handoff evidence recorded 72 lifecycle cases and 336 combined
 focused tests passed; the independent re-run above supersedes it as sign-off. Both production
-consumers invoke the shared hook directly (5D complete and independently review-clean; the
-Section 5 comparison reports 0 regressions, 0 new failures and 5 fixes). Frontend Section 6's
-test-only browser/dispatcher acceptance work is complete and independently review-clean
-(**CLEAN — Section 6**), with fresh reviewer runs passing the complete browser suite at
-**313 tests** with `--retries=0`, the full synthetic project at **34 files / 384 tests**,
+consumers invoke the shared page hook `usePagePostAnalysisTasks` (5D complete and independently
+review-clean; the Section 5 comparison reports 0 regressions, 0 new failures and 5 fixes).
+Frontend Section 6's test-only browser/dispatcher acceptance work is complete and independently
+review-clean (**CLEAN — Section 6**), with fresh reviewer runs passing the complete browser suite
+at **313 tests** with `--retries=0`, the full synthetic project at **34 files / 384 tests**,
 all-project type-checking and verify-only frontend lint (zero errors / 19 baseline warnings).
 Its persisted comparison at `2026-10-21T00:43:04.269Z` reports **0 regressions, 0 new failures
 and 5 fixes**; only the six baseline backend-lint warnings remain, so overall status stays
@@ -406,12 +406,12 @@ runs. Helper discovery/status is owned by
 recorded in `.opencode/scratchpad/review-section5c-independent.md**. This extends only frontend
 in-memory validation/execution; backend shapes and analyser output are unchanged.
 Class-page/standalone Heatmaps activation (5D) is complete and independently review-clean, and
-both surfaces call the hook directly with an unsliced class, live definitions and the
-successful averaged result. Frontend Section 6's test-only browser/dispatcher acceptance work
-is complete and independently review-clean (**CLEAN — Section 6**), with fresh reviewer runs
-passing the complete browser suite at **313 tests** with `--retries=0`, the full synthetic
-project at **34 files / 384 tests**, all-project type-checking and verify-only frontend lint
-(zero errors / 19 baseline warnings). Its persisted comparison (the Section 6 run at
+both surfaces call the shared page hook `usePagePostAnalysisTasks`with an unsliced class, live
+definitions and the successful averaged result. Frontend Section 6's test-only browser/dispatcher
+acceptance work is complete and independently review-clean (**CLEAN — Section 6**), with fresh
+reviewer runs passing the complete browser suite at **313 tests** with`--retries=0`, the full
+synthetic project at **34 files / 384 tests**, all-project type-checking and verify-only frontend
+lint (zero errors / 19 baseline warnings). Its persisted comparison (the Section 6 run at
 `2026-10-21T00:43:04.269Z`) reports **0 regressions, 0 new failures and 5 fixes**; only the six
 baseline backend-lint warnings remain, so overall status stays baseline **FAILING**. The
 Section 7 canonical documentation audit is complete and independently review-clean (**CLEAN —
@@ -435,8 +435,8 @@ The outer `z.strictObject` rejects extra keys and refines equality of
 copies schema-owned nested data. Nested owners retain their existing strict/strip rules;
 this is not metadata-style raw-prototype validation. The hook parses non-null context
 after commit before any task starts. The runner accepts a trusted typed context and does
-not independently parse it. Invalid context/registry rejects the lifecycle boundary, not
-an individual task. Passing `null` to the hook explicitly requests no work and clears
+not independently parse it. Invalid context or descriptor-list validation rejects the lifecycle
+boundary, not an individual task. Passing `null` to the hook explicitly requests no work and clears
 published outcomes; it is not a nullable member of `PostAnalysisContextSchema`. A `null`
 context for the unchanged `selectedClassId` indicates analysis readiness only, not class
 departure: it clears published outcomes but leaves feedback ownership and a pending
@@ -488,7 +488,7 @@ serialisable local data, not a function handle or wire payload.
 
 | Contract                     | Field             | Type                                                                                        | Notes                                                                                                                                                                                |
 | ---------------------------- | ----------------- | ------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `PostAnalysisTaskDescriptor` | `id`              | `string` (readonly)                                                                         | Registry validation rejects empty or duplicate IDs before any task starts.                                                                                                           |
+| `PostAnalysisTaskDescriptor` | `id`              | `string` (readonly)                                                                         | Task-list validation rejects empty or duplicate IDs before any task starts.                                                                                                          |
 | Same                         | `run`             | `(context: PostAnalysisContext) => PostAnalysisTaskResult\|Promise<PostAnalysisTaskResult>` | Required local operation; no function enters a payload.                                                                                                                              |
 | Same                         | `getAttemptKey`   | `((context: PostAnalysisContext) => string)\|undefined`                                     | Optional task-owned mount-local identity; not a global metadata freshness gate.                                                                                                      |
 | `PostAnalysisTaskResult`     | `status`          | `'succeeded'\|'skipped'`                                                                    | Succeeded permits optional `confirmedPersistence?: true`; skipped requires the same three-value reason union above. Failure is thrown/rejected, not returned by this typed contract. |
@@ -501,18 +501,26 @@ serialisable local data, not a function handle or wire payload.
 IDs, awaits each task, validates its result before adding descriptor-owned taskId and retains each
 failure without blocking later independent tasks. Throws, rejections and result-parse
 failures become failed outcomes. `postAnalysisDiagnostics.ts` owns the shared bounded
-diagnostic: taskId/classId, optional newest canonical source assignmentId for metadata,
-optional `confirmedPersistence: true` on post-save refresh failures, and available
+diagnostic: taskId/classId, optional newest canonical source assignmentId for metadata (ordered
+by the shared `compareAssignmentNewestFirst` comparator), optional `confirmedPersistence: true`
+on post-save refresh failures, and available
 `ApiTransportError` requestId/errorCode. No full analysis/context payload,
 student/roster data or raw metadata snapshot is added to task-owned diagnostics.
 Existing transport parameter/debug and bounded response-preview diagnostics are unchanged.
 There is no task retry policy, dependency graph or abort handle.
 
-`postAnalysisTasks.ts` → `new PostAnalysisTaskRegistry(now: () => string)` constructs only
-`refreshABClassMetadata`. Construction starts no work; the injected clock remains read
-only when preparing an actual changed write. Its descriptor maps writer `saved` to
-`{ status: 'succeeded', confirmedPersistence: true }`, forwarding skipped results unchanged;
-the writer's returned `classPartial` is not included in lifecycle outcome data.
+`postAnalysisTasks.ts` → `createPostAnalysisTaskDescriptors(now: () => string)` returns the
+stable descriptor list containing only `refreshABClassMetadata`. Creating descriptors starts no
+work; the injected clock remains read only when preparing an actual changed write. The
+descriptor maps writer `saved` to `{ status: 'succeeded', confirmedPersistence: true }`,
+forwarding skipped results unchanged; the writer's returned `classPartial` is not included in
+lifecycle outcome data. The same module exports `REFRESH_AB_CLASS_METADATA_TASK_ID` as the
+single task-ID constant consumed by feedback, invalidation and diagnostics, and
+`sourceVersionSignature(assignments)` as the shared raw ID/time identity, preserving
+supplied values and order, used by both the metadata attempt key and the unkeyed
+feedback fallback. Newest-first ordering is owned once by
+`compareAssignmentNewestFirst` in `metadataProjection.ts` and applies to canonical
+target selection and diagnostics, not to source serialisation.
 
 #### Attempt identity and ownership
 
@@ -526,8 +534,8 @@ tasks are therefore independent of metadata source versions.
 - Metadata's key is JSON of classId plus newest target assignmentId/updatedAt, or
   `noAssignments`. It computes selection with metadata set to null, ignoring stored
   metadata, scores and live weightings. Invalid candidate timestamps instead key by
-  classId and the raw ordered assignment ID/time list, letting the task fail normally
-  without blocking independent tasks.
+  classId and the raw assignment ID/time list in supplied order, letting the task fail
+  normally without blocking independent tasks.
 - Key-function failure is routed through the runner as a task failure and cached using
   input-object identity. Every settled outcome, including failure, stays cached for this
   mount across navigation. New source keys/new unkeyed context objects or a remount permit
@@ -550,11 +558,13 @@ tasks are therefore independent of metadata source versions.
   promise through required post-save invalidation before settlement; reattachment does not
   repeat invalidations or warnings. Both production surface owners are active and 5D
   review-clean.
-- Each 5D consumer memoises the non-null context per input set and constructs the registry once
-  per mount. A fresh context object per render would manufacture a new unkeyed attempt every
-  render; consumer-owned memoisation is the production loop guard, not a shared global metadata
-  eligibility gate (supplied evidence: 2 RED identity regressions). A non-ready surface passes
-  `null` explicitly, which requests no work but does not revoke the selected-class owner.
+- Both 5D consumers call the shared page hook `hooks/usePagePostAnalysisTasks.ts`, which
+  memoises the non-null context per input set and creates the descriptor list once per mount.
+  The feature hooks keep no per-feature context, descriptor list or status alias. A fresh
+  context object per render would manufacture a new unkeyed attempt every render; the page
+  hook's memoisation is the production loop guard, not a shared global metadata eligibility gate
+  (supplied evidence: 2 RED identity regressions). A non-ready surface passes `null` explicitly,
+  which requests no work but does not revoke the selected-class owner.
 
 #### Confirmed persistence and refresh settlement
 
@@ -596,8 +606,8 @@ technical Error rendering. The host is the required existing `App.useApp().notif
 context: production code declares no no-host fallback and emits no substitute channel, so a
 missing or incomplete host fails loudly at the completion boundary. Identity is JSON of
 mount-owned React `useId`, the committed selected classId, taskId and source identity.
-Keyed tasks use their attempt key; the unkeyed fallback uses the ordered assignment ID/time
-list. Shown-key memory lasts the mount, including after dismissal or navigation, so
+Keyed tasks use their attempt key; the unkeyed fallback uses the raw assignment ID/time
+list in supplied order. Shown-key memory lasts the mount, including after dismissal or navigation, so
 same-version effect replay does not reopen a notice. Closing removes only visible-key
 ownership; a committed class change/deselection and actual unmount destroy only this owner's
 visible keys. Microtask disposal tolerates synchronous StrictMode replay.
@@ -1147,7 +1157,7 @@ Class-page adapter:
    > Section 4 data-shapes audit. Origin: the new frontend projection/writer, with no
    > analyser or backend schema change.
 
-5. **Aligned** — 5B's registry translates writer `saved`/`classPartial` into shared
+5. **Aligned** — 5B's metadata descriptor translates writer `saved`/`classPartial` into shared
    `succeeded`/`confirmedPersistence` state, without persisting the display result or
    transporting local Errors/functions. Context identity equality is checked by the
    hook; completeness and successful-run provenance remain caller responsibilities.
@@ -1366,27 +1376,29 @@ Metric display: `src/frontend/src/services/dataAnalysis/metricDisplay/`
 Class-page adapter schema: `src/frontend/src/features/classPage/classPageAdapter.zod.ts`
 
 Metadata refresh execution companions (Section 4 complete and independently review-clean; zero new regressions):
-├── `src/frontend/src/services/dataAnalysis/postAnalysis/metadataProjection.ts` → pure decision, metric mapping, rolling merge; `MetadataRefreshSkipped`, `MetadataRefreshDecision`
+├── `src/frontend/src/services/dataAnalysis/postAnalysis/metadataProjection.ts` → pure decision, shared newest-first comparator, metric mapping, rolling merge; `MetadataRefreshSkipped`, `MetadataRefreshDecision`
 ├── `src/frontend/src/services/dataAnalysis/postAnalysis/refreshABClassMetadata.ts` → task entrypoint; `MetadataRefreshContext`
 └── `src/frontend/src/services/abClass/abClassMetadataService.ts` → reserved-slot writer; `MetadataRefreshInput`, `RefreshOutcome`
 
 Shared lifecycle companions (5B and 5C independently review-clean):
 ├── `src/frontend/src/services/dataAnalysis/postAnalysis/postAnalysis.zod.ts` → `PostAnalysisContextSchema`, `PostAnalysisTaskResultSchema`, `PostAnalysisTaskOutcomeDataSchema`, inferred data types
 ├── `src/frontend/src/services/dataAnalysis/postAnalysis/runPostAnalysisTasks.ts` → ordered runner, ID validation, local descriptor/result/outcome types
-├── `src/frontend/src/services/dataAnalysis/postAnalysis/postAnalysisTasks.ts` → clock-injected metadata-only registry and task-owned source identity
-├── `src/frontend/src/services/dataAnalysis/postAnalysis/postAnalysisDiagnostics.ts` → bounded task/refresh failure identifiers, available correlation and optional `confirmedPersistence: true`
+├── `src/frontend/src/services/dataAnalysis/postAnalysis/postAnalysisTasks.ts` → canonical metadata task ID, clock-injected metadata-only descriptor factory, shared source-version signature and attempt key
+├── `src/frontend/src/services/dataAnalysis/postAnalysis/postAnalysisDiagnostics.ts` → bounded task/refresh failure identifiers, shared comparator, available correlation and optional `confirmedPersistence: true`
 ├── `src/frontend/src/hooks/usePostAnalysisTasks.ts` → post-commit mount-owned attempt/state lifecycle with required selected-class ownership, including post-save settlement
+├── `src/frontend/src/hooks/usePagePostAnalysisTasks.ts` → shared ready-only page eligibility/context wrapper; memoised context and once-per-mount descriptor list for both averaging surfaces
 ├── `src/frontend/src/hooks/postAnalysisInvalidation.ts` → both required query invalidations; refresh failures log bounded `confirmedPersistence: true` and return a confirmed-persistence failed outcome
 └── `src/frontend/src/hooks/postAnalysisFeedback.ts` → mount/selected-class/task/source-owned persistent warnings with required App host, dismissal memory and cleanup
 
 Production consumer activation (5D): **complete and independently review-clean**; both
-averaging surfaces invoke the hook directly with memoised unsliced context, and the Section 5
-comparison reports 0 regressions, 0 new failures and 5 fixes. Frontend Section 6's test-only
-browser and dispatcher acceptance work is complete and independently review-clean (**CLEAN —
-Section 6**), with fresh reviewer runs passing the complete browser suite at **313 tests** with
-`--retries=0`, the full synthetic project at **34 files / 384 tests**, all-project type-checking
-and verify-only frontend lint (zero errors / 19 baseline warnings). Its persisted comparison at
-`2026-10-21T00:43:04.269Z` reports **0 regressions, 0 new failures and 5 fixes**; only the six
+averaging surfaces invoke the shared page hook `usePagePostAnalysisTasks` with memoised unsliced
+context, and the Section 5 comparison reports 0 regressions, 0 new failures and 5 fixes.
+Frontend Section 6's test-only browser and dispatcher acceptance work is complete and
+independently review-clean (**CLEAN — Section 6**), with fresh reviewer runs passing the
+complete browser suite at **313 tests** with `--retries=0`, the full synthetic project at
+**34 files / 384 tests**, all-project type-checking and verify-only frontend lint (zero errors /
+19 baseline warnings). Its persisted comparison at `2026-10-21T00:43:04.269Z` reports
+**0 regressions, 0 new failures and 5 fixes**; only the six
 baseline backend-lint warnings remain, so overall status stays baseline **FAILING**. The
 Section 7 canonical documentation audit is complete and independently review-clean (**CLEAN —
 Section 7**, `.opencode/scratchpad/review-final-frontend-abclass-metadata.md`); the final

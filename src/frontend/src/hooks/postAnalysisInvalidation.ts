@@ -4,6 +4,7 @@ import { toError } from '@/errors/normaliseUnknownError';
 import { logPostAnalysisFailure } from '@/services/dataAnalysis/postAnalysis/postAnalysisDiagnostics';
 import type { PostAnalysisContext } from '@/services/dataAnalysis/postAnalysis/postAnalysis.zod';
 import type { PostAnalysisTaskOutcome } from '@/services/dataAnalysis/postAnalysis/runPostAnalysisTasks';
+import { REFRESH_AB_CLASS_METADATA_TASK_ID } from '@/services/dataAnalysis/postAnalysis/postAnalysisTasks';
 
 /** Completes a confirmed metadata attempt with both required refresh settlements.
  * @param {QueryClient} queryClient - Existing shared server-state owner.
@@ -19,7 +20,7 @@ export async function completePostAnalysisInvalidation(
   outcome: PostAnalysisTaskOutcome
 ): Promise<PostAnalysisTaskOutcome> {
   if (
-    outcome.data.taskId !== 'refreshABClassMetadata' ||
+    outcome.data.taskId !== REFRESH_AB_CLASS_METADATA_TASK_ID ||
     outcome.data.status !== 'succeeded' ||
     !outcome.data.confirmedPersistence
   )
