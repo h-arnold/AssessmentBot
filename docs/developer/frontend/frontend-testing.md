@@ -191,7 +191,7 @@ and feedback coverage is described below.
 ### Shared post-analysis lifecycle tests
 
 The generic lifecycle, feedback and invalidation passed independent 5B and 5C
-reviews (47 plus 25 cases; 72 lifecycle cases total). Consumer binding is now
+reviews (47 plus 25 cases at that point). Consumer binding is now
 implemented. The 5C report is
 `.opencode/scratchpad/review-section5c-independent.md`. Coverage is split by responsibility:
 
@@ -214,26 +214,33 @@ implemented. The 5C report is
 - `features/classPage/useClassPageData.postAnalysis.spec.ts` (6 cases) and
   `features/taskHeatmap/useHeatmapsPageData.postAnalysis.spec.ts` (7 cases): mock
   only the shared hook and prove each consumer passes the complete unsliced class,
-  live definitions, the successful averaging result and the stable metadata-only
-  registry, or `null` for loading/failure/adaptation-blocking surfaces. Both include
-  a memoised-context identity case so an unstable object cannot re-attach the effect
-  each render. These bind features only; lifecycle contracts stay in the hook suites.
+  live definitions, the successful averaging result, the committed selected class ID
+  and the stable metadata-only registry, or `null` for loading/failure/adaptation-blocking
+  surfaces. Both include a memoised-context identity case so an unstable object cannot
+  re-attach the effect each render. These bind features only; lifecycle contracts stay
+  in the hook suites.
 
 The harness is `src/test/abClass/postAnalysisHookTestSupport.tsx`; realistic contexts
 reuse the existing metadata refresh fixtures and their historical-source limitation.
-Ordering/failure/extension probes are local descriptors, not future production
-tasks. Use explicit promise gates for pending/replay/cleanup checks. Cleanup proves
-suppressed state publication, not cancellation of active work. Future task tests
-must cover their own key and eligibility rules; metadata freshness is never a
-global gate. See the [registration contract](data-analysis-architecture.md#shared-post-analysis-lifecycle-and-extension).
+It mounts the real Ant Design `App` host, because the notification host is required and
+production has no missing-host fallback. Ordering/failure/extension probes are local
+descriptors, not future production tasks. Use explicit promise gates for
+pending/replay/cleanup checks. Cleanup proves suppressed state publication, not
+cancellation of active work. Future task tests must cover their own key and eligibility
+rules; metadata freshness is never a global gate. See the
+[registration contract](data-analysis-architecture.md#shared-post-analysis-lifecycle-and-extension).
 
 The 5C suites render the real context-aware Ant Design `App` host and use the
 real query client through `src/test/abClass/postAnalysisFeedbackTestSupport.tsx`:
 
 - `hooks/usePostAnalysisTasks.feedback.spec.tsx` covers persistent polite safe copy,
-  focus preservation, dismissal memory/new-source feedback and bounded diagnostics.
+  focus preservation, dismissal memory/new-source feedback, bounded diagnostics and
+  the completion-boundary diagnostic emitted when the required notification host is
+  missing.
 - `.feedbackCleanup.spec.tsx` covers same-source persistence, owner-only cleanup,
-  shared-host siblings and active work finishing without late publication.
+  shared-host siblings, active work finishing without late publication, and retention
+  of a shown warning while analysis readiness is temporarily `null` for the same
+  selected class.
 - `.invalidation.spec.tsx` covers confirmed-save-only detail/list invalidation,
   both settlements, once-per-attempt replay and retained save confirmation.
 - `.activeQueries.spec.tsx` subscribes real `QueryObserver`s to prove both active
@@ -276,11 +283,12 @@ dispatcher suite:
   Class page writes once and re-reads; standalone Heatmaps writes once with no
   loop on the same source; a newer assignment version writes once on manual
   refresh (six reads and two writes).
-- `post-analysis-metadata.feedback.spec.ts` (**231** lines / **7** tests):
+- `post-analysis-metadata.feedback.spec.ts` (**293** lines / **8** tests):
   persistent safe save-failure copy on both surfaces, the distinct
-  confirmed-save/refresh-failure copy, keyboard dismissal, no reopen on the same
-  source, navigation cleanup, and four containment/theme checks at 1440×900 and
-  390×844 in light and dark.
+  confirmed-save/refresh-failure copy, retention of that warning on the Class page
+  when readiness blocks during a still-pending list refresh, keyboard dismissal, no
+  reopen on the same source, navigation cleanup, and four containment/theme checks at
+  1440×900 and 390×844 in light and dark.
 - `tests/synthetic-analysis/syntheticABClassMetadataRoundTrip.test.ts` (**188**
   lines / **5** tests): real `apiHandler` read and mutation round trip through
   `callApi`, service schemas and queued wrappers. It uses the existing test seams
@@ -288,11 +296,16 @@ dispatcher suite:
   [Synthetic Test Data](../testing/synthetic-test-data.md#node-dispatcher-metadata-round-trip-implemented-independently-review-clean).
 
 Both browser specs use the existing runtime response queues. Keep strict dispatch:
-an unknown method or exhausted queue must still fail. Independent review recorded
-the **10** new browser tests green and the full synthetic project at **34 files /
+an unknown method or exhausted queue must still fail. The original Section 6 review
+recorded **10** new browser tests green and the full synthetic project at **34 files /
 384 tests**. The reviewer's full **313**-test browser run passed with
 `--retries=0` (8.8 minutes), and the Section 6 regression comparison recorded zero
-regressions and zero new failures.
+regressions and zero new failures. Batch 1 later added the actual-consumer Class-page
+case, taking the two specs to **11** browser tests; independent batch-1 review
+(`.opencode/scratchpad/batch-1-review.md`) passed the full **314**-test browser run
+(`.opencode/scratchpad/batch1-review-e2e.txt`), and the batch-1 comparison recorded
+seven passing checks, zero regressions and zero new failures, with only the six
+accepted pre-existing backend max-lines warnings failing the aggregate gate.
 
 ### API transport and queue suites
 

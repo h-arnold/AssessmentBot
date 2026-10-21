@@ -58,7 +58,11 @@ export function renderFeedbackOwners(
 ) {
   const observed = new Map<number, HookState>();
   let notification: ReturnType<typeof App.useApp>['notification'];
-  let update: (index: number, context: PostAnalysisContext | null) => void;
+  let update: (
+    index: number,
+    context: PostAnalysisContext | null,
+    selectedClassId?: string | null
+  ) => void;
   let remove: (index: number) => void;
   let rerenderOwner: () => void;
 
@@ -79,8 +83,14 @@ export function renderFeedbackOwners(
    * @param {PostAnalysisContext | null} properties.context - Successful source or no work.
    * @returns {React.JSX.Element} Usable analysis control for focus/non-blocking assertions.
    */
-  function Owner(properties: Readonly<{ index: number; context: PostAnalysisContext | null }>) {
-    const state = usePostAnalysisTasks(properties.context, tasks);
+  function Owner(
+    properties: Readonly<{
+      index: number;
+      context: PostAnalysisContext | null;
+      selectedClassId: string | null;
+    }>
+  ) {
+    const state = usePostAnalysisTasks(properties.context, tasks, properties.selectedClassId);
     useLayoutEffect(() => {
       observed.set(properties.index, state);
     }, [state, properties.index]);
@@ -91,20 +101,40 @@ export function renderFeedbackOwners(
    * @returns {React.JSX.Element} The ordinary shared host and owner slots.
    */
   function Harness() {
-    const [entries, setEntries] = useState(() =>
-      inputs.map((context, index) => ({ index, context }))
-    );
+    const [entries, setEntries] = useState(() => {
+      return inputs.map((context, index) => {
+        return {
+          index,
+          context,
+          selectedClassId: context?.classFull.classId ?? null,
+        };
+      });
+    });
     const [revision, setRevision] = useState(0);
     /** Navigates one mounted owner without replacing the host.
      * @param {number} index - Stable owner slot.
      * @param {PostAnalysisContext | null} context - Next successful context or no work.
+     * @param {string | null} [selectedClassId] - Explicit selection independent of readiness.
      * @returns {void} Schedules source replacement.
      */
-    function updateContext(index: number, context: PostAnalysisContext | null) {
+    function updateContext(
+      index: number,
+      context: PostAnalysisContext | null,
+      selectedClassId?: string | null
+    ) {
       setEntries((current) => {
-        const next = current.map((entry) =>
-          entry.index === index ? { ...entry, context } : entry
-        );
+        const next = current.map((entry) => {
+          return entry.index === index
+            ? {
+                ...entry,
+                context,
+                selectedClassId:
+                  selectedClassId === undefined
+                    ? (context?.classFull.classId ?? null)
+                    : selectedClassId,
+              }
+            : entry;
+        });
         return next;
       });
     }
@@ -139,7 +169,8 @@ export function renderFeedbackOwners(
     ...view,
     read: (index: number) => observed.get(index)!,
     notification: () => notification,
-    update: (index: number, context: PostAnalysisContext | null) => update(index, context),
+    update: (index: number, context: PostAnalysisContext | null, selectedClassId?: string | null) =>
+      update(index, context, selectedClassId),
     remove: (index: number) => remove(index),
     rerenderOwner: () => rerenderOwner(),
   };

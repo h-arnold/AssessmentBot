@@ -1,4 +1,5 @@
 import { useLayoutEffect, useState } from 'react';
+import { App } from 'antd';
 import { renderWithFrontendProviders } from '../renderWithFrontendProviders';
 import { usePostAnalysisTasks } from '@/hooks/usePostAnalysisTasks';
 import type { PostAnalysisContext } from '@/services/dataAnalysis/postAnalysis/postAnalysis.zod';
@@ -23,7 +24,7 @@ export function renderPostAnalysisOwner(
    */
   function Owner() {
     const [input, setInput] = useState(context);
-    const state = usePostAnalysisTasks(input, tasks);
+    const state = usePostAnalysisTasks(input, tasks, input?.classFull.classId ?? null);
     useLayoutEffect(() => {
       observed = state;
       updateContext = setInput;
@@ -31,9 +32,14 @@ export function renderPostAnalysisOwner(
     return <div data-testid="post-analysis-owner">{input?.classFull.classId}</div>;
   }
 
-  const view = renderWithFrontendProviders(<Owner />, {
-    renderOptions: { reactStrictMode: isStrict },
-  });
+  const view = renderWithFrontendProviders(
+    <App>
+      <Owner />
+    </App>,
+    {
+      renderOptions: { reactStrictMode: isStrict },
+    }
+  );
   return {
     ...view,
     read: () => observed,

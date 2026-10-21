@@ -433,7 +433,7 @@ export function useClassPageData(classId: string): ClassPageData {
       analyserResult
     );
   }, [postAnalysisStatus, classFull, assignmentDefinitionPartials, analyserResult]);
-  usePostAnalysisTasks(postAnalysisContext, postAnalysisTasks);
+  usePostAnalysisTasks(postAnalysisContext, postAnalysisTasks, classId);
 
   // -----------------------------------------------------------------------
   // 9. Refetch — stable callback via destructured refetch dependencies.

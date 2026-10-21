@@ -4,7 +4,11 @@ import {
   POST_ANALYSIS_ASSIGNMENT_TITLE,
   POST_ANALYSIS_CLASS_NAME,
 } from './helpers/post-analysis-metadata-scenarios';
-import { getMethodCalls, installRuntimeMock } from './shared/endToEndRuntimeMocks';
+import {
+  getMethodCalls,
+  installRuntimeMock,
+  releaseNextDeferredSuccess,
+} from './shared/endToEndRuntimeMocks';
 
 const SAVE_TITLE = 'Class summary not saved';
 const SAVE_DESCRIPTION =
@@ -15,6 +19,7 @@ const REFRESH_DESCRIPTION =
 const BACKEND_MESSAGE = 'secret backend diagnostic';
 const INITIAL_CLASS_READ_COUNT = 2;
 const REFRESH_CLASS_READ_COUNT = 3;
+const CLASS_PARTIAL_REFRESH_COUNT = 2;
 const NOTICE_GEOMETRY_SAMPLE_COUNT = 3;
 const NARROW_VIEWPORT_WIDTH = 390;
 
@@ -164,6 +169,69 @@ test('distinguishes confirmed-save refresh failure from save failure', async ({ 
   const calls = await getMethodCalls(page);
   expect(calls.filter((method) => method === 'updateABClass')).toHaveLength(1);
   expect(calls.filter((method) => method === 'getABClass')).toHaveLength(REFRESH_CLASS_READ_COUNT);
+});
+
+test('retains confirmed-save refresh feedback when Class-page readiness blocks during list refresh', async ({
+  page,
+}) => {
+  const scenario = createChangedMetadataScenario('class');
+  const classPartialResponse = scenario.getABClassPartials?.[1];
+  if (classPartialResponse?.kind !== 'success') {
+    throw new Error('Expected the Class-page scenario post-save class partial response.');
+  }
+  await installRuntimeMock(page, {
+    ...scenario,
+    getABClass: [
+      ...scenario.getABClass!.slice(0, INITIAL_CLASS_READ_COUNT),
+      { kind: 'failureEnvelope', code: 'INTERNAL_ERROR', message: BACKEND_MESSAGE },
+    ],
+    getABClassPartials: [
+      scenario.getABClassPartials![0],
+      {
+        kind: 'deferredSuccess',
+        data: classPartialResponse.data,
+      },
+    ],
+  });
+  await page.goto('/');
+  await page.getByRole('menuitem', { name: 'Classes' }).click();
+  const card = page.getByRole('article').filter({ hasText: POST_ANALYSIS_CLASS_NAME });
+  await expect(card).toBeVisible();
+  await card.getByRole('button', { name: 'View' }).click();
+
+  // The metadata write succeeds; the detail refresh fails while list refresh remains pending.
+  await expect
+    .poll(async () => {
+      const calls = await getMethodCalls(page);
+      return calls.filter((method) => method === 'updateABClass');
+    })
+    .toHaveLength(1);
+  await expect
+    .poll(async () => {
+      const calls = await getMethodCalls(page);
+      return calls.filter((method) => method === 'getABClassPartials');
+    })
+    .toHaveLength(CLASS_PARTIAL_REFRESH_COUNT);
+  await expect(page.getByText("Couldn't load class", { exact: true })).toBeVisible();
+  await expect(page.getByRole('status').filter({ hasText: REFRESH_TITLE })).toHaveCount(0);
+  const callsBeforeListRefresh = await getMethodCalls(page);
+  expect(callsBeforeListRefresh.filter((method) => method === 'getABClass')).toHaveLength(
+    REFRESH_CLASS_READ_COUNT
+  );
+  await releaseNextDeferredSuccess(page);
+
+  const notice = page
+    .getByRole('status')
+    .filter({ has: page.getByText(REFRESH_TITLE, { exact: true }) });
+  await expect(notice).toBeVisible();
+  await expect(notice.getByText(REFRESH_DESCRIPTION, { exact: true })).toHaveCount(1);
+  await expect(page.getByRole('status').filter({ hasText: SAVE_TITLE })).toHaveCount(0);
+  await expect(notice).not.toContainText(BACKEND_MESSAGE);
+  const calls = await getMethodCalls(page);
+  expect(calls.filter((method) => method === 'getABClassPartials')).toHaveLength(
+    CLASS_PARTIAL_REFRESH_COUNT
+  );
+  expect(calls.filter((method) => method === 'updateABClass')).toHaveLength(1);
 });
 
 for (const viewport of [

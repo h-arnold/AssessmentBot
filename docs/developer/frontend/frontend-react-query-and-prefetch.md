@@ -142,9 +142,12 @@ A failing detail refresh must not skip the list invalidation or hide its failure
 Inactive queries are only marked stale; no imperative read or forced fetch follows.
 Assignment and definition datasets are not invalidated for this metadata-only write.
 
-Refresh failure preserves confirmed persistence separately from the local Error
-and uses the [saved-but-refresh-failed warning](frontend-logging-and-error-handling.md#post-analysis-metadata-failures).
-Existing query trust rules remain authoritative. Effect replay and metadata-only
+Refresh failure preserves confirmed persistence separately from the local Error,
+records `confirmedPersistence: true` on the diagnostic, and uses the
+[saved-but-refresh-failed warning](frontend-logging-and-error-handling.md#post-analysis-metadata-failures).
+Feedback ownership follows the committed selected class, so a readiness-driven blocking
+surface does not suppress that warning while the other required refresh is still
+pending. Existing query trust rules remain authoritative. Effect replay and metadata-only
 cache updates reuse the completed attempt instead of invalidating again.
 This helper is independently review-clean (5C). Both production averaging
 consumers call the shared hook directly. The narrow keyboard seam was diagnosed

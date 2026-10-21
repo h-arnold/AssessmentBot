@@ -658,7 +658,11 @@ contract for StudentSubmission is documented in [Contract: Assignment](assignmen
     data when either required post-save query invalidation rejects. It does not add a
     field to ABClass metadata, mutation responses or the shared API envelope, and task
     returns remain succeeded/skipped only. The local Error is kept separately from
-    safe saved-but-refresh-failed warning copy.
+    safe saved-but-refresh-failed warning copy. Batch 1 also logs the same bounded scalar
+    on refresh-failure diagnostics and keeps feedback ownership tied to the committed
+    selected class rather than analysis readiness; a required third `selectedClassId`
+    argument distinguishes same-class readiness-null from genuine navigation. No ABClass
+    field or transport shape changes.
     **Classification: Aligned** — deliberate frontend execution-state extension; see
     [Frontend Data Analysis Response — settlement](frontend-data-analysis-response.md#confirmed-persistence-and-refresh-settlement).
 
@@ -769,13 +773,13 @@ Frontend:
   ├── src/frontend/src/services/dataAnalysis/postAnalysis/postAnalysisTasks.ts
   │     → PostAnalysisTaskRegistry; metadata-only descriptor with task-owned source key
   ├── src/frontend/src/hooks/usePostAnalysisTasks.ts
-  │     → mount-owned post-commit attempts/state with post-save refresh settlement; called directly by both averaging surfaces (5D)
+  │     → mount-owned post-commit attempts/state, required selected-class ownership and post-save refresh settlement; called directly by both averaging surfaces (5D)
   ├── src/frontend/src/hooks/postAnalysisInvalidation.ts
-  │     → both required query invalidations; failed outcome retains confirmedPersistence: true
+  │     → both required query invalidations; refresh failures log bounded confirmedPersistence: true and return a confirmed-persistence failed outcome
   ├── src/frontend/src/hooks/postAnalysisFeedback.ts
-  │     → mount/class/task/source-owned persistent warnings, dismissal memory and cleanup
+  │     → mount/selected-class/task/source-owned persistent warnings with required App host, dismissal memory and cleanup
   ├── src/frontend/src/services/dataAnalysis/postAnalysis/postAnalysisDiagnostics.ts
-  │     → bounded task/class/assignment identifiers and available request correlation
+  │     → bounded task/class/assignment identifiers, available request correlation and optional confirmedPersistence
   ├── src/frontend/src/services/apiService.ts                 (actual transport owner)
   │     → callApi(), parseApiResponse(); unchanged envelope/retry boundary
   ├── src/frontend/src/services/api/apiQueue.ts               (actual queue owner)
@@ -828,9 +832,10 @@ Identifier-integrity regression suites (this cycle):
 > follow-up is resolved — both class-read schemas' JSDoc now states that request `metadata` is
 > optional by omission, strict when present, `null` clears and an object replaces the whole
 > value. The final regression comparison follows this documentation-only closure and is retained
-> under the session runs; the latest recorded comparison remains the Section 6 run at
-> `2026-10-21T00:43:04.269Z` (**0 regressions, 0 new failures and 5 fixes**). The current
-> aggregate gate records backend
+> under the session runs; the latest recorded Section 6 delivery comparison remains the run at
+> `2026-10-21T00:43:04.269Z` (**0 regressions, 0 new failures and 5 fixes**). The later batch-1
+> parent comparison at `2026-10-21T12-48-56.194Z` reports **0 regressions, 0 new failures and 0
+> fixes**. The current aggregate gate records backend
 > branch coverage at **84.35%** against the **85%** threshold on the pristine HEAD archive
 > `4a0a3418`, identical to the baseline (`backend-coverage-head.log` versus
 > `final-full-coverage.log`): no regression and no threshold waiver are claimed. The aggregate
@@ -1394,7 +1399,10 @@ baseline **FAILING**. The Section 7 canonical documentation audit is complete an
 review-clean (**CLEAN — Section 7**,
 `.opencode/scratchpad/review-final-frontend-abclass-metadata.md`); the final regression
 comparison follows this documentation-only closure and is retained under the session runs, so the
-latest recorded comparison remains the Section 6 run above.
+latest recorded Section 6 delivery comparison remains the run above. The later batch-1 parent
+comparison at `2026-10-21T12-48-56.194Z` reports **0 regressions, 0 new failures and 0 fixes**
+across seven passing checks; only the six baseline backend-lint warnings fail, and overall review
+sign-off, commit and push remain outstanding.
 
 Section 3C's independent verdict is **PASS — CLEAN 3C**, recorded in
 `.opencode/scratchpad/review-section3c-independent-clean.md`. The Section 3 comparison at
@@ -1661,7 +1669,9 @@ with matching class identities and serialisable pending/succeeded/skipped/failed
 `postAnalysisTasks.ts` constructs only the metadata descriptor with an injected clock and
 task-owned class/source-version identity. `hooks/usePostAnalysisTasks.ts` owns post-commit,
 mount-local attempt promises, StrictMode reattachment and stale-publication cleanup, not
-network cancellation. Unkeyed future tasks use input-context identity independently of metadata.
+network cancellation. Its required third argument, `selectedClassId`, tracks class ownership
+separately from analysis readiness. Unkeyed future tasks use input-context identity
+independently of metadata.
 
 Exact field tables and the separate **local**, non-wire descriptor/function/Error handles
 are owned by [Frontend Data Analysis Response — shared lifecycle](frontend-data-analysis-response.md#shared-post-analysis-lifecycle).
@@ -1676,10 +1686,16 @@ data only (false/null reject); task returns remain strictly succeeded/skipped. A
 parsed confirmed metadata save, the cached hook attempt includes both class-detail/list
 invalidations with `throwOnError: true` and observes both settlements. Refresh failure
 retains save confirmation plus a local normalised Error; user-safe warning copy says saved
-but refresh failed, not unsaved. Persistent warnings are mount/class/task/source-owned,
-dismissible, duration zero and cleaned up without aborting queued writes. Exact settlement,
-copy, dismissal and bounded diagnostic contracts are owned by the linked lifecycle section,
-not the backend wire contract. 5C independent review is **PASS — CLEAN 5C**, recorded in
+but refresh failed, not unsaved. Refresh failures also log the bounded scalar
+`confirmedPersistence: true` with the existing task/class/target identifiers. Persistent
+warnings are mount/selected-class/task/source-owned, dismissible, duration zero and cleaned
+up without aborting queued writes; a same-class readiness-null context neither destroys a
+visible warning nor detaches the pending attempt, so a confirmed-save warning can still
+appear after both invalidations settle, while genuine navigation/unmount still suppresses
+late feedback. The notification host is the required existing
+`App.useApp().notification` context with no no-host fallback. Exact settlement, copy,
+dismissal and bounded diagnostic contracts are owned by the linked lifecycle section, not
+the backend wire contract. 5C independent review is **PASS — CLEAN 5C**, recorded in
 `.opencode/scratchpad/review-section5c-independent.md`.
 
 Activation on both analysis surfaces (5D) is **implemented and independently review-clean**
@@ -1784,21 +1800,22 @@ Test-only backend model-input adapter:
   cloned, and no returned representation shares mutable nodes.
 - The adapter is test-only: production `src/backend` source never imports it.
 
-#### Frontend Section 6 test-only round-trip and browser-scenario contracts (implemented; review-clean)
+#### Frontend Section 6 test-only round-trip and browser-scenario contracts (implemented; original set review-clean; batch-1 addition independently browser-verified)
 
 These are test-only acceptance surfaces. They add **no** production wire, persistence, analyser
 or local-execution shape, and they do not replace the backend real-dispatcher suites recorded
 above.
 
-| Test-only surface                 | Owner                                                                | Contract boundary                                                                                                                                                                                                                                                                                                                                                                                            |
-| --------------------------------- | -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Real-dispatcher round-trip bridge | `scripts/synthetic-test-data/apiHandlerRoundTripBridge.js`           | Clones committed profile views per instance, installs the established dispatcher seams, dispatches once through the real `apiHandler` and returns its envelope. Restores every installed global exactly and preserves caller-owned spies. Does not seed persistence.                                                                                                                                         |
-| Metadata round-trip suite         | `tests/synthetic-analysis/syntheticABClassMetadataRoundTrip.test.ts` | Five cases: full/partial read retention; stateful omission/null/replacement across queued update and upsert; own-`undefined` rejection before dispatch; malformed dispatch `INVALID_REQUEST` versus throwing-seam `INTERNAL_ERROR`; bridge isolation and seam restoration. Controller/mutation seams supply prepared transport data, so it is not proof of real controller/persistence/integrity validation. |
-| Browser scenario builder          | `src/frontend/e2e-tests/helpers/post-analysis-metadata-scenarios.ts` | Canonical `small` class `class-2`; initial historical-source boundary omits only the final null-name assignment and sets `metadata: null`; replacement derives from standard `DataAnalysisService` full-class and isolated-target analyses with explicit metric-state mapping. Supplied metadata is not a scoring oracle.                                                                                    |
-| Browser persistence acceptance    | `src/frontend/e2e-tests/post-analysis-metadata.persistence.spec.ts`  | Three journeys: Class page and standalone Heatmaps changed write; a full fresh read with no repeat write; a later source version producing exactly one further write.                                                                                                                                                                                                                                        |
-| Browser feedback acceptance       | `src/frontend/e2e-tests/post-analysis-metadata.feedback.spec.ts`     | Seven cases: save-failure warning on standalone Heatmaps with keyboard dismissal and no reopening on rerender; Class-page save failure with analysis intact and navigation cleanup; confirmed-save refresh-failure copy; four desktop/narrow × light/dark containment cases.                                                                                                                                 |
+| Test-only surface                 | Owner                                                                | Contract boundary                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| --------------------------------- | -------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Real-dispatcher round-trip bridge | `scripts/synthetic-test-data/apiHandlerRoundTripBridge.js`           | Clones committed profile views per instance, installs the established dispatcher seams, dispatches once through the real `apiHandler` and returns its envelope. Restores every installed global exactly and preserves caller-owned spies. Does not seed persistence.                                                                                                                                                                                                                                                                                                              |
+| Metadata round-trip suite         | `tests/synthetic-analysis/syntheticABClassMetadataRoundTrip.test.ts` | Five cases: full/partial read retention; stateful omission/null/replacement across queued update and upsert; own-`undefined` rejection before dispatch; malformed dispatch `INVALID_REQUEST` versus throwing-seam `INTERNAL_ERROR`; bridge isolation and seam restoration. Controller/mutation seams supply prepared transport data, so it is not proof of real controller/persistence/integrity validation.                                                                                                                                                                      |
+| Browser scenario builder          | `src/frontend/e2e-tests/helpers/post-analysis-metadata-scenarios.ts` | Canonical `small` class `class-2`; initial historical-source boundary omits only the final null-name assignment and sets `metadata: null`; replacement derives from standard `DataAnalysisService` full-class and isolated-target analyses with explicit metric-state mapping. Supplied metadata is not a scoring oracle.                                                                                                                                                                                                                                                         |
+| Browser persistence acceptance    | `src/frontend/e2e-tests/post-analysis-metadata.persistence.spec.ts`  | Three journeys: Class page and standalone Heatmaps changed write; a full fresh read with no repeat write; a later source version producing exactly one further write.                                                                                                                                                                                                                                                                                                                                                                                                             |
+| Browser feedback acceptance       | `src/frontend/e2e-tests/post-analysis-metadata.feedback.spec.ts`     | Eight cases: save-failure warning on standalone Heatmaps with keyboard dismissal and no reopening on rerender; Class-page save failure with analysis intact and navigation cleanup; confirmed-save refresh-failure copy; four desktop/narrow × light/dark containment cases; and a Class-page delayed-list readiness journey where the detail refresh fails while the list refresh remains deferred, proving the confirmed-save warning survives a readiness-null context. The last case is batch-1 coverage, independently browser-verified in the reviewer's full 314-test run. |
 
-All ten browser acceptance cases are green in the independent reviewer's full run:
+The original ten Section 6 browser acceptance cases are green in the independent reviewer's
+full run:
 **313** browser tests passed with `--retries=0` (8.8 minutes), alongside **34** synthetic files
 / **384** tests, all-project type-checking and verify-only frontend lint (zero errors / 19
 baseline warnings). The persisted Section 6 comparison at `2026-10-21T00:43:04.269Z` reports
@@ -1808,6 +1825,13 @@ remain, so overall status stays baseline **FAILING**. Independent review is **CL
 documentation audit is complete and independently review-clean (**CLEAN — Section 7**,
 `.opencode/scratchpad/review-final-frontend-abclass-metadata.md`); the final regression
 comparison follows this documentation-only closure and is retained under the session runs.
+
+That **313**-test run is historical for the original ten cases and predates the batch-1
+addition. The batch-1 delayed-list case is covered separately by the later reviewer run of
+**314** browser tests and by the parent comparison in the reviewer's regression session at
+`.ts-regression-checker/reports/session-feat-frontend-abclass-metadata/runs/2026-10-21T12-48-56.194Z/comparison.txt`
+(**0 regressions, 0 new failures and 0 fixes** across seven passing checks; only the six baseline
+backend-lint warnings fail). Overall review sign-off, commit and push remain outstanding.
 
 ### File index additions — delivered domain primitives and integration
 
@@ -1867,15 +1891,16 @@ Transport adapter (delivered):     src/backend/z_Api/abclass/abclassMutations.js
 Real-dispatcher suites (delivered): tests/api/abclassMetadataApi.test.js (wrapper forwarding/adaptation); tests/api/apiHandler/abclassMetadataReads.test.js + abclassMetadataWrites.test.js (real read/write envelopes); tests/api/apiHandler/abclassMetadataErrors.test.js (request vs internal errors, atomicity, auth/tracking/diagnostics); tests/api/apiHandler/abclassMetadataTestContext.js (real handler/controller installation with external-only mocks)
 ```
 
-Frontend Section 6 (test-only hardening; complete and independently review-clean; comparison
-0 regressions / 0 new failures / 5 fixes, baseline FAILING only for backend lint):
+Frontend Section 6 (test-only hardening; original set independently review-clean; batch-1
+addition independently browser-verified; historical comparison 0 regressions / 0 new failures /
+5 fixes, baseline FAILING only for backend lint):
 
 ```
 Round-trip bridge (test-only):      scripts/synthetic-test-data/apiHandlerRoundTripBridge.js — isolated real-dispatcher dispatch with exact seam restoration; no persistence seeding
 Round-trip suite (test-only):       tests/synthetic-analysis/syntheticABClassMetadataRoundTrip.test.ts — five read/mutation/error/isolation cases; not real controller/persistence proof
 Browser scenarios (test-only):      src/frontend/e2e-tests/helpers/post-analysis-metadata-scenarios.ts — canonical small class-2 historical boundary and later-version queues
 Persistence acceptance (test-only): src/frontend/e2e-tests/post-analysis-metadata.persistence.spec.ts — three changed-write journeys
-Feedback acceptance (test-only):    src/frontend/e2e-tests/post-analysis-metadata.feedback.spec.ts — seven save/refresh feedback and viewport/theme cases
+Feedback acceptance (test-only):    src/frontend/e2e-tests/post-analysis-metadata.feedback.spec.ts — eight save/refresh feedback and viewport/theme cases (Class-page delayed-list readiness case independently browser-verified in the reviewer's 314-test run)
 ```
 
 ---

@@ -7,12 +7,14 @@ import type { PostAnalysisContext } from './postAnalysis.zod';
  * @param {string} taskId - Failed descriptor identity.
  * @param {PostAnalysisContext} context - Source used to identify the metadata target.
  * @param {Error} error - Normalised technical failure with available correlation.
+ * @param {true | undefined} hasConfirmedPersistence - Whether persistence preceded refresh failure.
  * @returns {void} Emits one task-owned diagnostic.
  */
 export function logPostAnalysisFailure(
   taskId: string,
   context: PostAnalysisContext,
-  error: Error
+  error: Error,
+  hasConfirmedPersistence?: true
 ): void {
   const assignments = context.classFull.assignments;
   const target =
@@ -31,6 +33,7 @@ export function logPostAnalysisFailure(
   logFrontendError('runPostAnalysisTasks', error, {
     taskId,
     classId: context.classFull.classId,
+    ...(hasConfirmedPersistence === true && { confirmedPersistence: hasConfirmedPersistence }),
     ...(target && { assignmentId: target.assignmentId }),
     ...(error instanceof ApiTransportError && {
       requestId: error.requestId,

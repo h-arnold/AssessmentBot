@@ -141,7 +141,10 @@ confirmed-save/refresh-failure feedback is implemented in
 `post-analysis-metadata.feedback.spec.ts`, and the Section 6 regression
 comparison recorded zero regressions and zero new failures.
 `hooks/postAnalysisFeedback.ts` uses the existing
-`App.useApp().notification` host, not static feedback or a second host.
+`App.useApp().notification` host, not static feedback or a second host. That host is
+required: production code has no silent no-host fallback, so a missing or incomplete
+host fails loudly at the completion boundary instead of dropping the warning. Render a
+real `App` provider in test harnesses.
 
 | Failure                                 | Title                        | Description                                                                                         |
 | --------------------------------------- | ---------------------------- | --------------------------------------------------------------------------------------------------- |
@@ -153,18 +156,28 @@ They do not move focus, block usable analysis, expose technical Errors or offer
 retry actions. No success/skip notice is emitted. Existing query trust/fail-closed
 rules remain unchanged. Keys include owner/task/class/source; dismissal memory
 survives same-source reattachment, while a new source permits new feedback.
-Navigation/unmount removes only that owner's notices and suppresses late feedback,
+
+Feedback ownership tracks the committed selected class, not analysis readiness. A
+confirmed-save warning still appears after both required query refreshes settle when
+the surface became blocking and passed a `null` context in the meantime; that readiness
+change neither destroys the notice nor detaches the pending attempt. Leaving the class
+or unmounting still removes only that owner's notices and suppresses late feedback,
 without claiming to abort active writes. Stock host placement, sizing, spacing and
 motion remain unchanged.
 
 `services/dataAnalysis/postAnalysis/postAnalysisDiagnostics.ts` routes task failures
 through `toError`/`logFrontendError`, using context `runPostAnalysisTasks` and bounded
 task/class/target-assignment identifiers plus available transport request ID/code.
-Task-owned diagnostic metadata never includes raw class metadata, submissions,
-rosters or analysis payloads. Both refresh failures are observed and distinct Error
-instances logged without an extra summary diagnostic. Existing shared transport
-parameter/debug and bounded response-preview sanitisation remain unchanged; this
-is not a logger/redaction redesign.
+Post-save refresh failures also set the bounded scalar `confirmedPersistence: true`, so
+structured logs separate "save failed" from "save confirmed, refresh failed".
+Unexpected errors escaping the asynchronous completion loop (for example a throwing
+callback or feedback host) are logged through `logFrontendError` with context
+`usePostAnalysisTasks.complete` and the class ID; individual task failures stay
+reported as outcomes. Task-owned diagnostic metadata never includes raw class metadata,
+submissions, rosters or analysis payloads. Both refresh failures are observed and
+distinct Error instances logged without an extra summary diagnostic. Existing shared
+transport parameter/debug and bounded response-preview sanitisation remain unchanged;
+this is not a logger/redaction redesign.
 
 ## 5. Mapping rules (developer detail vs user-safe copy)
 

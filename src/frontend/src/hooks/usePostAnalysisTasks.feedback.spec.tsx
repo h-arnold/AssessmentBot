@@ -1,6 +1,8 @@
-import { act, cleanup, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { notification as staticNotification } from 'antd';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { usePostAnalysisTasks } from './usePostAnalysisTasks';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createAppQueryClient } from '@/query/queryClient';
 import { ApiTransportError } from '@/errors/apiTransportError';
@@ -140,6 +142,42 @@ describe('usePostAnalysisTasks context-aware failure feedback', () => {
     }
     expect(owner.read(0).outcomes[0].error).toBe(error);
     expect(owner.read(0).outcomes[0].data).not.toHaveProperty('error');
+  });
+
+  it('logs the missing notification-host failure at the completion boundary', async () => {
+    const context = createMetadataRefreshFixture('small');
+    const logs = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const queryClient = createAppQueryClient();
+    const tasks = [metadataDescriptor(() => Promise.reject(new Error('save failed')))];
+    /** Exercises the hook without the required Ant Design notification host.
+     * @returns {null} No UI beyond the hook under test.
+     */
+    function Owner() {
+      usePostAnalysisTasks(context, tasks, context.classFull.classId);
+      return null;
+    }
+    render(
+      <QueryClientProvider client={queryClient}>
+        <Owner />
+      </QueryClientProvider>
+    );
+    await waitFor(() => {
+      expect(
+        logs.mock.calls.some(
+          ([, entry]) => (entry as { context?: string }).context === 'usePostAnalysisTasks.complete'
+        )
+      ).toBe(true);
+    });
+    const completionDiagnostic = logs.mock.calls
+      .map(([, entry]) => entry as { context?: string; errorMessage?: string; metadata?: unknown })
+      .find((entry) => entry.context === 'usePostAnalysisTasks.complete');
+    expect(completionDiagnostic).toEqual(
+      expect.objectContaining({
+        context: 'usePostAnalysisTasks.complete',
+        errorMessage: expect.stringContaining('warning'),
+        metadata: { classId: context.classFull.classId },
+      })
+    );
   });
 
   it.each(['noAssignments', 'unchanged', 'staleSource', 'succeeded'] as const)(

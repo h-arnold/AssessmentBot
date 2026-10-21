@@ -159,6 +159,7 @@ type HeatmapsView = RenderHookResult<ReturnType<typeof useHeatmapsPageData>, voi
 type PostAnalysisCall = readonly [
   PostAnalysisContext | null,
   readonly PostAnalysisTaskDescriptor[],
+  string | null,
 ];
 
 /** Selects the default class and one assignment, leaving the surface ready.
@@ -202,6 +203,7 @@ describe('useHeatmapsPageData shared post-analysis binding', () => {
 
     expect(result.result.current.surfaceState).toEqual({ status: 'ready' });
     const [context, tasks] = mockUsePostAnalysisTasks.mock.lastCall as PostAnalysisCall;
+    expect(mockUsePostAnalysisTasks.mock.lastCall?.[2]).toBe(DEFAULT_CLASS_ID);
     const source = context!;
     // The analyser ran on the selected slice; the post-task source must be the
     // complete unsliced class, never the narrowed selection.

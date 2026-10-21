@@ -300,16 +300,18 @@ averaging surfaces, not a metadata-specific effect. Import actual owners directl
 do not introduce a frontend facade or barrel. The hook validates the successful
 context after commit: complete unsliced class, live definition partials and a
 matching-class averaging result. Pass null when there is no successful context;
-descriptive summaries remain read-only.
+descriptive summaries remain read-only. The required third argument is the committed
+selected class ID, which owns feedback lifetime independently of that readiness.
 
 Both consumers bind the hook directly: `features/classPage/useClassPageData.ts` and
 `features/taskHeatmap/useHeatmapsPageData.ts` build the context only from a `ready`
-surface with those three inputs, otherwise `null`. They memoise the context on its
-inputs and construct the registry once, so ordinary rerenders keep the same context
-and task-list references. Never rebuild the context object per render: an unstable
-object re-attaches the effect each render and was observed in a browser run to
-produce an attach/publish loop once cache updates landed. The memo is the loop
-guard; metadata freshness is not a global eligibility gate for other tasks.
+surface with those three inputs, otherwise `null`, and pass their committed class ID as
+the third argument. They memoise the context on its inputs and construct the registry
+once, so ordinary rerenders keep the same context and task-list references. Never
+rebuild the context object per render: an unstable object re-attaches the effect each
+render and was observed in a browser run to produce an attach/publish loop once cache
+updates landed. The memo is the loop guard; metadata freshness is not a global
+eligibility gate for other tasks.
 
 `runPostAnalysisTasks.ts` accepts a readonly ordered descriptor list, rejects empty
 or duplicate IDs before execution (an empty list is valid), and awaits each task
@@ -345,12 +347,16 @@ metadata persistence only. A refresh failure becomes a failed outcome retaining
 still run. See the [query contract](frontend-react-query-and-prefetch.md#post-analysis-metadata-invalidation).
 
 `hooks/postAnalysisFeedback.ts` owns metadata warnings independently of effect
-reattachment. Notification keys include mounted owner, class, task and source.
-Dismissal memory lasts the mount; a new source can notify again. Same-class
-reattachment neither destroys an undismissed notice nor reopens a dismissed one.
-Navigation/null context destroys only owned notices; unmount disposal tolerates
-synchronous StrictMode replay. Detached work can still finish and invalidate
-queries, but cannot publish late owner state or feedback. See the
+reattachment and analysis readiness. Notification keys include mounted owner, class,
+task and source. Dismissal memory lasts the mount; a new source can notify again.
+Same-class reattachment neither destroys an undismissed notice nor reopens a dismissed
+one. Ownership follows the committed selected class: a readiness-driven `null` context
+for that class neither destroys notices nor suppresses a pending attempt, so a
+confirmed-save warning appears once both required refreshes settle even if the surface
+went blocking meanwhile. A class change or unmount destroys only owned notices and
+suppresses feedback from previous visits; unmount disposal tolerates synchronous
+StrictMode replay. Effect cleanup suppresses stale state publication only, and detached
+work can still finish and invalidate queries. See the
 [warning and diagnostic contract](frontend-logging-and-error-handling.md#post-analysis-metadata-failures).
 
 ### Register another task

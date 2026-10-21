@@ -189,22 +189,33 @@ warning and theme/geometry journeys using the same runtime queues:
 - `post-analysis-metadata.persistence.spec.ts` (**128** lines / **3** tests)
   covers one Class-page write, standalone Heatmaps one write with no loop, and a
   newer assignment version writing once on manual refresh.
-- `post-analysis-metadata.feedback.spec.ts` (**231** lines / **7** tests) covers
+- `post-analysis-metadata.feedback.spec.ts` (**293** lines / **8** tests) covers
   persistent safe save-failure copy on both surfaces, the distinct
-  confirmed-save/refresh-failure copy, keyboard dismissal, same-source
-  non-reopen, navigation cleanup, and containment at 1440×900 and 390×844 in
-  light and dark.
+  confirmed-save/refresh-failure copy, retention of that warning when Class-page
+  readiness blocks while the required list refresh is still pending, keyboard
+  dismissal, same-source non-reopen, navigation cleanup, and containment at
+  1440×900 and 390×844 in light and dark.
 
 The feedback journeys assert enabled/focused keyboard preconditions, poll stable
 notice geometry, and use no sleeps, retries or weakened assertions.
 
-Independent review recorded the **10** new browser tests green, the full
+The original Section 6 review recorded **10** new browser tests green, the full
 **313**-test browser run passing with `--retries=0` (8.8 minutes,
 `.opencode/scratchpad/review6-full-e2e.log`), the full synthetic project at
 **34 files / 384 tests**, zero frontend lint errors and passing all-project
 type-checking. The Section 6 regression comparison
 (`.ts-regression-checker/reports/session-frontend-abclass-metadata/runs/2026-10-21T00-43-04.269Z/comparison.txt`)
 recorded zero regressions and zero new failures.
+
+Batch 1 later added the actual-consumer Class-page case to
+`post-analysis-metadata.feedback.spec.ts`: the warning must survive Class-page
+readiness blocking while the required list refresh is still pending. That takes the
+two specs to **11** browser tests. Independent batch-1 review
+(`.opencode/scratchpad/batch-1-review.md`) passed the full **314**-test browser run
+(`.opencode/scratchpad/batch1-review-e2e.txt`, 8.7 minutes); the batch-1 comparison
+(`.ts-regression-checker/reports/session-feat-frontend-abclass-metadata/runs/2026-10-21T12-48-56.194Z/comparison.txt`)
+recorded seven passing checks, zero regressions and zero new failures, with only the
+six accepted pre-existing backend max-lines warnings failing the aggregate gate.
 
 ### Scenario Factory Pattern
 

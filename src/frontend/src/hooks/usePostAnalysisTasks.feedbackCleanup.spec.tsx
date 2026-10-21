@@ -19,6 +19,23 @@ afterEach(() => {
 });
 
 describe('usePostAnalysisTasks notification ownership', () => {
+  it('retains a shown warning while analysis readiness is temporarily null for the selected class', async () => {
+    const context = createMetadataRefreshFixture('small');
+    const owner = renderFeedbackOwners(
+      [context],
+      [metadataDescriptor(() => Promise.reject(new Error('save failed')))],
+      true,
+      createAppQueryClient()
+    );
+    const warning = vi.spyOn(owner.notification(), 'warning');
+    expect(await screen.findByRole('status')).toHaveTextContent(SAVE_TITLE);
+    await act(async () => owner.update(0, null, context.classFull.classId));
+    expect(screen.getByRole('status')).toHaveTextContent(SAVE_TITLE);
+    await act(async () => owner.update(0, context));
+    expect(screen.getByRole('status')).toHaveTextContent(SAVE_TITLE);
+    expect(warning).toHaveBeenCalledTimes(1);
+  });
+
   it('keeps an undismissed persistent warning alive across unrelated and equal-source effect rerenders', async () => {
     const context = createMetadataRefreshFixture('small');
     const run = vi.fn(() => Promise.reject(new Error('save failed')));

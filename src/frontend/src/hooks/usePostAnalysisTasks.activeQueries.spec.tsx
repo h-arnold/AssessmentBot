@@ -108,6 +108,7 @@ describe('usePostAnalysisTasks real query refresh integration', () => {
           expect.objectContaining({
             taskId: METADATA_TASK_ID,
             classId: context.classFull.classId,
+            confirmedPersistence: true,
             errorCode: 'INTERNAL_ERROR',
           })
         );

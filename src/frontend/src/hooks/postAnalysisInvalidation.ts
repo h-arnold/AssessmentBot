@@ -35,7 +35,7 @@ export async function completePostAnalysisInvalidation(
     results.filter((result) => result.status === 'rejected').map((result) => toError(result.reason))
   );
   if (failures.size === 0) return outcome;
-  for (const error of failures) logPostAnalysisFailure(outcome.data.taskId, context, error);
+  for (const error of failures) logPostAnalysisFailure(outcome.data.taskId, context, error, true);
   return {
     data: { taskId: outcome.data.taskId, status: 'failed', confirmedPersistence: true },
     error: failures.values().next().value!,

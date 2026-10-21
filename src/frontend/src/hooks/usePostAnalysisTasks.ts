@@ -3,6 +3,7 @@ import { App } from 'antd';
 import { useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { PostAnalysisFeedback } from './postAnalysisFeedback';
 import { completePostAnalysisInvalidation } from './postAnalysisInvalidation';
+import { logFrontendError } from '@/logging/frontendLogger';
 import {
   PostAnalysisContextSchema,
   type PostAnalysisContext,
@@ -26,6 +27,8 @@ class PostAnalysisOwner {
   private readonly attempts: Map<string, Map<AttemptKey, Promise<PostAnalysisTaskOutcome>>>;
   private readonly listeners: Set<() => void>;
   private snapshot: PostAnalysisState;
+  private selectedClassId: string | null;
+  private feedbackGeneration: object;
 
   /** Initialises mount-owned attempt storage and observable empty state.
    * @param {PostAnalysisFeedback} feedback - Independent notification lifecycle.
@@ -35,6 +38,8 @@ class PostAnalysisOwner {
     this.attempts = new Map();
     this.listeners = new Set();
     this.snapshot = { outcomes: [] };
+    this.selectedClassId = null;
+    this.feedbackGeneration = {};
   }
 
   getSnapshot = (): PostAnalysisState => this.snapshot;
@@ -53,6 +58,16 @@ class PostAnalysisOwner {
     for (const listener of this.listeners) listener();
   }
 
+  /** Tracks class ownership independently of analysis readiness.
+   * @param {string | null} classId - Committed selection, or null when no class is selected.
+   * @returns {void} Invalidates late feedback from previous visits.
+   */
+  navigate(classId: string | null): void {
+    if (classId !== this.selectedClassId) this.feedbackGeneration = {};
+    this.selectedClassId = classId;
+    this.feedback.navigate(classId);
+  }
+
   /** Attaches one committed effect to new or previously pending work.
    * @param {PostAnalysisContext | null} input - Explicit successful context or no work.
    * @param {readonly PostAnalysisTaskDescriptor[]} tasks - Ordered descriptors.
@@ -67,13 +82,13 @@ class PostAnalysisOwner {
     notification: ReturnType<typeof App.useApp>['notification']
   ): () => void {
     let isAttached = true;
-    this.feedback.navigate(input?.classFull.classId ?? null);
     if (input === null) {
       this.publish([]);
       return () => {
         isAttached = false;
       };
     }
+    const feedbackGeneration = this.feedbackGeneration;
     const context = PostAnalysisContextSchema.parse(input);
     validatePostAnalysisTasks(tasks);
     const outcomes: PostAnalysisTaskOutcome[] = tasks.map((task) => {
@@ -114,12 +129,15 @@ class PostAnalysisOwner {
           taskAttempts.set(key, attempt);
         }
         outcomes[index] = await attempt;
-        if (!isAttached) continue;
-        this.publish([...outcomes]);
-        this.showFeedback(notification, key, outcomes[index]);
+        if (isAttached) this.publish([...outcomes]);
+        this.showFeedback(notification, key, outcomes[index], feedbackGeneration);
       }
     };
-    void complete();
+    void complete().catch((error: unknown) => {
+      logFrontendError('usePostAnalysisTasks.complete', error, {
+        classId: context.classFull.classId,
+      });
+    });
     return () => {
       isAttached = false;
     };
@@ -129,13 +147,16 @@ class PostAnalysisOwner {
    * @param {ReturnType<typeof App.useApp>['notification']} notification - Existing host API.
    * @param {AttemptKey} key - Task source version or original context identity.
    * @param {PostAnalysisTaskOutcome} outcome - Settled attempt result.
+   * @param {object} generation - Class visit that started this execution.
    * @returns {void} Offers the result to the metadata feedback owner.
    */
   private showFeedback(
     notification: ReturnType<typeof App.useApp>['notification'],
     key: AttemptKey,
-    outcome: PostAnalysisTaskOutcome
+    outcome: PostAnalysisTaskOutcome,
+    generation: object
   ): void {
+    if (generation !== this.feedbackGeneration) return;
     const source =
       typeof key === 'string'
         ? key
@@ -151,20 +172,24 @@ class PostAnalysisOwner {
 /** Canonical shared extension point for post-analysis side effects.
  * @param {PostAnalysisContext | null} context - Successful validated analysis and unsliced class.
  * @param {readonly PostAnalysisTaskDescriptor[]} tasks - Ordered unique task descriptors.
+ * @param {string | null} selectedClassId - Class ownership, independent of analysis readiness.
  * @returns {PostAnalysisState} Non-blocking per-task state and local technical Errors.
  * @remarks Register a descriptor in the production registry to add a task. Each
  * task owns eligibility and an optional source-version key; unkeyed tasks run for
  * each new successful context object. Metadata-only refreshes do not retry keyed
  * work, including failures. Attempts last for this mount, across class navigation.
  * Effects start only after commit. StrictMode replay reattaches to cached promises;
- * cleanup suppresses stale publication but never claims to abort queued writes.
+ * cleanup suppresses stale state publication but never claims to abort queued writes.
  * Confirmed metadata attempts include both required query invalidations before
  * settling. Persistent feedback has a separate mount/class lifetime, so ordinary
- * effect detachment neither destroys nor reopens a dismissed warning.
+ * effect detachment neither destroys nor reopens a dismissed warning, and a
+ * readiness-driven null context for the same selected class does not suppress a
+ * pending attempt's warning.
  */
 export function usePostAnalysisTasks(
   context: PostAnalysisContext | null,
-  tasks: readonly PostAnalysisTaskDescriptor[]
+  tasks: readonly PostAnalysisTaskDescriptor[],
+  selectedClassId: string | null
 ): PostAnalysisState {
   const ownerId = useId();
   const queryClient = useQueryClient();
@@ -172,9 +197,10 @@ export function usePostAnalysisTasks(
   const [owner] = useState(() => new PostAnalysisOwner(new PostAnalysisFeedback(ownerId)));
   const state = useSyncExternalStore(owner.subscribe, owner.getSnapshot);
   useEffect(() => owner.feedback.mount(), [owner]);
+  useEffect(() => owner.navigate(selectedClassId), [owner, selectedClassId]);
   useEffect(
     () => owner.attach(context, tasks, queryClient, notification),
-    [owner, context, tasks, queryClient, notification]
+    [owner, context, tasks, queryClient, notification, selectedClassId]
   );
   return state;
 }

@@ -44,6 +44,7 @@ let wrapper: ReturnType<typeof createClassPageDataWrapper>;
 type PostAnalysisCall = readonly [
   PostAnalysisContext | null,
   readonly PostAnalysisTaskDescriptor[],
+  string | null,
 ];
 
 beforeEach(() => {
@@ -93,6 +94,7 @@ describe('useClassPageData shared post-analysis binding', () => {
     expect(result.current.surfaceState).toEqual({ status: 'ready' });
     expect(mocks.mockUsePostAnalysisTasks).toHaveBeenCalledTimes(1);
     const [context, tasks] = mocks.mockUsePostAnalysisTasks.mock.calls[0] as PostAnalysisCall;
+    expect(mocks.mockUsePostAnalysisTasks.mock.calls[0][2]).toBe(DEFAULT_CLASS_ID);
     expect(context).not.toBeNull();
     const source = context!;
     // The post-task source is the complete unsliced class, not a display slice.

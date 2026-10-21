@@ -22,10 +22,20 @@ review-clean (**CLEAN — Section 7**,
 is resolved (the shared class-read schemas now document request `metadata` as optional by
 omission, strict when present, `null` clearing and object replacement). The final regression
 comparison follows this documentation-only closure and is retained under the session runs; the
-latest recorded comparison remains the Section 6 run at `2026-10-21T00:43:04.269Z` (0
-regressions, 0 new failures and 5 fixes). The aggregate gate finding is recorded in
+latest recorded Section 6 delivery comparison remains the run at `2026-10-21T00:43:04.269Z` (0
+regressions, 0 new failures and 5 fixes), with the later batch-1 parent comparison recorded
+below. The aggregate gate finding is recorded in
 [Contract: ABClass](abclass.md); it changes no wire, validation or data-contract shape and is not
 a contract discrepancy.
+
+Batch-1 remediation (21 October 2026) adds the required `selectedClassId` ownership argument,
+readiness-independent feedback retention, the required App notification host and bounded
+`confirmedPersistence: true` refresh diagnostics. Its Class-page delayed-list browser case is
+independently browser-verified: the reviewer's full run passed all **314** browser tests and the
+parent comparison at `2026-10-21T12-48-56.194Z` reports **0 regressions, 0 new failures and 0
+fixes** across seven passing checks, with only the six baseline backend-lint warnings failing.
+These changes affect local frontend execution only. Overall review sign-off, commit and push
+remain outstanding and are not claimed here.
 
 Frontend schema: `src/frontend/src/services/dataAnalysis/dataAnalysis.zod.ts`
 Frontend service: `src/frontend/src/services/dataAnalysis/dataAnalysisService.ts`
@@ -427,7 +437,10 @@ this is not metadata-style raw-prototype validation. The hook parses non-null co
 after commit before any task starts. The runner accepts a trusted typed context and does
 not independently parse it. Invalid context/registry rejects the lifecycle boundary, not
 an individual task. Passing `null` to the hook explicitly requests no work and clears
-published outcomes; it is not a nullable member of `PostAnalysisContextSchema`.
+published outcomes; it is not a nullable member of `PostAnalysisContextSchema`. A `null`
+context for the unchanged `selectedClassId` indicates analysis readiness only, not class
+departure: it clears published outcomes but leaves feedback ownership and a pending
+same-class attempt intact.
 
 #### Serialisable outcome data
 
@@ -473,22 +486,24 @@ Owner: `services/dataAnalysis/postAnalysis/runPostAnalysisTasks.ts`. Descriptor/
 handles have **no Zod/wire representation**; the schema-derived task result above is
 serialisable local data, not a function handle or wire payload.
 
-| Contract                     | Field           | Type                                                                                        | Notes                                                                                                                                                                                |
-| ---------------------------- | --------------- | ------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `PostAnalysisTaskDescriptor` | `id`            | `string` (readonly)                                                                         | Registry validation rejects empty or duplicate IDs before any task starts.                                                                                                           |
-| Same                         | `run`           | `(context: PostAnalysisContext) => PostAnalysisTaskResult\|Promise<PostAnalysisTaskResult>` | Required local operation; no function enters a payload.                                                                                                                              |
-| Same                         | `getAttemptKey` | `((context: PostAnalysisContext) => string)\|undefined`                                     | Optional task-owned mount-local identity; not a global metadata freshness gate.                                                                                                      |
-| `PostAnalysisTaskResult`     | `status`        | `'succeeded'\|'skipped'`                                                                    | Succeeded permits optional `confirmedPersistence?: true`; skipped requires the same three-value reason union above. Failure is thrown/rejected, not returned by this typed contract. |
-| `PostAnalysisTaskOutcome`    | `data`          | `PostAnalysisTaskOutcomeData`                                                               | Parsed result plus descriptor-owned `taskId`, or runner-created failed data.                                                                                                         |
-| Same                         | `error`         | `Error\|null`                                                                               | `toError` normalises failures; successful/skipped/pending outcomes have null. Technical Error stays local, not user-safe copy.                                                       |
-| Hook `PostAnalysisState`     | `outcomes`      | `PostAnalysisTaskOutcome[]`                                                                 | Ordered state; constructor initialises an empty list.                                                                                                                                |
+| Contract                     | Field             | Type                                                                                        | Notes                                                                                                                                                                                |
+| ---------------------------- | ----------------- | ------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `PostAnalysisTaskDescriptor` | `id`              | `string` (readonly)                                                                         | Registry validation rejects empty or duplicate IDs before any task starts.                                                                                                           |
+| Same                         | `run`             | `(context: PostAnalysisContext) => PostAnalysisTaskResult\|Promise<PostAnalysisTaskResult>` | Required local operation; no function enters a payload.                                                                                                                              |
+| Same                         | `getAttemptKey`   | `((context: PostAnalysisContext) => string)\|undefined`                                     | Optional task-owned mount-local identity; not a global metadata freshness gate.                                                                                                      |
+| `PostAnalysisTaskResult`     | `status`          | `'succeeded'\|'skipped'`                                                                    | Succeeded permits optional `confirmedPersistence?: true`; skipped requires the same three-value reason union above. Failure is thrown/rejected, not returned by this typed contract. |
+| `PostAnalysisTaskOutcome`    | `data`            | `PostAnalysisTaskOutcomeData`                                                               | Parsed result plus descriptor-owned `taskId`, or runner-created failed data.                                                                                                         |
+| Same                         | `error`           | `Error\|null`                                                                               | `toError` normalises failures; successful/skipped/pending outcomes have null. Technical Error stays local, not user-safe copy.                                                       |
+| Hook `PostAnalysisState`     | `outcomes`        | `PostAnalysisTaskOutcome[]`                                                                 | Ordered state; constructor initialises an empty list.                                                                                                                                |
+| Hook `usePostAnalysisTasks`  | `selectedClassId` | `string\|null`                                                                              | Required third argument; committed class ownership, independent of analysis readiness.                                                                                               |
 
 `runPostAnalysisTasks(context, tasks)` takes a readonly ordered descriptor list, validates
 IDs, awaits each task, validates its result before adding descriptor-owned taskId and retains each
 failure without blocking later independent tasks. Throws, rejections and result-parse
 failures become failed outcomes. `postAnalysisDiagnostics.ts` owns the shared bounded
 diagnostic: taskId/classId, optional newest canonical source assignmentId for metadata,
-and available `ApiTransportError` requestId/errorCode. No full analysis/context payload,
+optional `confirmedPersistence: true` on post-save refresh failures, and available
+`ApiTransportError` requestId/errorCode. No full analysis/context payload,
 student/roster data or raw metadata snapshot is added to task-owned diagnostics.
 Existing transport parameter/debug and bounded response-preview diagnostics are unchanged.
 There is no task retry policy, dependency graph or abort handle.
@@ -503,9 +518,10 @@ the writer's returned `classPartial` is not included in lifecycle outcome data.
 
 `hooks/usePostAnalysisTasks.ts` owns one `PostAnalysisOwner` per mount, backed by
 `Map<string, Map<string | PostAnalysisContext, Promise<PostAnalysisTaskOutcome>>>`.
-The first key is task ID. Keyed tasks supply the second key; unkeyed tasks use the
-**original input context object's identity**, not its freshly parsed copy. Future tasks
-are therefore independent of metadata source versions.
+The hook requires three arguments: `context`, `tasks`, and `selectedClassId`
+(`string | null`). The first key is task ID. Keyed tasks supply the second key; unkeyed tasks
+use the **original input context object's identity**, not its freshly parsed copy. Future
+tasks are therefore independent of metadata source versions.
 
 - Metadata's key is JSON of classId plus newest target assignmentId/updatedAt, or
   `noAssignments`. It computes selection with metadata set to null, ignoring stored
@@ -516,10 +532,19 @@ are therefore independent of metadata source versions.
   input-object identity. Every settled outcome, including failure, stays cached for this
   mount across navigation. New source keys/new unkeyed context objects or a remount permit
   another attempt; mere rerenders/state changes do not retry cached work.
+- Class ownership is committed by a separate `navigate(selectedClassId)` effect, not by
+  `attach`. Only a changed selected class (including a transition to `null`) starts a new
+  feedback generation and destroys that owner's visible warnings; passing a `null` context
+  for the same selected class is analysis readiness, not departure. Both production
+  consumers pass their committed `classId`, so a blocking detail refetch cannot be mistaken
+  for navigation.
 - Effects start after commit; StrictMode replay reattaches to the same cached pending
   promises. Outcomes remain in descriptor order, with incremental publication as tasks
-  settle. Cleanup detaches old-effect publication; work continues, including later tasks
-  in that execution. It never aborts or claims to cancel an active queued write.
+  settle. Cleanup detaches old-effect state publication; work continues, including later
+  tasks in that execution. It never aborts or claims to cancel an active queued write.
+  Effect detachment does not suppress independently owned same-class feedback; each
+  settled outcome is offered to feedback with the feedback generation captured at attach,
+  and only a class-generation change suppresses a late warning.
 - This is attempt storage, not a second server-data cache. Same-version work from distinct
   mounts still relies on the writer's fresh in-lane recheck. 5C extends the cached attempt
   promise through required post-save invalidation before settlement; reattachment does not
@@ -529,7 +554,7 @@ are therefore independent of metadata source versions.
   per mount. A fresh context object per render would manufacture a new unkeyed attempt every
   render; consumer-owned memoisation is the production loop guard, not a shared global metadata
   eligibility gate (supplied evidence: 2 RED identity regressions). A non-ready surface passes
-  `null` explicitly, which requests no work.
+  `null` explicitly, which requests no work but does not revoke the selected-class owner.
 
 #### Confirmed persistence and refresh settlement
 
@@ -545,14 +570,21 @@ If both invalidations fulfil, retain the succeeded outcome. Otherwise return
 `{ data: { taskId, status: 'failed', confirmedPersistence: true }, error }`, retaining
 the first normalised refresh Error locally. Every distinct normalised Error object is
 logged through the bounded diagnostic owner; both settlements remain observed even when
-the same Error instance is deduplicated. Save confirmation is not withdrawn and the
-successful display analysis is not replaced by this task failure. This extension affects
-only lifecycle outcome data, not task returns, writer `RefreshOutcome`, or any wire shape.
+the same Error instance is deduplicated. Each refresh failure is logged through
+`logPostAnalysisFailure` with the bounded scalar `confirmedPersistence: true`,
+distinguishing it from a pre-save task failure without expanding the diagnostic payload.
+Both required settlements complete before the attempt settles, even when the surface has
+meanwhile become readiness-blocking and passes a `null` context for the same class; that
+readiness change does not detach the pending attempt. Save confirmation is not withdrawn
+and the successful display analysis is not replaced by this task failure. This extension
+affects only lifecycle outcome data and bounded diagnostics, not task returns, writer
+`RefreshOutcome`, or any wire shape.
 
 #### Feedback ownership and safe copy
 
-Owner: `hooks/postAnalysisFeedback.ts` → `PostAnalysisFeedback`, using the existing
-`App.useApp().notification` host. Only a mounted metadata failed outcome offers a warning:
+Owner: `hooks/postAnalysisFeedback.ts` → `PostAnalysisFeedback`, using the required existing
+`App.useApp().notification` host. Only a mounted metadata failed outcome for the committed
+selected class offers a warning:
 
 | Failure data                 | Title                          | Description                                                                                           | Notes                                                                                          |
 | ---------------------------- | ------------------------------ | ----------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
@@ -560,18 +592,27 @@ Owner: `hooks/postAnalysisFeedback.ts` → `PostAnalysisFeedback`, using the exi
 | `confirmedPersistence: true` | `Class summary refresh failed` | `The class summary was saved, but refreshed data could not be loaded. Reload the page to refresh it.` | Distinguishes confirmed persistence from refresh failure.                                      |
 
 Warnings use `duration: 0`, `closable: true`, `role: 'status'`, no retry action and no
-technical Error rendering. Identity is JSON of mount-owned React `useId`, classId,
-taskId and source identity. Keyed tasks use their attempt key; the unkeyed fallback uses
-the ordered assignment ID/time list. Shown-key memory lasts the mount, including after
-dismissal or navigation, so same-version effect replay does not reopen a notice. Closing
-removes only visible-key ownership; class change/null and actual unmount destroy only
-this owner's visible keys. Microtask disposal tolerates synchronous StrictMode replay.
-Effect detachment suppresses old publication/late warnings but does not abort queued work
-or required refresh settlement. No success/unchanged warning is emitted. Notification hosts,
-callback/clock handles, React mount IDs, Maps/Sets and technical Errors stay local and
-have no serialised persistence/transport representation.
+technical Error rendering. The host is the required existing `App.useApp().notification`
+context: production code declares no no-host fallback and emits no substitute channel, so a
+missing or incomplete host fails loudly at the completion boundary. Identity is JSON of
+mount-owned React `useId`, the committed selected classId, taskId and source identity.
+Keyed tasks use their attempt key; the unkeyed fallback uses the ordered assignment ID/time
+list. Shown-key memory lasts the mount, including after dismissal or navigation, so
+same-version effect replay does not reopen a notice. Closing removes only visible-key
+ownership; a committed class change/deselection and actual unmount destroy only this owner's
+visible keys. Microtask disposal tolerates synchronous StrictMode replay.
 
-#### Frontend Section 6 test-only acceptance boundary (implemented; review-clean)
+Feedback ownership tracks the committed selected class rather than analysis readiness. A
+same-class readiness-null context does not destroy a visible warning or suppress a pending
+attempt's settlement, so a confirmed-save warning still appears after both required query
+refreshes settle when the surface became blocking in the meantime. Genuine navigation,
+unmount or a different class generation still suppresses late feedback; state publication
+alone is detached with the effect. This does not abort queued work or required refresh
+settlement. No success/unchanged warning is emitted. Notification hosts, callback/clock
+handles, React mount IDs, Maps/Sets and technical Errors stay local and have no serialised
+persistence/transport representation.
+
+#### Frontend Section 6 test-only acceptance boundary (implemented; original set review-clean; batch-1 addition independently browser-verified)
 
 Section 6 adds browser and dispatcher acceptance coverage only. It introduces **no** new
 execution context, outcome, request or response field, and the lifecycle contracts above are
@@ -585,18 +626,24 @@ unchanged.
 - `post-analysis-metadata.persistence.spec.ts` has three journeys covering both averaging
   surfaces, a full fresh read that produces no repeat write, and a later source version that
   produces exactly one further write.
-- `post-analysis-metadata.feedback.spec.ts` has seven cases: save-failure warning on standalone
+- `post-analysis-metadata.feedback.spec.ts` has eight cases: save-failure warning on standalone
   Heatmaps with keyboard dismissal and no reopening on rerender; Class-page save failure with
-  analysis intact and navigation cleanup; confirmed-save refresh-failure copy; and desktop/
-  narrow × light/dark containment cases.
+  analysis intact and navigation cleanup; confirmed-save refresh-failure copy; four desktop/
+  narrow × light/dark containment cases; and a Class-page confirmed-save refresh-failure
+  journey where the detail refresh fails while the list refresh remains deferred, proving that
+  readiness-driven blocking (a `null` context for the same class) does not suppress the settled
+  warning. That last case was added in batch-1 remediation and is independently
+  browser-verified by the reviewer's full run (all **314** browser tests passed; the
+  actual-consumer delayed-list case is recorded in `.opencode/scratchpad/batch1-review-e2e.txt`).
+  Overall review sign-off, commit and push remain outstanding.
 - The Node real-dispatcher bridge and round-trip suite are ABClass transport coverage; their
   test-only contract and the explicit limitation that they are not real
   controller/persistence/integrity proof are recorded in
-  [Contract: ABClass — Frontend Section 6](abclass.md#frontend-section-6-test-only-round-trip-and-browser-scenario-contracts-implemented-review-clean).
+  [Contract: ABClass — Frontend Section 6](abclass.md#frontend-section-6-test-only-round-trip-and-browser-scenario-contracts-implemented-original-set-review-clean-batch-1-addition-independently-browser-verified).
 
-All ten added browser cases are green in the independent reviewer's full run: **313** browser
-tests passed with `--retries=0` (8.8 minutes), alongside **34** synthetic files / **384**
-tests, all-project type-checking and verify-only frontend lint with zero errors / 19 baseline
+The original ten Section 6 browser cases are green in the independent reviewer's full run:
+**313** browser tests passed with `--retries=0` (8.8 minutes), alongside **34** synthetic files /
+**384** tests, all-project type-checking and verify-only frontend lint with zero errors / 19 baseline
 `max-lines` warnings. The persisted Section 6 comparison at `2026-10-21T00:43:04.269Z` reports
 **0 regressions, 0 new failures and 5 fixes** across seven passing checks; only the six
 baseline backend-lint warnings remain, so overall status stays baseline **FAILING**. Independent
@@ -605,6 +652,14 @@ review is **CLEAN — Section 6**
 audit is complete and independently review-clean (**CLEAN — Section 7**,
 `.opencode/scratchpad/review-final-frontend-abclass-metadata.md`); the final regression
 comparison follows this documentation-only closure and is retained under the session runs.
+
+That **313**-test run is historical for the original set and predates the batch-1 addition. The
+batch-1 Class-page delayed-list case is covered separately by the later reviewer run of **314**
+browser tests and by the parent comparison in the reviewer's regression session at
+`.ts-regression-checker/reports/session-feat-frontend-abclass-metadata/runs/2026-10-21T12-48-56.194Z/comparison.txt`
+(**0 regressions, 0 new failures and 0 fixes** across seven passing checks; only the six baseline
+backend-lint warnings fail). Its historical acceptance count remains ten cases in the 313-test
+run; the reviewer's current run contains eleven browser cases including the batch-1 addition.
 
 ## Sub-entities
 
@@ -1120,6 +1175,22 @@ Class-page adapter:
    > frontend-only refresh-settlement extension. No backend, envelope or analyser shape
    > change; 5C independent review is **PASS — CLEAN** (`.opencode/scratchpad/review-section5c-independent.md`).
 
+8. **Aligned** — Batch 1 makes class ownership explicit and independent of analysis
+   readiness. `usePostAnalysisTasks` requires the committed `selectedClassId` as its third
+   argument; a `null` context for the same class clears published state but does not destroy
+   feedback or detach a pending attempt, while a changed/deselected class and unmount still
+   suppress late feedback. The notification host is the required
+   `App.useApp().notification` context with no production no-host fallback. Refresh-failure
+   diagnostics also carry the bounded scalar `confirmedPersistence: true`. This changes local
+   lifecycle execution only: no persistence, request, response, envelope or analyser shape
+   changes.
+
+   > Surfaced during batch-1 remediation of the 21 October 2026 pre-PR review (EH-1/RRC-1).
+   > No wire or persistence change; the added Class-page browser case is independently
+   > browser-verified by the reviewer's full 314-test run, with 0 regressions and 0 new
+   > failures in the parent comparison at `2026-10-21T12-48-56.194Z`. Overall review sign-off,
+   > commit and push remain outstanding.
+
 ## Planned contract additions (Not implemented, issue #305)
 
 **Status: `Not implemented`** — planned-only entries to support the top-decile
@@ -1303,10 +1374,10 @@ Shared lifecycle companions (5B and 5C independently review-clean):
 ├── `src/frontend/src/services/dataAnalysis/postAnalysis/postAnalysis.zod.ts` → `PostAnalysisContextSchema`, `PostAnalysisTaskResultSchema`, `PostAnalysisTaskOutcomeDataSchema`, inferred data types
 ├── `src/frontend/src/services/dataAnalysis/postAnalysis/runPostAnalysisTasks.ts` → ordered runner, ID validation, local descriptor/result/outcome types
 ├── `src/frontend/src/services/dataAnalysis/postAnalysis/postAnalysisTasks.ts` → clock-injected metadata-only registry and task-owned source identity
-├── `src/frontend/src/services/dataAnalysis/postAnalysis/postAnalysisDiagnostics.ts` → bounded task/refresh failure identifiers and available correlation
-├── `src/frontend/src/hooks/usePostAnalysisTasks.ts` → post-commit mount-owned attempt/state lifecycle, including post-save settlement
-├── `src/frontend/src/hooks/postAnalysisInvalidation.ts` → both required query invalidations and confirmed-save refresh failure outcome
-└── `src/frontend/src/hooks/postAnalysisFeedback.ts` → mount/class/source-owned persistent warnings and dismissal/cleanup
+├── `src/frontend/src/services/dataAnalysis/postAnalysis/postAnalysisDiagnostics.ts` → bounded task/refresh failure identifiers, available correlation and optional `confirmedPersistence: true`
+├── `src/frontend/src/hooks/usePostAnalysisTasks.ts` → post-commit mount-owned attempt/state lifecycle with required selected-class ownership, including post-save settlement
+├── `src/frontend/src/hooks/postAnalysisInvalidation.ts` → both required query invalidations; refresh failures log bounded `confirmedPersistence: true` and return a confirmed-persistence failed outcome
+└── `src/frontend/src/hooks/postAnalysisFeedback.ts` → mount/selected-class/task/source-owned persistent warnings with required App host, dismissal memory and cleanup
 
 Production consumer activation (5D): **complete and independently review-clean**; both
 averaging surfaces invoke the hook directly with memoised unsliced context, and the Section 5
@@ -1322,11 +1393,12 @@ Section 7**, `.opencode/scratchpad/review-final-frontend-abclass-metadata.md`); 
 regression comparison follows this documentation-only closure and is retained under the session
 runs.
 
-Frontend Section 6 test-only acceptance (implemented; independently review-clean; comparison
-0 regressions / 0 new failures / 5 fixes, baseline FAILING only for backend lint):
+Frontend Section 6 test-only acceptance (implemented; original set independently review-clean;
+batch-1 addition independently browser-verified; historical comparison 0 regressions / 0 new
+failures / 5 fixes, baseline FAILING only for backend lint):
 ├── `src/frontend/e2e-tests/helpers/post-analysis-metadata-scenarios.ts` → canonical small class-2 historical-boundary and later-version browser queues
 ├── `src/frontend/e2e-tests/post-analysis-metadata.persistence.spec.ts` → three changed-write journeys
-└── `src/frontend/e2e-tests/post-analysis-metadata.feedback.spec.ts` → seven save/refresh feedback and viewport/theme cases
+└── `src/frontend/e2e-tests/post-analysis-metadata.feedback.spec.ts` → eight save/refresh feedback and viewport/theme cases (the Class-page delayed-list readiness case is independently browser-verified in the reviewer's 314-test run)
 
 Task preview derived shapes (implemented, issue #19):
 ├── `src/frontend/src/features/taskHeatmap/buildCellPreviewLookup.ts` → `CellPreviewData` (owner)

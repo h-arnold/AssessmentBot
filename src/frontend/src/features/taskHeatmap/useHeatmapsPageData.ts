@@ -376,7 +376,7 @@ export function useHeatmapsPageData(): HeatmapsPageData {
       analyserResult
     );
   }, [postAnalysisStatus, classFull, assignmentDefinitionPartials, analyserResult]);
-  usePostAnalysisTasks(postAnalysisContext, postAnalysisTasks);
+  usePostAnalysisTasks(postAnalysisContext, postAnalysisTasks, classId);
 
   // -----------------------------------------------------------------------
   // 9. Refresh — re-run class query, ADP dataset, and enabled assignment queries

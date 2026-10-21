@@ -36,7 +36,7 @@ export class PostAnalysisFeedback {
     };
   }
 
-  /** Destroys only this owner's keys when the class changes or becomes absent.
+  /** Destroys only this owner's keys when the committed class changes or the selection becomes absent.
    * @param {string | null} classId - Next committed class identity.
    * @returns {void} Leaves ordinary same-class reattachments untouched.
    */
@@ -46,18 +46,17 @@ export class PostAnalysisFeedback {
   }
 
   /** Publishes safe metadata-only warning copy at most once per attempted source.
-   * @param {NotificationHost} host - Existing App context API, never a new host.
+   * @param {NotificationHost} host - Required existing App context API, never a new host.
    * @param {string} source - Stable attempt identity.
    * @param {PostAnalysisTaskOutcome} outcome - Completed local task outcome.
    * @returns {void} No success feedback, actions or focus transfer.
+   * @remarks A missing or incomplete host is a configuration error: this method
+   * emits no fallback and lets the failure reach the completion boundary.
    */
   show(host: NotificationHost, source: string, outcome: PostAnalysisTaskOutcome): void {
     if (!this.isMetadataOwner(outcome) || outcome.data.status !== 'failed') return;
     const key = JSON.stringify([this.ownerId, this.classId, outcome.data.taskId, source]);
-    // Non-UI owners can use the lifecycle without an Ant Design App boundary.
-    if (this.shown.has(key) || !host.warning) return;
-    this.shown.add(key);
-    this.owned.set(key, host);
+    if (this.shown.has(key)) return;
     const isSaved = outcome.data.confirmedPersistence === true;
     host.warning({
       key,
@@ -72,6 +71,8 @@ export class PostAnalysisFeedback {
         this.owned.delete(key);
       },
     });
+    this.shown.add(key);
+    this.owned.set(key, host);
   }
 
   /** Checks whether this mounted owner handles the task's feedback.
