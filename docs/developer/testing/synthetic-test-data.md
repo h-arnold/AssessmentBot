@@ -36,7 +36,7 @@ Out of scope:
 | Staged writer                 | `scripts/synthetic-test-data/fixtureWriter.js`                     | Validates, stages, and atomically replaces committed profiles.                                                                                                                                                              |
 | Regeneration CLI              | `scripts/synthetic-test-data/generateSyntheticAnalysisFixtures.js` | Compact regeneration and the explicit full mode.                                                                                                                                                                            |
 | Immutable loader              | `scripts/synthetic-test-data/loadSyntheticAnalysisProfile.js`      | Synchronously reads a named committed view and deep-freezes it.                                                                                                                                                             |
-| Dispatcher round-trip bridge  | `scripts/synthetic-test-data/apiHandlerRoundTripBridge.js`         | Installs `apiHandlerTestUtils` seams, dispatches the real `apiHandler`, restores every seam.                                                                                                                                |
+| Dispatcher round-trip bridge  | `scripts/synthetic-test-data/apiHandlerRoundTripBridge.js`         | Installs read/mutation `apiHandlerTestUtils` seams, dispatches the real `apiHandler`, restores every seam.                                                                                                                  |
 | Frontend round-trip adapter   | `src/frontend/src/test/syntheticApiRoundTripAdapter.ts`            | Composes the in-tree `googleScriptRunHarness`; imports no `scripts/` code.                                                                                                                                                  |
 | Committed fixtures            | `tests/__mocks__/data/synthetic-analysis/<profile>/`               | Transport views and manifest only.                                                                                                                                                                                          |
 | Ignored full output           | `.opencode/scratchpad/synthetic-analysis-full/`                    | On-demand large-full transport/manifest output; never committed.                                                                                                                                                            |
@@ -192,7 +192,9 @@ This is **fixture realism only**, not a production nullable-contract change:
 ### `validateClassMetadata.js` helper (`Implemented`)
 
 - `scripts/synthetic-test-data/validateClassMetadata.js` validates raw generated metadata
-  independently of the frontend schemas, which strip the extra field.
+  independently of the frontend schemas. Both class-read schemas now require and retain
+  the nullable metadata snapshot; generator validation additionally checks corpus linkage
+  and cross-view parity rather than relying on frontend parse success.
 - It enforces strict raw shape and score union, canonical UTC timestamps, dense zero-to-three
   entries, unique assignment IDs, newest-first ordering, assignment/class/definition linkage,
   exact source timestamps and three-way persistence/partial/full parity.
@@ -200,6 +202,88 @@ This is **fixture realism only**, not a production nullable-contract change:
   every generator and committed-fixture path checks it. Focused tests additionally validate
   every raw snapshot view through the real `ABClassMetadata.validateMetadata` domain owner,
   because frontend parse success alone is not sufficient evidence of correctness.
+
+### Frontend Zod parity (`Implemented`)
+
+- `tests/synthetic-analysis/syntheticABClassMetadataFrontendParity.test.ts` compares the frontend `ABClassMetadataSchema` with the real backend `ABClassMetadata.validateMetadata` for all three compact profiles, plus strict raw-object, score, identifier, ordering and canonical-timestamp boundary probes. It calls `generateSyntheticAnalysisGraph()` directly, so the generated snapshots stay in memory and the committed views are not rewritten.
+- Frontend Vitest schema coverage selects the committed `small`, `medium` and `large-representative` class-partial views through `src/frontend/src/test/abClass/abClassMetadataFixtures.ts` (raw `?raw` imports plus `cloneMetadata`). Backend imports stay test-local; frontend production code never imports `scripts/` or backend modules.
+- Runner-neutral typed fixture providers use `src/frontend/src/test/abClass/abClassMetadataSharedFixtures.ts`: direct JSON loading, schema validation, freezing and detached cloning own `CANONICAL_NON_NULL_METADATA` / `createCanonicalMetadataFixture()`. The Vitest-only raw selectors re-export those bindings for compatibility; shared browser import chains must not import the raw selector module. `ClassFullFixtureDefaults` owns the focused full-class builders' defaults and preserves explicit `metadata: null`, applying the canonical snapshot only for omitted/undefined metadata. `src/frontend/e2e-tests/helpers/class-metadata-fixtures.ts` serves cloned `small`-profile snapshots to browser scenarios. Class-read fixture browser validation and independent review completed in Section 2. Supplied values remain snapshots, not calculated-average oracles.
+
+### Node dispatcher metadata round trip (`Implemented`, independently review-clean)
+
+`tests/synthetic-analysis/syntheticABClassMetadataRoundTrip.test.ts` (**188** physical
+lines / **5** tests) composes the script-owned bridge, the frontend round-trip adapter
+and the real frontend `callApi`, service schemas and queued mutation wrappers. It proves:
+
+- full and partial reads retain the canonical metadata snapshot through the real
+  `apiHandler` and shared response schemas;
+- queued update and upsert preserve omission, clear on null and replace the whole
+  snapshot, with the fresh read reflecting each change;
+- own-`undefined` metadata rejects before the dispatcher is invoked;
+- malformed dispatch input returns `INVALID_REQUEST`, while a throwing class seam
+  returns `INTERNAL_ERROR`;
+- two bridge instances keep isolated state, every dispatcher seam is restored after
+  success and failure, and caller-owned spies survive teardown.
+
+The bridge extension is test-only: it composes the existing `apiHandlerTestUtils`
+controller and transport seams, including class-partial reads and metadata mutation
+seams. It passes a narrow Vitest facade to the shared helper so the helper can
+create mocks without restoring caller-owned spies during teardown. It does **not**
+prove real controller/DbManager persistence, roster or assignment integrity, auth
+or envelope changes. The existing real-dispatcher, envelope and auth suites remain
+the evidence for those contracts.
+
+Run it with:
+
+```bash
+npm run test:synthetic -- tests/synthetic-analysis/syntheticABClassMetadataRoundTrip.test.ts
+```
+
+### Metadata refresh analysis boundaries
+
+Frontend refresh projection/task/writer owners are complete and independently
+review-clean, with zero new regressions in the Section 4 comparison. They use actual assessment evidence,
+not supplied metadata scores, for full-class and isolated-target calculation.
+The generic context/result/outcome schemas, ordered runner, metadata-only registry
+and shared post-commit hook passed independent 5B and 5C reviews, and the consumer
+wiring passed independent 5D review.
+Query invalidation and warning feedback are independently review-clean.
+Both feature consumers call the shared hook directly. The narrow standalone
+keyboard seam was diagnosed and fixed in the shared E2E helper, and the full
+**303**-test browser run passed. The Section 5 regression comparison recorded zero
+regressions and zero new failures. Section 6 adds test-only Node dispatcher and
+browser changed-write/failure-feedback coverage; those artefacts are complete and
+independently review-clean, with zero new regressions in the Section 6 comparison.
+The real App-host/query-observer unit harness reuses these same boundary fixtures;
+it does not close the newest-target evidence gap, and the separate Section 6
+browser suite is the changed-write/failure acceptance record.
+
+**Current corpus limitation:** every one of the 11 committed compact classes has
+a null submission `studentName` in its newest assignment. The existing analyser
+rejects that instance in isolation (`buildPerStudentRows: null studentName`), even
+where full-class analysis succeeds. Thus these fixtures do not prove successful
+refresh of untouched newest canonical targets. This is a test-data/analysis trust
+boundary, not an unimplemented metadata product function or permission to repair
+production data.
+
+`src/frontend/src/test/abClass/metadataRefreshFixtures.ts` explicitly models the
+preceding source version by cloning and omitting **only the final assignment**.
+Remaining names, assessments and supplied metadata are unchanged:
+
+| Profile                | Class     | Historical target |
+| ---------------------- | --------- | ----------------- |
+| `small`                | `class-2` | `assignment-2-2`  |
+| `medium`               | `class-0` | `assignment-0-4`  |
+| `large-representative` | `class-1` | `assignment-1-3`  |
+
+These are historical-source **boundary probes**, not a new realistic fixture
+profile or a generator extension. Three untouched selected-class failure probes
+retain the newest null-name input and assert propagated rejection, no write,
+no clock access and released queue lane. `metadataEvidenceOracle.ts` derives
+independent numeric expectations from assessment records and live weights;
+supplied recent metadata remains retention evidence only. No names/scores are
+normalised, generator changed, corpus regenerated or production analyser repaired.
+Successful untouched-newest-corpus refresh remains an explicit evidence gap.
 
 ### Regeneration and scope (`Implemented`)
 
@@ -236,16 +320,17 @@ The synthetic checks are wired into the aggregate commands: `lint` and `lint:che
 
 - `loadSyntheticAnalysisProfile(profileName, viewName)` reads one committed view synchronously and recursively deep-freezes it. It rejects unsupported profile or view names, and it rejects `large-full` because that profile is generated, never committed.
 - Consumers must clone a loaded view before local mutation, because the loader returns shared frozen data.
-- The round-trip bridge installs and restores every `apiHandlerTestUtils` dispatcher seam per call, so overlapping requests cannot leak a selected data set or handler implementation into another test.
+- The round-trip bridge installs and restores every `apiHandlerTestUtils` dispatcher seam per call, so overlapping requests cannot leak a selected data set or handler implementation into another test. Each bridge instance clones its class views, so mutations made through one bridge are invisible to another and to the frozen loader data.
 
 ## Dispatcher round-trip bridge
 
 The bridge composes existing test seams rather than reimplementing envelope behaviour:
 
-1. It loads the committed `classesById`, `assignmentDefinitionPartials`, and `editableDefinitions` views.
-2. Per call, it installs isolated `apiHandlerTestUtils` controller/transport seams that supply those transport views (including the `getAssignmentDefinition_` seam backed by `editableDefinitions`).
-3. It dispatches once through the real `apiHandler`.
-4. It restores every seam before invoking the caller's callback.
+1. It clones and loads the committed `classesById`, `classPartials`, `assignmentDefinitionPartials`, and `editableDefinitions` views. Cloning happens before any mutation so the frozen loader views are never altered.
+2. Per call, it installs isolated `apiHandlerTestUtils` controller/transport seams that supply those transport views, including `getAssignmentDefinition_` backed by `editableDefinitions`, class-partial reads through the controller seam, and metadata `upsertABClass_`/`updateABClass_` seams.
+3. A mutation seam replaces metadata on the bridge instance's isolated records and returns a detached class partial. Omitted metadata leaves the value unchanged; `null` clears it.
+4. It dispatches once through the real `apiHandler`.
+5. It restores every seam before invoking the caller's callback.
 
 Round-trip semantics:
 
@@ -253,8 +338,9 @@ Round-trip semantics:
 - A backend failure envelope reaches `callApi` as an `ApiTransportError`; a raw transport failure is delivered raw through the harness failure handler without JSON serialisation.
 - Void responses resolve from envelope `data: null`, matching `apiHandler` behaviour.
 - Malformed JSON or a malformed-but-enveloped payload surfaces the existing parser or Zod error; the bridge never converts a failure into a synthetic success.
+- Bridge instances do not share mutation state, and each call restores the dispatcher seams even when dispatch throws.
 
-The test path exercises the complete production transport chain — `callApi`, service Zod schemas, and `DataAnalysisService` input — except real GAS hosting.
+The test path exercises the complete production transport chain — `callApi`, service Zod schemas, queued mutation wrappers, and `DataAnalysisService` input — except real GAS hosting and real controller/persistence internals.
 
 ## Error behaviour
 
@@ -272,6 +358,8 @@ The test path exercises the complete production transport chain — `callApi`, s
 ## CI and stress policy
 
 - CI runs the compact synthetic project through the aggregate lint, test, and coverage commands.
+- `npm run run-all-checks` and `npm run test:coverage` stop at the first failing scope. If an earlier scope fails, run `npm run test:synthetic:coverage` explicitly and report its actual result; never claim a skipped synthetic scope passed.
+- An initial parallel coverage invocation can fail to acquire the shared coverage report directory. Rerun sequentially; treat that lock failure as infrastructure, not as a synthetic-suite or coverage defect.
 - The full-large stress suite is opt-in via `test:synthetic:stress` and is not part of `test`, `test:coverage`, or `run-all-checks`.
 - The stress project has an explicit raised timeout budget because the full graph is intentionally large.
 - Committed fixture regeneration must stay byte-for-byte reproducible: a mismatch fails the committed-fixture comparison spec.

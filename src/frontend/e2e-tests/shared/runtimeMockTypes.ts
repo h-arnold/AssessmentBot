@@ -15,6 +15,8 @@ export type RuntimeScenario = Readonly<{
   setAuthenticationSettings?: ReadonlyArray<ResponseItem>;
   getABClassPartials?: ReadonlyArray<ResponseItem>;
   getABClass?: ReadonlyArray<ResponseItem>;
+  upsertABClass?: ReadonlyArray<ResponseItem>;
+  updateABClass?: ReadonlyArray<ResponseItem>;
   getCohorts?: ReadonlyArray<ResponseItem>;
   getYearGroups?: ReadonlyArray<ResponseItem>;
   getAssignmentTopics?: ReadonlyArray<ResponseItem>;

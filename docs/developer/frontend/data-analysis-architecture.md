@@ -2,10 +2,24 @@
 
 ## Status
 
-**Implemented.** This document records the delivered architecture for the
-zero-weight assessment remediation in GitHub issue #307. It describes the
-frontend analysis pipeline as shipped. There are no backend, API, persistence,
-route, or transport changes in this work.
+**Implemented analysis pipeline.** This document records the zero-weight
+assessment architecture and shared analysis boundaries. The metadata task and
+queued writer below are complete and independently review-clean with zero new
+regressions. The shared post-commit lifecycle, query invalidation and feedback are
+independently review-clean (5B/5C), and the consumer wiring passed independent 5D
+review. Both averaging surfaces call the hook directly. The narrow standalone
+keyboard seam was diagnosed and fixed in the shared E2E helper, and the full
+**303**-test browser run passed. The Section 5 regression comparison recorded zero
+regressions and zero new failures. Section 6 test-only Node dispatcher and browser
+changed-write/failure-feedback coverage is complete and independently review-clean
+(`.opencode/scratchpad/review-section6-independent.md`). Its regression comparison
+(`.ts-regression-checker/reports/session-frontend-abclass-metadata/runs/2026-10-21T00-43-04.269Z/comparison.txt`)
+recorded zero regressions and zero new failures. Section 7 documentation
+reconciliation is complete and the final independent review is clean
+(`.opencode/scratchpad/review-final-frontend-abclass-metadata.md`). The aggregate
+gate is not green: the unchanged baseline blocks on the six backend `max-lines`
+lint warnings and backend branch coverage at 84.35% against the 85% gate, both
+pre-existing and not new regressions.
 
 ## Purpose
 
@@ -222,6 +236,148 @@ rendering and group-edge class construction live in
 (`buildTaskHeaderPresentation`, `getZeroWeightMetricEdgeClass`), consumed by
 `taskHeatmapTableColumns.tsx`, which remains the column-construction
 composition facade. The edge classes are defined in `src/frontend/src/index.css`.
+
+## Metadata refresh task and persistence
+
+The synchronous `DataAnalysisService` and pure analysers remain free of I/O.
+`postAnalysis/refreshABClassMetadata.ts` accepts successful averaging context and
+unsliced class data, but never persists display results or display weightings.
+It is the only task in `postAnalysis/postAnalysisTasks.ts`
+(`PostAnalysisTaskRegistry`). The generic context/outcome schemas, ordered runner and shared
+`hooks/usePostAnalysisTasks.ts` passed independent 5B and 5C reviews.
+Both averaging surfaces call the hook directly. They pass the complete
+unsliced class, live definition partials and the successful averaging result, or
+`null` when the surface is not ready. On the standalone Heatmaps surface the
+selected assignments drive display only; metadata calculation always uses every
+class assignment. The task never writes descriptive summary results. The narrow
+standalone keyboard seam was diagnosed and fixed in the E2E helper, and the full
+**303**-test browser run passed. Independent 5D review and the Section 5 regression
+comparison are complete, with zero regressions and zero new failures. Section 6
+adds test-only Node dispatcher and browser changed-write/failure-feedback coverage;
+it is complete and independently review-clean, with zero new regressions.
+
+`postAnalysis/metadataProjection.ts` owns pure freshness, score projection and
+rolling merge. Every candidate source timestamp must be canonical UTC; newest
+selection breaks equal-time ties by assignment ID ascending. Empty classes,
+equal stored target ID/time and sources older than stored recent history skip.
+This is an **assignment-version cache**, not an assessment-completion signal:
+scores, live weighting, definitions or roster changes alone do not refresh an
+unchanged timestamp. No polling or backfill exists.
+
+For changed candidates, `services/abClass/abClassMetadataService.ts` reserves the
+existing `classesBulkMutation` lane before a fresh validated `getABClass` read.
+It bypasses query cache, reselects the target and repeats the gate. Missing
+classes fail rather than being recreated. All fresh assignments must resolve
+against the supplied live definition partials before calculation.
+
+The writer recalculates the complete fresh class with standard 40/40/20 weights
+and no display filters, then analyses exactly one target assignment in isolation.
+Instance isolation prevents shared definition keys from merging target evidence.
+It projects weighted overall directly without rounding, preserving numbers,
+`N`, `E` and `excluded`. Initial null metadata gets complete class averages and
+one recent entry; subsequent writes replace the same instance or append one,
+stably sort newest first and keep three. Equal-time entries retain their positions.
+Source time is copied exactly; the supplied summary clock is read only after
+successful calculations when preparing a changed write.
+
+The update contains only `classId` and complete metadata, reuses the mutation
+schema and parses the actual class-partial response. In-slot network execution
+uses `callApi`, never a nested queued wrapper. The reservation covers the whole
+read/recheck/calculate/merge/write: concurrent owners in this session see prior
+writes on their next fresh read, preserving rolling history and skipping duplicate
+versions. It is **not a cross-session lock**. Failures propagate and release the
+lane; no task retry, rollback or production data repair is added.
+
+Successful writer tests currently use explicit historical-source boundary clones;
+untouched newest canonical instances expose an existing analyser null-name
+rejection. See [Synthetic Test Data](../testing/synthetic-test-data.md#metadata-refresh-analysis-boundaries)
+for the exact limitation and evidence scope, not a claim of newest-corpus success.
+
+## Shared post-analysis lifecycle and extension
+
+`hooks/usePostAnalysisTasks.ts` is the canonical shared extension point for both
+averaging surfaces, not a metadata-specific effect. Import actual owners directly;
+do not introduce a frontend facade or barrel. The hook validates the successful
+context after commit: complete unsliced class, live definition partials and a
+matching-class averaging result. Pass null when there is no successful context;
+descriptive summaries remain read-only.
+
+Both consumers bind the hook directly: `features/classPage/useClassPageData.ts` and
+`features/taskHeatmap/useHeatmapsPageData.ts` build the context only from a `ready`
+surface with those three inputs, otherwise `null`. They memoise the context on its
+inputs and construct the registry once, so ordinary rerenders keep the same context
+and task-list references. Never rebuild the context object per render: an unstable
+object re-attaches the effect each render and was observed in a browser run to
+produce an attach/publish loop once cache updates landed. The memo is the loop
+guard; metadata freshness is not a global eligibility gate for other tasks.
+
+`runPostAnalysisTasks.ts` accepts a readonly ordered descriptor list, rejects empty
+or duplicate IDs before execution (an empty list is valid), and awaits each task
+in order. Each task owns eligibility. A thrown/rejected task or invalid outcome
+becomes an individually failed outcome; later independent tasks still run. Errors
+are normalised/logged through existing helpers, with transport correlation when
+available. Serialisable outcome data stays separate from local `Error` and
+callback handles; none of these execution handles is sent to GAS.
+
+The hook remembers attempt promises by task ID and optional `getAttemptKey(context)`
+for the entire mount, including class navigation and failures. Without that key,
+the original successful context object's identity is the attempt key. StrictMode
+replay reattaches to pending promises rather than dropping completion or starting
+duplicate work. Cleanup suppresses stale state publication; it does not abort
+active work, cancel queued writes or prevent later descriptors in that work from
+finishing.
+
+The metadata descriptor keys class/newest assignment ID/source timestamp, excluding
+cached metadata, scores and live weights. Empty classes have a stable key; invalid
+source timestamps use the raw assignment ID/time signature so validation fails
+inside that task without blocking independent work. The same version is attempted
+once per mount even after failure; a new source key or remount permits another
+attempt. This is not a global freshness gate for future tasks. The registry's
+constructor receives the clock and builds descriptors without reading it; only
+preparing a changed metadata write reads that clock. Confirmed saves become
+`succeeded` with `confirmedPersistence: true` before the hook completes required
+invalidation. The cached attempt includes both refresh settlements, so replay and
+metadata-only cache changes repeat neither the write nor invalidation.
+
+`hooks/postAnalysisInvalidation.ts` invalidates detail and list after confirmed
+metadata persistence only. A refresh failure becomes a failed outcome retaining
+`confirmedPersistence: true` and a separate local Error; later independent tasks
+still run. See the [query contract](frontend-react-query-and-prefetch.md#post-analysis-metadata-invalidation).
+
+`hooks/postAnalysisFeedback.ts` owns metadata warnings independently of effect
+reattachment. Notification keys include mounted owner, class, task and source.
+Dismissal memory lasts the mount; a new source can notify again. Same-class
+reattachment neither destroys an undismissed notice nor reopens a dismissed one.
+Navigation/null context destroys only owned notices; unmount disposal tolerates
+synchronous StrictMode replay. Detached work can still finish and invalidate
+queries, but cannot publish late owner state or feedback. See the
+[warning and diagnostic contract](frontend-logging-and-error-handling.md#post-analysis-metadata-failures).
+
+### Register another task
+
+Add a descriptor to `PostAnalysisTaskRegistry.tasks` in its intended order. For
+example, after implementing a real task owner, registration has this shape
+(illustrative only; no second production task is shipped):
+
+```typescript
+const descriptor: PostAnalysisTaskDescriptor = {
+  id: 'newIndependentTask',
+  run: runNewIndependentTask,
+  getAttemptKey: getNewIndependentTaskSourceKey,
+};
+```
+
+- Give the task a stable unique non-empty ID and a typed `run(context)` owner.
+  Return a supported success/skip result or throw; do not swallow failures.
+- Keep eligibility and source-key semantics in that task. Omit `getAttemptKey`
+  only when each new successful context object should permit work. Do not reuse
+  metadata freshness as another task's eligibility rule.
+- Keep the registry/context stable across ordinary rerenders. Add the descriptor
+  to the shared registry, not separate feature effects or per-consumer lists.
+- Register only independent work: ordering is not a dependency graph or retry
+  policy. Reuse existing transport/queue and schema owners for persistence.
+- Add runner and hook tests for ordering, failure isolation and the new task's
+  key/eligibility contract. See [Frontend Testing](frontend-testing.md#shared-post-analysis-lifecycle-tests).
 
 ## Non-goals
 

@@ -30,6 +30,11 @@ Read before execution:
   contract from its worktree using the user's normal integration workflow. Verify
   both reads and both mutations against that implementation. Do not implement
   missing backend functionality or relax frontend schemas to bypass this dependency.
+  **Planning-time status, resolved at execution:** the integrated checkout starts at
+  HEAD `4a0a3418` (`Add validated ABClass metadata and harden class boundaries
+(#336)`), which is the completed backend contract for both reads and both
+  mutations. The verification evidence is recorded in the implementation
+  checkpoint below.
 - User chose analysis-triggered refresh as the interim behaviour, newest assignment
   partial as target, timestamp-only freshness, and session-local queued protection.
   No polling, ProgressTracker redesign, cross-session locking, backfill, score-rule
@@ -55,9 +60,11 @@ Read before execution:
 3. Run the mandatory Implementation → Code Reviewer → fixes → re-review loop until
    clean for each non-trivial section. Docs reconciles canonical prose and Data
    Shapes Agent reconciles validation/transport contracts in the same section.
-4. Preserve public entrypoints, GAS envelope handling, retry/backoff, method names,
+4. Preserve public behaviour, GAS envelope handling, retry/backoff, method names,
    assignment redaction and constructor-owned defaults. No config/rule suppression,
    backend runtime imports into frontend, raw GAS calls or competing queues/caches.
+   For frontend decomposition, import the actual owners directly; the user's
+   Section 3A adjustment supersedes the original compatibility-facade proposal.
 5. Use verify-only `npm run lint:frontend:check`, focused
    `npm run test:frontend -- <src-relative-path>`, and `npm run typecheck:all`.
    Focused synthetic checks use `npm run test:synthetic -- <test-path>`.
@@ -88,7 +95,7 @@ Paths below are relative to `src/frontend/` unless prefixed otherwise.
 
 | Module / owner                                                                                          | Current LOC |                  Unsplit projection | Explicit separation / delivered budget                                                                                                                                                                                                                                                         |
 | ------------------------------------------------------------------------------------------------------- | ----------: | ----------------------------------: | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `src/services/apiService.ts`                                                                            |         499 |                             570–620 | Section 3: compatibility facade <50; `services/api/apiTransport.ts` ~330–370 and `apiQueue.ts` ~220–280. Transport owns schemas/dispatch/retries/parseApiResponse; queue imports it directly, avoiding an import cycle. Re-export every existing public symbol.                                |
+| `src/services/apiService.ts`                                                                            |         499 |                             570–620 | Section 3A authorised adjustment: actual transport remains in `apiService.ts` (331); queue owner is `services/api/apiQueue.ts` (172). Consumers import owners directly. No facade, barrel or `apiTransport.ts` module.                                                                         |
 | `src/services/apiService.spec.ts`                                                                       |       1,763 |                         1,950–2,100 | Section 3: split transport/envelope, retry/diagnostics, queue and cancellation suites, each <=500, shared test setup under `src/test/api/`; add deferred-task cases to queue suites.                                                                                                           |
 | `src/services/googleClassrooms/classPartials.zod.ts`                                                    |          40 |                               45–55 | Section 2: import required shared schema; no split.                                                                                                                                                                                                                                            |
 | `src/services/googleClassrooms/classDetail/classDetailService.zod.ts`                                   |         155 |                             160–175 | Section 2: import required shared schema; no split.                                                                                                                                                                                                                                            |
@@ -113,14 +120,15 @@ Paths below are relative to `src/frontend/` unless prefixed otherwise.
 ### Supplemental checked test/runtime budgets
 
 - `apiService.spec.ts` preamble is 195 lines. Extract its reusable harness/envelope
-  factories and dynamic facade loaders under `src/test/api/`, retaining module-reset
+  factories and dynamic owner loaders under `src/test/api/`, retaining module-reset
   isolation. Delivered suites: transport/envelope ~460, retry/diagnostics ~240,
   queue validation/enqueue ~280, processing ~380, state ~220, retry/failure ~300
   and cancellation ~250. Do not combine the original queue blocks into a single
   oversized suite or compress assertions to fit.
 - `src/test/api/apiServiceTestMocks.ts`: 39 → <=80 lines; reuse its existing scaffold.
   New `apiServiceTransportTestHelpers.ts`: ~195–260 lines. A moved dynamic loader
-  imports the facade using the supported alias, not the old `./apiService` path.
+  imports transport from `@/services/apiService` and queue from
+  `@/services/api/apiQueue`, not the old `./apiService` path.
 - `e2e-tests/shared/endToEndRuntimeMocks.ts`: 378 → <=400;
   `runtimeMockTypes.ts`: 30 → <=40. Register existing upsert/update methods in
   Section 5D; preserve strict dispatch/queue-exhaustion checks, no split required.
@@ -231,7 +239,8 @@ checked fixture/suite splits in this section; no permissive metadata optional/de
 Testing Specialist / Implementation / Code Reviewer: common reads plus
 @src/frontend/src/services/googleClassrooms/classPartials.zod.ts ,
 @src/frontend/src/services/googleClassrooms/classDetail/classDetailService.zod.ts ,
-@src/frontend/src/test/classes/classesPageTestHelpers.tsx .
+@src/frontend/src/test/classes/classesPageTestHelpers.ts ,
+@src/frontend/src/test/abClass/classDetailSchemaFixtures.ts .
 Playwright (fixture/runtime adjustments):
 @docs/developer/frontend/frontend-playwright-e2e.md .
 
@@ -307,7 +316,8 @@ No duplicate queue, new backend method, retry loop or envelope change.
 
 Testing Specialist / Implementation / Code Reviewer: common reads plus
 @src/frontend/src/services/apiService.ts ,
-@src/frontend/src/services/apiService.spec.ts ,
+@src/frontend/src/services/api/apiQueue.ts ,
+@src/frontend/src/test/api/apiServiceTransportTestHelpers.ts ,
 @src/frontend/src/features/classes/bulk/runQueuedBatchMutation.ts ,
 @src/frontend/src/features/classes/useClassesBulkMutationQueue.ts ,
 @docs/developer/frontend/frontend-logging-and-error-handling.md .
@@ -316,10 +326,11 @@ Testing Specialist / Implementation / Code Reviewer: common reads plus
 
 - **Extend:** existing queue via `runApiQueuedTask(jobName, task)`, same pending/active
   registry and cancellation semantics, recorded in canonical helper register.
-- **Extract:** `services/api/apiTransport.ts` and `apiQueue.ts`; original apiService
-  remains re-export facade. Queue calls transport, transport does not import queue.
+- **Separate owners:** `services/apiService.ts` retains actual transport;
+  `services/api/apiQueue.ts` owns the queue and imports transport directly.
+  Transport does not import the queue. No facade, barrel or `apiTransport.ts`.
   Test preamble moves to `src/test/api/apiServiceTransportTestHelpers.ts`, reusing
-  the existing `apiServiceTestMocks.ts` scaffold. Dynamic facade imports use the
+  the existing `apiServiceTestMocks.ts` scaffold. Dynamic owner imports use the
   supported alias from the helper's new location, not stale `./apiService` paths.
 - **New:** `services/abClass/abClassMutations.zod.ts` and
   `abClassMutationService.ts`, planned in `abclass.md`. `upsertABClass` and
@@ -337,8 +348,9 @@ Testing Specialist / Implementation / Code Reviewer: common reads plus
    interleave. Rejected/synchronously thrown tasks release the lane for later work.
 3. Pending tasks cancel without executing; ordinary queued calls interoperate with
    deferred tasks and getQueueState pending/active snapshots remain accurate.
-4. Existing facade imports and transport JSON/envelope/retry/diagnostic behaviour
-   remain unchanged after extraction; no double deserialisation or import-cycle init.
+4. Transport symbols retain their original actual-owner path; queue consumers and
+   mocks import the queue owner directly. JSON/envelope/retry/diagnostic behaviour
+   remains unchanged; no double deserialisation or import-cycle initialisation.
 5. Upsert required fields and update optional editable fields validate; protected
    roster/assignment request fields reject rather than being silently stripped.
 6. Metadata omission/null/complete replacement preserved exactly; own undefined and
@@ -356,7 +368,7 @@ cancellation/transport probes stay local. Migrate only touched API suite data.
 
 Red: characterise old queue/transport, add deferred-operation and mutation tests.
 Green: implement queue extension and wrappers with minimal transport extraction.
-Refactor: finish responsibility-based suite splitting and compatibility re-exports.
+Refactor: finish responsibility-based suite splitting and direct-owner imports.
 Run new api transport/queue/cancellation suites, mutation suites and existing queued
 batch tests, frontend lint/typecheck, clean review and section-end comparison.
 
@@ -367,7 +379,7 @@ same-lane nested-enqueue deadlock prohibition, unchanged retry ownership.
 
 1. **3A — Transport/queue separation:** characterise all existing behaviours, split
    the oversized suite, then extract transport/queue owners as a green refactor.
-   Verify compatibility facade imports, envelope/retry/queue suites and obtain a
+   Verify direct-owner imports, envelope/retry/queue suites and obtain a
    clean review before changing FIFO capability.
 2. **3B — Deferred FIFO operations:** Red slot-reservation/interoperation/cancellation
    cases → Green shared queue extension → Refactor. Run queue/batch suites and
@@ -676,3 +688,846 @@ Backend dependency verification → Sections 1–2 → Section 3 → Section 4 �
 → Section 6 → Section 7. Canonical documentation/review reconciliation occurs within
 each section, not only at the end. All sections require independently observable
 acceptance and the common Red/Green/Refactor/review gates.
+
+## Implementation delivery checkpoint — 19 October 2026
+
+- Execution was explicitly authorised after planning. Starting tree: clean, detached
+  HEAD `4a0a3418` (`Add validated ABClass metadata and harden class boundaries (#336)`),
+  which is also the verified backend prerequisite for metadata reads and both
+  mutations. Root `ACTION_PLAN.md` is absent and was not recreated.
+- Backend prerequisite verification:
+  `npm run test:backend -- tests/api/apiHandler/abclassMetadataReads.test.js tests/api/apiHandler/abclassMetadataWrites.test.js tests/api/apiHandler/abclassMetadataErrors.test.js tests/api/abclassMetadataApi.test.js`
+  passed 4 files / 38 tests.
+- Loaded the `regression-checker` skill. Confirmed the session baseline did not
+  already exist before running
+  `npm run regression-checker -- frontend-abclass-metadata` with a 1,200,000 ms
+  timeout. This created a **new** baseline, timestamp
+  `2026-10-19T09:33:28.588Z`, storage key
+  `session-frontend-abclass-metadata`.
+- Baseline report:
+  `.ts-regression-checker/reports/session-frontend-abclass-metadata/baseline/baseline.txt`.
+  Overall status **FAILING**, command exit 1. Seven checks passed: frontend lint,
+  builder lint, backend test coverage, frontend test coverage, frontend E2E,
+  builder test coverage and all-project type-checking. Backend lint failed with
+  zero errors and six existing `max-lines` warnings. No regression or new failure
+  was reported in this baseline run. These failures have not been silently waived
+  or repaired as unrelated work. Reuse this baseline identity; do not create another.
+- **Delegation:** the earlier nested-delegation depth blocker is resolved and no
+  longer applies. The parent session orchestrates Testing Specialist,
+  Implementation, Code Reviewer, Docs and Data Shapes Agent directly; no delegated
+  subagent spawns another subagent.
+- **Model override:** with the configured models unavailable, the user authorised
+  `opencode/glm-5.3-flash-free` for specialist subagents and `GPT-6.1-Sol` for the
+  Code Reviewer. No agent configuration files were changed.
+- **Section 1 (shared metadata schema and backend parity) — COMPLETE.**
+  - RED: the focused frontend schema and Node parity commands failed because
+    `src/frontend/src/services/abClass/abClassMetadata.zod.ts` did not exist.
+  - GREEN: the schema module now owns the nullable metadata schema family with
+    pre-Zod raw-record/own-key/plain-prototype checks, canonical UTC timestamps,
+    the numeric-or-`N`/`E`/`excluded` score union, dense zero-to-three recent
+    entries, unique assignment IDs and newest-first non-increasing ordering.
+    Test-only canonical selectors live in
+    `src/frontend/src/test/abClass/abClassMetadataFixtures.ts`; the Node parity
+    suite is `tests/synthetic-analysis/syntheticABClassMetadataFrontendParity.test.ts`.
+  - Final evidence after the two test-matrix revisions:
+    `npm run test:frontend --` the four split metadata suites passed **4 files / 37
+    tests**; `npm run test:synthetic -- tests/synthetic-analysis/syntheticABClassMetadataFrontendParity.test.ts`
+    passed **1 file / 6 tests**; `npm run typecheck:all` passed;
+    `npm run lint:frontend:check` reported zero errors and the same 24 pre-existing
+    `max-lines` warnings; `npm run lint:synthetic:check` passed; `git diff --check`
+    passed.
+  - Independent Code Reviewer verdict: **PASS**. Both outstanding test-evidence
+    findings were resolved and no in-scope issues remain. Report:
+    `.opencode/scratchpad/review-section1-final-two-fixes.md`.
+  - LOC measured from the filesystem: schema **207** physical lines (183 non-blank);
+    suites `abClassMetadata.zod.spec.ts` **62**, `.detach.spec.ts` **96**,
+    `.examples.spec.ts` **128** and `.strict.spec.ts` **259** (545 total); test
+    helper `abClassMetadataFixtures.ts` **34**; Node parity suite **289**. Every
+    module stays inside the Section 1 budget. The earlier 182-line schema,
+    160-line spec, 21-line selector and 152-line parity figures were pre-split and
+    are superseded.
+  - Section-end regression comparison at `2026-10-19T16:43:55.795Z` for
+    `npm run regression-checker -- frontend-abclass-metadata`. Report:
+    `.ts-regression-checker/reports/session-frontend-abclass-metadata/runs/2026-10-19T16-43-55.795Z/comparison.txt`.
+    Seven of eight checks passed; backend lint remains failing on the same six
+    pre-existing `max-lines` warnings with zero errors. **Regressions 0, new failures
+    0, fixes 0.** The overall status remains the baseline **FAILING**, not a new
+    failure. No Section 1 blocker remains.
+- **Section 2 — COMPLETE and review-clean; zero new regressions.**
+  - **Checkpoint 2A (provider/suite separation) — COMPLETE and review-clean.**
+    Independent Code Reviewer reports:
+    `.opencode/scratchpad/review-section2a-green.md` and
+    `.opencode/scratchpad/review-section2a-alias-rereview.md`. No 2A finding
+    remains open.
+  - Observed 2A deliverables: the class-detail Zod suite split into
+    `classDetailService.zod.full.spec.ts`, `.submissions.spec.ts`,
+    `.definitions.spec.ts` and `.metadataIntegration.spec.ts`, with shared wire
+    fixtures in `src/frontend/src/test/abClass/classDetailSchemaFixtures.ts`;
+    `classesPageModel.spec.ts` split into `.base.spec.ts`, `.sorting.spec.ts`
+    and `.validation.spec.ts`, with `classesPageModelTestSupport.ts`;
+    `classesPageTestHelpers.tsx` replaced by the `classesPageTestHelpers.ts`
+    compatibility facade plus `classesPageTestFixtures.ts`,
+    `classesPageRenderHelpers.tsx`, `classesPageModelAssertions.ts` and
+    `classesPageScreenAssertions.tsx`; and `heatmapAdapter.spec.ts` split with
+    `heatmapAdapter.weighting.spec.ts` plus
+    `heatmapAdapterTestSetup.ts`. E2E fixture decomposition is also present in
+    the working tree (`class-metadata-fixtures.ts`,
+    `task-heatmap-class-fixtures.ts`, `classes-crud-mock-runtime.ts`), validated
+    by the final 2B browser gate below.
+  - **Checkpoint 2B (required nullable metadata adoption) — COMPLETE and review-clean.** Both
+    `ClassPartialSchema` and `ClassFullSchema` now require the shared
+    `ABClassMetadataSchema` (nullable as a whole), and typed/unit/E2E fixture
+    providers carry metadata. Final full-suite and browser validation passed.
+  - Earlier independent 2B review **FAIL**, report
+    `.opencode/scratchpad/review-section2b-independent-full.md`: full browser
+    collection exposed a transitive Vitest `?raw` import, two focused full-class
+    builders replaced explicit null metadata, and the synthetic guide still
+    claimed frontend metadata stripping. Final fixes separate runner-neutral
+    direct-JSON metadata defaults from raw-profile selectors (retaining canonical
+    compatibility re-exports), share constructor-owned `ClassFullFixtureDefaults`
+    preserving explicit null, and reconcile the stale documentation.
+  - The directly touched `ClassesPage.spec.tsx` is now five responsibility-based
+    suites (base, grouping, cards, refresh and shell), each at most **374** lines.
+    Independent review verified all **29** original tests and **244** nested
+    expect-call expressions survive. Shared registration, typed mock setup and
+    warm-up fixtures live under `src/test/classes/`; the refresh-only query
+    override stays local.
+  - Final independent 2B re-review: **PASS — CLEAN**, report
+    `.opencode/scratchpad/review-section2b-final-clean.md`. All three previous
+    findings are resolved. Fresh `npm run test:frontend:coverage` passed **267
+    files / 2,563 tests**; `npm run test:frontend:e2e` passed **303 tests without
+    retries**. Frontend project type-checking and `npm run typecheck:all` passed;
+    verify-only frontend lint reported zero errors and **20 existing max-lines
+    warnings**; `git diff --check` passed. These supersede the earlier partial
+    evidence. The final AST check confirms all 29 original ClassesPage tests and
+    122 direct `expect(...)` calls survive (244 nested call expressions include
+    matcher calls). This checkpoint sign-off is complemented by the 2C review
+    and section-end comparison below.
+  - Latest specialist model override: the user authorised **GPT-6.1 Sol**; no
+    agent-model configuration was edited by this documentation pass.
+  - **Checkpoint 2C (read service contract checks) — COMPLETE and review-clean.** New
+    `src/frontend/src/services/googleClassrooms/classReadServices.metadata.spec.ts`
+    is **184 physical lines / 18 tests**. Only `callApi` is mocked: the real
+    `parseApiResponse` checks full/partial metadata retention and detachment across
+    all three canonical profiles, malformed-field diagnostics, unrelated stripping,
+    absence distinctions and unchanged transport-error identity/correlation.
+  - Independent 2C review: **PASS — CLEAN**, report
+    `.opencode/scratchpad/review-section2c-clean.md`; no in-scope findings remain.
+    Fresh `npm run test:frontend:coverage` passed **268 files / 2,581 tests**;
+    focused frontend read checks passed **7 files / 92 tests**; the Node metadata
+    parity suite passed **1 file / 6 tests**. Frontend project type-checking and
+    `npm run typecheck:all` passed; verify-only frontend lint reported zero errors
+    and the same **20 baseline warnings**; `git diff --check` passed.
+    Production wrappers changed
+    only in JSDoc: `classPartialsService.ts` is **26 lines** and
+    `classDetailService.ts` is **31 lines**, with no logic change. Their remarks
+    distinguish required-nullable read metadata from top-level not-found null and
+    explicitly rule out frontend legacy defaults.
+  - 2C is legitimate green characterisation: 2B already implemented the read
+    contract, and existing wrappers already use the real response parser. No
+    fabricated RED failure or unnecessary production logic was introduced.
+    The testing guide now records the real-parser suite and error-identity checks;
+    no new shared helper was introduced or planned helper promoted by 2C.
+  - Full Section 2 regression comparison:
+    `npm run regression-checker -- frontend-abclass-metadata`, timestamp
+    `2026-10-19T21:47:37.642Z`. Verified persisted report:
+    `.ts-regression-checker/reports/session-frontend-abclass-metadata/runs/2026-10-19T21-47-37.642Z/comparison.txt`.
+    Seven of eight checks passed: frontend lint, builder lint, backend coverage,
+    frontend coverage, frontend E2E, builder coverage and all-project type-checking.
+    Backend lint alone remains failing on the same six baseline `max-lines`
+    warnings, with zero errors. **Regressions 0, new failures 0, fixes 4** (four
+    frontend lint warnings resolved). Overall status remains baseline **FAILING**;
+    it is not an all-green aggregate. No Section 2 blocker remains.
+- **Section 3A — COMPLETE and independently review-clean.** Report:
+  `.opencode/scratchpad/review-section3a-independent-clean.md`, verdict
+  **PASS — CLEAN 3A**, no outstanding in-scope findings. Fresh review validation:
+  frontend coverage **274 files / 2,581 tests passed**, browser suite **303 passed**,
+  frontend project type-check passed, verify-only frontend lint **zero errors / 19
+  existing warnings**, and `git diff --check` passed. Section 3 is now complete
+  following the 3C sign-off and section-end comparison recorded below. Section 4
+  is complete and independently review-clean with zero new regressions. Checkpoints
+  5A–5C are independently review-clean; 5D and Sections 6–7 remain pending.
+  - **Authorised plan adjustment:** the user explicitly rejected frontend facade
+    decomposition and the unnecessary barrel. This supersedes the original
+    499-line transport split proposal, not any past backend delivery decision.
+    `apiService.ts` remains the actual 331-line transport owner of `callApi`,
+    `parseApiResponse` and `ApiRequestSchema`; `api/apiQueue.ts` is the 172-line
+    queue owner. The temporary `apiTransport.ts` was removed. Production queue
+    consumers import the queue owner directly; no all-symbol old-path re-export
+    promise remains for this split.
+  - The queue uses native `Set` insertion order for pending FIFO entries, avoiding
+    a new lint disable or exemption. Per-job ordering, synchronous active marking,
+    parallel independent jobs and pending-only cancellation remain unchanged.
+    These are the 3A separation guarantees; 3B adds local tasks and 3C adds
+    mutation wrappers below.
+  - Seven API suites are co-located under `services/api/`, each at most **392**
+    physical lines. Shared `apiServiceTransportTestHelpers.ts` is **236** lines;
+    the reused `apiServiceTestMocks.ts` scaffold is **76**. Dynamic transport and
+    queue loaders import their actual owners after module reset.
+  - Supplied AST preservation evidence records **47 original tests / 173 direct
+    `expect(...)` calls**. The earlier **176** assertion claim is discrepant and
+    is superseded by this actual direct-call count, not silently repeated.
+  - Supplied focused validation: **62 tests passed**, all-project type-checking
+    passed, frontend lint **zero errors / 19 baseline warnings**. These are
+    focused implementation results, not a clean reviewer verdict or a Section 3
+    regression comparison. The independent clean review above supersedes the
+    earlier pending-review status. The full section regression comparison ran
+    after clean 3B/3C review, as recorded below.
+- **Section 3B — COMPLETE and independently review-clean.** The later Section 3
+  completion and section-end comparison are recorded below.
+  - RED evidence supplied by the implementation handoff: **10 tests failed** on
+    the missing `runApiQueuedTask` API while the **47 existing API tests passed**.
+    GREEN focused queue/transport/batch validation passed **10 files / 72 tests**;
+    `npm run typecheck:all` passed; verify-only frontend lint reported **zero
+    errors / 19 baseline warnings**. These are implementation results, not an
+    independent 3B review verdict. Independent review subsequently returned
+    **PASS — CLEAN 3B**, report
+    `.opencode/scratchpad/review-section3b-independent-clean.md`, with no
+    outstanding in-scope findings. Fresh reviewer checks passed frontend coverage
+    **275 files / 2,591 tests**, frontend project type-checking, verify-only
+    frontend lint (**zero errors / 19 existing warnings**) and `git diff --check`.
+    No new visible interaction required another browser run; the section-end
+    regression comparison still follows 3C.
+  - `src/frontend/src/services/api/apiQueue.ts` now exports
+    `runApiQueuedTask(jobName, task)` from the actual queue owner. Ordinary calls
+    delegate to the same Map/Set registry, reserving one per-job lane across the
+    full callback operation. Pending cancellation never invokes the callback;
+    active work continues. Throws/rejections preserve failure identity and release
+    the lane. Different jobs remain parallel. Callbacks stay local, network work
+    uses `callApi`, and awaiting same-lane nested enqueue is prohibited to avoid
+    deadlock. Transport retry/envelope behaviour is unchanged; no facade or barrel
+    was introduced.
+  - Actual physical LOC: `src/frontend/src/services/api/apiQueue.ts` **192**;
+    `src/frontend/src/services/api/apiQueue.tasks.spec.ts` **273**;
+    `src/frontend/src/services/apiService.ts` **331**;
+    `src/frontend/src/test/api/apiServiceTransportTestHelpers.ts` **236**;
+    `src/frontend/src/test/api/apiServiceTestMocks.ts` **76**. The seven original
+    split API suites remain **123–392** lines each.
+  - Helper discovery/register and the testing guide now document the implemented
+    queue extension. Mutation schemas/wrappers are now implemented in 3C below;
+    post-analysis helpers were still **Not implemented** at 3B (the Section 4
+    delivery below supersedes that status). Local callback execution
+    is not a wire contract and needs no canonical data-shape entry; reconcile actual request/context data
+    during 3C/4 and the later lifecycle delivery. No data-shape files were edited
+    by this pass.
+- **Section 3C — COMPLETE and independently review-clean.**
+  - `abClassMutations.zod.ts` (**99 physical lines**) owns strict upsert/update
+    request schemas and inferred types. Required upsert cohort/year-group keys
+    are non-null strings, matching backend `Validate.requireParams`, which rejects
+    null required parameters. Update keeps optional nullable cohort/year-group
+    keys and optional editable fields unchanged.
+    Own undefined, unknown/protected fields and invalid mixed patches reject
+    before enqueue. Shared metadata validation preserves omission/null/whole
+    replacement and detaches snapshots; nested patches reject.
+  - `abClassMutationService.ts` (**45 lines**) validates before enqueue onto the
+    actual `classesBulkMutation` lane and uses the real partial-response parser.
+    Transport error identity/retry ownership and direct-owner imports remain
+    unchanged; no facade or second queue exists. JSDoc matches these boundaries.
+    Do not await either queued wrapper inside an active same-lane reservation:
+    Section 4 must call `callApi` directly inside its reserved slot, reusing the
+    shared request schemas and response parser.
+  - Audit correction supersedes the earlier nullable-upsert description and
+    **12 files / 184 tests** evidence. Corrective RED: **4 failures (2 schema,
+    2 service)** proved null upsert cohort/year-group keys were incorrectly
+    accepted. Supplied GREEN evidence: **116 mutation tests passed** and
+    **13 focused files / 191 tests passed**. All-project type-checking passed;
+    frontend lint reported **zero errors / 19 baseline warnings**. These are
+    implementation results, not an independent 3C review or regression verdict.
+    These results are supplied audit-fix evidence, not checks rerun by this
+    documentation pass. The subsequent independent sign-off and Section 3
+    regression comparison below complete this gate.
+  - Measured suites after the audit fix: `abClassMutations.zod.spec.ts` **155 lines**;
+    `abClassMutationService.spec.ts` **231**; shared canonical
+    `abClassMutationFixtures.ts` **42**. Upsert fixtures independently select
+    canonical `small` class-0 with both configuration keys non-null; response
+    fixtures remain independently selected and may retain nullable configuration
+    keys. Whole metadata remains optional and nullable for both mutations.
+    Helper register/test guide reflect these owners and real-parser/actual-queue
+    coverage. The writer/task entry are subsequently implemented in Section 4
+    below; generic runner and hook remain **Not implemented**. Data-shape
+    reconciliation was separately owned and included in independent 3C review.
+- **Section 3 — COMPLETE; zero new regressions.**
+  - Independent 3C verdict: **PASS — CLEAN 3C**, no outstanding in-scope findings.
+    Report: `.opencode/scratchpad/review-section3c-independent-clean.md`.
+    Fresh reviewer validation passed frontend coverage **277 files / 2,707 tests**,
+    focused mutation/API queue/bulk checks **13 files / 191 tests**, frontend
+    project type-checking and `git diff --check`. Frontend lint reported **zero
+    errors / 19 baseline max-lines warnings**. No browser interaction was activated.
+  - Verified actual persisted section-end comparison at
+    `2026-10-20T06:21:48.763Z` for
+    `npm run regression-checker -- frontend-abclass-metadata`:
+    `.ts-regression-checker/reports/session-frontend-abclass-metadata/runs/2026-10-20T06-21-48.763Z/comparison.txt`.
+    **Regressions 0, new failures 0, fixes 5.** Seven of eight checks passed;
+    backend lint alone remains failing on the same six baseline max-lines
+    warnings, with zero errors. Overall status remains baseline **FAILING**,
+    not an all-green aggregate. No Section 3 blocker remains.
+- **Section 4 — COMPLETE and independently review-clean; zero new regressions.**
+  - Production owners measured at **147 / 38 / 92 physical lines**:
+    `services/dataAnalysis/postAnalysis/metadataProjection.ts`,
+    `refreshABClassMetadata.ts` and `services/abClass/abClassMetadataService.ts`.
+    Pure helpers validate source times, select the newest target, apply timestamp
+    gates, project exact aggregate scores/markers and merge stable rolling history.
+    Task entry skips cheap no-ops; the writer reserves the actual bulk lane,
+    freshly reads the full class, rechecks/reselects, requires definition coverage,
+    recalculates full standard-weight scope and one isolated instance, then sends
+    only classId/complete metadata and parses the real partial response. Failures
+    propagate; no nested enqueue, second queue, upsert, rollback or task retry.
+  - Supplied focused GREEN evidence: **61 new cases / 7 suites**; combined
+    focused checks **19 files / 249 tests passed** (log:
+    `.opencode/scratchpad/section4-fixture-all-tests.txt`). All-project
+    type-checking passed; frontend lint **zero errors / 19 baseline warnings**.
+    These are implementation results, not independent review or Section 4
+    regression sign-off. RED details are not independently verified by this
+    documentation pass; no fabricated missing-behaviour result is claimed.
+  - **Evidence limitation:** all **11** compact canonical classes have a null
+    submission studentName in their newest assignment, rejected by existing
+    isolated analysis. Successful probes explicitly model a historical-source
+    boundary clone omitting only the final assignment, without modifying names
+    or scores: `small` class-2 → assignment-2-2, `medium` class-0 →
+    assignment-0-4, `large-representative` class-1 → assignment-1-3.
+    Three untouched canonical failure probes retain the newest input and prove
+    no write, no clock access and lane release. This is an honest success-evidence
+    limitation, not an unimplemented metadata product function. No generator
+    change, regeneration or production repair is authorised or performed.
+  - `metadataEvidenceOracle.ts` derives independent numeric expectations from
+    raw assessments/live weights, never supplied metadata. Supplied history
+    remains retention evidence only. Fixture/transport support lives under
+    `src/test/abClass/`; no generic mock transport or production fixture import.
+  - Helper discovery/register, analysis architecture, frontend testing and
+    synthetic guide now reconcile these delivered owners. JSDoc was inspected
+    against implementation: pure source-time/rolling semantics, standard scope,
+    clock ownership, session-local reservation and error propagation are accurate;
+    no source edits were needed. Timestamp-only caching deliberately misses
+    score/definition/weight/roster changes without a new source version. Same-lane
+    owners re-read prior writes within this session; no cross-session lock exists.
+  - Generic context schema, registry/runner, shared hook, UI consumer activation,
+    invalidation and feedback are still **Not implemented** (Section 5). Section 4
+    has passed independent clean review and its section-end regression comparison
+    below; no later delivery gate is claimed here.
+  - Independent final verdict: **PASS — CLEAN Section 4**, report
+    `.opencode/scratchpad/review-section4-final-docs-clean.md`. Both documentation
+    nits from `.opencode/scratchpad/review-section4-independent.md` are resolved:
+    Section 3 completion status and the singular `failure` suite path. No
+    outstanding in-scope finding remains. Retained reviewer validation passed
+    frontend coverage **284 files / 2,768 tests**, including all coverage thresholds,
+    frontend project and all-project type-checking, and verify-only frontend lint
+    (**zero errors / 19 baseline warnings**). Reviewer focused checks passed
+    **17 files / 228 tests**; this does not replace the earlier distinct focused
+    selection. No UI consumer was activated by Section 4.
+  - Verified persisted section-end comparison for
+    `npm run regression-checker -- frontend-abclass-metadata`, timestamp
+    `2026-10-20T07:26:18.292Z`:
+    `.ts-regression-checker/reports/session-frontend-abclass-metadata/runs/2026-10-20T07-26-18.292Z/comparison.txt`.
+    **Regressions 0, new failures 0, fixes 5.** Seven of eight checks passed;
+    backend lint alone remains failing on the same six baseline `max-lines`
+    warnings, with zero errors. Overall status remains baseline **FAILING**,
+    not an all-green aggregate. No Section 4 blocker remains.
+  - **Canonical status follow-up:** route current Section 4 pending-review/regression
+    statements in `docs/developer/data-shapes/abclass.md` and
+    `docs/developer/data-shapes/frontend-data-analysis-response.md` to the Data
+    Shapes Agent using the clean review and persisted comparison above. These
+    files were not edited by this pass. The synthetic guide's introductory
+    Section 4 status was subsequently reconciled during 5A documentation; its
+    accurate historical fixture limitation is unchanged. Generic lifecycle, registry/runner, hook,
+    invalidation, feedback and UI activation remain pending Section 5 delivery.
+  - Documentation-only verification: Prettier `--check` passed for all five
+    reconciled Markdown files; `git diff --check` passed. No source/JSDoc, tests,
+    data-shapes, generator, agent configuration or navigation files were edited
+    by this pass. Existing page purposes and paths are unchanged; no new page
+    requires a navigation or documentation-landscape entry.
+- **Checkpoint 5A — COMPLETE and independently review-clean.** Report:
+  `.opencode/scratchpad/review-section5a-independent-clean.md`, verdict
+  **PASS — CLEAN 5A**, no outstanding in-scope findings. Checkpoints **5B–5C** are
+  independently review-clean; **5D** and Sections **6–7** remain pending. Neither
+  feature consumer is active.
+  - Implemented as an exact green extraction, not a new behaviour requiring a
+    fabricated RED failure. Actual physical LOC: Class-page prefetch owner
+    `useClassPageAssignmentPrefetch.ts` **74**, remaining `useClassPageData.ts`
+    **447**; Heatmaps preview support `heatmapsPreviewQueries.ts` **100**,
+    remaining `useHeatmapsPageData.ts` **385**.
+  - Supplied before/after evidence: both hook families passed **7 files / 51
+    tests**, with all **151 direct expect calls** preserved unchanged.
+    `npm run typecheck:all` passed; verify-only frontend lint retained **zero
+    errors / 19 baseline warnings**. These are supplied implementation results,
+    not checks rerun by this documentation pass or independent review sign-off.
+  - The prefetch owner retains ready-only dispatch, once-per-class guard,
+    sorting, keyed query calls and `useClassPageData.prefetch` logging. Preview
+    support owns disabled options, input conversion, stable empty lookup and
+    combined-state types; query callbacks, memo dependencies, live-definition
+    pipeline and diagnostic contexts remain with their existing owners.
+    Module-load analysis service/mock lifecycle is unchanged.
+  - Helper discovery and the prefetch guide now name the actual feature-local
+    owners; no generic/global helper promotion or policy change was made. The
+    synthetic guide's stale Section 4 pending status is corrected without
+    changing its historical-source evidence limitation. Generic context,
+    registry/runner, hook, feedback, invalidation and consumers remain **Not
+    implemented** at the 5A checkpoint; 5B delivery below supersedes only generic
+    lifecycle status. Fresh independent 5A checks passed coverage **284 files /
+    2,768 tests**, browser suite **303 tests**, frontend and all-project type checks,
+    frontend lint (**zero errors / 19 existing warnings**) and `git diff --check`.
+    No full Section 5 regression comparison is claimed before remaining checkpoints
+    complete.
+  - Documentation validation: Prettier `--check` passed for the four Markdown
+    files updated by this 5A pass; `git diff --check` passed. No code, tests,
+    data-shapes, configuration or navigation changed. Existing page purposes
+    and paths are unchanged; no documentation-landscape update is required.
+- **Checkpoint 5B — COMPLETE and independently review-clean.** Final report:
+  `.opencode/scratchpad/review-section5b-final-clean.md`, verdict **PASS — CLEAN 5B**.
+  All **47** lifecycle cases passed; key-generation failure isolation and stale
+  synthetic-guide status findings are resolved. Fresh reviewer coverage passed
+  **290 files / 2,815 tests**, frontend/all-project type checks passed, frontend
+  lint reported **zero errors / 19 baseline warnings**, and diff checks passed.
+  Earlier pending-review statements below describe historical evidence, superseded
+  by this sign-off. No full Section 5 regression gate is claimed.
+  - Actual physical LOC: `postAnalysis.zod.ts` **46**, `runPostAnalysisTasks.ts`
+    **71**, `postAnalysisTasks.ts` **55**, `hooks/usePostAnalysisTasks.ts` **131**.
+    Context/outcome schemas, unique ordered descriptors, failure-isolated runner,
+    metadata-only registry and shared post-commit lifecycle are present. Registry
+    clock configuration is constructor-owned; construction does not read the clock.
+  - Initial supplied implementation evidence: **43 new tests**; combined focused checks
+    **25 files / 292 tests passed**, all-project type-checking passed, frontend
+    lint **zero errors / 19 baseline warnings**. These are handoff results, not
+    checks rerun by this documentation pass or independent review evidence. No
+    independently verified RED result is claimed here.
+  - Corrective result-narrowing evidence supersedes the initial lifecycle count:
+    **45 lifecycle tests** after two RED probes for returned `pending`/`failed`
+    results were fixed. Task results now accept only `succeeded`/`skipped`, separate
+    from broader lifecycle outcomes. The schema is **46** physical lines; the
+    runner remains **71**. These counts precede the concurrently owned
+    key-generation failure-isolation regression test; no later count is inferred.
+  - Initial independent 5B review returned **FAIL**, report
+    `.opencode/scratchpad/review-section5b-independent.md`: missing key-generation
+    failure-isolation coverage and stale synthetic-guide delivery status. This
+    documentation correction resolves the latter while preserving the canonical
+    null-name corpus limitation. Coverage correction and independent re-review
+    remain separately owned; no clean 5B verdict is claimed.
+  - Attempts are task-local, retained per mount even after failure and across class
+    navigation. Metadata source keys exclude cache metadata; unkeyed future tasks
+    use successful context identity. StrictMode replay reattaches pending work;
+    cleanup suppresses stale publication without aborting work. Technical Errors
+    remain local, later independent tasks continue, and confirmed saves retain
+    confirmation without yet invalidating queries.
+  - Canonical helper discovery/register, analysis architecture and testing guide
+    now describe delivered owners and an illustrative future-task registration.
+    JSDoc was read against actual schema/runner/registry/hook behaviour; no source
+    edit was needed. No fake future task, frontend facade or barrel was introduced.
+    Both consumers must later call this shared extension point directly (5D).
+    Feedback/invalidation remain **Not implemented** (5C); consumers are inactive
+    (5D); Sections 6–7 remain pending. Data-shape reconciliation is separately owned.
+  - Documentation validation: Prettier `--check` passed for these four Markdown
+    files and `git diff --check` passed. No source, tests, data-shapes or
+    configuration changed in this pass. Existing page purposes/paths are unchanged;
+    no navigation or documentation-landscape update is required. User-owned reviewer
+    configuration was intentionally left untouched.
+- **Checkpoint 5C — COMPLETE and independently review-clean.** Report:
+  `.opencode/scratchpad/review-section5c-independent.md`, verdict
+  **PASS — CLEAN 5C**, no outstanding Critical, Improvement or Nitpick findings
+  in scope. Fresh reviewer validation passed frontend coverage **294 files /
+  2,840 tests** with all thresholds met, `npm run typecheck:all`, verify-only
+  frontend lint (**zero errors / 19 baseline `max-lines` warnings**) and
+  `git diff --check`. Review scope covered the hook extension, feedback,
+  invalidation, diagnostics, failed-outcome schema, the four 5C suites and the
+  real-App-host test support. No full Section 5 regression comparison or browser
+  acceptance verdict is claimed; both remain gated on 5D consumer activation.
+  - **5D browser prerequisite partially satisfied.** Playwright has registered
+    `upsertABClass` and `updateABClass` in `RuntimeScenario`
+    (`runtimeMockTypes.ts`) and in the `allMethods` dispatch inventory
+    (`endToEndRuntimeMocks.ts`). Supplied prerequisite evidence records the **9**
+    existing `task-heatmap-summary.spec.ts` journeys passing. Scenario response
+    sequences are **not yet** adjusted for the queued read/update/invalidation
+    calls, because those calls cannot occur until both production consumers are
+    wired. Response compatibility therefore remains pending after consumer
+    wiring; no 5D or browser acceptance completion is claimed.
+  - Actual filesystem physical LOC: hook **180**, feedback **90**, invalidation
+    **43**, context/result/outcome schema **50**, runner **63**, diagnostics **40**.
+    `postAnalysisTasks.ts` remains **55**. The shared hook now completes confirmed
+    saves with both detail/list invalidations inside the cached attempt, collecting
+    both settlements with `throwOnError: true`. Inactive queries only become stale;
+    no imperative fetch or unrelated invalidation is added. Failed refresh retains
+    save confirmation separately from its local Error and permits later tasks.
+  - Feedback uses the existing App host, exact distinct save/refresh warning copy,
+    persistent dismissible polite status semantics and owner/task/class/source keys.
+    Mount-owned dismissal memory survives same-source reattachment; new versions
+    can notify again. Navigation/unmount destroys only owned notices and suppresses
+    late publication without aborting active work. Task-owned logs contain bounded
+    identifiers and available request correlation, not raw metadata/submissions.
+  - Supplied focused GREEN evidence: **25 additional cases / 72 lifecycle cases
+    total**; combined **32 files / 336 tests passed**; all-project type-checking
+    passed; frontend lint **zero errors / 19 baseline warnings**. These remain
+    supplied implementation results, superseded as a sign-off by the independent
+    clean review above; no independently verified RED claim is made.
+  - Tests render the real App host and real query observers. The HappyDOM-only
+    helper waits for an actual leave-active class, dispatches `animationend` inside
+    `act` and asserts DOM removal; no production motion workaround is introduced.
+  - Canonical helper, analysis, testing, query, logging and synthetic guides were
+    reconciled to distinguish clean 5B, then-pending 5C and inactive 5D consumers.
+    JSDoc was reviewed against actual owners; no source/JSDoc edit was needed.
+    Existing loading/width/spacing policy is unchanged: stock feedback introduces
+    no new layout, busy surface or motion rule. Unrelated planned attempt-baseline
+    helpers remain **Not implemented**. Data-shapes remain separately owned.
+  - **5D and Sections 6–7 remain pending.** Current pages do not yet trigger this
+    shared post-run lifecycle. Browser keyboard, geometry/theme and full queued
+    write/refresh acceptance remain unproved by these unit checks. No section-end
+    regression comparison is claimed before consumer wiring and review complete.
+- **User-owned model configuration:** the user has updated agent model
+  configuration under `.opencode/agents/`; `code-reviewer.md`,
+  `implementation.md` and `testing-specialist.md` carry working-tree
+  modifications. This documentation pass did not inspect, summarise or modify
+  those files, and no contents are inferred here.
+- This documentation reconciliation updated the frontend helper register,
+  frontend testing guide, Playwright E2E guide, synthetic test-data guide,
+  frontend architecture file tree, one stale backend-testing path reference and
+  this delivery log. The
+  earlier Section 1 completion update changed this plan only. Canonical
+  `abclass.md` and `frontend-data-analysis-response.md` are owned by the Data
+  Shapes Agent concurrently and were not edited. No production code, tests,
+  corpus, configuration, `docs/plans/SPEC.md` or `.opencode/agents/*` were
+  changed; no commit, push, deployment, lint suppression or generator
+  regeneration occurred.
+- **Documentation status reconciliation (5C sign-off) — 20 October 2026.**
+  - Updated the frontend helper register, data-analysis architecture, frontend
+    testing guide, synthetic test-data guide, frontend logging/error-handling
+    and React Query/prefetch guides, the Playwright E2E guide and this delivery
+    log to replace current "implemented pending 5C review" statements with the
+    independent **PASS — CLEAN 5C** verdict and report
+    `.opencode/scratchpad/review-section5c-independent.md`. Historical
+    checkpoint evidence remains as recorded; only current status statements were
+    reconciled.
+  - Recorded the partial 5D browser prerequisite: `upsertABClass` and
+    `updateABClass` are registered in Playwright runtime types and dispatch
+    inventory, and supplied evidence records the 9 existing Heatmaps summary
+    journeys passing. Scenario response-sequence compatibility remains pending
+    after consumer wiring. No 5D, Section 5 completion, section-end regression or
+    browser acceptance verdict is claimed.
+  - No source, tests, configuration, corpus, data-shapes, delegation or
+    `.opencode/agents/*` files were edited. `git diff --check` passed for this
+    docs-only pass. Data-shape status statements remain owned by the Data Shapes
+    Agent.
+- **Checkpoint 5D — production consumer binding implemented; independent review and Section 5 regression pending.**
+  - Both averaging surfaces now call `usePostAnalysisTasks` directly:
+    `features/classPage/useClassPageData.ts` and
+    `features/taskHeatmap/useHeatmapsPageData.ts`. Each builds the post-analysis
+    context only from a `ready` surface with the complete unsliced `classFull`,
+    live `assignmentDefinitionPartials` and the successful `averagingResult`;
+    otherwise it passes `null`. The Heatmaps selection narrows display analysis
+    only: metadata calculation always uses the full class. No descriptive summary
+    result is written.
+  - The production registry is constructed once per mount and its task list is
+    stable. Each consumer memoises the context on its inputs so ordinary rerenders
+    keep the same object identity. This is the production loop guard; shared
+    metadata freshness is not a global eligibility gate for future tasks.
+  - Supplied RED/GREEN evidence: the initial **11** consumer binding tests failed
+    without the binding and passed after wiring. A browser run then exposed an
+    infinite attach/publish loop caused by a fresh context object per render;
+    **2** corrective RED identity tests failed, then passed once the context was
+    memoised. Consumer binding totals **13** tests. Existing hook-family unit
+    suites retained **51** tests under the new mock boundary; broader combined
+    coverage remains with the parent session.
+  - Actual filesystem physical LOC: `useClassPageData.ts` **487**;
+    `useHeatmapsPageData.ts` **425**. The Class page exceeds its original 480-line
+    target by 7 but stays below the 500-line `max-lines` warning threshold, so no
+    new diagnostic is introduced. The actual figure is recorded rather than
+    compressing formatting to meet the target.
+  - Playwright compatibility is wired: `upsertABClass` and `updateABClass` remain
+    registered in `RuntimeScenario` and the strict `allMethods` dispatch inventory.
+    `createHeatmapScenario` gives each fixture an explicit canonical metadata
+    snapshot pinned to its newest assignment's equal version, so the background
+    task takes its documented no-op path. Supplied metrics remain fixture evidence,
+    not an analysis oracle. The first of the **9** `task-heatmap-summary.spec.ts`
+    journeys also asserts that `updateABClass` is never called.
+  - Supplied focused evidence: **9** existing summary E2E journeys passed with
+    `--retries=0`; `npm run typecheck:all` passed; verify-only frontend lint
+    reported **zero errors / 19 baseline `max-lines` warnings**.
+  - **Full browser evidence — narrow keyboard seam diagnosed, fixed and green.**
+    The initial full **303**-test run passed **301** with two failures, both at
+    the narrow 390×844 standalone Heatmaps keyboard active-option assertion
+    (`.opencode/scratchpad/section5d-full-e2e.log`). A full rerun with
+    `--retries=0` then passed **303/303** before any code change
+    (`.opencode/scratchpad/review5d-e2e-full.txt`), and a reviewer run passed
+    **302** with one (`.opencode/scratchpad/review5d-e2e.txt`). The earlier
+    "cause not established" statement is superseded: failure context showed the
+    assignment search text entering the Class combobox while the assignment
+    control was disabled awaiting the class query. `Locator.focus()` is a no-op
+    on a disabled control, so `page.keyboard.type` wrote into the previously
+    focused Class input. `e2e-tests/helpers/task-preview-source-link-helpers.ts`
+    (**443** physical lines, below 500) now asserts the control is enabled,
+    focuses it, asserts focus, then performs the original keyboard type and
+    active-option assertion. No sleeps, retries, timeout changes or weakened
+    assertions were added. Six narrow repeated runs and the parent full
+    **303**-test run passed with `--retries=0`
+    (`.opencode/scratchpad/section5d-keyboard-fixed-full-e2e.log`, 8.4 minutes).
+    Other Playwright attempts failed with server connection refused
+    infrastructure errors and are recorded as non-passes. All-project
+    type-checking passed and verify-only frontend lint reported **zero errors /
+    19** baseline warnings.
+  - **Independent 5D review remains PENDING — not clean.** Fresh reviewer
+    evidence: **296** frontend test files / **2,853** tests passed
+    (`.opencode/scratchpad/review5d-coverage.txt`; coverage thresholds met),
+    `npm run typecheck:all` passed
+    (`.opencode/scratchpad/review5d-typecheck.txt`), verify-only frontend lint
+    reported **zero errors / 19** baseline `max-lines` warnings
+    (`.opencode/scratchpad/review5d-lint-frontend.txt`), and diff check passed.
+    The focused 5D selection passed **9 files / 54 tests**, including the **13**
+    consumer-binding cases (**6** Class page + **7** Heatmaps). The review verdict
+    and the Section 5 regression comparison are still outstanding.
+  - **Pending, not claimed:** independent 5D review and the Section 5 regression
+    comparison remain pending. Changed-write browser acceptance, warning dismissal
+    in a real browser and theme/geometry containment remain Section 6 work. The
+    existing Heatmaps summary probes use an explicit equal-version NOOP boundary,
+    which proves no write occurs; they do not exercise a changed write or a
+    failure journey. No Section 5 completion is claimed yet.
+  - This documentation reconciliation updated the canonical frontend helper
+    register, data-analysis architecture, React Query/prefetch, testing,
+    Playwright E2E, logging/error-handling and synthetic test-data guides plus
+    this log. Earlier passes replaced the "full browser run pending" statements
+    with the completed 303-test rerun; this pass superseded the unresolved-flake
+    wording above with the diagnosis and fixed-helper evidence. It changed no
+    production code, tests, configuration, corpus, delegation,
+    `.opencode/agents/*` or data-shapes files; `git diff --check` passed for this
+    pass.
+- **Section 5 — COMPLETE and independently review-clean; zero new regressions.** (Section 6 was still pending at this checkpoint; its completion is recorded below.)
+  - Final independent 5D verdict: **PASS — CLEAN 5D**, no outstanding in-scope
+    findings. Report: `.opencode/scratchpad/review-section5d-independent.md`.
+    This fresh final reviewer session supersedes the earlier 5D report at the
+    same path, which predated the full keyboard-fixed browser run and
+    mischaracterised the narrow failure as an unresolved load-sensitive flake.
+    The reviewer verified the root cause and the helper fix against the actual
+    working tree: `Locator.focus()` is a no-op on a disabled control, so the
+    helper now asserts the assignment control is enabled, focuses it, asserts
+    focus, then performs the original keyboard type and active-option assertion.
+    No sleeps, retries, timeout changes or weakened assertions were added.
+  - Fresh reviewer validation: **296** frontend test files / **2,853** tests
+    passed with all coverage thresholds met; `npm run typecheck:all` passed;
+    verify-only frontend lint reported **zero errors / 19** baseline `max-lines`
+    warnings; `git diff --check` passed; the focused 5D selection passed
+    **9 files / 54 tests**, including the **13** consumer-binding cases (**6**
+    Class page + **7** Heatmaps). Browser evidence after the helper fix: full
+    Playwright suite **303 passed** with `--retries=0`
+    (`.opencode/scratchpad/section5d-keyboard-fixed-full-e2e.log`, 8.4 minutes).
+    Other attempts failed on server-connection-refused infrastructure errors and
+    remain recorded as non-passes.
+  - **Verified persisted section-end comparison** for
+    `npm run regression-checker -- frontend-abclass-metadata`, timestamp
+    `2026-10-20T22:50:54.007Z`:
+    `.ts-regression-checker/reports/session-frontend-abclass-metadata/runs/2026-10-20T22-50-54.007Z/comparison.txt`
+    (the `comparison.json` and `manifest.json` siblings are present in the same
+    persisted run directory; the scratchpad logs are not the record).
+    **Regressions 0, new failures 0, fixes 5.** Seven of eight checks passed:
+    frontend lint, builder lint, backend coverage, frontend coverage, frontend
+    E2E, builder coverage and all-project type-checking. Backend lint alone
+    remains failing on the same six baseline `max-lines` warnings, with zero
+    errors. Overall status remains the baseline **FAILING**, not an all-green
+    aggregate. Section 5 is complete with no remaining gate.
+  - **Section 6 — COMPLETE and independently review-clean; zero new regressions.**
+    - **Node dispatcher integration.** `scripts/synthetic-test-data/apiHandlerRoundTripBridge.js`
+      is now **127** physical lines (from **93**). It deep-clones the frozen
+      `classesById` and `classPartials` loader views before mutation, serves class
+      partial reads through the existing test-only `ABClassController` seam
+      (`abClassControllerBehaviour.getAllClassPartials`), and supplies
+      `upsertABClass_`/`updateABClass_` transport seams that replace metadata on
+      the bridge's isolated records. `tests/helpers/apiHandlerTestUtils.js`
+      (**369** lines) forwards that controller-behaviour option. Every seam is
+      still installed and restored per call.
+    - New suite `tests/synthetic-analysis/syntheticABClassMetadataRoundTrip.test.ts`
+      is **188** physical lines / **5** tests. It composes the real `apiHandler`
+      and dispatcher envelopes with the frontend `callApi`, service schemas and
+      queued mutation wrappers. Coverage: full/partial read retention; queued
+      update/upsert omission, null clear and whole replacement; own-undefined
+      rejection before dispatch; `INVALID_REQUEST` for malformed dispatch input
+      and `INTERNAL_ERROR` for a throwing class seam; two-bridge state isolation
+      and seam restoration after success and failure, with caller-owned spies
+      preserved.
+    - **Scope honesty:** this is test-only composition of the existing controller
+      and transport helper seams. It does not prove real controller/DbManager
+      persistence, full controller integrity, auth or envelope changes. The
+      existing real-dispatcher, envelope and auth suites remain the evidence for
+      those contracts and were not replaced.
+    - **Browser coverage.** `src/frontend/e2e-tests/helpers/post-analysis-metadata-scenarios.ts`
+      is **297** lines and builds canonical `small` class-2 historical-source
+      scenarios (omitting only the final assignment), a changed-write journey for
+      both surfaces and a newer-version manual-refresh journey.
+      `post-analysis-metadata.persistence.spec.ts` is **128** lines / **3** tests:
+      Class page one write plus fresh read; standalone Heatmaps one write with no
+      loop on the same source; newer assignment version writes once after manual
+      refresh (six reads and two writes). `post-analysis-metadata.feedback.spec.ts`
+      is **231** lines / **7** tests: persistent safe save-failure copy on both
+      surfaces, the distinct confirmed-save/refresh-failure copy, keyboard
+      dismissal, no reopen on the same source, navigation cleanup, and four
+      containment/theme checks at 1440×900 and 390×844 in light and dark.
+    - Supplied evidence: the **10** new browser tests are green; verify-only
+      frontend lint reported **zero errors / 19** baseline `max-lines` warnings;
+      `npm run typecheck:all` passed after repairs. Independent review
+      (`.opencode/scratchpad/review-section6-independent.md`) recorded its own
+      full **313**-test browser run passing with `--retries=0` (8.8 minutes,
+      `.opencode/scratchpad/review6-full-e2e.log`), the full synthetic project at
+      **34 files / 384 tests** (`.opencode/scratchpad/review6-synthetic-full.log`),
+      the focused Node round-trip suite at **1 file / 5 tests**, zero frontend
+      lint errors and passing all-project type-checking. Screenshots are in
+      `.opencode/scratchpad/metadata-feedback-{light,dark}-{narrow,desktop}.png`;
+      narrow light/dark screenshots showed the notice copy wrapping and the close
+      control contained, with the expanded narrow sidebar compressing the
+      analysis area as a pre-existing layout behaviour, not a new feedback
+      layout.
+    - No generator, profile, view or schema weakening and no backend production
+      change. Existing supplied metadata snapshot fixtures are unchanged. Future
+      task registration documentation and guarantees are unchanged.
+    - **Section 6 regression comparison verified at**
+      `.ts-regression-checker/reports/session-frontend-abclass-metadata/runs/2026-10-21T00-43-04.269Z/comparison.txt`:
+      **regressions 0, new failures 0, fixes 5**, seven of eight checks passing.
+      Backend lint alone remains failing on the same six baseline `max-lines`
+      warnings, with zero errors. Overall status remains the baseline **FAILING**,
+      not an all-green aggregate. Section 6 has no remaining gate.
+  - The shared same-lane queue contract (a task holds `classesBulkMutation`
+    across the full awaited read/merge/write operation) and the two warning
+    copies were already documented in the helper, query and logging guides, so
+    this pass needed no change there. Stale current-status statements saying
+    "independent review and the Section 5 regression comparison remain pending"
+    were replaced in the helper register, data-analysis architecture, React
+    Query/prefetch, testing, Playwright E2E, logging/error-handling and synthetic
+    test-data guides. Historical pending notes in this log and in `abclass.md`
+    remain as recorded history.
+  - Docs-only pass: no production code, tests, configuration, corpus,
+    delegation, `.opencode/agents/*` or data-shape files were edited, and no
+    commit, push or deployment was made. The user-owned
+    `.opencode/agents/code-reviewer.md` working-tree modification was left
+    untouched; it is also not a documentation-list change, so no synchronisation
+    was required. **Follow-up:** `docs/developer/data-shapes/abclass.md` and
+    `frontend-data-analysis-response.md` still carry pending 5D/Section 5 status
+    statements and remain owned by the Data Shapes Agent.
+  - **Section 6 documentation reconciliation — docs-only.** Updated the synthetic
+    test-data guide, backend testing, frontend testing, Playwright E2E,
+    shared-helper register, data-analysis architecture, logging/error-handling and
+    React Query/prefetch guides to describe the implemented test-only Node/browser
+    artefacts and the evidence above. Section 6 is recorded as implemented pending
+    independent review and section-end regression, not accepted. No production
+    code, tests, configuration, corpus, data-shape, delegation or
+    `.opencode/agents/*` files were edited. `git diff --check` passed.
+- **Section 7 — Documentation audit and canonical reconciliation: COMPLETE and independently review-clean; final aggregate gate evidence recorded (not green, pre-existing baseline). The final comparison is parent-owned after this documentation-only closure.**
+  - **Closure.** The final independent Code Reviewer pass returned **CLEAN**
+    with no Critical, Improvement or Nitpick findings in the reviewed
+    Section 7 docs/comments scope:
+    `.opencode/scratchpad/review-final-frontend-abclass-metadata.md`. It
+    refreshed frontend coverage **296 files / 2,853 tests** with all thresholds
+    met, `npm run typecheck:all`, verify-only frontend lint (**zero errors / 19
+    baseline warnings**), Prettier and `git diff --check`, all passing.
+    Sections 1–7 are complete and review-clean; the aggregate gate remains not
+    green on the unchanged baseline.
+  - **Audit result (RED).** Audited every current `Not implemented`,
+    metadata-stripping, post-run-consumer, queue-serialisation and facade/import
+    claim in the canonical frontend/testing docs and this plan. Delivered owners
+    already read `Implemented`; no remaining claim says the frontend strips
+    metadata, that current analysis has no post-run consumer, that queues are
+    globally serial, or that consumers must import an old facade path. The only
+    retained `Not implemented` entries are unrelated: the planned attempt-baseline
+    mode in the helper register §9.27 and the issue #305 planned response
+    additions in `frontend-data-analysis-response.md`. `docs/plans/SPEC.md`, the
+    planning sections and historical checkpoint bullets are preserved; root
+    `ACTION_PLAN.md` is absent and was not recreated.
+  - **Repair (GREEN).** Reconciled Section 6 from "implemented, pending
+    review/regression" to complete, independently review-clean and zero new
+    regressions in `docs/developer/frontend/data-analysis-architecture.md`,
+    `frontend-shared-helpers-and-abstraction-standards.md`,
+    `frontend-testing.md`, `frontend-playwright-e2e.md`,
+    `frontend-react-query-and-prefetch.md`,
+    `frontend-logging-and-error-handling.md`,
+    `docs/developer/testing/synthetic-test-data.md` and this plan. Added the
+    actual `services/abClass/` and `services/dataAnalysis/postAnalysis/` owners to
+    the `frontend-architecture.md` illustrative services tree. Annotated the
+    planning-time backend prerequisite as resolved by the integrated checkout at
+    HEAD `4a0a3418`, while preserving the original planning statement as history.
+  - **Refactor and single-source policy.** Kept policy in its canonical owners:
+    helper discovery in the helper register, lifecycle/extension and cache
+    limitations in `data-analysis-architecture.md`, invalidation in the React
+    Query guide, and feedback/logging in the logging guide. Other docs link to
+    those sections rather than restating them. No new page, command or
+    `mkdocs.yml` navigation entry is required.
+  - **JSDoc verification.** Read the JSDoc/`@remarks` of `usePostAnalysisTasks.ts`,
+    `runPostAnalysisTasks.ts`, `postAnalysisTasks.ts`,
+    `refreshABClassMetadata.ts`, `metadataProjection.ts`,
+    `abClassMetadataService.ts`, `abClassMutationService.ts`, `apiQueue.ts`,
+    `postAnalysisFeedback.ts` and `postAnalysisInvalidation.ts` against actual
+    behaviour. Statements for task-local source keys, optional
+    `{ id, run, getAttemptKey }` registration, post-commit execution, fixed
+    standard weights and full unsliced scope, timestamp-only cache limitation,
+    session-local (not cross-session) reservation, no nested same-lane enqueue,
+    unchanged transport retry ownership, separate save/refresh outcomes and
+    bounded task logs are accurate. Those owner remarks required no edit. The
+    Section 7 JSDoc correction is confined to the class-read schemas: the
+    `metadata` remarks in `classPartials.zod.ts` (`ClassPartialSchema`) and
+    `classDetailService.zod.ts` (`ClassFullSchema.metadata`) no longer describe
+    metadata as planned or validation as optional. They now state
+    required-nullable on successful reads, optional by omission on mutation
+    requests, and strict when present. No code behaviour changed.
+  - **Verification.** `npx prettier --check` passed for every changed Markdown
+    file and `git diff --check` passed. A relative-link/anchor scan found no new
+    broken link; one pre-existing unrelated link to the absent
+    `TASK_HEATMAP_ZERO_WEIGHT_LAYOUT.md` remains in
+    `data-analysis-architecture.md` and was not altered. Docs-only: no production
+    code, tests, configuration, corpus, data-shape, delegation or
+    `.opencode/agents/*` files were edited, and no commit, push or deployment was
+    made. The user-owned `.opencode/agents/code-reviewer.md` modification was
+    left untouched.
+  - **Final aggregate gate evidence (recorded 21 October 2026; pre-existing
+    baseline, not an all-green claim).** The parent's final commands have finished. The
+    aggregate gate is **not green**, and the failures are pre-existing baseline
+    conditions rather than new regressions:
+    - `npm run run-all-checks` exited non-zero at `lint:check`. Backend lint
+      reported **zero errors and the same six pre-existing `max-lines`
+      warnings** in test files, so the `&&` chain never reached the coverage,
+      type-check or build scopes. Log:
+      `.opencode/scratchpad/final-run-all-checks.log`.
+    - The explicit `npm run test:coverage` then failed only at the backend
+      branch-coverage gate: **209 files / 2,888 tests passed**, statements
+      90.77% (5,087/5,604), branches **84.35% (3,165/3,752) against the 85%
+      gate**, functions 89.89% (996/1,108) and lines 91.43% (4,892/5,350).
+      Log: `.opencode/scratchpad/final-full-coverage.log`.
+    - **Baseline proven.** A pristine `git archive` snapshot of HEAD
+      `4a0a3418` at `.opencode/scratchpad/backend-coverage-head` (a
+      `node_modules` link only; no tracked-file edits) ran
+      `npm run test:backend:coverage` and produced the **same 209 files /
+      2,888 tests and identical statement, branch, function and line totals**.
+      Log: `.opencode/scratchpad/backend-coverage-head.log`. The branch
+      shortfall is therefore not a new regression, and the threshold is not
+      waived or suppressed; the aggregate baseline is simply not green.
+    - Because the aggregate stopped, each remaining coverage scope was run
+      explicitly and passed: frontend **296 files / 2,853 tests**, statements
+      95.39%, branches 91.06%
+      (`.opencode/scratchpad/final-frontend-coverage.log`); builder **23 / 245**,
+      statements 93.82%, branches 86.81%
+      (`final-builder-coverage.log`); synthetic **34 / 384**, statements
+      94.99%, branches 88.28% (`final-synthetic-coverage.log`); OpenCode
+      plugins **2 / 33**, statements 98.36%, branches 100%
+      (`final-plugins-coverage.log`). An initial parallel coverage invocation
+      failed to acquire the shared coverage report directory; the sequential
+      rerun produced the passing results above. Treat that lock failure as
+      infrastructure, not a coverage or code defect.
+    - Production build passed; log:
+      `.opencode/scratchpad/final-production-build.log`. All-project
+      type-checking passed
+      (`.opencode/scratchpad/review6-typecheck.txt`), and the independent
+      Section 6 reviewer's fresh full
+      browser run passed **313 tests with `--retries=0`** in 8.8 minutes
+      (`.opencode/scratchpad/review6-full-e2e.log`). The Section 6 comparison
+      at `2026-10-21T00:43:04.269Z` records **0 regressions, 0 new failures
+      and 5 fixes**, with backend lint as the only failing check.
+    - **Regression-checker measurement gap.** The persisted checker
+      configuration (read unchanged) defines `backend-test-coverage-check` as
+      `npm run test:backend`, **without coverage**. The comparison therefore
+      reports that check as passing while the aggregate `npm run test:coverage`
+      has the additional backend branch-coverage blocker above. Do not change
+      the checker configuration to add coverage and do not suppress or lower
+      the threshold; report both measurements honestly.
+    - **Final regression comparison.** Because this documentation-only closure
+      changed files, the final comparison runs after it using the retained
+      `frontend-abclass-metadata` identity. Its persisted latest run and result
+      are recorded in the execution handoff; no outcome is claimed here before
+      that run exists. The last **actual** comparison remains Section 6 at
+      `2026-10-21T00:43:04.269Z`
+      (`.ts-regression-checker/reports/session-frontend-abclass-metadata/runs/2026-10-21T00-43-04.269Z/comparison.txt`):
+      zero regressions, zero new failures and five fixes, with backend lint as
+      the only failing check. The next run is expected under the same
+      `session-frontend-abclass-metadata/runs/<timestamp>/comparison.txt`
+      folder. Canonical data-shape status statements in
+      `docs/developer/data-shapes/abclass.md` and
+      `frontend-data-analysis-response.md` remain owned by the Data Shapes
+      Agent.

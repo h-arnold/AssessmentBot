@@ -12,7 +12,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const callApiQueuedMock = vi.hoisted(() => vi.fn());
 
-vi.mock('@/services/apiService', () => {
+vi.mock('@/services/api/apiQueue', () => {
   return {
     callApiQueued: callApiQueuedMock,
   };

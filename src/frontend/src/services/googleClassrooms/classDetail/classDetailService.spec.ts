@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { CANONICAL_NON_NULL_METADATA } from '@/test/abClass/abClassMetadataFixtures';
 
 const callApiMock = vi.fn();
 
@@ -74,6 +75,7 @@ const validClassFull = {
   students: [{ name: 'Alice Johnson', email: 'alice@example.com', id: 'student-1' }],
   assignments: [validAssignmentPartial],
   active: true,
+  metadata: structuredClone(CANONICAL_NON_NULL_METADATA),
 };
 
 describe('classDetailService.getABClass', () => {

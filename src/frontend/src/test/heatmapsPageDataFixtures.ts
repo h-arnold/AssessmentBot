@@ -7,6 +7,7 @@ import type { AssignmentDefinitionPartialsResponse } from '../services/assignmen
 import type { ClassPartial } from '../services/googleClassrooms/classPartialsService';
 import type { PageDatasetState } from '../hooks/usePageDataset';
 import { createMetricResult } from './dataAnalysis/fixtures';
+import { createCanonicalMetadataFixture } from '@/test/abClass/abClassMetadataFixtures';
 import {
   createHeatmapClassFull,
   createHeatmapDefinitionPartial,
@@ -132,6 +133,7 @@ export function createClassPartials(): ClassPartial[] {
       classOwner: null,
       teachers: [],
       active: true,
+      metadata: createCanonicalMetadataFixture(),
     } as unknown as ClassPartial,
   ];
 }

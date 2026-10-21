@@ -18,6 +18,7 @@ import { adaptMetricsToHeatmap } from '@/services/dataAnalysis/heatmapAdapter';
 import { adaptMetricsToMergedHeatmap } from '@/services/dataAnalysis/heatmapAdapter.merged';
 import type { MergedHeatmapResult } from '@/services/dataAnalysis/heatmapAdapter.merged';
 import type { ClassFull } from '@/services/googleClassrooms/classDetail/classDetailService.zod';
+import { createCanonicalMetadataFixture } from '@/test/abClass/abClassMetadataFixtures';
 import type { AssignmentFull } from '@/services/assignmentAssessment/assignmentAssessment.zod';
 import type { AssignmentDefinitionPartialsResponse } from '@/services/assignmentDefinition/assignmentDefinitionPartials.zod';
 import type { AveragingResult } from '@/services/dataAnalysis/dataAnalysis.zod';
@@ -67,6 +68,7 @@ const classFullFixture: ClassFull = {
     },
   ],
   active: null,
+  metadata: createCanonicalMetadataFixture(),
 };
 
 // Independent fixture 2: a getAssignment-shaped AssignmentFull for the SAME assignment.

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { ClassPartial } from '@/services/googleClassrooms/classPartialsService';
 import type { GoogleClassroom } from '@/services/googleClassrooms/googleClassroomsService';
+import { createCanonicalMetadataFixture } from '@/test/abClass/abClassMetadataFixtures';
 
 type LabelsByKey = Readonly<Record<string, string>>;
 
@@ -44,6 +45,7 @@ describe('classesManagementViewModel.buildClassesManagementRows', () => {
           classOwner: null,
           teachers: [],
           active: true,
+          metadata: createCanonicalMetadataFixture(),
         },
       ],
       cohortLabelsByKey: { 'cohort-a': 'Cohort A' },
@@ -75,6 +77,7 @@ describe('classesManagementViewModel.buildClassesManagementRows', () => {
           classOwner: null,
           teachers: [],
           active: false,
+          metadata: createCanonicalMetadataFixture(),
         },
       ],
       cohortLabelsByKey: {},
@@ -120,6 +123,7 @@ describe('classesManagementViewModel.buildClassesManagementRows', () => {
           classOwner: null,
           teachers: [],
           active: true,
+          metadata: createCanonicalMetadataFixture(),
         },
       ],
       cohortLabelsByKey: { 'cohort-z': 'Cohort Z' },
@@ -155,6 +159,7 @@ describe('classesManagementViewModel.buildClassesManagementRows', () => {
           classOwner: null,
           teachers: [],
           active: true,
+          metadata: createCanonicalMetadataFixture(),
         },
         {
           classId: 'active-a',
@@ -165,6 +170,7 @@ describe('classesManagementViewModel.buildClassesManagementRows', () => {
           classOwner: null,
           teachers: [],
           active: true,
+          metadata: createCanonicalMetadataFixture(),
         },
         {
           classId: 'inactive-b',
@@ -175,6 +181,7 @@ describe('classesManagementViewModel.buildClassesManagementRows', () => {
           classOwner: null,
           teachers: [],
           active: false,
+          metadata: createCanonicalMetadataFixture(),
         },
         {
           classId: 'inactive-a',
@@ -185,6 +192,7 @@ describe('classesManagementViewModel.buildClassesManagementRows', () => {
           classOwner: null,
           teachers: [],
           active: false,
+          metadata: createCanonicalMetadataFixture(),
         },
         {
           classId: 'orphaned-b',
@@ -195,6 +203,7 @@ describe('classesManagementViewModel.buildClassesManagementRows', () => {
           classOwner: null,
           teachers: [],
           active: true,
+          metadata: createCanonicalMetadataFixture(),
         },
         {
           classId: 'orphaned-a',
@@ -205,6 +214,7 @@ describe('classesManagementViewModel.buildClassesManagementRows', () => {
           classOwner: null,
           teachers: [],
           active: false,
+          metadata: createCanonicalMetadataFixture(),
         },
       ],
       cohortLabelsByKey: {},
@@ -243,6 +253,7 @@ describe('classesManagementViewModel.buildClassesManagementRows', () => {
           classOwner: null,
           teachers: [],
           active: true,
+          metadata: createCanonicalMetadataFixture(),
         },
         {
           classId: 'active-lower',
@@ -253,6 +264,7 @@ describe('classesManagementViewModel.buildClassesManagementRows', () => {
           classOwner: null,
           teachers: [],
           active: true,
+          metadata: createCanonicalMetadataFixture(),
         },
       ],
       cohortLabelsByKey: {},

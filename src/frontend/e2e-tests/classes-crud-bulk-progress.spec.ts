@@ -13,6 +13,10 @@
  */
 
 import { expect, test, type Page } from '@playwright/test';
+import {
+  createCanonicalNotAttemptedClassMetadata,
+  createCanonicalNumericClassMetadata,
+} from './helpers/class-metadata-fixtures';
 import { waitForSelectPopupReady } from './helpers/select-popup-readiness';
 import {
   baseCohorts,
@@ -53,6 +57,7 @@ const existingClassPartial1 = {
   classOwner: null,
   teachers: [],
   active: false,
+  metadata: createCanonicalNotAttemptedClassMetadata(),
 };
 
 const existingClassPartial2 = {
@@ -64,6 +69,7 @@ const existingClassPartial2 = {
   classOwner: null,
   teachers: [],
   active: true,
+  metadata: createCanonicalNumericClassMetadata(),
 };
 
 /** Cohort/year-group fixtures used by the create and set-cohort modals. */

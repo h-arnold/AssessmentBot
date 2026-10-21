@@ -73,6 +73,8 @@ export async function installRuntimeMock(
     'setAuthenticationSettings',
     'getABClassPartials',
     'getABClass',
+    'upsertABClass',
+    'updateABClass',
     'getCohorts',
     'getYearGroups',
     'getAssignmentTopics',

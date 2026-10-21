@@ -4,6 +4,7 @@ import { buildTaskKey } from '@/services/dataAnalysis/taskKey';
 import type { AssignmentDefinitionPartial } from '@/services/assignmentDefinition/assignmentDefinitionPartials.zod';
 import type { ClassFull } from '@/services/googleClassrooms/classDetail/classDetailService.zod';
 import { createAssignmentPartial, createDefinitionPartial, createTaskPartial } from './fixtures';
+import { createCanonicalMetadataFixture } from '@/test/abClass/abClassMetadataFixtures';
 
 /**
  * Create an isolated QueryClient for frontend hook and page tests.
@@ -53,6 +54,7 @@ export function createHeatmapClassFull(overrides: Partial<ClassFull> = {}): Clas
       },
     ],
     active: true,
+    metadata: createCanonicalMetadataFixture(),
     ...overrides,
   };
 }

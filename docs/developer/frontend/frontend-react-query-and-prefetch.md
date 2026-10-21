@@ -110,7 +110,7 @@ Do not add startup prefetch only to exercise React Query.
 
 ### Current view-entry prefetches
 
-- **ClassPage assignment prefetch**: a `useEffect` in `useClassPageData` fires when `surfaceState.status === 'ready'`. It sorts `classFull.assignments` using the shared `compareAssignmentUpdatedAtDesc` comparator (updatedAt descending, assignmentId ascending tie-break), takes the top 3, and calls `queryClient.query(getAssignmentQueryOptions(classFull.classId, assignmentId))` for each. Each call is fire-and-forget: a rejection is logged through `logFrontendError('useClassPageData.prefetch', error, { courseId, assignmentId })` and never affects the page surface. A `useRef<string | null>` guard ensures exactly one dispatch per classId and resets on cross-class navigation. The queries are keyed, so React StrictMode double-fire is safe.
+- **ClassPage assignment prefetch**: `useClassPageData` calls the feature-local `features/classPage/useClassPageAssignmentPrefetch.ts` hook, which owns the effect, ref guard and three-assignment limit. The effect dispatches only when `surfaceState.status === 'ready'` and `classFull` is present. It checks every assignment's non-null `updatedAt` before setting the guard, sorts with `compareAssignmentUpdatedAtDesc` (updatedAt descending, assignmentId ascending tie-break), takes the top 3, and calls `queryClient.query(getAssignmentQueryOptions(classFull.classId, assignmentId))` for each. Each call is fire-and-forget: a rejection retains the `logFrontendError('useClassPageData.prefetch', error, { courseId, assignmentId })` context and never affects the page surface. The per-instance guard prevents redispatch on same-class refetch and StrictMode effect replay; dispatch for a different ready class replaces the guard, allowing dispatch again on return. Keyed queries also deduplicate in-flight requests.
 - **Settings Google Classrooms prefetch**: `SettingsPageGoogleClassroomsPrefetch` runs when the Settings page mounts to warm `googleClassrooms` ahead of the Classes tab's view-entry read. It awaits `queryClient.query(getGoogleClassroomsQueryOptions())`. A rejection logs once through the component's warning logger when the component is still mounted, then returns before cache inspection. On fulfilment it inspects `queryClient.getQueryState(queryKeys.googleClassrooms())` and warns if the cached state is `error`. If the component unmounts before the query settles, it neither inspects nor logs.
 
 ## 6. Freshness and invalidation expectations
@@ -131,6 +131,28 @@ Current invalidation and required-refresh rules:
 - if a required post-mutation refresh fails for the Classes table workflow, do not keep stale table data visible; surface user guidance that a page refresh is required to see changes
 
 Do not add speculative invalidation wiring beyond the feature contracts that exist.
+
+### Post-analysis metadata invalidation
+
+`hooks/postAnalysisInvalidation.ts` completes confirmed metadata saves inside the
+shared hook's cached attempt. It invokes `invalidateQueries` once for each of
+`queryKeys.abClass(classId)` and `queryKeys.classPartials()`, both with
+`{ throwOnError: true }`, and awaits both settlements through `Promise.allSettled`.
+A failing detail refresh must not skip the list invalidation or hide its failure.
+Inactive queries are only marked stale; no imperative read or forced fetch follows.
+Assignment and definition datasets are not invalidated for this metadata-only write.
+
+Refresh failure preserves confirmed persistence separately from the local Error
+and uses the [saved-but-refresh-failed warning](frontend-logging-and-error-handling.md#post-analysis-metadata-failures).
+Existing query trust rules remain authoritative. Effect replay and metadata-only
+cache updates reuse the completed attempt instead of invalidating again.
+This helper is independently review-clean (5C). Both production averaging
+consumers call the shared hook directly. The narrow keyboard seam was diagnosed
+and fixed in the shared E2E helper, and the full **303**-test browser run passed.
+Independent 5D review and the Section 5 regression comparison are complete, with
+zero regressions and zero new failures. Section 6 changed-write, warning and
+theme/geometry acceptance is complete and independently review-clean, with zero
+new regressions.
 
 ## 7. Mutation and Invalidation Patterns
 

@@ -13,7 +13,7 @@ const { cancelApiQueuedMock } = vi.hoisted(() => {
   };
 });
 
-vi.mock('@/services/apiService', () => {
+vi.mock('@/services/api/apiQueue', () => {
   return {
     cancelApiQueued: cancelApiQueuedMock,
   };
@@ -47,7 +47,7 @@ function createDeferredPromise(): [
 
 describe('useClassesBulkMutationQueue', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    vi.resetAllMocks();
   });
 
   it('returns initial state: modal closed, queue inactive, zeroed progress', () => {

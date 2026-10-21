@@ -14,6 +14,11 @@
 import { expect, test } from '@playwright/test';
 import { mockBulkCoreRuntime } from './helpers/classes-crud-bulk-core-scenario';
 import {
+  CANONICAL_NULL_CLASS_METADATA,
+  createCanonicalNotAttemptedClassMetadata,
+  createCanonicalNumericClassMetadata,
+} from './helpers/class-metadata-fixtures';
+import {
   classesTableAriaLabel,
   clickModalConfirmAndDismiss,
   openClassesManagementTab,
@@ -48,6 +53,7 @@ const linkedClassPartial = {
   classOwner: null,
   teachers: [],
   active: false,
+  metadata: createCanonicalNotAttemptedClassMetadata(),
 };
 
 /** Class partial for the active class. */
@@ -60,6 +66,7 @@ const activeClassPartial = {
   classOwner: null,
   teachers: [],
   active: true,
+  metadata: createCanonicalNumericClassMetadata(),
 };
 
 const secondInactiveGCR = { classId: 'gcr-class-linked-002', className: 'Year 8 Science' };
@@ -171,6 +178,8 @@ test.describe('bulk create flow', () => {
           classOwner: null,
           teachers: [],
           active: true,
+          // A class created moments ago carries canonical null metadata.
+          metadata: CANONICAL_NULL_CLASS_METADATA,
         },
       ],
       cohorts: [

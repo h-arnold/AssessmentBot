@@ -23,7 +23,7 @@ The domain prefix is the leading camelCase segment before the first capital lett
 - Keep `.spec.ts` files co-located with their source file inside the subfolder.
 - Do not move files outside `services/` — only reorganise within it.
 - When moving files, update all cross-file imports within `src/frontend/src/` to reflect the new subfolder paths.
-- Barrel (`index.ts`) exports are optional; prefer direct imports for clarity unless a service domain exports many unrelated symbols.
+- Import decomposed frontend modules directly from their owners. Do not add a facade or barrel solely to preserve the original import path after decomposition.
 
 ### 2.2 Current layout (illustrative)
 
@@ -31,7 +31,24 @@ The tree below is a snapshot for orientation only. The filesystem is the source 
 
 ```
 services/apiService.ts
-services/apiService.spec.ts
+services/api/
+├── apiQueue.ts
+├── apiQueue.enqueue.spec.ts
+├── apiQueue.processing.spec.ts
+├── apiQueue.state.spec.ts
+├── apiQueue.retry.spec.ts
+├── apiQueue.cancellation.spec.ts
+├── apiQueue.tasks.spec.ts
+├── apiTransport.spec.ts
+└── apiTransport.retry.spec.ts
+
+services/abClass/
+├── abClassMetadata.zod.ts
+├── abClassMetadata.zod.spec.ts
+├── abClassMutations.zod.ts
+├── abClassMutationService.ts
+├── abClassMetadataService.ts
+└── abClassMetadataService.queue.spec.ts
 
 services/assignmentAssessment/
 ├── assignmentAssessmentService.ts
@@ -65,7 +82,13 @@ services/dataAnalysis/
 ├── dataAnalysisService.spec.ts
 ├── dataAnalysis.zod.ts
 ├── dataAnalysis.zod.spec.ts
-└── analysers/
+├── analysers/
+└── postAnalysis/
+    ├── postAnalysis.zod.ts
+    ├── runPostAnalysisTasks.ts
+    ├── postAnalysisTasks.ts
+    ├── refreshABClassMetadata.ts
+    └── metadataProjection.ts
 
 services/backendConfiguration/
 ├── backendConfigurationService.ts
@@ -90,7 +113,10 @@ services/googleClassrooms/
 │   ├── classDetailService.ts
 │   ├── classDetailService.spec.ts
 │   ├── classDetailService.zod.ts
-│   └── classDetailService.zod.spec.ts
+│   ├── classDetailService.zod.full.spec.ts
+│   ├── classDetailService.zod.submissions.spec.ts
+│   ├── classDetailService.zod.definitions.spec.ts
+│   └── classDetailService.zod.metadataIntegration.spec.ts
 
 services/referenceData/
 ├── referenceDataService.ts
@@ -130,6 +156,7 @@ A frontend source file under `src/frontend/src/**` that exceeds **550 lines** mu
 - Never reduce the line count using formatting tricks: do not remove blank lines, join statements, compress JSX or TypeScript, shorten names, or condense, delete, or weaken comments, JSDoc, or documentation. A smaller file is not decomposed unless its responsibilities are actually split into maintainable modules.
 - Do not create speculative one-caller helpers solely to hide lines. Each extracted module must own a coherent responsibility and follow the shared-helper and abstraction rules in `frontend-shared-helpers-and-abstraction-standards.md`.
 - Keep imports, exports, tests, accessibility behaviour, and runtime contracts correct after the split. Update co-located tests and imports when module paths change.
+- Preserve behaviour, not a facade import surface: consumers import the responsible owner directly. For the API split, `apiService.ts` remains the actual transport owner (`callApi`, `parseApiResponse`, `ApiRequestSchema`); queue consumers import `services/api/apiQueue.ts`. The queue imports transport directly; transport does not import the queue.
 
 ## 5. Serialization boundary
 

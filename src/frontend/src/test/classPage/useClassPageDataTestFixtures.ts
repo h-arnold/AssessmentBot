@@ -1,6 +1,7 @@
 /** Shared pure fixture builders for useClassPageData test modules. */
 import { vi } from 'vitest';
 import { createMetricResult } from '../dataAnalysis/fixtures';
+import { createCanonicalMetadataFixture } from '@/test/abClass/abClassMetadataFixtures';
 import {
   queryOptions,
   QueryClientProvider,
@@ -62,6 +63,7 @@ export function createClassFull(overrides?: Partial<ClassFull>): ClassFull {
     students: [],
     assignments: [],
     active: true,
+    metadata: createCanonicalMetadataFixture(),
     ...overrides,
   } as unknown as ClassFull;
 }

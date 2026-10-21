@@ -13,7 +13,11 @@ import type {
   MetricResult,
 } from '@/services/dataAnalysis/dataAnalysis.zod';
 import type { AssignmentDefinitionPartial } from '@/services/assignmentDefinition/assignmentDefinitionPartials.zod';
-import type { AssignmentPartial } from '@/services/googleClassrooms/classDetail/classDetailService.zod';
+import type {
+  ClassFull,
+  AssignmentPartial,
+} from '@/services/googleClassrooms/classDetail/classDetailService.zod';
+import { ClassFullFixtureDefaults } from '../abClass/classFullFixtureDefaults';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -336,27 +340,30 @@ export function createAssignmentPartial(overrides: {
  * @param {string|null} [overrides.className='Test Class'] - The class display name.
  * @param {Array<string>} [overrides.studentIds] - List of student identifiers.
  * @param {Array<Object>} overrides.assignments - Assignment partials.
- * @returns {Object} A minimal ClassFull-shaped object.
+ * @param {ClassFull['metadata']} [overrides.metadata] - Optional metadata override; defaults to the canonical realistic snapshot.
+ * @returns {Object} A minimal ClassFull-shaped object with the required metadata field.
  */
 export function createClassFull(overrides: {
   classId: string;
   className?: string | null;
   studentIds?: string[];
   assignments: ReturnType<typeof createAssignmentPartial>[];
+  metadata?: ClassFull['metadata'];
 }) {
-  const { classId, className = 'Test Class', studentIds = [], assignments } = overrides;
+  const defaults = new ClassFullFixtureDefaults(overrides);
 
   return {
-    classId,
-    className,
-    cohortKey: null,
-    courseLength: 1,
-    yearGroupKey: 'yg-10',
-    classOwner: null,
-    teachers: [],
-    students: studentIds.map((id) => ({ id, name: `Student ${id}`, email: `${id}@test.com` })),
-    assignments,
-    active: null,
+    ...defaults,
+    students:
+      overrides.studentIds === undefined
+        ? defaults.students
+        : overrides.studentIds.map((id) => {
+            return {
+              id,
+              name: `Student ${id}`,
+              email: `${id}@test.com`,
+            };
+          }),
   };
 }
 

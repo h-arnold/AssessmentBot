@@ -1,6 +1,11 @@
 import type { Page } from '@playwright/test';
 import type { ClassPartial } from '@/services/googleClassrooms/classPartials.zod';
 import type { GoogleClassroom } from '@/services/googleClassrooms/googleClassrooms.zod';
+import {
+  CANONICAL_NULL_CLASS_METADATA,
+  createCanonicalNotAttemptedClassMetadata,
+  createCanonicalNumericClassMetadata,
+} from './class-metadata-fixtures';
 
 /** Shared Google Classroom rows used by the bulk-metadata eligibility journeys. */
 export const bulkMetadataGoogleClassrooms: readonly GoogleClassroom[] = [
@@ -20,6 +25,7 @@ export const bulkMetadataClassPartials: readonly ClassPartial[] = [
     classOwner: null,
     teachers: [],
     active: true,
+    metadata: createCanonicalNumericClassMetadata(),
   },
   {
     classId: 'gc-inactive',
@@ -30,6 +36,7 @@ export const bulkMetadataClassPartials: readonly ClassPartial[] = [
     classOwner: null,
     teachers: [],
     active: false,
+    metadata: createCanonicalNotAttemptedClassMetadata(),
   },
   {
     classId: 'orphaned-legacy',
@@ -40,6 +47,9 @@ export const bulkMetadataClassPartials: readonly ClassPartial[] = [
     classOwner: null,
     teachers: [],
     active: false,
+    // Legacy orphaned record: the backend has no stored snapshot, so the
+    // canonical null emission is truthful rather than a fake default.
+    metadata: CANONICAL_NULL_CLASS_METADATA,
   },
 ];
 

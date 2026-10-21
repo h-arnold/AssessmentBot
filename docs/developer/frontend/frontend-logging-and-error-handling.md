@@ -128,6 +128,44 @@ Use context-aware APIs (`App.useApp`, `message.useMessage`, `notification.useNot
 
 **Documented deviation — Heatmaps blocking state:** the standalone Heatmaps builder surface (`HeatmapBuilderSurface.tsx`) intentionally renders an Ant Design `Result` (rather than the default `Alert`) for its blocking state. This is a documented deviation recorded in the `@remarks` at `HeatmapBuilderSurface.tsx:14`; it satisfies the documented-deviation escape clause in `docs/developer/frontend/frontend-loading-and-width-standards.md` (§2.2) and is not a violation of this policy. Future reviewers should treat it as an accepted exception rather than a missing `Alert`.
 
+### Post-analysis metadata failures
+
+Shared feedback/invalidation is independently review-clean (5C). Both
+production averaging consumers call the shared hook directly. The narrow
+keyboard seam was diagnosed and fixed in the shared E2E helper, and the full
+**303**-test browser run passed. Independent 5D review and the Section 5
+regression comparison are complete, with zero regressions and zero new failures.
+Section 6 real-browser rejection/dismissal acceptance is complete and
+independently review-clean. The browser coverage for save-failure and
+confirmed-save/refresh-failure feedback is implemented in
+`post-analysis-metadata.feedback.spec.ts`, and the Section 6 regression
+comparison recorded zero regressions and zero new failures.
+`hooks/postAnalysisFeedback.ts` uses the existing
+`App.useApp().notification` host, not static feedback or a second host.
+
+| Failure                                 | Title                        | Description                                                                                         |
+| --------------------------------------- | ---------------------------- | --------------------------------------------------------------------------------------------------- |
+| Before confirmed persistence            | Class summary not saved      | Analysis is ready, but the class summary could not be saved. Reload the page to try again.          |
+| Confirmed save, required refresh failed | Class summary refresh failed | The class summary was saved, but refreshed data could not be loaded. Reload the page to refresh it. |
+
+Both are warnings with `duration: 0`, `closable: true` and `role: 'status'`.
+They do not move focus, block usable analysis, expose technical Errors or offer
+retry actions. No success/skip notice is emitted. Existing query trust/fail-closed
+rules remain unchanged. Keys include owner/task/class/source; dismissal memory
+survives same-source reattachment, while a new source permits new feedback.
+Navigation/unmount removes only that owner's notices and suppresses late feedback,
+without claiming to abort active writes. Stock host placement, sizing, spacing and
+motion remain unchanged.
+
+`services/dataAnalysis/postAnalysis/postAnalysisDiagnostics.ts` routes task failures
+through `toError`/`logFrontendError`, using context `runPostAnalysisTasks` and bounded
+task/class/target-assignment identifiers plus available transport request ID/code.
+Task-owned diagnostic metadata never includes raw class metadata, submissions,
+rosters or analysis payloads. Both refresh failures are observed and distinct Error
+instances logged without an extra summary diagnostic. Existing shared transport
+parameter/debug and bounded response-preview sanitisation remain unchanged; this
+is not a logger/redaction redesign.
+
 ## 5. Mapping rules (developer detail vs user-safe copy)
 
 Treat backend `error.code` as the source for user-safe messaging logic. Avoid showing raw thrown messages directly in production UI.
