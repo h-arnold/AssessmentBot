@@ -115,6 +115,10 @@ module.exports = [
       'unicorn/numeric-separators-style': 'off',
       // GAS rejects private fields; underscore-prefixed hooks must remain accessible to subclasses.
       'unicorn/prefer-private-class-fields': 'off',
+      // GAS rejects class field declarations, which is exactly what this rule recommends and
+      // autofixes. Its fixer would rewrite a valid constructor assignment into syntax the
+      // Apps Script parser refuses, breaking the next clasp push.
+      'unicorn/prefer-class-fields': 'off',
       // Object helpers and prototype getters legitimately use receiver-bound `this` outside classes.
       'unicorn/no-this-outside-of-class': 'off',
       // Personal preference: preserve explicit class/prototype/helper bindings alongside
@@ -123,6 +127,25 @@ module.exports = [
       // Prevent accidental redefinition of BaseSingleton outside the canonical file.
       'no-restricted-syntax': [
         'error',
+        {
+          // The Apps Script script parser rejects class field declarations, so a pushed build
+          // fails with "ParseError: Unexpected token ;" even though the V8 runtime supports them.
+          // Declare fields in the constructor with a JSDoc @type annotation instead.
+          selector: 'PropertyDefinition',
+          message:
+            'Google Apps Script rejects class field declarations (instance, static and private fields). Declare the field in the constructor with a JSDoc @type annotation instead.',
+        },
+        {
+          selector: 'StaticBlock',
+          message:
+            'Google Apps Script rejects class static initialisation blocks. Assign static properties after the class definition instead.',
+        },
+        {
+          selector:
+            "AssignmentExpression[operator='||='], AssignmentExpression[operator='&&='], AssignmentExpression[operator='??=']",
+          message:
+            'Google Apps Script rejects logical assignment operators (ES2021). Use an explicit if-statement that preserves the intended falsy or nullish semantics instead.',
+        },
         {
           selector:
             "Program:not([sourceType='module']) VariableDeclarator[id.name='BaseSingleton']",

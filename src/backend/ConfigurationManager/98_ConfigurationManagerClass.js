@@ -30,7 +30,10 @@ class ConfigurationManager extends BaseSingleton {
    * @returns {void} No return value. */
   ensureInitialized() {
     if (this._initialized) return;
-    this.scriptProperties ||= GASPropertiesUtils.getScriptProperties();
+    // Falsy-check, not a nullish-check: `||=` (the operator this replaces) falls through on
+    // every falsy value, whereas `??=` would keep a non-nullish falsy handle such as `false`,
+    // `0` or `''` unresolved. The Apps Script parser also rejects `||=`.
+    if (!this.scriptProperties) this.scriptProperties = GASPropertiesUtils.getScriptProperties();
     if (globalThis.__TRACE_SINGLETON__)
       ABLogger.getInstance().debug('[TRACE][HeavyInit] ConfigurationManager.ensureInitialized');
     this._initialized = true;

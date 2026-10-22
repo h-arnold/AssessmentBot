@@ -7,6 +7,7 @@ import { BuildStageError } from '../lib/errors.js';
 import { createBuilderPaths, createTempDir } from '../test/builder-fixture-test-helpers.js';
 import {
   findDuplicateProtectedGlobals,
+  findGasIncompatibleSyntax,
   runValidateOutput,
   scanFileTopLevelDeclarations,
   validateForbiddenFrontendReferences,
@@ -36,11 +37,23 @@ async function writeValidGasArtefacts(paths: BuilderPaths): Promise<void> {
         enabledAdvancedServices: [{ userSymbol: 'Drive', serviceId: 'drive', version: 'v3' }],
       },
     }),
-    'utf-8',
+    'utf-8'
   );
-  await fs.writeFile(path.join(paths.buildGasDir, JSONDB_INLINED), 'const JsonDbApp = {};', 'utf-8');
-  await fs.writeFile(path.join(paths.buildGasUiDir, path.basename(REACT_APP_HTML)), '<div id="root"></div>', 'utf-8');
-  await fs.writeFile(path.join(paths.buildGasDir, 'Utils', 'Validate.js'), 'class Validate {}', 'utf-8');
+  await fs.writeFile(
+    path.join(paths.buildGasDir, JSONDB_INLINED),
+    'const JsonDbApp = {};',
+    'utf-8'
+  );
+  await fs.writeFile(
+    path.join(paths.buildGasUiDir, path.basename(REACT_APP_HTML)),
+    '<div id="root"></div>',
+    'utf-8'
+  );
+  await fs.writeFile(
+    path.join(paths.buildGasDir, 'Utils', 'Validate.js'),
+    'class Validate {}',
+    'utf-8'
+  );
 }
 
 describe('validateManifestSanity', () => {
@@ -53,8 +66,8 @@ describe('validateManifestSanity', () => {
       validateManifestSanity(
         JSON.stringify({
           oauthScopes: ['scope.a', 'scope.a'],
-        }),
-      ),
+        })
+      )
     ).toThrow(BuildStageError);
   });
 
@@ -69,8 +82,8 @@ describe('validateManifestSanity', () => {
               { userSymbol: 'DriveAlias', serviceId: 'drive', version: 'v3' },
             ],
           },
-        }),
-      ),
+        })
+      )
     ).toThrow(BuildStageError);
   });
 });
@@ -78,25 +91,25 @@ describe('validateManifestSanity', () => {
 describe('validateForbiddenFrontendReferences', () => {
   it('rejects forbidden external asset references', () => {
     expect(() =>
-      validateForbiddenFrontendReferences('<script src="https://cdn.example.com/app.js"></script>'),
+      validateForbiddenFrontendReferences('<script src="https://cdn.example.com/app.js"></script>')
     ).toThrow(BuildStageError);
   });
 
   it('rejects /assets local references', () => {
     expect(() =>
-      validateForbiddenFrontendReferences('<script src="/assets/index-123.js"></script>'),
+      validateForbiddenFrontendReferences('<script src="/assets/index-123.js"></script>')
     ).toThrow(BuildStageError);
   });
 
   it('rejects ./assets local references', () => {
     expect(() =>
-      validateForbiddenFrontendReferences('<script src="./assets/index-123.js"></script>'),
+      validateForbiddenFrontendReferences('<script src="./assets/index-123.js"></script>')
     ).toThrow(BuildStageError);
   });
 
   it('rejects assets/ local references', () => {
     expect(() =>
-      validateForbiddenFrontendReferences('<script src="assets/index-123.js"></script>'),
+      validateForbiddenFrontendReferences('<script src="assets/index-123.js"></script>')
     ).toThrow(BuildStageError);
   });
 });
@@ -129,17 +142,87 @@ const JsonDbApp = (function () {
   });
 
   it('ignores braces in comments, strings and template literal text', () => {
-    const declarations = scanFileTopLevelDeclarations(`
+    const declarations = scanFileTopLevelDeclarations(
+      `
 const text = "{";
-const template = ` + "`value {still text}`" + `;
+const template = ` +
+        '`value {still text}`' +
+        `;
 // function Validate() { }
 /*
 class Validate {}
 */
 class Validate {}
-`);
+`
+    );
 
     expect(declarations).toEqual(['text', 'template', 'Validate']);
+  });
+});
+
+describe('findGasIncompatibleSyntax', () => {
+  it('flags class field declarations the Apps Script parser rejects', () => {
+    const findings = findGasIncompatibleSyntax({
+      'Assignment/index.js': ['class Assignment {', '  createdAt;', '}'].join('\n'),
+    });
+
+    expect(findings).toEqual([
+      { relativePath: 'Assignment/index.js', line: 2, construct: 'class field declaration' },
+    ]);
+  });
+
+  it('flags static and private class fields', () => {
+    const findings = findGasIncompatibleSyntax({
+      'a.js': ['class A {', '  static count = 0;', '  #secret = 1;', '}'].join('\n'),
+    });
+
+    expect(findings.map(({ construct }) => construct)).toEqual([
+      'class field declaration',
+      'class field declaration',
+    ]);
+  });
+
+  it('flags class static initialisation blocks', () => {
+    const findings = findGasIncompatibleSyntax({
+      'a.js': ['class A {', '  static { this.value = 1; }', '}'].join('\n'),
+    });
+
+    expect(findings).toEqual([
+      {
+        relativePath: 'a.js',
+        line: 2,
+        construct: 'class static initialisation block',
+      },
+    ]);
+  });
+
+  it('flags logical assignment operators the Apps Script parser rejects', () => {
+    const findings = findGasIncompatibleSyntax({
+      'a.js': ['this.a ||= load();', 'this.b ??= load();', 'this.c &&= load();'].join('\n'),
+    });
+
+    expect(findings.map(({ construct }) => construct)).toEqual([
+      'logical assignment (||=)',
+      'logical assignment (??=)',
+      'logical assignment (&&=)',
+    ]);
+  });
+
+  it('accepts syntax the Apps Script parser supports', () => {
+    const findings = findGasIncompatibleSyntax({
+      'a.js': [
+        'class A {',
+        '  constructor() {',
+        '    this.value = null;',
+        '    this.other = this.value ?? fallback;',
+        '    this.optional = this.value?.nested;',
+        '  }',
+        '}',
+        'const literal = { key: 1 };',
+      ].join('\n'),
+    });
+
+    expect(findings).toEqual([]);
   });
 });
 
@@ -174,6 +257,7 @@ describe('runValidateOutput', () => {
     expect(result.requiredFileCount).toBe(expectedRequiredFileCount);
     expect(result.gasFileCount).toBe(expectedGasFileCount);
     expect(result.duplicateProtectedGlobalCount).toBe(0);
+    expect(result.gasIncompatibleSyntaxCount).toBe(0);
     expect(Object.keys(result.artefactSizes)).toEqual([
       APPS_SCRIPT_JSON,
       JSONDB_INLINED,
@@ -225,14 +309,21 @@ describe('runValidateOutput', () => {
   it('reports duplicate protected globals with forward-slash relative file paths', async () => {
     await writeValidGasArtefacts(paths);
     await fs.mkdir(path.join(paths.buildGasDir, 'Duplicate'), { recursive: true });
-    await fs.writeFile(path.join(paths.buildGasDir, 'Duplicate', 'ValidateAgain.js'), 'function Validate() {}', 'utf-8');
+    await fs.writeFile(
+      path.join(paths.buildGasDir, 'Duplicate', 'ValidateAgain.js'),
+      'function Validate() {}',
+      'utf-8'
+    );
 
     const windowsRelativePaths = new Map<string, string>([
       [path.join(paths.buildGasDir, APPS_SCRIPT_JSON), APPS_SCRIPT_JSON],
       [path.join(paths.buildGasDir, JSONDB_INLINED), JSONDB_INLINED],
       [path.join(paths.buildGasUiDir, path.basename(REACT_APP_HTML)), REACT_APP_HTML],
       [path.join(paths.buildGasDir, 'Utils', 'Validate.js'), String.raw`Utils\Validate.js`],
-      [path.join(paths.buildGasDir, 'Duplicate', 'ValidateAgain.js'), String.raw`Duplicate\ValidateAgain.js`],
+      [
+        path.join(paths.buildGasDir, 'Duplicate', 'ValidateAgain.js'),
+        String.raw`Duplicate\ValidateAgain.js`,
+      ],
     ]);
 
     vi.spyOn(path, 'relative').mockImplementation((_from, to) => {
@@ -250,18 +341,41 @@ describe('runValidateOutput', () => {
       stage: VALIDATE_OUTPUT_STAGE,
     });
     expect((error as BuildStageError).message).toContain(
-      'Validate: Duplicate/ValidateAgain.js, Utils/Validate.js',
+      'Validate: Duplicate/ValidateAgain.js, Utils/Validate.js'
     );
   });
 
   it('fails with actionable error on duplicate protected globals', async () => {
     await writeValidGasArtefacts(paths);
-    await fs.writeFile(path.join(paths.buildGasDir, 'DuplicateValidate.js'), 'function Validate() {}', 'utf-8');
+    await fs.writeFile(
+      path.join(paths.buildGasDir, 'DuplicateValidate.js'),
+      'function Validate() {}',
+      'utf-8'
+    );
 
     await expect(runValidateOutput(paths)).rejects.toBeInstanceOf(BuildStageError);
     await expect(runValidateOutput(paths)).rejects.toMatchObject({
       stage: VALIDATE_OUTPUT_STAGE,
     });
+  });
+
+  it('fails with actionable error on Apps Script incompatible syntax in the emitted script', async () => {
+    await writeValidGasArtefacts(paths);
+    await fs.writeFile(
+      path.join(paths.buildGasDir, 'Utils', 'Incompatible.js'),
+      'class Incompatible {\n  createdAt;\n}',
+      'utf-8'
+    );
+
+    const error = await runValidateOutput(paths).catch((caughtError: unknown) => caughtError);
+
+    expect(error).toBeInstanceOf(BuildStageError);
+    expect(error).toMatchObject({
+      stage: VALIDATE_OUTPUT_STAGE,
+    });
+    expect((error as BuildStageError).message).toContain(
+      'class field declaration at Utils/Incompatible.js:2'
+    );
   });
 
   it('wraps missing build/gas output failures with validate-output stage context', async () => {
