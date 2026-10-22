@@ -275,6 +275,12 @@ const JsonDbApp = (function () {
 - Scans JavaScript top-level declarations and fails on duplicate protected globals:
   - `Validate`
   - `JsonDbApp`
+- Scans the emitted JavaScript and fails on syntax the Apps Script script parser rejects, so a build that would break `clasp push` never reaches deployment:
+  - Class field declarations (instance, static and `#private`)
+  - Class static initialisation blocks
+  - Logical assignment operators (`||=`, `&&=`, `??=`)
+  - Findings are reported as `<construct> at <relative path>:<line>`
+- The syntax scan runs against the emitted `build/gas` artefact rather than the source tree, so vendored code that no lint scope covers is checked too.
 - Emits artefact sizes and SHA-256 checksums for determinism tracking.
 
 ### Error model and determinism

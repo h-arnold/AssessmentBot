@@ -95,6 +95,7 @@ export type ValidateOutputResult = {
   requiredFileCount: number;
   gasFileCount: number;
   duplicateProtectedGlobalCount: number;
+  gasIncompatibleSyntaxCount: number;
   artefactSizes: Record<string, number>;
   artefactChecksums: Record<string, string>;
 };

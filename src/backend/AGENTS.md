@@ -9,6 +9,7 @@ opencode injects this file when you touch a backend file. The docs it points to 
 - Backend code is plain Google Apps Script (V8) JavaScript under `src/backend/**`, targeting `src/backend/appsscript.json`. It is not TypeScript and not a Node module graph.
 - Backend files are concatenated into a single GAS script before execution, so definition order and numeric file prefixes are part of runtime behaviour (§5.2).
 - Use GAS services for platform operations instead of non-GAS alternatives that do not execute in Apps Script, and do not introduce Node/browser runtime dependencies.
+- The Apps Script script parser rejects class field declarations (`createdAt;`, `static count = 0;`, `#private;`) and logical assignment operators (`||=`, `&&=`, `??=`), even though the V8 runtime supports them, so a pushed build fails with `ParseError: Unexpected token ;` or `Unexpected token =`. Declare every field in the constructor with a JSDoc `@type` annotation, and write logical assignment as an explicit `if` statement that preserves the intended falsy or nullish semantics. The backend ESLint config bans these constructs.
 
 ## 2. Non-negotiables
 
