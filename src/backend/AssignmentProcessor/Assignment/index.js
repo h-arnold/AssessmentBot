@@ -26,9 +26,9 @@ class Assignment {
    */
   constructor(courseId, assignmentId, assignmentDefinition) {
     // Declared in the constructor rather than as a class field: the Apps Script parser
-    // rejects class field declarations at push time.
+    // rejects class field declarations at push time, so Sonar S7757 is suppressed below.
     /** @type {Date} Populated from Classroom creationTime by fetchAssignmentName(). */
-    this.createdAt = null;
+    this.createdAt = null; // NOSONAR
     this.courseId = courseId;
     this.assignmentId = assignmentId;
     this.assignmentName = this.fetchAssignmentName(courseId, assignmentId);
