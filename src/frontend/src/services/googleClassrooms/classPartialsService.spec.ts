@@ -1,4 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { CANONICAL_NON_NULL_METADATA } from '@/test/abClass/abClassMetadataFixtures';
+
+const metadataSnapshot = structuredClone(CANONICAL_NON_NULL_METADATA);
 
 const { callApiMock, parseApiResponseMock } = await vi.hoisted(async () => {
   const { createApiServiceMockScaffold } = await import('@/test/api/apiServiceTestMocks');
@@ -47,6 +50,7 @@ describe('classPartialsService.getABClassPartials', () => {
           },
         ],
         active: true,
+        metadata: structuredClone(metadataSnapshot),
       },
     ]);
 
@@ -72,6 +76,7 @@ describe('classPartialsService.getABClassPartials', () => {
           },
         ],
         active: true,
+        metadata: structuredClone(metadataSnapshot),
       },
     ]);
   });
@@ -96,6 +101,7 @@ describe('classPartialsService.getABClassPartials', () => {
         classOwner: null,
         teachers: [],
         active: false,
+        metadata: structuredClone(metadataSnapshot),
       },
     ]);
 
@@ -111,6 +117,7 @@ describe('classPartialsService.getABClassPartials', () => {
         classOwner: null,
         teachers: [],
         active: false,
+        metadata: structuredClone(metadataSnapshot),
       },
     ]);
   });
@@ -130,6 +137,7 @@ describe('classPartialsService.getABClassPartials', () => {
         },
         teachers: [],
         active: null,
+        metadata: structuredClone(metadataSnapshot),
       },
     ]);
 
@@ -149,6 +157,7 @@ describe('classPartialsService.getABClassPartials', () => {
         },
         teachers: [],
         active: null,
+        metadata: structuredClone(metadataSnapshot),
       },
     ]);
   });
@@ -164,6 +173,7 @@ describe('classPartialsService.getABClassPartials', () => {
         classOwner: null,
         teachers: [],
         active: true,
+        metadata: structuredClone(metadataSnapshot),
       },
     ]);
 

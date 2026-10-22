@@ -11,6 +11,10 @@ const GET_AB_CLASS_PARTIALS_METHOD = 'getABClassPartials';
  * The backend normalises stored partial records to this transport shape before
  * returning them, so storage-only fields are not exposed here.
  *
+ * @remarks Each partial retains required nullable ABClass summary `metadata`.
+ * Missing or malformed metadata fails response parsing; no frontend legacy
+ * default is applied. An empty registry still returns `[]`.
+ *
  * @returns {Promise<ClassPartial[]>} Promise resolving to validated class partial transport objects.
  */
 export async function getABClassPartials(): Promise<ClassPartial[]> {

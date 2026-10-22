@@ -51,8 +51,9 @@ export function createApiHandlerRoundTripBridge(options) {
   const { vi, profileName } = options;
   const bridgeVi = createBridgeVi(vi);
   const classesById = new Map(
-    Object.entries(loadSyntheticAnalysisProfile(profileName, 'classesById'))
+    Object.entries(structuredClone(loadSyntheticAnalysisProfile(profileName, 'classesById')))
   );
+  const classPartials = structuredClone(loadSyntheticAnalysisProfile(profileName, 'classPartials'));
   const assignmentDefinitionPartials = loadSyntheticAnalysisProfile(
     profileName,
     'assignmentDefinitionPartials'
@@ -64,6 +65,11 @@ export function createApiHandlerRoundTripBridge(options) {
   const seamBehaviours = {
     abclassMutationsBehaviour: {
       getABClass_: (parameters) => classesById.get(parameters.classId) ?? null,
+      upsertABClass_: (parameters) => writeClassMetadata(parameters),
+      updateABClass_: (parameters) => writeClassMetadata(parameters),
+    },
+    abClassControllerBehaviour: {
+      getAllClassPartials: () => structuredClone(classPartials),
     },
     assignmentDefinitionBehaviour: {
       getAssignmentDefinitionPartials_: () => assignmentDefinitionPartials,
@@ -72,6 +78,27 @@ export function createApiHandlerRoundTripBridge(options) {
       deleteAssignmentDefinition_: () => null,
     },
   };
+
+  /**
+   * Applies metadata replacement to the bridge's isolated synthetic records.
+   *
+   * @param {object} parameters Mutation parameters containing classId and metadata.
+   * @returns {object} A detached class partial.
+   */
+  function writeClassMetadata(parameters) {
+    const classRecord = classesById.get(parameters.classId);
+    if (!classRecord) {
+      throw new Error(`Cannot update metadata for unknown class "${parameters.classId}".`);
+    }
+
+    const partial = classPartials.find((row) => row.classId === parameters.classId);
+    if (Object.hasOwn(parameters, 'metadata')) {
+      classRecord.metadata = structuredClone(parameters.metadata);
+      if (partial) partial.metadata = structuredClone(parameters.metadata);
+    }
+
+    return structuredClone(partial);
+  }
 
   return {
     invokeRequest(request, callbacks) {

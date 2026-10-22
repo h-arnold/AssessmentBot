@@ -268,7 +268,9 @@ test.describe('SelectWithAddNew Workflow', () => {
     const createModal = page.getByRole('dialog', { name: /create abclass/i });
     const cohortCombobox = page.getByRole('combobox', { name: 'Cohort' });
     await cohortCombobox.click();
-    await page.getByRole('option', { name: 'Cohort 2024', exact: true }).click();
+    const cohortOption = page.getByRole('option', { name: 'Cohort 2024', exact: true });
+    await waitForSelectPopupReady(cohortOption);
+    await cohortOption.click();
     await expectCreateFormSelection(page, 'Cohort 2024');
 
     await openComboboxAndClickAddNew(page, 'Cohort', 'Add new cohort');

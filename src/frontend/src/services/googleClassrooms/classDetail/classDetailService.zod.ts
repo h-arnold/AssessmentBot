@@ -1,3 +1,4 @@
+import { ABClassMetadataSchema } from '@/services/abClass/abClassMetadata.zod';
 import { z } from 'zod';
 
 /** Maximum valid assessment score (inclusive). Backend PartialAssessment model range. */
@@ -135,6 +136,15 @@ export const AssignmentPartialSchema = z.object({
 
 export type AssignmentPartial = z.infer<typeof AssignmentPartialSchema>;
 
+/**
+ * Full class document returned by `getABClass` (with the response-level nullable
+ * wrapper `ClassFullResponseSchema` for a not-found class).
+ *
+ * @remarks Unrelated unknown wire fields (for example `courseId` and
+ * `assignmentName` on embedded assignments) still strip through Zod's default
+ * `.strip()` behaviour; metadata instead intentionally requires the shared
+ * strict schema below.
+ */
 export const ClassFullSchema = z.object({
   classId: z.string(),
   className: z.string().nullable(),
@@ -146,6 +156,18 @@ export const ClassFullSchema = z.object({
   students: z.array(StudentSummarySchema),
   assignments: z.array(AssignmentPartialSchema),
   active: z.boolean().nullable(),
+  /**
+   * ABClass assessment-summary snapshot, shared with the partial read.
+   * @remarks Required and nullable as a whole on successful reads: the backend
+   * always emits it (legacy absence normalised to explicit `null`), so a
+   * missing or malformed field fails parsing rather than defaulting. There is
+   * no frontend legacy default, no coercion, and no optional weakening. On
+   * mutation requests, the metadata property is optional by omission; when
+   * present, it is subject to the shared strict validation. Explicit `null`
+   * clears metadata, and a supplied object replaces the whole value. Distinct
+   * from the unrelated task-artifact `metadata` (artifact source metadata).
+   */
+  metadata: ABClassMetadataSchema,
 });
 
 export type ClassFull = z.infer<typeof ClassFullSchema>;

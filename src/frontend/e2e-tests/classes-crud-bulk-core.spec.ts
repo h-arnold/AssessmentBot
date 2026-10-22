@@ -14,10 +14,16 @@
 import { expect, test } from '@playwright/test';
 import { mockBulkCoreRuntime } from './helpers/classes-crud-bulk-core-scenario';
 import {
+  CANONICAL_NULL_CLASS_METADATA,
+  createCanonicalNotAttemptedClassMetadata,
+  createCanonicalNumericClassMetadata,
+} from './helpers/class-metadata-fixtures';
+import {
   classesTableAriaLabel,
   clickModalConfirmAndDismiss,
   openClassesManagementTab,
 } from './helpers/classes-crud-bulk-scaffold';
+import { waitForSelectPopupReady } from './helpers/select-popup-readiness';
 
 // ---------------------------------------------------------------------------
 // Label constants (WS3 button labels)
@@ -48,6 +54,7 @@ const linkedClassPartial = {
   classOwner: null,
   teachers: [],
   active: false,
+  metadata: createCanonicalNotAttemptedClassMetadata(),
 };
 
 /** Class partial for the active class. */
@@ -60,6 +67,7 @@ const activeClassPartial = {
   classOwner: null,
   teachers: [],
   active: true,
+  metadata: createCanonicalNumericClassMetadata(),
 };
 
 const secondInactiveGCR = { classId: 'gcr-class-linked-002', className: 'Year 8 Science' };
@@ -171,6 +179,8 @@ test.describe('bulk create flow', () => {
           classOwner: null,
           teachers: [],
           active: true,
+          // A class created moments ago carries canonical null metadata.
+          metadata: CANONICAL_NULL_CLASS_METADATA,
         },
       ],
       cohorts: [
@@ -200,8 +210,10 @@ test.describe('bulk create flow', () => {
     const dialog = page.getByRole('dialog', { name: bulkCreateButtonLabel });
     await expect(dialog).toBeVisible();
     await dialog.getByRole('combobox', { name: 'Cohort' }).click();
+    await waitForSelectPopupReady(page.getByRole('option', { name: 'Cohort 2025' }));
     await page.getByRole('option', { name: 'Cohort 2025' }).click();
     await dialog.getByRole('combobox', { name: 'Year group' }).click();
+    await waitForSelectPopupReady(page.getByRole('option', { name: 'Year 11' }));
     await page.getByRole('option', { name: 'Year 11' }).click();
     await dialog.getByRole('spinbutton', { name: 'Course length' }).fill('2');
     const createOkButton = dialog.getByRole('button', { name: 'OK' });

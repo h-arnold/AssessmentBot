@@ -28,9 +28,8 @@ import type { ClassPageSurfaceState } from './useClassPageData';
 import type { ClassPageAdapterResult } from './classPageAdapter.zod';
 import type { AveragingResult } from '@/services/dataAnalysis/dataAnalysis.zod';
 import type { ClassFull } from '@/services/googleClassrooms/classDetail/classDetailService.zod';
-import {
-  createComputedMetricResult,
-} from '@/test/dataAnalysis/fixtures';
+import { createComputedMetricResult } from '@/test/dataAnalysis/fixtures';
+import { createCanonicalMetadataFixture } from '@/test/abClass/abClassMetadataFixtures';
 
 // ===========================================================================
 // Mock setup
@@ -157,9 +156,7 @@ const classFullFixture: ClassFull = {
   yearGroupKey: null,
   classOwner: null,
   teachers: [],
-  students: [
-    { id: 's-1', name: 'Student One', email: 's1@test.com' },
-  ],
+  students: [{ id: 's-1', name: 'Student One', email: 's1@test.com' }],
   assignments: [
     {
       assignmentId: 'a-1',
@@ -172,6 +169,7 @@ const classFullFixture: ClassFull = {
     },
   ],
   active: null,
+  metadata: createCanonicalMetadataFixture(),
 };
 
 /**
@@ -279,23 +277,20 @@ function Harness({ initialView = 'overview', assignmentId }: HarnessProperties) 
     assignmentId?: string;
   }>({ view: initialView, assignmentId });
 
-  return createElement(
-    ClassPageContent,
-    {
-      surfaceState: { status: 'ready' } as ClassPageSurfaceState,
-      adapterResult: adapterResultFixture,
-      analyserResult: analyserResultFixture,
-      classFull: classFullFixture,
-      selectedView,
-      onOpenHeatmap: (id: string) => setSelectedView({ view: 'heatmap', assignmentId: id }),
-      onBack: () => setSelectedView({ view: 'overview' }),
-      refetch: vi.fn(),
-      assignmentDefinitionPartials: [assignmentPartialFixture],
-      onStartNewAssessment: vi.fn(),
-      onNavigateToClasses: vi.fn(),
-      onRetry: vi.fn(),
-    } as unknown as Parameters<typeof ClassPageContent>[0],
-  );
+  return createElement(ClassPageContent, {
+    surfaceState: { status: 'ready' } as ClassPageSurfaceState,
+    adapterResult: adapterResultFixture,
+    analyserResult: analyserResultFixture,
+    classFull: classFullFixture,
+    selectedView,
+    onOpenHeatmap: (id: string) => setSelectedView({ view: 'heatmap', assignmentId: id }),
+    onBack: () => setSelectedView({ view: 'overview' }),
+    refetch: vi.fn(),
+    assignmentDefinitionPartials: [assignmentPartialFixture],
+    onStartNewAssessment: vi.fn(),
+    onNavigateToClasses: vi.fn(),
+    onRetry: vi.fn(),
+  } as unknown as Parameters<typeof ClassPageContent>[0]);
 }
 
 // ===========================================================================
@@ -408,7 +403,9 @@ describe('ClassPage heatmap view-state wiring', () => {
     // assert that no error alert remains in the rendered class-page surface.
     expect(within(container).queryByRole('alert')).not.toBeInTheDocument();
     expect(
-      await screen.findByText('Something went wrong while loading the heatmap. Returning to class overview.')
+      await screen.findByText(
+        'Something went wrong while loading the heatmap. Returning to class overview.'
+      )
     ).toBeInTheDocument();
   });
 });

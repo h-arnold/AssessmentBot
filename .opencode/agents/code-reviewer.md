@@ -2,7 +2,7 @@
 description: Reviews code for quality, standards adherence, and defects using project-specific checklists
 mode: all
 steps: 100
-model: opencode-go/step-5-preview-free
+model: openai/gpt-6.1-sol
 permissions:
   - action: edit
     resource: '*'

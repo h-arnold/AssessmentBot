@@ -1,11 +1,13 @@
 import { expect, test, type Page } from '@playwright/test';
-import { installRuntimeMock, selectVisibleOption } from './shared/endToEndRuntimeMocks';
+import {
+  getMethodCalls,
+  installRuntimeMock,
+  selectVisibleOption,
+} from './shared/endToEndRuntimeMocks';
 import { AssignmentDefinitionPartialSchema } from '../src/services/assignmentDefinition/assignmentDefinitionPartials.zod';
 import { ClassFullSchema } from '../src/services/googleClassrooms/classDetail/classDetailService.zod';
-import {
-  buildAssignmentDefinitionPartial,
-  buildClassFullDocument,
-} from './helpers/task-heatmap-fixtures';
+import { buildAssignmentDefinitionPartial } from './helpers/task-heatmap-fixtures';
+import { buildClassFullDocument } from './helpers/task-heatmap-class-fixtures';
 import {
   createHeatmapScenario,
   HEATMAP_ASSIGNMENT_DISPLAY_TITLE,
@@ -66,6 +68,7 @@ test.describe('Task Heatmap assignment summaries', () => {
     await expect(completeness.getByText('7 of 10', { exact: true })).toBeVisible();
     await expect(accuracy.getByText('2.50/5', { exact: true })).toBeVisible();
     await expect(accuracy.getByText('3.29/5', { exact: true })).toBeVisible();
+    expect(await getMethodCalls(page)).not.toContain('updateABClass');
     await expect(completeness.getByRole('listitem')).toHaveCount(TASK_COUNT);
     await expect(accuracy.getByRole('listitem')).toHaveCount(TASK_COUNT);
     await expectAlignedSummaryCards(page);

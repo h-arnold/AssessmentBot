@@ -17,6 +17,9 @@ const GET_AB_CLASS_METHOD = 'getABClass';
  * Returns `null` when the backend reports the class does not exist
  * (ClassNotFoundError mapped to null at the transport boundary).
  * The response is validated through `ClassFullResponseSchema` (Zod).
+ * Existing classes retain required nullable ABClass summary `metadata`, distinct
+ * from task-artifact metadata and top-level not-found `null`. Missing or malformed
+ * summary metadata fails response parsing; no frontend legacy default is applied.
  *
  * @param {Object} parameters - Request parameters.
  * @param {string} parameters.classId - The class ID to read.

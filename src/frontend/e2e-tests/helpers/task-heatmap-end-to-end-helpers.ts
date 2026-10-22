@@ -2,15 +2,16 @@
 
 import { expect, type Page } from '@playwright/test';
 import type { ResponseItem, RuntimeScenario } from '../shared/endToEndRuntimeMocks';
+import { ABClassMetadataSchema } from '@/services/abClass/abClassMetadata.zod';
+import { ClassFullSchema } from '@/services/googleClassrooms/classDetail/classDetailService.zod';
 import {
-  addSecondAssignment,
   buildAssignmentDefinitionPartial,
   buildAssignmentFullDocument,
-  buildClassFullDocument,
   buildGoogleClassroomAssignment,
   HEATMAP_CLASS_ID,
   HEATMAP_CLASS_NAME,
 } from './task-heatmap-fixtures';
+import { addSecondAssignment, buildClassFullDocument } from './task-heatmap-class-fixtures';
 
 export {
   HEATMAP_ASSIGNMENT_DISPLAY_TITLE,
@@ -37,6 +38,50 @@ export interface CreateHeatmapScenarioOptions {
   classFailure?: boolean;
   /** When true, set only the live assignment-definition weighting to zero. */
   zeroWeightAssignment?: boolean;
+}
+
+/**
+ * Apply a canonical numeric metadata snapshot matching the fixture's newest assignment version.
+ * @param {Record<string, unknown>} classDocument - Mutable class response fixture.
+ */
+function applyEqualVersionMetadataBoundary(classDocument: Record<string, unknown>): void {
+  const parsedClass = ClassFullSchema.parse(classDocument);
+  const sourceMetadata = ABClassMetadataSchema.parse(parsedClass.metadata);
+  if (sourceMetadata === null) return;
+
+  const assignments = parsedClass.assignments.filter(
+    (assignment): assignment is typeof assignment & { assignmentId: string; updatedAt: string } =>
+      Boolean(assignment.assignmentId && assignment.updatedAt)
+  );
+  if (assignments.length !== parsedClass.assignments.length) {
+    throw new Error('Task Heatmap fixture assignments must include assignmentId and updatedAt.');
+  }
+  const [newestAssignment] = assignments.toSorted((left, right) => {
+    return (
+      right.updatedAt.localeCompare(left.updatedAt) ||
+      right.assignmentId.localeCompare(left.assignmentId)
+    );
+  });
+
+  if (!newestAssignment) throw new Error('Task Heatmap fixture must include an assignment.');
+
+  const existingRecent = sourceMetadata.recentAssignments[0];
+  classDocument.metadata = ABClassMetadataSchema.parse({
+    classAverages: sourceMetadata.classAverages,
+    recentAssignments: [
+      {
+        assignmentId: newestAssignment.assignmentId,
+        assignmentDefinitionKey: newestAssignment.assignmentDefinitionKey,
+        updatedAt: newestAssignment.updatedAt,
+        averages: existingRecent?.averages ?? {
+          completeness: sourceMetadata.classAverages.completeness,
+          accuracy: sourceMetadata.classAverages.accuracy,
+          spag: sourceMetadata.classAverages.spag,
+          overall: sourceMetadata.classAverages.overall,
+        },
+      },
+    ],
+  });
 }
 
 /**
@@ -89,6 +134,9 @@ export function createHeatmapScenario(options: CreateHeatmapScenarioOptions = {}
   const classDocument = buildClassFullDocument(scenarioOptions.emptySubmissions ?? false);
   if (scenarioOptions.multipleAssignments) addSecondAssignment(classDocument);
 
+  // Hold this fixture's metadata version equal to its class document; it is not an analysis oracle.
+  applyEqualVersionMetadataBoundary(classDocument);
+
   const classEntries = createClassEntries(classDocument, scenarioOptions);
   const partial = buildAssignmentDefinitionPartial(
     scenarioOptions.zeroTasks,
@@ -114,6 +162,7 @@ export function createHeatmapScenario(options: CreateHeatmapScenarioOptions = {}
             },
             teachers: [],
             active: true,
+            metadata: ClassFullSchema.parse(classDocument).metadata,
           },
         ],
       },

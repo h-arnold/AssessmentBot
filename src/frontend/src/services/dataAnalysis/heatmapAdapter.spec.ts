@@ -6,220 +6,28 @@
  * sources task columns from the matching warm-up definition. It throws
  * `TaskTitlesUnavailableError` when that definition is absent and fails fast
  * when a task lacks its required weighting.
+ *
+ * The live task/assignment weighting projection cases live in the sibling
+ * `heatmapAdapter.weighting.spec.ts`, sharing this file's former fixture
+ * builders through `heatmapAdapterTestSetup`.
  */
 
 import { describe, expect, it } from 'vitest';
-import type { AveragingResult } from './dataAnalysis.zod';
-import type { ClassFull } from '../googleClassrooms/classDetail/classDetailService.zod';
 import type { AssignmentDefinitionPartialsResponse } from '../assignmentDefinition/assignmentDefinitionPartials.zod';
 import { adaptMetricsToHeatmap, TaskTitlesUnavailableError } from './heatmapAdapter';
-import { createComputedMetricResult, createTaskPartial } from '@/test/dataAnalysis/fixtures';
+import {
+  ASSIGNMENT_ID,
+  CLASS_NAME,
+  buildClassFull,
+  buildNonMatchingPartials,
+  buildPartials,
+  buildPerStudentTaskMetric,
+  minimalAveragingResult,
+  taskKey,
+} from '@/test/dataAnalysis/heatmapAdapterTestSetup';
 
-// ---------------------------------------------------------------------------
-// Fixture helpers
-// ---------------------------------------------------------------------------
-
-const CLASS_ID = 'class_001';
-const CLASS_NAME = 'Year 10 Mathematics';
-const ASSIGNMENT_ID = 'assignment_001';
-const DEFINITION_KEY = 'dk_quadratics';
-
-const STUDENT_IDS = ['s_001', 's_002'];
-const STUDENT_NAMES = ['Alice', 'Bob'];
-const TASK_IDS = ['task_001', 'task_002', 'task_003'];
-
-const expectedStudentCount = STUDENT_IDS.length;
-const expectedTaskColumnCount = TASK_IDS.length;
-const EXPECTED_ZERO_WEIGHT_SCORE = 4;
-
-/**
- * Build a taskKey in the canonical `${definitionKey}::${taskId}` format.
- *
- * @param {string} taskId - The stable task identifier.
- * @returns {string} The canonical task-key string.
- */
-function taskKey(taskId: string): string {
-  return `${DEFINITION_KEY}::${taskId}`;
-}
-
-/**
- * Build a student-summaries array from the shared STUDENT_IDS and STUDENT_NAMES constants.
- *
- * @returns {Array<{id: string, name: string, email: string}>} An array of student-summary objects.
- */
-function buildStudentSummaries() {
-  return STUDENT_IDS.map((id, index) => {
-    return {
-      id,
-      name: STUDENT_NAMES[index],
-      email: `${id}@school.edu`,
-    };
-  });
-}
-
-/**
- * Build a task-partials array from the shared TASK_IDS constant.
- *
- * @returns {Array<{taskId: string, taskWeighting: number, taskTitle: string | null}>} An array of task-partial objects.
- */
-function buildTasks() {
-  return TASK_IDS.map((id) => createTaskPartial(id, 1));
-}
-
-/**
- * Build a minimal AssignmentDefinitionPartial fixture for the test assignment.
- *
- * @returns {Object} An assignment-definition-partial-shaped object with a
- *   `primaryTitle` of "Quadratics Assessment" and tasks from {@link buildTasks}.
- */
-function buildDefinition() {
-  return {
-    primaryTitle: 'Quadratics Assessment',
-    primaryTopic: 'Algebra',
-    primaryTopicKey: 'algebra',
-    yearGroupKey: 'yg-10',
-    yearGroupLabel: 'Year 10',
-    alternateTitles: [] as string[],
-    alternateTopics: [] as string[],
-    documentType: 'assignment',
-    referenceDocumentId: null,
-    templateDocumentId: null,
-    assignmentWeighting: 1,
-    definitionKey: DEFINITION_KEY,
-    tasks: buildTasks(),
-    createdAt: '2026-01-15T09:00:00.000Z',
-    updatedAt: null,
-  };
-}
-
-/**
- * Build a minimal AssignmentPartial fixture wrapping the test definition.
- *
- * @returns {Object} An assignment-partial-shaped object containing the
- *   assignment ID, document type, and the nested definition from
- *   {@link buildDefinition}.
- */
-function buildAssignmentPartial() {
-  return {
-    assignmentId: ASSIGNMENT_ID,
-    dueDate: null,
-    updatedAt: null,
-    createdAt: '2026-01-15T09:00:00.000Z',
-    documentType: 'assessment',
-    submissions: [],
-    assignmentDefinitionKey: DEFINITION_KEY,
-  };
-}
-
-/**
- * Build a minimal ClassFull fixture for the test class.
- *
- * @returns {ClassFull} A fully typed ClassFull fixture with the test class ID,
- *   name, student summaries, and one assignment.
- */
-function buildClassFull(): ClassFull {
-  return {
-    classId: CLASS_ID,
-    className: CLASS_NAME,
-    cohortKey: null,
-    courseLength: 1,
-    yearGroupKey: 'yg-10',
-    classOwner: null,
-    teachers: [],
-    students: buildStudentSummaries(),
-    assignments: [buildAssignmentPartial()],
-    active: null,
-  };
-}
-
-/**
- * Build a minimal AssignmentDefinitionPartialsResponse (array) containing a
- * single partial matching DEFINITION_KEY with titles set to the task id.
- *
- * @param {Partial<{taskTitle: string | null}>[]} [titleOverrides] - Optional per-task title overrides.
- * @returns {AssignmentDefinitionPartialsResponse} The partials array.
- */
-function buildPartials(
-  titleOverrides?: Array<{ taskTitle?: string | null }>
-): AssignmentDefinitionPartialsResponse {
-  const titles = titleOverrides ?? TASK_IDS.map((id) => ({ taskTitle: id }));
-  return [
-    {
-      ...buildDefinition(),
-      tasks: TASK_IDS.map((id, index) => {
-        return {
-          taskId: id,
-          taskWeighting: 1,
-          taskTitle: titles[index]?.taskTitle ?? null,
-        };
-      }),
-    },
-  ] as AssignmentDefinitionPartialsResponse;
-}
-
-/**
- * Build part of the assignmentDefinitionPartials where the definitionKey does
- * NOT match DEFINITION_KEY (so getAssignmentDefinitionPartial returns null).
- *
- * @returns {AssignmentDefinitionPartialsResponse} A partials array with a non-matching partial.
- */
-function buildNonMatchingPartials(): AssignmentDefinitionPartialsResponse {
-  return [
-    {
-      ...buildDefinition(),
-      definitionKey: 'dk_other',
-      tasks: [{ taskId: 't_other', taskWeighting: 1, taskTitle: 'Other Task' }],
-    },
-  ] as AssignmentDefinitionPartialsResponse;
-}
-
-/**
- * Build a PerStudentTaskMetric fixture for a given student and task.
- *
- * @param {string} studentId - The student identifier.
- * @param {string} taskId - The stable task identifier.
- * @returns {Object} A PerStudentTaskMetric-shaped object with sample computed
- *   metric results for all four criteria.
- */
-function buildPerStudentTaskMetric(studentId: string, taskId: string) {
-  return {
-    classId: CLASS_ID,
-    studentId,
-    taskKey: taskKey(taskId),
-    averageContribution: { effectiveWeight: 1, includedInAverage: true },
-    completeness: createComputedMetricResult({ value: 4 }),
-    accuracy: createComputedMetricResult({ value: 3 }),
-    spag: createComputedMetricResult({ value: 5 }),
-    overall: createComputedMetricResult({ value: 4 }),
-  };
-}
-
-/**
- * Build a minimal AveragingResult fixture with per-student-task metrics.
- *
- * @param {ReturnType<typeof buildPerStudentTaskMetric>[]} pstm - Array of
- *   per-student-task metric fixtures to include in the result.
- * @returns {AveragingResult} A structurally valid AveragingResult with default
- *   criterion weightings (40/40/20) and empty per-student/per-task arrays.
- */
-function minimalAveragingResult(
-  pstm: ReturnType<typeof buildPerStudentTaskMetric>[]
-): AveragingResult {
-  return {
-    classId: CLASS_ID,
-    className: CLASS_NAME,
-    perStudent: [],
-    perTask: [],
-    perClass: {
-      completeness: createComputedMetricResult(),
-      accuracy: createComputedMetricResult(),
-      spag: createComputedMetricResult(),
-      overall: createComputedMetricResult(),
-    },
-    appliedCriterionWeightings: { completeness: 0.4, accuracy: 0.4, spag: 0.2 },
-    perStudentTaskMetrics: pstm,
-  };
-}
+const expectedStudentCount = 2;
+const expectedTaskColumnCount = 3;
 
 // ---------------------------------------------------------------------------
 // Tests
@@ -441,57 +249,5 @@ describe('adaptMetricsToHeatmap — 4-parameter warm-up partial sourcing', () =>
     expect(() =>
       adaptMetricsToHeatmap(analyserResult, classFull, ASSIGNMENT_ID, emptyPartials)
     ).toThrow(TaskTitlesUnavailableError);
-  });
-
-  it('projects live task weights and defaults a null assignment weighting to full weight', () => {
-    const classFull = buildClassFull();
-    const analyserResult = minimalAveragingResult([buildPerStudentTaskMetric('s_001', 'task_001')]);
-    const partials = buildPartials();
-    const livePartial = partials[0];
-    livePartial.assignmentWeighting = null;
-    livePartial.tasks[0].taskWeighting = 0.4;
-    livePartial.tasks[1].taskWeighting = 0;
-
-    const result = adaptMetricsToHeatmap(analyserResult, classFull, ASSIGNMENT_ID, partials);
-
-    expect(result.taskColumns.map((column) => column.averageContribution)).toEqual([
-      { effectiveWeight: 0.4, includedInAverage: true },
-      { effectiveWeight: 0, includedInAverage: false },
-      { effectiveWeight: 1, includedInAverage: true },
-    ]);
-    expect(result.rows[0].cells[0].completeness).toEqual(
-      analyserResult.perStudentTaskMetrics![0].completeness
-    );
-  });
-
-  it('fails fast instead of defaulting when a live task omits required taskWeighting', () => {
-    const partials = buildPartials();
-    const invalidTask = partials[0].tasks[0] as {
-      taskId: string;
-      taskWeighting?: number;
-      taskTitle: string | null;
-    };
-    delete invalidTask.taskWeighting;
-
-    expect(() =>
-      adaptMetricsToHeatmap(minimalAveragingResult([]), buildClassFull(), ASSIGNMENT_ID, partials)
-    ).toThrow("buildTaskColumns: task 'task_001' is missing from partial 'dk_quadratics'");
-  });
-
-  it('uses the live partial assignment weighting of zero without inferring metadata from scores', () => {
-    const partials = buildPartials();
-    partials[0].assignmentWeighting = 0;
-    const result = adaptMetricsToHeatmap(
-      minimalAveragingResult([buildPerStudentTaskMetric('s_001', 'task_001')]),
-      buildClassFull(),
-      ASSIGNMENT_ID,
-      partials
-    );
-
-    expect(result.taskColumns[0].averageContribution).toEqual({
-      effectiveWeight: 0,
-      includedInAverage: false,
-    });
-    expect(result.rows[0].cells[0].completeness.value).toBe(EXPECTED_ZERO_WEIGHT_SCORE);
   });
 });

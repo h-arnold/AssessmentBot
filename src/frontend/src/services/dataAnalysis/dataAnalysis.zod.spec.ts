@@ -87,6 +87,9 @@ const minimalClassFull = {
     },
   ],
   active: true,
+  // The read contract requires the nullable metadata whole field; this minimal
+  // probe deliberately supplies the null boundary rather than omitting it.
+  metadata: null,
 };
 
 // ---------------------------------------------------------------------------

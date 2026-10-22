@@ -241,7 +241,11 @@ async function selectBuilderOption(
     return;
   }
 
+  // Selecting a class starts an asynchronous assignment query; do not type into
+  // the previously focused input while the assignments select is still disabled.
+  await expect(control).toBeEnabled();
   await control.focus();
+  await expect(control).toBeFocused();
   await page.keyboard.type(optionLabel);
   // antd auto-highlights the single match while filtering, so the active state on
   // the option *item* is the honest precondition for committing it with Enter.

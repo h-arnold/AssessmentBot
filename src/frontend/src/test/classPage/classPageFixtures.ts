@@ -3,12 +3,14 @@ import type { UseQueryResult } from '@tanstack/react-query';
 import type { ClassFull } from '@/services/googleClassrooms/classDetail/classDetailService.zod';
 import type { ClassPageData, ClassPageSurfaceState } from '@/features/classPage/useClassPageData';
 import type { ClassPageAdapterResult } from '@/features/classPage/classPageAdapter.zod';
+import { createCanonicalMetadataFixture } from '@/test/abClass/abClassMetadataFixtures';
 
 export const DEFAULT_CLASS_ID = 'class-abc-123';
 export const CLASS_NAME = '7A1 Digital Technology 2025-2026';
 export const DEFAULT_CLASS_FULL: Partial<ClassFull> = {
   classId: DEFAULT_CLASS_ID,
   className: CLASS_NAME,
+  metadata: createCanonicalMetadataFixture(),
 };
 
 /** Creates the adapter result used by the default ready class-page fixture.

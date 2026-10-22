@@ -31,6 +31,7 @@ import type { AssignmentDefinitionPartialsResponse } from '../assignmentDefiniti
 import { adaptMetricsToMergedHeatmap } from './heatmapAdapter.merged';
 import { TaskTitlesUnavailableError } from './heatmapAdapter';
 import { createComputedMetricResult, createTaskPartial } from '@/test/dataAnalysis/fixtures';
+import { createCanonicalMetadataFixture } from '@/test/abClass/abClassMetadataFixtures';
 
 // ---------------------------------------------------------------------------
 // Fixture constants
@@ -176,6 +177,7 @@ function buildClassFull(): ClassFull {
       buildAssignmentPartial(ASSIGNMENT_ID_MISSING, MISSING_DEFINITION_KEY),
     ],
     active: null,
+    metadata: createCanonicalMetadataFixture(),
   };
 }
 

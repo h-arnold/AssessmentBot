@@ -149,6 +149,74 @@ When adding new backend methods to the mock system, you must:
 2. Add it to `allMethods` inside `installRuntimeMock` in `shared/endToEndRuntimeMocks.ts`
 3. Create scenario factory helpers for the new method's response queues in `shared/runtimeMockScenarios.ts`
 
+**Post-analysis metadata consumer compatibility (Section 5 complete).**
+`upsertABClass` and `updateABClass` are registered in `RuntimeScenario`
+(`runtimeMockTypes.ts`) and in the `allMethods` dispatch inventory
+(`endToEndRuntimeMocks.ts`). Kept strict: an unregistered method or an exhausted
+queue still fails; never add a fallback success.
+
+`createHeatmapScenario` anchors each fixture's metadata to its newest assignment
+at the same timestamp, so the background metadata task takes its no-op path
+instead of writing. This is an explicit local equal-version boundary; the supplied
+metrics remain fixture evidence, not an analysis oracle. The nine existing
+`task-heatmap-summary.spec.ts` journeys pass with `--retries=0`, and the first
+journey asserts that `updateABClass` is never called.
+
+The narrow 390×844 standalone keyboard seam was diagnosed and fixed in
+`e2e-tests/helpers/task-preview-source-link-helpers.ts`. The initial full run
+passed **301** with two failures, and a reviewer run passed **302** with one. The
+failure context showed assignment search text entering the Class combobox while
+the assignment control was disabled awaiting the class query. `Locator.focus()` is
+a no-op on a disabled control, so the keystrokes went to the previously focused
+Class input. The helper now asserts the control is enabled, focuses it, asserts
+focus, then types and asserts the active option. It adds no sleeps, retries,
+timeout changes or weaker assertions. Six narrow repeated runs and the full
+**303**-test run passed with `--retries=0`
+(`.opencode/scratchpad/section5d-keyboard-fixed-full-e2e.log`, 8.4 minutes). Other
+attempts failed with server-connection-refused infrastructure errors and are not
+counted as passes. Independent 5D review
+(`.opencode/scratchpad/review-section5d-independent.md`) and the Section 5
+regression comparison
+(`.ts-regression-checker/reports/session-frontend-abclass-metadata/runs/2026-10-20T22-50-54.007Z/comparison.txt`)
+are complete, with zero regressions and zero new failures.
+
+The equal-version probes prove the no-write path only. Section 6 adds changed-write,
+warning and theme/geometry journeys using the same runtime queues:
+
+- `e2e-tests/helpers/post-analysis-metadata-scenarios.ts` (**297** lines) builds
+  canonical `small` class-2 scenarios. Its historical source omits only the final
+  assignment, matching the documented null-`studentName` corpus boundary.
+- `post-analysis-metadata.persistence.spec.ts` (**128** lines / **3** tests)
+  covers one Class-page write, standalone Heatmaps one write with no loop, and a
+  newer assignment version writing once on manual refresh.
+- `post-analysis-metadata.feedback.spec.ts` (**293** lines / **8** tests) covers
+  persistent safe save-failure copy on both surfaces, the distinct
+  confirmed-save/refresh-failure copy, retention of that warning when Class-page
+  readiness blocks while the required list refresh is still pending, keyboard
+  dismissal, same-source non-reopen, navigation cleanup, and containment at
+  1440×900 and 390×844 in light and dark.
+
+The feedback journeys assert enabled/focused keyboard preconditions, poll stable
+notice geometry, and use no sleeps, retries or weakened assertions.
+
+The original Section 6 review recorded **10** new browser tests green, the full
+**313**-test browser run passing with `--retries=0` (8.8 minutes,
+`.opencode/scratchpad/review6-full-e2e.log`), the full synthetic project at
+**34 files / 384 tests**, zero frontend lint errors and passing all-project
+type-checking. The Section 6 regression comparison
+(`.ts-regression-checker/reports/session-frontend-abclass-metadata/runs/2026-10-21T00-43-04.269Z/comparison.txt`)
+recorded zero regressions and zero new failures.
+
+Batch 1 later added the actual-consumer Class-page case to
+`post-analysis-metadata.feedback.spec.ts`: the warning must survive Class-page
+readiness blocking while the required list refresh is still pending. That takes the
+two specs to **11** browser tests. Independent batch-1 review
+(`.opencode/scratchpad/batch-1-review.md`) passed the full **314**-test browser run
+(`.opencode/scratchpad/batch1-review-e2e.txt`, 8.7 minutes); the batch-1 comparison
+(`.ts-regression-checker/reports/session-feat-frontend-abclass-metadata/runs/2026-10-21T12-48-56.194Z/comparison.txt`)
+recorded seven passing checks, zero regressions and zero new failures, with only the
+six accepted pre-existing backend max-lines warnings failing the aggregate gate.
+
 ### Scenario Factory Pattern
 
 Instead of constructing `RuntimeScenario` objects inline, use scenario factory functions
@@ -270,6 +338,24 @@ await selectVisibleOption(page, 'Algebra Homework');
 // Verify selection effect
 await expect(dialog.getByRole('button', { name: 'Start Assessment' })).toBeEnabled();
 ```
+
+### Keyboard Input Requires an Enabled, Focused Select
+
+Before typing into an antd Select, assert that the target control is enabled and focused:
+
+```typescript
+await expect(control).toBeEnabled();
+await control.focus();
+await expect(control).toBeFocused();
+await page.keyboard.type(optionLabel);
+```
+
+`Locator.focus()` is a no-op on a disabled control, so keystrokes go to whichever input
+was focused previously. The observed failure was assignment search text landing in the
+Class combobox while the assignment control was still disabled awaiting the class query.
+Do not paper over this with sleeps, extra retries or weaker assertions. When the option
+list filters to a single match, assert that the option item has
+`ant-select-item-option-active` before pressing `Enter`.
 
 ### Select Popup Readiness Before Option Clicks
 
@@ -526,6 +612,8 @@ unauthorised, backend error, delayed loading) to quickly verify usability during
 - Classes page test helpers (shared fixtures): `src/frontend/src/test/classes/classesPageTestHelpers.ts`
   - Use `toPlainClassPartials(classPartials)` for JSON serialisation in `addInitScript` scenarios
   - Use `createClassesOrderScenario(classPartials)` for ordering tests
+- Class metadata browser fixtures (class-read adoption, Section 2 complete): `src/frontend/e2e-tests/helpers/class-metadata-fixtures.ts` serves detached clones of committed canonical `small` metadata snapshots. `task-heatmap-class-fixtures.ts` owns the split class-snapshot/score builders, and `classes-crud-mock-runtime.ts` owns the split Classes CRUD transport-mock installation.
+- Post-analysis metadata scenarios (Section 6, independently review-clean): `src/frontend/e2e-tests/helpers/post-analysis-metadata-scenarios.ts` builds the canonical changed-write and newer-version journeys used by `post-analysis-metadata.persistence.spec.ts` and `post-analysis-metadata.feedback.spec.ts`. Extend this helper rather than duplicating its canonical `small` class-2 setup in new specs.
 
 **Do not import `src/test/**` from production source.\*\* The frontend ESLint config enforces this boundary.
 

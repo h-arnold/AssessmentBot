@@ -1,5 +1,10 @@
 import { expect, type Locator, type Page, test } from '@playwright/test';
 import {
+  CANONICAL_NULL_CLASS_METADATA,
+  createCanonicalNotAttemptedClassMetadata,
+  createCanonicalNumericClassMetadata,
+} from './helpers/class-metadata-fixtures';
+import {
   baseCohorts,
   baseYearGroups,
   createSuccessfulClassesScenario,
@@ -16,6 +21,7 @@ const workstreamThreeClassPartials = [
     classOwner: null,
     teachers: [],
     active: true,
+    metadata: createCanonicalNumericClassMetadata(),
   },
   {
     classId: 'gc-inactive',
@@ -26,6 +32,7 @@ const workstreamThreeClassPartials = [
     classOwner: null,
     teachers: [],
     active: false,
+    metadata: createCanonicalNotAttemptedClassMetadata(),
   },
   {
     classId: 'orphaned-legacy',
@@ -36,6 +43,8 @@ const workstreamThreeClassPartials = [
     classOwner: null,
     teachers: [],
     active: false,
+    // Legacy orphaned record: the canonical null emission is truthful here.
+    metadata: CANONICAL_NULL_CLASS_METADATA,
   },
 ];
 

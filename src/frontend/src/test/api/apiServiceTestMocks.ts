@@ -1,4 +1,7 @@
 import { vi } from 'vitest';
+import type * as ApiService from '@/services/apiService';
+import type * as ApiQueue from '@/services/api/apiQueue';
+import type { GoogleScriptRunApiHandler } from '../googleScriptRunHarness';
 
 /**
  * Creates the shared mock scaffold for specs that stub the `apiService`
@@ -37,3 +40,37 @@ export function createApiServiceMockScaffold() {
 
   return { callApiMock, parseApiResponseMock };
 }
+
+export type ApiSuccessEnvelope<TData> = {
+  ok: true;
+  requestId: string;
+  data: TData;
+  meta?: Record<string, unknown>;
+};
+
+export type ApiErrorEnvelope = {
+  ok: false;
+  requestId: string;
+  error: {
+    code: string;
+    message: string;
+    isRetriable?: boolean;
+  };
+  meta?: Record<string, unknown>;
+};
+
+export type GoogleScript = {
+  script?: {
+    run?: unknown;
+  };
+};
+
+export type GoogleScriptRunWithoutApiHandler = Omit<GoogleScriptRunApiHandler, 'apiHandler'> & {
+  apiHandler: undefined;
+};
+
+export type CallApi = typeof ApiService.callApi;
+export type CallApiQueued = typeof ApiQueue.callApiQueued;
+export type QueueState = ApiQueue.QueueState;
+export type GetQueueState = typeof ApiQueue.getQueueState;
+export type CancelApiQueued = typeof ApiQueue.cancelApiQueued;

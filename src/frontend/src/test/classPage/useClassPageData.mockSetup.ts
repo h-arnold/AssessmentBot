@@ -1,5 +1,6 @@
 /** Registers the shared module mocks for useClassPageData spec files. */
 import { vi } from 'vitest';
+import '@/test/abClass/postAnalysisHookMockSetup';
 
 vi.mock('@tanstack/react-query', async (importOriginal) => {
   const actual = (await importOriginal()) as Record<string, unknown>;

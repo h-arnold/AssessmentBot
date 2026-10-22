@@ -5,6 +5,7 @@ import { act, renderHook } from '@testing-library/react';
 import type { QueryClient } from '@tanstack/react-query';
 import type { StartupWarmupDatasetKey } from '@/query/sharedQueries';
 import type { ClassFull } from '@/services/googleClassrooms/classDetail/classDetailService.zod';
+import '@/test/abClass/postAnalysisHookMockSetup';
 import { useHeatmapsPageData } from './useHeatmapsPageData';
 import type { MergedHeatmapResult } from '@/services/dataAnalysis/heatmapAdapter.merged';
 import {

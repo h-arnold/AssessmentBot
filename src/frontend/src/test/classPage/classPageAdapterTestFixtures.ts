@@ -11,6 +11,7 @@
  */
 
 import { createDefinitionPartial, createMetricResult } from '../dataAnalysis/fixtures';
+import { ClassFullFixtureDefaults } from '../abClass/classFullFixtureDefaults';
 import type {
   AveragingResult,
   PerTaskRow,
@@ -230,11 +231,12 @@ export function averagingResult(
 
 /**
  * Build a minimal ClassFull fixture.
- * @param {{ classId?: string; className?: string | null; students?: StudentSummary[]; assignments?: AssignmentPartial[] }} [overrides] - Optional overrides for the ClassFull fields.
+ * @param {{ classId?: string; className?: string | null; students?: StudentSummary[]; assignments?: AssignmentPartial[]; metadata?: ClassFull['metadata'] }} [overrides] - Optional overrides for the ClassFull fields.
  * @param {string} [overrides.classId] - The class identifier (defaults to 'c-1').
  * @param {string | null} [overrides.className] - The class display name or null (defaults to 'Test Class').
  * @param {StudentSummary[]} [overrides.students] - The student summaries (defaults to empty array).
  * @param {AssignmentPartial[]} [overrides.assignments] - The assignment partials (defaults to empty array).
+ * @param {ClassFull['metadata']} [overrides.metadata] - Explicit nullable metadata value; realistic providers use the canonical metadata fixture.
  * @returns {ClassFull} A fully typed ClassFull.
  */
 export function classFull(
@@ -243,18 +245,8 @@ export function classFull(
     className?: string | null;
     students?: StudentSummary[];
     assignments?: AssignmentPartial[];
+    metadata?: ClassFull['metadata'];
   } = {}
 ): ClassFull {
-  return {
-    classId: overrides.classId ?? 'c-1',
-    className: overrides.className ?? 'Test Class',
-    cohortKey: null,
-    courseLength: 1,
-    yearGroupKey: 'yg-10',
-    classOwner: null,
-    teachers: [],
-    students: overrides.students ?? [],
-    assignments: overrides.assignments ?? [],
-    active: null,
-  } as ClassFull;
+  return { ...new ClassFullFixtureDefaults(overrides) };
 }

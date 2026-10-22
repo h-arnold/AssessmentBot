@@ -16,7 +16,7 @@
  */
 
 import { useCallback, useRef, useState } from 'react';
-import { cancelApiQueued } from '@/services/apiService';
+import { cancelApiQueued } from '@/services/api/apiQueue';
 import type { RowMutationResult } from './bulk/batchMutationEngine';
 import type { BatchProgressSnapshot } from './bulk/runQueuedBatchMutation';
 import type { ClassesManagementRow } from './classesManagementViewModel';

@@ -4,6 +4,7 @@ import { usePageDataset } from '@/hooks/usePageDataset';
 import { getABClassQueryOptions } from '@/query/sharedQueries';
 import { DataAnalysisService } from '@/services/dataAnalysis/dataAnalysisService';
 import { adaptClassPageToViewModel } from '@/features/classPage/classPageAdapter';
+import { usePostAnalysisTasks } from '@/hooks/usePostAnalysisTasks';
 
 /**
  * Binds the mocked module exports for an individual useClassPageData spec.
@@ -18,5 +19,6 @@ export function createUseClassPageDataMockHandles() {
       DataAnalysisService as unknown as { analyse: typeof DataAnalysisService.prototype.analyse }
     ).analyse,
     mockAdaptClassPageToViewModel: vi.mocked(adaptClassPageToViewModel),
+    mockUsePostAnalysisTasks: vi.mocked(usePostAnalysisTasks),
   };
 }

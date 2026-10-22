@@ -362,6 +362,30 @@ transport request-error adapter and the real-dispatcher request/error-envelope c
 - Run the Section 8 suites with the existing ABClass API and backend mutation/validation units:
   `npm run test:backend -- tests/api/abclassMetadataApi.test.js tests/api/apiHandler/abclassMetadataReads.test.js tests/api/apiHandler/abclassMetadataWrites.test.js tests/api/apiHandler/abclassMetadataErrors.test.js tests/api/abclassMutations.test.js tests/api/abclassRead.test.js tests/backend-api/abclassMutations.unit.test.js tests/backend-api/abclassValidation.unit.test.js tests/api/apiHandler/globalExposure.test.js`.
 
+**Node dispatcher metadata round trip (`Implemented`, independently review-clean).** The
+synthetic dispatcher bridge now composes class-partial reads and metadata mutation
+seams so the real `apiHandler` can be exercised end to end from the frontend
+transport:
+
+- `scripts/synthetic-test-data/apiHandlerRoundTripBridge.js` clones the frozen
+  `classesById` and `classPartials` views, serves class-partial reads through the
+  existing `ABClassController` test seam, and supplies `upsertABClass_`/`updateABClass_`
+  seams that replace metadata on its isolated records. An omitted `metadata` key
+  leaves the stored value unchanged and `null` clears it.
+- `tests/helpers/apiHandlerTestUtils.js` forwards an `abClassControllerBehaviour`
+  option through `setupApiHandlerTestContext`; it remains a test seam, not a
+  production contract.
+- `tests/synthetic-analysis/syntheticABClassMetadataRoundTrip.test.ts` (**188**
+  physical lines / **5** tests) covers full/partial read retention, queued
+  update/upsert omission/null/replacement, own-undefined rejection before dispatch,
+  `INVALID_REQUEST` versus `INTERNAL_ERROR`, two-bridge isolation and per-call seam
+  restoration with caller-owned spies preserved.
+- Run it with
+  `npm run test:synthetic -- tests/synthetic-analysis/syntheticABClassMetadataRoundTrip.test.ts`.
+  This is test-only seam composition: it does **not** replace the real-controller,
+  persistence, auth, envelope or global-exposure suites, and it adds no production
+  backend change.
+
 **Teacher always-own-null serialisation and its roster path (`Implemented`).** Section 9
 delivers the approved `Teacher.toJSON()` correction with model, ABClass and roster coverage:
 
@@ -382,7 +406,7 @@ delivers the approved `Teacher.toJSON()` correction with model, ABClass and rost
   (partial `findOne` → full `$set`/`save` → partial write) and explicit null names in the
   serialised owner/teachers, while the existing row's stored metadata is left untouched.
 - The unchanged frontend compatibility smoke
-  (`classDetailService.zod.spec.ts`, `classPartialsService.spec.ts`) confirms the
+  (`classDetailService.zod.full.spec.ts`, `classPartialsService.spec.ts`) confirms the
   optional/nullable Teacher schemas accept both legacy absence and explicit null. It is
   schema-compatibility context only, not a live backend output round trip.
 - Deletion behaviour is unchanged and no false-drop-flag expectation is added; the documented
@@ -559,7 +583,7 @@ Purpose:
 - compose with the frontend's existing `googleScriptRunHarness` through its thin frontend test adapter, rather than recreating API envelopes or GAS callback behaviour;
 - retain `apiHandlerTestUtils.js` and `mockFactories.js` as composition-only dependencies: synthetic graph, fixture, and bridge code remain in the dedicated synthetic-test-data domain.
 
-Backend tests load a committed profile view with `loadSyntheticAnalysisProfile(profileName, viewName)` from `scripts/synthetic-test-data/loadSyntheticAnalysisProfile.js`, then use `createApiHandlerRoundTripBridge({ vi, profileName })` from `scripts/synthetic-test-data/apiHandlerRoundTripBridge.js` to install the seams and dispatch the real `apiHandler`. The bridge restores every seam after each call so overlapping requests stay isolated.
+Backend tests load a committed profile view with `loadSyntheticAnalysisProfile(profileName, viewName)` from `scripts/synthetic-test-data/loadSyntheticAnalysisProfile.js`, then use `createApiHandlerRoundTripBridge({ vi, profileName })` from `scripts/synthetic-test-data/apiHandlerRoundTripBridge.js` to install the seams and dispatch the real `apiHandler`. The bridge now also serves class-partial reads and metadata upsert/update seams for the Node round-trip suite. Each instance clones its class views before mutation, and the bridge restores every seam after each call so overlapping requests stay isolated.
 
 For the corpus topology, profile and view selection, mutation isolation, and the full command list, see the canonical guide: [Synthetic Test Data](../testing/synthetic-test-data.md).
 
@@ -785,6 +809,16 @@ npm test -- tests/models/
 # Run tests filtering by test name (-t passes through to Vitest)
 npm test -- -t "serialise"
 ```
+
+## Coverage gate
+
+`npm run test:backend:coverage` enforces the global thresholds of 85% for statements, branches, functions, and lines.
+
+At the time of writing (HEAD `4a0a3418`, 21 October 2026), all 209 backend test files and 2,888 tests pass, but branch coverage is **84.35% (3,165/3,752)** against the 85% gate. Statements are 90.77%, functions 89.89%, and lines 91.43%. A pristine `git archive` snapshot of that commit reproduces the same totals, so this is a pre-existing baseline failure, not a regression from current work. Do not waive, suppress, or lower the threshold to make the aggregate green.
+
+`npm run test:coverage` chains the project coverage scripts and stops at the first failing scope. Run each project's coverage script explicitly to record results after an earlier scope fails.
+
+The regression checker is **not** a coverage gate. Its `backend-test-coverage-check` runs `npm run test:backend` without coverage, so it can report that check as passing while `npm run test:coverage` still fails at the backend branch threshold. Use the `:coverage` scripts for coverage evidence, and do not change the checker configuration to hide the gap.
 
 ## Test Categories
 

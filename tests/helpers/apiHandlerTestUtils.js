@@ -258,12 +258,13 @@ function setupApiHandlerTestContext(
     googleClassroomsBehaviour,
     googleClassroomAssignmentsBehaviour,
     abclassMutationsBehaviour,
+    abClassControllerBehaviour,
     assignmentDefinitionBehaviour,
   } = {}
 ) {
   resetUserProperties();
 
-  const controllerMocks = installControllerMocks(vi, { handler });
+  const controllerMocks = installControllerMocks(vi, { handler, abClassControllerBehaviour });
   const transportHelperMocks = installTransportHelperMocks(vi, {
     googleClassroomsBehaviour,
     googleClassroomAssignmentsBehaviour,

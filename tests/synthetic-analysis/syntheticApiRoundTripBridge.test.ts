@@ -68,14 +68,7 @@ const DISPATCHER_SEAM_GLOBAL_KEYS = [
  * @param {GoogleScriptRunApiHandler} runner - The runner to install.
  */
 function installGoogleRunner(runner: GoogleScriptRunApiHandler): void {
-  (globalThis as GoogleScriptGlobal).google = { script: { run: runner } };
-}
-
-/**
- * Removes the mock `google.script.run` runner installed by a test.
- */
-function clearGoogleRunner(): void {
-  delete (globalThis as GoogleScriptGlobal).google;
+  vi.stubGlobal('google', { script: { run: runner } } satisfies GoogleScriptGlobal['google']);
 }
 
 /**
@@ -126,7 +119,7 @@ describe('synthetic analysis dispatcher round-trip bridge', () => {
   });
 
   afterEach(() => {
-    clearGoogleRunner();
+    vi.unstubAllGlobals();
     vi.restoreAllMocks();
   });
 
