@@ -18,9 +18,6 @@
  * Assignment class.
  */
 class Assignment {
-  /** @type {Date} Populated from Classroom creationTime by fetchAssignmentName(). */
-  createdAt;
-
   /**
    * Constructs an Assignment instance.
    * @param {string} courseId - The ID of the course.
@@ -28,6 +25,10 @@ class Assignment {
    * @param {AssignmentDefinition|Object} assignmentDefinition - Embedded definition containing document type, reference/template IDs, and task metadata.
    */
   constructor(courseId, assignmentId, assignmentDefinition) {
+    // Declared in the constructor rather than as a class field: the Apps Script parser
+    // rejects class field declarations at push time.
+    /** @type {Date} Populated from Classroom creationTime by fetchAssignmentName(). */
+    this.createdAt = null;
     this.courseId = courseId;
     this.assignmentId = assignmentId;
     this.assignmentName = this.fetchAssignmentName(courseId, assignmentId);

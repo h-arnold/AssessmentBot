@@ -6,6 +6,7 @@ import { BuildStageError } from '../lib/errors.js';
 import { listFilesRecursive, normalisePathSeparators } from '../lib/fs.js';
 import { checksumUtf8 } from '../lib/hash.js';
 import type { BuilderPaths, ValidateOutputResult } from '../types.js';
+import type { GasIncompatibleSyntax } from './validate-output.zod.js';
 
 const STAGE_ID = 'validate-output' as const;
 const REQUIRED_FILES = ['appsscript.json', 'JsonDbApp.inlined.js', 'UI/ReactApp.html'];
@@ -16,6 +17,23 @@ const FORBIDDEN_ASSET_PATTERNS = [
   /(?:src|href)=["']\.\/assets\//i,
   /(?:src|href)=["']assets\//i,
 ];
+
+/**
+ * Logical assignment operators the Apps Script script parser rejects.
+ *
+ * The Apps Script parser is older than the V8 runtime it executes, so ES2021 logical
+ * assignment fails to save with `ParseError: Unexpected token =` even though V8 supports it.
+ */
+const GAS_INCOMPATIBLE_LOGICAL_ASSIGNMENTS = new Map<ts.SyntaxKind, string>([
+  [ts.SyntaxKind.BarBarEqualsToken, '||='],
+  [ts.SyntaxKind.AmpersandAmpersandEqualsToken, '&&='],
+  [ts.SyntaxKind.QuestionQuestionEqualsToken, '??='],
+]);
+
+/**
+ * A single construct the Apps Script script parser cannot parse.
+ */
+export type { GasIncompatibleSyntax } from './validate-output.zod.js';
 
 type GasManifest = {
   oauthScopes?: string[];
@@ -35,7 +53,7 @@ function validateRequiredFiles(relativeFiles: Set<string>): void {
   if (missingFiles.length > 0) {
     throw new BuildStageError(
       STAGE_ID,
-      `Final output is missing required files: ${missingFiles.join(', ')}`,
+      `Final output is missing required files: ${missingFiles.join(', ')}`
     );
   }
 }
@@ -63,7 +81,7 @@ export function validateForbiddenFrontendReferences(reactAppHtml: string): void 
     if (pattern.test(reactAppHtml)) {
       throw new BuildStageError(
         STAGE_ID,
-        'Final UI/ReactApp.html still contains forbidden external asset references.',
+        'Final UI/ReactApp.html still contains forbidden external asset references.'
       );
     }
   }
@@ -76,12 +94,16 @@ export function validateForbiddenFrontendReferences(reactAppHtml: string): void 
  * @returns {Record<string, string[]>} Duplicate declarations keyed by symbol name.
  */
 export function findDuplicateProtectedGlobals(
-  jsSourcesByPath: Record<string, string>,
+  jsSourcesByPath: Record<string, string>
 ): Record<string, string[]> {
   const protectedDeclarations = new Map<string, Set<string>>();
 
   for (const [relativePath, source] of Object.entries(jsSourcesByPath)) {
-    addProtectedDeclarationMatches(protectedDeclarations, relativePath, scanFileTopLevelDeclarations(source));
+    addProtectedDeclarationMatches(
+      protectedDeclarations,
+      relativePath,
+      scanFileTopLevelDeclarations(source)
+    );
   }
 
   const duplicates: Record<string, string[]> = {};
@@ -95,6 +117,77 @@ export function findDuplicateProtectedGlobals(
 }
 
 /**
+ * Finds syntax the Apps Script script parser rejects.
+ *
+ * The Apps Script script parser is older than the V8 runtime it executes. It refuses
+ * class field declarations (`createdAt;`, `static count = 0;`, `#private;`), class static
+ * initialisation blocks and ES2021 logical assignment, so a pushed build fails with
+ * `ParseError: Unexpected token ;` or `ParseError: Unexpected token =`.
+ *
+ * This runs against the emitted artefact rather than the source tree so that vendored
+ * code — which no lint scope covers — is checked before deployment.
+ *
+ * @param {Record<string, string>} jsSourcesByPath - JavaScript sources keyed by relative file path.
+ * @returns {GasIncompatibleSyntax[]} Incompatible constructs with their file and line.
+ */
+export function findGasIncompatibleSyntax(
+  jsSourcesByPath: Record<string, string>
+): GasIncompatibleSyntax[] {
+  const findings: GasIncompatibleSyntax[] = [];
+
+  for (const [relativePath, source] of Object.entries(jsSourcesByPath)) {
+    const sourceFile = ts.createSourceFile(
+      'build-output.js',
+      source,
+      ts.ScriptTarget.Latest,
+      true,
+      ts.ScriptKind.JS
+    );
+
+    const visit = (node: ts.Node): void => {
+      const construct = describeGasIncompatibleConstruct(node);
+      if (construct) {
+        findings.push({
+          relativePath,
+          line: sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile)).line + 1,
+          construct,
+        });
+      }
+
+      ts.forEachChild(node, visit);
+    };
+
+    visit(sourceFile);
+  }
+
+  return findings;
+}
+
+/**
+ * Describes a node when the Apps Script script parser cannot parse it.
+ *
+ * @param {ts.Node} node - Node to inspect.
+ * @returns {string | null} Human-readable construct name, or null when the node is parseable.
+ */
+function describeGasIncompatibleConstruct(node: ts.Node): string | null {
+  // TypeScript only emits `PropertyDeclaration` for class members, never for object literals.
+  if (ts.isPropertyDeclaration(node)) {
+    return 'class field declaration';
+  }
+
+  if (ts.isClassStaticBlockDeclaration(node)) {
+    return 'class static initialisation block';
+  }
+
+  if (ts.isBinaryExpression(node)) {
+    const operator = GAS_INCOMPATIBLE_LOGICAL_ASSIGNMENTS.get(node.operatorToken.kind);
+    return operator ? `logical assignment (${operator})` : null;
+  }
+
+  return null;
+}
+
+/**
  * Scans JavaScript source for top-level declaration names only.
  *
  * @param {string} source - JavaScript source text.
@@ -102,7 +195,13 @@ export function findDuplicateProtectedGlobals(
  */
 export function scanFileTopLevelDeclarations(source: string): string[] {
   const names: string[] = [];
-  const sourceFile = ts.createSourceFile('build-output.js', source, ts.ScriptTarget.Latest, true, ts.ScriptKind.JS);
+  const sourceFile = ts.createSourceFile(
+    'build-output.js',
+    source,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.JS
+  );
 
   for (const statement of sourceFile.statements) {
     const declarationNames = getTopLevelDeclarationNames(statement);
@@ -134,7 +233,10 @@ function parseManifestContent(manifestContent: string): GasManifest {
  */
 function validateOauthScopes(oauthScopes: string[] | undefined): void {
   if (!Array.isArray(oauthScopes) || oauthScopes.length === 0) {
-    throw new BuildStageError(STAGE_ID, 'Final appsscript.json must include a non-empty oauthScopes array.');
+    throw new BuildStageError(
+      STAGE_ID,
+      'Final appsscript.json must include a non-empty oauthScopes array.'
+    );
   }
 
   const duplicatedScopes = findDuplicatedValues(oauthScopes);
@@ -144,7 +246,7 @@ function validateOauthScopes(oauthScopes: string[] | undefined): void {
 
   throw new BuildStageError(
     STAGE_ID,
-    `Final appsscript.json contains duplicated oauth scopes: ${[...new Set(duplicatedScopes)].join(', ')}`,
+    `Final appsscript.json contains duplicated oauth scopes: ${[...new Set(duplicatedScopes)].join(', ')}`
   );
 }
 
@@ -155,7 +257,7 @@ function validateOauthScopes(oauthScopes: string[] | undefined): void {
  * @returns {void} No return value.
  */
 function validateAdvancedServices(
-  services: NonNullable<GasManifest['dependencies']>['enabledAdvancedServices'],
+  services: NonNullable<GasManifest['dependencies']>['enabledAdvancedServices']
 ): void {
   if (!services) {
     return;
@@ -164,7 +266,7 @@ function validateAdvancedServices(
   if (!Array.isArray(services)) {
     throw new BuildStageError(
       STAGE_ID,
-      'Final appsscript.json dependencies.enabledAdvancedServices must be an array when present.',
+      'Final appsscript.json dependencies.enabledAdvancedServices must be an array when present.'
     );
   }
 
@@ -175,7 +277,7 @@ function validateAdvancedServices(
 
   throw new BuildStageError(
     STAGE_ID,
-    `Final appsscript.json contains duplicated advanced services: ${[...new Set(duplicatedServiceIds)].join(', ')}`,
+    `Final appsscript.json contains duplicated advanced services: ${[...new Set(duplicatedServiceIds)].join(', ')}`
   );
 }
 
@@ -200,7 +302,7 @@ function findDuplicatedValues(values: string[]): string[] {
 function addProtectedDeclarationMatches(
   protectedDeclarations: Map<string, Set<string>>,
   relativePath: string,
-  declaredNames: string[],
+  declaredNames: string[]
 ): void {
   for (const symbol of PROTECTED_GLOBALS) {
     if (!declaredNames.includes(symbol)) {
@@ -237,6 +339,72 @@ function getTopLevelDeclarationNames(statement: ts.Statement): string[] {
 }
 
 /**
+ * Reads every JavaScript source emitted into the final GAS output.
+ *
+ * @param {string[]} absoluteFiles - Absolute paths of the emitted files.
+ * @param {string} buildGasDir - Absolute path of the final GAS output directory.
+ * @returns {Promise<Record<string, string>>} JavaScript sources keyed by relative file path.
+ */
+async function readJavaScriptSources(
+  absoluteFiles: string[],
+  buildGasDir: string
+): Promise<Record<string, string>> {
+  const jsSourcesByPath: Record<string, string> = {};
+
+  for (const absolutePath of absoluteFiles) {
+    if (!absolutePath.endsWith('.js')) {
+      continue;
+    }
+    const relativePath = normalisePathSeparators(path.relative(buildGasDir, absolutePath));
+    jsSourcesByPath[relativePath] = await fs.readFile(absolutePath, 'utf-8');
+  }
+
+  return jsSourcesByPath;
+}
+
+/**
+ * Fails the build when protected global declarations collide across emitted files.
+ *
+ * @param {Record<string, string>} jsSourcesByPath - JavaScript sources keyed by relative file path.
+ * @returns {void} No return value.
+ */
+function validateProtectedGlobalUniqueness(jsSourcesByPath: Record<string, string>): void {
+  const duplicateProtectedGlobals = findDuplicateProtectedGlobals(jsSourcesByPath);
+  if (Object.keys(duplicateProtectedGlobals).length === 0) {
+    return;
+  }
+
+  const details = Object.entries(duplicateProtectedGlobals)
+    .map(([symbol, files]) => `${symbol}: ${files.join(', ')}`)
+    .join('; ');
+  throw new BuildStageError(
+    STAGE_ID,
+    `Duplicate protected global declarations detected. Resolve collisions: ${details}`
+  );
+}
+
+/**
+ * Fails the build when the emitted script uses syntax the Apps Script script parser rejects.
+ *
+ * @param {Record<string, string>} jsSourcesByPath - JavaScript sources keyed by relative file path.
+ * @returns {void} No return value.
+ */
+function validateGasCompatibleSyntax(jsSourcesByPath: Record<string, string>): void {
+  const gasIncompatibleSyntax = findGasIncompatibleSyntax(jsSourcesByPath);
+  if (gasIncompatibleSyntax.length === 0) {
+    return;
+  }
+
+  const details = gasIncompatibleSyntax
+    .map(({ relativePath, line, construct }) => `${construct} at ${relativePath}:${line}`)
+    .join('; ');
+  throw new BuildStageError(
+    STAGE_ID,
+    `Apps Script cannot parse the emitted script. Replace each construct with syntax its parser accepts: ${details}`
+  );
+}
+
+/**
  * Runs final output validation checks and emits concise build metadata.
  *
  * @param {BuilderPaths} paths - Resolved builder path configuration.
@@ -246,11 +414,12 @@ export async function runValidateOutput(paths: BuilderPaths): Promise<ValidateOu
   try {
     const absoluteFiles = await listFilesRecursive(paths.buildGasDir);
     const relativeFiles = absoluteFiles
-      .map((absolutePath) => normalisePathSeparators(path.relative(paths.buildGasDir, absolutePath)))
+      .map((absolutePath) =>
+        normalisePathSeparators(path.relative(paths.buildGasDir, absolutePath))
+      )
       .sort((left, right) => left.localeCompare(right));
-    const relativeFileSet = new Set(relativeFiles);
 
-    validateRequiredFiles(relativeFileSet);
+    validateRequiredFiles(new Set(relativeFiles));
 
     const manifestPath = path.join(paths.buildGasDir, 'appsscript.json');
     const reactAppPath = path.join(paths.buildGasDir, 'UI', 'ReactApp.html');
@@ -261,25 +430,9 @@ export async function runValidateOutput(paths: BuilderPaths): Promise<ValidateOu
     const reactAppHtml = await fs.readFile(reactAppPath, 'utf-8');
     validateForbiddenFrontendReferences(reactAppHtml);
 
-    const jsSourcesByPath: Record<string, string> = {};
-    for (const absolutePath of absoluteFiles) {
-      if (!absolutePath.endsWith('.js')) {
-        continue;
-      }
-      const relativePath = normalisePathSeparators(path.relative(paths.buildGasDir, absolutePath));
-      jsSourcesByPath[relativePath] = await fs.readFile(absolutePath, 'utf-8');
-    }
-
-    const duplicateProtectedGlobals = findDuplicateProtectedGlobals(jsSourcesByPath);
-    if (Object.keys(duplicateProtectedGlobals).length > 0) {
-      const details = Object.entries(duplicateProtectedGlobals)
-        .map(([symbol, files]) => `${symbol}: ${files.join(', ')}`)
-        .join('; ');
-      throw new BuildStageError(
-        STAGE_ID,
-        `Duplicate protected global declarations detected. Resolve collisions: ${details}`,
-      );
-    }
+    const jsSourcesByPath = await readJavaScriptSources(absoluteFiles, paths.buildGasDir);
+    validateProtectedGlobalUniqueness(jsSourcesByPath);
+    validateGasCompatibleSyntax(jsSourcesByPath);
 
     const artefactSizes: Record<string, number> = {};
     const artefactChecksums: Record<string, string> = {};
@@ -297,6 +450,7 @@ export async function runValidateOutput(paths: BuilderPaths): Promise<ValidateOu
       requiredFileCount: REQUIRED_FILES.length,
       gasFileCount: relativeFiles.length,
       duplicateProtectedGlobalCount: 0,
+      gasIncompatibleSyntaxCount: 0,
       artefactSizes,
       artefactChecksums,
     };
@@ -308,7 +462,7 @@ export async function runValidateOutput(paths: BuilderPaths): Promise<ValidateOu
     throw new BuildStageError(
       STAGE_ID,
       `Unable to validate final GAS output at ${paths.buildGasDir}.`,
-      err,
+      err
     );
   }
 }
