@@ -12,6 +12,7 @@ import { getABClass } from '../googleClassrooms/classDetail/classDetailService';
 import type { ClassFull } from '../googleClassrooms/classDetail/classDetailService.zod';
 import { ClassPartialSchema, type ClassPartial } from '../googleClassrooms/classPartials.zod';
 import { UpdateABClassRequestSchema } from './abClassMutations.zod';
+import { CLASSES_BULK_MUTATION_JOB_NAME } from './abClassMutationService';
 
 export type RefreshOutcome =
   | MetadataRefreshSkipped
@@ -36,7 +37,7 @@ export function refreshABClassMetadataInQueue(
   input: MetadataRefreshInput,
   now: () => string
 ): Promise<RefreshOutcome> {
-  return runApiQueuedTask('classesBulkMutation', async () => {
+  return runApiQueuedTask(CLASSES_BULK_MUTATION_JOB_NAME, async () => {
     const classFull = await getABClass({ classId: input.classId });
     if (classFull === null) throw new Error(`Class not found: ${input.classId}`);
 

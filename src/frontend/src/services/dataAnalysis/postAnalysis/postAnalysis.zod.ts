@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { ClassFullSchema } from '@/services/googleClassrooms/classDetail/classDetailService.zod';
 import { AssignmentDefinitionPartialsResponseSchema } from '@/services/assignmentDefinition/assignmentDefinitionPartials.zod';
 import { AveragingResultSchema } from '../dataAnalysis.zod';
+import type { MetadataRefreshSkipped } from './metadataProjection';
 
 /** Successful display analysis and its complete, unsliced source data. */
 export const PostAnalysisContextSchema = z
@@ -17,6 +18,12 @@ export const PostAnalysisContextSchema = z
 export type PostAnalysisContext = z.infer<typeof PostAnalysisContextSchema>;
 
 const TaskIdSchema = z.string().min(1);
+/** Compile-time pinned to the task-owned skip union to prevent reason drift. */
+const SKIPPED_REASONS = [
+  'noAssignments',
+  'unchanged',
+  'staleSource',
+] satisfies readonly MetadataRefreshSkipped['reason'][];
 
 const SucceededResultSchema = z.strictObject({
   status: z.literal('succeeded'),
@@ -24,7 +31,7 @@ const SucceededResultSchema = z.strictObject({
 });
 const SkippedResultSchema = z.strictObject({
   status: z.literal('skipped'),
-  reason: z.enum(['noAssignments', 'unchanged', 'staleSource']),
+  reason: z.enum(SKIPPED_REASONS),
 });
 
 /** Task-owned terminal results exclude lifecycle-owned pending and failed states. */

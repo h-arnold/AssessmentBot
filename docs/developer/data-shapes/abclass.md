@@ -19,7 +19,7 @@ Sibling contracts:
 - [Contract: BackendConfig](backend-config.md) — No direct relationship.
 - [Contract: Reference Data](reference-data.md) — ABClass references `cohortKey` and `yearGroupKey` which resolve to Cohorts and YearGroups respectively.
 - [Transport envelope](transport-envelope.md) — ABClass API payloads use the shared `apiHandler` envelope; this contract documents only the inner payload.
-- [Contract: Frontend Data Analysis Response](frontend-data-analysis-response.md#metadata-refresh-execution-contracts-implemented) — supplies weighted aggregates and documents the local metadata-refresh context/decision/outcome types; these are not wire values.
+- [Contract: Frontend Data Analysis Response](frontend-data-analysis-response.md#metadata-refresh-execution-contracts-implemented) — supplies weighted aggregates and documents the shared `PostAnalysisContext` plus the local metadata-refresh decision/outcome types; these are not wire values.
 
 ---
 
@@ -495,7 +495,9 @@ contract for StudentSubmission is documented in [Contract: Assignment](assignmen
   - `AverageScoreSchema`, `AverageScoresSchema`, `ClassAveragesSchema`, `RecentAssignmentSchema`
     — strict nested metadata records.
   - `ABClassMetadataSchema` — nullable whole metadata snapshot with unique identifiers and
-    newest-first ordering.
+    newest-first ordering; the wire read/request union wrapped around
+    `NonNullableABClassMetadataSchema`. The merge/write path parses with the non-nullable
+    inner schema directly, so it has no nullable-union branch.
   - Inferred types: `AverageScore`, `AverageScores`, `ClassAverages`, `RecentAssignment`,
     `ABClassMetadata`.
   - Both class read schemas require this schema, so successful parsing rejects missing or
@@ -753,19 +755,23 @@ Frontend:
   │     → getABClass()
   ├── src/frontend/src/services/abClass/abClassMetadata.zod.ts   (shared by both class read schemas)
   │     → CanonicalMetadataTimestampSchema, AverageScoreSchema, AverageScoresSchema,
-  │       ClassAveragesSchema, RecentAssignmentSchema, ABClassMetadataSchema and inferred types
+  │       ClassAveragesSchema, RecentAssignmentSchema, NonNullableABClassMetadataSchema,
+  │       ABClassMetadataSchema and inferred types
   ├── src/frontend/src/services/abClass/abClassMutations.zod.ts
   │     → UpsertABClassRequestSchema, UpdateABClassRequestSchema and inferred request types
   ├── src/frontend/src/services/abClass/abClassMutationService.ts
-  │     → upsertABClass(), updateABClass(); validate before classesBulkMutation enqueue,
-  │       parseApiResponse(ClassPartialSchema, method, data)
+  │     → CLASSES_BULK_MUTATION_JOB_NAME, upsertABClass(), updateABClass(); validate before
+  │       the shared lane's enqueue, parseApiResponse(ClassPartialSchema, method, data)
   ├── src/frontend/src/services/abClass/abClassMetadataService.ts
-  │     → refreshABClassMetadataInQueue(), MetadataRefreshInput, RefreshOutcome
+  │     → refreshABClassMetadataInQueue(), MetadataRefreshInput, RefreshOutcome; reserves
+  │       the imported CLASSES_BULK_MUTATION_JOB_NAME lane
   ├── src/frontend/src/services/dataAnalysis/postAnalysis/metadataProjection.ts
   │     → getMetadataRefreshDecision(), compareAssignmentNewestFirst(), projectAverageScores(),
   │       mergeClassMetadata(), MetadataRefreshSkipped, MetadataRefreshDecision
   ├── src/frontend/src/services/dataAnalysis/postAnalysis/refreshABClassMetadata.ts
-  │     → refreshABClassMetadata(), MetadataRefreshContext (local execution only)
+  │     → refreshABClassMetadata(context: PostAnalysisContext, now); consumes the shared
+  │       lifecycle context directly; the reserved-slot writer recomputes from a fresh
+  │       complete-class read
   ├── src/frontend/src/services/dataAnalysis/postAnalysis/postAnalysis.zod.ts
   │     → PostAnalysisContextSchema, PostAnalysisTaskResultSchema, PostAnalysisTaskOutcomeDataSchema (5B and 5C independently review-clean)
   ├── src/frontend/src/services/dataAnalysis/postAnalysis/runPostAnalysisTasks.ts
@@ -1532,15 +1538,18 @@ module; parity is asserted by a test-only suite.
 | `AverageScoresSchema`              | Strict object      | Exactly the four own metric keys (`completeness`, `accuracy`, `spag`, `overall`)        | Raw-record pre-check runs before Zod copies the value.                                                                                      |
 | `ClassAveragesSchema`              | Strict object      | `AverageScores` plus canonical `updatedAt`                                              | Exactly five own keys; no timestamp is generated or repaired.                                                                               |
 | `RecentAssignmentSchema`           | Strict object      | `assignmentId`, `assignmentDefinitionKey`, `averages`, canonical `updatedAt`            | Identifiers are non-empty and already trimmed; definition keys need not be unique.                                                          |
-| `ABClassMetadataSchema`            | Nullable union     | `z.union([z.null(), metadataSchema])`                                                   | Only the whole field may be `null`.                                                                                                         |
+| `NonNullableABClassMetadataSchema` | Strict object      | Complete non-null snapshot; raw exact-record pre-check plus the strict metadata shape   | Merge/write path input. Parsing with this inner schema narrows the result without a nullable-union branch.                                  |
+| `ABClassMetadataSchema`            | Nullable union     | `z.union([z.null(), NonNullableABClassMetadataSchema])`                                 | Read/request contract only; only the whole field may be `null`.                                                                             |
 | Inferred types                     | `z.infer`          | `AverageScore`, `AverageScores`, `ClassAverages`, `RecentAssignment`, `ABClassMetadata` | Types derive from the schemas; do not redeclare them by hand.                                                                               |
 
 Enforced rules:
 
 - Required fields must be own properties on ordinary or null-prototype records. Dates, class
   instances, inherited-only fields, symbol keys and unexpected own keys are rejected at every
-  nesting level. This strictness is confined to metadata and does not tighten unrelated class
-  fields.
+  nesting level. The exact-record pre-check rejects null/non-objects, arrays and non-plain
+  prototypes; its own-key count plus required-own-key check already force the exact key set, so
+  there is no separate redundant key-membership scan. This strictness is confined to metadata
+  and does not tighten unrelated class fields.
 - `recentAssignments` is a dense array of zero to three complete entries with no unexpected own
   array properties. `assignmentId` is unique; ordering is non-increasing `updatedAt`, and equal
   timestamps retain supplied order. The schema never sorts or repairs input.
@@ -1584,9 +1593,12 @@ Service owner: `src/frontend/src/services/abClass/abClassMutationService.ts`.
   at runtime. Required upsert configuration cannot be omitted; upsert reference keys cannot be
   null, unlike nullable read/response and update fields. Nested metadata patches reject
   through the shared schema; successful parsing detaches supplied metadata before it waits.
-- Both wrappers finish request parsing **before** calling `callApiQueued(method, request,
-'classesBulkMutation')`. Omitted properties remain absent, not serialised as null/undefined.
-  This is the existing per-job FIFO, shared with class bulk mutations, not a global queue.
+- Both wrappers finish request parsing **before** calling
+  `callApiQueued(method, request, CLASSES_BULK_MUTATION_JOB_NAME)`. That constant is exported
+  once by `abClassMutationService.ts` and imported by the reserved-slot metadata writer, so both
+  parties enqueue on the same lane symbol rather than duplicated literals; no import cycle
+  exists. Omitted properties remain absent, not serialised as null/undefined. This is the
+  existing per-job FIFO, shared with class bulk mutations, not a global queue.
 - Queue consumers import `services/api/apiQueue.ts` directly; actual transport and
   `parseApiResponse` remain in `services/apiService.ts`. No facade, barrel or `apiTransport.ts`
   owner is introduced. Existing bulk workflows are not migrated by adding these wrappers.
@@ -1595,11 +1607,12 @@ Service owner: `src/frontend/src/services/abClass/abClassMutationService.ts`.
   parsed metadata is detached, and unrelated response keys still strip. No new response schema,
   endpoint, envelope property or deletion change is introduced. Transport failures (including
   `INVALID_REQUEST` and `INTERNAL_ERROR`) propagate unchanged; retries remain transport-owned.
-- Never await these queued wrappers from an active task on `classesBulkMutation`: nested
-  same-lane enqueue deadlocks. A reserved-slot owner must call `callApi` directly with the
-  shared request schema and response parser. `runApiQueuedTask` callbacks are local execution
-  handles, never GAS payloads; they introduce no wire schema. Queue/helper ownership is tracked
-  in [Frontend shared helpers](../frontend/frontend-shared-helpers-and-abstraction-standards.md#310-abclass-metadata-schema).
+- Never await these queued wrappers from an active task on
+  `CLASSES_BULK_MUTATION_JOB_NAME`: nested same-lane enqueue deadlocks. A reserved-slot owner
+  must call `callApi` directly with the shared request schema and response parser.
+  `runApiQueuedTask` callbacks are local execution handles, never GAS payloads; they introduce
+  no wire schema. Queue/helper ownership is tracked in
+  [Frontend shared helpers](../frontend/frontend-shared-helpers-and-abstraction-standards.md#310-abclass-metadata-schema).
 
 #### Implemented metadata writer, projection and task
 
@@ -1616,8 +1629,13 @@ Actual owners (import directly; no facade/barrel):
 - `services/abClass/abClassMetadataService.ts` —
   `refreshABClassMetadataInQueue(input, now)` and the complete reserved-slot operation.
 
-The local TypeScript context, decision and outcome shapes are documented once in
+The shared lifecycle context, decision and outcome shapes are documented once in
 [Frontend Data Analysis Response](frontend-data-analysis-response.md#metadata-refresh-execution-contracts-implemented).
+`refreshABClassMetadata(context: PostAnalysisContext, now)` consumes that shared
+`PostAnalysisContext` directly and declares no task-local context type. Its cheap gate reads
+only `classFull`; `assignmentDefinitionPartials` is forwarded to the reserved-slot writer, which
+re-reads and recomputes from the complete unsliced class. `averagingResult` authorises the run
+but is never reparsed or persisted as display scores.
 No function, clock, context or outcome is a GAS payload; no new wire schema is introduced.
 
 Freshness and calculation:
@@ -1628,10 +1646,15 @@ Freshness and calculation:
 2. The matching stored assignment ID/timestamp being equal skips as `unchanged` before stale
    checks. Otherwise an older timestamp than its matching entry or any stored recent entry
    skips as `staleSource`. Equal times for different IDs remain eligible. Scores, definition
-   changes, roster changes and class-summary timestamps do not manufacture freshness.
-3. Only `changed` enters `runApiQueuedTask('classesBulkMutation', ...)`. Once active, freshly
-   read through validated `getABClass`, bypassing the query cache, then choose the target and
-   gate again from that complete document. Missing class fails; there is no recreation/upsert.
+   changes, roster changes and class-summary timestamps do not manufacture freshness. The three
+   task-owned reasons (`noAssignments`, `unchanged`, `staleSource`) are compile-time pinned in
+   `postAnalysis.zod.ts` through
+   `SKIPPED_REASONS satisfies readonly MetadataRefreshSkipped['reason'][]`, so reason drift
+   fails compilation rather than turning a legitimate no-op into a lifecycle parse failure.
+3. Only `changed` enters `runApiQueuedTask(CLASSES_BULK_MUTATION_JOB_NAME, ...)`. Once active,
+   freshly read through validated `getABClass`, bypassing the query cache, then choose the
+   target and gate again from that complete document. Missing class fails; there is no
+   recreation/upsert.
 4. Before calculation require a live definition partial for **every** fresh class assignment,
    preventing the analyser's missing-definition filter from silently narrowing full scope.
    Use an unchanged synchronous `new DataAnalysisService()` twice with only the class-ID
@@ -1648,8 +1671,9 @@ Replacement and persistence:
 - Null metadata yields class averages and exactly one target entry, never history backfill.
   Preserve other recent entries; replace an existing ID at its position or append a new ID,
   stable-sort timestamps descending and keep at most three. Equal-time history retains
-  supplied order, not the target-selection ID tie-break. Inputs remain unmodified; shared
-  schema parsing returns a detached complete snapshot.
+  supplied order, not the target-selection ID tie-break. Inputs remain unmodified; the merge
+  validates through `NonNullableABClassMetadataSchema` and returns `NonNullable<ABClassMetadata>`,
+  so the write path has no nullable-union branch. The nullable read/request contract is unchanged.
 - The recent entry copies the target partial's exact canonical `updatedAt`. The injected
   `now: () => string` is invoked only after changed calculations, when preparing a write;
   its value becomes `classAverages.updatedAt` and must satisfy the shared canonical schema.
@@ -1659,10 +1683,11 @@ Replacement and persistence:
   mutation wrapper onto its own lane. The real
   `parseApiResponse(ClassPartialSchema, 'updateABClass', data)` validates the returned partial;
   only then return `saved` with `confirmedPersistence: true` and `classPartial`.
-- The lane covers read/recheck/calculation/merge/write/response parsing, preventing same-lane
-  owners from interleaving and losing prior recent entries within this session. It is not
-  cross-session locking or CAS. Failures propagate; transport alone owns retries. No rollback,
-  roster refresh, configuration echo, nested patch or speculative corruption repair is added.
+- The shared `CLASSES_BULK_MUTATION_JOB_NAME` lane covers
+  read/recheck/calculation/merge/write/response parsing, preventing same-lane owners from
+  interleaving and losing prior recent entries within this session. It is not cross-session
+  locking or CAS. Failures propagate; transport alone owns retries. No rollback, roster refresh,
+  configuration echo, nested patch or speculative corruption repair is added.
 - No React Query access, invalidation, manual refetch or UI activation exists in these owners.
   A malformed response may reject after a backend write; the service does not claim that a
   rejected call proves nothing persisted.

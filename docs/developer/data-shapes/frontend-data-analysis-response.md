@@ -253,7 +253,8 @@ later ABClass read-contract adoption, not part of that feature.
 Frontend Section 3C adds strict request schemas and queued `upsertABClass` / `updateABClass`
 services under `services/abClass/`; their fields and omission/null/whole-replacement semantics
 are owned by [Contract: ABClass — mutation schemas and queued services](abclass.md#implemented-mutation-schemas-and-queued-services).
-The wrappers validate before the existing `classesBulkMutation` enqueue and parse real
+The wrappers validate before the shared `CLASSES_BULK_MUTATION_JOB_NAME`
+(`classesBulkMutation`) enqueue and parse real
 `ClassPartialSchema` responses. Section 3 is complete and independently review-clean, including
 Section 3C's **PASS — CLEAN 3C** verdict. The Section 3 comparison at
 `2026-10-20T06:21:48.763Z` reports **0 regressions, 0 new failures and 5 fixes**; backend lint
@@ -313,20 +314,26 @@ lifecycle now validates its context and serialisable outcome data through `postA
 Existing class, definition, analysis and metadata schemas retain their own validation boundaries.
 Callbacks and Errors never become wire data.
 
-| Type / actual owner                                                                       | Field                          | Type                                          | Notes                                                                                                                                                                    |
-| ----------------------------------------------------------------------------------------- | ------------------------------ | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `MetadataRefreshContext` — `services/dataAnalysis/postAnalysis/refreshABClassMetadata.ts` | `classFull`                    | `ClassFull`                                   | Complete validated class, not a Heatmaps selection.                                                                                                                      |
-| Same                                                                                      | `assignmentDefinitionPartials` | `AssignmentDefinitionPartial[]`               | Live registry used for recalculation.                                                                                                                                    |
-| Same                                                                                      | `averagingResult`              | `AveragingResult`                             | Successful validated analysis authorises invocation; this field is not read or reparsed by the task, nor persisted as class scores. Caller supplies the trusted context. |
-| `MetadataRefreshInput` — `services/abClass/abClassMetadataService.ts`                     | `classId`                      | `string`                                      | Identity for authoritative fresh read.                                                                                                                                   |
-| Same                                                                                      | `assignmentDefinitionPartials` | `AssignmentDefinitionPartial[]`               | Every fresh class assignment must resolve before calculation.                                                                                                            |
-| `MetadataRefreshSkipped` — `services/dataAnalysis/postAnalysis/metadataProjection.ts`     | `status`                       | `'skipped'`                                   | Shared no-op variant.                                                                                                                                                    |
-| Same                                                                                      | `reason`                       | `'noAssignments'\|'unchanged'\|'staleSource'` | Empty assignments, matching source version, or source older than stored history.                                                                                         |
-| `MetadataRefreshDecision` — same projection owner, changed variant                        | `status`                       | `'changed'`                                   | Union alternative to `MetadataRefreshSkipped`.                                                                                                                           |
-| Same                                                                                      | `target`                       | `AssignmentPartial`                           | Newest assignment instance after all candidate timestamps validate; selected object, not a detached wire snapshot.                                                       |
-| `RefreshOutcome` — `services/abClass/abClassMetadataService.ts`, saved variant            | `status`                       | `'saved'`                                     | Union alternative to `MetadataRefreshSkipped`.                                                                                                                           |
-| Same                                                                                      | `confirmedPersistence`         | `true`                                        | Returned only after successful update and real partial-response parsing; no query refresh has occurred.                                                                  |
-| Same                                                                                      | `classPartial`                 | `ClassPartial`                                | `parseApiResponse(ClassPartialSchema, 'updateABClass', data)` output, including required nullable metadata.                                                              |
+| Type / actual owner                                                                                                             | Field                          | Type                                          | Notes                                                                                                                                                                    |
+| ------------------------------------------------------------------------------------------------------------------------------- | ------------------------------ | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `PostAnalysisContext` — `services/dataAnalysis/postAnalysis/postAnalysis.zod.ts`; consumed directly by `refreshABClassMetadata` | `classFull`                    | `ClassFull`                                   | Complete validated class, never a Heatmaps selection or display slice.                                                                                                   |
+| Same                                                                                                                            | `assignmentDefinitionPartials` | `AssignmentDefinitionPartial[]`               | Live registry used for recalculation.                                                                                                                                    |
+| Same                                                                                                                            | `averagingResult`              | `AveragingResult`                             | Successful validated analysis authorises invocation; this field is not read or reparsed by the task, nor persisted as class scores. Caller supplies the trusted context. |
+| `MetadataRefreshInput` — `services/abClass/abClassMetadataService.ts`                                                           | `classId`                      | `string`                                      | Identity for authoritative fresh read.                                                                                                                                   |
+| Same                                                                                                                            | `assignmentDefinitionPartials` | `AssignmentDefinitionPartial[]`               | Every fresh class assignment must resolve before calculation.                                                                                                            |
+| `MetadataRefreshSkipped` — `services/dataAnalysis/postAnalysis/metadataProjection.ts`                                           | `status`                       | `'skipped'`                                   | Shared no-op variant.                                                                                                                                                    |
+| Same                                                                                                                            | `reason`                       | `'noAssignments'\|'unchanged'\|'staleSource'` | Empty assignments, matching source version, or source older than stored history; the tuple is compile-time pinned to `MetadataRefreshSkipped['reason']`.                 |
+| `MetadataRefreshDecision` — same projection owner, changed variant                                                              | `status`                       | `'changed'`                                   | Union alternative to `MetadataRefreshSkipped`.                                                                                                                           |
+| Same                                                                                                                            | `target`                       | `AssignmentPartial`                           | Newest assignment instance after all candidate timestamps validate; selected object, not a detached wire snapshot.                                                       |
+| `RefreshOutcome` — `services/abClass/abClassMetadataService.ts`, saved variant                                                  | `status`                       | `'saved'`                                     | Union alternative to `MetadataRefreshSkipped`.                                                                                                                           |
+| Same                                                                                                                            | `confirmedPersistence`         | `true`                                        | Returned only after successful update and real partial-response parsing; no query refresh has occurred.                                                                  |
+| Same                                                                                                                            | `classPartial`                 | `ClassPartial`                                | `parseApiResponse(ClassPartialSchema, 'updateABClass', data)` output, including required nullable metadata.                                                              |
+
+`refreshABClassMetadata(context: PostAnalysisContext, now: () => string)` consumes the shared
+lifecycle type directly and declares no task-local context type. It passes `classFull` to the
+cheap freshness gate and forwards `assignmentDefinitionPartials` plus the class identity to the
+reserved-slot writer, which re-reads and recomputes from the complete unsliced class.
+`averagingResult` authorises invocation but is never reparsed or persisted as display scores.
 
 Exact unions:
 
@@ -342,17 +349,24 @@ type RefreshOutcome =
 `refreshABClassMetadata(context, now: () => string): Promise<RefreshOutcome>` performs
 the cheap complete-class timestamp gate before enqueueing.
 `refreshABClassMetadataInQueue(input, now: () => string): Promise<RefreshOutcome>` owns
-the full `classesBulkMutation` reservation: fresh validated read → target/freshness recheck →
-all-assignment live-definition coverage → full-class and isolated-target analysis → detached
-rolling merge → validated whole update → real partial-response parse. The queue, transport,
-projection and persistence owners are imported directly, without a facade or second queue.
+the full `CLASSES_BULK_MUTATION_JOB_NAME` (`classesBulkMutation`) reservation: fresh validated
+read → target/freshness recheck → all-assignment live-definition coverage → full-class and
+isolated-target analysis → detached rolling merge → validated whole update → real
+partial-response parse. The lane constant is exported once from `abClassMutationService.ts` and
+imported by `abClassMetadataService.ts`, so both queued mutation wrappers and the reserved-slot
+writer share one lane symbol; no import cycle exists. The queue, transport, projection and
+persistence owners are imported directly, without a facade or second queue.
 
 No-op decisions make no calculation/write/clock call; the cheap gate also makes no network
 call. Every candidate partial timestamp must be canonical UTC; selection is timestamp
 descending then assignment ID ascending via `localeCompare`. Equal stored ID/timestamp
 returns `unchanged` first; otherwise older than its matching entry or any stored recent entry
 returns `staleSource`. Equal timestamps on different IDs remain eligible. This intentionally
-does not refresh after score/weighting/definition/roster-only changes.
+does not refresh after score/weighting/definition/roster-only changes. The three task-owned
+reasons are compile-time pinned in `postAnalysis.zod.ts`: `SKIPPED_REASONS` is declared with
+`satisfies readonly MetadataRefreshSkipped['reason'][]`, and its single tuple feeds the skipped
+result enum reused by both task-result and outcome schemas. Reason drift therefore fails
+compilation instead of turning a legitimate no-op into a lifecycle parse failure.
 
 The successful display result is never the persistence oracle. Both calculations use the
 unchanged synchronous service with only `{ classIds: [classId] }` as filter and the
@@ -371,8 +385,10 @@ instance into its summary. Both project all four weighted `perClass` metrics, in
 The exact source timestamp, summary clock, stable immutable rolling-three merge and
 `{ classId, metadata }` update are owned by
 [ABClass — implemented writer](abclass.md#implemented-metadata-writer-projection-and-task).
-Shared `ABClassMetadataSchema` and `UpdateABClassRequestSchema` validate the replacement;
-no nested validation rules are duplicated in the writer.
+The rolling merge validates through the non-nullable `NonNullableABClassMetadataSchema` and
+returns `NonNullable<ABClassMetadata>`, so the write path has no nullable-union branch;
+`UpdateABClassRequestSchema` validates the whole replacement. The nullable read/request
+contract is unchanged, and no nested validation rules are duplicated in the writer.
 
 Failures reject rather than returning a `failed` outcome: calculation/validation/read/write
 failures propagate, not-found is not an upsert, and there is no repair/rollback/per-feature
@@ -440,7 +456,9 @@ boundary, not an individual task. Passing `null` to the hook explicitly requests
 published outcomes; it is not a nullable member of `PostAnalysisContextSchema`. A `null`
 context for the unchanged `selectedClassId` indicates analysis readiness only, not class
 departure: it clears published outcomes but leaves feedback ownership and a pending
-same-class attempt intact.
+same-class attempt intact. The metadata refresh task consumes this shared type directly and
+declares no narrowed context (see
+[Metadata refresh execution contracts](#metadata-refresh-execution-contracts-implemented)).
 
 #### Serialisable outcome data
 
@@ -448,12 +466,12 @@ Same schema owner → `PostAnalysisTaskOutcomeDataSchema`, a
 `z.discriminatedUnion('status', ...)` of strict objects; inferred type
 `PostAnalysisTaskOutcomeData`. **Serialisable does not mean wire data:** none is sent to GAS.
 
-| Field                  | Type                                          | Frontend Zod                                            | Notes                                                                                                                                                                        |
-| ---------------------- | --------------------------------------------- | ------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `taskId`               | `string`                                      | `z.string().min(1)`                                     | Required in every variant; no trimming or identifier-safety refinement.                                                                                                      |
-| `status`               | `'pending'\|'succeeded'\|'skipped'\|'failed'` | Respective `z.literal(...)`                             | Required discriminator; `saved` remains a writer-only status.                                                                                                                |
-| `confirmedPersistence` | `true\|undefined`                             | `z.literal(true).optional()`                            | Succeeded and failed variants only; absence is valid, false/null reject. Failed may retain a confirmed save after refresh failure (5C). No query-refresh success is implied. |
-| `reason`               | `'noAssignments'\|'unchanged'\|'staleSource'` | `z.enum(['noAssignments', 'unchanged', 'staleSource'])` | Required only for skipped; other variants reject it.                                                                                                                         |
+| Field                  | Type                                          | Frontend Zod                 | Notes                                                                                                                                                                        |
+| ---------------------- | --------------------------------------------- | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `taskId`               | `string`                                      | `z.string().min(1)`          | Required in every variant; no trimming or identifier-safety refinement.                                                                                                      |
+| `status`               | `'pending'\|'succeeded'\|'skipped'\|'failed'` | Respective `z.literal(...)`  | Required discriminator; `saved` remains a writer-only status.                                                                                                                |
+| `confirmedPersistence` | `true\|undefined`                             | `z.literal(true).optional()` | Succeeded and failed variants only; absence is valid, false/null reject. Failed may retain a confirmed save after refresh failure (5C). No query-refresh success is implied. |
+| `reason`               | `'noAssignments'\|'unchanged'\|'staleSource'` | `z.enum(SKIPPED_REASONS)`    | Required only for skipped; other variants reject it. `SKIPPED_REASONS` is the pinned tuple.                                                                                  |
 
 Pending contains exactly taskId/status; failed additionally permits optional
 `confirmedPersistence: true`. No technical Error, callback, user-copy or class partial
@@ -468,11 +486,11 @@ Same schema owner → `PostAnalysisTaskResultSchema`, a strict
 `PostAnalysisTaskResult` derives with `z.infer` and is re-exported as a type by the
 runner. The outcome-data schema reuses these variants with required `taskId` added.
 
-| Field                  | Type                                          | Frontend Zod                                            | Notes                                                        |
-| ---------------------- | --------------------------------------------- | ------------------------------------------------------- | ------------------------------------------------------------ |
-| `status`               | `'succeeded'\|'skipped'`                      | Respective `z.literal(...)`                             | Pending/failed belong to the lifecycle, never a task return. |
-| `confirmedPersistence` | `true\|undefined`                             | `z.literal(true).optional()`                            | Succeeded only; false/null reject.                           |
-| `reason`               | `'noAssignments'\|'unchanged'\|'staleSource'` | `z.enum(['noAssignments', 'unchanged', 'staleSource'])` | Required for skipped only.                                   |
+| Field                  | Type                                          | Frontend Zod                 | Notes                                                        |
+| ---------------------- | --------------------------------------------- | ---------------------------- | ------------------------------------------------------------ |
+| `status`               | `'succeeded'\|'skipped'`                      | Respective `z.literal(...)`  | Pending/failed belong to the lifecycle, never a task return. |
+| `confirmedPersistence` | `true\|undefined`                             | `z.literal(true).optional()` | Succeeded only; false/null reject.                           |
+| `reason`               | `'noAssignments'\|'unchanged'\|'staleSource'` | `z.enum(SKIPPED_REASONS)`    | Required for skipped only.                                   |
 
 Results reject extra keys, including task-supplied `taskId` and technical Errors.
 The runner validates the awaited result **before** constructing outcome data with
@@ -1376,9 +1394,9 @@ Metric display: `src/frontend/src/services/dataAnalysis/metricDisplay/`
 Class-page adapter schema: `src/frontend/src/features/classPage/classPageAdapter.zod.ts`
 
 Metadata refresh execution companions (Section 4 complete and independently review-clean; zero new regressions):
-├── `src/frontend/src/services/dataAnalysis/postAnalysis/metadataProjection.ts` → pure decision, shared newest-first comparator, metric mapping, rolling merge; `MetadataRefreshSkipped`, `MetadataRefreshDecision`
-├── `src/frontend/src/services/dataAnalysis/postAnalysis/refreshABClassMetadata.ts` → task entrypoint; `MetadataRefreshContext`
-└── `src/frontend/src/services/abClass/abClassMetadataService.ts` → reserved-slot writer; `MetadataRefreshInput`, `RefreshOutcome`
+├── `src/frontend/src/services/dataAnalysis/postAnalysis/metadataProjection.ts` → pure decision, shared newest-first comparator, metric mapping, non-nullable rolling merge; `MetadataRefreshSkipped`, `MetadataRefreshDecision`
+├── `src/frontend/src/services/dataAnalysis/postAnalysis/refreshABClassMetadata.ts` → task entrypoint consuming the shared `PostAnalysisContext`; no task-local context type
+└── `src/frontend/src/services/abClass/abClassMetadataService.ts` → reserved-slot writer; `MetadataRefreshInput`, `RefreshOutcome`, shared lane constant reservation
 
 Shared lifecycle companions (5B and 5C independently review-clean):
 ├── `src/frontend/src/services/dataAnalysis/postAnalysis/postAnalysis.zod.ts` → `PostAnalysisContextSchema`, `PostAnalysisTaskResultSchema`, `PostAnalysisTaskOutcomeDataSchema`, inferred data types

@@ -6,7 +6,7 @@ import {
   newestAssignment,
 } from '@/test/abClass/metadataRefreshFixtures';
 import { renderPostAnalysisOwner } from '@/test/abClass/postAnalysisHookTestSupport';
-import type { MetadataRefreshContext } from '@/services/dataAnalysis/postAnalysis/refreshABClassMetadata';
+import type { PostAnalysisContext } from '@/services/dataAnalysis/postAnalysis/postAnalysis.zod';
 
 afterEach(() => {
   cleanup();
@@ -59,7 +59,7 @@ describe('usePostAnalysisTasks replay and owner lifetime', () => {
         [
           {
             id: 'probe',
-            getAttemptKey: (input: MetadataRefreshContext) => input.classFull.classId,
+            getAttemptKey: (input: PostAnalysisContext) => input.classFull.classId,
             run,
           },
         ],
@@ -100,7 +100,7 @@ describe('usePostAnalysisTasks replay and owner lifetime', () => {
       [
         {
           id: 'probe',
-          getAttemptKey: (input: MetadataRefreshContext) =>
+          getAttemptKey: (input: PostAnalysisContext) =>
             newestAssignment(input.classFull).updatedAt!,
           run,
         },

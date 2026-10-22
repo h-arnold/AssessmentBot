@@ -202,7 +202,8 @@ implemented. The 5C report is
   rejection before work, empty descriptor list, failure isolation and local Error identity.
 - `postAnalysisTasks.spec.ts`: canonical task ID/descriptor factory, newest-first/ascending-ID
   comparator ordering, lazy factory-supplied clock, confirmed-save mapping and source keys
-  independent of metadata/live weights.
+  independent of metadata/live weights, including raw attempt identity when a source
+  timestamp is non-canonical.
 - `hooks/usePagePostAnalysisTasks.spec.tsx`: shared page eligibility, memoised ready-only
   context, `null` for each missing input, stable descriptor identity and retained
   selected-class ownership when readiness becomes blocking.
@@ -211,10 +212,10 @@ implemented. The 5C report is
 - `hooks/usePostAnalysisTasks.lifecycle.spec.tsx`: pending StrictMode reattachment,
   stale completion suppression on navigation/null/unmount and newer-source races.
 - `hooks/usePostAnalysisTasks.extensions.spec.tsx`: mount-wide keyed attempt memory,
-  including failures and class navigation, new-version/remount permission, and a
-  local unkeyed task continuing independently of metadata skip/failure. Throwing
-  source-key computation preserves Error identity or normalises scalar failures,
-  caches the failed attempt and still allows later independent work.
+  including failures and class navigation, new-version/remount permission, null-timestamp
+  source identity, and a local unkeyed task continuing independently of metadata
+  skip/failure. Throwing source-key computation preserves Error identity or normalises
+  scalar failures, caches the failed attempt and still allows later independent work.
 - `features/classPage/useClassPageData.postAnalysis.spec.ts` (6 cases) and
   `features/taskHeatmap/useHeatmapsPageData.postAnalysis.spec.ts` (7 cases): mock
   only the lower-level lifecycle hook and prove each feature's shared page hook passes

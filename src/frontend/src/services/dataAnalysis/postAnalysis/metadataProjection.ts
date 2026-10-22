@@ -1,6 +1,6 @@
 import {
-  ABClassMetadataSchema,
   CanonicalMetadataTimestampSchema,
+  NonNullableABClassMetadataSchema,
   type ABClassMetadata,
   type AverageScore,
   type AverageScores,
@@ -15,11 +15,13 @@ import type { MetricResult, PerClassResult } from '../dataAnalysis.zod';
 const RECENT_ASSIGNMENT_LIMIT = 3;
 const NOT_FOUND_INDEX = -1;
 
+/** Timestamp-only no-op outcome with a task-owned skip reason. */
 export type MetadataRefreshSkipped = {
   status: 'skipped';
   reason: 'noAssignments' | 'unchanged' | 'staleSource';
 };
 
+/** Freshness decision: a skipped no-op or the newest assignment requiring refresh. */
 export type MetadataRefreshDecision =
   MetadataRefreshSkipped | { status: 'changed'; target: AssignmentPartial };
 
@@ -150,10 +152,8 @@ export function mergeClassMetadata(
   if (position === NOT_FOUND_INDEX) recent.push(replacement);
   else recent[position] = replacement;
   recent.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
-  const metadata = ABClassMetadataSchema.parse({
+  return NonNullableABClassMetadataSchema.parse({
     classAverages: { ...classScores, updatedAt: summaryUpdatedAt },
     recentAssignments: recent.slice(0, RECENT_ASSIGNMENT_LIMIT),
   });
-  if (metadata === null) throw new Error('Metadata replacement must be non-null');
-  return metadata;
 }

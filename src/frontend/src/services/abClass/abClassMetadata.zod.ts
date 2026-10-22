@@ -93,7 +93,11 @@ const metadataShape = {
     .pipe(z.array(RecentAssignmentSchema).max(MAX_RECENT_ASSIGNMENTS)),
 };
 
-const metadataSchema = z
+/**
+ * Validates a complete non-null ABClass metadata snapshot.
+ * @remarks Used by the metadata merge/write path; the nullable union remains for wire reads and mutation requests.
+ */
+export const NonNullableABClassMetadataSchema = z
   .custom<unknown>(isMetadataRawRecord)
   .pipe(z.object(metadataShape).strict())
   .superRefine((metadata, context) => {
@@ -104,7 +108,7 @@ const metadataSchema = z
  * Validates a nullable, complete ABClass metadata snapshot.
  * @remarks Required fields and exact plain-record keys are checked before Zod copies input; this mirrors the backend metadata boundary.
  */
-export const ABClassMetadataSchema = z.union([z.null(), metadataSchema]);
+export const ABClassMetadataSchema = z.union([z.null(), NonNullableABClassMetadataSchema]);
 
 export type AverageScore = z.infer<typeof AverageScoreSchema>;
 export type AverageScores = z.infer<typeof AverageScoresSchema>;
@@ -127,11 +131,7 @@ function isExactRecord(value: unknown, keys: readonly string[]): value is Record
   )
     return false;
   const ownKeys = Reflect.ownKeys(value);
-  return (
-    ownKeys.length === keys.length &&
-    hasRequiredOwnKeys(value, keys) &&
-    ownKeys.every((key) => typeof key === 'string' && keys.includes(key))
-  );
+  return ownKeys.length === keys.length && hasRequiredOwnKeys(value, keys);
 }
 
 /**

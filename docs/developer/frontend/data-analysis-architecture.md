@@ -240,8 +240,10 @@ composition facade. The edge classes are defined in `src/frontend/src/index.css`
 ## Metadata refresh task and persistence
 
 The synchronous `DataAnalysisService` and pure analysers remain free of I/O.
-`postAnalysis/refreshABClassMetadata.ts` accepts successful averaging context and
-unsliced class data, but never persists display results or display weightings.
+`postAnalysis/refreshABClassMetadata.ts` accepts the shared `PostAnalysisContext`
+from `postAnalysis.zod.ts` — successful averaging context plus unsliced class data —
+and never persists display results or display weightings. It declares no narrowed
+task-local context type, so task input and lifecycle validation share one contract.
 It is the only descriptor built by `createPostAnalysisTaskDescriptors` in
 `postAnalysis/postAnalysisTasks.ts`. The generic context/outcome schemas, ordered runner and shared
 `hooks/usePostAnalysisTasks.ts` passed independent 5B and 5C reviews.
@@ -259,13 +261,16 @@ it is complete and independently review-clean, with zero new regressions.
 `postAnalysis/metadataProjection.ts` owns pure freshness, score projection and
 rolling merge. Every candidate source timestamp must be canonical UTC; newest
 selection breaks equal-time ties by assignment ID ascending. Empty classes,
-equal stored target ID/time and sources older than stored recent history skip.
-This is an **assignment-version cache**, not an assessment-completion signal:
+equal stored target ID/time and sources older than stored recent history skip;
+skip reasons are compile-time pinned to `MetadataRefreshSkipped`, so the outcome
+schema cannot silently omit a reason. This is an **assignment-version cache**, not
+an assessment-completion signal:
 scores, live weighting, definitions or roster changes alone do not refresh an
 unchanged timestamp. No polling or backfill exists.
 
 For changed candidates, `services/abClass/abClassMetadataService.ts` reserves the
-existing `classesBulkMutation` lane before a fresh validated `getABClass` read.
+existing `classesBulkMutation` lane (`CLASSES_BULK_MUTATION_JOB_NAME`, exported by
+`abClassMutationService.ts`) before a fresh validated `getABClass` read.
 It bypasses query cache, reselects the target and repeats the gate. Missing
 classes fail rather than being recreated. All fresh assignments must resolve
 against the supplied live definition partials before calculation.
@@ -277,8 +282,9 @@ It projects weighted overall directly without rounding, preserving numbers,
 `N`, `E` and `excluded`. Initial null metadata gets complete class averages and
 one recent entry; subsequent writes replace the same instance or append one,
 stably sort newest first and keep three. Equal-time entries retain their positions.
-Source time is copied exactly; the supplied summary clock is read only after
-successful calculations when preparing a changed write.
+The merged replacement validates through `NonNullableABClassMetadataSchema`, so the
+write path has no nullable-union branch. Source time is copied exactly; the supplied
+summary clock is read only after successful calculations when preparing a changed write.
 
 The update contains only `classId` and complete metadata, reuses the mutation
 schema and parses the actual class-partial response. In-slot network execution

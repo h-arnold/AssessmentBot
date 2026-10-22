@@ -8,7 +8,8 @@ import {
   type UpdateABClassRequest,
 } from './abClassMutations.zod';
 
-const JOB_NAME = 'classesBulkMutation';
+/** Shared FIFO lane for all class bulk mutations, including reserved-slot metadata writes. */
+export const CLASSES_BULK_MUTATION_JOB_NAME = 'classesBulkMutation';
 
 /**
  * Creates or refreshes a class through the existing per-job FIFO.
@@ -23,7 +24,7 @@ const JOB_NAME = 'classesBulkMutation';
 export async function upsertABClass(parameters: UpsertABClassRequest): Promise<ClassPartial> {
   const request = UpsertABClassRequestSchema.parse(parameters);
   const method = 'upsertABClass';
-  const data = await callApiQueued(method, request, JOB_NAME);
+  const data = await callApiQueued(method, request, CLASSES_BULK_MUTATION_JOB_NAME);
   return parseApiResponse(ClassPartialSchema, method, data);
 }
 
@@ -40,6 +41,6 @@ export async function upsertABClass(parameters: UpsertABClassRequest): Promise<C
 export async function updateABClass(parameters: UpdateABClassRequest): Promise<ClassPartial> {
   const request = UpdateABClassRequestSchema.parse(parameters);
   const method = 'updateABClass';
-  const data = await callApiQueued(method, request, JOB_NAME);
+  const data = await callApiQueued(method, request, CLASSES_BULK_MUTATION_JOB_NAME);
   return parseApiResponse(ClassPartialSchema, method, data);
 }
