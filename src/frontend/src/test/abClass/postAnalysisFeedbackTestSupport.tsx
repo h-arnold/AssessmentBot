@@ -37,7 +37,7 @@ type HookState = ReturnType<typeof usePostAnalysisTasks>;
 export async function completeNotificationLeave(notice: HTMLElement): Promise<void> {
   // HappyDOM does not run CSS animations; do not manufacture the leave itself.
   await waitFor(() => expect(notice).toHaveClass('ant-notification-fade-leave-active'));
-  await act(async () => {
+  await act(() => {
     notice.dispatchEvent(new Event('animationend', { bubbles: true }));
   });
   await waitFor(() => expect(notice).not.toBeInTheDocument());

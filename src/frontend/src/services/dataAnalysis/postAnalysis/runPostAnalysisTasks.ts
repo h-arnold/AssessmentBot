@@ -48,7 +48,9 @@ export async function runPostAnalysisTasks(
 ): Promise<PostAnalysisTaskOutcome[]> {
   validatePostAnalysisTasks(tasks);
   const outcomes: PostAnalysisTaskOutcome[] = [];
-  for (const task of tasks) {
+  const runAt = async (index: number): Promise<void> => {
+    if (index >= tasks.length) return;
+    const task = tasks[index];
     try {
       const result = PostAnalysisTaskResultSchema.parse(await task.run(context));
       const data = PostAnalysisTaskOutcomeDataSchema.parse({ ...result, taskId: task.id });
@@ -57,7 +59,12 @@ export async function runPostAnalysisTasks(
       const error = toError(error_);
       logPostAnalysisFailure(task.id, context, error);
       outcomes.push({ data: { taskId: task.id, status: 'failed' }, error });
+      // Synchronous throws reach this catch before the task await suspends.
+      // Yield before continuing to keep long failure chains stack-safe.
+      await Promise.resolve();
     }
-  }
+    await runAt(index + 1);
+  };
+  await runAt(0);
   return outcomes;
 }

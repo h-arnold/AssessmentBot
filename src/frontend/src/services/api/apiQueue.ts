@@ -107,7 +107,7 @@ export function runApiQueuedTask<T>(jobName: string, task: () => T | Promise<T>)
  * @returns {Promise<void>} A promise that resolves when the queue is drained.
  */
 async function processQueue(queue: QueueStateInternal): Promise<void> {
-  while (queue.pending.size > 0) {
+  if (queue.pending.size > 0) {
     const entry = queue.pending.values().next().value!;
     queue.pending.delete(entry); // Remove immediately, before dispatch.
     try {
@@ -115,7 +115,13 @@ async function processQueue(queue: QueueStateInternal): Promise<void> {
       entry.resolve(data);
     } catch (error: unknown) {
       entry.reject(error);
+      // A synchronous throw reaches this catch before the await above suspends.
+      // Yield before continuing so a long run of failed callbacks cannot recurse
+      // on the JavaScript stack or wedge the lane on overflow.
+      await Promise.resolve();
     }
+    await processQueue(queue);
+    return;
   }
   queue.active = false;
 }

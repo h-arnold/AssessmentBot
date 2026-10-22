@@ -101,7 +101,9 @@ class PostAnalysisOwner {
     this.publish([...outcomes]);
 
     const complete = async (): Promise<void> => {
-      for (const [index, task] of tasks.entries()) {
+      const runAt = async (index: number): Promise<void> => {
+        if (index >= tasks.length) return;
+        const task = tasks[index];
         // Key computation is execution too: a task-local failure must not break
         // the effect or prevent a later independent descriptor from starting.
         let key: AttemptKey;
@@ -132,7 +134,9 @@ class PostAnalysisOwner {
         outcomes[index] = await attempt;
         if (isAttached) this.publish([...outcomes]);
         this.showFeedback(notification, key, outcomes[index], feedbackGeneration);
-      }
+        await runAt(index + 1);
+      };
+      await runAt(0);
     };
     void complete().catch((error: unknown) => {
       logFrontendError('usePostAnalysisTasks.complete', error, {

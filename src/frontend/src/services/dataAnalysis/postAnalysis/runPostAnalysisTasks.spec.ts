@@ -6,7 +6,52 @@ import {
   type PostAnalysisTaskResult,
 } from './runPostAnalysisTasks';
 
+const LAST_OUTCOME_OFFSET = -1;
+
 describe('runPostAnalysisTasks ordered independent descriptors', () => {
+  it('retains every failure in order and runs the final independent task after a long synchronous-failure chain', async () => {
+    const failureCount = 20_000;
+    const errors = Array.from(
+      { length: failureCount },
+      (_, index) => new Error(`failure-${index}`)
+    );
+    const finalTask = vi.fn(() => ({ status: 'succeeded' as const }));
+    const tasks: readonly PostAnalysisTaskDescriptor[] = [
+      ...errors.map((error, index) => {
+        return {
+          id: `failure-${index}`,
+          run() {
+            throw error;
+          },
+        };
+      }),
+      { id: 'final-success', run: finalTask },
+    ];
+    const logError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      const outcomes = await runPostAnalysisTasks(createMetadataRefreshFixture('small'), tasks);
+      expect(outcomes).toHaveLength(failureCount + 1);
+      expect(outcomes.map(({ data }) => data.taskId)).toEqual([
+        ...errors.map((_, index) => `failure-${index}`),
+        'final-success',
+      ]);
+      expect(outcomes.slice(0, failureCount).every(({ data }) => data.status === 'failed')).toBe(
+        true
+      );
+      outcomes.slice(0, failureCount).forEach(({ error }, index) => {
+        expect(error).toBe(errors[index]);
+      });
+      expect(outcomes.at(LAST_OUTCOME_OFFSET)).toEqual({
+        data: { taskId: 'final-success', status: 'succeeded' },
+        error: null,
+      });
+      expect(finalTask).toHaveBeenCalledTimes(1);
+      expect(logError).toHaveBeenCalledTimes(failureCount);
+    } finally {
+      logError.mockRestore();
+    }
+  });
+
   it('awaits each declared task before starting the next and preserves context and outcome order', async () => {
     const context = createMetadataRefreshFixture('small');
     const gate = Promise.withResolvers<{ status: 'succeeded' }>();

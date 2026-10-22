@@ -203,6 +203,44 @@ describe('runApiQueuedTask local deferred operations', () => {
     }
   );
 
+  it('drains a long synchronous-failure chain without losing FIFO entries or stranding the lane', async () => {
+    const queue = await loadTaskQueue();
+    const lane = 'long-failure-chain';
+    const entryCount = 20_000;
+    const gate = Promise.withResolvers<void>();
+    const firstStarted = vi.fn(() => gate.promise);
+    const blocker = queue.runApiQueuedTask(lane, firstStarted);
+    expect(firstStarted).toHaveBeenCalledTimes(1);
+
+    const starts: number[] = [];
+    const errors = Array.from({ length: entryCount }, (_, index) => new Error(`failure-${index}`));
+    const failures = errors.map((error, index) => {
+      return queue.runApiQueuedTask(lane, function failSynchronously() {
+        starts.push(index);
+        throw error;
+      });
+    });
+    const sentinel = queue.runApiQueuedTask(lane, () => {
+      starts.push(entryCount);
+      return 'sentinel';
+    });
+    gate.resolve();
+
+    await blocker;
+    const results = await Promise.allSettled(failures);
+    expect(results).toHaveLength(entryCount);
+    expect(results.every((result) => result.status === 'rejected')).toBe(true);
+    results.forEach((result, index) => {
+      expect(result.status).toBe('rejected');
+      if (result.status === 'rejected') expect(result.reason).toBe(errors[index]);
+    });
+    await expect(sentinel).resolves.toBe('sentinel');
+    expect(starts).toEqual(Array.from({ length: entryCount + 1 }, (_, index) => index));
+
+    await expect(queue.runApiQueuedTask(lane, () => 'reused')).resolves.toBe('reused');
+    expect(queue.getQueueState(lane)).toEqual({ pending: 0, active: false });
+  });
+
   it('cancels pending mixed entries without executing them or aborting the active task', async () => {
     const queue = await loadTaskQueue();
     const events: string[] = [];
