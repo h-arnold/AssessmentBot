@@ -39,19 +39,6 @@ export function useClassPageAssignmentPrefetch(
       return;
     }
 
-    // Defensive guard: every assignment must have a non-null updatedAt before the sort.
-    // The adapter's validateUpdatedAt throws before surfaceState can become 'ready',
-    // so this invariant always holds; throwing here fails fast if violated.
-    for (const a of classFull.assignments) {
-      if (!a.updatedAt) {
-        throw new Error(
-          `Cannot prefetch: assignment ${a.assignmentId} has null or falsy updatedAt`
-        );
-      }
-    }
-
-    // Set the guard only after the invariant check succeeds, so a thrown violation
-    // does not permanently disable prefetch for this classId.
     prefetchedClassIdReference.current = classId;
 
     const sorted = (classFull.assignments as Array<{ assignmentId: string; updatedAt: string }>)
@@ -62,7 +49,7 @@ export function useClassPageAssignmentPrefetch(
       void queryClient
         .query(getAssignmentQueryOptions(classFull.classId, assignment.assignmentId))
         .catch((error) => {
-          logFrontendError('useClassPageData.prefetch', error, {
+          logFrontendError('useClassPageAssignmentPrefetch', error, {
             courseId: classFull.classId,
             assignmentId: assignment.assignmentId,
           });

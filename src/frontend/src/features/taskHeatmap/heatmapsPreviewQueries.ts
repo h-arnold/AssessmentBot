@@ -36,7 +36,7 @@ export function buildDisabledQueryOptions<T>(queryKey: QueryKey): UseQueryOption
   return {
     queryKey,
     queryFn: skipToken,
-  } as unknown as UseQueryOptions<T, Error>;
+  } satisfies UseQueryOptions<T, Error>;
 }
 
 /**

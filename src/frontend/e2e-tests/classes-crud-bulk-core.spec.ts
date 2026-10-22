@@ -23,6 +23,7 @@ import {
   clickModalConfirmAndDismiss,
   openClassesManagementTab,
 } from './helpers/classes-crud-bulk-scaffold';
+import { waitForSelectPopupReady } from './helpers/select-popup-readiness';
 
 // ---------------------------------------------------------------------------
 // Label constants (WS3 button labels)
@@ -209,8 +210,10 @@ test.describe('bulk create flow', () => {
     const dialog = page.getByRole('dialog', { name: bulkCreateButtonLabel });
     await expect(dialog).toBeVisible();
     await dialog.getByRole('combobox', { name: 'Cohort' }).click();
+    await waitForSelectPopupReady(page.getByRole('option', { name: 'Cohort 2025' }));
     await page.getByRole('option', { name: 'Cohort 2025' }).click();
     await dialog.getByRole('combobox', { name: 'Year group' }).click();
+    await waitForSelectPopupReady(page.getByRole('option', { name: 'Year 11' }));
     await page.getByRole('option', { name: 'Year 11' }).click();
     await dialog.getByRole('spinbutton', { name: 'Course length' }).fill('2');
     const createOkButton = dialog.getByRole('button', { name: 'OK' });

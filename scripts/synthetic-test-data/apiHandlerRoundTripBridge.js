@@ -91,17 +91,10 @@ export function createApiHandlerRoundTripBridge(options) {
       throw new Error(`Cannot update metadata for unknown class "${parameters.classId}".`);
     }
 
+    const partial = classPartials.find((row) => row.classId === parameters.classId);
     if (Object.hasOwn(parameters, 'metadata')) {
       classRecord.metadata = structuredClone(parameters.metadata);
-      const partial = classPartials.find((row) => row.classId === parameters.classId);
       if (partial) partial.metadata = structuredClone(parameters.metadata);
-    }
-
-    const partial = classPartials.find((row) => row.classId === parameters.classId);
-    if (!partial) {
-      throw new Error(
-        `Cannot update metadata for class "${parameters.classId}": partial not found.`
-      );
     }
 
     return structuredClone(partial);

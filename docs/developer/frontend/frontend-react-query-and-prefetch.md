@@ -110,7 +110,7 @@ Do not add startup prefetch only to exercise React Query.
 
 ### Current view-entry prefetches
 
-- **ClassPage assignment prefetch**: `useClassPageData` calls the feature-local `features/classPage/useClassPageAssignmentPrefetch.ts` hook, which owns the effect, ref guard and three-assignment limit. The effect dispatches only when `surfaceState.status === 'ready'` and `classFull` is present. It checks every assignment's non-null `updatedAt` before setting the guard, sorts with `compareAssignmentUpdatedAtDesc` (updatedAt descending, assignmentId ascending tie-break), takes the top 3, and calls `queryClient.query(getAssignmentQueryOptions(classFull.classId, assignmentId))` for each. Each call is fire-and-forget: a rejection retains the `logFrontendError('useClassPageData.prefetch', error, { courseId, assignmentId })` context and never affects the page surface. The per-instance guard prevents redispatch on same-class refetch and StrictMode effect replay; dispatch for a different ready class replaces the guard, allowing dispatch again on return. Keyed queries also deduplicate in-flight requests.
+- **ClassPage assignment prefetch**: `useClassPageData` calls the feature-local `features/classPage/useClassPageAssignmentPrefetch.ts` hook, which owns the effect, ref guard and three-assignment limit. The effect dispatches only when `surfaceState.status === 'ready'` and `classFull` is present; the adapter's trust validation has already rejected a null or unparseable assignment `updatedAt` before the surface can become ready, so the hook does not repeat that check. It sorts with `compareAssignmentUpdatedAtDesc` (updatedAt descending, assignmentId ascending tie-break), takes the top 3, and calls `queryClient.query(getAssignmentQueryOptions(classFull.classId, assignmentId))` for each. Each call is fire-and-forget: a rejection retains the `logFrontendError('useClassPageAssignmentPrefetch', error, { courseId, assignmentId })` context and never affects the page surface. The per-instance guard prevents redispatch on same-class refetch and StrictMode effect replay; dispatch for a different ready class replaces the guard, allowing dispatch again on return. Keyed queries also deduplicate in-flight requests.
 - **Settings Google Classrooms prefetch**: `SettingsPageGoogleClassroomsPrefetch` runs when the Settings page mounts to warm `googleClassrooms` ahead of the Classes tab's view-entry read. It awaits `queryClient.query(getGoogleClassroomsQueryOptions())`. A rejection logs once through the component's warning logger when the component is still mounted, then returns before cache inspection. On fulfilment it inspects `queryClient.getQueryState(queryKeys.googleClassrooms())` and warns if the cached state is `error`. If the component unmounts before the query settles, it neither inspects nor logs.
 
 ## 6. Freshness and invalidation expectations
@@ -262,4 +262,7 @@ const { data } = useQuery({
 ```
 
 `skipToken` makes the disabled intent explicit and eliminates the need for `enabled: false`
-(the query is implicitly skipped when `queryFn` is `skipToken`).
+(the query is implicitly skipped when `queryFn` is `skipToken`). Where several query lists
+share a disabled branch — currently the Heatmaps preview queries — reuse the typed
+`buildDisabledQueryOptions<T>(queryKey)` helper rather than repeating casts; see the
+[helper register](frontend-shared-helpers-and-abstraction-standards.md#33-feature-shared-helpers-existing-local-precedents).

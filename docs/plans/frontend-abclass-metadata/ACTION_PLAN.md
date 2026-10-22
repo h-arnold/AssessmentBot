@@ -1051,7 +1051,9 @@ acceptance and the common Red/Green/Refactor/review gates.
     errors / 19 baseline warnings**. These are supplied implementation results,
     not checks rerun by this documentation pass or independent review sign-off.
   - The prefetch owner retains ready-only dispatch, once-per-class guard,
-    sorting, keyed query calls and `useClassPageData.prefetch` logging. Preview
+    sorting, keyed query calls and `useClassPageData.prefetch` logging (historical;
+    the log context was later renamed to `useClassPageAssignmentPrefetch` during
+    review remediation). Preview
     support owns disabled options, input conversion, stable empty lookup and
     combined-state types; query callbacks, memo dependencies, live-definition
     pipeline and diagnostic contexts remain with their existing owners.

@@ -26,9 +26,9 @@ const classId = String(sourcePartial.classId);
 const replacement = ABClassMetadataSchema.parse(sourcePartial.metadata);
 
 function installRunner(bridge: ReturnType<typeof createApiHandlerRoundTripBridge>): void {
-  (globalThis as GoogleScriptGlobal).google = {
+  vi.stubGlobal('google', {
     script: { run: createSyntheticApiRoundTripRunner(bridge.invokeRequest) },
-  };
+  } satisfies GoogleScriptGlobal['google']);
 }
 
 describe('ABClass metadata real dispatcher round trip', () => {
@@ -40,7 +40,7 @@ describe('ABClass metadata real dispatcher round trip', () => {
   });
 
   afterEach(() => {
-    delete (globalThis as GoogleScriptGlobal).google;
+    vi.unstubAllGlobals();
     vi.restoreAllMocks();
   });
 

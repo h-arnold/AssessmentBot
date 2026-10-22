@@ -162,8 +162,10 @@ export function getQueueState(jobName: string): QueueState {
  *
  * @example
  * ```ts
- * const cancelled = cancelApiQueued('classesBulkMutation');
- * console.log(cancelled); // e.g. 5
+ * const cancelledCount = cancelApiQueued('classesBulkMutation');
+ * if (cancelledCount > 0) {
+ *   handleCancelledRequests(cancelledCount);
+ * }
  * ```
  */
 export function cancelApiQueued(jobName: string): number {

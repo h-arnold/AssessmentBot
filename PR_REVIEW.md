@@ -139,8 +139,8 @@ Baseline consulted: `.ts-regression-checker/reports/session-feat-frontend-abclas
 | ----- | ------------------------------------------------------------------------------------------------- | --------- | ------------------------------------ | ------------------------------------------------ | ------------------- |
 | 1     | Feedback ownership/required host: EH-1, RRC-1, S-N2, L-N2, T-N2, L-N3, L-I1, T-N4                 | Complete  | PASS — CLEAN (including gate repair) | Zero regressions/new failures (16:47 comparison) | Pushed: `9f1f7f8c`  |
 | 2     | Shared orchestration/identity: D1/S-C1, D2/S-I2, D3, K-N3, K-N1/S-N3/T-N1, redundant status alias | Complete  | PASS — CLEAN                         | Zero regressions/new failures (18:28 comparison) | Pushed: `218ab2dd`  |
-| 3     | Metadata contracts/coverage: S-I1, S-I3, S-I4/K-N2, S-I5, S-N1, T-I1                              | Complete  | PASS — CLEAN                         | Zero regressions/new failures (03:20 comparison) | Commit/push pending |
-| 4     | Query/prefetch and synthetic cleanup: S-N5/L-N1, Layout Inc-1, Coverage Inc-1/Inc-2, RRC-2, L-N4  | Pending   | Pending                              | Pending                                          | Pending             |
+| 3     | Metadata contracts/coverage: S-I1, S-I3, S-I4/K-N2, S-I5, S-N1, T-I1                              | Complete  | PASS — CLEAN                         | Zero regressions/new failures (03:20 comparison) | Pushed: `9d18e19b`  |
+| 4     | Query/prefetch and synthetic cleanup: S-N5/L-N1, Layout Inc-1, Coverage Inc-1/Inc-2, RRC-2, L-N4  | Complete  | PASS — CLEAN (including gate repair) | Zero regressions/new failures (04:48 comparison) | Commit/push pending |
 | 5     | Remaining documentation/E2E hygiene: DS-INC1/2, Logging Inc-1, S-N4, A-N1                         | Pending   | Pending                              | Pending                                          | Pending             |
 
 Each batch includes its own directly affected tests and same-change canonical documentation updates, even where the final batch contains the remaining documentation-only corrections.
@@ -173,8 +173,17 @@ Each batch includes its own directly affected tests and same-change canonical do
 - Testing Specialist migrated lifecycle fixtures to the shared full context and passed 11 suites / 132 tests, changed-file lint and all TypeScript checks. Existing batch 2 regressions fulfil T-I1; no unreachable invariant tests were added. Docs and Data Shapes Agent updated canonical ownership/API references.
 - Independent review (`.opencode/scratchpad/batch-3-review.md`) returned **PASS — CLEAN**: fresh frontend lint, TypeScript, 298 suites / 2,869 tests with coverage and all 314 browser tests passed; only existing warnings remain. The production build passed.
 - Initial final comparison at `2026-10-22T02-59-48.179Z` flagged a retry-passed stale-recovery browser case. Playwright preserved the evidence and passed a retries-disabled focused run, ten repetitions and the seven-case affected spec without reproducing a defect; no speculative test or production change was made (`.opencode/scratchpad/batch-3-browser-repair/diagnosis.md`).
-- Final comparison `.ts-regression-checker/reports/session-feat-frontend-abclass-metadata/runs/2026-10-22T03-20-18.130Z/comparison.txt`: seven checks pass, zero regressions/new failures, only the original six accepted backend warnings. Baseline and policy are unchanged. Commit/push pending.
-- Evidence: `.opencode/scratchpad/batch-3-implementation/` and `.opencode/scratchpad/batch-3-tests/`. Batches 4–5 have not started.
+- Final comparison `.ts-regression-checker/reports/session-feat-frontend-abclass-metadata/runs/2026-10-22T03-20-18.130Z/comparison.txt`: seven checks pass, zero regressions/new failures, only the original six accepted backend warnings. Baseline and policy are unchanged. Hooks passed; commit `9d18e19b87e5808842a3cb84c976cf8458901993` (`refactor(frontend): tighten metadata task contracts and mutation ownership`) was pushed to `origin/feat/frontend-abclass-metadata`.
+- Evidence: `.opencode/scratchpad/batch-3-implementation/` and `.opencode/scratchpad/batch-3-tests/`.
+
+### Batch 4 — implementation and verification
+
+- Implementation corrected prefetch log attribution, removed the unreachable timestamp guard, replaced disabled-query double casting with checked typing and cleaned the queue JSDoc example. Testing Specialist hoisted the bridge lookup, removed its unreachable error and restored synthetic-test globals through Vitest stubbing in both related suites.
+- Focused synthetic validation passed 18 tests; full synthetic coverage passed 34 files / 384 tests and thresholds. Targeted frontend query validation passed 18 tests, relevant lint and all TypeScript checks passed. Docs aligned the prefetch contract and labelled the older plan attribution as historical. No data shapes changed.
+- Independent review (`.opencode/scratchpad/batch-4-review.md`) returned **PASS — CLEAN**, including 2,869 frontend tests, 384 synthetic tests, all 314 browser tests, lint and TypeScript checks; only existing warnings remain.
+- Initial comparison at `2026-10-22T04-13-37.706Z` flagged a retry-passed bulk-create case. The snapshot showed Year group remained unselected. Playwright added the established popup-readiness wait before Cohort/Year group option clicks, without changing assertions; ten repetitions and all 16 cases in the affected spec passed. Independent repair review returned **PASS — CLEAN**, including all 314 browser tests (`.opencode/scratchpad/batch-4-browser-repair/review.md`). This small gate-repair deviation is included in batch 4.
+- Production build passed. Final comparison `.ts-regression-checker/reports/session-feat-frontend-abclass-metadata/runs/2026-10-22T04-48-11.000Z/comparison.txt`: seven checks pass, zero regressions/new failures, unchanged six accepted backend warnings. Commit/push pending.
+- Evidence: `.opencode/scratchpad/batch-4-implementation/` and `.opencode/scratchpad/batch-4-tests/`. Batch 5 has not started.
 
 ## Decisions
 
