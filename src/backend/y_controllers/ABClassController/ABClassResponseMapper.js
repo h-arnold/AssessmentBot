@@ -16,7 +16,9 @@ class ABClassResponseMapper {
    *
    * @param {Object} partialDocument - Raw partial document read from storage.
    * @returns {Object} Normalised class partial payload with always-present nullable metadata.
-   * @throws {TypeError} If the document is not a plain object or lacks required fields.
+   * @throws {TypeError} If the document is falsy or not an object, or if its
+   *   `teachers` field is not an array. No plain-prototype, array-document or
+   *   field-completeness check is performed.
    * @throws {ABClassMetadataValidationError} If present metadata is invalid.
    */
   _normaliseClassPartial(partialDocument) {

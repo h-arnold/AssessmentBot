@@ -49,11 +49,6 @@ async function chooseOptionWithKeyboard(
 }
 
 /**
- * Opens standalone Heatmaps with the canonical class and assignment selected.
- * @param {Page} page - Browser page under test.
- * @returns {Promise<void>} Resolves when the heatmap is ready.
- */
-/**
  * Selects the canonical class and assignment in standalone Heatmaps.
  * @param {Page} page - Browser page under test.
  * @returns {Promise<void>} Resolves when the inputs are selected.

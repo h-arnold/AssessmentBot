@@ -558,7 +558,10 @@ contract for StudentSubmission is documented in [Contract: Assignment](assignmen
 - Constructor and `fromJSON` normalisation retain the existing course-length fallback of `1`; roster initialisation retains its existing current-value fallback. `_parseNullableInt` checks both numeric input magnitudes and parsed results for safety. Existing prefix parsing of safe values is unchanged (for example, `'3years'` becomes `3` and the string `'1e21'` becomes `1`); an unsafe numeric `1e21` takes the fallback before parsing.
 - On updateABClass, `active` must be a boolean or null.
 - `classOwner`, `teachers`, `students`, `assignments` are forbidden in updateABClass requests.
-- The response mapper (`_normaliseClassPartial`) throws `TypeError` if a partial document is not a plain object or lacks an array `teachers` field.
+- The response mapper (`_normaliseClassPartial`) throws `TypeError` in two cases: a falsy or
+  non-object partial document, or a `teachers` field that is not an array. It enforces no plain
+  prototype, so an array document is not rejected on that basis (it still needs an array
+  `teachers` field); nullable fields are then null-defaulted as described above.
 - ABClass model construction, restoration, explicit metadata replacement and both serializers enforce the shared strict metadata-domain contract. The response mappers (`_normaliseClassPartial()`, `_buildClassSummary()`, `_toReadView()`) project validated, detached `metadata` on partial-list, mutation-summary and full-read responses (Section 6). `ABClassValidation._validateRequestMetadata()` now validates explicitly supplied request `metadata` before any read/roster/write and tags only those failures with request provenance (Section 7). The transport boundary (`abclassMutations.js` → `adaptMetadataRequestError_`) adapts only a request-provenance typed metadata failure to `ApiValidationError`/`INVALID_REQUEST`; stored/model, projection, persistence, upstream and wiring failures remain generic `INTERNAL_ERROR` (Section 8).
 
 ### Known discrepancies
@@ -1036,7 +1039,7 @@ Delivered prepared writes (`ABClassPersistence`, Section 5):
 > the projection is not treated as intended design; either mechanism satisfies the unchanged
 > persisted, transport and validation contract.
 
-- A metadata-bearing legacy record is projected as `null` with no read-time write. A whole-class
+- A metadata-absent legacy record is projected as `null` with no read-time write. A whole-class
   save includes the field; a selective editable-field patch may leave absence in the full
   document while rebuilding the partial with `null`; a field-scoped roster patch changes neither
   store's metadata. Absence and `null` stay semantically equivalent until the next explicit

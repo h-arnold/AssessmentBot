@@ -4,7 +4,6 @@ import {
   createLaterVersionMetadataScenario,
   POST_ANALYSIS_ASSIGNMENT_TITLE,
   POST_ANALYSIS_CLASS_NAME,
-  POST_ANALYSIS_CLASS_ID,
 } from './helpers/post-analysis-metadata-scenarios';
 import {
   getMethodCalls,
@@ -12,10 +11,9 @@ import {
   selectVisibleOption,
 } from './shared/endToEndRuntimeMocks';
 
-const MAX_EXPECTED_CLASS_READS = 3;
+const EXPECTED_CLASS_READ_COUNT = 3;
 const STRICT_MODE_READ_COUNT = 2;
 const MAX_EXPECTED_WRITES = 1;
-const EXPECTED_CLASS_READ_COUNT = 3;
 const EXPECTED_REFRESH_WRITE_COUNT = 2;
 const EXPECTED_REFRESH_CLASS_READ_COUNT = 6;
 
@@ -39,7 +37,6 @@ test('persists changed post-analysis metadata for a class overview', async ({ pa
       return methodCalls.filter((method) => method === 'getABClass').length;
     })
     .toBe(EXPECTED_CLASS_READ_COUNT);
-  expect(POST_ANALYSIS_CLASS_ID).toBe('class-2');
   await expect(page.getByRole('status').filter({ hasText: /warning/i })).toHaveCount(0);
   await expect(page.getByRole('alert')).toHaveCount(0);
 });
@@ -61,13 +58,12 @@ test('persists changed post-analysis metadata for standalone Heatmaps without a 
 
   const calls = await getMethodCalls(page);
   expect(calls.filter((method) => method === 'updateABClass')).toHaveLength(MAX_EXPECTED_WRITES);
-  expect(calls.filter((method) => method === 'getABClass')).toHaveLength(MAX_EXPECTED_CLASS_READS);
+  expect(calls.filter((method) => method === 'getABClass')).toHaveLength(EXPECTED_CLASS_READ_COUNT);
   expect(calls.filter((method) => method === 'getABClassPartials')).toHaveLength(
     STRICT_MODE_READ_COUNT
   );
   expect(calls.indexOf('updateABClass')).toBeLessThan(calls.lastIndexOf('getABClass'));
   expect(calls).toContain('getAssignment');
-  expect(POST_ANALYSIS_CLASS_ID).toBe('class-2');
 
   // Removing and restoring the selected assignment commits two visible dataset
   // changes, exercising post-commit effects against the same loaded source.
@@ -105,7 +101,7 @@ test('writes a refreshed newer assignment version exactly once', async ({ page }
       const methodCalls = await getMethodCalls(page);
       return methodCalls.filter((method) => method === 'updateABClass').length;
     })
-    .toBe(1);
+    .toBe(MAX_EXPECTED_WRITES);
   await page.getByRole('button', { name: 'Refresh', exact: true }).click();
   await expect
     .poll(async () => {

@@ -130,16 +130,9 @@ Use context-aware APIs (`App.useApp`, `message.useMessage`, `notification.useNot
 
 ### Post-analysis metadata failures
 
-Shared feedback/invalidation is independently review-clean (5C). Both
-production averaging consumers call the shared page hook directly. The narrow
-keyboard seam was diagnosed and fixed in the shared E2E helper, and the full
-**303**-test browser run passed. Independent 5D review and the Section 5
-regression comparison are complete, with zero regressions and zero new failures.
-Section 6 real-browser rejection/dismissal acceptance is complete and
-independently review-clean. The browser coverage for save-failure and
-confirmed-save/refresh-failure feedback is implemented in
-`post-analysis-metadata.feedback.spec.ts`, and the Section 6 regression
-comparison recorded zero regressions and zero new failures.
+Both production averaging consumers call the shared page hook directly. Browser
+coverage for save-failure and confirmed-save/refresh-failure feedback is
+implemented in `post-analysis-metadata.feedback.spec.ts`.
 `hooks/postAnalysisFeedback.ts` uses the existing
 `App.useApp().notification` host, not static feedback or a second host. That host is
 required: production code has no silent no-host fallback, so a missing or incomplete
