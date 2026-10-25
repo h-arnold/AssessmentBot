@@ -12,7 +12,7 @@ and [#341](https://github.com/h-arnold/AssessmentBot/issues/341).
 - Product and contract authority: @SPEC.md .
 - Preview layout, copy and interaction authority: @ASSESSMENT_ERROR_PREVIEW_LAYOUT.md .
 - This plan sequences delivery; it does not reopen either approved document.
-- Section 1 is complete; Section 2 is complete; Sections 3–12 are **Not started**. Record actual changes,
+- Sections 1–3 are complete; Sections 4–12 are **Not started**. Record actual changes,
   checks/report paths, deviations and downstream implications under each section.
 
 ### Baseline execution record
@@ -419,7 +419,7 @@ Authoritative for this section; keep in sync when later sections touch these own
 
 ## Section 3 — Usable shared definitions and canonical spreadsheet blanks
 
-**Status: Green/review/compaction/regression gates complete. Commit/push gate pending.**
+**Status: Complete. Green/review/docs/compaction/regression/commit/push gates satisfied.**
 
 ### Outcome (compacted)
 
@@ -514,7 +514,12 @@ Authoritative for this section.
   `max-lines` warnings, no new lint failure. Gate accepted under baseline-debt rule,
   not a new waiver. Report:
   `.ts-regression-checker/reports/session-assessment-errors-322-341/runs/2026-10-25T18-36-52.169Z/comparison.txt`.
-- **Commit/push:** pending on branch `assessment-errors-322-341`.
+- **Commit/push:** `9f5dca8aeb97fcc36b78cbb7e79fbb9afe7171a6` —
+  `feat: validate shared definition artefacts and keep sheet comparisons transient`;
+  branch `assessment-errors-322-341`; `git push origin assessment-errors-322-341`
+  succeeded (`a53c1afe..9f5dca8a`). Normal formatting/staged-lint/all-TypeScript hooks
+  passed; no bypass. Subsequent plan-only recording commit uses message
+  `docs: record Section 3 completion and push evidence` on the same branch.
 
 ## Section 4 — Student acquisition and extraction outcomes
 
