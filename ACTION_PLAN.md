@@ -402,7 +402,7 @@ Authoritative for this section; keep in sync when later sections touch these own
   regression gate, compact it to outcomes, essential handoffs and verification
   evidence; do not compact an incomplete section or discard unresolved findings.
   Section 1 was compacted from 141 to 25 lines; this pass compacts Section 2.
-- **Commit record:** clean Red checkpoint `e71e309f` with message `feat(assessment): checkpoint explicit error contracts and section 2 red coverage`, pushed to `origin/assessment-errors-322-341`; checkpoint evidence `69d95fca` with message `docs(plan): record clean red checkpoint commit and push`. Final Section 2 completion commit: pending (record SHA, message and push result after commit).
+- **Commit record:** clean Red checkpoint `e71e309f` with message `feat(assessment): checkpoint explicit error contracts and section 2 red coverage`, pushed to `origin/assessment-errors-322-341`; checkpoint evidence `69d95fca` with message `docs(plan): record clean red checkpoint commit and push`. Final Section 2 completion commit `2a438a02` with message `feat(assessment): complete section 2 explicit error read contracts and activation`, pushed to `origin/assessment-errors-322-341` (push confirmed: `69d95fca..2a438a02`). Branch: `assessment-errors-322-341`. Pre-commit hook passed (lint-staged + typecheck:all); 42 files committed. Flaky-test exception recorded as approved deferred row.
 
 ## Section 3 — Usable shared definitions and canonical spreadsheet blanks
 
