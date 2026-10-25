@@ -4,10 +4,10 @@ This document records the frontend convention for decimal-place precision when r
 
 ## The Rule
 
-| Context                            | Precision          | Rationale                                                                                                 |
-| ---------------------------------- | ------------------ | --------------------------------------------------------------------------------------------------------- |
-| **Individual student task scores** | **0 dp** (integer) | Individual task scores are always returned as integers by the backend. Decimals would add no information. |
-| **Class / assignment averages**    | **2 dp**           | Averages are computed floats and need 2-decimal-place precision.                                          |
+| Context                            | Precision          | Rationale                                                                                                         |
+| ---------------------------------- | ------------------ | ----------------------------------------------------------------------------------------------------------------- |
+| **Individual student task scores** | **0 dp** (display) | Individual backend scores may be fractional; the established heatmap display intentionally presents them at 0 dp. |
+| **Class / assignment averages**    | **2 dp**           | Averages are computed floats and need 2-decimal-place precision.                                                  |
 
 These two tiers keep the heatmap matrix compact (no unnecessary `.00` noise) while providing adequate detail for aggregate metrics.
 
@@ -40,7 +40,7 @@ When creating a new component that renders a `MetricResult`, follow the precisio
 1. **Individual task score display** — format at `0` dp (`formatMetricDisplayText(..., 0)`, or `precision={0}` on `MetricPill`).
 2. **Aggregate / average display** — format at `2` dp (`formatMetricDisplayText(..., 2)`, or omit the `precision` prop on `MetricPill` to use the default).
 
-If the data source provides sub-integer individual scores in future, this convention should be revisited.
+Fractional individual scores are supported by the backend and accepted by the shared assessment schemas. The existing 0 dp presentation convention remains unchanged; revisit it only if product requirements change.
 
 ## Keeping `aria-label` in Sync
 

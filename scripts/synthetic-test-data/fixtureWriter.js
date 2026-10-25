@@ -8,6 +8,8 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import * as prettier from 'prettier';
 
 import { validateSyntheticAnalysisGraph } from './validateSyntheticAnalysisGraph.js';
 
@@ -26,12 +28,25 @@ import { validateSyntheticAnalysisGraph } from './validateSyntheticAnalysisGraph
  * and manifest; the in-memory `persistence` graph is never written, and
  * full-output-root enforcement is left to the caller in
  * `generateSyntheticAnalysisFixtures.js`.
+ *
+ * Every view is serialised as JSON and then formatted with the installed
+ * Prettier configuration resolved from its canonical committed fixture path,
+ * so scratch and staging output share the committed byte representation.
+ * Staging and writing are asynchronous: callers must await
+ * `stageProfileFixtures` and `writeProfileFixtures` before treating the
+ * committed set as replaced. Replacement and cleanup
+ * (`commitStagedProfiles` and `discardStagedProfile`) are synchronous.
  */
 
 const JSON_INDENT_SPACES = 2;
 const STAGING_PREFIX = '.synthetic-staging-';
 const BACKUP_SUFFIX = '-previous';
 const PROFILE_DIRECTORY_MODE = 0o755;
+const REPOSITORY_ROOT = fileURLToPath(new URL('../../', import.meta.url));
+const COMMITTED_FIXTURE_DIRECTORY = join(
+  REPOSITORY_ROOT,
+  'tests/__mocks__/data/synthetic-analysis'
+);
 
 /**
  * Maps each named corpus view to the file it is persisted under. The writer and
@@ -50,10 +65,15 @@ export const PROFILE_VIEW_FILE_NAMES = new Map([
  * Serialises one view to its persisted on-disk representation.
  *
  * @param {unknown} view The view to serialise.
- * @returns {string} Pretty-printed JSON with a trailing newline.
+ * @param {string} filePath Canonical committed fixture path used to resolve the repository Prettier configuration.
+ * @returns {Promise<string>} Prettier-formatted JSON with a trailing newline.
  */
-function serialiseView(view) {
-  return `${JSON.stringify(view, null, JSON_INDENT_SPACES)}\n`;
+async function serialiseView(view, filePath) {
+  const configuration = await prettier.resolveConfig(filePath);
+  return prettier.format(`${JSON.stringify(view, null, JSON_INDENT_SPACES)}\n`, {
+    ...configuration,
+    filepath: filePath,
+  });
 }
 
 /**
@@ -62,9 +82,9 @@ function serialiseView(view) {
  * synchronous loader cannot drift apart.
  *
  * @param {object} graph The generated logical graph.
- * @returns {Map<string, string>} Serialised file contents keyed by file name.
+ * @returns {Promise<Map<string, string>>} Serialised file contents keyed by file name.
  */
-function buildProfileViewContents(graph) {
+async function buildProfileViewContents(graph) {
   const views = new Map([
     ['manifest', graph.manifest],
     ['classPartials', graph.transport.classPartials],
@@ -76,7 +96,13 @@ function buildProfileViewContents(graph) {
 
   const files = new Map();
   for (const [viewName, fileName] of PROFILE_VIEW_FILE_NAMES) {
-    files.set(fileName, serialiseView(views.get(viewName)));
+    files.set(
+      fileName,
+      await serialiseView(
+        views.get(viewName),
+        join(COMMITTED_FIXTURE_DIRECTORY, graph.manifest.profile, fileName)
+      )
+    );
   }
 
   return files;
@@ -102,10 +128,10 @@ function writeProfileFiles(directory, files) {
  * @param {object} options Staging inputs.
  * @param {object} options.graph The generated logical graph to persist.
  * @param {string} options.outputRoot Directory the staging directory is created under.
- * @returns {{stagingDirectory: string, profileDirectory: string}} The staged profile location.
+ * @returns {Promise<{stagingDirectory: string, profileDirectory: string}>} The staged profile location once every view has been written.
  * @throws {Error} When validation fails or a staged file cannot be written.
  */
-export function stageProfileFixtures({ graph, outputRoot }) {
+export async function stageProfileFixtures({ graph, outputRoot }) {
   validateSyntheticAnalysisGraph(graph);
   const profileDirectory = join(outputRoot, graph.manifest.profile);
 
@@ -113,7 +139,7 @@ export function stageProfileFixtures({ graph, outputRoot }) {
   const stagingDirectory = mkdtempSync(join(outputRoot, STAGING_PREFIX));
 
   try {
-    writeProfileFiles(stagingDirectory, buildProfileViewContents(graph));
+    writeProfileFiles(stagingDirectory, await buildProfileViewContents(graph));
     chmodSync(stagingDirectory, PROFILE_DIRECTORY_MODE);
   } catch (error) {
     rmSync(stagingDirectory, { recursive: true, force: true });
@@ -191,6 +217,7 @@ export function discardStagedProfile({ stagingDirectory }) {
  * applied replacement back if a later replacement fails.
  *
  * @param {Array<{stagingDirectory: string, profileDirectory: string}>} stagedProfiles Fully written staged profiles in replacement order.
+ * @returns {void} Returns once every staged profile has replaced its committed directory.
  * @throws {Error} When a replacement fails; applied replacements are rolled back and uncommitted staged profiles discarded first.
  */
 export function commitStagedProfiles(stagedProfiles) {
@@ -223,8 +250,9 @@ export function commitStagedProfiles(stagedProfiles) {
  * @param {object} options Write inputs.
  * @param {object} options.graph The generated logical graph to persist.
  * @param {string} options.outputRoot Directory the profile subdirectory is written under.
+ * @returns {Promise<void>} Resolves once the staged profile has replaced its committed directory.
  * @throws {Error} When validation fails or any file cannot be written.
  */
-export function writeProfileFixtures({ graph, outputRoot }) {
-  commitStagedProfiles([stageProfileFixtures({ graph, outputRoot })]);
+export async function writeProfileFixtures({ graph, outputRoot }) {
+  commitStagedProfiles([await stageProfileFixtures({ graph, outputRoot })]);
 }

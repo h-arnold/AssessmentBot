@@ -72,14 +72,14 @@ function snapshotDirectory(directory: string): Record<string, string> {
 }
 
 describe('opt-in full-large profile writing', () => {
-  it('writes the full profile to the permitted ignored root and leaves committed representative fixtures unchanged', () => {
+  it('writes the full profile to the permitted ignored root and leaves committed representative fixtures unchanged', async () => {
     const committedRepresentative = join(REPOSITORY_ROOT, COMMITTED_REPRESENTATIVE_PROFILE_PATH);
     const before = snapshotDirectory(committedRepresentative);
     const outputRoot = join(FULL_OUTPUT_ROOT, `stress-probe-${process.pid}`);
     const profileOutputRoot = join(outputRoot, LARGE_FULL_PROFILE_NAME);
 
     try {
-      generateFullProfile({ outputRoot });
+      await generateFullProfile({ outputRoot });
 
       for (const viewFileName of PROFILE_VIEW_FILE_NAMES) {
         expect(

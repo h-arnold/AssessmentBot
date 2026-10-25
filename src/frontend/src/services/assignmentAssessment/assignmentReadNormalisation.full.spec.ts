@@ -459,6 +459,19 @@ describe('normaliseAssignmentRead full payload', () => {
       expect
         .soft(JSON.stringify(warn.mock.calls))
         .toContain(`items.${extraTask}.assessments.formulaComparison`);
+
+      const privateCriterionKey = 'PRIVATE_STUDENT_RESPONSE_SENTINEL';
+      extraCriterion.submissions[0].items[extraTask].assessments = {
+        completeness: { score: 3, reasoning: 'private reasoning' },
+        accuracy: { score: 3, reasoning: 'private reasoning' },
+        spag: { score: 3, reasoning: 'private reasoning' },
+        [privateCriterionKey]: {},
+      };
+      warn.mockClear();
+      expect.soft(() => normaliseAssignmentRead(extraCriterion)).not.toThrow();
+      const unexpectedKeyDiagnostics = JSON.stringify(warn.mock.calls);
+      expect.soft(unexpectedKeyDiagnostics).not.toContain(privateCriterionKey);
+      expect.soft(unexpectedKeyDiagnostics).toContain(`items.${extraTask}.assessments`);
     } finally {
       warn.mockRestore();
     }

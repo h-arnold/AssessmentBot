@@ -1,4 +1,5 @@
 import { callApi, parseApiResponse } from '../apiService';
+import { normaliseAssignmentRead } from './assignmentReadNormalisation';
 import {
   StartAssessmentRunRequestSchema,
   StartAssessmentRunResponseSchema,
@@ -31,7 +32,8 @@ export async function startAssessmentRun(input: StartAssessmentRunRequest): Prom
  * Fetches the fully rehydrated Assignment for a single assignment.
  *
  * @remarks Wraps the backend `getAssignment` method (dispatches internally to `getAssignment_`). The response is the full
- * rehydrated `Assignment.toJSON()` shape (not a partial). `null` means the
+ * rehydrated `Assignment.toReadJSON()` shape (not a partial), normalised before
+ * final response-schema parsing. `null` means the
  * assignment document was not found.
  *
  * @param {GetAssignmentRequest} input Request payload with `courseId` and `assignmentId`.
@@ -39,9 +41,10 @@ export async function startAssessmentRun(input: StartAssessmentRunRequest): Prom
  */
 export async function getAssignment(input: GetAssignmentRequest): Promise<AssignmentFullResponse> {
   const parsedInput = GetAssignmentRequestSchema.parse(input);
-  return parseApiResponse(
-    AssignmentFullResponseSchema,
-    GET_ASSIGNMENT_METHOD,
-    await callApi(GET_ASSIGNMENT_METHOD, parsedInput)
-  );
+  const response = await callApi(GET_ASSIGNMENT_METHOD, parsedInput);
+  const rootResponse =
+    response === null ? null : { ...(response as Record<string, unknown>), submissions: [] };
+  parseApiResponse(AssignmentFullResponseSchema, GET_ASSIGNMENT_METHOD, rootResponse);
+  const normalisedResponse = normaliseAssignmentRead(response);
+  return parseApiResponse(AssignmentFullResponseSchema, GET_ASSIGNMENT_METHOD, normalisedResponse);
 }

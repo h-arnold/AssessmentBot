@@ -1,6 +1,17 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { withGlobalMocks } from '../helpers/globalMockManager.js';
 
+function withClassroomCoursework(getCourseWork, callback) {
+  const globals = withGlobalMocks({
+    Classroom: { Courses: { CourseWork: { get: getCourseWork } } },
+  });
+  try {
+    return callback();
+  } finally {
+    globals.restore();
+  }
+}
+
 // Hermetic behaviour coverage for Assignment factory routing and serialisation
 // without invoking GAS services.
 describe('AssignmentFactory behaviour', () => {
@@ -268,17 +279,39 @@ describe('AssignmentRehydration behaviour', () => {
     expect(instance.submissions).toEqual([]);
   });
 
-  it('applies default names and null dates when absent', () => {
+  it('preserves null dates when absent with a valid saved assignment name', () => {
     const instance = globalThis.AssignmentRehydration._baseFromJSON({
+      courseId: 'course-two',
+      assignmentId: 'assignment-two',
+      assignmentName: 'Saved assignment two',
+      createdAt: '2026-01-02T03:04:05.000Z',
+      submissions: [],
+    });
+    expect(instance.assignmentName).toBe('Saved assignment two');
+    expect(instance.dueDate).toBeNull();
+    expect(instance.updatedAt).toBeNull();
+    expect(instance.assignmentDefinition).toBeNull();
+  });
+
+  it.each([
+    ['null', null],
+    ['missing', undefined],
+  ])('rejects a %s saved assignment name without Classroom recovery', (_label, assignmentName) => {
+    const getCourseWork = vi.fn(() => {
+      throw new Error('Restoration must not fetch Classroom metadata');
+    });
+    const data = {
       courseId: 'course-two',
       assignmentId: 'assignment-two',
       createdAt: '2026-01-02T03:04:05.000Z',
       submissions: [],
+    };
+    if (assignmentName !== undefined) data.assignmentName = assignmentName;
+
+    withClassroomCoursework(getCourseWork, () => {
+      expect(() => globalThis.AssignmentRehydration._baseFromJSON(data)).toThrow();
+      expect(getCourseWork).not.toHaveBeenCalled();
     });
-    expect(instance.assignmentName).toBe('Assignment assignment-two');
-    expect(instance.dueDate).toBeNull();
-    expect(instance.updatedAt).toBeNull();
-    expect(instance.assignmentDefinition).toBeNull();
   });
 
   it('rehydrates valid submissions directly', () => {

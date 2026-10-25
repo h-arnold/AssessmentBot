@@ -55,26 +55,7 @@ class AssignmentSerialisation {
 
     const submissions = legacy
       ? AssignmentSerialisation.copyJsonSnapshot(legacy.submissions)
-      : (this._assignment.submissions || []).map((sub) => {
-          if (sub && typeof sub.toJSON === 'function') return sub.toJSON();
-          // Fallback serialisation for StudentSubmission-like objects
-          const out = {};
-          if (sub && typeof sub === 'object') {
-            out.studentId = sub.studentId || sub.userId || null;
-            if ('documentId' in sub) out.documentId = sub.documentId;
-            if ('score' in sub) out.score = sub.score;
-            if ('feedback' in sub) out.feedback = sub.feedback;
-            if (sub.updatedAt instanceof Date && !Number.isNaN(sub.updatedAt.getTime()))
-              out.updatedAt = sub.updatedAt.toISOString();
-            else if (sub.updatedAt) out.updatedAt = sub.updatedAt;
-            // copy any other enumerable properties (non-enumerable like methods are ignored)
-            Object.assign(
-              out,
-              Object.fromEntries(Object.entries(sub).filter(([key]) => !Object.hasOwn(out, key)))
-            );
-          }
-          return out;
-        });
+      : this._assignment.submissions.map((submission) => submission.toJSON());
 
     const output = {
       courseId: this._assignment.courseId,

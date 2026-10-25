@@ -12,7 +12,7 @@ and [#341](https://github.com/h-arnold/AssessmentBot/issues/341).
 - Product and contract authority: @SPEC.md .
 - Preview layout, copy and interaction authority: @ASSESSMENT_ERROR_PREVIEW_LAYOUT.md .
 - This plan sequences delivery; it does not reopen either approved document.
-- Section 1 is complete; Section 2 is in progress and Sections 3–12 are **Not started**. Record actual changes,
+- Section 1 is complete; Section 2 is complete; Sections 3–12 are **Not started**. Record actual changes,
   checks/report paths, deviations and downstream implications under each section.
 
 ### Baseline execution record
@@ -32,6 +32,10 @@ and [#341](https://github.com/h-arnold/AssessmentBot/issues/341).
 
 ## Deferred and Out-of-Scope Findings
 
+| Finding                                            | Severity | Scope rationale                                                                                                                             | Evidence                                                                                                                                      | Disposition | User decision                                                                                                                                                                                                                                                                                                                                                                                                        |
+| -------------------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- | ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Manage Year Groups retry-recovered gate regression | Material | Delivery gate blocks, but unrelated unchanged year-group interaction is outside Section2 authorised change surface; causal link unsupported | section2-gate-browser-diagnosis.md; first attempt Edit dialog absent, retry passed; baseline first-attempt pass; focused unchanged run passed | approved    | User explicitly authorises accepting this single flaky-test exception without repair, waiving the otherwise non-waivable regression gate for Section 2 completion. Cause unknown; baseline passed first attempt; focused unchanged run also passed first attempt. Follow-up: monitor and stabilise in a later section if recurrence; no checker policy change, no hook bypass, no repair authorised for this section |
+
 | Finding                                                                                | Severity | Scope rationale                                                                                                                                                                                   | Evidence                                                                                                                                                  | Disposition | User decision                                                                                                                                                                                                     |
 | -------------------------------------------------------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Corpus regeneration timing versus complete-section Red collection                      | Material | Sequencing ambiguity: Red must collect before consolidated review, but committed-fixture regeneration was scheduled in Green                                                                      | Schema suite collects zero tests; preview/oracle focused run has 13 corpus-marker failures; `.opencode/scratchpad/remaining-red-preview-oracle-tests.log` | approved    | User authorised fixture-only regeneration during Red, twice for reproducibility; finish all Red work before consolidated review; final section gates unchanged                                                    |
@@ -42,6 +46,14 @@ and [#341](https://github.com/h-arnold/AssessmentBot/issues/341).
 | Red checkpoint push destination | Material | Current worktree has detached HEAD; user authorised commit/push after clean Red but no destination branch was selected | `git branch --show-current` returns empty | approved | User selected a new dedicated assessment-error branch; create assessment-errors-322-341 or a non-conflicting suffix after clean Red, preserve unrelated work |
 
 | Red checkpoint root authorities and interleaved feature scope | Material | Section 1 and Section 2 plan-owned hunks are interleaved; root plan/spec/layout are untracked feature authorities | Read-only ownership preflight: 157 proposed feature paths, seven in-status exclusions; no pre-Section-1 Git status baseline or section-isolated diff | approved | User approved the combined Section 1 + Section 2 feature checkpoint including ACTION_PLAN.md, SPEC.md and ASSESSMENT_ERROR_PREVIEW_LAYOUT.md; unrelated edits and runtime outputs remain excluded |
+| Restoration-mode default ownership | Material | Green requires omitted mode to mean full, defaults are constructor-only, and restoration previously bypassed construction | Assignment constructor fetched Classroom metadata; `_baseFromJSON` used `Object.create(Assignment.prototype)` | approved | User authorises constructor-based restoration with supplied saved metadata skipping unnecessary Classroom calls, preserving saved name/creation time and constructor-owned defaults; new assignment creation retains its fetch |
+| Saved null assignment name versus strict read contract | Material | Constructor extension preserved explicit null while full assignment read schema requires a string | Data Shapes audit: assignment.md discrepancy 22; constructor saved-metadata branch; AssignmentFullSchema.assignmentName z.string() | approved | User directs deleting the generated assignment-name fallback entirely; null/missing names must fail with an unhandled exception, no recovery fetch or schema widening. This supersedes earlier undefined-only fallback and nullable-name restoration notes |
+
+| Generator writer versus hook JSON formatting | Material | Byte-reproducibility is required; hook changed three assignment JSON files to Prettier formatting while synchronous writer uses JSON.stringify | Synthetic 748 pass/one byte-regeneration failure; all 18 parsed structures equal; parent Prettier API check reproduces committed bytes for all three profiles | approved | User approves existing fixtureWriter reconciliation using installed Prettier plus necessary async caller/test plumbing; preserve atomic writes and byte assertions, no hook bypass/new dependency/schema change |
+
+| Full-profile writer stress verification exhausted heap | Material | Existing opt-in stress test directly calls the newly asynchronous writer; compact gates pass, but no successful full-profile validation or attribution to baseline exists | Two attempts exhausted Node heap (default and NODE_OPTIONS=--max-old-space-size=4096); no assertion result. Synthetic compact suite 750 pass, all18 regenerated outputs match twice | approved | User approves bounded read-only diagnosis and baseline comparison where feasible, not larger-heap reruns, performance refactoring or waiving validation. Diagnosis active; check remains unverified |
+
+| Unattributed optional full-profile stress limitation after diagnosis | Material | Compact required gates pass; opt-in full-profile check is not a required regression gate but writer path remains unverified at full scale | Two heap failures; bounded diagnosis found no crash trace/baseline run, attribution unknown; section2-full-profile-memory-diagnosis.md | approved | User approves proceeding with consolidated Green review and all required gates while deferring optional full-profile stress as an accepted validation limitation/follow-up. Do not claim stress passes or attribute it to baseline |
 
 ## Scope and assumptions
 
@@ -204,944 +216,193 @@ separation if the estimate crosses 500; this is a maintenance gate, not a produc
 
 ## Section 2 — Atomic read-contract and canonical-corpus cut-over
 
-### Current execution checkpoint
+**Status: complete.** User-authorised completion with one recorded flaky-test exception
+(deferred ledger, disposition approved); no checker policy change, hook bypass or
+assertion weakening.
 
-- **In progress, substep 2a Green.** Section 1's completed gate remains valid.
-  Generator/projection changes are implemented but not yet reviewed; validators are
-  in progress. Committed corpus regeneration and substeps 2b–2d have not started.
-- Testing Specialist added
-  `tests/synthetic-analysis/syntheticAssessmentContract.test.ts`,
-  `syntheticAssessmentProjection.test.ts` and
-  `syntheticAssessmentValidation.test.ts` in that same directory.
-- Initial review: `.opencode/scratchpad/review-section2a-red.md` (R1–R7).
-  Latest independent review:
-  `.opencode/scratchpad/review-section2a-red-rereview.md` (**FAIL**, F1–F8).
-- Fresh reviewer checks: synthetic lint and `npm run typecheck:all` pass.
-  Synthetic coverage invocation has 37 files / 409 tests, **22 failing / 387 passing**;
-  failures are confined to the three new suites. This is **not** passing coverage or
-  clean Red evidence: some failures are intended missing capabilities, but invalid
-  controls and contradictory assertions remain. No failure has been waived.
-- Resume by repairing the tests, not by implementing production to fit invalid probes:
-  F1 full source retention versus partial-only redaction; F2 raw spreadsheet grids
-  rather than JSON strings; F3 array/keyed task IDs, partial-only eligibility and exact
-  roster-index-2 preservation; F4 assignment/student/task-scoped full AND partial E
-  lookup and exact catalogue copy; F5 valid acquisition controls and isolated mutations;
-  F6 valid IMAGE baseline and scoped unavailable-source mutation; F7 independently
-  valid persistence/full/partial boundary matrices without aliasing; F8 unknown/raw
-  narrowing instead of broad graph assertions and pervasive `any`.
-- R3 raw source-marker probes correctly distinguish copied source values from per-view
-  defaults; retain them. Existing absent marker, missing generated E and missing new
-  validator rules are intended Red, not reasons to delete tests.
-- Next gates: specialist test repairs → clean independent Red review → Section 2a
-  Green, then the remaining ordered substeps. **No full regression comparison within
-  this atomic cut-over**; run it only once all Section 2 work and reviews are complete.
-  No commits, pushes or deployment.
-- Continuation: the user explicitly requested `opencode-go/glm-5.3-flash` for the
-  Testing Specialist; subsequent testing handoffs use that verified model ID.
-  Contract/projection repairs were split coherently into a null-document companion
-  and raw-guard support. Validator repairs now use independent persistence/full/class
-  owner contexts, raw narrowing, and separate source/rule/null-document matrices.
-  Latest review: `.opencode/scratchpad/review-section2a-red-glm-rereview.md`.
-  It confirms prior F1/F2/F8 core repairs and identifies remaining G1–G5.
-  Specialist subsequently repaired G1–G4: submissions-array traversal, score-only
-  partial numeric/N mutation, target-bearing error-rule assertions, and document-bearing
-  missing-task coverage with separate legitimate no-submission acceptance. Focused
-  lint/type/formatter checks pass; expected behavioural Red is retained, not waived.
-  All suites/helpers remain at most 300 lines (largest matrix 290).
-  G5 definition/source/cause testing produced partial new
-  `syntheticAssessmentDefinitionSourceMatrices.js` and
-  `syntheticAssessmentSourceStateMatrices.js` files, but the background specialist
-  returned no response and the required one retry also returned no response. These
-  partial edits were preserved and subsequently completed/validated after the user
-  temporarily authorised the default testing model. The user then explicitly selected
-  `opencode-go/glm-5.3-flash` for **both Implementation and Testing Specialist**.
-  That historical model choice was superseded by the user's latest instruction:
-  use the regular configured models for Implementation and Testing Specialist.
-  Write handoffs in full English with explicit acceptance criteria and restraints,
-  and attach narrowly relevant files only, not blanket documentation sets.
-  G5/H1/H2 repairs are complete, including exact catalogue reasoning and valid blank
-  templates. Final independent **CLEAN RED**:
-  `.opencode/scratchpad/review-section2a-red-h1h2-final.md`.
-- Green generator/projection milestone (GLM Implementation): marker set on persistence
-  and copied by both whitelist owners; complete three-criterion results with accuracy;
-  explicit assessment/acquisition variants; usable IMAGE/SPREADSHEET bodies; partial E
-  reasoning/cause retention. Changed existing generation/projection stages plus the
-  deterministic primitive helper. Focused Contract/Projection/NullDocumentVariant:
-  **10 tests pass**, synthetic lint/typecheck/formatter pass. No fixtures regenerated.
-  Validator owners are implemented; the initial 661-line helper was split into coherent
-  assessment-entry, artefact-source, record-guard and submission-state modules before
-  independent review. The eight initial Green review findings were repaired with
-  targeted Red tests: valid PNG bytes, marker checks, complete paired cause catalogue,
-  task identity, reference formulae, placeholder maps, null hashes and blank student grids.
-  Re-review: `.opencode/scratchpad/review-section2a-green-rereview.md`.
-  It confirms those repairs but identifies strict cause types/keys, explicit full
-  null-parent fields/maps/discriminators, full numeric/N reasoning, and PNG oracle gaps.
-  GLM Testing Specialist added **49 intended Red** rows for the three guard gaps and
-  strengthened the PNG oracle with independent inflation/raster checks (green).
-  GLM Implementation repaired all three guard gaps; the test owner reconciled the
-  older IMAGE placeholder acceptance case to a document-bearing extraction placeholder,
-  preserving strict null-parent base artefacts. Final scoped **Section 2a CLEAN**:
-  `.opencode/scratchpad/review-section2a-jsdoc-final.md` (functional review:
-  `.opencode/scratchpad/review-section2a-green-final.md`). Synthetic suites report
-  **730 passed / 17 unresolved**; lint/type checks pass. The **17 unresolved** consumer-schema, stale-assertion
-  and committed-corpus failures belong to the coordinated 2c/2d cut-over, not an
-  accepted baseline. No fixture regeneration or full regression gate has run.
-  Section 2b current-restoration Red is independently clean:
-  `.opencode/scratchpad/review-section2b-final-registration.md` (54 tests;
-  39 intended Red, 15 passing controls). Current-format implementation is in progress,
-  with coverage/source/partial suites now passing (28 tests in the latest focused run).
-  A current-restoration helper was extracted; initial lint and integrity repairs
-  are complete. All 54 original current-restoration tests pass; the broader targeted
-  model/factory run passed 210 tests. Independent review then passed the complete
-  backend coverage gate (3,045 tests; 85.06% branches) but found five additional
-  current-format contract gaps:
-  `.opencode/scratchpad/review-section2b-current-independent.md`.
-  These concern complete raw artefact validation, body/hash pairing, shared root/task
-  identity, deterministic timestamps and model-instance inputs. Those gaps and three
-  subsequent TABLE/canonical-task-id/blank-grid preservation findings are now repaired
-  with independently reviewed regression tests. Final **CURRENT-format scoped CLEAN**:
-  `.opencode/scratchpad/review-current-c1c3-final.md`; **3,101 backend tests pass**.
-  Lint has zero errors and only the six accepted historical warnings. This is not
-  overall Section 2b approval. Legacy projection/persistence Red tests are delegated
-  in background, alongside narrow canonical data-shape status updates. The synthetic
-  capability guide now records implemented generators/validators with corpus cut-over
-  explicitly pending. Remaining 2b read integration and 2c/2d have not started.
-  Section 2 remains incomplete; no full Section 2 regression gate has run.
-- Legacy Red readiness: `.opencode/scratchpad/legacy-red-test-review.md` records
-  twelve bounded test repair/addition units. The existing legacy tests are not
-  accepted as complete coverage. Projector rejection/marker setup, class mapper
-  fixture and marker-first opacity tests are repaired/added, and placeholder-shape
-  coverage is added; timestamp/deep-detachment, identity, authority and shared-read
-  suites have also been drafted but are not accepted. Some contain incomplete
-  coverage or invalid assumptions, including an unapproved extra projector argument
-  and remaining lifecycle fixture errors. The completed expanded-test audit is
-  `.opencode/scratchpad/legacy-expanded-test-audit.md` (**FAIL, not CLEAN RED**).
-  Ordinary read-save/current-replacement safety and actual registry/purity seams
-  remain unresolved. No absent-method failure is treated as proof that downstream
-  assertions are sound.
-  The original current-restoration family is independently confirmed **54/54 green**.
-  No legacy production implementation has started.
+**Section checks:** backend **3,181** tests; frontend **2,923**; builder **252**;
+synthetic **750** with coverage thresholds; `typecheck:all`; production build; plugin
+coverage; fresh **69/69** affected browser tests. Required compact synthetic coverage
+passes with finite local budgets (15 s regeneration, 20 s rollback). Lint has zero
+errors; backend exits non-zero solely for five accepted historical `max-lines` warnings.
+Optional full-profile stress is **not** counted as passing (see Implementation notes).
 
-- Scope constraint (24 October): the user explicitly requires tight adherence to
-  the plan and warns against excess tests. Repair existing tests first; the audit's
-  suggested coverage additions are not a separate authorised expansion of the plan.
-  No new test cases, suites or helpers were added in this repair pass.
-  Audit A's projector signatures (excluding the separately defective authority
-  suite), C's placeholder oracles and D's mapper oracles now have clean scoped
-  review: `legacy-signature-repair-confirmation.md`,
-  `legacy-C-repair-followup-review.md` and `d-repair-independent-review.md`
-  under `.opencode/scratchpad/`. Existing scoped tests remain intentionally Red.
-  Authority and persistence fixture repairs, timestamp oracles and overall legacy
-  readiness remain unresolved. These scoped approvals do not authorise legacy
-  production implementation or claim the Section 2 gate has passed.
+**Regression comparison:** session `assessment-errors-322-341`; baseline
+`2026-10-23T05:20:43.034Z`; current `2026-10-25T17:06:01.503Z`; report
+`.ts-regression-checker/reports/session-assessment-errors-322-341/runs/2026-10-25T17-06-01.503Z/comparison.json`.
+One retry-recovered Manage Year Groups case is accepted under the recorded exception;
+five historical backend warnings unchanged; one former factory warning fixed.
 
-- Legacy readiness (24 October follow-up): B/E/F/G/K repairs to the existing
-  authority, persistence, timestamp and read-serialisation cases are complete.
-  Final **CLEAN RED implementation readiness**:
-  `.opencode/scratchpad/legacy-two-corrections-review.md`. No cases or suites were
-  added. Optional expanded-audit H–J matrices are not implementation blockers.
-  Marker-first opaque persistence implementation is now under independent review;
-  the six marker/form opacity cases and three mixed persistence cases pass, as do
-  the original 54 CURRENT tests. A pre-existing metadata test's invalid current
-  fixture was corrected in place. Four superseded catch/reconstruct/drop/diagnostic
-  cases were removed from the existing factory coverage suite, not replaced by
-  another matrix: its eight retained cases plus CURRENT 54 pass (62 total).
-  Shared detached projection and approved read wiring remain pending. No full
-  Section 2 gate or overall Section 2b completion is claimed.
+### Outcome (compacted)
 
-- Backend Section 2b follow-through: opaque persistence, the shared pure projector
-  and model/class read wiring now have clean scoped review:
-  `.opencode/scratchpad/opaque-pure-projector-jsdoc-signoff.md` and
-  `.opencode/scratchpad/model-marker-typo-confirmation.md`.
-  `getAssignment_` now selects `toReadJSON()` after existing full-definition
-  resolution. Its review found no functional defect; final closure awaits the
-  endpoint documentation reconciliation (`section2b-api-review.md`). All **3,166
-  backend tests and coverage pass** (85.22% branches); six accepted historical
-  lint warnings remain, with no new errors. Existing API cases were updated in
-  place; no extra API matrix was added.
-  Backend process docs are updated, narrow data-shape/endpoint status updates are
-  in progress. Legacy compatibility is temporary and will be reviewed on **24 April
-  2027**, not automatically expired. Section 2c's explicitly planned full-read
-  normalisation Red spec is delegated in background with an eight-case cap; no
-  frontend production activation or corpus regeneration has started. The full
-  atomic Section 2 regression gate remains deferred until 2a–2d are complete.
+One atomic 2a–2d cut-over: version-1 marker-1 canonical corpus; constructor-based
+`Assignment` restoration with strict names; raw-validation/current-restoration and
+opaque legacy persistence; one detached reassessment projector; shared frontend read
+normalisation activated in both read services; explicit E analysis input;
+formatter-stable deterministic fixture writer. Contract tests and canonical docs were
+reconciled in the same change.
 
-User-requested maintenance: after each complete section passes its independent
-review and regression gate, have Docs compact it to outcomes, essential handoffs
-and verification evidence. Section 1 has been compacted from 141 to 25 lines.
-Do not compact an incomplete section or discard unresolved findings.
+### Retained for later sections
 
-Continuation checkpoint — Section 2c Red:
+**Backend restoration and reads**
 
-- **User-authorised CLEAN RED checkpoint committed and pushed successfully.**
-  Branch: `assessment-errors-322-341` (upstream `origin/assessment-errors-322-341`).
-  Commit: `e71e309fbd86c8882e063b839c2a08042ac62995`.
-  Exact message: `feat(assessment): checkpoint explicit error contracts and section 2 red coverage`.
-  Normal pre-commit formatting, scoped lint and `typecheck:all` passed; no bypass.
-  Hook rewrote only three assignmentsByKey JSON formatting outputs; no source/test
-  content changed. Excluded-file hashes unchanged; only the seven excluded status
-  entries remain outside the checkpoint. Explicit `git push -u origin assessment-errors-322-341`
-  succeeded, created remote branch and configured upstream. Hook and push logs:
-  `.opencode/scratchpad/section2-red-checkpoint-commit.log` and
-  `.opencode/scratchpad/section2-red-checkpoint-push.log`.
-  Intentional Red 11 cases/20 assertions remains; this is NOT section completion.
-  Remaining Green implementation and canonical docs may now proceed together before
-  ONE consolidated Green review; section regression/build/commit gates remain pending.
+- `Assignment` accepts an optional fourth constructor argument `restoration` carrying
+  saved `assignmentName` (string), `createdAt` and caller `representationMode`.
+  Presence of that object skips Classroom `CourseWork.get`; normal three-argument
+  creation still fetches exactly once. The constructor owns transient
+  `_restorationMode` (default `full` only there), validates explicit `full`/`partial`,
+  throws on invalid values, and excludes the field from persistence/read JSON.
+  Stored/raw `_restorationMode` cannot override it. Restored objects carry no
+  hydration marker.
+- Strict assignment names: **no generated fallback**. Saved `null`/missing/non-string
+  names throw unhandled without a fetch; a fetched `null`/missing/non-string title
+  throws after one fetch. Valid strings, including blank, and saved `createdAt` are
+  preserved. The assignment-name read schema remains `z.string()`; no widening or
+  recovery fetch.
+- Direct full reads use `Assignment.toReadJSON()` after `_ensureFullDefinition`; class
+  reads invoke the projector before replacing the embedded definition with
+  `assignmentDefinitionKey`.
+- Caller owns restoration mode (`full`/`partial`); never use stored
+  `representationMode`. The non-legacy plain-object serializer fallback is removed;
+  current submissions must supply `toJSON`.
+- Current-format restoration (`02_AssignmentCurrentRestoration.js`) validates raw
+  records before typed construction. Identifiable invalid items become all-three
+  `CORRUPT_RECORD` E with healthy siblings preserved; missing known tasks are
+  materialised from the embedded snapshot. Unknown stored task, untrustworthy
+  student/root/definition and constructor/wiring faults fail the owned dataset rather
+  than becoming E.
+- Full-read null source beside numeric/N or assessment-stage E becomes
+  `CORRUPT_RECORD`; partial redaction never triggers that check or hash generation.
+  Null-document/empty-map is the only confirmed no-submission omission.
+- Sole projector: `AssignmentRehydration.projectReassessmentSubmissions(assignment, students, form)`
+  with `form` exactly `'full' | 'partial'`. It emits detached placeholders through
+  model constructors: deterministic identity/times, validated
+  source IDs only, nullable `studentName`, marker `null`, and all three validation
+  `REASSESSMENT_REQUIRED` E. No roster/fetch on the full path; the class path uses its
+  loaded roster and stored task summaries. Projected entries never enter persistence
+  preparation.
+- Opaque legacy submission body and original marker presence/value are re-emitted
+  unchanged by `toJSON()`/`toPartialJSON()` on ordinary class saves. Read projections
+  never become write input. Legacy compatibility is reviewed **24 April 2027**; it
+  does not auto-expire.
+- Integration evidence boundary: class graphs use the existing real dispatcher/GAS
+  bridge and `getABClass`; full wire payloads use the real `getAssignment` service
+  with only `callApi` stubbed. Do not claim dispatcher/controller/database proof from
+  the stubbed transport, invent a full-assignment bridge seam, or introduce read
+  writes/roster refresh.
 
-- **COMPLETE SECTION 2 CLEAN RED confirmed** by same whole-section final sign-off:
-  `.opencode/scratchpad/section2-consolidated-red-signoff.md`. Criteria 1–16 manual
-  walkthrough complete, no remaining test/fixture/comment findings; R13/N4 closed.
-  Overall automated verdict remains FAIL solely for intentional runtime Red, not
-  readiness: frontend nine cases/16 assertion records and backend two/four (11/20).
-  These remain required Green work, not accepted technical debt. All-project types
-  pass; content/parity eight tests and nonquiet scoped lint pass independently.
-  Owner's claimed R13 validation log was absent; reviewer independently replaced
-  evidence with `signoff-focused-tests.txt`, `signoff-focused-lint-corrected.txt`,
-  `signoff-typecheck-all.txt` and `signoff-prettier.txt` in ignored scratchpad.
-  Proceed with user-approved combined feature Red checkpoint on dedicated branch,
-  including three root authorities, excluding all seven unrelated/runtime status
-  entries. Hooks must pass normally; no runtime Green until commit and push recorded.
-  This checkpoint does not complete Section 2 or trigger its final regression gate.
+**Frontend read and analysis contracts**
 
-- R13/residual N4 repaired in the existing content spec only: canonical IMAGE and
-  SPREADSHEET adoption preserves target task ID and remaps the task-derived UID
-  suffix; assertions verify association and canonical non-mutation. Two comments
-  now identify canonical cases truthfully. Eight focused content/parity tests,
-  formatting, scoped lint, all-project types and diff checks pass; evidence in
-  `.opencode/scratchpad/section2-r13-n4-validation.log`. Same full-section Red review
-  resubmitted for final sign-off using completed cumulative walkthrough. No clean
-  Red verdict, staging, commit/push or runtime Green yet.
+- `assignmentReadNormalisation.ts` (pure; no React, API dispatch or JSON decoding) is
+  active in both `assignmentAssessmentService` and `classDetailService`;
+  `assignmentReadItemValidation.ts` is the approved adjacent extraction. Final
+  `parseApiResponse`, not-found null, envelopes and transport semantics are unchanged.
+- Full normalisation validates strict roots/shared definitions, isolates only
+  identifiable items, logs bounded field paths/IDs (never payloads, names or arbitrary
+  keys), and revalidates the normalised result. Full `studentName` is `string | null`.
+- Partial normalisation validates provided entries only: no full fetch, roster query,
+  registry coverage inference or legacy graph synthesis. G5 marker-null entries require
+  exact provided reassessment maps.
+- G4 null-parent canonical corruption replacement is identity/idempotent in both
+  services. G6 safe paths collapse arbitrary unexpected criterion keys to the
+  assessments map (only known `formulaComparison` gets a bounded path); omitted partial
+  hash is valid and no longer masks assessment diagnostics; full hash diagnostics are
+  unchanged.
+- Full missing-wire-item defence uses the same payload only and never overwrites
+  backend E; test it separately from normal coverage.
+- E is an explicit analyser input. E increments no numeric/N/`totalDataPoints`/weight
+  counter and adds no denominator; wholly errored items resolve all four metrics to E.
+  Numeric, fractional, N, zero-weight, mixed and aggregate `excluded` semantics are
+  unchanged. `MetricResult` gains no reasoning/history. Individual fractional scores
+  are supported; presentation remains 0 dp.
 
-- Consolidated walkthrough is now COMPLETE for criteria 1–16; remaining unread
-  inventory is empty. Report: `.opencode/scratchpad/section2-consolidated-red-complete-review.md`.
-  Red readiness still FAIL pending two in-scope findings in the existing lookup
-  content spec: R13 canonical IMAGE/SPREADSHEET artefacts retain foreign task IDs
-  when adopted by the ready task; residual N4 labels those canonical cases local
-  exceptions. Test owner must preserve target associations and canonical source
-  bodies without mutation, correct the two comments, then resubmit the SAME full
-  section review using cumulative complete walkthrough evidence. Intentional runtime
-  Red remains 11 cases/20 assertion records; types pass. No staging or Green yet.
-  Carry forward Green docs correction: metric-display-precision.md must acknowledge
-  supported fractional individual scores, without changing presentation precision.
+**Canonical corpus and generator**
 
-- User approved inclusion of all three root feature authorities in the combined
-  Section 1 + Section 2 checkpoint; do not ask this scope decision again. Latest
-  consolidated reviewer invocation ended with usage-limit error and no new verdict.
-  Retry once from the saved exact unread inventory and cumulative repair evidence;
-  if delegation fails again, stop and ask the user. No clean Red, staging, branch,
-  commit, push or runtime Green is claimed by this continuation.
+- Canonical profiles `small`, `medium` and `large-representative` are regenerated
+  (18 compact outputs). Full/embedded records carry `assessmentContractVersion: 1`
+  and exactly three assessments including accuracy; no `formulaComparison` map key.
+  `STUDENT_INDEX_WITH_NULL_DOCUMENT` is an acquisition `SOURCE_UNREADABLE` E scenario;
+  genuine no-submission remains roster omission/local probes. IMAGE and SPREADSHEET
+  bodies are usable; pending IMAGE is not a completed assignment. Sections 3–4 may
+  reuse these bodies and local corruption probes; do not add a competing realistic
+  fixture family.
+- The marker is set once on the persistence record and explicitly copied by both
+  whitelist projections (`toTransportViews.js::toFullAssignment`,
+  `projectClassTransportViews.js::toPartialAssignment`).
+- `fixtureWriter` formats with the installed Prettier using the canonical repository
+  filepath/config, including staging/scratch output roots. Format/stage/write/
+  generation/CLI are async and awaited; `commitStagedProfiles` (no Promise) and cleanup
+  are synchronous; every profile is staged before atomic replacement/rollback. Two runs
+  reproduce all 18 committed outputs byte-for-byte with hash parity.
+- Synthetic guard owners: `artefactSourceGuards.js`, `assessmentEntryGuards.js`,
+  `validationRecordGuards.js`, `validateAssessmentState.js`; single
+  `assessmentScoreSchema` (duplicate partial export removed; cross-module consumer
+  migrated).
+- Generated GAS order: `02_AssignmentReadProjection.js` before
+  `02_AssignmentRehydration.js`, and `StudentSubmission/00_StudentSubmissionItem.js`
+  before `index.js`; covered by copied-output assertions.
+- Existing Playwright journeys were reconciled to the new wire contract. Deliberate
+  local score/layout overrides and the local unsupported TABLE exception remain.
+  Marker-less/unsupported wire roots are local invalid probes, not valid current
+  results; new error/legacy/refresh journeys belong to Section 10.
 
-- Read-only checkpoint ownership preflight returned: detached HEAD/index empty,
-  `origin` remote configured, no locally known assessment-errors-322-341 collision;
-  user already authorised that new branch or non-conflicting suffix (no repeat
-  branch decision needed). Proposal 157 feature paths excludes four pre-existing
-  agent definitions, ACTION_PLAN_TEMPLATE.md, unknown draft-scratch.md and .vitest
-  runtime cache; ignored scratch/reports/dependency outputs never staged. Candidate
-  counts are snapshots, not final git-add lists; final content must be audited after
-  clean review. S1/S2 hunks interleaved, historical baseline ownership relies on plan
-  plus actual diff review, not section-isolated Git history. Root plan/spec/layout
-  inclusion and combined checkpoint scope asked before staging. No files were staged,
-  branch created or push attempted; review is still active, all repair owners done.
+**Helper and documentation register**
 
-- R11/R12/N4/N5 repair batches complete: serializer helper positives now precede
-  intentional rejection; service nested task-2 artefacts independently checked/coherent;
-  specified new synthetic defaults removed with explicit callers; historical test
-  status wording corrected. Synthetic lint/172 targeted tests/scoped types pass;
-  final `typecheck:all` passes after service fixture type errors were fixed. Backend
-  targeted serializer retains one intended rejection, services two intended cases.
-  SAME consolidated whole-section review has resumed its remaining source/frontend/
-  transport/journey/canonical-doc walkthrough, with already-completed synthetic and
-  current/legacy walks retained as continuity. No per-file approval, runtime Green,
-  staging or checkpoint commit yet. Read-only candidate-ownership inventory is active.
+- Section 2 shared-helper slices are **implemented**: model raw validation;
+  rehydration traversal/coverage; `projectReassessmentSubmissions`;
+  `AssignmentSerialisation` read delegation; response mapper; frontend normaliser and
+  item validation; existing generator stages/validators.
+- Canonical docs reconciled with no new pages: `AssessmentFlow`, `rehydration`,
+  `api-layer`, frontend shared-helper §9.29, `metric-display-precision`,
+  synthetic-test-data, and data shapes `assignment`, `abclass`,
+  `assignment-definition`, `frontend-data-analysis-response`. Delivered `@remarks`
+  cover opaque legacy persistence versus detached read data, backend versus browser
+  coverage ownership, and constructor restoration. Sections 3–12 helper entries remain
+  `Not implemented`/planned.
+- Section 9 owns preview view-model fields and layout pointers; Section 10 owns new
+  browser journeys.
 
-- Third consolidated Red continuation remains **FAIL / manual inventory incomplete**:
-  `.opencode/scratchpad/section2-consolidated-red-final-review.md`. Current intentional
-  ledger is 11 cases / 20 assertion records (nine frontend cases/16 plus two backend
-  cases/four), all-project types and affected 69 browsers pass. R1–R10/N1–N3 repairs
-  are observed resolved except recorded further wording; no runtime Green performed.
-  New in-scope Red repairs: R11 hard nonlegacy serializer rejection skips retained
-  helper positives; R12 service task-2 definitions keep nested task-1 artefact IDs;
-  N5 three newly added synthetic helpers have parameter defaults; N4 further test
-  descriptions still assert pre-cut-over/missing behaviour. Repair all, then resume
-  SAME whole-section review with its now-shorter exact unread checklist, not interim
-  per-file reviews. All synthetic test/support families now read; remaining source,
-  frontend controls/transport, journeys and canonical docs still need manual coverage.
-  Green G7 ledger corrected: obsolete PartialAssessmentScoreSchema is imported by
-  syntheticGraphIntegrityAndScenarios.test.ts; migrate that test to shared schema owner
-  before removing export, preserving non-E assertions. No clean Red/commit/push yet.
+**Checks and commands**
 
-- All continued-review repairs are complete and SAME whole-section Red review has
-  resumed with previous reports' cumulative unread checklist. Final affected browser
-  pattern **69/69 passes without a flaky/retry summary** after measured-header wait
-  repair; log `.opencode/scratchpad/section2-red-repairs-final-browser-pattern.log`.
-  Prior failed attempt retained in reliability disposition, no baseline waiver.
-  Existing nonlegacy serializer coverage case now pins loud rejection of plain
-  submissions without `toJSON`; valid typed-current and opaquelegacy controls pass
-  (20 passing/one newly intended backend rejection failure). R10 adds another intended
-  backend case with three default-mode failures and passing explicit full/partial
-  controls. Do not reuse earlier backend-all-green totals as final-tree outcome.
-  Approved additive E type removes old type Red; `typecheck:all` passes. No runtime
-  Green fix or checkpoint commit yet. New assessment-error branch/commit/push is
-  authorised only AFTER complete Red review is independently clean, with hooks intact.
+- `npm run fixtures:synthetic` (twice; second output unchanged),
+  `npm run test:synthetic`, `test:backend`, `test:frontend`, `test:builder`,
+  `typecheck:all`, four scoped lint checks, production build, plugin coverage, and the
+  affected Playwright pattern
+  (`heatmap|task-preview|metric-range-filter|issue-320|navigation-screenshots`) form
+  the Section 2 gate. Compact synthetic tests use finite local budgets: 15 s
+  regeneration, 20 s rollback.
 
-- User selected a NEW dedicated assessment-error checkpoint branch; create only once
-  whole Red is clean, then commit/push plan-owned changes with hooks passing before
-  runtime Green. All current consolidated repair batches returned: R9 nested task
-  links/preflight pass; R10 default-full mode defect now has independent valid full
-  sibling and genuinely redacted partial control; R5 trailing call count executes;
-  N3/N4 test defaults/headers corrected. Type-only E union approved and implemented,
-  `typecheck:all` passes. Sheets source-action flake investigation found missing
-  measured-header synchronisation already present in Slides; reused it, no sleeps,
-  force clicks, assertion weakening or UI change. Targeted Sheets run passes first
-  attempt; prior flaky attempt retained, not waived. Disposition:
-  `.opencode/scratchpad/section2-source-link-reliability-disposition.md`.
-  Full affected browser pattern will validate final tree serially before same
-  consolidated review resumes remaining manual checklist. No clean Red/commit yet.
+### Implementation notes / deviations / follow-ups
 
-- Approved E input union/comment change implemented in `averagingAnalyser.types.ts`;
-  focused analyser 12 tests pass and **typecheck:all passes**, removing known hook
-  blocker without runtime feature fixes. R10 Red controls repaired: explicit-full and
-  genuinely redacted explicit-partial pass; default raw-partial mode path alone has
-  three intended assertion failures (17 pass/one failing case across two suites).
-  R5 trailing count now executes; N3 explicit helper arguments and N4 backend test
-  headers pass scoped checks (41 comment-only regression tests). R9 nested canonical
-  artefact linkage repaired, real normaliser preflight and seven heatmap tests pass.
-  Browser reliability investigation/N4 browser wording still active; no review restart
-  until all findings dispositioned. Branch preflight found detached HEAD; checkpoint
-  branch decision asked before committing/pushing after clean Red.
+Authoritative for this section; keep in sync when later sections touch these owners.
 
-- User **approved type-only Red preparation** to unblock mandatory checkpoint hooks:
-  add E to existing `averagingAnalyser.types.ts` score union and update its adjacent
-  comment only. Runtime service/normaliser/mode/serializer Green fixes remain deferred.
-  Include additive type in full consolidated Red review; all hook checks must pass.
-  This supersedes the pending type sequencing question below, not clean-Red requirement.
-
-- New user direction: commit and push plan-owned changes once WHOLE Section2 Red is
-  independently clean, before Green. No unrelated staging/hook bypass/deployment.
-  Hook blocker discovered: required `typecheck:all` fails on intentionally planned
-  E-score declaration gap. Additive type-only sequencing change is asked before action.
-  R10 Red fixture repair remains incomplete: latest main-current probe's sibling is
-  not independently valid under full/partial controls, target mode defect still Red.
-  Focused 17 pass/one failing case is NOT clean readiness; final scoped checks pending.
-
-- Continued consolidated Red review is **FAIL / manual walkthrough still incomplete**:
-  `.opencode/scratchpad/section2-consolidated-red-rereview.md`. Fresh full frontend:
-  2,914 pass / nine intended failing cases / 16 assertion records. New in-scope
-  findings: R9 remapped browser task definitions retain foreign nested artefact task IDs;
-  R10 raw stored `representationMode` can select partial restoration on full reads
-  (add Red protection now, explicit-boundary/constructor-owned mode fix in Green).
-  R5's unknown-task negative executes but hard rejection still skips trailing call-count
-  assertion. N3 new backend test-helper parameter defaults and N4 stale source/test
-  comments recorded; production comments remain Green-quality backlog, test wording
-  and defaults repaired during Red. All remain open pending consolidated verification.
-  Additional authorised Green cleanup: remove obsolete NONlegacy plain-submission
-  serializer fallback while preserving opaque legacy branch; covered by criterion 8.
-  Broader browser pattern: 68 passed / one retry-passed flake (Sheets source-action
-  activation); not accepted debt or clean first-attempt evidence. Investigate and
-  disposition before final browser gate; retain failed attempt. Unread checklist is
-  now the continued report's §Exact updated unread checklist; previously completed
-  backend/generator walks must not be needlessly restarted. No Green/review approval.
-
-- ALL consolidated Red repair batches have returned. R6/R7/R8 now use independent
-  schema-parsed sibling oracle, offending full null-parent source IDs, and marker-null
-  non-reassessment E alongside numeric/N in BOTH modes. Specs 466/500 lines; scoped
-  checks pass; normaliser result six intentionally failing cases / 12 assertion records,
-  five passing cases. Three service activation cases remain Red, now including executed
-  independent unknown-task rejection. Do not preserve stale eight-case/13-assertion
-  totals from the first review. Exact combined ledger is for reviewer verification.
-  The SAME consolidated whole-section Red review has resumed with ALL repaired
-  findings and the exact unread criteria/files checkpoint; no per-finding approval
-  requested. Backend/generator/transport/journey/documentation manual walkthrough
-  must be completed, not replaced by previous automated passes. Green remains blocked.
-
-- Consolidated browser repair validation now complete: real normaliser preflight
-  preserves R1/R2 linked full/embedded task projections, scores and paired hashes;
-  R3 valid null-parent acquisition-E fixture is preserved across all affected sibling
-  items. User-approved existing unavailable-source journey retains no-unsafe-link/no-
-  placeholder checks and rejects stale ready body. No UI or new journey introduced.
-  Parent's serialised five-spec run **45/45 passes**, log
-  `.opencode/scratchpad/section2-consolidated-red-repairs-e2e.log`; this supersedes
-  earlier shared-server connection-refused attempts, which remain recorded failures.
-  Scoped helper lint/format pass; only planned E-score type incompatibility remains.
-  Findings R1–R5/N1/N2 are applied/validated, awaiting the SAME whole-section review;
-  R6–R8 repair owner still active, no interim review or Green implementation started.
-
-- Consolidated Red repair checkpoints: R4/R5/N1/N2 applied in four authorised test
-  files; exact catalogue cause oracle and independent service-probe execution now
-  correct. Targeted frontend 19 pass / three intended activation-failing cases;
-  restoration 11 pass; scoped lint/format/diff pass; only planned production E-type
-  diagnostic. Findings await whole-section re-review, not independently closed.
-  R1/R2 task/hash edits applied but normaliser preflight initially failed to load;
-  browser retry hit connection-refused failures while another browser owner was
-  running. No browser pass claimed. Further browser execution is serialised;
-  R1/R2 owner now validates only real-normaliser preflight/lint/types until R3's
-  active browser run finishes. R6–R8 and R3 remain active repair batches.
-
-- R3 scope adjustment is **approved** by the user: reconcile the EXISTING unavailable-
-  source browser case to a valid acquisition-E record, preserve no-unsafe-link coverage,
-  remove the incompatible old ready-content requirement. Authorised surface expands
-  to `task-preview-source-link.states.spec.ts` and its existing fixture/scenario/
-  expectation helpers only as needed. No new journeys or preview UI implementation;
-  if current UI cannot exercise the no-link assertion, stop/report rather than expand.
-  The prior pending decision is superseded; proceed with consolidated finding repairs.
-
-- Consolidated Red review returned **FAIL and incomplete walkthrough**:
-  `.opencode/scratchpad/section2-consolidated-red-review.md`. Fresh frontend result:
-  2,915 pass / eight failing cases / 13 failed assertions; failures themselves remain
-  intended, but latent fixture/oracle/execution defects prevent clean Red approval.
-  Cumulative consolidated findings, all open: R1 browser full task projections empty;
-  R2 local TABLE full content/hash mismatch; R3 source-less ready journey contradiction
-  (asked user, deferred ledger); R4 incorrect nested cause matcher; R5 service unknown-
-  task probe skipped after hard failure; R6 healthy sibling oracle derived from SUT;
-  R7 full G4 stimulus lacks offending source IDs; R8 marker-null non-reassessment E
-  coverage missing; N1 analyser-test parameter default; N2 stale factory comments.
-  No fixes start while R3 scope decision is pending. After the decision, repair ALL
-  findings in bounded owner batches, then resume ONE whole-section consolidated Red
-  review with its exact unread criteria/files checkpoint (§Exact remaining manual-
-  review checkpoint), not per-finding reviews. Known Green-quality G7/G8, duplicate
-  extraction JSDoc and touched API import alias remain on consolidated Green backlog.
-  Fresh reviewer backend coverage passes 3,168 tests/85.26% branches; builder coverage
-  passes 252 tests. Synthetic 749 pass; browser subset 45 pass. These do not override
-  fixture defects or substitute for completion of the manual review/final gates.
-
-- The **ONE consolidated complete Section 2 Red review is now submitted**, covering
-  criteria 1–16 and the full authorised section inventory, not individual helpers.
-  Evidence packet: `.opencode/scratchpad/section2-consolidated-red-packet.md`.
-  Packet errata explicitly included in review: both last data-analysis stale cases
-  are resolved (49 targeted tests pass); the unauthorised shared name helper was
-  removed in favour of inline checks. Full builder suite now **252/252** across
-  23 files (`section2-complete-red-builder-tests.log`); no actual regression checker
-  ran (mocked checker messages belong to builder unit tests).
-  Expected remaining Red is eight behavioural cases plus one planned E-score type
-  incompatibility; final Green/coverage/build/browser/regression gates still pending.
-  No new feature Green implementation starts until complete-section Red findings
-  are dispositioned and all in-scope test issues resolved. No commit/push/deployment.
-
-- Complete-section Red authoring batches have returned; consolidated evidence packet
-  is being assembled before the ONE full-section Red review. Final current evidence:
-  backend **3,168/3,168 tests** (233 files), synthetic **749/749** (52 files), targeted
-  existing browsers **45/45** after final helper type repairs. Full frontend check
-  collected all 303 files: 2,913 pass / ten fail, of which two subsequently repaired
-  stale data-analysis schema tests now pass in a 49-test targeted run. Remaining
-  eight expected cases map to G4/G5/G6 and three read-service activation failures;
-  exact failure ledger must accompany consolidated review, not count them as debt.
-  Actual app/Node/E2E and synthetic type checks now report only planned production
-  E-score type incompatibility at criterion accumulation line 226 (same diagnostic
-  may repeat across projects). No test/helper type errors remain.
-  Final canonical lint checks: frontend exit 0 with 19 historical warnings; synthetic
-  and builder exit 0 with zero warnings; backend exit 1 with zero errors/five historic
-  warnings. Planned factory split removed its old sixth warning, as baseline report
-  confirms; no lint waiver/new warning. Logs: scratchpad `section2-complete-red-*`,
-  `section2-red-synthetic-final-verification.log`, `section2-helper-type-repair-*`.
-  No code review submitted yet; no full regression checker, commit, push or deployment.
-
-- Post-regeneration Red preflight found unexpected stale oracle/selector/local-fixture
-  problems, not just intended feature Red; evidence
-  `.opencode/scratchpad/section2-final-red-preflight.md`. Repairs remain unreviewed
-  pending complete-phase readiness. Backend shared partial oracle now retains exact
-  E reasoning/cause and redacts numeric/N; model-input tests 2 pass and embedded
-  serialization tests 5 pass. Current/legacy serializer probes now express explicit
-  mode intent rather than relying on corpus marker absence.
-  Read-service/local summary-page setup repaired: 32 tests collect, 29 pass / three
-  intended service-activation failures, no setup/collection failures or own types.
-  Class service corruption probe now uses real canonical two-task supplied entries;
-  no partial task-definition/registry universe is required or inferred (correcting
-  preflight's earlier diagnosis). Preview selector/nullable-consumer, Playwright and
-  synthetic-guard lint-only repairs are still active; no consolidated review yet.
-  Guard repair is restricted to equivalent existing validation and must demonstrate
-  unchanged generated bytes; current incomplete iteration has eight introduced JSDoc
-  errors and no final behaviour evidence, so it remains a blocker, not accepted debt.
-
-- User-approved Red fixture regeneration completed: existing generator ran twice
-  on 24 October at 19:41:23/19:41:26 UTC, both exit 0; all 18 compact output paths
-  and SHA-256 inventories match byte-for-byte between runs. Six tracked wire files
-  changed (full/class records for small, medium, large-representative), no generated
-  paths added/deleted; other 12 outputs unchanged. Evidence: scratchpad
-  `section2-fixtures-*`. Eight regeneration/round-trip and 58 formerly corpus-blocked
-  schema/metadata/bridge checks pass. No generator/production logic changed.
-  Canonical round-trip suite own-type errors subsequently repaired; actual synthetic
-  tsc now reports only planned criterion-accumulation E-score production type gap.
-  Post-regeneration Playwright reconciliation and read-only complete-Red preflight
-  are active. Preflight must distinguish intended behavioural/type Red from any
-  unexpected collection/fixture/lint failures before consolidated Red review.
-
-- User **approved canonical fixture regeneration during Red**, superseding the
-  pending sequencing question below. Use the existing implemented generator; run
-  `npm run fixtures:synthetic` twice and require byte-identical second output.
-  No generator/production fix is authorised by this sequencing exception. Complete
-  all Red tests/browser fixture reconciliation before consolidated review; retain
-  the final full-section gates. Deferred-ledger disposition is now approved.
-
-- Remaining Red sequencing question is **asked**: committed pre-cut-over corpus
-  still prevents original schema-suite collection and 13 metadata-consumer tests,
-  while complete-phase Red review must precede Green and regeneration was scheduled
-  in Green. Asked whether to authorise generator-only canonical fixture regeneration
-  during Red (no new production logic) so the complete section can collect and expose
-  actual behavioural Red, or retain Green sequencing with an explicit user-approved
-  corpus-blocked Red gate exception. No regeneration performed pending decision.
-
-- Further complete-Red batch checkpoints (not review gates):
-  - Normaliser G4–G6 assertions now present in existing six/five cases; focused
-    result 37 pass / five intentionally failing cases. Specs 461/500 lines;
-    partial has no remaining max-lines headroom. Scoped lint independently rechecked
-    after a concurrent stale lint report and passed. Partial marker-null fixture's
-    existing E entry must be explicitly considered in consolidated coverage review.
-  - Full/class service suites now stub only `callApi`, retain real response parsing,
-    and assert normalisation composition: combined 17 pass / three intended missing-
-    activation failures. No dispatcher/storage coverage is inferred from transport stubs.
-  - Builder copied-source ordering assertion added; five tests, scoped checks and
-    builder/tooling type checks pass, including projection-before-rehydration and
-    existing item-before-entry ordering.
-  - Synthetic focused refresh: 16 fail / 731 pass, superseding stale 17 failures;
-    evidence `.opencode/scratchpad/section2-synthetic-current-red-inventory.md`.
-    Three stale assertion owners reconciled (48 focused tests pass). Bridge marker
-    loss was traced to committed corpus, correcting the inventory's initial generated-
-    graph suspicion; regeneration remains Green work. Two model-input controls now
-    assert the approved opaque-legacy partial-definition persistence exception and pass.
-  - Factory test separation preserves existing declarations/expanded cases: original
-    220 lines, restoration companion 324; 41 factory/CURRENT/legacy tests pass.
-    New API error suite covers real controller/storage boundary separately from existing
-    mocked-controller cases; both API suites report 17 passing tests, scoped checks pass.
-    Active batches: full result/marker schema-test separation and existing Playwright
-    heatmap helper reconciliation. Corpus bytes remain unchanged. All batch evidence
-    awaits consolidated Red review; exact current whole-section failures must still be
-    inventoried before that review. No regression gate, commit, push or deployment.
-
-- Complete-section Red inventory saved at
-  `.opencode/scratchpad/section2-remaining-red-inventory.md` (read-only discovery,
-  not a review or fresh regression baseline). Completed batch checkpoints:
-  - Seven marker-fixture owners adapted; their focused runs passed 16 and 14 tests,
-    scoped lint/formatting passed, and marker diagnostics in those files resolved.
-  - Five class/page fixture owners inspected; only `classDetailSchemaFixtures.ts`
-    needed literal edits (marker 1 and missing SPaG). Schema tests 48 pass and focused
-    consumers 63 pass. Corpus-derived metadata refresh remains blocked, not patched.
-  - Added planned `averagingAnalyser.errors.spec.ts`; new/related analyser tests
-    30 pass, including E accounting and unchanged controls. Production E-score type
-    widening remains Green work. Latest reported tsc has three outstanding records:
-    criterion accumulation E type, metadata evidence oracle E type, preview nullable name.
-    Active batches: existing normaliser-case G4–G6 assertions and real `getAssignment`
-    service composition tests. No per-batch review will run. Remaining full-section
-    Red coverage includes class service integration, source-schema/fixture adaptations,
-    backend/synthetic/builder acceptance coverage and existing-browser reconciliation.
-    No full-section Red approval, Green completion or regression gate is claimed.
-
-- **User-directed review cadence change:** finish ALL remaining atomic Section 2
-  Red work before one consolidated Red review; then finish ALL remaining Green
-  implementation and documentation before one consolidated Green review. Do not
-  submit further per-finding/per-helper reviews. Bounded delegations may still be
-  used to fit execution budgets, with focused validation, but are not review gates.
-  The interrupted G3 extraction review failed with a usage limit and has no verdict;
-  it is superseded by the consolidated section review, not restarted independently.
-  Prior G1/G2 approvals remain historical evidence; G3–G8 and all remaining 2c/2d
-  acceptance criteria must be included in the full-section coverage inventory.
-  First inventory and complete remaining Red tests/typed-fixture adaptations,
-  including existing-browser reconciliation owned by Playwright. Retain intended
-  Red failures and identify unrelated failures precisely. No intermediate regression
-  checker, commit, push or deployment; atomic Section 2 gate remains mandatory.
-
-- User **approved a minimal domain split** to resolve G3's persistent normaliser
-  sizing/complexity blocker, superseding the earlier same-file-only constraint for
-  this extraction. Authorised surface now includes one coherent validation owner
-  beside `assignmentReadNormalisation.ts` in the assignment-assessment service domain;
-  preserve public normaliser entry points, direct imports and all existing contracts.
-  No generic framework, new dependency, lint suppression or assertion weakening is
-  authorised. Reconcile the new owner in canonical helper/contracts documentation
-  and re-review the complete G3 change/extraction before sign-off.
-  Latest incomplete tree was 506 lines with `hasSourceContradiction` complexity 13
-  (limit 7). A final parse typing adjustment remains unvalidated; previous 42 passing
-  focused tests do not cover that final tree. G3 remains open; G1/G2 closure must be
-  revalidated after extraction. G4–G8 and module-wide validation remain outstanding.
-
-- G3 Red is independently **CLEAN RED**, R1 closed:
-  `.opencode/scratchpad/review-section2c-g3-r1-rereview.md`. All eight root rejection
-  probes execute (five full, three partial); focused result 40 pass / two intentionally
-  failing cases. The partial blank owner-ID probe now synchronises supplied child IDs,
-  avoiding a false-positive child-mismatch rejection. Test-owned TS18046 errors were
-  repaired; an unauthorised narrowing helper was removed before review, with truthful
-  local fixture typing retained. No extra cases/suites/helpers accepted. Current task:
-  G3 Green in the normaliser only, enforcing owning identities and consistent supplied
-  full task projections, within existing lint limits. G1/G2 closed; G3 production and
-  G4–G8 remain open. Module gate and downstream consumer/corpus work remain blocked.
-
-- G2 is independently **CLOSED**:
-  `.opencode/scratchpad/review-section2c-g2-green.md`. Artefact association,
-  submission role, usable UID/supported type and partial provided-key identity
-  are enforced; all 42 focused tests pass. User-authorised local simplification
-  (no split/compression) reduced the normaliser from 514 to 492 physical lines,
-  meeting the applicable 500-line warning limit and callback complexity rule.
-  Review found no new defects from that simplification. G1 stays closed;
-  G3–G8 remain open. Current task is G3 Red assertions for nonblank owning
-  identities and consistent supplied full task projections in existing cases.
-  Module-wide verification remains blocked, with no section-gate approval.
-
-- G2 Red is independently **CLEAN RED**:
-  `.opencode/scratchpad/review-section2c-g2-r1r2-rereview.md`.
-  Test-structure findings R1/R2 are closed: all four partial artefact mutations
-  execute despite intentional failures, and blank-key Red no longer skips existing
-  root/null controls. All eight intended G2 invocations execute; focused result
-  39 pass / 3 intentionally failing cases across 42 tests. Current task is G2 Green:
-  contextual submission-artefact association and provided partial task-key validation
-  in the normaliser only. G1 remains closed; G2 production and G3–G8 remain open.
-  Overall module gate is still blocked, not waived by bounded Red readiness.
-
-- G1 is independently **CLOSED**:
-  `.opencode/scratchpad/review-section2c-g1-green.md`. Full item schema validation
-  now precedes artefact source access; missing/null containers isolate rather than
-  crash, and the programming-getter sentinel still propagates. All 42 focused tests
-  pass; scoped lint/formatting pass. The overall reviewer verdict remains FAIL for
-  blocked module verification (15 unchanged downstream diagnostics; coverage timed
-  out), not a new G1 finding. G2–G8 remain open. Current task: G2 Red assertions in
-  existing full/partial cases for contextual submission-artefact association and
-  provided partial dictionary-key identity. This supersedes G1-open entries below.
-
-- Independent bounded Green review is **FAIL**:
-  `.opencode/scratchpad/section2c-green-normaliser-independent-review.md`.
-  All eight findings remain open; passing 42 focused tests is not sign-off.
-  Cumulative repair ledger (Implementation owns fixes; Testing Specialist owns
-  behavioural regression assertions; Code Reviewer verifies closure):
-  - G1: missing/null full artefact crashes instead of item isolation. Resolution:
-    narrow/parse before source dereference, preserving programming-error propagation.
-    Existing full-spec regression repair is in progress (Red).
-  - G2: validate submission artefact task/role/UID/type and partial task-key identity.
-  - G3: validate owning identities and consistent supplied full task projections.
-  - G4: thread parent source state into canonical corruption replacements.
-  - G5: validate provided marker-null reassessment entries, never synthesize a graph.
-  - G6: reuse validation issue paths plus explicit contextual diagnostic paths.
-  - G7: remove unused duplicate partial score declarations.
-  - G8: correct adjacent full/partial result comments.
-    Affected owners remain the normaliser and two consumer schemas, with regression
-    assertions in the existing full/partial specs. Findings will be repaired in bounded
-    batches, tested and independently re-reviewed; none is waived. Fresh reviewer tsc
-    count is 15 downstream diagnostic records (superseding the earlier reported 18).
-    Broad coverage timed out and is not passing evidence. No atomic regression gate,
-    corpus regeneration, commit, push or deployment has occurred.
-
-- Section 2c bounded normaliser/schema Green is now under independent review.
-  Changed owners: `assignmentReadNormalisation.ts` (485 lines),
-  `assignmentAssessment.zod.ts`, `classDetailService.zod.ts`. Initial diagnostic-path,
-  lint and implementation-type blockers were repaired. Focused validation reports
-  42 tests passing across three files, including both approved normalisation suites;
-  scoped lint (zero warnings), Prettier and diff checks pass. Evidence:
-  `.opencode/scratchpad/section2c-repair-normalisation-tests-final.log`,
-  `section2c-repair-eslint-final.log`, `section2c-repair-prettier-final.log` and
-  `section2c-repair-tsc-final.log` in the same scratchpad directory.
-  Full typecheck still has 18 downstream marker/E/name diagnostics, none in these
-  three production owners. Broader schema collection is blocked by markerless
-  committed corpus via `previewFixtures.ts:60`. These remain blocking planned work,
-  not accepted debt. Service activation, analyser/typed-fixture milestones,
-  canonical documentation status sync and corpus/browser cut-over remain pending;
-  no overall Green or atomic Section 2 gate is claimed.
-
-- Both normalisation Red milestones are now independently **PASS — CLEAN RED**.
-  Partial final review: `.opencode/scratchpad/section2c-partial-red-final-review.md`;
-  P1–P5 closed, five cases / 387 lines, scoped lint/formatting pass. The marker-null
-  preservation oracle now compares exact assessment maps in matching representations.
-  Full F1–F5 approval remains valid. Final partial review found 2,902 existing frontend
-  tests passing; the two new suites intentionally fail missing-module collection,
-  and typecheck reports exactly the two corresponding TS2307 imports. No behavioural
-  normaliser tests have executed. Current phase: bounded Green implementation of the
-  shared normaliser and full/partial schemas. Service activation, analyser/typed-fixture
-  milestones, corpus/browser reconciliation and the atomic Section 2 gate remain pending.
-  This supersedes older pending Red checkpoints below. No commit/push/deployment.
-
-- Full-read normalisation Red is now independently **PASS — CLEAN RED**:
-  `.opencode/scratchpad/section2c-full-red-f3-final-review.md`.
-  F1–F5 are closed; six cases / 328 physical lines satisfy the user-authorised
-  linter-bound sizing allowance. Scoped lint and formatting pass. The planned
-  absent normaliser still prevents collection (zero behavioural tests executed)
-  and produces the two expected full/partial TS2307 diagnostics. This is full-spec
-  implementation readiness only, not Green or overall Section 2c approval.
-  Partial P1–P5 repairs are submitted for independent re-review; their latest
-  owner reports five cases / 375 lines with scoped lint/formatting passing.
-  Earlier broader lint errors during concurrent partial edits are not waived;
-  no complete frontend coverage or atomic Section 2 gate is claimed.
-
-- User-authorised sizing clarification: the full-read normalisation spec may
-  remain at **314 physical lines / six cases**. The user permits planned file-size
-  budget overruns provided each file remains within its applicable linter limit.
-  This does not waive lint, review, regression or coverage gates, and does not
-  authorise additional scenarios or speculative helpers. The repaired full spec
-  passes scoped lint/formatting; independent F1–F5 closure remains required.
-
-- The initial full normalisation spec returned **VALIDATION FAILURE**, not clean
-  Red: nine lint errors and invalid probe/assertion assumptions remain. Repairs
-  are delegated within the same file (at most eight cases/300 lines), including
-  the correct marker, flattened definition, atomic all-three replacement, genuine
-  healthy siblings and fail-loud root rejection. No production normaliser exists.
-- The explicitly planned partial normalisation companion is delegated separately
-  (at most five cases/300 lines), covering redaction, provided-entry-only coverage
-  and null-parent isolation without duplicating the full-source matrix. Both
-  suites require independent clean Red review before implementation.
-- Endpoint documentation now selects `toReadJSON()` and distinguishes opaque
-  persistence; independent re-review is **PASS — CLEAN scoped API integration**
-  (`.opencode/scratchpad/section2b-api-rereview-clean.md`). The finding is closed;
-  no API implementation or test findings remain. Canonical
-  data-shape status reconciliation remains pending its separate handoff.
-- Backend canonical documentation reconciliation is now independently **PASS —
-  CLEAN scoped backend documentation**:
-  `.opencode/scratchpad/section2b-canonical-doc-rereview-clean.md`.
-  Findings D1–D3 are closed: current-only corruption isolation is distinguished
-  from legacy reassessment projection, stale pending legacy-read prose is removed,
-  and the opaque-legacy partial-definition persistence exception is documented.
-  Seven-document formatting/diff checks and 30 local references pass; unchanged
-  functional evidence was reused. This supersedes the pending documentation status
-  above, not the still-outstanding frontend Red reviews or atomic Section 2 gate.
-- No full regression checker has run during these phases. The atomic Section 2
-  gate, corpus regeneration and all later sections remain outstanding.
-
-### Objective and constraints
-
-Activate one-pass current reads, detached legacy E projections, strict frontend
-read validation/isolation and canonical version-1 graphs together. This is the only
-intentionally cross-layer section: schema consumers, generator and committed corpus
-must agree before its full gate. Complete substeps 2a–2d in order; no intermediate
-commit/deployment or full-regression checkpoint inside the red-to-green cut-over.
-
-Backend budgets: Assignment facade 402→425; serialization 119→210; rehydration
-185→560 unsplit, so keep restoration/coverage ≤320 and extract pure projection/snapshot
-mapping to `02_AssignmentReadProjection.js` ≤280. ABClass model 440→480;
-response mapper 128→170; assignment ops 279→410 total across this plan;
-API assignmentAssessment 146→155. Direct full reads use `toReadJSON()` after
-`_ensureFullDefinition`; class reads project before definition-key replacement.
-The base artefact budget (186→210) belongs here, not Section 1: preserve explicit
-null placeholder content/hash and ensure full/partial restoration cannot generate a
-hash for redacted partial content. Reuse constructor normalization; no duplicate raw
-artefact validator or gratuitous base-model rewrite. The placeholder/null/hash cases
-in `tests/models/studentSubmission.validation.test.js` and the new current/legacy
-rehydration suites exercise this boundary red-first.
-
-Frontend budgets: assignment schema 214→235/service 47→65; class-detail schema
-177→185/service 31→45; new `assignmentReadNormalisation.ts` 0→330. Analyser input
-types 32→35 and criterion accumulation 235→255. No frontend file is projected >500.
-Import new owners directly inside the existing assignment-assessment domain folder.
-
-### Delegation and planning blocks
-
-- Mandatory reads: Common + Backend + Frontend + Analysis/UI + Contracts + Corpus +
-  API + Builder; source additions: @src/backend/AssignmentProcessor/Assignment/02_AssignmentRehydration.js
-  @src/backend/AssignmentProcessor/Assignment/00_AssignmentSerialisation.js
-  @src/backend/AssignmentProcessor/Assignment/index.js
-  @src/backend/Models/ABClass.js @src/backend/Models/Artifacts/0_BaseTaskArtifact.js
-  @src/backend/y_controllers/ABClassController/index.js
-  @src/backend/y_controllers/ABClassController/ABClassAssignmentOps.js
-  @src/backend/y_controllers/ABClassController/ABClassResponseMapper.js
-  @src/backend/z_Api/assignmentAssessment.js
-  @scripts/synthetic-test-data/generateSubmissions.js
-  @scripts/synthetic-test-data/toTransportViews.js
-  @scripts/synthetic-test-data/projectClassTransportViews.js
-  @src/frontend/src/services/assignmentAssessment/assignmentAssessment.zod.ts
-  @src/frontend/src/services/googleClassrooms/classDetail/classDetailService.zod.ts .
-  Playwright owns this section's existing-browser-fixture reconciliation and also
-  receives Browser plus @src/frontend/e2e-tests/helpers/task-heatmap-fixtures.ts
-  @src/frontend/e2e-tests/helpers/task-heatmap-class-fixtures.ts
-  @src/frontend/e2e-tests/helpers/task-heatmap-end-to-end-helpers.ts
-  @src/frontend/e2e-tests/helpers/task-preview-source-link-fixtures.ts
-  @src/frontend/e2e-tests/heatmaps.spec.ts
-  @src/frontend/e2e-tests/task-preview-source-link.spec.ts
-  @src/frontend/e2e-tests/task-preview-source-link.visual.spec.ts
-  @src/frontend/e2e-tests/task-preview-source-link.states.spec.ts
-  @src/frontend/e2e-tests/helpers/task-preview-source-link-geometry.ts .
-  Attach any additional journey spec before delegating an expectation edit there;
-  the listed representative journeys do not authorise editing an unread spec.
-- **Shared helpers — extend:** model-owned raw validation, AssignmentRehydration
-  traversal/coverage and sole `projectReassessmentSubmissions(..., form)` facade,
-  AssignmentSerialisation/read delegation, existing response mapper. **New:** pure
-  frontend `assignmentReadNormalisation.ts`, reused by both read services, no React,
-  API dispatch or JSON decoding. **Reuse/extend:** existing generator stages, adapter
-  and graph validators. Owners/status recorded `Not implemented` in rehydration,
-  AssessmentFlow, frontend standards §9.29 and synthetic-data planned capability notes.
-- **Data shapes:** planned marker, restoration, legacy/persistence separation and full/
-  partial schema portions of `assignment.md`, `abclass.md`, `assignment-definition.md`;
-  raw E analysis-input accounting in `frontend-data-analysis-response.md`. These entries
-  pre-exist as `Not implemented`; update each implemented slice, not later UI slices.
-- **Canonical fixtures:** extend existing `small`/`medium` and regenerate all compact
-  profiles, including `large-representative`. No new profile/view. Use `small` healthy
-  selections and `medium` mixed graphs for the tests below; local legacy/corruption
-  probes clone those graphs. Preserve fixed seeds, entity linkage and deterministic bytes.
-
-### Acceptance criteria / required tests (Red first)
-
-**2a — Pin canonical contracts and independently valid graph boundaries**
-
-1. Generated full/embedded records carry marker 1 and exactly three assessments,
-   including accuracy. Explicit `ASSESSMENT_FAILED` E replaces the existing empty-map
-   student variant. E reasoning/cause survives partial projection; success/N reasoning
-   and source bodies/hashes remain redacted. No `formulaComparison` map key.
-   Set the marker once on the persistence record in `planClassAssignments.js`, then
-   explicitly emit that source field in `toTransportViews.js::toFullAssignment` and
-   `projectClassTransportViews.js::toPartialAssignment`. Both use field whitelists;
-   neither currently copies an added persistence field automatically. Raw projection
-   tests must fail if either whitelist omits it; do not independently choose/default
-   the version in each view.
-   Reconcile the existing `STUDENT_INDEX_WITH_NULL_DOCUMENT` variant as an explicit
-   synthetic acquisition failure: preserve its submission/task identities and item
-   count, but emit all-three acquisition `SOURCE_UNREADABLE` E on each known task,
-   with base placeholder artefacts, null source IDs/content/hash, empty metadata/
-   feedback and deterministic IDs/UIDs. Retain its null parent document ID. This
-   test-only scenario choice does not infer historical production causes. Genuine
-   no-submission remains roster omissions plus local null-document/empty-map probes;
-   keep existing submission-count/completion-band rules, no new profile or view.
-2. Generate usable IMAGE and SPREADSHEET definition/submission bodies in existing
-   builders. Current full definitions are hydrated/usable; pending IMAGE is not a
-   valid completed assignment. Validators assert content, hash, cause and coverage
-   parity. Existing metadata remains an independently supplied snapshot.
-   In persistence and both transport validators, assert null-document non-empty maps
-   contain only complete acquisition/validation E, source/cause parity is consistent
-   and the generated null-document variant has the pinned SOURCE_UNREADABLE cause.
-   The old populated-source/numeric null-document combination is a local corruption
-   probe only; canonical generation must not rely on read-time corruption conversion.
-
-**2b — Current restoration and legacy read/persistence separation**
-
-3. Version-1 full and partial reads isolate missing content/hash, malformed artefacts,
-   criteria/cause, incomplete or extra-key criterion maps and known task-key mismatches
-   to all-three `CORRUPT_RECORD` E; healthy siblings survive. Validate raw records before
-   constructors can fill keys or hashes. Restore each identified item only once.
-4. Backend full AND partial restoration materialises E for missing known tasks from its
-   embedded task snapshot. Null-document/empty-map no-submission stays empty; acquisition
-   failure stays explicit E. Corrupt item collection with trustworthy student identity
-   yields known-task E. Unknown stored task/untrustworthy student/root/definition fails
-   its owned dataset. Injected constructor/wiring exceptions propagate, not E.
-   Include null-document/non-empty maps with populated content and numeric/N marks,
-   or with assessment/extraction-stage E: these contradict the parent submission's
-   source state. For each identifiable offending item, replace all three criteria
-   with validation `CORRUPT_RECORD` E; do not accept/drop it or fail healthy siblings.
-   Null-document items with valid acquisition/validation E remain valid. Pin both
-   full and partial cases in `tests/assignment/assignmentRehydration.current.test.js`
-   and the equivalent frontend full/partial normaliser boundary tests.
-5. On current full reads, null source beside numeric/N or assessment-stage E becomes
-   validation `CORRUPT_RECORD`, not guessed acquisition/extraction history. Partial
-   redaction never causes that check/hash generation. No-submission adds no observations.
-6. Missing/null/unsupported markers produce detached reassessment E with marker null.
-   Full uses stored identities/resolved embedded tasks only; class uses its loaded roster/
-   stored task summaries. Test abnormal partial-definition fallback separately. Full
-   snapshots remain authoritative, and a newer registry cannot alter class coverage.
-7. Placeholder IDs/fields/timestamps follow SPEC: canonical base artefact, null content/
-   hash, validated source IDs only, deterministic identity, nullable studentName, stored
-   times or assignment-derived times, never wall clock. Test repeated reads and no writes.
-8. Ordinary class saves re-emit opaque legacy submission body and original marker
-   presence/value unchanged via persistence serializers. Read projections never enter
-   preparation. Mixed legacy/current assignments, valid current E and reassessment
-   replacement are covered. Remove catch/reconstruct/retry/drop/plain-object fallbacks.
-
-**2c — Frontend validation and analysis contract**
-
-9. Both services validate strict roots/shared definitions, isolate only identifiable
-   invalid items, log safe field paths/IDs and revalidate the normalized result. Required
-   full artefact keys remain required. Align full studentName to `string | null`.
-10. Partial normalisation validates provided entries only: no full fetch, roster query,
-    legacy graph synthesis or newer-definition coverage inference. Full normalisation
-    defensively fills a missing wire item from that SAME payload only, never overwrites
-    backend E. Test this defence separately from normal backend coverage.
-11. Raw score input accepts E explicitly. A wholly errored item displays four E metrics;
-    E increments no numeric/N/weight/totalDataPoints counters and adds no denominator.
-    Numeric/fractional, N, zero-weight, mixed valid/error and aggregate excluded semantics
-    remain unchanged. `MetricResult` gains no reasoning/history fields.
-12. Not-found null, API envelopes and `callApi`/`parseApiResponse` transport semantics
-    remain unchanged; strict root metadata handling is not weakened.
-
-**2d — Integration, fixture regeneration and generated output**
-
-13. Exercise canonical class/full graphs through model serialization. Exercise class
-    graphs through the existing real-dispatcher/GAS round-trip bridge and frontend
-    `getABClass`; that bridge has no `getAssignment_` seam and is not extended here.
-    Exercise full wire payloads through the real `getAssignment` frontend service,
-    stubbing only `callApi` to resolve canonical objects, following
-    `src/frontend/src/services/assignmentAssessment/assignmentAssessmentService.spec.ts`.
-    This executes its real full schema/normaliser and final `parseApiResponse`, separately
-    from real backend read-controller/API tests against mocked storage. Do not invent a
-    getAssignment bridge seam or claim the stubbed transport proves full dispatcher/
-    controller/database integration. No read writes or roster refresh.
-14. Regeneration is byte-reproducible with matching manifests/linkage across compact
-    profiles. Update old blanket partial-reasoning-redaction assertions to distinguish E.
-15. Generated GAS output places `02_AssignmentReadProjection.js` before
-    `02_AssignmentRehydration.js` AND retains item-model-before-submission-entry order.
-    Test actual copied output ordering; equal `02_` prefixes rely on lexical sorting.
-16. Existing Playwright journeys remain green at this cut-over, not just in Section 10.
-    Reconcile mocked healthy full/partial wire records to the new contract (marker 1,
-    complete criteria, linked tasks and usable source fields), deriving supported
-    realistic records/IMAGE/SPREADSHEET bodies from canonical views. Preserve deliberate
-    local score/layout boundary overrides and the unsupported TABLE exception. Do not
-    weaken strict root validation or treat a missing wire marker as a valid current
-    result to preserve old mocks; marker-less/unsupported wire roots are local invalid
-    probes, not the backend's valid marker-null, materialised legacy E output.
-
-### Red → Green → Refactor and checks
-
-- Red: add `tests/assignment/assignmentRehydration.current.test.js`,
-  `tests/assignment/assignmentRehydration.legacy.test.js` and
-  `tests/api/assignmentReadErrors.test.js`; frontend
-  `assignmentReadNormalisation.full.spec.ts`/`.partial.spec.ts`, shared schema tests
-  and `averagingAnalyser.errors.spec.ts`; synthetic
-  `tests/synthetic-analysis/syntheticAssessmentContract.test.ts` and
-  `tests/synthetic-analysis/syntheticAssessmentRoundTrip.test.ts`. Each standalone new
-  suite ≤300; split by scenario
-  if needed. Extend response-mapper unit tests 32→≤220 and read API tests 446→≤480.
-  Extend `assignmentAssessmentService.spec.ts` 266→≤380 for the real-service/stubbed-
-  callApi full-payload composition in criterion 13.
-- Put serializer-level opaque legacy-body/marker-presence and mixed legacy/current
-  round-trip cases in `tests/assignment/assignmentRehydration.legacy.test.js`; put
-  the ABClass model's embedded-restoration/persistence-serializer cases in new
-  `tests/models/abclass.assessmentContracts.test.js` (≤300). Section 8's named
-  `abclassController.persistAssignment.test.js` extension separately proves the real
-  storage write path preserves that legacy state and never persists read placeholders.
-- Green: implement 2b/2c owners and the graph cut-over, using one explicit internal
-  full/partial restoration mode. Activate new serializers in API/mapper only with the
-  corresponding frontend schemas and regenerated corpus in this section.
-- Generator budgets: `generateAssignmentDefinitions.js` 216→295;
-  `generateSubmissions.js` 233→365; `planClassAssignments.js` 206→215;
-  `toTransportViews.js` 259→275; `projectSubmissionViews.js` 140→165;
-  persistence validator 281→365; transport validator
-  336→430. Existing `validateAssignmentsByKeyView.js` 221→≤275,
-  `projectClassTransportViews.js` 109→≤130 and model-input adapter 130→≤180 extend only
-  as required by their existing projection/validation responsibilities.
-- Update touched fixture helpers: `previewFixtures.ts` 287→≤340 (healthy selectors,
-  real accuracy reasoning, supported IMAGE/SPREADSHEET, remove dead root-plan pointer;
-  keep unsupported TABLE exception); `metadataEvidenceOracle.ts` 112→≤140 (explicit E
-  non-contribution, not excluded); assignment schema fixture helper 34→≤65. These are
-  test-only adaptations, not new fixture generators.
-- During Red, reconcile the class-detail/ABClass and page-hook fixtures that embed
-  literal assignment partials, not just the full-assignment fixtures: under
-  `src/frontend/src/test/abClass/`, `classDetailSchemaFixtures.ts` 108→≤125,
-  `classFullFixtureDefaults.ts` 36→≤50, `abClassMetadataTestBuilders.ts` 207→≤230 and
-  `metadataRefreshFixtures.ts` 138→≤160; under `src/frontend/src/test/`,
-  `taskHeatmapPageFixtures.ts` 105→≤125 and `heatmapsPageDataFixtures.ts` 208→≤230.
-  Retain canonical selection for realistic records; add the required wire marker
-  and valid E-branch details where applicable to existing focused builders. Any
-  additionally discovered literal-partial fixture is part of this same mechanical
-  Red-phase adaptation under the sizing gate, not a reason to relax the wire schema.
-- Existing-test sizing: assignment schema spec 453→about 530 unsplit, so move result/
-  marker cases to `assignmentAssessment.results.zod.spec.ts`, retain original ≤400;
-  factory spec 519→about 550, so separate restoration into
-  `tests/assignment/assignmentFactory.restoration.test.js` and keep both ≤320 when adapting current/legacy
-  fixtures. `syntheticBackendModelInputs.test.ts` 433→≤480; redaction/scenario tests
-  `syntheticGraphTransportContracts.test.ts` 451→≤490 and
-  `syntheticGraphIntegrityAndScenarios.test.ts` 456→≤495. Put new scenario matrices in
-  new focused modules, not the already large graph suites.
-- Update obsolete accuracy-absent assertions in preview lookup content tests and
-  affected metadata-evidence tests; do not rewrite unrelated averaging suites.
-- Playwright performs only contract reconciliation of existing browser fixtures and
-  affected expectations here, before the section gate; new error/legacy/refresh journeys
-  remain in Section 10. Combined Section 2 + Section 10 helper budgets are
-  `task-heatmap-fixtures.ts` 244→≤290, `task-heatmap-class-fixtures.ts` 240→≤280 and
-  `task-heatmap-end-to-end-helpers.ts` 236→≤280. Reconcile canonical source-link helper
-  `task-preview-source-link-fixtures.ts` 436→≤480 for changed corpus selectors and remove
-  its resolved IMAGE-capability exception/dependency; retain TABLE's local exception.
-  Use direct canonical imports in the existing owning helpers, not a new realistic
-  builder or an import cycle between heatmap and source-link fixtures. Keep existing
-  journey intent; change only expectations coupled to repaired fixture contracts.
-- Refactor duplicate validators to the named owners, preserving narrow corruption
-  handling. Add `@remarks` for opaque legacy persistence versus detached read data and
-  backend versus browser coverage ownership; remove obsolete restoration fallbacks.
-- Checks: targeted new/changed backend, frontend, synthetic and builder files, then
-  `npm run fixtures:synthetic` twice (second output unchanged),
-  `npm run test:synthetic`, `npm run test:backend`, `npm run test:frontend`,
-  `npm run test:builder`, existing heatmap/preview Playwright journeys via
-  `npm run test:frontend:e2e -- 'heatmap|task-preview|metric-range-filter|issue-320|navigation-screenshots'`,
-  `npm run typecheck:all`, all four scoped lint checks; full gate, whose regression
-  configuration also runs the complete Playwright suite. Do not postpone a cut-over
-  browser regression to Section 10 or remove the e2e checker gate.
-- Execution record: Not started; changes/checks/deviations/downstream implications pending.
+- **Docs sync:** all canonical non-shape and data-shape docs reconciled; no new pages;
+  JSDoc/comment corrections applied (constructor restoration/lazy getter,
+  `AssessmentSchema` alias, IMAGE/SPREADSHEET versus local TABLE capability, remaining
+  planned preview phrase).
+- **Regression:** report path above; the stable-ID comparison is the Section 2 gate
+  record. Five historical backend `max-lines` warnings remain accepted pre-existing
+  debt (`assignmentDefinitionPartials.unit`, `assignmentController.hydration`,
+  `dbManager`, `classroomApiClient`, `batchUpdateUtility`); no suppression or refactor
+  is authorised. The former `assignmentFactory.test.js` warning was fixed by the
+  planned split.
+- **Flaky-test exception:** Manage Year Groups background-refresh case failed first
+  attempt at Edit-dialog opening, passed configured retry; baseline and one focused
+  unchanged run passed first attempt. Cause unknown; accepted without repair under the
+  deferred-ledger approval. Follow-up: monitor/stabilise if it recurs; no checker
+  policy change.
+- **Full-profile stress:** opt-in and **unverified** after two heap failures (default
+  and 4 GB); attribution unknown. Not a required gate and not counted as passing. Do
+  not claim it passes or attribute it to baseline. Diagnosis:
+  `.opencode/scratchpad/section2-full-profile-memory-diagnosis.md`.
+- **Deferred minor:** pre-existing broken `DEFINITION_PARSE_FAILED` anchor; stale
+  Section 9 preview/source layout pointers (Section 9 owns); unrelated five
+  agent/template edits, `draft-scratch.md` and `.vitest/` excluded from feature commits.
+- **Plan maintenance:** after each complete section passes its independent review and
+  regression gate, compact it to outcomes, essential handoffs and verification
+  evidence; do not compact an incomplete section or discard unresolved findings.
+  Section 1 was compacted from 141 to 25 lines; this pass compacts Section 2.
+- **Commit record:** clean Red checkpoint `e71e309f` with message `feat(assessment): checkpoint explicit error contracts and section 2 red coverage`, pushed to `origin/assessment-errors-322-341`; checkpoint evidence `69d95fca` with message `docs(plan): record clean red checkpoint commit and push`. Final Section 2 completion commit: pending (record SHA, message and push result after commit).
 
 ## Section 3 — Usable shared definitions and canonical spreadsheet blanks
 

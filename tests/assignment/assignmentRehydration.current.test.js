@@ -5,11 +5,9 @@
  * item (known task key, known student identity) is replaced once
  * with a validation `CORRUPT_RECORD` placeholder carrying the exact catalogue
  * reasoning for all three criteria, validated before any constructor key/hash
- * fill, while healthy sibling items survive restoration unchanged. The current
- * Ordinary item-isolation and sibling-preservation cases now pass. The
- * representation-mode case remains intentionally red: it verifies that a full
- * read ignores an untrusted stored partial mode while the explicit partial
- * control retains score-only results.
+ * fill, while healthy sibling items survive restoration unchanged. The
+ * representation-mode regression verifies that a full read ignores an untrusted
+ * stored partial mode while the explicit partial control retains score-only results.
  */
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -115,6 +113,7 @@ describe('current-format rehydration of invalid raw submission items (full read)
     const record = currentAssignmentJson();
     focusDocumentSubmission(record);
     record.representationMode = 'partial';
+    record._restorationMode = 'partial';
     const item = record.submissions[0].items[HEAD_TASK_ID];
     item.artifact.content = null;
     item.artifact.contentHash = null;
@@ -134,6 +133,7 @@ describe('current-format rehydration of invalid raw submission items (full read)
     const defaultFull = restoreAssignment(structuredClone(record));
     const explicitFull = Assignment.fromJSON(structuredClone(record), 'full');
     for (const restored of [defaultFull, explicitFull]) {
+      expect.soft(restored._restorationMode).toBe('full');
       const submission = restored.submissions[0];
       expect.soft(submission.items[HEAD_TASK_ID].assessments).toEqual(corruptRecordAssessments());
       expect.soft(submission.items[SIBLING_TASK_ID].assessments).toEqual(siblingJson.assessments);
@@ -145,6 +145,7 @@ describe('current-format rehydration of invalid raw submission items (full read)
     // content/reasoning through the explicit partial restoration boundary.
     const partialRecord = rawPartialEmbeddedSnapshot(structuredClone(record));
     const validPartial = Assignment.fromJSON(partialRecord, 'partial');
+    expect.soft(validPartial._restorationMode).toBe('partial');
     const partialSubmission = validPartial.submissions[0];
     expect.soft(partialSubmission.items[HEAD_TASK_ID].assessments).toEqual({
       completeness: { score: 4 },

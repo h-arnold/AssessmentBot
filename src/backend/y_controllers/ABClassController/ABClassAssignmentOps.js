@@ -184,7 +184,7 @@ class ABClassAssignmentOps {
     const document = this._loadFullAssignmentDocument(courseId, assignmentId);
     this._validateAssignmentDocument(document);
 
-    const hydratedAssignment = Assignment.fromJSON(document);
+    const hydratedAssignment = Assignment.fromJSON(document, 'full');
     this._ensureFullDefinition(hydratedAssignment);
     hydratedAssignment._hydrationLevel = 'full';
 

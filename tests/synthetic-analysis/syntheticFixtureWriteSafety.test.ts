@@ -31,6 +31,7 @@ const BACKUP_SUFFIX = '-previous';
 const INJECTED_WRITE_FAILURE_MESSAGE = 'injected synthetic fixture write failure';
 const INJECTED_REPLACEMENT_FAILURE_MESSAGE = 'injected synthetic fixture replacement failure';
 const COMMITTED_PROFILE_NAMES = ['small', 'medium', REPRESENTATIVE_PROFILE_NAME] as const;
+const FORMATTER_HEAVY_TEST_TIMEOUT_MS = 20_000;
 
 const temporaryRoots: string[] = [];
 
@@ -168,39 +169,41 @@ afterAll(() => {
 });
 
 describe('atomic committed profile writing', () => {
-  it('leaves an existing profile directory unchanged when graph validation fails', () => {
+  it('leaves an existing profile directory unchanged when graph validation fails', async () => {
     const outputRoot = createTemporaryOutputRoot();
     const graph = generateGraph(SMALL_PROFILE_NAME);
-    writeProfileFixtures({ graph, outputRoot });
+    await writeProfileFixtures({ graph, outputRoot });
     const before = snapshotDirectory(outputRoot);
 
     const invalidGraph = cloneGraph(graph);
     invalidGraph.manifest.generatedEntityCounts.classes += 1;
 
-    expect(() => writeProfileFixtures({ graph: invalidGraph, outputRoot })).toThrow(/invariant/iu);
+    await expect(writeProfileFixtures({ graph: invalidGraph, outputRoot })).rejects.toThrow(
+      /invariant/iu
+    );
     expect(snapshotDirectory(outputRoot)).toEqual(before);
   });
 
-  it('replaces an already written profile directory in place without changing its contents', () => {
+  it('replaces an already written profile directory in place without changing its contents', async () => {
     const outputRoot = createTemporaryOutputRoot();
     const graph = generateGraph(SMALL_PROFILE_NAME);
-    writeProfileFixtures({ graph, outputRoot });
+    await writeProfileFixtures({ graph, outputRoot });
     const firstWrite = snapshotDirectory(outputRoot);
 
-    writeProfileFixtures({ graph, outputRoot });
+    await writeProfileFixtures({ graph, outputRoot });
 
     expect(snapshotDirectory(outputRoot)).toEqual(firstWrite);
   });
 
-  it('cleans up the staging directory and rethrows when a staged write fails', () => {
+  it('cleans up the staging directory and rethrows when a staged write fails', async () => {
     const outputRoot = createTemporaryOutputRoot();
     const graph = generateGraph(SMALL_PROFILE_NAME);
-    writeProfileFixtures({ graph, outputRoot });
+    await writeProfileFixtures({ graph, outputRoot });
     const before = snapshotDirectory(outputRoot);
 
     fileSystemFailureControl.writeFileSuffix = 'assignmentsByKey.json';
     try {
-      expect(() => writeProfileFixtures({ graph, outputRoot })).toThrow(
+      await expect(writeProfileFixtures({ graph, outputRoot })).rejects.toThrow(
         INJECTED_WRITE_FAILURE_MESSAGE
       );
     } finally {
@@ -213,47 +216,51 @@ describe('atomic committed profile writing', () => {
 });
 
 describe('committed profile set replacement safety', () => {
-  it('rolls back every replaced profile when a later profile replacement fails', () => {
-    const outputRoot = createTemporaryOutputRoot();
-    generateCommittedProfiles({ outputRoot });
-    const before = snapshotDirectory(outputRoot);
+  it(
+    'rolls back every replaced profile when a later profile replacement fails',
+    async () => {
+      const outputRoot = createTemporaryOutputRoot();
+      await generateCommittedProfiles({ outputRoot });
+      const before = snapshotDirectory(outputRoot);
 
-    fileSystemFailureControl.renameDestinationSuffix = join(outputRoot, 'medium');
-    try {
-      expect(() => generateCommittedProfiles({ outputRoot })).toThrow(
-        INJECTED_REPLACEMENT_FAILURE_MESSAGE
-      );
-    } finally {
-      fileSystemFailureControl.renameDestinationSuffix = null;
-    }
+      fileSystemFailureControl.renameDestinationSuffix = join(outputRoot, 'medium');
+      try {
+        await expect(generateCommittedProfiles({ outputRoot })).rejects.toThrow(
+          INJECTED_REPLACEMENT_FAILURE_MESSAGE
+        );
+      } finally {
+        fileSystemFailureControl.renameDestinationSuffix = null;
+      }
 
-    expect(snapshotDirectory(outputRoot)).toEqual(before);
-    expect(readdirSync(outputRoot).sort()).toEqual([...COMMITTED_PROFILE_NAMES].sort());
-  });
+      expect(snapshotDirectory(outputRoot)).toEqual(before);
+      expect(readdirSync(outputRoot).sort()).toEqual([...COMMITTED_PROFILE_NAMES].sort());
+    },
+    FORMATTER_HEAVY_TEST_TIMEOUT_MS
+  );
 });
 
 describe('full-large output path boundary', () => {
-  it('rejects the committed fixture root as a full-output destination', () => {
+  it('rejects the committed fixture root as a full-output destination', async () => {
     const committedRoot = join(REPOSITORY_ROOT, COMMITTED_FIXTURE_ROOT);
     const committedRepresentative = join(committedRoot, REPRESENTATIVE_PROFILE_NAME);
     const before = snapshotDirectory(committedRepresentative);
 
-    expect(() => generateFullProfile({ outputRoot: committedRoot })).toThrow(
+    await expect(generateFullProfile({ outputRoot: committedRoot })).rejects.toThrow(
       /synthetic-analysis-full/u
     );
     expect(snapshotDirectory(committedRepresentative)).toEqual(before);
   });
 
-  it('rejects a full-output destination outside the ignored root and writes nothing there', () => {
+  it('rejects a full-output destination outside the ignored root and writes nothing there', async () => {
     const outsideRoot = join(createTemporaryOutputRoot(), 'outside-full-output');
 
-    expect(() => generateFullProfile({ outputRoot: outsideRoot })).toThrow(
+    await expect(generateFullProfile({ outputRoot: outsideRoot })).rejects.toThrow(
       /synthetic-analysis-full/u
     );
     expect(existsSync(outsideRoot)).toBe(false);
   });
 
-  it('rejects a traversal output path that resolves outside the ignored root and creates nothing there', () => {
+  it('rejects a traversal output path that resolves outside the ignored root and creates nothing there', async () => {
     const permittedRoot = join(REPOSITORY_ROOT, FULL_OUTPUT_ROOT);
     // Build the traversal lexically so `..` is not normalised before the call: the
     // string still begins with the permitted root, but `allowed/../..` climbs out to
@@ -264,7 +271,7 @@ describe('full-large output path boundary', () => {
     const escapedOutputRoot = join(REPOSITORY_ROOT, '.opencode/scratchpad', escapedDirectoryName);
 
     try {
-      expect(() => generateFullProfile({ outputRoot: traversalOutputRoot })).toThrow(
+      await expect(generateFullProfile({ outputRoot: traversalOutputRoot })).rejects.toThrow(
         /synthetic-analysis-full/u
       );
       expect(existsSync(escapedOutputRoot)).toBe(false);
@@ -273,7 +280,7 @@ describe('full-large output path boundary', () => {
     }
   });
 
-  it('rejects a symlinked ancestor that redirects a full-output write outside the ignored root', () => {
+  it('rejects a symlinked ancestor that redirects a full-output write outside the ignored root', async () => {
     const permittedRoot = join(REPOSITORY_ROOT, FULL_OUTPUT_ROOT);
     mkdirSync(permittedRoot, { recursive: true });
     const outsideRoot = createTemporaryOutputRoot();
@@ -282,7 +289,7 @@ describe('full-large output path boundary', () => {
     symlinkSync(outsideRoot, escapeLink, 'dir');
 
     try {
-      expect(() => generateFullProfile({ outputRoot: requestedOutputRoot })).toThrow(
+      await expect(generateFullProfile({ outputRoot: requestedOutputRoot })).rejects.toThrow(
         /synthetic-analysis-full/u
       );
       expect(existsSync(join(outsideRoot, REPRESENTATIVE_PROFILE_NAME))).toBe(false);
@@ -291,7 +298,7 @@ describe('full-large output path boundary', () => {
     }
   });
 
-  it('writes fixtures only under the ignored full-output root without touching committed representative data', () => {
+  it('writes fixtures only under the ignored full-output root without touching committed representative data', async () => {
     const committedRepresentative = join(
       REPOSITORY_ROOT,
       COMMITTED_FIXTURE_ROOT,
@@ -305,7 +312,7 @@ describe('full-large output path boundary', () => {
     );
 
     try {
-      writeProfileFixtures({
+      await writeProfileFixtures({
         graph: generateGraph(REPRESENTATIVE_PROFILE_NAME),
         outputRoot: ignoredOutputRoot,
       });

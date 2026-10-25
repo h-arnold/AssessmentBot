@@ -23,7 +23,7 @@ const AssignmentRehydration = {
    * Internal helper to restore base Assignment fields from JSON data.
    * Used by both base Assignment and subclass fromJSON methods.
    * @param {object} data - JSON data object.
-   * @param {string} representationMode - Representation mode used to restore submissions.
+   * @param {'full'|'partial'} representationMode - Caller-owned representation boundary.
    * @returns {Assignment} Assignment instance with base fields populated.
    */
   _baseFromJSON(data, representationMode) {
@@ -37,16 +37,18 @@ const AssignmentRehydration = {
       throw new Error('courseId and assignmentId are required fields in Assignment data');
     }
 
-    const inst = Object.create(Assignment.prototype);
-    inst.courseId = data.courseId;
-    inst.assignmentId = data.assignmentId;
-    inst.assignmentName = data.assignmentName || `Assignment ${data.assignmentId}`;
-    inst.dueDate = data.dueDate ? new Date(data.dueDate) : null;
-    inst.updatedAt = data.updatedAt ? new Date(data.updatedAt) : null;
     if (!data.createdAt) {
       throw new Error(`createdAt is required to deserialise Assignment ${data.assignmentId}`);
     }
-    inst.createdAt = new Date(data.createdAt);
+    const inst = new Assignment(data.courseId, data.assignmentId, null, {
+      assignmentName: data.assignmentName,
+      createdAt: new Date(data.createdAt),
+      representationMode,
+    });
+    const restorationMode = inst._restorationMode;
+    inst._hydrationLevel = undefined;
+    inst.dueDate = data.dueDate ? new Date(data.dueDate) : null;
+    inst.updatedAt = data.updatedAt ? new Date(data.updatedAt) : null;
     inst.assignmentDefinition = data.assignmentDefinition
       ? AssignmentDefinition.fromJSON(data.assignmentDefinition)
       : null;
@@ -65,7 +67,7 @@ const AssignmentRehydration = {
 
     if (isCurrent && Array.isArray(data.submissions)) {
       data.submissions.forEach((subObject) =>
-        this._rehydrateSubmission(inst, subObject, data, representationMode)
+        this._rehydrateSubmission(inst, subObject, data, restorationMode)
       );
     }
 
@@ -87,6 +89,7 @@ const AssignmentRehydration = {
       '_hydrationLevel', // Transient, don't restore
       'assessmentContractVersion',
       '_legacyPersistenceSnapshot',
+      '_restorationMode',
     ]);
     Object.entries(data).forEach(([key, value]) => {
       if (!knownFields.has(key)) {
@@ -102,21 +105,16 @@ const AssignmentRehydration = {
 
   /**
    * Rehydrates a submission object from JSON data and adds it to the assignment's submissions array.
-   * Handles StudentSubmission deserialisation or falls back to plain object reconstruction.
+   * Restores the opaque legacy snapshot or delegates current records to typed restoration.
    * @param {Assignment} inst - The Assignment instance to add the submission to.
    * @param {object} subObject - The submission object to rehydrate.
    * @param {object} assignmentData - The assignment JSON containing restoration metadata.
-   * @param {string} representationMode - Representation mode used to restore submissions.
+   * @param {'full'|'partial'} representationMode - Caller-owned representation boundary.
    * @returns {void}
    */
   _rehydrateSubmission(inst, subObject, assignmentData, representationMode) {
     if (assignmentData?.assessmentContractVersion === 1) {
-      this._rehydrateCurrentSubmission(
-        inst,
-        subObject,
-        assignmentData,
-        representationMode || assignmentData.representationMode || 'full'
-      );
+      this._rehydrateCurrentSubmission(inst, subObject, assignmentData, representationMode);
       return;
     }
     const submission = StudentSubmission.fromJSON(subObject);
@@ -128,8 +126,8 @@ const AssignmentRehydration = {
    * @param {Assignment} inst - The Assignment instance receiving the submission.
    * @param {object} raw - The raw submission data to restore.
    * @param {object} assignmentData - The assignment JSON containing restoration metadata.
-   * @param {string} mode - Representation mode used to restore the submission.
-   * @returns {void} The restoration result.
+   * @param {'full'|'partial'} mode - Representation mode used to restore the submission.
+   * @returns {void}
    */
   _rehydrateCurrentSubmission(inst, raw, assignmentData, mode) {
     return AssignmentCurrentRestoration._rehydrateCurrentSubmission(

@@ -2,7 +2,7 @@
 description: Provides impartial second-pass review of planning artefacts before implementation starts
 mode: all
 steps: 100
-model: opencode-go/step-5-preview-free
+model: opencode-go/glm-5.3-flash#max
 permissions:
   - action: edit
     resource: '*'

@@ -25,23 +25,23 @@ Out of scope:
 
 ## Topology and ownership
 
-| Concern                       | Location                                                           | Notes                                                                                                                                                                                                                       |
-| ----------------------------- | ------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Profile definitions and seeds | `scripts/synthetic-test-data/profileDefinitions.js`                | `PROFILE_NAMES`, `getProfileDefinition`, large-full constants and completion bands.                                                                                                                                         |
-| Graph generators              | `scripts/synthetic-test-data/generate*.js`                         | Deterministic reference data, definitions, rosters, assignments, submissions, and fixed supplied class `metadata` snapshots.                                                                                                |
-| Transport projection          | `scripts/synthetic-test-data/toTransportViews.js`                  | Projects the persistence graph into the five named transport views; class `metadata` is copied by `projectClassTransportViews.js`.                                                                                          |
-| Validation                    | `scripts/synthetic-test-data/validateSyntheticAnalysisGraph.js`    | Reference integrity, redaction, serialisability, profile-count invariants, and class-`metadata` integrity via `validateClassMetadata.js`.                                                                                   |
-| Metadata integrity helper     | `scripts/synthetic-test-data/validateClassMetadata.js`             | Generator-owned raw `metadata` shape, linkage, timestamp and cross-view parity checks.                                                                                                                                      |
-| Test-only model-input adapter | `scripts/synthetic-test-data/toBackendModelInputs.js`              | Adapts canonical views into backend ABClass/Assignment/definition model inputs; imported only by tests.                                                                                                                     |
-| Staged writer                 | `scripts/synthetic-test-data/fixtureWriter.js`                     | Validates, stages, and atomically replaces committed profiles.                                                                                                                                                              |
-| Regeneration CLI              | `scripts/synthetic-test-data/generateSyntheticAnalysisFixtures.js` | Compact regeneration and the explicit full mode.                                                                                                                                                                            |
-| Immutable loader              | `scripts/synthetic-test-data/loadSyntheticAnalysisProfile.js`      | Synchronously reads a named committed view and deep-freezes it.                                                                                                                                                             |
-| Dispatcher round-trip bridge  | `scripts/synthetic-test-data/apiHandlerRoundTripBridge.js`         | Installs read/mutation `apiHandlerTestUtils` seams, dispatches the real `apiHandler`, restores every seam.                                                                                                                  |
-| Frontend round-trip adapter   | `src/frontend/src/test/syntheticApiRoundTripAdapter.ts`            | Composes the in-tree `googleScriptRunHarness`; imports no `scripts/` code.                                                                                                                                                  |
-| Committed fixtures            | `tests/__mocks__/data/synthetic-analysis/<profile>/`               | Transport views and manifest only.                                                                                                                                                                                          |
-| Ignored full output           | `.opencode/scratchpad/synthetic-analysis-full/`                    | On-demand large-full transport/manifest output; never committed.                                                                                                                                                            |
-| Integration project           | `tests/synthetic-analysis/**/*.test.ts`                            | Node Vitest project with the GAS globals from `tests/setupGlobals.js`; the Node-project `tests/syntheticModelInputs.node.test.js` smoke and the shared tests-only `backendModelInputAssertions.js` helper sit alongside it. |
-| Stress project                | `tests/synthetic-analysis-stress/**/*.test.ts`                     | Opt-in full-large suite with a raised timeout budget.                                                                                                                                                                       |
+| Concern                       | Location                                                           | Notes                                                                                                                                                                                                                                                                                                                                                           |
+| ----------------------------- | ------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Profile definitions and seeds | `scripts/synthetic-test-data/profileDefinitions.js`                | `PROFILE_NAMES`, `getProfileDefinition`, large-full constants and completion bands.                                                                                                                                                                                                                                                                             |
+| Graph generators              | `scripts/synthetic-test-data/generate*.js`                         | Deterministic reference data, definitions, rosters, assignments, submissions, and fixed supplied class `metadata` snapshots.                                                                                                                                                                                                                                    |
+| Transport projection          | `scripts/synthetic-test-data/toTransportViews.js`                  | Projects the persistence graph into the five named transport views; class `metadata` is copied by `projectClassTransportViews.js`.                                                                                                                                                                                                                              |
+| Validation                    | `scripts/synthetic-test-data/validateSyntheticAnalysisGraph.js`    | Orchestrates reference integrity, redaction, serialisability, profile-count invariants, and class-`metadata` integrity via `validateClassMetadata.js`. Assessment guards live in `assessmentEntryGuards.js`, `artefactSourceGuards.js`, `validationRecordGuards.js` and `validateAssessmentState.js`, sharing the pre-existing `invariantGuards.js` primitives. |
+| Metadata integrity helper     | `scripts/synthetic-test-data/validateClassMetadata.js`             | Generator-owned raw `metadata` shape, linkage, timestamp and cross-view parity checks.                                                                                                                                                                                                                                                                          |
+| Test-only model-input adapter | `scripts/synthetic-test-data/toBackendModelInputs.js`              | Adapts canonical views into backend ABClass/Assignment/definition model inputs; imported only by tests.                                                                                                                                                                                                                                                         |
+| Staged writer                 | `scripts/synthetic-test-data/fixtureWriter.js`                     | Validates, stages, and atomically replaces committed profiles. Owns Prettier-formatted JSON serialisation and exposes an asynchronous write API.                                                                                                                                                                                                                |
+| Regeneration CLI              | `scripts/synthetic-test-data/generateSyntheticAnalysisFixtures.js` | Compact regeneration and the explicit full mode; every mode entry point is asynchronous and must be awaited.                                                                                                                                                                                                                                                    |
+| Immutable loader              | `scripts/synthetic-test-data/loadSyntheticAnalysisProfile.js`      | Synchronously reads a named committed view and deep-freezes it.                                                                                                                                                                                                                                                                                                 |
+| Dispatcher round-trip bridge  | `scripts/synthetic-test-data/apiHandlerRoundTripBridge.js`         | Installs read/mutation `apiHandlerTestUtils` seams, dispatches the real `apiHandler`, restores every seam.                                                                                                                                                                                                                                                      |
+| Frontend round-trip adapter   | `src/frontend/src/test/syntheticApiRoundTripAdapter.ts`            | Composes the in-tree `googleScriptRunHarness`; imports no `scripts/` code.                                                                                                                                                                                                                                                                                      |
+| Committed fixtures            | `tests/__mocks__/data/synthetic-analysis/<profile>/`               | Transport views and manifest only.                                                                                                                                                                                                                                                                                                                              |
+| Ignored full output           | `.opencode/scratchpad/synthetic-analysis-full/`                    | On-demand large-full transport/manifest output; never committed.                                                                                                                                                                                                                                                                                                |
+| Integration project           | `tests/synthetic-analysis/**/*.test.ts`                            | Node Vitest project with the GAS globals from `tests/setupGlobals.js`; the Node-project `tests/syntheticModelInputs.node.test.js` smoke and the shared tests-only `backendModelInputAssertions.js` helper sit alongside it.                                                                                                                                     |
+| Stress project                | `tests/synthetic-analysis-stress/**/*.test.ts`                     | Opt-in full-large suite with a raised timeout budget.                                                                                                                                                                                                                                                                                                           |
 
 Dependency direction:
 
@@ -141,14 +141,14 @@ This is **fixture realism only**, not a production nullable-contract change:
 - Nullable transport acceptance is covered by explicit **local null-boundary probes**, not by generated null population. `tests/synthetic-analysis/syntheticCorpusConventions.test.ts` clones a canonical class-embedded assignment partial and a canonical full assignment, sets `updatedAt = null`, and parses both through the real frontend schemas. `tests/synthetic-analysis/syntheticGraphShapeCoverage.test.ts` clones a canonical class, nulls its first assignment's `updatedAt`, and re-parses it through `ClassFullSchema`.
 - The Class page's fail-closed rejection of a null or unparseable `updatedAt` is unchanged and tested with independent local invalid probes in `src/frontend/src/features/classPage/classPageAdapter.trustValidation.spec.ts`. Do not use canonical rows to assert that rejection.
 
-## Explicit E outcomes and richer artefact types (`Implemented` generator and validators; corpus cut-over pending) {#planned-generator-extension-explicit-e-outcomes-and-richer-artefact-types-not-implemented}
+## Explicit E outcomes and richer artefact types (`Implemented`) {#planned-generator-extension-explicit-e-outcomes-and-richer-artefact-types-not-implemented}
 
-**Status:** The generator stages, partial projection and graph validators described here are
-`Implemented` and test-only. No committed profile has been regenerated, no frontend consumer has
-been switched to the new corpus, and the atomic Section 2 gate has not passed. Seventeen
-consumer-schema, stale-assertion and corpus failures remain deferred to the coordinated
-Section 2c/2d cut-over; they are not waived. No new profile, transport view or realistic fixture
-family was added.
+**Status:** The generator stages, partial projection, graph validators and committed compact corpus
+described here are `Implemented` and test-only. `npm run fixtures:synthetic` regenerated all 18
+compact output paths twice on 24 October 2026 with byte-identical results; six tracked wire files
+changed and no generated path was added or removed. Both frontend read services consume the new
+contract. No new profile, transport view or realistic fixture family was added. The atomic
+Section 2 regression gate is recorded separately and is not claimed by this guide.
 
 - **Artefact types.** The existing definition and submission builders cycle `TEXT`, `IMAGE` and
   `SPREADSHEET` bodies using their existing deterministic index arithmetic. IMAGE bodies are
@@ -173,57 +173,52 @@ family was added.
 - **Projection redaction.** `projectSubmissionViews.js` retains `reasoning` and `error` on partial
   E entries while numeric and `N` partial entries stay score-only. Partial artefact `content` and
   `contentHash` remain redacted to null for every item; the full view retains them.
-- **Validation.** Persistence (`validatePersistenceGraph.js`), full `assignmentsByKey`
-  (`validateAssignmentsByKeyView.js`) and class-embedded partial (`validateTransportGraph.js`)
-  validation require marker `1`, exactly the three criteria, strict `stage`/`code` pairs from the
-  twelve-pair implemented Assessment catalogue, declared-task coverage for document-bearing
-  submissions, and representation-correct source state. A null-parent map may contain only
-  acquisition or validation E entries and must match the canonical base placeholder. Null content
-  must pair with null hash; beside present content, a full record must carry a usable raw body
-  (TEXT string, image data URL, or 2D spreadsheet grid) and a non-blank hash. Blank templates and
-  a successfully read blank student SPREADSHEET grid remain accepted. No formula-comparison
-  persistence or new feedback type was added; spreadsheet feedback remains the existing
-  cell-reference form.
+- **Validation and guard ownership.** Persistence (`validatePersistenceGraph.js`), full
+  `assignmentsByKey` (`validateAssignmentsByKeyView.js`) and class-embedded partial
+  (`validateTransportGraph.js`) validation share four test-only guard owners:
+  `validationRecordGuards.js` (raw-record and failure-message primitives),
+  `assessmentEntryGuards.js` (criterion-map composition and entry shape),
+  `artefactSourceGuards.js` (source body/hash, null-parent placeholders and definition artefacts)
+  and `validateAssessmentState.js` (submission coverage and per-item orchestration).
+  `validateSyntheticAnalysisGraph.js` orchestrates the three validators. They require marker `1`,
+  exactly the three criteria, strict `stage`/`code` pairs from the twelve-pair implemented
+  Assessment catalogue, declared-task coverage for document-bearing submissions, and
+  representation-correct source state. A null-parent map may contain only acquisition or validation
+  E entries and must match the canonical base placeholder. Null content must pair with null hash;
+  beside present content, a full record must carry a usable raw body (TEXT string, image data URL,
+  or 2D spreadsheet grid) and a non-blank hash. Blank templates and a successfully read blank student
+  SPREADSHEET grid remain accepted. No formula-comparison persistence or new feedback type was
+  added; spreadsheet feedback remains the existing cell-reference form.
 - **Unchanged metadata.** The class `metadata` stage is unchanged: supplied metadata remains an
   independently generated snapshot, not a value derived from the assessment maps.
 - **Pipeline.** Outcomes flow through the existing projections; no new profile, view or
   model-input adapter change was made.
 
-### Coordinated corpus cut-over (`Not implemented`)
-
-These entries remain pending; the implemented generator and validator slice does not deliver them.
+### Corpus cut-over and consumer activation (`Implemented`)
 
 - **Canonical selection and regeneration.** `small` remains the healthy cross-layer graph and
-  `medium` the mixed healthy/E profile. `npm run fixtures:synthetic` has not been run, so the
-  committed corpus predates the marker, artefact types and explicit outcomes. Regenerate it as one
-  coordinated cut-over and keep it byte-reproducible.
-- **Existing Playwright fixture reconciliation (Section 2 cut-over).** Section 2's atomic
-  corpus/read cut-over includes a minimal reconciliation of the existing Playwright heatmap and
-  source-link fixture helpers, because that section's full regression gate runs the complete
-  browser suite. Reconcile mocked healthy full/partial wire records to the required
-  `assessmentContractVersion: 1`, complete three-criterion maps including accuracy, linked
-  task/item records and usable source identifiers/content, deriving supported realistic records
-  and IMAGE/SPREADSHEET bodies from the canonical `small`/`medium` views. Keep
-  `task-heatmap-fixtures.ts`, `task-heatmap-class-fixtures.ts`,
-  `task-heatmap-end-to-end-helpers.ts` and `task-preview-source-link-fixtures.ts` as the owners
-  and import canonical views directly there; add no realistic builder and no heatmap/source-link
-  import cycle. Retain purposeful local score/layout boundary overrides and the unsupported TABLE
-  exception, and remove the resolved IMAGE exception/dependency once the committed corpus supplies
-  canonical IMAGE bodies. Change only expectations coupled to the repaired fixture contracts.
-- **Preview-fixture capability comment.** Once the regenerated corpus supplies IMAGE/SPREADSHEET
-  bodies, update the corpus-capability exception comment in
-  `src/frontend/src/test/taskHeatmap/previewFixtures.ts`: remove the resolved IMAGE/SPREADSHEET
-  exceptions and the dead root `ACTION_PLAN.md` pointer, retain only genuinely unsupported cases
-  such as TABLE, and point to the capability notes in this guide. Do not add TABLE feature support.
-- **New browser journeys.** New explicit-error, legacy and refresh journeys belong to Section 10.
-  Do not add them during the Section 2 reconciliation, and do not broaden existing journey intent
-  beyond the fixture-contract coupling above.
+  `medium` the mixed healthy/E profile. The committed corpus now carries the marker, artefact types
+  and explicit outcomes; regeneration stayed byte-reproducible across the two runs.
+- **Existing Playwright fixture reconciliation.** `task-heatmap-fixtures.ts`,
+  `task-heatmap-class-fixtures.ts`, `task-heatmap-end-to-end-helpers.ts` and
+  `task-preview-source-link-fixtures.ts` were reconciled to `assessmentContractVersion: 1`, complete
+  three-criterion maps including accuracy, linked task/item records and usable source
+  identifiers/content. They import canonical `small`/`medium` views directly; there is no competing
+  realistic builder or heatmap/source-link import cycle. Purposeful local score/layout boundary
+  overrides and the unsupported TABLE exception remain; IMAGE content is derived from a canonical
+  full record.
+- **Preview-fixture capability comment.** `src/frontend/src/test/taskHeatmap/previewFixtures.ts` no
+  longer carries the resolved IMAGE/SPREADSHEET exceptions or the dead root `ACTION_PLAN.md`
+  pointer. It points to these capability notes and keeps only genuinely unsupported cases such as
+  TABLE.
+- **New browser journeys remain Section 10 (`Not implemented`).** Explicit-error, legacy and
+  refresh journeys were not added during the Section 2 cut-over, and existing journey intent was
+  not broadened beyond the fixture-contract coupling above.
 - **Local probes stay local.** Corrupt records, missing-criterion and empty-map probes, HTTP
   response variants, GAS failures and numeric boundary probes remain targeted local fixtures, not
   realistic success data.
 
-The pending entries above remain unimplemented; no new profile, transport view or realistic
-fixture family is added.
+No new profile, transport view or realistic fixture family was added.
 
 ## ABClass metadata generator capability
 
@@ -386,6 +381,15 @@ Successful untouched-newest-corpus refresh remains an explicit evidence gap.
 - **Compact (committed):** small, medium, and large-representative transport views plus manifests are checked in under `tests/__mocks__/data/synthetic-analysis/`. Regeneration stages and validates every profile before replacing any committed directory, and rolls every applied replacement back if a later one fails.
 - **Full (ignored):** `large-full` is generated on demand under `.opencode/scratchpad/synthetic-analysis-full/` for stress tests. It writes the same six transport/manifest files as compact mode; its nested `persistence` graph stays in memory. The CLI rejects any output root that resolves outside the permitted root, following symlinks in every existing ancestor, so a link inside the root cannot redirect a write outside it. Full mode never overwrites committed representative data.
 
+### Writer formatting and asynchronous contract
+
+- **Format ownership.** `fixtureWriter.js` owns the persisted JSON representation. Each view starts as `JSON.stringify(view, null, 2)` plus a trailing newline, then is formatted with the installed Prettier API (`resolveConfig` and `format`). Do not hand-edit generated JSON or add a second formatter.
+- **Canonical configuration.** Formatter resolution uses the file's canonical committed path, `tests/__mocks__/data/synthetic-analysis/<profile>/<file>.json`, not the staging directory or a `--output-root` target. Scratch, staging and committed runs therefore produce the same bytes as the pre-commit hook's `prettier --write`.
+- **Async staging, synchronous replacement.** `stageProfileFixtures`, `writeProfileFixtures`, `generateCommittedProfiles`, `generateFullProfile`, `runCli` and `executeCli` return Promises. Await staging/serialization before committing. `commitStagedProfiles` is synchronous: its swap, backup, rollback and cleanup operations use synchronous filesystem calls, and its errors propagate directly to its caller.
+- **Stage before swap.** Compact regeneration awaits every profile's serialisation and staging before `commitStagedProfiles` starts replacing directories. The swap, backup, rollback and final cleanup steps are synchronous filesystem operations, and `discardStagedProfile` stays synchronous cleanup.
+- **Loader unchanged.** `loadSyntheticAnalysisProfile` remains synchronous and returns deep-frozen views; asynchronous writing does not change how tests load the committed corpus.
+- **Evidence.** `syntheticCommittedFixtureRegeneration.test.ts` asserts committed-byte equality, Prettier idempotence for each canonical committed file path and identical bytes across two runs. `syntheticFixtureWriteSafety.test.ts` covers staged-write cleanup and set-level rollback.
+
 ## Commands
 
 | Command                           | Purpose                                                                                              |
@@ -429,7 +433,7 @@ The test path exercises the complete production transport chain — `callApi`, s
 ## Error behaviour
 
 - Invalid profile names, unsupported views, invalid seeds, failed invariants, and unwritable output paths fail loudly with an actionable error.
-- A generation, validation, serialisation, or staging-write failure leaves the existing committed profile set untouched.
+- A generation, validation, serialisation, or staging-write failure rejects the awaited Promise and leaves the existing committed profile set untouched.
 - The CLI reports malformed invocations on stderr and sets a non-zero exit code.
 - Tests must assert a `null` `getABClass` result as a distinct not-found branch and never pass it to `DataAnalysisService`.
 

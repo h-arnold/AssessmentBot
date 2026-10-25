@@ -2,8 +2,7 @@
  * Assignment factory and serialization regression tests
  *
  * Covers polymorphic assignment creation, deserialization and serialization
- * controls. These retained factory cases pass; the separately added current-read
- * serializer rejection remains the outstanding intentional Red case.
+ * controls, including current-read serializer rejection of plain submissions.
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
@@ -65,6 +64,35 @@ describe('Assignment.create() Factory Method', () => {
     { docType: 'SLIDES', courseId: 'c1', assignmentId: 'a1', refId: 'ref1', tplId: 'tpl1' },
     { docType: 'SHEETS', courseId: 'c2', assignmentId: 'a2', refId: 'ref2', tplId: 'tpl2' },
   ];
+
+  it('fetches Classroom metadata for ordinary three-argument construction', () => {
+    const getCourseWork = vi.fn(() => ({
+      creationTime: '2026-01-01T00:00:00.000Z',
+      title: 'Fetched assignment',
+    }));
+    globalThis.Classroom.Courses.CourseWork.get = getCourseWork;
+
+    const assignment = new Assignment('c-fresh', 'a-fresh', {});
+
+    expect(getCourseWork).toHaveBeenCalledWith('c-fresh', 'a-fresh');
+    expect(assignment.assignmentName).toBe('Fetched assignment');
+    expect(assignment.createdAt).toEqual(new Date('2026-01-01T00:00:00.000Z'));
+  });
+
+  it.each([
+    ['null', null],
+    ['missing', undefined],
+  ])('throws for a %s fetched assignment title after one Classroom call', (_label, title) => {
+    const getCourseWork = vi.fn(() => ({
+      creationTime: '2026-01-01T00:00:00.000Z',
+      title,
+    }));
+    globalThis.Classroom.Courses.CourseWork.get = getCourseWork;
+
+    expect(() => new Assignment('c-invalid-title', 'a-invalid-title', {})).toThrow();
+    expect(getCourseWork).toHaveBeenCalledTimes(1);
+    expect(getCourseWork).toHaveBeenCalledWith('c-invalid-title', 'a-invalid-title');
+  });
 
   testCases.forEach(({ docType, courseId, assignmentId, refId, tplId }) => {
     it(`should create a ${docType}Assignment for documentType ${docType}`, () => {

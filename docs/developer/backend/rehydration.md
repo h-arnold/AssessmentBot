@@ -93,6 +93,18 @@ const assignment = Assignment.fromJSON(jsonPayload);
 
 **Note**: The factory pattern centralizes type discrimination but does not eliminate all conditionals. Controllers may still need to branch logic based on type (e.g., different processing pipelines for Slides vs Sheets), but the _instantiation_ and _deserialization_ logic is encapsulated.
 
+Restoration constructs an `Assignment` with the saved assignment name and creation time
+supplied as constructor metadata, so it does not fetch Classroom data. Supplying that
+metadata selects restoration, but its saved name must be a string: a missing, `null` or
+non-string `assignmentName` throws a `TypeError` before any fetch and is not caught or
+recovered. Valid strings, including a blank string, are preserved. The same optional
+metadata owns the `full`/`partial` restoration mode (defaulting to `full` only in the
+constructor), and an invalid mode throws. The transient `_restorationMode` is never
+serialised, and a stored field cannot overwrite it. Ordinary three-argument creation still
+fetches Classroom metadata; the fetch requires a `creationTime` and a string title, and
+there is no generated `Assignment <id>` name fallback. Restoration does not restore the
+transient `_hydrationLevel` marker.
+
 ## Persistence Workflow
 
 We use a **Split Persistence Model**:
@@ -186,6 +198,10 @@ marker:
 | `1`                                       | One validated pass per identified submission and item, using the requested `full` or `partial` mode.                                                                                 |
 | Missing, `null`, or any unsupported value | Opaque legacy history: submissions are **not** item-rehydrated. The stored submission body, marker presence and exact marker value are kept as a deep, independently owned snapshot. |
 
+The representation mode is caller-owned: `_baseFromJSON()` passes the requested mode to the
+constructor, which owns the `full` default. A stored `representationMode` field is never read as the
+restoration mode.
+
 ### Current-format restoration
 
 Current-format restoration lives in
@@ -222,13 +238,15 @@ The projection is derived per read and is never persisted.
 
 ## Section 2 restoration and projection ownership
 
-**Backend status:** the Section 2b backend legacy persistence and read slice is implemented in
-`02_AssignmentRehydration.js`, `02_AssignmentCurrentRestoration.js`, `02_AssignmentReadProjection.js`
-and `00_AssignmentSerialisation.js`. The frontend normaliser/consumer activation, synthetic corpus
-regeneration, the 17 known synthetic cutover failures, the Section 3 gate and later UI work remain
-pending, as do the `ImageManager` hydration boundary, definition-write artefact invariant and
-prepared write projections below. This does not assert that the atomic Section 2 regression gate has
-passed or that Section 2 is complete.
+**Section 2 status:** the backend legacy persistence/read slice, the current-format restoration
+path, the frontend read-normalisation activation and the regenerated canonical corpus are
+implemented in `02_AssignmentRehydration.js`, `02_AssignmentCurrentRestoration.js`,
+`02_AssignmentReadProjection.js`, `00_AssignmentSerialisation.js` and both frontend read services.
+The generated-bundle order assertions are implemented in
+`scripts/builder/src/steps/backend-copy.spec.ts`. The `ImageManager` hydration boundary,
+definition-write artefact invariant and prepared write projections below remain planned for their
+later sections, and the atomic Section 2 regression gate and later UI work are still outstanding.
+This does not assert that Section 2 is complete.
 
 - **Single restoration pass.** `AssignmentRehydration._baseFromJSON()` and
   `AssignmentCurrentRestoration` restore each identified marker-1 submission and item once with an
@@ -240,9 +258,9 @@ passed or that Section 2 is complete.
   remains the entry/facade in `src/backend/Models/StudentSubmission/index.js`. The public
   class/namespace API and guarded test exports are preserved; GAS load order loads the item model
   before its submission facade. `scripts/builder/src/steps/backend-copy.spec.ts` asserts that order
-  against the real backend tree, and `tests/setupGlobals.js` mirrors it. Each file stays within the
-  ≤320-line target. The generated-bundle assertion for the `02_` read-projection/restoration order
-  remains pending.
+  against the real backend tree, including that `02_AssignmentReadProjection.js` precedes
+  `02_AssignmentRehydration.js`; `tests/setupGlobals.js` mirrors the item/submission order. Each
+  file stays within the ≤320-line target.
 - **Completed-item coverage materialisation.** The backend is authoritative for completed-item
   coverage on marker-1 reads. `AssignmentCurrentRestoration._rehydrateCurrentSubmission()`
   materialises a terminal `CORRUPT_RECORD` E item for every known task missing from an identified
@@ -250,9 +268,9 @@ passed or that Section 2 is complete.
   from class transport. A known task key paired with a mismatched item `taskId` becomes
   `CORRUPT_RECORD` E for that key; an item referencing no task in the embedded definition fails the
   owned dataset. Backend-materialised E entries are never overwritten by later coverage inference.
-  The browser partial-read normaliser will validate only the entries it is given and must not infer
+  The browser partial-read normaliser validates only the entries it is given and does not infer
   extra coverage errors from the separately loaded, potentially newer definition registry. The
-  browser full-read normaliser has a mandatory defensive same-payload fallback: only if a full wire
+  browser full-read normaliser provides a defensive same-payload fallback: only if a full wire
   payload nevertheless lacks an expected item does it produce `CORRUPT_RECORD` E using that same
   payload's definition; it never overwrites backend-materialised E. This fallback is a
   post-backend-validation corruption defence, not the normal coverage owner. No new task-universe
@@ -285,7 +303,7 @@ passed or that Section 2 is complete.
   different task universes between the two reads. Neither path repairs or rewrites history. Load
   order requires `02_AssignmentReadProjection.js` before `02_AssignmentRehydration.js`; both share
   the `02_` prefix, so the generated-bundle order depends on the builder's lexicographic filename
-  sort. The generated-bundle order assertion remains pending.
+  sort. `scripts/builder/src/steps/backend-copy.spec.ts` asserts that copied order.
 - **Safe placeholders and opaque legacy state.** `_baseFromJSON()` keeps the legacy submission body
   plus the original marker presence/value as a deep, independently owned JSON snapshot behind the
   typed `Assignment` facade; runtime snapshot fields are not serialised themselves. Placeholder
@@ -298,7 +316,7 @@ passed or that Section 2 is complete.
   class assignment after a run does not resurrect opaque history. An ordinary class save must not
   validate historical marks against the completed-item contract, strip stored content or certify the
   old result as current.
-- **Browser boundary.** The frontend normaliser will validate these already materialised entries and keep defensive per-item corruption isolation. It will not generate a second reassessment graph, query a roster or infer historical outcomes. Frontend activation remains pending.
+- **Browser boundary.** Both frontend read services run the normaliser over these already materialised entries and keep defensive per-item corruption isolation. It does not generate a second reassessment graph, query a roster or infer historical outcomes.
 - **Projection preparation before write.** Extend `ABClassAssignmentOps.persistAssignmentRun()` (`src/backend/y_controllers/ABClassController/ABClassAssignmentOps.js`) to validate the completed result and prepare four independent payloads before the first collection mutation: the full assignment and its embedded partial (from `Assignment.toJSON()`/`toPartialJSON()`), plus the prospective updated full-class and class-partials documents. Reuse the existing preparation owner for the class projections — `ABClassPersistence._prepareClassAndPartial()`/`_prepareClassPartial()` in `src/backend/y_controllers/ABClassController/ABClassPersistence.js` — rather than adding a second preparation path. Read projections are never inputs to this preparation; it serialises the authoritative assignment's own current-version or opaque legacy state. The current order (full record, then `ABClass`/partials) and its non-transactional failure semantics stay; prepared snapshots are retained through each write, and a storage failure throws and logs the failed phase plus whether the full write committed.
 - **Read paths stay read-only.** `readRehydrateAssignment` and class reads do not refresh rosters, repair records or write back. Reassessment E projections are derived per read, not persisted.
 

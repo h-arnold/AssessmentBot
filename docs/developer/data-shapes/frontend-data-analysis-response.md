@@ -1370,29 +1370,33 @@ section to remove the marker as each addition is implemented and verified.
    marking is **column-level only in v1**, and cell values stay absolute in
    both modes.
 
-## Planned contract additions — explicit E assessment input and preview errors (Not implemented)
+## Planned contract additions — preview errors (analyser E input implemented)
 
-> **Status: `Not implemented`.** These entries record the target contract from
-> `SPEC.md` (explicit Assessment errors and targeted pipeline simplification). They do
-> **not** describe current code. The implemented sections above remain authoritative until
-> the corresponding analyser, preview and read-projection changes land. The Assessment
+> **Section 2c update:** The explicit E analyser input is implemented. E is accepted
+> by `AssessmentScore` and remains excluded from numeric/N counts, weights and data-point
+> totals. Preview error fields and rendering remain planned for their later section.
+
+> **Status: partially implemented.** The explicit Assessment E input is implemented as
+> described below; preview fields remain planned. The backend read projection and both frontend
+> read services are implemented, so `E` reasoning/cause is already available to the future
+> preview slice. The Assessment
 > union itself is owned by
-> [Contract: Assignment §Planned contract additions](assignment.md#planned-contract-additions--explicit-assessment-errors-and-result-format-marker-not-implemented).
+> [Contract: Assignment §Planned contract additions](assignment.md#planned-contract-additions--explicit-assessment-errors-and-result-format-marker-partially-implemented).
 
-### Analyser input — explicit `E` evidence (Not implemented)
+### Analyser input — explicit `E` evidence (Implemented)
 
-The planned analyser input adds `'E'` to the raw score union instead of inferring failure from
-absent assessments or missing numeric contributions:
+The analyser input accepts `'E'` explicitly instead of inferring failure from absent assessments
+or missing numeric contributions:
 
-| Contract                 | Current position                                                                | Planned position                                                                                                                                                                                                                                         |
-| ------------------------ | ------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `AssessmentScore`        | `number \| 'N' \| undefined`; the type comment states `'E'` does not appear.    | `number \| 'N' \| 'E' \| undefined`. `'E'` is explicit known-error evidence from the Assessment union.                                                                                                                                                   |
-| `processItemAssessments` | Reads `assessments[criterion]?.score`; an absent criterion becomes `undefined`. | Still reads the same fields, but an explicit `E` is recognised rather than relying on absence.                                                                                                                                                           |
-| `accumulateCriterion`    | Handles numeric and `'N'`; `undefined` contributes nothing.                     | Adds explicit `'E'` handling. `E` contributes no numeric sum, no `N` evidence, no denominator weight, no `totalDataPoints` increment and no weight-counter increment. It is error evidence only.                                                         |
-| `MetricAccumulator`      | `nCount` distinguishes `notAttempted` from `error`.                             | Adds explicit error recognition. Internal accumulator counter names are implementation-local and are not part of this data-shape contract; the counter must not be conflated with `nCount` or with any public output field.                              |
-| Metric resolution        | `error` is emitted when no numeric/`N` evidence remains.                        | A wholly errored task resolves all display metrics to `E` from explicit evidence. A lone `E` display has zero applicable/total data points and zero weight. Existing numeric, genuine `N`, zero-weight and aggregate `excluded` semantics are unchanged. |
+| Contract                 | Implemented position                                                                                                                                                                                                                                     |
+| ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `AssessmentScore`        | `number \| 'N' \| 'E' \| undefined` (`averagingAnalyser.types.ts`). `'E'` is explicit known-error evidence from the Assessment union.                                                                                                                    |
+| `processItemAssessments` | Reads `assessments[criterion]?.score`; an absent criterion remains `undefined`, while a provided `'E'` is recognised rather than relying on absence.                                                                                                     |
+| `accumulateCriterion`    | Handles numeric and `'N'`; `'E'` (like `undefined`) contributes no numeric sum, no `N` evidence, no denominator weight, no `totalDataPoints` increment and no weight-counter increment. It is error evidence only.                                       |
+| `MetricAccumulator`      | `nCount` still distinguishes `notAttempted` from `error`; the type comment records that explicit error scores are accepted by `AssessmentScore`. Internal accumulator counter names are implementation-local and not part of this data-shape contract.   |
+| Metric resolution        | A wholly errored task resolves all display metrics to `E` from explicit evidence. A lone `E` display has zero applicable/total data points and zero weight. Existing numeric, genuine `N`, zero-weight and aggregate `excluded` semantics are unchanged. |
 
-Planned aggregate rules:
+Implemented aggregate rules:
 
 - Explicit `E` increments no numeric/`N` evidence, `totalDataPoints` or weight counter, matching
   the existing missing-assessment error accounting. No new coverage counter is introduced.
@@ -1408,7 +1412,7 @@ Planned aggregate rules:
 - A version-1 canonical completed fixture never contains an empty assessment map.
   Missing-criterion and empty-map cases remain local corruption probes, not realistic success
   data. See
-  [Synthetic Test Data §Explicit E outcomes and richer artefact types (implemented generator and validators; corpus cut-over pending)](../testing/synthetic-test-data.md#planned-generator-extension-explicit-e-outcomes-and-richer-artefact-types-not-implemented).
+  [Synthetic Test Data §Explicit E outcomes and richer artefact types (implemented; corpus cut over)](../testing/synthetic-test-data.md#planned-generator-extension-explicit-e-outcomes-and-richer-artefact-types-not-implemented).
 - A version-1 item whose criterion map is incomplete or contains an extra key is an isolated
   all-three validation `CORRUPT_RECORD` `E` on both full and partial reads; see
   [Contract: Assignment §Assessment
@@ -1487,8 +1491,8 @@ Planned derivation and precedence:
 - Legacy reassessment entries are materialised by the backend
   `AssignmentRehydration.projectReassessmentSubmissions()` public entry, whose pure
   projection/snapshot mapping is implemented behind it in `02_AssignmentReadProjection.js`
-  (not a second materialiser), and validated by the frontend normaliser, which remains
-  `Not implemented`.
+  (not a second materialiser), and validated by the frontend normaliser, which is invoked by
+  both read services.
   Preview composition selects those already-materialised entries; it does not generate a second
   reassessment graph, query a roster or infer historical outcomes.
 - Every cause is the Assessment contract's `error: { stage, code }` pair; non-`E` selected
@@ -1531,10 +1535,11 @@ Alignment concerns:
    applies only to a known `E`, while non-`E` unexpected null remains an internal invariant
    failure. They are TS-only derived shapes; the additions must not enter an API
    request/response, persistence or the standard transport envelope.
-2. **Partial `Assignment` projection dependency remains.** Rendering `E` reasoning from
+2. **Resolved — partial `Assignment` projection dependency.** Rendering `E` reasoning from
    class-summary data requires the partial projection to retain `E` `reasoning` and `error`
    (see [Contract: Assignment §Partial projection](assignment.md#partial-projection--retain-e-explanation-implemented)).
-   Without that, a class-embedded `E` cannot supply the explanation the preview must show.
+   That retention is implemented, and the class-detail read service now validates the
+   materialised partial entries through the read normaliser.
 3. **Resolved — full-read-only corruption precedence.** `SPEC.md` pins the order above
    (explicit full-record validation error, then class-partial `E`, then selected full item's
    `E`, then analyser metric). The override remains preview-local, leaves class metrics

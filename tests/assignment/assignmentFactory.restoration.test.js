@@ -13,6 +13,18 @@ import {
   createTextTask,
   createStudentSubmission,
 } from '../helpers/modelFactories.js';
+import { withGlobalMocks } from '../helpers/globalMockManager.js';
+
+function withClassroomCoursework(getCourseWork, callback) {
+  const globals = withGlobalMocks({
+    Classroom: { Courses: { CourseWork: { get: getCourseWork } } },
+  });
+  try {
+    return callback();
+  } finally {
+    globals.restore();
+  }
+}
 
 /** Build the small assignment root used by polymorphic restoration cases. */
 function createTestData(docType, courseId) {
@@ -78,12 +90,101 @@ describe('Assignment.fromJSON() Polymorphic Deserialization', () => {
     });
   });
 
+  it('restores saved constructor metadata without fetching Classroom metadata', () => {
+    const getCourseWork = vi.fn(() => {
+      throw new Error('Restoration must not fetch Classroom metadata');
+    });
+    const savedCreatedAt = new Date('2025-05-06T07:08:09.000Z');
+    withClassroomCoursework(getCourseWork, () => {
+      const assignment = new Assignment(
+        'c-saved',
+        'a-saved',
+        {},
+        {
+          assignmentName: 'Saved assignment name',
+          createdAt: savedCreatedAt,
+        }
+      );
+
+      expect(getCourseWork).not.toHaveBeenCalled();
+      expect(assignment.assignmentName).toBe('Saved assignment name');
+      expect(assignment.createdAt).toEqual(savedCreatedAt);
+      expect(assignment._restorationMode).toBe('full');
+    });
+  });
+
+  it.each([
+    ['null', null],
+    ['missing', undefined],
+  ])('rejects a %s saved name without fetching Classroom during restoration', (_label, name) => {
+    const getCourseWork = vi.fn(() => {
+      throw new Error('Restoration must not fetch Classroom metadata');
+    });
+    const restoration = { createdAt: new Date('2025-05-06T07:08:09.000Z') };
+    if (name !== undefined) restoration.assignmentName = name;
+    withClassroomCoursework(getCourseWork, () => {
+      expect(() => new Assignment('c-invalid-name', 'a-invalid-name', {}, restoration)).toThrow();
+      expect(getCourseWork).not.toHaveBeenCalled();
+    });
+  });
+
+  it('retains an explicitly supplied partial constructor restoration mode', () => {
+    const assignment = new Assignment(
+      'c-partial',
+      'a-partial',
+      {},
+      {
+        assignmentName: 'Partial assignment',
+        createdAt: new Date('2025-05-06T07:08:09.000Z'),
+        representationMode: 'partial',
+      }
+    );
+
+    expect(assignment._restorationMode).toBe('partial');
+  });
+
+  it('rejects an explicitly invalid constructor restoration mode', () => {
+    expect(
+      () =>
+        new Assignment(
+          'c-invalid-mode',
+          'a-invalid-mode',
+          {},
+          {
+            assignmentName: 'Invalid mode',
+            createdAt: new Date('2025-05-06T07:08:09.000Z'),
+            representationMode: 'unknown',
+          }
+        )
+    ).toThrow(/Invalid assignment restoration mode/);
+  });
+
   it('should correctly restore subclass-specific properties (referenceDocumentId, templateDocumentId)', () => {
     const data = createTestData('SLIDES', 'c5');
     const assignment = Assignment.fromJSON(data);
 
     expect(assignment.assignmentDefinition.referenceDocumentId).toBe('ref5');
     expect(assignment.assignmentDefinition.templateDocumentId).toBe('tpl5');
+  });
+
+  it.each(['full', 'partial'])('restores legacy snapshots in constructor-owned %s mode', (mode) => {
+    const getCourseWork = vi.fn(() => {
+      throw new Error('Legacy restoration must not fetch Classroom metadata');
+    });
+    const data = createTestData('SLIDES', `c-legacy-${mode}`);
+    data.assignmentName = 'Saved legacy name';
+    data.createdAt = '2025-05-06T07:08:09.000Z';
+    data._restorationMode = mode === 'full' ? 'partial' : 'full';
+
+    withClassroomCoursework(getCourseWork, () => {
+      const assignment = Assignment.fromJSON(data, mode);
+
+      expect(getCourseWork).not.toHaveBeenCalled();
+      expect(assignment.assignmentName).toBe('Saved legacy name');
+      expect(assignment.createdAt).toEqual(new Date(data.createdAt));
+      expect(assignment._restorationMode).toBe(mode);
+      expect(assignment.toJSON()).not.toHaveProperty('_restorationMode');
+    });
   });
 
   it('should throw a user-facing error via ProgressTracker for invalid documentType values', () => {

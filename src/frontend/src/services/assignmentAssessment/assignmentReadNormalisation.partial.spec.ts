@@ -147,7 +147,6 @@ function assertMalformedCriterionIsolation(): void {
   if (!resultItems) throw new Error('Expected normalised submission items');
   expect(resultItems[badCriterion[0]].assessments).toEqual(allCorrupt());
   expect(resultItems[healthy[0]].assessments).toEqual(healthy[1].assessments);
-
   const taskConflict = probe();
   const [taskKey, taskItem] = Object.entries(
     selectedAssignment(taskConflict).submissions[0]!.items
@@ -160,15 +159,19 @@ function assertMalformedCriterionIsolation(): void {
   const [criterionKey, criterionItem] = Object.entries(
     selectedAssignment(extraCriterion).submissions[0]!.items
   )[0]!;
-  criterionItem.assessments = { ...criterionItem.assessments, formulaComparison: {} };
+  const privateCriterionKey = 'PRIVATE_STUDENT_RESPONSE_SENTINEL';
+  criterionItem.assessments = { ...criterionItem.assessments, [privateCriterionKey]: {} };
+  delete criterionItem.artifact.contentHash;
+  delete criterionItem.artifact.content;
   warn.mockClear();
   expect.soft(() => normaliseClassRead(extraCriterion)).not.toThrow();
-  expect
-    .soft(JSON.stringify(warn.mock.calls))
-    .toContain(`items.${criterionKey}.assessments.formulaComparison`);
+  const unexpectedKeyDiagnostics = JSON.stringify(warn.mock.calls);
+  expect.soft(unexpectedKeyDiagnostics).not.toContain(privateCriterionKey);
+  expect.soft(unexpectedKeyDiagnostics).toContain(`items.${criterionKey}.assessments`);
+  expect.soft(unexpectedKeyDiagnostics).not.toContain('contentHash');
   warn.mockRestore();
 }
-/** Verifies a dictionary-key/task identity mismatch is isolated from its sibling. */
+/** Verifies task identity isolation. */
 function assertTaskIdentityIsolation(): void {
   const input = probe();
   const submission = selectedAssignment(input).submissions[0];
@@ -182,7 +185,6 @@ function assertTaskIdentityIsolation(): void {
   expect(resultItems[mismatched[0]].assessments).toEqual(allCorrupt());
   expect(resultItems[healthy[0]].assessments).toEqual(healthy[1].assessments);
 }
-
 /** Verifies partial normalisation retains only supplied entries without fetching more data. */
 function assertProvidedEntryOnly(): void {
   const input = probe();
@@ -215,8 +217,7 @@ function assertProvidedEntryOnly(): void {
   assertRawRedaction(output, submission.studentId, retained);
   expect(transport).not.toHaveBeenCalled();
 }
-
-/** Checks raw output before the public class schema strips redacted artefact fields.
+/** Checks raw output fields.
  * @param {unknown} output - The normaliser's unparsed result.
  * @param {string} studentId - The provided student's identity.
  * @param {string} taskId - The retained task key.
@@ -238,7 +239,6 @@ function assertRawRedaction(output: unknown, studentId: string, taskId: string):
   expect(rawItem.artifact.contentHash == null).toBe(true);
   expect(Object.keys(rawSubmission.items)).toEqual([taskId]);
 }
-
 describe('normaliseClassRead partial payload', () => {
   it('preserves score-only numeric/fractional/N results and materialised E without mutating input', () => {
     const input = probe();

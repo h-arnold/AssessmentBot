@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { afterAll, describe, expect, it, vi } from 'vitest';
+import * as prettier from 'prettier';
 
 import { generateCommittedProfiles } from '#synthetic-data/generateSyntheticAnalysisFixtures.js';
 import { getProfileDefinition } from '#synthetic-data/profileDefinitions.js';
@@ -18,6 +19,7 @@ const COMMITTED_PROFILE_NAMES = [
   REPRESENTATIVE_PROFILE_NAME,
 ] as const;
 const INJECTED_GENERATION_FAILURE_MESSAGE = 'injected later-profile generation failure';
+const FORMATTER_HEAVY_TEST_TIMEOUT_MS = 15_000;
 
 /**
  * Mutable control exercised by the graph-generator mock so a test can make a
@@ -127,50 +129,91 @@ function snapshotDirectory(directory: string): Record<string, string> {
 }
 
 describe('committed synthetic analysis fixture regeneration', () => {
-  it('regenerates every committed profile view byte-for-byte', () => {
-    const outputRoot = createTemporaryOutputRoot();
-    generateCommittedProfiles({ outputRoot });
+  it(
+    'regenerates every committed profile view byte-for-byte',
+    async () => {
+      const outputRoot = createTemporaryOutputRoot();
+      await generateCommittedProfiles({ outputRoot });
 
-    for (const profileName of COMMITTED_PROFILE_NAMES) {
-      for (const viewFileName of PROFILE_VIEW_FILE_NAMES) {
-        const committed = readFileSync(
-          join(REPOSITORY_ROOT, COMMITTED_FIXTURE_ROOT, profileName, viewFileName)
-        );
-        const regenerated = readFileSync(join(outputRoot, profileName, viewFileName));
+      for (const profileName of COMMITTED_PROFILE_NAMES) {
+        for (const viewFileName of PROFILE_VIEW_FILE_NAMES) {
+          const committed = readFileSync(
+            join(REPOSITORY_ROOT, COMMITTED_FIXTURE_ROOT, profileName, viewFileName)
+          );
+          const regenerated = readFileSync(join(outputRoot, profileName, viewFileName));
 
-        expect(
-          regenerated.equals(committed),
-          `${profileName}/${viewFileName} must regenerate byte-for-byte`
-        ).toBe(true);
+          expect(
+            regenerated.equals(committed),
+            `${profileName}/${viewFileName} must regenerate byte-for-byte`
+          ).toBe(true);
+        }
       }
-    }
-  });
+    },
+    FORMATTER_HEAVY_TEST_TIMEOUT_MS
+  );
 
-  it('regenerates identical bytes across separate runs', () => {
-    const firstRoot = createTemporaryOutputRoot();
-    const secondRoot = createTemporaryOutputRoot();
-    generateCommittedProfiles({ outputRoot: firstRoot });
-    generateCommittedProfiles({ outputRoot: secondRoot });
+  it(
+    'is idempotent under repository Prettier configuration for each committed JSON filepath',
+    async () => {
+      const outputRoot = createTemporaryOutputRoot();
+      await generateCommittedProfiles({ outputRoot });
 
-    for (const profileName of COMMITTED_PROFILE_NAMES) {
-      for (const viewFileName of PROFILE_VIEW_FILE_NAMES) {
-        const first = readFileSync(join(firstRoot, profileName, viewFileName));
-        const second = readFileSync(join(secondRoot, profileName, viewFileName));
+      for (const profileName of COMMITTED_PROFILE_NAMES) {
+        for (const viewFileName of PROFILE_VIEW_FILE_NAMES) {
+          const committedPath = join(
+            REPOSITORY_ROOT,
+            COMMITTED_FIXTURE_ROOT,
+            profileName,
+            viewFileName
+          );
+          const generatedPath = join(outputRoot, profileName, viewFileName);
+          const source = readFileSync(generatedPath, 'utf8');
+          const configuration = await prettier.resolveConfig(committedPath);
+          const formatted = await prettier.format(source, {
+            ...configuration,
+            filepath: committedPath,
+          });
 
-        expect(second.equals(first), `${profileName}/${viewFileName} must be deterministic`).toBe(
-          true
-        );
+          expect(formatted, `${profileName}/${viewFileName} Prettier idempotence`).toBe(source);
+        }
       }
-    }
-  });
+    },
+    FORMATTER_HEAVY_TEST_TIMEOUT_MS
+  );
 
-  it('does not include an on-demand large-full profile among the committed fixtures', () => {
-    const outputRoot = createTemporaryOutputRoot();
-    generateCommittedProfiles({ outputRoot });
+  it(
+    'regenerates identical bytes across separate runs',
+    async () => {
+      const firstRoot = createTemporaryOutputRoot();
+      const secondRoot = createTemporaryOutputRoot();
+      await generateCommittedProfiles({ outputRoot: firstRoot });
+      await generateCommittedProfiles({ outputRoot: secondRoot });
 
-    expect(readdirSync(outputRoot).sort()).toEqual([...COMMITTED_PROFILE_NAMES].sort());
-    expect(existsSync(join(outputRoot, FULL_LARGE_PROFILE_NAME))).toBe(false);
-  });
+      for (const profileName of COMMITTED_PROFILE_NAMES) {
+        for (const viewFileName of PROFILE_VIEW_FILE_NAMES) {
+          const first = readFileSync(join(firstRoot, profileName, viewFileName));
+          const second = readFileSync(join(secondRoot, profileName, viewFileName));
+
+          expect(second.equals(first), `${profileName}/${viewFileName} must be deterministic`).toBe(
+            true
+          );
+        }
+      }
+    },
+    FORMATTER_HEAVY_TEST_TIMEOUT_MS
+  );
+
+  it(
+    'does not include an on-demand large-full profile among the committed fixtures',
+    async () => {
+      const outputRoot = createTemporaryOutputRoot();
+      await generateCommittedProfiles({ outputRoot });
+
+      expect(readdirSync(outputRoot).sort()).toEqual([...COMMITTED_PROFILE_NAMES].sort());
+      expect(existsSync(join(outputRoot, FULL_LARGE_PROFILE_NAME))).toBe(false);
+    },
+    FORMATTER_HEAVY_TEST_TIMEOUT_MS
+  );
 });
 
 describe('committed synthetic analysis profile manifests', () => {
@@ -206,21 +249,25 @@ describe('committed synthetic analysis profile manifests', () => {
 });
 
 describe('committed synthetic analysis fixture set failure safety', () => {
-  it('preserves every pre-existing committed profile when a later profile fails to generate', () => {
-    const outputRoot = createTemporaryOutputRoot();
-    generateCommittedProfiles({ outputRoot });
-    const before = snapshotDirectory(outputRoot);
+  it(
+    'preserves every pre-existing committed profile when a later profile fails to generate',
+    async () => {
+      const outputRoot = createTemporaryOutputRoot();
+      await generateCommittedProfiles({ outputRoot });
+      const before = snapshotDirectory(outputRoot);
 
-    generationFailureControl.failedProfile = MEDIUM_PROFILE_NAME;
-    try {
-      expect(() => generateCommittedProfiles({ outputRoot })).toThrow(
-        INJECTED_GENERATION_FAILURE_MESSAGE
-      );
-    } finally {
-      generationFailureControl.failedProfile = null;
-    }
+      generationFailureControl.failedProfile = MEDIUM_PROFILE_NAME;
+      try {
+        await expect(generateCommittedProfiles({ outputRoot })).rejects.toThrow(
+          INJECTED_GENERATION_FAILURE_MESSAGE
+        );
+      } finally {
+        generationFailureControl.failedProfile = null;
+      }
 
-    expect(snapshotDirectory(outputRoot)).toEqual(before);
-    expect(readdirSync(outputRoot).sort()).toEqual([...COMMITTED_PROFILE_NAMES].sort());
-  });
+      expect(snapshotDirectory(outputRoot)).toEqual(before);
+      expect(readdirSync(outputRoot).sort()).toEqual([...COMMITTED_PROFILE_NAMES].sort());
+    },
+    FORMATTER_HEAVY_TEST_TIMEOUT_MS
+  );
 });

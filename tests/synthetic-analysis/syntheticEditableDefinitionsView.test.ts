@@ -387,12 +387,12 @@ describe('editable-definitions validation suite', () => {
 });
 
 describe('committed editable-definitions fixture regeneration', () => {
-  it('regenerates editableDefinitions.json byte-for-byte for every committed profile', () => {
+  it('regenerates editableDefinitions.json byte-for-byte for every committed profile', async () => {
     const outputRoot = mkdtempSync(
       join(REPOSITORY_ROOT, '.opencode/scratchpad/synthetic-editable-definitions-')
     );
     temporaryRoots.push(outputRoot);
-    generateCommittedProfiles({ outputRoot });
+    await generateCommittedProfiles({ outputRoot });
 
     for (const profileName of COMMITTED_PROFILE_NAMES) {
       const regeneratedPath = join(outputRoot, profileName, EDITABLE_DEFINITIONS_FILE_NAME);

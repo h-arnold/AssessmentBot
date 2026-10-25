@@ -424,7 +424,7 @@ class ABClass {
       json.assignments.forEach((assignmentData) => {
         const assignmentInstance = Assignment.fromJSON(
           assignmentData,
-          Array.isArray(assignmentData.assignmentDefinition?.tasks) ? 'partial' : undefined
+          Array.isArray(assignmentData.assignmentDefinition?.tasks) ? 'partial' : 'full'
         );
         assignmentInstance._hydrationLevel = 'partial';
         inst.assignments.push(assignmentInstance);

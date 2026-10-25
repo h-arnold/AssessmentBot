@@ -208,7 +208,7 @@ Returns the full class document with assignments as partial summaries.
 | `documentType`              | `string\|null`               | yes                                     | `'SLIDES'` \| `'SHEETS'` or `null`.                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | `submissions`               | `StudentSubmissionPartial[]` | yes                                     | Array of partial submission objects (see [Contract: Assignment](assignment.md) for full shape).                                                                                                                                                                                                                                                                                                                                                       |
 | `assignmentDefinitionKey`   | `string`                     | yes                                     | Produced only from the stored embedded definition's `definitionKey` when that value is a non-empty string; the embedded `assignmentDefinition` object is then removed. A missing embedded definition, or a missing/empty/non-string `definitionKey`, fails the whole read as a stored-integrity error rather than emitting `null` or omitting the key. The frontend resolves definition details from its own `AssignmentDefinitionPartials` registry. |
-| `assessmentContractVersion` | `1\|null`                    | yes                                     | Backend emits `1` for a current result and explicit `null` for a legacy result after the detached reassessment projection. `AssignmentPartialSchema` now requires `assessmentContractVersion: z.union([z.literal(1), z.null()])`; the read services are not yet wired to the pure normaliser.                                                                                                                                                         |
+| `assessmentContractVersion` | `1\|null`                    | yes                                     | Backend emits `1` for a current result and explicit `null` for a legacy result after the detached reassessment projection. `AssignmentPartialSchema` requires `assessmentContractVersion: z.union([z.literal(1), z.null()])`, and `getABClass()` runs `normaliseClassRead()` before its final response parse.                                                                                                                                         |
 
 Key contract notes:
 
@@ -706,42 +706,36 @@ drifts are now resolved and are recorded here so they are not reintroduced:
   rejects on reads — is resolved by delegating both paths to
   `validateSafeTrimmedIdentifier_` (see [§ Validation](#validation)).
 
-## Planned contract additions — embedded result marker and E projections (Not implemented)
+## Planned contract additions — embedded result marker and E projections (Implemented)
 
-> **Status: backend transport implemented; frontend schema activation implemented; pure
-> frontend normaliser implemented and awaiting independent G3 review/sign-off; service wiring
-> pending.**
-> These entries record the target contract from `SPEC.md` (explicit
-> Assessment errors and targeted pipeline simplification). Backend
+> **Status: implemented on both read paths.** These entries record the contract from `SPEC.md`
+> (explicit Assessment errors and targeted pipeline simplification). Backend
 > `StudentSubmissionItem.toPartialJSON()` retains `'E'` entries with `reasoning` and `error`;
 > marker-1 CURRENT restoration applies the coverage and null-parent isolation described below;
-> and `_toReadView()` now emits the class-read marker plus the detached legacy reassessment
-> projection. The frontend class-detail schema now requires the marker and the shared partial
-> result schema accepts `E`; the pure read normaliser is implemented but the class-detail service
-> is not yet wired to it. Open review gaps G4–G8 are recorded in
+> and `_toReadView()` emits the class-read marker plus the detached legacy reassessment
+> projection. The frontend class-detail schema requires the marker and the shared partial result
+> schema accepts `E`; `getABClass()` runs the read normaliser before its final parse. The former
+> review gaps G4–G8 are resolved in
 > [Contract: Assignment §Known discrepancies](assignment.md#known-discrepancies). The Assessment/partial shapes themselves are owned by
-> [Contract: Assignment §Planned contract additions](assignment.md#planned-contract-additions--explicit-assessment-errors-and-result-format-marker-not-implemented).
+> [Contract: Assignment §Planned contract additions](assignment.md#planned-contract-additions--explicit-assessment-errors-and-result-format-marker-partially-implemented).
 
 There is **no planned change** to either ABClass collection, to `ABClass.toJSON()` /
 `ABClass.toPartialJSON()` field lists, or to the ABClass metadata shape. The planned
 additions ride inside the embedded assignment partials and their submission items.
 
-### Embedded `assignments[]` transport additions (Not implemented)
+### Embedded `assignments[]` transport additions (Implemented)
 
-> **Status: backend transport implemented; frontend schema activation implemented; pure
-> frontend normaliser implemented and awaiting independent G3 review/sign-off; service wiring
-> pending.** The
-> class read emits the marker and retains partial `E` details; the class-detail schema now requires
-> the marker and accepts the shared partial `E` union, but the read service is not yet wired to the
-> normaliser.
+> **Status: implemented.** The class read emits the marker and retains partial `E` details; the
+> class-detail schema requires the marker and accepts the shared partial `E` union, and the read
+> service runs the normaliser before its final parse.
 
 | Field                                  | Where                              | Type                       | Frontend Zod                                                  | Notes                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
 | -------------------------------------- | ---------------------------------- | -------------------------- | ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `assessmentContractVersion`            | Each `assignments[]` partial entry | `1 \| null`                | `z.union([z.literal(1), z.null()])`                           | `1` for a current result; `null` for a legacy result requiring reassessment. A stored marker may be absent, `null` or unsupported and is preserved opaquely. `Assignment.toPartialJSON()` emits `1` for current results, while the class read projection emits explicit `null` beside backend-materialised reassessment `E` for legacy results. The class read transport always emits the field as `1 \| null`; ABClass does not produce the marker independently. A wire payload with a missing/unsupported marker is an invalid root, not a frontend compatibility or second legacy-graph path. |
-| `submissions[].items[].assessments[*]` | Embedded partial submission items  | `Assessment` partial union | Score-only numeric/`N`, or `{ score: 'E', reasoning, error }` | **Backend retention implemented:** `StudentSubmissionItem.toPartialJSON()` keeps numeric/`N` entries score-only and preserves an `'E'` entry's `reasoning` and `error`. `PartialAssessmentEntrySchema` now aliases the shared `partialAssessmentResultSchema`, so a class-embedded `E` validates with its explanation. The read service is not yet wired to the normaliser.                                                                                                                                                                                                                       |
+| `submissions[].items[].assessments[*]` | Embedded partial submission items  | `Assessment` partial union | Score-only numeric/`N`, or `{ score: 'E', reasoning, error }` | **Implemented:** `StudentSubmissionItem.toPartialJSON()` keeps numeric/`N` entries score-only and preserves an `'E'` entry's `reasoning` and `error`. `PartialAssessmentEntrySchema` aliases the shared `partialAssessmentResultSchema`, so a class-embedded `E` validates with its explanation; the read service validates the provided entries through the normaliser.                                                                                                                                                                                                                          |
 | Existing `assignmentDefinitionKey`     | Each `assignments[]` partial entry | unchanged `string`         | unchanged `z.string()`                                        | No change to the read-boundary integrity rule.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
 
-Class-read behaviour (backend implemented; frontend schema activated; service wiring pending):
+Class-read behaviour (implemented):
 
 - `getABClass` continues to serialise embedded assignments via `toPartialJSON()` and to replace
   the embedded definition with `assignmentDefinitionKey`. Current-result markers and E entries are
@@ -760,7 +754,7 @@ Class-read behaviour (backend implemented; frontend schema activated; service wi
   `02_AssignmentReadProjection.js`, not a second materialiser. The wire
   therefore includes explicit partial `E` items and `assessmentContractVersion: null`.
 - Placeholder construction follows
-  [Contract: Assignment §Legacy reassessment read projection](assignment.md#legacy-reassessment-read-projection-not-implemented):
+  [Contract: Assignment §Legacy reassessment read projection](assignment.md#legacy-reassessment-read-projection-implemented):
   `role: 'submission'`, `type: 'base'`, explicit null content/hash, empty metadata/feedback, the
   canonical validation `REASSESSMENT_REQUIRED` `E` on all three criteria, deterministic artefact
   UID, the usual item ID derivation, only validated historical document/page IDs (otherwise
@@ -776,15 +770,15 @@ Class-read behaviour (backend implemented; frontend schema activated; service wi
   partial-definition records can expose different known-task universes between the two reads.
   All projected entries in both reads remain reassessment `E`; neither repairs storage nor
   guesses historical task associations or causes. See
-  [Contract: Assignment §Legacy reassessment read projection](assignment.md#legacy-reassessment-read-projection-not-implemented).
+  [Contract: Assignment §Legacy reassessment read projection](assignment.md#legacy-reassessment-read-projection-implemented).
 - The backend is authoritative for completed-item coverage on both read paths. For marker-1
   CURRENT records, `AssignmentRehydration` materialises a missing known task as a
   `CORRUPT_RECORD` `E` during one-pass full **and** partial restoration, using the assignment's
   embedded task snapshot. Legacy reads do not run that current-record coverage check: they
   materialise every authoritative student/task pair as detached
-  `REASSESSMENT_REQUIRED` `E` without validating historical assessment bodies. The pure browser
-  normaliser implements the equivalent provided-entry isolation and is awaiting independent
-  review, but is not yet wired into the read service. On this class read path those materialised
+  `REASSESSMENT_REQUIRED` `E` without validating historical assessment bodies. The browser
+  normaliser implements the equivalent provided-entry isolation and is invoked by the read
+  service. On this class read path those materialised
   entries are therefore already present in the class-partial output before the embedded task
   snapshot is replaced by `assignmentDefinitionKey`. The browser's partial-read normaliser
   validates only the entries it receives and never infers extra coverage errors from the
@@ -808,14 +802,14 @@ Class-read behaviour (backend implemented; frontend schema activated; service wi
   contain only complete all-three acquisition or validation `E` results. This null-parent
   isolation is implemented for marker-1 CURRENT records on both full and partial restoration
   only; legacy reads instead materialise every authoritative student/task pair as detached
-  `REASSESSMENT_REQUIRED` `E` without validating historical assessment bodies. The pure browser
-  normaliser implements the same null-parent isolation but is not yet wired into the read service.
+  `REASSESSMENT_REQUIRED` `E` without validating historical assessment bodies. The browser
+  normaliser implements the same null-parent isolation and is invoked by the read service.
   On the class-partial path, each identifiable item carrying
   numeric/`N` marks or an assessment/extraction-stage `E` is isolated to all three validation
   `CORRUPT_RECORD` `E` entries; preserve healthy siblings and valid acquisition/validation `E`.
   The offending item is not silently dropped and the whole owned dataset is not failed for an
   identifiable contradiction. See
-  [Contract: Assignment §Completed submission coverage](assignment.md#completed-submission-coverage-not-implemented).
+  [Contract: Assignment §Completed submission coverage](assignment.md#completed-submission-coverage-implemented-for-reads).
 - The read remains read-only. A normal class save must preserve the legacy marker and must not
   accidentally certify an old result as current. Successful reassessment replaces the full
   result and the embedded partial with version `1`.
@@ -825,19 +819,19 @@ Class-read behaviour (backend implemented; frontend schema activated; service wi
   heatmap, class averages or ABClass metadata, and it is not persisted as a repair.
 - Full and class-embedded partial reads use the shared frontend result schemas and
   read-normalisation owners documented in
-  [Contract: Assignment §Full and partial item isolation](assignment.md#full-and-partial-item-isolation-with-trustworthy-identities-not-implemented);
-  ABClass adds no second domain-validator hierarchy. `PartialAssessmentEntrySchema` now aliases the
+  [Contract: Assignment §Full and partial item isolation](assignment.md#full-and-partial-item-isolation-with-trustworthy-identities-implemented);
+  ABClass adds no second domain-validator hierarchy. `PartialAssessmentEntrySchema` aliases the
   shared partial result schema and `AssignmentPartialSchema` requires
-  `assessmentContractVersion: 1 | null`, but the class-detail service is not yet wired to the pure
-  normaliser. The frontend validates the backend-materialised reassessment entries against the
+  `assessmentContractVersion: 1 | null`; the class-detail service runs the normaliser before its
+  final parse. The frontend validates the backend-materialised reassessment entries against the
   required marker and per-item shapes. It does not generate a second reassessment graph, query a
   roster, infer historical outcomes or infer coverage from the definition registry. A class-read
   wire payload that omits `assessmentContractVersion` or carries an unsupported value is an
   invalid root, not a legacy-result signal; the backend `_toReadView()` projection is the sole
-  legacy materialiser and always emits the required `1 | null` field. Open review gaps G4–G8 are
-  listed in [Contract: Assignment §Known discrepancies](assignment.md#known-discrepancies).
+  legacy materialiser and always emits the required `1 | null` field. The former review gaps
+  G4–G8 are resolved in [Contract: Assignment §Known discrepancies](assignment.md#known-discrepancies).
 
-### Metadata interaction (Not implemented)
+### Metadata interaction (No shape change)
 
 No metadata shape or persistence change is planned. `ABClassMetadata.AverageScore` already
 accepts finite 0–5 numbers and the exact `'N' | 'E' | 'excluded'` markers, and the existing
@@ -853,11 +847,11 @@ post-analysis metadata refresh behaviour is otherwise unchanged.
 
 Alignment concerns:
 
-1. `AssignmentPartialSchema` now requires `assessmentContractVersion: 1 | null`, and
-   `PartialAssessmentEntrySchema` now aliases the shared partial result schema so it accepts the
-   partial `E` branch. The backend class read and the class-detail schema therefore agree. The
-   read service is not yet wired to the pure normaliser, so contextual marker-versus-result
-   validation remains pending (open review gap G5). The required `assessmentContractVersion`
+1. `AssignmentPartialSchema` requires `assessmentContractVersion: 1 | null`, and
+   `PartialAssessmentEntrySchema` aliases the shared partial result schema so it accepts the
+   partial `E` branch. The backend class read and the class-detail schema therefore agree, and
+   the class-detail service runs the normaliser, so contextual marker-versus-result validation is
+   active. The required `assessmentContractVersion`
    validator is `z.union([z.literal(1), z.null()])`, not optional; a missing or unsupported wire
    marker is an invalid root, not a frontend fallback signal.
 2. `SPEC.md` now fixes the preview field names: `CellPreviewData` gains the required `errors`
@@ -868,13 +862,13 @@ Alignment concerns:
 3. ABClass persistence itself is unchanged; the marker must be produced by the embedded
    `Assignment` partial serializer, not by a second ABClass-side projection.
 4. Class-embedded partial coverage, null-document non-empty item maps and no-submission omission
-   are **implemented on the backend**, with different legacy behaviour. For marker-1 CURRENT
+   are **implemented on both reads**, with different legacy behaviour. For marker-1 CURRENT
    records, backend restoration materialises missing known tasks and isolates contradicted
    null-parent items during one-pass full and partial restoration before the definition key is
    transported. Legacy reads instead materialise every authoritative student/task pair as
-   detached `REASSESSMENT_REQUIRED` `E` without validating historical assessment bodies. The pure
+   detached `REASSESSMENT_REQUIRED` `E` without validating historical assessment bodies. The
    frontend partial normaliser implements provided-entry isolation and the defensive full-payload
-   fallback, but is not yet wired into the read service. Coverage
+   fallback and is invoked by the read service. Coverage
    materialisation for current records stays backend-owned; the frontend partial normaliser
    validates provided entries only. On marker-1 CURRENT reads, a null-document non-empty map may
    contain only acquisition/validation `E`; an identifiable item contradicted by numeric/`N`
@@ -945,7 +939,7 @@ Frontend:
   │       (requires ABClassMetadataSchema), ClassFullResponseSchema
   ├── src/frontend/src/services/assignmentAssessment/assignmentReadNormalisation.ts
   │     → normaliseAssignmentRead(), normaliseClassRead() (implemented pure full/partial
-  │       read normaliser; independent review pending; read services not yet wired)
+  │       read normaliser; invoked by both read services before their final parse)
   ├── src/frontend/src/services/assignmentAssessment/assignmentReadItemValidation.ts
   │     → isValidFullItem(), isValidPartialItem(), corruptItem(), itemErrorPath() (implemented
   │       adjacent pure item/source validation and canonical corruption construction)

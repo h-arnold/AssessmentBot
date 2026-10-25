@@ -174,11 +174,6 @@ export function isValidFullItem(
   return hasValidFullSource(parsed.data.artifact, parsed.data.assessments);
 }
 
-/**
- *
- * @param artifactValue
- * @param assessmentsValue
- */
 /** Checks full source availability against the criterion outcomes.
  * @param {unknown} artifactValue Parsed full artefact.
  * @param {unknown} assessmentsValue Parsed full result map.
@@ -257,23 +252,26 @@ function sourceIdentity(
  * @param {string} taskId Trusted task identity.
  * @param {Record<string, unknown>} artifact Existing artefact fields.
  * @param {boolean} isPartial Whether to retain partial source projection.
+ * @param {unknown} parentDocumentId Parent submission source identity.
  * @returns {Record<string, unknown>} Canonical replacement artefact.
  */
 function corruptedArtifact(
   taskId: string,
   artifact: Record<string, unknown>,
-  isPartial: boolean
+  isPartial: boolean,
+  parentDocumentId: unknown
 ): Record<string, unknown> {
+  const isNullParent = parentDocumentId === null;
   return {
-    ...retainedArtifactFields(artifact, isPartial),
+    ...(!isNullParent && retainedArtifactFields(artifact, isPartial)),
     taskId,
     role: 'submission',
     uid: isIdentity(artifact.uid) ? artifact.uid : `corrupt-${taskId}`,
     type: 'base',
-    pageId: sourceIdentity(artifact, 'pageId'),
-    documentId: sourceIdentity(artifact, 'documentId'),
+    pageId: isNullParent ? null : sourceIdentity(artifact, 'pageId'),
+    documentId: isNullParent ? null : sourceIdentity(artifact, 'documentId'),
     metadata: {},
-    ...(!isPartial && { content: null, contentHash: null }),
+    ...((!isPartial || isNullParent) && { content: null, contentHash: null }),
   };
 }
 
@@ -282,13 +280,15 @@ function corruptedArtifact(
  * @param {unknown} existing Invalid item, when record-shaped.
  * @param {boolean} isPartial Whether to retain the partial artefact projection.
  * @param {Record<string, unknown>} corruptMap Canonical corruption assessments.
+ * @param {unknown} parentDocumentId Parent submission source identity.
  * @returns {Record<string, unknown>} Replacement item.
  */
 export function corruptItem(
   taskId: string,
   existing: unknown,
   isPartial: boolean,
-  corruptMap: Record<string, unknown>
+  corruptMap: Record<string, unknown>,
+  parentDocumentId: unknown
 ): Record<string, unknown> {
   const current = isRecord(existing) ? existing : {};
   const artifact = existingArtifact(existing);
@@ -297,7 +297,7 @@ export function corruptItem(
     ...current,
     id,
     taskId,
-    artifact: corruptedArtifact(taskId, artifact, isPartial),
+    artifact: corruptedArtifact(taskId, artifact, isPartial, parentDocumentId),
     assessments: corruptMap,
     feedback: {},
   };
@@ -323,12 +323,82 @@ function invalidAssessmentPath(
  * @param {unknown} item Candidate item.
  * @param {string} fallback Default item path.
  * @param {boolean} isPartial Whether to validate partial assessment results.
+ * @param {string} expectedTaskId Trusted dictionary task identity.
  * @returns {string} A field path containing no submitted values.
  */
-export function itemErrorPath(item: unknown, fallback: string, isPartial: boolean): string {
-  if (!isRecord(item)) return fallback;
+export function itemErrorPath(
+  item: unknown,
+  fallback: string,
+  isPartial: boolean,
+  expectedTaskId: string
+): string {
+  return (
+    malformedItemFieldPath(item, fallback, isPartial, expectedTaskId) ??
+    malformedAssessmentPath(item, fallback, isPartial) ??
+    fallback
+  );
+}
+
+/** Returns a safe path for malformed item identity or artefact fields.
+ * @param {unknown} item Candidate item.
+ * @param {string} fallback Default item path.
+ * @param {boolean} isPartial Whether artefact hashes are redacted.
+ * @param {string} expectedTaskId Trusted dictionary task identity.
+ * @returns {string | undefined} Safe path when an item field is invalid.
+ */
+function malformedItemFieldPath(
+  item: unknown,
+  fallback: string,
+  isPartial: boolean,
+  expectedTaskId: string
+): string | undefined {
+  if (!isRecord(item)) return undefined;
   if (!isRecord(item.artifact)) return `${fallback}.artifact`;
-  if (item.taskId === undefined) return `${fallback}.taskId`;
+  if (item.taskId !== expectedTaskId) return `${fallback}.taskId`;
+  const artifact = item.artifact;
+  if (artifact.taskId !== item.taskId) return `${fallback}.artifact.taskId`;
+  return isPartial ? undefined : invalidContentHashPath(artifact, fallback);
+}
+
+/** Returns a safe path for an invalid content hash.
+ * @param {Record<string, unknown>} artifact Candidate artefact.
+ * @param {string} fallback Default item path.
+ * @returns {string | undefined} Safe path when contentHash is malformed.
+ */
+function invalidContentHashPath(
+  artifact: Record<string, unknown>,
+  fallback: string
+): string | undefined {
+  if (
+    artifact.contentHash === undefined ||
+    (artifact.contentHash !== null && typeof artifact.contentHash !== 'string')
+  ) {
+    return `${fallback}.artifact.contentHash`;
+  }
+  return undefined;
+}
+
+/** Returns a safe path for malformed assessment keys or results.
+ * @param {unknown} item Candidate item.
+ * @param {string} fallback Default item path.
+ * @param {boolean} isPartial Whether partial assessment results are expected.
+ * @returns {string | undefined} Safe path when assessment data is invalid.
+ */
+function malformedAssessmentPath(
+  item: unknown,
+  fallback: string,
+  isPartial: boolean
+): string | undefined {
+  if (!isRecord(item) || !isRecord(item.assessments)) return `${fallback}.assessments`;
+  const extraCriterion = Object.keys(item.assessments).find(
+    (key) => !criteria.includes(key as (typeof criteria)[number])
+  );
+  if (extraCriterion !== undefined) {
+    // Preserve the known safe diagnostic while keeping arbitrary keys out of log paths.
+    return extraCriterion === 'formulaComparison'
+      ? `${fallback}.assessments.formulaComparison`
+      : `${fallback}.assessments`;
+  }
   if (!hasExactCriteria(item.assessments)) return `${fallback}.assessments`;
-  return invalidAssessmentPath(item.assessments, fallback, isPartial) ?? fallback;
+  return invalidAssessmentPath(item.assessments, fallback, isPartial);
 }

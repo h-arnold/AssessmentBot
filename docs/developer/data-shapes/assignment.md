@@ -14,7 +14,7 @@ Response mapper: Transport transformations applied by `src/backend/y_controllers
 Frontend service: `src/frontend/src/services/assignmentAssessment/assignmentAssessmentService.ts`
 Frontend Zod: `src/frontend/src/services/assignmentAssessment/assignmentAssessment.zod.ts` (full),
 `src/frontend/src/services/googleClassrooms/classDetail/classDetailService.zod.ts` (partial)
-Frontend read normalisation: `src/frontend/src/services/assignmentAssessment/assignmentReadNormalisation.ts` (implemented pure full/partial entry points; independent G3 review/sign-off pending and not yet consumed by the read services),
+Frontend read normalisation: `src/frontend/src/services/assignmentAssessment/assignmentReadNormalisation.ts` (implemented pure full/partial entry points, invoked by both read services before their final response parse),
 with item/source validation and corruption construction in `src/frontend/src/services/assignmentAssessment/assignmentReadItemValidation.ts`
 
 Sibling contracts:
@@ -37,21 +37,21 @@ but are not independently persisted.
 
 Stored via `Assignment.toJSON()` in `00_AssignmentSerialisation.js`.
 
-| #   | Field                       | Type                                   | Persistence            | Transport         | Frontend Zod                                                                        | Notes                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
-| --- | --------------------------- | -------------------------------------- | ---------------------- | ----------------- | ----------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | `courseId`                  | `string`                               | included               | same              | `AssignmentFullSchema.courseId: z.string()`                                         | Google Classroom course ID. Required, never null.                                                                                                                                                                                                                                                                                                                                                                                                           |
-| 2   | `assignmentId`              | `string`                               | included               | same              | `AssignmentFullSchema.assignmentId: z.string()`                                     | Google Classroom coursework ID. Required, never null.                                                                                                                                                                                                                                                                                                                                                                                                       |
-| 3   | `assignmentName`            | `string`                               | included               | same              | `AssignmentFullSchema.assignmentName: z.string()`                                   | Fetched from Google Classroom at construction via `fetchAssignmentName()`.                                                                                                                                                                                                                                                                                                                                                                                  |
-| 4   | `dueDate`                   | `string\|null`                         | included               | same              | `AssignmentFullSchema.dueDate: z.string().nullable()`                               | ISO 8601 string or `null`. Currently always `null` (homework tracker not implemented).                                                                                                                                                                                                                                                                                                                                                                      |
-| 5   | `updatedAt`                 | `string\|null`                         | included               | same              | `AssignmentFullSchema.updatedAt: z.string().nullable()`                             | ISO 8601 string or `null`. Set via `touchUpdated()`.                                                                                                                                                                                                                                                                                                                                                                                                        |
-| 6   | `createdAt`                 | `string`                               | included               | same              | `AssignmentFullSchema.createdAt: z.string()`                                        | ISO 8601 string. Set from Google Classroom `creationTime` at construction.                                                                                                                                                                                                                                                                                                                                                                                  |
-| 7   | `documentType`              | `string\|null`                         | included (extracted)   | same              | `AssignmentFullSchema.documentType: z.string().nullable()`                          | `'SLIDES'` \| `'SHEETS'` or `null`. Extracted from embedded `assignmentDefinition` via `_extractFullDefinitionFields()`.                                                                                                                                                                                                                                                                                                                                    |
-| 8   | `referenceDocumentId`       | `string\|null`                         | included (extracted)   | same              | `AssignmentFullSchema.referenceDocumentId: z.string().nullable()`                   | Extracted from embedded `assignmentDefinition`. `null` when definition is partial.                                                                                                                                                                                                                                                                                                                                                                          |
-| 9   | `templateDocumentId`        | `string\|null`                         | included (extracted)   | same              | `AssignmentFullSchema.templateDocumentId: z.string().nullable()`                    | Extracted from embedded `assignmentDefinition`. `null` when definition is partial.                                                                                                                                                                                                                                                                                                                                                                          |
-| 10  | `tasks`                     | `Record<string, TaskDefinition>\|null` | included (extracted)   | same              | `AssignmentFullSchema.tasks: z.record(z.string(), TaskDefinitionSchema).nullable()` | Extracted from embedded `assignmentDefinition`. `null` when definition is partial. Only in full shape.                                                                                                                                                                                                                                                                                                                                                      |
-| 11  | `submissions`               | `StudentSubmission[]`                  | included               | same              | `AssignmentFullSchema.submissions: z.array(StudentSubmissionSchema)`                | Array of `StudentSubmission.toJSON()` objects. Empty array when no submissions.                                                                                                                                                                                                                                                                                                                                                                             |
-| 12  | `assignmentDefinition`      | `AssignmentDefinition`                 | included               | same              | `AssignmentFullSchema.assignmentDefinition: AssignmentDefinitionSchema`             | Full definition object via `AssignmentDefinition.toJSON()`. Always included in full persistence.                                                                                                                                                                                                                                                                                                                                                            |
-| 13  | `assessmentContractVersion` | `1\|null\|unknown (legacy)\|omitted`   | included conditionally | `1\|null` on read | `AssignmentFullSchema.assessmentContractVersion: z.union([z.literal(1), z.null()])` | Current results emit `1`. Legacy records re-emit the exact stored marker presence/value opaquely, including an absent marker or an unsupported value; ordinary persistence never certifies or rewrites it. The full read serializer emits explicit `null` after legacy reassessment projection. The full schema now requires the read-wire field; the read services are not yet wired to the pure read normaliser, so only structural validation is active. |
+| #   | Field                       | Type                                   | Persistence            | Transport         | Frontend Zod                                                                        | Notes                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| --- | --------------------------- | -------------------------------------- | ---------------------- | ----------------- | ----------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | `courseId`                  | `string`                               | included               | same              | `AssignmentFullSchema.courseId: z.string()`                                         | Google Classroom course ID. Required, never null.                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| 2   | `assignmentId`              | `string`                               | included               | same              | `AssignmentFullSchema.assignmentId: z.string()`                                     | Google Classroom coursework ID. Required, never null.                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| 3   | `assignmentName`            | `string`                               | included               | same              | `AssignmentFullSchema.assignmentName: z.string()`                                   | Fetched from Google Classroom at construction via `fetchAssignmentName()` for a newly created assignment. Typed restoration supplies the saved value instead and skips that fetch (see [§Restoration construction and representation mode](#restoration-construction-and-representation-mode-implemented)).                                                                                                                                                                                         |
+| 4   | `dueDate`                   | `string\|null`                         | included               | same              | `AssignmentFullSchema.dueDate: z.string().nullable()`                               | ISO 8601 string or `null`. Currently always `null` (homework tracker not implemented).                                                                                                                                                                                                                                                                                                                                                                                                              |
+| 5   | `updatedAt`                 | `string\|null`                         | included               | same              | `AssignmentFullSchema.updatedAt: z.string().nullable()`                             | ISO 8601 string or `null`. Set via `touchUpdated()`.                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| 6   | `createdAt`                 | `string`                               | included               | same              | `AssignmentFullSchema.createdAt: z.string()`                                        | ISO 8601 string. Set from Google Classroom `creationTime` at construction for a new assignment, or from the saved metadata during typed restoration.                                                                                                                                                                                                                                                                                                                                                |
+| 7   | `documentType`              | `string\|null`                         | included (extracted)   | same              | `AssignmentFullSchema.documentType: z.string().nullable()`                          | `'SLIDES'` \| `'SHEETS'` or `null`. Extracted from embedded `assignmentDefinition` via `_extractFullDefinitionFields()`.                                                                                                                                                                                                                                                                                                                                                                            |
+| 8   | `referenceDocumentId`       | `string\|null`                         | included (extracted)   | same              | `AssignmentFullSchema.referenceDocumentId: z.string().nullable()`                   | Extracted from embedded `assignmentDefinition`. `null` when definition is partial.                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| 9   | `templateDocumentId`        | `string\|null`                         | included (extracted)   | same              | `AssignmentFullSchema.templateDocumentId: z.string().nullable()`                    | Extracted from embedded `assignmentDefinition`. `null` when definition is partial.                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| 10  | `tasks`                     | `Record<string, TaskDefinition>\|null` | included (extracted)   | same              | `AssignmentFullSchema.tasks: z.record(z.string(), TaskDefinitionSchema).nullable()` | Extracted from embedded `assignmentDefinition`. `null` when definition is partial. Only in full shape.                                                                                                                                                                                                                                                                                                                                                                                              |
+| 11  | `submissions`               | `StudentSubmission[]`                  | included               | same              | `AssignmentFullSchema.submissions: z.array(StudentSubmissionSchema)`                | Array of `StudentSubmission.toJSON()` objects. Empty array when no submissions.                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| 12  | `assignmentDefinition`      | `AssignmentDefinition`                 | included               | same              | `AssignmentFullSchema.assignmentDefinition: AssignmentDefinitionSchema`             | Full definition object via `AssignmentDefinition.toJSON()`. Always included in full persistence.                                                                                                                                                                                                                                                                                                                                                                                                    |
+| 13  | `assessmentContractVersion` | `1\|null\|unknown (legacy)\|omitted`   | included conditionally | `1\|null` on read | `AssignmentFullSchema.assessmentContractVersion: z.union([z.literal(1), z.null()])` | Current results emit `1`. Legacy records re-emit the exact stored marker presence/value opaquely, including an absent marker or an unsupported value; ordinary persistence never certifies or rewrites it. The full read serializer emits explicit `null` after legacy reassessment projection. The full read schema requires the read-wire field and the `getAssignment` service now runs the read normaliser before its final parse, so the marker-versus-result contract is enforced at runtime. |
 
 Key notes:
 
@@ -65,21 +65,43 @@ Key notes:
 Not independently persisted, but used for in-memory partial representations and
 for embedding inside `ABClass.assignments[]`. Behaviour differs from `toJSON()`:
 
-| #   | Field                       | Type                                 | Persistence            | Transport                             | Frontend Zod                                                                           | Notes                                                                                                                                                                                                                                                                                           |
-| --- | --------------------------- | ------------------------------------ | ---------------------- | ------------------------------------- | -------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | `courseId`                  | `string`                             | same as full           | same                                  | stripped by `AssignmentPartialSchema`                                                  | Present in wire format; Zod `.strip()` default removes it (not included in schema).                                                                                                                                                                                                             |
-| 2   | `assignmentId`              | `string`                             | same as full           | same                                  | `AssignmentPartialSchema.assignmentId: z.string()`                                     |                                                                                                                                                                                                                                                                                                 |
-| 3   | `assignmentName`            | `string`                             | same as full           | same                                  | stripped by `AssignmentPartialSchema`                                                  | Present in wire format; Zod `.strip()` default removes it.                                                                                                                                                                                                                                      |
-| 4   | `dueDate`                   | `string\|null`                       | same as full           | same                                  | `AssignmentPartialSchema.dueDate: z.string().nullable().optional()`                    |                                                                                                                                                                                                                                                                                                 |
-| 5   | `updatedAt`                 | `string\|null`                       | same as full           | same                                  | `AssignmentPartialSchema.updatedAt: z.string().nullable()`                             |                                                                                                                                                                                                                                                                                                 |
-| 6   | `createdAt`                 | `string`                             | same as full           | same                                  | `AssignmentPartialSchema.createdAt: z.string()`                                        |                                                                                                                                                                                                                                                                                                 |
-| 7   | `documentType`              | `string\|null`                       | same as full           | same                                  | `AssignmentPartialSchema.documentType: z.string().nullable()`                          | Only root-level field extracted in partial shape (via `_extractPartialRootFields()`).                                                                                                                                                                                                           |
-| 8   | `referenceDocumentId`       | —                                    | omitted                | omitted                               | —                                                                                      | Not extracted in partial shape.                                                                                                                                                                                                                                                                 |
-| 9   | `templateDocumentId`        | —                                    | omitted                | omitted                               | —                                                                                      | Not extracted in partial shape.                                                                                                                                                                                                                                                                 |
-| 10  | `tasks`                     | —                                    | omitted                | omitted                               | —                                                                                      | Not extracted in partial shape.                                                                                                                                                                                                                                                                 |
-| 11  | `submissions`               | `StudentSubmissionPartial[]`         | included               | transformed                           | `AssignmentPartialSchema.submissions: z.array(StudentSubmissionPartialSchema)`         | Submissions via `StudentSubmission.toPartialJSON()` — artifact content redacted; numeric/`'N'` assessment reasoning stripped, `'E'` reasoning/cause retained.                                                                                                                                   |
-| 12  | `assignmentDefinition`      | `AssignmentDefinitionPartial`        | included               | replaced by `assignmentDefinitionKey` | `AssignmentPartialSchema.assignmentDefinitionKey: z.string()`                          | See Transport section for the transformation. `getABClass` endpoint replaces this with just the key.                                                                                                                                                                                            |
-| 13  | `assessmentContractVersion` | `1\|null\|unknown (legacy)\|omitted` | included conditionally | `1\|null` on class read               | `AssignmentPartialSchema.assessmentContractVersion: z.union([z.literal(1), z.null()])` | Current results emit `1`. Legacy records re-emit the exact stored marker presence/value opaquely; the class read projection emits explicit `null` beside detached reassessment `E`. The partial schema now requires the field; the read services are not yet wired to the pure read normaliser. |
+| #   | Field                       | Type                                 | Persistence            | Transport                             | Frontend Zod                                                                           | Notes                                                                                                                                                                                                                                                                                                            |
+| --- | --------------------------- | ------------------------------------ | ---------------------- | ------------------------------------- | -------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | `courseId`                  | `string`                             | same as full           | same                                  | stripped by `AssignmentPartialSchema`                                                  | Present in wire format; Zod `.strip()` default removes it (not included in schema).                                                                                                                                                                                                                              |
+| 2   | `assignmentId`              | `string`                             | same as full           | same                                  | `AssignmentPartialSchema.assignmentId: z.string()`                                     |                                                                                                                                                                                                                                                                                                                  |
+| 3   | `assignmentName`            | `string`                             | same as full           | same                                  | stripped by `AssignmentPartialSchema`                                                  | Present in wire format; Zod `.strip()` default removes it.                                                                                                                                                                                                                                                       |
+| 4   | `dueDate`                   | `string\|null`                       | same as full           | same                                  | `AssignmentPartialSchema.dueDate: z.string().nullable().optional()`                    |                                                                                                                                                                                                                                                                                                                  |
+| 5   | `updatedAt`                 | `string\|null`                       | same as full           | same                                  | `AssignmentPartialSchema.updatedAt: z.string().nullable()`                             |                                                                                                                                                                                                                                                                                                                  |
+| 6   | `createdAt`                 | `string`                             | same as full           | same                                  | `AssignmentPartialSchema.createdAt: z.string()`                                        |                                                                                                                                                                                                                                                                                                                  |
+| 7   | `documentType`              | `string\|null`                       | same as full           | same                                  | `AssignmentPartialSchema.documentType: z.string().nullable()`                          | Only root-level field extracted in partial shape (via `_extractPartialRootFields()`).                                                                                                                                                                                                                            |
+| 8   | `referenceDocumentId`       | —                                    | omitted                | omitted                               | —                                                                                      | Not extracted in partial shape.                                                                                                                                                                                                                                                                                  |
+| 9   | `templateDocumentId`        | —                                    | omitted                | omitted                               | —                                                                                      | Not extracted in partial shape.                                                                                                                                                                                                                                                                                  |
+| 10  | `tasks`                     | —                                    | omitted                | omitted                               | —                                                                                      | Not extracted in partial shape.                                                                                                                                                                                                                                                                                  |
+| 11  | `submissions`               | `StudentSubmissionPartial[]`         | included               | transformed                           | `AssignmentPartialSchema.submissions: z.array(StudentSubmissionPartialSchema)`         | Submissions via `StudentSubmission.toPartialJSON()` — artifact content redacted; numeric/`'N'` assessment reasoning stripped, `'E'` reasoning/cause retained.                                                                                                                                                    |
+| 12  | `assignmentDefinition`      | `AssignmentDefinitionPartial`        | included               | replaced by `assignmentDefinitionKey` | `AssignmentPartialSchema.assignmentDefinitionKey: z.string()`                          | See Transport section for the transformation. `getABClass` endpoint replaces this with just the key.                                                                                                                                                                                                             |
+| 13  | `assessmentContractVersion` | `1\|null\|unknown (legacy)\|omitted` | included conditionally | `1\|null` on class read               | `AssignmentPartialSchema.assessmentContractVersion: z.union([z.literal(1), z.null()])` | Current results emit `1`. Legacy records re-emit the exact stored marker presence/value opaquely; the class read projection emits explicit `null` beside detached reassessment `E`. The partial read schema requires the field and the `getABClass` service now runs the read normaliser before its final parse. |
+
+### Restoration construction and representation mode (Implemented)
+
+Typed restoration constructs an `Assignment` through its real constructor rather than
+`Object.create(Assignment.prototype)`. The constructor takes an optional fourth argument:
+
+```ts
+new Assignment(courseId, assignmentId, assignmentDefinition, {
+  assignmentName: string,
+  createdAt: Date,
+  representationMode?: 'full' | 'partial',
+});
+```
+
+| Aspect                       | Implemented behaviour                                                                                                                                                                                                                                                                                                                                                   |
+| ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Saved metadata               | `_baseFromJSON()` passes the stored `assignmentName` and `createdAt`, so restoration never calls Google Classroom. The presence of the `restoration` object (not the truthiness of the name) selects this path; a new three-argument construction still fetches the Classroom name/creation time.                                                                       |
+| Saved name validity          | The saved `assignmentName` must be a string. A `null`, `undefined` or other non-string saved name throws `TypeError` from the constructor before any Classroom access; there is no generated fallback and the exception propagates unhandled. Valid strings, including a blank string, are preserved verbatim. See [Known discrepancies](#known-discrepancies) item 22. |
+| Representation mode          | `_restorationMode` is a constructor-owned transient. It defaults to `'full'` when the caller omits it, accepts only explicit `'full'`/`'partial'`, and throws `TypeError` for any other value. Callers own it: `readRehydrateAssignment()` passes `'full'`, and `ABClass.fromJSON()` passes `'partial'` for a task-summary-array definition and `'full'` otherwise.     |
+| Stored mode isolation        | `_restorationMode` is listed in `_baseFromJSON()`'s `knownFields`, so a raw stored `_restorationMode` cannot overwrite the caller-owned value, and it is never emitted by `toJSON()`, `toPartialJSON()` or `toReadJSON()`.                                                                                                                                              |
+| Hydration marker             | Restoration leaves the transient `_hydrationLevel` unset (`undefined`); it is not a persisted hydration claim. `ABClass.fromJSON()` sets the in-memory partial marker on class-embedded instances itself.                                                                                                                                                               |
+| Persistence/transport effect | None beyond the saved `assignmentName`/`createdAt` values already in the record. No new wire field is added, and the full/partial/legacy persistence contracts below are unchanged.                                                                                                                                                                                     |
 
 ---
 
@@ -110,27 +132,27 @@ when no persisted document exists.
 
 **Response:** `AssignmentFullSchema` or `null`
 
-| Field                       | Type                                   | Required | Notes                                                                                                                                                                                                       |
-| --------------------------- | -------------------------------------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `courseId`                  | `string`                               | yes      |                                                                                                                                                                                                             |
-| `assignmentId`              | `string`                               | yes      |                                                                                                                                                                                                             |
-| `assignmentName`            | `string`                               | yes      |                                                                                                                                                                                                             |
-| `dueDate`                   | `string\|null`                         | yes      | ISO 8601 string or `null`                                                                                                                                                                                   |
-| `updatedAt`                 | `string\|null`                         | yes      | ISO 8601 string or `null`                                                                                                                                                                                   |
-| `createdAt`                 | `string`                               | yes      | ISO 8601 string                                                                                                                                                                                             |
-| `documentType`              | `string\|null`                         | yes      | `'SLIDES'` \| `'SHEETS'` or `null`                                                                                                                                                                          |
-| `referenceDocumentId`       | `string\|null`                         | yes      |                                                                                                                                                                                                             |
-| `templateDocumentId`        | `string\|null`                         | yes      |                                                                                                                                                                                                             |
-| `tasks`                     | `Record<string, TaskDefinition>\|null` | yes      | `null` when definition is partial                                                                                                                                                                           |
-| `submissions`               | `StudentSubmission[]`                  | yes      | Full `StudentSubmission.toJSON()` array                                                                                                                                                                     |
-| `assignmentDefinition`      | `AssignmentDefinition`                 | yes      | Full `AssignmentDefinition.toJSON()` object                                                                                                                                                                 |
-| `assessmentContractVersion` | `1\|null`                              | yes      | `1` for a current result; explicit `null` for a legacy result after backend reassessment projection. Required by `AssignmentFullSchema`; the frontend read service is not yet wired to the pure normaliser. |
+| Field                       | Type                                   | Required | Notes                                                                                                                                                                                                                           |
+| --------------------------- | -------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `courseId`                  | `string`                               | yes      |                                                                                                                                                                                                                                 |
+| `assignmentId`              | `string`                               | yes      |                                                                                                                                                                                                                                 |
+| `assignmentName`            | `string`                               | yes      |                                                                                                                                                                                                                                 |
+| `dueDate`                   | `string\|null`                         | yes      | ISO 8601 string or `null`                                                                                                                                                                                                       |
+| `updatedAt`                 | `string\|null`                         | yes      | ISO 8601 string or `null`                                                                                                                                                                                                       |
+| `createdAt`                 | `string`                               | yes      | ISO 8601 string                                                                                                                                                                                                                 |
+| `documentType`              | `string\|null`                         | yes      | `'SLIDES'` \| `'SHEETS'` or `null`                                                                                                                                                                                              |
+| `referenceDocumentId`       | `string\|null`                         | yes      |                                                                                                                                                                                                                                 |
+| `templateDocumentId`        | `string\|null`                         | yes      |                                                                                                                                                                                                                                 |
+| `tasks`                     | `Record<string, TaskDefinition>\|null` | yes      | `null` when definition is partial                                                                                                                                                                                               |
+| `submissions`               | `StudentSubmission[]`                  | yes      | Full `StudentSubmission.toJSON()` array                                                                                                                                                                                         |
+| `assignmentDefinition`      | `AssignmentDefinition`                 | yes      | Full `AssignmentDefinition.toJSON()` object                                                                                                                                                                                     |
+| `assessmentContractVersion` | `1\|null`                              | yes      | `1` for a current result; explicit `null` for a legacy result after backend reassessment projection. Required by `AssignmentFullSchema`, and enforced at runtime by the `getAssignment` read normaliser before its final parse. |
 
 Key contract notes:
 
 - The response is built from `Assignment.toReadJSON()`, which delegates to `AssignmentSerialisation.toReadJSON()` and then calls `AssignmentDefinition.toJSON()` on the embedded definition. The `readRehydrateAssignment` handler internally performs full hydration (resolving partial definitions via `getDefinitionByKey`), so a throw only occurs when the authoritative record is itself unresolvable or partial.
 - `getAssignment_()` selects the read serializer, not the persistence serializer. A stored record with `assessmentContractVersion: 1` is restored through `AssignmentCurrentRestoration` (see [§Marker-1 CURRENT restoration](#marker-1-current-restoration-implemented)); a marker-less, `null` or unsupported record keeps an opaque legacy snapshot. The read serializer emits detached reassessment `E` submissions and `assessmentContractVersion: null` for that legacy snapshot, and `1` for a current result. Ordinary `toJSON()`/`toPartialJSON()` continue to re-emit the opaque stored body and marker unchanged.
-- The backend handler/controller read-serializer wiring is implemented and the scoped API integration review is clean. `AssignmentFullSchema` now requires `assessmentContractVersion: 1 | null`; the pure frontend read normaliser is implemented but the read services are not yet wired to it, so item isolation and the marker/reassessment consistency check are not yet active at runtime. See [Known discrepancies](#known-discrepancies).
+- The backend handler/controller read-serializer wiring is implemented and the scoped API integration review is clean. `AssignmentFullSchema` requires `assessmentContractVersion: 1 | null`, and `getAssignment()` runs `normaliseAssignmentRead()` before its final response parse, so item isolation, the marker/reassessment consistency check and the defensive same-payload coverage fallback are active at runtime. See [Known discrepancies](#known-discrepancies).
 - `progressTracker` is stripped from the response at the transport boundary as defence-in-depth (already omitted by the read serialiser).
 - `DateUtils.deepConvertDates()` is called on the entire response before returning, because `google.script.run` prohibits `Date` objects in return values.
 - Returns `null` when no persisted assignment document exists for the given `courseId`/`assignmentId` pair (`AssignmentNotFoundError` caught at the transport boundary).
@@ -144,7 +166,7 @@ When assignments are embedded inside the `getABClass` response (see [Contract: A
 > - `_hydrationLevel` and `progressTracker` are stripped (defence-in-depth — already omitted by `toPartialJSON()`)
 > - The embedded `assignmentDefinition` object is replaced by `assignmentDefinitionKey` (the `definitionKey` from the stored definition). The frontend resolves definition details from its own `AssignmentDefinitionPartials` registry.
 > - `courseId` and `assignmentName` are present in the wire format but stripped by Zod `.strip()` on `AssignmentPartialSchema`.
-> - A current result carries `assessmentContractVersion: 1`. A legacy record's submissions are replaced with the detached partial reassessment projection and `assessmentContractVersion` is set to `null` before the definition key replacement. `AssignmentPartialSchema` now requires `assessmentContractVersion: 1 | null`; the read services are not yet wired to the pure normaliser.
+> - A current result carries `assessmentContractVersion: 1`. A legacy record's submissions are replaced with the detached partial reassessment projection and `assessmentContractVersion` is set to `null` before the definition key replacement. `AssignmentPartialSchema` requires `assessmentContractVersion: 1 | null`, and `getABClass()` runs `normaliseClassRead()` before its final response parse.
 
 This transformation is performed by `ABClassResponseMapper._toReadView()` — it is NOT part of `AssignmentSerialisation` and does not affect the `assign_full_*` persistence shape.
 
@@ -313,7 +335,7 @@ Key notes:
 - `new Assessment(score, reasoning, error)` and `Assessment.fromJSON(json)` validate the union. They reject NaN/`±Infinity`, numeric scores outside 0–5, `E` without a valid cause or with blank reasoning, malformed causes, non-string reasoning, and `error` metadata on numeric/`'N'` results.
 - `Assessment.createError(stage, code)` constructs an `E` result using the catalogue's canonical reasoning; an unknown stage/code pair throws. A caller may also construct `E` directly with the same valid cause and its own non-blank reasoning.
 - `fromJSON()` ignores unrelated extra fields but still validates `score`, `reasoning` and `error`; it never silently repairs an invalid result.
-- `AssessmentSchema` now aliases `assessmentResultSchema` and `PartialAssessmentEntrySchema` aliases `partialAssessmentResultSchema`, so both read schemas enforce the finite fractional 0–5 range, the `'E'` branch and the non-blank E reasoning refinement. The read services are not yet wired to the pure read normaliser, so contextual item/source checks remain structural only; see [Known discrepancies](#known-discrepancies).
+- `AssessmentSchema` aliases `assessmentResultSchema` and `PartialAssessmentEntrySchema` aliases `partialAssessmentResultSchema`, so both read schemas enforce the finite fractional 0–5 range, the `'E'` branch and the non-blank E reasoning refinement. Both read services run the read normaliser, so the contextual item/source checks are active at runtime; see [Known discrepancies](#known-discrepancies).
 
 ### Feedback
 
@@ -380,6 +402,16 @@ The full and partial schemas on the frontend are:
 
 ## Validation
 
+> **Section 2c frontend read activation (implemented):** `assignmentReadNormalisation.ts`
+> and `assignmentReadItemValidation.ts` now run in both `getAssignment` and `getABClass`
+> services before the final `parseApiResponse` schema parse. Invalid identifiable items
+> are replaced with canonical corruption results; null-parent replacements are canonical
+> base placeholders, marker-null provided entries must already be reassessment E, and
+> safe diagnostics identify malformed result/artefact fields without logging payload data.
+> The obsolete partial-only score declaration was removed; score validation is owned by
+> `assessmentResult.zod.ts`. The schema and service notes below should be read with this
+> activated runtime status rather than their earlier staged-wiring wording.
+
 **Frontend Zod:**
 
 - `src/frontend/src/services/assignmentAssessment/assignmentAssessment.zod.ts`:
@@ -400,7 +432,7 @@ The full and partial schemas on the frontend are:
   - `assessmentResultSchema` — full `number | 'N' | 'E'` union with finite 0–5 numeric range, required reasoning and `E`-only cause.
   - `partialAssessmentResultSchema` — numeric/`'N'` score-only entries, plus `E` entries retaining reasoning and cause.
 
-- `src/frontend/src/services/assignmentAssessment/assignmentReadNormalisation.ts` (implemented pure full/partial read normaliser; independent G3 review/sign-off pending; not yet consumed by the read services):
+- `src/frontend/src/services/assignmentAssessment/assignmentReadNormalisation.ts` (implemented pure full/partial read normaliser; invoked by both read services):
   - `normaliseAssignmentRead()` — strict full-root and shared-definition validation, per-item isolation, and the same-payload missing-task defence.
   - `normaliseClassRead()` — strict class/partial roots and per-item isolation of provided entries only.
 
@@ -435,10 +467,20 @@ The full and partial schemas on the frontend are:
 - `Assignment._baseFromJSON()` validates the marker-1 root and authoritative task universe before constructing models. `AssignmentCurrentRestoration` validates raw submission items before constructors, isolates invalid known items and missing known coverage as all-three `CORRUPT_RECORD` `E`, preserves healthy siblings, and restores in the explicitly propagated full or partial mode. Marker-less, `null` and unsupported-marker records are not reconstructed: their historical body and exact marker presence/value are retained as an opaque snapshot, and the read serializer materialises detached reassessment `E` entries through `AssignmentRehydration.projectReassessmentSubmissions()`.
 - `AssignmentController.startAssessmentRun()` validates definition freshness: compares Drive modification timestamps for reference and template documents against stored `referenceLastModified`/`templateLastModified`. Throws `DefinitionStaleError` on mismatch.
 - `Assignment._requireImplementation()` enforces subclass implementation of document-type-specific methods.
-- The `Assignment` constructor fetches `assignmentName` from Google Classroom and throws if `creationTime` is missing.
+- A newly created `Assignment` (three-argument construction) makes one Google Classroom coursework call: it throws if `creationTime` is missing, then throws `TypeError` if the fetched title is not a string. No generated name fallback remains. Typed restoration supplies the saved name/creation time and does not fetch; a saved name that is `null`, `undefined` or otherwise not a string throws `TypeError` before any Classroom access, and the exception propagates unhandled. See [§Restoration construction and representation mode](#restoration-construction-and-representation-mode-implemented).
 - `AssignmentDefinition.toJSON()` throws `TypeError` when `tasks` is an array (partial shape) — callers must ensure full hydration before serialisation.
 
 ### Known discrepancies
+
+> **Section 2c close-out:** The former frontend gaps G4–G8 below are resolved.
+> Corruption replacement now receives parent source state and creates a canonical
+> null-parent base placeholder; marker-null full/partial records validate only
+> backend-materialised reassessment entries; diagnostics point to safe malformed
+> fields; duplicate partial score declarations were removed in favour of the shared
+> result owner; and adjacent schema comments describe fractional scores and retained
+> E details. Both full and class-detail read services invoke the normaliser and then
+> retain the existing final response parse. The entries below retain their original
+> finding text and now record the resolved disposition.
 
 1. **`Assignment.toPartialJSON()` emits `courseId` and `assignmentName` but frontend `AssignmentPartialSchema` strips them.**
    Frontend `AssignmentPartialSchema` does not include `courseId` or `assignmentName`. Zod's default `.strip()` mode silently removes them. The ABClass transport includes them in the wire format but the frontend resolves assignment context from other sources.
@@ -501,71 +543,84 @@ The full and partial schemas on the frontend are:
     to tighten the class-detail contract.
 
 13. **Partial projection retains `E` reasoning/cause and the partial consumer accepts it.**
-    `StudentSubmissionItem.toPartialJSON()` preserves an `'E'` entry intact (`{ score: 'E', reasoning, error }`) while numeric and `'N'` entries remain `{ score }`. `PartialAssessmentEntrySchema` now aliases `partialAssessmentResultSchema`, so a class-embedded `E` validates with its explanation.
-    **Classification: Aligned** — consumer activation is complete; service wiring to the normaliser remains pending (see items 14 and 16–18).
+    `StudentSubmissionItem.toPartialJSON()` preserves an `'E'` entry intact (`{ score: 'E', reasoning, error }`) while numeric and `'N'` entries remain `{ score }`. `PartialAssessmentEntrySchema` aliases `partialAssessmentResultSchema`, so a class-embedded `E` validates with its explanation.
+    **Classification: Aligned** — consumer activation and service wiring are complete; see items 14 and 16.
 
-14. **The shared result/cause owner is now consumed; the read normaliser is implemented but not wired.**
-    `services/assignmentAssessment/assessmentResult.zod.ts` is consumed by both `assignmentAssessment.zod.ts` and `classDetailService.zod.ts`. The pure read normaliser (`assignmentReadNormalisation.ts` plus `assignmentReadItemValidation.ts`) is implemented and awaiting independent review, but `assignmentAssessmentService.ts` and `classDetailService.ts` still call `parseApiResponse` directly. Per-item isolation and contextual source/marker checks are therefore not active at runtime.
-    **Classification: Misaligned (staged service wiring)** — schema activation is complete; service consumption is deliberately staged.
+14. **The shared result/cause owner is consumed by both read schemas and both read services run the normaliser.**
+    `services/assignmentAssessment/assessmentResult.zod.ts` is consumed by `assignmentAssessment.zod.ts` and `classDetailService.zod.ts`. `assignmentAssessmentService.getAssignment()` calls `normaliseAssignmentRead()` and `classDetailService.getABClass()` calls `normaliseClassRead()` before their final `parseApiResponse` call, each preceded by a root-only parse. Per-item isolation and contextual source/marker checks are active at runtime.
+    **Classification: Aligned** — resolved in the Section 2c Green slice.
 
-15. **`assessmentContractVersion` is now required by both frontend read schemas.**
-    `AssignmentFullSchema` and `AssignmentPartialSchema` both require `z.union([z.literal(1), z.null()])`. The backend persistence and read paths are implemented as described above. The read services are not yet wired to the pure normaliser, so the schemas enforce root presence/type but the contextual marker-versus-result check is not yet active.
-    **Classification: Aligned for schema shape; Misaligned (staged service wiring) for the contextual check** — see item 18.
+15. **`assessmentContractVersion` is required by both frontend read schemas and enforced contextually.**
+    `AssignmentFullSchema` and `AssignmentPartialSchema` both require `z.union([z.literal(1), z.null()])`, and the normaliser additionally requires marker-null provided entries to be backend-materialised reassessment `E`.
+    **Classification: Aligned** — root presence/type and the contextual check are both active.
 
-16. **Legacy records are opaque and the backend read projection is implemented; the browser normaliser is implemented but not wired.**
-    `AssignmentRehydration._rehydrateSubmission()` no longer catches, reconstructs or drops non-marker-1 records: the historical body and exact marker presence/value are retained as an opaque snapshot. `AssignmentSerialisation.toJSON()` / `toPartialJSON()` re-emit that snapshot unchanged (no ordinary-save certification), while `toReadJSON()` and `ABClassResponseMapper._toReadView()` substitute detached reassessment `E` placeholders from the implemented `02_AssignmentReadProjection.js` helper. The pure browser read normaliser is implemented and awaiting independent review; the read services still call `parseApiResponse` directly, and completed-write gates remain `Not implemented`.
-    **Classification: Misaligned (staged service wiring)** — the backend split and browser normaliser are implemented; service activation and completed-write gates are staged.
+16. **Legacy records are opaque and the backend read projection plus browser normalisation are active.**
+    `AssignmentRehydration._rehydrateSubmission()` does not catch, reconstruct or drop non-marker-1 records: the historical body and exact marker presence/value are retained as an opaque snapshot. `AssignmentSerialisation.toJSON()` / `toPartialJSON()` re-emit that snapshot unchanged (no ordinary-save certification), while `toReadJSON()` and `ABClassResponseMapper._toReadView()` substitute detached reassessment `E` placeholders from `02_AssignmentReadProjection.js`. Both read services validate the resulting entries. Completed-write preflight/gates remain later-section work.
+    **Classification: Aligned for the read contract; completed-write gates remain planned** — recorded under [§Write boundary](#write-boundary--preflight-before-any-write-not-implemented).
 
-17. **Corruption replacements do not yet reconcile a null parent's source state (open review gap G4).**
-    `corruptItem()` retains any string artefact `pageId`/`documentId` from the invalid item, even when the parent submission `documentId` is `null`. An isolated replacement can therefore still contradict the canonical null-parent rule and be re-flagged on a later pass. Replacement construction is deterministic and does not generate a hash or reconstruct content.
-    **Classification: Misaligned** — replacement construction needs parent source context. Not reachable from the services until the normaliser is wired.
+17. **Corruption replacements reconcile the parent source state (formerly G4).**
+    `corruptItem()` now receives `parentDocumentId`. A null parent produces the canonical base placeholder (null `pageId`/`documentId`/`content`/`contentHash`, empty metadata/feedback); otherwise only individually string-typed source IDs and the partial projection are retained. Replacement construction is deterministic and never generates a hash or reconstructs content.
+    **Classification: Aligned** — resolved; parent source context is threaded from the normaliser.
 
-18. **Marker-null payloads are not yet checked against the materialised reassessment contract (open review gap G5).**
-    The normaliser requires `assessmentContractVersion: 1 | null` at the root but does not yet reject a marker-null payload whose provided entries are numeric/`N` success. Valid backend-materialised reassessment `E` entries are preserved, and no legacy graph is synthesised.
-    **Classification: Misaligned** — provided marker-null entries still need contextual validation. Not reachable from the services until the normaliser is wired.
+18. **Marker-null payloads are checked against the materialised reassessment contract (formerly G5).**
+    `isReassessmentItem()` requires all three criteria to be the exact validation `REASSESSMENT_REQUIRED` `E`, and both full and partial item validation require it when `assessmentContractVersion` is `null`. Valid backend-materialised entries are preserved and no legacy graph is synthesised.
+    **Classification: Aligned** — resolved; marker-null success/N entries are isolated as `CORRUPT_RECORD`.
 
-19. **Non-assessment corruption diagnostics do not yet report the failing field path (open review gap G6).**
-    `itemErrorPath()` reports the item or criterion path but falls back to the whole item for malformed artefact/source fields; safe-parse issue paths are not reused. Diagnostics remain value-free and identifier-bounded.
-    **Classification: Misaligned (diagnostics precision)** — no payload, reasoning, source content or student name is logged.
+19. **Corruption diagnostics report safe failing field paths (formerly G6).**
+    `itemErrorPath()` reports the artefact, `taskId`, criterion-map or individual criterion path (plus `contentHash` for full artefacts), falling back to the whole-item path only when no narrower safe field is identifiable. An omitted partial `contentHash` is valid redaction, and an arbitrary unexpected assessment key collapses to the criterion-map path rather than entering the log. Diagnostics remain value-free and identifier-bounded.
+    **Classification: Aligned** — resolved; no payload, reasoning, source content or student name is logged.
 
-20. **Unused duplicate partial score declarations remain in the class-detail schema (open review gap G7).**
-    `classDetailService.zod.ts` still declares `MAX_ASSESSMENT_SCORE`, `PartialAssessmentScoreSchema` and `PartialAssessmentScore`, although `PartialAssessmentEntrySchema` now aliases the shared owner and no production consumer imports the duplicates.
-    **Classification: Fragile** — stale duplicate contract beside the canonical owner; no runtime effect today.
+20. **Duplicate partial score declarations were removed (formerly G7).**
+    `classDetailService.zod.ts` no longer declares `MAX_ASSESSMENT_SCORE`, `PartialAssessmentScoreSchema` or `PartialAssessmentScore`; `PartialAssessmentEntrySchema` aliases the shared result owner. The one cross-module consumer, `tests/synthetic-analysis/syntheticGraphIntegrityAndScenarios.test.ts`, now uses `assessmentScoreSchema` and retains its non-`E` assertions.
+    **Classification: Aligned** — resolved; a single result-schema owner remains.
 
-21. **Adjacent schema comments still describe the pre-`E` contract (open review gap G8).**
-    Comments beside `AssessmentSchema` and the class-detail partial score/entry declarations still say number/`N` only, integer scores, and reasoning stripped from every partial result, while the activated shared schemas accept fractional 0–5, `'E'`, and retained `E` reasoning/cause.
-    **Classification: Fragile (documentation drift)** — the canonical contract is the activated schema, not these comments.
+21. **Adjacent schema comments describe the activated contract (formerly G8).**
+    Comments beside `AssessmentSchema` and the class-detail partial entry declarations now state the fractional 0–5 range, the `'E'` branch and retained partial `E` reasoning/cause.
+    **Classification: Aligned** — resolved; documentation drift removed.
 
-## Planned contract additions — explicit Assessment errors and result-format marker (Not implemented)
+22. **A restored `assignmentName` must be a string; there is no generated fallback (formerly a nullable-name fragility).**
+    The constructor's restoration branch requires `typeof restoration.assignmentName === 'string'` and throws `TypeError` before any Classroom access otherwise, so a stored `null`, `undefined` or other non-string fails loudly and propagates unhandled. The generated `Assignment <assignmentId>` fallback has been deleted, including from the fetched-title path, where `fetchAssignmentName()` throws `TypeError` when the Classroom title is not a string after its single coursework call. Valid strings — including a blank string — and the saved `createdAt` are preserved verbatim, so the normal construction and restoration paths cannot produce a `null` name and `AssignmentFullSchema.assignmentName: z.string()` remains the correct, unwidened contract.
+    **Classification: Aligned** — resolved by the user-directed strict-name contract (no schema widening, no recovery fetch, no fallback). It is no longer `Fragile`: an invalid saved name fails before it can reach persistence or transport.
 
-> **Status: backend path implemented; frontend schema activation implemented; frontend
-> normaliser implemented and awaiting independent review; service wiring, completed-write
-> preflight/gates, corpus regeneration, analyser `E` input and preview error states remain
-> pending.** Section 1 delivered the `Assessment` result/cause primitives,
-> `StudentSubmissionItem.setError()` and partial `E` retention, plus the shared frontend
-> `assessmentResult.zod.ts` schemas. Section 2b delivered marker-1 CURRENT backend restoration
-> (`AssignmentCurrentRestoration`) with raw validation, coverage, null-parent isolation and
-> full/partial mode threading, the opaque legacy persistence snapshot, the backend legacy
-> reassessment read projection (`02_AssignmentReadProjection.js`) behind the sole
+> **Previously undocumented — surfaced during the 25 October 2026 Section 2 Green data-shapes audit.**
+> Origin: the user-approved constructor-based restoration extension in Section 2. Resolved the
+> same day: the user directed deletion of every generated assignment-name fallback, so invalid
+> `null`/missing names now fail with an unhandled exception instead of being preserved or
+> recovered.
+
+## Planned contract additions — explicit Assessment errors and result-format marker (partially implemented)
+
+> **Status: Section 2 slices implemented; later-section slices remain planned.** Section 1
+> delivered the `Assessment` result/cause primitives, `StudentSubmissionItem.setError()` and
+> partial `E` retention, plus the shared frontend `assessmentResult.zod.ts` schemas. Section 2b
+> delivered marker-1 CURRENT backend restoration (`AssignmentCurrentRestoration`) with raw
+> validation, coverage, null-parent isolation and full/partial mode threading, the opaque legacy
+> persistence snapshot, the backend legacy reassessment read projection
+> (`02_AssignmentReadProjection.js`) behind the sole
 > `AssignmentRehydration.projectReassessmentSubmissions()` entry, and marker emission on both
-> read transports. This frontend slice activated the shared result schemas in both read schemas,
-> added the required `assessmentContractVersion: 1 | null` wire field and aligned the full
-> `studentName` validator, and delivered the pure read normaliser
-> (`assignmentReadNormalisation.ts` + `assignmentReadItemValidation.ts`). These implemented
+> read transports. The Section 2c frontend slice activated the shared result schemas in both read
+> schemas, added the required `assessmentContractVersion: 1 | null` wire field, aligned the full
+> `studentName` validator, delivered the pure read normaliser
+> (`assignmentReadNormalisation.ts` + `assignmentReadItemValidation.ts`) and wired it into both
+> read services. The canonical corpus is regenerated and byte-reproducible. These implemented
 > pieces are recorded in [§Assessment](#assessment), [§StudentSubmissionItem](#studentsubmissionitem),
 > [§Marker-1 CURRENT restoration](#marker-1-current-restoration-implemented),
-> [§Legacy reassessment read projection](#legacy-reassessment-read-projection-not-implemented)
-> and [§Full and partial item isolation](#full-and-partial-item-isolation-with-trustworthy-identities-not-implemented).
-> The read services are **not** yet wired to the normaliser, and open review gaps G4–G8 are
-> recorded in [Known discrepancies](#known-discrepancies). Planned
+> [§Legacy reassessment read projection](#legacy-reassessment-read-projection-implemented)
+> and [§Full and partial item isolation](#full-and-partial-item-isolation-with-trustworthy-identities-implemented).
+> The former review gaps G4–G8 are resolved and the restoration-name fragility is closed by the
+> strict saved-name contract; [Known discrepancies](#known-discrepancies) records their
+> disposition. Remaining planned slices:
+> extraction/acquisition boundary creation of `E` (Section 4), completed-write
+> preflight/gates (Section 8), preview error states (Section 9) and the
+> definition-store artefact invariants (Section 3). Planned
 > companions: [Contract: AssignmentDefinition §Planned definition artefact
 > nullability](assignment-definition.md#planned-contract-additions--definition-artefact-nullability-not-implemented),
 > [Contract: ABClass §Planned embedded result marker and E
-> projections](abclass.md#planned-contract-additions--embedded-result-marker-and-e-projections-not-implemented),
-> [Frontend Data Analysis Response §Planned explicit E assessment input and preview
-> errors](frontend-data-analysis-response.md#planned-contract-additions--explicit-e-assessment-input-and-preview-errors-not-implemented).
+> projections](abclass.md#planned-contract-additions--embedded-result-marker-and-e-projections-implemented),
+> [Frontend Data Analysis Response §Planned preview
+> errors](frontend-data-analysis-response.md#planned-contract-additions--preview-errors-analyser-e-input-implemented).
 >
-> `SPEC.md` now fixes the backend reassessment projection owner, preview field names,
+> `SPEC.md` fixes the backend reassessment projection owner, preview field names,
 > explicit-`E` data-point accounting, blank spreadsheet canonicalisation, definition artefact
 > nullability, completed-task coverage and the completion-write preflight; the resolved
 > decisions are recorded below.
@@ -594,8 +649,8 @@ Remaining planned invariants and staged read rules:
   `AssignmentCurrentRestoration` replaces an item whose criterion map is incomplete or contains
   an extra key with all three validation `CORRUPT_RECORD` `E` entries (same `stage`, `code` and
   reasoning), preserving healthy sibling items. It does not drop the item or salvage marks.
-  Completed persistence rejecting such a record remains planned. The pure browser normaliser
-  implements the equivalent isolation but is not yet wired into the read services.
+  Completed persistence rejecting such a record remains planned. The browser normaliser
+  implements the equivalent isolation and is invoked by both read services.
   Legacy reads already use reassessment projection rather than current-format criterion
   isolation.
 - **No `formulaComparison` entry.** `SheetsAssessor` currently writes a non-Assessment
@@ -607,10 +662,10 @@ Remaining planned invariants and staged read rules:
   tags continue to block definition parsing on the existing definition/run error surface and
   safe cause; no student-level `DUPLICATE_TAG` E is introduced under the agreed first-match
   policy.
-- **Consumer schema activation (implemented).** `AssessmentSchema` now aliases
+- **Consumer schema activation (implemented).** `AssessmentSchema` aliases
   `assessmentResultSchema` and `PartialAssessmentEntrySchema` aliases
   `partialAssessmentResultSchema`, so both enforce the finite fractional 0–5 range and the `E`
-  branch. Service consumption of the pure read normaliser remains pending.
+  branch. Both read services consume the pure read normaliser before their final parse.
 
 ### Partial projection — retain E explanation (Implemented)
 
@@ -626,7 +681,7 @@ extraction failure.
 `Assignment._baseFromJSON()` routes a record whose `assessmentContractVersion` is exactly `1`
 through `AssignmentCurrentRestoration._rehydrateCurrentSubmission()`; every other record is kept
 as an opaque legacy snapshot and projected for reads as described under
-[§Legacy reassessment read projection](#legacy-reassessment-read-projection-not-implemented).
+[§Legacy reassessment read projection](#legacy-reassessment-read-projection-implemented).
 The representation mode is threaded from `Assignment.fromJSON()` through
 `Assignment._baseFromJSON()` / `_rehydrateSubmission()`, `SlidesAssignment.fromJSON()` /
 `SheetsAssignment.fromJSON()` and `StudentSubmission.fromJSON()` into
@@ -634,7 +689,7 @@ The representation mode is threaded from `Assignment.fromJSON()` through
 
 | Aspect                  | Implemented behaviour                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Activation              | `assessmentContractVersion === 1` only. Current records emit `1` through both persistence serialisers and the read transport. Marker-less, `null` and unsupported records are retained as an opaque legacy snapshot; the read transport emits explicit `null` after reassessment projection. Both frontend read schemas now require `1 \| null`; the read services are not yet wired to the pure normaliser. See [Known discrepancies](#known-discrepancies).                                                                             |
+| Activation              | `assessmentContractVersion === 1` only. Current records emit `1` through both persistence serialisers and the read transport. Marker-less, `null` and unsupported records are retained as an opaque legacy snapshot; the read transport emits explicit `null` after reassessment projection. Both frontend read schemas require `1 \| null` and both read services run the normaliser before their final parse. See [Known discrepancies](#known-discrepancies).                                                                          |
 | Root and task universe  | Validated once, before any model constructor runs: non-blank `courseId` / `assignmentId` strings, `submissions` as an array, and a non-empty embedded `assignmentDefinition.tasks` universe. In the full task-map form every key is non-blank and equals the embedded task's canonical `id`; an optional `taskId` must match that key. In the partial summary-array form every `taskId` is a non-empty unique string. Any failure throws and fails the owned dataset.                                                                     |
 | Shared identities       | The same task-universe check runs with an empty `submissions` array, so duplicate or inconsistent definition identities cannot be hidden by having no students. A submission must carry a non-blank string `studentId` and an `assignmentId` equal to the root assignment ID. Unknown stored task keys outside the authoritative universe throw; associations are never guessed.                                                                                                                                                          |
 | Empty no-submission     | A submission with parent `documentId: null` and an empty item object remains an empty submission record. It is not expanded into placeholders or fabricated `N` items.                                                                                                                                                                                                                                                                                                                                                                    |
@@ -649,13 +704,14 @@ The representation mode is threaded from `Assignment.fromJSON()` through
 consistent with the existing artefact contract; marker-1 restoration neither generates TABLE
 fixtures nor introduces new TABLE feature work.
 
-The synthetic generator, projection and strict graph validators already emit and accept marker-1
+The synthetic generator, projection and strict graph validators emit and accept marker-1
 records, real PNG/raw-grid bodies, paired reference formulae and retained partial `E` details.
-That is test-fixture capability only: no committed profile has been regenerated. Production
-persistence and both read transports now emit the marker; the backend legacy read projection and
-the pure frontend read normaliser are implemented. The read services are not yet wired to that
-normaliser. Corpus regeneration, completed-write gates, analyser `E` input and preview error
-states remain pending; the outstanding Section 2c/2d cut-over failures are not waived.
+The committed canonical corpus has been regenerated from the existing generator: the compact
+profiles are byte-reproducible across two runs and six tracked wire files changed. Production
+persistence and both read transports emit the marker; the backend legacy read projection and the
+frontend read normaliser are implemented and active in both read services. The analyser accepts
+explicit `E` input. Completed-write gates (Section 8), acquisition/extraction boundary `E`
+creation (Section 4) and preview error states (Section 9) remain pending.
 
 ### Full submission `studentName` nullability alignment (Implemented)
 
@@ -679,8 +735,7 @@ transport or the legacy reassessment projection.
 > redaction. Detached legacy reassessment placeholders with explicit null content/hash are
 > implemented by `02_AssignmentReadProjection.js`. The extraction-boundary creation of
 > `SOURCE_CONTENT_UNAVAILABLE` `E` and completed-write preflight/gates remain **`Not
-implemented`**. The pure frontend read normaliser is implemented but not yet wired into the
-> read services.
+implemented`**. The frontend read normaliser is implemented and active in both read services.
 
 Planned full-artefact rules:
 
@@ -716,7 +771,7 @@ Planned rules:
   record and becomes validation `CORRUPT_RECORD` `E`; it is not accepted as an assessment-only
   error. Partial artefact redaction is exempt from this full-content consistency check.
 - Confirmed no-submission is represented by parent `documentId: null` and an empty item map,
-  not fabricated null-content `N` items (see [Completed submission coverage](#completed-submission-coverage-not-implemented)).
+  not fabricated null-content `N` items (see [Completed submission coverage](#completed-submission-coverage-implemented-for-reads)).
 - No `.optional()` relaxation of full artefact `content`/`contentHash` is permitted; a missing
   required field is corruption, not legitimate null content.
 
@@ -733,18 +788,17 @@ transaction; a storage failure throws, logs the failed phase and whether the ful
 committed, and never reports a completed run. Do not add unconditional saving in `finally` or
 claim rollback guarantees.
 
-### Completed submission coverage (Not implemented)
+### Completed submission coverage (Implemented for reads)
 
-> **Status: backend marker-1 CURRENT and legacy read projections implemented; browser
-> normaliser implemented and awaiting independent review; completion gates and service wiring
-> pending.** `AssignmentCurrentRestoration` already materialises a missing
+> **Status: read coverage implemented on both representations; completed-persistence coverage
+> rejection remains planned.** `AssignmentCurrentRestoration` materialises a missing
 > known task as an all-three `CORRUPT_RECORD` `E`, isolates corrupt known items and incomplete/
 > extra-key criteria while preserving healthy siblings, keeps a null-parent empty item map as an
 > empty submission, and isolates contradictory null-parent items. For legacy records,
 > `02_AssignmentReadProjection.js` materialises one detached `REASSESSMENT_REQUIRED` `E` item per
-> known task/student pair on both reads. The pure browser normaliser implements the equivalent
-> provided-entry isolation and defensive full-payload coverage, but is not yet wired into the
-> read services. Completed-persistence coverage rejection remains **`Not implemented`**.
+> known task/student pair on both reads. The browser normaliser implements the equivalent
+> provided-entry isolation and defensive full-payload coverage and is invoked by both read
+> services. Completed-persistence coverage rejection remains **`Not implemented`** (Section 8).
 
 Planned version 1 coverage rules:
 
@@ -798,16 +852,17 @@ Coverage resolution rules:
 - A version-1 canonical completed fixture never contains an empty assessment map.
   Missing-criterion and empty-map cases remain local corruption probes, not realistic success
   data. See
-  [Synthetic Test Data §Explicit E outcomes and richer artefact types (implemented generator and validators; corpus cut-over pending)](../testing/synthetic-test-data.md#planned-generator-extension-explicit-e-outcomes-and-richer-artefact-types-not-implemented).
+  [Synthetic Test Data §Explicit E outcomes and richer artefact types (implemented; corpus cut over)](../testing/synthetic-test-data.md#planned-generator-extension-explicit-e-outcomes-and-richer-artefact-types-not-implemented).
 
-### `assessmentContractVersion` result marker (Not implemented)
+### `assessmentContractVersion` result marker (Implemented)
 
 > **Status: backend persistence and read transport implemented; both frontend read schemas
-> activated.** `AssignmentSerialisation.toJSON()` / `toPartialJSON()` emit `1`
-> for current results and re-emit the exact opaque legacy marker. Both read serialisers always
-> emit `1 | null`; see [Known discrepancies](#known-discrepancies). `AssignmentFullSchema` and
-> `AssignmentPartialSchema` now require `z.union([z.literal(1), z.null()])`; the read services
-> are not yet wired to the pure normaliser.
+> activated and both read services enforce them.** `AssignmentSerialisation.toJSON()` /
+> `toPartialJSON()` emit `1` for current results and re-emit the exact opaque legacy marker.
+> Both read serialisers always emit `1 | null`; see [Known discrepancies](#known-discrepancies).
+> `AssignmentFullSchema` and `AssignmentPartialSchema` require
+> `z.union([z.literal(1), z.null()])`, and the read normaliser additionally requires marker-null
+> provided entries to be backend-materialised reassessment `E`.
 
 Backend top-level field on the full assignment record and on every class-embedded partial
 assignment:
@@ -823,7 +878,7 @@ Persistence rules (backend implemented):
 - Storage may omit the marker, or retain `null`/an unsupported legacy value. The model keeps the
   legacy submission body and the original marker presence/value as an opaque snapshot; ordinary
   persistence serialisers re-emit that state unchanged rather than certifying or rewriting it
-  (see [Legacy reassessment read projection](#legacy-reassessment-read-projection-not-implemented)).
+  (see [Legacy reassessment read projection](#legacy-reassessment-read-projection-implemented)).
 - A successful reassessment replaces the full result and embedded partial with a fresh current
   result carrying version `1`; it does not carry the legacy opaque snapshot. **Implemented.**
 - Read-only reassessment projections do not write repaired results back to storage; there is no
@@ -850,16 +905,15 @@ Transport and frontend-validation rules (backend transport implemented; both fro
 This clarification pins the required read-wire union now implemented in both frontend read
 schemas; it does not introduce a new migration, storage rewrite or browser-side reassessment path.
 
-### Legacy reassessment read projection (Not implemented)
+### Legacy reassessment read projection (Implemented)
 
-> **Status: backend projection implemented; pure frontend normaliser implemented and awaiting
-> independent G3 review/sign-off; service wiring pending.** The public owner
+> **Status: implemented and active on both read paths.** The public owner
 > `AssignmentRehydration.projectReassessmentSubmissions(assignment, students, form)` delegates
-> to the implemented pure helper `02_AssignmentReadProjection.js`. Both
+> to the pure helper `02_AssignmentReadProjection.js`. Both
 > `AssignmentSerialisation.toReadJSON()` (full) and `ABClassResponseMapper._toReadView()`
-> (partial) invoke it before response validation and definition-key replacement. The browser
-> normaliser validates the already-materialised entries but is not yet wired into the read
-> services; it does not materialise a second reassessment graph.
+> (partial) invoke it before response validation and definition-key replacement. Both read
+> services then validate the already-materialised entries; the browser does not materialise a
+> second reassessment graph.
 
 Public owner: the existing
 `AssignmentRehydration.projectReassessmentSubmissions(assignment, students, form)` entry. Its
@@ -921,8 +975,8 @@ Format gate and persistence preservation:
 - The frontend normaliser validates these already materialised entries and the required
   `assessmentContractVersion: 1 | null` read field. It does not generate a second reassessment
   graph, query a roster or infer historical outcomes. A wire payload with a missing or
-  unsupported marker is an invalid root; it is not a legacy-result signal for the browser. The
-  normaliser is implemented but the read services are not yet wired to it.
+  unsupported marker is an invalid root; it is not a legacy-result signal for the browser. Both
+  read services invoke the normaliser before their final parse.
 - An invalid root/definition or untrustworthy required identity still fails the owned dataset;
   this projection must not invent missing identities.
 
@@ -935,22 +989,20 @@ Format gate and persistence preservation:
 > ordinary persistence cannot be damaged. No scheduled notification, automatic migration, data
 > deletion, background backfill or forced reassessment is promised or authorised.
 
-### Full and partial item isolation with trustworthy identities (Not implemented)
+### Full and partial item isolation with trustworthy identities (Implemented)
 
-> **Status: backend marker-1 CURRENT restoration and legacy read projection implemented;
-> pure frontend read normaliser implemented and awaiting independent G3 review/sign-off; service
-> wiring and completed-write gates pending.** The backend raw validation,
-> exact-once construction, missing-task coverage, null-parent isolation, full/partial mode
-> threading and detached legacy reassessment projection described here are implemented by
+> **Status: implemented on both read paths; completed-write gates remain planned.** The backend raw
+> validation, exact-once construction, missing-task coverage, null-parent isolation, full/partial
+> mode threading and detached legacy reassessment projection described here are implemented by
 > `AssignmentCurrentRestoration` and `02_AssignmentReadProjection.js`; see
 > [§Marker-1 CURRENT restoration](#marker-1-current-restoration-implemented) and
-> [§Legacy reassessment read projection](#legacy-reassessment-read-projection-not-implemented).
+> [§Legacy reassessment read projection](#legacy-reassessment-read-projection-implemented).
 > The browser read-normalisation owners (`assignmentReadNormalisation.ts` and
-> `assignmentReadItemValidation.ts`) implement the pure full/partial isolation below but are not
-> yet called by the read services. Open review gaps G4–G8 are listed in
+> `assignmentReadItemValidation.ts`) implement the full/partial isolation below and are invoked by
+> both read services. The former review gaps G4–G8 are resolved in
 > [Known discrepancies](#known-discrepancies); completed-write gates remain **`Not implemented`**.
 
-Planned restoration/validation behaviour for both the full `getAssignment` path and the
+Implemented restoration/validation behaviour for both the full `getAssignment` path and the
 class-embedded partial path:
 
 - Make full versus partial restoration explicit at the owning boundary. Partial redaction must
@@ -967,7 +1019,7 @@ class-embedded partial path:
   cannot discard healthy siblings. This includes an item whose null parent `documentId` is
   contradicted by numeric/`N` marks or by an assessment-/extraction-stage `E`: isolate that item
   as all-three validation `CORRUPT_RECORD` `E` under
-  [Completed submission coverage](#completed-submission-coverage-not-implemented), never dropping
+  [Completed submission coverage](#completed-submission-coverage-implemented-for-reads), never dropping
   it or its healthy siblings. The contradiction is item-scoped; do not fail the whole owned
   dataset for an identifiable item. Valid acquisition/validation `E` items under the same null
   parent remain valid and are preserved. Apply the equivalent isolation to full and partial reads,
@@ -1003,7 +1055,7 @@ Owners:
 | Boundary                       | Owner                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           | Responsibilities                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Frontend shared result schemas | `services/assignmentAssessment/assessmentResult.zod.ts` (implemented; consumed by both read schemas)                                                                                                                                                                                                                                                                                                                                                                                                                                            | Shared full/partial `Assessment` and error-cause schemas, so both assignment and class-detail services enforce the same score range, `E` catalogue and non-blank `E` reasoning refinement.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
-| Frontend read normalisation    | `services/assignmentAssessment/assignmentReadNormalisation.ts` and `services/assignmentAssessment/assignmentReadItemValidation.ts` (implemented pure owners; awaiting independent review; read services not yet wired)                                                                                                                                                                                                                                                                                                                          | Pure full/partial item isolation. `assignmentReadNormalisation.ts` owns the two public entry points and root/definition checks; `assignmentReadItemValidation.ts` owns item/artefact/parent-source validation, canonical corruption construction and safe diagnostic paths. They contain no React, GAS dispatch or raw-JSON parsing. The browser partial path validates provided entries only and never infers coverage from the definition registry. The browser full path fills a task only defensively when a wire payload lacks it, using that same full payload's definition, and never overwrites backend-materialised `E`; it is not the normal full coverage owner. |
+| Frontend read normalisation    | `services/assignmentAssessment/assignmentReadNormalisation.ts` and `services/assignmentAssessment/assignmentReadItemValidation.ts` (implemented pure owners; invoked by both read services before their final parse)                                                                                                                                                                                                                                                                                                                            | Pure full/partial item isolation. `assignmentReadNormalisation.ts` owns the two public entry points and root/definition checks; `assignmentReadItemValidation.ts` owns item/artefact/parent-source validation, canonical corruption construction and safe diagnostic paths. They contain no React, GAS dispatch or raw-JSON parsing. The browser partial path validates provided entries only and never infers coverage from the definition registry. The browser full path fills a task only defensively when a wire payload lacks it, using that same full payload's definition, and never overwrites backend-materialised `E`; it is not the normal full coverage owner. |
 | Backend raw domain validation  | `src/backend/Models/Assessment.js`, `src/backend/Models/StudentSubmission/index.js` (implemented facade), `src/backend/Models/StudentSubmission/00_StudentSubmissionItem.js` (implemented item model), `src/backend/AssignmentProcessor/Assignment/02_AssignmentRehydration.js` (restore/coverage facade), `src/backend/AssignmentProcessor/Assignment/02_AssignmentCurrentRestoration.js` (implemented marker-1 restoration), `src/backend/AssignmentProcessor/Assignment/02_AssignmentReadProjection.js` (implemented pure legacy projection) | `Assessment` validates its result/cause; the `StudentSubmission` facade and item model validate their own full/partial records; `AssignmentRehydration` owns one-pass full/partial graph traversal; `AssignmentCurrentRestoration` owns marker-1 root/task pre-validation, raw item validation, coverage, null-parent isolation and full/partial restoration; the legacy projection remains behind `AssignmentRehydration.projectReassessmentSubmissions()`, with pure projection/snapshot mapping in `02_AssignmentReadProjection.js` (implemented), not a second materialiser. Controllers select the representation explicitly.                                          |
 | Transport-boundary exclusion   | `src/backend/z_Api/*` handlers                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | API handlers do not introduce a second domain-validator hierarchy.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 
@@ -1023,9 +1075,9 @@ public owners and the existing File Index:
 The StudentSubmission model split is implemented. The marker-1 CURRENT restoration slice and the
 legacy read-projection separation/opaque persistence are implemented and documented in
 [§Marker-1 CURRENT restoration](#marker-1-current-restoration-implemented) and
-[§Legacy reassessment read projection](#legacy-reassessment-read-projection-not-implemented);
-the pure frontend read normaliser is implemented and awaiting independent review, and read-service
-activation plus completed-write gates remain pending.
+[§Legacy reassessment read projection](#legacy-reassessment-read-projection-implemented);
+the frontend read normaliser is implemented and invoked by both read services. Completed-write
+gates remain pending.
 
 ### Alignment concerns (planned vs current code)
 
@@ -1058,18 +1110,17 @@ activation plus completed-write gates remain pending.
    or corrupt known item to all-three `CORRUPT_RECORD` `E`, and preserves healthy siblings on both
    full and partial reads. The legacy read projection instead materialises every known
    student/task pair as all-three `REASSESSMENT_REQUIRED` `E` without validating historical
-   assessment bodies. `SpreadsheetTaskArtifact.normalizeContent()` now canonicalises a
-   successfully read blank/all-null grid to `[]` with the normal `[]` hash. The pure browser
-   normaliser implements provided-entry isolation and the defensive full-payload fallback, but is
-   not yet wired into the read services; completed-persistence coverage rejection remains
+   assessment bodies. `SpreadsheetTaskArtifact.normalizeContent()` canonicalises a
+   successfully read blank/all-null grid to `[]` with the normal `[]` hash. The browser
+   normaliser implements provided-entry isolation and the defensive full-payload fallback and is
+   invoked by both read services; completed-persistence coverage rejection remains
    **Misaligned** until implemented. Existing formula scoring is unchanged.
-7. **The shared result schema owner and the pure read normaliser both exist; service wiring does
-   not.** `services/assignmentAssessment/assessmentResult.zod.ts` is consumed by both read
+7. **The shared result schema owner and the read normaliser are both active.**
+   `services/assignmentAssessment/assessmentResult.zod.ts` is consumed by both read
    schemas, and `services/assignmentAssessment/assignmentReadNormalisation.ts` plus
-   `assignmentReadItemValidation.ts` implement pure full/partial isolation. Neither read service
-   calls the normaliser yet: `assignmentAssessmentService.ts` and `classDetailService.ts` still
-   pass the response straight to `parseApiResponse`. Open review gaps G4–G8 are listed in
-   [Known discrepancies](#known-discrepancies).
+   `assignmentReadItemValidation.ts` implement full/partial isolation. Both read services call
+   the normaliser before their final `parseApiResponse` parse. The former review gaps G4–G8 are
+   resolved in [Known discrepancies](#known-discrepancies).
 8. **Full `StudentSubmissionSchema.studentName` now accepts `null`, matching the backend's
    `string \| null` emission.** The partial schema was already nullable. Retain the field;
    historical notes calling it temporary do not authorise removal.
@@ -1077,10 +1128,9 @@ activation plus completed-write gates remain pending.
 **Classification of the entries above:** the `Assessment` result/cause primitives, atomic
 `setError()`, partial `E` retention, both consumer schema activations, the required wire marker,
 full `studentName` nullability, blank-grid canonicalisation, marker-1 CURRENT backend
-restoration (read validation, coverage and null-parent isolation) and the legacy read
-projection/opaque persistence are implemented. The pure frontend read normaliser is implemented
-and awaiting independent review; read-service activation, open review gaps G4–G8,
-completed-persistence gates and the preview slices remain pending. None is a regression in the
+restoration (read validation, coverage and null-parent isolation), the legacy read
+projection/opaque persistence and the frontend read normaliser activation are implemented.
+Completed-persistence gates and the preview slices remain pending. None is a regression in the
 implemented backend result/cause, CURRENT restoration or legacy projection contracts.
 
 ---
@@ -1153,7 +1203,7 @@ Frontend:
   │       assessmentCauseSchema (implemented shared owner; consumed by both read schemas)
   ├── src/frontend/src/services/assignmentAssessment/assignmentReadNormalisation.ts
   │     → normaliseAssignmentRead(), normaliseClassRead() (implemented pure full/partial
-  │       read normaliser; independent review pending; read services not yet wired)
+  │       read normaliser; invoked by both read services before their final parse)
   ├── src/frontend/src/services/assignmentAssessment/assignmentReadItemValidation.ts
   │     → isValidFullItem(), isValidPartialItem(), corruptItem(), itemErrorPath(),
   │       isRecord(), isIdentity() (implemented adjacent pure item/source validation and

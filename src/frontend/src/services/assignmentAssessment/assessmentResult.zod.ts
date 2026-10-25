@@ -22,7 +22,7 @@ export const assessmentCauseSchema = z.discriminatedUnion('stage', [
 
 const MAX_SCORE = 5;
 const numericScore = z.number().min(0).max(MAX_SCORE);
-const successScore = z.union([numericScore, z.literal('N')]);
+export const assessmentScoreSchema = z.union([numericScore, z.literal('N')]);
 const errorResult = z
   .object({
     score: z.literal('E'),
@@ -32,11 +32,11 @@ const errorResult = z
   .strict();
 
 export const assessmentResultSchema = z.union([
-  z.object({ score: successScore, reasoning: z.string() }).strict(),
+  z.object({ score: assessmentScoreSchema, reasoning: z.string() }).strict(),
   errorResult,
 ]);
 
 export const partialAssessmentResultSchema = z.union([
-  z.object({ score: successScore }).strict(),
+  z.object({ score: assessmentScoreSchema }).strict(),
   errorResult,
 ]);

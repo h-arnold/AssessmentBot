@@ -3,7 +3,6 @@ import { describe, expect, it } from 'vitest';
 import { generateSyntheticAnalysisGraph } from '#synthetic-data/generateSyntheticAnalysisGraph.js';
 import {
   ClassFullSchema,
-  PartialAssessmentScoreSchema,
   type ClassFull,
   type PartialAssessmentEntry,
   type StudentSubmissionItemPartial,
@@ -14,6 +13,7 @@ import {
   type AssignmentDefinitionPartial,
 } from '@/services/assignmentDefinition/assignmentDefinitionPartials.zod';
 import type { AssignmentFull } from '@/services/assignmentAssessment/assignmentAssessment.zod';
+import { assessmentScoreSchema } from '@/services/assignmentAssessment/assessmentResult.zod';
 import type {
   AssignmentTopic,
   Cohort,
@@ -327,7 +327,7 @@ describe('synthetic analysis graph referential integrity', () => {
           expect(assessment.reasoning).toEqual(expect.any(String));
           expect(assessment.error).toBeDefined();
         } else {
-          expect(() => PartialAssessmentScoreSchema.parse(assessment.score)).not.toThrow();
+          expect(() => assessmentScoreSchema.parse(assessment.score)).not.toThrow();
         }
       }
 

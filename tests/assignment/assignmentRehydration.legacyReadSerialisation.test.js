@@ -14,7 +14,7 @@ const { Assessment } = require('#backend/Models/Assessment.js');
 function legacyRecord() {
   const record = currentAssignmentJson();
   delete record.assessmentContractVersion;
-  record.assignmentName = null;
+  record.assignmentName = 'Legacy assignment name';
   record.createdAt = '2020-01-02T03:04:05.000Z';
   record.submissions = record.submissions.slice(0, 1);
   record.submissions[0].historicalEnvelope = { opaque: [null, { body: 'unchanged' }] };

@@ -43,7 +43,7 @@ const AssignmentFactory = {
    * Polymorphic deserialisation routing based on documentType field.
    * Routes to appropriate subclass fromJSON or creates base Assignment for legacy data.
    * @param {object} data - JSON data object.
-   * @param {string} representationMode - Representation mode used when restoring assignment data.
+   * @param {'full'|'partial'} representationMode - Caller-owned representation mode used when restoring assignment data.
    * @returns {Assignment} Instance of appropriate class (SlidesAssignment, SheetsAssignment, or base Assignment).
    */
   fromJSON(data, representationMode) {

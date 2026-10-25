@@ -94,9 +94,10 @@ export function resolveFullOutputRoot(outputRoot) {
  *
  * @param {object} options Generation inputs.
  * @param {string} options.outputRoot Directory the profile subdirectories are written under.
+ * @returns {Promise<void>} Resolves once every staged profile has replaced its committed directory.
  */
-export function generateCommittedProfiles({ outputRoot }) {
-  commitStagedProfiles(stageCommittedProfiles(outputRoot));
+export async function generateCommittedProfiles({ outputRoot }) {
+  commitStagedProfiles(await stageCommittedProfiles(outputRoot));
 }
 
 /**
@@ -104,16 +105,16 @@ export function generateCommittedProfiles({ outputRoot }) {
  * profile, discarding all staged profiles if a later one fails.
  *
  * @param {string} outputRoot Directory the staging directories are created under.
- * @returns {Array<{stagingDirectory: string, profileDirectory: string}>} Fully written staged profiles.
+ * @returns {Promise<Array<{stagingDirectory: string, profileDirectory: string}>>} Fully written staged profiles.
  * @throws {Error} When a profile cannot be generated, validated, or staged.
  */
-function stageCommittedProfiles(outputRoot) {
+async function stageCommittedProfiles(outputRoot) {
   const stagedProfiles = [];
 
   try {
     for (const profileName of COMMITTED_PROFILE_NAMES) {
       stagedProfiles.push(
-        stageProfileFixtures({
+        await stageProfileFixtures({
           graph: generateSyntheticAnalysisGraph(profileName),
           outputRoot,
         })
@@ -135,12 +136,13 @@ function stageCommittedProfiles(outputRoot) {
  *
  * @param {object} options Generation inputs.
  * @param {string} options.outputRoot Requested ignored output root.
+ * @returns {Promise<void>} Resolves once the full-large profile has been written.
  * @throws {Error} When the requested output root escapes the permitted root.
  */
-export function generateFullProfile({ outputRoot }) {
+export async function generateFullProfile({ outputRoot }) {
   const resolvedRoot = resolveFullOutputRoot(outputRoot);
 
-  writeProfileFixtures({
+  await writeProfileFixtures({
     graph: generateSyntheticAnalysisGraph(LARGE_FULL_PROFILE_NAME),
     outputRoot: resolvedRoot,
   });
@@ -200,26 +202,28 @@ export function parseCliOptions(argv) {
  * Runs the CLI for the parsed mode, writing to the mode-specific resolved root.
  *
  * @param {string[]} argv Arguments following the Node executable and script path.
+ * @returns {Promise<void>} Resolves once the selected mode has finished writing.
  */
-export function runCli(argv) {
+export async function runCli(argv) {
   const options = parseCliOptions(argv);
 
   if (options.full) {
-    generateFullProfile({ outputRoot: options.outputRoot });
+    await generateFullProfile({ outputRoot: options.outputRoot });
     return;
   }
 
-  generateCommittedProfiles({ outputRoot: options.outputRoot });
+  await generateCommittedProfiles({ outputRoot: options.outputRoot });
 }
 
 /**
  * Executes the CLI, reporting failures on stderr and setting a non-zero exit code.
  *
  * @param {string[]} argv Arguments following the Node executable and script path.
+ * @returns {Promise<void>} Resolves after the CLI result or failure has been reported.
  */
-export function executeCli(argv) {
+export async function executeCli(argv) {
   try {
-    runCli(argv);
+    await runCli(argv);
   } catch (error) {
     process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
     process.exitCode = 1;
@@ -236,5 +240,5 @@ function isDirectExecution() {
 }
 
 if (isDirectExecution()) {
-  executeCli(process.argv.slice(CLI_ARGUMENT_OFFSET));
+  await executeCli(process.argv.slice(CLI_ARGUMENT_OFFSET));
 }
