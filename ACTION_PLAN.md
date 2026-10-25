@@ -373,6 +373,21 @@ Do not compact an incomplete section or discard unresolved findings.
 
 Continuation checkpoint — Section 2c Red:
 
+- **User-authorised CLEAN RED checkpoint committed and pushed successfully.**
+  Branch: `assessment-errors-322-341` (upstream `origin/assessment-errors-322-341`).
+  Commit: `e71e309fbd86c8882e063b839c2a08042ac62995`.
+  Exact message: `feat(assessment): checkpoint explicit error contracts and section 2 red coverage`.
+  Normal pre-commit formatting, scoped lint and `typecheck:all` passed; no bypass.
+  Hook rewrote only three assignmentsByKey JSON formatting outputs; no source/test
+  content changed. Excluded-file hashes unchanged; only the seven excluded status
+  entries remain outside the checkpoint. Explicit `git push -u origin assessment-errors-322-341`
+  succeeded, created remote branch and configured upstream. Hook and push logs:
+  `.opencode/scratchpad/section2-red-checkpoint-commit.log` and
+  `.opencode/scratchpad/section2-red-checkpoint-push.log`.
+  Intentional Red 11 cases/20 assertions remains; this is NOT section completion.
+  Remaining Green implementation and canonical docs may now proceed together before
+  ONE consolidated Green review; section regression/build/commit gates remain pending.
+
 - **COMPLETE SECTION 2 CLEAN RED confirmed** by same whole-section final sign-off:
   `.opencode/scratchpad/section2-consolidated-red-signoff.md`. Criteria 1–16 manual
   walkthrough complete, no remaining test/fixture/comment findings; R13/N4 closed.
