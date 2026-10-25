@@ -141,6 +141,90 @@ This is **fixture realism only**, not a production nullable-contract change:
 - Nullable transport acceptance is covered by explicit **local null-boundary probes**, not by generated null population. `tests/synthetic-analysis/syntheticCorpusConventions.test.ts` clones a canonical class-embedded assignment partial and a canonical full assignment, sets `updatedAt = null`, and parses both through the real frontend schemas. `tests/synthetic-analysis/syntheticGraphShapeCoverage.test.ts` clones a canonical class, nulls its first assignment's `updatedAt`, and re-parses it through `ClassFullSchema`.
 - The Class page's fail-closed rejection of a null or unparseable `updatedAt` is unchanged and tested with independent local invalid probes in `src/frontend/src/features/classPage/classPageAdapter.trustValidation.spec.ts`. Do not use canonical rows to assert that rejection.
 
+## Explicit E outcomes and richer artefact types (`Implemented` generator and validators; corpus cut-over pending) {#planned-generator-extension-explicit-e-outcomes-and-richer-artefact-types-not-implemented}
+
+**Status:** The generator stages, partial projection and graph validators described here are
+`Implemented` and test-only. No committed profile has been regenerated, no frontend consumer has
+been switched to the new corpus, and the atomic Section 2 gate has not passed. Seventeen
+consumer-schema, stale-assertion and corpus failures remain deferred to the coordinated
+Section 2c/2d cut-over; they are not waived. No new profile, transport view or realistic fixture
+family was added.
+
+- **Artefact types.** The existing definition and submission builders cycle `TEXT`, `IMAGE` and
+  `SPREADSHEET` bodies using their existing deterministic index arithmetic. IMAGE bodies are
+  genuine PNG bytes (signature, IHDR, deflated IDAT, IEND) encoded as
+  `data:image/png;base64,` data URLs and derived only from the text seed. SPREADSHEET bodies are
+  raw 2D grids, not encoded strings; each full definition's reference grid carries an assessable
+  A1-style formula cell (`=SUM(B1:B2)`).
+- **Version marker and criteria.** `planClassAssignments.js` sets `assessmentContractVersion: 1`
+  once on the persistence assignment. Both wire whitelists
+  (`toTransportViews.js::toFullAssignment` and
+  `projectClassTransportViews.js::toPartialAssignment`) copy that source value explicitly; neither
+  selects or defaults a version. Every generated item carries exactly `completeness`, `accuracy`
+  and `spag`: non-failure maps cover all three, and the pinned `N` SPaG case is retained.
+- **Explicit outcomes.** Roster-index `1` submissions emit `assessment` / `ASSESSMENT_FAILED` E
+  entries on all three criteria beside usable source. Roster-index `2` submissions are the
+  null-parent acquisition variant: parent `documentId`, artefact `pageId` and `documentId`,
+  `content` and `contentHash` are null; artefact `metadata` and item `feedback` are empty;
+  artefact `role` is `submission` and `type` is `base`. Every declared task carries `acquisition`
+  / `SOURCE_UNREADABLE` E on all three criteria, and student and task identities, item count and
+  deterministic IDs/UIDs are preserved. The former empty-assessment variant is removed, so a
+  version-1 item never carries an empty map.
+- **Projection redaction.** `projectSubmissionViews.js` retains `reasoning` and `error` on partial
+  E entries while numeric and `N` partial entries stay score-only. Partial artefact `content` and
+  `contentHash` remain redacted to null for every item; the full view retains them.
+- **Validation.** Persistence (`validatePersistenceGraph.js`), full `assignmentsByKey`
+  (`validateAssignmentsByKeyView.js`) and class-embedded partial (`validateTransportGraph.js`)
+  validation require marker `1`, exactly the three criteria, strict `stage`/`code` pairs from the
+  twelve-pair implemented Assessment catalogue, declared-task coverage for document-bearing
+  submissions, and representation-correct source state. A null-parent map may contain only
+  acquisition or validation E entries and must match the canonical base placeholder. Null content
+  must pair with null hash; beside present content, a full record must carry a usable raw body
+  (TEXT string, image data URL, or 2D spreadsheet grid) and a non-blank hash. Blank templates and
+  a successfully read blank student SPREADSHEET grid remain accepted. No formula-comparison
+  persistence or new feedback type was added; spreadsheet feedback remains the existing
+  cell-reference form.
+- **Unchanged metadata.** The class `metadata` stage is unchanged: supplied metadata remains an
+  independently generated snapshot, not a value derived from the assessment maps.
+- **Pipeline.** Outcomes flow through the existing projections; no new profile, view or
+  model-input adapter change was made.
+
+### Coordinated corpus cut-over (`Not implemented`)
+
+These entries remain pending; the implemented generator and validator slice does not deliver them.
+
+- **Canonical selection and regeneration.** `small` remains the healthy cross-layer graph and
+  `medium` the mixed healthy/E profile. `npm run fixtures:synthetic` has not been run, so the
+  committed corpus predates the marker, artefact types and explicit outcomes. Regenerate it as one
+  coordinated cut-over and keep it byte-reproducible.
+- **Existing Playwright fixture reconciliation (Section 2 cut-over).** Section 2's atomic
+  corpus/read cut-over includes a minimal reconciliation of the existing Playwright heatmap and
+  source-link fixture helpers, because that section's full regression gate runs the complete
+  browser suite. Reconcile mocked healthy full/partial wire records to the required
+  `assessmentContractVersion: 1`, complete three-criterion maps including accuracy, linked
+  task/item records and usable source identifiers/content, deriving supported realistic records
+  and IMAGE/SPREADSHEET bodies from the canonical `small`/`medium` views. Keep
+  `task-heatmap-fixtures.ts`, `task-heatmap-class-fixtures.ts`,
+  `task-heatmap-end-to-end-helpers.ts` and `task-preview-source-link-fixtures.ts` as the owners
+  and import canonical views directly there; add no realistic builder and no heatmap/source-link
+  import cycle. Retain purposeful local score/layout boundary overrides and the unsupported TABLE
+  exception, and remove the resolved IMAGE exception/dependency once the committed corpus supplies
+  canonical IMAGE bodies. Change only expectations coupled to the repaired fixture contracts.
+- **Preview-fixture capability comment.** Once the regenerated corpus supplies IMAGE/SPREADSHEET
+  bodies, update the corpus-capability exception comment in
+  `src/frontend/src/test/taskHeatmap/previewFixtures.ts`: remove the resolved IMAGE/SPREADSHEET
+  exceptions and the dead root `ACTION_PLAN.md` pointer, retain only genuinely unsupported cases
+  such as TABLE, and point to the capability notes in this guide. Do not add TABLE feature support.
+- **New browser journeys.** New explicit-error, legacy and refresh journeys belong to Section 10.
+  Do not add them during the Section 2 reconciliation, and do not broaden existing journey intent
+  beyond the fixture-contract coupling above.
+- **Local probes stay local.** Corrupt records, missing-criterion and empty-map probes, HTTP
+  response variants, GAS failures and numeric boundary probes remain targeted local fixtures, not
+  realistic success data.
+
+The pending entries above remain unimplemented; no new profile, transport view or realistic
+fixture family is added.
+
 ## ABClass metadata generator capability
 
 > **Status: `Implemented` (test-only).** The canonical corpus generates, validates and adapts

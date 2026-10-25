@@ -22,10 +22,11 @@ class SlidesAssignment extends Assignment {
   /**
    * Deserialises SlidesAssignment from JSON data.
    * @param {object} data - JSON data object.
+   * @param {string} representationMode - Representation mode used when restoring assignment data.
    * @returns {SlidesAssignment} Reconstructed SlidesAssignment instance.
    */
-  static fromJSON(data) {
-    const inst = Assignment._baseFromJSON(data);
+  static fromJSON(data, representationMode) {
+    const inst = Assignment._baseFromJSON(data, representationMode);
     Object.setPrototypeOf(inst, SlidesAssignment.prototype);
     return inst;
   }

@@ -29,16 +29,30 @@ function toPartialArtifact(artifact) {
 }
 
 /**
- * Strips assessment reasoning from an assessment map.
+ * Projects a single assessment entry into the partial view, retaining the
+ * reasoning and error cause only for failed 'E' entries.
  *
- * @param {Record<string, {score: number|'N', reasoning?: string}>} assessments Full assessment map.
- * @returns {Record<string, {score: number|'N'}>} Score-only assessment map.
+ * @param {{score: number|'N'|'E', reasoning?: string, error?: object}} assessment Full assessment entry.
+ * @returns {{score: number|'N'|'E', reasoning?: string, error?: object}} Partial assessment entry.
+ */
+function projectAssessmentEntry(assessment) {
+  if (assessment.score === 'E') {
+    return { score: assessment.score, reasoning: assessment.reasoning, error: assessment.error };
+  }
+  return { score: assessment.score };
+}
+
+/**
+ * Redacts assessment reasoning from an assessment map.
+ *
+ * @param {Record<string, object>} assessments Full assessment map.
+ * @returns {Record<string, object>} Partial assessment map.
  */
 function stripAssessmentReasoning(assessments) {
   return Object.fromEntries(
     Object.entries(assessments).map(([criterion, assessment]) => [
       criterion,
-      { score: assessment.score },
+      projectAssessmentEntry(assessment),
     ])
   );
 }

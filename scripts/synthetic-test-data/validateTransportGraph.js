@@ -1,5 +1,10 @@
 import { fail } from './invariantGuards.js';
 import { LARGE_FULL_COMPLETION_BANDS, LARGE_FULL_PROFILE_NAME } from './profileDefinitions.js';
+import { assertFullDefinitionArtefacts } from './artefactSourceGuards.js';
+import {
+  assertSubmissionState,
+  assertCurrentAssessmentContractVersion,
+} from './validateAssessmentState.js';
 import { collectRosterIds } from './validationContext.js';
 import { assertAssignmentsByKeyView } from './validateAssignmentsByKeyView.js';
 import { assertClassPartialsView } from './validateClassPartialsView.js';
@@ -40,22 +45,6 @@ function assertTransportClassProfileShape(classId, classFull, context) {
 }
 
 /**
- * Asserts a submission item references a task declared by its assignment definition.
- *
- * @param {string} classId Class identifier used in failure messages.
- * @param {object} assignment Owning transport assignment.
- * @param {object} item Partial submission item.
- * @param {Set<string>|undefined} taskIds Declared task IDs.
- */
-function assertItemTaskDeclared(classId, assignment, item, taskIds) {
-  if (taskIds !== undefined && !taskIds.has(item.taskId)) {
-    fail(
-      `Class "${classId}" assignment "${assignment.assignmentId}" submission item references task "${item.taskId}" not declared by definition "${assignment.assignmentDefinitionKey}".`
-    );
-  }
-}
-
-/**
  * Asserts a partial submission item has redacted its artefact content fields.
  *
  * @param {object} item Partial submission item.
@@ -74,31 +63,31 @@ function assertArtefactRedacted(item) {
 }
 
 /**
- * Asserts a partial submission item carries no assessment reasoning.
- *
- * @param {object} item Partial submission item.
- */
-function assertReasoningRedacted(item) {
-  for (const assessment of Object.values(item.assessments ?? {})) {
-    if ('reasoning' in assessment) {
-      fail(`Partial submission item "${item.id}" must not carry assessment reasoning.`);
-    }
-  }
-}
-
-/**
  * Asserts a partial submission item references a declared task and has redacted
- * its artefact and assessment-reasoning fields.
+ * its artefact fields; its assessment representation (score-only non-E entries
+ * and retained reasoning beside failures) is owned by the shared
+ * submission-state guard.
  *
  * @param {string} classId Class identifier used in failure messages.
  * @param {object} assignment Owning transport assignment.
- * @param {object} item Partial submission item.
+ * @param {object} submission Partial transport submission.
  * @param {Set<string>|undefined} taskIds Declared task IDs.
  */
-function assertPartialItemRedaction(classId, assignment, item, taskIds) {
-  assertItemTaskDeclared(classId, assignment, item, taskIds);
-  assertArtefactRedacted(item);
-  assertReasoningRedacted(item);
+function assertPartialSubmissionState(classId, assignment, submission, taskIds) {
+  for (const item of Object.values(submission.items)) {
+    if (taskIds !== undefined && !taskIds.has(item.taskId)) {
+      fail(
+        `Class "${classId}" assignment "${assignment.assignmentId}" submission item references task "${item.taskId}" not declared by definition "${assignment.assignmentDefinitionKey}".`
+      );
+    }
+    assertArtefactRedacted(item);
+  }
+  assertSubmissionState({
+    submission,
+    taskIds,
+    location: `Class "${classId}" assignment "${assignment.assignmentId}"`,
+    representation: 'partial',
+  });
 }
 
 /**
@@ -163,6 +152,10 @@ function assertTransportAssignmentEntry(classId, assignment, transportStudentIds
     persistenceAssignmentByAssignmentId
   );
   assertTransportAssignmentDefinitionKey(classId, assignment, persistenceAssignment);
+  assertCurrentAssessmentContractVersion({
+    assignment,
+    location: `Class "${classId}" assignment "${assignment.assignmentId}"`,
+  });
   if (assignment.courseId !== classId) {
     fail(
       `Class "${classId}" assignment "${assignment.assignmentId}" carries courseId "${String(assignment.courseId)}" instead of its owning class.`
@@ -187,9 +180,7 @@ function assertTransportAssignmentEntry(classId, assignment, transportStudentIds
         `Class "${classId}" assignment "${assignment.assignmentId}" submission references student "${submission.studentId}" outside the class roster.`
       );
     }
-    for (const item of Object.values(submission.items)) {
-      assertPartialItemRedaction(classId, assignment, item, taskIds);
-    }
+    assertPartialSubmissionState(classId, assignment, submission, taskIds);
   }
 }
 
@@ -333,4 +324,6 @@ export function validateTransportGraph({ transport, assignments, context }) {
     editableDefinitions: transport.editableDefinitions,
     assignmentDefinitionPartials: transport.assignmentDefinitionPartials,
   });
+
+  assertFullDefinitionArtefacts({ definitionByKey: context.definitionByKey });
 }

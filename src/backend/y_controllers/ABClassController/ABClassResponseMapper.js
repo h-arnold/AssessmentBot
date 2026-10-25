@@ -92,6 +92,14 @@ class ABClassResponseMapper {
             const partial = assignment.toPartialJSON();
             // Defence-in-depth: strip _hydrationLevel and progressTracker
             const { _hydrationLevel, progressTracker, ...safe } = partial;
+            if (assignment._legacyPersistenceSnapshot) {
+              safe.submissions = AssignmentRehydration.projectReassessmentSubmissions(
+                assignment,
+                abClass.students,
+                'partial'
+              ).map((submission) => submission.toPartialJSON());
+              safe.assessmentContractVersion = null;
+            }
             // Replace the embedded assignmentDefinition with just the definitionKey.
             // The frontend resolves definition details from its own registry
             // (AssignmentDefinitionPartials), so the full embedded object is redundant

@@ -33,7 +33,7 @@ class SpreadsheetTaskArtifact extends BaseTaskArtifact {
       Array.isArray(row) ? row.map((cell) => this._normCell(cell)) : []
     );
     const trimmed = this._trimEmpty(rows);
-    if (trimmed.length === 0) return null;
+    if (trimmed.length === 0) return [];
     for (const row of trimmed) {
       for (let c = 0; c < row.length; c++) {
         const cell = row[c];

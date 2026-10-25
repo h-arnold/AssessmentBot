@@ -1,4 +1,9 @@
 import { fail } from './invariantGuards.js';
+import { assertFullDefinitionArtefacts } from './artefactSourceGuards.js';
+import {
+  assertSubmissionState,
+  assertCurrentAssessmentContractVersion,
+} from './validateAssessmentState.js';
 import { collectRosterIds } from './validationContext.js';
 import {
   assertPersistenceProfileShape,
@@ -194,20 +199,33 @@ function assertDefinitionsResolveReferences(definitions, context) {
 }
 
 /**
- * Asserts every persistence submission item references a declared task ID.
+ * Validates one persistence submission against its owning definition: parent
+ * linkage, roster membership, declared-task coverage, and the canonical
+ * full-representation assessment contract.
  *
- * @param {object} assignment Owning persistence assignment.
- * @param {object} submission Persistence submission.
- * @param {Set<string>} taskIds Declared task IDs.
+ * @param {object} options Submission inputs.
+ * @param {object} options.assignment Owning persistence assignment.
+ * @param {object} options.submission Persistence submission.
+ * @param {Set<string>} options.rosterIds Roster student IDs of the owning class.
+ * @param {Set<string>} options.taskIds Declared task IDs.
  */
-function assertItemsReferenceDeclaredTasks(assignment, submission, taskIds) {
-  for (const item of Object.values(submission.items)) {
-    if (!taskIds.has(item.taskId)) {
-      fail(
-        `Assignment "${assignment.assignmentId}" submission item references task "${item.taskId}" not declared by definition "${assignment.assignmentDefinitionKey}".`
-      );
-    }
+function assertPersistenceSubmissionState({ assignment, submission, rosterIds, taskIds }) {
+  if (submission.assignmentId !== assignment.assignmentId) {
+    fail(
+      `Assignment "${assignment.assignmentId}" submission for student "${submission.studentId}" names parent assignment "${String(submission.assignmentId)}" instead of its owning assignment.`
+    );
   }
+  if (!rosterIds.has(submission.studentId)) {
+    fail(
+      `Assignment "${assignment.assignmentId}" submission references student "${submission.studentId}" outside class "${assignment.courseId}".`
+    );
+  }
+  assertSubmissionState({
+    submission,
+    taskIds,
+    location: `Assignment "${assignment.assignmentId}"`,
+    representation: 'full',
+  });
 }
 
 /**
@@ -234,19 +252,13 @@ function assertPersistenceAssignmentsResolveReferences(assignments, context) {
         `Assignment "${assignment.assignmentId}" courseId "${String(assignment.courseId)}" does not resolve to a generated class.`
       );
     }
+    assertCurrentAssessmentContractVersion({
+      assignment,
+      location: `Assignment "${assignment.assignmentId}"`,
+    });
 
     for (const submission of assignment.submissions) {
-      if (submission.assignmentId !== assignment.assignmentId) {
-        fail(
-          `Assignment "${assignment.assignmentId}" submission for student "${submission.studentId}" names parent assignment "${String(submission.assignmentId)}" instead of its owning assignment.`
-        );
-      }
-      if (!rosterIds.has(submission.studentId)) {
-        fail(
-          `Assignment "${assignment.assignmentId}" submission references student "${submission.studentId}" outside class "${assignment.courseId}".`
-        );
-      }
-      assertItemsReferenceDeclaredTasks(assignment, submission, taskIds);
+      assertPersistenceSubmissionState({ assignment, submission, rosterIds, taskIds });
     }
   }
 }
@@ -278,4 +290,5 @@ export function validatePersistenceGraph({ manifest, referenceData, persistence,
   });
   assertDefinitionsResolveReferences(persistence.assignmentDefinitions, context);
   assertPersistenceAssignmentsResolveReferences(persistence.assignments, context);
+  assertFullDefinitionArtefacts({ definitionByKey: context.definitionByKey });
 }

@@ -43,9 +43,10 @@ const AssignmentFactory = {
    * Polymorphic deserialisation routing based on documentType field.
    * Routes to appropriate subclass fromJSON or creates base Assignment for legacy data.
    * @param {object} data - JSON data object.
+   * @param {string} representationMode - Representation mode used when restoring assignment data.
    * @returns {Assignment} Instance of appropriate class (SlidesAssignment, SheetsAssignment, or base Assignment).
    */
-  fromJSON(data) {
+  fromJSON(data, representationMode) {
     if (!data || typeof data !== 'object')
       throw new Error('Invalid data supplied to Assignment.fromJSON');
 
@@ -86,11 +87,11 @@ const AssignmentFactory = {
     const type = documentType.toUpperCase();
 
     if (type === 'SLIDES') {
-      return SlidesAssignment.fromJSON({ ...data, assignmentDefinition });
+      return SlidesAssignment.fromJSON({ ...data, assignmentDefinition }, representationMode);
     }
 
     if (type === 'SHEETS') {
-      return SheetsAssignment.fromJSON({ ...data, assignmentDefinition });
+      return SheetsAssignment.fromJSON({ ...data, assignmentDefinition }, representationMode);
     }
 
     ProgressTracker.getInstance().logAndThrowError(

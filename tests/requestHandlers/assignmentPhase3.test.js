@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 
 // Import model classes from source (CommonJS exports)
 const { TaskDefinition } = require('#backend/Models/TaskDefinition.js');
-const { StudentSubmission } = require('#backend/Models/StudentSubmission.js');
+const { StudentSubmission } = require('#backend/Models/StudentSubmission/index.js');
 
 // Import shared test helpers
 const { simpleHash } = require('../helpers/testUtils.js');
@@ -198,9 +198,9 @@ describe('Phase 3 LLMRequestManager integration (new model)', () => {
       getResponseCode: () => 200,
       getContentText: () =>
         JSON.stringify({
-          completeness: { score: 10, reasoning: 'retry' },
-          accuracy: { score: 9, reasoning: 'retry' },
-          spag: { score: 8, reasoning: 'retry' },
+          completeness: { score: 5, reasoning: 'retry' },
+          accuracy: { score: 4, reasoning: 'retry' },
+          spag: { score: 3, reasoning: 'retry' },
         }),
     };
     manager.sendRequestWithRetries = () => retryResponse;

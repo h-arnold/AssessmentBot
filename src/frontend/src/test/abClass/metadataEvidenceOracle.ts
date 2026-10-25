@@ -4,8 +4,11 @@ import type {
   StudentSubmissionItemPartial,
 } from '@/services/googleClassrooms/classDetail/classDetailService.zod';
 import type { AssignmentDefinitionPartial } from '@/services/assignmentDefinition/assignmentDefinitionPartials.zod';
+import type { partialAssessmentResultSchema } from '@/services/assignmentAssessment/assessmentResult.zod';
+import type { z } from 'zod';
 
 type Criterion = 'completeness' | 'accuracy' | 'spag';
+type EvidenceScore = z.infer<typeof partialAssessmentResultSchema>['score'] | undefined;
 type Observation = { item: StudentSubmissionItemPartial; weight: number };
 
 /** Derives a numerical oracle directly from raw evidence, never supplied metadata or production projection.
@@ -87,16 +90,18 @@ function criterionTerminal(observations: Observation[], criterion: Criterion) {
       weight,
     };
   });
-  const contributing = scores.filter(({ weight }) => weight > 0);
+  const contributing = scores.filter(({ weight, score }) => weight > 0 && score !== 'E');
   if (contributing.some(({ score }) => typeof score === 'number')) return null;
   if (contributing.some(({ score }) => score === 'N')) return 'N';
-  return scores.some(({ score }) => score !== undefined) ? 'excluded' : 'E';
+  const hasNonErrorEvidence = scores.some(({ score }) => score !== undefined && score !== 'E');
+  if (hasNonErrorEvidence) return 'excluded';
+  return 'E';
 }
 
 /** Reads raw criterion evidence, preserving the missing-criterion error distinction.
  * @param {StudentSubmissionItemPartial} item - Source submission item.
  * @param {Criterion} criterion - Requested criterion.
- * @returns {number | 'N' | undefined} Original source score.
+ * @returns {EvidenceScore} Original schema-defined source score.
  */
 function assessmentScore(item: StudentSubmissionItemPartial, criterion: Criterion) {
   return item.assessments?.[criterion]?.score;
@@ -107,6 +112,6 @@ function assessmentScore(item: StudentSubmissionItemPartial, criterion: Criterio
  * @param {Criterion} criterion - Requested criterion.
  * @returns {boolean} Whether this source contributes denominator weight.
  */
-function isDenominatorContribution(score: number | 'N' | undefined, criterion: Criterion): boolean {
-  return score !== undefined && !(score === 'N' && criterion === 'spag');
+function isDenominatorContribution(score: EvidenceScore, criterion: Criterion): boolean {
+  return score !== undefined && score !== 'E' && !(score === 'N' && criterion === 'spag');
 }

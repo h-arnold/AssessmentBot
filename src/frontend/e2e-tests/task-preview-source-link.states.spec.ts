@@ -3,9 +3,9 @@
  * source link.
  *
  * Where `task-preview-source-link.spec.ts` proves the action's *interaction and
- * navigation*, this spec proves the state around it: a ready record whose
- * artefact and parent submission both lack a usable document renders no source
- * action and no disabled placeholder.
+ * navigation*, this spec proves the state around it: a canonical acquisition-E
+ * record whose artefact and parent submission both lack a usable document
+ * renders no source action and no disabled placeholder.
  *
  * @remarks
  * Vitest owns loading, error and deferred-readiness focus behaviour. Playwright
@@ -23,9 +23,12 @@ import {
 import { createEmbeddedAssignmentQueue } from './helpers/task-preview-source-link-scenarios';
 import {
   CANONICAL_SLIDES_ASSIGNMENT,
-  withSourceLocationOverride,
+  withUnreadableSubmissionSource,
 } from './helpers/task-preview-source-link-fixtures';
-import { deriveSourceLinkCell } from './helpers/task-preview-source-link-expectations';
+import {
+  deriveSourceLinkCell,
+  deriveUnavailableSourceLinkCell,
+} from './helpers/task-preview-source-link-expectations';
 
 // ---------------------------------------------------------------------------
 // Unavailable source state
@@ -35,12 +38,11 @@ test.describe('Task preview source link — unavailable source state', () => {
   test('offers no action when neither the artefact nor the parent has a document', async ({
     page,
   }) => {
-    const noSource = withSourceLocationOverride(CANONICAL_SLIDES_ASSIGNMENT, {
-      artifactDocumentId: null,
-      parentDocumentId: null,
-    });
-    const cell = deriveSourceLinkCell(noSource);
-    expect(cell.expectedSourceUrl).toBeNull();
+    const noSource = withUnreadableSubmissionSource(CANONICAL_SLIDES_ASSIGNMENT);
+    // The healthy canonical record supplies the same student/task cell identity;
+    // the served acquisition record deliberately contains no ready response body.
+    const cell = deriveSourceLinkCell(CANONICAL_SLIDES_ASSIGNMENT);
+    expect(deriveUnavailableSourceLinkCell(noSource).expectedSourceUrl).toBeNull();
 
     const popover = await hoverCanonicalCell(
       page,
@@ -48,8 +50,10 @@ test.describe('Task preview source link — unavailable source state', () => {
       cell
     );
 
-    // A ready card with no usable source renders no action and no placeholder.
-    await expect(popover.getByText(cell.artifactContent, { exact: true })).toHaveCount(1);
+    // Source-less acquisition E has no stale ready body, source action, or placeholder.
     await expect(sourceDocumentAction(popover)).toHaveCount(0);
+    await expect(popover.getByRole('link')).toHaveCount(0);
+    await expect(popover.getByRole('button', { disabled: true })).toHaveCount(0);
+    await expect(popover.getByText(cell.artifactContent, { exact: true })).toHaveCount(0);
   });
 });

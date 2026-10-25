@@ -17,6 +17,8 @@ g.RuntimeConstants = require('../src/backend/00_RuntimeConstants.js').RuntimeCon
 // GAS concatenation order where sub-class files load before the facade file.
 g.AssignmentSerialisation = require('../src/backend/AssignmentProcessor/Assignment/00_AssignmentSerialisation.js');
 g.AssignmentFactory = require('../src/backend/AssignmentProcessor/Assignment/01_AssignmentFactory.js');
+g.AssignmentCurrentRestoration = require('../src/backend/AssignmentProcessor/Assignment/02_AssignmentCurrentRestoration.js');
+g.AssignmentReadProjection = require('../src/backend/AssignmentProcessor/Assignment/02_AssignmentReadProjection.js');
 g.AssignmentRehydration = require('../src/backend/AssignmentProcessor/Assignment/02_AssignmentRehydration.js');
 g.AssignmentTimestamps = require('../src/backend/AssignmentProcessor/Assignment/03_AssignmentTimestamps.js');
 g.AssignmentSubmissions = require('../src/backend/AssignmentProcessor/Assignment/04_AssignmentSubmissions.js');
@@ -25,7 +27,12 @@ g.AssignmentLLMOrchestration = require('../src/backend/AssignmentProcessor/Assig
 g.Assignment = require('../src/backend/AssignmentProcessor/Assignment/index.js');
 g.SlidesAssignment = require('../src/backend/AssignmentProcessor/SlidesAssignment.js');
 g.SheetsAssignment = require('../src/backend/AssignmentProcessor/SheetsAssignment.js');
-const { StudentSubmission } = require('../src/backend/Models/StudentSubmission.js');
+g.Assessment = require('../src/backend/Models/Assessment.js').Assessment;
+const {
+  StudentSubmissionItem,
+} = require('../src/backend/Models/StudentSubmission/00_StudentSubmissionItem.js');
+g.StudentSubmissionItem = StudentSubmissionItem;
+const { StudentSubmission } = require('../src/backend/Models/StudentSubmission/index.js');
 g.StudentSubmission = StudentSubmission;
 
 g.Utils = {

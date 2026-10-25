@@ -69,10 +69,11 @@ class Assignment {
   /**
    * Polymorphic deserialisation routing based on documentType field.
    * @param {object} data - JSON data object.
+   * @param {string} representationMode - Representation mode used when restoring assignment data.
    * @returns {Assignment} Instance of appropriate class.
    */
-  static fromJSON(data) {
-    return AssignmentFactory.fromJSON(data);
+  static fromJSON(data, representationMode) {
+    return AssignmentFactory.fromJSON(data, representationMode);
   }
 
   // ---------------------------------------------------------------------------
@@ -84,20 +85,30 @@ class Assignment {
    * Sub-class instances are lazily initialised via prototype getters
    * when first accessed.
    * @param {object} data - JSON data object.
+   * @param {string} representationMode - Representation mode used when restoring assignment data.
+   * @param {object} assignmentData - Assignment JSON containing restoration metadata.
+   * @param {string} representationMode - Representation mode used when restoring submissions.
    * @returns {Assignment} Assignment instance with base fields populated.
    */
-  static _baseFromJSON(data) {
-    return AssignmentRehydration._baseFromJSON(data);
+  static _baseFromJSON(data, representationMode) {
+    return AssignmentRehydration._baseFromJSON(data, representationMode);
   }
 
   /**
    * Rehydrates a submission object from JSON data.
    * @param {Assignment} inst - The Assignment instance to add the submission to.
    * @param {object} subObject - The submission object to rehydrate.
+   * @param {object} assignmentData - Assignment JSON containing restoration metadata.
+   * @param {string} representationMode - Representation mode used when restoring submissions.
    * @returns {void}
    */
-  static _rehydrateSubmission(inst, subObject) {
-    return AssignmentRehydration._rehydrateSubmission(inst, subObject);
+  static _rehydrateSubmission(inst, subObject, assignmentData, representationMode) {
+    return AssignmentRehydration._rehydrateSubmission(
+      inst,
+      subObject,
+      assignmentData,
+      representationMode
+    );
   }
 
   // ---------------------------------------------------------------------------
@@ -131,6 +142,14 @@ class Assignment {
    */
   toJSON() {
     return this._serialisation.toJSON();
+  }
+
+  /**
+   * Serialises this Assignment for a full read response.
+   * @returns {object} Full read payload.
+   */
+  toReadJSON() {
+    return this._serialisation.toReadJSON();
   }
 
   /**

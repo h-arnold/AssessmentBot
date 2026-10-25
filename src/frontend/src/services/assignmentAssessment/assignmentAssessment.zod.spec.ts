@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import {
-  AssessmentSchema,
   AssignmentDefinitionSchema,
   AssignmentFullSchema,
   AssignmentFullResponseSchema,
@@ -135,35 +134,6 @@ describe('assignmentAssessment.zod schemas', () => {
     });
   });
 
-  describe('AssessmentSchema', () => {
-    it('accepts a valid assessment with score and reasoning', () => {
-      const assessment = { score: 3, reasoning: 'good work' };
-      expect(AssessmentSchema.parse(assessment)).toEqual(assessment);
-    });
-
-    it('rejects an assessment with score as a string', () => {
-      expect(() => AssessmentSchema.parse({ score: 'three', reasoning: 'ok' })).toThrow();
-    });
-
-    it('rejects an assessment with missing reasoning', () => {
-      expect(() => AssessmentSchema.parse({ score: 3 })).toThrow();
-    });
-
-    // Contract guard (not the regression guard): the prior schema was
-    // `z.number().nullable()`, which already rejected `null`, so this test only
-    // documents the `number | 'N'` contract. The genuine regression guards for
-    // this fix are the `'N'`-acceptance test (moved to the regression spec) and
-    // the end-to-end `AssignmentFullSchema` payload test.
-    it("rejects an assessment with a null score (contract: only number | 'N' allowed)", () => {
-      expect(() => AssessmentSchema.parse({ score: null, reasoning: 'pending' })).toThrow();
-    });
-
-    it('strips unknown extra fields (strict by default in Zod v4)', () => {
-      const assessment = { score: 3, reasoning: 'good', extra: 'field' };
-      expect(AssessmentSchema.parse(assessment)).toEqual({ score: 3, reasoning: 'good' });
-    });
-  });
-
   describe('StudentSubmissionItemSchema', () => {
     it('accepts a valid item with id and taskId as strings', () => {
       const validItem = {
@@ -195,29 +165,6 @@ describe('assignmentAssessment.zod schemas', () => {
           taskId: 456,
           artifact: validBaseArtifact,
           assessments: {},
-          feedback: {},
-        });
-      }).toThrow();
-    });
-
-    it('accepts an item with valid assessments', () => {
-      const item = {
-        id: 'item-1',
-        taskId: 'task-1',
-        artifact: validBaseArtifact,
-        assessments: { clarity: { score: 3, reasoning: 'good' } },
-        feedback: {},
-      };
-      expect(StudentSubmissionItemSchema.parse(item)).toEqual(item);
-    });
-
-    it('rejects an item with assessments where score is a string instead of number', () => {
-      expect(() => {
-        return StudentSubmissionItemSchema.parse({
-          id: 'item-1',
-          taskId: 'task-1',
-          artifact: validBaseArtifact,
-          assessments: { clarity: { score: '3', reasoning: 'good' } },
           feedback: {},
         });
       }).toThrow();

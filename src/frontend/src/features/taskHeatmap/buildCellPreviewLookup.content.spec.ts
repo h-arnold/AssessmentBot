@@ -10,11 +10,9 @@
  * `buildCellPreviewLookup.sourceLink.spec.ts`.
  *
  * Realistic setup comes from the canonical `small` records selected by
- * `src/test/taskHeatmap/previewFixtures.ts`. The corpus only emits TEXT
- * submission bodies and never assesses `accuracy`, so the TABLE, IMAGE and
- * SPREADSHEET bodies and the accuracy-bearing variant stay local: each is a
- * narrow mutation of a cloned canonical record under the capability
- * exceptions recorded in `ACTION_PLAN.md`.
+ * `src/test/taskHeatmap/previewFixtures.ts`. The accuracy-bearing variant is a
+ * deliberate local boundary. TABLE remains unsupported by the corpus; IMAGE
+ * and SPREADSHEET bodies are selected from canonical generated records.
  *
  * Key construction and resolution are covered by the siblings
  * `buildCellPreviewLookup.spec.ts` (contract/key invariants) and
@@ -22,6 +20,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
+import assignmentsByKeyRaw from '@synthetic/small/assignmentsByKey.json?raw';
 import type { AssignmentFull } from '@/services/assignmentAssessment/assignmentAssessment.zod';
 import { buildCellPreviewLookup } from './buildCellPreviewLookup';
 import type { CellPreviewLookup, CellPreviewData } from './buildCellPreviewLookup';
@@ -34,22 +33,12 @@ import { buildExpectedSourceUrl } from '@/test/taskHeatmap/buildCellPreviewLooku
 /** Submission-item shape carried by an `AssignmentFull` submission. */
 type AssignmentSubmissionItem = AssignmentFull['submissions'][number]['items'][string];
 
-/** Locally supplied accuracy rationale; the corpus never assesses `accuracy`. */
+/** Deliberate local accuracy override for the reasoning-presence boundary. */
 const LOCAL_ACCURACY_REASONING = 'Locally supplied accuracy rationale';
 
-/** Locally supplied TABLE body; the corpus only emits TEXT submission bodies. */
+/** Local unsupported TABLE body. */
 const LOCAL_TABLE_BODY = '| Header | Value |\n|--------|-------|\n| A      | 1     |';
-
-/** Locally supplied IMAGE body; the corpus only emits TEXT submission bodies. */
-const LOCAL_IMAGE_BODY = 'data:image/png;base64,iVBORw0KGgo=';
-
-/** Locally supplied SPREADSHEET body; the corpus only emits TEXT submission bodies. */
-const LOCAL_SPREADSHEET_BODY: Array<Array<string | number | null>> = [
-  ['Name', 'Score', 'Grade'],
-  ['Alice', '95', 'A'],
-  ['Bob', '78', 'B'],
-  [null, null, null],
-];
+const CANONICAL_ASSIGNMENTS = JSON.parse(assignmentsByKeyRaw) as Record<string, AssignmentFull>;
 
 /**
  * Read the canonical ready cell's submission item from a cloned assignment.
@@ -121,24 +110,47 @@ describe('buildCellPreviewLookup cell content', () => {
   });
 
   // -----------------------------------------------------------------------
-  // IMAGE artifact — local capability exception on a cloned canonical record
+  // Canonical IMAGE artifact body on a cloned ready record
   // -----------------------------------------------------------------------
 
   it('builds CellPreviewData for an IMAGE artifact body', () => {
     const assignment = cloneCanonicalSlidesAssignment();
     const item = canonicalSubmissionItem(assignment);
-    item.artifact = { ...item.artifact, type: 'IMAGE', content: LOCAL_IMAGE_BODY };
+    const canonical = Object.values(CANONICAL_ASSIGNMENTS)
+      .flatMap((assignment) =>
+        assignment.submissions.flatMap((submission) => Object.values(submission.items))
+      )
+      .find(
+        (candidate) =>
+          candidate.artifact.type === 'IMAGE' && typeof candidate.artifact.content === 'string'
+      );
+    if (canonical == null) throw new Error('Canonical IMAGE submission item is missing.');
+    const canonicalArtifactTaskId = canonical.artifact.taskId;
+    const canonicalArtifact = structuredClone(canonical.artifact);
+    const canonicalArtifactSnapshot = structuredClone(canonical.artifact);
+    const canonicalUidTaskSuffix = `-${canonicalArtifactTaskId}`;
+    item.artifact = {
+      ...canonicalArtifact,
+      taskId: item.taskId,
+      uid: `${canonicalArtifact.uid.slice(0, -canonicalUidTaskSuffix.length)}-${item.taskId}`,
+    };
 
     const lookup: CellPreviewLookup = buildCellPreviewLookup(assignment);
     const cellData = lookup.get(CANONICAL_READY_CELL.studentId)?.get(CANONICAL_READY_CELL.taskKey);
 
     expect(cellData).toBeDefined();
     expect(cellData!.artifactType).toBe('IMAGE');
-    expect(cellData!.artifactContent).toBe(LOCAL_IMAGE_BODY);
+    expect(cellData!.artifactContent).toBe(canonical.artifact.content);
+    expect(item.artifact.taskId).toBe(item.taskId);
+    expect(canonicalArtifact.uid.endsWith(canonicalUidTaskSuffix)).toBe(true);
+    expect(item.artifact.uid).toBe(
+      `${canonicalArtifact.uid.slice(0, -canonicalUidTaskSuffix.length)}-${item.taskId}`
+    );
+    expect(canonical.artifact).toEqual(canonicalArtifactSnapshot);
   });
 
   // -----------------------------------------------------------------------
-  // All three reasoning fields populated (accuracy is a local addition)
+  // All three reasoning fields populated from the canonical record
   // -----------------------------------------------------------------------
 
   it('extracts reasoning text for completeness, accuracy, and spag from assessments', () => {
@@ -162,6 +174,7 @@ describe('buildCellPreviewLookup cell content', () => {
   it('sets accuracy and spag reasoning to null when only completeness is assessed', () => {
     const assignment = cloneCanonicalSlidesAssignment();
     const item = canonicalSubmissionItem(assignment);
+    delete item.assessments.accuracy;
     delete item.assessments.spag;
 
     const lookup: CellPreviewLookup = buildCellPreviewLookup(assignment);
@@ -174,19 +187,42 @@ describe('buildCellPreviewLookup cell content', () => {
   });
 
   // -----------------------------------------------------------------------
-  // SPREADSHEET artifact — local capability exception on a cloned record
+  // Canonical SPREADSHEET artifact body on a cloned ready record
   // -----------------------------------------------------------------------
 
   it('exposes artifactType SPREADSHEET and artifactContent as a 2D array', () => {
     const assignment = cloneCanonicalSlidesAssignment();
     const item = canonicalSubmissionItem(assignment);
-    item.artifact = { ...item.artifact, type: 'SPREADSHEET', content: LOCAL_SPREADSHEET_BODY };
+    const canonical = Object.values(CANONICAL_ASSIGNMENTS)
+      .flatMap((assignment) =>
+        assignment.submissions.flatMap((submission) => Object.values(submission.items))
+      )
+      .find(
+        (candidate) =>
+          candidate.artifact.type === 'SPREADSHEET' && Array.isArray(candidate.artifact.content)
+      );
+    if (canonical == null) throw new Error('Canonical SPREADSHEET submission item is missing.');
+    const canonicalArtifactTaskId = canonical.artifact.taskId;
+    const canonicalArtifact = structuredClone(canonical.artifact);
+    const canonicalArtifactSnapshot = structuredClone(canonical.artifact);
+    const canonicalUidTaskSuffix = `-${canonicalArtifactTaskId}`;
+    item.artifact = {
+      ...canonicalArtifact,
+      taskId: item.taskId,
+      uid: `${canonicalArtifact.uid.slice(0, -canonicalUidTaskSuffix.length)}-${item.taskId}`,
+    };
 
     const lookup: CellPreviewLookup = buildCellPreviewLookup(assignment);
     const cellData = lookup.get(CANONICAL_READY_CELL.studentId)?.get(CANONICAL_READY_CELL.taskKey);
 
     expect(cellData).toBeDefined();
     expect(cellData!.artifactType).toBe('SPREADSHEET');
-    expect(cellData!.artifactContent).toEqual(LOCAL_SPREADSHEET_BODY);
+    expect(cellData!.artifactContent).toEqual(canonical.artifact.content);
+    expect(item.artifact.taskId).toBe(item.taskId);
+    expect(canonicalArtifact.uid.endsWith(canonicalUidTaskSuffix)).toBe(true);
+    expect(item.artifact.uid).toBe(
+      `${canonicalArtifact.uid.slice(0, -canonicalUidTaskSuffix.length)}-${item.taskId}`
+    );
+    expect(canonical.artifact).toEqual(canonicalArtifactSnapshot);
   });
 });

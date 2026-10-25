@@ -327,6 +327,7 @@ export function createAssignmentPartial(overrides: {
     updatedAt: null,
     createdAt,
     documentType: 'assessment',
+    assessmentContractVersion: 1,
     submissions,
     assignmentDefinitionKey: definitionKey,
   } as unknown as AssignmentPartial;

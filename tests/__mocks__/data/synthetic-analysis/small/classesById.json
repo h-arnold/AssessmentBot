@@ -56,6 +56,7 @@
         "courseId": "class-0",
         "assignmentId": "assignment-0-0",
         "assignmentName": "Synthetic Assignment 1.1",
+        "assessmentContractVersion": 1,
         "dueDate": null,
         "updatedAt": "2024-01-02T09:03:00.000Z",
         "createdAt": "2024-01-02T09:00:00.000Z",
@@ -67,6 +68,7 @@
         "courseId": "class-0",
         "assignmentId": "assignment-0-1",
         "assignmentName": "Synthetic Assignment 1.2",
+        "assessmentContractVersion": 1,
         "dueDate": null,
         "updatedAt": "2024-01-02T10:03:00.000Z",
         "createdAt": "2024-01-02T10:00:00.000Z",
@@ -96,6 +98,9 @@
                   "completeness": {
                     "score": 0
                   },
+                  "accuracy": {
+                    "score": 0
+                  },
                   "spag": {
                     "score": "N"
                   }
@@ -119,10 +124,13 @@
                   "contentHash": null,
                   "metadata": {},
                   "uid": "uid-assignment-0-1-100000000000000000000-task-1-1",
-                  "type": "TEXT"
+                  "type": "IMAGE"
                 },
                 "assessments": {
                   "completeness": {
+                    "score": 0
+                  },
+                  "accuracy": {
                     "score": 0
                   },
                   "spag": {
@@ -158,9 +166,34 @@
                   "contentHash": null,
                   "metadata": {},
                   "uid": "uid-assignment-0-1-100000000000000000001-task-1-0",
-                  "type": "TEXT"
+                  "type": "IMAGE"
                 },
-                "assessments": {},
+                "assessments": {
+                  "completeness": {
+                    "score": "E",
+                    "reasoning": "The extracted work could not be assessed.",
+                    "error": {
+                      "stage": "assessment",
+                      "code": "ASSESSMENT_FAILED"
+                    }
+                  },
+                  "accuracy": {
+                    "score": "E",
+                    "reasoning": "The extracted work could not be assessed.",
+                    "error": {
+                      "stage": "assessment",
+                      "code": "ASSESSMENT_FAILED"
+                    }
+                  },
+                  "spag": {
+                    "score": "E",
+                    "reasoning": "The extracted work could not be assessed.",
+                    "error": {
+                      "stage": "assessment",
+                      "code": "ASSESSMENT_FAILED"
+                    }
+                  }
+                },
                 "feedback": {}
               },
               "task-1-1": {
@@ -175,9 +208,34 @@
                   "contentHash": null,
                   "metadata": {},
                   "uid": "uid-assignment-0-1-100000000000000000001-task-1-1",
-                  "type": "TEXT"
+                  "type": "SPREADSHEET"
                 },
-                "assessments": {},
+                "assessments": {
+                  "completeness": {
+                    "score": "E",
+                    "reasoning": "The extracted work could not be assessed.",
+                    "error": {
+                      "stage": "assessment",
+                      "code": "ASSESSMENT_FAILED"
+                    }
+                  },
+                  "accuracy": {
+                    "score": "E",
+                    "reasoning": "The extracted work could not be assessed.",
+                    "error": {
+                      "stage": "assessment",
+                      "code": "ASSESSMENT_FAILED"
+                    }
+                  },
+                  "spag": {
+                    "score": "E",
+                    "reasoning": "The extracted work could not be assessed.",
+                    "error": {
+                      "stage": "assessment",
+                      "code": "ASSESSMENT_FAILED"
+                    }
+                  }
+                },
                 "feedback": {}
               }
             },
@@ -196,20 +254,38 @@
                 "artifact": {
                   "taskId": "task-1-0",
                   "role": "submission",
-                  "pageId": "page-task-1-0",
-                  "documentId": "artifact-document-assignment-0-1-100000000000000000002-task-1-0",
+                  "pageId": null,
+                  "documentId": null,
                   "content": null,
                   "contentHash": null,
                   "metadata": {},
                   "uid": "uid-assignment-0-1-100000000000000000002-task-1-0",
-                  "type": "TEXT"
+                  "type": "base"
                 },
                 "assessments": {
                   "completeness": {
-                    "score": 2
+                    "score": "E",
+                    "reasoning": "The submitted document could not be accessed.",
+                    "error": {
+                      "stage": "acquisition",
+                      "code": "SOURCE_UNREADABLE"
+                    }
+                  },
+                  "accuracy": {
+                    "score": "E",
+                    "reasoning": "The submitted document could not be accessed.",
+                    "error": {
+                      "stage": "acquisition",
+                      "code": "SOURCE_UNREADABLE"
+                    }
                   },
                   "spag": {
-                    "score": 2
+                    "score": "E",
+                    "reasoning": "The submitted document could not be accessed.",
+                    "error": {
+                      "stage": "acquisition",
+                      "code": "SOURCE_UNREADABLE"
+                    }
                   }
                 },
                 "feedback": {}
@@ -220,20 +296,38 @@
                 "artifact": {
                   "taskId": "task-1-1",
                   "role": "submission",
-                  "pageId": "page-task-1-1",
-                  "documentId": "artifact-document-assignment-0-1-100000000000000000002-task-1-1",
+                  "pageId": null,
+                  "documentId": null,
                   "content": null,
                   "contentHash": null,
                   "metadata": {},
                   "uid": "uid-assignment-0-1-100000000000000000002-task-1-1",
-                  "type": "TEXT"
+                  "type": "base"
                 },
                 "assessments": {
                   "completeness": {
-                    "score": 2
+                    "score": "E",
+                    "reasoning": "The submitted document could not be accessed.",
+                    "error": {
+                      "stage": "acquisition",
+                      "code": "SOURCE_UNREADABLE"
+                    }
+                  },
+                  "accuracy": {
+                    "score": "E",
+                    "reasoning": "The submitted document could not be accessed.",
+                    "error": {
+                      "stage": "acquisition",
+                      "code": "SOURCE_UNREADABLE"
+                    }
                   },
                   "spag": {
-                    "score": 2
+                    "score": "E",
+                    "reasoning": "The submitted document could not be accessed.",
+                    "error": {
+                      "stage": "acquisition",
+                      "code": "SOURCE_UNREADABLE"
+                    }
                   }
                 },
                 "feedback": {}
@@ -266,6 +360,9 @@
                   "completeness": {
                     "score": 3
                   },
+                  "accuracy": {
+                    "score": 3
+                  },
                   "spag": {
                     "score": 3
                   }
@@ -284,10 +381,13 @@
                   "contentHash": null,
                   "metadata": {},
                   "uid": "uid-assignment-0-1-100000000000000000003-task-1-1",
-                  "type": "TEXT"
+                  "type": "IMAGE"
                 },
                 "assessments": {
                   "completeness": {
+                    "score": 3
+                  },
+                  "accuracy": {
                     "score": 3
                   },
                   "spag": {
@@ -318,10 +418,13 @@
                   "contentHash": null,
                   "metadata": {},
                   "uid": "uid-assignment-0-1-100000000000000000004-task-1-0",
-                  "type": "TEXT"
+                  "type": "IMAGE"
                 },
                 "assessments": {
                   "completeness": {
+                    "score": 4
+                  },
+                  "accuracy": {
                     "score": 4
                   },
                   "spag": {
@@ -342,10 +445,13 @@
                   "contentHash": null,
                   "metadata": {},
                   "uid": "uid-assignment-0-1-100000000000000000004-task-1-1",
-                  "type": "TEXT"
+                  "type": "SPREADSHEET"
                 },
                 "assessments": {
                   "completeness": {
+                    "score": 4
+                  },
+                  "accuracy": {
                     "score": 4
                   },
                   "spag": {
@@ -376,10 +482,13 @@
                   "contentHash": null,
                   "metadata": {},
                   "uid": "uid-assignment-0-1-100000000000000000005-task-1-0",
-                  "type": "TEXT"
+                  "type": "SPREADSHEET"
                 },
                 "assessments": {
                   "completeness": {
+                    "score": 5
+                  },
+                  "accuracy": {
                     "score": 5
                   },
                   "spag": {
@@ -406,6 +515,9 @@
                   "completeness": {
                     "score": 5
                   },
+                  "accuracy": {
+                    "score": 5
+                  },
                   "spag": {
                     "score": 5
                   }
@@ -423,6 +535,7 @@
         "courseId": "class-0",
         "assignmentId": "assignment-0-2",
         "assignmentName": "Synthetic Assignment 1.3",
+        "assessmentContractVersion": 1,
         "dueDate": null,
         "updatedAt": "2024-01-02T11:03:00.000Z",
         "createdAt": "2024-01-02T11:00:00.000Z",
@@ -452,6 +565,9 @@
                   "completeness": {
                     "score": 0
                   },
+                  "accuracy": {
+                    "score": 0
+                  },
                   "spag": {
                     "score": "N"
                   }
@@ -475,10 +591,13 @@
                   "contentHash": null,
                   "metadata": {},
                   "uid": "uid-assignment-0-2-100000000000000000000-task-2-1",
-                  "type": "TEXT"
+                  "type": "IMAGE"
                 },
                 "assessments": {
                   "completeness": {
+                    "score": 0
+                  },
+                  "accuracy": {
                     "score": 0
                   },
                   "spag": {
@@ -514,9 +633,34 @@
                   "contentHash": null,
                   "metadata": {},
                   "uid": "uid-assignment-0-2-100000000000000000001-task-2-0",
-                  "type": "TEXT"
+                  "type": "IMAGE"
                 },
-                "assessments": {},
+                "assessments": {
+                  "completeness": {
+                    "score": "E",
+                    "reasoning": "The extracted work could not be assessed.",
+                    "error": {
+                      "stage": "assessment",
+                      "code": "ASSESSMENT_FAILED"
+                    }
+                  },
+                  "accuracy": {
+                    "score": "E",
+                    "reasoning": "The extracted work could not be assessed.",
+                    "error": {
+                      "stage": "assessment",
+                      "code": "ASSESSMENT_FAILED"
+                    }
+                  },
+                  "spag": {
+                    "score": "E",
+                    "reasoning": "The extracted work could not be assessed.",
+                    "error": {
+                      "stage": "assessment",
+                      "code": "ASSESSMENT_FAILED"
+                    }
+                  }
+                },
                 "feedback": {}
               },
               "task-2-1": {
@@ -531,9 +675,34 @@
                   "contentHash": null,
                   "metadata": {},
                   "uid": "uid-assignment-0-2-100000000000000000001-task-2-1",
-                  "type": "TEXT"
+                  "type": "SPREADSHEET"
                 },
-                "assessments": {},
+                "assessments": {
+                  "completeness": {
+                    "score": "E",
+                    "reasoning": "The extracted work could not be assessed.",
+                    "error": {
+                      "stage": "assessment",
+                      "code": "ASSESSMENT_FAILED"
+                    }
+                  },
+                  "accuracy": {
+                    "score": "E",
+                    "reasoning": "The extracted work could not be assessed.",
+                    "error": {
+                      "stage": "assessment",
+                      "code": "ASSESSMENT_FAILED"
+                    }
+                  },
+                  "spag": {
+                    "score": "E",
+                    "reasoning": "The extracted work could not be assessed.",
+                    "error": {
+                      "stage": "assessment",
+                      "code": "ASSESSMENT_FAILED"
+                    }
+                  }
+                },
                 "feedback": {}
               }
             },
@@ -547,6 +716,7 @@
         "courseId": "class-0",
         "assignmentId": "assignment-0-3",
         "assignmentName": "Synthetic Assignment 1.4",
+        "assessmentContractVersion": 1,
         "dueDate": null,
         "updatedAt": "2024-01-02T12:03:00.000Z",
         "createdAt": "2024-01-02T12:00:00.000Z",
@@ -574,6 +744,9 @@
                 },
                 "assessments": {
                   "completeness": {
+                    "score": 0
+                  },
+                  "accuracy": {
                     "score": 0
                   },
                   "spag": {
@@ -609,9 +782,34 @@
                   "contentHash": null,
                   "metadata": {},
                   "uid": "uid-assignment-0-3-100000000000000000001-task-partial-0-0",
-                  "type": "TEXT"
+                  "type": "IMAGE"
                 },
-                "assessments": {},
+                "assessments": {
+                  "completeness": {
+                    "score": "E",
+                    "reasoning": "The extracted work could not be assessed.",
+                    "error": {
+                      "stage": "assessment",
+                      "code": "ASSESSMENT_FAILED"
+                    }
+                  },
+                  "accuracy": {
+                    "score": "E",
+                    "reasoning": "The extracted work could not be assessed.",
+                    "error": {
+                      "stage": "assessment",
+                      "code": "ASSESSMENT_FAILED"
+                    }
+                  },
+                  "spag": {
+                    "score": "E",
+                    "reasoning": "The extracted work could not be assessed.",
+                    "error": {
+                      "stage": "assessment",
+                      "code": "ASSESSMENT_FAILED"
+                    }
+                  }
+                },
                 "feedback": {}
               }
             },
@@ -630,20 +828,38 @@
                 "artifact": {
                   "taskId": "task-partial-0-0",
                   "role": "submission",
-                  "pageId": "page-task-partial-0-0",
-                  "documentId": "artifact-document-assignment-0-3-100000000000000000002-task-partial-0-0",
+                  "pageId": null,
+                  "documentId": null,
                   "content": null,
                   "contentHash": null,
                   "metadata": {},
                   "uid": "uid-assignment-0-3-100000000000000000002-task-partial-0-0",
-                  "type": "TEXT"
+                  "type": "base"
                 },
                 "assessments": {
                   "completeness": {
-                    "score": 2
+                    "score": "E",
+                    "reasoning": "The submitted document could not be accessed.",
+                    "error": {
+                      "stage": "acquisition",
+                      "code": "SOURCE_UNREADABLE"
+                    }
+                  },
+                  "accuracy": {
+                    "score": "E",
+                    "reasoning": "The submitted document could not be accessed.",
+                    "error": {
+                      "stage": "acquisition",
+                      "code": "SOURCE_UNREADABLE"
+                    }
                   },
                   "spag": {
-                    "score": 2
+                    "score": "E",
+                    "reasoning": "The submitted document could not be accessed.",
+                    "error": {
+                      "stage": "acquisition",
+                      "code": "SOURCE_UNREADABLE"
+                    }
                   }
                 },
                 "feedback": {}
@@ -676,6 +892,9 @@
                   "completeness": {
                     "score": 3
                   },
+                  "accuracy": {
+                    "score": 3
+                  },
                   "spag": {
                     "score": 3
                   }
@@ -704,10 +923,13 @@
                   "contentHash": null,
                   "metadata": {},
                   "uid": "uid-assignment-0-3-100000000000000000004-task-partial-0-0",
-                  "type": "TEXT"
+                  "type": "IMAGE"
                 },
                 "assessments": {
                   "completeness": {
+                    "score": 4
+                  },
+                  "accuracy": {
                     "score": 4
                   },
                   "spag": {
@@ -738,10 +960,13 @@
                   "contentHash": null,
                   "metadata": {},
                   "uid": "uid-assignment-0-3-100000000000000000005-task-partial-0-0",
-                  "type": "TEXT"
+                  "type": "SPREADSHEET"
                 },
                 "assessments": {
                   "completeness": {
+                    "score": 5
+                  },
+                  "accuracy": {
                     "score": 5
                   },
                   "spag": {
@@ -825,6 +1050,7 @@
         "courseId": "class-1",
         "assignmentId": "assignment-1-0",
         "assignmentName": "Synthetic Assignment 2.1",
+        "assessmentContractVersion": 1,
         "dueDate": null,
         "updatedAt": "2024-01-03T09:03:00.000Z",
         "createdAt": "2024-01-03T09:00:00.000Z",
@@ -836,6 +1062,7 @@
         "courseId": "class-1",
         "assignmentId": "assignment-1-1",
         "assignmentName": "Synthetic Assignment 2.2",
+        "assessmentContractVersion": 1,
         "dueDate": null,
         "updatedAt": "2024-01-03T10:03:00.000Z",
         "createdAt": "2024-01-03T10:00:00.000Z",
@@ -865,6 +1092,9 @@
                   "completeness": {
                     "score": 0
                   },
+                  "accuracy": {
+                    "score": 0
+                  },
                   "spag": {
                     "score": "N"
                   }
@@ -888,10 +1118,13 @@
                   "contentHash": null,
                   "metadata": {},
                   "uid": "uid-assignment-1-1-100000000010000000000-task-2-1",
-                  "type": "TEXT"
+                  "type": "IMAGE"
                 },
                 "assessments": {
                   "completeness": {
+                    "score": 0
+                  },
+                  "accuracy": {
                     "score": 0
                   },
                   "spag": {
@@ -927,9 +1160,34 @@
                   "contentHash": null,
                   "metadata": {},
                   "uid": "uid-assignment-1-1-100000000010000000001-task-2-0",
-                  "type": "TEXT"
+                  "type": "IMAGE"
                 },
-                "assessments": {},
+                "assessments": {
+                  "completeness": {
+                    "score": "E",
+                    "reasoning": "The extracted work could not be assessed.",
+                    "error": {
+                      "stage": "assessment",
+                      "code": "ASSESSMENT_FAILED"
+                    }
+                  },
+                  "accuracy": {
+                    "score": "E",
+                    "reasoning": "The extracted work could not be assessed.",
+                    "error": {
+                      "stage": "assessment",
+                      "code": "ASSESSMENT_FAILED"
+                    }
+                  },
+                  "spag": {
+                    "score": "E",
+                    "reasoning": "The extracted work could not be assessed.",
+                    "error": {
+                      "stage": "assessment",
+                      "code": "ASSESSMENT_FAILED"
+                    }
+                  }
+                },
                 "feedback": {}
               },
               "task-2-1": {
@@ -944,9 +1202,34 @@
                   "contentHash": null,
                   "metadata": {},
                   "uid": "uid-assignment-1-1-100000000010000000001-task-2-1",
-                  "type": "TEXT"
+                  "type": "SPREADSHEET"
                 },
-                "assessments": {},
+                "assessments": {
+                  "completeness": {
+                    "score": "E",
+                    "reasoning": "The extracted work could not be assessed.",
+                    "error": {
+                      "stage": "assessment",
+                      "code": "ASSESSMENT_FAILED"
+                    }
+                  },
+                  "accuracy": {
+                    "score": "E",
+                    "reasoning": "The extracted work could not be assessed.",
+                    "error": {
+                      "stage": "assessment",
+                      "code": "ASSESSMENT_FAILED"
+                    }
+                  },
+                  "spag": {
+                    "score": "E",
+                    "reasoning": "The extracted work could not be assessed.",
+                    "error": {
+                      "stage": "assessment",
+                      "code": "ASSESSMENT_FAILED"
+                    }
+                  }
+                },
                 "feedback": {}
               }
             },
@@ -965,20 +1248,38 @@
                 "artifact": {
                   "taskId": "task-2-0",
                   "role": "submission",
-                  "pageId": "page-task-2-0",
-                  "documentId": "artifact-document-assignment-1-1-100000000010000000002-task-2-0",
+                  "pageId": null,
+                  "documentId": null,
                   "content": null,
                   "contentHash": null,
                   "metadata": {},
                   "uid": "uid-assignment-1-1-100000000010000000002-task-2-0",
-                  "type": "TEXT"
+                  "type": "base"
                 },
                 "assessments": {
                   "completeness": {
-                    "score": 2
+                    "score": "E",
+                    "reasoning": "The submitted document could not be accessed.",
+                    "error": {
+                      "stage": "acquisition",
+                      "code": "SOURCE_UNREADABLE"
+                    }
+                  },
+                  "accuracy": {
+                    "score": "E",
+                    "reasoning": "The submitted document could not be accessed.",
+                    "error": {
+                      "stage": "acquisition",
+                      "code": "SOURCE_UNREADABLE"
+                    }
                   },
                   "spag": {
-                    "score": 2
+                    "score": "E",
+                    "reasoning": "The submitted document could not be accessed.",
+                    "error": {
+                      "stage": "acquisition",
+                      "code": "SOURCE_UNREADABLE"
+                    }
                   }
                 },
                 "feedback": {}
@@ -989,20 +1290,38 @@
                 "artifact": {
                   "taskId": "task-2-1",
                   "role": "submission",
-                  "pageId": "page-task-2-1",
-                  "documentId": "artifact-document-assignment-1-1-100000000010000000002-task-2-1",
+                  "pageId": null,
+                  "documentId": null,
                   "content": null,
                   "contentHash": null,
                   "metadata": {},
                   "uid": "uid-assignment-1-1-100000000010000000002-task-2-1",
-                  "type": "TEXT"
+                  "type": "base"
                 },
                 "assessments": {
                   "completeness": {
-                    "score": 2
+                    "score": "E",
+                    "reasoning": "The submitted document could not be accessed.",
+                    "error": {
+                      "stage": "acquisition",
+                      "code": "SOURCE_UNREADABLE"
+                    }
+                  },
+                  "accuracy": {
+                    "score": "E",
+                    "reasoning": "The submitted document could not be accessed.",
+                    "error": {
+                      "stage": "acquisition",
+                      "code": "SOURCE_UNREADABLE"
+                    }
                   },
                   "spag": {
-                    "score": 2
+                    "score": "E",
+                    "reasoning": "The submitted document could not be accessed.",
+                    "error": {
+                      "stage": "acquisition",
+                      "code": "SOURCE_UNREADABLE"
+                    }
                   }
                 },
                 "feedback": {}
@@ -1035,6 +1354,9 @@
                   "completeness": {
                     "score": 3
                   },
+                  "accuracy": {
+                    "score": 3
+                  },
                   "spag": {
                     "score": 3
                   }
@@ -1053,10 +1375,13 @@
                   "contentHash": null,
                   "metadata": {},
                   "uid": "uid-assignment-1-1-100000000010000000003-task-2-1",
-                  "type": "TEXT"
+                  "type": "IMAGE"
                 },
                 "assessments": {
                   "completeness": {
+                    "score": 3
+                  },
+                  "accuracy": {
                     "score": 3
                   },
                   "spag": {
@@ -1087,10 +1412,13 @@
                   "contentHash": null,
                   "metadata": {},
                   "uid": "uid-assignment-1-1-100000000010000000004-task-2-0",
-                  "type": "TEXT"
+                  "type": "IMAGE"
                 },
                 "assessments": {
                   "completeness": {
+                    "score": 4
+                  },
+                  "accuracy": {
                     "score": 4
                   },
                   "spag": {
@@ -1111,10 +1439,13 @@
                   "contentHash": null,
                   "metadata": {},
                   "uid": "uid-assignment-1-1-100000000010000000004-task-2-1",
-                  "type": "TEXT"
+                  "type": "SPREADSHEET"
                 },
                 "assessments": {
                   "completeness": {
+                    "score": 4
+                  },
+                  "accuracy": {
                     "score": 4
                   },
                   "spag": {
@@ -1145,10 +1476,13 @@
                   "contentHash": null,
                   "metadata": {},
                   "uid": "uid-assignment-1-1-100000000010000000005-task-2-0",
-                  "type": "TEXT"
+                  "type": "SPREADSHEET"
                 },
                 "assessments": {
                   "completeness": {
+                    "score": 5
+                  },
+                  "accuracy": {
                     "score": 5
                   },
                   "spag": {
@@ -1175,6 +1509,9 @@
                   "completeness": {
                     "score": 5
                   },
+                  "accuracy": {
+                    "score": 5
+                  },
                   "spag": {
                     "score": 5
                   }
@@ -1192,6 +1529,7 @@
         "courseId": "class-1",
         "assignmentId": "assignment-1-2",
         "assignmentName": "Synthetic Assignment 2.3",
+        "assessmentContractVersion": 1,
         "dueDate": null,
         "updatedAt": "2024-01-03T11:03:00.000Z",
         "createdAt": "2024-01-03T11:00:00.000Z",
@@ -1221,6 +1559,9 @@
                   "completeness": {
                     "score": 0
                   },
+                  "accuracy": {
+                    "score": 0
+                  },
                   "spag": {
                     "score": "N"
                   }
@@ -1244,10 +1585,13 @@
                   "contentHash": null,
                   "metadata": {},
                   "uid": "uid-assignment-1-2-100000000010000000000-task-0-1",
-                  "type": "TEXT"
+                  "type": "IMAGE"
                 },
                 "assessments": {
                   "completeness": {
+                    "score": 0
+                  },
+                  "accuracy": {
                     "score": 0
                   },
                   "spag": {
@@ -1283,9 +1627,34 @@
                   "contentHash": null,
                   "metadata": {},
                   "uid": "uid-assignment-1-2-100000000010000000001-task-0-0",
-                  "type": "TEXT"
+                  "type": "IMAGE"
                 },
-                "assessments": {},
+                "assessments": {
+                  "completeness": {
+                    "score": "E",
+                    "reasoning": "The extracted work could not be assessed.",
+                    "error": {
+                      "stage": "assessment",
+                      "code": "ASSESSMENT_FAILED"
+                    }
+                  },
+                  "accuracy": {
+                    "score": "E",
+                    "reasoning": "The extracted work could not be assessed.",
+                    "error": {
+                      "stage": "assessment",
+                      "code": "ASSESSMENT_FAILED"
+                    }
+                  },
+                  "spag": {
+                    "score": "E",
+                    "reasoning": "The extracted work could not be assessed.",
+                    "error": {
+                      "stage": "assessment",
+                      "code": "ASSESSMENT_FAILED"
+                    }
+                  }
+                },
                 "feedback": {}
               },
               "task-0-1": {
@@ -1300,9 +1669,34 @@
                   "contentHash": null,
                   "metadata": {},
                   "uid": "uid-assignment-1-2-100000000010000000001-task-0-1",
-                  "type": "TEXT"
+                  "type": "SPREADSHEET"
                 },
-                "assessments": {},
+                "assessments": {
+                  "completeness": {
+                    "score": "E",
+                    "reasoning": "The extracted work could not be assessed.",
+                    "error": {
+                      "stage": "assessment",
+                      "code": "ASSESSMENT_FAILED"
+                    }
+                  },
+                  "accuracy": {
+                    "score": "E",
+                    "reasoning": "The extracted work could not be assessed.",
+                    "error": {
+                      "stage": "assessment",
+                      "code": "ASSESSMENT_FAILED"
+                    }
+                  },
+                  "spag": {
+                    "score": "E",
+                    "reasoning": "The extracted work could not be assessed.",
+                    "error": {
+                      "stage": "assessment",
+                      "code": "ASSESSMENT_FAILED"
+                    }
+                  }
+                },
                 "feedback": {}
               }
             },
@@ -1316,6 +1710,7 @@
         "courseId": "class-1",
         "assignmentId": "assignment-1-3",
         "assignmentName": "Synthetic Assignment 2.4",
+        "assessmentContractVersion": 1,
         "dueDate": null,
         "updatedAt": "2024-01-03T12:03:00.000Z",
         "createdAt": "2024-01-03T12:00:00.000Z",
@@ -1343,6 +1738,9 @@
                 },
                 "assessments": {
                   "completeness": {
+                    "score": 0
+                  },
+                  "accuracy": {
                     "score": 0
                   },
                   "spag": {
@@ -1378,9 +1776,34 @@
                   "contentHash": null,
                   "metadata": {},
                   "uid": "uid-assignment-1-3-100000000010000000001-task-partial-0-0",
-                  "type": "TEXT"
+                  "type": "IMAGE"
                 },
-                "assessments": {},
+                "assessments": {
+                  "completeness": {
+                    "score": "E",
+                    "reasoning": "The extracted work could not be assessed.",
+                    "error": {
+                      "stage": "assessment",
+                      "code": "ASSESSMENT_FAILED"
+                    }
+                  },
+                  "accuracy": {
+                    "score": "E",
+                    "reasoning": "The extracted work could not be assessed.",
+                    "error": {
+                      "stage": "assessment",
+                      "code": "ASSESSMENT_FAILED"
+                    }
+                  },
+                  "spag": {
+                    "score": "E",
+                    "reasoning": "The extracted work could not be assessed.",
+                    "error": {
+                      "stage": "assessment",
+                      "code": "ASSESSMENT_FAILED"
+                    }
+                  }
+                },
                 "feedback": {}
               }
             },
@@ -1399,20 +1822,38 @@
                 "artifact": {
                   "taskId": "task-partial-0-0",
                   "role": "submission",
-                  "pageId": "page-task-partial-0-0",
-                  "documentId": "artifact-document-assignment-1-3-100000000010000000002-task-partial-0-0",
+                  "pageId": null,
+                  "documentId": null,
                   "content": null,
                   "contentHash": null,
                   "metadata": {},
                   "uid": "uid-assignment-1-3-100000000010000000002-task-partial-0-0",
-                  "type": "TEXT"
+                  "type": "base"
                 },
                 "assessments": {
                   "completeness": {
-                    "score": 2
+                    "score": "E",
+                    "reasoning": "The submitted document could not be accessed.",
+                    "error": {
+                      "stage": "acquisition",
+                      "code": "SOURCE_UNREADABLE"
+                    }
+                  },
+                  "accuracy": {
+                    "score": "E",
+                    "reasoning": "The submitted document could not be accessed.",
+                    "error": {
+                      "stage": "acquisition",
+                      "code": "SOURCE_UNREADABLE"
+                    }
                   },
                   "spag": {
-                    "score": 2
+                    "score": "E",
+                    "reasoning": "The submitted document could not be accessed.",
+                    "error": {
+                      "stage": "acquisition",
+                      "code": "SOURCE_UNREADABLE"
+                    }
                   }
                 },
                 "feedback": {}
@@ -1445,6 +1886,9 @@
                   "completeness": {
                     "score": 3
                   },
+                  "accuracy": {
+                    "score": 3
+                  },
                   "spag": {
                     "score": 3
                   }
@@ -1473,10 +1917,13 @@
                   "contentHash": null,
                   "metadata": {},
                   "uid": "uid-assignment-1-3-100000000010000000004-task-partial-0-0",
-                  "type": "TEXT"
+                  "type": "IMAGE"
                 },
                 "assessments": {
                   "completeness": {
+                    "score": 4
+                  },
+                  "accuracy": {
                     "score": 4
                   },
                   "spag": {
@@ -1507,10 +1954,13 @@
                   "contentHash": null,
                   "metadata": {},
                   "uid": "uid-assignment-1-3-100000000010000000005-task-partial-0-0",
-                  "type": "TEXT"
+                  "type": "SPREADSHEET"
                 },
                 "assessments": {
                   "completeness": {
+                    "score": 5
+                  },
+                  "accuracy": {
                     "score": 5
                   },
                   "spag": {
@@ -1602,6 +2052,7 @@
         "courseId": "class-2",
         "assignmentId": "assignment-2-0",
         "assignmentName": "Synthetic Assignment 3.1",
+        "assessmentContractVersion": 1,
         "dueDate": null,
         "updatedAt": "2024-01-04T09:03:00.000Z",
         "createdAt": "2024-01-04T09:00:00.000Z",
@@ -1613,6 +2064,7 @@
         "courseId": "class-2",
         "assignmentId": "assignment-2-1",
         "assignmentName": "Synthetic Assignment 3.2",
+        "assessmentContractVersion": 1,
         "dueDate": null,
         "updatedAt": "2024-01-04T10:03:00.000Z",
         "createdAt": "2024-01-04T10:00:00.000Z",
@@ -1642,6 +2094,9 @@
                   "completeness": {
                     "score": 0
                   },
+                  "accuracy": {
+                    "score": 0
+                  },
                   "spag": {
                     "score": "N"
                   }
@@ -1665,10 +2120,13 @@
                   "contentHash": null,
                   "metadata": {},
                   "uid": "uid-assignment-2-1-100000000020000000000-task-0-1",
-                  "type": "TEXT"
+                  "type": "IMAGE"
                 },
                 "assessments": {
                   "completeness": {
+                    "score": 0
+                  },
+                  "accuracy": {
                     "score": 0
                   },
                   "spag": {
@@ -1704,9 +2162,34 @@
                   "contentHash": null,
                   "metadata": {},
                   "uid": "uid-assignment-2-1-100000000020000000001-task-0-0",
-                  "type": "TEXT"
+                  "type": "IMAGE"
                 },
-                "assessments": {},
+                "assessments": {
+                  "completeness": {
+                    "score": "E",
+                    "reasoning": "The extracted work could not be assessed.",
+                    "error": {
+                      "stage": "assessment",
+                      "code": "ASSESSMENT_FAILED"
+                    }
+                  },
+                  "accuracy": {
+                    "score": "E",
+                    "reasoning": "The extracted work could not be assessed.",
+                    "error": {
+                      "stage": "assessment",
+                      "code": "ASSESSMENT_FAILED"
+                    }
+                  },
+                  "spag": {
+                    "score": "E",
+                    "reasoning": "The extracted work could not be assessed.",
+                    "error": {
+                      "stage": "assessment",
+                      "code": "ASSESSMENT_FAILED"
+                    }
+                  }
+                },
                 "feedback": {}
               },
               "task-0-1": {
@@ -1721,9 +2204,34 @@
                   "contentHash": null,
                   "metadata": {},
                   "uid": "uid-assignment-2-1-100000000020000000001-task-0-1",
-                  "type": "TEXT"
+                  "type": "SPREADSHEET"
                 },
-                "assessments": {},
+                "assessments": {
+                  "completeness": {
+                    "score": "E",
+                    "reasoning": "The extracted work could not be assessed.",
+                    "error": {
+                      "stage": "assessment",
+                      "code": "ASSESSMENT_FAILED"
+                    }
+                  },
+                  "accuracy": {
+                    "score": "E",
+                    "reasoning": "The extracted work could not be assessed.",
+                    "error": {
+                      "stage": "assessment",
+                      "code": "ASSESSMENT_FAILED"
+                    }
+                  },
+                  "spag": {
+                    "score": "E",
+                    "reasoning": "The extracted work could not be assessed.",
+                    "error": {
+                      "stage": "assessment",
+                      "code": "ASSESSMENT_FAILED"
+                    }
+                  }
+                },
                 "feedback": {}
               }
             },
@@ -1742,20 +2250,38 @@
                 "artifact": {
                   "taskId": "task-0-0",
                   "role": "submission",
-                  "pageId": "page-task-0-0",
-                  "documentId": "artifact-document-assignment-2-1-100000000020000000002-task-0-0",
+                  "pageId": null,
+                  "documentId": null,
                   "content": null,
                   "contentHash": null,
                   "metadata": {},
                   "uid": "uid-assignment-2-1-100000000020000000002-task-0-0",
-                  "type": "TEXT"
+                  "type": "base"
                 },
                 "assessments": {
                   "completeness": {
-                    "score": 2
+                    "score": "E",
+                    "reasoning": "The submitted document could not be accessed.",
+                    "error": {
+                      "stage": "acquisition",
+                      "code": "SOURCE_UNREADABLE"
+                    }
+                  },
+                  "accuracy": {
+                    "score": "E",
+                    "reasoning": "The submitted document could not be accessed.",
+                    "error": {
+                      "stage": "acquisition",
+                      "code": "SOURCE_UNREADABLE"
+                    }
                   },
                   "spag": {
-                    "score": 2
+                    "score": "E",
+                    "reasoning": "The submitted document could not be accessed.",
+                    "error": {
+                      "stage": "acquisition",
+                      "code": "SOURCE_UNREADABLE"
+                    }
                   }
                 },
                 "feedback": {}
@@ -1766,20 +2292,38 @@
                 "artifact": {
                   "taskId": "task-0-1",
                   "role": "submission",
-                  "pageId": "page-task-0-1",
-                  "documentId": "artifact-document-assignment-2-1-100000000020000000002-task-0-1",
+                  "pageId": null,
+                  "documentId": null,
                   "content": null,
                   "contentHash": null,
                   "metadata": {},
                   "uid": "uid-assignment-2-1-100000000020000000002-task-0-1",
-                  "type": "TEXT"
+                  "type": "base"
                 },
                 "assessments": {
                   "completeness": {
-                    "score": 2
+                    "score": "E",
+                    "reasoning": "The submitted document could not be accessed.",
+                    "error": {
+                      "stage": "acquisition",
+                      "code": "SOURCE_UNREADABLE"
+                    }
+                  },
+                  "accuracy": {
+                    "score": "E",
+                    "reasoning": "The submitted document could not be accessed.",
+                    "error": {
+                      "stage": "acquisition",
+                      "code": "SOURCE_UNREADABLE"
+                    }
                   },
                   "spag": {
-                    "score": 2
+                    "score": "E",
+                    "reasoning": "The submitted document could not be accessed.",
+                    "error": {
+                      "stage": "acquisition",
+                      "code": "SOURCE_UNREADABLE"
+                    }
                   }
                 },
                 "feedback": {}
@@ -1812,6 +2356,9 @@
                   "completeness": {
                     "score": 3
                   },
+                  "accuracy": {
+                    "score": 3
+                  },
                   "spag": {
                     "score": 3
                   }
@@ -1830,10 +2377,13 @@
                   "contentHash": null,
                   "metadata": {},
                   "uid": "uid-assignment-2-1-100000000020000000003-task-0-1",
-                  "type": "TEXT"
+                  "type": "IMAGE"
                 },
                 "assessments": {
                   "completeness": {
+                    "score": 3
+                  },
+                  "accuracy": {
                     "score": 3
                   },
                   "spag": {
@@ -1864,10 +2414,13 @@
                   "contentHash": null,
                   "metadata": {},
                   "uid": "uid-assignment-2-1-100000000020000000004-task-0-0",
-                  "type": "TEXT"
+                  "type": "IMAGE"
                 },
                 "assessments": {
                   "completeness": {
+                    "score": 4
+                  },
+                  "accuracy": {
                     "score": 4
                   },
                   "spag": {
@@ -1888,10 +2441,13 @@
                   "contentHash": null,
                   "metadata": {},
                   "uid": "uid-assignment-2-1-100000000020000000004-task-0-1",
-                  "type": "TEXT"
+                  "type": "SPREADSHEET"
                 },
                 "assessments": {
                   "completeness": {
+                    "score": 4
+                  },
+                  "accuracy": {
                     "score": 4
                   },
                   "spag": {
@@ -1922,10 +2478,13 @@
                   "contentHash": null,
                   "metadata": {},
                   "uid": "uid-assignment-2-1-100000000020000000005-task-0-0",
-                  "type": "TEXT"
+                  "type": "SPREADSHEET"
                 },
                 "assessments": {
                   "completeness": {
+                    "score": 5
+                  },
+                  "accuracy": {
                     "score": 5
                   },
                   "spag": {
@@ -1952,6 +2511,9 @@
                   "completeness": {
                     "score": 5
                   },
+                  "accuracy": {
+                    "score": 5
+                  },
                   "spag": {
                     "score": 5
                   }
@@ -1969,6 +2531,7 @@
         "courseId": "class-2",
         "assignmentId": "assignment-2-2",
         "assignmentName": "Synthetic Assignment 3.3",
+        "assessmentContractVersion": 1,
         "dueDate": null,
         "updatedAt": "2024-01-04T11:03:00.000Z",
         "createdAt": "2024-01-04T11:00:00.000Z",
@@ -1998,6 +2561,9 @@
                   "completeness": {
                     "score": 0
                   },
+                  "accuracy": {
+                    "score": 0
+                  },
                   "spag": {
                     "score": "N"
                   }
@@ -2021,10 +2587,13 @@
                   "contentHash": null,
                   "metadata": {},
                   "uid": "uid-assignment-2-2-100000000020000000000-task-1-1",
-                  "type": "TEXT"
+                  "type": "IMAGE"
                 },
                 "assessments": {
                   "completeness": {
+                    "score": 0
+                  },
+                  "accuracy": {
                     "score": 0
                   },
                   "spag": {
@@ -2060,9 +2629,34 @@
                   "contentHash": null,
                   "metadata": {},
                   "uid": "uid-assignment-2-2-100000000020000000001-task-1-0",
-                  "type": "TEXT"
+                  "type": "IMAGE"
                 },
-                "assessments": {},
+                "assessments": {
+                  "completeness": {
+                    "score": "E",
+                    "reasoning": "The extracted work could not be assessed.",
+                    "error": {
+                      "stage": "assessment",
+                      "code": "ASSESSMENT_FAILED"
+                    }
+                  },
+                  "accuracy": {
+                    "score": "E",
+                    "reasoning": "The extracted work could not be assessed.",
+                    "error": {
+                      "stage": "assessment",
+                      "code": "ASSESSMENT_FAILED"
+                    }
+                  },
+                  "spag": {
+                    "score": "E",
+                    "reasoning": "The extracted work could not be assessed.",
+                    "error": {
+                      "stage": "assessment",
+                      "code": "ASSESSMENT_FAILED"
+                    }
+                  }
+                },
                 "feedback": {}
               },
               "task-1-1": {
@@ -2077,9 +2671,34 @@
                   "contentHash": null,
                   "metadata": {},
                   "uid": "uid-assignment-2-2-100000000020000000001-task-1-1",
-                  "type": "TEXT"
+                  "type": "SPREADSHEET"
                 },
-                "assessments": {},
+                "assessments": {
+                  "completeness": {
+                    "score": "E",
+                    "reasoning": "The extracted work could not be assessed.",
+                    "error": {
+                      "stage": "assessment",
+                      "code": "ASSESSMENT_FAILED"
+                    }
+                  },
+                  "accuracy": {
+                    "score": "E",
+                    "reasoning": "The extracted work could not be assessed.",
+                    "error": {
+                      "stage": "assessment",
+                      "code": "ASSESSMENT_FAILED"
+                    }
+                  },
+                  "spag": {
+                    "score": "E",
+                    "reasoning": "The extracted work could not be assessed.",
+                    "error": {
+                      "stage": "assessment",
+                      "code": "ASSESSMENT_FAILED"
+                    }
+                  }
+                },
                 "feedback": {}
               }
             },
@@ -2093,6 +2712,7 @@
         "courseId": "class-2",
         "assignmentId": "assignment-2-3",
         "assignmentName": "Synthetic Assignment 3.4",
+        "assessmentContractVersion": 1,
         "dueDate": null,
         "updatedAt": "2024-01-04T12:03:00.000Z",
         "createdAt": "2024-01-04T12:00:00.000Z",
@@ -2120,6 +2740,9 @@
                 },
                 "assessments": {
                   "completeness": {
+                    "score": 0
+                  },
+                  "accuracy": {
                     "score": 0
                   },
                   "spag": {
@@ -2155,9 +2778,34 @@
                   "contentHash": null,
                   "metadata": {},
                   "uid": "uid-assignment-2-3-100000000020000000001-task-partial-0-0",
-                  "type": "TEXT"
+                  "type": "IMAGE"
                 },
-                "assessments": {},
+                "assessments": {
+                  "completeness": {
+                    "score": "E",
+                    "reasoning": "The extracted work could not be assessed.",
+                    "error": {
+                      "stage": "assessment",
+                      "code": "ASSESSMENT_FAILED"
+                    }
+                  },
+                  "accuracy": {
+                    "score": "E",
+                    "reasoning": "The extracted work could not be assessed.",
+                    "error": {
+                      "stage": "assessment",
+                      "code": "ASSESSMENT_FAILED"
+                    }
+                  },
+                  "spag": {
+                    "score": "E",
+                    "reasoning": "The extracted work could not be assessed.",
+                    "error": {
+                      "stage": "assessment",
+                      "code": "ASSESSMENT_FAILED"
+                    }
+                  }
+                },
                 "feedback": {}
               }
             },
@@ -2176,20 +2824,38 @@
                 "artifact": {
                   "taskId": "task-partial-0-0",
                   "role": "submission",
-                  "pageId": "page-task-partial-0-0",
-                  "documentId": "artifact-document-assignment-2-3-100000000020000000002-task-partial-0-0",
+                  "pageId": null,
+                  "documentId": null,
                   "content": null,
                   "contentHash": null,
                   "metadata": {},
                   "uid": "uid-assignment-2-3-100000000020000000002-task-partial-0-0",
-                  "type": "TEXT"
+                  "type": "base"
                 },
                 "assessments": {
                   "completeness": {
-                    "score": 2
+                    "score": "E",
+                    "reasoning": "The submitted document could not be accessed.",
+                    "error": {
+                      "stage": "acquisition",
+                      "code": "SOURCE_UNREADABLE"
+                    }
+                  },
+                  "accuracy": {
+                    "score": "E",
+                    "reasoning": "The submitted document could not be accessed.",
+                    "error": {
+                      "stage": "acquisition",
+                      "code": "SOURCE_UNREADABLE"
+                    }
                   },
                   "spag": {
-                    "score": 2
+                    "score": "E",
+                    "reasoning": "The submitted document could not be accessed.",
+                    "error": {
+                      "stage": "acquisition",
+                      "code": "SOURCE_UNREADABLE"
+                    }
                   }
                 },
                 "feedback": {}
@@ -2222,6 +2888,9 @@
                   "completeness": {
                     "score": 3
                   },
+                  "accuracy": {
+                    "score": 3
+                  },
                   "spag": {
                     "score": 3
                   }
@@ -2250,10 +2919,13 @@
                   "contentHash": null,
                   "metadata": {},
                   "uid": "uid-assignment-2-3-100000000020000000004-task-partial-0-0",
-                  "type": "TEXT"
+                  "type": "IMAGE"
                 },
                 "assessments": {
                   "completeness": {
+                    "score": 4
+                  },
+                  "accuracy": {
                     "score": 4
                   },
                   "spag": {
@@ -2284,10 +2956,13 @@
                   "contentHash": null,
                   "metadata": {},
                   "uid": "uid-assignment-2-3-100000000020000000005-task-partial-0-0",
-                  "type": "TEXT"
+                  "type": "SPREADSHEET"
                 },
                 "assessments": {
                   "completeness": {
+                    "score": 5
+                  },
+                  "accuracy": {
                     "score": 5
                   },
                   "spag": {

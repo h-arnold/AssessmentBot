@@ -56,7 +56,11 @@ const CANONICAL_CELL_SCORE_TEXT = formatMetricDisplayText(CANONICAL_CELL_METRIC,
 
 /** Accessible label the column builder shares between a cell and its trigger. */
 const CANONICAL_CELL_ACCESSIBLE_LABEL = buildMetricCellAccessibleLabel(
-  CANONICAL_READY_CELL.studentName,
+  (() => {
+    const { studentName } = CANONICAL_READY_CELL;
+    if (typeof studentName !== 'string') throw new TypeError('Expected a named canonical student.');
+    return studentName;
+  })(),
   CANONICAL_READY_CELL.taskTitle,
   'completeness',
   CANONICAL_CELL_SCORE_TEXT

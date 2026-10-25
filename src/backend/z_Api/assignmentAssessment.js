@@ -67,7 +67,7 @@ function validateIdentifier_(value, fieldName) {
 /**
  * Transport-boundary handler for getAssignment.
  * Loads the full, hydrated assignment for a given course and assignment id and
- * returns the canonical `Assignment.toJSON()` shape with all Date objects
+ * returns the canonical `Assignment.toReadJSON()` shape with all Date objects
  * recursively converted to ISO strings and transient fields stripped.
  *
  * @remarks
@@ -83,7 +83,7 @@ function validateIdentifier_(value, fieldName) {
  *   `submissions[].createdAt`/`updatedAt`, and any dates inside
  *   `assignmentDefinition`.
  * - `progressTracker` is stripped at the boundary as defence-in-depth:
- *   `Assignment.toJSON()` already omits it per its JSDoc, but a future model
+ *   `Assignment.toReadJSON()` already omits it per its JSDoc, but a future model
  *   change could regress, and the explicit strip is the canonical boundary
  *   defence pattern.
  *
@@ -115,10 +115,10 @@ function getAssignment_(parameters) {
   try {
     const abClassController = new ABClassController();
     const assignment = abClassController.readRehydrateAssignment(courseId, assignmentId);
-    const response = assignment.toJSON();
+    const response = assignment.toReadJSON();
 
     // Defence-in-depth: strip transient, non-`toJSON` fields at the boundary.
-    // Assignment.toJSON() already omits progressTracker per its JSDoc, but
+    // Assignment.toReadJSON() already omits progressTracker per its JSDoc, but
     // a future model change could regress; the explicit strip is the
     // canonical boundary defence pattern.
     delete response.progressTracker;

@@ -22,10 +22,11 @@ class SheetsAssignment extends Assignment {
   /**
    * Deserialises SheetsAssignment from JSON data.
    * @param {object} data - JSON data object.
+   * @param {string} representationMode - Representation mode used when restoring assignment data.
    * @returns {SheetsAssignment} Reconstructed SheetsAssignment instance.
    */
-  static fromJSON(data) {
-    const inst = Assignment._baseFromJSON(data);
+  static fromJSON(data, representationMode) {
+    const inst = Assignment._baseFromJSON(data, representationMode);
     Object.setPrototypeOf(inst, SheetsAssignment.prototype);
     return inst;
   }

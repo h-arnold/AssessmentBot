@@ -1254,8 +1254,11 @@ section to remove the marker as each addition is implemented and verified.
      is unavailable when fewer than 2 candidates exist or the roster is below
      3 students.
    - Attempted = the submission item yields at least one numeric criterion
-     score; all-`N` items, missing assessment criteria (the `E` condition), and
-     absent items are not attempts. Criterion weighting plays no part.
+     score; all-`N` items, missing assessment criteria (the historical
+     `E` condition), and absent items are not attempts. An explicit `E` result
+     also yields no numeric criterion score and is therefore not an attempt.
+     This clarifies the existing numeric-evidence rule; it does not add a
+     baseline feature. Criterion weighting plays no part.
    - Baseline task keys = intersection of the attempt sets across the whole
      pool. An empty intersection throws (descriptive error naming the class)
      before any result is produced, so the schema `min(1)` is protected.
@@ -1366,6 +1369,181 @@ section to remove the marker as each addition is implemented and verified.
    its existing spread of the base projection. `HeatmapCell` is unchanged:
    marking is **column-level only in v1**, and cell values stay absolute in
    both modes.
+
+## Planned contract additions — explicit E assessment input and preview errors (Not implemented)
+
+> **Status: `Not implemented`.** These entries record the target contract from
+> `SPEC.md` (explicit Assessment errors and targeted pipeline simplification). They do
+> **not** describe current code. The implemented sections above remain authoritative until
+> the corresponding analyser, preview and read-projection changes land. The Assessment
+> union itself is owned by
+> [Contract: Assignment §Planned contract additions](assignment.md#planned-contract-additions--explicit-assessment-errors-and-result-format-marker-not-implemented).
+
+### Analyser input — explicit `E` evidence (Not implemented)
+
+The planned analyser input adds `'E'` to the raw score union instead of inferring failure from
+absent assessments or missing numeric contributions:
+
+| Contract                 | Current position                                                                | Planned position                                                                                                                                                                                                                                         |
+| ------------------------ | ------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `AssessmentScore`        | `number \| 'N' \| undefined`; the type comment states `'E'` does not appear.    | `number \| 'N' \| 'E' \| undefined`. `'E'` is explicit known-error evidence from the Assessment union.                                                                                                                                                   |
+| `processItemAssessments` | Reads `assessments[criterion]?.score`; an absent criterion becomes `undefined`. | Still reads the same fields, but an explicit `E` is recognised rather than relying on absence.                                                                                                                                                           |
+| `accumulateCriterion`    | Handles numeric and `'N'`; `undefined` contributes nothing.                     | Adds explicit `'E'` handling. `E` contributes no numeric sum, no `N` evidence, no denominator weight, no `totalDataPoints` increment and no weight-counter increment. It is error evidence only.                                                         |
+| `MetricAccumulator`      | `nCount` distinguishes `notAttempted` from `error`.                             | Adds explicit error recognition. Internal accumulator counter names are implementation-local and are not part of this data-shape contract; the counter must not be conflated with `nCount` or with any public output field.                              |
+| Metric resolution        | `error` is emitted when no numeric/`N` evidence remains.                        | A wholly errored task resolves all display metrics to `E` from explicit evidence. A lone `E` display has zero applicable/total data points and zero weight. Existing numeric, genuine `N`, zero-weight and aggregate `excluded` semantics are unchanged. |
+
+Planned aggregate rules:
+
+- Explicit `E` increments no numeric/`N` evidence, `totalDataPoints` or weight counter, matching
+  the existing missing-assessment error accounting. No new coverage counter is introduced.
+- `E` contributes neither a numeric zero nor denominator weight to averages. Erroneous evidence
+  is excluded from averages while healthy sibling data is retained.
+- The public `MetricResult` and `TaskDisplayMetric` output shapes gain no error-history or
+  reasoning fields. `error` already carries value `'E'`; no new state member is added.
+- Existing mixed valid/error aggregate treatment is preserved; this change does not redesign
+  coverage counts, weighting or ranking.
+- A genuine no-submission contributes no observed item to the analyser and keeps the existing
+  no-data `N` display placeholder. Do not insert raw `N` observations that would change existing
+  average denominators.
+- A version-1 canonical completed fixture never contains an empty assessment map.
+  Missing-criterion and empty-map cases remain local corruption probes, not realistic success
+  data. See
+  [Synthetic Test Data §Explicit E outcomes and richer artefact types (implemented generator and validators; corpus cut-over pending)](../testing/synthetic-test-data.md#planned-generator-extension-explicit-e-outcomes-and-richer-artefact-types-not-implemented).
+- A version-1 item whose criterion map is incomplete or contains an extra key is an isolated
+  all-three validation `CORRUPT_RECORD` `E` on both full and partial reads; see
+  [Contract: Assignment §Assessment
+  invariants](assignment.md#assessment--resultcause-primitives-implemented). This is read-time
+  isolation before analysis, not an analyser input rule or a new baseline feature.
+- A missing lookup entry must never be reinterpreted as `N` when an explicit `E` is available
+  from class-summary data. A failed/unavailable full query cannot hide known `E` reasoning.
+
+Alignment concerns:
+
+1. **Resolved — explicit `E` data-point accounting.** `SPEC.md` fixes the accounting: explicit
+   `E` increments no numeric/`N` evidence, `totalDataPoints` or weight counter, and a lone `E`
+   display has zero applicable/total data points and zero weight. This matches the existing
+   missing-assessment error accounting; the earlier open question is closed by the specification,
+   not invented here.
+2. **Output union unchanged.** `PerTaskRow`, `PerStudentTaskMetric`, `MetricResult` and
+   `TaskDisplayMetric` need no new state member: `error` already carries value `'E'`. The
+   planned change is input/accumulation only; no error-history or reasoning field is added to
+   public metric output. Internal accumulator counter naming is implementation-local and is not
+   a data-shape decision.
+
+### Preview shapes — explicit source and error state (Not implemented)
+
+The current derived preview shapes cannot safely distinguish:
+
+- an assessment-only error where the submitted source is available and should still render;
+- unavailable or corrupt source where the response renderer must be suppressed;
+- a missing `artifactContent` caused by deliberate partial redaction.
+
+Planned exact additions (fixed by `SPEC.md`):
+
+| Shape             | Field             | Planned type                                                                        | Notes                                                                                                                                                                                                                                                                                                                                                               |
+| ----------------- | ----------------- | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `CellPreviewData` | `errors`          | Required `Record<HeatmapMetricKey, { stage: ErrorStage; code: ErrorCode } \| null>` | Every canonical criterion has an entry; non-`E` entries are `null`. Cause types are the Assessment contract's `ErrorStage`/`ErrorCode`. Derived in memory.                                                                                                                                                                                                          |
+| `CellPreviewData` | `artifactContent` | Existing discriminated `ArtifactContentByType<K>`                                   | Unchanged shape. A `null` produced by partial redaction is not evidence of source failure; the selected preview view model's `sourceState` carries that evidence.                                                                                                                                                                                                   |
+| `CellPreviewData` | `reasoning`       | Existing `Record<HeatmapMetricKey, string \| null>`                                 | Unchanged shape. May now carry `E` reasoning from a class-embedded partial; `null` when the assessment is absent for that metric.                                                                                                                                                                                                                                   |
+| `CellPreviewData` | `sourceUrl`       | Existing `string \| null`                                                           | Unchanged nullable editor link.                                                                                                                                                                                                                                                                                                                                     |
+| `TaskPreviewData` | `error`           | Required `{ stage: ErrorStage; code: ErrorCode } \| null`                           | Carries the selected criterion's cause, or `null` for a non-`E` selected source, including a confirmed no-submission placeholder.                                                                                                                                                                                                                                   |
+| `TaskPreviewData` | `reasoning`       | Existing `string`                                                                   | Carries the selected source's reasoning, including `E` reasoning from a class-partial fallback.                                                                                                                                                                                                                                                                     |
+| `TaskPreviewData` | `sourceState`     | Required `'loading' \| 'available' \| 'unavailable'`                                | Required preview view-model field, derived in memory from the selected source; full-read builders only yield `available`/`unavailable`. See the no-submission rule below.                                                                                                                                                                                           |
+| `TaskPreviewData` | `artifactContent` | Existing `string`                                                                   | Unchanged type. A known `E` with null `IMAGE`/`SPREADSHEET` full content assembles as `''` with `sourceState: 'unavailable'`; this is not a successful blank extraction. A confirmed no-submission without a known `E` also assembles as `''`, but with `sourceState: 'available'`. Non-`E` unexpected null content still fails as an internal invariant violation. |
+| `TaskPreviewData` | `sourceUrl`       | Existing `string \| null`                                                           | Unchanged nullable editor link; retained only when the existing safe URL derivation succeeds. A confirmed no-submission placeholder has `sourceUrl: null`.                                                                                                                                                                                                          |
+| `TaskPreviewData` | `metric`          | Existing `TaskDisplayMetric`                                                        | Existing metric output shapes do not change; an errored selected source already uses state `error` with value `'E'`.                                                                                                                                                                                                                                                |
+
+Confirmed no-submission without a known `E` is not an error source. When `cellData === null`
+and no known `E` exists, assembly retains the normal ready `N` placeholder with
+`artifactContent: ''`, `error: null`, `sourceUrl: null` and `sourceState: 'available'`, using
+the existing `NOT_ATTEMPTED_METRIC`. Here `available` means the normal source region is ready to
+render its legitimate no-submission placeholder; it does not assert that a source document
+exists and must not produce an error Alert or a perpetual loading state. `unavailable` is
+reserved for an error source.
+
+`TaskPreviewData.sourceState` semantics:
+
+| Value         | Meaning                                                                                                                                                                                                                                                                          | Planned rendering                                                                                                                                                                                 |
+| ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `available`   | The normal source region is ready. Either the selected source content is usable, or the submission is a confirmed no-submission with no known `E` and the legitimate `N` placeholder is shown. The no-submission case does not assert that a source document exists.             | Normal response rendering or the normal no-submission placeholder. A source action is shown only when the existing safe URL derivation succeeds; a confirmed no-submission has `sourceUrl: null`. |
+| `unavailable` | An error source only: the selected source is unavailable, corrupt or known-invalid, **or** its fallback full fetch terminally failed or returned `null`/not found, **or** a known `E` carries null `IMAGE`/`SPREADSHEET` full content. Never used for a confirmed no-submission. | Suppress the response renderer and show an inline error explanation. Retain a source action only when the existing safe URL derivation succeeds.                                                  |
+| `loading`     | **Pending only.** The source region is still resolving while known `E` reasoning is already available.                                                                                                                                                                           | Permit a source-region skeleton. Known `E` reasoning stays visible; the response renderer is not presented as a confirmed success.                                                                |
+
+Planned derivation and precedence:
+
+- These fields are derived in memory only and are never added to backend artefacts, persistence,
+  API requests/responses or the standard transport envelope. `CellPreviewData`/`TaskPreviewData`
+  remain TS-only, non-Zod derived shapes.
+- Full-read builders only yield `available`/`unavailable`. The existing query/preview
+  composition supplies `loading` **only** for a known partial `E` fallback while the full fetch
+  is pending. Once that fetch terminally fails or returns `null`/not found, the fallback resolves
+  to `unavailable`, replaces the source skeleton with the inline Alert and keeps the known
+  reasoning visible. `loading` is never a terminal state.
+- When a known `E` carries null `IMAGE`/`SPREADSHEET` full content, assembly produces the
+  view-model representation `artifactContent: ''` with `sourceState: 'unavailable'` instead of
+  invoking the current throwing coercion. This is not a successful blank extraction. Non-`E`
+  unexpected null content that bypasses read validation still fails loudly as an internal
+  invariant violation; do not broaden a silent null fallback.
+- Legacy reassessment entries are materialised by the backend
+  `AssignmentRehydration.projectReassessmentSubmissions()` public entry, whose pure
+  projection/snapshot mapping is implemented behind it in `02_AssignmentReadProjection.js`
+  (not a second materialiser), and validated by the frontend normaliser, which remains
+  `Not implemented`.
+  Preview composition selects those already-materialised entries; it does not generate a second
+  reassessment graph, query a roster or infer historical outcomes.
+- Every cause is the Assessment contract's `error: { stage, code }` pair; non-`E` selected
+  sources carry `error: null`. The public `MetricResult` output is unchanged.
+- Precedence in an opened preview is:
+  1. explicit full-record validation error;
+  2. the class-partial `E` for that criterion;
+  3. the selected full item's `E`;
+  4. the existing analyser metric.
+- Keep existing merged-source selection; do not merge or invent new reasoning from multiple
+  assignment instances. Error fields travel through that same selected source, with
+  class-partial fallback keyed by the actual assignment/student/task/criterion, not a
+  definition-scoped aggregate alone.
+
+Planned presentation rules (from `SPEC.md`):
+
+- Show `E` and its Reasoning. With an assessment-only error, show the valid student response and
+  source action. With unavailable/corrupt source, suppress the response renderer and show an
+  inline error explanation; retain a source action only when the existing safe URL derivation
+  succeeds.
+- A full-read-only corruption overrides the affected preview's score/reasoning with `E` even
+  when the class-derived heatmap cell still shows a historic numeric value. State:
+  `Source preview unavailable. Displayed scores are unchanged; reassess the assignment to refresh them.`
+- This override is local to the preview. It must not mutate class-query data, recompute analysed
+  class scores/averages, or persist a read repair.
+- A valid no-submission case retains `N`; no malformed record is silently dropped to create the
+  same no-submission state. A genuine no-submission contributes no observed item and does not
+  change existing average denominators. In the preview view model, a confirmed no-submission
+  without a known `E` uses `sourceState: 'available'` with `artifactContent: ''`, `error: null`
+  and `sourceUrl: null`; this is a ready normal placeholder, not an error source.
+- A missing lookup entry is never reinterpreted as `N` when an explicit `E` is available from
+  class-summary data; a failed/unavailable full query cannot hide known `E` reasoning.
+
+Alignment concerns:
+
+1. **Current preview shapes lack the planned fields.** The implemented `CellPreviewData` has no
+   `errors` map and `TaskPreviewData` has no `sourceState` or selected-criterion `error` field,
+   so the planned contract is **Misaligned** until implemented. Current assembly's coercion also
+   throws for null `IMAGE`/`SPREADSHEET` content; the planned `''` + `unavailable` representation
+   applies only to a known `E`, while non-`E` unexpected null remains an internal invariant
+   failure. They are TS-only derived shapes; the additions must not enter an API
+   request/response, persistence or the standard transport envelope.
+2. **Partial `Assignment` projection dependency remains.** Rendering `E` reasoning from
+   class-summary data requires the partial projection to retain `E` `reasoning` and `error`
+   (see [Contract: Assignment §Partial projection](assignment.md#partial-projection--retain-e-explanation-implemented)).
+   Without that, a class-embedded `E` cannot supply the explanation the preview must show.
+3. **Resolved — full-read-only corruption precedence.** `SPEC.md` pins the order above
+   (explicit full-record validation error, then class-partial `E`, then selected full item's
+   `E`, then analyser metric). The override remains preview-local, leaves class metrics
+   unchanged and persists no repair. Full-read builders only yield `available`/`unavailable`;
+   the existing composition supplies `loading` only while the fallback full fetch is pending,
+   and a terminal failure or `null`/not-found result resolves it to `unavailable`. No analyser
+   output shape changes.
+
+---
 
 ## File Index
 

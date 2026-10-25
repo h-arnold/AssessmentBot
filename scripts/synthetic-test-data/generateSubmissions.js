@@ -1,8 +1,12 @@
-import { isoAt } from './deterministicPrimitives.js';
+import { isoAt, toImageDataUrl } from './deterministicPrimitives.js';
 
+const CRITERIA = ['completeness', 'accuracy', 'spag'];
+const ARTEFACT_BODY_TYPES = ['TEXT', 'IMAGE', 'SPREADSHEET'];
+const ASSESSMENT_FAILED_REASONING = 'The extracted work could not be assessed.';
+const SOURCE_UNREADABLE_REASONING = 'The submitted document could not be accessed.';
 const STUDENT_INDEX_WITH_NULL_DOCUMENT = 2;
 const STUDENT_INDEX_WITH_NULL_ARTIFACT_IDS = 3;
-const STUDENT_INDEX_WITHOUT_ASSESSMENTS = 1;
+const STUDENT_INDEX_WITH_FAILED_ASSESSMENTS = 1;
 const STUDENT_INDEX_WITH_NON_APPLICABLE_SPAG = 0;
 const MAX_NUMERIC_SCORE = 5;
 const MINUTES_BETWEEN_SUBMISSION_UPDATES = 5;
@@ -10,18 +14,55 @@ const MINUTES_PER_ASSIGNMENT = 60;
 const MINUTES_PER_STUDENT = 7;
 
 /**
+ * Builds one terminal assessment entry.
+ *
+ * @param {number|'E'} score Entry score (0-5, 'N', or 'E').
+ * @param {string} reasoning Entry reasoning.
+ * @param {{stage: string, code: string}|null} error Error cause for failed entries.
+ * @returns {{score: number|'E', reasoning: string, error?: {stage: string, code: string}}} Assessment entry.
+ */
+function buildAssessmentEntry(score, reasoning, error) {
+  const entry = { score, reasoning };
+  if (error !== null) entry.error = error;
+  return entry;
+}
+
+/**
+ * Builds the full all-three-criteria terminal failure map.
+ *
+ * @param {{stage: string, code: string}} error Error cause carried by every entry.
+ * @param {string} reasoning Exact failure reasoning copied through every entry.
+ * @returns {Record<string, object>} Assessment entries keyed by criterion.
+ */
+function buildFailureAssessments(error, reasoning) {
+  return Object.fromEntries(
+    CRITERIA.map((criterion) => [criterion, buildAssessmentEntry('E', reasoning, error)])
+  );
+}
+
+/**
  * Builds the assessment map for a synthetic submission item.
  *
  * @param {number} studentIndex Roster index of the student.
- * @returns {Record<string, {score: number|'N', reasoning: string}>} Assessment entries keyed by criterion.
+ * @returns {Record<string, {score: number|'N'|'E', reasoning: string, error?: object}>} Assessment entries keyed by criterion.
  */
 function buildAssessments(studentIndex) {
+  if (studentIndex === STUDENT_INDEX_WITH_FAILED_ASSESSMENTS) {
+    return buildFailureAssessments(
+      { stage: 'assessment', code: 'ASSESSMENT_FAILED' },
+      ASSESSMENT_FAILED_REASONING
+    );
+  }
   const numericScore = studentIndex % (MAX_NUMERIC_SCORE + 1);
   const spagScore = studentIndex === STUDENT_INDEX_WITH_NON_APPLICABLE_SPAG ? 'N' : numericScore;
   return {
     completeness: {
       score: numericScore,
       reasoning: `Synthetic completeness rationale for student index ${studentIndex}.`,
+    },
+    accuracy: {
+      score: numericScore,
+      reasoning: `Synthetic accuracy rationale for student index ${studentIndex}.`,
     },
     spag: {
       score: spagScore,
@@ -50,6 +91,70 @@ function buildFeedback(studentIndex, createdMinuteOffset) {
 }
 
 /**
+ * Builds the raw body for one generated artefact type.
+ *
+ * @param {string} type Artefact type (`TEXT`, `IMAGE`, or `SPREADSHEET`).
+ * @param {string} bodyText Deterministic plain-text body seed.
+ * @returns {string|Array<Array<string|number|null>>} Usable raw body for the type.
+ */
+function buildArtefactBody(type, bodyText) {
+  if (type === 'IMAGE') return toImageDataUrl(bodyText);
+  if (type === 'SPREADSHEET') {
+    return [
+      [bodyText, 1],
+      [null, `${bodyText} (B2)`],
+    ];
+  }
+  return bodyText;
+}
+
+/**
+ * Builds the task artifact of one submission item.
+ *
+ * @param {object} options Artefact inputs.
+ * @param {string} options.taskId Declared task ID.
+ * @param {string} options.identifierSuffix Deterministic identity suffix.
+ * @param {string} options.bodyText Deterministic plain-text body seed.
+ * @param {string} options.artifactType Cycle-selected body type.
+ * @param {boolean} options.isNullDocument Whether the artefact is the canonical base artefact.
+ * @param {boolean} options.hasNullableArtifactIds Whether this partial-only item omits its persisted artifact IDs.
+ * @returns {object} A persistence-shaped submission artefact.
+ */
+function buildSubmissionArtefact({
+  taskId,
+  identifierSuffix,
+  bodyText,
+  artifactType,
+  isNullDocument,
+  hasNullableArtifactIds,
+}) {
+  if (isNullDocument) {
+    return {
+      taskId,
+      role: 'submission',
+      pageId: null,
+      documentId: null,
+      content: null,
+      contentHash: null,
+      metadata: {},
+      uid: `uid-${identifierSuffix}`,
+      type: 'base',
+    };
+  }
+  return {
+    taskId,
+    role: 'submission',
+    pageId: hasNullableArtifactIds ? null : `page-${taskId}`,
+    documentId: hasNullableArtifactIds ? null : `artifact-document-${identifierSuffix}`,
+    content: buildArtefactBody(artifactType, bodyText),
+    contentHash: `hash-${identifierSuffix}`,
+    metadata: {},
+    uid: `uid-${identifierSuffix}`,
+    type: artifactType,
+  };
+}
+
+/**
  * Builds one submission item, including its task artifact.
  *
  * @param {object} options Item inputs.
@@ -59,6 +164,7 @@ function buildFeedback(studentIndex, createdMinuteOffset) {
  * @param {string} options.taskId Declared task ID.
  * @param {number} options.createdMinuteOffset Deterministic created-at offset.
  * @param {boolean} options.hasNullableArtifactIds Whether this partial-only item omits its persisted artifact IDs.
+ * @param {string} options.artifactType Cycle-selected body type; the null-document variant always uses a base artefact.
  * @returns {object} A full persistence-shaped submission item.
  */
 function buildSubmissionItem({
@@ -68,26 +174,29 @@ function buildSubmissionItem({
   taskId,
   createdMinuteOffset,
   hasNullableArtifactIds,
+  artifactType,
 }) {
   const identifierSuffix = `${assignmentId}-${studentId}-${taskId}`;
-  const assessments =
-    studentIndex === STUDENT_INDEX_WITHOUT_ASSESSMENTS ? {} : buildAssessments(studentIndex);
+  const isNullDocument = studentIndex === STUDENT_INDEX_WITH_NULL_DOCUMENT;
+  const bodyText = `Synthetic submission content for ${identifierSuffix}`;
 
   return {
     id: `ssi-${identifierSuffix}`,
     taskId,
-    artifact: {
+    artifact: buildSubmissionArtefact({
       taskId,
-      role: 'submission',
-      pageId: hasNullableArtifactIds ? null : `page-${taskId}`,
-      documentId: hasNullableArtifactIds ? null : `artifact-document-${identifierSuffix}`,
-      content: `Synthetic submission content for ${identifierSuffix}`,
-      contentHash: `hash-${identifierSuffix}`,
-      metadata: {},
-      uid: `uid-${identifierSuffix}`,
-      type: 'TEXT',
-    },
-    assessments,
+      identifierSuffix,
+      bodyText,
+      artifactType,
+      isNullDocument,
+      hasNullableArtifactIds,
+    }),
+    assessments: isNullDocument
+      ? buildFailureAssessments(
+          { stage: 'acquisition', code: 'SOURCE_UNREADABLE' },
+          SOURCE_UNREADABLE_REASONING
+        )
+      : buildAssessments(studentIndex),
     feedback: buildFeedback(studentIndex, createdMinuteOffset),
   };
 }
@@ -113,7 +222,7 @@ function buildSubmissionItems({
   taskIds,
 }) {
   return Object.fromEntries(
-    taskIds.map((taskId) => [
+    taskIds.map((taskId, taskPosition) => [
       taskId,
       buildSubmissionItem({
         assignmentId,
@@ -123,6 +232,8 @@ function buildSubmissionItems({
         createdMinuteOffset,
         hasNullableArtifactIds:
           isPartialOnlyDefinition && studentIndex === STUDENT_INDEX_WITH_NULL_ARTIFACT_IDS,
+        artifactType:
+          ARTEFACT_BODY_TYPES[(taskPosition + studentIndex) % ARTEFACT_BODY_TYPES.length],
       }),
     ])
   );

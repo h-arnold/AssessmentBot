@@ -130,7 +130,7 @@ describe('ABClass embedded assignment serialization', () => {
     ).toEqual(before);
   });
 
-  it('keeps standalone partial assignment serializers strict', () => {
+  it('preserves opaque history when serialising an embedded partial assignment', () => {
     const source = Object.values(loadBackendModelInputs('small').classesById).find(
       (row) => row.assignments.length > 0
     );
@@ -139,9 +139,13 @@ describe('ABClass embedded assignment serialization', () => {
     );
     expect(Array.isArray(definition.tasks)).toBe(true);
     expect(() => definition.toJSON()).toThrow(/partial AssignmentDefinition/u);
-    expect(() => globalThis.Assignment.fromJSON(clone(source.assignments[0])).toJSON()).toThrow(
-      /partial AssignmentDefinition/u
-    );
+    // This case pins the approved opaque-save exception using an explicit markerless legacy row.
+    const original = clone(source.assignments[0]);
+    delete original.assessmentContractVersion;
+    const persisted = globalThis.Assignment.fromJSON(clone(original)).toJSON();
+    expect(persisted.submissions).toEqual(original.submissions);
+    expect(persisted.assessmentContractVersion).toBe(original.assessmentContractVersion);
+    expect(persisted.assignmentDefinition).toEqual(original.assignmentDefinition);
   });
 
   it('propagates a genuine full definition serializer error', () => {

@@ -6,7 +6,7 @@
 
 - `AssignmentDefinitionController.upsertDefinition()` assignment-definition upsert orchestration helper
   - Status: `Implemented`
-  - Supporting helpers: `_buildUpsertContext()`, `_resolveTaskStateForUpsert()`, `_applyTaskWeightingsIfProvided()`, and `_persistDefinitionWithRollback()` in `src/backend/y_controllers/AssignmentDefinitionController.js`
+  - Supporting helpers: `_buildUpsertContext()`, `_resolveTaskStateForUpsert()`, `_applyTaskWeightingsIfProvided()`, and `_persistDefinitionWithRollback()` via the `src/backend/y_controllers/AssignmentDefinition/index.js` facade
   - Behaviour: centralises create/update sequencing, stable opaque `definitionKey` handling, authoritative topic-key joins, duplicate-tuple rejection, parsing/reparse decisions, weighting application, and dual-store persistence.
 - `AssignmentDefinitionController._rollbackFullStoreWrite()` rollback helper
   - Status: `Implemented`
@@ -15,6 +15,69 @@
   - Status: `Implemented`
   - Behaviour: paginating fetch of Google Classroom coursework by courseId, sorted by updateTime descending, throws on API failure
   - Owning path: `ClassroomApiClient.fetchCourseWork()` in `src/backend/GoogleClassroom/ClassroomApiClient.js`
+- Explicit assessment-error result creation (`Assessment` E results and error catalogue)
+  - Status: `Implemented` (Section 1)
+  - Owning path: `src/backend/Models/Assessment.js` — the `ASSESSMENT_ERROR_MESSAGES` catalogue plus `Assessment` construction, validation and serialisation.
+  - Result validation: the constructor accepts a finite numeric score in inclusive 0–5 (fractions included), `'N'`, or `'E'` with non-blank string reasoning and a catalogue-valid `{ stage, code }`. Numeric and `'N'` results reject any supplied `error`. Reasoning is preserved verbatim; `trim()` is used only to reject blank E reasoning, never to rewrite the stored value. Invalid results throw.
+  - Catalogue: `acquisition` (`SOURCE_UNREADABLE`, `UNSUPPORTED_DOCUMENT`); `extraction` (`SOURCE_CONTENT_UNAVAILABLE`, `PARSE_FAILED`, `IMAGE_HYDRATION_FAILED`); `assessment` (`LLM_HTTP_FAILED`, `LLM_UNAVAILABLE`, `LLM_INVALID_RESPONSE`, `LLM_RUN_STOPPED`, `ASSESSMENT_FAILED`); `validation` (`CORRUPT_RECORD`, `REASSESSMENT_REQUIRED`).
+  - Result creation: `Assessment.createError(stage, code)` selects the catalogue reasoning and returns the E result, and `Assessment.isValidCause(error)` guards pair membership. `toJSON()` emits `{ score, reasoning }` plus a detached `error` for E; `fromJSON()` validates the raw record by reusing the constructor.
+  - Ownership rule: the assessment domain creates every E result, choosing `stage`/`code` and teacher-readable reasoning together. Task-wide failures replace all three criteria atomically (see the `StudentSubmissionItem` entry below). Partial success/N entries stay `{ score }`; partial E entries retain `{ score: 'E', reasoning, error }`. No generic failure manager, run-level status framework or parallel persisted outcome hierarchy.
+- `StudentSubmissionItem` task-error replacement and partial result projection
+  - Status: `Implemented` (Section 1)
+  - Owning path: `src/backend/Models/StudentSubmission/00_StudentSubmissionItem.js`.
+  - Atomic replacement: `setError(stage, code)` replaces every existing criterion with the same catalogue E result for `completeness`, `accuracy` and `spag`, clears feedback, and invokes the item's mutation callback so the parent submission's timestamp advances. The callback is installed only on items created through `upsertItemFromExtraction`; items reconstructed by `StudentSubmission._restore` are built without one, so `setError` on a restored item leaves the parent timestamp unchanged. Stale numeric/`N` marks cannot survive beside the current failure.
+  - Partial projection: `toPartialJSON()` keeps E entries complete (`{ score: 'E', reasoning, error }`) while numeric and `'N'` entries remain `{ score }`, so a class-embedded failure keeps its explanation.
+  - Raw restoration: `validateRaw(json, mode)` rejects missing item/artifact identity and, in full mode, an artifact without its own `content`/`contentHash` keys. `fromJSON(json, mode)` restores once in the requested mode and normalises redacted partial content/hash to explicit `null`. Criterion-completeness and assessment-map validation are enforced by `AssignmentCurrentRestoration` during marker-1 restoration, not by this additive layer.
+- Acquisition pagination and student-document outcomes (`Assignment.fetchSubmittedDocumentsByMimeType`)
+  - Status: `Not implemented` (planned extension of the existing acquisition owner)
+  - Current: one `StudentSubmissions.list` call with no `nextPageToken` follow-up, and list or Drive errors are logged then ignored, so a failed acquisition looks like no submission.
+  - Planned owning path: `src/backend/AssignmentProcessor/Assignment/04_AssignmentSubmissions.js` — pagination-before-absence: follow every `StudentSubmissions.list` `nextPageToken` page before confirming that a student has no submitted attachment; a failed page fails the run rather than manufacturing no-submission/N. A known student's unsupported or unreadable submitted document becomes acquisition `UNSUPPORTED_DOCUMENT` or `SOURCE_UNREADABLE` E for that student's known tasks. Preserve the existing attachment-selection preference and first-match/ambiguity warnings; no new matching policy, multi-file UI or acquisition helper.
+- Transport retry ownership (`BaseRequestManager`)
+  - Status: `Not implemented` (planned extension of the existing owner)
+  - Current: `sendRequestsInBatches()` collects every batch before assigning results, and `sendRequestWithRetries()` re-pushes the initial failed response after exhausted retries; retry classification happens inside the retry loop.
+  - Planned owning path: `src/backend/RequestHandlers/BaseRequestManager.js` — classify the initial response before retrying, at most three dispatches per request including the initial batch attempt, fixed 5 s/7.5 s waits, response identity on every returned result, no earlier-response substitution, and incremental per-batch processing. Classify every response received in a batch before dispatching any retry, so a run-stopping response prevents further calls while successes already received in that batch are retained. A 401/403/404 response is an explicit run-stop outcome; remaining eligible tasks become `LLM_RUN_STOPPED` without another confirmation call. Exactly 200/201 count as LLM HTTP success; image downloads require 200.
+  - Retries are per-member sequential `UrlFetchApp.fetch` calls after the initial `fetchAll` batch is classified. Do not re-batch retries or introduce another scheduler; each member retains its initial-attempt count and the shared backoff budget.
+  - The manager remains the sole retry owner. Callers supply policy, not retries: each caller declares its explicit batch size, accepted success statuses (LLM 200/201; images 200) and stop-status policy (LLM 401/403/404), and consumes final identity-tagged outcomes per batch before the next batch dispatches, so a student-image failure never becomes an LLM-wide stop. Image downloads inherit the same three-total-attempt budget, and exhaustion becomes student-task `IMAGE_HYDRATION_FAILED` E or a blocking shared-image failure according to scope. No separate retry framework or persistent queue.
+- Scoped image outcomes (`ImageManager`)
+  - Status: `Not implemented` (planned extension of the existing owner)
+  - Current: `fetchImagesAsBlobs()` passes a batch size to `sendRequestsInBatches()`, which ignores it and uses the assessor batch size; failed downloads and blob-write errors are logged and the artefact content stays null.
+  - Planned owning path: `src/backend/RequestHandlers/ImageManager.js` — reuse `BaseRequestManager` transport with an explicit Slides-fetch batch size, HTTP 200 as the only image success status, and the shared three-total-attempt budget; preserve document round-robin scheduling. Expected download, missing required source and blob/content decode failures become student-task `IMAGE_HYDRATION_FAILED` E, or a blocking shared reference/template failure according to scope. Successful writeback updates the artefact hash and invalidates stale assessments/feedback on a reused item. A pending IMAGE before hydration is valid internal state, never a completed result. Unmatched or duplicate UIDs, missing model methods and other wiring faults throw. No second retry or hydration manager.
+- Assessment cache identity and hit validation (`LLMRequestManager`)
+  - Status: `Not implemented` (planned extension of the existing owner)
+  - Current: `generateRequestObjects()` derives the cache key from the reference and student hashes only (`CacheManager.generateCacheKey`), reads hits through `getCachedAssessment()` without validating them, and `_assignAndCacheAssessment()` writes successful LLM data back through `setCachedAssessment()`.
+  - Planned owning path: `src/backend/RequestHandlers/LLMRequestManager.js` — own assessment-specific key derivation and cache-hit result validation beside request generation. Use one versioned assessment cache identity derived from task type, reference hash, template hash and student-content hash, and retain that identity with the request through writeback. Validate cache hits with the same successful-result validator as live LLM output; a malformed cached result is logged and treated as a miss, then assessed normally. Cache only validated numeric LLM results; never cache E or transport failures. Reuse generic `CacheManager.get/put` for storage and leave those generic operations unchanged (no assessment-specific validation inside them). No second cache module, no cache purge: old key-space entries are misses.
+  - Wrapper removal: delete `CacheManager.generateCacheKey()`, `getCachedAssessment()` and `setCachedAssessment()` once `LLMRequestManager` — their sole production caller — moves to generic `get/put`; do not retain dead wrappers for their tests. Generic `get()`/`put()` behaviour is unchanged, and the shared six-hour TTL stays owned and exposed by `CacheManager.CACHE_EXPIRY_SECONDS`; LLM writeback passes that value explicitly to `put`, as other cache users already do, with no duplicated TTL constant or default. Removing the wrappers takes `CacheManager` from 116 to about 75 lines.
+  - Test ownership: move wrapper-specific key and assessment-cache assertions to the LLM cache suite before deleting the obsolete wrapper tests; the generic `CacheManager` suite keeps `get`/`put`, malformed-cache/best-effort and shared-TTL regression coverage.
+- Read serializer for direct full assignment transport (`AssignmentSerialisation.toReadJSON`)
+  - Status: `Implemented` (backend, Section 2)
+  - Owning paths: `src/backend/AssignmentProcessor/Assignment/00_AssignmentSerialisation.js` and the `Assignment.toReadJSON()` facade delegation in `src/backend/AssignmentProcessor/Assignment/index.js`.
+  - Behaviour: `getAssignment_` calls `readRehydrateAssignment()`, then `toReadJSON()`, strips `progressTracker` and applies `DateUtils.deepConvertDates()`. A marker-1 record keeps its serialised submissions and marker. A legacy record receives the detached `projectReassessmentSubmissions(assignment, [], 'full')` output and `assessmentContractVersion: null`, using validated stored submission identities and the definition resolved by `_ensureFullDefinition`; there is no roster or class read.
+  - Persistence stays separate: `toJSON()`/`toPartialJSON()` keep their current-version semantics and, for legacy records, re-emit the opaque stored body/original marker; they never emit projected E. Read projections are not persisted and never reach class persistence preparation. Boundaries are recorded in [rehydration.md](rehydration.md).
+- Legacy reassessment read projection (`AssignmentRehydration.projectReassessmentSubmissions`)
+  - Status: `Implemented` (backend, Section 2)
+  - Owning paths: facade in `src/backend/AssignmentProcessor/Assignment/02_AssignmentRehydration.js`; pure projection/snapshot mapping in `src/backend/AssignmentProcessor/Assignment/02_AssignmentReadProjection.js`, loaded first by lexicographic filename order.
+  - Behaviour: one pure `projectReassessmentSubmissions(assignment, students, form)` operation reused by `ABClassResponseMapper._toReadView` (loaded roster, before definition-key replacement) and `AssignmentSerialisation.toReadJSON()` (direct full read, stored identities, no roster). Each student/task pair becomes a detached `StudentSubmission` with `BaseTaskArtifact` placeholders carrying validation `REASSESSMENT_REQUIRED` E for all three criteria. The backend materialises these entries; the browser normaliser never generates a second reassessment graph.
+  - Detached read snapshots only: no roster refresh on the direct full path, no write-back repair and no current-clock placeholders. Persistence `toJSON()`/`toPartialJSON()` re-emit the opaque stored legacy body and original marker and never emit projected E; class persistence preparation and writes never receive read placeholders. Placeholder timestamps, opaque legacy state and the exact projected model fields are recorded in [rehydration.md](rehydration.md).
+  - Pending: frontend normaliser/consumer activation, synthetic corpus regeneration and the generated-bundle load-order assertion. The SPEC's line-count budgets are approximate planning margins, not implementation claims.
+- One partial-aware restoration path (`AssignmentRehydration` with `AssignmentCurrentRestoration`)
+  - Status: `Implemented` (backend, Section 2; marker-1 records)
+  - Owning paths: `src/backend/AssignmentProcessor/Assignment/02_AssignmentRehydration.js` and `src/backend/AssignmentProcessor/Assignment/02_AssignmentCurrentRestoration.js`.
+  - Behaviour: `_baseFromJSON()` restores marker-1 submissions in one validated pass per identified submission/item with explicit full/partial mode. Invalid items and known tasks with no item become typed `CORRUPT_RECORD` E placeholders; healthy siblings are retained. There is no whole-submission reconstruction, item dropping or plain-object fallback. Untrustworthy submission identity, task universe or timestamps throw. Raw current-version validation stays in the existing model restoration owners (`Assessment`, `StudentSubmissionItem`, `StudentSubmission`); the API boundary does not add a second domain validator. On a current-format full read, null content beside numeric/N marks yields all-three validation `CORRUPT_RECORD` E; confirmed unavailability at the actual extraction boundary instead yields extraction `SOURCE_CONTENT_UNAVAILABLE` E. Partial redaction is exempt from the full-content consistency check. Boundaries are recorded in [rehydration.md](rehydration.md).
+- `StudentSubmission` model domain split (`Implemented`, Section 1)
+  - Owning paths: `src/backend/Models/StudentSubmission/00_StudentSubmissionItem.js` (item model) and `src/backend/Models/StudentSubmission/index.js` (submission entry). The former `src/backend/Models/StudentSubmission.js` is deleted; no compatibility barrel remains.
+  - Public surface: the item file exports `StudentSubmissionItem`; the entry exports `StudentSubmission` and re-exports the item class through the existing guarded `module.exports` block, preserving the public class/namespace API and guarded test exports.
+  - Load order: `00_StudentSubmissionItem.js` sorts before `index.js`, so generated GAS output loads the item model before the submission entry. `scripts/builder/src/steps/backend-copy.spec.ts` asserts that order against the real backend tree, including that both files exist, their copied contents match source, and the obsolete source path is absent. `tests/setupGlobals.js` installs `StudentSubmissionItem` before `StudentSubmission`.
+  - Each file stays within the ≤320-line target.
+- Completed-item coverage materialisation (`AssignmentCurrentRestoration`)
+  - Status: `Implemented` (backend, Section 2; browser normaliser pending)
+  - Owning path: `src/backend/AssignmentProcessor/Assignment/02_AssignmentCurrentRestoration.js` — backend-authoritative missing-task `CORRUPT_RECORD` E materialisation from the assignment's own embedded task snapshot during the one-pass full or partial restoration, before class transport strips that snapshot. The backend materialises coverage E once on marker-1 read paths; browser normalisers will validate the already-materialised result. The browser full-read normaliser has a mandatory defensive same-payload fallback that produces `CORRUPT_RECORD` E from that payload's own definition only if an expected wire item is nonetheless absent; it never overwrites backend-materialised E. The browser partial-read normaliser will validate provided entries only and never infer coverage from the separately loaded, potentially newer definition registry. No new task-universe field or full fetch is needed. Boundaries are recorded in [rehydration.md](rehydration.md).
+- Definition-write artefact invariant (`AssignmentDefinitionValidation`)
+  - Status: `Not implemented` (planned extension of the existing owner)
+  - Planned owning path: `src/backend/y_controllers/AssignmentDefinition/AssignmentDefinitionValidation.js`, to be invoked by the existing `AssignmentDefinitionUpsertOrchestrator` on final resolved tasks before persistence. At new definition writes, non-IMAGE artefacts must have non-null content and a string hash; valid blank TEXT/array templates are not rejected as empty, and pending IMAGE artefacts remain allowed. A formula-free spreadsheet reference task is an unusable shared definition: reject it at the definition-write boundary, before marking and completed-result persistence, so the run blocks without replacing the prior result, and do not let a stored or externally supplied task bypass the check. Blank `[]` templates remain valid. Existing definition-failure reporting and rollback semantics are unchanged; no separate parser/API validators. Boundaries are recorded in [rehydration.md](rehydration.md).
+- Prepared write projections (`ABClassAssignmentOps.persistAssignmentRun` with `ABClassPersistence` preparation)
+  - Status: `Not implemented` (planned extension of the existing owners)
+  - Current: `persistAssignmentRun()` writes the full assignment before constructing its partial, and `ABClassPersistence.persistClassAndPartial()` prepares the class/partials pair only when `saveClass()` runs.
+  - Planned owning path: `src/backend/y_controllers/ABClassController/ABClassAssignmentOps.js` with `ABClassPersistence._prepareClassAndPartial()`/`_prepareClassPartial()` in `src/backend/y_controllers/ABClassController/ABClassPersistence.js` — validate the completed result and preflight four independent payloads before the first collection mutation: the full assignment, its embedded partial, and the prospective updated full-class and class-partials documents. Reuse the existing preparation owner for the class projections rather than adding a second preparation path. Read projections are never inputs to this preparation; it serialises the authoritative assignment's own current-version or opaque legacy state. Keep the write order and non-transactional failure semantics, retain prepared snapshots through each write, and log the failed phase plus whether the full write committed. Boundaries are recorded in [rehydration.md](rehydration.md).
 
 ### Assignment-definition upsert contract note
 
@@ -571,7 +634,7 @@ Current state: `startProcessing` stores context via `GASPropertiesUtils.getUserP
 
 **Method**: `StudentSubmission.upsertItemFromExtraction(taskDef, extractionData)`
 
-- **Location**: `/src/backend/Models/StudentSubmission.js`
+- **Location**: `src/backend/Models/StudentSubmission/index.js`
 - **Process**:
   1. Gets or creates StudentSubmissionItem for taskId
   2. Creates new artifact from extraction data
@@ -581,7 +644,7 @@ Current state: `startProcessing` stores context via `GASPropertiesUtils.getUserP
 
 **Class**: `StudentSubmissionItem`
 
-- **Location**: `/src/backend/Models/StudentSubmission.js` (both classes in the same file)
+- **Location**: `src/backend/Models/StudentSubmission/00_StudentSubmissionItem.js` (item model; `StudentSubmission` itself is the entry in `src/backend/Models/StudentSubmission/index.js`)
 - **Properties**:
 
   ```javascript
@@ -746,7 +809,7 @@ assignment.submissions = [
   - `spag`: Spelling, Punctuation, and Grammar
 - **Assessment Model**:
   - Each assessment is an instance of the `Assessment` class
-  - Contains `score` (0-5 or 'N' for not attempted) and `reasoning` (explanation text); partial hydration summaries remove `reasoning` to keep the payload lightweight
+  - Contains `score` (0-5 or 'N' for not attempted) and `reasoning` (explanation text); partial hydration summaries strip `reasoning` from numeric and `'N'` results only, while an `'E'` result keeps its `reasoning` and `error` cause
   - Stored as JSON in StudentSubmissionItem.assessments
 
 **Class**: `Assessment`
@@ -756,8 +819,9 @@ assignment.submissions = [
 
   ```javascript
   {
-    score: number | string, // 0-5 or 'N' (for not attempted)
-    reasoning: string       // Explanation
+    score: number | 'N' | 'E',      // 0-5, 'N' (not attempted), or 'E' (explicit error)
+    reasoning: string,              // Explanation
+    error?: { stage, code }         // Catalogue cause, emitted only for 'E'
   }
   ```
 
@@ -1040,14 +1104,15 @@ submission.items["task_001"] = {
 }
 ```
 
-> **Note:** Partial summaries (such as the ABClass/JsonDbApp payloads) keep the assessment map but remove each `reasoning` field so only the `score` (and any non-reasoning metadata) remains until a full hydration rehydrates the explanations.
+> **Note:** Partial summaries (such as the ABClass/JsonDbApp payloads) keep the assessment map but strip `reasoning` from numeric and `'N'` entries so only the `score` remains until a full hydration restores the explanations. An `'E'` entry keeps `{ score: 'E', reasoning, error }` so a class-embedded failure retains its explanation and cause.
 
 ### Assessment
 
 ```javascript
 {
-  score: number | string,  // 0-5 or 'N' (for not attempted)
-  reasoning: string        // Explanation text from LLM
+  score: number | 'N' | 'E',      // 0-5, 'N' (not attempted), or 'E' (explicit error)
+  reasoning: string,              // Explanation text from the LLM or catalogue
+  error?: { stage, code }         // Catalogue cause, emitted only for 'E'
 }
 ```
 

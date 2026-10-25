@@ -146,6 +146,11 @@ test.describe('Task preview source link — pointer interaction', () => {
     await expect(action).toHaveAttribute('rel', /noreferrer/);
     await expect(action).toHaveAttribute('href', sheetsCell.expectedSourceUrl);
 
+    // The source action can still be moving with the Popover entrance. Wait for
+    // its existing measured header contract before activating the native link,
+    // so hit testing does not land on the card body during that transition.
+    await measureStablePreviewHeader(popover, 'Sheets merged-table navigation');
+
     const navigation = await captureSourceNavigation(page, async () => action.click());
 
     expect(navigation.url).toBe(sheetsCell.expectedSourceUrl);

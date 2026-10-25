@@ -110,7 +110,7 @@ class ABClassAssignmentOps {
 
       // 2. Generate partial summary and reconstruct as typed instance
       const partialJson = assignment.toPartialJSON();
-      const partialInstance = Assignment.fromJSON(partialJson);
+      const partialInstance = Assignment.fromJSON(partialJson, 'partial');
       partialInstance._hydrationLevel = 'partial';
 
       // 3. Find and replace assignment in abClass.assignments

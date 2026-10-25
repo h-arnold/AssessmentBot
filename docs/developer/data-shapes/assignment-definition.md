@@ -583,13 +583,13 @@ Key notes:
 
 #### Concrete artifact types
 
-| `type` value    | Class                     | `normalizeContent()` behaviour                                                                                                                      | Frontend discriminated union content shape                                 |
-| --------------- | ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
-| `'TEXT'`        | `TextTaskArtifact`        | Returns trimmed LF-only string; null/undefined→null; non-string coerced via `String()`                                                              | `z.string().nullable()`                                                    |
-| `'TABLE'`       | `TableTaskArtifact`       | Returns Markdown table string; null→null (logged); string→trimmed string; 2D array→padded rows→Markdown; 50×50 hard limit; throws on limit exceeded | `z.union([z.string(), z.null()])`                                          |
-| `'SPREADSHEET'` | `SpreadsheetTaskArtifact` | Returns trimmed 2D array; null→null; string→null; formula strings canonicalised (space-stripped, uppercased); trailing empty rows/cols trimmed      | `z.array(z.array(z.union([z.number(), z.string(), z.null()]))).nullable()` |
-| `'IMAGE'`       | `ImageTaskArtifact`       | Returns trimmed string (data URL) or null; null→null; non-string→null; empty→null                                                                   | `z.string().nullable()`                                                    |
-| `'base'`        | `BaseTaskArtifact`        | Returns raw content as-is                                                                                                                           | `z.unknown()`                                                              |
+| `type` value    | Class                     | `normalizeContent()` behaviour                                                                                                                                                 | Frontend discriminated union content shape                                 |
+| --------------- | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------- |
+| `'TEXT'`        | `TextTaskArtifact`        | Returns trimmed LF-only string; null/undefined→null; non-string coerced via `String()`                                                                                         | `z.string().nullable()`                                                    |
+| `'TABLE'`       | `TableTaskArtifact`       | Returns Markdown table string; null→null (logged); string→trimmed string; 2D array→padded rows→Markdown; 50×50 hard limit; throws on limit exceeded                            | `z.union([z.string(), z.null()])`                                          |
+| `'SPREADSHEET'` | `SpreadsheetTaskArtifact` | Returns trimmed 2D array; null→null; string→null; fully blank/all-null grid→`[]`; formula strings canonicalised (space-stripped, uppercased); trailing empty rows/cols trimmed | `z.array(z.array(z.union([z.number(), z.string(), z.null()]))).nullable()` |
+| `'IMAGE'`       | `ImageTaskArtifact`       | Returns trimmed string (data URL) or null; null→null; non-string→null; empty→null                                                                                              | `z.string().nullable()`                                                    |
+| `'base'`        | `BaseTaskArtifact`        | Returns raw content as-is                                                                                                                                                      | `z.unknown()`                                                              |
 
 Key notes:
 
@@ -598,6 +598,7 @@ Key notes:
 - `contentHash` is `string|null` on all full variants and omitted entirely from the partial schema.
 - The `ArtifactFactory.create()` dispatches on `type` (uppercased): TEXT→TextTaskArtifact, TABLE→TableTaskArtifact, SPREADSHEET→SpreadsheetTaskArtifact, IMAGE→ImageTaskArtifact, anything else→BaseTaskArtifact (fallback).
 - TextTaskArtifact normalises CRLF/CR→LF and trims; SpreadsheetTaskArtifact canonicalises formula strings (strips non-quoted spaces, uppercases); TableTaskArtifact enforces a 50×50 size limit; ImageTaskArtifact provides `setContentFromBlob()` for binary-to-data-URL conversion.
+- A successfully read blank/all-null `SPREADSHEET` grid normalises to `[]` in `SpreadsheetTaskArtifact.normalizeContent()`, including a blank template, and therefore receives the normal hash of `[]` through construction, persistence and restoration. A literal `null` remains unavailable content, not blank content.
 - The partial variant (`BaseTaskArtifactPartialSchema` in `classDetailService.zod.ts`) omits `content` and `contentHash` entirely regardless of type.
 
 ---
@@ -717,6 +718,95 @@ Key notes:
 6. **`AssignmentDefinitionPartialSchema` uses `z.array(z.string())` for `alternateTitles`/`alternateTopics` while full schema uses `z.array(TrimmedNonEmptyStringSchema)`.**
    Same pattern as above: partial is more permissive.
    **Classification: Aligned** — no risk of breakage.
+
+## Planned contract additions — definition artefact nullability (Not implemented)
+
+> **Status: partially implemented.** The model-level blank/all-null `SPREADSHEET` canonicalisation
+> (`[]` plus the normal `[]` hash, including blank templates) is delivered through
+> `SpreadsheetTaskArtifact.normalizeContent()`. The write-time artefact-content/hash invariant,
+> formula-free reference rejection, completed-assignment gates and run-start gates remain
+> **`Not implemented`**. These entries record the target contract from `SPEC.md` (explicit
+> Assessment errors and targeted pipeline simplification); they do **not** describe the remaining
+> unimplemented code. The implemented tables above remain authoritative until the corresponding
+> completion gate lands.
+
+### Definition artefact nullability and pending image exception (Not implemented)
+
+The planned nullability split between the independent definition store and a completed
+assignment result is:
+
+| Boundary                                    | Planned contract                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      | Current position                                                                                                   |
+| ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `assignment_definitions` registry           | Unchanged. Artefact `content`/`contentHash` are redacted by `toPartialJSON()`. A `null` here is deliberate redaction, never evidence of extraction failure.                                                                                                                                                                                                                                                                                                                                                                           | Implemented (unchanged)                                                                                            |
+| `assdef_full_<definitionKey>` full cache    | May legitimately retain a **pending `IMAGE`** reference/template artefact with `content: null` and `contentHash: null` before an assessment run. This is the only pending-artefact exception and must not be forbidden.                                                                                                                                                                                                                                                                                                               | Current store permits it; no explicit pending-image rule is documented today                                       |
+| New definition writes                       | Non-`IMAGE` artefacts must already have non-null content and a string hash. Valid blank `TEXT`/array templates are not rejected as empty. A pending `IMAGE` may remain null until hydration. Owned by `AssignmentDefinitionValidation`; the existing `AssignmentDefinitionUpsertOrchestrator` invokes it on final resolved tasks before persistence, retaining existing error reporting and rollback. Old definitions that cannot meet these invariants may be reparsed through the existing definition workflow; no marker is added. | No write-time artefact-content/hash invariant is enforced today                                                    |
+| Formula-free `SPREADSHEET` reference task   | Invalid shared definition, not a valid blank template. Reject it before assessing students and block the run without replacing the prior result. A stored or externally supplied task must not bypass the check. Blank templates `[]` remain valid; blank student ranges retain the current formula scores. This is a shared-definition/run failure, never a student `E`.                                                                                                                                                             | No explicit formula-free-reference check today                                                                     |
+| Completed full assignment (`assign_full_*`) | Required reference/template artefacts must have usable, non-null content/hash after hydration. A completed result with an unusable required shared artefact is invalid and must not be persisted as complete.                                                                                                                                                                                                                                                                                                                         | Current `_validateFull()` checks only `documentType` and the two document IDs; artefact content/hash are not gated |
+| Assessment-run start / completion           | Invalid shared definitions and failed hydration of required reference/template images block the run and preserve the prior saved assignment.                                                                                                                                                                                                                                                                                                                                                                                          | Not implemented as a completion gate                                                                               |
+
+Planned rules:
+
+- The definition store's pending-image state is **internal and pre-run**. It is not a terminal
+  result and must not be converted into a student `E` or `N`. Only pending `IMAGE` artefacts may
+  legitimately remain null in this store.
+- At new definition writes, non-`IMAGE` artefacts must already have non-null content and a string
+  hash. Valid blank `TEXT`/array templates are not rejected as empty. A pending `IMAGE` may remain
+  null until hydration. `AssignmentDefinitionValidation` owns this definition-write invariant;
+  the existing `AssignmentDefinitionUpsertOrchestrator` invokes it on the final resolved tasks
+  before persistence, using existing definition-failure reporting. Do not add separate
+  parser/API validators or change definition rollback semantics.
+- A successfully read blank/all-null `SPREADSHEET` grid is canonicalised to `[]` with the normal
+  hash of `[]`, including a blank template. Literal `null` means unavailable spreadsheet content,
+  not blank content. **Implemented at the model normaliser** and applied through construction,
+  persistence and restoration; existing normalisation of populated formulas is unchanged.
+  Submission-side content/hash rules are owned by
+  [Contract: Assignment §Source artefact content and hash semantics](assignment.md#source-artefact-content-and-hash-semantics-not-implemented).
+- A spreadsheet reference task with zero assessable formulae is an invalid shared definition, not
+  a valid blank template. It blocks the run before student marking or completed persistence and
+  preserves the prior saved assignment; it is a shared-definition/run failure, never a student
+  `E`. The existing parser normally creates no task for a formula-free reference; a stored or
+  externally supplied task must not bypass this check and leave incomplete results. Blank
+  templates canonicalised to `[]` remain valid, and blank student ranges retain the current
+  formula scores (completeness `0`, accuracy `0`, SPaG `N`). `AssignmentDefinitionValidation`
+  owns this definition-write invariant; the existing `AssignmentDefinitionUpsertOrchestrator`
+  invokes it on final resolved tasks before persistence, using existing definition-failure
+  reporting.
+- The strict non-null requirement applies to **completed full assignments**, not to the
+  independent definition store. A definition can legitimately exist before its images are
+  hydrated.
+- Submission artefact placeholders and the assessment-stage `E`/null-content corruption rule
+  belong to the assignment read projection, not the definition store: see
+  [Contract: Assignment §Source artefact content and hash semantics](assignment.md#source-artefact-content-and-hash-semantics-not-implemented).
+  The definition store never materialises reassessment `E` entries.
+- The completed-assignment completion/run gate remains owned by the assignment-assessment
+  pipeline. The definition-write invariant above is a separate domain check owned by
+  `AssignmentDefinitionValidation`, not a completed-result gate. `AssignmentDefinition._validateFull()`
+  continues to validate the document type and document IDs only.
+- A failed required shared-image hydration blocks the run and leaves the previously saved
+  assignment untouched; it does not fabricate per-student errors.
+- Old definitions that cannot meet the non-`IMAGE` invariant may be reparsed through the existing
+  definition workflow. No result-version marker is added to definitions.
+- Frontend `AssignmentDefinitionSchema` / `BaseTaskArtifactSchema` content nullability is
+  unchanged. Completed-assignment content guarantees are enforced at the backend completion
+  boundary, not by widening or narrowing the definition transport schemas.
+
+Alignment concerns:
+
+1. **Resolved — non-`IMAGE` nullability at definition writes.** `SPEC.md` permits only a pending
+   `IMAGE` artefact to remain null in the definition store; non-`IMAGE` artefacts must have
+   non-null content and a string hash at new definition writes. `AssignmentDefinitionValidation`
+   owns that invariant and is invoked by the existing `AssignmentDefinitionUpsertOrchestrator`
+   on final resolved tasks before persistence, retaining existing error reporting and rollback
+   semantics. The earlier open question about non-`IMAGE` artefacts is therefore closed, not
+   invented here.
+2. **Current full-cache store has no enforcement either way.** The planned new-definition-write
+   invariant and the completed-assignment completion gate are **Misaligned** with current code
+   until implemented.
+3. **Partially resolved — model-level blank-grid canonicalisation is implemented; the remaining gates are not.** A successfully read blank/all-null `SPREADSHEET` grid now canonicalises to `[]` with the normal `[]` hash through `SpreadsheetTaskArtifact.normalizeContent()` at construction, persistence and restoration, so literal `null` remains reserved for unavailable content. The write-time artefact-content/hash invariant, formula-free-reference rejection and completed-assignment gates are **Misaligned** until implemented.
+4. **Current definition validation does not reject a formula-free spreadsheet reference task.**
+   The planned shared-definition/run gate is **Misaligned** until implemented. It is a
+   shared-definition failure, not a student `E`; blank templates `[]` and blank student formula
+   scoring remain valid.
 
 ---
 

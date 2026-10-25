@@ -48,7 +48,7 @@ function installABClassControllerStub() {
 }
 
 /**
- * Builds a representative Assignment.toJSON() payload for test assertions.
+ * Builds a representative Assignment read-serialiser payload for assertions.
  *
  * @param {Object} [overrides] - Optional field overrides.
  * @returns {Object} Representative payload.
@@ -216,9 +216,11 @@ describe('Api/getAssignment transport contract', () => {
     const { readRehydrateAssignment } = installABClassControllerStub();
     const { getAssignment_ } = loadModule();
 
-    const expectedPayload = buildRepresentativePayload({});
+    const expectedPayload = buildRepresentativePayload({ readOnly: true });
+    const persistencePayload = buildRepresentativePayload({ persistenceOnly: true });
     const mockAssignment = {
-      toJSON: vi.fn(() => ({ ...expectedPayload })),
+      toJSON: vi.fn(() => ({ ...persistencePayload })),
+      toReadJSON: vi.fn(() => ({ ...expectedPayload })),
     };
 
     readRehydrateAssignment.mockReturnValue(mockAssignment);
@@ -228,8 +230,10 @@ describe('Api/getAssignment transport contract', () => {
     // (a) readRehydrateAssignment called with the correct (courseId, assignmentId)
     expect(readRehydrateAssignment).toHaveBeenCalledWith('course-001', 'assign-001');
 
-    // (b) returned data matches the toJSON() output
+    // (b) returned data matches the approved read serializer output
     expect(result).toEqual(expectedPayload);
+    expect(mockAssignment.toReadJSON).toHaveBeenCalledTimes(1);
+    expect(mockAssignment.toJSON).not.toHaveBeenCalled();
 
     // (d) ABLogger.getInstance().info called for both log points
     expect(abLoggerSpies.info).toHaveBeenCalledWith(
@@ -253,7 +257,7 @@ describe('Api/getAssignment transport contract', () => {
     const createdAt = new Date('2026-06-15T10:00:00.000Z');
 
     const mockAssignment = {
-      toJSON: vi.fn(() => ({
+      toReadJSON: vi.fn(() => ({
         courseId: 'course-001',
         assignmentId: 'assign-001',
         assignmentName: 'Test Assignment',
@@ -268,6 +272,7 @@ describe('Api/getAssignment transport contract', () => {
         assignmentDefinition: {},
       })),
     };
+    mockAssignment.toJSON = vi.fn(() => mockAssignment.toReadJSON());
 
     readRehydrateAssignment.mockReturnValue(mockAssignment);
 
@@ -292,7 +297,7 @@ describe('Api/getAssignment transport contract', () => {
     const submissionUpdatedAt = new Date('2026-07-07T07:49:29.872Z');
 
     const mockAssignment = {
-      toJSON: vi.fn(() => ({
+      toReadJSON: vi.fn(() => ({
         courseId: 'course-001',
         assignmentId: 'assign-001',
         assignmentName: 'Test Assignment',
@@ -310,6 +315,7 @@ describe('Api/getAssignment transport contract', () => {
         assignmentDefinition: {},
       })),
     };
+    mockAssignment.toJSON = vi.fn(() => mockAssignment.toReadJSON());
 
     readRehydrateAssignment.mockReturnValue(mockAssignment);
 
@@ -335,7 +341,7 @@ describe('Api/getAssignment transport contract', () => {
     const { getAssignment_ } = loadModule();
 
     const mockAssignment = {
-      toJSON: vi.fn(() => ({
+      toReadJSON: vi.fn(() => ({
         courseId: 'course-001',
         assignmentId: 'assign-001',
         assignmentName: 'Test Assignment',
@@ -351,6 +357,7 @@ describe('Api/getAssignment transport contract', () => {
         progressTracker: { someTrackerInstance: true },
       })),
     };
+    mockAssignment.toJSON = vi.fn(() => mockAssignment.toReadJSON());
 
     readRehydrateAssignment.mockReturnValue(mockAssignment);
 

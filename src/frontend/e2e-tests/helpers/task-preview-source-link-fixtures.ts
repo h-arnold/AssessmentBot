@@ -88,6 +88,32 @@ const definitionPartials =
   assignmentDefinitionPartialsRaw as unknown as ReadonlyArray<CanonicalDefinitionPartial>;
 const assignmentsByKey = assignmentsByKeyRaw as unknown as Record<string, unknown>;
 
+/**
+ * Select a non-empty canonical IMAGE body from a schema-valid full assignment.
+ * @returns {string} Canonical image body.
+ */
+function requireCanonicalImageSource(): { content: string; contentHash: string } {
+  for (const rawAssignment of Object.values(assignmentsByKey)) {
+    const assignment = AssignmentFullSchema.parse(rawAssignment);
+    for (const submission of assignment.submissions) {
+      for (const item of Object.values(submission.items)) {
+        if (
+          item.artifact.type === 'IMAGE' &&
+          typeof item.artifact.content === 'string' &&
+          item.artifact.contentHash
+        ) {
+          return { content: item.artifact.content, contentHash: item.artifact.contentHash };
+        }
+      }
+    }
+  }
+  throw new Error(
+    'task-preview-source-link-fixtures: canonical corpus has no usable IMAGE source.'
+  );
+}
+
+const CANONICAL_IMAGE_SOURCE = requireCanonicalImageSource();
+
 // ---------------------------------------------------------------------------
 // Journey identifiers
 // ---------------------------------------------------------------------------
@@ -361,6 +387,38 @@ export function withSourceLocationOverride(
 }
 
 /**
+ * Build the existing unavailable-source journey as an explicit acquisition failure.
+ * Every known item in the source-less submission shares the selected acquisition cause.
+ * @param {AssignmentFull} assignment Canonical assignment to clone.
+ * @returns {AssignmentFull} Coherent source-unreadable acquisition record.
+ */
+export function withUnreadableSubmissionSource(assignment: AssignmentFull): AssignmentFull {
+  const draft = structuredClone(assignment);
+  const submission = selectPrimarySubmission(draft);
+  submission.documentId = null;
+  for (const item of Object.values(submission.items)) {
+    item.artifact.type = 'base';
+    item.artifact.documentId = null;
+    item.artifact.pageId = null;
+    item.artifact.content = null;
+    item.artifact.contentHash = null;
+    item.artifact.metadata = {};
+    item.feedback = {};
+    const acquisitionError = {
+      score: 'E' as const,
+      reasoning: 'The submitted document could not be accessed.',
+      error: { stage: 'acquisition' as const, code: 'SOURCE_UNREADABLE' as const },
+    };
+    item.assessments = {
+      completeness: { ...acquisitionError },
+      accuracy: { ...acquisitionError },
+      spag: { ...acquisitionError },
+    };
+  }
+  return AssignmentFullSchema.parse(draft);
+}
+
+/**
  * Build the boundary variant whose Sheets artefact carries the numeric gid `"0"`.
  *
  * @returns {AssignmentFull} A detached Sheets assignment using the valid `"0"` tab.
@@ -385,7 +443,7 @@ export type SourceLinkBodyKind = 'TEXT' | 'IMAGE' | 'TABLE';
  * artefact content itself, not a constant from another fixture.
  */
 const REUSED_UNSUPPORTED_BODY: Readonly<Partial<Record<SourceLinkBodyKind, string>>> = {
-  IMAGE: HEATMAP_UNSUPPORTED_ARTIFACT_CONTENT.IMAGE,
+  IMAGE: CANONICAL_IMAGE_SOURCE.content,
   TABLE: HEATMAP_UNSUPPORTED_ARTIFACT_CONTENT.TABLE,
 };
 
@@ -394,9 +452,8 @@ const REUSED_UNSUPPORTED_BODY: Readonly<Partial<Record<SourceLinkBodyKind, strin
  * the requested kind.
  *
  * @remarks
- * The committed synthetic `small` profile ships TEXT-only artefacts, so the
- * image and table renderers can only be reviewed through this recorded local
- * content exception (see `ACTION_PLAN.md`). The record itself is still the
+ * IMAGE content comes from a canonical full record; TABLE remains the documented
+ * local unsupported-capability exception. The record itself is still the
  * canonical one: everything except the displayed artefact's `type` and
  * `content` stays untouched, so the derived source URL, score and accessible
  * label remain canonical.
@@ -431,6 +488,9 @@ export function withArtifactBody(
   }
   item.artifact.type = bodyKind;
   item.artifact.content = content;
+  if (bodyKind === 'IMAGE') {
+    item.artifact.contentHash = CANONICAL_IMAGE_SOURCE.contentHash;
+  }
 
   return AssignmentFullSchema.parse(draft);
 }

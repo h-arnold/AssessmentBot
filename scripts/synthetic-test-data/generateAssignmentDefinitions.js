@@ -1,4 +1,4 @@
-import { isoAt } from './deterministicPrimitives.js';
+import { isoAt, toImageDataUrl } from './deterministicPrimitives.js';
 
 const DOCUMENT_TYPES = ['SLIDES', 'SHEETS'];
 const COMPACT_DEFINITION_MINIMUM = 3;
@@ -10,6 +10,7 @@ const MAX_GENERATED_WEIGHTING = 5;
 const MINUTES_PER_DEFINITION = 10;
 const TEMPLATE_OFFSET_MINUTES = 4;
 const UPDATE_OFFSET_MINUTES = 2;
+const ARTEFACT_BODY_TYPES = ['TEXT', 'IMAGE', 'SPREADSHEET'];
 
 /**
  * Returns the number of full assignment definitions to generate for a profile.
@@ -37,24 +38,44 @@ function resolveTasksPerDefinition(profileDefinition) {
 }
 
 /**
+ * Builds the raw body for one generated artefact type.
+ *
+ * @param {string} type Artefact type (`TEXT`, `IMAGE`, or `SPREADSHEET`).
+ * @param {string} bodyText Deterministic plain-text body seed.
+ * @returns {string|Array<Array<string|number|null>>} Usable raw body for the type.
+ */
+function buildArtefactBody(type, bodyText) {
+  if (type === 'IMAGE') return toImageDataUrl(bodyText);
+  if (type === 'SPREADSHEET') {
+    return [
+      [bodyText, 1],
+      [null, `=SUM(B1:B2)`],
+    ];
+  }
+  return bodyText;
+}
+
+/**
  * Builds a full transport-shaped task artifact.
  *
  * @param {object} options Artifact inputs.
  * @param {string} options.taskId Parent task ID.
  * @param {string} options.role Artifact role (`reference` or `template`).
+ * @param {string} options.type Artefact body type (`TEXT`, `IMAGE`, or `SPREADSHEET`).
  * @returns {object} A full `BaseTaskArtifact`-shaped artifact.
  */
-function buildDefinitionArtifact({ taskId, role }) {
+function buildDefinitionArtifact({ taskId, role, type }) {
+  const bodyText = `${role} synthetic content for ${taskId}`;
   return {
     taskId,
     role,
     pageId: `page-${taskId}`,
     documentId: `document-${role}-${taskId}`,
-    content: `${role} synthetic content for ${taskId}`,
+    content: buildArtefactBody(type, bodyText),
     contentHash: `hash-${role}-${taskId}`,
     metadata: {},
     uid: `uid-${role}-${taskId}`,
-    type: 'TEXT',
+    type,
   };
 }
 
@@ -68,6 +89,7 @@ function buildDefinitionArtifact({ taskId, role }) {
  */
 function buildTask({ definitionIndex, taskIndex }) {
   const taskId = `task-${definitionIndex}-${taskIndex}`;
+  const type = ARTEFACT_BODY_TYPES[(definitionIndex + taskIndex) % ARTEFACT_BODY_TYPES.length];
   return {
     id: taskId,
     taskTitle: `Synthetic Task ${definitionIndex + 1}.${taskIndex + 1}`,
@@ -77,8 +99,8 @@ function buildTask({ definitionIndex, taskIndex }) {
     taskWeighting: 1,
     index: taskIndex,
     artifacts: {
-      reference: [buildDefinitionArtifact({ taskId, role: 'reference' })],
-      template: [buildDefinitionArtifact({ taskId, role: 'template' })],
+      reference: [buildDefinitionArtifact({ taskId, role: 'reference', type })],
+      template: [buildDefinitionArtifact({ taskId, role: 'template', type })],
     },
   };
 }

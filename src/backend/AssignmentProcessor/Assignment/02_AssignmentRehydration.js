@@ -10,14 +10,28 @@
  */
 const AssignmentRehydration = {
   /**
+   * Builds detached placeholders for a legacy read; historical assessment bodies are ignored.
+   * @param {object} assignment - Raw or opaque legacy assignment snapshot.
+   * @param {Array<object>} students - Loaded roster for partial projections.
+   * @param {'full'|'partial'} form - Projection representation.
+   * @returns {StudentSubmission[]} Detached reassessment submissions.
+   */
+  projectReassessmentSubmissions(assignment, students, form) {
+    return AssignmentReadProjection.projectReassessmentSubmissions(assignment, students, form);
+  },
+  /**
    * Internal helper to restore base Assignment fields from JSON data.
    * Used by both base Assignment and subclass fromJSON methods.
    * @param {object} data - JSON data object.
+   * @param {string} representationMode - Representation mode used to restore submissions.
    * @returns {Assignment} Assignment instance with base fields populated.
    */
-  _baseFromJSON(data) {
+  _baseFromJSON(data, representationMode) {
     if (!data || typeof data !== 'object')
       throw new Error('Invalid data supplied to Assignment._baseFromJSON');
+
+    const isCurrent = data.assessmentContractVersion === 1;
+    if (isCurrent) AssignmentCurrentRestoration._validateCurrentAssignment(data);
 
     if (!data.courseId || !data.assignmentId) {
       throw new Error('courseId and assignmentId are required fields in Assignment data');
@@ -37,11 +51,22 @@ const AssignmentRehydration = {
       ? AssignmentDefinition.fromJSON(data.assignmentDefinition)
       : null;
     inst.submissions = [];
+    if (isCurrent) {
+      inst.assessmentContractVersion = 1;
+    } else {
+      inst._legacyPersistenceSnapshot = AssignmentSerialisation.copyJsonSnapshot({
+        submissions: data.submissions === undefined ? [] : data.submissions,
+        markerPresent: Object.prototype.hasOwnProperty.call(data, 'assessmentContractVersion'),
+        marker: data.assessmentContractVersion,
+      });
+    }
     // Do not set transient hydration marker here — remain absent/undefined so
     // that deserialized objects don't claim a persisted hydration level.
 
-    if (Array.isArray(data.submissions)) {
-      data.submissions.forEach((subObject) => Assignment._rehydrateSubmission(inst, subObject));
+    if (isCurrent && Array.isArray(data.submissions)) {
+      data.submissions.forEach((subObject) =>
+        this._rehydrateSubmission(inst, subObject, data, representationMode)
+      );
     }
 
     // restore progress tracker singleton if available
@@ -60,6 +85,8 @@ const AssignmentRehydration = {
       'students', // Transient, don't restore
       'progressTracker', // Transient, don't restore
       '_hydrationLevel', // Transient, don't restore
+      'assessmentContractVersion',
+      '_legacyPersistenceSnapshot',
     ]);
     Object.entries(data).forEach(([key, value]) => {
       if (!knownFields.has(key)) {
@@ -78,104 +105,39 @@ const AssignmentRehydration = {
    * Handles StudentSubmission deserialisation or falls back to plain object reconstruction.
    * @param {Assignment} inst - The Assignment instance to add the submission to.
    * @param {object} subObject - The submission object to rehydrate.
+   * @param {object} assignmentData - The assignment JSON containing restoration metadata.
+   * @param {string} representationMode - Representation mode used to restore submissions.
+   * @returns {void}
    */
-  _rehydrateSubmission(inst, subObject) {
-    const identifier = subObject?.studentId || subObject?.userId;
-
-    try {
-      const submission = StudentSubmission.fromJSON(subObject);
-      inst.submissions.push(submission);
+  _rehydrateSubmission(inst, subObject, assignmentData, representationMode) {
+    if (assignmentData?.assessmentContractVersion === 1) {
+      this._rehydrateCurrentSubmission(
+        inst,
+        subObject,
+        assignmentData,
+        representationMode || assignmentData.representationMode || 'full'
+      );
       return;
-    } catch (error) {
-      // The model layer refused the submission (typically a malformed/legacy
-      // artifact). Surface the corruption with enough context to diagnose, then
-      // fall back to a resilient reconstruction below rather than throwing —
-      // throwing here would lose every student's data for the whole assignment.
-      ABLogger.getInstance().warn(
-        'rehydrateAssignment: submission deserialisation failed; reconstructing resiliently',
-        {
-          studentId: identifier,
-          err: error,
-          corruptArtifacts: this._summariseCorruptArtifacts(subObject),
-        }
-      );
     }
-
-    try {
-      const submission = new StudentSubmission(
-        identifier || null,
-        inst.assignmentId,
-        subObject.documentId || null,
-        subObject.studentName || subObject.name || null
-      );
-      if (subObject.createdAt) {
-        submission.createdAt =
-          subObject.createdAt instanceof Date
-            ? subObject.createdAt.toISOString()
-            : subObject.createdAt;
-      }
-      if (subObject.updatedAt) {
-        submission.updatedAt =
-          subObject.updatedAt instanceof Date
-            ? subObject.updatedAt.toISOString()
-            : subObject.updatedAt;
-      }
-      const items = subObject.items || {};
-      Object.entries(items).forEach(([taskId, itemJson]) => {
-        try {
-          submission.items[taskId] = StudentSubmissionItem.fromJSON(itemJson);
-        } catch (itemError) {
-          // A single corrupt item must not break serialisation of the whole
-          // submission. Drop it but log it so the corruption is visible.
-          ABLogger.getInstance().warn(
-            'rehydrateAssignment: dropped corrupt submission item during resilient reconstruction',
-            {
-              studentId: identifier,
-              taskId,
-              itemId: itemJson?.id,
-              artifactType: itemJson?.artifact?.type,
-              err: itemError,
-            }
-          );
-        }
-      });
-      inst.submissions.push(submission);
-    } catch (error_) {
-      // As a last resort, never return a raw object: that bypasses the model's
-      // serialisation contract and reproduces the transport validation failure.
-      // Log and omit the submission instead.
-      ABLogger.getInstance().error(
-        'rehydrateAssignment: submission reconstruction failed; submission omitted',
-        { studentId: identifier, err: error_ }
-      );
-    }
+    const submission = StudentSubmission.fromJSON(subObject);
+    inst.submissions.push(submission);
   },
 
   /**
-   * Summarises artifacts in a submission JSON that are missing the fields
-   * required for the model layer to accept them. Used only for diagnostic
-   * logging so corruption is visible without dumping full payloads.
-   * @param {Object} subObject - Raw submission JSON.
-   * @returns {Array<{taskId: string, itemId: (string|undefined), missing: string[]}>} A list of items whose artifact is missing one or more required fields.
+   * Preserve the rehydration method seam while delegating current records.
+   * @param {Assignment} inst - The Assignment instance receiving the submission.
+   * @param {object} raw - The raw submission data to restore.
+   * @param {object} assignmentData - The assignment JSON containing restoration metadata.
+   * @param {string} mode - Representation mode used to restore the submission.
+   * @returns {void} The restoration result.
    */
-  _summariseCorruptArtifacts(subObject) {
-    const items = subObject?.items;
-    if (!items || typeof items !== 'object') return [];
-    return Object.entries(items)
-      .map(([taskId, item]) => {
-        const art = item?.artifact;
-        const missing = [];
-        if (!art || typeof art !== 'object') {
-          missing.push('artifact');
-        } else {
-          if (art.contentHash === undefined) missing.push('contentHash');
-          if (art.content === undefined) missing.push('content');
-          if (art.type === undefined) missing.push('type');
-          if (art.role === undefined) missing.push('role');
-        }
-        return { taskId, itemId: item?.id, missing };
-      })
-      .filter((entry) => entry.missing.length > 0);
+  _rehydrateCurrentSubmission(inst, raw, assignmentData, mode) {
+    return AssignmentCurrentRestoration._rehydrateCurrentSubmission(
+      inst,
+      raw,
+      assignmentData,
+      mode
+    );
   },
 };
 

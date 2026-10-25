@@ -4,7 +4,7 @@
  */
 
 const { TaskDefinition } = require('#backend/Models/TaskDefinition.js');
-const { StudentSubmission } = require('#backend/Models/StudentSubmission.js');
+const { StudentSubmission } = require('#backend/Models/StudentSubmission/index.js');
 const { ArtifactFactory } = require('#backend/Models/Artifacts/index.js');
 const { AssignmentDefinition } = require('#backend/Models/AssignmentDefinition.js');
 const Assignment = require('#backend/AssignmentProcessor/Assignment/index.js');

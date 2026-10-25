@@ -7,7 +7,7 @@ import {
   SpreadsheetTaskArtifact,
   ImageTaskArtifact,
 } from '#backend/Models/Artifacts/index.js';
-import { StudentSubmission } from '#backend/Models/StudentSubmission.js';
+import { StudentSubmission } from '#backend/Models/StudentSubmission/index.js';
 import { createTaskDefinition } from '../helpers/modelFactories.js';
 
 describe('TaskDefinition, task artifacts and student submissions', () => {

@@ -184,6 +184,11 @@ function toFullAssignment(assignment, definition) {
     courseId: assignment.courseId,
     assignmentId: assignment.assignmentId,
     assignmentName: assignment.assignmentName,
+    // The persisted assessment marker (or its deliberate deviation) is projected
+    // from the persistence source exactly; no default is fabricated here.
+    ...(Object.hasOwn(assignment, 'assessmentContractVersion')
+      ? { assessmentContractVersion: assignment.assessmentContractVersion }
+      : {}),
     dueDate: assignment.dueDate,
     updatedAt: assignment.updatedAt,
     createdAt: assignment.createdAt,

@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { withGlobalMocks } from '../helpers/globalMockManager.js';
 
-// Hermetic behaviour coverage for Assignment factory routing, serialisation
-// fallbacks and rehydration resilience without invoking GAS services.
+// Hermetic behaviour coverage for Assignment factory routing and serialisation
+// without invoking GAS services.
 describe('AssignmentFactory behaviour', () => {
   let restoreGlobals;
   let mockTracker;
@@ -134,7 +134,7 @@ describe('AssignmentFactory behaviour', () => {
 });
 
 describe('AssignmentSerialisation behaviour', () => {
-  it('serialises full assignments with fallbacks for plain submissions', () => {
+  it('serialises current typed submissions and rejects plain submission fallbacks', () => {
     const serialisation = new globalThis.AssignmentSerialisation({
       courseId: 'course-one',
       assignmentId: 'assignment-one',
@@ -150,31 +150,39 @@ describe('AssignmentSerialisation behaviour', () => {
           tasks: { task_one: true },
         }),
       },
-      submissions: [
-        { toJSON: () => ({ studentId: 's-one' }) },
-        {
-          studentId: 's-two',
-          documentId: 'doc-two',
-          score: 3,
-          feedback: { comment: 'good' },
-          updatedAt: new Date('2026-06-07T08:09:10.000Z'),
-          extra: 'kept',
-        },
-        {
-          userId: 's-three',
-          updatedAt: 'already-a-string',
-        },
-      ],
+      submissions: [{ toJSON: () => ({ studentId: 's-one' }) }],
+      assessmentContractVersion: 1,
     });
     const json = serialisation.toJSON();
     expect(json.courseId).toBe('course-one');
+    expect(json.assignmentId).toBe('assignment-one');
+    expect(json.dueDate).toBe('2026-02-03T04:05:06.000Z');
+    expect(json.updatedAt).toBe('2026-04-05T06:07:08.000Z');
+    expect(json.createdAt).toBe('2026-01-02T03:04:05.000Z');
     expect(json.documentType).toBe('SLIDES');
-    expect(json.submissions).toHaveLength(3);
+    expect(json.referenceDocumentId).toBe('ref-doc');
+    expect(json.templateDocumentId).toBe('tpl-doc');
+    expect(json.tasks).toEqual({ task_one: true });
+    expect(json.submissions).toHaveLength(1);
     expect(json.submissions[0]).toEqual({ studentId: 's-one' });
-    expect(json.submissions[1].documentId).toBe('doc-two');
-    expect(json.submissions[1].extra).toBe('kept');
-    expect(json.submissions[2].studentId).toBe('s-three');
+    expect(json.assessmentContractVersion).toBe(1);
 
+    // Keep the rejection probe separate so it cannot skip the valid serialization assertions.
+    const invalidSerialisation = new globalThis.AssignmentSerialisation({
+      courseId: 'course-one',
+      assignmentId: 'assignment-one',
+      assignmentName: 'Assignment One',
+      dueDate: null,
+      updatedAt: null,
+      createdAt: new Date('2026-01-02T03:04:05.000Z'),
+      assignmentDefinition: {
+        toJSON: () => ({ documentType: 'SLIDES', tasks: { task_one: true } }),
+      },
+      submissions: [
+        { studentId: 's-two', documentId: 'doc-two', score: 3, extra: 'must not persist' },
+      ],
+      assessmentContractVersion: 1,
+    });
     expect(serialisation._extractFullDefinitionFields(null)).toEqual({
       documentType: null,
       referenceDocumentId: null,
@@ -185,6 +193,8 @@ describe('AssignmentSerialisation behaviour', () => {
     expect(serialisation._extractPartialRootFields({ documentType: 'SHEETS' })).toEqual({
       documentType: 'SHEETS',
     });
+
+    expect(() => invalidSerialisation.toJSON()).toThrow();
   });
 
   it('serialises partial assignments with redacted definitions', () => {
@@ -208,20 +218,10 @@ describe('AssignmentSerialisation behaviour', () => {
 
 describe('AssignmentRehydration behaviour', () => {
   let restoreGlobals;
-  let warnings;
-  let errors;
 
   beforeEach(() => {
-    warnings = [];
-    errors = [];
-    const { StudentSubmissionItem } = require('#backend/Models/StudentSubmission.js');
+    const { StudentSubmissionItem } = require('#backend/Models/StudentSubmission/index.js');
     const mockContext = withGlobalMocks({
-      ABLogger: () => ({
-        getInstance: () => ({
-          warn: (...args) => warnings.push(args),
-          error: (...args) => errors.push(args),
-        }),
-      }),
       ProgressTracker: () => ({
         getInstance: () => ({}),
       }),
@@ -281,21 +281,6 @@ describe('AssignmentRehydration behaviour', () => {
     expect(instance.assignmentDefinition).toBeNull();
   });
 
-  it('summarises corrupt artefacts for diagnostics', () => {
-    const summarise = globalThis.AssignmentRehydration._summariseCorruptArtifacts;
-    expect(summarise(null)).toEqual([]);
-    expect(summarise({})).toEqual([]);
-    expect(summarise({ items: 'not-an-object' })).toEqual([]);
-    const summary = summarise({
-      items: {
-        task_one: { id: 'item-one', artifact: { type: 'TEXT' } },
-        task_two: { id: 'item-two' },
-      },
-    });
-    expect(summary).toHaveLength(2);
-    expect(summary[0].missing).toContain('contentHash');
-  });
-
   it('rehydrates valid submissions directly', () => {
     const instance = { assignmentId: 'assignment-one', submissions: [] };
     const subObject = { studentId: 's-one', assignmentId: 'assignment-one' };
@@ -307,84 +292,6 @@ describe('AssignmentRehydration behaviour', () => {
       expect(instance.submissions).toEqual([created]);
     } finally {
       globalThis.StudentSubmission.fromJSON = original;
-    }
-  });
-
-  it('reconstructs resiliently when model deserialisation fails', () => {
-    const instance = { assignmentId: 'assignment-two', submissions: [] };
-    const original = globalThis.StudentSubmission.fromJSON;
-    globalThis.StudentSubmission.fromJSON = vi.fn(() => {
-      throw new Error('corrupt');
-    });
-    try {
-      globalThis.AssignmentRehydration._rehydrateSubmission(instance, {
-        studentId: 's-two',
-        documentId: 'doc-two',
-        studentName: 'Student Two',
-        createdAt: new Date('2026-01-01T00:00:00.000Z'),
-        updatedAt: '2026-02-01T00:00:00.000Z',
-        items: {},
-      });
-      expect(instance.submissions).toHaveLength(1);
-      expect(instance.submissions[0].studentId).toBe('s-two');
-      expect(warnings.length).toBeGreaterThan(0);
-    } finally {
-      globalThis.StudentSubmission.fromJSON = original;
-    }
-  });
-
-  it('drops corrupt items but keeps the submission', () => {
-    const instance = { assignmentId: 'assignment-three', submissions: [] };
-    const originalFromJSON = globalThis.StudentSubmission.fromJSON;
-    const mockContext = withGlobalMocks({
-      StudentSubmissionItem: () => ({
-        fromJSON: vi.fn((json) => {
-          if (json.bad) throw new Error('corrupt item');
-          return { id: json.id };
-        }),
-      }),
-    });
-    globalThis.StudentSubmission.fromJSON = vi.fn(() => {
-      throw new Error('corrupt submission');
-    });
-    try {
-      // Provide the item class through the submission prototype chain used by the fallback.
-      const RealSubmission = originalFromJSON;
-      void RealSubmission;
-      globalThis.AssignmentRehydration._rehydrateSubmission(instance, {
-        userId: 's-three',
-        items: {
-          good: { id: 'good' },
-          bad: { id: 'bad', bad: true, artifact: { type: 'TEXT' } },
-        },
-      });
-      expect(instance.submissions).toHaveLength(1);
-    } finally {
-      globalThis.StudentSubmission.fromJSON = originalFromJSON;
-      mockContext.restore();
-    }
-  });
-
-  it('omits submissions that cannot be reconstructed', () => {
-    const instance = { assignmentId: 'assignment-four', submissions: [] };
-    const mockContext = withGlobalMocks({
-      StudentSubmission: () =>
-        class {
-          constructor() {
-            throw new Error('cannot construct');
-          }
-
-          static fromJSON() {
-            throw new Error('corrupt');
-          }
-        },
-    });
-    try {
-      globalThis.AssignmentRehydration._rehydrateSubmission(instance, { studentId: 's-four' });
-      expect(instance.submissions).toHaveLength(0);
-      expect(errors.length).toBeGreaterThan(0);
-    } finally {
-      mockContext.restore();
     }
   });
 });

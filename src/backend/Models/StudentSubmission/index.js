@@ -1,180 +1,5 @@
-// StudentSubmission.js
-// Defines StudentSubmission and StudentSubmissionItem classes.
-
-const STUDENT_SUBMISSION_ITEM_HASH_LENGTH = 16;
-
-/**
- * Represents a single submission item within a student submission.
- * Each item corresponds to a task and holds the submitted artifact, assessments, and feedback.
- */
-class StudentSubmissionItem {
-  /**
-   * Constructs a StudentSubmissionItem instance.
-   * @param {Object} p - Constructor parameters
-   * @param {string} p.taskId - The task ID
-   * @param {BaseTaskArtifact} p.artifact - The submission artifact (role='submission')
-   */
-  constructor({ taskId, artifact }) {
-    if (!taskId) throw new Error('StudentSubmissionItem missing taskId');
-    if (!artifact) throw new Error('StudentSubmissionItem requires artifact');
-    this.taskId = taskId;
-    this.artifact = artifact;
-    this.assessments = {}; // criterion -> { score, reasoning }
-    this.feedback = {}; // type -> feedback JSON or object
-    this.id = this._deriveId();
-  }
-
-  /**
-   * Derives a stable unique ID for this submission item.
-   * Uses the artifact's UID if available, falling back to contentHash or taskId.
-   * @returns {string} A unique identifier prefixed with 'ssi_'
-   * @private
-   */
-  _deriveId() {
-    // Prefer artifact UID for stable identity; fall back to contentHash or taskId.
-    const primaryUid = this.artifact.getUid();
-    const hasPrimaryUid = Validate.isNonEmptyString(primaryUid);
-    const resolvedUid = hasPrimaryUid ? primaryUid : (this.artifact.contentHash ?? '');
-    const base = `${this.taskId}::${resolvedUid}`;
-    return (
-      'ssi_' + Utils.generateHash(base).slice(0, Math.max(0, STUDENT_SUBMISSION_ITEM_HASH_LENGTH))
-    );
-  }
-
-  /**
-   * Adds an assessment for a specific criterion.
-   * @param {string} criterion - The criterion identifier
-   * @param {Assessment|Object} assessment - The assessment object or JSON
-   */
-  addAssessment(criterion, assessment) {
-    if (!criterion)
-      throw new Error('addAssessment requires criterion when recording assessment data');
-    if (!assessment) return;
-    // Guard against missing Assessment class in pure test environment
-    if (typeof Assessment !== 'undefined' && assessment instanceof Assessment) {
-      this.assessments[criterion] = assessment.toJSON();
-    } else if (typeof assessment === 'object') {
-      this.assessments[criterion] = assessment; // assume already JSON shape
-    }
-  }
-
-  /**
-   * Gets assessment data for a specific criterion or all assessments.
-   * @param {string|null} [criterion=null] - The criterion to retrieve, or null for all assessments
-   * @returns {Object|null} Assessment data for the criterion, or null if not found
-   */
-  getAssessment(criterion = null) {
-    if (!criterion) return this.assessments || null;
-    return this.assessments[criterion] || null;
-  }
-
-  /**
-   * Adds feedback of a specific type.
-   * @param {string} type - The feedback type identifier
-   * @param {Object} feedbackObject - The feedback object
-   */
-  addFeedback(type, feedbackObject) {
-    if (!type) throw new Error('addFeedback requires a feedback type identifier');
-    if (!feedbackObject) return;
-    this.feedback[type] = feedbackObject.toJSON ? feedbackObject.toJSON() : feedbackObject;
-  }
-
-  /**
-   * Gets feedback of a specific type or all feedback.
-   * @param {string|null} [type=null] - The feedback type to retrieve, or null for all feedback
-   * @returns {Object|null} Feedback for the type, or null if not found
-   */
-  getFeedback(type = null) {
-    if (!type) return this.feedback || null;
-    return this.feedback[type] || null;
-  }
-
-  /**
-   * Gets the artifact type.
-   * @returns {string} The artifact type
-   */
-  getType() {
-    return this.artifact.getType();
-  }
-
-  /**
-   * Serialises this submission item to a JSON object.
-   * @returns {Object} A plain object representation of the submission item
-   */
-  toJSON() {
-    return {
-      id: this.id,
-      taskId: this.taskId,
-      // documentId/pageId intentionally omitted here; parent submission
-      // holds documentId and the artifact contains any pageId information.
-      artifact: this.artifact.toJSON(),
-      assessments: this.assessments,
-      feedback: this.feedback,
-      // lastAssessedHash intentionally removed; submission.updatedAt is authoritative
-    };
-  }
-
-  /**
-   * Returns a partial JSON payload with heavy artifact fields redacted.
-   * @returns {Object} A partial representation with artifact content minimised
-   */
-  toPartialJSON() {
-    const json = this.toJSON();
-    json.artifact = this.artifact.toPartialJSON();
-    json.assessments = StudentSubmissionItem._stripAssessmentReasoning(json.assessments);
-    return json;
-  }
-
-  /**
-   * Strips assessment reasoning from assessments to reduce payload size.
-   * @param {Object} assessments - Assessment data keyed by criterion
-   * @returns {Object} Assessments without reasoning
-   * @private
-   */
-  static _stripAssessmentReasoning(assessments) {
-    if (!assessments || typeof assessments !== 'object') return assessments;
-    return Object.fromEntries(
-      Object.entries(assessments).map(([criterion, assessment]) => {
-        return [
-          criterion,
-          StudentSubmissionItem._removeAssessmentReasoning(assessment),
-        ];
-      })
-    );
-  }
-
-  /**
-   * Removes reasoning from a single assessment object.
-   * @param {Object} assessment - The assessment object
-   * @returns {Object} Assessment without the reasoning property
-   * @private
-   */
-  static _removeAssessmentReasoning(assessment) {
-    if (!assessment || typeof assessment !== 'object') return assessment;
-    const { reasoning, ...rest } = assessment;
-    return rest;
-  }
-
-  /**
-   * Deserialises a JSON object to a StudentSubmissionItem instance.
-   * @param {Object} json - The serialised submission item object
-   * @returns {StudentSubmissionItem} A new StudentSubmissionItem instance
-   */
-  static fromJSON(json) {
-    const artifact = ArtifactFactory.fromJSON(json.artifact);
-    const item = new StudentSubmissionItem({
-      taskId: json.taskId,
-      artifact,
-    });
-    // Preserve id from persisted JSON when present for compatibility
-    if (json.id) item.id = json.id;
-    item.assessments = json.assessments || {};
-    item.feedback = json.feedback || {};
-    // previous lastAssessedHash is ignored in new model
-    return item;
-  }
-}
-
+// StudentSubmission/index.js
+// Submission facade; item model is loaded first by lexicographic order.
 /**
  * Represents a complete student submission for an assignment.
  * Contains multiple submission items (one per task) along with artefacts, assessments, and feedback.
@@ -199,6 +24,7 @@ class StudentSubmission {
     this.createdAt = now;
     this.updatedAt = now;
     this._updateCounter = 0;
+    this.representationMode = StudentSubmissionItem.getDefaultRepresentationMode();
   }
 
   /**
@@ -255,7 +81,7 @@ class StudentSubmission {
 
     if (item) {
       if (content !== undefined) {
-        this._mergeExtractedContent(item.artifact, content);
+        this._mergeExtractedContent(item, content);
         isMutated = true;
       }
       if (hasMetadata) {
@@ -301,16 +127,22 @@ class StudentSubmission {
    * shape complete. A null/empty content means there is no artifact body to
    * hash, so the content hash is set explicitly to null rather than left
    * undefined (which would fail transport validation).
-   * @param {BaseTaskArtifact} artifact - The artifact to update.
+   * @param {StudentSubmissionItem} item - The item to update.
    * @param {*} content - Extracted content (may be null/undefined).
    */
-  _mergeExtractedContent(artifact, content) {
-    artifact.content = artifact.normalizeContent(content);
+  _mergeExtractedContent(item, content) {
+    const artifact = item.artifact;
+    const previousContent = artifact.content;
+    const normalisedContent = artifact.normalizeContent(content);
+    if (JSON.stringify(normalisedContent) === JSON.stringify(previousContent)) return;
+    artifact.content = normalisedContent;
     if (artifact.content == null) {
       artifact.contentHash = null;
     } else {
       artifact.ensureHash();
     }
+    item.assessments = {};
+    item.feedback = {};
   }
 
   /**
@@ -361,9 +193,52 @@ class StudentSubmission {
   /**
    * Deserialises a JSON object to a StudentSubmission instance.
    * @param {Object} json - The serialised submission object
+   * @param {'full'|'partial'} [mode='full'] - Representation being restored.
    * @returns {StudentSubmission} A new StudentSubmission instance
    */
-  static fromJSON(json) {
+  static fromJSON(json, mode) {
+    if (mode === undefined) mode = StudentSubmissionItem.getDefaultRepresentationMode();
+    return StudentSubmission._restore(json, mode);
+  }
+
+  /** Validates the raw submission record before model restoration.
+   * @param {Object} json - Persisted submission record.
+   * @param {'full'|'partial'} [mode='full'] - Representation being validated.
+   * @returns {boolean} Whether the raw record has the required shape.
+   */
+  static validateRaw(json, mode) {
+    if (
+      !json ||
+      typeof json !== 'object' ||
+      Array.isArray(json) ||
+      !['full', 'partial'].includes(
+        mode === undefined ? StudentSubmissionItem.getDefaultRepresentationMode() : mode
+      ) ||
+      typeof json.studentId !== 'string' ||
+      json.studentId.trim().length === 0 ||
+      typeof json.assignmentId !== 'string' ||
+      json.assignmentId.trim().length === 0 ||
+      !json.items ||
+      typeof json.items !== 'object' ||
+      Array.isArray(json.items)
+    )
+      return false;
+    const representationMode =
+      mode === undefined ? StudentSubmissionItem.getDefaultRepresentationMode() : mode;
+    return Object.values(json.items).every((item) => {
+      if (item instanceof StudentSubmissionItem) return true;
+      return StudentSubmissionItem.validateRaw(item, representationMode);
+    });
+  }
+
+  /** Restores a validated submission and its items.
+   * @param {Object} json - Persisted submission record.
+   * @param {'full'|'partial'} mode - Representation being restored.
+   * @returns {StudentSubmission} The restored submission.
+   */
+  static _restore(json, mode) {
+    if (!StudentSubmission.validateRaw(json, mode))
+      throw new Error('Invalid StudentSubmission JSON');
     const sub = new StudentSubmission(
       json.studentId,
       json.assignmentId,
@@ -374,7 +249,10 @@ class StudentSubmission {
     sub.updatedAt = json.updatedAt || sub.createdAt;
     if (json.items) {
       for (const [taskId, itemJson] of Object.entries(json.items)) {
-        const item = StudentSubmissionItem.fromJSON(itemJson);
+        const item =
+          itemJson instanceof StudentSubmissionItem
+            ? itemJson
+            : StudentSubmissionItem.fromJSON(itemJson, mode);
         sub.items[taskId] = item;
       }
     }
@@ -383,5 +261,5 @@ class StudentSubmission {
 }
 
 if (typeof module !== 'undefined') {
-  module.exports = { StudentSubmission, StudentSubmissionItem };
+  module.exports = { StudentSubmission, StudentSubmissionItem: globalThis.StudentSubmissionItem };
 }

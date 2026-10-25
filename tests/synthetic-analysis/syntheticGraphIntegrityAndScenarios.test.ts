@@ -323,7 +323,12 @@ describe('synthetic analysis graph referential integrity', () => {
     for (const item of collectPartialItems(smallGraph)) {
       for (const [criterion, assessment] of Object.entries(item.assessments ?? {})) {
         expect(criterion.length).toBeGreaterThan(0);
-        expect(() => PartialAssessmentScoreSchema.parse(assessment.score)).not.toThrow();
+        if (assessment.score === 'E') {
+          expect(assessment.reasoning).toEqual(expect.any(String));
+          expect(assessment.error).toBeDefined();
+        } else {
+          expect(() => PartialAssessmentScoreSchema.parse(assessment.score)).not.toThrow();
+        }
       }
 
       for (const [feedbackType, feedback] of Object.entries(item.feedback ?? {})) {
@@ -397,24 +402,29 @@ describe('synthetic analysis small and medium scenario coverage', () => {
     }
   });
 
-  it('includes partial-assessment entries with score only and full entries with reasoning', () => {
+  it('retains E reasoning in partial entries and redacts success reasoning', () => {
     for (const graph of graphs) {
-      const partialScoresOnly = collectPartialItems(graph).every((item) =>
-        Object.values(item.assessments ?? {}).every((assessment) => !('reasoning' in assessment))
+      const partialAssessments = collectPartialItems(graph).flatMap((item) =>
+        Object.values(item.assessments ?? {})
       );
-      expect(partialScoresOnly).toBe(true);
+      expect(partialAssessments.length).toBeGreaterThan(0);
+      expect(partialAssessments.some((assessment) => assessment.score === 'E')).toBe(true);
+      for (const assessment of partialAssessments) {
+        if (assessment.score === 'E') {
+          expect(assessment.reasoning).toEqual(expect.any(String));
+          expect(assessment.error).toBeDefined();
+        } else {
+          expect('reasoning' in assessment).toBe(false);
+        }
+      }
 
-      const hasPartialAssessment = collectPartialItems(graph).some(
-        (item) => Object.keys(item.assessments ?? {}).length > 0
+      const fullAssessments = collectFullItems(graph).flatMap((item) =>
+        Object.values(item.assessments ?? {})
       );
-      expect(hasPartialAssessment).toBe(true);
-
-      const hasReasoning = collectFullItems(graph).some((item) =>
-        Object.values(item.assessments ?? {}).some(
-          (assessment) => typeof assessment.reasoning === 'string'
-        )
+      expect(fullAssessments.some((assessment) => assessment.score === 'E')).toBe(true);
+      expect(fullAssessments.every((assessment) => typeof assessment.reasoning === 'string')).toBe(
+        true
       );
-      expect(hasReasoning).toBe(true);
     }
   });
 

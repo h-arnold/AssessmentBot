@@ -243,7 +243,11 @@ describe('canonical backend model inputs', () => {
           expect(encoded.assignmentDefinition.tasks).toEqual(definition.tasks);
           const fullCounterpart = fullAssignmentsById.get(source!.assignmentId);
           if (!fullCounterpart) {
-            expect(() => restored.toJSON()).toThrow(/partial AssignmentDefinition/u);
+            const partialSerialized = restored.toPartialJSON();
+            expect(partialSerialized.submissions).toEqual(source!.submissions);
+            expect(partialSerialized.assessmentContractVersion).toBe(
+              source!.assessmentContractVersion
+            );
           }
           restoredClassItemCount += expectPartialSubmissionMatchesRedactedSource(
             encoded.submissions,
@@ -274,8 +278,18 @@ describe('canonical backend model inputs', () => {
           expect(Object.keys(submission.items).length).toBeGreaterThan(0);
           foundPopulatedFullSubmission = true;
           for (const item of Object.values(submission.items) as JsonRecord[]) {
-            expect(item.artifact.content).toEqual(expect.any(String));
-            expect(item.artifact.contentHash).toEqual(expect.any(String));
+            const acquisitionError = Object.values(item.assessments as JsonRecord).some(
+              (assessment) => assessment.score === 'E' && assessment.error?.stage === 'acquisition'
+            );
+            if (acquisitionError) {
+              expect(item.artifact.content).toBeNull();
+              expect(item.artifact.contentHash).toBeNull();
+            } else {
+              expect(
+                typeof item.artifact.content === 'string' || Array.isArray(item.artifact.content)
+              ).toBe(true);
+              expect(item.artifact.contentHash).toEqual(expect.any(String));
+            }
             expect(item.assessments).toEqual(expect.any(Object));
             expect(item.feedback).toEqual(expect.any(Object));
           }
@@ -304,7 +318,13 @@ describe('canonical backend model inputs', () => {
             taskTitle: task.taskTitle,
           }))
         );
-        expectPartialSubmissionRedacted(partial.submissions, canonical.submissions);
+        if (Object.hasOwn(input, 'assessmentContractVersion')) {
+          expectPartialSubmissionRedacted(partial.submissions, canonical.submissions);
+        } else {
+          // Legacy persistence is opaque even through the partial serializer; read
+          // redaction belongs to the detached read projection, not ordinary saves.
+          expect(partial.submissions).toEqual(canonical.submissions);
+        }
       }
       expect(foundPopulatedFullSubmission).toBe(true);
       expect(foundRestoredClassOwner).toBe(true);

@@ -17,7 +17,7 @@ export function expectFullSubmissionPreserved(output, sourceRows) {
     );
     for (const [taskId, item] of Object.entries(submission.items)) {
       const original = source.items[taskId];
-      expect(item.artifact.content).toBe(original.artifact.content);
+      expect(item.artifact.content).toEqual(original.artifact.content);
       expect(item.artifact.contentHash).toBe(original.artifact.contentHash);
       expect(item.assessments).toEqual(original.assessments);
       expect(item.feedback).toEqual(original.feedback);
@@ -26,7 +26,7 @@ export function expectFullSubmissionPreserved(output, sourceRows) {
 }
 
 /**
- * Verifies partial model serialisation redacts content, hashes, and reasoning.
+ * Verifies partial model serialisation redacts content and hashes, retaining reasoning only for E.
  * @param {RecordValue[]} output Serialised partial submissions.
  * @param {RecordValue[]} sourceRows Canonical full submissions.
  */
@@ -43,16 +43,13 @@ export function expectPartialSubmissionRedacted(output, sourceRows) {
       const original = source.items[taskId];
       expect(item.artifact.content).toBeNull();
       expect(item.artifact.contentHash).toBeNull();
-      expect(item.assessments).toEqual(
-        Object.fromEntries(
-          Object.entries(original.assessments).map(([criterion, assessment]) => [
-            criterion,
-            { score: assessment.score },
-          ])
-        )
-      );
-      for (const assessment of Object.values(item.assessments)) {
-        expect(assessment).not.toHaveProperty('reasoning');
+      for (const [criterion, assessment] of Object.entries(original.assessments)) {
+        if (assessment.score === 'E') {
+          expect(item.assessments[criterion]).toEqual(assessment);
+        } else {
+          expect(item.assessments[criterion]).toEqual({ score: assessment.score });
+          expect(item.assessments[criterion]).not.toHaveProperty('reasoning');
+        }
       }
       expect(item.feedback).toEqual(original.feedback);
     }
@@ -92,9 +89,15 @@ export function expectPartialSubmissionMatchesRedactedSource(output, sourceRows)
       expect(item.artifact.content).toBeNull();
       expect(item.artifact.contentHash).toBeNull();
       expect(item.assessments).toEqual(original.assessments);
-      for (const assessment of Object.values(item.assessments)) {
+      for (const [criterion, assessment] of Object.entries(item.assessments)) {
         expect(assessment).toHaveProperty('score');
-        expect(assessment).not.toHaveProperty('reasoning');
+        if (assessment.score === 'E') {
+          expect(assessment).toEqual(source.items[taskId].assessments[criterion]);
+          expect(assessment).toHaveProperty('reasoning');
+          expect(assessment).toHaveProperty('error');
+        } else {
+          expect(assessment).not.toHaveProperty('reasoning');
+        }
       }
       expect(item.feedback).toEqual(original.feedback);
     }

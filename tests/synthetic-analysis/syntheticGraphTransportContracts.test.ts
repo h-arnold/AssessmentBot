@@ -388,7 +388,7 @@ describe('synthetic transport view redaction and identifier retention', () => {
     expect(checkedAssignments).toBeGreaterThan(0);
   });
 
-  it('redacts artefact content and assessment reasoning in partial views only', () => {
+  it('redacts partial source and non-error reasoning while retaining E reasoning and cause', () => {
     const partialItems = collectPartialItems(graph);
     expect(partialItems.length).toBeGreaterThan(0);
 
@@ -397,7 +397,12 @@ describe('synthetic transport view redaction and identifier retention', () => {
       expect(artifact.content).toBeNull();
       expect(artifact.contentHash).toBeNull();
       for (const assessment of Object.values(item.assessments ?? {})) {
-        expect('reasoning' in assessment).toBe(false);
+        if (assessment.score === 'E') {
+          expect(assessment.reasoning).toEqual(expect.any(String));
+          expect(assessment.error).toEqual({ stage: expect.any(String), code: expect.any(String) });
+        } else {
+          expect('reasoning' in assessment).toBe(false);
+        }
       }
     }
 

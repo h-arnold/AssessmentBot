@@ -1,5 +1,6 @@
 import { ABClassMetadataSchema } from '@/services/abClass/abClassMetadata.zod';
 import { z } from 'zod';
+import { partialAssessmentResultSchema } from '@/services/assignmentAssessment/assessmentResult.zod';
 
 /** Maximum valid assessment score (inclusive). Backend PartialAssessment model range. */
 const MAX_ASSESSMENT_SCORE = 5;
@@ -9,7 +10,7 @@ const MAX_ASSESSMENT_SCORE = 5;
  * @remarks Score range enforcement matches the backend PartialAssessment model.
  */
 export const PartialAssessmentScoreSchema = z.union([
-  z.number().int().min(0).max(MAX_ASSESSMENT_SCORE),
+  z.number().min(0).max(MAX_ASSESSMENT_SCORE),
   z.literal('N'),
 ]);
 
@@ -19,9 +20,7 @@ export type PartialAssessmentScore = z.infer<typeof PartialAssessmentScoreSchema
  * A single assessment entry keyed by criterion, containing only the `score` field
  * in the partial wire shape (reasoning is stripped).
  */
-export const PartialAssessmentEntrySchema = z.object({
-  score: PartialAssessmentScoreSchema,
-});
+export const PartialAssessmentEntrySchema = partialAssessmentResultSchema;
 
 export type PartialAssessmentEntry = z.infer<typeof PartialAssessmentEntrySchema>;
 
@@ -132,6 +131,7 @@ export const AssignmentPartialSchema = z.object({
   documentType: z.string().nullable(),
   submissions: z.array(StudentSubmissionPartialSchema),
   assignmentDefinitionKey: z.string(),
+  assessmentContractVersion: z.union([z.literal(1), z.null()]),
 });
 
 export type AssignmentPartial = z.infer<typeof AssignmentPartialSchema>;
