@@ -182,11 +182,8 @@ z.object({
 
 ## Key contract notes
 
-- **Date serialisation:** `google.script.run` prohibits `Date` objects in
-  return values. Each API handler that returns nested Date objects must
-  call `DateUtils.deepConvertDates(response)` before returning. This is
-  done per-handler, not in `apiHandler`, to avoid the performance cost on
-  endpoints that do not need it.
+- **Date serialisation:** `google.script.run` prohibits `Date`, `Function` and DOM values in
+  parameters and return values; see [api-layer.md § Critical: prohibited types in `google.script.run` return values](../backend/api-layer.md#critical-prohibited-types-in-googlescriptrun-return-values) for the conversion rules.
 - **Defensive null coercion:** `_success()` maps `undefined` to `null` to
   prevent Zod `.nullable()` schema errors on the frontend.
 - **Handler failures** are caught by `apiHandler`, logged with the original

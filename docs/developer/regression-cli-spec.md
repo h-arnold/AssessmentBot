@@ -83,116 +83,15 @@ This feature is **not** intended to:
 
 ### Configuration recommendation
 
-Preferred config file path:
-
-- `.ts-regression-checker/regression.config.json`
-
-Recommended top-level shape:
-
-```json
-{
-  "reportDirectory": ".ts-regression-checker/reports",
-  "parallel": {
-    "enabled": true,
-    "maxWorkers": 2
-  },
-  "checks": [
-    {
-      "id": "backend-lint-check",
-      "tool": "eslint",
-      "cwd": ".",
-      "run": {
-        "kind": "npm-script",
-        "script": "lint:backend:check"
-      }
-    },
-    {
-      "id": "builder-compile",
-      "tool": "tsc",
-      "cwd": ".",
-      "run": {
-        "kind": "tsc",
-        "project": "scripts/builder/tsconfig.json"
-      }
-    },
-    {
-      "id": "backend-tests",
-      "tool": "vitest",
-      "cwd": ".",
-      "run": {
-        "kind": "npm-script",
-        "script": "test:backend"
-      }
-    }
-  ]
-}
-```
-
-`run.kind` values:
-
-- `npm-script`
-- `tsc`
-
-Validation rules:
-
-- each `checks[].id` must be unique
-- each `checks[].tool` must be one of `eslint|vitest|playwright|tsc`
-- `reportDirectory` must resolve to a repo-relative path under the repository root (absolute paths are invalid in v1)
-- each `checks[].cwd` must resolve to a repo-relative path under the repository root (path traversal outside repo is invalid)
-- `run.kind=npm-script` requires script existence in the relevant `package.json`
-- `run.kind=npm-script` requires the script to be non-mutating (no `--fix`, `--write`, or equivalent mutating flags)
-- `run.kind=npm-script` requires the script command to resolve to exactly one supported tool family in v1 (no chained multi-tool scripts), except the allowlisted `typecheck:all` aggregate
-- `run.kind=tsc` requires `tool=tsc` and a valid `project` path
-- for `tool=tsc`, `run.kind=npm-script` is valid only for the allowlisted aggregate script `typecheck:all`; every other `tsc` npm script is invalid
-- script command must resolve to the declared tool executable family (except the allowlisted `typecheck:all` aggregate, which intentionally bypasses declared-tool-family resolution)
-- if `parallel.enabled=true`, `parallel.maxWorkers` must be an integer greater than or equal to `1`
-- when `parallel.maxWorkers` is omitted, default to `min(4, logicalCpuCount)`
+The checker reads `.ts-regression-checker/regression.config.json`, containing `reportDirectory`, `parallel` settings, and a `checks` array. Each check declares a unique `id`, a `tool` (`eslint`, `vitest`, `playwright`, or `tsc`), a repo-relative `cwd`, and a `run` block using `npm-script` or `tsc` under the documented validation rules. For the canonical example, field reference, and full validation-rule list, see [Regression Checker How-To § Configuration reference](./builder/regression-checker-how-to.md#configuration-reference).
 
 ### Tool execution contract
 
-For each check, the runner enforces tool-native structured or parseable output mode:
-
-- `eslint`: append/override formatter to JSON and write JSON file
-- `vitest`: append/override reporter to JSON and write JSON file
-- `playwright`: append/override reporter to JSON and capture JSON output file
-- `tsc`: enforce stable plain diagnostics mode (`--pretty false`) and capture text output for parser. The allowlisted npm-script aggregate is invoked as-is (no injected compiler arguments or JSON reporter), and its plain text output is captured; pass/fail comes from the exit code
-
-If the configured script cannot be validated to the declared tool family, fail before execution — except for the allowlisted `typecheck:all` aggregate, whose declared-tool-family inspection is intentionally bypassed (see the v1 amendment note).
+The runner enforces each tool's native structured or parseable output: it appends or overrides the JSON reporter for `eslint`, `vitest` and `playwright` and writes the JSON artefact; for `tsc` it forces plain diagnostics (`--pretty false`). The allowlisted `npm-script` aggregate is invoked as-is with no injected compiler arguments or JSON reporter, and pass/fail comes from its exit code. A check whose script cannot be validated against the declared tool family fails before execution, except the allowlisted `typecheck:all` aggregate. See [Regression Checker How-To § Raw artefact formats](./builder/regression-checker-how-to.md#raw-artefact-formats) and [§ Safety and validation rules](./builder/regression-checker-how-to.md#safety-and-validation-rules).
 
 ### Session storage recommendation
 
-Base directory:
-
-- `<reportDirectory>/<sessionStorageKey>/`
-
-Default report directory:
-
-- `.ts-regression-checker/reports`
-
-Baseline:
-
-- `<reportDirectory>/<sessionStorageKey>/baseline/`
-  - `manifest.json`
-  - `checks/<check-id>/raw.*`
-  - `checks/<check-id>/derived.json`
-
-Follow-up runs:
-
-- `<reportDirectory>/<sessionStorageKey>/runs/<timestamp>/`
-  - `manifest.json`
-  - `checks/<check-id>/raw.*`
-  - `checks/<check-id>/derived.json`
-
-Comparison output:
-
-- `<reportDirectory>/<sessionStorageKey>/runs/<timestamp>/comparison.json`
-- `<reportDirectory>/<sessionStorageKey>/runs/<timestamp>/comparison.txt`
-
-Session identity and storage safety:
-
-- `sessionId` is the logical identifier shown in reports and manifests
-- `sessionStorageKey` is a filesystem-safe encoding derived from `sessionId` and used for directory names
-- manifests must persist both `sessionId` and `sessionStorageKey`
+Baseline and run artefacts live under `<reportDirectory>/<sessionStorageKey>/`, defaulting to `.ts-regression-checker/reports`. A baseline directory holds `manifest.json` and per-check `raw.*` plus `derived.json`; each timestamped run directory holds the same, with `comparison.json` and `comparison.txt` in comparison runs. `sessionId` is the logical identifier, `sessionStorageKey` is its filesystem-safe encoding, and manifests persist both. See [Report and artefact layout](./builder/regression-checker-how-to.md#report-and-artefact-layout) and [Manifest and compatibility checks](./builder/regression-checker-how-to.md#manifest-and-compatibility-checks).
 
 ## Feature architecture
 
@@ -243,33 +142,11 @@ scripts/builder/src/regression-checker/tests/
 
 ### Execution policy
 
-1. Parse CLI args and load config.
-   - resolve `sessionId` from positional arg when supplied; otherwise resolve it from current Git branch name
-   - derive `sessionStorageKey` from `sessionId` for filesystem-safe storage
-2. Validate config schema and tool allowlist constraints.
-3. Validate each configured check can resolve to its declared tool family.
-4. Determine mode:
-   - baseline mode when no baseline exists for `sessionStorageKey`
-   - compare mode when baseline exists
-5. Execute checks in bounded parallel mode and capture raw outputs.
-6. Route Playwright checks through a dedicated single-worker lane.
-7. Preserve deterministic report ordering by rendering summaries in config order regardless of completion order.
-8. Generate per-check derived summaries for diffing.
-9. Validate baseline compatibility before comparison diffing (config fingerprint, check IDs, tool families, and execution metadata).
-10. Write baseline or comparison artefacts.
-11. Print and persist a fixed-structure summary header followed by detailed body.
+The runner parses arguments, loads and validates the config, resolves the session and derives its filesystem-safe storage key, selects baseline mode when no baseline exists and compare mode otherwise, executes checks in bounded parallel with a dedicated single-worker Playwright lane, and validates baseline compatibility before diffing. It writes the baseline or comparison artefacts and prints and persists a fixed-structure summary header followed by the detailed body, with report ordering fixed to config order regardless of completion order; per-check derived summaries are generated for diffing (see [Derived summaries (per tool)](#derived-summaries-per-tool)). Step-by-step flows and practical limits are in [Running flows](./builder/regression-checker-how-to.md#running-flows) and [Determinism guarantees and practical limits](./builder/regression-checker-how-to.md#determinism-guarantees-and-practical-limits).
 
 ### CLI and exit-code contract
 
-- entry script: `npm run regression-checker -- [sessionId]`
-- runtime contract: `regression-checker [sessionId]`
-- when `sessionId` is omitted, use current Git branch name
-- if branch name cannot be resolved (for example detached HEAD), fail fast with a clear error
-- baseline mode exits `0` on successful baseline creation
-- baseline mode output must explicitly include that this run created the baseline and did not perform comparison diffing
-- compare mode exits `1` when one or more regressions are detected
-- compare mode exits `0` when no regressions are detected
-- invalid config, unsupported tool/mode, or runtime execution errors exit non-zero (implementation-specific error codes are allowed)
+Entry points are the npm wrapper `npm run regression-checker -- [sessionId]` and the runtime contract `regression-checker [sessionId]`. An omitted `sessionId` falls back to the current Git branch, and an unresolvable branch fails fast. Baseline mode exits `0` and states that the run created the baseline without comparison diffing; compare mode exits `1` on regressions and `0` otherwise; invalid config, unsupported tool/mode or runtime failures exit non-zero (the how-to lists the concrete codes). See [Session ID behaviour](./builder/regression-checker-how-to.md#session-id-behaviour) and [Exit codes](./builder/regression-checker-how-to.md#exit-codes).
 
 ## Core behavioural model
 
@@ -337,12 +214,7 @@ Minimum header fields:
 
 ### Detailed body contract
 
-After header end marker:
-
-- execution metadata
-- per-check status and counts
-- explicit regression/new-failure/fix listings
-- file references to raw artefacts
+After the header end marker, the report includes execution metadata, per-check status and counts, explicit regression/new-failure/fix listings, and file references to raw artefacts. The per-check section fields are also listed in [Reading `comparison.txt`](./builder/regression-checker-how-to.md#reading-comparisontxt).
 
 ## Error handling and safety
 

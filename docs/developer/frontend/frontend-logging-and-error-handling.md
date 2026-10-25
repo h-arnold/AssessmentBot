@@ -31,10 +31,7 @@ Do not combine these concerns in a single string.
 
 ## 2. Error flow contract (frontend + backend boundary)
 
-Use the backend API envelope as the frontend transport contract:
-
-- Success: `{ ok: true, requestId, data, meta? }`
-- Error: `{ ok: false, requestId, error: { code, message, isRetriable?, details? }, meta? }`
+The backend [transport envelope](../data-shapes/transport-envelope.md) is the frontend transport contract. The frontend tolerates an optional `meta` field; the backend never emits it.
 
 `callApi` is the only transport boundary for frontend feature code. Keep backend method wiring and envelope parsing there.
 
@@ -130,8 +127,7 @@ Use context-aware APIs (`App.useApp`, `message.useMessage`, `notification.useNot
 
 ### Post-analysis metadata failures
 
-Both production averaging consumers call the shared page hook directly. Browser
-coverage for save-failure and confirmed-save/refresh-failure feedback is
+Browser coverage for save-failure and confirmed-save/refresh-failure feedback is
 implemented in `post-analysis-metadata.feedback.spec.ts`.
 `hooks/postAnalysisFeedback.ts` uses the existing
 `App.useApp().notification` host, not static feedback or a second host. That host is
@@ -143,6 +139,9 @@ real `App` provider in test harnesses.
 | --------------------------------------- | ---------------------------- | --------------------------------------------------------------------------------------------------- |
 | Before confirmed persistence            | Class summary not saved      | Analysis is ready, but the class summary could not be saved. Reload the page to try again.          |
 | Confirmed save, required refresh failed | Class summary refresh failed | The class summary was saved, but refreshed data could not be loaded. Reload the page to refresh it. |
+
+The **Class summary not saved** warning does not prove that no backend write occurred:
+a response-parse failure can reject after the write has completed.
 
 Both are warnings with `duration: 0`, `closable: true` and `role: 'status'`.
 They do not move focus, block usable analysis, expose technical Errors or offer

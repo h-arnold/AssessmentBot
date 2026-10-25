@@ -51,9 +51,9 @@ All `PropertiesService` access goes through `GASPropertiesUtils`
 - **Backend configuration** — a single JSON blob under `__CONFIG_STORE_KEY__`
   (`src/backend/ConfigurationManager/98_ConfigurationManagerClass.js`), whose contract is
   [backend-config.md](../data-shapes/backend-config.md). It includes `authGroupEmail` and
-  the LLM `apiKey`. The raw API key is never transported to the frontend: the read
-  transport masks it (`maskApiKey_()` emits `''`, `'****'`, or `'****'` + last 4
-  characters) and the frontend only ever receives the masked value.
+  the LLM `apiKey`. The raw API key is never transported to the frontend; the read
+  transport returns only the masked value defined by the
+  [BackendConfig masking contract](../data-shapes/backend-config.md#transport).
 - **Trigger context** — per-scheduled-trigger keys `trigger:<uid>:method` and
   `trigger:<uid>:params`, written and cleared by `TriggerController`
   (`src/backend/Triggers/TriggerController.js`:
@@ -74,7 +74,7 @@ entries; see [request-store.md](../data-shapes/request-store.md)).
 storage**. Two kinds of entries:
 
 - **Auth results** — only successful authorisations, shaped `{ allowed: true, role }`,
-  keyed `auth:<groupEmail>:<email>` with a 6-hour TTL, written by
+  keyed per user and group with a 6-hour TTL, written by
   `AuthService.checkAccess()` (`src/backend/Utils/AuthService.js`). Denials are never
   cached. See [auth-cache.md](../data-shapes/auth-cache.md).
 - **Assessment data** — content-hash-keyed results

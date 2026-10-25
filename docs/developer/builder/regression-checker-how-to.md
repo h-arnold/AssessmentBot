@@ -195,12 +195,17 @@ Layout:
     baseline/
       manifest.json
       checks/<checkId>/raw.json|raw.txt
+      checks/<checkId>/derived.json
     runs/<timestamp>/
       manifest.json
       checks/<checkId>/raw.json|raw.txt
+      checks/<checkId>/derived.json
       comparison.json
       comparison.txt
 ```
+
+Each `manifest.json` records both the logical `sessionId` and the derived filesystem-safe
+`sessionStorageKey`.
 
 ### Manifest and compatibility checks
 

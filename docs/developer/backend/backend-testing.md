@@ -8,24 +8,15 @@ Backend production code still runs as concatenated GAS script files, not as a No
 
 Backend currently exposes API-style entry files under `src/backend/z_Api`. Tests should target the files that actually exist in the current runtime path and avoid stale `src/backend/Api` references unless and until the codebase actually moves there.
 
-These API functions should be tested as thin wrappers around controller delegation and error propagation.
-
 Backend configuration transport is now covered by the dedicated suite in `tests/api/backendConfigApi.test.js`. Keep broader dispatcher and allowlist coverage in `tests/api/apiHandler/` (directory with multiple dispatcher test files).
 
 ## Canonical synthetic fixtures
 
 Use the deterministic synthetic analysis corpus when a test needs realistic analysis-domain data.
 
-**Canonical-fixture directive:**
+All new or changed tests must use a canonical synthetic fixture when the corpus covers the scenario; for the directive, its exception path and the generator-extension process, see [Synthetic Test Data](../testing/synthetic-test-data.md#policy-canonical-fixtures-for-tests).
 
-- All new or changed tests must use an appropriate canonical synthetic fixture when the synthetic fixture system provides data for the scenario.
-- If the required realistic data is not yet supported, the test may use a local realistic fixture only when the owning feature work records a generator-extension plan (which profile, view, or generator stage to add and where).
-- Deliberately invalid or boundary fixtures remain local.
-- Migrate a touched existing test to a canonical fixture opportunistically; do not perform a wholesale migration.
-
-This policy is intentionally broader than the analysis graph and applies automatically as later domains are added.
-
-Backend tests load a committed profile view synchronously and immutably, then supply the generated transport view through the dispatcher seams described below. For the corpus topology, profile/view selection, commands, failure behaviour, and the full exception and extension path, see the canonical guide: [Synthetic Test Data](../testing/synthetic-test-data.md).
+Backend tests load a committed profile view synchronously and immutably, then supply the generated transport view through the dispatcher seams described below. For the corpus topology, profile/view selection, commands and failure behaviour, see the canonical guide: [Synthetic Test Data](../testing/synthetic-test-data.md).
 
 ## Backend metadata bootstrap installation
 
@@ -362,7 +353,7 @@ transport request-error adapter and the real-dispatcher request/error-envelope c
 - Run the Section 8 suites with the existing ABClass API and backend mutation/validation units:
   `npm run test:backend -- tests/api/abclassMetadataApi.test.js tests/api/apiHandler/abclassMetadataReads.test.js tests/api/apiHandler/abclassMetadataWrites.test.js tests/api/apiHandler/abclassMetadataErrors.test.js tests/api/abclassMutations.test.js tests/api/abclassRead.test.js tests/backend-api/abclassMutations.unit.test.js tests/backend-api/abclassValidation.unit.test.js tests/api/apiHandler/globalExposure.test.js`.
 
-**Node dispatcher metadata round trip (`Implemented`, independently review-clean).** The
+**Node dispatcher metadata round trip (`Implemented`).** The
 synthetic dispatcher bridge now composes class-partial reads and metadata mutation
 seams so the real `apiHandler` can be exercised end to end from the frontend
 transport:
@@ -538,7 +529,7 @@ Rules:
 
 The transport-layer refactor helper patterns are now implemented in `tests/helpers/apiHandlerTestUtils.js`.
 
-> **Note:** For general global mock management, use the `globalMockManager` helper (`tests/helpers/globalMockManager.js`) which provides a consistent pattern for saving and restoring global mocks. This prevents test pollution where cleanup from one test affects other tests.
+> **Note:** For general global mock management, see [Global Mock Manager](#global-mock-manager-testshelpersglobalmockmanagerjs) (`tests/helpers/globalMockManager.js`).
 
 ### `installControllerMocks` / `restoreControllerMocks`
 
@@ -595,40 +586,7 @@ Location: `tests/helpers/globalMockManager.js`
 
 For tests that need to mock multiple globals (like `DbManager`, `CacheManager`, `BaseRequestManager`, `BatchUpdateUtility`, `TriggerController` tests), use the `globalMockManager` helper instead of manually saving/deleting globals. This ensures proper cleanup and prevents test pollution.
 
-See the [Global Mock Manager](#global-mock-manager-testshelpersglobalmockmanagerjs) section for complete documentation.
-
-**Migration pattern from manual cleanup:**
-
-Before (problematic):
-
-```javascript
-beforeEach(() => {
-  global.ProgressTracker = { getInstance: () => mockTracker };
-});
-
-afterEach(() => {
-  delete global.ProgressTracker; // Causes test pollution!
-});
-```
-
-After (using `globalMockManager`):
-
-```javascript
-import { withGlobalMocks } from '../helpers/globalMockManager.js';
-
-let restoreGlobals;
-
-beforeEach(() => {
-  const mockContext = withGlobalMocks({
-    ProgressTracker: () => ({ getInstance: () => mockTracker }),
-  });
-  restoreGlobals = mockContext.restore;
-});
-
-afterEach(() => {
-  restoreGlobals(); // Restores original values safely
-});
-```
+See the [Global Mock Manager](#global-mock-manager-testshelpersglobalmockmanagerjs) section for the complete API reference and usage examples.
 
 ## Anti-Patterns Seen In This Repository
 
@@ -685,8 +643,7 @@ Anti-patterns:
 
 Preferred:
 
-- name tests after the behaviour, method, or class they verify
-- use helper names that describe the transport or domain concept, not a temporary planning document
+- name tests and helpers after the behaviour, domain or transport concept they verify, not a temporary planning document; this is a repository-wide rule, see [Test naming and traceability](../frontend/frontend-testing.md#test-naming-and-traceability)
 - when a feature migrates from `globals.js` to `apiHandler`, replace legacy-surface tests with new transport tests rather than preserving both naming schemes
 - treat existing `SECTION_*` constants or "Section N ..." describe titles in the test suite as legacy names and rename them to behaviour-focused names when you next touch those tests, rather than copying the old pattern
 - apply this rule consistently to backend configuration transport tests; do not recreate action-plan-number labels in `tests/api/backendConfigApi.test.js` or related helpers
@@ -712,44 +669,9 @@ afterEach(() => {
 
 This was the root cause of Vitest teardown errors in the codebase before `globalMockManager` was introduced.
 
-Preferred:
-
-Use the `globalMockManager` helper to save original values before replacing them and restore them after tests:
-
-```javascript
-import { withGlobalMocks } from '../helpers/globalMockManager.js';
-
-let restoreGlobals;
-
-beforeEach(() => {
-  const mockContext = withGlobalMocks({
-    ProgressTracker: () => ({ getInstance: () => mockTracker }),
-    ConfigurationManager: () => ({ getInstance: () => mockConfigManager }),
-  });
-  restoreGlobals = mockContext.restore;
-});
-
-afterEach(() => {
-  restoreGlobals(); // Restores original values safely
-});
-```
-
-Or use `mockGlobals` for automatic beforeEach/afterEach management:
-
-```javascript
-const { mockGlobals } = require('../helpers/globalMockManager.js');
-
-const { beforeEach: setupMocks, afterEach: teardownMocks } = mockGlobals({
-  ProgressTracker: () => ({ getInstance: () => mockTracker }),
-  ConfigurationManager: () => ({ getInstance: () => mockConfigManager }),
-});
-
-describe('MyTest', () => {
-  beforeEach(setupMocks);
-  afterEach(teardownMocks);
-  // tests...
-});
-```
+Preferred: use the `globalMockManager` patterns in
+[Global Mock Manager](#global-mock-manager-testshelpersglobalmockmanagerjs) — `withGlobalMocks`
+with a manual `afterEach`, or `mockGlobals` for automatic management.
 
 **Rule:** Never use bare `delete global.X` in test cleanup. Always save the original value first and restore it.
 
@@ -927,7 +849,7 @@ has been deleted (the `createDefinitionFromWizardInputs` method was removed).
 
 ### 6.1 API Layer Tests (`src/backend/z_Api`)
 
-Test API-layer functions as boundary wrappers:
+Test API-layer functions as thin boundary wrappers around controller delegation and error propagation:
 
 - Delegation to the correct controller method
 - Required parameter behaviour
@@ -1000,11 +922,6 @@ Test configuration management:
 - Default value handling
 
 ### 8. Utility Tests (`tests/utils/`)
-
-Test utility functions:
-
-- **ABLogger**: Logging functionality
-- **Validate**: Email and userId validation
 
 Test utility functions:
 
@@ -1671,12 +1588,12 @@ global.MyService = createMockMyService(vi);
 
 ### 4. Clean Up Globals
 
-Always clean up global mocks in `afterEach`:
+Restore global mocks in `afterEach` with `withGlobalMocks` or `mockGlobals`; never use bare
+`delete global.X`. See [Global Mock Manager](#global-mock-manager-testshelpersglobalmockmanagerjs)
+for the patterns. Module-cache cleanup stays separate:
 
 ```javascript
 afterEach(() => {
-  delete global.MyMock;
-  delete global.AnotherMock;
   delete require.cache[require.resolve('../../src/Module.js')];
 });
 ```

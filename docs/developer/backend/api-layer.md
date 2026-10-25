@@ -434,8 +434,7 @@ Migration rule:
 
 ## Testing Guidance
 
-- Test API-layer functions as boundary wrappers: parameter handling, controller delegation, and error propagation.
-- Keep heavy business-logic tests at controller/service level.
+- Test ownership for this layer is defined in [Backend Testing §6.1 API Layer Tests](backend-testing.md#61-api-layer-tests-srcbackendz_api): API-layer functions are thin boundary wrappers, and heavy business-logic tests stay at controller/service level.
 - Do not call live GAS services in unit tests.
 
 ## API handler transport (`apiHandler`)
@@ -453,16 +452,9 @@ If the payload is invalid, `apiHandler` returns an `INVALID_REQUEST` envelope an
 
 ### Response envelope
 
-All responses are envelopes:
+All responses use the stable [transport envelope](../data-shapes/transport-envelope.md).
 
-- Success: `{ ok: true, requestId, data }`
-- Error: `{ ok: false, requestId, error: { code, message, isRetriable, details? } }`
-
-The `details` field is optional and only present when the error carries structured metadata (for example, `DefinitionStaleError` includes `definitionKey`, `referenceStale`, `isTemplateStale`, `referenceLastModified`, `templateLastModified`). When `details` is absent, it is omitted from the envelope entirely — callers should treat it as `undefined`.
-
-**`data` coercion contract:** The `_success()` method in `z_apiHandler.js` wraps handler return data with `data: data ?? null`. This means `undefined` values (including implicit returns from void handlers) become `null` in the success envelope. The frontend transport layer (`apiService.ts`) always receives `data: null` for void backend methods, never a missing `data` key.
-
-This envelope shape is stable and should be treated as the transport contract between frontend and backend.
+**`data` coercion contract:** `_success()` in `z_apiHandler.js` wraps handler return data with `data: data ?? null`, so `undefined` values (including implicit returns from void handlers) become `null`. The frontend transport layer (`apiService.ts`) therefore always receives `data: null` for void backend methods, never a missing `data` key.
 
 ### Dispatch and allowlist pattern
 
@@ -508,16 +500,9 @@ Tracking data is compacted to maintain bounded storage (`MAX_TRACKED_REQUESTS`) 
 
 ### Error mapping
 
-Known backend error types are mapped to transport error codes:
+Error types are mapped to transport error codes by `_mapErrorToFailureEnvelope`; the canonical type→code table, including the `INTERNAL_ERROR` fallback for unmapped or malformed errors, is in [transport-envelope.md § Error code mapping](../data-shapes/transport-envelope.md#error-code-mapping).
 
-- `ApiRateLimitError` -> `RATE_LIMITED`
-- `ApiValidationError` -> `INVALID_REQUEST`
-- `ApiDisabledError` -> `UNKNOWN_METHOD`
-- `DefinitionStaleError` -> `DEFINITION_STALE` (non-retriable; includes `details` block with `definitionKey`, `referenceStale`, `isTemplateStale`, `referenceLastModified`, `templateLastModified`)
-- errors thrown with `reason === 'IN_USE'` -> `IN_USE` (used by `ReferenceDataController` when a cohort, year group, or assignment topic cannot be deleted because it is still referenced by persisted records)
-- Auth gate denial (authenticated but not a group member) -> `FORBIDDEN` (non-retriable)
-
-Unmapped or malformed errors return `INTERNAL_ERROR` with a generic message.
+`IN_USE` is raised when `ReferenceDataController` cannot delete a cohort, year group, or assignment topic because persisted records still reference it.
 
 ### Failure diagnostics and transport privacy
 
@@ -577,13 +562,13 @@ Reference: https://developers.google.com/apps-script/guides/html/reference/run
   Ownership note: first-time default seeding now belongs to `ConfigurationManager.ensureDefaultConfiguration()`. `getBackendConfig()` remains a thin transport read that delegates bootstrap to the manager before shaping the public payload.
 
 - `getBackendConfig` read data returns the public configuration payload with exactly the 12 non-auth stable fields: `backendAssessorBatchSize`, masked `apiKey`, `hasApiKey`, `backendUrl`, `revokeAuthTriggerSet`, `daysUntilAuthRevoke`, `slidesFetchBatchSize`, `jsonDbMasterIndexKey`, `jsonDbLockTimeoutMs`, `jsonDbLogLevel`, `jsonDbBackupOnInitialise`, and `jsonDbRootFolderId`. It does **not** emit `authGroupEmail` or `authMode`; auth state is read exclusively through the dedicated auth endpoints (`getApplicationAccess` / `getAuthenticationSettings`).
-  Masking contract: `apiKey` is never returned as the raw stored secret. It is returned as `''`, `'****'`, or `'****'` plus the visible four-character suffix.
+  Masking contract: the raw stored secret never crosses the transport boundary; the masked shapes are defined in [BackendConfig § Transport](../data-shapes/backend-config.md#transport).
   Bootstrap contract: when the persisted configuration store is completely empty, `ConfigurationManager` seeds the defaultable backend settings on first read before the payload is returned. `apiKey`, `backendUrl`, and `jsonDbRootFolderId` remain unseeded when absent.
   Response normalisation: `jsonDbRootFolderId` is returned as `''` when the stored value is blank or unset. `hasApiKey` reflects whether a raw key was present before masking.
 
 - `setBackendConfig` accepts a partial write payload of ordinary (non-auth) fields only; only supplied fields are written.
   Writable patch fields: `backendAssessorBatchSize`, `apiKey`, `backendUrl`, `revokeAuthTriggerSet`, `daysUntilAuthRevoke`, `slidesFetchBatchSize`, `jsonDbMasterIndexKey`, `jsonDbLockTimeoutMs`, `jsonDbLogLevel`, `jsonDbBackupOnInitialise`, and `jsonDbRootFolderId`.
-  Auth-field rejection: `setBackendConfig` rejects `authMode`, `authGroupEmail`, `authUsers`, and `authRevision` for every caller — including admins — as a single `INVALID_REQUEST` request-shape violation (`ApiValidationError`), before any ordinary field is staged. Auth state is managed only through the dedicated auth endpoints.
+  Auth-field rejection: `setBackendConfig` rejects `authMode`, `authGroupEmail`, `authUsers`, and `authRevision` as a single `INVALID_REQUEST` request-shape violation for every caller, including admins — see the [BackendConfig contract](../data-shapes/backend-config.md#setbackendconfig-write).
   Ordinary-field write path: every supplied ordinary field whose value is not `undefined` is validated/normalised through `ConfigurationManager.preparePropertyValue()` and staged, then the whole patch is committed through a single `writeConfigurationLocked` call (fresh re-read, merge, one write). The existing aggregate redaction behaviour for ordinary-field failures is preserved — secrets are never echoed in the `error` string.
   Validation contract: `params` must be an object; malformed payloads are reported by the transport as `INVALID_REQUEST`.
   Save-result contract: `{ success: true } | { success: false, error: string }`.

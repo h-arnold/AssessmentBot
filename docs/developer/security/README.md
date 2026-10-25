@@ -28,18 +28,6 @@ own when configured correctly. Layers 2–4 exist because misconfiguration happe
 the deployed surface is larger than the UI, and because data should not exist where it
 does not have to.
 
-- **Layer 1 — platform security**: the `webapp` deployment block (`executeAs:
-USER_ACCESSING`, `access: DOMAIN`), OAuth scope minimisation, Drive file/folder
-  permissions, and the installable-trigger execution model.
-- **Layer 2 — application authentication**: the `AuthService` Google Group membership
-  gate that runs on every protected API call and every trigger execution; identity
-  resolution, role mapping, caching policy and audit logging.
-- **Layer 3 — attack-surface reduction**: the private-by-default function convention,
-  the sole-transport (`apiHandler`) discipline, and envelope/error hygiene that prevents
-  implementation detail from leaking to callers.
-- **Layer 4 — data-handling discipline**: no durable client-side storage, minimal
-  server-side persistence, and logging hygiene.
-
 ## Threat model
 
 ### Actors
@@ -93,50 +81,37 @@ USER_ACCESSING`, `access: DOMAIN`), OAuth scope minimisation, Drive file/folder
 
 ### Layer 1 — Google Apps Script platform security
 
-The deployment manifest (`src/backend/appsscript.json`) requires
-`webapp.executeAs: USER_ACCESSING` and `webapp.access: DOMAIN`. Every script invocation
-therefore runs with the calling user's identity and authorisation (least privilege), and
-only signed-in Workspace-domain users can open the web app at all. OAuth scopes are
-minimised — Classroom access uses readonly variants — and Drive operations share folders
-with named individuals only. Installable triggers run as the user who created them, so
-scheduled work inherits that user's identity and is re-authorised at run time by Layer 2.
+The deployment manifest pins the web app to run as the accessing user, inside the
+Workspace domain, so every invocation carries the caller's own identity and authority and
+anonymous visitors cannot reach it at all. OAuth scopes are minimised and Drive sharing is
+restricted to named individuals, which makes the platform itself the primary control.
 
 See [platform-security.md](./platform-security.md).
 
 ### Layer 2 — Application-level authentication
 
-`AuthService` (`src/backend/Utils/AuthService.js`) checks whether the calling user is a
-member of a configured Google Group before any protected API call or trigger execution is
-dispatched. The check resolves the active user's email, looks up the group via
-`GroupsApp`, maps `OWNER`/`MANAGER` to the `admin` role and `MEMBER` to `user`, caches
-only successful results for six hours, and audits every attempt. The API gate runs before
-method lookup and admission, so non-members receive a uniform `FORBIDDEN` response and
-cannot probe the method surface. Trigger execution is stricter than the API gate: it
-bypasses the cache and fails closed if the group is unconfigured.
+The `AuthService` gate checks that the caller is an authorised user — and resolves their
+role — before any protected API call or trigger execution is dispatched. It supplements
+Layer 1 by catching deployment misconfiguration, denies non-members uniformly so the
+method surface cannot be probed, and audits every attempt.
 
 See [application-authentication.md](./application-authentication.md).
 
 ### Layer 3 — Attack-surface reduction
 
-Google Apps Script exposes every top-level function that does not end in an underscore to
-`google.script.run`. The backend therefore enforces a **private-by-default** convention:
-the only public entrypoints are `apiHandler`, `doGet` and `triggerHandler`. A guard test
-(`tests/api/apiHandler/globalExposure.test.js`) statically scans the backend and fails the
-build if a new public function appears. All frontend calls funnel through `apiHandler`
-and the `ALLOWLISTED_METHOD_HANDLERS` registry, and the transport envelope never exposes
-raw exception details or secrets.
+Google Apps Script exposes every top-level function whose name does not end in an
+underscore, so the backend reduces its callable surface to three intended entrypoints and
+funnels frontend and trigger traffic through one dispatch path each. Keeping the transport
+envelope free of exception detail and secrets means probing the surface reveals nothing
+about the implementation behind it.
 
 See [attack-surface-reduction.md](./attack-surface-reduction.md).
 
 ### Layer 4 — Data-handling discipline
 
-The frontend never persists data to browser storage (no `localStorage`, `sessionStorage`,
-`indexedDB` or cookies). React Query caches responses in memory for the session only;
-data is lost on tab close and re-fetched from the backend. This is a deliberate trade-off
-against performance, chosen to reduce the value of a compromised client device.
-Server-side, only minimal opaque identifiers are stored in Script Properties, auth
-results are cached in `CacheService`, and assessment data lives in Drive/Sheets with
-restricted sharing. Logging policy forbids secrets in logs.
+The frontend keeps no durable client-side storage, so a stolen or compromised device holds
+nothing worth recovering; server-side persistence is deliberately minimal and bounded.
+Logging policy forbids secrets in logs.
 
 See [data-handling.md](./data-handling.md).
 

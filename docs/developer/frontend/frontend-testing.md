@@ -21,9 +21,6 @@ npm run test:frontend
 # Frontend tests in watch mode
 npm run test:frontend:watch
 
-# Frontend Playwright E2E suite (see frontend-playwright-e2e.md)
-npm run test:frontend:e2e
-
 # Frontend unit/component coverage check (minimum 85%)
 npm run test:frontend:coverage
 
@@ -157,8 +154,7 @@ not a nested queued wrapper that would deadlock.
 
 ### Metadata refresh task and writer tests
 
-The independently review-clean task/writer coverage (Section 4 complete with zero
-new regressions) is split across seven suites:
+The task/writer coverage is split across seven suites:
 
 - `services/dataAnalysis/postAnalysis/metadataProjection.freshness.spec.ts` and
   `metadataProjection.merge.spec.ts`: timestamp gate, exact score/marker mapping,
@@ -190,10 +186,7 @@ and feedback coverage is described below.
 
 ### Shared post-analysis lifecycle tests
 
-The generic lifecycle, feedback and invalidation passed independent 5B and 5C
-reviews (47 plus 25 cases at that point). Consumer binding is now
-implemented. The 5C report is
-`.opencode/scratchpad/review-section5c-independent.md`. Coverage is split by responsibility:
+The generic lifecycle, feedback and invalidation coverage is split by responsibility:
 
 - `services/dataAnalysis/postAnalysis/postAnalysis.zod.spec.ts`: detached complete
   source context, matching class identity, selected display evidence and strict
@@ -235,7 +228,7 @@ cancellation of active work. Future task tests must cover their own key and elig
 rules; metadata freshness is never a global gate. See the
 [registration contract](data-analysis-architecture.md#shared-post-analysis-lifecycle-and-extension).
 
-The 5C suites render the real context-aware Ant Design `App` host and use the
+These suites render the real context-aware Ant Design `App` host and use the
 real query client through `src/test/abClass/postAnalysisFeedbackTestSupport.tsx`:
 
 - `hooks/usePostAnalysisTasks.feedback.spec.tsx` covers persistent polite safe copy,
@@ -257,60 +250,40 @@ cleanup, `completeNotificationLeave` waits for the actual leave-active class,
 dispatches `animationend` inside `act`, then asserts actual DOM removal. Do not
 disable production motion, manufacture a leave or weaken removal assertions.
 
-Consumer binding (5D) is implemented and independently review-clean, and the
-Section 5 regression comparison recorded zero regressions and zero new failures.
-Playwright runtime types and dispatch inventory register `upsertABClass` and
-`updateABClass`, and the nine existing Heatmaps summary journeys use explicit
-equal-version metadata boundaries so no background write occurs. The narrow
-390×844 standalone keyboard seam was diagnosed and fixed: the helper now asserts
-the assignment control is enabled and focused before typing, because `focus()` is
-a no-op on a disabled control. Six narrow repeats and the full **303**-test run
-passed with `--retries=0`; other attempts failed on infrastructure connection
-errors. The **13** consumer-binding cases (**6** Class
-page + **7** Heatmaps) sit in the suites above.
-
-Section 6 adds test-only Node dispatcher and browser changed-write/failure-feedback
-coverage. Those tests are complete and independently review-clean
-(`.opencode/scratchpad/review-section6-independent.md`), and the Section 6
-regression comparison recorded zero regressions and zero new failures.
+Consumer binding is implemented. Playwright runtime types and dispatch inventory
+register `upsertABClass` and `updateABClass`, and the nine existing Heatmaps
+summary journeys use explicit equal-version metadata boundaries so no background
+write occurs. The consumer-binding cases (6 Class page + 7 Heatmaps) sit in the
+suites above.
 
 ### Post-analysis metadata browser and Node integration coverage
 
 The changed-write and feedback journeys live in two browser specs plus a Node
 dispatcher suite:
 
-- `src/frontend/e2e-tests/helpers/post-analysis-metadata-scenarios.ts` (**297**
-  lines) builds canonical `small` class-2 scenarios. The historical source omits
-  only the final assignment because the committed newest instance has the known
-  null `studentName`; remaining names, assessments and supplied metadata are
-  unchanged. Do not "repair" the corpus to create this boundary.
-- `post-analysis-metadata.persistence.spec.ts` (**128** lines / **3** tests):
-  Class page writes once and re-reads; standalone Heatmaps writes once with no
-  loop on the same source; a newer assignment version writes once on manual
-  refresh (six reads and two writes).
-- `post-analysis-metadata.feedback.spec.ts` (**293** lines / **8** tests):
-  persistent safe save-failure copy on both surfaces, the distinct
-  confirmed-save/refresh-failure copy, retention of that warning on the Class page
-  when readiness blocks during a still-pending list refresh, keyboard dismissal, no
-  reopen on the same source, navigation cleanup, and four containment/theme checks at
-  1440×900 and 390×844 in light and dark.
-- `tests/synthetic-analysis/syntheticABClassMetadataRoundTrip.test.ts` (**188**
-  lines / **5** tests): real `apiHandler` read and mutation round trip through
-  `callApi`, service schemas and queued wrappers. It uses the existing test seams
-  and is not real controller/persistence evidence; see
-  [Synthetic Test Data](../testing/synthetic-test-data.md#node-dispatcher-metadata-round-trip-implemented-independently-review-clean).
+- `src/frontend/e2e-tests/helpers/post-analysis-metadata-scenarios.ts` builds
+  canonical `small` class-2 scenarios. The historical source omits only the final
+  assignment because the committed newest instance has the known null
+  `studentName`; remaining names, assessments and supplied metadata are unchanged.
+  Do not "repair" the corpus to create this boundary.
+- `post-analysis-metadata.persistence.spec.ts`: Class page writes once and
+  re-reads; standalone Heatmaps writes once with no loop on the same source; a
+  newer assignment version writes once on manual refresh (six reads and two
+  writes).
+- `post-analysis-metadata.feedback.spec.ts`: persistent safe save-failure copy on
+  both surfaces, the distinct confirmed-save/refresh-failure copy, retention of
+  that warning on the Class page when readiness blocks during a still-pending list
+  refresh, keyboard dismissal, no reopen on the same source, navigation cleanup,
+  and containment/theme checks at 1440×900 and 390×844 in light and dark.
+- `tests/synthetic-analysis/syntheticABClassMetadataRoundTrip.test.ts`: real
+  `apiHandler` read and mutation round trip through `callApi`, service schemas and
+  queued wrappers. It uses the existing test seams and is not real
+  controller/persistence evidence; see
+  [Synthetic Test Data](../testing/synthetic-test-data.md#node-dispatcher-metadata-round-trip-implemented).
 
 Both browser specs use the existing runtime response queues. Keep strict dispatch:
-an unknown method or exhausted queue must still fail. The original Section 6 review
-recorded **10** new browser tests green and the full synthetic project at **34 files /
-384 tests**. The reviewer's full **313**-test browser run passed with
-`--retries=0` (8.8 minutes), and the Section 6 regression comparison recorded zero
-regressions and zero new failures. Batch 1 later added the actual-consumer Class-page
-case, taking the two specs to **11** browser tests; independent batch-1 review
-(`.opencode/scratchpad/batch-1-review.md`) passed the full **314**-test browser run
-(`.opencode/scratchpad/batch1-review-e2e.txt`), and the batch-1 comparison recorded
-seven passing checks, zero regressions and zero new failures, with only the six
-accepted pre-existing backend max-lines warnings failing the aggregate gate.
+an unknown method or exhausted queue must still fail. The full browser suite
+currently runs **314** tests.
 
 ### API transport and queue suites
 
@@ -361,16 +334,9 @@ Frontend unit/component tests must meet a minimum coverage threshold of **85%** 
 
 Use the deterministic synthetic analysis corpus when a test needs realistic analysis-domain data.
 
-**Canonical-fixture directive:**
+All new or changed tests must use a canonical synthetic fixture when the corpus covers the scenario; for the directive, its exception path and the generator-extension process, see [Synthetic Test Data](../testing/synthetic-test-data.md#policy-canonical-fixtures-for-tests).
 
-- All new or changed tests must use an appropriate canonical synthetic fixture when the synthetic fixture system provides data for the scenario.
-- If the required realistic data is not yet supported, the test may use a local realistic fixture only when the owning feature work records a generator-extension plan (which profile, view, or generator stage to add and where).
-- Deliberately invalid or boundary fixtures remain local.
-- Migrate a touched existing test to a canonical fixture opportunistically; do not perform a wholesale migration.
-
-This policy is intentionally broader than the analysis graph and applies automatically as later domains are added.
-
-For frontend service round-trip tests, the Node integration spec composes the script-owned dispatcher bridge with the frontend adapter and supplies `callApi`, the service Zod schemas, and `DataAnalysisService` input. For the corpus topology, profile/view selection, commands, failure behaviour, and the full exception and extension path, see the canonical guide: [Synthetic Test Data](../testing/synthetic-test-data.md).
+For frontend service round-trip tests, the Node integration spec composes the script-owned dispatcher bridge with the frontend adapter and supplies `callApi`, the service Zod schemas, and `DataAnalysisService` input. For the corpus topology, profile/view selection, commands and failure behaviour, see the canonical guide: [Synthetic Test Data](../testing/synthetic-test-data.md).
 
 ### Importing canonical fixtures
 
@@ -608,14 +574,6 @@ deleteResponses: [{ kind: 'success' }],
 ```
 
 This applies equally to Vitest mock responses and E2E `RuntimeScenario` entries.
-
-### Classes CRUD harness continuity rule
-
-For Settings-page Classes CRUD browser tests, extend the existing scenario harness in `src/frontend/e2e-tests/classes-crud.harness.spec.ts` and its shared queue/helpers.
-
-- Do not create a parallel Classes CRUD harness with duplicate backend queueing logic.
-- Keep new Classes CRUD journeys aligned with the shared harness fixtures so load-state, failure-state, and ordering semantics stay consistent across workstreams.
-- New Classes CRUD Playwright specs may be added for focused journeys, but they should consume the same shared harness primitives rather than reimplementing them.
 
 ### Mock Setup Order (Critical Anti-Pattern)
 
@@ -939,14 +897,6 @@ Object.defineProperty(globalThis.window, 'getComputedStyle', {
 });
 ```
 
-**Properties to include:** Focus on what Ant Design components check internally:
-
-- Modal: `position`, `z-index`, `left`, `top`, `width`, `height`, `display`
-- Table: `width`, `height`, `overflow`, `display`
-- Menu/Dropdown/Tooltip: `width`, `height`, `transform`, `display`, `z-index`
-- Select: `width`, `position`, `z-index`, `display`
-- Background checks: `background-color`
-
 **Reference:**
 
 - [HappyDOM getComputedStyle limitations](https://github.com/capricorn86/happy-dom/issues)
@@ -974,13 +924,13 @@ vi.mock('./some-module', () => ({ ... }));
 
 Ant Design components rely on `getComputedStyle` for layout calculations. When mocking this API, ensure your mock returns **non-empty values** for these commonly checked properties:
 
-| Component     | Properties Checked                                                                      |
-| ------------- | --------------------------------------------------------------------------------------- |
-| Modal         | `position`, `z-index`, `left`, `top`, `width`, `height`, `display`                      |
-| Table         | `width`, `height`, `overflow`, `display`                                                |
-| Menu/Dropdown | `width`, `height`, `transform`, `display`, `z-index`                                    |
-| Select        | `width`, `position`, `z-index`, `display`                                               |
-| General       | `box-sizing`, `padding`, `margin`, `border-*`, `background-color`, `color`, `font-size` |
+| Component             | Properties Checked                                                                      |
+| --------------------- | --------------------------------------------------------------------------------------- |
+| Modal                 | `position`, `z-index`, `left`, `top`, `width`, `height`, `display`                      |
+| Table                 | `width`, `height`, `overflow`, `display`                                                |
+| Menu/Dropdown/Tooltip | `width`, `height`, `transform`, `display`, `z-index`                                    |
+| Select                | `width`, `position`, `z-index`, `display`                                               |
+| General               | `box-sizing`, `padding`, `margin`, `border-*`, `background-color`, `color`, `font-size` |
 
 **Common failure pattern:** A mock that returns empty strings for all properties causes Ant Design components to miscalculate dimensions, leading to hidden elements, incorrect positioning, or rendering failures.
 

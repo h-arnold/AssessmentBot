@@ -59,6 +59,8 @@ cannot clear it back to empty from this page.
 
 These values are optional, but can be tuned for throughput and reliability.
 
+The default values and accepted ranges below are the authoritative settings for this guide; the backend configuration contract owns their storage and transport details ([BackendConfig](../developer/data-shapes/backend-config.md)).
+
 #### 📦 Backend Assessor Batch Size
 
 **Default:** 120

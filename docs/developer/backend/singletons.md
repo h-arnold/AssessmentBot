@@ -402,10 +402,15 @@ Entries below record the delivered Auth Service singleton and CacheManager exten
 - Status: `Implemented`
 - Owning path: `src/backend/Utils/AuthService.js`
 - Decision: new singleton extending `BaseSingleton`.
-- Contract: `checkAccess({ bypassCache?, neverClaim?, method? })` resolves the caller's email via `Session.getActiveUser().getEmail()`, denies a blank identity, and — on a genuinely fresh install (no `__CONFIG_STORE_KEY__` blob) — performs the atomic first-admin bootstrap claim for the first eligible interactive caller with a non-blank identity (single locked write of auth fields only; trigger execution passes `neverClaim: true` and `bypassCache: true` so it never claims and fails closed). Otherwise it resolves the configured provider (`GoogleGroupsAuthService` in `googleGroups` mode via `GroupsApp.getGroupByEmail(groupEmail).hasUser(email)`, or `ScriptPropertiesAuthService` reading the stored user list in `scriptProperties` mode), maps roles (`OWNER`/`MANAGER` → `admin`, `MEMBER` → `user`, others → deny), caches successful Google Group results via `CacheManager` (6-hour TTL, key `auth:<groupEmail>:<email>`), and audits all attempts via `ABLogger` (including the provided `method` when supplied). Denials are never cached.
+- Contract: `checkAccess({ bypassCache?, neverClaim?, method? })` returning
+  `{ allowed, role? }`. The singleton owns the access decision: it resolves the caller's
+  identity, delegates the membership decision to the configured provider, and delivers the
+  resulting role. Behaviour is documented in
+  [application-authentication.md](../security/application-authentication.md); the cached
+  entry contract in [auth-cache.md](../data-shapes/auth-cache.md).
 
 ### CacheManager generic methods (extended)
 
 - Status: `Implemented`
 - Owning path: `src/backend/RequestHandlers/CacheManager.js`
-- Decision: extend the existing class with generic `get(key)`, `put(key, value, ttlSeconds)`, `remove(key)` methods. Generic methods handle JSON serialisation/deserialisation internally; `put()` requires an explicit TTL (no default — the AuthService passes its 6-hour TTL at the call site). Existing assessment-specific methods stay unchanged; existing `console.error` calls convert to `ABLogger`.
+- Decision: extend the existing class with generic `get(key)`, `put(key, value, ttlSeconds)` methods. Generic methods handle JSON serialisation/deserialisation internally; `put()` requires an explicit TTL (no default — the AuthService passes its 6-hour TTL at the call site). Existing assessment-specific methods stay unchanged; existing `console.error` calls convert to `ABLogger`.

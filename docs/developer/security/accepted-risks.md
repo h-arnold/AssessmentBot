@@ -24,9 +24,10 @@ behind the application auth gate.
 
 ### 2. Auth revocation latency is bounded by the six-hour cache TTL
 
-Only successful authorisations are cached (six hours, keyed by
-`auth:<groupEmail>:<email>`). A user whose group membership is revoked remains authorised
-for API calls until their cached entry expires — up to six hours.
+Only successful authorisations are cached, for six hours (see
+[Contract: AuthCache](../data-shapes/auth-cache.md)). A user whose group membership is
+revoked remains authorised for API calls until their cached entry expires — up to six
+hours.
 
 **Why accepted:** caching avoids a `GroupsApp` round-trip on every call and keeps the
 frontend responsive. The impact is deliberately bounded:

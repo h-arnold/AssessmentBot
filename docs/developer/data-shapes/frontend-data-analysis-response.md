@@ -3,46 +3,13 @@
 ## Status
 
 **Implemented.** This is the canonical contract for the frontend-only, in-memory
-data-analysis response delivered for the GitHub issue #307 zero-weight
-remediation. It is validated entirely inside the frontend and has **no backend
-API, persistence collection, transport envelope, or migration**. The later
-ABClass metadata lifecycle additions are implemented and independently review-clean
-through checkpoint 5C (**PASS — CLEAN 5C**), and Section 5 is complete: production consumer
-activation (5D) is independently review-clean (**PASS — CLEAN 5D**), with the section-end
-comparison reporting 0 regressions, 0 new failures and 5 fixes. Frontend Section 6's test-only
-browser and dispatcher acceptance work is complete and independently review-clean (**CLEAN —
-Section 6**), with fresh reviewer runs passing the complete browser suite at **313 tests** with
-`--retries=0`, the full synthetic project at **34 files / 384 tests**, all-project
-type-checking and verify-only frontend lint (zero errors / 19 baseline warnings). The persisted
-Section 6 comparison at `2026-10-21T00:43:04.269Z` reports **0 regressions, 0 new failures and
-5 fixes**; only the six baseline backend-lint warnings remain, so overall status stays baseline
-**FAILING**. The Section 7 canonical documentation audit is complete and independently
-review-clean (**CLEAN — Section 7**,
-`.opencode/scratchpad/review-final-frontend-abclass-metadata.md`); its source-comment follow-up
-is resolved (the shared class-read schemas now document request `metadata` as optional by
-omission, strict when present, `null` clearing and object replacement). The final regression
-comparison follows this documentation-only closure and is retained under the session runs; the
-latest recorded Section 6 delivery comparison remains the run at `2026-10-21T00:43:04.269Z` (0
-regressions, 0 new failures and 5 fixes), with the later batch-1 parent comparison recorded
-below. The aggregate gate finding is recorded in
-[Contract: ABClass](abclass.md); it changes no wire, validation or data-contract shape and is not
-a contract discrepancy.
-
-Batch-1 remediation (21 October 2026) adds the required `selectedClassId` ownership argument,
-readiness-independent feedback retention, the required App notification host and bounded
-`confirmedPersistence: true` refresh diagnostics. Its Class-page delayed-list browser case is
-independently browser-verified: the reviewer's full run passed all **314** browser tests and the
-parent comparison at `2026-10-21T12-48-56.194Z` reports **0 regressions, 0 new failures and 0
-fixes** across seven passing checks, with only the six baseline backend-lint warnings failing.
-These changes affect local frontend execution only. Overall review sign-off, commit and push
-remain outstanding and are not claimed here.
-
-Frontend schema: `src/frontend/src/services/dataAnalysis/dataAnalysis.zod.ts`
-Frontend service: `src/frontend/src/services/dataAnalysis/dataAnalysisService.ts`
-Analyser: `src/frontend/src/services/dataAnalysis/analysers/`
-Class-page adapter schema: `src/frontend/src/features/classPage/classPageAdapter.zod.ts`
-Heatmap adapters: `src/frontend/src/services/dataAnalysis/heatmapAdapter.ts`, `src/frontend/src/services/dataAnalysis/heatmapAdapter.merged.ts`
-Metric display: `src/frontend/src/services/dataAnalysis/metricDisplay/`
+data-analysis response. It has **no backend API, persistence collection, transport
+envelope or migration**. The ABClass metadata lifecycle, the shared post-analysis
+contracts and both consumer surfaces are implemented and described below. Batch-1
+remediation adds the required `selectedClassId` ownership argument,
+readiness-independent feedback retention, the required App notification host and
+bounded `confirmedPersistence: true` refresh diagnostics; these affect local frontend
+execution only.
 
 Sibling contracts:
 
@@ -255,51 +222,14 @@ services under `services/abClass/`; their fields and omission/null/whole-replace
 are owned by [Contract: ABClass — mutation schemas and queued services](abclass.md#implemented-mutation-schemas-and-queued-services).
 The wrappers validate before the shared `CLASSES_BULK_MUTATION_JOB_NAME`
 (`classesBulkMutation`) enqueue and parse real
-`ClassPartialSchema` responses. Section 3 is complete and independently review-clean, including
-Section 3C's **PASS — CLEAN 3C** verdict. The Section 3 comparison at
-`2026-10-20T06:21:48.763Z` reports **0 regressions, 0 new failures and 5 fixes**; backend lint
-alone retains six baseline warnings with zero errors, so the overall status remains baseline
-**FAILING**, not an all-green gate. Review and comparison paths are recorded in
-[ABClass — frontend delivery status](abclass.md#frontend-metadata-counterpart-shared-schema-and-class-read-adoption-implemented).
+`ClassPartialSchema` responses.
 
-The audit's upsert null-admission mismatch is resolved by the frontend request schema:
-`cohortKey` and `yearGroupKey` are required non-null strings, matching the unchanged backend
-required-parameter guard. Null rejects before enqueue; read/response keys and optional update
-keys remain nullable. Optional whole `metadata` replacement remains nullable on both mutations.
-The audit history is retained in [ABClass known discrepancy 8](abclass.md#known-discrepancies).
+`cohortKey` and `yearGroupKey` are required non-null strings in the frontend request schema,
+matching the unchanged backend required-parameter guard. Null rejects before enqueue;
+read/response keys and optional update keys remain nullable. Optional whole `metadata`
+replacement remains nullable on both mutations.
 
 This changes no analyser input/output shape and does not persist analysis automatically.
-Section 4's metadata writer/projection/task and local execution types are **complete and
-independently review-clean, with zero new regressions**. Independent verdict:
-**PASS — CLEAN Section 4**, `.opencode/scratchpad/review-section4-final-docs-clean.md`.
-The subsequent persisted comparison at `2026-10-20T07:26:18.292Z` reports **0 regressions,
-0 new failures and 5 fixes**:
-`.ts-regression-checker/reports/session-frontend-abclass-metadata/runs/2026-10-20T07-26-18.292Z/comparison.txt`.
-Seven of eight checks passed; backend lint alone retains the same six baseline `max-lines`
-warnings with zero errors. Overall status remains baseline **FAILING**, not an all-green gate.
-No Section 4 blocker remains. Checkpoint 5A is review-clean and introduces no functional
-data-shape change. Checkpoint **5B is independently review-clean**: shared
-context/outcome Zod, ordered runner/descriptor factory and mount-owned hook are documented below.
-Verdict: **PASS — CLEAN 5B**, `.opencode/scratchpad/review-section5b-final-clean.md`
-(47 lifecycle cases). 5C is implemented and independently review-clean:
-**PASS — CLEAN 5C**, `.opencode/scratchpad/review-section5c-independent.md`, with no
-Critical, Improvement or Nitpick findings in scope. Fresh reviewer validation passed frontend
-coverage **294 files / 2,840 tests** with all thresholds met, `npm run typecheck:all`,
-verify-only frontend lint (**zero errors / 19 baseline `max-lines` warnings**) and
-`git diff --check`. Supplied handoff evidence recorded 72 lifecycle cases and 336 combined
-focused tests passed; the independent re-run above supersedes it as sign-off. Both production
-consumers invoke the shared page hook `usePagePostAnalysisTasks` (5D complete and independently
-review-clean; the Section 5 comparison reports 0 regressions, 0 new failures and 5 fixes).
-Frontend Section 6's test-only browser/dispatcher acceptance work is complete and independently
-review-clean (**CLEAN — Section 6**), with fresh reviewer runs passing the complete browser suite
-at **313 tests** with `--retries=0`, the full synthetic project at **34 files / 384 tests**,
-all-project type-checking and verify-only frontend lint (zero errors / 19 baseline warnings).
-Its persisted comparison at `2026-10-21T00:43:04.269Z` reports **0 regressions, 0 new failures
-and 5 fixes**; only the six baseline backend-lint warnings remain, so overall status stays
-baseline **FAILING**. The Section 7 canonical documentation audit is complete and independently
-review-clean (**CLEAN — Section 7**,
-`.opencode/scratchpad/review-final-frontend-abclass-metadata.md`); the final regression
-comparison follows this documentation-only closure and is retained under the session runs.
 `DataAnalysisService` is unchanged, synchronous and I/O-free.
 `runApiQueuedTask` in the actual queue owner `services/api/apiQueue.ts` accepts a local callback,
 not wire data; no callback/context transport schema is introduced here. Actual transport stays
@@ -308,8 +238,8 @@ in `services/apiService.ts`, with direct-owner imports and no facade/barrel.
 ### Metadata refresh execution contracts (implemented)
 
 These are local TypeScript execution contracts, **not** API requests/responses or additions
-to `DataAnalysisResponseSchema`. The Section 4 task's types remain unchanged; the 5B shared
-lifecycle now validates its context and serialisable outcome data through `postAnalysis.zod.ts`
+to `DataAnalysisResponseSchema`. The shared lifecycle validates its context and serialisable
+outcome data through `postAnalysis.zod.ts`
 (see [Shared post-analysis lifecycle](#shared-post-analysis-lifecycle)).
 Existing class, definition, analysis and metadata schemas retain their own validation boundaries.
 Callbacks and Errors never become wire data.
@@ -399,41 +329,13 @@ the unchanged task's `RefreshOutcome` union. No query/cache access, invalidation
 automatic surface invocation exists in these three owners. `confirmedPersistence` is not query-refresh success; a response-parse
 failure can reject after a backend write without producing the saved variant.
 
-Shared registration/lifecycle is independently review-clean (5B); feedback/invalidation is
-implemented and independently review-clean (5C, **PASS — CLEAN 5C**). Consumer activation
-(5D) is complete and independently review-clean (**PASS — CLEAN 5D**); the Section 5
-comparison reports 0 regressions, 0 new failures and 5 fixes. Frontend Section 6's test-only
-browser/dispatcher acceptance work is complete and independently review-clean (**CLEAN —
-Section 6**), with fresh reviewer runs passing the complete browser suite at **313 tests** with
-`--retries=0`, the full synthetic project at **34 files / 384 tests**, all-project type-checking
-and verify-only frontend lint (zero errors / 19 baseline warnings). Its persisted comparison at
-`2026-10-21T00:43:04.269Z` reports **0 regressions, 0 new failures and 5 fixes**; only the six
-baseline backend-lint warnings remain, so overall status stays baseline **FAILING**. The
-Section 7 canonical documentation audit is complete and independently review-clean (**CLEAN —
-Section 7**, `.opencode/scratchpad/review-final-frontend-abclass-metadata.md`); the final
-regression comparison follows this documentation-only closure and is retained under the session
-runs. Helper discovery/status is owned by
+Helper discovery/status is owned by
 [Frontend shared helpers](../frontend/frontend-shared-helpers-and-abstraction-standards.md#928-frontend-abclass-metadata-and-post-analysis-frontend-abclass-metadata).
 
 ### Shared post-analysis lifecycle
 
-**Checkpoint 5B: PASS — CLEAN**, recorded in
-`.opencode/scratchpad/review-section5b-final-clean.md`. **Checkpoint 5C: PASS — CLEAN**,
-recorded in `.opencode/scratchpad/review-section5c-independent.md**. This extends only frontend
-in-memory validation/execution; backend shapes and analyser output are unchanged.
-Class-page/standalone Heatmaps activation (5D) is complete and independently review-clean, and
-both surfaces call the shared page hook `usePagePostAnalysisTasks`with an unsliced class, live
-definitions and the successful averaged result. Frontend Section 6's test-only browser/dispatcher
-acceptance work is complete and independently review-clean (**CLEAN — Section 6**), with fresh
-reviewer runs passing the complete browser suite at **313 tests** with`--retries=0`, the full
-synthetic project at **34 files / 384 tests**, all-project type-checking and verify-only frontend
-lint (zero errors / 19 baseline warnings). Its persisted comparison (the Section 6 run at
-`2026-10-21T00:43:04.269Z`) reports **0 regressions, 0 new failures and 5 fixes**; only the six
-baseline backend-lint warnings remain, so overall status stays baseline **FAILING**. The
-Section 7 canonical documentation audit is complete and independently review-clean (**CLEAN —
-Section 7**; report: `.opencode/scratchpad/review-final-frontend-abclass-metadata.md`); the final
-regression comparison follows this documentation-only closure and is retained under the session
-runs.
+This extends only frontend in-memory validation/execution; backend shapes and analyser output
+are unchanged.
 
 #### Validated context
 
@@ -556,95 +458,60 @@ tasks are therefore independent of metadata source versions.
   normally without blocking independent tasks.
 - Key-function failure is routed through the runner as a task failure and cached using
   input-object identity. Every settled outcome, including failure, stays cached for this
-  mount across navigation. New source keys/new unkeyed context objects or a remount permit
-  another attempt; mere rerenders/state changes do not retry cached work.
+  mount; new source keys, new unkeyed context objects or a remount permit another attempt.
 - Class ownership is committed by a separate `navigate(selectedClassId)` effect, not by
-  `attach`. Only a changed selected class (including a transition to `null`) starts a new
-  feedback generation and destroys that owner's visible warnings; passing a `null` context
-  for the same selected class is analysis readiness, not departure. Both production
-  consumers pass their committed `classId`, so a blocking detail refetch cannot be mistaken
-  for navigation.
-- Effects start after commit; StrictMode replay reattaches to the same cached pending
-  promises. Outcomes remain in descriptor order, with incremental publication as tasks
-  settle. Cleanup detaches old-effect state publication; work continues, including later
-  tasks in that execution. It never aborts or claims to cancel an active queued write.
-  Effect detachment does not suppress independently owned same-class feedback; each
-  settled outcome is offered to feedback with the feedback generation captured at attach,
-  and only a class-generation change suppresses a late warning.
-- This is attempt storage, not a second server-data cache. Same-version work from distinct
-  mounts still relies on the writer's fresh in-lane recheck. 5C extends the cached attempt
-  promise through required post-save invalidation before settlement; reattachment does not
-  repeat invalidations or warnings. Both production surface owners are active and 5D
-  review-clean.
-- Both 5D consumers call the shared page hook `hooks/usePagePostAnalysisTasks.ts`, which
+  `attach`; only a changed selected class (including a transition to `null`) starts a new
+  feedback generation for that owner. Both production consumers pass their committed
+  `classId`, so a blocking detail refetch cannot be mistaken for navigation.
+- Outcomes are published incrementally as each task settles, and remain in descriptor order.
+  Post-commit mount lifecycle, StrictMode reattachment and cleanup rules are owned by
+  [Data Analysis Architecture § Shared post-analysis lifecycle and extension](../frontend/data-analysis-architecture.md#shared-post-analysis-lifecycle-and-extension).
+- This is attempt storage, not a second server-data cache; same-version work from distinct
+  mounts still relies on the writer's fresh in-lane recheck.
+- Both averaging surfaces call the shared page hook `hooks/usePagePostAnalysisTasks.ts`, which
   memoises the non-null context per input set and creates the descriptor list once per mount.
-  The feature hooks keep no per-feature context, descriptor list or status alias. A fresh
-  context object per render would manufacture a new unkeyed attempt every render; the page
-  hook's memoisation is the production loop guard, not a shared global metadata eligibility gate
-  (supplied evidence: 2 RED identity regressions). A non-ready surface passes `null` explicitly,
-  which requests no work but does not revoke the selected-class owner.
+  The feature hooks keep no per-feature context, descriptor list or status alias. Eligibility,
+  memoisation and loop-guard semantics are owned by the same architecture section.
 
 #### Confirmed persistence and refresh settlement
 
 Owner: `hooks/postAnalysisInvalidation.ts` → `completePostAnalysisInvalidation`.
-Only `refreshABClassMetadata` with succeeded data and `confirmedPersistence: true`
-invalidates `queryKeys.abClass(classId)` and `queryKeys.classPartials()`, once each per
-new attempt, after parsed save confirmation. Both calls use `{ throwOnError: true }`;
-`Promise.allSettled` observes both even if one rejects. Inactive queries are marked stale,
-not forcibly fetched; no imperative read, assignment/definition invalidation or rollback
-is added. Skipped/failed/unconfirmed and other-task outcomes pass through unchanged.
+Only `refreshABClassMetadata` with succeeded data and `confirmedPersistence: true` proceeds
+to invalidation; skipped, failed and unconfirmed outcomes pass through unchanged. The two
+required invalidations (`queryKeys.abClass(classId)` and `queryKeys.classPartials()`), their
+settlement handling and the no-imperative-read rule are owned by the
+[query contract](../frontend/frontend-react-query-and-prefetch.md#post-analysis-metadata-invalidation);
+the bounded refresh-failure diagnostic is owned by the
+[logging contract](../frontend/frontend-logging-and-error-handling.md#post-analysis-metadata-failures).
 
-If both invalidations fulfil, retain the succeeded outcome. Otherwise return
-`{ data: { taskId, status: 'failed', confirmedPersistence: true }, error }`, retaining
-the first normalised refresh Error locally. Every distinct normalised Error object is
-logged through the bounded diagnostic owner; both settlements remain observed even when
-the same Error instance is deduplicated. Each refresh failure is logged through
-`logPostAnalysisFailure` with the bounded scalar `confirmedPersistence: true`,
-distinguishing it from a pre-save task failure without expanding the diagnostic payload.
-Both required settlements complete before the attempt settles, even when the surface has
-meanwhile become readiness-blocking and passes a `null` context for the same class; that
-readiness change does not detach the pending attempt. Save confirmation is not withdrawn
-and the successful display analysis is not replaced by this task failure. This extension
-affects only lifecycle outcome data and bounded diagnostics, not task returns, writer
-`RefreshOutcome`, or any wire shape.
+If either required refresh rejects, the attempt settles as
+`{ data: { taskId, status: 'failed', confirmedPersistence: true }, error }`, retaining the
+first normalised refresh Error locally. Save confirmation is not withdrawn and the successful
+display analysis is not replaced by this task failure. This extension affects only lifecycle
+outcome data and bounded diagnostics, not task returns, writer `RefreshOutcome`, or any wire
+shape.
 
 #### Feedback ownership and safe copy
 
 Owner: `hooks/postAnalysisFeedback.ts` → `PostAnalysisFeedback`, using the required existing
 `App.useApp().notification` host. Only a mounted metadata failed outcome for the committed
-selected class offers a warning:
+selected class offers a warning; the two warning variants, their exact copy, host usage,
+persistence, dismissal and diagnostic behaviour are owned by the
+[logging contract](../frontend/frontend-logging-and-error-handling.md#post-analysis-metadata-failures).
 
-| Failure data                 | Title                          | Description                                                                                           | Notes                                                                                          |
-| ---------------------------- | ------------------------------ | ----------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| No confirmed persistence     | `Class summary not saved`      | `Analysis is ready, but the class summary could not be saved. Reload the page to try again.`          | Does not prove that no backend write occurred; response parsing may have failed after a write. |
-| `confirmedPersistence: true` | `Class summary refresh failed` | `The class summary was saved, but refreshed data could not be loaded. Reload the page to refresh it.` | Distinguishes confirmed persistence from refresh failure.                                      |
+Warning identity is JSON of mount-owned React `useId`, the committed selected classId, taskId
+and source identity. Keyed tasks use their attempt key; the unkeyed fallback uses the raw
+assignment ID/time list in supplied order. Shown-key memory lasts the mount, including after
+dismissal or navigation, so same-version effect replay does not reopen a notice. Closing removes
+only visible-key ownership; a committed class change/deselection and actual unmount destroy only
+this owner's visible keys. Notification hosts, callback/clock handles, React mount IDs, Maps/Sets
+and technical Errors stay local and have no serialised persistence/transport representation.
 
-Warnings use `duration: 0`, `closable: true`, `role: 'status'`, no retry action and no
-technical Error rendering. The host is the required existing `App.useApp().notification`
-context: production code declares no no-host fallback and emits no substitute channel, so a
-missing or incomplete host fails loudly at the completion boundary. Identity is JSON of
-mount-owned React `useId`, the committed selected classId, taskId and source identity.
-Keyed tasks use their attempt key; the unkeyed fallback uses the raw assignment ID/time
-list in supplied order. Shown-key memory lasts the mount, including after dismissal or navigation, so
-same-version effect replay does not reopen a notice. Closing removes only visible-key
-ownership; a committed class change/deselection and actual unmount destroy only this owner's
-visible keys. Microtask disposal tolerates synchronous StrictMode replay.
+#### Frontend test-only acceptance boundary (implemented)
 
-Feedback ownership tracks the committed selected class rather than analysis readiness. A
-same-class readiness-null context does not destroy a visible warning or suppress a pending
-attempt's settlement, so a confirmed-save warning still appears after both required query
-refreshes settle when the surface became blocking in the meantime. Genuine navigation,
-unmount or a different class generation still suppresses late feedback; state publication
-alone is detached with the effect. This does not abort queued work or required refresh
-settlement. No success/unchanged warning is emitted. Notification hosts, callback/clock
-handles, React mount IDs, Maps/Sets and technical Errors stay local and have no serialised
-persistence/transport representation.
-
-#### Frontend Section 6 test-only acceptance boundary (implemented; original set review-clean; batch-1 addition independently browser-verified)
-
-Section 6 adds browser and dispatcher acceptance coverage only. It introduces **no** new
-execution context, outcome, request or response field, and the lifecycle contracts above are
-unchanged.
+Section 6 adds browser and dispatcher acceptance coverage only. It adds no production helper or
+contract, introduces **no** new execution context, outcome, request or response field, and the
+lifecycle contracts above are unchanged.
 
 - `src/frontend/e2e-tests/helpers/post-analysis-metadata-scenarios.ts` derives its inputs from
   the canonical `small` class `class-2`, starting from `metadata: null` and a historical source
@@ -660,34 +527,12 @@ unchanged.
   narrow × light/dark containment cases; and a Class-page confirmed-save refresh-failure
   journey where the detail refresh fails while the list refresh remains deferred, proving that
   readiness-driven blocking (a `null` context for the same class) does not suppress the settled
-  warning. That last case was added in batch-1 remediation and is independently
-  browser-verified by the reviewer's full run (all **314** browser tests passed; the
-  actual-consumer delayed-list case is recorded in `.opencode/scratchpad/batch1-review-e2e.txt`).
-  Overall review sign-off, commit and push remain outstanding.
-- The Node real-dispatcher bridge and round-trip suite are ABClass transport coverage; their
-  test-only contract and the explicit limitation that they are not real
-  controller/persistence/integrity proof are recorded in
-  [Contract: ABClass — Frontend Section 6](abclass.md#frontend-section-6-test-only-round-trip-and-browser-scenario-contracts-implemented-original-set-review-clean-batch-1-addition-independently-browser-verified).
-
-The original ten Section 6 browser cases are green in the independent reviewer's full run:
-**313** browser tests passed with `--retries=0` (8.8 minutes), alongside **34** synthetic files /
-**384** tests, all-project type-checking and verify-only frontend lint with zero errors / 19 baseline
-`max-lines` warnings. The persisted Section 6 comparison at `2026-10-21T00:43:04.269Z` reports
-**0 regressions, 0 new failures and 5 fixes** across seven passing checks; only the six
-baseline backend-lint warnings remain, so overall status stays baseline **FAILING**. Independent
-review is **CLEAN — Section 6**
-(`.opencode/scratchpad/review-section6-independent.md`). The Section 7 canonical documentation
-audit is complete and independently review-clean (**CLEAN — Section 7**,
-`.opencode/scratchpad/review-final-frontend-abclass-metadata.md`); the final regression
-comparison follows this documentation-only closure and is retained under the session runs.
-
-That **313**-test run is historical for the original set and predates the batch-1 addition. The
-batch-1 Class-page delayed-list case is covered separately by the later reviewer run of **314**
-browser tests and by the parent comparison in the reviewer's regression session at
-`.ts-regression-checker/reports/session-feat-frontend-abclass-metadata/runs/2026-10-21T12-48-56.194Z/comparison.txt`
-(**0 regressions, 0 new failures and 0 fixes** across seven passing checks; only the six baseline
-backend-lint warnings fail). Its historical acceptance count remains ten cases in the 313-test
-run; the reviewer's current run contains eleven browser cases including the batch-1 addition.
+  warning.
+- The Node real-dispatcher bridge and round-trip suite are ABClass transport coverage. They
+  prove frontend consumer compatibility and envelope/error propagation only: the seams supply
+  prepared controller/mutation data, so they are **not** evidence that the real controller,
+  persistence layer or stored-integrity validator ran. Their test-only contract is recorded in
+  [Contract: ABClass — frontend test-only contracts](abclass.md#frontend-test-only-round-trip-and-browser-scenario-contracts-implemented).
 
 ## Sub-entities
 
@@ -1080,11 +925,10 @@ The `excluded` state is displayed as **Excluded** with accessible text:
   `ClassPageAdapterResultSchema`.
 - `src/frontend/src/services/dataAnalysis/postAnalysis/postAnalysis.zod.ts` →
   `PostAnalysisContextSchema`, `PostAnalysisTaskResultSchema`,
-  `PostAnalysisTaskOutcomeDataSchema` — 5B local context, strict succeeded/skipped task
-  returns and serialisable lifecycle state; 5B and 5C independently review-clean (**PASS —
-  CLEAN 5B** and **PASS — CLEAN 5C**), with 5C's optional failed-outcome save confirmation
-  implemented. Function/Error handles remain separate typed execution values, never transport
-  fields.
+  `PostAnalysisTaskOutcomeDataSchema` — cover the 5B local context, strict succeeded/skipped
+  task returns and serialisable lifecycle state; 5C's optional failed-outcome save
+  confirmation is implemented. Function/Error handles remain separate typed execution values,
+  never transport fields.
 
 **Backend transport validation:**
 
@@ -1189,9 +1033,7 @@ Class-page adapter:
    > Previously undocumented — surfaced during the 20 October 2026 5B data-shapes audit.
    > Origin: the new runner reusing the state schema for execution results. Resolved by
    > the subsequent frontend audit fix; two red-first runner cases cover pending/failed
-   > rejection and continued execution. This documentation pass changes no production code;
-   > independent 5B review subsequently returned **PASS — CLEAN** in
-   > `.opencode/scratchpad/review-section5b-final-clean.md`.
+   > rejection and continued execution.
 
 7. **Aligned** — 5C permits `confirmedPersistence?: true` on failed lifecycle data,
    without widening `PostAnalysisTaskResultSchema`. Post-save query refresh failure
@@ -1201,7 +1043,7 @@ Class-page adapter:
 
    > Surfaced during the 20 October 2026 5C data-shapes audit. Origin: the intentional
    > frontend-only refresh-settlement extension. No backend, envelope or analyser shape
-   > change; 5C independent review is **PASS — CLEAN** (`.opencode/scratchpad/review-section5c-independent.md`).
+   > change.
 
 8. **Aligned** — Batch 1 makes class ownership explicit and independent of analysis
    readiness. `usePostAnalysisTasks` requires the committed `selectedClassId` as its third
@@ -1214,10 +1056,7 @@ Class-page adapter:
    changes.
 
    > Surfaced during batch-1 remediation of the 21 October 2026 pre-PR review (EH-1/RRC-1).
-   > No wire or persistence change; the added Class-page browser case is independently
-   > browser-verified by the reviewer's full 314-test run, with 0 regressions and 0 new
-   > failures in the parent comparison at `2026-10-21T12-48-56.194Z`. Overall review sign-off,
-   > commit and push remain outstanding.
+   > No wire or persistence change.
 
 ## Planned contract additions (Not implemented, issue #305)
 
@@ -1576,42 +1415,25 @@ Heatmap adapters: `src/frontend/src/services/dataAnalysis/heatmapAdapter.ts`, `s
 Metric display: `src/frontend/src/services/dataAnalysis/metricDisplay/`
 Class-page adapter schema: `src/frontend/src/features/classPage/classPageAdapter.zod.ts`
 
-Metadata refresh execution companions (Section 4 complete and independently review-clean; zero new regressions):
+Metadata refresh execution companions:
 ├── `src/frontend/src/services/dataAnalysis/postAnalysis/metadataProjection.ts` → pure decision, shared newest-first comparator, metric mapping, non-nullable rolling merge; `MetadataRefreshSkipped`, `MetadataRefreshDecision`
 ├── `src/frontend/src/services/dataAnalysis/postAnalysis/refreshABClassMetadata.ts` → task entrypoint consuming the shared `PostAnalysisContext`; no task-local context type
 └── `src/frontend/src/services/abClass/abClassMetadataService.ts` → reserved-slot writer; `MetadataRefreshInput`, `RefreshOutcome`, shared lane constant reservation
 
-Shared lifecycle companions (5B and 5C independently review-clean):
+Shared lifecycle companions:
 ├── `src/frontend/src/services/dataAnalysis/postAnalysis/postAnalysis.zod.ts` → `PostAnalysisContextSchema`, `PostAnalysisTaskResultSchema`, `PostAnalysisTaskOutcomeDataSchema`, inferred data types
 ├── `src/frontend/src/services/dataAnalysis/postAnalysis/runPostAnalysisTasks.ts` → ordered runner, ID validation, local descriptor/result/outcome types
 ├── `src/frontend/src/services/dataAnalysis/postAnalysis/postAnalysisTasks.ts` → canonical metadata task ID, clock-injected metadata-only descriptor factory, shared source-version signature and attempt key
-├── `src/frontend/src/services/dataAnalysis/postAnalysis/postAnalysisDiagnostics.ts` → bounded task/refresh failure identifiers, shared comparator, available correlation and optional `confirmedPersistence: true`
+├── `src/frontend/src/services/dataAnalysis/postAnalysis/postAnalysisDiagnostics.ts` → `logPostAnalysisFailure`; bounded task/refresh failure identifiers, shared comparator, available correlation and optional `confirmedPersistence: true`
 ├── `src/frontend/src/hooks/usePostAnalysisTasks.ts` → post-commit mount-owned attempt/state lifecycle with required selected-class ownership, including post-save settlement
 ├── `src/frontend/src/hooks/usePagePostAnalysisTasks.ts` → shared ready-only page eligibility/context wrapper; memoised context and once-per-mount descriptor list for both averaging surfaces
 ├── `src/frontend/src/hooks/postAnalysisInvalidation.ts` → both required query invalidations; refresh failures log bounded `confirmedPersistence: true` and return a confirmed-persistence failed outcome
 └── `src/frontend/src/hooks/postAnalysisFeedback.ts` → mount/selected-class/task/source-owned persistent warnings with required App host, dismissal memory and cleanup
 
-Production consumer activation (5D): **complete and independently review-clean**; both
-averaging surfaces invoke the shared page hook `usePagePostAnalysisTasks` with memoised unsliced
-context, and the Section 5 comparison reports 0 regressions, 0 new failures and 5 fixes.
-Frontend Section 6's test-only browser and dispatcher acceptance work is complete and
-independently review-clean (**CLEAN — Section 6**), with fresh reviewer runs passing the
-complete browser suite at **313 tests** with `--retries=0`, the full synthetic project at
-**34 files / 384 tests**, all-project type-checking and verify-only frontend lint (zero errors /
-19 baseline warnings). Its persisted comparison at `2026-10-21T00:43:04.269Z` reports
-**0 regressions, 0 new failures and 5 fixes**; only the six
-baseline backend-lint warnings remain, so overall status stays baseline **FAILING**. The
-Section 7 canonical documentation audit is complete and independently review-clean (**CLEAN —
-Section 7**, `.opencode/scratchpad/review-final-frontend-abclass-metadata.md`); the final
-regression comparison follows this documentation-only closure and is retained under the session
-runs.
-
-Frontend Section 6 test-only acceptance (implemented; original set independently review-clean;
-batch-1 addition independently browser-verified; historical comparison 0 regressions / 0 new
-failures / 5 fixes, baseline FAILING only for backend lint):
+Frontend Section 6 test-only acceptance (implemented):
 ├── `src/frontend/e2e-tests/helpers/post-analysis-metadata-scenarios.ts` → canonical small class-2 historical-boundary and later-version browser queues
 ├── `src/frontend/e2e-tests/post-analysis-metadata.persistence.spec.ts` → three changed-write journeys
-└── `src/frontend/e2e-tests/post-analysis-metadata.feedback.spec.ts` → eight save/refresh feedback and viewport/theme cases (the Class-page delayed-list readiness case is independently browser-verified in the reviewer's 314-test run)
+└── `src/frontend/e2e-tests/post-analysis-metadata.feedback.spec.ts` → eight save/refresh feedback and viewport/theme cases
 
 Task preview derived shapes (implemented, issue #19):
 ├── `src/frontend/src/features/taskHeatmap/buildCellPreviewLookup.ts` → `CellPreviewData` (owner)

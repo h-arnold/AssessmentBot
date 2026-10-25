@@ -288,7 +288,7 @@ No new profile, transport view or realistic fixture family was added.
 - Frontend Vitest schema coverage selects the committed `small`, `medium` and `large-representative` class-partial views through `src/frontend/src/test/abClass/abClassMetadataFixtures.ts` (raw `?raw` imports plus `cloneMetadata`). Backend imports stay test-local; frontend production code never imports `scripts/` or backend modules.
 - Runner-neutral typed fixture providers use `src/frontend/src/test/abClass/abClassMetadataSharedFixtures.ts`: direct JSON loading, schema validation, freezing and detached cloning own `CANONICAL_NON_NULL_METADATA` / `createCanonicalMetadataFixture()`. The Vitest-only raw selectors re-export those bindings for compatibility; shared browser import chains must not import the raw selector module. `ClassFullFixtureDefaults` owns the focused full-class builders' defaults and preserves explicit `metadata: null`, applying the canonical snapshot only for omitted/undefined metadata. `src/frontend/e2e-tests/helpers/class-metadata-fixtures.ts` serves cloned `small`-profile snapshots to browser scenarios. Class-read fixture browser validation and independent review completed in Section 2. Supplied values remain snapshots, not calculated-average oracles.
 
-### Node dispatcher metadata round trip (`Implemented`, independently review-clean)
+### Node dispatcher metadata round trip (`Implemented`)
 
 `tests/synthetic-analysis/syntheticABClassMetadataRoundTrip.test.ts` (**188** physical
 lines / **5** tests) composes the script-owned bridge, the frontend round-trip adapter
@@ -320,19 +320,13 @@ npm run test:synthetic -- tests/synthetic-analysis/syntheticABClassMetadataRound
 
 ### Metadata refresh analysis boundaries
 
-Frontend refresh projection/task/writer owners are complete and independently
-review-clean, with zero new regressions in the Section 4 comparison. They use actual assessment evidence,
+Frontend refresh projection/task/writer owners use actual assessment evidence,
 not supplied metadata scores, for full-class and isolated-target calculation.
 The generic context/result/outcome schemas, ordered runner, metadata-only descriptor
-factory and shared post-commit hook passed independent 5B and 5C reviews, and the consumer
-wiring passed independent 5D review.
-Query invalidation and warning feedback are independently review-clean.
-Both feature consumers call the shared page hook directly. The narrow standalone
-keyboard seam was diagnosed and fixed in the shared E2E helper, and the full
-**303**-test browser run passed. The Section 5 regression comparison recorded zero
-regressions and zero new failures. Section 6 adds test-only Node dispatcher and
-browser changed-write/failure-feedback coverage; those artefacts are complete and
-independently review-clean, with zero new regressions in the Section 6 comparison.
+factory, shared post-commit hook and consumer wiring are implemented.
+Both feature consumers call the shared page hook directly, and query invalidation
+and warning feedback are owned by their frontend contracts. Section 6 adds test-only
+Node dispatcher and browser changed-write/failure-feedback coverage.
 The real App-host/query-observer unit harness reuses these same boundary fixtures;
 it does not close the newest-target evidence gap, and the separate Section 6
 browser suite is the changed-write/failure acceptance record.

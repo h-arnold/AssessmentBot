@@ -75,25 +75,15 @@ npm run test:frontend:e2e
 - Feature-specific E2E helpers: `src/frontend/e2e-tests/helpers/**`
 - Vite dev server is used as the web server (configured in `playwright.config.ts`)
 
-## Behaviour Split: Vitest vs Playwright (Authoritative)
-
-| Concern                                          | Tool           |
-| ------------------------------------------------ | -------------- |
-| State transitions, callback wiring, data mapping | Vitest         |
-| Conditional rendering decisions                  | Vitest         |
-| Accessibility attributes, semantic structure     | Vitest         |
-| What users can **see and do** in a browser       | **Playwright** |
-| Interactive flows across components/pages        | **Playwright** |
-| Keyboard and pointer interaction                 | **Playwright** |
-| Visual state transitions (light/dark, collapse)  | **Playwright** |
-| Cross-page or runtime integration flows          | **Playwright** |
+## Behaviour Split: Vitest vs Playwright
 
 **Mandatory rule:** every new or changed **user-visible interaction** must have Playwright coverage.
-Do not treat Vitest coverage as sufficient for visible browser behaviour such as clicks,
-keyboard interaction, tab switching, toggles, or navigation.
 
 When both are possible, default to Vitest first for fast feedback, then add Playwright coverage
 for the highest-value user journeys.
+
+For the full behaviour split, decision matrix and examples, see
+[Behaviour split: Vitest vs Playwright (authoritative)](frontend-testing.md#behaviour-split-vitest-vs-playwright-authoritative).
 
 ---
 
@@ -128,7 +118,7 @@ Each `ResponseItem` has a `kind` field that controls how the mock behaves:
 | `transportFailure` | Calls the failure handler with an `Error`                       |
 | `deferredSuccess`  | Holds the promise open until `releaseNextDeferredSuccess(page)` |
 
-**Void/delete response rule:** For backend methods that return no data (for example deletes, start-assessment-run), all response entry kinds (`success`, `deferredSuccess`) must include `data: null`. This matches the backend `_success()` contract (`data: data ?? null`) and survives `JSON.stringify` serialisation in the mock factory. Omitting `data` or using `data: undefined` causes the frontend `ApiSuccessResponseSchema.superRefine` to reject the envelope with `"Success response envelope must include a data field."`.
+**Void/delete response rule:** For backend methods that return no data (for example deletes, start-assessment-run), every response entry kind (`success`, `deferredSuccess`) in a `RuntimeScenario` must include `data: null`. Omitting `data` or using `data: undefined` causes the frontend `ApiSuccessResponseSchema.superRefine` to reject the envelope with `"Success response envelope must include a data field."`. For the backend `_success()` coercion and the `JSON.stringify` cause, see [Void/delete response guidance: `data: null` required](frontend-testing.md#voiddelete-response-guidance-data-null-required).
 
 ### Installing Mock Scenarios
 
@@ -149,7 +139,7 @@ When adding new backend methods to the mock system, you must:
 2. Add it to `allMethods` inside `installRuntimeMock` in `shared/endToEndRuntimeMocks.ts`
 3. Create scenario factory helpers for the new method's response queues in `shared/runtimeMockScenarios.ts`
 
-**Post-analysis metadata consumer compatibility (Section 5 complete).**
+**Post-analysis metadata consumer compatibility.**
 `upsertABClass` and `updateABClass` are registered in `RuntimeScenario`
 (`runtimeMockTypes.ts`) and in the `allMethods` dispatch inventory
 (`endToEndRuntimeMocks.ts`). Kept strict: an unregistered method or an exhausted
@@ -158,64 +148,19 @@ queue still fails; never add a fallback success.
 `createHeatmapScenario` anchors each fixture's metadata to its newest assignment
 at the same timestamp, so the background metadata task takes its no-op path
 instead of writing. This is an explicit local equal-version boundary; the supplied
-metrics remain fixture evidence, not an analysis oracle. The nine existing
-`task-heatmap-summary.spec.ts` journeys pass with `--retries=0`, and the first
-journey asserts that `updateABClass` is never called.
+metrics remain fixture evidence, not an analysis oracle. The existing
+`task-heatmap-summary.spec.ts` journeys rely on it, and the first journey asserts
+that `updateABClass` is never called.
 
-The narrow 390×844 standalone keyboard seam was diagnosed and fixed in
-`e2e-tests/helpers/task-preview-source-link-helpers.ts`. The initial full run
-passed **301** with two failures, and a reviewer run passed **302** with one. The
-failure context showed assignment search text entering the Class combobox while
-the assignment control was disabled awaiting the class query. `Locator.focus()` is
-a no-op on a disabled control, so the keystrokes went to the previously focused
-Class input. The helper now asserts the control is enabled, focuses it, asserts
-focus, then types and asserts the active option. It adds no sleeps, retries,
-timeout changes or weaker assertions. Six narrow repeated runs and the full
-**303**-test run passed with `--retries=0`
-(`.opencode/scratchpad/section5d-keyboard-fixed-full-e2e.log`, 8.4 minutes). Other
-attempts failed with server-connection-refused infrastructure errors and are not
-counted as passes. Independent 5D review
-(`.opencode/scratchpad/review-section5d-independent.md`) and the Section 5
-regression comparison
-(`.ts-regression-checker/reports/session-frontend-abclass-metadata/runs/2026-10-20T22-50-54.007Z/comparison.txt`)
-are complete, with zero regressions and zero new failures.
-
-The equal-version probes prove the no-write path only. Section 6 adds changed-write,
-warning and theme/geometry journeys using the same runtime queues:
-
-- `e2e-tests/helpers/post-analysis-metadata-scenarios.ts` (**297** lines) builds
-  canonical `small` class-2 scenarios. Its historical source omits only the final
-  assignment, matching the documented null-`studentName` corpus boundary.
-- `post-analysis-metadata.persistence.spec.ts` (**128** lines / **3** tests)
-  covers one Class-page write, standalone Heatmaps one write with no loop, and a
-  newer assignment version writing once on manual refresh.
-- `post-analysis-metadata.feedback.spec.ts` (**293** lines / **8** tests) covers
-  persistent safe save-failure copy on both surfaces, the distinct
-  confirmed-save/refresh-failure copy, retention of that warning when Class-page
-  readiness blocks while the required list refresh is still pending, keyboard
-  dismissal, same-source non-reopen, navigation cleanup, and containment at
-  1440×900 and 390×844 in light and dark.
-
-The feedback journeys assert enabled/focused keyboard preconditions, poll stable
-notice geometry, and use no sleeps, retries or weakened assertions.
-
-The original Section 6 review recorded **10** new browser tests green, the full
-**313**-test browser run passing with `--retries=0` (8.8 minutes,
-`.opencode/scratchpad/review6-full-e2e.log`), the full synthetic project at
-**34 files / 384 tests**, zero frontend lint errors and passing all-project
-type-checking. The Section 6 regression comparison
-(`.ts-regression-checker/reports/session-frontend-abclass-metadata/runs/2026-10-21T00-43-04.269Z/comparison.txt`)
-recorded zero regressions and zero new failures.
-
-Batch 1 later added the actual-consumer Class-page case to
-`post-analysis-metadata.feedback.spec.ts`: the warning must survive Class-page
-readiness blocking while the required list refresh is still pending. That takes the
-two specs to **11** browser tests. Independent batch-1 review
-(`.opencode/scratchpad/batch-1-review.md`) passed the full **314**-test browser run
-(`.opencode/scratchpad/batch1-review-e2e.txt`, 8.7 minutes); the batch-1 comparison
-(`.ts-regression-checker/reports/session-feat-frontend-abclass-metadata/runs/2026-10-21T12-48-56.194Z/comparison.txt`)
-recorded seven passing checks, zero regressions and zero new failures, with only the
-six accepted pre-existing backend max-lines warnings failing the aggregate gate.
+The equal-version probes prove the no-write path only. Changed-write, warning and
+theme/geometry journeys use the same runtime queues, in
+`post-analysis-metadata.persistence.spec.ts` and
+`post-analysis-metadata.feedback.spec.ts`, built on
+`e2e-tests/helpers/post-analysis-metadata-scenarios.ts`. The feedback journeys
+assert enabled/focused keyboard preconditions, poll stable notice geometry, and use
+no sleeps, retries or weakened assertions. For the scenario contents and the Node
+dispatcher round-trip suite, see
+[Frontend Testing](frontend-testing.md#post-analysis-metadata-browser-and-node-integration-coverage).
 
 ### Scenario Factory Pattern
 
@@ -612,20 +557,23 @@ unauthorised, backend error, delayed loading) to quickly verify usability during
 - Classes page test helpers (shared fixtures): `src/frontend/src/test/classes/classesPageTestHelpers.ts`
   - Use `toPlainClassPartials(classPartials)` for JSON serialisation in `addInitScript` scenarios
   - Use `createClassesOrderScenario(classPartials)` for ordering tests
-- Class metadata browser fixtures (class-read adoption, Section 2 complete): `src/frontend/e2e-tests/helpers/class-metadata-fixtures.ts` serves detached clones of committed canonical `small` metadata snapshots. `task-heatmap-class-fixtures.ts` owns the split class-snapshot/score builders, and `classes-crud-mock-runtime.ts` owns the split Classes CRUD transport-mock installation.
-- Post-analysis metadata scenarios (Section 6, independently review-clean): `src/frontend/e2e-tests/helpers/post-analysis-metadata-scenarios.ts` builds the canonical changed-write and newer-version journeys used by `post-analysis-metadata.persistence.spec.ts` and `post-analysis-metadata.feedback.spec.ts`. Extend this helper rather than duplicating its canonical `small` class-2 setup in new specs.
+- Class metadata browser fixtures: `src/frontend/e2e-tests/helpers/class-metadata-fixtures.ts` serves detached clones of committed canonical `small` metadata snapshots. `task-heatmap-class-fixtures.ts` owns the split class-snapshot/score builders, and `classes-crud-mock-runtime.ts` owns the split Classes CRUD transport-mock installation.
+- Post-analysis metadata scenarios: `src/frontend/e2e-tests/helpers/post-analysis-metadata-scenarios.ts` builds the canonical changed-write and newer-version journeys used by `post-analysis-metadata.persistence.spec.ts` and `post-analysis-metadata.feedback.spec.ts`. Extend this helper rather than duplicating its canonical `small` class-2 setup in new specs.
 
 **Do not import `src/test/**` from production source.\*\* The frontend ESLint config enforces this boundary.
 
 ### Mandatory `apiHandler` Mock Rule
 
 When a Playwright test needs to mock `google.script.run.apiHandler`, inline
-`googleScriptRunApiHandlerFactorySource` inside `page.addInitScript(...)`. Do not introduce
-new ad-hoc `google.script.run` mocks that mutate one shared runner object.
+`googleScriptRunApiHandlerFactorySource` inside `page.addInitScript(...)`. For the prohibition on
+ad-hoc mocks and the GAS serialisation fidelity rules, see
+[Mandatory `apiHandler` mock rule](frontend-testing.md#mandatory-apihandler-mock-rule).
 
 ### Classes CRUD Harness Continuity
 
 Extend the existing scenario harness in `src/frontend/e2e-tests/classes-crud.harness.spec.ts`
 and its shared queue/helpers. Do not create a parallel Classes CRUD harness with duplicate
-backend queueing logic. New Classes CRUD Playwright specs may be added for focused journeys
-but must consume the same shared harness primitives.
+backend queueing logic. Keep new Settings-page Classes CRUD journeys aligned with the shared harness fixtures
+so load-state, failure-state, and ordering semantics stay consistent across workstreams. New
+Classes CRUD Playwright specs may be added for focused journeys but must consume the same shared
+harness primitives.

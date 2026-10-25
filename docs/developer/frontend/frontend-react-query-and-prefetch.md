@@ -149,13 +149,6 @@ Feedback ownership follows the committed selected class, so a readiness-driven b
 surface does not suppress that warning while the other required refresh is still
 pending. Existing query trust rules remain authoritative. Effect replay and metadata-only
 cache updates reuse the completed attempt instead of invalidating again.
-This helper is independently review-clean (5C). Both production averaging
-consumers call the shared page hook directly. The narrow keyboard seam was diagnosed
-and fixed in the shared E2E helper, and the full **303**-test browser run passed.
-Independent 5D review and the Section 5 regression comparison are complete, with
-zero regressions and zero new failures. Section 6 changed-write, warning and
-theme/geometry acceptance is complete and independently review-clean, with zero
-new regressions.
 
 ## 7. Mutation and Invalidation Patterns
 

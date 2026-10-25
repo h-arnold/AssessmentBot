@@ -3,23 +3,8 @@
 ## Status
 
 **Implemented analysis pipeline.** This document records the zero-weight
-assessment architecture and shared analysis boundaries. The metadata task and
-queued writer below are complete and independently review-clean with zero new
-regressions. The shared post-commit lifecycle, query invalidation and feedback are
-independently review-clean (5B/5C), and the consumer wiring passed independent 5D
-review. Both averaging surfaces call the shared page hook directly. The narrow standalone
-keyboard seam was diagnosed and fixed in the shared E2E helper, and the full
-**303**-test browser run passed. The Section 5 regression comparison recorded zero
-regressions and zero new failures. Section 6 test-only Node dispatcher and browser
-changed-write/failure-feedback coverage is complete and independently review-clean
-(`.opencode/scratchpad/review-section6-independent.md`). Its regression comparison
-(`.ts-regression-checker/reports/session-frontend-abclass-metadata/runs/2026-10-21T00-43-04.269Z/comparison.txt`)
-recorded zero regressions and zero new failures. Section 7 documentation
-reconciliation is complete and the final independent review is clean
-(`.opencode/scratchpad/review-final-frontend-abclass-metadata.md`). The aggregate
-gate is not green: the unchanged baseline blocks on the six backend `max-lines`
-lint warnings and backend branch coverage at 84.35% against the 85% gate, both
-pre-existing and not new regressions.
+assessment architecture and the shared analysis boundaries. Delivery evidence is
+not tracked here.
 
 ## Purpose
 
@@ -246,17 +231,14 @@ and never persists display results or display weightings. It declares no narrowe
 task-local context type, so task input and lifecycle validation share one contract.
 It is the only descriptor built by `createPostAnalysisTaskDescriptors` in
 `postAnalysis/postAnalysisTasks.ts`. The generic context/outcome schemas, ordered runner and shared
-`hooks/usePostAnalysisTasks.ts` passed independent 5B and 5C reviews.
+`hooks/usePostAnalysisTasks.ts` own that lifecycle.
 Both averaging surfaces call the shared page hook `hooks/usePagePostAnalysisTasks.ts`. It passes the complete
 unsliced class, live definition partials and the successful averaging result, or
 `null` when the surface is not ready, and always forwards the committed class ID. On the standalone Heatmaps surface the
 selected assignments drive display only; metadata calculation always uses every
-class assignment. The task never writes descriptive summary results. The narrow
-standalone keyboard seam was diagnosed and fixed in the E2E helper, and the full
-**303**-test browser run passed. Independent 5D review and the Section 5 regression
-comparison are complete, with zero regressions and zero new failures. Section 6
-adds test-only Node dispatcher and browser changed-write/failure-feedback coverage;
-it is complete and independently review-clean, with zero new regressions.
+class assignment. The task never writes descriptive summary results. Test-only Node
+dispatcher and browser changed-write/failure-feedback coverage is recorded in
+[Frontend Testing](frontend-testing.md#post-analysis-metadata-browser-and-node-integration-coverage).
 
 `postAnalysis/metadataProjection.ts` owns pure freshness, score projection and
 rolling merge. Every candidate source timestamp must be canonical UTC; newest
@@ -371,17 +353,12 @@ metadata persistence only. A refresh failure becomes a failed outcome retaining
 still run. See the [query contract](frontend-react-query-and-prefetch.md#post-analysis-metadata-invalidation).
 
 `hooks/postAnalysisFeedback.ts` owns metadata warnings independently of effect
-reattachment and analysis readiness. Notification keys include mounted owner, class,
-task and source. Dismissal memory lasts the mount; a new source can notify again.
-Same-class reattachment neither destroys an undismissed notice nor reopens a dismissed
-one. Ownership follows the committed selected class: a readiness-driven `null` context
-for that class neither destroys notices nor suppresses a pending attempt, so a
-confirmed-save warning appears once both required refreshes settle even if the surface
-went blocking meanwhile. A class change or unmount destroys only owned notices and
-suppresses feedback from previous visits; unmount disposal tolerates synchronous
-StrictMode replay. Effect cleanup suppresses stale state publication only, and detached
-work can still finish and invalidate queries. See the
+reattachment and analysis readiness. Notification identity, dismissal memory,
+committed-class ownership and the required host are owned by the
 [warning and diagnostic contract](frontend-logging-and-error-handling.md#post-analysis-metadata-failures).
+Two lifecycle rules stay here: effect cleanup suppresses stale state publication only,
+so detached work can still finish and invalidate queries, and unmount disposal tolerates
+synchronous StrictMode replay.
 
 ### Register another task
 

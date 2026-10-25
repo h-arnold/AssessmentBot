@@ -51,13 +51,6 @@ configuration write while a DB operation already holds the script lock (a caller
 write path does not detect). The freshness probe `isFreshInstall()` runs `ensureInitialized()` then
 reads raw Script Properties for `__CONFIG_STORE_KEY__` absence (never the forgiving cache).
 
-The `ensureDefaultConfiguration()` method seeds defaultable fields on first boot if no
-prior configuration exists. Notable fields that are **not** seeded during initialisation:
-`apiKey`, `backendUrl`, `jsonDbRootFolderId`, and `authGroupEmail` are excluded from `ensureDefaultConfiguration()` seeding. Adding
-`AUTH_GROUP_EMAIL: ''` to `02_defaults.js` does **not** seed it — seeding runs via eight
-explicit setters only, and the `DEFAULTS` entry supplies the getter fallback only, not a
-seeded property.
-
 | #   | Field                      | Stored type                        | Persistence                                                       | Transport                                                                                                                                                 | Frontend Zod                                                                                             | Notes                                                                                                                                                                                                                                                                                        |
 | --- | -------------------------- | ---------------------------------- | ----------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 1   | `backendAssessorBatchSize` | `string` (number stored as string) | Always included                                                   | `number` — parsed via `getIntConfig()`                                                                                                                    | `z.number().int()`                                                                                       | Default 120. Clamped to [1, 500].                                                                                                                                                                                                                                                            |
@@ -127,15 +120,15 @@ Returns the full typed configuration object.
 
 | Field                      | Type                    | Required | Notes                                        |
 | -------------------------- | ----------------------- | -------- | -------------------------------------------- |
-| `backendAssessorBatchSize` | `number`                | yes      | Integer. Default 120.                        |
+| `backendAssessorBatchSize` | `number`                | yes      | Integer.                                     |
 | `apiKey`                   | `string`                | yes      | Masked value. See masking contract below.    |
 | `hasApiKey`                | `boolean`               | yes      | `true` when a raw API key exists in storage. |
 | `backendUrl`               | `string` (URL \| empty) | yes      | May be empty string when unset.              |
 | `revokeAuthTriggerSet`     | `boolean`               | yes      |                                              |
-| `daysUntilAuthRevoke`      | `number`                | yes      | Integer. Default 60.                         |
-| `slidesFetchBatchSize`     | `number`                | yes      | Integer. Default 30.                         |
+| `daysUntilAuthRevoke`      | `number`                | yes      | Integer.                                     |
+| `slidesFetchBatchSize`     | `number`                | yes      | Integer.                                     |
 | `jsonDbMasterIndexKey`     | `string`                | yes      |                                              |
-| `jsonDbLockTimeoutMs`      | `number`                | yes      | Integer. Default 30000.                      |
+| `jsonDbLockTimeoutMs`      | `number`                | yes      | Integer.                                     |
 | `jsonDbLogLevel`           | `string`                | yes      | One of `DEBUG`, `INFO`, `WARN`, `ERROR`.     |
 | `jsonDbBackupOnInitialise` | `boolean`               | yes      |                                              |
 | `jsonDbRootFolderId`       | `string`                | yes      | May be empty string when unset.              |

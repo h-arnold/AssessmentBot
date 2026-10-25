@@ -25,30 +25,6 @@ Sibling contracts:
 - No other sibling contracts — AuthCache is an internal backend cache entry with no
   frontend-facing transport.
 
-> **Implemented** — the cache policy recorded below previously as
-> The previously pending cache policy has now landed; the points restate the delivered contract:
->
-> 1. The Google Groups cache entry keeps the unchanged key format
->    `auth:<groupEmail>:<email>` with a 21600-second (6-hour) TTL. The provider and
->    group are embedded in the key, so an `authMode` flip can never reuse stale entries.
-> 2. `GoogleGroupsAuthService` maps `OWNER`/`MANAGER` → `admin` and `MEMBER` → `user`;
->    only successful authorisations are cached, denials are never cached, and
->    `bypassCache: true` forces a fresh `GroupsApp` lookup (the refreshed success is
->    still memoised within the TTL).
-> 3. `ScriptPropertiesAuthService` has **no** success cache: the user list is read
->    fresh on every request and nothing is written to the cache under that provider.
-> 4. The trigger execution path calls `checkAccess({ bypassCache: true, neverClaim: true })`
->    — it bypasses the cache read and never bootstraps an admin; the defunct
->    `requireConfigured` option is dropped in favour of the explicit never-claim flag.
->    The management/provider-switch endpoints (`getAuthenticationSettings` /
->    `setAuthenticationSettings`) reuse the same `bypassCache: true` option: the dispatcher's
->    `ADMIN_REQUIRED_METHOD_NAMES` admission phase resolves access fresh (cache bypassed) for
->    those methods.
->
-> The cache policy above is delivered, and the management transport confirms the shared
-> `bypassCache` semantics for management endpoints; this restatement block is retained for
-> traceability.
-
 ---
 
 ## Persistence
@@ -69,9 +45,15 @@ the configured group email and the caller email:
   for cache expiry.
 - **A bypassed check (`bypassCache: true`) still writes the refreshed allowed result** — the
   bypass skips only the cache read; the success-path cache write is unconditional.
-- The cache key includes the configured group email, so changing the group invalidates
-  all cached entries by construction (no explicit cache invalidation on config change is
-  required).
+- **Trigger and management reads always bypass the cache.** `triggerHandler()` calls
+  `checkAccess({ bypassCache: true, neverClaim: true })`; the defunct `requireConfigured`
+  option was dropped in favour of the explicit never-claim flag.
+  `getAuthenticationSettings` / `setAuthenticationSettings` also pass `bypassCache: true`,
+  so the dispatcher's `ADMIN_REQUIRED_METHOD_NAMES` admission phase resolves access fresh.
+- The key includes the configured group email, so changing the group invalidates all cached
+  entries by construction (no explicit cache invalidation on config change is required).
+  Flipping `authMode` changes the active provider; `scriptProperties` mode does not read this
+  cache at all.
 - Entries naturally expire after the 21600-second (6-hour) TTL; `AuthService` passes
   `CacheManager.CACHE_EXPIRY_SECONDS` (= 21600) explicitly at the call site
   (`CacheManager.put(key, value, ttlSeconds)` has no default TTL).

@@ -201,7 +201,7 @@ Entry stage and matching:
 - On open the modal skips the assignment-selection and definition-matching stages and starts exactly one run once the assignment fetch is ready. The assignment selector is never rendered on this path.
 - The run targets the `assignmentDefinitionKey` persisted on the class's previously assessed assignment. The path never re-matches by title, topic, or year group, so a renamed Google Classroom assignment still re-runs its linked definition.
 - Only the definition registry is required; the persisted key is sufficient even when the class has no cached year group.
-- Without `reRunContext` the manual entry is unchanged: selection, matching, create, and link behaviour are untouched, and `ClassPage` clears any retained context on close so a reopened manual entry never auto-starts.
+- Without `reRunContext` the manual entry is unchanged: selection, matching, create, and link behaviour are untouched. `ClassPage` clears any retained context on close so a reopened manual entry never auto-starts, and `handleStartNewAssessment` clears it so the manual Start New Assessment entry never carries a re-run context.
 
 Success, failure, and recovery:
 
