@@ -599,6 +599,7 @@ Key notes:
 - The `ArtifactFactory.create()` dispatches on `type` (uppercased): TEXT→TextTaskArtifact, TABLE→TableTaskArtifact, SPREADSHEET→SpreadsheetTaskArtifact, IMAGE→ImageTaskArtifact, anything else→BaseTaskArtifact (fallback).
 - TextTaskArtifact normalises CRLF/CR→LF and trims; SpreadsheetTaskArtifact canonicalises formula strings (strips non-quoted spaces, uppercases); TableTaskArtifact enforces a 50×50 size limit; ImageTaskArtifact provides `setContentFromBlob()` for binary-to-data-URL conversion.
 - A successfully read blank/all-null `SPREADSHEET` grid normalises to `[]` in `SpreadsheetTaskArtifact.normalizeContent()`, including a blank template, and therefore receives the normal hash of `[]` through construction, persistence and restoration. A literal `null` remains unavailable content, not blank content.
+- Definition-store availability is enforced at new definition writes by `AssignmentDefinitionValidation.validateSharedArtifacts()`: a pending `IMAGE` reference/template artefact may retain `content: null`/`contentHash: null`, while non-`IMAGE` shared artefacts require non-null `content` and a string `contentHash`. A `SPREADSHEET` reference must contain at least one assessable formula; a blank `SPREADSHEET` template normalised to `[]` remains valid. Completed full assignments have the stricter completion-boundary requirement (planned, Section 8).
 - The partial variant (`BaseTaskArtifactPartialSchema` in `classDetailService.zod.ts`) omits `content` and `contentHash` entirely regardless of type.
 
 ---
@@ -668,6 +669,7 @@ Key notes:
 - The response mapper throws if any required field is `undefined` in the canonical response.
 - `deleteAssignmentDefinition` is idempotent: repeated deletes for the same key still succeed.
 - The `_validateFull()` method in the model enforces `referenceDocumentId` and `templateDocumentId` are truthy for full definitions (create path). Partial definitions do not require doc IDs.
+- New definition writes validate shared artefacts on the final resolved tasks before constructing or persisting the definition: non-`IMAGE` reference/template artefacts require non-null `content` and a string `contentHash`; a pending `IMAGE` is permitted; a `SPREADSHEET` reference must contain at least one assessable formula. Blank `TEXT`/array templates remain valid. The validator requires the resolved task and its `artifacts.reference`/`artifacts.template` arrays, so a malformed task fails loudly instead of being skipped. `AssignmentDefinitionValidation.validateSharedArtifacts()` owns this check; `AssignmentDefinitionUpsertOrchestrator` invokes it before persistence. Existing error propagation and rollback are retained, and there is no run-time eligibility preflight.
 
 ### Known discrepancies between backend and frontend
 
@@ -719,94 +721,107 @@ Key notes:
    Same pattern as above: partial is more permissive.
    **Classification: Aligned** — no risk of breakage.
 
-## Planned contract additions — definition artefact nullability (Not implemented)
+## Contract additions — definition artefact availability (Implemented at definition writes)
 
-> **Status: partially implemented.** The model-level blank/all-null `SPREADSHEET` canonicalisation
-> (`[]` plus the normal `[]` hash, including blank templates) is delivered through
-> `SpreadsheetTaskArtifact.normalizeContent()`. The write-time artefact-content/hash invariant,
-> formula-free reference rejection, completed-assignment gates and run-start gates remain
-> **`Not implemented`**. These entries record the target contract from `SPEC.md` (explicit
-> Assessment errors and targeted pipeline simplification); they do **not** describe the remaining
-> unimplemented code. The implemented tables above remain authoritative until the corresponding
-> completion gate lands.
+> **Status: definition-write invariants implemented; the completed-assignment gate remains
+> planned.** The model-level blank/all-null `SPREADSHEET` canonicalisation (`[]` plus the normal
+> `[]` hash, including blank templates) is delivered through
+> `SpreadsheetTaskArtifact.normalizeContent()`. The new-definition-write content/hash invariant and
+> the formula-free `SPREADSHEET` reference rejection are implemented in
+> `AssignmentDefinitionValidation.validateSharedArtifacts()` and invoked by
+> `AssignmentDefinitionUpsertOrchestrator` on the final resolved tasks before persistence. The
+> completed-full-assignment artefact gate and shared-image hydration scope remain later sections;
+> this contract adds **no** run-time eligibility preflight and no run-start gate. These entries
+> record the target contract from `SPEC.md` (explicit Assessment errors and targeted pipeline
+> simplification); where a rule remains unimplemented it is marked explicitly below. The
+> implemented tables above remain authoritative. These are write-time validation rules only: no
+> definition field is added, removed or retyped, and the registry/full-cache transport shapes are
+> unchanged.
 
-### Definition artefact nullability and pending image exception (Not implemented)
+### Definition artefact availability and pending image exception (Implemented at definition writes)
 
-The planned nullability split between the independent definition store and a completed
+The availability split between the independent definition store and a completed
 assignment result is:
 
-| Boundary                                    | Planned contract                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      | Current position                                                                                                   |
-| ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| `assignment_definitions` registry           | Unchanged. Artefact `content`/`contentHash` are redacted by `toPartialJSON()`. A `null` here is deliberate redaction, never evidence of extraction failure.                                                                                                                                                                                                                                                                                                                                                                           | Implemented (unchanged)                                                                                            |
-| `assdef_full_<definitionKey>` full cache    | May legitimately retain a **pending `IMAGE`** reference/template artefact with `content: null` and `contentHash: null` before an assessment run. This is the only pending-artefact exception and must not be forbidden.                                                                                                                                                                                                                                                                                                               | Current store permits it; no explicit pending-image rule is documented today                                       |
-| New definition writes                       | Non-`IMAGE` artefacts must already have non-null content and a string hash. Valid blank `TEXT`/array templates are not rejected as empty. A pending `IMAGE` may remain null until hydration. Owned by `AssignmentDefinitionValidation`; the existing `AssignmentDefinitionUpsertOrchestrator` invokes it on final resolved tasks before persistence, retaining existing error reporting and rollback. Old definitions that cannot meet these invariants may be reparsed through the existing definition workflow; no marker is added. | No write-time artefact-content/hash invariant is enforced today                                                    |
-| Formula-free `SPREADSHEET` reference task   | Invalid shared definition, not a valid blank template. Reject it before assessing students and block the run without replacing the prior result. A stored or externally supplied task must not bypass the check. Blank templates `[]` remain valid; blank student ranges retain the current formula scores. This is a shared-definition/run failure, never a student `E`.                                                                                                                                                             | No explicit formula-free-reference check today                                                                     |
-| Completed full assignment (`assign_full_*`) | Required reference/template artefacts must have usable, non-null content/hash after hydration. A completed result with an unusable required shared artefact is invalid and must not be persisted as complete.                                                                                                                                                                                                                                                                                                                         | Current `_validateFull()` checks only `documentType` and the two document IDs; artefact content/hash are not gated |
-| Assessment-run start / completion           | Invalid shared definitions and failed hydration of required reference/template images block the run and preserve the prior saved assignment.                                                                                                                                                                                                                                                                                                                                                                                          | Not implemented as a completion gate                                                                               |
+| Boundary                                    | Contract                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          | Current position                                                                                                                        |
+| ------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `assignment_definitions` registry           | Unchanged. Artefact `content`/`contentHash` are redacted by `toPartialJSON()`. A `null` here is deliberate redaction, never evidence of extraction failure.                                                                                                                                                                                                                                                                                                                                                                                                       | Implemented (unchanged)                                                                                                                 |
+| `assdef_full_<definitionKey>` full cache    | May legitimately retain a **pending `IMAGE`** reference/template artefact with `content: null` and `contentHash: null` before an assessment run. This is the only pending-artefact exception and must not be forbidden.                                                                                                                                                                                                                                                                                                                                           | New writes enforce it; pre-existing stored definitions are not retroactively rewritten                                                  |
+| New definition writes                       | Non-`IMAGE` artefacts must already have non-null content and a string hash. Valid blank `TEXT`/array templates are not rejected as empty. A pending `IMAGE` may remain null until hydration. Owned by `AssignmentDefinitionValidation.validateSharedArtifacts()`; the existing `AssignmentDefinitionUpsertOrchestrator` invokes it on final resolved tasks before persistence, retaining existing error propagation and rollback. Old definitions that cannot meet these invariants may be reparsed through the existing definition workflow; no marker is added. | **Implemented** — `validateSharedArtifacts()` runs before the `AssignmentDefinition` constructor and persistence                        |
+| Formula-free `SPREADSHEET` reference task   | Invalid shared definition, not a valid blank template. Reject it at the new-definition-write boundary before persistence. Blank templates `[]` remain valid; blank student ranges retain the current formula scores. This is a definition-write failure, never a student `E`.                                                                                                                                                                                                                                                                                     | **Implemented** at the definition-write boundary; no run-time eligibility preflight is added                                            |
+| Completed full assignment (`assign_full_*`) | Required reference/template artefacts must have usable, non-null content/hash after hydration. A completed result with an unusable required shared artefact is invalid and must not be persisted as complete.                                                                                                                                                                                                                                                                                                                                                     | Planned (Section 8). Current `_validateFull()` checks only `documentType` and the two document IDs; artefact content/hash are not gated |
+| Run boundary (existing handling retained)   | No new run-time eligibility preflight. Shared-definition failures continue through the existing definition error/rollback surface, and a rejected definition is not persisted. Required shared-image hydration failure handling belongs to the assignment image pipeline (Section 7); completed-result gates belong to the completion path (Section 8).                                                                                                                                                                                                           | No new gate added by Section 3; existing definition error/rollback semantics retained                                                   |
 
-Planned rules:
+Rules:
 
 - The definition store's pending-image state is **internal and pre-run**. It is not a terminal
   result and must not be converted into a student `E` or `N`. Only pending `IMAGE` artefacts may
   legitimately remain null in this store.
 - At new definition writes, non-`IMAGE` artefacts must already have non-null content and a string
   hash. Valid blank `TEXT`/array templates are not rejected as empty. A pending `IMAGE` may remain
-  null until hydration. `AssignmentDefinitionValidation` owns this definition-write invariant;
-  the existing `AssignmentDefinitionUpsertOrchestrator` invokes it on the final resolved tasks
-  before persistence, using existing definition-failure reporting. Do not add separate
-  parser/API validators or change definition rollback semantics.
+  null until hydration. `AssignmentDefinitionValidation.validateSharedArtifacts()` owns this
+  definition-write invariant; the existing `AssignmentDefinitionUpsertOrchestrator` invokes it on
+  the final resolved tasks before persistence, using existing error propagation and rollback. Do
+  not add separate parser/API validators or change definition rollback semantics. **Implemented.**
 - A successfully read blank/all-null `SPREADSHEET` grid is canonicalised to `[]` with the normal
   hash of `[]`, including a blank template. Literal `null` means unavailable spreadsheet content,
   not blank content. **Implemented at the model normaliser** and applied through construction,
   persistence and restoration; existing normalisation of populated formulas is unchanged.
   Submission-side content/hash rules are owned by
-  [Contract: Assignment §Source artefact content and hash semantics](assignment.md#source-artefact-content-and-hash-semantics-not-implemented).
+  [Contract: Assignment §Source artefact content and hash semantics](assignment.md#source-artefact-content-and-hash-semantics-partially-implemented).
 - A spreadsheet reference task with zero assessable formulae is an invalid shared definition, not
-  a valid blank template. It blocks the run before student marking or completed persistence and
-  preserves the prior saved assignment; it is a shared-definition/run failure, never a student
-  `E`. The existing parser normally creates no task for a formula-free reference; a stored or
-  externally supplied task must not bypass this check and leave incomplete results. Blank
-  templates canonicalised to `[]` remain valid, and blank student ranges retain the current
-  formula scores (completeness `0`, accuracy `0`, SPaG `N`). `AssignmentDefinitionValidation`
-  owns this definition-write invariant; the existing `AssignmentDefinitionUpsertOrchestrator`
-  invokes it on final resolved tasks before persistence, using existing definition-failure
-  reporting.
-- The strict non-null requirement applies to **completed full assignments**, not to the
-  independent definition store. A definition can legitimately exist before its images are
-  hydrated.
+  a valid blank template. It is rejected at the new-definition-write boundary by
+  `AssignmentDefinitionValidation.validateSharedArtifacts()`; the parser normally creates no task
+  for a formula-free reference, and the write validator rejects any resolved task that still
+  carries one before persistence. This is a definition-write failure, never a student `E`, and it
+  adds **no** run-time eligibility preflight. Blank templates canonicalised to `[]` remain valid,
+  and blank student ranges retain the current formula scores (completeness `0`, accuracy `0`, SPaG
+  `N`). **Implemented.**
+- The strict non-null requirement for **completed full assignments** remains a
+  completion-boundary requirement and is not implemented by this definition-write validation. A
+  definition can legitimately exist before its images are hydrated; a pending `IMAGE` is the only
+  permitted null artefact in the definition store.
 - Submission artefact placeholders and the assessment-stage `E`/null-content corruption rule
   belong to the assignment read projection, not the definition store: see
-  [Contract: Assignment §Source artefact content and hash semantics](assignment.md#source-artefact-content-and-hash-semantics-not-implemented).
+  [Contract: Assignment §Source artefact content and hash semantics](assignment.md#source-artefact-content-and-hash-semantics-partially-implemented).
   The definition store never materialises reassessment `E` entries.
-- The completed-assignment completion/run gate remains owned by the assignment-assessment
-  pipeline. The definition-write invariant above is a separate domain check owned by
+- The completed-assignment completion gate remains owned by the assignment-assessment pipeline.
+  The definition-write invariant above is a separate domain check owned by
   `AssignmentDefinitionValidation`, not a completed-result gate. `AssignmentDefinition._validateFull()`
   continues to validate the document type and document IDs only.
-- A failed required shared-image hydration blocks the run and leaves the previously saved
-  assignment untouched; it does not fabricate per-student errors.
+- Required shared-image hydration failure handling belongs to the assignment image pipeline
+  (Section 7); this contract adds no run-start eligibility preflight and does not fabricate
+  per-student errors for a shared-input failure.
 - Old definitions that cannot meet the non-`IMAGE` invariant may be reparsed through the existing
-  definition workflow. No result-version marker is added to definitions.
+  definition workflow. A stored definition is not revalidated at run start; it is validated on its
+  next definition write. No result-version marker is added to definitions.
 - Frontend `AssignmentDefinitionSchema` / `BaseTaskArtifactSchema` content nullability is
   unchanged. Completed-assignment content guarantees are enforced at the backend completion
   boundary, not by widening or narrowing the definition transport schemas.
 
 Alignment concerns:
 
-1. **Resolved — non-`IMAGE` nullability at definition writes.** `SPEC.md` permits only a pending
-   `IMAGE` artefact to remain null in the definition store; non-`IMAGE` artefacts must have
-   non-null content and a string hash at new definition writes. `AssignmentDefinitionValidation`
-   owns that invariant and is invoked by the existing `AssignmentDefinitionUpsertOrchestrator`
-   on final resolved tasks before persistence, retaining existing error reporting and rollback
-   semantics. The earlier open question about non-`IMAGE` artefacts is therefore closed, not
-   invented here.
-2. **Current full-cache store has no enforcement either way.** The planned new-definition-write
-   invariant and the completed-assignment completion gate are **Misaligned** with current code
-   until implemented.
-3. **Partially resolved — model-level blank-grid canonicalisation is implemented; the remaining gates are not.** A successfully read blank/all-null `SPREADSHEET` grid now canonicalises to `[]` with the normal `[]` hash through `SpreadsheetTaskArtifact.normalizeContent()` at construction, persistence and restoration, so literal `null` remains reserved for unavailable content. The write-time artefact-content/hash invariant, formula-free-reference rejection and completed-assignment gates are **Misaligned** until implemented.
-4. **Current definition validation does not reject a formula-free spreadsheet reference task.**
-   The planned shared-definition/run gate is **Misaligned** until implemented. It is a
-   shared-definition failure, not a student `E`; blank templates `[]` and blank student formula
-   scoring remain valid.
+1. **Resolved — non-`IMAGE` availability at definition writes.** Only a pending `IMAGE` artefact
+   may remain null in the definition store; non-`IMAGE` artefacts must have non-null content and a
+   string hash at new definition writes. `AssignmentDefinitionValidation.validateSharedArtifacts()`
+   owns that invariant and is invoked by the existing `AssignmentDefinitionUpsertOrchestrator` on
+   final resolved tasks before persistence, retaining existing error propagation and rollback
+   semantics. **Aligned.**
+2. **New definition writes enforce the invariant; existing stored definitions are not
+   retroactively rewritten.** A pre-existing row that violates the rule remains until it is
+   reparsed through the existing definition workflow. The completed-assignment completion gate is
+   still **Misaligned** until Section 8.
+3. **Resolved for definition writes — blank-grid canonicalisation and formula-free rejection are
+   implemented.** A successfully read blank/all-null `SPREADSHEET` grid canonicalises to `[]`
+   with the normal `[]` hash through `SpreadsheetTaskArtifact.normalizeContent()` at construction,
+   persistence and restoration, so literal `null` remains reserved for unavailable content. The
+   write-time artefact-content/hash invariant and formula-free-reference rejection are
+   **Aligned** at the definition-write boundary. The completed-assignment gate remains
+   **Misaligned** until Section 8.
+4. **Resolved — a formula-free spreadsheet reference task is rejected at definition write.**
+   `AssignmentDefinitionValidation.validateSharedArtifacts()` rejects it before persistence; it is
+   a definition-write failure, not a student `E`, and no run-time eligibility preflight is added.
+   Blank templates `[]` and blank student formula scoring remain valid. **Aligned.**
 
 ---
 
@@ -837,14 +852,16 @@ TextTaskArtifact model:    src/backend/Models/Artifacts/1_TextTaskArtifact.js
 
 Controller:                src/backend/y_controllers/AssignmentDefinition/
   ├── index.js                              — AssignmentDefinitionController facade
-  ├── AssignmentDefinitionValidation.js      — Domain validation
+  ├── AssignmentDefinitionValidation.js      — Domain validation, including
+  │                                             validateSharedArtifacts() at definition writes
   ├── AssignmentDefinitionReferenceData.js   — Reference data resolution
   ├── AssignmentDefinitionTaskParser.js      — Task document parsing
   ├── AssignmentDefinitionTaskWeighting.js   — Task weighting logic
   ├── AssignmentDefinitionTaskEquivalence.js — Task equivalence comparator (reparse reconciliation)
   ├── AssignmentDefinitionRecoveryRules.js   — Recovery and reparse rules (forced-reparse gating, approval baseline, parse-failure mapping, weighting restoration)
   ├── AssignmentDefinitionPersistence.js     — Database read/write
-  ├── AssignmentDefinitionUpsertOrchestrator.js — Upsert orchestration (_generateStableKey() = opaque Utilities.getUuid())
+  ├── AssignmentDefinitionUpsertOrchestrator.js — Upsert orchestration (_generateStableKey() = opaque Utilities.getUuid();
+  │                                             invokes validateSharedArtifacts() on final resolved tasks)
   └── AssignmentDefinitionResponseMapper.js  — _getFullAssignmentDefinition()
 
 API handlers:              src/backend/z_Api/

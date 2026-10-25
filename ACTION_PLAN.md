@@ -32,6 +32,19 @@ and [#341](https://github.com/h-arnold/AssessmentBot/issues/341).
 
 ## Deferred and Out-of-Scope Findings
 
+| Finding                                                         | Severity | Scope rationale                                                               | Evidence                                                                            | Disposition | User decision                                                                                                                                    |
+| --------------------------------------------------------------- | -------- | ----------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Broad shared-definition failure wording after preflight removal | Material | Specific run-preflight requirement removed; broad wording needs clarification | SPEC.md agreed decision 7 and processing rule 7 opening; Docs reconciliation report | approved    | User confirms retain existing shared-definition failure blocking/preservation semantics only, explicitly no new run-preflight eligibility checks |
+
+| Finding                                              | Severity | Scope rationale                                                 | Evidence                                              | Disposition | User decision                                                                                                                                  |
+| ---------------------------------------------------- | -------- | --------------------------------------------------------------- | ----------------------------------------------------- | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| Section 3 persistence-preservation test seam blocker | Material | Pipeline does not persist; prior test evidence was disconnected | New preflight suite; caller processSelectedAssignment | noted       | Closed by user decision to remove run-preflight and prior-result preservation requirements; do not add integration coverage or pipeline guards |
+
+| Finding                                                | Severity | Scope rationale                                                                             | Evidence                                                                                                         | Disposition | User decision                                                                                                                                                    |
+| ------------------------------------------------------ | -------- | ------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Section 3 run-preflight test surface (R3)              | Material | Former criterion 4 required run-boundary coverage                                           | `.opencode/scratchpad/section3-red-review.md` R3                                                                 | noted       | Earlier approval superseded: user removes requirement and new suite; unsuitable definitions belong at parser/definition boundary, not additional pipeline guards |
+| Section 3 obsolete comparison coverage dependency (R5) | Material | Existing untouched suite requires stored formulaComparison, outside enumerated test surface | `tests/assessors/spreadsheetAssessorsCoverage.test.js:232–243`; `.opencode/scratchpad/section3-red-review.md` R5 | approved    | User authorises minimal reconciliation preserving formula/feedback coverage                                                                                      |
+
 | Finding                                            | Severity | Scope rationale                                                                                                                             | Evidence                                                                                                                                      | Disposition | User decision                                                                                                                                                                                                                                                                                                                                                                                                        |
 | -------------------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- | ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Manage Year Groups retry-recovered gate regression | Material | Delivery gate blocks, but unrelated unchanged year-group interaction is outside Section2 authorised change surface; causal link unsupported | section2-gate-browser-diagnosis.md; first attempt Edit dialog absent, retry passed; baseline first-attempt pass; focused unchanged run passed | approved    | User explicitly authorises accepting this single flaky-test exception without repair, waiving the otherwise non-waivable regression gate for Section 2 completion. Cause unknown; baseline passed first attempt; focused unchanged run also passed first attempt. Follow-up: monitor and stabilise in a later section if recurrence; no checker policy change, no hook bypass, no repair authorised for this section |
@@ -406,58 +419,102 @@ Authoritative for this section; keep in sync when later sections touch these own
 
 ## Section 3 — Usable shared definitions and canonical spreadsheet blanks
 
-### Objective and constraints
+**Status: Green/review/compaction/regression gates complete. Commit/push gate pending.**
 
-Distinguish valid blank spreadsheet content from unavailable data and reject unusable
-shared inputs before marking. Grid model 179→195; Sheets parser 363→400;
-SheetsAssessor 388→420; definition validation 101→175, upsert orchestrator 470→490.
-Reuse existing definition-error reporting/rollback; no parser/API validator hierarchy.
+### Outcome (compacted)
 
-### Delegation and planning blocks
+- Successfully read blank/all-null `SPREADSHEET` grids canonicalise to `[]` with the normal
+  `[]` hash through construction, serialisation and restoration, for templates and student
+  ranges. Literal `null` stays unavailable content; populated-formula normalisation is
+  unchanged.
+- A usable reference with a blank template/student range completes with completeness `0`,
+  accuracy `0` and SPaG `N`; fractional formula marks and existing cell-reference feedback
+  survive. `SheetsAssessor` keeps comparison transient: only the three assessments and
+  `cellReference` feedback persist, so no `assessments.formulaComparison` entry survives.
+- New non-IMAGE definition writes reject null content/hash while accepting valid blank
+  TEXT/array templates; a pending IMAGE artefact remains valid definition-store state.
+  A formula-free SPREADSHEET reference is rejected as an unusable shared definition.
+  Duplicate shared tags keep their existing blocking behaviour.
 
-- Mandatory reads: Common + Backend + Contracts + Corpus;
-  @src/backend/Models/Artifacts/3_SpreadsheetTaskArtifact.js
-  @src/backend/Assessors/SheetsAssessor.js
-  @src/backend/y_controllers/AssignmentDefinition/AssignmentDefinitionValidation.js .
-- **Shared helpers — extend:** `SpreadsheetTaskArtifact.normalizeContent` owns blank
-  grid normalization; existing definition validation owns shared artefact/formula
-  eligibility, called on final resolved tasks by upsert and reused at run preflight.
-  Existing SheetsAssessor keeps formula comparison transient (keep local). Planned
-  `Not implemented` records: definition validation in AssessmentFlow; blank-grid
-  model-rule reuse in rehydration; formulaComparison removal in canonical
-  `assignment.md`. Do not invent a separate spreadsheet helper-register entry.
-- **Data shapes:** planned definition-store versus completed-full artefact invariants
-  in `assignment-definition.md` and assignment content/hash/completed criteria rules.
-- **Canonical fixtures:** `small` SPREADSHEET tasks from Section 2; local null/all-null/
-  blank and formula-free reference mutations. Touch/migrate only relevant sheet tests.
+### Retained for later sections
 
-### Acceptance criteria / required tests (Red first)
+- **Helper ownership.** `SpreadsheetTaskArtifact.normalizeContent` owns blank-grid
+  canonicalisation as the existing model rule, reused by parsers and restoration rather than
+  duplicated; no separate spreadsheet helper-register entry exists.
+  `AssignmentDefinitionValidation.validateSharedArtifacts` owns the definition-write
+  artefact/formula invariant; `AssignmentDefinitionUpsertOrchestrator.upsert()` invokes it on
+  final resolved tasks after weighting and before definition construction or persistence,
+  reusing existing failure reporting and rollback. Expected content rejections log bounded
+  `{ taskId }` context and throw `ApiValidationError` with the established safe
+  `DEFINITION_PARSE_FAILED` message/code; missing structure, serializer faults and other
+  wiring errors propagate unchanged. `@remarks` distinguish blank grids from unavailable
+  content and pending definition images from completed artefacts.
+- **Boundary split.** Pending IMAGE is permitted only in the definition store; the stricter
+  completed-full-assignment gate and completed-write preflight remain Section 8 work. No
+  run-preflight eligibility check, extra pipeline error-handling layer or parser/API
+  validator hierarchy exists.
+- **Delivered surface.** Definition-write validation, upsert wiring and `SheetsAssessor`
+  comparison removal; blank-grid canonicalisation was reused unchanged and `SheetsParser`
+  needed no change (it stays within its SPEC 400-line budget). New suites
+  `tests/models/spreadsheetContentAvailability.test.js` and
+  `tests/assignment/assignmentDefinitionArtifacts.validation.test.js`; extended
+  `sheetsAssessor`, `assignmentDefinitionValidation`,
+  `assignmentDefinitionController.upsert.validation` and `spreadsheetAssessorsCoverage`
+  (obsolete comparison-persistence assertions reconciled, formula/feedback coverage kept).
+- **Documentation and fixtures.** Four existing canonical pages reconciled, no new pages:
+  `AssessmentFlow`, `rehydration`, `assignment-definition`, `assignment`; JSDoc/comment
+  corrections in the touched owners. Their Section 3 helper entries now read as implemented
+  (blank-grid rule reuse, definition-write validation, `formulaComparison` removal).
+  Acquisition/extraction E creation, completed-write gates, image hydration scope and preview
+  error states remain `Not implemented`/planned. Fixtures use `small` SPREADSHEET tasks from
+  Section 2 plus local null/all-null/blank and formula-free reference mutations; no competing
+  realistic fixture family.
 
-1. Successfully read blank/all-null grids normalize to `[]` and the normal hash of `[]`
-   through construction, serialization and restoration, for templates and submissions.
-   Literal null stays unavailable; populated formula normalization remains unchanged.
-2. Valid reference plus blank template/student range completes with completeness 0,
-   accuracy 0 and SPaG N. Fractional formula marks and existing cell feedback survive;
-   no `assessments.formulaComparison` survives completed persistence.
-3. New non-IMAGE definitions reject null content/hash while permitting valid blank
-   TEXT/array templates. Pending IMAGE definition-store state remains allowed.
-4. Formula-free reference task blocks both new definition writes and an existing/
-   externally supplied definition at run preflight, before student marking/writes;
-   prior assignment remains saved. Duplicate shared tags keep existing blocking rules.
+### Implementation notes / deviations / follow-up
 
-### Red → Green → Refactor and checks
+Authoritative for this section.
 
-- Add `tests/models/spreadsheetContentAvailability.test.js` and
-  `tests/assignment/assignmentDefinitionArtifacts.validation.test.js` (each ≤300). Extend relevant
-  SheetsAssessor suite 286→≤400, definition validation suite 282→≤410 and upsert
-  validation suite 271→≤380; new assertions first.
-- Green: reuse the normalization/validation owners, wire upsert and run checks, keep
-  blank student scoring local to the existing assessor. Refactor discarded formula
-  comparison persistence without changing feedback contracts.
-- Checks: targeted sheets/model/definition/controller tests; `npm run test:synthetic -- tests/synthetic-analysis/syntheticDefinitionBackendValidation.test.ts`,
-  `npm run lint:backend:check`; full section gate. Record `@remarks` distinguishing blank
-  grids from unavailable content and pending definition images from completed artefacts.
-- Execution record: Not started; changes/checks/deviations/downstream implications pending.
+- **User decision (binding): run-preflight validation and prior-result preservation
+  integration coverage were removed from scope** — this feature records assessment errors, not
+  additional pipeline error-handling layers. The new run-preflight companion suite was
+  deleted, superseding its earlier R3 authorisation; existing parser/definition-write
+  eligibility coverage is retained, and no integration coverage or pipeline guards are to be
+  added. SPEC.md now states this explicitly (user confirmed), Section 8
+  persistence-preparation checks are unchanged, and stale run-start/bypass wording in
+  `assignment-definition.md` was reconciled to the retained definition-write boundary.
+- **Checks (passing).** `npm run test:backend:coverage`: 235 files / **3,206 tests**, branches
+  **85.02% (3,570/4,199)**; synthetic definition-backend validation 1 file / **2 tests**;
+  `npm run lint:backend:check` exits 1 solely for the five accepted historical `max-lines`
+  warnings, zero errors/new warnings; `git diff --check` clean. Evidence:
+  `.opencode/scratchpad/section3-clean-{coverage,lint,outcomes}.txt`,
+  `section3-signoff-synthetic.txt`.
+- **Review and coverage.** `.opencode/scratchpad/section3-green-clean-review.md`: PASS, no
+  critical/improvement/nitpick findings; G1–G4 and F1–F2 closed. F1 was duplicate
+  ESM/CommonJS identity in the new direct suite, not baseline debt: loading the shared
+  CommonJS owner from `tests/setupGlobals.js` raised owner branches 43.75% → 89.58% (100%
+  functions) and aggregate branches 84.49% → 85.02% (+22 covered) with the test count
+  unchanged; no threshold, config or production change. Evidence:
+  `.opencode/scratchpad/section3-coverage-attribution.md`,
+  `section3-green-coverage-signoff.md`.
+- **Docs sync complete.** Updated existing `docs/developer/backend/AssessmentFlow.md`,
+  `docs/developer/backend/rehydration.md`, `docs/developer/data-shapes/assignment.md`
+  and `docs/developer/data-shapes/assignment-definition.md`, plus JSDoc in the three
+  changed production owners. No pages created; helper registers agree with delivery.
+- **Compaction verification.** Only Section 3 changed; all other sections and the
+  deferred ledger preserved. Detail gaps resolved from final review/current files:
+  source LOC assessor 374, validator 169, orchestrator 476; test LOC availability 96,
+  artefact validation 113, assessor 302, definition validation 300, upsert 366,
+  coverage 294. Deleted suite was
+  `tests/controllers/assignmentController/assignmentController.runPreflightDefinition.test.js`.
+  Normaliser/parser source unchanged.
+- **Section regression gate:** completed 25 October 2026 using stable session
+  `assessment-errors-322-341`; zero regressions, zero new failures, one baseline fix.
+  Seven checks pass (including all coverage, browser E2E and type checks); checker
+  overall `FAILING`/exit 1 solely for the five expressly accepted historical backend
+  `max-lines` warnings, no new lint failure. Gate accepted under baseline-debt rule,
+  not a new waiver. Report:
+  `.ts-regression-checker/reports/session-assessment-errors-322-341/runs/2026-10-25T18-36-52.169Z/comparison.txt`.
+- **Commit/push:** pending on branch `assessment-errors-322-341`.
 
 ## Section 4 — Student acquisition and extraction outcomes
 

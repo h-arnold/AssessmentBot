@@ -93,6 +93,74 @@ class AssignmentDefinitionValidation {
 
     return value;
   }
+
+  /**
+   * Validates shared artefacts on resolved definition tasks before persistence.
+   * Pending IMAGE artefacts are permitted; other artefacts require usable content/hash.
+   * @param {Object} task - Resolved task definition or its JSON representation.
+   * @returns {boolean} True when shared artefacts are usable.
+   * @throws {ApiValidationError} When a non-IMAGE shared artefact lacks usable content/hash or a
+   *   SPREADSHEET reference has no assessable formula; carries `code: 'DEFINITION_PARSE_FAILED'`.
+   * @throws {Error} When the task or its reference/template artefact groups are missing;
+   *   structural and wiring faults propagate unchanged.
+   * @remarks Pending IMAGE artefacts are valid definition-store state. The stricter
+   *   completed-full-assignment artefact gate belongs to the completion path, not here.
+   */
+  validateSharedArtifacts(task) {
+    /* global ABLogger, ApiValidationError */
+    Validate.requireParams({ task }, 'validateSharedArtifacts');
+    const taskJson = typeof task.toJSON === 'function' ? task.toJSON() : task;
+    const taskId = taskJson.id || taskJson.taskId;
+    const artifactGroups = taskJson.artifacts;
+    for (const role of ['reference', 'template']) {
+      const artifacts = artifactGroups[role];
+      for (const artifact of artifacts) {
+        if (artifact.type === 'IMAGE') continue;
+        if (artifact.content == null || typeof artifact.contentHash !== 'string') {
+          this._rejectDefinitionContent(
+            `Shared artifact content and hash are required for task ${taskId}.`,
+            { taskId }
+          );
+        }
+      }
+    }
+
+    const referenceArtifacts = artifactGroups.reference;
+    for (const artifact of referenceArtifacts) {
+      if (artifact.type !== 'SPREADSHEET') continue;
+      const formulas = artifact.content
+        .flat()
+        .filter((cell) => typeof cell === 'string' && cell.startsWith('='));
+      if (formulas.length === 0) {
+        this._rejectDefinitionContent(
+          `Spreadsheet definition task ${taskId} has no assessable formulas.`,
+          { taskId }
+        );
+      }
+    }
+    return true;
+  }
+
+  /**
+   * Reports expected unusable shared document content using the established safe definition failure.
+   * @param {string} diagnostic - Internal content-rejection detail.
+   * @param {Object} context - Safe task context for diagnostics.
+   * @throws {ApiValidationError} Definition content is unusable.
+   * @private
+   */
+  _rejectDefinitionContent(diagnostic, context) {
+    ABLogger.getInstance().error('Assignment definition documents could not be parsed.', {
+      ...context,
+      detail: diagnostic,
+    });
+    throw new ApiValidationError(
+      'The assignment documents could not be parsed. Check the reference and template documents, then try again.',
+      {
+        method: 'upsertAssignmentDefinition',
+        code: 'DEFINITION_PARSE_FAILED',
+      }
+    );
+  }
 }
 
 // Export for Node tests / CommonJS environments

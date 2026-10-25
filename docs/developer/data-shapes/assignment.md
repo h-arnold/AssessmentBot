@@ -257,13 +257,13 @@ submitted artifact, assessments, and feedback.
 
 `StudentSubmissionItem.toJSON()` emits:
 
-| Field         | Type                         | Backend toJSON()                     | Frontend Zod (full)                                                                | Notes                                                                                            |
-| ------------- | ---------------------------- | ------------------------------------ | ---------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| `id`          | `string`                     | Always emitted                       | `z.string()`                                                                       | Derived stable UID prefixed with `ssi_`.                                                         |
-| `taskId`      | `string`                     | Always emitted                       | `z.string()`                                                                       | References the task definition ID.                                                               |
-| `artifact`    | `BaseTaskArtifact`           | Always emitted (`artifact.toJSON()`) | `BaseTaskArtifactSchema`                                                           | The submission artifact (role=`'submission'`).                                                   |
-| `assessments` | `Record<string, Assessment>` | Always emitted                       | `z.record(z.string(), AssessmentSchema)`                                           | Array-valued in legacy model; now a record keyed by criterion. Empty object when no assessments. |
-| `feedback`    | `Record<string, Feedback>`   | Always emitted                       | `z.record(z.string(), z.looseObject({ type: z.string(), createdAt: z.string() }))` | Record keyed by feedback type. Empty object when no feedback.                                    |
+| Field         | Type                         | Backend toJSON()                     | Frontend Zod (full)                                                                | Notes                                                                                                                                                                                                                                           |
+| ------------- | ---------------------------- | ------------------------------------ | ---------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `id`          | `string`                     | Always emitted                       | `z.string()`                                                                       | Derived stable UID prefixed with `ssi_`.                                                                                                                                                                                                        |
+| `taskId`      | `string`                     | Always emitted                       | `z.string()`                                                                       | References the task definition ID.                                                                                                                                                                                                              |
+| `artifact`    | `BaseTaskArtifact`           | Always emitted (`artifact.toJSON()`) | `BaseTaskArtifactSchema`                                                           | The submission artifact (role=`'submission'`).                                                                                                                                                                                                  |
+| `assessments` | `Record<string, Assessment>` | Always emitted                       | `z.record(z.string(), AssessmentSchema)`                                           | Record keyed by criterion. Empty object when no assessments. Current producers write only `completeness`, `accuracy` and `spag`; `SheetsAssessor` no longer persists a `formulaComparison` entry (cell-reference feedback stays in `feedback`). |
+| `feedback`    | `Record<string, Feedback>`   | Always emitted                       | `z.record(z.string(), z.looseObject({ type: z.string(), createdAt: z.string() }))` | Record keyed by feedback type. Empty object when no feedback.                                                                                                                                                                                   |
 
 **Partial variant** (`StudentSubmissionItem.toPartialJSON()`): Same as `toJSON()` except:
 
@@ -590,7 +590,7 @@ The full and partial schemas on the frontend are:
 
 ## Planned contract additions — explicit Assessment errors and result-format marker (partially implemented)
 
-> **Status: Section 2 slices implemented; later-section slices remain planned.** Section 1
+> **Status: Sections 1–3 slices implemented; later-section slices remain planned.** Section 1
 > delivered the `Assessment` result/cause primitives, `StudentSubmissionItem.setError()` and
 > partial `E` retention, plus the shared frontend `assessmentResult.zod.ts` schemas. Section 2b
 > delivered marker-1 CURRENT backend restoration (`AssignmentCurrentRestoration`) with raw
@@ -609,12 +609,14 @@ The full and partial schemas on the frontend are:
 > and [§Full and partial item isolation](#full-and-partial-item-isolation-with-trustworthy-identities-implemented).
 > The former review gaps G4–G8 are resolved and the restoration-name fragility is closed by the
 > strict saved-name contract; [Known discrepancies](#known-discrepancies) records their
-> disposition. Remaining planned slices:
+> disposition. Section 3 delivered the blank-grid canonicalisation, the
+> definition-write shared-artefact availability rules (owned by
+> [Contract: AssignmentDefinition](assignment-definition.md#definition-artefact-availability-and-pending-image-exception-implemented-at-definition-writes))
+> and removal of the persisted `assessments.formulaComparison` entry. Remaining planned slices:
 > extraction/acquisition boundary creation of `E` (Section 4), completed-write
-> preflight/gates (Section 8), preview error states (Section 9) and the
-> definition-store artefact invariants (Section 3). Planned
-> companions: [Contract: AssignmentDefinition §Planned definition artefact
-> nullability](assignment-definition.md#planned-contract-additions--definition-artefact-nullability-not-implemented),
+> preflight/gates (Section 8) and preview error states (Section 9). Related
+> companions: [Contract: AssignmentDefinition §Definition artefact
+> availability](assignment-definition.md#definition-artefact-availability-and-pending-image-exception-implemented-at-definition-writes),
 > [Contract: ABClass §Planned embedded result marker and E
 > projections](abclass.md#planned-contract-additions--embedded-result-marker-and-e-projections-implemented),
 > [Frontend Data Analysis Response §Planned preview
@@ -622,7 +624,7 @@ The full and partial schemas on the frontend are:
 >
 > `SPEC.md` fixes the backend reassessment projection owner, preview field names,
 > explicit-`E` data-point accounting, blank spreadsheet canonicalisation, definition artefact
-> nullability, completed-task coverage and the completion-write preflight; the resolved
+> availability, completed-task coverage and the completion-write preflight; the resolved
 > decisions are recorded below.
 
 ### `Assessment` — result/cause primitives (Implemented)
@@ -653,15 +655,15 @@ Remaining planned invariants and staged read rules:
   implements the equivalent isolation and is invoked by both read services.
   Legacy reads already use reassessment projection rather than current-format criterion
   isolation.
-- **No `formulaComparison` entry.** `SheetsAssessor` currently writes a non-Assessment
-  `assessments.formulaComparison` value. Under the planned contract it is no longer persisted
-  there; transient formula-comparison results remain assessor-local, and existing
-  cell-reference feedback remains in `feedback` (`CellReferenceFeedback`). This removes an
-  unused non-Assessment entry; it is not a new feedback-persistence feature.
+- **No `formulaComparison` entry (Implemented).** `SheetsAssessor` no longer writes a
+  non-Assessment `assessments.formulaComparison` value. Transient formula-comparison results
+  remain assessor-local, and existing cell-reference feedback remains in `feedback`
+  (`CellReferenceFeedback`). This removes an unused non-Assessment entry; it is not a new
+  feedback-persistence feature. Completed persistence still must reject an incomplete or
+  extra-key criterion record (Section 8).
 - **Definition parse failures stay outside Assessment.** Duplicate reference/template title
-  tags continue to block definition parsing on the existing definition/run error surface and
-  safe cause; no student-level `DUPLICATE_TAG` E is introduced under the agreed first-match
-  policy.
+  tags continue to block definition parsing on the existing definition error surface and safe
+  cause; no student-level `DUPLICATE_TAG` E is introduced under the agreed first-match policy.
 - **Consumer schema activation (implemented).** `AssessmentSchema` aliases
   `assessmentResultSchema` and `PartialAssessmentEntrySchema` aliases
   `partialAssessmentResultSchema`, so both enforce the finite fractional 0–5 range and the `E`
@@ -725,7 +727,7 @@ The backend `StudentSubmission.toJSON()` and `toPartialJSON()` always emit `stud
 This was a frontend validator alignment only. It does not change the backend model, persistence,
 transport or the legacy reassessment projection.
 
-### Source artefact content and hash semantics (Not implemented)
+### Source artefact content and hash semantics (Partially implemented)
 
 > **Status: partially implemented.** The blank/all-null `SPREADSHEET` representation (`[]` with
 > the normal `[]` hash) is implemented in `SpreadsheetTaskArtifact.normalizeContent()` and applies
@@ -733,13 +735,18 @@ transport or the legacy reassessment projection.
 > `AssignmentCurrentRestoration` already enforces the full body/hash pairing and the null-content
 > consistency conversions, preserves valid acquisition/validation placeholders, and exempts partial
 > redaction. Detached legacy reassessment placeholders with explicit null content/hash are
-> implemented by `02_AssignmentReadProjection.js`. The extraction-boundary creation of
-> `SOURCE_CONTENT_UNAVAILABLE` `E` and completed-write preflight/gates remain **`Not
-implemented`**. The frontend read normaliser is implemented and active in both read services.
+> implemented by `02_AssignmentReadProjection.js`. Section 3 also delivered the definition-write
+> non-`IMAGE` availability rules and the formula-free reference rejection (documented in
+> [Contract: AssignmentDefinition](assignment-definition.md#definition-artefact-availability-and-pending-image-exception-implemented-at-definition-writes))
+> and removed the persisted `assessments.formulaComparison` entry. The extraction-boundary
+> creation of `SOURCE_CONTENT_UNAVAILABLE` `E` (Section 4) and completed-write preflight/gates
+> (Section 8) remain **`Not implemented`**. The frontend read normaliser is implemented and active
+> in both read services. The Section 3 delivery adds no transport field: completed tasks still use
+> the three canonical criterion keys, and cell-reference feedback remains in `feedback`.
 
-Planned full-artefact rules:
+Full-artefact rules:
 
-| Situation                                                                             | Planned `content`                   | Planned `contentHash` | Notes                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| Situation                                                                             | `content`                           | `contentHash`         | Notes                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | ------------------------------------------------------------------------------------- | ----------------------------------- | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Successfully read blank/all-null `SPREADSHEET` grid (blank template or student range) | `[]`                                | Normal hash of `[]`   | **Implemented** in `SpreadsheetTaskArtifact.normalizeContent()`; canonicalisation applies through construction, persistence and restoration. Literal `null` means unavailable content, not blank content. Existing populated-formula normalisation is unchanged.                                                                                                                                                                                          |
 | `SPREADSHEET` content unavailable                                                     | `null`                              | `null`                | At the actual extraction boundary, confirmed unavailable content creates an extraction `SOURCE_CONTENT_UNAVAILABLE` `E`. A current-format full read that instead finds null content beside numeric/`N` marks converts all three results to validation `CORRUPT_RECORD` `E` (see the full-content consistency rule below). A `null` hash is never a usable content fingerprint and must not match another `null` hash for template-match or `N` decisions. |
@@ -749,17 +756,18 @@ Planned full-artefact rules:
 | Assessment-stage `E` with null full content                                           | `null` stored                       | `null` stored         | Contradictory stored record. An existing assessment-stage `E` with null full content remains a validation `CORRUPT_RECORD` `E`, not an accepted assessment-only error; it is never relabelled as `SOURCE_UNREADABLE` and no historical extraction cause is inferred. Partial redaction is exempt.                                                                                                                                                         |
 | Partial artefact projection                                                           | `null`                              | `null`                | Deliberate redaction. It is never evidence of extraction failure and is exempt from the full-content consistency check.                                                                                                                                                                                                                                                                                                                                   |
 
-Planned rules:
+Rules:
 
 - Canonicalising a blank student spreadsheet grid to `[]` does not change pedagogical scoring:
   blank student grids still receive the current formula scores (completeness `0`, accuracy `0`,
   SPaG `N`), not an extraction error or a new `N` rule.
 - A spreadsheet reference task with zero assessable formulae is an invalid shared definition,
-  not a valid blank template. It blocks the run before student marking or completed persistence
-  and preserves the prior saved result; it is never a student `E`. Blank templates canonicalised
-  to `[]` remain valid, and blank student ranges retain the formula scores above. See
-  [Contract: AssignmentDefinition §Definition artefact nullability and pending image
-  exception](assignment-definition.md#definition-artefact-nullability-and-pending-image-exception-not-implemented).
+  not a valid blank template. It is rejected at the new-definition-write boundary by
+  `AssignmentDefinitionValidation.validateSharedArtifacts()`; it is never a student `E`, and this
+  contract adds no run-time eligibility preflight. Blank templates canonicalised to `[]` remain
+  valid, and blank student ranges retain the formula scores above. See
+  [Contract: AssignmentDefinition §Definition artefact availability and pending image
+  exception](assignment-definition.md#definition-artefact-availability-and-pending-image-exception-implemented-at-definition-writes).
 - In full results, null submission content is allowed only for acquisition/extraction/validation
   `E` placeholders. On a current-format full read, null content beside purported numeric/`N`
   marks is a contradictory stored record: replace all three results with validation
@@ -1090,10 +1098,12 @@ gates remain pending.
    NaN/`±Infinity` and values outside 0–5. Both read schemas consume the shared union:
    `z.number().min(0).max(5)` (Zod 4 rejects NaN/`±Infinity`) plus `'N'`, and the `E` branch.
    Fractional scores are accepted.
-3. **Current `assessments` accepts arbitrary keys and persists `formulaComparison`.**
-   `SheetsAssessor` writes `submissionItem.assessments.formulaComparison`, and both records use
-   `z.record(z.string(), ...)`. The planned exact-three-criteria contract and removal of that
-   entry are **Misaligned** with current persistence until implemented.
+3. **`formulaComparison` is no longer persisted; exact-three-criteria completion is still
+   planned.** `SheetsAssessor` now writes only `completeness`, `accuracy` and `spag`; transient
+   comparison data stays assessor-local and cell-reference feedback remains in `feedback`. Both
+   assessment records still use `z.record(z.string(), ...)`, so a stored extra key is not rejected
+   by the frontend schema, and completed persistence rejecting an incomplete/extra-key record
+   remains **Misaligned** until Section 8. The `formulaComparison` removal itself is **Aligned**.
 4. **Partial projection retains E reasoning and the partial consumer validates it.**
    `_stripAssessmentReasoning()` preserves an `E` entry intact while numeric/`N`
    entries stay score-only. `PartialAssessmentEntrySchema` aliases the shared
@@ -1127,11 +1137,13 @@ gates remain pending.
 
 **Classification of the entries above:** the `Assessment` result/cause primitives, atomic
 `setError()`, partial `E` retention, both consumer schema activations, the required wire marker,
-full `studentName` nullability, blank-grid canonicalisation, marker-1 CURRENT backend
-restoration (read validation, coverage and null-parent isolation), the legacy read
-projection/opaque persistence and the frontend read normaliser activation are implemented.
-Completed-persistence gates and the preview slices remain pending. None is a regression in the
-implemented backend result/cause, CURRENT restoration or legacy projection contracts.
+full `studentName` nullability, blank-grid canonicalisation, the definition-write shared-artefact
+availability rules and formula-free reference rejection, removal of the persisted
+`formulaComparison` entry, marker-1 CURRENT backend restoration (read validation, coverage and
+null-parent isolation), the legacy read projection/opaque persistence and the frontend read
+normaliser activation are implemented. Completed-persistence gates and the preview slices remain
+pending. None is a regression in the implemented backend result/cause, CURRENT restoration or
+legacy projection contracts.
 
 ---
 

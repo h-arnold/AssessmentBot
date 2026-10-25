@@ -71,9 +71,10 @@
 - Completed-item coverage materialisation (`AssignmentCurrentRestoration`)
   - Status: `Implemented` (backend and browser, Section 2)
   - Owning path: `src/backend/AssignmentProcessor/Assignment/02_AssignmentCurrentRestoration.js` — backend-authoritative missing-task `CORRUPT_RECORD` E materialisation from the assignment's own embedded task snapshot during the one-pass full or partial restoration, before class transport strips that snapshot. The backend materialises coverage E once on marker-1 read paths; both browser normalisers validate the already-materialised result. The browser full-read normaliser provides a mandatory defensive same-payload fallback that produces `CORRUPT_RECORD` E from that payload's own definition only if an expected wire item is nonetheless absent; it never overwrites backend-materialised E. The browser partial-read normaliser validates provided entries only and never infers coverage from the separately loaded, potentially newer definition registry. No new task-universe field or full fetch is needed. Boundaries are recorded in [rehydration.md](rehydration.md).
-- Definition-write artefact invariant (`AssignmentDefinitionValidation`)
-  - Status: `Not implemented` (planned extension of the existing owner)
-  - Planned owning path: `src/backend/y_controllers/AssignmentDefinition/AssignmentDefinitionValidation.js`, to be invoked by the existing `AssignmentDefinitionUpsertOrchestrator` on final resolved tasks before persistence. At new definition writes, non-IMAGE artefacts must have non-null content and a string hash; valid blank TEXT/array templates are not rejected as empty, and pending IMAGE artefacts remain allowed. A formula-free spreadsheet reference task is an unusable shared definition: reject it at the definition-write boundary, before marking and completed-result persistence, so the run blocks without replacing the prior result, and do not let a stored or externally supplied task bypass the check. Blank `[]` templates remain valid. Existing definition-failure reporting and rollback semantics are unchanged; no separate parser/API validators. Boundaries are recorded in [rehydration.md](rehydration.md).
+- Definition-write artefact invariant (`AssignmentDefinitionValidation.validateSharedArtifacts`)
+  - Status: `Implemented` (backend, Section 3)
+  - Owning paths: `src/backend/y_controllers/AssignmentDefinition/AssignmentDefinitionValidation.js`, invoked by `AssignmentDefinitionUpsertOrchestrator.upsert()` on the final resolved tasks after weighting and before constructing or persisting the definition.
+  - Behaviour: at new definition writes, non-IMAGE reference/template artefacts require non-null content and a string hash; valid blank TEXT/array templates are not rejected as empty, and a successfully read blank/all-null SPREADSHEET grid is `[]` while literal `null` means unavailable content. Pending IMAGE artefacts remain allowed only in the definition store, distinct from the stricter completed-full-assignment artefact gate (Section 8). A formula-free spreadsheet reference task is rejected as an unusable shared definition. Expected content rejections log bounded `{ taskId }` context and throw `ApiValidationError` with the established safe `DEFINITION_PARSE_FAILED` message and code. Missing task/artefact structure and other wiring faults propagate unchanged; there is no broad catch. Existing definition rollback semantics are unchanged, and there is no run-time eligibility preflight. Boundaries are recorded in [rehydration.md](rehydration.md).
 - Prepared write projections (`ABClassAssignmentOps.persistAssignmentRun` with `ABClassPersistence` preparation)
   - Status: `Not implemented` (planned extension of the existing owners)
   - Current: `persistAssignmentRun()` writes the full assignment before constructing its partial, and `ABClassPersistence.persistClassAndPartial()` prepares the class/partials pair only when `saveClass()` runs.
@@ -858,16 +859,14 @@ submission.items["task_001"] = {
 
 **Method**: `SheetsAssessor.assessResponses()`
 
-- **Location**: Lines 18-84
 - **Process**:
   1. Iterates through submissions
   2. For each submission's items:
      - Gets corresponding task definition
      - Skips non-formula responses
      - Calls `assessFormulaeTasks()` for formula assessment
-     - Adds assessments to submission
-     - Adds formula comparison results
-     - Adds cell reference feedback
+     - Adds the three assessments to the submission
+     - Uses the transient comparison results to add cell-reference feedback; the comparison result itself is not persisted
 
 **Method**: `assessFormulaeTasks()`
 
@@ -891,6 +890,8 @@ submission.items["task_001"] = {
     }
   }
   ```
+
+`formulaComparisonResults` is transient. The assessor writes only the three assessments and the `cellReference` feedback to the submission item; it no longer writes an `assessments.formulaComparison` entry. A successfully read blank/all-null grid arrives as `[]` with the normal `[]` hash; literal `null` means unavailable content and is not coerced to a blank grid here. See [Contract: AssignmentDefinition §Concrete artifact types](../data-shapes/assignment-definition.md#concrete-artifact-types).
 
 ---
 

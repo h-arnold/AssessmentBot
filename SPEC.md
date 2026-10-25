@@ -33,8 +33,10 @@ LLM-service API redesign, or an application-wide React error-boundary project.
 6. Keep student first-match behaviour and existing tag/type preference. Ambiguity
    remains a warning, not a new E condition. Duplicate reference/template title tags
    continue to block definition parsing; do not fabricate student E for that failure.
-7. Invalid shared definitions and failed hydration of required reference/template
-   images block the run and preserve the prior saved assignment.
+7. Keep existing shared-definition and required reference/template image failure
+   handling: an invalid definition rejected by the existing definition workflow, or
+   failed hydration of a required shared image, blocks the run and preserves the prior
+   saved assignment. This does not require a new run-time eligibility preflight.
 8. Keep full assignments, lightweight class-embedded assignment summaries and the
    class-partials registry. Simplify affected ownership/reconstruction, not collections.
 9. Reassessment is acceptable. Old-format results read as E with reasoning
@@ -332,24 +334,27 @@ the owned dataset; this projection must not invent missing identities.
    identity is known; unexpected implementation faults propagate.
 6. Missing matches and failed spreadsheet range reads must produce explicit task E,
    not dropped items. Retain source-matching preference and first-match warnings.
-7. Required shared reference/template content must be usable before assessment and
-   completed result persistence. Definitions may legitimately store pending image
-   artefacts before an assessment run; do not forbid that existing definition-store
-   state. Strict non-null definition artefacts apply to completed full assignments.
+7. Existing handling of required shared reference/template content is retained:
+   unusable shared content detected by the existing definition-write validation or
+   shared-image hydration paths blocks the run, so completed results are not persisted;
+   do not add a new run-time eligibility preflight. Definitions may legitimately store
+   pending image artefacts before an assessment run; do not forbid that existing
+   definition-store state. Strict non-null definition artefacts apply to completed
+   full assignments.
    At new definition writes, non-IMAGE artefacts must already have non-null content
    and a string hash; valid blank TEXT/array templates are not rejected as empty.
    Old definitions may be reparsed through the existing definition workflow if
    they cannot meet these invariants; no result-version marker is added to definitions.
    A spreadsheet reference task with zero assessable formulae is an unusable shared
-   definition, not a valid blank template: reject it before assessing students and
-   block the run without replacing the prior result. The existing parser normally
-   creates no task for a formula-free reference; a stored/externally supplied task
-   must not bypass this check and leave incomplete results. Blank templates `[]`
-   remain valid, and blank student ranges retain the formula scores defined above.
-   `AssignmentDefinitionValidation` owns this definition-write invariant; the
-   existing `AssignmentDefinitionUpsertOrchestrator` invokes it on final resolved
-   tasks before persistence, using existing definition-failure reporting. Do not
-   add separate parser/API validators or change definition rollback semantics.
+   definition, not a valid blank template. Reject it at the existing
+   parser/definition-write boundary: the parser normally creates no task for a
+   formula-free reference, and definition-write validation rejects any such task
+   before persistence. Blank templates `[]` remain valid, and blank student ranges
+   retain the formula scores defined above. `AssignmentDefinitionValidation` owns
+   this definition-write invariant; the existing
+   `AssignmentDefinitionUpsertOrchestrator` invokes it on final resolved tasks before
+   persistence, using existing definition-failure reporting. Do not add separate
+   parser/API validators or change definition rollback semantics.
 8. Image failures are assigned by scope: student image failure becomes task E;
    shared-input failure blocks the run. Known failed items never reach the LLM.
 9. Changing content on a reused item invalidates its old assessments/feedback.
@@ -569,8 +574,9 @@ Use red-first tests for each implementation section in the subsequent action pla
    construction/persistence/restoration, valid template match, null hashes, missing
    tag, unreadable document, failed table/range extraction and image failures.
    Include a submitted attachment on a later Classroom page and a later-page failure.
-   A formula-free reference task is rejected as shared-definition failure; a valid
-   reference with blank template/student ranges still completes with terminal marks.
+   A formula-free reference task is rejected at the parser/definition-write
+   boundary; a valid reference with blank template/student ranges still completes
+   with terminal marks.
 3. Current first-match ambiguity warning and blocking definition duplicates remain.
 4. Exact total dispatch counts/backoff: transient exhaustion, batch exceptions, permanent
    4xx, invalid JSON/structure, 401/403/404 stop, earlier/same-batch success retention.

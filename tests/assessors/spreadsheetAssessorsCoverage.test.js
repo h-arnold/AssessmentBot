@@ -31,16 +31,6 @@ class TestCellReferenceFeedback {
   }
 }
 
-class PlainCellReferenceFeedback {
-  constructor() {
-    this.items = [];
-  }
-
-  addItem(location, status) {
-    this.items.push({ location, status });
-  }
-}
-
 describe('SpreadsheetFormulaEquivalence behaviour', () => {
   const equivalence = () => globalThis.SpreadsheetFormulaEquivalence;
 
@@ -229,28 +219,20 @@ describe('SheetsAssessor response handling', () => {
     );
   });
 
-  it('assesses formulae and stores serialised comparisons', () => {
+  it('assesses formulae and keeps comparisons out of assessment results', () => {
     const item = spreadsheetItem([['=A1+A2']]);
     const assessor = new SheetsAssessor({ task_one: referenceTask([['=A2+A1']]) }, [
       { studentName: 'Student One', items: { task_one: item } },
     ]);
     assessor.assessResponses();
     expect(item.addAssessment).toHaveBeenCalledTimes(3);
-    expect(item.assessments.formulaComparison).toMatchObject({ totalFormulae: 1 });
+    expect(item.addAssessment.mock.calls.map(([criterion]) => criterion)).toEqual([
+      'completeness',
+      'accuracy',
+      'spag',
+    ]);
+    expect(item.assessments).not.toHaveProperty('formulaComparison');
     expect(mockLogger.info).toHaveBeenCalled();
-  });
-
-  it('serialises feedback with and without toJSON support', () => {
-    const assessor = new SheetsAssessor({}, []);
-    const withJson = { cellReferenceFeedback: new TestCellReferenceFeedback(), totalFormulae: 1 };
-    expect(assessor._serialiseFormulaComparisonResults(withJson).cellReferenceFeedback).toEqual({
-      type: 'cellReference',
-      items: [],
-    });
-    const plain = { cellReferenceFeedback: new PlainCellReferenceFeedback(), totalFormulae: 1 };
-    expect(assessor._serialiseFormulaComparisonResults(plain).cellReferenceFeedback).toBeInstanceOf(
-      PlainCellReferenceFeedback
-    );
   });
 
   it('compares grids with bounding box offsets and ragged rows', () => {

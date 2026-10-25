@@ -116,12 +116,8 @@ describe('SheetsAssessor', () => {
     expect(submissionItem.getAssessment('completeness')).toMatchObject({ score: 3.33 });
     expect(submissionItem.getAssessment('accuracy')).toMatchObject({ score: 2.5 });
     expect(submissionItem.getAssessment('spag')).toMatchObject({ score: 'N' });
-    expect(submissionItem.assessments.formulaComparison).toMatchObject({
-      correct: 1,
-      incorrect: 1,
-      notAttempted: 1,
-      totalFormulae: 3,
-    });
+    expect(submissionItem.assessments).not.toHaveProperty('formulaComparison');
+    expect(Object.keys(submissionItem.assessments)).toEqual(['completeness', 'accuracy', 'spag']);
     expect(submissionItem.getFeedback('cellReference')).toEqual({
       type: 'cellReference',
       items: [
@@ -199,12 +195,8 @@ describe('SheetsAssessor', () => {
     expect(submissionItem.getAssessment('completeness')).toMatchObject({ score: 5 });
     expect(submissionItem.getAssessment('accuracy')).toMatchObject({ score: 5 });
     expect(submissionItem.getAssessment('spag')).toMatchObject({ score: 'N' });
-    expect(submissionItem.assessments.formulaComparison).toMatchObject({
-      correct: 1,
-      incorrect: 0,
-      notAttempted: 0,
-      totalFormulae: 1,
-    });
+    expect(submissionItem.assessments).not.toHaveProperty('formulaComparison');
+    expect(Object.keys(submissionItem.assessments)).toEqual(['completeness', 'accuracy', 'spag']);
     expect(submissionItem.getFeedback('cellReference')).toEqual({
       type: 'cellReference',
       items: [{ location: [0, 0], status: 'correct' }],
@@ -282,5 +274,29 @@ describe('SheetsAssessor', () => {
     expect(comparisonResults.cellReferenceFeedback.getItems()).toEqual([
       { location: [1, 4], status: 'incorrect' },
     ]);
+  });
+
+  it('assesses a blank student grid against a usable reference and persists only assessments and feedback', () => {
+    const taskDefinition = new TaskDefinition({ taskTitle: 'Blank formulas', pageId: 31 });
+    taskDefinition.addReferenceArtifact({ type: 'SPREADSHEET', content: [['=A1'], ['=B1']] });
+    taskDefinition.addTemplateArtifact({ type: 'SPREADSHEET', content: [[null]] });
+    expect(taskDefinition.getPrimaryTemplate().content).toEqual([]);
+    const submission = new StudentSubmission('student-blank', 'assignment-blank', 'doc-blank');
+    submission.upsertItemFromExtraction(taskDefinition, { content: [[null], [null]] });
+
+    const taskId = taskDefinition.getId();
+    const item = submission.getItem(taskId);
+    expect(item.artifact.content).toEqual([]);
+    new SheetsAssessor({ [taskId]: taskDefinition }, [submission]).assessResponses();
+
+    expect(item.getAssessment('completeness')).toMatchObject({ score: 0 });
+    expect(item.getAssessment('accuracy')).toMatchObject({ score: 0 });
+    expect(item.getAssessment('spag')).toMatchObject({ score: 'N' });
+    expect(item.getFeedback('cellReference').items).toHaveLength(2);
+    expect(item.getAssessment('completeness').score).toBe(0);
+    expect(item.getAssessment('accuracy').score).toBe(0);
+    const persistedItem = submission.toJSON().items[taskId];
+    expect(persistedItem.feedback.cellReference.items).toHaveLength(2);
+    expect(persistedItem.assessments).not.toHaveProperty('formulaComparison');
   });
 });

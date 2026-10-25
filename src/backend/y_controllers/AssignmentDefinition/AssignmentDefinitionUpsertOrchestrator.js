@@ -37,6 +37,10 @@ class AssignmentDefinitionUpsertOrchestrator {
    *
    * @param {Object} payload - Upsert payload.
    * @returns {AssignmentDefinition} Persisted full definition.
+   * @throws {ApiValidationError} When the final resolved tasks fail the shared-artefact
+   *   availability invariant; carries `code: 'DEFINITION_PARSE_FAILED'`.
+   * @remarks The shared-artefact check runs after weighting and before definition construction
+   *   or persistence. Structural and wiring faults from that check propagate unchanged.
    */
   upsert(payload) {
     /* global Validate, AssignmentDefinition, DateUtils, assertRecoveryPreconditions_, assertApprovalBaselineFresh_ */
@@ -106,6 +110,8 @@ class AssignmentDefinitionUpsertOrchestrator {
       tasks: taskState.finalTasks,
       payload,
     });
+
+    Object.values(finalTasks).forEach((task) => this.validation.validateSharedArtifacts(task));
 
     const definition = new AssignmentDefinition({
       primaryTitle,
