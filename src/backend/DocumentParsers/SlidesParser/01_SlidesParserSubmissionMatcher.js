@@ -38,11 +38,28 @@ class SlidesParserSubmissionMatcher {
    * facade spies remain observable (pre-decomposition dispatch contract).
    * @param {string} documentId - Student document ID.
    * @param {TaskDefinition[]} taskDefs - Definitions to match.
-   * @returns {Array<{taskId: string, pageId: string|null, content: *, metadata: Object, documentId: string, type: string}>} - Submission artefacts.
+   * @returns {Array<{taskId: string, pageId: string|null, content: *, metadata: Object, documentId: string, type: string}>|null} - Submission artefacts, or null when the native document open fails.
+   * @remarks A failed ordinary native open returns null after one diagnostic; a successful open always returns an array, possibly empty. TypeError, ReferenceError and non-Error values propagate unchanged.
    */
   extractSubmissionArtifacts(documentId, taskDefs) {
     Validate.requireParams({ documentId, taskDefs }, 'SlidesParser.extractSubmissionArtifacts');
-    const presentation = SlidesApp.openById(documentId);
+    let presentation;
+    try {
+      presentation = SlidesApp.openById(documentId);
+    } catch (error) {
+      if (
+        !(error instanceof Error) ||
+        error instanceof TypeError ||
+        error instanceof ReferenceError
+      ) {
+        throw error;
+      }
+      ABLogger.getInstance().error('Failed to open student Slides document', {
+        documentId,
+        err: error,
+      });
+      return null;
+    }
     const slides = presentation.getSlides();
     const artifacts = [];
     const slideContexts = this.parser.buildSubmissionSlideContexts(slides);
@@ -231,7 +248,9 @@ class SlidesParserSubmissionMatcher {
           elementType,
           documentId,
           pageId: matchedPageId,
+          taskId: definition.getId(),
           taskTitle: definition.taskTitle,
+          readMode: 'submission',
         });
         if (contentDetails?.artifactType !== typeNeeded) continue;
 

@@ -135,17 +135,30 @@ class SlidesAssignment extends Assignment {
     const total = this.submissions.length;
     this.submissions.forEach((sub, index) => {
       if (!sub.documentId) {
-        ABLogger.getInstance().warn(`No document ID for student: ${sub.studentName}. Skipping.`, {
+        ABLogger.getInstance().warn(`No document ID for student: ${sub.studentId}. Skipping.`, {
           workflow: 'SlidesAssignment.processAllSubmissions',
           courseId: this.courseId,
           assignmentId: this.assignmentId,
-          studentName: sub.studentName,
+          studentId: sub.studentId,
         });
         return;
       }
       // Update progress with ordinal position (e.g. "Extracting response 3 of 12...")
       this.progressTracker.updateProgress(`Extracting response ${index + 1} of ${total}...`, false);
       const artifacts = parser.extractSubmissionArtifacts(sub.documentId, taskDefs);
+      if (artifacts === null) {
+        taskDefs.forEach((taskDefinition) => {
+          const item = sub.upsertItemFromExtraction(taskDefinition, {
+            pageId: null,
+            content: null,
+            documentId: sub.documentId,
+            missingContentLogged: true,
+          });
+          item.setError('acquisition', 'SOURCE_UNREADABLE');
+        });
+        return;
+      }
+      const processedTaskIds = new Set();
       artifacts.forEach((a) => {
         const taskDefinition = this.assignmentDefinition.tasks[a.taskId];
         if (!taskDefinition) {
@@ -165,8 +178,26 @@ class SlidesAssignment extends Assignment {
           documentId: a.documentId,
           // Parser placeholders already carry the single missing-content diagnostic,
           // so the model layer stores them silently without duplicate warnings.
-          missingContentLogged: a.content == null && a.pageId == null,
+          missingContentLogged: a.content == null,
         });
+        processedTaskIds.add(a.taskId);
+      });
+      taskDefs.forEach((taskDefinition) => {
+        if (processedTaskIds.has(taskDefinition.getId())) return;
+        const item = sub.upsertItemFromExtraction(taskDefinition, {
+          pageId: null,
+          content: null,
+          documentId: sub.documentId,
+          missingContentLogged: true,
+        });
+        item.setError('extraction', 'SOURCE_CONTENT_UNAVAILABLE');
+      });
+      artifacts.forEach((artifact) => {
+        const isMatchedPendingImage =
+          artifact.type === 'IMAGE' && artifact.pageId != null && artifact.metadata.sourceUrl;
+        if (artifact.content != null || isMatchedPendingImage) return;
+        const item = sub.getItem(artifact.taskId);
+        if (item) item.setError('extraction', 'SOURCE_CONTENT_UNAVAILABLE');
       });
     });
   }

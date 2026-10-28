@@ -337,7 +337,7 @@ describe('Assignment submissions behaviour', () => {
     );
   });
 
-  it('reports classroom fetch failures', () => {
+  it('logs and propagates classroom fetch failures', () => {
     const failure = new Error('classroom down');
     globalThis.Classroom = {
       Courses: {
@@ -355,7 +355,13 @@ describe('Assignment submissions behaviour', () => {
       assignmentId: 'a-five',
       submissions: [],
     });
-    submissions.fetchSubmittedDocumentsByMimeType('mime-ok');
+    let thrown;
+    try {
+      submissions.fetchSubmittedDocumentsByMimeType('mime-ok');
+    } catch (error) {
+      thrown = error;
+    }
+    expect(thrown).toBe(failure);
     expect(mockLogger.error).toHaveBeenCalledWith(
       'Error fetching submissions for assignment ID a-five:',
       failure
@@ -404,7 +410,12 @@ describe('Assignment submissions behaviour', () => {
       },
     };
     submissions.fetchSubmittedDocumentsByMimeType('mime-ok');
-    expect(processSpy).toHaveBeenCalledWith({ driveFile: { id: 'f-one' } }, 's-one', 'mime-ok');
+    expect(processSpy).toHaveBeenCalledWith(
+      { driveFile: { id: 'f-one' } },
+      's-one',
+      'mime-ok',
+      expect.objectContaining({ failures: expect.any(Map), supported: expect.any(Set) })
+    );
     expect(mockLogger.info).toHaveBeenCalledWith('No attachments found for student ID: s-two');
   });
 });

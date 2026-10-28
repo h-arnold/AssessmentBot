@@ -5,6 +5,7 @@ import {
   createTaggedElement,
   createUnsupportedTitleElement,
   createSlide,
+  createTableElementFromMock,
   buildSlidesParserHarness,
 } from '../helpers/slidesParserTestHarness.js';
 
@@ -202,6 +203,141 @@ describe('SlidesParser definition extraction', () => {
 
       expect(defs).toHaveLength(0);
       expect(suite.mockLogger.warn).not.toHaveBeenCalled();
+    });
+
+    it('throws the original native shape text failure during shared-definition extraction', () => {
+      const nativeFailure = new Error('shape text service failed');
+      const shape = createShapeElement(vi, '# Task 1', 'Ref text');
+      shape.asShape = vi.fn(() => ({
+        getText: vi.fn(() => {
+          throw nativeFailure;
+        }),
+      }));
+      const parser = buildSlidesParserHarness(vi, suite.SlidesParser, {
+        [refDocId]: [createSlide(vi, 'ref-page', [shape])],
+      });
+
+      let caught;
+      try {
+        parser.extractTaskDefinitions(refDocId);
+      } catch (error) {
+        caught = error;
+      }
+
+      expect(caught).toBe(nativeFailure);
+      expect(suite.mockLogger.error).not.toHaveBeenCalled();
+    });
+
+    it('throws the original native table read failure during shared-definition extraction', () => {
+      const nativeFailure = new Error('table RPC failed');
+      const table = {
+        getNumRows: vi.fn(() => 1),
+        getNumColumns: vi.fn(() => 1),
+        getCell: vi.fn(() => {
+          throw nativeFailure;
+        }),
+      };
+      const parser = buildSlidesParserHarness(vi, suite.SlidesParser, {
+        [refDocId]: [
+          createSlide(vi, 'ref-page', [createTableElementFromMock(vi, '# Task Table', table)]),
+        ],
+      });
+
+      let caught;
+      try {
+        parser.extractTaskDefinitions(refDocId);
+      } catch (error) {
+        caught = error;
+      }
+
+      expect(caught).toBe(nativeFailure);
+      expect(suite.mockLogger.error).toHaveBeenCalledTimes(1);
+      expect(suite.mockLogger.error).toHaveBeenCalledWith('extractTableCells failed', {
+        documentId: refDocId,
+        pageId: 'ref-page',
+        taskTitle: 'Task Table',
+        row: 0,
+        column: 0,
+        error: nativeFailure,
+      });
+    });
+
+    it('logs one contextual diagnostic and rethrows an ordinary merge-state failure', () => {
+      const nativeFailure = new Error('table merge-state service failed');
+      const cell = {
+        getMergeState: vi.fn(() => {
+          throw nativeFailure;
+        }),
+        getText: vi.fn(),
+      };
+      const table = {
+        getNumRows: vi.fn(() => 1),
+        getNumColumns: vi.fn(() => 1),
+        getCell: vi.fn(() => cell),
+      };
+      const parser = buildSlidesParserHarness(vi, suite.SlidesParser, {
+        [refDocId]: [
+          createSlide(vi, 'ref-page', [createTableElementFromMock(vi, '# Task Table', table)]),
+        ],
+      });
+
+      let caught;
+      try {
+        parser.extractTaskDefinitions(refDocId);
+      } catch (error) {
+        caught = error;
+      }
+
+      expect(caught).toBe(nativeFailure);
+      expect(cell.getText).not.toHaveBeenCalled();
+      expect(suite.mockLogger.error).toHaveBeenCalledTimes(1);
+      expect(suite.mockLogger.error).toHaveBeenCalledWith('extractTableCells failed', {
+        documentId: refDocId,
+        pageId: 'ref-page',
+        taskTitle: 'Task Table',
+        row: 0,
+        column: 0,
+        error: nativeFailure,
+      });
+    });
+
+    it('logs once at the shared-definition cell-text facade boundary and rethrows identity', () => {
+      const nativeFailure = new Error('cell text facade failed');
+      const parser = buildSlidesParserHarness(vi, suite.SlidesParser, {
+        [refDocId]: [
+          createSlide(vi, 'ref-page', [
+            createTableElementFromMock(vi, '# Task Table', {
+              getNumRows: vi.fn(() => 1),
+              getNumColumns: vi.fn(() => 1),
+              getCell: vi.fn(() => ({
+                getMergeState: vi.fn(() => 'NOT_MERGED'),
+                getText: vi.fn(() => ({ asString: vi.fn(() => 'Ref') })),
+              })),
+            }),
+          ]),
+        ],
+      });
+      vi.spyOn(parser, 'extractCellText').mockImplementation(() => {
+        throw nativeFailure;
+      });
+
+      let caught;
+      try {
+        parser.extractTaskDefinitions(refDocId);
+      } catch (error) {
+        caught = error;
+      }
+
+      expect(caught).toBe(nativeFailure);
+      expect(suite.mockLogger.error).toHaveBeenCalledTimes(1);
+      expect(suite.mockLogger.error).toHaveBeenCalledWith('extractTableCells failed', {
+        documentId: refDocId,
+        pageId: 'ref-page',
+        taskTitle: 'Task Table',
+        row: 0,
+        column: 0,
+        error: nativeFailure,
+      });
     });
   });
 });

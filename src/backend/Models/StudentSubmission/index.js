@@ -93,7 +93,7 @@ class StudentSubmission {
         isMutated = true;
       }
     } else {
-      const resolvedPageId = pageId ?? taskDefinition.pageId;
+      const resolvedPageId = extraction.pageId === null ? null : (pageId ?? taskDefinition.pageId);
       const metadataForArtifact = metadataPayload ?? {};
       // Prefer documentId provided by the extraction (parser-level) otherwise use
       // the parent submission's documentId so artifacts carry canonical source.

@@ -69,6 +69,19 @@ class SheetsAssignment extends Assignment {
         return;
       }
       const artifacts = parser.extractSubmissionArtifacts(sub.documentId, taskDefs);
+      if (artifacts === null) {
+        taskDefs.forEach((taskDefinition) => {
+          const item = sub.upsertItemFromExtraction(taskDefinition, {
+            pageId: null,
+            content: null,
+            documentId: sub.documentId,
+            missingContentLogged: true,
+          });
+          item.setError('acquisition', 'SOURCE_UNREADABLE');
+        });
+        return;
+      }
+      const processedTaskIds = new Set();
       artifacts.forEach((a) => {
         const taskDefinition = this.assignmentDefinition.tasks[a.taskId];
         if (!taskDefinition) {
@@ -82,7 +95,24 @@ class SheetsAssignment extends Assignment {
           content: a.content,
           metadata: a.metadata,
           documentId: a.documentId,
+          missingContentLogged: a.content == null,
         });
+        processedTaskIds.add(a.taskId);
+      });
+      taskDefs.forEach((taskDefinition) => {
+        if (processedTaskIds.has(taskDefinition.getId())) return;
+        const item = sub.upsertItemFromExtraction(taskDefinition, {
+          pageId: null,
+          content: null,
+          documentId: sub.documentId,
+          missingContentLogged: true,
+        });
+        item.setError('extraction', 'SOURCE_CONTENT_UNAVAILABLE');
+      });
+      artifacts.forEach((artifact) => {
+        if (artifact.content != null || artifact.type === 'IMAGE') return;
+        const item = sub.getItem(artifact.taskId);
+        if (item) item.setError('extraction', 'SOURCE_CONTENT_UNAVAILABLE');
       });
     });
   }

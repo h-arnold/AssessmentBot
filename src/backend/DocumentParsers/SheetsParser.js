@@ -305,11 +305,26 @@ class SheetsParser extends DocumentParser {
    * the canonical spreadsheet artifact type.
    * @param {string} studentDocumentId - The ID of the student submission spreadsheet.
    * @param {TaskDefinition[]} taskDefs - Task definitions to extract artifacts for.
-   * @returns {Array<{taskId: string, pageId: string|null, content: Array, metadata: Object, documentId: string, type: string}>} Array of submission artifacts.
+   * @returns {Array<{taskId: string, pageId: string|null, content: Array|null, metadata: Object, documentId: string, type: string}>|null} Submission artifacts, or null when the document could not be opened.
    */
   extractSubmissionArtifacts(studentDocumentId, taskDefs) {
     if (!studentDocumentId) return [];
-    const spreadsheet = SpreadsheetApp.openById(studentDocumentId);
+    let spreadsheet;
+    try {
+      spreadsheet = SpreadsheetApp.openById(studentDocumentId);
+    } catch (error) {
+      if (
+        error instanceof TypeError ||
+        error instanceof ReferenceError ||
+        !(error instanceof Error)
+      )
+        throw error;
+      ABLogger.getInstance().error('Failed to open student Sheets document', {
+        documentId: studentDocumentId,
+        err: error,
+      });
+      return null;
+    }
     const sheets = spreadsheet.getSheets();
     const sheetById = {};
     sheets.forEach((s) => {
@@ -324,15 +339,37 @@ class SheetsParser extends DocumentParser {
         null;
       const sheet = sheetById[definition.pageId];
       if (!sheet || !bbox || !reference) return;
-      const taskSheet = new TaskSheet(sheet, 'studentTask');
-      let rangeFormulas = [];
+      let rangeFormulas;
       try {
-        rangeFormulas = taskSheet.getRange(bbox, 'formulas');
-      } catch (error) {
-        this.progressTracker?.logError(
-          'Failed to read formulas for sheet ' + definition.taskTitle,
-          error
+        const range = sheet.getRange(
+          bbox.startRow,
+          bbox.startColumn,
+          bbox.numRows,
+          bbox.numColumns
         );
+        rangeFormulas = range.getFormulas();
+      } catch (error) {
+        if (
+          error instanceof TypeError ||
+          error instanceof ReferenceError ||
+          !(error instanceof Error)
+        )
+          throw error;
+        ABLogger.getInstance().error('Failed to read formulas from student Sheets document', {
+          documentId: studentDocumentId,
+          taskId: definition.getId(),
+          pageId: definition.pageId,
+          bbox,
+          error,
+        });
+        artifacts.push({
+          taskId: definition.getId(),
+          pageId: definition.pageId,
+          content: null,
+          metadata: { sheetName: definition.taskTitle },
+          documentId: studentDocumentId,
+          type: 'SPREADSHEET',
+        });
         return;
       }
       // Reconstruct sparse grid like reference for hashing consistency

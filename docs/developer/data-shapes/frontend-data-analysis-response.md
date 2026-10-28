@@ -1217,8 +1217,11 @@ section to remove the marker as each addition is implemented and verified.
 
 > **Status: partially implemented.** The explicit Assessment E input is implemented as
 > described below; preview fields remain planned. The backend read projection and both frontend
-> read services are implemented, so `E` reasoning/cause is already available to the future
-> preview slice. The Assessment
+> read services are implemented, and the assessment-error acquisition/extraction producers now
+> create these `E` results at the student/task boundary, so `E` reasoning/cause is already
+> available to the future preview slice. Section 4 added no frontend field or public shape: the
+> handled backend diagnostics are opaque and identifier-bounded, and the existing
+> `CellPreviewData`/`TaskPreviewData` shapes are unchanged until the planned preview slice. The Assessment
 > union itself is owned by
 > [Contract: Assignment §Planned contract additions](assignment.md#planned-contract-additions--explicit-assessment-errors-and-result-format-marker-partially-implemented).
 

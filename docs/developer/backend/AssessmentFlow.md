@@ -25,13 +25,18 @@
 - `StudentSubmissionItem` task-error replacement and partial result projection
   - Status: `Implemented` (Section 1)
   - Owning path: `src/backend/Models/StudentSubmission/00_StudentSubmissionItem.js`.
-  - Atomic replacement: `setError(stage, code)` replaces every existing criterion with the same catalogue E result for `completeness`, `accuracy` and `spag`, clears feedback, and invokes the item's mutation callback so the parent submission's timestamp advances. The callback is installed only on items created through `upsertItemFromExtraction`; items reconstructed by `StudentSubmission._restore` are built without one, so `setError` on a restored item leaves the parent timestamp unchanged. Stale numeric/`N` marks cannot survive beside the current failure.
+  - Atomic replacement: `setError(stage, code)` replaces every existing criterion with the same catalogue E result for `completeness`, `accuracy` and `spag`, clears feedback, and invokes the item's mutation callback so the parent submission's timestamp advances. The callback is installed on items created through `upsertItemFromExtraction` and on acquisition placeholders that `AssignmentSubmissions._materialiseAcquisitionOutcome()` constructs directly with `onMutate: () => submission.touchUpdated()`; items reconstructed by `StudentSubmission._restore` are built without one, so `setError` on a restored item leaves the parent timestamp unchanged. Stale numeric/`N` marks cannot survive beside the current failure.
   - Partial projection: `toPartialJSON()` keeps E entries complete (`{ score: 'E', reasoning, error }`) while numeric and `'N'` entries remain `{ score }`, so a class-embedded failure keeps its explanation.
   - Raw restoration: `validateRaw(json, mode)` rejects missing item/artifact identity and, in full mode, an artifact without its own `content`/`contentHash` keys. `fromJSON(json, mode)` restores once in the requested mode and normalises redacted partial content/hash to explicit `null`. Criterion-completeness and assessment-map validation are enforced by `AssignmentCurrentRestoration` during marker-1 restoration, not by this additive layer.
+  - Boundary wiring: the acquisition and extraction owners invoke `setError()` (Section 4); wiring the assessment boundary remains Section 6 work. See [rehydration.md](rehydration.md) for read-time cause selection.
 - Acquisition pagination and student-document outcomes (`Assignment.fetchSubmittedDocumentsByMimeType`)
-  - Status: `Not implemented` (planned extension of the existing acquisition owner)
-  - Current: one `StudentSubmissions.list` call with no `nextPageToken` follow-up, and list or Drive errors are logged then ignored, so a failed acquisition looks like no submission.
-  - Planned owning path: `src/backend/AssignmentProcessor/Assignment/04_AssignmentSubmissions.js` — pagination-before-absence: follow every `StudentSubmissions.list` `nextPageToken` page before confirming that a student has no submitted attachment; a failed page fails the run rather than manufacturing no-submission/N. A known student's unsupported or unreadable submitted document becomes acquisition `UNSUPPORTED_DOCUMENT` or `SOURCE_UNREADABLE` E for that student's known tasks. Preserve the existing attachment-selection preference and first-match/ambiguity warnings; no new matching policy, multi-file UI or acquisition helper.
+  - Status: `Implemented` (backend, Section 4)
+  - Owning path: `src/backend/AssignmentProcessor/Assignment/04_AssignmentSubmissions.js`.
+  - Behaviour: follows every `StudentSubmissions.list` `nextPageToken` page before concluding absence. A later-page list failure is logged and rethrown unchanged, so the run fails and prior stored results are preserved instead of manufacturing no-submission/N. The scan is scan-local: one `Map`/`Set` accumulator spans every attachment array and duplicate Classroom record. The existing scan keeps the last supported attachment; a failure is recorded only while no supported source has been admitted, and only the first such failure is materialised after the complete scan, as acquisition `UNSUPPORTED_DOCUMENT` or `SOURCE_UNREADABLE` E for the student's known tasks. An accepted source clears the recorded failure and suppresses rejected-candidate E. Placeholders are constructed directly through `BaseTaskArtifact` and `StudentSubmissionItem` (null `pageId`/`documentId`/`content`/`contentHash`, empty metadata/feedback) rather than `upsertItemFromExtraction()`, matching the null-parent read invariant. Non-Drive/missing-ID attachments are ignored by the settled admission policy and record no failure. The genuine no-submission representation applies only when no supported source was admitted and no acquisition failure was recorded; ignored candidates alongside failed Drive candidates do not erase that failure, which is materialised as acquisition `E` when no supported source exists. Drive conversion is limited to the immediate `DriveApp.getFileById(...).getMimeType()` expression: an ordinary native `Error` converts, while an actually thrown `TypeError`, `ReferenceError` or non-`Error` value propagates by identity. No new matching policy, multi-file UI or acquisition helper.
+- Student extraction outcomes (`SlidesAssignment.processAllSubmissions`, `SheetsAssignment.processAllSubmissions`)
+  - Status: `Implemented` (backend, Section 4)
+  - Owning paths: `src/backend/AssignmentProcessor/SlidesAssignment.js`, `src/backend/AssignmentProcessor/SheetsAssignment.js` and their parser owners (`src/backend/DocumentParsers/SlidesParser/`, `src/backend/DocumentParsers/SheetsParser.js`).
+  - Behaviour: a failed document open returns an internal null sentinel, distinct from a successful empty array, and becomes acquisition `SOURCE_UNREADABLE` for all known tasks while retaining the student document ID with explicit null `pageId`/`content`/`contentHash`. Failed or unavailable per-task content becomes extraction `SOURCE_CONTENT_UNAVAILABLE`, as does a known task with no extraction outcome; healthy extracted items stay in flight with an empty assessment map until the assessment stage. A Slides IMAGE task is pending only when it has a matched student page and parser-generated `metadata.sourceUrl`; a missing IMAGE match is unavailable extraction, not pending hydration. A literal-null `getCell` aborts the whole TABLE with null content, while shared-definition reads still throw. Conversion is limited to immediate native Drive/open/range/formula/text/dimension/cell/merge reads: ordinary native `Error`s convert, while actually thrown `TypeError`/`ReferenceError`/non-`Error` values and internal matching/facade/normalisation/mutation faults propagate. Each owned native failure emits one contextual diagnostic with opaque identifiers and the original error; student names, source content and raw payloads are never logged, and downstream model/progress duplicates are suppressed. Unknown extraction task IDs still warn and are ignored, and `PARSE_FAILED` remains reserved with no forced producer. No failure registry, error hierarchy or pipeline guard.
 - Transport retry ownership (`BaseRequestManager`)
   - Status: `Not implemented` (planned extension of the existing owner)
   - Current: `sendRequestsInBatches()` collects every batch before assigning results, and `sendRequestWithRetries()` re-pushes the initial failed response after exhausted retries; retry classification happens inside the retry loop.
@@ -41,7 +46,7 @@
 - Scoped image outcomes (`ImageManager`)
   - Status: `Not implemented` (planned extension of the existing owner)
   - Current: `fetchImagesAsBlobs()` passes a batch size to `sendRequestsInBatches()`, which ignores it and uses the assessor batch size; failed downloads and blob-write errors are logged and the artefact content stays null.
-  - Planned owning path: `src/backend/RequestHandlers/ImageManager.js` — reuse `BaseRequestManager` transport with an explicit Slides-fetch batch size, HTTP 200 as the only image success status, and the shared three-total-attempt budget; preserve document round-robin scheduling. Expected download, missing required source and blob/content decode failures become student-task `IMAGE_HYDRATION_FAILED` E, or a blocking shared reference/template failure according to scope. Successful writeback updates the artefact hash and invalidates stale assessments/feedback on a reused item. A pending IMAGE before hydration is valid internal state, never a completed result. Unmatched or duplicate UIDs, missing model methods and other wiring faults throw. No second retry or hydration manager.
+  - Planned owning path: `src/backend/RequestHandlers/ImageManager.js` — reuse `BaseRequestManager` transport with an explicit Slides-fetch batch size, HTTP 200 as the only image success status, and the shared three-total-attempt budget; preserve document round-robin scheduling. Expected download, missing required source and blob/content decode failures become student-task `IMAGE_HYDRATION_FAILED` E, or a blocking shared reference/template failure according to scope. Successful writeback updates the artefact hash and invalidates stale assessments/feedback on a reused item. A matched IMAGE with a student page and `metadata.sourceUrl` is valid pending internal state, never a completed result; a missing IMAGE match is already extraction `SOURCE_CONTENT_UNAVAILABLE` E (Section 4). Unmatched or duplicate UIDs, missing model methods and other wiring faults throw. No second retry or hydration manager.
 - Assessment cache identity and hit validation (`LLMRequestManager`)
   - Status: `Not implemented` (planned extension of the existing owner)
   - Current: `generateRequestObjects()` derives the cache key from the reference and student hashes only (`CacheManager.generateCacheKey`), reads hits through `getCachedAssessment()` without validating them, and `_assignAndCacheAssessment()` writes successful LLM data back through `setCachedAssessment()`.
@@ -578,26 +583,24 @@ Current state: `startProcessing` stores context via `GASPropertiesUtils.getUserP
 
 - **Location**: `src/backend/AssignmentProcessor/Assignment/04_AssignmentSubmissions.js`
 - **Process**:
-  1. Calls Google Classroom API:
-     - `Classroom.Courses.CourseWork.StudentSubmissions.list(courseId, assignmentId)`
-  2. Iterates through submissions
+  1. Calls `Classroom.Courses.CourseWork.StudentSubmissions.list(courseId, assignmentId)`, following every `nextPageToken` page before concluding that a student has no attachment. A later-page list failure is logged and rethrown unchanged, so the run stops instead of manufacturing no-submission.
+  2. Iterates through the accumulated submissions
   3. For each submission:
      - Extracts userId (student ID)
      - Gets attachments array
-     - Processes each attachment via `_processAttachmentForSubmission()`
-  4. Logs if no submissions or attachments found
+     - Processes each attachment via `_processAttachmentForSubmission()` with a scan-local `{ failures, supported }` accumulator
+  4. After the complete scan, materialises the recorded first failure, if one exists, for each student with no supported attachment; an accepted source clears any earlier rejected-candidate failure. Logs if no submissions or attachments found.
 
-**Helper Method**: `_processAttachmentForSubmission(attachment, studentId, mimeType)`
+**Helper Method**: `_processAttachmentForSubmission(attachment, studentId, mimeType, scanState)`
 
 - **Location**: `src/backend/AssignmentProcessor/Assignment/04_AssignmentSubmissions.js`
 - **Process**:
-  1.  Extracts driveFileId from attachment
-  2.  Fetches file from Drive
-  3.  Validates MIME type matches expected type
-  4.  Finds matching StudentSubmission in submissions array
-  5.  Sets documentId on submission
-  6.  Updates submission timestamp via `touchUpdated()`
-- **Result**: Each StudentSubmission now has a documentId property pointing to their submission
+  1.  Extracts driveFileId from attachment; non-Drive/missing-ID attachments are logged and ignored without recording a failure
+  2.  Reads the MIME type through the immediate native `DriveApp.getFileById(id).getMimeType()` call; an ordinary native `Error` records `SOURCE_UNREADABLE`, while an actually thrown `TypeError`, `ReferenceError` or non-`Error` value propagates
+  3.  Validates the MIME type; a mismatched supported-Drive attachment records `UNSUPPORTED_DOCUMENT`
+  4.  On a valid type, finds the matching StudentSubmission, sets its `documentId` (the last supported attachment wins) and marks the student as supported
+  5.  Updates the submission timestamp via `touchUpdated()`
+- **Result**: Each admitted StudentSubmission has a `documentId`. A student whose supported-admission candidates all fail receives acquisition `E` items for every known task, using the first recorded failure. A student with no supported source and no recorded acquisition failure keeps `documentId: null` and an empty item map (genuine no-submission); absent attachments and ignored non-Drive/missing-ID candidates are the only routes to that state. Ignored candidates alongside failed Drive candidates do not erase the recorded failure.
 
 ##### Stage 4: Extract Student Work (lines 299-305)
 
@@ -605,33 +608,33 @@ Current state: `startProcessing` stores context via `GASPropertiesUtils.getUserP
 - **Process**: Calls `assignment.processAllSubmissions()`
 - **Completion**: "All student work extracted."
 
-**Method**: `SlidesAssignment.processAllSubmissions()`
+**Method**: `SlidesAssignment.processAllSubmissions()` (and the `SheetsAssignment` equivalent)
 
-- **Location**: `/src/backend/AssignmentProcessor/SlidesAssignment.js`
+- **Location**: `/src/backend/AssignmentProcessor/SlidesAssignment.js`, `/src/backend/AssignmentProcessor/SheetsAssignment.js`
 - **Process**:
-  1. Creates `SlidesParser` instance
-  2. Gets task definitions from assignment
-  3. Iterates through each submission
-  4. For each submission:
-     - Updates progress with ordinal position
+  1. Creates the parser instance and gets task definitions from the assignment
+  2. Iterates through each submission:
+     - Skips submissions without `documentId`; a failed acquisition has already materialised its failure items
+     - Updates progress before extraction (Slides reports ordinal position; Sheets names the student)
      - Calls `parser.extractSubmissionArtifacts(documentId, taskDefs)`
-     - For each artifact returned:
-       - Gets corresponding TaskDefinition
-       - Calls `submission.upsertItemFromExtraction(taskDef, extractionData)`
-  5. Skips submissions without documentId
+     - If the parser returns its failed-open null sentinel, creates one item per known task with `setError('acquisition', 'SOURCE_UNREADABLE')`
+     - Otherwise upserts each returned artifact through `submission.upsertItemFromExtraction(taskDef, extractionData)`, warning and ignoring unknown task IDs
+     - Materialises extraction `SOURCE_CONTENT_UNAVAILABLE` for known tasks with no extraction outcome, and for returned artifacts whose content is null, except a Slides IMAGE with a matched student page and `metadata.sourceUrl`
+  3. Healthy extracted items keep an empty assessment map until the assessment stage; a matched Slides IMAGE stays legitimately pending until image hydration
 
 **Method**: `SlidesParser.extractSubmissionArtifacts(documentId, taskDefs)`
 
-- **Location**: `/src/backend/DocumentParsers/SlidesParser/index.js`
+- **Location**: `/src/backend/DocumentParsers/SlidesParser/index.js` (delegating to `01_SlidesParserSubmissionMatcher.js`)
 - **Process**:
-  1. Fetches presentation via Slides API
+  1. Opens the presentation through the immediate native `SlidesApp.openById(documentId)` call; an ordinary native `Error` logs once and returns `null`, while an actually thrown `TypeError`, `ReferenceError` or non-`Error` value propagates
   2. Builds an index of tagged student slide elements across the whole deck
   3. For each task definition:
      - Matches student content by stable task ID first, then task title
      - Accepts moved or copied slides with different page IDs
      - Extracts text, table, or tagged image artefacts based on the definition type
      - Preserves the matched student `pageId` and submission `documentId` on the extraction
-  4. Returns array of artifacts
+     - Emits a canonical placeholder with null `pageId`/`content` for a missing match
+  4. Returns an array of artifacts; `null` is reserved for a failed document open
 
 **Method**: `StudentSubmission.upsertItemFromExtraction(taskDef, extractionData)`
 
@@ -639,7 +642,7 @@ Current state: `startProcessing` stores context via `GASPropertiesUtils.getUserP
 - **Process**:
   1. Gets or creates StudentSubmissionItem for taskId
   2. Creates new artifact from extraction data
-  3. Sets artifact properties (pageId, content, metadata, documentId)
+  3. Sets artifact properties (pageId, content, metadata, documentId); an explicit `pageId: null` is preserved when the parent submission document is known, while an omitted/`undefined` page ID falls back to the task definition page
   4. Stores artifact in item
   5. Updates item timestamp
 

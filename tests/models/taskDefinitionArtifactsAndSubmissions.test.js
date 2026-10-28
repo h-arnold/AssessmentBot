@@ -268,6 +268,82 @@ describe('TaskDefinition, task artifacts and student submissions', () => {
     expect(item2.artifact.metadata).toEqual({ a: 1, b: 2 });
   });
 
+  it('StudentSubmission keeps an explicit missing-match page null without losing its student document', () => {
+    const task = new TaskDefinition({
+      taskTitle: 'Source task',
+      pageId: 'task-page',
+      id: 'task-id',
+    });
+    task.addReferenceArtifact({
+      type: 'TEXT',
+      pageId: 'reference-page',
+      documentId: 'reference-document',
+      content: 'Reference',
+    });
+    task.addTemplateArtifact({ type: 'TEXT', content: 'Template' });
+    const submission = new StudentSubmission('student-id', 'assignment-id', 'student-document');
+
+    const item = submission.upsertItemFromExtraction(task, { pageId: null, content: 'Response' });
+
+    expect(item.artifact.pageId).toBeNull();
+    expect(item.artifact.documentId).toBe('student-document');
+    expect(item.artifact.contentHash).toBeTruthy();
+  });
+
+  it('StudentSubmission uses the task page when extraction omits pageId', () => {
+    const task = new TaskDefinition({
+      taskTitle: 'Source task',
+      pageId: 'task-page',
+      id: 'task-id',
+    });
+    task.addReferenceArtifact({ type: 'TEXT', pageId: 'reference-page', content: 'Reference' });
+    task.addTemplateArtifact({ type: 'TEXT', content: 'Template' });
+    const submission = new StudentSubmission('student-id', 'assignment-id', 'student-document');
+
+    const item = submission.upsertItemFromExtraction(task, { content: 'Response' });
+
+    expect(item.artifact.pageId).toBe('task-page');
+    expect(item.artifact.documentId).toBe('student-document');
+  });
+
+  it('StudentSubmission uses the task page when extraction pageId is explicitly undefined', () => {
+    const task = new TaskDefinition({
+      taskTitle: 'Source task',
+      pageId: 'task-page',
+      id: 'task-id',
+    });
+    task.addReferenceArtifact({ type: 'TEXT', pageId: 'reference-page', content: 'Reference' });
+    task.addTemplateArtifact({ type: 'TEXT', content: 'Template' });
+    const submission = new StudentSubmission('student-id', 'assignment-id', 'student-document');
+
+    const item = submission.upsertItemFromExtraction(task, {
+      pageId: undefined,
+      content: 'Response',
+    });
+
+    expect(item.artifact.pageId).toBe('task-page');
+    expect(item.artifact.documentId).toBe('student-document');
+  });
+
+  it('StudentSubmission retains an explicitly known student pageId', () => {
+    const task = new TaskDefinition({
+      taskTitle: 'Source task',
+      pageId: 'task-page',
+      id: 'task-id',
+    });
+    task.addReferenceArtifact({ type: 'TEXT', pageId: 'reference-page', content: 'Reference' });
+    task.addTemplateArtifact({ type: 'TEXT', content: 'Template' });
+    const submission = new StudentSubmission('student-id', 'assignment-id', 'student-document');
+
+    const item = submission.upsertItemFromExtraction(task, {
+      pageId: 'student-page',
+      content: 'Response',
+    });
+
+    expect(item.artifact.pageId).toBe('student-page');
+    expect(item.artifact.documentId).toBe('student-document');
+  });
+
   it('StudentSubmissionItem assessment get/set and type proxy', () => {
     const td = createTaskDefinition({ index: 2 });
     const sub = new StudentSubmission('stu2', 'assign1', 'doc2');

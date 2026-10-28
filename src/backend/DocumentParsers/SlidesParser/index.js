@@ -251,8 +251,10 @@ class SlidesParser extends DocumentParser {
    * Extracts content details or null when the element type is unsupported.
    * Delegates to the table-content helper.
    * @param {GoogleAppsScript.Slides.PageElement} pageElement - Tagged element.
-   * @param {Object} context - Extraction context (documentId, pageId, taskTitle, elementType).
-   * @returns {{artifactType: string, elementContent: *}|null} - Details or null.
+   * @param {Object} context - Extraction context (documentId, pageId, taskTitle, elementType, readMode).
+   * @param {'submission'|undefined} [context.readMode] - Opts native reads into student conversion; omitted keeps definition semantics.
+   * @returns {{artifactType: string, elementContent: *}|null} - Details or null; `elementContent` may be null for unavailable student content.
+   * @remarks See `SlidesParserTableContent.extractDefinitionContent` for conversion and propagation rules.
    */
   extractDefinitionContent(pageElement, context) {
     return this._tableContent.extractDefinitionContent(pageElement, context);
@@ -263,7 +265,8 @@ class SlidesParser extends DocumentParser {
    * Delegates to the submission-matching helper.
    * @param {string} documentId - Student document ID.
    * @param {TaskDefinition[]} taskDefs - Definitions to match.
-   * @returns {Array<{taskId: string, pageId: string|null, content: *, metadata: Object, documentId: string, type: string}>} - Submission artefacts.
+   * @returns {Array<{taskId: string, pageId: string|null, content: *, metadata: Object, documentId: string, type: string}>|null} - Submission artefacts, or null when the native document open fails.
+   * @remarks Null means the student document could not be opened; a successful open always returns an array, possibly empty.
    */
   extractSubmissionArtifacts(documentId, taskDefs) {
     return this._submissionMatcher.extractSubmissionArtifacts(documentId, taskDefs);
@@ -414,17 +417,20 @@ class SlidesParser extends DocumentParser {
   /**
    * Extracts trimmed text from a shape. Delegates to the table-content helper.
    * @param {GoogleAppsScript.Slides.Shape} shape - Shape element.
-   * @returns {string} - Trimmed text.
+   * @param {Object} context - Optional extraction context.
+   * @param {'submission'|undefined} [context.readMode] - Opts the native text read into student conversion; omitted keeps definition semantics.
+   * @returns {string|null} - Trimmed text, or null when student content is unavailable.
    */
-  extractTextFromShape(shape) {
-    return this._tableContent.extractTextFromShape(shape);
+  extractTextFromShape(shape, context) {
+    return this._tableContent.extractTextFromShape(shape, context);
   }
 
   /**
    * Extracts raw 2D cells. Delegates to the table-content helper.
    * @param {GoogleAppsScript.Slides.Table} table - Table element.
-   * @param {Object} context - Extraction context (documentId, pageId, taskTitle).
-   * @returns {Array} - Trimmed cell values.
+   * @param {Object} context - Extraction context (documentId, pageId, taskTitle, readMode).
+   * @param {'submission'|undefined} [context.readMode] - Opts native reads into student conversion; omitted keeps definition semantics.
+   * @returns {Array|null} - Trimmed cell values, or null when student table content is unavailable.
    */
   extractTableCells(table, context) {
     return this._tableContent.extractTableCells(table, context);
@@ -435,10 +441,12 @@ class SlidesParser extends DocumentParser {
    * Delegates to the table-content helper.
    * @param {GoogleAppsScript.Slides.TableCell} cell - Cell element.
    * @param {string} mergeState - Pre-resolved merge state from the table loop.
-   * @returns {string} - Trimmed text or ''.
+   * @param {Object} context - Optional extraction context.
+   * @param {'submission'|undefined} [context.readMode] - Opts the native text read into student conversion; omitted keeps definition semantics.
+   * @returns {string|null} - Trimmed text, '' for merged cells, or null when student content is unavailable.
    */
-  extractCellText(cell, mergeState) {
-    return this._tableContent.extractCellText(cell, mergeState);
+  extractCellText(cell, mergeState, context) {
+    return this._tableContent.extractCellText(cell, mergeState, context);
   }
 }
 

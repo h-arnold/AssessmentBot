@@ -12,7 +12,7 @@ and [#341](https://github.com/h-arnold/AssessmentBot/issues/341).
 - Product and contract authority: @SPEC.md .
 - Preview layout, copy and interaction authority: @ASSESSMENT_ERROR_PREVIEW_LAYOUT.md .
 - This plan sequences delivery; it does not reopen either approved document.
-- Sections 1–3 are complete; Sections 4–12 are **Not started**. Record actual changes,
+- Sections 1–3 are complete; Section 4 is in Green; Sections 5–12 are **Not started**. Record actual changes,
   checks/report paths, deviations and downstream implications under each section.
 
 ### Baseline execution record
@@ -31,6 +31,156 @@ and [#341](https://github.com/h-arnold/AssessmentBot/issues/341).
   documentation. No commit, push or deployment is authorised.
 
 ## Deferred and Out-of-Scope Findings
+
+Deferred-findings log: `.opencode/scratchpad/assessment-errors-322-341-deferred-findings.md`.
+
+| Finding                                                | Severity | Scope rationale                                                                             | Evidence                                                                                                          | Disposition | User decision                                                                                                                                 |
+| ------------------------------------------------------ | -------- | ------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| Settings authentication-mode E2E retry-recovered flake | Material | Unchanged frontend journey outside Section 4 backend/docs surface; no causal link evidenced | `.opencode/scratchpad/section4-regression-e2e-investigation.md`; regression comparison `2026-10-28T06-48-49.500Z` | noted       | User explicitly selected “Accept as flaky debt”; accept this identified gate exception, no frontend fix or baseline/checker change authorised |
+
+User sizing clarification: files below500 physical lines may exceed earlier predicted
+or section-specific estimated sizes without further approval. Apply this allowance to
+the in-scope test/owner files; no formatting condensation or assertion loss is needed
+to meet earlier predictions. Scope/behaviour constraints and reviews remain unchanged.
+In particular G2 recovery companion may exceed its former300-line estimate provided
+it stays below500; the interrupted372-line checkpoint still needs fixture/expectation
+repairs and validation, but size alone is no longer a blocker.
+
+Slides bounded Green PASS:
+`.opencode/scratchpad/section4-slides-boundaries-final-review.md`.
+SB1/SB2/SB3 CLOSED; Slides G3/G7 accepted alongside Sheets. Fresh3306backendtests
+PASS, branches85.01%(3665/4311);13consumerPASS, no new lint findings (five accepted
+historical warnings only). G2/G4/G6/G8 remain OPEN. Begin G2 recovery Red in approved
+<=300-line test-only companion; preserve first-failure-if-none-supported and existing
+last-supported-source selection. No Section4 completion regression run yet.
+
+Slides SB1 and SB2 CLOSED by independent re-review
+`.opencode/scratchpad/section4-slides-boundaries-green-clean.md`.
+Fresh3304backendtestsPASS, branches85.01%; focused145PASS. SB3 remains OPEN:
+multi-cell matrix currently throws only, despite earlier handoff's literal-null claim;
+extend same matrix for literal-null at both coordinates and strict original Error
+reference identity. No runtime defect observed. Test owner; consumer473/500.
+
+SB2 JSDoc repair delivered, independent re-review pending:
+`.opencode/scratchpad/section4-slides-sb2-jsdoc.md`. Comments-only validation passed;
+no canonical G8 docs changed. Parent verified current physical LOC content325,
+facade458, matcher351; these supersede earlier handoff counts (reported two-line
+pre-edit sizing discrepancy has no runtime consequence). SB1 coverage repair remains
+in flight; SB3 test additions also await independent re-review.
+
+Slides bounded Green review SB1–SB3 OPEN, all in scope:
+`.opencode/scratchpad/section4-slides-boundaries-green-review.md`.
+SB1 backend3295testsPASS but branch coverage84.92%(3661/4311)<85%; blocking new
+coverage failure, not accepted debt. SB2 changed-owner nullable/definition/native-guard
+JSDoc needs reconciliation. SB3 persistent multi-cell first-failure, ordinary table
+dimension conversion and ordinary-open single-original-diagnostic assertions needed.
+Runtime probes passed; regression-proof gap, not observed traversal defect. Owners:
+Testing Specialist SB1/SB3, Docs SB2. No threshold/config/runtime policy change.
+
+Null-cell supplemental Red independently PASS:
+`.opencode/scratchpad/section4-slides-null-cell-red-review.md`.
+Current focused5PASS/4 accounted-for failures (two null-cell outcomes and two existing
+model warnings); backend3291PASS/4FAIL, no unexpected failures. Required control
+groups retained; historical12-case claim is not attributable evidence. Resume bounded
+Green: null-cell conversion and approved owner-local complexity split, then remaining
+assignment/matcher diagnostics. Complexity40/15 remains an in-flight defect, not debt.
+G8 must reconcile canonical docs with approved student null-return policy.
+
+| Finding                                   | Severity | Scope rationale                                                                          | Evidence                                            | Disposition | User decision                                                                                                                      |
+| ----------------------------------------- | -------- | ---------------------------------------------------------------------------------------- | --------------------------------------------------- | ----------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| Section 4 connected null-cell test sizing | Material | Approved null-cell outcome needs real assignment coverage beyond original300-line budget | section4-slides-null-cell-red.md; expected310 lines | approved    | User approves existing assignmentExtraction.parserFailures.test.js up to320 lines; tests only, no new file/helper/production owner |
+
+| Finding                                           | Severity | Scope rationale                                         | Evidence                                                                    | Disposition | User decision                                                                                                                                                                                                                                                                                         |
+| ------------------------------------------------- | -------- | ------------------------------------------------------- | --------------------------------------------------------------------------- | ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Section 4 Slides table complexity repair surface  | Material | Native policies exceed lint complexity                  | Latest content checkpoint: extractTableCells complexity40/15                | approved    | User approves small Slides-specific methods within existing content owner; no new module, generic exception wrapper, hierarchy or lint suppression; catches stay at native reads                                                                                                                      |
+| Section 4 malformed null-cell diagnostic contract | Material | Previous throw-only contract required explicit decision | slidesParserTableFailureConsumer.test.js:90–129; latest focused82PASS/1FAIL | approved    | User explicitly requires student null-cell results to become extraction SOURCE_CONTENT_UNAVAILABLE. Reconcile former throw-only test under reviewed Red/Green workflow; shared-definition failures still throw and genuinely thrown native TypeError/ReferenceError/non-Error guards remain unchanged |
+
+| Finding                                                | Severity | Scope rationale                                                            | Evidence                                    | Disposition | User decision                                                                                                             |
+| ------------------------------------------------------ | -------- | -------------------------------------------------------------------------- | ------------------------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------- |
+| Section 4 mixed acquisition failure cause priority     | Material | Multiple failed attachments with no accepted source need agreed precedence | Read-only G2 exploration                    | approved    | User chooses first failure; adds that AssessmentBot supports one attachment per student submission for now                |
+| Section 4 accepted source alongside failed attachments | Material | Combined-source outcome needed clarification                               | Read-only G2 exploration                    | approved    | User confirms selected supported source suppresses acquisition E from rejected attachments                                |
+| Section 4 acquisition recovery test capacity           | Material | Existing suites lack space                                                 | Read-only G2 exploration                    | approved    | User approves tests/assignment/assignmentAcquisitionRecovery.test.js <=300 lines, tests only; no new runtime owner/helper |
+| Section 4 single-attachment selection interpretation   | Material | One-attachment statement required clarification against existing selection | User clarification following G2 exploration | approved    | Preserve existing scan: last supported attachment wins; first failure is recorded only if no supported source is found    |
+
+Section 4 active in-scope review ledger: Slides supplemental Red SC1 and SC2 CLOSED
+by `.opencode/scratchpad/section4-slides-content-red-rereview.md`.
+Actual focused30PASS/28 intentional RED, no fixture defects. SC3 CLOSED after
+prose-only correction and independent re-review:
+`.opencode/scratchpad/section4-slides-content-red-approved.md`.
+Bounded content Red readiness PASS; no checks rerun for prose-only correction.
+The28 failures remain intentional implementation requirements, not baseline debt.
+Separate document-open/internal-parser/single-diagnostic Red work is in flight;
+Slides G3/G7 and Section4 remain open. No production edits yet.
+
+Slides opening/diagnostics Red review: OD1 and OD2 OPEN (test owner). OD1 must
+permit authorised taskId context while retaining single diagnostic, source/row/column
+and exact raw-error identity assertions. OD2 must correct assertion-reach prose;
+no-items/no-log checks after failed identity are not executed evidence. Report:
+`.opencode/scratchpad/section4-slides-open-diagnostics-red-review.md`.
+Focused16PASS/5 intentional RED; backend3261PASS/33 intentional RED, zero unexpected
+failures. These are reviewed Red requirements, not regression-gate evidence or debt.
+
+OD1/OD2 now CLOSED for bounded Red readiness:
+`.opencode/scratchpad/section4-slides-open-diagnostics-red-approved.md`.
+Both Slides supplemental Red loops are approved;33 intentional Reds are inventoried
+(28 content/context/native guards plus5 opening/diagnostic assertions), no unexpected
+backend failures. Begin Slides G3/G7 Green in four approved existing owners only;
+tests stay unchanged. G2/G4/G6/G8 remain separate open milestones.
+
+Slides Green first attempt INCOMPLETE: partial edits in assignment/matcher/content
+owner, facade untouched; focused4suites25FAIL/50PASS, no formatter/report delivered.
+Parent audit confirms unfinished native guards/context forwarding; not accepted or
+section-gate evidence. Recovery split: first finish existing content owner+facade,
+then reconcile assignment/matcher diagnostic ownership; tests remain unchanged.
+Five historical lint warnings remain accepted, not newly introduced by this attempt.
+
+| Finding                                           | Severity | Scope rationale                                                                                                                  | Evidence                                                                                                                               | Disposition | User decision                                                                                                                                                                                                  |
+| ------------------------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- | ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Section 4 Slides boundary regression test surface | Material | Approved suites lack room for content-internal fault escape, facade context threading and explicit shared-definition throw locks | Read-only Slides G3/G7 exploration: facadeDispatch107 lines, definitionExtraction207 lines; documentOpen280/300, parserFailures292/300 | approved    | User approves extending tests/parsers/slidesParserFacadeDispatch.test.js and tests/parsers/slidesParserDefinitionExtraction.test.js for these focused cases, each <=500 lines; no new file or production owner |
+
+| Finding                                   | Severity | Scope rationale                               | Evidence                                                       | Disposition | User decision                                                                                                                                                                                       |
+| ----------------------------------------- | -------- | --------------------------------------------- | -------------------------------------------------------------- | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Section 4 native Sheets guard test sizing | Material | SG1 guard matrix overran existing test budget | section4-sheets-green-review.md SG1; prior parser test 538/500 | approved    | User approves test-only split into tests/parsers/sheetsParserSourceBoundaries.test.js <=300, existing suite <=500. Preserve assertions/global restoration; no production helper or behaviour change |
+
+| Finding                                               | Severity | Scope rationale                                                                                                                   | Evidence                                                                                                  | Disposition | User decision                                                                                                                                                                                                                                    |
+| ----------------------------------------------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Section 4 immediate native-read owner surface         | Material | G3/G7 require narrow native-read conversion in existing parser/content owners                                                     | section4-green-review.md G3/G7; `DocumentParsers/SlidesParser/index.js`, `00_SlidesParserTableContent.js` | approved    | User approves proceeding after call-path discussion: native open/read catches only; matching, normalisation and mutation faults escape. Preserve shared-definition throws, single diagnostic owner; no new module/error hierarchy/pipeline guard |
+| Section 4 obsolete Sheets dropped-range consumer      | Material | Directly affected existing test expects dropped failure rather than unavailable task                                              | `tests/parsers/sheetsParserInternalCoverage.test.js:290–315`; section4-green-review.md G5                 | approved    | User approves native student range read and directly affected test reconciliation; retain task/source/null-content/logging contracts                                                                                                             |
+| Section 4 absent TaskSheet student range collaborator | Material | Existing internal collaborator has no production implementation in repository; cannot establish immediate native-read catch there | SheetsParser.js student extraction; read-only call-path exploration                                       | approved    | User approves replacing student extraction range call with native Sheet.getRange(...).getFormulas() and adapting directly affected tests. Preserve bbox/blank semantics; no definition parsing change or new helper/framework                    |
+
+| Finding                                           | Severity | Scope rationale                                             | Evidence                                                                      | Disposition | User decision                                                                                                                                                   |
+| ------------------------------------------------- | -------- | ----------------------------------------------------------- | ----------------------------------------------------------------------------- | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Section 4 attachment without Drive file ID        | Material | User clarified the existing admission policy                | `04_AssignmentSubmissions.js:57–63`; data-shapes assignment.md discrepancy 25 | approved    | Retain existing ignore behaviour for non-Drive/missing-ID attachments; if nothing supported is acquired, retain no-submission representation. No runtime change |
+| Completion-time marker stamping not yet delivered | Material | Explicitly owned by later Section 8, not a Section 4 repair | data-shapes assignment.md discrepancy 26; Section 8 criterion 1               | noted       | Implement and verify in Section 8; intermediate checkpoints are not deployable                                                                                  |
+
+| Finding                                        | Severity | Scope rationale                                                                        | Evidence                                                       | Disposition | User decision                                                                                                                             |
+| ---------------------------------------------- | -------- | -------------------------------------------------------------------------------------- | -------------------------------------------------------------- | ----------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| Section 4 obsolete table RPC throw expectation | Material | Existing parser consumer test expected raw RPC throw contrary to approved task outcome | `tests/parsers/slidesParserTableFailureConsumer.test.js:31–73` | approved    | User authorises minimal unavailable-task payload/model invariant reconciliation; separate malformed-null-cell TypeError coverage retained |
+
+| Finding                                           | Severity | Scope rationale                                                           | Evidence                                                                                           | Disposition | User decision                                                                                              |
+| ------------------------------------------------- | -------- | ------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- | ----------- | ---------------------------------------------------------------------------------------------------------- |
+| Section 4 obsolete swallowed-Classroom regression | Material | Existing test expected swallowed failure contrary to approved propagation | `tests/assignment/assignmentSubclassesCoverage.test.js:340–362`; section4-page-id-red-review.md P1 | approved    | User authorises minimal original-error propagation assertion, retaining logger assertion; no other changes |
+
+| Finding                                       | Severity | Scope rationale                                                                         | Evidence                                                                            | Disposition | User decision                                                                                                                                                                                                         |
+| --------------------------------------------- | -------- | --------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Section 4 explicit-null source page ownership | Material | Safe source IDs required; model previously substituted reference page for explicit null | `Models/StudentSubmission/index.js:96`; reviewed missing-match null-page assertions | approved    | User confirms explicit null stays null with known student document retained; omitted-page behaviour unchanged. Minimal model fix and focused regression coverage authorised; frontend fallback read-only verification |
+
+| Finding                                  | Severity | Scope rationale                                            | Evidence                                                          | Disposition | User decision                                                                               |
+| ---------------------------------------- | -------- | ---------------------------------------------------------- | ----------------------------------------------------------------- | ----------- | ------------------------------------------------------------------------------------------- |
+| Section 4 document-open scope test space | Material | Existing-suite budgets insufficient for complete R4 matrix | R4 in section4-red-review.md; document-open test-owner checkpoint | approved    | User authorises one <=300-line test-only document-open companion, no runtime layers/helpers |
+
+| Finding                                   | Severity | Scope rationale                                                     | Evidence                                                                                          | Disposition | User decision                                                                                                                                        |
+| ----------------------------------------- | -------- | ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Section 4 PARSE_FAILED producer undefined | Material | No distinct current task parse operation separate from source reads | Slides matcher scanSubmissionBuckets → extractDefinitionContent; task-parse test-owner checkpoint | approved    | User reserves PARSE_FAILED catalogue code; no forced Section 4 producer/test. Failed reads use SOURCE_CONTENT_UNAVAILABLE; programming faults escape |
+
+| Finding                                             | Severity | Scope rationale                                                                           | Evidence                                                | Disposition | User decision                                                                                         |
+| --------------------------------------------------- | -------- | ----------------------------------------------------------------------------------------- | ------------------------------------------------------- | ----------- | ----------------------------------------------------------------------------------------------------- |
+| Section 4 extraction parser-boundary coverage space | Material | Existing suite 261/300 lines; remaining required parser-boundary scenarios need companion | Extraction test-owner checkpoint; required criteria 3/5 | approved    | User authorises one <=300-line parser-boundary companion suite, tests only; no runtime layers/helpers |
+
+| Finding                                                 | Severity | Scope rationale                                                                                                       | Evidence                                                                                | Disposition | User decision                                                                                 |
+| ------------------------------------------------------- | -------- | --------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- | ----------- | --------------------------------------------------------------------------------------------- |
+| Section 4 acquisition failure preservation test surface | Material | Criterion 1 requires prior storage preserved after later-page list failure; acquisition owner has no persistence seam | New assignmentAcquisition.outcomes suite; acquisition test-owner checkpoint             | approved    | User authorises focused existing caller/persistence integration test, no new runtime guard    |
+| Section 4 null-hash equality ownership                  | Material | Actual template equality decision belongs to Section 6 LLMRequestManager                                              | `src/backend/RequestHandlers/LLMRequestManager.js:70`; extraction test-owner checkpoint | approved    | User moves null-hash template comparison test/fix to Section 6; no Section 4 LLM owner change |
 
 | Finding                                                         | Severity | Scope rationale                                                               | Evidence                                                                            | Disposition | User decision                                                                                                                                    |
 | --------------------------------------------------------------- | -------- | ----------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -519,58 +669,211 @@ Authoritative for this section.
   branch `assessment-errors-322-341`; `git push origin assessment-errors-322-341`
   succeeded (`a53c1afe..9f5dca8a`). Normal formatting/staged-lint/all-TypeScript hooks
   passed; no bypass. Subsequent plan-only recording commit uses message
-  `docs: record Section 3 completion and push evidence` on the same branch.
+  `docs: record Section 3 completion and push evidence` on the same branch:
+  `8e273a821093ff2fdf82e8e27254b15c477ea946`; push succeeded
+  (`9f5dca8a..8e273a82`), normal hooks passed.
 
 ## Section 4 — Student acquisition and extraction outcomes
 
-### Objective and constraints
+**Status: Green PASS; G1–G8, FG1–FG3, RR1/RR2/GR1, SG1/SG2, SC1–SC3, OD1/OD2,
+SB1–SB3, G6-R1–R4 and C1 closed. Documentation sync PASS. Section 4 is not complete:
+the regression checker is FAILING with one frontend E2E regression/new failure that
+the user explicitly accepted as flaky debt, so gate progression is an explicit
+exception, not a clean checker PASS. Compaction is now performed; commit/push remain
+pending.**
+Green review authority: `.opencode/scratchpad/section4-final-green-clean.md`;
+docs-sync authority: `.opencode/scratchpad/section4-docs-sync-final.md`.
 
-Never infer absence from incomplete Classroom acquisition or a dropped extraction.
-Assignment submissions module 147→240, SlidesAssignment 177→250, SheetsAssignment
-111→165, Slides submission matcher 332→365; Sheets parser stays within Section 3 budget.
-Preserve first-match/tag/type preference and ambiguity warnings.
+### Outcome (compacted)
 
-### Delegation and planning blocks
+Section 4 makes incomplete Classroom acquisition and dropped extraction impossible to
+mistake for absence. Paginated `StudentSubmissions.list` scans complete before absence
+is concluded; a later-page failure escapes unchanged, so the run is not completed as
+no-submission/N and prior stored results are preserved. Acquisition and extraction
+failures materialise canonical E for known student tasks while healthy siblings and
+safe source identifiers survive; genuine no-submission retains the null-document/empty
+items representation.
 
-- Mandatory reads: Common + Backend + Contracts + Corpus;
-  @src/backend/AssignmentProcessor/Assignment/04_AssignmentSubmissions.js
-  @src/backend/AssignmentProcessor/SlidesAssignment.js
-  @src/backend/AssignmentProcessor/SheetsAssignment.js .
-- **Shared helpers — extend/reuse:** existing acquisition loop, submission extraction
-  owners and Section 1 atomic error creation; keep scope-local error conversion, no
-  failure registry/new matching policy. Planned references: AssessmentFlow/rehydration.
-- **Data shapes:** implement acquisition/extraction causes and terminal coverage
-  portions of planned `assignment.md`; no additional transport fields.
-- **Canonical fixtures:** healthy `small` student/task identities and artefacts; mock
-  Classroom/Slides/Sheets calls locally for acquisition/parse failure boundaries.
+Full-section independent review is PASS with zero Critical, Improvement or Nitpick
+findings (`section4-final-green-clean.md`): G1–G8, FG1–FG3, RR1/RR2/GR1, SG1/SG2,
+SC1–SC3, OD1/OD2, SB1–SB3, G6-R1–R4 and C1 closed; no closed item reopened. Fresh
+evidence: 3,327 backend tests (242 files), 230 focused tests (15 suites), branches
+85.05% (3,676/4,322). Delivered owners are `04_AssignmentSubmissions`,
+`SlidesAssignment`, `SheetsAssignment`, the Slides facade/matcher/table-content owners,
+`SheetsParser` and `StudentSubmission`; canonical docs register the delivered slices
+and keep later slices planned.
 
-### Acceptance criteria / required tests (Red first)
+### Retained for later sections
 
-1. Follow every `StudentSubmissions.list` nextPageToken before confirming no attachment.
-   A later-page attachment is found; a later-page list failure blocks the run and
-   preserves prior storage rather than manufacturing no-submission/N.
-2. Genuine no-submission retains null document ID/empty items. Unsupported or unreadable
-   submitted document produces the agreed acquisition E for all known student tasks.
-3. Missing match, failed text/table/range extraction and task-specific parsing become
-   task E with exact catalogue cause/reasoning; actual unavailable extraction is
-   `SOURCE_CONTENT_UNAVAILABLE`. Healthy siblings and safe source IDs survive.
-4. Successful blank/template-matching work retains existing N/formula semantics. Null
-   hashes cannot confirm template equality. Unknown extraction task IDs still warn/
-   ignore; expected known tasks end terminal. Ambiguous first match is a warning, not E.
-5. Expected document-open failures have student scope, task failures task scope;
-   unexpected internal errors escape. Existing shared duplicate-tag rejection remains.
+- **Delivered interfaces.** `04_AssignmentSubmissions` owns
+  `_recordAcquisitionFailure(studentId, code, scanState)`,
+  `_recordSupportedAttachment(studentId, scanState)` and
+  `_materialiseAcquisitionOutcome(studentId, code)`; `SlidesAssignment` and
+  `SheetsAssignment` `processAllSubmissions()` treat parser `null` as acquisition
+  `SOURCE_UNREADABLE`, materialise extraction `SOURCE_CONTENT_UNAVAILABLE` per known
+  task, warn/ignore unknown task IDs and pass `missingContentLogged` to suppress
+  duplicate model warnings. The Slides facade/matcher expose failed-open `null`, an
+  array otherwise, the canonical missing-match placeholder and the matched pending
+  IMAGE payload; `SheetsParser` exposes the native range read, failed-open `null` and
+  the unavailable range artefact.
+- **Source identity and selection.** The scan is scan-local (`Map`/`Set`) across
+  attachment arrays and duplicate Classroom records: last supported source wins; the
+  first failure is materialised only when no source is supported; an accepted source
+  suppresses/clears rejected-attachment E.
+- **Scope and matching.** A document-open failure affects that student's tasks; a
+  task-specific parse/read failure affects that task only. Unknown extraction task IDs
+  warn/ignore while expected known tasks end terminal. First-match/tag/type preference
+  and ambiguity warnings are unchanged; ambiguity is a warning, not E. Shared
+  duplicate-tag rejection still blocks. Successfully read blank/template-matching work
+  retains existing N/formula semantics.
+- **Canonical base producer.** Acquisition placeholders are constructed directly as
+  `BaseTaskArtifact`/`StudentSubmissionItem` over dictionary task IDs with null
+  source/body/hash and atomic all-three catalogue acquisition E, satisfying the
+  null-parent marker-1 read invariant. Do not reintroduce the
+  `upsertItemFromExtraction()` round-trip for this path.
+- **Null page and source.** Explicit `pageId: null` stays null with the known student
+  document retained; omitted/`undefined` keeps the task-definition fallback. The
+  existing frontend document-root fallback (`buildCellPreviewLookup.resolveSourceUrl`)
+  was verified read-only and needs no change.
+- **Native boundaries.** Conversion happens only at immediate native reads. Actually
+  thrown `TypeError`, `ReferenceError` and non-`Error` values propagate by identity;
+  ordinary internal faults escape. A literal `null` returned by a student `getCell`
+  read is unavailable content (whole TABLE, `SOURCE_CONTENT_UNAVAILABLE`), not a thrown
+  value. Shared-definition reads still throw. Native Sheets student extraction calls
+  `Sheet.getRange(...).getFormulas()` directly; the absent `TaskSheet` collaborator is
+  not restored.
+- **TABLE and IMAGE states.** The first TABLE failure makes the whole table
+  unavailable, aborts at the first failing coordinate, discards any prefix and leaves a
+  null hash; never a blank or partial table. Missing IMAGE match becomes extraction
+  `SOURCE_CONTENT_UNAVAILABLE`; a matched student page with parser `sourceUrl` remains
+  pending hydration with null content/hash. Do not claim hydration completion.
+- **Unhashability and diagnostics.** Failed/unavailable content is not hashable and
+  carries null content/hash. One original contextual diagnostic per owned failure with
+  opaque IDs and no student names; no matcher/model/progress duplicate.
+- **Private helpers and `@remarks`.** The six table-content helpers
+  `_readTableDimensions`, `_readTableRow`, `_readTableCell`, `_readCellText`,
+  `_isConvertibleSubmissionRead` and `_logTableReadFailure` are owner-local `@private`
+  methods; no generic wrapper, shared utility, exception hierarchy or lint suppression.
+  `@remarks` record pagination-before-absence, deferred materialisation, expected source
+  exceptions versus implementation faults, and the native-null policy.
+- **Non-Drive attachments.** Existing ignore behaviour is retained (no
+  `UNSUPPORTED_DOCUMENT` admission change). No supported source and no recorded failure
+  (absent or ignored-only candidates) retains no-submission; ignored candidates do not
+  erase a recorded Drive-candidate failure.
+- **Later ownership.** Transport retry ownership is Section 5; null-hash template
+  comparison is Section 6; image hydration is Section 7; completion-marker stamping and
+  completed-write preflight are Section 8; preview view models are Section 9; new
+  browser journeys are Section 10. Intermediate checkpoints are not deployable.
 
-### Red → Green → Refactor and checks
+### Checks record (final full-section Green)
 
-- Add `tests/assignment/assignmentAcquisition.outcomes.test.js` and
-  `tests/assignment/assignmentExtraction.outcomes.test.js` (≤300 each); extend
-  `slidesSheetsAssignmentCoverage.test.js` 417→≤490 only for directly affected assertions.
-- Green: establish source acquisition before classification and materialise terminal
-  failures at their known identity boundary. Refactor log-and-drop paths, not matching.
-- Checks: new suites plus assignment subclass and parser/matcher regressions;
-  `npm run lint:backend:check`; full gate. Add `@remarks` on pagination-before-absence
-  and expected source exceptions versus implementation faults.
-- Execution record: Not started; changes/checks/deviations/downstream implications pending.
+- `npm run test:backend:coverage`: 242 files / 3,327 tests PASS; statements 90.52%
+  (5,503/6,079), branches 85.05% (3,676/4,322), functions 89.34%, lines 91.2%.
+- Focused inventory: 15 suites / 230 tests PASS. Acquisition owner 100%
+  statements/functions/lines and 98% branches; both subclasses and table content 100%
+  statements/functions/lines.
+- Final source LOC: submissions owner 240, `SheetsAssignment` 142,
+  `SlidesAssignment` 209, `SheetsParser` 400, table content 331, matcher 351, Slides
+  facade 458, `StudentSubmission` 265. All 23 source/test inventory paths are below 500
+  lines (total 7,557).
+- `npm run lint:backend:check`: exit 1 with zero errors and exactly five accepted
+  historical `max-lines` warnings (`assignmentDefinitionPartials.unit` 2776,
+  `assignmentController.hydration` 653, `dbManager` 665, `classroomApiClient` 550,
+  `batchUpdateUtility` 615); no new warning. Prettier over the 23 inventory paths plus
+  four canonical docs PASS; scoped ESLint PASS; `git diff --check` clean. Evidence
+  prefix `.opencode/scratchpad/section4-final-clean-`; summary
+  `section4-final-clean-outcomes.txt`.
+- **Regression gate (user-accepted debt exception, not a clean pass).** Stable session
+  `assessment-errors-322-341` (baseline `2026-10-23T05:20:43.034Z`); compare run
+  `2026-10-28T06-48-49.500Z`; overall FAILING with 6 of 8 checks passing, 1 regression
+  and 1 new failure. Report:
+  `.ts-regression-checker/reports/session-assessment-errors-322-341/runs/2026-10-28T06-48-49.500Z/comparison.txt`.
+  The regression/new failure is `frontend-e2e-check` (Playwright):
+  `issue-320-layout.spec.ts` › `responsive page layout contracts` ›
+  `keeps the authentication provider-to-save gap at 24px in both modes and saves`.
+  The E2E runner exited 0 but the checker recorded the test as failed. Investigation
+  found an initial authentication-mode transition timeout, retry 1 PASS, and a targeted
+  rerun PASS on its first attempt; no causal link to Section 4 was evidenced. Evidence:
+  `.opencode/scratchpad/section4-regression-e2e-investigation.md`; deferred ledger:
+  `.opencode/scratchpad/assessment-errors-322-341-deferred-findings.md`. The user
+  explicitly selected “Accept as flaky debt”, so this identified regression is accepted
+  as an explicit gate-progression exception. The checker itself remains FAILING; it is
+  never a zero-regression or clean PASS. No frontend, baseline or checker edit was made.
+  Passing checks: backend, frontend and builder coverage tests; frontend and builder
+  lint; TypeScript compilation. `backend-lint-check` still fails only for the five
+  accepted historical `max-lines` warnings (one baseline fix recorded); no new lint
+  finding.
+- **Docs sync: PASS.** One factual correction in `AssessmentFlow.md` (Stage 4 progress
+  wording: Slides reports ordinal position, Sheets names the student); no new page and
+  no contract drift. Delivered shared-helper entries read as implemented; later slices
+  stay planned. Evidence: `.opencode/scratchpad/section4-docs-sync-final.md`.
+- **Commit/push: pending.** No commit, push or deployment has run.
+
+### Implementation notes / deviations / follow-up
+
+Authoritative for this section; keep in sync when later sections touch these owners.
+
+- **Student literal `getCell` null.** A literal `null` returned to a student read is
+  treated as unavailable content and becomes `SOURCE_CONTENT_UNAVAILABLE` for the whole
+  TABLE; it is not treated as an actually thrown value. Genuinely thrown `TypeError`,
+  `ReferenceError` and non-`Error` values propagate by identity. Shared-definition reads
+  still throw. This is the approved user decision, not an observed native guarantee.
+- **Slides helper placement.** The six table-content helpers are approved owner-local
+  private methods; do not replace them with a generic wrapper, shared utility,
+  exception hierarchy or lint suppression.
+- **Native Sheets student range.** Student extraction calls
+  `Sheet.getRange(...).getFormulas()` directly; the absent `TaskSheet` collaborator is
+  not restored. Definition parsing and bbox/blank-grid behaviour are unchanged.
+- **Non-Drive attachments.** Existing ignore behaviour is retained: no
+  `UNSUPPORTED_DOCUMENT` admission change. No supported source and no recorded failure
+  (absent or ignored-only candidates) retains the no-submission representation; ignored
+  candidates do not erase a recorded Drive-candidate failure.
+- **Selection policy.** Preserve the existing scan exactly: last supported source wins
+  across arrays/duplicate records; first failure is materialised only if no source is
+  supported; an accepted source suppresses/clears rejected-attachment E.
+- **Explicit-null page ID.** An explicit null stays null with the known student document
+  retained; omitted/`undefined` keeps the task-definition fallback. The frontend
+  document-root fallback was verified read-only.
+- **IMAGE states.** Missing IMAGE match → extraction `SOURCE_CONTENT_UNAVAILABLE`; actual
+  matched page plus parser `sourceUrl` → pending hydration with null content/hash. Do
+  not claim hydration completion.
+- **Canonical base producer.** Acquisition placeholders are constructed directly (not
+  through `upsertItemFromExtraction()`) so they satisfy the null-parent marker-1 read
+  invariant. Do not reintroduce the model-task round-trip for this path.
+- **`PARSE_FAILED`.** Reserved in the catalogue; no forced Section 4 producer or test.
+- **Proof limits.** G1 proves actual caller/store plus real full/partial
+  `Assignment.fromJSON()` restoration with a test-only marker and stubbed
+  extraction/assessment; it is not API-transport, production completion-stamping or
+  live-GAS evidence. Hermetic native mocks do not prove live GAS behaviour or
+  execution-log fidelity.
+- **Diagnostics.** One original contextual diagnostic per owned failure with opaque IDs
+  and no student names; immediate native ordinary-`Error` conversion; internal ordinary
+  faults escape.
+- **TABLE failure.** The first TABLE failure makes the whole table unavailable; never a
+  blank or partial table.
+- **Sizing.** The user's below-500-line allowance applies to these in-scope test/owner
+  files; final LOC are recorded in the checks record. Test suites remain within their
+  authorised budgets.
+- **Docs sync.** G8 and FG2/FG3 reconciled the four canonical pages; formal sync is PASS
+  in `.opencode/scratchpad/section4-docs-sync-final.md`. Final sync made one factual
+  progress-description correction in `AssessmentFlow.md`; no new page or source change.
+  Shared-helper registers agree with delivered acquisition/extraction and retain later
+  slices as planned. Minor documentation follow-ups are disregarded in the Nitpicks
+  table of `.opencode/scratchpad/assessment-errors-322-341-deferred-findings.md`.
+- **Compaction.** Section 4 was restored in full after the failed gate, then recompacted
+  after the user explicitly accepted the identified flaky debt. This pass replaces the
+  historical Red/Green step log with outcomes, handoffs and verification evidence; every
+  byte outside Section 4, including the entire deferred ledger, is unchanged.
+- **Gate exception (user accepted).** One frontend E2E regression/new failure
+  (`issue-320-layout.spec.ts` › `responsive page layout contracts` ›
+  `keeps the authentication provider-to-save gap at 24px in both modes and saves`) was
+  investigated: initial authentication-mode transition timeout, retry 1 PASS, targeted
+  rerun first-attempt PASS. The user explicitly accepted this as flaky debt. Evidence:
+  `.opencode/scratchpad/section4-regression-e2e-investigation.md` and the comparison
+  report recorded above. Gate progression is accepted by this exception; the checker
+  itself remains FAILING, not a clean PASS. No source, test, baseline or checker change
+  was made. Five historical lint warnings remain accepted separately. Commit-hook
+  validation and commit/push remain pending; no deployment authorised.
 
 ## Section 5 — One bounded transport owner
 
@@ -665,6 +968,8 @@ Do not add another cache module or put LLM schemas in generic cache operations.
 
 1. Only usable student/template hashes establish template N; known prior E bypasses
    LLM dispatch, successfully extracted blank work keeps N, spreadsheets stay local.
+   Explicitly test null-hash equality at the real LLMRequestManager decision: user
+   moved this test/fix here from Section 4; null hashes must never establish template N.
 2. Parse/validate a successful response once. All three numeric criterion objects
    with string reasoning are required; null/missing/extra criteria, non-finite/range
    errors and invalid JSON immediately make all three `LLM_INVALID_RESPONSE` E. No
