@@ -12,7 +12,7 @@ and [#341](https://github.com/h-arnold/AssessmentBot/issues/341).
 - Product and contract authority: @SPEC.md .
 - Preview layout, copy and interaction authority: @ASSESSMENT_ERROR_PREVIEW_LAYOUT.md .
 - This plan sequences delivery; it does not reopen either approved document.
-- Sections 1–3 are complete; Section 4 is in Green; Sections 5–12 are **Not started**. Record actual changes,
+- Sections 1–4 are complete (Section 4 gate has an explicit user-accepted flaky-debt exception); Sections 5–12 are **Not started**. Record actual changes,
   checks/report paths, deviations and downstream implications under each section.
 
 ### Baseline execution record
@@ -676,11 +676,11 @@ Authoritative for this section.
 ## Section 4 — Student acquisition and extraction outcomes
 
 **Status: Green PASS; G1–G8, FG1–FG3, RR1/RR2/GR1, SG1/SG2, SC1–SC3, OD1/OD2,
-SB1–SB3, G6-R1–R4 and C1 closed. Documentation sync PASS. Section 4 is not complete:
+SB1–SB3, G6-R1–R4 and C1 closed. Documentation sync PASS. Section 4 complete:
 the regression checker is FAILING with one frontend E2E regression/new failure that
 the user explicitly accepted as flaky debt, so gate progression is an explicit
-exception, not a clean checker PASS. Compaction is now performed; commit/push remain
-pending.**
+exception, not a clean checker PASS. Compaction and implementation commit/push are
+complete; normal hooks passed. No deployment authorised.**
 Green review authority: `.opencode/scratchpad/section4-final-green-clean.md`;
 docs-sync authority: `.opencode/scratchpad/section4-docs-sync-final.md`.
 
@@ -807,7 +807,12 @@ and keep later slices planned.
   wording: Slides reports ordinal position, Sheets names the student); no new page and
   no contract drift. Delivered shared-helper entries read as implemented; later slices
   stay planned. Evidence: `.opencode/scratchpad/section4-docs-sync-final.md`.
-- **Commit/push: pending.** No commit, push or deployment has run.
+- **Commit/push:** `96153d8dd7173ebb8139310b37d2b08c1d94ea85` —
+  `feat: record explicit student acquisition and extraction errors`, branch
+  `assessment-errors-322-341`. Normal Prettier, staged lint and `typecheck:all` hooks
+  passed without bypass. `git push origin assessment-errors-322-341` succeeded
+  (`67d08df5..96153d8d`). This plan-only completion record follows in a separate
+  bookkeeping commit. No deployment performed.
 
 ### Implementation notes / deviations / follow-up
 
@@ -873,7 +878,7 @@ Authoritative for this section; keep in sync when later sections touch these own
   report recorded above. Gate progression is accepted by this exception; the checker
   itself remains FAILING, not a clean PASS. No source, test, baseline or checker change
   was made. Five historical lint warnings remain accepted separately. Commit-hook
-  validation and commit/push remain pending; no deployment authorised.
+  validation and implementation commit/push are complete, recorded above; no deployment authorised.
 
 ## Section 5 — One bounded transport owner
 
