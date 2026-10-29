@@ -115,46 +115,53 @@ class ImageManager extends BaseRequestManager {
         }
       }
     }
+    const entryByUid = new Map();
+    const requests = merged.map((entry) => {
+      if (entryByUid.has(entry.uid)) throw new Error(`Duplicate image request UID: ${entry.uid}`);
+      entryByUid.set(entry.uid, entry);
+      return {
+        uid: entry.uid,
+        url: entry.url,
+        method: 'get',
+        headers: { Authorization: 'Bearer ' + ScriptApp.getOAuthToken() },
+        muteHttpExceptions: true,
+      };
+    });
     const results = [];
-    for (let index = 0; index < merged.length; index += maxBatchSize) {
-      const batch = merged.slice(index, index + maxBatchSize);
-      this.progressTracker.updateProgress(
-        `Fetching image batch ${Math.floor(index / maxBatchSize) + 1} of ${Math.ceil(
-          merged.length / maxBatchSize
-        )}`,
-        false
-      );
-      const requests = batch.map((entry) => {
-        return {
-          url: entry.url,
-          method: 'get',
-          headers: { Authorization: 'Bearer ' + ScriptApp.getOAuthToken() },
-          muteHttpExceptions: true,
-        };
-      });
-      const responses = this.sendRequestsInBatches(requests, maxBatchSize);
-      responses.forEach((resp, index) => {
-        const entry = batch[index];
-        if (resp?.getResponseCode?.() === 200) {
-          try {
-            const blob = resp.getBlob();
-            results.push({ uid: entry.uid, blob });
-          } catch (error) {
-            ABLogger.getInstance().warn('Failed to read image blob from response', {
-              uid: entry.uid,
-              url: entry.url,
-              err: error,
-            });
+    let batchNumber = 0;
+    this.sendRequestsInBatches(requests, {
+      batchSize: maxBatchSize,
+      acceptedStatuses: [200],
+      stopStatuses: [],
+      onBatchComplete: (outcomes) => {
+        batchNumber += 1;
+        this.progressTracker.updateProgress(
+          `Fetched image batch ${batchNumber} of ${Math.ceil(merged.length / maxBatchSize)}`,
+          false
+        );
+        const seen = new Set();
+        outcomes.forEach((outcome) => {
+          if (!entryByUid.has(outcome.uid) || seen.has(outcome.uid)) {
+            throw new Error(`Unknown or duplicate image outcome UID: ${outcome.uid}`);
           }
-        } else {
+          seen.add(outcome.uid);
+        });
+        outcomes.forEach((outcome) => {
+          const entry = entryByUid.get(outcome.uid);
+          if (outcome.response?.getResponseCode?.() === 200) {
+            const blob = outcome.response.getBlob();
+            results.push({ uid: outcome.uid, blob });
+            return;
+          }
           ABLogger.getInstance().warn('Failed to fetch image', {
-            uid: entry.uid,
-            url: entry.url,
-            responseCode: resp?.getResponseCode?.() ?? null,
+            uid: outcome.uid,
+            attempts: outcome.attempts,
+            responseCode: outcome.response?.getResponseCode?.() ?? null,
           });
-        }
-      });
-    }
+          if (!entry) throw new Error(`Missing image request for UID: ${outcome.uid}`);
+        });
+      },
+    });
     return results;
   }
 

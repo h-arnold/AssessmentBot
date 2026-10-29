@@ -102,9 +102,7 @@ describe('BaseRequestManager Error Handling', () => {
     restoreRequestHandlerGlobals = mockContext.restore;
 
     // Clear module cache and reload BaseRequestManager
-    delete require.cache[
-      require.resolve('../../src/backend/RequestHandlers/BaseRequestManager.js')
-    ];
+    delete require.cache[require.resolve('#backend/RequestHandlers/BaseRequestManager.js')];
     const module = require('#backend/RequestHandlers/BaseRequestManager.js');
     BaseRequestManager = module.BaseRequestManager || module;
   });
@@ -123,10 +121,18 @@ describe('BaseRequestManager Error Handling', () => {
       mockUrlFetchApp.fetch.mockReturnValue(mockResponse);
 
       const manager = new BaseRequestManager();
-      const request = { url: 'https://api.test/endpoint', method: 'post' };
-      const result = manager.sendRequestWithRetries(request);
+      const request = { uid: 'success-200', url: 'https://api.test/endpoint', method: 'post' };
+      const result = manager.sendRequestWithRetries(request, {
+        acceptedStatuses: [200, 201],
+        stopStatuses: [],
+      });
 
-      expect(result).toBe(mockResponse);
+      expect(result).toMatchObject({
+        uid: 'success-200',
+        response: mockResponse,
+        error: null,
+        attempts: 1,
+      });
       expect(mockUrlFetchApp.fetch).toHaveBeenCalledTimes(1);
       expect(mockUtilities.sleep).not.toHaveBeenCalled();
     });
@@ -139,313 +145,74 @@ describe('BaseRequestManager Error Handling', () => {
       mockUrlFetchApp.fetch.mockReturnValue(mockResponse);
 
       const manager = new BaseRequestManager();
-      const request = { url: 'https://api.test/endpoint', method: 'post' };
-      const result = manager.sendRequestWithRetries(request);
-
-      expect(result).toBe(mockResponse);
-      expect(mockUrlFetchApp.fetch).toHaveBeenCalledTimes(1);
-      expect(mockUtilities.sleep).not.toHaveBeenCalled();
-    });
-  });
-
-  describe('Non-retryable errors', () => {
-    it('should not retry on 400 Bad Request', () => {
-      const mockResponse = {
-        getResponseCode: () => 400,
-        getContentText: () =>
-          JSON.stringify({
-            statusCode: 400,
-            message: 'Validation failed',
-            errors: [{ path: ['reference'], message: 'Required field missing' }],
-          }),
-      };
-      mockUrlFetchApp.fetch.mockReturnValue(mockResponse);
-
-      const manager = new BaseRequestManager();
-      const request = { url: 'https://api.test/endpoint', method: 'post' };
-      const result = manager.sendRequestWithRetries(request);
-
-      expect(result).toBe(mockResponse);
-      expect(mockUrlFetchApp.fetch).toHaveBeenCalledTimes(1);
-      expect(mockUtilities.sleep).not.toHaveBeenCalled();
-    });
-
-    it('should not retry on 401 Unauthorised and throw error', () => {
-      const mockResponse = {
-        getResponseCode: () => 401,
-        getContentText: () => JSON.stringify({ statusCode: 401, message: 'Invalid API key' }),
-      };
-      mockUrlFetchApp.fetch.mockReturnValue(mockResponse);
-
-      const manager = new BaseRequestManager();
-      const request = { url: 'https://api.test/endpoint', method: 'post' };
-
-      expect(() => manager.sendRequestWithRetries(request)).toThrow();
-      expect(mockUrlFetchApp.fetch).toHaveBeenCalledTimes(1);
-      expect(mockUtilities.sleep).not.toHaveBeenCalled();
-    });
-
-    it('should not retry on 403 Forbidden and throw error', () => {
-      const mockResponse = {
-        getResponseCode: () => 403,
-        getContentText: () =>
-          JSON.stringify({ statusCode: 403, message: 'Insufficient permissions' }),
-      };
-      mockUrlFetchApp.fetch.mockReturnValue(mockResponse);
-
-      const manager = new BaseRequestManager();
-      const request = { url: 'https://api.test/endpoint', method: 'post' };
-
-      expect(() => manager.sendRequestWithRetries(request)).toThrow();
-      expect(mockUrlFetchApp.fetch).toHaveBeenCalledTimes(1);
-      expect(mockUtilities.sleep).not.toHaveBeenCalled();
-    });
-
-    it('should not retry on 404 Not Found and throw error', () => {
-      const mockResponse = {
-        getResponseCode: () => 404,
-        getContentText: () => JSON.stringify({ statusCode: 404, message: 'Not found' }),
-      };
-      mockUrlFetchApp.fetch.mockReturnValue(mockResponse);
-
-      const manager = new BaseRequestManager();
-      const request = { url: 'https://api.test/endpoint', method: 'post' };
-
-      expect(() => manager.sendRequestWithRetries(request)).toThrow();
-      expect(mockUrlFetchApp.fetch).toHaveBeenCalledTimes(1);
-      expect(mockUtilities.sleep).not.toHaveBeenCalled();
-    });
-
-    it('should not retry on 413 Payload Too Large', () => {
-      const mockResponse = {
-        getResponseCode: () => 413,
-        getContentText: () =>
-          JSON.stringify({ statusCode: 413, message: 'Request body too large' }),
-      };
-      mockUrlFetchApp.fetch.mockReturnValue(mockResponse);
-
-      const manager = new BaseRequestManager();
-      const request = { url: 'https://api.test/endpoint', method: 'post' };
-      const result = manager.sendRequestWithRetries(request);
-
-      expect(result).toBe(mockResponse);
-      expect(mockUrlFetchApp.fetch).toHaveBeenCalledTimes(1);
-      expect(mockUtilities.sleep).not.toHaveBeenCalled();
-    });
-  });
-
-  describe('Retryable errors with exponential backoff', () => {
-    it('should retry on 429 Too Many Requests with exponential backoff', () => {
-      const mockResponse429 = {
-        getResponseCode: () => 429,
-        getContentText: () => JSON.stringify({ statusCode: 429, message: 'Rate limit exceeded' }),
-      };
-      const mockResponse200 = {
-        getResponseCode: () => 200,
-        getContentText: () => '{"result": "success"}',
-      };
-
-      mockUrlFetchApp.fetch
-        .mockReturnValueOnce(mockResponse429)
-        .mockReturnValueOnce(mockResponse429)
-        .mockReturnValueOnce(mockResponse200);
-
-      const manager = new BaseRequestManager();
-      const request = { url: 'https://api.test/endpoint', method: 'post' };
-      const result = manager.sendRequestWithRetries(request);
-
-      expect(result).toBe(mockResponse200);
-      expect(mockUrlFetchApp.fetch).toHaveBeenCalledTimes(3);
-      expect(mockUtilities.sleep).toHaveBeenCalledTimes(2);
-      // Verify exponential backoff (5000ms, 7500ms)
-      expect(mockUtilities.sleep).toHaveBeenNthCalledWith(1, 5000);
-      expect(mockUtilities.sleep).toHaveBeenNthCalledWith(2, 7500);
-    });
-
-    it('should retry on 500 Internal Server Error', () => {
-      const mockResponse500 = {
-        getResponseCode: () => 500,
-        getContentText: () => JSON.stringify({ statusCode: 500, message: 'Internal server error' }),
-      };
-      const mockResponse200 = {
-        getResponseCode: () => 200,
-        getContentText: () => '{"result": "success"}',
-      };
-
-      mockUrlFetchApp.fetch
-        .mockReturnValueOnce(mockResponse500)
-        .mockReturnValueOnce(mockResponse200);
-
-      const manager = new BaseRequestManager();
-      const request = { url: 'https://api.test/endpoint', method: 'post' };
-      const result = manager.sendRequestWithRetries(request);
-
-      expect(result).toBe(mockResponse200);
-      expect(mockUrlFetchApp.fetch).toHaveBeenCalledTimes(2);
-      expect(mockUtilities.sleep).toHaveBeenCalledTimes(1);
-      expect(mockUtilities.sleep).toHaveBeenCalledWith(5000);
-    });
-
-    it('should retry on 503 Service Unavailable', () => {
-      const mockResponse503 = {
-        getResponseCode: () => 503,
-        getContentText: () => JSON.stringify({ statusCode: 503, message: 'Service unavailable' }),
-      };
-      const mockResponse200 = {
-        getResponseCode: () => 200,
-        getContentText: () => '{"result": "success"}',
-      };
-
-      mockUrlFetchApp.fetch
-        .mockReturnValueOnce(mockResponse503)
-        .mockReturnValueOnce(mockResponse200);
-
-      const manager = new BaseRequestManager();
-      const request = { url: 'https://api.test/endpoint', method: 'post' };
-      const result = manager.sendRequestWithRetries(request);
-
-      expect(result).toBe(mockResponse200);
-      expect(mockUrlFetchApp.fetch).toHaveBeenCalledTimes(2);
-      expect(mockUtilities.sleep).toHaveBeenCalledTimes(1);
-    });
-
-    it('should return null after max retries exhausted on retryable error', () => {
-      const mockResponse503 = {
-        getResponseCode: () => 503,
-        getContentText: () => JSON.stringify({ statusCode: 503, message: 'Service unavailable' }),
-      };
-
-      mockUrlFetchApp.fetch.mockReturnValue(mockResponse503);
-
-      const manager = new BaseRequestManager();
-      const request = { url: 'https://api.test/endpoint', method: 'post' };
-      const result = manager.sendRequestWithRetries(request, 2);
-
-      expect(result).toBeNull();
-      expect(mockUrlFetchApp.fetch).toHaveBeenCalledTimes(3); // initial + 2 retries
-      expect(mockUtilities.sleep).toHaveBeenCalledTimes(2);
-    });
-  });
-
-  describe('Network exception handling', () => {
-    it('should retry on network exception', () => {
-      const networkError = new Error('Network connection failed');
-      const mockResponse200 = {
-        getResponseCode: () => 200,
-        getContentText: () => '{"result": "success"}',
-      };
-
-      mockUrlFetchApp.fetch
-        .mockImplementationOnce(() => {
-          throw networkError;
-        })
-        .mockReturnValueOnce(mockResponse200);
-
-      const manager = new BaseRequestManager();
-      const request = { url: 'https://api.test/endpoint', method: 'post' };
-      const result = manager.sendRequestWithRetries(request);
-
-      expect(result).toBe(mockResponse200);
-      expect(mockUrlFetchApp.fetch).toHaveBeenCalledTimes(2);
-      expect(mockUtilities.sleep).toHaveBeenCalledTimes(1);
-    });
-
-    it('should return null after max retries on repeated network exceptions', () => {
-      const networkError = new Error('Network connection failed');
-
-      mockUrlFetchApp.fetch.mockImplementation(() => {
-        throw networkError;
+      const request = { uid: 'success-201', url: 'https://api.test/endpoint', method: 'post' };
+      const result = manager.sendRequestWithRetries(request, {
+        acceptedStatuses: [200, 201],
+        stopStatuses: [],
       });
 
-      const manager = new BaseRequestManager();
-      const request = { url: 'https://api.test/endpoint', method: 'post' };
-      const result = manager.sendRequestWithRetries(request, 2);
-
-      expect(result).toBeNull();
-      expect(mockUrlFetchApp.fetch).toHaveBeenCalledTimes(3); // initial + 2 retries
-      expect(mockUtilities.sleep).toHaveBeenCalledTimes(2);
+      expect(result).toMatchObject({
+        uid: 'success-201',
+        response: mockResponse,
+        error: null,
+        attempts: 1,
+      });
+      expect(mockUrlFetchApp.fetch).toHaveBeenCalledTimes(1);
+      expect(mockUtilities.sleep).not.toHaveBeenCalled();
     });
   });
 
-  describe('Exponential backoff behaviour', () => {
-    it('should apply exponential backoff with 1.5x multiplier', () => {
-      const mockResponse503 = {
-        getResponseCode: () => 503,
-        getContentText: () => JSON.stringify({ statusCode: 503, message: 'Service unavailable' }),
-      };
+  describe('Native response processing faults', () => {
+    it.each(['initial', 'retry'])(
+      'propagates an ordinary Error from getResponseCode during %s classification',
+      (faultPhase) => {
+        const classificationError = new Error(`${faultPhase} response fault`);
+        const faultyResponse = {
+          getResponseCode: vi.fn(() => {
+            throw classificationError;
+          }),
+        };
+        const retryableResponse = { getResponseCode: () => 429 };
+        mockUrlFetchApp.fetchAll.mockReturnValueOnce(
+          faultPhase === 'initial'
+            ? [faultyResponse, { getResponseCode: () => 200 }]
+            : [retryableResponse, { getResponseCode: () => 200 }]
+        );
+        mockUrlFetchApp.fetch.mockReturnValueOnce(faultyResponse);
+        const callbacks = [];
+        let propagated;
 
-      mockUrlFetchApp.fetch.mockReturnValue(mockResponse503);
+        try {
+          new BaseRequestManager().sendRequestsInBatches(
+            [
+              { uid: 'faulting', url: '/faulting' },
+              { uid: 'member', url: '/member' },
+            ],
+            {
+              batchSize: 2,
+              acceptedStatuses: [200],
+              stopStatuses: [],
+              onBatchComplete: (outcomes) => callbacks.push(outcomes),
+            }
+          );
+        } catch (error) {
+          propagated = error;
+        }
 
-      const manager = new BaseRequestManager();
-      const request = { url: 'https://api.test/endpoint', method: 'post' };
-      manager.sendRequestWithRetries(request, 2);
-
-      // Verify delays: 5000ms, 7500ms (5000 * 1.5)
-      expect(mockUtilities.sleep).toHaveBeenNthCalledWith(1, 5000);
-      expect(mockUtilities.sleep).toHaveBeenNthCalledWith(2, 7500);
-    });
-  });
-
-  describe('Mixed error scenarios', () => {
-    it('should handle mixed retryable and non-retryable errors correctly', () => {
-      const mockResponse503 = {
-        getResponseCode: () => 503,
-        getContentText: () => JSON.stringify({ statusCode: 503, message: 'Service unavailable' }),
-      };
-      const mockResponse400 = {
-        getResponseCode: () => 400,
-        getContentText: () => JSON.stringify({ statusCode: 400, message: 'Validation failed' }),
-      };
-
-      mockUrlFetchApp.fetch
-        .mockReturnValueOnce(mockResponse503)
-        .mockReturnValueOnce(mockResponse400);
-
-      const manager = new BaseRequestManager();
-      const request = { url: 'https://api.test/endpoint', method: 'post' };
-      const result = manager.sendRequestWithRetries(request);
-
-      expect(result).toBe(mockResponse400);
-      expect(mockUrlFetchApp.fetch).toHaveBeenCalledTimes(2);
-      expect(mockUtilities.sleep).toHaveBeenCalledTimes(1);
-    });
-  });
-
-  describe('Logging behaviour', () => {
-    it('should log warnings for retryable errors', () => {
-      const mockResponse503 = {
-        getResponseCode: () => 503,
-        getContentText: () => 'Service unavailable',
-      };
-      const mockResponse200 = {
-        getResponseCode: () => 200,
-        getContentText: () => '{"result": "success"}',
-      };
-
-      mockUrlFetchApp.fetch
-        .mockReturnValueOnce(mockResponse503)
-        .mockReturnValueOnce(mockResponse200);
-
-      const manager = new BaseRequestManager();
-      const request = { url: 'https://api.test/endpoint', method: 'post' };
-      manager.sendRequestWithRetries(request);
-
-      expect(console.warn).toHaveBeenCalled();
-    });
-
-    it('should log error when all retries exhausted', () => {
-      const mockResponse503 = {
-        getResponseCode: () => 503,
-        getContentText: () => 'Service unavailable',
-      };
-
-      mockUrlFetchApp.fetch.mockReturnValue(mockResponse503);
-
-      const manager = new BaseRequestManager();
-      const request = { url: 'https://api.test/endpoint', method: 'post' };
-      manager.sendRequestWithRetries(request, 1);
-
-      expect(console.error).toHaveBeenCalled();
-    });
+        expect(faultyResponse.getResponseCode).toHaveBeenCalledTimes(1);
+        expect(propagated).toBe(classificationError);
+        expect(mockUrlFetchApp.fetchAll).toHaveBeenCalledTimes(1);
+        expect(mockUrlFetchApp.fetchAll.mock.calls[0][0].map(({ url }) => url)).toEqual([
+          '/faulting',
+          '/member',
+        ]);
+        expect(mockUrlFetchApp.fetch).toHaveBeenCalledTimes(faultPhase === 'initial' ? 0 : 1);
+        expect(mockUrlFetchApp.fetch.mock.calls.map(([url]) => url)).toEqual(
+          faultPhase === 'initial' ? [] : ['/faulting']
+        );
+        expect(mockUtilities.sleep.mock.calls).toEqual(faultPhase === 'initial' ? [] : [[5000]]);
+        expect(callbacks).toEqual([]);
+      }
+    );
   });
 });

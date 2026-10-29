@@ -12,7 +12,7 @@ and [#341](https://github.com/h-arnold/AssessmentBot/issues/341).
 - Product and contract authority: @SPEC.md .
 - Preview layout, copy and interaction authority: @ASSESSMENT_ERROR_PREVIEW_LAYOUT.md .
 - This plan sequences delivery; it does not reopen either approved document.
-- Sections 1–4 are complete (Section 4 gate has an explicit user-accepted flaky-debt exception); Sections 5–12 are **Not started**. Record actual changes,
+- Sections 1–4 are complete (Section 4 gate has an explicit user-accepted flaky-debt exception); Section 5 passed review and regression comparison and awaits commit/push; Sections 6–12 are **Not started**. Record actual changes,
   checks/report paths, deviations and downstream implications under each section.
 
 ### Baseline execution record
@@ -31,6 +31,19 @@ and [#341](https://github.com/h-arnold/AssessmentBot/issues/341).
   documentation. No commit, push or deployment is authorised.
 
 ## Deferred and Out-of-Scope Findings
+
+| Finding                                                                                       | Severity | Scope rationale                                                                                                             | Evidence                                                                   | Disposition | User decision                                                      |
+| --------------------------------------------------------------------------------------------- | -------- | --------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- | ----------- | ------------------------------------------------------------------ |
+| Existing LLM semantic retry, null-hash, cache/live validation and semantic diagnostics issues | Material | Later Section 6 owns these pre-existing defects, outside Section 5 transport; no proven incident or privacy breach asserted | `.opencode/scratchpad/section5-transport-final-green-review.md`; Section 6 | noted       | Not requested; implement only under Section 6's authorised surface |
+| Existing image collection diagnostics, scoped failures and write-back catch behaviour         | Material | Later Section 7 owns these pre-existing defects, outside Section 5 transport                                                | `.opencode/scratchpad/section5-transport-final-green-review.md`; Section 7 | noted       | Not requested; implement only under Section 7's authorised surface |
+
+| Finding                                            | Severity | Scope rationale                                                                                    | Evidence                                                        | Disposition | User decision                                                                                                                                                         |
+| -------------------------------------------------- | -------- | -------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Section 5 caller-boundary regression test capacity | Material | Required Green-review stop/validation/UID regressions need test space; existing LLM suite478 lines | `.opencode/scratchpad/section5-transport-green-review.md` G1–G4 | approved    | User chooses test-only split of existing caller suite before adding regressions; preserve all cases, keep each below500, no new production module or Section6/7 scope |
+
+| Finding                                       | Severity | Scope rationale                                                        | Evidence                                                                           | Disposition | User decision                                                                                                                                                                                         |
+| --------------------------------------------- | -------- | ---------------------------------------------------------------------- | ---------------------------------------------------------------------------------- | ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Section 5 ImageManager consumer test capacity | Material | Required connected-consumer reconciliation exceeds the below-500 limit | `section5-consumer-reconciliation-green.md`: existing482 lines; trial534, reverted | approved    | User authorises moving write-back describe block into existing imageManagerPhase5.test.js and reconciling coverage mocks; no new file or production scope; preserve assertions and keep both below500 |
 
 Deferred-findings log: `.opencode/scratchpad/assessment-errors-322-341-deferred-findings.md`.
 
@@ -812,7 +825,9 @@ and keep later slices planned.
   `assessment-errors-322-341`. Normal Prettier, staged lint and `typecheck:all` hooks
   passed without bypass. `git push origin assessment-errors-322-341` succeeded
   (`67d08df5..96153d8d`). This plan-only completion record follows in a separate
-  bookkeeping commit. No deployment performed.
+  bookkeeping commit `c47b3feba455642b260ee7787b2b6c10eca5f85d` —
+  `docs: record Section 4 completion and accepted flaky debt`; its normal hooks and
+  push also succeeded (`96153d8d..c47b3feb`). No deployment performed.
 
 ### Implementation notes / deviations / follow-up
 
@@ -882,62 +897,144 @@ Authoritative for this section; keep in sync when later sections touch these own
 
 ## Section 5 — One bounded transport owner
 
-### Objective and constraints
+### Status
 
-Make BaseRequestManager the sole HTTP retry owner (224→310). Retain fetchAll initial
-batches and sequential per-member fetch retries. Both current callers must be adapted
-to its identity-tagged outcomes/per-batch consumption in this section; no duplicate
-transport or run-wide response accumulation. LLM semantic result replacement/cache
-and scoped image materialisation are completed in Sections 6/7 respectively.
+Runtime/test Green **PASS**, authority
+`.opencode/scratchpad/section5-transport-final-green-review.md`: G1–G4 CLOSED, no
+outstanding in-scope Critical, Improvement or Nitpick finding. Section 5 is **not
+complete**. Formal Docs sync, plan compaction and the stable-ID regression comparison are
+**complete**; authorised commit/push remain. No deployment is authorised. Five historical backend `max-lines`
+warnings are accepted baseline debt only; the identified Settings E2E flake is Section 4
+accepted debt, not a prospective Section 5 regression waiver.
 
-### Delegation and planning blocks
+### Outcome (compacted)
 
-- Mandatory reads: Common + Backend + Corpus;
-  @src/backend/RequestHandlers/BaseRequestManager.js
-  @src/backend/RequestHandlers/LLMRequestManager.js @src/backend/RequestHandlers/ImageManager.js .
-- **Shared helpers — extend:** existing base sender takes explicit caller batch size,
-  accepted success statuses and stop-status policy, and delivers final identity-tagged
-  outcomes to a per-batch consumer before another batch dispatches. Each outcome retains
-  final response OR final network failure plus attempts; never an obsolete response.
-  Configuration/default retry parameters live in the constructor. Planned register:
-  AssessmentFlow transport entry (`Not implemented`). No new scheduler/module.
-- **Data shapes:** no new public API, persistence or LLM request/response body schema;
-  these outcomes are internal GAS runtime objects, not a new stored status hierarchy.
-- **Canonical fixtures:** HTTP, exception and backoff probes stay local; no realistic
-  analysis graph is needed for the transport unit policy.
+`src/backend/RequestHandlers/BaseRequestManager.js` is the sole HTTP retry owner;
+`LLMRequestManager.js` and `ImageManager.js` were the two adapted callers. One private
+`_runRetryEngine` serves single dispatches and sequential member retries after the
+initial `fetchAll`. Duplicate dispatch/classification paths were replaced, attempts
+bounded, and per-batch consumption preserved without run-wide response accumulation.
+LLM semantic result replacement/cache and scoped image materialisation remain Sections 6/7.
 
-### Acceptance criteria / required tests (Red first)
+### Retained for later sections
 
-1. LLM success is only 200/201, image success only 200. Retry only network, 429 and
-   500–599. Permanent statuses/other success-like statuses do not consume a retry.
-2. Total dispatches ≤3 including initial fetchAll, waits exactly 5000/7500 ms where
-   attempts 2/3 occur, no post-exhaustion sleep. A thrown batch call consumes attempt
-   one for every member; retries remain sequential, not re-batched.
-3. Classify ALL received responses before retrying. LLM 401/403/404 prevents every
-   subsequent retry/batch while retaining same-batch successes, regardless of order.
-   Caller policy prevents a student-image 403 from becoming an LLM-wide stop.
-4. Each final outcome retains its request identity; a final network failure never
-   returns the earlier 429/5xx response. Unknown/duplicate identities and callback/
-   routing/programming failures propagate, not network retries.
-5. Callbacks apply completed batch outcomes before any later batch; explicit assessor
-   and Slides-fetch sizes are honoured, with no nested unintended assessor-size batches.
+**Transport contracts**
 
-### Red → Green → Refactor and checks
+- Constructor owns `maxAttempts` (3 total including the initial `fetchAll`), 5000 ms
+  initial delay, 1.5 multiplier and native request defaults. Waits are exactly 5000/7500
+  ms only before actual attempts 2/3, never after exhaustion; retries are sequential and
+  never re-batched. A thrown batch call consumes attempt one for every member.
+- `sendRequestWithRetries(request, policy)` returns one final
+  `{ uid, response, error, attempts }`. `sendRequestsInBatches(requests, options)`
+  returns void with batch-local outcomes only; `options` carries `batchSize`,
+  `acceptedStatuses`, `stopStatuses` and `onBatchComplete`, which receives each completed
+  batch before any later dispatch. Returning exactly boolean `false` stops this sender;
+  `undefined`, numbers (including `Array.push()`), zero and `null` continue. This internal
+  stop feedback is not a public or persisted shape.
+- A final outcome retains its UID and final response OR final original network error plus
+  attempts; a later network failure never returns an earlier 429/5xx response.
+  Unknown/duplicate input UIDs, response-count mismatch and callback/routing/programming
+  faults throw, not network retry.
+- Classify every received response before retrying. LLM accepts only 200/201 and stops on
+  401/403/404; image accepts only 200 with no stop statuses, so a student-image 403 never
+  becomes an LLM-wide stop. Retry only network exceptions, 429 and 500–599. Valid
+  same-batch results survive any stop origin (initial batch, base retry or
+  validation-triggered single request) regardless of order.
+- LLM caller uses one full-list sender invocation with the explicit assessor batch size.
+  `runStopped` is constructor-initialised, reset each new public invocation, latched from
+  a validation retry's single outcome before another validation dispatch, and its
+  callback returns `false` to guard additional dispatch. Image caller uses one full
+  round-robin list with the explicit Slides batch size, document round-robin order and
+  UID association, reading blobs incrementally before the next dispatch. No nested
+  assessor-size image batches.
+- Public required-input validation runs before effects; empty `[]` keeps its existing
+  early return. UID unknown/duplicate and response-count mismatches are rejected before
+  arbitrary processing. Logging carries safe UID/status/attempt metadata only. Catches
+  are narrow native `fetch`/`fetchAll` catches; internal errors propagate with original
+  identity. Projection preserves explicit `false`/`null`/empty caller defaults and an
+  explicit marker distinguishes falsy thrown batch failures.
+- `@remarks` document initial-attempt accounting, classify-before-retry ordering,
+  exact-false cancellation and callback-before-later-batch consumption. No new module,
+  hierarchy, budget, API/envelope, stored body, config, dependency or corpus.
 
-- Existing `baseRequestManager.test.js` 451→about 650 unsplit: separate policy/retry
-  cases into `tests/requestHandlers/baseRequestManager.policy.test.js` and batching into
-  `tests/requestHandlers/baseRequestManager.batching.test.js`, retaining remaining
-  regressions in the original file as a third suite; keep all three ≤300. Shared
-  global installation/teardown stays in existing
-  `tests/helpers/globalMockManager.js::withGlobalMocks`; each suite has only its small
-  local fetch/config stubs. Do not import one test suite from another or drop regressions.
-- Green: replace the redundant dispatch/classification paths; adapt both callers in
-  the same section and test the seam. Refactor raw-response logging and broad fetch
-  catches to the canonical safe policy; do not add compatibility retry budgets.
-- Checks: `npm run test:backend -- tests/requestHandlers`, focused assignment subclass
-  integration, `npm run lint:backend:check`; full gate. Add `@remarks` for initial-attempt
-  accounting and batch-wide classification-before-retry ordering.
-- Execution record: Not started; changes/checks/deviations/downstream implications pending.
+**Tests and ownership**
+
+- User-approved test-only split: `baseRequestManager.test.js` (218),
+  `.policy.test.js` (461) and `.batching.test.js` (374); all 17 original behaviour cases
+  are represented under the tagged contract with no compatibility branch.
+  `assignmentPhase3.transport.test.js` (499) carries three moved transport controls;
+  `assignmentPhase3.test.js` (389) preserves the original six controls plus healthy/UID
+  guard coverage. Four original image write-back cases moved intact from
+  `imageManagerCoverage.test.js` (475) to existing `imageManagerPhase5.test.js` (469);
+  collection/round-robin/large-input coverage remains and no new image suite exists.
+- `tests/helpers/globalMockManager.js::withGlobalMocks` stays the shared global
+  installation/teardown owner (182 lines, unchanged); suites keep small local
+  fetch/config stubs and do not import one another. All eleven inventory paths are below
+  500 lines (total 4108); actual Base 317, LLM 496 and Image 228 supersede earlier
+  estimates under the user's below-500 allowance; the comment-only docs-sync follow-up
+  brings LLMRequestManager to 498 lines. No formatting condensation or
+  assertion loss.
+
+**Later ownership** — unchanged and unimplemented: Section 6 semantic retry removal,
+cache/result replacement and null-hash equality; Section 7 scoped image hydration and
+write-back catch handling; Section 8 prepared writes and marker stamping; Section 9
+preview. Existing 401/403 progress aborts do not yet materialise completed task E.
+
+### Checks record (runtime/test Green)
+
+- `npm run test:backend:coverage`: **245 files / 3396 tests PASS**, all thresholds pass;
+  statements **91.23% (5621/6161)**, branches **85.88% (3765/4384)**, functions
+  **89.89% (1076/1197)**, lines **91.95% (5382/5853)**. Evidence:
+  `.opencode/scratchpad/s5-final-coverage.txt`.
+- `npm run test:backend -- tests/requestHandlers tests/assignment`: **40 files / 502
+  tests PASS**, including the seven authorised transport/caller suites and nine
+  stop-origin rows (`.opencode/scratchpad/s5-final-focused.txt`).
+- `npm run lint:backend:check`: exit 1, zero errors, exactly the five accepted historical
+  `max-lines` warnings (`assignmentDefinitionPartials.unit` 2776,
+  `assignmentController.hydration` 653, `dbManager` 665, `classroomApiClient` 550,
+  `batchUpdateUtility` 615), no new warning. Prettier over all eleven inventory paths,
+  scoped ESLint and `git diff --check` pass. Inline real-Base callback probe passes
+  (exact `false` stops after one dispatch; other values continue; sender returns
+  undefined) and is not in suite totals. Evidence:
+  `s5-final-{lint,format,scoped-lint,callback-probe}.txt`.
+- No regression checker, full-section gate, frontend/builder/browser check, commit, push
+  or deployment ran in this checkpoint.
+
+### Implementation notes / deviations / follow-up
+
+Authoritative for this section; parent adds pending gate records after return.
+
+- **Docs sync PASS.** `AssessmentFlow.md` transport register/narrative and
+  `backend-testing.md` suite inventory updated; no new pages. A comment-only
+  `handleValidationFailure()` JSDoc follow-up documents stop early-return/latching;
+  source Prettier/scoped ESLint/diff checks pass, LLM owner 498 lines. Evidence:
+  `.opencode/scratchpad/section5-docs-sync.md`. Parent verified register agreement:
+  transport implemented, later cache/scoped-image/prepared-write/preview slices planned.
+- **Compaction verified.** Backup:
+  `.opencode/scratchpad/assessment-errors-322-341-section-5-pre-compaction.md`.
+  Parent byte comparison confirmed no other section or deferred ledger changed during
+  compaction. The 84-to-128-line rewrite retains delivered contracts and proof limits;
+  no future-relevant gap found. Report: `.opencode/scratchpad/section5-plan-compaction.md`.
+- **Deferred follow-ups.** Later Section 6/7 findings are noted in the deferred ledger;
+  minor documentation drift is disregarded in the Nitpicks table of
+  `.opencode/scratchpad/assessment-errors-322-341-deferred-findings.md`.
+- **Regression gate satisfied with accepted baseline debt.** Command:
+  `npm run regression-checker -- assessment-errors-322-341`. Report:
+  `.ts-regression-checker/reports/session-assessment-errors-322-341/runs/2026-10-29T07-11-53.069Z/comparison.txt`.
+  Compare mode, original baseline retained; **zero regressions, zero new failures,
+  one baseline fix**. Seven of eight checks pass, including all backend/frontend/builder
+  coverage tests, Playwright, frontend/builder lint and TypeScript compilation. Overall
+  checker status remains **FAILING** solely for the five explicitly accepted historical
+  backend `max-lines` warnings listed above. No new waiver or flaky outcome is used.
+- **Commit/push pending.** Record the implementation commit and successful push before
+  beginning Section 6. No deployment authorised.
+- **Deviation.** G1 added exact-false callback stop feedback after the validation-origin
+  stop was found; it is internal only and changes no public or persisted shape.
+- **Proof limits.** Hermetic native HTTP mocks and models prove the owned transport/caller
+  boundary, not live GAS/LLM/network behaviour, deployed logging fidelity, cache
+  identity, hydration, atomic writes or original-incident diagnosis. Local invalid
+  `{}`/HTTP/fault probes are boundary fixtures, not a realistic analysis corpus. No Data
+  Shapes update is required for these internal synchronous outcomes.
 
 ## Section 6 — Atomic LLM completion and validated cache reuse
 

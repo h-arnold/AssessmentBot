@@ -1,224 +1,317 @@
-/* eslint-disable no-magic-numbers */
-
 /**
  * BaseRequestManager Class
  *
- * Handles generic URL requests with error handling, retries, and exponential backoff.
+ * Owns bounded HTTP dispatch and retry policy for request-handler callers.
  */
-const DEFAULT_MAX_RETRIES = 2;
+const DEFAULT_MAX_ATTEMPTS = 3;
 const INITIAL_RETRY_DELAY_MS = 5000;
 const RETRY_DELAY_MULTIPLIER = 1.5;
 const HTTP_STATUS_OK = 200;
 const HTTP_STATUS_CREATED = 201;
+const HTTP_STATUS_TOO_MANY_REQUESTS = 429;
+const HTTP_STATUS_SERVER_ERROR = 500;
+const HTTP_STATUS_SERVER_ERROR_MAX = 599;
 
-/**
- * Base request manager.
- */
+/** Base request manager. */
 class BaseRequestManager {
-  /**
-   * Initialises the BaseRequestManager with configuration, cache, progress tracking, and logging singletons.
-   */
+  /** Initialises shared services and constructor-owned transport defaults. */
   constructor() {
-    this.configManager = ConfigurationManager.getInstance(); // Lazy singleton access
-    this.cache = CacheService.getScriptCache(); // Initialize the script cache
+    this.configManager = ConfigurationManager.getInstance();
+    this.cache = CacheService.getScriptCache();
     this.progressTracker = ProgressTracker.getInstance();
     this.logger = ABLogger.getInstance();
+    this.maxAttempts = DEFAULT_MAX_ATTEMPTS;
+    this.initialRetryDelayMs = INITIAL_RETRY_DELAY_MS;
+    this.retryDelayMultiplier = RETRY_DELAY_MULTIPLIER;
+    this.nativeRequestDefaults = {
+      method: 'get',
+      contentType: 'application/json',
+      payload: null,
+      headers: {},
+      muteHttpExceptions: true,
+    };
   }
 
   /**
-   * Determines if an HTTP status code represents a retryable error.
-   * @param {number} statusCode - The HTTP status code to check.
-   * @returns {boolean} True if the error is retryable, false otherwise.
+   * Validates the request identity and URL.
+   * @param {Object} request Request to validate.
+   * @returns {void}
    * @private
    */
-  _isRetryableError(statusCode) {
-    // Retryable errors (per backend error code documentation):
-    // - 429: Too Many Requests (rate limiting)
-    // - 500: Internal Server Error
-    // - 503: Service Unavailable
-    // - Any 5xx except those that indicate permanent failures
-    return statusCode === 429 || statusCode >= 500;
+  _validateRequest(request) {
+    Validate.requireParams({ request }, 'BaseRequestManager request');
+    Validate.requireParams({ uid: request.uid, url: request.url }, 'BaseRequestManager request');
+    Validate.validateNonEmptyString('request.uid', request.uid);
+    Validate.validateNonEmptyString('request.url', request.url);
   }
 
   /**
-   * Determines if an HTTP status code represents a client error that should abort processing.
-   * @param {number} statusCode - The HTTP status code to check.
-   * @returns {boolean} True if the error should abort processing, false otherwise.
+   * Validates the caller's accepted and stop status policies.
+   * @param {Object} policy Status policy to validate.
+   * @returns {void}
    * @private
    */
-  _shouldAbort(statusCode) {
-    // Errors that should abort (per backend error code documentation):
-    // - 401: Unauthorised (invalid API key)
-    // - 403: Forbidden (insufficient permissions)
-    // - 404: Not Found (resource missing / incorrect endpoint)
-    return [401, 403, 404].includes(statusCode);
+  _validatePolicy(policy) {
+    Validate.requireParams({ policy }, 'BaseRequestManager policy');
+    Validate.requireParams(
+      { acceptedStatuses: policy.acceptedStatuses, stopStatuses: policy.stopStatuses },
+      'BaseRequestManager policy'
+    );
+    if (!Array.isArray(policy.acceptedStatuses) || !Array.isArray(policy.stopStatuses)) {
+      throw new TypeError('HTTP status policies must be arrays');
+    }
   }
 
   /**
-   * Sends a single HTTP request with retries and exponential backoff.
-   * @param {Object} request - The request object compatible with UrlFetchApp.fetch().
-   * @param {number} [maxRetries=2] - Maximum number of retries.
-   * @returns {HTTPResponse|null} The HTTPResponse object or null if all retries fail.
+   * Projects supported UrlFetchApp fields, preserving explicit false values.
+   * @param {Object} request Request to project.
+   * @returns {Object} Native fetch options.
+   * @private
    */
-  sendRequestWithRetries(request, maxRetries = DEFAULT_MAX_RETRIES) {
-    let attempt = 0;
-    let delay = INITIAL_RETRY_DELAY_MS; // Initial delay of 5 seconds. When extracting whole slide images you get rate limited quite early. A 5 second delay seems to be the minimum needed to avoid a retry.
-
-    while (attempt <= maxRetries) {
-      try {
-        const response = UrlFetchApp.fetch(request.url, request);
-        const responseCode = response.getResponseCode();
-
-        // Success responses - return immediately
-        if (
-          responseCode === BaseRequestManager.HTTP_STATUS_OK ||
-          responseCode === BaseRequestManager.HTTP_STATUS_CREATED
-        ) {
-          return response;
-        }
-
-        // Check if error should abort processing
-        if (this._shouldAbort(responseCode)) {
-          const errorDetails = {
-            statusCode: responseCode,
-            url: request.url,
-            responseText: response.getContentText(),
-          };
-          this.progressTracker.logError(
-            `Request to ${request.url} failed with status ${responseCode}. Please check your API keys in the settings.`,
-            errorDetails
-          );
-          this.logger.error(
-            'Aborting request due to authentication/permission error',
-            errorDetails
-          );
-          throw new AbortRequestError(responseCode, request.url, response.getContentText());
-        }
-
-        // Check if error is non-retryable (client errors)
-        if (responseCode >= 400 && responseCode < 500 && !this._isRetryableError(responseCode)) {
-          // Non-retryable client errors (400, 413, etc.) - return response for caller to handle
-          this.logger.warn(`Non-retryable client error ${responseCode} for ${request.url}`, {
-            responseCode,
-            responseText: response.getContentText(),
-          });
-          console.warn(
-            `Request to ${
-              request.url
-            } failed with non-retryable status ${responseCode}. Response: ${response.getContentText()}`
-          );
-          return response;
-        }
-
-        // Any error reaching this point is retryable - log once and retry
-        console.warn(
-          `Request to ${
-            request.url
-          } failed with status ${responseCode}. Returned message: ${response.getContentText()}. Attempt ${
-            attempt + 1
-          } of ${maxRetries + 1}.`
-        );
-      } catch (error) {
-        // Network exceptions or thrown errors
-        if (error instanceof AbortRequestError) {
-          // Re-throw abort errors to halt processing
-          throw error;
-        }
-        // Log network errors and retry
-        this.logger.error('Network error during request', {
-          url: request.url,
-          message: error.message,
-          attempt: attempt + 1,
-          maxAttempts: maxRetries + 1,
-        });
-        console.error(
-          `Error during request to ${request.url}: ${error.message}. Attempt ${attempt + 1} of ${
-            maxRetries + 1
-          }.`
-        );
-      }
-
-      // Increment attempt counter and apply exponential backoff
-      attempt++;
-      if (attempt > maxRetries) break;
-      Utilities.sleep(delay);
-      delay *= RETRY_DELAY_MULTIPLIER; // Increase the backoff by 50% as the base pause time is quite high
-    }
-
-    console.error(`All ${maxRetries + 1} attempts failed for request to ${request.url}.`);
-    return null;
+  _projectNativeRequest(request) {
+    return {
+      url: request.url,
+      method: request.method === undefined ? this.nativeRequestDefaults.method : request.method,
+      contentType:
+        request.contentType === undefined
+          ? this.nativeRequestDefaults.contentType
+          : request.contentType,
+      payload: request.payload === undefined ? this.nativeRequestDefaults.payload : request.payload,
+      headers: request.headers === undefined ? this.nativeRequestDefaults.headers : request.headers,
+      muteHttpExceptions:
+        request.muteHttpExceptions === undefined
+          ? this.nativeRequestDefaults.muteHttpExceptions
+          : request.muteHttpExceptions,
+    };
   }
 
   /**
-   * Sends multiple HTTP requests in batches with retries and exponential backoff.
-   * @param {Object[]} requests - An array of request objects compatible with UrlFetchApp.fetchAll().
-   * @returns {HTTPResponse[]} An array of HTTPResponse objects from all batches.
+   * Classifies one received HTTP response.
+   * @param {Object} response Native HTTP response.
+   * @param {Object} policy Caller status policy.
+   * @returns {{status:number,accepted:boolean,stopped:boolean,retryable:boolean}} Classification.
+   * @private
    */
-  sendRequestsInBatches(requests) {
-    const batchSize = ConfigurationManager.getInstance().getBackendAssessorBatchSize();
-    const batches = [];
+  _classifyResponse(response, policy) {
+    const status = response.getResponseCode();
+    return {
+      status,
+      accepted: policy.acceptedStatuses.includes(status),
+      stopped: policy.stopStatuses.includes(status),
+      retryable:
+        status === HTTP_STATUS_TOO_MANY_REQUESTS ||
+        (status >= HTTP_STATUS_SERVER_ERROR && status <= HTTP_STATUS_SERVER_ERROR_MAX),
+    };
+  }
 
-    // Split requests into batches
-    for (let index = 0; index < requests.length; index += batchSize) {
-      batches.push(requests.slice(index, index + batchSize));
-    }
+  /**
+   * Sends one request within the shared attempt budget.
+   * @param {Object} request A request carrying its opaque UID.
+   * @param {{acceptedStatuses:number[], stopStatuses:number[]}} policy Caller HTTP policy.
+   * @returns {{uid:string,response:Object|null,error:Error|null,attempts:number}} Final outcome.
+   * @remarks The dispatch that supplies an initial response counts as attempt one; waits occur only before actual subsequent dispatches.
+   */
+  sendRequestWithRetries(request, policy) {
+    this._validateRequest(request);
+    this._validatePolicy(policy);
+    return this._runRetryEngine(request, policy, { attempts: 0, response: null, error: null });
+  }
 
-    const allResponses = [];
-
-    //Gets the current step message before iterating
-    const currentProgress = this.progressTracker.getCurrentProgress();
-    const currentMessage = currentProgress.message; //Gets the current message before the loop so you don't end up concatentating all the previous updates.
-
-    batches.forEach((batch, index) => {
+  /**
+   * Sends native fetchAll batches and consumes each completed batch before continuing.
+   * @param {Object[]} requests UID-tagged requests.
+   * @param {{batchSize:number,acceptedStatuses:number[],stopStatuses:number[],onBatchComplete:function}} options Caller-owned batch and status policy. Returning exactly false from the callback stops this sender; other return values continue.
+   * @returns {void}
+   * @remarks All responses received in a batch are classified before any retry, and the callback runs before any later batch dispatch. A callback may return exactly false to stop subsequent retries and batches in this invocation; this sender remains void and does not return aggregate outcomes.
+   */
+  sendRequestsInBatches(requests, options) {
+    this._validateBatchInput(requests, options);
+    const currentMessage = this.progressTracker.getCurrentProgress().message;
+    const batchCount = Math.ceil(requests.length / options.batchSize);
+    let isStopped = false;
+    for (let offset = 0; offset < requests.length && !isStopped; offset += options.batchSize) {
+      const batch = requests.slice(offset, offset + options.batchSize);
+      const batchNumber = Math.floor(offset / options.batchSize) + 1;
       this.progressTracker.updateProgress(
-        `${currentMessage}: Sending batch ${index + 1} of ${batches.length}.`,
+        `${currentMessage}: Sending batch ${batchNumber} of ${batchCount}.`,
         false
       );
-      const fetchAllRequests = batch.map((request) => {
-        return {
-          url: request.url,
-          method: request.method || 'get',
-          contentType: request.contentType || 'application/json',
-          payload: request.payload || null,
-          headers: request.headers || {},
-          muteHttpExceptions: request.muteHttpExceptions || true,
-        };
-      });
+      const initialOutcomes = this._dispatchBatch(batch, options);
+      isStopped = initialOutcomes.some((outcome) => outcome.classification?.stopped);
+      const outcomes = this._consumeBatch(initialOutcomes, options, isStopped);
+      if (
+        outcomes.some(
+          (outcome) =>
+            outcome.response && options.stopStatuses.includes(outcome.response.getResponseCode())
+        )
+      ) {
+        isStopped = true;
+      }
+      if (options.onBatchComplete && options.onBatchComplete(outcomes) === false) {
+        isStopped = true;
+      }
+    }
+  }
 
-      const responses = UrlFetchApp.fetchAll(fetchAllRequests);
-
-      // Handle each response with retries if necessary
-      responses.forEach((response, index_) => {
-        const originalRequest = batch[index_];
-        if (
-          response.getResponseCode() !== BaseRequestManager.HTTP_STATUS_OK &&
-          response.getResponseCode() !== BaseRequestManager.HTTP_STATUS_CREATED
-        ) {
-          console.warn(
-            `Batch ${index + 1}, Request ${
-              index_ + 1
-            } failed with status ${response.getResponseCode()}. Retrying...`
-          );
-          const retryResponse = this.sendRequestWithRetries(originalRequest);
-          if (retryResponse) {
-            allResponses.push(retryResponse);
-          } else {
-            allResponses.push(response); // Push the failed response
-          }
-        } else {
-          allResponses.push(response);
-        }
-      });
+  /**
+   * Validates a batch call before any native dispatch.
+   * @param {Object[]} requests UID-tagged requests.
+   * @param {Object} options Caller batch policy.
+   * @returns {void}
+   * @private
+   */
+  _validateBatchInput(requests, options) {
+    Validate.requireParams({ requests, options }, 'sendRequestsInBatches');
+    if (!Array.isArray(requests)) throw new TypeError('requests must be an array');
+    Validate.requireParams(
+      {
+        batchSize: options.batchSize,
+        acceptedStatuses: options.acceptedStatuses,
+        stopStatuses: options.stopStatuses,
+      },
+      'sendRequestsInBatches options'
+    );
+    Validate.validateIntegerInRange('batchSize', options.batchSize, 1, Number.MAX_SAFE_INTEGER);
+    this._validatePolicy(options);
+    if (options.onBatchComplete !== undefined && typeof options.onBatchComplete !== 'function')
+      throw new Error('onBatchComplete must be a function');
+    const seenUids = new Set();
+    requests.forEach((request) => {
+      this._validateRequest(request);
+      if (seenUids.has(request.uid)) throw new Error(`Duplicate request UID: ${request.uid}`);
+      seenUids.add(request.uid);
     });
+  }
 
-    return allResponses;
+  /**
+   * Dispatches once and classifies every received member before returning.
+   * @param {Object[]} batch Requests in this batch.
+   * @param {Object} policy Caller status policy.
+   * @returns {Object[]} Initial identity-tagged classifications.
+   * @private
+   */
+  _dispatchBatch(batch, policy) {
+    const nativeRequests = batch.map((request) => this._projectNativeRequest(request));
+    let nativeResponses;
+    let isFailed = false;
+    let batchError;
+    try {
+      nativeResponses = UrlFetchApp.fetchAll(nativeRequests);
+    } catch (networkError) {
+      isFailed = true;
+      batchError = networkError;
+    }
+    if (isFailed) return batch.map((request) => ({ request, error: batchError, failed: true }));
+    if (!Array.isArray(nativeResponses) || nativeResponses.length !== batch.length) {
+      throw new TypeError(
+        `fetchAll response count ${nativeResponses?.length} did not match request count ${batch.length}`
+      );
+    }
+    return batch.map((request, index) => {
+      const response = nativeResponses[index];
+      return {
+        request,
+        response,
+        classification: this._classifyResponse(response, policy),
+        failed: false,
+      };
+    });
+  }
+
+  /**
+   * Consumes initial responses and handles bounded sequential member retries.
+   * @param {Object[]} initialOutcomes Initial outcomes from fetchAll.
+   * @param {Object} policy Caller status policy.
+   * @param {boolean} isStopped Whether a stop response was received in this batch.
+   * @returns {Object[]} Final outcomes for this batch.
+   * @private
+   */
+  _consumeBatch(initialOutcomes, policy, isStopped) {
+    const outcomes = [];
+    for (const initial of initialOutcomes) {
+      const classification = initial.classification;
+      if (isStopped || classification?.stopped || (classification && !classification.retryable)) {
+        outcomes.push({
+          uid: initial.request.uid,
+          response: initial.response ?? null,
+          error: initial.error ?? null,
+          attempts: 1,
+        });
+        continue;
+      }
+      const outcome = this._runRetryEngine(initial.request, policy, {
+        attempts: 1,
+        response: initial.failed ? null : initial.response,
+        error: initial.failed ? initial.error : null,
+        classification,
+      });
+      outcomes.push(outcome);
+      if (outcome.response && policy.stopStatuses.includes(outcome.response.getResponseCode())) {
+        isStopped = true;
+      }
+    }
+    return outcomes;
+  }
+
+  /** One retry owner for single dispatch and fetchAll members.
+   * @param {Object} request UID-tagged request.
+   * @param {Object} policy Accepted and stop statuses.
+   * @param {{attempts:number,response:Object|null,error:*,classification?:Object}} state Attempt state, including an already-classified batch response.
+   * @returns {{uid:string,response:Object|null,error:*,attempts:number}} Final outcome.
+   * @private
+   */
+  _runRetryEngine(request, policy, state) {
+    let { attempts, response, error, classification } = state;
+    if (
+      classification &&
+      (classification.accepted || classification.stopped || !classification.retryable)
+    ) {
+      return { uid: request.uid, response, error: null, attempts };
+    }
+    while (attempts < this.maxAttempts) {
+      if (attempts > 0) {
+        Utilities.sleep(this.initialRetryDelayMs * this.retryDelayMultiplier ** (attempts - 1));
+      }
+      attempts += 1;
+      const nativeRequest = this._projectNativeRequest(request);
+      let isFailed = false;
+      try {
+        response = UrlFetchApp.fetch(request.url, nativeRequest);
+      } catch (networkError) {
+        isFailed = true;
+        response = null;
+        error = networkError;
+      }
+      if (isFailed) {
+        this.logger.warn('HTTP request encountered a network failure.', {
+          uid: request.uid,
+          attempt: attempts,
+        });
+        classification = null;
+        continue;
+      }
+      error = null;
+      classification = this._classifyResponse(response, policy);
+      if (classification.accepted || classification.stopped || !classification.retryable) {
+        return { uid: request.uid, response, error: null, attempts };
+      }
+      this.logger.warn('HTTP request received a retryable response.', {
+        uid: request.uid,
+        status: classification.status,
+        attempt: attempts,
+      });
+    }
+    this.logger.error('HTTP request exhausted its transport attempts.', {
+      uid: request.uid,
+      attempts,
+    });
+    return { uid: request.uid, response, error, attempts };
   }
 }
 
 BaseRequestManager.HTTP_STATUS_OK = HTTP_STATUS_OK;
 BaseRequestManager.HTTP_STATUS_CREATED = HTTP_STATUS_CREATED;
 
-// Export for Node/Vitest environment
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = BaseRequestManager;
 }

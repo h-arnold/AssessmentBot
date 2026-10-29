@@ -5,8 +5,9 @@
  *
  * Manages the creation, caching, and sending of request objects to the LLM.
  */
-const VALIDATION_RETRY_LIMIT = 3;
 const LLM_TOAST_DURATION_SECONDS = 5;
+const LLM_ACCEPTED_STATUSES = [200, 201];
+const LLM_STOP_STATUSES = [401, 403, 404];
 
 /**
  * LLM request manager.
@@ -25,6 +26,8 @@ class LLMRequestManager extends BaseRequestManager {
     this.componentBuildErrorCount = 0; // Track repeated backend component build errors
     this.maxComponentBuildErrors = 2; // Threshold for aborting on backend errors
     this.abortOnComponentBuildError = false; // Flag to abort further processing
+    /** @type {boolean} Whether this processing invocation received an LLM run-stop. */
+    this.runStopped = false;
   }
 
   /**
@@ -123,28 +126,16 @@ class LLMRequestManager extends BaseRequestManager {
   }
 
   /**
-   * Processes the responses from the LLM and assigns assessments to StudentTasks.
-   * Also caches successful assessments.
-   * @param {HTTPResponse[]} responses - Array of HTTPResponse objects from UrlFetchApp.fetchAll().
-   * @param {Object[]} requests - Array of request objects sent in the current batch.
-   * @param {Assignment} assignment - The Assignment instance containing StudentTasks.
-   * @returns {void}
-   */
-  processResponses(responses, requests, assignment) {
-    this.progressTracker.updateProgress(`Double-checking all assessments.`, true);
-
-    responses.forEach((response, index) => {
-      this._processSingleResponse(response, requests[index], assignment);
-    });
-  }
-
-  /**
    * Handles validation failures by retrying the request if retry attempts are below the maximum limit.
+   * @remarks Returns early without dispatch when `runStopped` is already set, and latches
+   * `runStopped` when this call's own single transport attempt receives a stop status.
    * @param {string} uid - The unique identifier of the response.
    * @param {Object} request - The original request object.
    * @param {Assignment} assignment - The Assignment instance.
    */
   handleValidationFailure(uid, request, assignment) {
+    Validate.requireParams({ uid, request, assignment }, 'handleValidationFailure');
+    if (this.runStopped) return;
     const retryCount = this.retryAttempts[uid];
     if (!retryCount) this.retryAttempts[uid] = this.initialValidationRetryCount;
 
@@ -156,7 +147,14 @@ class LLMRequestManager extends BaseRequestManager {
     this.retryAttempts[uid]++;
     this._logValidationRetry(uid);
 
-    const retryResponse = this.sendRequestWithRetries(request, VALIDATION_RETRY_LIMIT);
+    const retryOutcome = this.sendRequestWithRetries(request, {
+      acceptedStatuses: LLM_ACCEPTED_STATUSES,
+      stopStatuses: LLM_STOP_STATUSES,
+    });
+    const retryResponse = retryOutcome.response;
+    if (retryResponse && LLM_STOP_STATUSES.includes(retryResponse.getResponseCode())) {
+      this.runStopped = true;
+    }
     if (!this._isSuccessfulResponse(retryResponse)) {
       this._handleRetryHttpFailure(uid);
       return;
@@ -188,19 +186,51 @@ class LLMRequestManager extends BaseRequestManager {
    * @returns {void}
    */
   processStudentResponses(requests, assignment) {
+    this.runStopped = false;
     if (!requests || requests.length === 0) {
       ABLogger.getInstance().info('No requests to send.');
       return;
     }
-    ABLogger.getInstance().info(
-      `Sending student responses in batches of ${this.configManager.getBackendAssessorBatchSize()}.`
-    );
-
-    // Use BaseRequestManager's sendRequestsInBatches method
-    const responses = this.sendRequestsInBatches(requests);
-
-    // Process responses
-    this.processResponses(responses, requests, assignment);
+    Validate.requireParams({ requests, assignment }, 'processStudentResponses');
+    const requestByUid = new Map();
+    requests.forEach((request) => {
+      if (requestByUid.has(request.uid))
+        throw new Error(`Duplicate LLM request UID: ${request.uid}`);
+      requestByUid.set(request.uid, request);
+    });
+    this.sendRequestsInBatches(requests, {
+      batchSize: this.configManager.getBackendAssessorBatchSize(),
+      acceptedStatuses: LLM_ACCEPTED_STATUSES,
+      stopStatuses: LLM_STOP_STATUSES,
+      onBatchComplete: (outcomes) => {
+        if (
+          outcomes.some(
+            ({ response }) => response && LLM_STOP_STATUSES.includes(response.getResponseCode())
+          )
+        ) {
+          this.runStopped = true;
+        }
+        const seen = new Set();
+        const routed = outcomes.map((outcome) => {
+          if (!requestByUid.has(outcome.uid) || seen.has(outcome.uid)) {
+            throw new Error(`Unknown or duplicate LLM outcome UID: ${outcome.uid}`);
+          }
+          seen.add(outcome.uid);
+          return { outcome, request: requestByUid.get(outcome.uid) };
+        });
+        routed.sort((left, right) => {
+          return (
+            Number(LLM_ACCEPTED_STATUSES.includes(right.outcome.response?.getResponseCode?.())) -
+            Number(LLM_ACCEPTED_STATUSES.includes(left.outcome.response?.getResponseCode?.()))
+          );
+        });
+        this.progressTracker.updateProgress('Double-checking all assessments.', true);
+        routed.forEach(({ outcome, request }) =>
+          this._processSingleResponse(outcome.response, request, assignment)
+        );
+        return !this.runStopped;
+      },
+    });
   }
 
   /**
@@ -359,7 +389,7 @@ class LLMRequestManager extends BaseRequestManager {
    */
   _handleHttpError(response, uid) {
     const code = response ? response.getResponseCode() : null;
-    const text = response ? response.getContentText() : 'No response';
+    const text = 'HTTP response omitted from diagnostics.';
     if (code === 401) {
       // Unauthorised: invalid API key, abort script
       this.progressTracker.logAndThrowError(
@@ -378,13 +408,11 @@ class LLMRequestManager extends BaseRequestManager {
     }
     if (code === 400) {
       // Bad request: skip and log
-      console.warn(`Bad Request (400) for UID: ${uid}. Skipping request. Response: ${text}`);
       this.progressTracker.logError(`Bad Request (400) for UID: ${uid}. Payload invalid.`, text);
       return;
     }
     if (code === 413) {
       // Payload too large: skip and log
-      console.warn(`Payload Too Large (413) for UID: ${uid}. Skipping request. Response: ${text}`);
       this.progressTracker.logError(
         `Payload Too Large (413) for UID: ${uid}. Request body exceeds size limit.`,
         text

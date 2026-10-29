@@ -1,4 +1,5 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { saveGlobals, restoreGlobals } from '../helpers/globalMockManager.js';
 
 // Import model classes from source (CommonJS exports)
 const { TaskDefinition } = require('#backend/Models/TaskDefinition.js');
@@ -14,6 +15,31 @@ const {
   DummyBaseRequestManager,
   createSlidesAssignment,
 } = require('../helpers/modelFactories.js');
+
+class LLMConsumerBaseRequestManager extends DummyBaseRequestManager {
+  sendRequestsInBatches(requests, options) {
+    for (let offset = 0; offset < requests.length; offset += options.batchSize) {
+      options.onBatchComplete(
+        requests.slice(offset, offset + options.batchSize).map((request) => ({
+          uid: request.uid,
+          response: {
+            getResponseCode: () => this.responseCode,
+            getContentText: () =>
+              JSON.stringify(
+                this.responseBody || {
+                  completeness: { score: 5, reasoning: 'ok' },
+                  accuracy: { score: 4, reasoning: 'fine' },
+                  spag: { score: 3, reasoning: 'avg' },
+                }
+              ),
+          },
+          error: null,
+          attempts: 1,
+        }))
+      );
+    }
+  }
+}
 
 // Minimal global Utils & dependencies stubs required by artifacts & manager (non-GAS)
 globalThis.Utils = {
@@ -33,7 +59,7 @@ globalThis.Utils = {
 setupGlobalDummyClasses();
 
 // Override specific globals for this test (use the classes directly)
-globalThis.BaseRequestManager = DummyBaseRequestManager;
+globalThis.BaseRequestManager = LLMConsumerBaseRequestManager;
 globalThis.CacheManager = DummyCacheManager;
 
 // Provide globals expected by Assignment constructor
@@ -163,6 +189,91 @@ describe('Phase 3 LLMRequestManager integration (new model)', () => {
     });
   });
 
+  it('applies a valid native LLM response through real transport to the generated submission item', () => {
+    const basePath = require.resolve('#backend/RequestHandlers/BaseRequestManager.js');
+    const llmPath = require.resolve('#backend/RequestHandlers/LLMRequestManager.js');
+    const previousLlmModule = require.cache[llmPath];
+    const BaseRequestManager = require(basePath);
+    const item = assignment.submissions[0].getItem(Object.keys(assignment.getTasks())[0]);
+    Object.values(assignment.submissions[0].items).forEach((submissionItem) => {
+      if (submissionItem !== item && submissionItem.getType() !== 'SPREADSHEET') {
+        delete assignment.submissions[0].items[submissionItem.taskId];
+      }
+    });
+    const validBody = JSON.stringify({
+      completeness: { score: 3, reasoning: 'complete enough' },
+      accuracy: { score: 4, reasoning: 'mostly accurate' },
+      spag: { score: 2, reasoning: 'some errors' },
+    });
+    const nativeResponse = {
+      getResponseCode: () => 200,
+      getContentText: () => validBody,
+    };
+    const fetchAll = vi.fn(() => [nativeResponse]);
+    const fetch = vi.fn();
+    const sleep = vi.fn();
+    const savedGlobals = saveGlobals([
+      'BaseRequestManager',
+      'ConfigurationManager',
+      'UrlFetchApp',
+      'Utilities',
+    ]);
+    let processSpy;
+    let validationSpy;
+    try {
+      globalThis.BaseRequestManager = BaseRequestManager;
+      globalThis.ConfigurationManager = {
+        getInstance: () => ({ getBackendAssessorBatchSize: () => 1 }),
+      };
+      globalThis.UrlFetchApp = { fetchAll, fetch };
+      globalThis.Utilities = { sleep };
+      delete require.cache[llmPath];
+      const RealLLMRequestManager = require(llmPath);
+      const realManager = new RealLLMRequestManager();
+      realManager.configManager = createDummyConfigurationManager();
+      realManager.progressTracker = {
+        getCurrentProgress: () => ({ message: 'Assessing' }),
+        updateProgress: vi.fn(),
+        logError: vi.fn(),
+      };
+      const requests = realManager.generateRequestObjects(assignment);
+      expect(requests).toHaveLength(1);
+      const uid = requests[0].uid;
+      expect(realManager.uidIndex[uid].item).toBe(item);
+      const originalProcess = realManager._processSingleResponse.bind(realManager);
+      processSpy = vi
+        .spyOn(realManager, '_processSingleResponse')
+        .mockImplementation((response, request, model) => {
+          expect(response).toBe(nativeResponse);
+          return originalProcess(response, request, model);
+        });
+      validationSpy = vi.spyOn(realManager, 'validateAssessmentData');
+
+      realManager.processStudentResponses(requests, assignment);
+
+      expect(processSpy).toHaveBeenCalledOnce();
+      expect(validationSpy).toHaveBeenCalledWith({
+        completeness: { score: 3, reasoning: 'complete enough' },
+        accuracy: { score: 4, reasoning: 'mostly accurate' },
+        spag: { score: 2, reasoning: 'some errors' },
+      });
+      expect(item.assessments).toMatchObject({
+        completeness: { score: 3, reasoning: 'complete enough' },
+        accuracy: { score: 4, reasoning: 'mostly accurate' },
+        spag: { score: 2, reasoning: 'some errors' },
+      });
+      expect(fetchAll).toHaveBeenCalledOnce();
+      expect(fetch).not.toHaveBeenCalled();
+      expect(sleep).not.toHaveBeenCalled();
+    } finally {
+      processSpy?.mockRestore();
+      validationSpy?.mockRestore();
+      delete require.cache[llmPath];
+      if (previousLlmModule) require.cache[llmPath] = previousLlmModule;
+      restoreGlobals(savedGlobals);
+    }
+  });
+
   it('processStudentResponses caches successful assessments', () => {
     // Ensure no cache present initially
     const sub = assignment.submissions[0];
@@ -195,13 +306,18 @@ describe('Phase 3 LLMRequestManager integration (new model)', () => {
 
     const retryRequest = reqs[0];
     const retryResponse = {
-      getResponseCode: () => 200,
-      getContentText: () =>
-        JSON.stringify({
-          completeness: { score: 5, reasoning: 'retry' },
-          accuracy: { score: 4, reasoning: 'retry' },
-          spag: { score: 3, reasoning: 'retry' },
-        }),
+      uid: retryRequest.uid,
+      response: {
+        getResponseCode: () => 200,
+        getContentText: () =>
+          JSON.stringify({
+            completeness: { score: 5, reasoning: 'retry' },
+            accuracy: { score: 4, reasoning: 'retry' },
+            spag: { score: 3, reasoning: 'retry' },
+          }),
+      },
+      error: null,
+      attempts: 1,
     };
     manager.sendRequestWithRetries = () => retryResponse;
 
@@ -218,5 +334,56 @@ describe('Phase 3 LLMRequestManager integration (new model)', () => {
         reasoning: expect.any(String),
       });
     });
+  });
+
+  it.each([
+    [
+      'unknown',
+      [
+        { uid: 'valid', response: null, error: null, attempts: 1 },
+        { uid: 'unknown', response: null, error: null, attempts: 1 },
+      ],
+    ],
+    [
+      'duplicate',
+      [
+        { uid: 'valid', response: null, error: null, attempts: 1 },
+        { uid: 'valid', response: null, error: null, attempts: 1 },
+      ],
+    ],
+  ])(
+    'rejects %s callback outcomes before processing any assessment or dispatching again',
+    (_kind, outcomes) => {
+      const targetItem = assignment.submissions[0].getItem(Object.keys(assignment.getTasks())[0]);
+      const request = { uid: 'valid', url: 'https://service.test/assess', method: 'post' };
+      const nativeResponse = { getResponseCode: () => 200, getContentText: () => '{}' };
+      outcomes[0].response = nativeResponse;
+      let callbackReturned = false;
+      manager.uidIndex = { valid: { item: targetItem } };
+      manager.sendRequestsInBatches = vi.fn((_requests, options) => {
+        options.onBatchComplete(outcomes);
+        callbackReturned = true;
+      });
+      const processing = vi.spyOn(manager, '_processSingleResponse');
+
+      expect(() => manager.processStudentResponses([request], assignment)).toThrow(
+        /Unknown or duplicate LLM outcome UID/
+      );
+      expect(processing).not.toHaveBeenCalled();
+      expect(outcomes[0].response).toBe(nativeResponse);
+      expect(targetItem.assessments).toEqual({});
+      expect(callbackReturned).toBe(false);
+      expect(manager.sendRequestsInBatches).toHaveBeenCalledTimes(1);
+    }
+  );
+
+  it('rejects duplicate input UIDs before invoking the sender', () => {
+    const request = { uid: 'duplicate', url: 'https://service.test/assess', method: 'post' };
+    manager.sendRequestsInBatches = vi.fn();
+
+    expect(() => manager.processStudentResponses([request, { ...request }], assignment)).toThrow(
+      'Duplicate LLM request UID: duplicate'
+    );
+    expect(manager.sendRequestsInBatches).not.toHaveBeenCalled();
   });
 });

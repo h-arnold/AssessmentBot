@@ -38,15 +38,16 @@
   - Owning paths: `src/backend/AssignmentProcessor/SlidesAssignment.js`, `src/backend/AssignmentProcessor/SheetsAssignment.js` and their parser owners (`src/backend/DocumentParsers/SlidesParser/`, `src/backend/DocumentParsers/SheetsParser.js`).
   - Behaviour: a failed document open returns an internal null sentinel, distinct from a successful empty array, and becomes acquisition `SOURCE_UNREADABLE` for all known tasks while retaining the student document ID with explicit null `pageId`/`content`/`contentHash`. Failed or unavailable per-task content becomes extraction `SOURCE_CONTENT_UNAVAILABLE`, as does a known task with no extraction outcome; healthy extracted items stay in flight with an empty assessment map until the assessment stage. A Slides IMAGE task is pending only when it has a matched student page and parser-generated `metadata.sourceUrl`; a missing IMAGE match is unavailable extraction, not pending hydration. A literal-null `getCell` aborts the whole TABLE with null content, while shared-definition reads still throw. Conversion is limited to immediate native Drive/open/range/formula/text/dimension/cell/merge reads: ordinary native `Error`s convert, while actually thrown `TypeError`/`ReferenceError`/non-`Error` values and internal matching/facade/normalisation/mutation faults propagate. Each owned native failure emits one contextual diagnostic with opaque identifiers and the original error; student names, source content and raw payloads are never logged, and downstream model/progress duplicates are suppressed. Unknown extraction task IDs still warn and are ignored, and `PARSE_FAILED` remains reserved with no forced producer. No failure registry, error hierarchy or pipeline guard.
 - Transport retry ownership (`BaseRequestManager`)
-  - Status: `Not implemented` (planned extension of the existing owner)
-  - Current: `sendRequestsInBatches()` collects every batch before assigning results, and `sendRequestWithRetries()` re-pushes the initial failed response after exhausted retries; retry classification happens inside the retry loop.
-  - Planned owning path: `src/backend/RequestHandlers/BaseRequestManager.js` — classify the initial response before retrying, at most three dispatches per request including the initial batch attempt, fixed 5 s/7.5 s waits, response identity on every returned result, no earlier-response substitution, and incremental per-batch processing. Classify every response received in a batch before dispatching any retry, so a run-stopping response prevents further calls while successes already received in that batch are retained. A 401/403/404 response is an explicit run-stop outcome; remaining eligible tasks become `LLM_RUN_STOPPED` without another confirmation call. Exactly 200/201 count as LLM HTTP success; image downloads require 200.
-  - Retries are per-member sequential `UrlFetchApp.fetch` calls after the initial `fetchAll` batch is classified. Do not re-batch retries or introduce another scheduler; each member retains its initial-attempt count and the shared backoff budget.
-  - The manager remains the sole retry owner. Callers supply policy, not retries: each caller declares its explicit batch size, accepted success statuses (LLM 200/201; images 200) and stop-status policy (LLM 401/403/404), and consumes final identity-tagged outcomes per batch before the next batch dispatches, so a student-image failure never becomes an LLM-wide stop. Image downloads inherit the same three-total-attempt budget, and exhaustion becomes student-task `IMAGE_HYDRATION_FAILED` E or a blocking shared-image failure according to scope. No separate retry framework or persistent queue.
+  - Status: `Implemented` (backend, Section 5)
+  - Owning path: `src/backend/RequestHandlers/BaseRequestManager.js` — sole HTTP dispatch and retry owner for `LLMRequestManager` and `ImageManager`.
+  - Budget and backoff: at most three total dispatches per request, including its initial `fetchAll` batch attempt. Wait 5,000 ms before attempt two and 7,500 ms before attempt three; never sleep after the final attempt. A thrown batch call counts as attempt one for every member. Retries are sequential per-member `UrlFetchApp.fetch` calls and are never re-batched. Constructor-owned retry and native UrlFetch defaults apply only to omitted fields, so supplied `false`/`null`/empty values survive projection.
+  - Classification: only network exceptions, HTTP 429 and HTTP 500–599 retry. Every response received in a batch is classified before any retry dispatch, so a caller stop response prevents further calls while successes already received in that batch are retained. Accepted and stop statuses are caller policy: LLM accepts 200/201 and stops on 401/403/404; image downloads accept only 200 and declare no stop statuses, so a student-image 403 is not an LLM-wide stop.
+  - Outcomes: each final outcome carries the request UID plus either the final response or the original final network error, and its attempt count. A later network failure never returns an earlier 429/5xx response. `sendRequestsInBatches()` returns no run-wide collection: it consumes each completed batch through `onBatchComplete` before dispatching another, and returning exactly `false` stops any later retries and batches (retries already performed in the consumed batch are not cancelled); other callback return values continue. Unknown/duplicate identities and callback, routing or programming faults throw instead of becoming network retries. Diagnostics are limited to UID, status and attempt metadata.
+  - Caller adaptation: `LLMRequestManager.processStudentResponses()` sends one full request list at the configured assessor batch size, rejects duplicate input UIDs and unknown/duplicate outcome UIDs before routing, applies accepted outcomes before failures in the same batch, and latches a 401/403/404 stop so no later batch dispatches. Its existing validation-triggered single-request transport call uses the same LLM status policy; semantic validation retry remains until Section 6. `ImageManager.fetchImagesAsBlobs()` sends one full round-robin list at the configured Slides batch size and reads final 200 blobs before the next batch; blob-read faults escape by identity. These outcomes are internal GAS runtime objects: no public API, persistence or LLM request/response body shape changed.
 - Scoped image outcomes (`ImageManager`)
-  - Status: `Not implemented` (planned extension of the existing owner)
-  - Current: `fetchImagesAsBlobs()` passes a batch size to `sendRequestsInBatches()`, which ignores it and uses the assessor batch size; failed downloads and blob-write errors are logged and the artefact content stays null.
-  - Planned owning path: `src/backend/RequestHandlers/ImageManager.js` — reuse `BaseRequestManager` transport with an explicit Slides-fetch batch size, HTTP 200 as the only image success status, and the shared three-total-attempt budget; preserve document round-robin scheduling. Expected download, missing required source and blob/content decode failures become student-task `IMAGE_HYDRATION_FAILED` E, or a blocking shared reference/template failure according to scope. Successful writeback updates the artefact hash and invalidates stale assessments/feedback on a reused item. A matched IMAGE with a student page and `metadata.sourceUrl` is valid pending internal state, never a completed result; a missing IMAGE match is already extraction `SOURCE_CONTENT_UNAVAILABLE` E (Section 4). Unmatched or duplicate UIDs, missing model methods and other wiring faults throw. No second retry or hydration manager.
+  - Status: `Not implemented` (Section 7; shared transport adaptation delivered in Section 5)
+  - Current: `fetchImagesAsBlobs()` reuses the shared sender with the explicit Slides-fetch batch size, accepted `[200]` and no stop statuses, preserving document round-robin order. Final 200 blobs are read before the next batch; final non-200/network outcomes are logged with UID/status/attempt metadata only, and blob-read faults propagate unchanged. Scoped failure materialisation and writeback invalidation remain pending: a failed download still leaves artefact content null, and `writeBackBlobs()` still catches and warns on `setContentFromBlob` faults.
+  - Planned owning path (Section 7): `src/backend/RequestHandlers/ImageManager.js` — assign scoped final failures from the shared outcomes. Expected download, missing required source and blob/content decode failures become student-task `IMAGE_HYDRATION_FAILED` E, or a blocking shared reference/template failure according to scope. Successful writeback updates the artefact hash and invalidates stale assessments/feedback on a reused item. A matched IMAGE with a student page and `metadata.sourceUrl` is valid pending internal state, never a completed result; a missing IMAGE match is already extraction `SOURCE_CONTENT_UNAVAILABLE` E (Section 4). Unmatched or duplicate UIDs, missing model methods and other wiring faults throw. No second retry or hydration manager.
 - Assessment cache identity and hit validation (`LLMRequestManager`)
   - Status: `Not implemented` (planned extension of the existing owner)
   - Current: `generateRequestObjects()` derives the cache key from the reference and student hashes only (`CacheManager.generateCacheKey`), reads hits through `getCachedAssessment()` without validating them, and `_assignAndCacheAssessment()` writes successful LLM data back through `setCachedAssessment()`.
@@ -134,7 +135,7 @@ This document traces the complete assessment flow in AssessmentBot, starting fro
 9. **Trigger Pattern**: Time-based trigger decouples user action from heavy processing (5-second delay)
 10. **User Properties**: Used for cross-execution parameter passing between trigger setup and execution
 11. **Lazy Loading**: Task definitions only re-parsed when Drive file modification times are newer than cached timestamps
-12. **Batch Operations**: LLM requests sent in batches via `UrlFetchApp.fetchAll()` for efficiency
+12. **Batch Operations**: LLM and image requests are sent in batches via `UrlFetchApp.fetchAll()`, with bounded per-member retries owned by `BaseRequestManager`
 13. **Configuration Transport**: Frontend configuration reads and writes now flow through `apiHandler` using `getBackendConfig` and `setBackendConfig` in `src/backend/z_Api/apiConfig.js`, with typed frontend access in `src/frontend/src/services/backendConfiguration/backendConfigurationService.ts`
 
 ---
@@ -713,7 +714,7 @@ assignment.submissions = [
 - **Purpose**: Batch-processes images for LLM consumption
 - **Methods**:
   - `collectAllImageArtifacts(assignment)`: Gathers all image artifact references
-  - `fetchImagesAsBlobs(entries)`: Downloads images in batches; empty input returns an empty array before reading the batch-size configuration, so empty input does not acquire configuration or trigger its failures. Non-empty fetching is unchanged.
+  - `fetchImagesAsBlobs(entries)`: Downloads images in document round-robin order through the shared sender, using the configured Slides-fetch batch size, accepted `[200]` and no stop statuses. Empty input returns an empty array before reading the batch-size configuration, so empty input does not acquire configuration or trigger its failures. Final 200 blobs are read before the next batch; final failures are logged with UID/status/attempt metadata only, and blob-read faults propagate unchanged.
   - `writeBackBlobs(assignment, blobs)`: Updates artifacts with base64 content
 
 ##### Stage 6: Assess Responses (lines 317-323)
@@ -782,11 +783,12 @@ assignment.submissions = [
 
 **Method**: `processStudentResponses(requests, assignment)`
 
-- **Purpose**: Sends requests and processes responses
+- **Purpose**: Sends requests through the shared batch transport and applies final outcomes
 - **Process**:
-  1. Sends all requests in batch via `UrlFetchApp.fetchAll(requests)`
-  2. Calls `processResponses(responses, requests, assignment)`
-  3. Processes each response individually
+  1. Returns before input validation when `requests` is empty; otherwise validates the assignment and rejects duplicate request UIDs.
+  2. Calls `sendRequestsInBatches()` once with the configured assessor batch size, accepted statuses `[200, 201]` and stop statuses `[401, 403, 404]`.
+  3. For each completed batch, rejects unknown/duplicate outcome UIDs, records a run stop when any outcome is 401/403/404, applies accepted responses before non-success outcomes, and routes each outcome by its retained request UID.
+  4. Returns exactly `false` to the sender when stopped, preventing later batches while completed same-batch successes are retained.
 
 **Method**: `_processSingleResponse(response, request, assignment)`
 
@@ -798,7 +800,7 @@ assignment.submissions = [
   5. Looks up submission and item from UID index
   6. Assigns assessment artifacts to item via `_assignAssessmentArtifacts()`
   7. Caches successful assessments
-  8. Handles validation failures with retry logic
+  8. Handles validation failures with the existing semantic retry (retained until Section 6)
 
 **Method**: `_assignAssessmentArtifacts(item, assessmentData)`
 
@@ -1240,8 +1242,10 @@ AssignmentController.processSelectedAssignment()
   │       │   │   ├─ CacheManager.getCachedAssessment() [for each item]
   │       │   │   └─ Build HTTP request objects
   │       │   └─ LLMRequestManager.processStudentResponses()
-  │       │       ├─ UrlFetchApp.fetchAll()
-  │       │       ├─ Process each response
+  │       │       ├─ BaseRequestManager.sendRequestsInBatches()
+  │       │       │   ├─ UrlFetchApp.fetchAll() [per batch]
+  │       │       │   └─ UrlFetchApp.fetch() [sequential member retries]
+  │       │       ├─ Process each final outcome by request UID
   │       │       ├─ Assign assessments to items
   │       │       └─ CacheManager.cacheAssessment() [for each]
   │       └─ [If SHEETS]: SheetsAssessor.assessResponses()

@@ -236,12 +236,16 @@ describe('ImageManager fetching behaviour', () => {
   it('fetches blobs across documents with progress updates', () => {
     const manager = buildManager();
     manager.progressTracker = { updateProgress: vi.fn() };
-    manager.sendRequestsInBatches = vi.fn((requests) =>
-      requests.map(() => ({
-        getResponseCode: () => 200,
-        getBlob: () => ({ getBytes: () => [1, 2, 3] }),
-      }))
-    );
+    manager.sendRequestsInBatches = vi.fn((requests, options) => {
+      options.onBatchComplete(
+        requests.map((request) => ({
+          uid: request.uid,
+          response: { getResponseCode: () => 200, getBlob: () => ({ getBytes: () => [1, 2, 3] }) },
+          error: null,
+          attempts: 1,
+        }))
+      );
+    });
     const entries = [
       { uid: 'uid-one', url: 'https://example.com/one.png', documentId: 'doc-a' },
       { uid: 'uid-two', url: 'https://example.com/two.png', documentId: 'doc-b' },
@@ -250,16 +254,26 @@ describe('ImageManager fetching behaviour', () => {
     const blobs = manager.fetchImagesAsBlobs(entries);
     expect(blobs).toHaveLength(3);
     expect(manager.progressTracker.updateProgress).toHaveBeenCalled();
-    const sentUrls = manager.sendRequestsInBatches.mock.calls[0][0].map((item) => item.url);
+    const [sentRequests, policy] = manager.sendRequestsInBatches.mock.calls[0];
+    const sentUrls = sentRequests.map((item) => item.url);
     expect(sentUrls).toContain('https://example.com/one.png');
+    expect(sentRequests).toHaveLength(3);
+    expect(policy).toMatchObject({ batchSize: 10, acceptedStatuses: [200], stopStatuses: [] });
   });
 
   it('fetches a single document group in input order', () => {
     const manager = buildManager();
     manager.progressTracker = { updateProgress: vi.fn() };
-    manager.sendRequestsInBatches = vi.fn((requests) =>
-      requests.map(() => ({ getResponseCode: () => 200, getBlob: () => 'blob' }))
-    );
+    manager.sendRequestsInBatches = vi.fn((requests, options) => {
+      options.onBatchComplete(
+        requests.map((request) => ({
+          uid: request.uid,
+          response: { getResponseCode: () => 200, getBlob: () => 'blob' },
+          error: null,
+          attempts: 1,
+        }))
+      );
+    });
     const entries = [
       { uid: 'first', url: 'https://example.com/first', documentId: 'doc' },
       { uid: 'second', url: 'https://example.com/second', documentId: 'doc' },
@@ -287,13 +301,17 @@ describe('ImageManager fetching behaviour', () => {
       { uid: 'c2', url: 'https://images.example/c2', documentId: 'c' },
       { uid: 'c3', url: 'https://images.example/c3', documentId: 'c' },
     ];
-    const sentBatches = [];
-    manager.sendRequestsInBatches = vi.fn((requests) => {
-      sentBatches.push(requests.map(({ url }) => url));
-      return requests.map(({ url }) => ({
-        getResponseCode: () => 200,
-        getBlob: () => ({ sourceUrl: url }),
-      }));
+    let sentRequests;
+    manager.sendRequestsInBatches = vi.fn((requests, options) => {
+      sentRequests = requests;
+      options.onBatchComplete(
+        requests.map(({ uid, url }) => ({
+          uid,
+          response: { getResponseCode: () => 200, getBlob: () => ({ sourceUrl: url }) },
+          error: null,
+          attempts: 1,
+        }))
+      );
     });
     const configuration = withGlobalMocks({
       ConfigurationManager: () => ({ getInstance: () => ({ getSlidesFetchBatchSize: () => 2 }) }),
@@ -302,13 +320,23 @@ describe('ImageManager fetching behaviour', () => {
     try {
       const result = manager.fetchImagesAsBlobs(entries);
 
-      expect(sentBatches).toEqual([
-        ['https://images.example/a0', 'https://images.example/b0'],
-        ['https://images.example/c0', 'https://images.example/a1'],
-        ['https://images.example/b1', 'https://images.example/c1'],
-        ['https://images.example/a2', 'https://images.example/c2'],
-        ['https://images.example/c3'],
+      expect(sentRequests.map(({ url }) => url)).toEqual([
+        'https://images.example/a0',
+        'https://images.example/b0',
+        'https://images.example/c0',
+        'https://images.example/a1',
+        'https://images.example/b1',
+        'https://images.example/c1',
+        'https://images.example/a2',
+        'https://images.example/c2',
+        'https://images.example/c3',
       ]);
+      expect(manager.sendRequestsInBatches).toHaveBeenCalledTimes(1);
+      expect(manager.sendRequestsInBatches.mock.calls[0][1]).toMatchObject({
+        batchSize: 2,
+        acceptedStatuses: [200],
+        stopStatuses: [],
+      });
       expect(result.map(({ uid, blob }) => [uid, blob.sourceUrl])).toEqual(
         ['a0', 'b0', 'c0', 'a1', 'b1', 'c1', 'a2', 'c2', 'c3'].map((uid) => [
           uid,
@@ -329,12 +357,16 @@ describe('ImageManager fetching behaviour', () => {
     });
     const manager = buildManager();
     manager.progressTracker = { updateProgress: vi.fn() };
-    manager.sendRequestsInBatches = vi.fn((requests) =>
-      requests.map(({ url }) => ({
-        getResponseCode: () => 200,
-        getBlob: () => url,
-      }))
-    );
+    manager.sendRequestsInBatches = vi.fn((requests, options) => {
+      options.onBatchComplete(
+        requests.map(({ uid, url }) => ({
+          uid,
+          response: { getResponseCode: () => 200, getBlob: () => url },
+          error: null,
+          attempts: 1,
+        }))
+      );
+    });
     const entries = Array.from({ length: groupCount }, (_, index) => ({
       uid: `uid-${index}`,
       url: `https://images.example/${index}`,
@@ -356,127 +388,88 @@ describe('ImageManager fetching behaviour', () => {
     }
   }, 20_000);
 
-  it('warns when blob reads fail or responses are not successful', () => {
+  it('propagates the original blob-read failure without warning', () => {
     const warnings = [];
     const mockContext = withGlobalMocks({
       ABLogger: () => ({ getInstance: () => ({ warn: (...args) => warnings.push(args) }) }),
     });
     const manager = buildManager();
     manager.progressTracker = { updateProgress: vi.fn() };
-    manager.sendRequestsInBatches = vi.fn(() => [
-      {
-        getResponseCode: () => 200,
-        getBlob: () => {
-          throw new Error('blob read failed');
-        },
-      },
-      { getResponseCode: () => 500 },
-      null,
-    ]);
-    const blobs = manager.fetchImagesAsBlobs([
-      { uid: 'uid-one', url: 'https://example.com/one.png', documentId: 'doc-a' },
-      { uid: 'uid-two', url: 'https://example.com/two.png', documentId: 'doc-a' },
-      { uid: 'uid-three', url: 'https://example.com/three.png', documentId: 'doc-a' },
-    ]);
-    expect(blobs).toEqual([]);
-    expect(warnings.length).toBeGreaterThanOrEqual(2);
-    mockContext.restore();
-  });
-});
-
-describe('ImageManager write back behaviour', () => {
-  let restoreGlobals;
-  let warnings;
-
-  beforeEach(() => {
-    warnings = [];
-    const mockContext = withGlobalMocks({
-      ABLogger: () => ({ getInstance: () => ({ warn: (...args) => warnings.push(args) }) }),
-    });
-    restoreGlobals = mockContext.restore;
-  });
-
-  afterEach(() => {
-    restoreGlobals();
-    vi.restoreAllMocks();
-  });
-
-  it('returns early when no blobs are supplied', () => {
-    const manager = buildManager();
-    expect(manager.writeBackBlobs({ assignmentDefinition: { tasks: {} } }, null)).toBeUndefined();
-    expect(manager.writeBackBlobs({ assignmentDefinition: { tasks: {} } }, [])).toBeUndefined();
-  });
-
-  it('writes blobs to matching artefacts and warns on mismatches', () => {
-    const manager = buildManager();
-    const reference = imageArtifact('reference', 'https://example.com/ref.png');
-    const mismatched = { getUid: () => 'unknown-uid', setContentFromBlob: vi.fn() };
-    const assignment = {
-      assignmentDefinition: {
-        tasks: {
-          task_one: {
-            artifacts: { reference: [reference, mismatched], template: [] },
-          },
-        },
-      },
-      submissions: [],
-    };
-    const blob = { getBytes: () => [4, 5, 6] };
-    manager.writeBackBlobs(assignment, [
-      { uid: reference.getUid(), blob },
-      { uid: 'missing-uid', blob },
-    ]);
-    expect(reference.content).toBeTruthy();
-    expect(warnings.some((args) => args[0].includes('did not match'))).toBe(true);
-  });
-
-  it('warns when blob content cannot be applied', () => {
-    const manager = buildManager();
-    const failing = {
-      getUid: () => 'failing-uid',
-      getType: () => 'IMAGE',
-      setContentFromBlob: () => {
-        throw new Error('write failed');
-      },
-    };
-    const assignment = {
-      assignmentDefinition: {
-        tasks: { task_one: { artifacts: { reference: [failing], template: [] } } },
-      },
-      submissions: [],
-    };
-    manager.writeBackBlobs(assignment, [{ uid: 'failing-uid', blob: {} }]);
-    expect(warnings.some((args) => args[0].includes('Failed to write blob'))).toBe(true);
-  });
-
-  it('writes submission artefacts by uid', () => {
-    const manager = buildManager();
-    const submissionImage = imageArtifact('submission', 'https://example.com/student.png');
-    const assignment = {
-      assignmentDefinition: { tasks: {} },
-      submissions: [
+    const blobError = new Error('blob read failed');
+    manager.sendRequestsInBatches = vi.fn((requests, options) => {
+      options.onBatchComplete([
         {
-          items: {
-            item_one: { taskId: 'task-one', id: 'item-one', artifact: submissionImage },
-            item_text: {
-              taskId: 'task-one',
-              id: 'item-text',
-              artifact: ArtifactFactory.text({
-                type: 'text',
-                taskId: 'task-one',
-                role: 'submission',
-                content: 'hello',
-                taskIndex: 0,
-                artifactIndex: 0,
-              }),
+          uid: requests[0].uid,
+          response: {
+            getResponseCode: () => 200,
+            getBlob: () => {
+              throw blobError;
             },
           },
+          error: null,
+          attempts: 1,
         },
-      ],
-    };
-    manager.writeBackBlobs(assignment, [
-      { uid: submissionImage.getUid(), blob: { getBytes: () => [7, 8, 9] } },
-    ]);
-    expect(submissionImage.content).toBeTruthy();
+      ]);
+    });
+    try {
+      let caught;
+      try {
+        manager.fetchImagesAsBlobs([
+          { uid: 'uid-one', url: 'https://example.com/one.png', documentId: 'doc-a' },
+        ]);
+      } catch (error) {
+        caught = error;
+      }
+      expect(caught).toBe(blobError);
+      expect(warnings).toEqual([]);
+      expect(manager.sendRequestsInBatches).toHaveBeenCalledTimes(1);
+    } finally {
+      mockContext.restore();
+    }
   });
+
+  it.each([
+    { label: 'final HTTP failure', responseCode: 500, error: null, expectedStatus: 500 },
+    {
+      label: 'final network failure',
+      responseCode: null,
+      error: new Error('opaque network failure'),
+      expectedStatus: null,
+    },
+  ])(
+    'safely warns for a $label without reading response details',
+    ({ responseCode, error, expectedStatus }) => {
+      const warnings = [];
+      const mockContext = withGlobalMocks({
+        ABLogger: () => ({ getInstance: () => ({ warn: (...args) => warnings.push(args) }) }),
+      });
+      const manager = buildManager();
+      manager.progressTracker = { updateProgress: vi.fn() };
+      const getResponseCode = vi.fn(() => responseCode);
+      const getBlob = vi.fn(() => 'must not be read');
+      const response = responseCode === null ? null : { getResponseCode, getBlob };
+      manager.sendRequestsInBatches = vi.fn((requests, options) => {
+        options.onBatchComplete([{ uid: requests[0].uid, response, error, attempts: 3 }]);
+      });
+      try {
+        expect(
+          manager.fetchImagesAsBlobs([
+            { uid: 'opaque-uid', url: 'https://private.example/image', documentId: 'doc-a' },
+          ])
+        ).toEqual([]);
+        expect(warnings).toEqual([
+          [
+            'Failed to fetch image',
+            { uid: 'opaque-uid', attempts: 3, responseCode: expectedStatus },
+          ],
+        ]);
+        expect(getBlob).not.toHaveBeenCalled();
+        if (response) expect(getResponseCode).toHaveBeenCalledTimes(2);
+        expect(JSON.stringify(warnings)).not.toContain('private.example');
+        expect(JSON.stringify(warnings)).not.toContain('opaque network failure');
+      } finally {
+        mockContext.restore();
+      }
+    }
+  );
 });

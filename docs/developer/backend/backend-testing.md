@@ -799,14 +799,15 @@ Test document parsing logic for Slides and Sheets:
 
 Test API interactions and caching:
 
-- **assignmentPhase3**: LLM request generation and processing
-- **imageManagerPhase5**: Image upload and management
+- **baseRequestManager** (`baseRequestManager.test.js`, `baseRequestManager.policy.test.js`, `baseRequestManager.batching.test.js`): shared transport retry budget, status policy, outcome identity and per-batch dispatch/consumption.
+- **assignmentPhase3** and **assignmentPhase3.transport**: LLM request generation, connected caller policy, run-stop and per-batch routing.
+- **imageManagerPhase5** and **imageManagerCoverage**: image collection, round-robin transport and blob writeback.
 
 **Key patterns**:
 
 - Mock external APIs (LLM, Drive)
 - Test caching behaviour
-- Verify batch processing
+- Verify batch processing, bounded retries and caller status policy
 
 ### 5. Assignment Tests (`tests/assignment/`)
 
