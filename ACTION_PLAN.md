@@ -12,7 +12,7 @@ and [#341](https://github.com/h-arnold/AssessmentBot/issues/341).
 - Product and contract authority: @SPEC.md .
 - Preview layout, copy and interaction authority: @ASSESSMENT_ERROR_PREVIEW_LAYOUT.md .
 - This plan sequences delivery; it does not reopen either approved document.
-- Sections 1–4 are complete (Section 4 gate has an explicit user-accepted flaky-debt exception); Section 5 passed review and regression comparison and awaits commit/push; Sections 6–12 are **Not started**. Record actual changes,
+- Sections 1–5 are complete (Section 4 gate has an explicit user-accepted flaky-debt exception); Sections 6–12 are **Not started**. Record actual changes,
   checks/report paths, deviations and downstream implications under each section.
 
 ### Baseline execution record
@@ -901,9 +901,9 @@ Authoritative for this section; keep in sync when later sections touch these own
 
 Runtime/test Green **PASS**, authority
 `.opencode/scratchpad/section5-transport-final-green-review.md`: G1–G4 CLOSED, no
-outstanding in-scope Critical, Improvement or Nitpick finding. Section 5 is **not
-complete**. Formal Docs sync, plan compaction and the stable-ID regression comparison are
-**complete**; authorised commit/push remain. No deployment is authorised. Five historical backend `max-lines`
+outstanding in-scope Critical, Improvement or Nitpick finding. Section 5 is **complete**.
+Formal Docs sync, plan compaction, the stable-ID regression comparison and implementation
+commit/push are **complete**. No deployment is authorised. Five historical backend `max-lines`
 warnings are accepted baseline debt only; the identified Settings E2E flake is Section 4
 accepted debt, not a prospective Section 5 regression waiver.
 
@@ -1026,8 +1026,14 @@ Authoritative for this section; parent adds pending gate records after return.
   coverage tests, Playwright, frontend/builder lint and TypeScript compilation. Overall
   checker status remains **FAILING** solely for the five explicitly accepted historical
   backend `max-lines` warnings listed above. No new waiver or flaky outcome is used.
-- **Commit/push pending.** Record the implementation commit and successful push before
-  beginning Section 6. No deployment authorised.
+- **Commit/push complete.** Branch `assessment-errors-322-341`; implementation commit
+  `bfdc1d07ca8fc8f32cc031c29c24a25ff66ea91d`, exact message
+  `feat: centralise bounded transport retries and caller stop handling`.
+  Normal hooks passed (Prettier unchanged, scoped ESLint and `typecheck:all`);
+  `git push origin assessment-errors-322-341` succeeded
+  (`c47b3feb..bfdc1d07`). Unrelated untracked work preserved. This completion record
+  is committed separately as `docs: record Section 5 completion and regression evidence`.
+  No deployment authorised.
 - **Deviation.** G1 added exact-false callback stop feedback after the validation-origin
   stop was found; it is internal only and changes no public or persisted shape.
 - **Proof limits.** Hermetic native HTTP mocks and models prove the owned transport/caller
