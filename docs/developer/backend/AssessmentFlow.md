@@ -28,7 +28,7 @@
   - Atomic replacement: `setError(stage, code)` replaces every existing criterion with the same catalogue E result for `completeness`, `accuracy` and `spag`, clears feedback, and invokes the item's mutation callback so the parent submission's timestamp advances. The callback is installed on items created through `upsertItemFromExtraction` and on acquisition placeholders that `AssignmentSubmissions._materialiseAcquisitionOutcome()` constructs directly with `onMutate: () => submission.touchUpdated()`; items reconstructed by `StudentSubmission._restore` are built without one, so `setError` on a restored item leaves the parent timestamp unchanged. Stale numeric/`N` marks cannot survive beside the current failure.
   - Partial projection: `toPartialJSON()` keeps E entries complete (`{ score: 'E', reasoning, error }`) while numeric and `'N'` entries remain `{ score }`, so a class-embedded failure keeps its explanation.
   - Raw restoration: `validateRaw(json, mode)` rejects missing item/artifact identity and, in full mode, an artifact without its own `content`/`contentHash` keys. `fromJSON(json, mode)` restores once in the requested mode and normalises redacted partial content/hash to explicit `null`. Criterion-completeness and assessment-map validation are enforced by `AssignmentCurrentRestoration` during marker-1 restoration, not by this additive layer.
-  - Boundary wiring: the acquisition and extraction owners invoke `setError()` (Section 4); wiring the assessment boundary remains Section 6 work. See [rehydration.md](rehydration.md) for read-time cause selection.
+  - Boundary wiring: the acquisition, extraction and assessment owners invoke `setError()` (Sections 4 and 6). See [rehydration.md](rehydration.md) for read-time cause selection.
 - Acquisition pagination and student-document outcomes (`Assignment.fetchSubmittedDocumentsByMimeType`)
   - Status: `Implemented` (backend, Section 4)
   - Owning path: `src/backend/AssignmentProcessor/Assignment/04_AssignmentSubmissions.js`.
@@ -43,17 +43,19 @@
   - Budget and backoff: at most three total dispatches per request, including its initial `fetchAll` batch attempt. Wait 5,000 ms before attempt two and 7,500 ms before attempt three; never sleep after the final attempt. A thrown batch call counts as attempt one for every member. Retries are sequential per-member `UrlFetchApp.fetch` calls and are never re-batched. Constructor-owned retry and native UrlFetch defaults apply only to omitted fields, so supplied `false`/`null`/empty values survive projection.
   - Classification: only network exceptions, HTTP 429 and HTTP 500–599 retry. Every response received in a batch is classified before any retry dispatch, so a caller stop response prevents further calls while successes already received in that batch are retained. Accepted and stop statuses are caller policy: LLM accepts 200/201 and stops on 401/403/404; image downloads accept only 200 and declare no stop statuses, so a student-image 403 is not an LLM-wide stop.
   - Outcomes: each final outcome carries the request UID plus either the final response or the original final network error, and its attempt count. A later network failure never returns an earlier 429/5xx response. `sendRequestsInBatches()` returns no run-wide collection: it consumes each completed batch through `onBatchComplete` before dispatching another, and returning exactly `false` stops any later retries and batches (retries already performed in the consumed batch are not cancelled); other callback return values continue. Unknown/duplicate identities and callback, routing or programming faults throw instead of becoming network retries. Diagnostics are limited to UID, status and attempt metadata.
-  - Caller adaptation: `LLMRequestManager.processStudentResponses()` sends one full request list at the configured assessor batch size, rejects duplicate input UIDs and unknown/duplicate outcome UIDs before routing, applies accepted outcomes before failures in the same batch, and latches a 401/403/404 stop so no later batch dispatches. Its existing validation-triggered single-request transport call uses the same LLM status policy; semantic validation retry remains until Section 6. `ImageManager.fetchImagesAsBlobs()` sends one full round-robin list at the configured Slides batch size and reads final 200 blobs before the next batch; blob-read faults escape by identity. These outcomes are internal GAS runtime objects: no public API, persistence or LLM request/response body shape changed.
+  - Caller adaptation: `LLMRequestManager.processStudentResponses()` sends one full request list at the configured assessor batch size, rejects duplicate input UIDs and unknown/duplicate outcome UIDs before routing, applies accepted outcomes before failures in the same batch, and latches a 401/403/404 stop so no later batch dispatches. It adds no semantic validation retry: an invalid successful response is terminal. The batch callback retains each outcome's attempt count in an invocation-local map so non-accepted outcomes distinguish stop-cancelled work (unspent budget, `LLM_RUN_STOPPED`) from genuine exhaustion (`attempts === maxAttempts`, `LLM_UNAVAILABLE`); missing/invalid provenance throws before catalogue mutation. After a stop, never-dispatched eligible items are terminalised without further HTTP. `ImageManager.fetchImagesAsBlobs()` sends one full round-robin list at the configured Slides batch size and reads final 200 blobs before the next batch; blob-read faults escape by identity. These outcomes are internal GAS runtime objects: no public API, persistence or LLM request/response body shape changed.
 - Scoped image outcomes (`ImageManager`)
   - Status: `Not implemented` (Section 7; shared transport adaptation delivered in Section 5)
   - Current: `fetchImagesAsBlobs()` reuses the shared sender with the explicit Slides-fetch batch size, accepted `[200]` and no stop statuses, preserving document round-robin order. Final 200 blobs are read before the next batch; final non-200/network outcomes are logged with UID/status/attempt metadata only, and blob-read faults propagate unchanged. Scoped failure materialisation and writeback invalidation remain pending: a failed download still leaves artefact content null, and `writeBackBlobs()` still catches and warns on `setContentFromBlob` faults.
   - Planned owning path (Section 7): `src/backend/RequestHandlers/ImageManager.js` — assign scoped final failures from the shared outcomes. Expected download, missing required source and blob/content decode failures become student-task `IMAGE_HYDRATION_FAILED` E, or a blocking shared reference/template failure according to scope. Successful writeback updates the artefact hash and invalidates stale assessments/feedback on a reused item. A matched IMAGE with a student page and `metadata.sourceUrl` is valid pending internal state, never a completed result; a missing IMAGE match is already extraction `SOURCE_CONTENT_UNAVAILABLE` E (Section 4). Unmatched or duplicate UIDs, missing model methods and other wiring faults throw. No second retry or hydration manager.
-- Assessment cache identity and hit validation (`LLMRequestManager`)
-  - Status: `Not implemented` (planned extension of the existing owner)
-  - Current: `generateRequestObjects()` derives the cache key from the reference and student hashes only (`CacheManager.generateCacheKey`), reads hits through `getCachedAssessment()` without validating them, and `_assignAndCacheAssessment()` writes successful LLM data back through `setCachedAssessment()`.
-  - Planned owning path: `src/backend/RequestHandlers/LLMRequestManager.js` — own assessment-specific key derivation and cache-hit result validation beside request generation. Use one versioned assessment cache identity derived from task type, reference hash, template hash and student-content hash, and retain that identity with the request through writeback. Validate cache hits with the same successful-result validator as live LLM output; a malformed cached result is logged and treated as a miss, then assessed normally. Cache only validated numeric LLM results; never cache E or transport failures. Reuse generic `CacheManager.get/put` for storage and leave those generic operations unchanged (no assessment-specific validation inside them). No second cache module, no cache purge: old key-space entries are misses.
-  - Wrapper removal: delete `CacheManager.generateCacheKey()`, `getCachedAssessment()` and `setCachedAssessment()` once `LLMRequestManager` — their sole production caller — moves to generic `get/put`; do not retain dead wrappers for their tests. Generic `get()`/`put()` behaviour is unchanged, and the shared six-hour TTL stays owned and exposed by `CacheManager.CACHE_EXPIRY_SECONDS`; LLM writeback passes that value explicitly to `put`, as other cache users already do, with no duplicated TTL constant or default. Removing the wrappers takes `CacheManager` from 116 to about 75 lines.
-  - Test ownership: move wrapper-specific key and assessment-cache assertions to the LLM cache suite before deleting the obsolete wrapper tests; the generic `CacheManager` suite keeps `get`/`put`, malformed-cache/best-effort and shared-TTL regression coverage.
+- LLM terminal assessment outcomes and validated cache reuse (`LLMRequestManager`)
+  - Status: `Implemented` (backend, Section 6)
+  - Owning paths: `src/backend/RequestHandlers/LLMRequestManager.js` owns terminal outcome mapping, assessment-specific key derivation and cache-hit result validation beside request generation; `src/backend/RequestHandlers/CacheManager.js` remains the generic best-effort `get`/`put` owner.
+  - Terminal outcomes: successful 200/201 responses are read, parsed and validated once; invalid JSON/structure becomes atomic `LLM_INVALID_RESPONSE`. Permanent failures become `LLM_HTTP_FAILED`, genuinely exhausted retryable/network work becomes `LLM_UNAVAILABLE`, and 401/403/404 (plus stop-cancelled pending work and never-dispatched eligible items) become `LLM_RUN_STOPPED`. No semantic retry remains. Missing/invalid routed attempt provenance throws before catalogue mutation.
+  - Behaviour: `generateRequestObjects()` derives one versioned assessment identity from the literal version tag `v1`, the task type and the reference, template and student content hashes. It retains that opaque key on the routed request entry and reuses the retained value at writeback, so later fingerprint changes do not recompute it. Old key spaces are misses; there is no purge or migration.
+  - Cache reads and writes use generic `CacheManager.get()` / `put()`. LLM writeback passes `CacheManager.CACHE_EXPIRY_SECONDS` explicitly; that constant remains the single shared six-hour TTL owner, with no duplicated TTL constant or default. Generic `get()`/`put()` behaviour and native best-effort failures are unchanged.
+  - Cache hits are validated by the same successful-result validator as live output: exactly the three own canonical numeric criteria, each reusing `Assessment.isValidRawResult` and requiring a numeric score. A malformed, `N` or `E` hit is logged as a miss and the item is assessed live. Only validated numeric LLM results are cached; `E` results and transport failures never are.
+  - The obsolete `CacheManager.generateCacheKey()`, `getCachedAssessment()` and `setCachedAssessment()` wrappers are removed with their sole production caller. The generic `CacheManager` suite keeps `get`/`put`, malformed-cache/best-effort and shared-TTL regression coverage; LLM key/hit assertions live in the LLM cache suites.
 - Read serializer for direct full assignment transport (`AssignmentSerialisation.toReadJSON`)
   - Status: `Implemented` (backend, Section 2)
   - Owning paths: `src/backend/AssignmentProcessor/Assignment/00_AssignmentSerialisation.js` and the `Assignment.toReadJSON()` facade delegation in `src/backend/AssignmentProcessor/Assignment/index.js`.
@@ -745,20 +747,22 @@ assignment.submissions = [
 
 **Method**: `generateRequestObjects(assignment)`
 
-- **Location**: Lines 24-105
+- **Location**: `src/backend/RequestHandlers/LLMRequestManager.js`
 - **Purpose**: Creates HTTP request objects for LLM API calls
 - **Process**:
-  1. Initialises counters and UID index
+  1. Initialises counters and the generated UID route index
   2. Gets backend URL and API key from configuration
   3. For each submission's items:
      - Gets task definition and artifact type
      - Skips SPREADSHEET types (handled by SheetsAssessor)
-     - Checks for "not attempted" (student hash equals template hash)
-       - If not attempted, creates special assessment and skips LLM
-     - Checks cache using reference and student content hashes
-       - If cached, assigns cached assessment and skips LLM
-     - If no cache hit, creates request object
-  4. Builds UID index for response routing
+     - Preserves a prior all-three `E` result verbatim without dispatch
+     - Requires usable non-empty string hashes on the reference, template and student artefacts; a null/empty hash throws before lookup or dispatch
+     - Checks for "not attempted" (student hash equals template hash, or blank work)
+       - If not attempted, creates the `N` assessment and skips LLM
+     - Builds the versioned cache identity from task type plus reference/template/student hashes and reads generic `CacheManager.get()`
+       - A hit is accepted only after shared numeric validation; a malformed/`N`/`E` hit is logged as a miss
+     - If no cache hit, creates the request object and records the retained key on the route entry
+  4. Rejects duplicate generated UIDs before returning
   5. Returns array of request objects
 - **Request Object Structure**:
 
@@ -785,22 +789,27 @@ assignment.submissions = [
 
 - **Purpose**: Sends requests through the shared batch transport and applies final outcomes
 - **Process**:
-  1. Returns before input validation when `requests` is empty; otherwise validates the assignment and rejects duplicate request UIDs.
+  1. Resets the run-stop latch and the routed-attempt provenance map. Returns before input validation when `requests` is empty; otherwise validates the assignment and rejects duplicate request UIDs.
   2. Calls `sendRequestsInBatches()` once with the configured assessor batch size, accepted statuses `[200, 201]` and stop statuses `[401, 403, 404]`.
-  3. For each completed batch, rejects unknown/duplicate outcome UIDs, records a run stop when any outcome is 401/403/404, applies accepted responses before non-success outcomes, and routes each outcome by its retained request UID.
+  3. For each completed batch, rejects unknown/duplicate outcome UIDs, records a run stop when any outcome is 401/403/404, applies accepted responses before non-success outcomes, and routes each outcome by its retained request UID. Immediately before routing, it records that outcome's attempt count in the invocation-local map.
   4. Returns exactly `false` to the sender when stopped, preventing later batches while completed same-batch successes are retained.
+  5. After the sender returns, if the run stopped, terminalises every eligible item that was never routed as `LLM_RUN_STOPPED` with no further HTTP.
 
 **Method**: `_processSingleResponse(response, request, assignment)`
 
 - **Process**:
-  1. Checks HTTP response code
-  2. Parses JSON response body
-  3. Validates assessment structure
-  4. Extracts UID from request
-  5. Looks up submission and item from UID index
-  6. Assigns assessment artifacts to item via `_assignAssessmentArtifacts()`
-  7. Caches successful assessments
-  8. Handles validation failures with the existing semantic retry (retained until Section 6)
+  1. Resolves the routed entry and item by UID; a missing route throws.
+  2. For a null or non-accepted response, reads the attempt count retained by the batch callback. Requires a safe integer in `1..maxAttempts`; missing, `undefined`/`null`, numeric-string, fractional, non-finite, unsafe-integer or out-of-budget provenance throws a contextual `Error` naming the UID before any mutation.
+  3. Maps the non-accepted outcome through `_terminalCodeFor`: stop status → `LLM_RUN_STOPPED`; permanent status → `LLM_HTTP_FAILED`; retryable/network with a spent budget (`attempts === maxAttempts`) → `LLM_UNAVAILABLE`; retryable/network with unspent budget (pending retries cancelled by a same-batch stop) → `LLM_RUN_STOPPED`. Calls `item.setError('assessment', code)` atomically.
+  4. For an accepted response, reads `getContentText()` outside the catch, then catches only `JSON.parse`.
+  5. Rejects non-object roots and raw criterion keys that are not admissible case-insensitive canonical identities before normalisation, so inherited-key, extra-key and colliding case-variant evidence cannot be erased.
+  6. Normalises keys, validates the result once through `validateAssessmentData()` (exact own canonical keys, each `Assessment.isValidRawResult` and numeric), and assigns the three `Assessment` instances.
+  7. Writes the validated numeric result through generic `CacheManager.put()` at the retained generation-time key with `CacheManager.CACHE_EXPIRY_SECONDS`. There is no semantic retry and no partial salvage.
+
+**Method**: `_terminaliseUnprocessedItems(processedUids)`
+
+- **Purpose**: Completes a stopped run without extra HTTP
+- **Process**: iterates the generated UID route map and calls `setError('assessment', 'LLM_RUN_STOPPED')` for every eligible item whose UID was not routed. A missing route map, entry or item throws; earlier-batch and same-batch outcomes, cached results and genuine `N` results are never touched.
 
 **Method**: `_assignAssessmentArtifacts(item, assessmentData)`
 
@@ -1160,12 +1169,14 @@ submission.items["task_001"] = {
 
 ### LLM Assessment Cache
 
-- **Manager**: `CacheManager`
-- **Location**: `src/backend/RequestHandlers/CacheManager.js`
-- **Key**: `{referenceHash}_{studentHash}`
-- **Stored**: Assessment objects (completeness, accuracy, spag)
+- **Manager**: `CacheManager` (generic `get`/`put`) with assessment identity owned by `LLMRequestManager`
+- **Location**: `src/backend/RequestHandlers/CacheManager.js`, `src/backend/RequestHandlers/LLMRequestManager.js`
+- **Key**: versioned hash of literal `v1`, task type, and the reference, template and student content hashes. The key is computed once at request generation and retained on the route entry through writeback.
+- **Stored**: validated numeric assessment results (completeness, accuracy, spag) as JSON. `E` results and transport failures are never cached.
+- **Validation**: hits use the same successful-result validator as live output; malformed, `N` or `E` entries are logged misses and re-assessed.
+- **TTL**: `CacheManager.CACHE_EXPIRY_SECONDS` (shared six-hour constant) passed explicitly by the LLM writeback; no duplicate default.
 - **Purpose**: Avoid re-assessing identical student responses
-- **Invalidation**: When reference content changes (new hash)
+- **Invalidation**: A change in task type or any reference/template/student content hash yields a new key. Old key spaces are misses; there is no purge or migration. Cache read/write failures remain logged best-effort and never define authoritative success.
 
 ### Assignment Definition Cache
 
@@ -1239,15 +1250,17 @@ AssignmentController.processSelectedAssignment()
   │   └─ Assignment.assessResponses()
   │       ├─ [If SLIDES/TEXT]: LLMRequestManager flow
   │       │   ├─ LLMRequestManager.generateRequestObjects()
-  │       │   │   ├─ CacheManager.getCachedAssessment() [for each item]
+  │       │   │   ├─ CacheManager.get() [versioned v1/type/reference/template/student key]
   │       │   │   └─ Build HTTP request objects
   │       │   └─ LLMRequestManager.processStudentResponses()
   │       │       ├─ BaseRequestManager.sendRequestsInBatches()
   │       │       │   ├─ UrlFetchApp.fetchAll() [per batch]
   │       │       │   └─ UrlFetchApp.fetch() [sequential member retries]
+  │       │       ├─ Record attempt provenance per routed outcome
   │       │       ├─ Process each final outcome by request UID
-  │       │       ├─ Assign assessments to items
-  │       │       └─ CacheManager.cacheAssessment() [for each]
+  │       │       ├─ Assign validated numeric assessments
+  │       │       ├─ CacheManager.put(..., CacheManager.CACHE_EXPIRY_SECONDS) [for each]
+  │       │       └─ Terminalise never-dispatched items after a run stop
   │       └─ [If SHEETS]: SheetsAssessor.assessResponses()
   │           └─ SheetsAssessor.assessFormulaeTasks() [for each item]
   ├─ Assignment.touchUpdated()

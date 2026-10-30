@@ -800,14 +800,25 @@ Test document parsing logic for Slides and Sheets:
 Test API interactions and caching:
 
 - **baseRequestManager** (`baseRequestManager.test.js`, `baseRequestManager.policy.test.js`, `baseRequestManager.batching.test.js`): shared transport retry budget, status policy, outcome identity and per-batch dispatch/consumption.
-- **assignmentPhase3** and **assignmentPhase3.transport**: LLM request generation, connected caller policy, run-stop and per-batch routing.
+- **assignmentPhase3** and **assignmentPhase3.transport**: connected LLM caller policy, request generation, run-stop routing and per-batch consumption. The transport companion retains the caller-boundary stop/validation/UID controls.
+- **LLM terminal-outcome suites** (seven focused files, all sharing the real `BaseRequestManager`, `LLMRequestManager`, `Assessment` and item owners):
+  - `llmRequestManager.eligibility.test.js` — prior all-three `E` bypass, usable-hash invariant, template/blank `N`, SPREADSHEET skip, and generated/unknown/duplicate request UID guards.
+  - `llmRequestManager.outcomes.test.js` — healthy 200/201 once-only read/parse/validate/assign, malformed JSON/root/criteria atomic `LLM_INVALID_RESPONSE`, raw case-collision admission through the real `Utils` normaliser, and body-reader fault identity.
+  - `llmRequestManager.failures.test.js` — permanent 400/413/422, retryable/network exhaustion, and original-identity propagation from item mutation, normaliser, routing, cache-put and value serialisation.
+  - `llmRequestManager.runStop.test.js` — canonical multi-item healthy controls, 401/403/404 initial/retry stop rows, stop-cancelled versus genuinely exhausted attempts, and cached/`N` survival.
+  - `llmRequestManager.cache.test.js` — cold/live/fresh-warm reuse, versioned type/reference/template/student key sensitivity, historical-key miss, retained write identity, and native read/write outage or malformed native JSON.
+  - `llmRequestManager.cacheValidation.test.js` — structured invalid/`N`/`E` cache hits become logged misses and are re-requested through the shared numeric validator, including bounded diagnostics.
+  - `llmRequestManager.provenance.test.js` — missing attempt provenance after genuine HTTP or network exhaustion throws contextually before `setError`, with no service `E` or cache write.
+- **LLM test harnesses** (test-only): `tests/helpers/llmRequestManagerHarness.js` owns the shared real-runtime/native-cache/model setup and transport runners; `tests/helpers/llmRunStopHarness.js` owns the canonical multi-item run-stop fixture and scenario setup. They are composition helpers, not production modules.
+- **CacheManager** (`CacheManager.test.js`): generic `get`/`put`, faithful native round trips, explicit caller/shared TTL, logged native failures and real serialisation-fault propagation. Assessment-specific key/hit assertions live in the LLM suites; the obsolete assessment wrappers are not tested here.
 - **imageManagerPhase5** and **imageManagerCoverage**: image collection, round-robin transport and blob writeback.
 
 **Key patterns**:
 
-- Mock external APIs (LLM, Drive)
-- Test caching behaviour
-- Verify batch processing, bounded retries and caller status policy
+- Mock only external seams (LLM HTTP, script cache, Drive); keep the real domain models, shared transport and normaliser in the chain where the suite claims their contract.
+- Test caching behaviour through generic `CacheManager.get`/`put` and the retained LLM identity, not a reimplemented key format.
+- Verify batch processing, bounded retries, caller status policy and terminal task outcomes.
+- Hermetic native stubs prove the owned boundary only; they do not prove live GAS/LLM/network behaviour, deployed logging fidelity, cache expiry, durable persistence or the original incident cause.
 
 ### 5. Assignment Tests (`tests/assignment/`)
 

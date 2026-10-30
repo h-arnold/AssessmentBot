@@ -8,6 +8,8 @@ Backend model: `src/backend/AssignmentProcessor/Assignment/index.js` (facade)
 Serialisation: `src/backend/AssignmentProcessor/Assignment/00_AssignmentSerialisation.js`
 Read projection: `src/backend/AssignmentProcessor/Assignment/02_AssignmentReadProjection.js`
 Marker-1 restoration: `src/backend/AssignmentProcessor/Assignment/02_AssignmentCurrentRestoration.js`
+Assessment-stage producer: `src/backend/RequestHandlers/LLMRequestManager.js` (LLM terminal outcomes, shared live/cache numeric validation and internal cache identity)
+Generic cache: `src/backend/RequestHandlers/CacheManager.js` (generic best-effort `get`/`put` and the shared `CACHE_EXPIRY_SECONDS`)
 Collections: `assign_full_<courseId>_<assignmentId>` (full records only — no partial registry)
 API handlers: `src/backend/z_Api/assignmentAssessment.js`
 Response mapper: Transport transformations applied by `src/backend/y_controllers/ABClassController/ABClassResponseMapper._toReadView()` (for `getABClass` embedding) — not part of Assignment's own serialisation.
@@ -283,7 +285,7 @@ submitted artifact, assessments, and feedback.
 
 Key notes:
 
-- `setError(stage, code)` replaces all three canonical criteria with the catalogue `'E'` result for that stage/code and clears `feedback`; it is the atomic task-wide error primitive. The acquisition and extraction boundaries now invoke it (Section 4); wiring the assessment boundary remains later work. See [§Acquisition and extraction outcomes](#acquisition-and-extraction-outcomes-implemented).
+- `setError(stage, code)` replaces all three canonical criteria with the catalogue `'E'` result for that stage/code and clears `feedback`; it is the atomic task-wide error primitive. The acquisition, extraction and assessment boundaries now invoke it (Sections 4 and 6). See [§Acquisition and extraction outcomes](#acquisition-and-extraction-outcomes-implemented) and [§LLM assessment outcomes and validated cache reuse](#llm-assessment-outcomes-and-validated-cache-reuse-implemented).
 - `_deriveId()` generates a stable hash from `taskId` + artifact UID (falling back to `contentHash`), truncated to 16 hex characters prefixed with `ssi_`.
 - The `documentId` and `pageId` are intentionally omitted from `StudentSubmissionItem.toJSON()` — the parent submission holds `documentId`, and the artifact contains `pageId`.
 
@@ -336,6 +338,7 @@ Key notes:
 - `new Assessment(score, reasoning, error)` and `Assessment.fromJSON(json)` validate the union. They reject NaN/`±Infinity`, numeric scores outside 0–5, `E` without a valid cause or with blank reasoning, malformed causes, non-string reasoning, and `error` metadata on numeric/`'N'` results.
 - `Assessment.createError(stage, code)` constructs an `E` result using the catalogue's canonical reasoning; an unknown stage/code pair throws. A caller may also construct `E` directly with the same valid cause and its own non-blank reasoning.
 - `fromJSON()` ignores unrelated extra fields but still validates `score`, `reasoning` and `error`; it never silently repairs an invalid result.
+- The assessment-stage LLM producer uses `setError('assessment', code)` for `LLM_INVALID_RESPONSE`, `LLM_HTTP_FAILED`, `LLM_UNAVAILABLE` and `LLM_RUN_STOPPED`, replacing all three criteria atomically with the catalogue reasoning. That producer adds no field to this shape, no catalogue entry and no change to the validators; see [§LLM assessment outcomes and validated cache reuse](#llm-assessment-outcomes-and-validated-cache-reuse-implemented).
 - `AssessmentSchema` aliases `assessmentResultSchema` and `PartialAssessmentEntrySchema` aliases `partialAssessmentResultSchema`, so both read schemas enforce the finite fractional 0–5 range, the `'E'` branch and the non-blank E reasoning refinement. Both read services run the read normaliser, so the contextual item/source checks are active at runtime; see [Known discrepancies](#known-discrepancies).
 
 ### Feedback
@@ -609,8 +612,8 @@ The full and partial schemas on the frontend are:
 
 ## Planned contract additions — explicit Assessment errors and result-format marker (partially implemented)
 
-> **Status: Sections 1–3 implemented; the Section 4 acquisition/extraction slice is implemented;
-> later-section slices remain planned.** Section 1
+> **Status: Sections 1–4 implemented; the Section 6 LLM/cache terminal-completion slice is
+> implemented; later-section slices remain planned.** Section 1
 > delivered the `Assessment` result/cause primitives, `StudentSubmissionItem.setError()` and
 > partial `E` retention, plus the shared frontend `assessmentResult.zod.ts` schemas. Section 2b
 > delivered marker-1 CURRENT backend restoration (`AssignmentCurrentRestoration`) with raw
@@ -637,11 +640,16 @@ The full and partial schemas on the frontend are:
 > `SOURCE_UNREADABLE`/`UNSUPPORTED_DOCUMENT`/`SOURCE_CONTENT_UNAVAILABLE` producers, terminal
 > failure materialisation for known tasks, and the explicit-null page-ID contract (see
 > [§Acquisition and extraction outcomes](#acquisition-and-extraction-outcomes-implemented)).
-> Remaining planned slices: LLM/cache terminal completion (Section 6), scoped image hydration
-> (Section 7), completed-write preflight/gates and completion-time marker stamping (Section 8)
-> and preview error states (Section 9). Null-hash template comparison remains Section 6 work,
-> image hydration remains Section 7 work, and `PARSE_FAILED` remains a reserved catalogue code
-> with no forced Section 4 producer. Related companions: [Contract: AssignmentDefinition §Definition artefact
+> Section 6 delivered the assessment-stage terminal outcomes and validated cache reuse: live and
+> cached successful bodies share one numeric validator, invalid/HTTP/network/run-stop outcomes
+> replace all three criteria atomically, and a versioned internal cache identity is retained
+> through generic `get`/`put` writeback (see
+> [§LLM assessment outcomes and validated cache reuse](#llm-assessment-outcomes-and-validated-cache-reuse-implemented)).
+> Remaining planned slices: scoped image hydration (Section 7), completed-write preflight/gates
+> and completion-time marker stamping (Section 8) and preview error states (Section 9). The
+> Section 6 null/empty-hash stored-content invariant and LLM/cache terminal completion are
+> implemented; image hydration remains Section 7 work, and `PARSE_FAILED` remains a reserved
+> catalogue code with no forced producer. Related companions: [Contract: AssignmentDefinition §Definition artefact
 > availability](assignment-definition.md#definition-artefact-availability-and-pending-image-exception-implemented-at-definition-writes),
 > [Contract: ABClass §Planned embedded result marker and E
 > projections](abclass.md#planned-contract-additions--embedded-result-marker-and-e-projections-implemented),
@@ -664,15 +672,19 @@ and are now consumed by both read schemas (`AssessmentSchema` and
 Implemented primitive:
 
 - **Atomic task-wide failures.** `StudentSubmissionItem.setError(stage, code)` replaces all
-  three canonical criteria with the catalogue `E` result and clears feedback. The acquisition and
-  extraction boundaries invoke it (Section 4); wiring the assessment boundary remains Section 6
-  work.
+  three canonical criteria with the catalogue `E` result and clears feedback. The acquisition,
+  extraction and assessment boundaries invoke it (Sections 4 and 6); the assessment-stage
+  producer is documented under
+  [§LLM assessment outcomes and validated cache reuse](#llm-assessment-outcomes-and-validated-cache-reuse-implemented).
 
 Remaining planned invariants and staged read rules:
 
 - **Exactly the canonical criteria.** A completed task's `assessments` record contains exactly
   `completeness`, `accuracy` and `spag`. Internal in-flight items may be incomplete, but
-  completed persistence must reject an incomplete or extra-key record.
+  completed persistence must reject an incomplete or extra-key record. LLM live and cached
+  successful results already require exactly those three numeric criteria through the shared
+  validator (Section 6); completed-persistence rejection of an incomplete or extra-key stored
+  record remains Section 8.
 - **Read-time criterion corruption is isolated per item (implemented for marker-1 CURRENT
   backend restoration).** On both full and partial marker-1 reads,
   `AssignmentCurrentRestoration` replaces an item whose criterion map is incomplete or contains
@@ -779,15 +791,16 @@ transport or the legacy reassessment projection.
 
 Full-artefact rules:
 
-| Situation                                                                             | `content`                           | `contentHash`         | Notes                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
-| ------------------------------------------------------------------------------------- | ----------------------------------- | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Successfully read blank/all-null `SPREADSHEET` grid (blank template or student range) | `[]`                                | Normal hash of `[]`   | **Implemented** in `SpreadsheetTaskArtifact.normalizeContent()`; canonicalisation applies through construction, persistence and restoration. Literal `null` means unavailable content, not blank content. Existing populated-formula normalisation is unchanged.                                                                                                                                                                                          |
-| `SPREADSHEET` content unavailable                                                     | `null`                              | `null`                | At the actual extraction boundary, confirmed unavailable content creates an extraction `SOURCE_CONTENT_UNAVAILABLE` `E`. A current-format full read that instead finds null content beside numeric/`N` marks converts all three results to validation `CORRUPT_RECORD` `E` (see the full-content consistency rule below). A `null` hash is never a usable content fingerprint and must not match another `null` hash for template-match or `N` decisions. |
-| Non-blank `SPREADSHEET` grid                                                          | Existing canonicalised 2D grid      | Existing content hash | Formula canonicalisation (space stripping, uppercasing) and trailing-row/column trimming are unchanged.                                                                                                                                                                                                                                                                                                                                                   |
-| Full submission artefact for an acquisition/extraction/validation `E`                 | `null` allowed                      | `null` allowed        | The placeholder uses the canonical model constructor with the known task/student association, explicit null content/hash and validated source identifiers when available.                                                                                                                                                                                                                                                                                 |
-| Assessment-only `E`                                                                   | Successfully extracted content kept | Existing hash kept    | An error in marking does not imply that the source preview is unavailable.                                                                                                                                                                                                                                                                                                                                                                                |
-| Assessment-stage `E` with null full content                                           | `null` stored                       | `null` stored         | Contradictory stored record. An existing assessment-stage `E` with null full content remains a validation `CORRUPT_RECORD` `E`, not an accepted assessment-only error; it is never relabelled as `SOURCE_UNREADABLE` and no historical extraction cause is inferred. Partial redaction is exempt.                                                                                                                                                         |
-| Partial artefact projection                                                           | `null`                              | `null`                | Deliberate redaction. It is never evidence of extraction failure and is exempt from the full-content consistency check.                                                                                                                                                                                                                                                                                                                                   |
+| Situation                                                                             | `content`                           | `contentHash`             | Notes                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| ------------------------------------------------------------------------------------- | ----------------------------------- | ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Successfully read blank/all-null `SPREADSHEET` grid (blank template or student range) | `[]`                                | Normal hash of `[]`       | **Implemented** in `SpreadsheetTaskArtifact.normalizeContent()`; canonicalisation applies through construction, persistence and restoration. Literal `null` means unavailable content, not blank content. Existing populated-formula normalisation is unchanged.                                                                                                                                                                                          |
+| `SPREADSHEET` content unavailable                                                     | `null`                              | `null`                    | At the actual extraction boundary, confirmed unavailable content creates an extraction `SOURCE_CONTENT_UNAVAILABLE` `E`. A current-format full read that instead finds null content beside numeric/`N` marks converts all three results to validation `CORRUPT_RECORD` `E` (see the full-content consistency rule below). A `null` hash is never a usable content fingerprint and must not match another `null` hash for template-match or `N` decisions. |
+| Non-blank `SPREADSHEET` grid                                                          | Existing canonicalised 2D grid      | Existing content hash     | Formula canonicalisation (space stripping, uppercasing) and trailing-row/column trimming are unchanged.                                                                                                                                                                                                                                                                                                                                                   |
+| Full submission artefact for an acquisition/extraction/validation `E`                 | `null` allowed                      | `null` allowed            | The placeholder uses the canonical model constructor with the known task/student association, explicit null content/hash and validated source identifiers when available.                                                                                                                                                                                                                                                                                 |
+| Assessment-only `E`                                                                   | Successfully extracted content kept | Existing hash kept        | An error in marking does not imply that the source preview is unavailable.                                                                                                                                                                                                                                                                                                                                                                                |
+| Stored reference/template/student content offered to the LLM                          | required by role                    | required non-empty string | `LLMRequestManager` treats a null or empty hash as an internal invariant fault before cache lookup or dispatch; it is not an assessment `E`, a cache miss, a live fallback or a template-match `N` (Section 6).                                                                                                                                                                                                                                           |
+| Assessment-stage `E` with null full content                                           | `null` stored                       | `null` stored             | Contradictory stored record. An existing assessment-stage `E` with null full content remains a validation `CORRUPT_RECORD` `E`, not an accepted assessment-only error; it is never relabelled as `SOURCE_UNREADABLE` and no historical extraction cause is inferred. Partial redaction is exempt.                                                                                                                                                         |
+| Partial artefact projection                                                           | `null`                              | `null`                    | Deliberate redaction. It is never evidence of extraction failure and is exempt from the full-content consistency check.                                                                                                                                                                                                                                                                                                                                   |
 
 Rules:
 
@@ -811,6 +824,11 @@ Rules:
   assessment-stage `E` whose full record carries null content remains a contradictory stored
   record and becomes validation `CORRUPT_RECORD` `E`; it is not accepted as an assessment-only
   error. Partial artefact redaction is exempt from this full-content consistency check.
+- Any stored reference, template or student content offered to the LLM must carry a usable
+  non-empty string `contentHash`. A null or empty hash is an internal invariant fault, thrown
+  before cache lookup or dispatch; it is not an assessment `E`, a cache miss, a live fallback or
+  a template-match `N`. Prior all-three `E` results still bypass this check. See
+  [§LLM assessment outcomes and validated cache reuse](#llm-assessment-outcomes-and-validated-cache-reuse-implemented).
 - Confirmed no-submission is represented by parent `documentId: null` and an empty item map,
   not fabricated null-content `N` items (see [Completed submission coverage](#completed-submission-coverage-implemented-for-reads)).
 - Section 4 placeholders are consistent with these rules. A document-bearing extraction failure
@@ -905,6 +923,84 @@ Rules:
   caller/store-restoration tests with native services mocked and an explicit test-only marker
   where needed. They do not prove API transport, live GAS behaviour, image hydration or
   completion stamping.
+
+### LLM assessment outcomes and validated cache reuse (Implemented)
+
+Implemented in `src/backend/RequestHandlers/LLMRequestManager.js` (terminal outcomes, shared
+live/cache validation and internal cache identity) and `src/backend/RequestHandlers/CacheManager.js`
+(generic best-effort `get`/`put`). This slice adds no persisted field, no transport field, no
+service-envelope change, no run-status document and no schema-version change. It wires the
+existing assessment-stage catalogue into the existing atomic `StudentSubmissionItem.setError()`
+primitive; the LLM service request payload and response body are unchanged.
+
+| Situation                                                                                                                                | Scope         | Recorded result                                                                      | Source artefact                      | Notes                                                                                                                                                                                                                                                                                                                                                                     |
+| ---------------------------------------------------------------------------------------------------------------------------------------- | ------------- | ------------------------------------------------------------------------------------ | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Successful LLM response (HTTP 200/201) with exactly three criteria, each a finite 0–5 number and string reasoning                        | task          | three numeric `Assessment` results; reasoning preserved (empty allowed)              | content/hash retained                | Body read, parsed and validated once. No retry and no partial salvage. The validated numeric result is cached under the retained identity with the shared TTL.                                                                                                                                                                                                            |
+| Invalid JSON body                                                                                                                        | task          | `assessment` / `LLM_INVALID_RESPONSE` on all three criteria                          | content/hash retained                | One bounded diagnostic (opaque UID plus structural detail, never payload); no extra HTTP and no cache write. Only `JSON.parse` is caught; the native body read is outside the catch.                                                                                                                                                                                      |
+| Raw root or criterion keys not admissible before normalisation: non-object/array root, unknown raw key, or colliding case variants       | task          | `assessment` / `LLM_INVALID_RESPONSE` on all three criteria                          | content/hash retained                | The raw root is rejected before key normalisation can erase inherited-key, extra-key or case-collision evidence. No extra HTTP and no cache write.                                                                                                                                                                                                                        |
+| Structurally invalid successful body: missing/null/extra criterion, non-number or non-finite/out-of-range score, or non-string reasoning | task          | `assessment` / `LLM_INVALID_RESPONSE` on all three criteria                          | content/hash retained                | The shared validator requires exactly the three own canonical keys `completeness`, `accuracy` and `spag` (inherited or extra keys are rejected) and delegates each entry to `Assessment.isValidRawResult`, additionally requiring `typeof score === 'number'`. No semantic re-request and no partial criterion salvage.                                                   |
+| Permanent per-request HTTP failure (for example 400/413/422)                                                                             | task          | `assessment` / `LLM_HTTP_FAILED` on all three criteria                               | content/hash retained                | The shared transport does not retry non-retryable statuses; no body read and no cache write.                                                                                                                                                                                                                                                                              |
+| Exhausted retryable HTTP (429/500–599) or network/transport exhaustion                                                                   | task          | `assessment` / `LLM_UNAVAILABLE` on all three criteria                               | content/hash retained                | Only a genuinely spent budget (`attempts === maxAttempts`) is exhaustion. The shared transport budget is already spent; the LLM caller adds no dispatch, sleep or semantic retry.                                                                                                                                                                                         |
+| LLM 401/403/404                                                                                                                          | task, and run | `assessment` / `LLM_RUN_STOPPED` on the affected item; later dispatch is latched off | content/hash retained                | No abort toast or throw for an expected stop. Same-batch and earlier-batch completed numeric results, cached results and genuine `N` results survive unchanged. A retryable/network outcome whose pending retries were cancelled by a same-batch stop is `LLM_RUN_STOPPED`, not `LLM_UNAVAILABLE`.                                                                        |
+| Eligible item never dispatched after a run stop                                                                                          | task          | `assessment` / `LLM_RUN_STOPPED` on all three criteria                               | content/hash retained                | Terminalised by the stop sweep after the sender returns, with no further HTTP.                                                                                                                                                                                                                                                                                            |
+| Routed non-accepted outcome with missing or invalid attempt provenance                                                                   | run/wiring    | none — not an `Assessment` result                                                    | unchanged                            | The outcome must carry a safe integer `attempts` in `1..maxAttempts`. Missing, `undefined`/`null`, numeric-string, fractional, non-finite, unsafe-integer or out-of-budget provenance throws a contextual internal `Error` naming the UID and attempt provenance before `setError`/catalogue mapping. Broken wiring therefore produces no service `E` and no cache write. |
+| Prior all-three `E` result on the item                                                                                                   | task          | preserved verbatim; no dispatch and no overwrite                                     | content/hash retained                | The bypass runs before the hash invariant, cache lookup and dispatch. It recognises three `'E'` scores and relies on prior validation of their cause/reasoning rather than re-validating them here.                                                                                                                                                                       |
+| Genuine blank work (`content === ''`) or a usable-hash match with the template                                                           | task          | `N` / `'Task not attempted'` on all three criteria                                   | content/hash retained                | Requires usable hashes; a null or empty hash never establishes template `N`.                                                                                                                                                                                                                                                                                              |
+| Stored reference, template or student content without a usable non-empty string `contentHash`                                            | run/wiring    | none — not an `Assessment` result                                                    | content retained, no hash generation | `LLMRequestManager` throws an internal invariant `Error` naming the offending role and `taskId` before cache lookup or dispatch. It is not a cache miss, live fallback, new `E` or false `N`.                                                                                                                                                                             |
+| SPREADSHEET task                                                                                                                         | task          | none — not dispatched by the LLM                                                     | unchanged                            | Handled locally by `SheetsAssessor`.                                                                                                                                                                                                                                                                                                                                      |
+| Valid cache hit                                                                                                                          | task          | numeric `Assessment` results                                                         | content/hash retained                | Validated by the same successful-result validator as live output, then assigned without HTTP.                                                                                                                                                                                                                                                                             |
+| Malformed, `N` or `E` cache hit                                                                                                          | task          | logged miss, then the live outcome                                                   | content/hash retained                | Only validated numeric results are accepted from cache; the live validated result is written back at the retained key and shared TTL.                                                                                                                                                                                                                                     |
+| Cache-service read or write outage                                                                                                       | run           | logged best-effort miss or write failure; assessment result unaffected               | unchanged                            | Generic `CacheManager` behaviour is unchanged. Actual wiring, model-mutation and serialisation faults propagate with their original identity.                                                                                                                                                                                                                             |
+| Unknown or duplicate request UID                                                                                                         | run           | none — fail loudly                                                                   | —                                    | Rejected before arbitrary routing or mutation; duplicate input UIDs are rejected before dispatch.                                                                                                                                                                                                                                                                         |
+
+**Cache identity (internal, not a persisted or wire shape):**
+
+- The assessment cache key is derived inside `LLMRequestManager` as a hash of the literal
+  version tag `v1`, the task type, and the reference, template and student content hashes. It
+  is computed once during request generation and retained on the request entry through
+  writeback, so later fingerprint changes do not recompute it.
+- Reads and writes use generic `CacheManager.get()` / `put()`; writeback passes
+  `CacheManager.CACHE_EXPIRY_SECONDS` explicitly. That constant remains the single shared
+  six-hour TTL owner. Old key spaces are misses; there is no purge or migration.
+- The key, the retained identity and the run-stop latch are runtime state only. None is stored
+  in `assign_full_*`, transported, or represented as a schema version or persisted run status.
+
+Rules:
+
+- LLM outcomes are task-atomic: a failure replaces all three criteria together through
+  `setError()`, so stale numeric or `N` marks cannot survive beside the current failure.
+- A successfully extracted source is retained for assessment-stage `E`; a marking failure does
+  not imply unavailable source content.
+- Only validated numeric results are cached. `E` results and transport failures are never
+  cached.
+- There is no semantic retry: an invalid successful body is terminal, and no recursive
+  validation retry or second invalid-response budget remains.
+- The decode catch contains only `JSON.parse`. The native body read (`getContentText()`),
+  raw-root/criterion-key admission, key normalisation, shared validation, UID routing, model
+  mutation, cache wiring and serialisation all run outside it, so reader, wiring and
+  programming faults propagate with their original identity.
+- The batch callback records each routed outcome's attempt count in an invocation-local map
+  before processing. Non-accepted outcomes consume that provenance through
+  `_terminalCodeFor`: stop statuses map to `LLM_RUN_STOPPED`, permanent statuses to
+  `LLM_HTTP_FAILED`, and retryable/network outcomes distinguish a genuinely spent budget
+  (`attempts === maxAttempts`, `LLM_UNAVAILABLE`) from stop-cancelled pending retries
+  (`LLM_RUN_STOPPED`). The map holds numbers only and is reset per public invocation.
+- A missing or invalid provenance value is a wiring fault, not a service result: a value that
+  is not a safe integer in `1..maxAttempts` (including `undefined`, `null`, numeric strings,
+  fractions, `NaN`, infinities and unsafe integers) throws a contextual `Error` before
+  `setError` and before any catalogue mutation. No default attempt count, new cause or retry is
+  introduced.
+- No `ASSESSMENT_FAILED` producer is added by this slice. The current owner has no separate
+  ordinary assessment-failure boundary, and no blanket catch was introduced; the catalogue
+  entry remains available for a real boundary rather than being manufactured here.
+- Completion persistence, completion-time marker stamping and completion-with-errors feedback
+  remain Section 8 work; this slice leaves successfully completed runs without the marker until
+  then (see [Known discrepancies](#known-discrepancies) item 26).
+
+Proof boundary: these outcomes are established by hermetic native HTTP/cache mocks with real
+domain models and the real shared transport. They do not prove live GAS/LLM/network behaviour,
+deployed execution-log fidelity, cache expiry or eviction, durable persistence, completion-time
+stamping or the original production incident.
 
 ### Write boundary — preflight before any write (Not implemented)
 
@@ -1231,12 +1327,15 @@ gates remain pending.
    NaN/`±Infinity` and values outside 0–5. Both read schemas consume the shared union:
    `z.number().min(0).max(5)` (Zod 4 rejects NaN/`±Infinity`) plus `'N'`, and the `E` branch.
    Fractional scores are accepted.
-3. **`formulaComparison` is no longer persisted; exact-three-criteria completion is still
-   planned.** `SheetsAssessor` now writes only `completeness`, `accuracy` and `spag`; transient
-   comparison data stays assessor-local and cell-reference feedback remains in `feedback`. Both
-   assessment records still use `z.record(z.string(), ...)`, so a stored extra key is not rejected
-   by the frontend schema, and completed persistence rejecting an incomplete/extra-key record
-   remains **Misaligned** until Section 8. The `formulaComparison` removal itself is **Aligned**.
+3. **`formulaComparison` is no longer persisted; LLM live/cache results enforce exact-three
+   validation, while completed-persistence rejection remains planned.** `SheetsAssessor` now
+   writes only `completeness`, `accuracy` and `spag`; transient comparison data stays
+   assessor-local and cell-reference feedback remains in `feedback`. The LLM successful-result
+   validator requires exactly the three criteria and rejects missing/null/extra entries
+   (Section 6). Both assessment records still use `z.record(z.string(), ...)`, so a stored extra
+   key is not rejected by the frontend schema, and completed persistence rejecting an
+   incomplete/extra-key stored record remains **Misaligned** until Section 8. The
+   `formulaComparison` removal and the LLM-side validation are **Aligned**.
 4. **Partial projection retains E reasoning and the partial consumer validates it.**
    `_stripAssessmentReasoning()` preserves an `E` entry intact while numeric/`N`
    entries stay score-only. `PartialAssessmentEntrySchema` aliases the shared
@@ -1267,6 +1366,13 @@ gates remain pending.
 8. **Full `StudentSubmissionSchema.studentName` now accepts `null`, matching the backend's
    `string \| null` emission.** The partial schema was already nullable. Retain the field;
    historical notes calling it temporary do not authorise removal.
+9. **Section 6 LLM terminal outcomes and cache identity add no shape.** Assessment-stage
+   `LLM_INVALID_RESPONSE`, `LLM_HTTP_FAILED`, `LLM_UNAVAILABLE` and `LLM_RUN_STOPPED` results
+   use the existing `Assessment` `E` union and catalogue, and the cache key plus run-stop latch
+   are internal runtime state. There is no persisted run status, transport field, envelope
+   change, schema version or new catalogue entry; both frontend schemas already accept every
+   emitted assessment result. See
+   [§LLM assessment outcomes and validated cache reuse](#llm-assessment-outcomes-and-validated-cache-reuse-implemented).
 
 **Classification of the entries above:** the `Assessment` result/cause primitives, atomic
 `setError()`, partial `E` retention, both consumer schema activations, the required wire marker,
@@ -1274,9 +1380,10 @@ full `studentName` nullability, blank-grid canonicalisation, the definition-writ
 availability rules and formula-free reference rejection, removal of the persisted
 `formulaComparison` entry, marker-1 CURRENT backend restoration (read validation, coverage and
 null-parent isolation), the legacy read projection/opaque persistence, the frontend read
-normaliser activation, and the Section 4 acquisition/extraction `E` producers with terminal
-failure materialisation for known tasks are implemented. Completed-persistence gates (including
-completion-time marker stamping) and the preview slices remain pending. The acquisition
+normaliser activation, the Section 4 acquisition/extraction `E` producers with terminal failure
+materialisation for known tasks, and the Section 6 assessment-stage LLM producers with validated
+cache reuse are implemented. Completed-persistence gates (including completion-time marker
+stamping) and the preview slices remain pending. The acquisition
 placeholder now matches the null-parent read invariant and source conversion is placed at
 immediate native access (see [Known discrepancies](#known-discrepancies) items 23–24); item 26
 records the remaining completion-marker gap. None is a regression in the implemented backend
@@ -1338,6 +1445,15 @@ Document parsers:          src/backend/DocumentParsers/
   │                                                placeholder and matched pending IMAGE
   └── SheetsParser.js                           — failed-open sentinel and unavailable
                                                   range-read artefact
+
+Assessment-stage LLM:      src/backend/RequestHandlers/
+  ├── LLMRequestManager.js                     — terminal assessment outcomes, run-stop
+  │                                               terminalisation, shared live/cache numeric
+  │                                               validation and versioned internal cache
+  │                                               identity retained through writeback
+  └── CacheManager.js                          — generic best-effort get/put and shared
+                                                  CACHE_EXPIRY_SECONDS (assessment-specific
+                                                  wrappers removed)
 
 Controller:                src/backend/y_controllers/
   ├── AssignmentController.js                   — startAssessmentRun, processSelectedAssignment

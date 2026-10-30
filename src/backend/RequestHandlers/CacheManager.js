@@ -1,9 +1,12 @@
 /**
  * CacheManager Class
  *
- * Handles caching of assessment data to prevent redundant processing.
+ * Generic best-effort cache over the Apps Script script cache, shared by all cache
+ * consumers (authentication results, assessment results and others). It defines no
+ * domain-specific keys, validation or policy: consumers own their own key derivation
+ * and value validation.
  */
-// Single source of truth for the assessment/auth cache TTL (6 hours, in seconds).
+// Single source of truth for the shared cache TTL (6 hours, in seconds).
 const CACHE_EXPIRY_HOURS = 6;
 const CACHE_EXPIRY_SECONDS =
   CACHE_EXPIRY_HOURS * RuntimeConstants.MINUTES_PER_HOUR * RuntimeConstants.SECONDS_PER_MINUTE;
@@ -59,51 +62,6 @@ class CacheManager {
       ABLogger.getInstance().error('Error writing to cache:', error);
       // Don't throw — caching should be best-effort.
     }
-  }
-
-  /**
-   * Generates a unique cache key based on content hashes.
-   * @param {string} contentHashReference - Hash of the reference content.
-   * @param {string} contentHashResponse - Hash of the student's response content.
-   * @returns {string|null} The cache key, or null if either input is falsy.
-   */
-  generateCacheKey(contentHashReference, contentHashResponse) {
-    // If either input is falsy, return null to indicate no usable key.
-    if (!contentHashReference || !contentHashResponse) {
-      return null;
-    }
-
-    // Use a clear separator between the two hashes to make the raw key unambiguous
-    // before hashing. We still hash the combined string so the final cache key is
-    // a fixed-length SHA-256 hex string (64 chars) which stays well under Apps
-    // Script's 250-character cache key limit.
-    const raw = `${contentHashReference}::${contentHashResponse}`;
-    return Utils.generateHash(raw);
-  }
-
-  /**
-   * Retrieves cached assessment data if available.
-   * @param {string} contentHashReference - Hash of the reference content.
-   * @param {string} contentHashResponse - Hash of the student's response content.
-   * @returns {Object|null} The cached assessment data, or null if not found.
-   */
-  getCachedAssessment(contentHashReference, contentHashResponse) {
-    const cacheKey = this.generateCacheKey(contentHashReference, contentHashResponse);
-    if (!cacheKey) return null;
-    return this.get(cacheKey);
-  }
-
-  /**
-   * Stores assessment data in the cache.
-   * @param {string} contentHashReference - Hash of the reference content.
-   * @param {string} contentHashResponse - Hash of the student's response content.
-   * @param {Object} assessmentData - The assessment data to cache.
-   * @returns {void}
-   */
-  setCachedAssessment(contentHashReference, contentHashResponse, assessmentData) {
-    const cacheKey = this.generateCacheKey(contentHashReference, contentHashResponse);
-    if (!cacheKey) return;
-    this.put(cacheKey, assessmentData, CACHE_EXPIRY_SECONDS);
   }
 }
 

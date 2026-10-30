@@ -12,7 +12,7 @@ and [#341](https://github.com/h-arnold/AssessmentBot/issues/341).
 - Product and contract authority: @SPEC.md .
 - Preview layout, copy and interaction authority: @ASSESSMENT_ERROR_PREVIEW_LAYOUT.md .
 - This plan sequences delivery; it does not reopen either approved document.
-- Sections 1–5 are complete (Section 4 gate has an explicit user-accepted flaky-debt exception); Sections 6–12 are **Not started**. Record actual changes,
+- Sections 1–5 are complete (Section 4 gate has an explicit user-accepted flaky-debt exception); Section 6 has **Green/docs/compaction PASS**, with regression/commit gates pending; Sections 7–12 are **Not started**. Record actual changes,
   checks/report paths, deviations and downstream implications under each section.
 
 ### Baseline execution record
@@ -31,6 +31,26 @@ and [#341](https://github.com/h-arnold/AssessmentBot/issues/341).
   documentation. No commit, push or deployment is authorised.
 
 ## Deferred and Out-of-Scope Findings
+
+| Finding                                       | Severity | Scope rationale                                                 | Evidence                                               | Disposition | User decision                                                                                                                                                                                                         |
+| --------------------------------------------- | -------- | --------------------------------------------------------------- | ------------------------------------------------------ | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Missing-hash LLM cache admission/write policy | Material | Explicit handling of present content with missing hash required | `section6-remaining-red.md`178–184; user clarification | approved    | Final decision supersedes interim existing-error-path answer: stored content requires usable contentHash; fail loudly as internal invariant fault before cache lookup/LLM dispatch, no live fallback/new assessment E |
+
+| Finding                                  | Severity | Scope rationale                                                                        | Evidence                                                                              | Disposition | User decision                                                                                                                                                                                             |
+| ---------------------------------------- | -------- | -------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Section 6 cache-validation test capacity | Material | Cache suite497 lines; focused validation companion preserves precise coverage below500 | `.opencode/scratchpad/section6-cache-validation-red.md`; parent seed/diagnostic audit | approved    | User approves test-only `tests/requestHandlers/llmRequestManager.cacheValidation.test.js`; reuse approved harness, preserve all85 cases and repair masking/diagnostic assertions, no production expansion |
+
+| Finding                                                          | Severity | Scope rationale                                                                                      | Evidence                                                    | Disposition | User decision                                                                                                                                                                                                                       |
+| ---------------------------------------------------------------- | -------- | ---------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- | ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Section 6 run-stop test/harness capacity after smaller preflight | Material | Healthy canonical preflight passes, but harness494/failures440 need a focused split before stop rows | `.opencode/scratchpad/section6-run-stop-small-preflight.md` | approved    | User approves test-only `tests/helpers/llmRunStopHarness.js` and `tests/requestHandlers/llmRequestManager.runStop.test.js`; preserve every case and all acceptance criteria, every file below500; no production or corpus expansion |
+
+| Finding                                             | Severity | Scope rationale                                                                                     | Evidence                                                                                                         | Disposition | User decision                                                                                                                                                                                                                                                |
+| --------------------------------------------------- | -------- | --------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Section 6 mixed run-stop canonical fixture capacity | Material | Seven-item numeric-healthy TEXT setup unavailable; coverage can use smaller complementary scenarios | `.opencode/scratchpad/section6-run-stop-preflight.md`: three numeric TEXT pairs plus one type-matched 0/0/N pair | approved    | User approves three healthy canonical TEXT items plus existing type-matched item for a genuine template-copy N control; separate same-batch and earlier-batch arrangements preserve all acceptance coverage. No generator extension or type-match relaxation |
+
+| Finding                                                  | Severity | Scope rationale                                                        | Evidence                                                                                                  | Disposition | User decision                                                                                                                                                                                                           |
+| -------------------------------------------------------- | -------- | ---------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- | ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Section 6 outcomes test capacity and shared test harness | Material | Current outcomes suite is 499 lines before remaining required coverage | `tests/requestHandlers/llmRequestManager.outcomes.test.js`; first Red review R3/R5 and pending milestones | approved    | User approves test-only `llmRequestManager.eligibility.test.js`, `llmRequestManager.failures.test.js` and `tests/helpers/llmRequestManagerHarness.js`; preserve all cases, every file below500, no production expansion |
 
 | Finding                                                                                       | Severity | Scope rationale                                                                                                             | Evidence                                                                   | Disposition | User decision                                                      |
 | --------------------------------------------------------------------------------------------- | -------- | --------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- | ----------- | ------------------------------------------------------------------ |
@@ -1033,6 +1053,8 @@ Authoritative for this section; parent adds pending gate records after return.
   `git push origin assessment-errors-322-341` succeeded
   (`c47b3feb..bfdc1d07`). Unrelated untracked work preserved. This completion record
   is committed separately as `docs: record Section 5 completion and regression evidence`.
+  Completion-record commit `0161f7f499395c925094497c0440fa015c77625d` passed normal
+  hooks and pushed successfully (`bfdc1d07..0161f7f4`) to the same branch.
   No deployment authorised.
 - **Deviation.** G1 added exact-false callback stop feedback after the validation-origin
   stop was found; it is internal only and changes no public or persisted shape.
@@ -1044,76 +1066,177 @@ Authoritative for this section; parent adds pending gate records after return.
 
 ## Section 6 — Atomic LLM completion and validated cache reuse
 
-### Objective and constraints
+### Status
 
-Make every eligible LLM task terminal, including service-wide stop, without semantic
-retries. LLMRequestManager 470→470 after removing recursive validation retries,
-duplicated parse paths and unused controls/aliases; CacheManager 116→about 75 after
-removing orphaned assessment-specific wrappers. Its generic get/put behaviour is unchanged.
-Do not add another cache module or put LLM schemas in generic cache operations.
+Runtime/test Green **PASS**, authority
+`.opencode/scratchpad/section6-green-approved.md`: G1–G6 CLOSED, every prior finding
+closed, no outstanding in-scope Critical, Improvement or Nitpick finding. Red authority:
+`.opencode/scratchpad/section6-consolidated-red-final.md`. Canonical data-shape slice
+reconciled (`section6-data-shapes-sync.md`). Documentation reconciliation is PASS
+(`section6-docs-approved.md`); plan compaction is verified. Section 6 is **not complete**:
+the stable-ID regression gate, commit
+and push remain pending; no deployment authorised. Five historical backend `max-lines`
+warnings are accepted baseline debt only.
 
-### Delegation and planning blocks
+### Outcome (compacted)
 
-- Mandatory reads: Common + Backend + Contracts + Corpus;
-  @src/backend/RequestHandlers/LLMRequestManager.js @src/backend/RequestHandlers/CacheManager.js
-  @docs/developer/security/README.md @docs/developer/security/data-handling.md .
-- **Shared helpers — extend/reuse:** LLM manager's one successful-result validator
-  delegates numeric Assessment constraints, reused for live and cached results;
-  domain atomic error creation; generic `CacheManager.get/put`. Assessment-specific
-  versioned key/retained request identity stays beside request generation. Planned
-  entries: AssessmentFlow result/cache/transport register (`Not implemented`).
-  Remove `CacheManager.generateCacheKey`, `getCachedAssessment` and
-  `setCachedAssessment` once their sole production caller has moved to generic get/put;
-  do not retain dead wrappers for their tests. The shared six-hour TTL constant remains
-  owned/exposed by `CacheManager.CACHE_EXPIRY_SECONDS`; LLM writeback passes that value
-  explicitly to put, as other cache users already do. No duplicate TTL/default.
-- **Data shapes:** planned `assignment.md` result causes/terminal item constraints;
-  LLM service body/envelope unchanged. No persisted run-status field.
-- **Canonical fixtures:** `small` valid non-spreadsheet tasks, `medium` mixed tasks;
-  local HTTP/invalid JSON/cache mutations. Migrate touched Phase 3 tests only.
+LLM assessment results are atomic and terminal, including service-wide stop, without
+semantic retries. `src/backend/RequestHandlers/LLMRequestManager.js` (499 lines) and
+generic `src/backend/RequestHandlers/CacheManager.js` (74 lines) are the only production
+owners; no new module, dependency, config or public/persisted shape. One
+read → parse → raw-key admission → normalise → shared validation → assign/cache path
+replaces duplicated decode/validation and component-build controls. Orphaned assessment
+cache wrappers, recursive validation retries, the `taskDef` alias and silent
+unknown-UID returns are removed.
 
-### Acceptance criteria / required tests (Red first)
+### Retained for later sections
 
-1. Only usable student/template hashes establish template N; known prior E bypasses
-   LLM dispatch, successfully extracted blank work keeps N, spreadsheets stay local.
-   Explicitly test null-hash equality at the real LLMRequestManager decision: user
-   moved this test/fix here from Section 4; null hashes must never establish template N.
-2. Parse/validate a successful response once. All three numeric criterion objects
-   with string reasoning are required; null/missing/extra criteria, non-finite/range
-   errors and invalid JSON immediately make all three `LLM_INVALID_RESPONSE` E. No
-   extra HTTP request or partial criterion salvage occurs.
-3. Permanent per-request HTTP failure → `LLM_HTTP_FAILED`; retry exhaustion/network →
-   `LLM_UNAVAILABLE`; LLM 401/403/404 → `LLM_RUN_STOPPED` on affected/remaining eligible
-   tasks. Already completed same/earlier-batch, cached and N results survive. Every
-   eligible item ends terminal and retains successfully extracted content.
-4. Cache key is versioned and sensitive to task type plus reference/template/student
-   hashes; retain it through writeback. Old keys miss. Malformed hits log safely and
-   re-request. Validate cache hits identically to live numeric results, never cache E.
-   Cache-service failure remains a logged miss/best-effort write, not assessment E.
-5. Unknown/duplicate UID fails before arbitrary routing; assignment/mutation/cache
-   wiring errors are not inside decode catches. Ordinary expected assessment failure
-   gets `ASSESSMENT_FAILED` only at its actual known boundary, not by blanket catch.
+**Eligibility and the stored-content hash invariant**
 
-### Red → Green → Refactor and checks
+- Stored reference/template/student content must carry a non-empty string
+  `contentHash` before any cache lookup or LLM dispatch (`_requireUsableHashes`, role
+  named). Null/empty is a loud internal invariant fault — never a cache miss with live
+  fallback, a new assessment E or a false template N. Paired null/empty hashes never
+  establish template N.
+- Known prior all-three E is preserved verbatim without dispatch or overwrite
+  (`_hasTerminalError`; relies on the validated-domain cause/reasoning invariant).
+  Successfully extracted blank work keeps N; canonical SPREADSHEET tasks stay local.
+  Non-empty matching student/template hashes remain the template-N rule.
 
-- Extend `assignmentPhase3.test.js` 222→≤350 for existing routes; add
-  `tests/requestHandlers/llmRequestManager.outcomes.test.js` and
-  `tests/requestHandlers/llmRequestManager.cache.test.js` (≤300 each). Update the generic
-  `tests/requestHandlers/CacheManager.test.js` suite (369→about 220): retain generic
-  get/put, malformed-cache/best-effort and shared-TTL coverage; move relevant key and
-  assessment-cache behaviour assertions to the LLM cache suite before deleting the
-  obsolete wrapper-specific tests. Other cache users must remain regression-green.
-- Docs updates the in-scope cache call-chain narrative in AssessmentFlow and the
-  assessment-cache subsection of `docs/developer/security/data-handling.md` in this
-  section: versioned LLM-owned keys, generic get/put, unchanged shared TTL and
-  best-effort behaviour. Do not change authentication-cache semantics.
-- Green: wire Section 5 outcomes into one parse/validate/assign path; replace all
-  criteria atomically on failure. Refactor away validation recursion, component-build
-  controls, taskDef alias and silent unknown-UID returns.
-- Checks: all request-handler suites and relevant assignment integration;
-  `npm run lint:backend:check`; full gate. `@remarks`: semantic invalidity is terminal,
-  key versioning is not a purge/migration and cache cannot define authoritative success.
-- Execution record: Not started; changes/checks/deviations/downstream implications pending.
+**Successful-result validation**
+
+- One validator serves live and cached results: exactly the three own canonical
+  criterion keys, no extra/inherited keys, each entry delegating to
+  `Assessment.isValidRawResult` restricted to a numeric score. Raw root keys are
+  admitted case-insensitively (canonical, non-colliding) **before** the Utils
+  normaliser, so inherited/`__proto__`/case-collision evidence is not erased; supported
+  mixed capitalisation stays valid.
+- Only `JSON.parse` is caught; invalid roots/structures are rejected atomically via
+  `_rejectInvalidResponse` (all-three `LLM_INVALID_RESPONSE`, no extra dispatch, no
+  partial salvage). Body-reader, normaliser, mutation, routing, cache-wiring and
+  serialisation faults propagate with original identity. No blanket decode catch and no
+  ordinary `ASSESSMENT_FAILED` producer exists.
+
+**Terminal outcomes and run stop**
+
+- Catalogue mapping is terminal: permanent per-request HTTP → `LLM_HTTP_FAILED`;
+  retryable HTTP/network budget exhaustion → `LLM_UNAVAILABLE`; 401/403/404 →
+  `LLM_RUN_STOPPED`; invalid success → `LLM_INVALID_RESPONSE`. Successfully extracted
+  content/hash and completed healthy, cached and genuine-N results survive.
+- `_routedOutcomeAttempts` is constructor-initialised and replaced on every public
+  `processStudentResponses` call before the empty-input return; each batch callback
+  records the actual outcome's `attempts` before processing. `_terminalCodeFor`
+  separates stop-cancelled retryable work from genuine exhaustion by the real spent
+  budget (no default, no Base policy change, no new cause). Non-success/null outcomes
+  require a safe-integer `attempts` in `[1, maxAttempts]` and throw a contextual
+  `Error` before `setError` when provenance is missing/invalid.
+- Never-dispatched eligible items are terminalised `LLM_RUN_STOPPED` after a stop.
+  Missing generated route map/entry/item (`_terminaliseUnprocessedItems`), missing
+  routed item (`assignAssessmentToStudentTask`) and missing retained cache key
+  (`_assignAndCacheAssessment`) fail loudly. No rollback is promised after a valid
+  assignment followed by a wiring failure.
+
+**Cache identity and generic reuse**
+
+- `LLMRequestManager` owns the versioned identity: literal `v1`, task type,
+  reference/template/student hashes. The generation-time key is retained on the routed
+  entry and reused verbatim for writeback; old key spaces are misses (no
+  purge/migration). Cache hits run the same validator; malformed/N/E hits are logged
+  misses and re-requested. Only validated numeric results are cached — never E or
+  transport failures.
+- Storage uses generic `CacheManager.get`/`put` with an explicit
+  `CacheManager.CACHE_EXPIRY_SECONDS` TTL; native get/parse/put failures stay logged
+  best-effort and never become assessment E. Generic `get`/`put` behaviour and the
+  shared TTL are unchanged; authentication-cache semantics are untouched.
+- Do not reintroduce `generateCacheKey`, `getCachedAssessment`,
+  `setCachedAssessment`, recursive validation retries, component-build controls or the
+  `taskDef` alias, or add a second cache module.
+
+**Contracts, shared-helper register and ownership**
+
+- No persisted, transport or envelope change: the existing `Assessment` result union
+  and catalogue gain assessment-stage producers; the LLM request/response body is
+  unchanged; attempts, latch and key are internal runtime state.
+  `assessmentContractVersion` marker stamping and completed-write preflight remain
+  Section 8.
+- Delivered shared-helper entries: LLM single successful numeric validator
+  (live/cached), Assessment domain validation and `setError` atomic error creation,
+  LLM-owned versioned/retained request identity, and generic `CacheManager.get`/`put`
+  with explicit shared TTL. No helper remains `Not implemented` for this section; later
+  sections' entries are untouched.
+- Data Shapes reconciled `docs/developer/data-shapes/assignment.md` only
+  (`section6-data-shapes-sync.md`): LLM assessment-stage producers, internal versioned
+  cache identity, the stored-content hash invariant and the remaining Section 8 write
+  gap. No new contract or page.
+- Delivered Docs pass: activated the AssessmentFlow LLM
+  result/cache helper register and call-chain (versioned key, generic get/put, explicit
+  shared TTL, parse-only catch, provenance boundary), update the assessment-cache
+  subsection of `docs/developer/security/data-handling.md`, and registered all seven
+  focused suites plus two helpers in `backend-testing.md`. `@remarks` commitments:
+  semantic invalidity is terminal; key versioning is not a purge/migration; cache
+  cannot define authoritative success; parse-only catch with original reader-fault
+  propagation; attempt provenance validated before catalogue mutation.
+
+**Scope and fixtures**
+
+- Local HTTP/invalid-JSON/cache/fault probes only; no new realistic corpus family.
+  Section 2 `small`/`medium` canonical models are cloned/restored. The approved
+  run-stop fixture uses three numeric-healthy TEXT items plus one genuine
+  template-copy N item (no generator extension, no type-match relaxation).
+- Test surface is seven focused LLM suites plus two test-only harnesses, all below 500
+  lines, preserving every approved case; no production expansion. Later Section 7
+  image hydration and Section 8 persistence/marker/completion feedback remain pending.
+
+### Checks record (final full-section Green)
+
+- `npm run test:backend:coverage`: **252 files / 3,511 tests PASS**; statements
+  **91.46%**, branches **86.1%**, functions **89.99%**, lines **92.16%**.
+- Focused 21-file command: **330 tests PASS** (seven LLM suites, both Phase 3 suites,
+  generic cache, Base suites, image Phase 5, auth and trigger consumers). Exact
+  commands and partition are in `section6-green-approved.md`.
+- `npm run lint:backend:check`: exit 1 with zero errors and exactly the five accepted
+  historical `max-lines` warnings (`assignmentDefinitionPartials.unit`,
+  `assignmentController.hydration`, `dbManager`, `classroomApiClient`,
+  `batchUpdateUtility`); **not a clean lint PASS**. Scoped ESLint, Prettier and
+  `git diff --check` pass.
+- Inventory: all 14 source/test/helper paths below 500 lines (total 5,954); source
+  499/74; no new production owner.
+- Proof limits: hermetic real-owner/native-stub coverage, not live GAS/LLM/network,
+  deployed logging, cache expiry, durable persistence or original-incident cause.
+
+### Implementation notes / deviations / follow-up
+
+- **Full Green PASS:** `.opencode/scratchpad/section6-green-approved.md` independently
+  closes G6 and preserves G1–G5 closures; no outstanding in-scope findings. Fresh
+  backend coverage3511PASS and focused330PASS; only five accepted historical lint
+  warnings remain. Parent verified completed report and current reviewed LLM SHA256
+  `502ebb49aa7237c7cf94171536b37e3deef425a62cd9a2e0688d13c3ed886390`.
+- **Current phase:** regression gate satisfied under accepted baseline debt;
+  commit/push pending. Section6 is not complete until push evidence is recorded.
+- **Section regression gate:** stable session `assessment-errors-322-341`, original
+  baseline `2026-10-23T05:20:43.034Z` unchanged; completed comparison
+  `2026-10-30T15:35:55.002Z`, zero regressions, zero new failures, one baseline fix.
+  Seven checks pass (all backend/frontend/builder coverage, frontend/builder lint,
+  Playwright and TypeScript). Overall checker remains FAILING/exit1 solely for the
+  five accepted historical backend max-lines warnings, not a new waiver. Report:
+  `.ts-regression-checker/reports/session-assessment-errors-322-341/runs/2026-10-30T15-35-55.002Z/comparison.txt`.
+- **Docs sync PASS:** `.opencode/scratchpad/section6-docs-approved.md` closes D1–D3
+  (suite-proof attribution, conditional sweep, provenance predicate). Updated existing
+  `AssessmentFlow.md`, `backend-testing.md`, `security/data-handling.md` and
+  `data-shapes/assignment.md`; no new pages, source or test edits. Helper registers
+  agree with delivered Section6; later slices remain planned. Historical documentation
+  nitpicks remain in the linked deferred log, no new finding or accepted debt.
+- **Compaction verified:** `.opencode/scratchpad/section6-plan-compaction.md` records
+  691→156 lines. Parent compared backup
+  `.opencode/scratchpad/assessment-errors-322-341-section-6-pre-compaction.md`: every
+  byte outside Section6 and authoritative notes unchanged at compaction; required
+  contracts/decisions retained, no detail gap. Subsequent parent notes record gates.
+- **Approved sizing deviations:** seven focused LLM suites and two test-only harnesses
+  preserve all coverage below500; the user approved the provenance companion when
+  existing capacity was exhausted. No production module or behaviour expansion.
+- **Proof limits:** hermetic real-owner/native-stub coverage is not live GAS/LLM,
+  deployed logging, expiry, durable persistence or original-incident-cause proof.
+  No deployment authorised. Sections7–12 remain not started.
 
 ## Section 7 — Scoped image failures and hydration invariants
 

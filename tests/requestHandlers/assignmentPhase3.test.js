@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { saveGlobals, restoreGlobals } from '../helpers/globalMockManager.js';
 
 // Import model classes from source (CommonJS exports)
@@ -11,10 +11,15 @@ const {
   createTextTask,
   setupGlobalDummyClasses,
   createDummyConfigurationManager,
-  DummyCacheManager,
   DummyBaseRequestManager,
   createSlidesAssignment,
 } = require('../helpers/modelFactories.js');
+
+// Real generic cache collaborator: the same owner class the runtime
+// instantiates. The suite installs it as the global CacheManager for every
+// freshly constructed LLM manager, so the planned sole-caller cut-over to
+// generic get/put cannot meet a wrapper-only double lacking get/put here.
+const RealCacheManager = require('#backend/RequestHandlers/CacheManager.js').CacheManager;
 
 class LLMConsumerBaseRequestManager extends DummyBaseRequestManager {
   sendRequestsInBatches(requests, options) {
@@ -60,7 +65,11 @@ setupGlobalDummyClasses();
 
 // Override specific globals for this test (use the classes directly)
 globalThis.BaseRequestManager = LLMConsumerBaseRequestManager;
-globalThis.CacheManager = DummyCacheManager;
+// Suite cache collaborator: the real generic CacheManager owner, not a
+// wrapper-only double. Its constructor needs the faithful native script-cache
+// Map installed per test in the describe block below (newly scoped cache
+// globals, restored in afterEach).
+globalThis.CacheManager = RealCacheManager;
 
 // Provide globals expected by Assignment constructor
 globalThis.Classroom = {
@@ -85,8 +94,22 @@ const LLMRequestManagerFresh = require('#backend/RequestHandlers/LLMRequestManag
 
 describe('Phase 3 LLMRequestManager integration (new model)', () => {
   let assignment, manager;
+  let savedCacheGlobals, nativeCache, nativeCacheStorage;
 
   beforeEach(() => {
+    // Faithful scoped native script cache for the suite collaborator: get
+    // returns the LAST string written for a key or null on a miss; put stores
+    // the actual serialised argument it receives. Newly scoped globals;
+    // restored in afterEach.
+    nativeCacheStorage = new Map();
+    nativeCache = {
+      get: vi.fn((key) => (nativeCacheStorage.has(key) ? nativeCacheStorage.get(key) : null)),
+      put: vi.fn((key, value) => nativeCacheStorage.set(key, value)),
+    };
+    savedCacheGlobals = saveGlobals(['CacheService', 'CacheManager']);
+    globalThis.CacheService = { getScriptCache: () => nativeCache };
+    globalThis.CacheManager = RealCacheManager;
+
     assignment = createSlidesAssignment({
       courseId: 'course1',
       assignmentId: 'assign1',
@@ -121,6 +144,11 @@ describe('Phase 3 LLMRequestManager integration (new model)', () => {
     manager.configManager = createDummyConfigurationManager();
   });
 
+  afterEach(() => {
+    restoreGlobals(savedCacheGlobals);
+    savedCacheGlobals = null;
+  });
+
   it('generates requests only for non-spreadsheet items', () => {
     const reqs = manager.generateRequestObjects(assignment);
     expect(reqs.length).toBe(2); // text tasks only
@@ -150,30 +178,92 @@ describe('Phase 3 LLMRequestManager integration (new model)', () => {
     expect(Object.values(assessments).every((a) => a.score === 'N')).toBe(true);
   });
 
-  it('uses cache to skip generating duplicate request', () => {
-    // First run generates and caches for task 1
-    const reqs1 = manager.generateRequestObjects(assignment);
-    expect(reqs1.length).toBe(2);
-    // Simulate processing and caching result manually
-    const sub = assignment.submissions[0];
-    const taskKeys = Object.keys(assignment.getTasks());
-    const item1 = sub.getItem(taskKeys[0]);
-    const td1 = assignment.getTasks()[item1.taskId];
-    const refHash = td1.getPrimaryReference().contentHash;
-    const respHash = item1.artifact.contentHash;
-    manager.cacheManager.setCachedAssessment(refHash, respHash, {
-      completeness: { score: 5, reasoning: 'cache' },
-      accuracy: { score: 5, reasoning: 'cache' },
-      spag: { score: 5, reasoning: 'cache' },
-    });
-    // Re-run request generation; cached task removed -> still 2? we need to modify a second item to test skip.
-    // Modify second item content to force new hash so only first task is cached
-    const secondItem = sub.getItem(taskKeys[1]);
-    secondItem.artifact.content = 'Different now';
-    secondItem.artifact.ensureHash();
-    const reqs2 = manager.generateRequestObjects(assignment);
-    // One task cached, one new text request
-    expect(reqs2.length).toBe(1);
+  it('serves a real cold cache write to a warm generation without re-dispatching', () => {
+    // Generic cache surface only: the real suite collaborator mutates a
+    // faithful native script-cache Map. This test never names or computes a
+    // key, never calls an assessment wrapper, and never inspects its own key
+    // format.
+    const cacheStorage = new Map();
+    const scriptCache = {
+      get: vi.fn((key) => (cacheStorage.has(key) ? cacheStorage.get(key) : null)),
+      put: vi.fn((key, value, ttlSeconds) => cacheStorage.set(key, value)),
+    };
+    const saved = saveGlobals(['CacheService', 'CacheManager']);
+    try {
+      globalThis.CacheService = { getScriptCache: () => scriptCache };
+      globalThis.CacheManager = RealCacheManager;
+      const coldManager = new LLMRequestManagerFresh();
+      coldManager.configManager = createDummyConfigurationManager();
+      const expectedBody = {
+        completeness: { score: 5, reasoning: 'ok' },
+        accuracy: { score: 4, reasoning: 'fine' },
+        spag: { score: 3, reasoning: 'avg' },
+      };
+      // COLD: two real eligible items mark and write through generic cache paths.
+      const requests = coldManager.generateRequestObjects(assignment);
+      expect(requests).toHaveLength(2);
+      expect(cacheStorage.size).toBe(0);
+      coldManager.processStudentResponses(requests, assignment);
+      expect(cacheStorage.size).toBe(2);
+      expect(scriptCache.put).toHaveBeenCalledTimes(2);
+      expect(new Set(scriptCache.put.mock.calls.map(([key]) => key)).size).toBe(2);
+      scriptCache.put.mock.calls.forEach(([key, value, ttl]) => {
+        expect(typeof key).toBe('string');
+        expect(key.length).toBeGreaterThan(0);
+        expect(JSON.parse(value)).toEqual(expectedBody);
+        expect(ttl).toBe(RealCacheManager.CACHE_EXPIRY_SECONDS);
+      });
+      Object.values(assignment.submissions[0].items)
+        .filter((item) => item.getType() !== 'SPREADSHEET')
+        .forEach((item) => expect(item.getAssessment()).toEqual(expectedBody));
+      // WARM: fresh real manager and identical fingerprints reuse the entries.
+      scriptCache.get.mockClear();
+      scriptCache.put.mockClear();
+      const warmManager = new LLMRequestManagerFresh();
+      warmManager.configManager = createDummyConfigurationManager();
+      const warmRequests = warmManager.generateRequestObjects(assignment);
+      expect(warmRequests).toEqual([]);
+      expect(scriptCache.get).toHaveBeenCalledTimes(2);
+      scriptCache.get.mock.results
+        .slice(-2)
+        .forEach((result) => expect(result.value).not.toBeNull());
+      expect(scriptCache.put).not.toHaveBeenCalled();
+      Object.values(assignment.submissions[0].items)
+        .filter((item) => item.getType() !== 'SPREADSHEET')
+        .forEach((item) => expect(item.getAssessment()).toEqual(expectedBody));
+    } finally {
+      restoreGlobals(saved);
+    }
+  });
+
+  it('proves the suite cache collaborator serves generic get/put with the shared CacheManager TTL', () => {
+    // Collaborator capability/continuity reached before any business outcome:
+    // every retained generation/N/assignment/native-response control receives
+    // the real generic CacheManager owner, so this exercises — not merely
+    // presence-checks — the generic surface a sole-caller get/put cut-over
+    // needs, plus the actual shared TTL constant.
+    const collaborator = manager.cacheManager;
+    expect(collaborator).toBeInstanceOf(RealCacheManager);
+    expect(typeof collaborator.get).toBe('function');
+    expect(typeof collaborator.put).toBe('function');
+    const sharedTtl = RealCacheManager.CACHE_EXPIRY_SECONDS;
+    expect(Number.isFinite(sharedTtl) && sharedTtl > 0).toBe(true);
+    // Reached string-JSON roundtrip through the faithful native store: generic
+    // put serialises with the explicit shared TTL and generic get parses that
+    // exact native string back; an absent key stays a no-write native miss.
+    const continuityValue = { completeness: { score: 1, reasoning: 'suite continuity' } };
+    const continuityKey = 'suite-cache-collaborator-roundtrip';
+    expect(nativeCacheStorage.size).toBe(0);
+    collaborator.put(continuityKey, continuityValue, sharedTtl);
+    const [putKey, putValue, putTtl] = nativeCache.put.mock.calls[0];
+    expect(putKey).toBe(continuityKey);
+    expect(typeof putValue).toBe('string');
+    expect(JSON.parse(putValue)).toEqual(continuityValue);
+    expect(putTtl).toBe(sharedTtl);
+    expect(nativeCacheStorage.get(continuityKey)).toBe(putValue);
+    expect(collaborator.get(continuityKey)).toEqual(continuityValue);
+    expect(collaborator.get('suite-cache-collaborator-absent')).toBe(null);
+    expect(nativeCache.put).toHaveBeenCalledTimes(1);
   });
 
   it('processStudentResponses assigns assessments to items', () => {
@@ -274,66 +364,50 @@ describe('Phase 3 LLMRequestManager integration (new model)', () => {
     }
   });
 
-  it('processStudentResponses caches successful assessments', () => {
-    // Ensure no cache present initially
-    const sub = assignment.submissions[0];
-    const itemEntries = Object.values(sub.items).filter((i) => i.getType() !== 'SPREADSHEET');
-    expect(itemEntries.length).toBeGreaterThan(0);
-
-    // Generate requests and process responses
-    const reqs = manager.generateRequestObjects(assignment);
-    manager.processStudentResponses(reqs, assignment);
-
-    // After processing, each non-spreadsheet item should have a cached entry
-    itemEntries.forEach((item) => {
-      const td = assignment.getTasks()[item.taskId];
-      const refHash = td.getPrimaryReference().contentHash;
-      const respHash = item.artifact.contentHash;
-      const cached = manager.cacheManager.getCachedAssessment(refHash, respHash);
-      expect(cached).not.toBeNull();
-      ['completeness', 'accuracy', 'spag'].forEach((criterion) => {
-        expect(cached).toHaveProperty(criterion);
-        const payload = cached[criterion];
-        expect(typeof payload.score).toBe('number');
-        expect(typeof payload.reasoning).toBe('string');
-      });
+  it('terminalises an invalid successful response without a semantic retry dispatch', () => {
+    const targetItem = assignment.submissions[0].getItem(Object.keys(assignment.getTasks())[0]);
+    const request = { uid: 'invalid-outcome', url: 'https://service.test/assess', method: 'post' };
+    manager.uidIndex = { 'invalid-outcome': { item: targetItem } };
+    const sendRequestWithRetries = vi.spyOn(manager, 'sendRequestWithRetries');
+    manager.sendRequestsInBatches = vi.fn((_requests, options) => {
+      options.onBatchComplete([
+        {
+          uid: 'invalid-outcome',
+          response: { getResponseCode: () => 200, getContentText: () => '{}' },
+          error: null,
+          attempts: 1,
+        },
+      ]);
     });
-  });
-
-  it('caches assessments after retry succeeds', () => {
-    const reqs = manager.generateRequestObjects(assignment);
-    expect(reqs.length).toBeGreaterThan(0);
-
-    const retryRequest = reqs[0];
-    const retryResponse = {
-      uid: retryRequest.uid,
-      response: {
-        getResponseCode: () => 200,
-        getContentText: () =>
-          JSON.stringify({
-            completeness: { score: 5, reasoning: 'retry' },
-            accuracy: { score: 4, reasoning: 'retry' },
-            spag: { score: 3, reasoning: 'retry' },
-          }),
-      },
-      error: null,
-      attempts: 1,
-    };
-    manager.sendRequestWithRetries = () => retryResponse;
-
-    manager.handleValidationFailure(retryRequest.uid, retryRequest, assignment);
-
-    const { item, taskDef } = manager.uidIndex[retryRequest.uid];
-    const refHash = taskDef.getPrimaryReference().contentHash;
-    const respHash = item.artifact.contentHash;
-    const cached = manager.cacheManager.getCachedAssessment(refHash, respHash);
-    expect(cached).not.toBeNull();
-    ['completeness', 'accuracy', 'spag'].forEach((criterion) => {
-      expect(cached[criterion]).toMatchObject({
-        score: expect.any(Number),
-        reasoning: expect.any(String),
-      });
-    });
+    const expectedCause = { stage: 'assessment', code: 'LLM_INVALID_RESPONSE' };
+    const expectedErrorMap = Object.fromEntries(
+      ['completeness', 'accuracy', 'spag'].map((criterion) => [
+        criterion,
+        {
+          score: 'E',
+          reasoning: 'The assessment service returned an invalid result.',
+          error: expectedCause,
+        },
+      ])
+    );
+    let caught = null;
+    try {
+      manager.processStudentResponses([request], assignment);
+    } catch (error) {
+      caught = error;
+    }
+    // One consumed batch: no semantic retry dispatch and no later dispatch.
+    expect(sendRequestWithRetries).not.toHaveBeenCalled();
+    expect(manager.sendRequestsInBatches).toHaveBeenCalledTimes(1);
+    // No run abort: processing completes with an explicit terminal outcome.
+    expect(caught).toBe(null);
+    // The invalid unit terminalises atomically instead of retrying optimistically.
+    expect(targetItem.getAssessment()).toEqual(expectedErrorMap);
+    // No cache entry is produced for a semantic-invalid or retrying outcome,
+    // asserted with the generic no-write oracle on the suite's faithful native
+    // store (the wrapper-only collaborator `.store` double no longer exists).
+    expect(nativeCache.put).not.toHaveBeenCalled();
+    expect(nativeCacheStorage.size).toBe(0);
   });
 
   it.each([
@@ -385,5 +459,37 @@ describe('Phase 3 LLMRequestManager integration (new model)', () => {
       'Duplicate LLM request UID: duplicate'
     );
     expect(manager.sendRequestsInBatches).not.toHaveBeenCalled();
+  });
+
+  it('fails the stop sweep loudly when the generated route map is missing entirely', () => {
+    const requests = manager.generateRequestObjects(assignment);
+    expect(requests).toHaveLength(2);
+    expect(Object.keys(manager.uidIndex)).toHaveLength(2);
+    delete manager.uidIndex;
+    // Direct owned-boundary call with explicit map corruption: the missing
+    // generated route map is a wiring fault and must fail loudly, never fall
+    // back to an empty object that silently reports no unfinished work.
+    let caught = null;
+    try {
+      manager._terminaliseUnprocessedItems(new Set());
+    } catch (error) {
+      caught = error;
+    }
+    expect(caught).toBeInstanceOf(Error);
+  });
+
+  it('fails the stop sweep loudly when a generated route entry is missing', () => {
+    const requests = manager.generateRequestObjects(assignment);
+    expect(requests).toHaveLength(2);
+    manager.uidIndex[requests[0].uid] = null;
+    // Direct owned-boundary call with explicit route-entry corruption: the
+    // `entry &&` guard must not silently skip a known route entry.
+    let caught = null;
+    try {
+      manager._terminaliseUnprocessedItems(new Set());
+    } catch (error) {
+      caught = error;
+    }
+    expect(caught).toBeInstanceOf(Error);
   });
 });
