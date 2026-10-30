@@ -12,7 +12,7 @@ and [#341](https://github.com/h-arnold/AssessmentBot/issues/341).
 - Product and contract authority: @SPEC.md .
 - Preview layout, copy and interaction authority: @ASSESSMENT_ERROR_PREVIEW_LAYOUT.md .
 - This plan sequences delivery; it does not reopen either approved document.
-- Sections 1–5 are complete (Section 4 gate has an explicit user-accepted flaky-debt exception); Section 6 has **Green/docs/compaction PASS**, with regression/commit gates pending; Sections 7–12 are **Not started**. Record actual changes,
+- Sections 1–6 are complete (Section 4 gate has an explicit user-accepted flaky-debt exception); Sections 7–12 are **Not started**. Record actual changes,
   checks/report paths, deviations and downstream implications under each section.
 
 ### Baseline execution record
@@ -1073,9 +1073,9 @@ Runtime/test Green **PASS**, authority
 closed, no outstanding in-scope Critical, Improvement or Nitpick finding. Red authority:
 `.opencode/scratchpad/section6-consolidated-red-final.md`. Canonical data-shape slice
 reconciled (`section6-data-shapes-sync.md`). Documentation reconciliation is PASS
-(`section6-docs-approved.md`); plan compaction is verified. Section 6 is **not complete**:
-the stable-ID regression gate, commit
-and push remain pending; no deployment authorised. Five historical backend `max-lines`
+(`section6-docs-approved.md`); plan compaction is verified. Section 6 is **complete**:
+the stable-ID regression gate and implementation commit/push are satisfied;
+no deployment authorised. Five historical backend `max-lines`
 warnings are accepted baseline debt only.
 
 ### Outcome (compacted)
@@ -1211,8 +1211,17 @@ unknown-UID returns are removed.
   backend coverage3511PASS and focused330PASS; only five accepted historical lint
   warnings remain. Parent verified completed report and current reviewed LLM SHA256
   `502ebb49aa7237c7cf94171536b37e3deef425a62cd9a2e0688d13c3ed886390`.
-- **Current phase:** regression gate satisfied under accepted baseline debt;
-  commit/push pending. Section6 is not complete until push evidence is recorded.
+- **Current phase:** Section6 complete; all exit gates satisfied with accepted
+  pre-existing lint debt. Sections7–12 remain not started.
+- **Commit/push:** branch `assessment-errors-322-341`; implementation commit
+  `242d778fb9b0b396a126fb753e68e17f25c7424f`, exact message
+  `feat: make LLM outcomes terminal and validate cached assessments`.
+  Normal hooks passed: Prettier unchanged, staged backend lint, `typecheck:all`.
+  Approved source/test hashes still match after hooks. Push succeeded via
+  `git push origin assessment-errors-322-341` (`0161f7f4..242d778f`). All19 feature
+  files committed; unrelated `.vitest/`, `draft-scratch.md`, `src/frontend/.opencode/`
+  preserved and excluded. This completion evidence is recorded in a plan-only
+  bookkeeping commit with message `docs: record Section 6 completion and regression evidence`.
 - **Section regression gate:** stable session `assessment-errors-322-341`, original
   baseline `2026-10-23T05:20:43.034Z` unchanged; completed comparison
   `2026-10-30T15:35:55.002Z`, zero regressions, zero new failures, one baseline fix.
