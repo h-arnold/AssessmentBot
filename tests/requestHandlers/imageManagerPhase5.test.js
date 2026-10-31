@@ -1,5 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { withGlobalMocks, withTemporaryGlobals } from '../helpers/globalMockManager.js';
+import { loadManager } from '../helpers/llmRequestManagerHarness.js';
+import { loadBackendModelInputs } from '#synthetic-data/toBackendModelInputs.js';
 
 // Stubs for globals required by ImageManager & Artifacts
 globalThis.Utils = {
@@ -54,29 +56,26 @@ globalThis.BaseRequestManager = DummyBaseRequestManager;
 const { ArtifactFactory } = require('#backend/Models/Artifacts/index.js');
 const ImageManager = require('#backend/RequestHandlers/ImageManager.js');
 
-function buildManager(overrides = {}) {
-  const manager = buildImageManager();
-  Object.assign(manager, overrides);
-  return manager;
-}
-
-function imageArtifact(role, sourceUrl, uid = undefined) {
-  return ArtifactFactory.image({
-    type: 'image',
-    taskId: 'task-one',
-    role,
-    metadata: { sourceUrl },
-    taskIndex: 0,
-    artifactIndex: 0,
-    ...(uid ? { uid } : {}),
-  });
-}
-
 function buildImageManager() {
   const mgr = new ImageManager();
   // Inject stub configManager expected by constructor / instance
   mgr.configManager = { getApiKey: () => 'KEY' };
   return mgr;
+}
+
+/** A real pending submission IMAGE item awaiting hydration from sourceUrl. */
+function pendingStudentImage(taskId, sourceUrl) {
+  return new globalThis.StudentSubmissionItem({
+    taskId,
+    artifact: ArtifactFactory.image({
+      type: 'image',
+      taskId,
+      role: 'submission',
+      metadata: { sourceUrl },
+      taskIndex: 0,
+      artifactIndex: 0,
+    }),
+  });
 }
 
 describe('Phase 5 ImageManager', () => {
@@ -205,6 +204,7 @@ describe('Phase 5 ImageManager', () => {
         };
       });
     });
+    const fetch = vi.fn();
     const tracker = {
       updateProgress: vi.fn(),
       getCurrentProgress: () => ({ message: 'Fetching images' }),
@@ -225,7 +225,7 @@ describe('Phase 5 ImageManager', () => {
           ABLogger: () => ({
             getInstance: () => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn() }),
           }),
-          UrlFetchApp: () => ({ fetchAll, fetch: vi.fn() }),
+          UrlFetchApp: () => ({ fetchAll, fetch }),
         },
         () => {
           delete require.cache[imagePath];
@@ -233,11 +233,31 @@ describe('Phase 5 ImageManager', () => {
           const manager = new RealImageManager();
           manager.progressTracker = tracker;
           const sender = vi.spyOn(manager, 'sendRequestsInBatches');
-          const entries = [
-            { uid: 'image-a1', url: 'https://images.test/a1', documentId: 'doc-a' },
-            { uid: 'image-b1', url: 'https://images.test/b1', documentId: 'doc-b' },
-            { uid: 'image-a2', url: 'https://images.test/a2', documentId: 'doc-a' },
-          ];
+          // Scoped student entries from real collection over pending IMAGE
+          // models across two documents: the final 201 outcome has a real
+          // owning item instead of a scope-less escape.
+          const failedItem = pendingStudentImage('task-a1', 'https://images.test/a1');
+          const healthyA2 = pendingStudentImage('task-a2', 'https://images.test/a2');
+          const healthyB1 = pendingStudentImage('task-b1', 'https://images.test/b1');
+          const assignment = {
+            assignmentDefinition: {
+              tasks: {},
+              referenceDocumentId: 'ref',
+              templateDocumentId: 'tpl',
+            },
+            submissions: [
+              { documentId: 'doc-a', items: { 'task-a1': failedItem, 'task-a2': healthyA2 } },
+              { documentId: 'doc-b', items: { 'task-b1': healthyB1 } },
+            ],
+          };
+          const entries = manager.collectAllImageArtifacts(assignment);
+          expect(entries).toHaveLength(3);
+          const failedEntry = entries.find(({ url }) => url === 'https://images.test/a1');
+          expect(failedEntry).toMatchObject({
+            scope: 'submission',
+            taskId: 'task-a1',
+            itemId: failedItem.id,
+          });
 
           const blobs = manager.fetchImagesAsBlobs(entries);
 
@@ -265,12 +285,28 @@ describe('Phase 5 ImageManager', () => {
             'fetch:https://images.test/a1,https://images.test/b1',
             'blob:https://images.test/b1',
           ]);
-          expect(blobs.map(({ uid, blob }) => [uid, blob.sourceUrl])).toEqual([
-            ['image-b1', 'https://images.test/b1'],
-            ['image-a2', 'https://images.test/a2'],
-          ]);
-          expect(blobs.map(({ uid }) => uid)).toEqual(['image-b1', 'image-a2']);
+          expect(blobs.map(({ uid, blob }) => [uid, blob.sourceUrl])).toEqual(
+            ['https://images.test/b1', 'https://images.test/a2'].map((url) => [
+              entries.find((entry) => entry.url === url).uid,
+              url,
+            ])
+          );
           expect(fetchAll).toHaveBeenCalledTimes(2);
+          // 201 is a final image-download failure and is never retried.
+          expect(fetch).not.toHaveBeenCalled();
+          // The scoped 201 failure materialises the atomic hydration error on
+          // its owning student item while the healthy items stay pending.
+          for (const criterion of ['completeness', 'accuracy', 'spag']) {
+            expect(failedItem.getAssessment(criterion)).toMatchObject({
+              score: 'E',
+              reasoning: 'The submitted slide image could not be loaded.',
+              error: { stage: 'extraction', code: 'IMAGE_HYDRATION_FAILED' },
+            });
+          }
+          expect(failedItem.artifact.content).toBeNull();
+          expect(failedItem.artifact.contentHash).toBeNull();
+          expect(healthyA2.getAssessment()).toEqual({});
+          expect(healthyB1.getAssessment()).toEqual({});
         }
       );
     } finally {
@@ -303,16 +339,30 @@ describe('Phase 5 ImageManager', () => {
       expect(a.contentHash).toBeTruthy();
     });
   });
+
+  it('hydrates a student image with a single native byte read', () => {
+    const item = pendingStudentImage('t1', 'https://images.test/student.png');
+    item.addAssessment('completeness', { score: 4, reasoning: 'stale mark' });
+    const getBytes = vi.fn(() => [1, 2, 3]);
+    buildImageManager().writeBackBlobs(
+      { assignmentDefinition: { tasks: {} }, submissions: [{ items: { t1: item } }] },
+      [{ uid: item.artifact.getUid(), blob: { getBytes } }]
+    );
+    expect(getBytes).toHaveBeenCalledTimes(1);
+    expect(item.artifact.content).toMatch(/^data:image\/png;base64,/);
+    expect(item.artifact.contentHash).toBe(
+      globalThis.Utils.generateHash(JSON.stringify(item.artifact.content))
+    );
+    expect(item.getAssessment()).toEqual({});
+  });
 });
 
-describe('ImageManager write back behaviour', () => {
+describe('ImageManager transport UID guards', () => {
   let restoreGlobals;
-  let warnings;
 
   beforeEach(() => {
-    warnings = [];
     const mockContext = withGlobalMocks({
-      ABLogger: () => ({ getInstance: () => ({ warn: (...args) => warnings.push(args) }) }),
+      ABLogger: () => ({ getInstance: () => ({ warn: vi.fn(), error: vi.fn(), info: vi.fn() }) }),
     });
     restoreGlobals = mockContext.restore;
   });
@@ -320,85 +370,6 @@ describe('ImageManager write back behaviour', () => {
   afterEach(() => {
     restoreGlobals();
     vi.restoreAllMocks();
-  });
-
-  it('returns early when no blobs are supplied', () => {
-    const manager = buildManager();
-    expect(manager.writeBackBlobs({ assignmentDefinition: { tasks: {} } }, null)).toBeUndefined();
-    expect(manager.writeBackBlobs({ assignmentDefinition: { tasks: {} } }, [])).toBeUndefined();
-  });
-
-  it('writes blobs to matching artefacts and warns on mismatches', () => {
-    const manager = buildManager();
-    const reference = imageArtifact('reference', 'https://example.com/ref.png');
-    const mismatched = { getUid: () => 'unknown-uid', setContentFromBlob: vi.fn() };
-    const assignment = {
-      assignmentDefinition: {
-        tasks: {
-          task_one: {
-            artifacts: { reference: [reference, mismatched], template: [] },
-          },
-        },
-      },
-      submissions: [],
-    };
-    const blob = { getBytes: () => [4, 5, 6] };
-    manager.writeBackBlobs(assignment, [
-      { uid: reference.getUid(), blob },
-      { uid: 'missing-uid', blob },
-    ]);
-    expect(reference.content).toBeTruthy();
-    expect(warnings.some((args) => args[0].includes('did not match'))).toBe(true);
-  });
-
-  it('warns when blob content cannot be applied', () => {
-    const manager = buildManager();
-    const failing = {
-      getUid: () => 'failing-uid',
-      getType: () => 'IMAGE',
-      setContentFromBlob: () => {
-        throw new Error('write failed');
-      },
-    };
-    const assignment = {
-      assignmentDefinition: {
-        tasks: { task_one: { artifacts: { reference: [failing], template: [] } } },
-      },
-      submissions: [],
-    };
-    manager.writeBackBlobs(assignment, [{ uid: 'failing-uid', blob: {} }]);
-    expect(warnings.some((args) => args[0].includes('Failed to write blob'))).toBe(true);
-  });
-
-  it('writes submission artefacts by uid', () => {
-    const manager = buildManager();
-    const submissionImage = imageArtifact('submission', 'https://example.com/student.png');
-    const assignment = {
-      assignmentDefinition: { tasks: {} },
-      submissions: [
-        {
-          items: {
-            item_one: { taskId: 'task-one', id: 'item-one', artifact: submissionImage },
-            item_text: {
-              taskId: 'task-one',
-              id: 'item-text',
-              artifact: ArtifactFactory.text({
-                type: 'text',
-                taskId: 'task-one',
-                role: 'submission',
-                content: 'hello',
-                taskIndex: 0,
-                artifactIndex: 0,
-              }),
-            },
-          },
-        },
-      ],
-    };
-    manager.writeBackBlobs(assignment, [
-      { uid: submissionImage.getUid(), blob: { getBytes: () => [7, 8, 9] } },
-    ]);
-    expect(submissionImage.content).toBeTruthy();
   });
 
   it.each([
@@ -466,4 +437,63 @@ describe('ImageManager write back behaviour', () => {
     );
     expect(manager.sendRequestsInBatches).not.toHaveBeenCalled();
   });
+});
+
+describe('ImageManager collection preserves upstream extraction causes', () => {
+  it.each([
+    ['missing IMAGE match', 'extraction', 'SOURCE_CONTENT_UNAVAILABLE'],
+    ['failed document open', 'acquisition', 'SOURCE_UNREADABLE'],
+  ])(
+    'preserves the established %s cause instead of overwriting it during collection',
+    (scenario, stage, code) => {
+      const assignment = globalThis.Assignment.fromJSON(
+        structuredClone(loadBackendModelInputs('small').assignmentsByKey['assignment-0-2'])
+      );
+      const submission = assignment.submissions.find((entry) => entry.documentId);
+      const task = assignment.assignmentDefinition.tasks['task-2-1'];
+      const missingMatch = {
+        taskId: task.getId(),
+        pageId: null,
+        content: null,
+        metadata: {},
+        documentId: submission.documentId,
+        type: 'IMAGE',
+      };
+      const extraction = scenario === 'failed document open' ? null : [missingMatch];
+      const hydrationWarnings = vi.fn();
+      const mockContext = withGlobalMocks({
+        SlidesParser: () =>
+          function () {
+            return { extractSubmissionArtifacts: vi.fn(() => extraction) };
+          },
+        ABLogger: () => ({
+          getInstance: () => ({ warn: hydrationWarnings, info: vi.fn(), error: vi.fn() }),
+        }),
+      });
+      try {
+        assignment.processAllSubmissions();
+        const item = submission.getItem(task.getId());
+        const prior = structuredClone(item.getAssessment());
+        const established = item.getAssessment('completeness');
+        expect(established).toMatchObject({ score: 'E', error: { stage, code } });
+        expect(buildImageManager().collectAllImageArtifacts(assignment)).toEqual([]);
+        expect(item.getAssessment()).toEqual(prior);
+        expect(hydrationWarnings).not.toHaveBeenCalled();
+        const context = loadManager({ fetchAll: vi.fn(), fetch: vi.fn(), sleep: vi.fn() });
+        try {
+          withTemporaryGlobals(context.globals, () => {
+            delete require.cache[context.llmPath];
+            const llm = new (require(context.llmPath))();
+            expect(llm.generateRequestObjects(assignment)).toEqual([]);
+            expect(context.scriptCache.get).not.toHaveBeenCalled();
+          });
+        } finally {
+          vi.restoreAllMocks();
+          context.restore();
+        }
+      } finally {
+        mockContext.restore();
+      }
+    }
+  );
 });

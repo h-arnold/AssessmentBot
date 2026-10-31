@@ -12,7 +12,7 @@ and [#341](https://github.com/h-arnold/AssessmentBot/issues/341).
 - Product and contract authority: @SPEC.md .
 - Preview layout, copy and interaction authority: @ASSESSMENT_ERROR_PREVIEW_LAYOUT.md .
 - This plan sequences delivery; it does not reopen either approved document.
-- Sections 1–6 are complete (Section 4 gate has an explicit user-accepted flaky-debt exception); Sections 7–12 are **Not started**. Record actual changes,
+- Sections 1–6 are complete (Section 4 gate has an explicit user-accepted flaky-debt exception); Section 7 is **regression gate passed — commit/push pending**; Sections 8–12 are **Not started**. Record actual changes,
   checks/report paths, deviations and downstream implications under each section.
 
 ### Baseline execution record
@@ -31,6 +31,10 @@ and [#341](https://github.com/h-arnold/AssessmentBot/issues/341).
   documentation. No commit, push or deployment is authorised.
 
 ## Deferred and Out-of-Scope Findings
+
+| Finding                                                     | Severity | Scope rationale                                                              | Evidence                                                                                                    | Disposition | User decision                                                                                                                                                                                                                                                                       |
+| ----------------------------------------------------------- | -------- | ---------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- | ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Section 7 Red test capacity and connected blocking evidence | Material | Required review matrices exceed planned writeback/failure companion capacity | `section7-red-review.md` R1–R8; writeBack 300 lines, failures 291; `section7-red-evidence.md` R3 checkpoint | approved    | User approves test-only `imageManager.identity.test.js`, `imageManager.invalidation.test.js`, and `imageManager.integration.test.js` under `tests/requestHandlers/`, each ≤300 lines; reuse existing canonical fixtures/harnesses, no production helper or Section 8 implementation |
 
 | Finding                                       | Severity | Scope rationale                                                 | Evidence                                               | Disposition | User decision                                                                                                                                                                                                         |
 | --------------------------------------------- | -------- | --------------------------------------------------------------- | ------------------------------------------------------ | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -1249,51 +1253,122 @@ unknown-UID returns are removed.
 
 ## Section 7 — Scoped image failures and hydration invariants
 
-### Objective and constraints
+**Status: runtime/test/shape Green PASS; section not complete.** Independent authority
+`.opencode/scratchpad/section7-green-approved.md` closes R1–R8, SR1 and G1–G6 with zero
+outstanding in-scope Critical, Improvement or Nitpick finding. Docs sync and section
+compaction and the stable-ID regression gate are complete; commit and push remain pending; no deployment
+is authorised.
 
-Use the shared transport budget and retain document round-robin image scheduling.
-ImageManager 221→285. Required shared image failure blocks; student image failure
-becomes that task's E and never reaches the LLM. Do not alter image URL/source-link policy.
+### Outcome (compacted)
 
-### Delegation and planning blocks
+`src/backend/RequestHandlers/ImageManager.js` (499 lines) is the sole production owner and
+now materialises scoped image failures over the unchanged Section 5 transport owner. A
+student image failure becomes that task's atomic extraction `IMAGE_HYDRATION_FAILED` E
+with null content/hash and never reaches the LLM; a required shared reference/template
+failure blocks the run and preserves prior saved results. No new module, helper,
+dependency, configuration, URL policy or retry scheduler was added.
 
-- Mandatory reads: Common + Backend + Contracts + Corpus;
-  @src/backend/RequestHandlers/ImageManager.js .
-- **Shared helpers — extend/reuse:** existing image collection/fetch/writeback owners,
-  base transport and Assessment error creation; no second retry or hydration manager.
-  Planned register: AssessmentFlow/rehydration (`Not implemented`).
-- **Data shapes:** planned IMAGE pending/completed semantics in `assignment-definition.md`
-  and `assignment.md`; no new artefact error field.
-- **Canonical fixtures:** Section 2 `small` IMAGE bodies/IDs and `medium` mixed results;
-  local missing-URL, response/blob/decode failures, not another realistic image graph.
+### Retained for later sections
 
-### Acceptance criteria / required tests (Red first)
+- **Interfaces and source path.** `ImageManager.collectAllImageArtifacts()`,
+  `fetchImagesAsBlobs()` and `writeBackBlobs()` remain the public surface. Owner-local
+  `@private` helpers are `_isAdmissibleImageUrl`, `_isIPv4Hostname`,
+  `_materialiseHydrationFailure`, `_assertKnownOutcomeUids`, `_assignFinalImageFailure`,
+  `_collectWriteBackTargets`, `_applyHydratedBlob`, `_assignUnusableReturnedContent` and
+  `_hasUsableHydratedContent`.
+- **Private routing.** Collected entries carry `uid`, `url`, `documentId`, `scope`,
+  `taskId` and optional `itemId`; the owning submission item is resolved through the
+  private `_submissionItemByUid` map keyed by artefact UID. Routing does not expose a
+  public `entry.item`.
+- **Unchanged URL policy.** Admission is owner-local and mirrors the shared `Validate`
+  acceptance policy (HTTPS, DNS hostname only, no IP address, no localhost, no port)
+  without its progress diagnostics, so rejected raw URLs never reach a log channel. No
+  `Validate`-wide rewrite and no image URL/source-link policy change.
+- **One-read conversion.** Each blob is read once through a native `getBytes()`; those
+  bytes are exposed to the model writer as `{ getBytes: () => bytes }`, keeping data-URL
+  and hash generation model-owned. No second native read or second converter.
+- **Strict wiring.** A missing `setContentFromBlob` writer throws before returned-data
+  classification; required `submissions`/`items` structures are consumed directly without
+  fallbacks. Unknown/duplicate outcome UIDs, duplicate input UIDs, unmatched/duplicate
+  blob UIDs, duplicate model UIDs and scope-less failures throw rather than warn-and-continue.
+- **No broad catch or rollback.** No catch converts thrown native-read, base64, hash or
+  writer faults: they escape by original identity without setting E and without a manager
+  warning. Conversion assigns content before hashing; neither manager nor model promises
+  in-memory rollback after a thrown fault or earlier applied blobs.
+- **Upstream terminal-E bypass.** An item whose three criteria are already E from upstream
+  acquisition/extraction is preserved verbatim and never collected or overwritten (G1).
+- **Changed versus unchanged snapshots.** Usable hydration requires non-empty string
+  content and a non-empty hash. Changed content (null to content, or different content)
+  invalidates stale assessments/feedback; identical valid content preserves full snapshots.
+- **Transport policy.** Downloads accept only HTTP 200, so 201 is a final failure and is
+  never retried; no stop statuses mean an image 403 is local and never an LLM-wide stop.
+  One full round-robin list is sent at the explicit Slides batch size, successful blobs are
+  consumed before the next batch, and the three total attempts with 5000/7500 ms waits come
+  from the unchanged `BaseRequestManager`.
+- **Tests and canonical fixtures.** Eight suites (collection 299, failures 287, identity
+  299, integration 300, invalidation 300, writeBack 300, coverage remainder 298, Phase5
+  499 lines) preserve every approved matrix below the 500-line limit. They use `small`/
+  `medium` canonical IMAGE models through `loadBackendModelInputs` plus local missing-URL,
+  HTTP, blob, decode and fault probes; no competing realistic image graph.
+- **`@remarks` commitments.** Image HTTP failure scope differs from LLM-wide stop scope;
+  a matched pending IMAGE is valid internal state, never a completed null success; upstream
+  terminal-E survives collection; no in-memory rollback is claimed.
+- **Later boundaries.** Section 8 owns pending-image completion rejection, marker stamping
+  and prepared writes; Section 9 owns previews. Direct result/feedback invalidation matches
+  `StudentSubmission._mergeExtractedContent` but has no callable model hook (canonical
+  discrepancy 28).
+- **Shared-helper register.** Delivered Section 7 entries are **implemented**: the existing
+  image collection/fetch/writeback owner was extended, reusing base transport and
+  Assessment error creation, with no second retry or hydration manager and no new module.
+  Later-section entries remain `Not implemented`.
 
-1. Round-robin by document persists; Slides-fetch batch size and three-total-attempt
-   budget are honoured. Images require HTTP 200, not 201. No retry scheduler nesting.
-2. Failed download/known unreadable blob, absent required source URL or unusable hydrated
-   content becomes student-task `IMAGE_HYDRATION_FAILED` E with null content/hash, or
-   shared-input run failure by scope. Healthy siblings survive; old results are not
-   replaced after a shared-input failure.
-3. Expected blob/content decode failures are narrow; unmatched/duplicate UID or missing
-   model method is a wiring fault that throws. Successful writeback updates hash and
-   invalidates stale item results/feedback as needed; no broad catch-and-warn fallback.
+### Checks record (passed)
 
-### Red → Green → Refactor and checks
+- `npm run test:backend:coverage`: **258 files / 3,567 tests PASS**; statements **91.53%
+  (5,699/6,226)**, branches **86.31% (3,853/4,464)**, functions **90.04% (1,095/1,216)**,
+  lines **92.18% (5,449/5,911)**. ImageManager: 96.75% statements, 93.22% branches.
+- Focused composition covers **110 tests** (81 image plus 29 caller/eligibility controls)
+  and is subsumed by the fresh backend run.
+- `npm run lint:backend:check`: exit 1 with **zero errors** and exactly the five accepted
+  historical `max-lines` warnings (`assignmentDefinitionPartials.unit` 2776,
+  `assignmentController.hydration` 653, `dbManager` 665, `classroomApiClient` 550,
+  `batchUpdateUtility` 615); no new warning. Prettier, scoped ESLint and `git diff --check`
+  pass. Evidence: `s7-approved-green-{lint,coverage,format,hashes}.txt`.
+- Source SHA256 `8cf42c3115b714d4b5a7dd23bddeed1941794f8db5cde2e103dcff8f16d1bbc6`;
+  source and all eight test files remain below 500 lines (source 499, tests 2,582).
+- Section regression comparison passed with accepted baseline debt (record below);
+  commit/push remain pending. No deployment has run for Section 7.
 
-- `imageManagerCoverage.test.js` 482→about 640 unsplit: move collection and writeback
-  responsibilities to `tests/requestHandlers/imageManager.collection.test.js` and
-  `tests/requestHandlers/imageManager.writeBack.test.js`, keeping existing remainder
-  and new `tests/requestHandlers/imageManager.failures.test.js` each ≤300. Preserve
-  `tests/requestHandlers/imageManagerPhase5.test.js` (162 lines: collection scopes and
-  blob/hash writeback) and the empty-input/configuration-acquisition cases in the existing
-  coverage suite's fetching block. Reuse existing mocks; do not rely on old plan numbering.
-- Green: assign scoped final failures using Section 5 outcomes. Refactor log-only
-  omissions/duplicate image batching while retaining useful scheduling.
-- Checks: image suites plus Slides pipeline and LLM skip-E integration;
-  `npm run lint:backend:check`; full gate. `@remarks`: image HTTP failure scope differs
-  from LLM-wide stop scope; pending images are not completed null successes.
-- Execution record: Not started; changes/checks/deviations/downstream implications pending.
+### Implementation notes / deviations / follow-up
+
+- Section7 runtime/test/shape review is PASS; no deployment authorised. Hermetic
+  real-owner/native-stub/memory-store evidence does not prove live GAS/network,
+  deployed logging, durable persistence, expiry or original-incident causation.
+- Approved test-only companions preserve all assertions within their ≤300-line
+  budgets; Phase5 and ImageManager remain499physical lines. No source split,
+  model refactor, URL policy change or retry redesign introduced.
+- Direct image result/feedback invalidation matches the model rule but has no
+  callable model hook; canonical discrepancy28 records the future drift risk.
+  Pending-image completion rejection and marker stamping remain Section8 work;
+  saved-record preservation is not in-memory rollback.
+- Docs D1/D2 CLOSED by `.opencode/scratchpad/section7-docs-final-approved.md`:
+  suite-level proof attribution and scope-less failure wording corrected. Docs sync
+  updated existing AssessmentFlow.md, rehydration.md and backend-testing.md; no new
+  pages or source edits. Shape contracts were reconciled before Green sign-off.
+- Compaction 139→99 lines retained future contracts and authoritative notes;
+  outside-section isolation verified against the saved pre-compaction copy. Canonical
+  helper registers agree: existing ImageManager extension implemented, Section 8
+  prepared projections remain planned. Fresh post-docs backend checks: 3,567 PASS,
+  branches 86.31%, exactly five accepted historical lint warnings, no new failures.
+- Reported historical documentation nits retain their existing dispositions; the
+  pre-existing ImageManager Processors/Parsers placement quirk is Minor, disregarded
+  in `.opencode/scratchpad/assessment-errors-322-341-deferred-findings.md` (Nitpicks).
+- Section regression gate: `npm run regression-checker -- assessment-errors-322-341`
+  (1200000 ms), comparison against unchanged baseline 2026-10-23T05:20:43.034Z.
+  Report `.ts-regression-checker/reports/session-assessment-errors-322-341/runs/2026-10-31T07-04-38.200Z/comparison.txt`.
+  Zero regressions / zero new failures / one baseline fix; seven checks pass.
+  Overall FAILING solely for five accepted historical backend max-lines warnings;
+  backend/frontend/builder coverage, E2E, frontend/builder lint and all type checks pass.
 
 ## Section 8 — Prepared persistence and truthful run completion
 

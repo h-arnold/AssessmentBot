@@ -9,6 +9,7 @@ Serialisation: `src/backend/AssignmentProcessor/Assignment/00_AssignmentSerialis
 Read projection: `src/backend/AssignmentProcessor/Assignment/02_AssignmentReadProjection.js`
 Marker-1 restoration: `src/backend/AssignmentProcessor/Assignment/02_AssignmentCurrentRestoration.js`
 Assessment-stage producer: `src/backend/RequestHandlers/LLMRequestManager.js` (LLM terminal outcomes, shared live/cache numeric validation and internal cache identity)
+Image hydration producer: `src/backend/RequestHandlers/ImageManager.js` (scoped student `IMAGE_HYDRATION_FAILED` materialisation, shared-image run blocking and hydration writeback invalidation)
 Generic cache: `src/backend/RequestHandlers/CacheManager.js` (generic best-effort `get`/`put` and the shared `CACHE_EXPIRY_SECONDS`)
 Collections: `assign_full_<courseId>_<assignmentId>` (full records only — no partial registry)
 API handlers: `src/backend/z_Api/assignmentAssessment.js`
@@ -602,7 +603,19 @@ The full and partial schemas on the frontend are:
 26. **Completion-time `assessmentContractVersion: 1` stamping is not implemented; newly completed runs currently persist without the marker.**
     `AssignmentSerialisation.toJSON()` / `toPartialJSON()` emit `1` only when `this._assignment.assessmentContractVersion === 1`, but no production completion/reassessment path sets that property. Only marker-1 restoration (`02_AssignmentRehydration.js`) and the synthetic generator set it. A freshly completed or reassessed assignment therefore serialises without `assessmentContractVersion`, and the read transport treats it as a legacy record, projecting reassessment `E` instead of the new results. Section 8's completed-write preflight/gates are the planned owner of the completion-time stamp. Section 4's producer and persisted-read regressions use an explicit test-only marker and are independent of this gap.
     **Classification: Misaligned** — the target contract requires marker `1` on newly completed results; the current producer does not stamp it. Do not mark Section 8 complete. Recommended fix: stamp `assessmentContractVersion = 1` at the completed-run boundary as part of Section 8, with a completed-write test.
+
     > Previously undocumented — surfaced during the 26 October 2026 Section 4 Green data-shapes audit. Origin: Section 2 delivered marker-aware read/restoration and left completion-time stamping to Section 8; the gap was not previously recorded in this contract.
+
+27. **A matched pending IMAGE is valid in-flight state; completed persistence does not yet reject a still-pending image.**
+    Section 7's `ImageManager` hydrates a matched student IMAGE or materialises extraction `IMAGE_HYDRATION_FAILED` `E` with null content/hash, and blocks the run on a required shared-image failure. It adds no completion gate: the completion-boundary check that every submitted task is terminal with usable required shared artefacts, plus completion-time marker stamping, remains Section 8 work. A pending image that bypassed the image stage would therefore still be serialisable by the current persistence path. Read restoration continues to treat null content beside numeric/`N` marks as `CORRUPT_RECORD`, and a pending image is never a completed null success.
+    **Classification: Misaligned until Section 8** — the target completed-result contract requires a terminal hydrated image or its scoped `E`. Do not mark Section 8 complete. Recommended fix: include pending IMAGE and unusable-hash rejection in the Section 8 completed-write preflight.
+
+    > Previously undocumented — surfaced during the 30 October 2026 Section 7 Green data-shapes audit. Origin: Section 7 delivered the hydration producers; the completion gate was always assigned to Section 8.
+
+28. **Changed-content invalidation is duplicated owner-locally in `ImageManager`.**
+    `ImageManager._applyHydratedBlob()` clears `item.assessments`/`item.feedback` when hydrated non-null content changes, mirroring the model's `StudentSubmission._mergeExtractedContent()` replacement rule. `ImageTaskArtifact.setContentFromBlob()` exposes no invalidation hook and the item has no callable invalidation primitive, so the manager implements the rule directly; unchanged content preserves the complete snapshots.
+    **Classification: Fragile** — both owners currently agree, but a future change to the model replacement rule would not automatically update the manager. Recommended follow-up: expose one model-owned invalidation primitive and reuse it from the image writeback instead of duplicating the rule. No shape change is implied.
+    > Previously undocumented — surfaced during the 30 October 2026 Section 7 Green data-shapes audit. Origin: the Section 7 writeback slice.
 
 > **Previously undocumented — surfaced during the 25 October 2026 Section 2 Green data-shapes audit.**
 > Origin: the user-approved constructor-based restoration extension in Section 2. Resolved the
@@ -612,8 +625,7 @@ The full and partial schemas on the frontend are:
 
 ## Planned contract additions — explicit Assessment errors and result-format marker (partially implemented)
 
-> **Status: Sections 1–4 implemented; the Section 6 LLM/cache terminal-completion slice is
-> implemented; later-section slices remain planned.** Section 1
+> **Status: Sections 1–4 and 6–7 implemented; later-section slices remain planned.** Section 1
 > delivered the `Assessment` result/cause primitives, `StudentSubmissionItem.setError()` and
 > partial `E` retention, plus the shared frontend `assessmentResult.zod.ts` schemas. Section 2b
 > delivered marker-1 CURRENT backend restoration (`AssignmentCurrentRestoration`) with raw
@@ -645,11 +657,13 @@ The full and partial schemas on the frontend are:
 > replace all three criteria atomically, and a versioned internal cache identity is retained
 > through generic `get`/`put` writeback (see
 > [§LLM assessment outcomes and validated cache reuse](#llm-assessment-outcomes-and-validated-cache-reuse-implemented)).
-> Remaining planned slices: scoped image hydration (Section 7), completed-write preflight/gates
-> and completion-time marker stamping (Section 8) and preview error states (Section 9). The
-> Section 6 null/empty-hash stored-content invariant and LLM/cache terminal completion are
-> implemented; image hydration remains Section 7 work, and `PARSE_FAILED` remains a reserved
-> catalogue code with no forced producer. Related companions: [Contract: AssignmentDefinition §Definition artefact
+> Section 7 delivered the scoped image-hydration outcomes: owner-local URL admission, atomic
+> student-task `IMAGE_HYDRATION_FAILED` materialisation with null content/hash, blocking required
+> shared-image failures, and writeback content/hash validation with changed-content invalidation
+> (see [§Image hydration outcomes](#image-hydration-outcomes-implemented)).
+> Remaining planned slices: completed-write preflight/gates and completion-time marker stamping
+> (Section 8) and preview error states (Section 9). `PARSE_FAILED` remains a reserved catalogue
+> code with no forced producer. Related companions: [Contract: AssignmentDefinition §Definition artefact
 > availability](assignment-definition.md#definition-artefact-availability-and-pending-image-exception-implemented-at-definition-writes),
 > [Contract: ABClass §Planned embedded result marker and E
 > projections](abclass.md#planned-contract-additions--embedded-result-marker-and-e-projections-implemented),
@@ -753,7 +767,8 @@ persistence and both read transports emit the marker; the backend legacy read pr
 frontend read normaliser are implemented and active in both read services. The analyser accepts
 explicit `E` input. The acquisition/extraction boundary `E` producers are implemented (Section 4;
 see [§Acquisition and extraction outcomes](#acquisition-and-extraction-outcomes-implemented)).
-Completed-write gates (Section 8) and preview error states (Section 9) remain pending.
+Completed-write gates (including pending-image rejection and completion-time marker stamping,
+Section 8) and preview error states (Section 9) remain pending.
 
 ### Full submission `studentName` nullability alignment (Implemented)
 
@@ -784,6 +799,11 @@ transport or the legacy reassessment projection.
 > [§Acquisition and extraction outcomes](#acquisition-and-extraction-outcomes-implemented));
 > their artefact source shapes are documented there and the acquisition placeholder matches the
 > marker-1 null-parent read invariant (see [Known discrepancies](#known-discrepancies) item 23).
+> Section 7 delivered the IMAGE hydration source rules: a matched pending IMAGE stays null until
+> hydration; a student hydration failure stores null content/hash beside the atomic extraction
+> `IMAGE_HYDRATION_FAILED` `E`; successful hydration writes the data-URL content and model hash; a
+> required shared-image failure blocks the run without a completed result (see
+> [§Image hydration outcomes](#image-hydration-outcomes-implemented)).
 > Completed-write preflight/gates (Section 8) remain **`Not implemented`**. The
 > frontend read normaliser is implemented and active in both read services. The Section 3
 > delivery adds no transport field: completed tasks still use the three canonical criterion
@@ -796,6 +816,10 @@ Full-artefact rules:
 | Successfully read blank/all-null `SPREADSHEET` grid (blank template or student range) | `[]`                                | Normal hash of `[]`       | **Implemented** in `SpreadsheetTaskArtifact.normalizeContent()`; canonicalisation applies through construction, persistence and restoration. Literal `null` means unavailable content, not blank content. Existing populated-formula normalisation is unchanged.                                                                                                                                                                                          |
 | `SPREADSHEET` content unavailable                                                     | `null`                              | `null`                    | At the actual extraction boundary, confirmed unavailable content creates an extraction `SOURCE_CONTENT_UNAVAILABLE` `E`. A current-format full read that instead finds null content beside numeric/`N` marks converts all three results to validation `CORRUPT_RECORD` `E` (see the full-content consistency rule below). A `null` hash is never a usable content fingerprint and must not match another `null` hash for template-match or `N` decisions. |
 | Non-blank `SPREADSHEET` grid                                                          | Existing canonicalised 2D grid      | Existing content hash     | Formula canonicalisation (space stripping, uppercasing) and trailing-row/column trimming are unchanged.                                                                                                                                                                                                                                                                                                                                                   |
+| Matched student IMAGE pending hydration                                               | `null`                              | `null`                    | Valid internal state only (matched student `pageId` plus `metadata.sourceUrl`), never a completed result. `ImageManager` hydrates it or materialises extraction `IMAGE_HYDRATION_FAILED` `E` on failure.                                                                                                                                                                                                                                                  |
+| IMAGE hydration failure (student scope)                                               | `null`                              | `null`                    | The atomic all-three extraction `IMAGE_HYDRATION_FAILED` `E` replaces stale marks/feedback; the artefact body/hash are cleared.                                                                                                                                                                                                                                                                                                                           |
+| Successfully hydrated IMAGE                                                           | `string` (data URL)                 | Model-generated hash      | Written through `ImageTaskArtifact.setContentFromBlob()`; changed non-null content invalidates stale assessments/feedback, unchanged content preserves them.                                                                                                                                                                                                                                                                                              |
+| Required shared IMAGE hydration failure                                               | — (no completed result)             | — (no completed result)   | Run-blocking failure: the pipeline throws, prior saved results are preserved and no completed result is persisted. Never a student `E`. No in-memory rollback is promised: model conversion assigns `content` before hashing, so a shared write whose hash step fails can leave the new content and a null/old hash on the in-memory artefact.                                                                                                            |
 | Full submission artefact for an acquisition/extraction/validation `E`                 | `null` allowed                      | `null` allowed            | The placeholder uses the canonical model constructor with the known task/student association, explicit null content/hash and validated source identifiers when available.                                                                                                                                                                                                                                                                                 |
 | Assessment-only `E`                                                                   | Successfully extracted content kept | Existing hash kept        | An error in marking does not imply that the source preview is unavailable.                                                                                                                                                                                                                                                                                                                                                                                |
 | Stored reference/template/student content offered to the LLM                          | required by role                    | required non-empty string | `LLMRequestManager` treats a null or empty hash as an internal invariant fault before cache lookup or dispatch; it is not an assessment `E`, a cache miss, a live fallback or a template-match `N` (Section 6).                                                                                                                                                                                                                                           |
@@ -814,16 +838,23 @@ Rules:
   valid, and blank student ranges retain the formula scores above. See
   [Contract: AssignmentDefinition §Definition artefact availability and pending image
   exception](assignment-definition.md#definition-artefact-availability-and-pending-image-exception-implemented-at-definition-writes).
-- In full results, null submission content is allowed only for acquisition/extraction/validation
-  `E` placeholders. On a current-format full read, null content beside purported numeric/`N`
-  marks is a contradictory stored record: replace all three results with validation
-  `CORRUPT_RECORD` `E` and its catalogue reasoning. Never guess `SOURCE_UNREADABLE` or infer a
-  historical extraction cause from that contradiction. An actual extraction boundary that
+- In completed full results, null submission content is allowed only for
+  acquisition/extraction/validation `E` placeholders. On a current-format full read, null content
+  beside purported numeric/`N` marks is a contradictory stored record: replace all three results
+  with validation `CORRUPT_RECORD` `E` and its catalogue reasoning. Never guess
+  `SOURCE_UNREADABLE` or infer a historical extraction cause from that contradiction. An actual extraction boundary that
   confirms content is unavailable creates an extraction `SOURCE_CONTENT_UNAVAILABLE` `E`
   instead. An assessment-only `E` retains its successfully extracted content. An existing
   assessment-stage `E` whose full record carries null content remains a contradictory stored
   record and becomes validation `CORRUPT_RECORD` `E`; it is not accepted as an assessment-only
   error. Partial artefact redaction is exempt from this full-content consistency check.
+- IMAGE is the only artefact type with a valid pre-hydration null state. A matched student IMAGE
+  (student `pageId` plus `metadata.sourceUrl`) remains pending with null content/hash until
+  `ImageManager` resolves it. A student download/content/hash failure becomes the atomic
+  extraction `IMAGE_HYDRATION_FAILED` `E` with null content/hash; a required shared
+  reference/template failure blocks the run and preserves prior saved results. A pending image is
+  never a completed null success, and completed persistence must not accept one (Section 8). See
+  [§Image hydration outcomes](#image-hydration-outcomes-implemented).
 - Any stored reference, template or student content offered to the LLM must carry a usable
   non-empty string `contentHash`. A null or empty hash is an internal invariant fault, thrown
   before cache lookup or dispatch; it is not an assessment `E`, a cache miss, a live fallback or
@@ -863,7 +894,7 @@ wires the existing catalogue into the existing `StudentSubmissionItem.setError()
 | Submitted document cannot be opened by the Slides/Sheets parser               | student, all known tasks | `acquisition` / `SOURCE_UNREADABLE` on all three criteria         | `content: null`, `contentHash: null`; explicit `pageId: null` and parent/artefact document ID retained  | Parser returns a failed-open null sentinel distinct from a successful empty array; `SlidesAssignment.processAllSubmissions` / `SheetsAssignment.processAllSubmissions` isolate the student.                                              |
 | Slides task match is missing (TEXT/TABLE)                                     | task                     | `extraction` / `SOURCE_CONTENT_UNAVAILABLE` on all three criteria | `content: null`, `contentHash: null`; parent document ID retained; explicit `pageId: null`              | Parser emits a canonical placeholder and the assignment materialises `E`.                                                                                                                                                                |
 | Slides IMAGE task has no actual match/source evidence                         | task                     | `extraction` / `SOURCE_CONTENT_UNAVAILABLE` on all three criteria | `type: 'IMAGE'`, null `pageId`/`content`/`contentHash`, empty metadata, parent document ID              | A missing IMAGE match is unavailable extraction, not pending hydration.                                                                                                                                                                  |
-| Slides IMAGE task matched to a student page                                   | task                     | none                                                              | `type: 'IMAGE'`, matched student `pageId`, `metadata.sourceUrl`, null `content`/`contentHash`           | Legitimately pending hydration until Section 7; not a completed result and not extraction `E`.                                                                                                                                           |
+| Slides IMAGE task matched to a student page                                   | task                     | none                                                              | `type: 'IMAGE'`, matched student `pageId`, `metadata.sourceUrl`, null `content`/`contentHash`           | Valid pending internal state, not a completed result and not extraction `E`. `ImageManager` hydrates it or materialises `IMAGE_HYDRATION_FAILED` on failure (see [§Image hydration outcomes](#image-hydration-outcomes-implemented)).    |
 | Slides matched TEXT/TABLE content read fails                                  | task                     | `extraction` / `SOURCE_CONTENT_UNAVAILABLE` on all three criteria | `content: null`, `contentHash: null`; matched student `pageId` and document ID retained                 | `SlidesParserTableContent` converts only ordinary native read failures; one contextual diagnostic, never a duplicate matcher/model warning.                                                                                              |
 | Student `getCell` returns literal `null`                                      | task                     | `extraction` / `SOURCE_CONTENT_UNAVAILABLE` on all three criteria | whole TABLE content `null`; no hashable partial or blank fallback                                       | The first failing cell aborts the whole table. An actually thrown `TypeError`/`ReferenceError`/non-Error still escapes, and shared-definition reads still throw.                                                                         |
 | Sheets range read fails                                                       | task                     | `extraction` / `SOURCE_CONTENT_UNAVAILABLE` on all three criteria | `content: null`, `contentHash: null`; task `pageId` and student document ID retained                    | Only the immediate native `getRange(...)`/`getFormulas()` read converts; internal parsing and mutation faults escape.                                                                                                                    |
@@ -911,8 +942,11 @@ Rules:
   source was admitted and no acquisition failure was recorded; ignored candidates do not erase a
   failure recorded for a Drive candidate. See
   [Known discrepancies](#known-discrepancies) item 25.
-- A matched IMAGE artefact (student page ID plus `metadata.sourceUrl`) is a valid pending
-  hydration state until Section 7 and is not converted to extraction `E`. An IMAGE task with no
+- A matched IMAGE artefact (student page ID plus `metadata.sourceUrl`) is valid pending internal
+  state, not a completed result, and is not converted to extraction `E` here. `ImageManager`
+  hydrates it or materialises extraction `IMAGE_HYDRATION_FAILED` on failure; a matched pending
+  image is never persisted as a completed null success (see
+  [§Image hydration outcomes](#image-hydration-outcomes-implemented)). An IMAGE task with no
   actual match or source evidence is unavailable extraction and receives all three
   `SOURCE_CONTENT_UNAVAILABLE` results; IMAGE is not unconditionally pending.
 - Each owned native read failure emits one contextual diagnostic retaining the original error
@@ -923,6 +957,69 @@ Rules:
   caller/store-restoration tests with native services mocked and an explicit test-only marker
   where needed. They do not prove API transport, live GAS behaviour, image hydration or
   completion stamping.
+
+### Image hydration outcomes (Implemented)
+
+`src/backend/RequestHandlers/ImageManager.js` owns the scoped IMAGE hydration boundary. It
+reuses the shared transport budget and the existing Slides document round-robin scheduling. It
+adds no retry scheduler, second hydration manager, public `entry.item` property, persisted
+status or transport field. A student image failure materialises the atomic extraction
+`IMAGE_HYDRATION_FAILED` `E` with null content/hash; a required shared reference/template
+failure blocks the run. Healthy siblings and successfully extracted items are not converted to a
+scoped failure.
+
+| Situation                                                                                                                                                                                       | Scope      | Recorded result                                      | Source artefact                                                                                                                                    | Notes                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- | ---------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Student item already carrying an upstream all-three terminal `E`                                                                                                                                | task       | preserved verbatim; no hydration attempt             | unchanged                                                                                                                                          | `collectAllImageArtifacts()` returns before scheduling or overwriting, so an acquisition `SOURCE_UNREADABLE` or extraction `SOURCE_CONTENT_UNAVAILABLE` item is never relabelled or downloaded. No hydration warning is emitted.                                                                                                                                                                                        |
+| Matched student IMAGE with an admissible source URL                                                                                                                                             | task       | none yet; scheduled for hydration                    | `type: 'IMAGE'`, matched student `pageId`, `metadata.sourceUrl`; null `content`/`contentHash` while pending, existing values when already hydrated | Collected with its owning submission item retained privately; entry shape gains no public item property. An already-hydrated artefact with an admissible source is still scheduled; unchanged returned content preserves its results/feedback and changed content invalidates them.                                                                                                                                     |
+| Matched student IMAGE with absent/invalid source URL                                                                                                                                            | task       | `extraction` / `IMAGE_HYDRATION_FAILED` on all three | `content: null`, `contentHash: null`                                                                                                               | Applies only when no upstream all-three terminal `E` is already established. An already-hydrated artefact is skipped; a pending one is materialised at collection. One bounded diagnostic with opaque identifiers.                                                                                                                                                                                                      |
+| Final image download non-200 (including 201), permanent 4xx or network/transport exhaustion                                                                                                     | task       | `extraction` / `IMAGE_HYDRATION_FAILED` on all three | `content: null`, `contentHash: null`                                                                                                               | Images accept only HTTP 200 and declare no stop statuses, so a student-image 403 is local and never an LLM-wide stop. The shared three-total-attempt budget applies; no image-specific retry or semantic retry exists.                                                                                                                                                                                                  |
+| Returned blob/content/hash unusable on a student item (null/empty bytes, null blob, reader-less blob, unusable stored hash)                                                                     | task       | `extraction` / `IMAGE_HYDRATION_FAILED` on all three | `content: null`, `contentHash: null`                                                                                                               | Applies only to non-throwing unusable returned data and never lets retained old content certify hydration, even on an already-hydrated item. A thrown native read, base64, hash or writer fault propagates by original identity with no `E` and no manager warning.                                                                                                                                                     |
+| Required shared reference/template IMAGE with absent/invalid source URL or missing owning document ID                                                                                           | run        | none — not a student `E`                             | unchanged (no writeback)                                                                                                                           | Collection blocks the run by throwing. When no admissible source is available, an already-hydrated shared artefact is skipped; a pending one blocks the run.                                                                                                                                                                                                                                                            |
+| Required shared reference/template IMAGE final download failure                                                                                                                                 | run        | none — not a student `E`                             | unchanged (no writeback)                                                                                                                           | The run blocks by throwing; prior saved results are preserved and no completed result is persisted.                                                                                                                                                                                                                                                                                                                     |
+| Required shared reference/template IMAGE unusable returned content                                                                                                                              | run        | none — not a student `E`                             | not rolled back; `content` may already be assigned                                                                                                 | The run blocks by throwing; prior saved results are preserved and no completed result is persisted. Reader-less or unusable returned data on an already-hydrated shared artefact blocks rather than certifying retained content. Model conversion assigns `content` before hashing, so a shared write whose hash step fails can leave the new content and a null/old hash in memory. No in-memory rollback is promised. |
+| Successfully hydrated IMAGE                                                                                                                                                                     | task       | no `E`                                               | data-URL `content` plus model-generated `contentHash`                                                                                              | Changed non-null hydrated content clears stale assessments/feedback; unchanged content preserves the complete snapshots. Source `metadata.sourceUrl` is retained.                                                                                                                                                                                                                                                       |
+| Unknown/duplicate input or outcome UID, missing owning item, missing submissions/items structures, missing model methods, duplicate model artefact UIDs, unmatched/duplicate writeback blob UID | run/wiring | none — not an `Assessment` result                    | unchanged for the affected artefact; earlier applied blobs are not rolled back                                                                     | These are wiring faults and throw before the affected artefact's conversion or instead of a scoped result; a missing `setContentFromBlob` writer is a `TypeError` raised before any returned-data classification, so unusable data cannot hide it. Earlier blobs already applied in the same `writeBackBlobs()` call are not rolled back. They are not hydration failures.                                              |
+| Actually thrown native read, base64, hash or writer fault                                                                                                                                       | run/wiring | none — not an `Assessment` result                    | not rolled back; `content` may already be assigned before a hash or writer fault                                                                   | The original value escapes by reference identity. No converting catch, no catalogue `E`, no manager diagnostic. A thrown hash or writer fault can occur after `content` is assigned, leaving changed in-memory content with a null/old hash.                                                                                                                                                                            |
+
+Rules:
+
+- URL admission is owner-local and mirrors the shared `Validate` acceptance policy (HTTPS, DNS
+  hostname only, no IP address, no localhost, no port, hostname label limits) **without** the
+  shared validator's progress-tracking diagnostics. A rejected source URL therefore never reaches
+  a log channel. Shared `Validate` and the source-link policy are unchanged.
+- Scheduling and transport: one full-list `sendRequestsInBatches()` call carries the configured
+  Slides-fetch batch size, accepted statuses `[200]` and no stop statuses. Document round-robin
+  order and UID association are preserved, and final 200 blobs are read before the next batch.
+  At most three total dispatches per request, including its initial batch attempt; retries are
+  the shared transport's sequential member retries, never a nested scheduler.
+- A matched pending IMAGE is valid internal state, never a completed result or a null success.
+  The image stage must resolve each collected image to usable content/hash or its scoped `E` or
+  shared failure before completion. Completed-persistence gates remain Section 8 (see
+  [Known discrepancies](#known-discrepancies) item 27).
+- Scope split: a student image failure is task-scoped `E` and never reaches the LLM; a required
+  shared-image failure is run-blocking, fabricates no student `E` and never replaces prior saved
+  results. Healthy sibling items, including same-submission siblings, are not converted to `E`; a
+  shared failure does not roll back blobs already applied earlier in the same writeback call.
+- Successful writeback validates hydrated content and a usable non-empty hash before the write
+  stands. The manager reads the native bytes once and passes an owner-local adapter to
+  `ImageTaskArtifact.setContentFromBlob()`, so data-URL/hash conversion remains model-owned
+  without a second native read. Changed non-null content invalidates the reused item's stale
+  assessments and feedback; unchanged content preserves them. The invalidation rule is applied
+  owner-locally because `StudentSubmissionItem` exposes no callable invalidation primitive (see
+  [Known discrepancies](#known-discrepancies) item 28).
+- No in-memory rollback is promised. `ImageTaskArtifact.setContentFromBlob()` assigns `content`
+  before hashing, so a shared write whose hash step returns null or throws can leave the new
+  content and a null/old hash on the in-memory artefact before the run-blocking throw. Prior saved
+  records are preserved only because no completion persistence occurs; that is not rollback.
+- Diagnostics are one bounded `ABLogger` warn per converted failure with opaque `uid`, `taskId`
+  and `scope` (plus `attempts`/`responseCode` for transport failures). Source URLs, payloads,
+  student names and raw error text are never logged; propagated faults emit no manager warning.
+- Proof boundary: hermetic native HTTP/blob stubs, real models, memory collections and logger
+  observers prove the manager/model/caller boundary only. They do not prove live GAS/network
+  behaviour, deployed logging fidelity, durable persistence or completion-marker/prepared-write
+  guarantees (Section 8). The connected controller/store regression stubs extraction and
+  assessment and is not production persistence evidence.
 
 ### LLM assessment outcomes and validated cache reuse (Implemented)
 
@@ -1073,6 +1170,11 @@ Coverage resolution rules:
   an item-scoped corruption outcome, not a re-diagnosis of the historical acquisition or
   extraction cause. Null-document items carrying valid acquisition/validation `E` remain valid
   and are not rewritten.
+- A matched pending IMAGE is in-flight, not terminal. The image stage hydrates it or materialises
+  extraction `IMAGE_HYDRATION_FAILED` `E`; a still-pending image at the completion boundary is
+  invalid and must be rejected by the Section 8 completed-persistence gate. Read restoration does
+  not treat pending null content as a completed null success. See
+  [§Image hydration outcomes](#image-hydration-outcomes-implemented).
 - Completed persistence rejects an incomplete or extra-key criterion record (see the
   [Assessment invariants](#assessment--resultcause-primitives-implemented)); coverage and
   criterion completeness are both completion gates, not transport assumptions. An already-stored
@@ -1373,6 +1475,12 @@ gates remain pending.
    change, schema version or new catalogue entry; both frontend schemas already accept every
    emitted assessment result. See
    [§LLM assessment outcomes and validated cache reuse](#llm-assessment-outcomes-and-validated-cache-reuse-implemented).
+10. **Section 7 image hydration adds no shape.** `ImageManager` reuses the existing extraction
+    `IMAGE_HYDRATION_FAILED` catalogue cause and `StudentSubmissionItem.setError()` atomic
+    replacement. It adds no persisted field, transport field, public entry property or schema
+    version; a matched pending IMAGE remains a valid in-flight state and its resolved or failed
+    outcome is expressed through the existing artefact content/hash and Assessment union. See
+    [§Image hydration outcomes](#image-hydration-outcomes-implemented).
 
 **Classification of the entries above:** the `Assessment` result/cause primitives, atomic
 `setError()`, partial `E` retention, both consumer schema activations, the required wire marker,
@@ -1381,13 +1489,15 @@ availability rules and formula-free reference rejection, removal of the persiste
 `formulaComparison` entry, marker-1 CURRENT backend restoration (read validation, coverage and
 null-parent isolation), the legacy read projection/opaque persistence, the frontend read
 normaliser activation, the Section 4 acquisition/extraction `E` producers with terminal failure
-materialisation for known tasks, and the Section 6 assessment-stage LLM producers with validated
-cache reuse are implemented. Completed-persistence gates (including completion-time marker
-stamping) and the preview slices remain pending. The acquisition
+materialisation for known tasks, the Section 6 assessment-stage LLM producers with validated
+cache reuse, and the Section 7 scoped image-hydration outcomes are implemented.
+Completed-persistence gates (including completion-time marker stamping and pending-image
+rejection) and the preview slices remain pending. The acquisition
 placeholder now matches the null-parent read invariant and source conversion is placed at
 immediate native access (see [Known discrepancies](#known-discrepancies) items 23–24); item 26
-records the remaining completion-marker gap. None is a regression in the implemented backend
-result/cause, CURRENT restoration or legacy projection contracts.
+records the remaining completion-marker gap and item 27 the pending-image completion gap. None is
+a regression in the implemented backend result/cause, CURRENT restoration or legacy projection
+contracts.
 
 ---
 
@@ -1454,6 +1564,17 @@ Assessment-stage LLM:      src/backend/RequestHandlers/
   └── CacheManager.js                          — generic best-effort get/put and shared
                                                   CACHE_EXPIRY_SECONDS (assessment-specific
                                                   wrappers removed)
+
+Image hydration:           src/backend/RequestHandlers/ImageManager.js
+  ├── collectAllImageArtifacts()               — owner-local URL admission, scoped shared
+  │                                               blocking and student IMAGE_HYDRATION_FAILED
+  │                                               materialisation
+  ├── fetchImagesAsBlobs()                     — one full-list sender call, 200-only, no stop
+  │                                               statuses, document round-robin and scoped
+  │                                               final outcomes
+  └── writeBackBlobs()                         — UID-checked writeback, unusable-content scope
+                                                  rules, content/hash validation and
+                                                  changed-content invalidation
 
 Controller:                src/backend/y_controllers/
   ├── AssignmentController.js                   — startAssessmentRun, processSelectedAssignment

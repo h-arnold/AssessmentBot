@@ -44,10 +44,13 @@
   - Classification: only network exceptions, HTTP 429 and HTTP 500–599 retry. Every response received in a batch is classified before any retry dispatch, so a caller stop response prevents further calls while successes already received in that batch are retained. Accepted and stop statuses are caller policy: LLM accepts 200/201 and stops on 401/403/404; image downloads accept only 200 and declare no stop statuses, so a student-image 403 is not an LLM-wide stop.
   - Outcomes: each final outcome carries the request UID plus either the final response or the original final network error, and its attempt count. A later network failure never returns an earlier 429/5xx response. `sendRequestsInBatches()` returns no run-wide collection: it consumes each completed batch through `onBatchComplete` before dispatching another, and returning exactly `false` stops any later retries and batches (retries already performed in the consumed batch are not cancelled); other callback return values continue. Unknown/duplicate identities and callback, routing or programming faults throw instead of becoming network retries. Diagnostics are limited to UID, status and attempt metadata.
   - Caller adaptation: `LLMRequestManager.processStudentResponses()` sends one full request list at the configured assessor batch size, rejects duplicate input UIDs and unknown/duplicate outcome UIDs before routing, applies accepted outcomes before failures in the same batch, and latches a 401/403/404 stop so no later batch dispatches. It adds no semantic validation retry: an invalid successful response is terminal. The batch callback retains each outcome's attempt count in an invocation-local map so non-accepted outcomes distinguish stop-cancelled work (unspent budget, `LLM_RUN_STOPPED`) from genuine exhaustion (`attempts === maxAttempts`, `LLM_UNAVAILABLE`); missing/invalid provenance throws before catalogue mutation. After a stop, never-dispatched eligible items are terminalised without further HTTP. `ImageManager.fetchImagesAsBlobs()` sends one full round-robin list at the configured Slides batch size and reads final 200 blobs before the next batch; blob-read faults escape by identity. These outcomes are internal GAS runtime objects: no public API, persistence or LLM request/response body shape changed.
-- Scoped image outcomes (`ImageManager`)
-  - Status: `Not implemented` (Section 7; shared transport adaptation delivered in Section 5)
-  - Current: `fetchImagesAsBlobs()` reuses the shared sender with the explicit Slides-fetch batch size, accepted `[200]` and no stop statuses, preserving document round-robin order. Final 200 blobs are read before the next batch; final non-200/network outcomes are logged with UID/status/attempt metadata only, and blob-read faults propagate unchanged. Scoped failure materialisation and writeback invalidation remain pending: a failed download still leaves artefact content null, and `writeBackBlobs()` still catches and warns on `setContentFromBlob` faults.
-  - Planned owning path (Section 7): `src/backend/RequestHandlers/ImageManager.js` — assign scoped final failures from the shared outcomes. Expected download, missing required source and blob/content decode failures become student-task `IMAGE_HYDRATION_FAILED` E, or a blocking shared reference/template failure according to scope. Successful writeback updates the artefact hash and invalidates stale assessments/feedback on a reused item. A matched IMAGE with a student page and `metadata.sourceUrl` is valid pending internal state, never a completed result; a missing IMAGE match is already extraction `SOURCE_CONTENT_UNAVAILABLE` E (Section 4). Unmatched or duplicate UIDs, missing model methods and other wiring faults throw. No second retry or hydration manager.
+- Scoped image hydration outcomes (`ImageManager`)
+  - Status: `Implemented` (backend, Section 7)
+  - Owning path: `src/backend/RequestHandlers/ImageManager.js` — scoped IMAGE collection, download and writeback. It reuses the shared transport budget and the existing Slides document round-robin scheduling; it adds no second retry or hydration manager, no persisted status, no transport field, no public `entry.item` property and no image URL/source-link policy change.
+  - Collection: `collectAllImageArtifacts()` admits a source URL through an owner-local predicate that mirrors the shared `Validate` acceptance policy (HTTPS, DNS hostname only, no IP address, no localhost, no port) without its progress-tracking diagnostics, so a rejected URL never reaches a log channel. A student item already carrying an upstream all-three terminal `E` is preserved verbatim and never collected. A matched student IMAGE with no admissible source URL materialises the atomic extraction `IMAGE_HYDRATION_FAILED` E on its owning item (null content/hash, cleared feedback), unless it is already hydrated; an already-hydrated artefact with an admissible source is still scheduled. A required shared reference/template IMAGE with no admissible source URL or owning document ID throws, blocking the run, unless it is already hydrated.
+  - Download: `fetchImagesAsBlobs()` makes one full-list sender call with the configured Slides-fetch batch size, accepted `[200]` and no stop statuses, preserving document round-robin order and UID association. Final 200 blobs are read before the next batch, and the shared three-total-attempt budget applies. A final non-200 (including 201), a permanent 4xx or an exhausted retryable/network outcome is routed by scope instead of retried, so a student-image 403 stays local and never becomes an LLM-wide stop. Duplicate input UIDs and unknown/duplicate outcome UIDs throw, and a scope-less failure outcome throws; a scope-less successful 200 outcome remains valid.
+  - Writeback: `writeBackBlobs()` verifies the required `setContentFromBlob` writer before classifying returned data, then reads native bytes once and passes them through an owner-local adapter so data-URL/hash conversion stays model-owned. Unusable returned content (null/empty bytes, null or reader-less blob, unusable stored hash) converts by scope: a student task E with null content/hash, or a run-blocking throw for a shared artefact. Changed non-null hydrated content clears the reused item's stale assessments/feedback; unchanged content preserves the complete snapshots. Thrown native-read, base64, hash and writer faults escape by original identity with no E and no manager diagnostic.
+  - Scope, diagnostics and later work: a required shared-image failure blocks the run and preserves prior saved results without promising in-memory rollback (conversion assigns `content` before hashing). Each converted student failure emits one bounded `ABLogger` warn with opaque `uid`/`taskId`/`scope` (plus `attempts`/`responseCode` for transport failures); source URLs, payloads and student names are never logged. Pending IMAGE remains valid internal state, never a completed null success: the completion gate, pending-image rejection and marker stamping remain Section 8 work, and preview error states remain Section 9.
 - LLM terminal assessment outcomes and validated cache reuse (`LLMRequestManager`)
   - Status: `Implemented` (backend, Section 6)
   - Owning paths: `src/backend/RequestHandlers/LLMRequestManager.js` owns terminal outcome mapping, assessment-specific key derivation and cache-hit result validation beside request generation; `src/backend/RequestHandlers/CacheManager.js` remains the generic best-effort `get`/`put` owner.
@@ -704,20 +707,20 @@ assignment.submissions = [
 - **Location**: `/src/backend/AssignmentProcessor/SlidesAssignment.js`
 - **Process**:
   1. Creates `ImageManager` instance
-  2. Collects all image artifacts via `imageManager.collectAllImageArtifacts(this)`
-  3. If no artifacts, returns early
-  4. Fetches images as blobs via `imageManager.fetchImagesAsBlobs(entries)`
-  5. Writes blobs back to artifacts via `imageManager.writeBackBlobs(this, blobs)`
-  6. Logs completion
+  2. Collects image artefacts via `imageManager.collectAllImageArtifacts(this)`; a pending required shared image with no usable source or owning document throws, while a pending student image with no usable source becomes that task's hydration `E` instead of an entry
+  3. If no artefacts are collected, logs and returns early
+  4. Fetches images as blobs via `imageManager.fetchImagesAsBlobs(entries)`, routing final failures by scope
+  5. Writes blobs back via `imageManager.writeBackBlobs(this, blobs)`, converting unusable returned content by scope and invalidating stale results only when content changed
+  6. Logs completion; a thrown fault is logged at this caller boundary (developer and user channels) and rethrown, so the run stops before persistence
 
 **Class**: `ImageManager`
 
 - **Location**: `src/backend/RequestHandlers/ImageManager.js`
-- **Purpose**: Batch-processes images for LLM consumption
+- **Purpose**: Owns scoped image hydration (collection, download and writeback) for LLM consumption
 - **Methods**:
-  - `collectAllImageArtifacts(assignment)`: Gathers all image artifact references
-  - `fetchImagesAsBlobs(entries)`: Downloads images in document round-robin order through the shared sender, using the configured Slides-fetch batch size, accepted `[200]` and no stop statuses. Empty input returns an empty array before reading the batch-size configuration, so empty input does not acquire configuration or trigger its failures. Final 200 blobs are read before the next batch; final failures are logged with UID/status/attempt metadata only, and blob-read faults propagate unchanged.
-  - `writeBackBlobs(assignment, blobs)`: Updates artifacts with base64 content
+  - `collectAllImageArtifacts(assignment)`: Gathers reference, template and submission IMAGE artefacts with their scope, document and task identities. Preserves an upstream all-three terminal `E` verbatim, materialises extraction `IMAGE_HYDRATION_FAILED` for a pending student image with no admissible source, and throws for a pending required shared image with no admissible source or owning document.
+  - `fetchImagesAsBlobs(entries)`: Downloads images in document round-robin order through the shared sender, using the configured Slides-fetch batch size, accepted `[200]` and no stop statuses. Empty input returns an empty array before reading the batch-size configuration, so empty input does not acquire configuration or trigger its failures. Final 200 blobs are read before the next batch; final non-200/network outcomes are routed by scope (student task `E` or a run-blocking throw), and blob-read faults propagate unchanged.
+  - `writeBackBlobs(assignment, blobs)`: Applies fetched blobs by UID, requiring the model writer before classifying returned data and reading native bytes once. Unusable returned content converts by scope; changed non-null content clears stale assessments/feedback, unchanged content preserves them; thrown faults escape by original identity.
 
 ##### Stage 6: Assess Responses (lines 317-323)
 
@@ -1301,7 +1304,7 @@ AssignmentController.processSelectedAssignment()
 
 - `SlidesParser`: Extracts content from Google Slides
 - `SheetsParser`: Extracts content from Google Sheets
-- `ImageManager`: Batch-processes images
+- `ImageManager`: Owns scoped image hydration (download and writeback)
 
 ### Assessors
 

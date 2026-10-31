@@ -5,9 +5,9 @@ import {
   restoreGlobals as restoreSavedGlobals,
 } from '../helpers/globalMockManager.js';
 
-// Hermetic behaviour coverage for ImageManager: artefact checks, collection
-// filtering, batched fetching and blob write back. All network and GAS
-// collaborators are mocked.
+// Hermetic fetching-transport coverage for ImageManager: empty-input and
+// configuration-acquisition guards, document round-robin scheduling and
+// bounded large-input dispatch. All network and GAS collaborators are mocked.
 class DummyBaseRequestManager {
   sendRequestsInBatches() {
     return [];
@@ -21,7 +21,6 @@ afterAll(() => {
   restoreSavedGlobals(savedBaseRequestManagerGlobals);
 });
 
-const { ArtifactFactory } = require('#backend/Models/Artifacts/index.js');
 const ImageManager = require('#backend/RequestHandlers/ImageManager.js');
 
 function buildManager(overrides = {}) {
@@ -30,137 +29,6 @@ function buildManager(overrides = {}) {
   Object.assign(manager, overrides);
   return manager;
 }
-
-function imageArtifact(role, sourceUrl, uid = undefined) {
-  return ArtifactFactory.image({
-    type: 'image',
-    taskId: 'task-one',
-    role,
-    metadata: { sourceUrl },
-    taskIndex: 0,
-    artifactIndex: 0,
-    ...(uid ? { uid } : {}),
-  });
-}
-
-describe('ImageManager artefact behaviour', () => {
-  let restoreGlobals;
-  let mockLogger;
-
-  beforeEach(() => {
-    mockLogger = { warn: vi.fn(), error: vi.fn(), info: vi.fn() };
-    const mockContext = withGlobalMocks({
-      ABLogger: () => ({ getInstance: () => mockLogger }),
-    });
-    restoreGlobals = mockContext.restore;
-  });
-
-  afterEach(() => {
-    restoreGlobals();
-    vi.restoreAllMocks();
-  });
-
-  it('identifies image artefacts only', () => {
-    const manager = buildManager();
-    expect(manager.isImageArtifact(null)).toBe(false);
-    expect(manager.isImageArtifact({})).toBe(false);
-    expect(manager.isImageArtifact({ getType: 'not-a-function' })).toBe(false);
-    expect(manager.isImageArtifact({ getType: () => 'TEXT' })).toBe(false);
-
-    const image = imageArtifact('reference', 'https://example.com/image.png');
-    expect(manager.isImageArtifact(image)).toBe(true);
-  });
-
-  it('skips non image reference artefacts and invalid urls', () => {
-    const manager = buildManager();
-    const textArtifact = ArtifactFactory.text({
-      type: 'text',
-      taskId: 'task-one',
-      role: 'reference',
-      content: 'hello',
-      taskIndex: 0,
-      artifactIndex: 0,
-    });
-    const badImage = imageArtifact('reference', 'not-a-url');
-    const assignment = {
-      assignmentDefinition: {
-        tasks: {
-          task_one: {
-            id: 'task-one',
-            artifacts: { reference: [textArtifact, badImage], template: [] },
-            taskTitle: 'Task One',
-          },
-        },
-        referenceDocumentId: 'ref-doc',
-        templateDocumentId: 'tpl-doc',
-      },
-      submissions: [],
-    };
-    expect(manager.collectAllImageArtifacts(assignment)).toEqual([]);
-  });
-
-  it('skips image artefacts when the owning document id is missing', () => {
-    const manager = buildManager();
-    const image = imageArtifact('template', 'https://example.com/image.png');
-    const assignment = {
-      assignmentDefinition: {
-        tasks: {
-          task_one: {
-            id: 'task-one',
-            artifacts: { reference: [], template: [image] },
-            taskTitle: 'Task One',
-          },
-        },
-        referenceDocumentId: 'ref-doc',
-        templateDocumentId: null,
-      },
-      submissions: [],
-    };
-    expect(manager.collectAllImageArtifacts(assignment)).toEqual([]);
-  });
-
-  it('collects submission images and warns on invalid submission urls', () => {
-    const manager = buildManager();
-    const good = imageArtifact('submission', 'https://example.com/student.png');
-    const bad = imageArtifact('submission', 'invalid-url');
-    const text = ArtifactFactory.text({
-      type: 'text',
-      taskId: 'task-one',
-      role: 'submission',
-      content: 'hello',
-      taskIndex: 0,
-      artifactIndex: 0,
-    });
-    const assignment = {
-      assignmentDefinition: { tasks: {}, referenceDocumentId: 'ref', templateDocumentId: 'tpl' },
-      submissions: [
-        { documentId: null, items: {} },
-        { documentId: 'student-doc', items: {} },
-        {
-          documentId: 'student-doc',
-          items: {
-            good: { taskId: 'task-one', id: 'item-good', artifact: good },
-            bad: { taskId: 'task-one', id: 'item-bad', artifact: bad },
-            text: { taskId: 'task-one', id: 'item-text', artifact: text },
-            missing: { taskId: 'task-one', id: 'item-missing' },
-          },
-        },
-      ],
-    };
-    const entries = manager.collectAllImageArtifacts(assignment);
-    expect(entries).toHaveLength(1);
-    expect(entries[0]).toMatchObject({
-      scope: 'submission',
-      documentId: 'student-doc',
-      taskId: 'task-one',
-      itemId: 'item-good',
-    });
-    expect(mockLogger.warn).toHaveBeenCalledWith(
-      'Submission image artifact has no valid sourceUrl; it will not be hydrated and content stays null',
-      expect.objectContaining({ taskId: 'task-one' })
-    );
-  });
-});
 
 describe('ImageManager fetching behaviour', () => {
   let restoreGlobals;
@@ -427,49 +295,4 @@ describe('ImageManager fetching behaviour', () => {
       mockContext.restore();
     }
   });
-
-  it.each([
-    { label: 'final HTTP failure', responseCode: 500, error: null, expectedStatus: 500 },
-    {
-      label: 'final network failure',
-      responseCode: null,
-      error: new Error('opaque network failure'),
-      expectedStatus: null,
-    },
-  ])(
-    'safely warns for a $label without reading response details',
-    ({ responseCode, error, expectedStatus }) => {
-      const warnings = [];
-      const mockContext = withGlobalMocks({
-        ABLogger: () => ({ getInstance: () => ({ warn: (...args) => warnings.push(args) }) }),
-      });
-      const manager = buildManager();
-      manager.progressTracker = { updateProgress: vi.fn() };
-      const getResponseCode = vi.fn(() => responseCode);
-      const getBlob = vi.fn(() => 'must not be read');
-      const response = responseCode === null ? null : { getResponseCode, getBlob };
-      manager.sendRequestsInBatches = vi.fn((requests, options) => {
-        options.onBatchComplete([{ uid: requests[0].uid, response, error, attempts: 3 }]);
-      });
-      try {
-        expect(
-          manager.fetchImagesAsBlobs([
-            { uid: 'opaque-uid', url: 'https://private.example/image', documentId: 'doc-a' },
-          ])
-        ).toEqual([]);
-        expect(warnings).toEqual([
-          [
-            'Failed to fetch image',
-            { uid: 'opaque-uid', attempts: 3, responseCode: expectedStatus },
-          ],
-        ]);
-        expect(getBlob).not.toHaveBeenCalled();
-        if (response) expect(getResponseCode).toHaveBeenCalledTimes(2);
-        expect(JSON.stringify(warnings)).not.toContain('private.example');
-        expect(JSON.stringify(warnings)).not.toContain('opaque network failure');
-      } finally {
-        mockContext.restore();
-      }
-    }
-  );
 });
