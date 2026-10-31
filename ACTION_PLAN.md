@@ -12,7 +12,7 @@ and [#341](https://github.com/h-arnold/AssessmentBot/issues/341).
 - Product and contract authority: @SPEC.md .
 - Preview layout, copy and interaction authority: @ASSESSMENT_ERROR_PREVIEW_LAYOUT.md .
 - This plan sequences delivery; it does not reopen either approved document.
-- Sections 1–6 are complete (Section 4 gate has an explicit user-accepted flaky-debt exception); Section 7 is **regression gate passed — commit/push pending**; Sections 8–12 are **Not started**. Record actual changes,
+- Sections 1–7 are complete (Section 4 gate has an explicit user-accepted flaky-debt exception); Sections 8–12 are **Not started**. Record actual changes,
   checks/report paths, deviations and downstream implications under each section.
 
 ### Baseline execution record
@@ -1253,10 +1253,10 @@ unknown-UID returns are removed.
 
 ## Section 7 — Scoped image failures and hydration invariants
 
-**Status: runtime/test/shape Green PASS; section not complete.** Independent authority
+**Status: complete — reviewed, gated, committed and pushed.** Independent authority
 `.opencode/scratchpad/section7-green-approved.md` closes R1–R8, SR1 and G1–G6 with zero
 outstanding in-scope Critical, Improvement or Nitpick finding. Docs sync and section
-compaction and the stable-ID regression gate are complete; commit and push remain pending; no deployment
+compaction and the stable-ID regression gate are complete; commit and push succeeded; no deployment
 is authorised.
 
 ### Outcome (compacted)
@@ -1337,7 +1337,7 @@ dependency, configuration, URL policy or retry scheduler was added.
 - Source SHA256 `8cf42c3115b714d4b5a7dd23bddeed1941794f8db5cde2e103dcff8f16d1bbc6`;
   source and all eight test files remain below 500 lines (source 499, tests 2,582).
 - Section regression comparison passed with accepted baseline debt (record below);
-  commit/push remain pending. No deployment has run for Section 7.
+  commit/push succeeded. No deployment has run for Section 7.
 
 ### Implementation notes / deviations / follow-up
 
@@ -1369,6 +1369,12 @@ dependency, configuration, URL policy or retry scheduler was added.
   Zero regressions / zero new failures / one baseline fix; seven checks pass.
   Overall FAILING solely for five accepted historical backend max-lines warnings;
   backend/frontend/builder coverage, E2E, frontend/builder lint and all type checks pass.
+- Commit `72d93bb16820a829c9bb5a4c00a52b9a97955c13`, exact message
+  `fix: scope image hydration failures and preserve upstream errors`, branch
+  `assessment-errors-322-341`; `git push origin assessment-errors-322-341` succeeded
+  (remote advanced 2b67e045→72d93bb1). Normal hooks passed without source/test changes:
+  Prettier, scoped backend lint and all-project TypeScript checks. This completion
+  record is committed separately as `docs: record Section 7 completion and regression evidence`.
 
 ## Section 8 — Prepared persistence and truthful run completion
 
