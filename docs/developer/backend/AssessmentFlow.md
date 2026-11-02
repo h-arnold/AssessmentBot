@@ -1242,7 +1242,7 @@ AssignmentController.processSelectedAssignment()
   │   ├─ Assignment.fetchSubmittedDocuments()
   │   │   └─ Assignment.fetchSubmittedDocumentsByMimeType()
   │   │       ├─ Classroom.Courses.CourseWork.StudentSubmissions.list()
-  │   │       └─ Assignment._processAttachmentForSubmission() [for each]
+  │   │       └─ AssignmentSubmissions._processAttachmentForSubmission() [for each]
   │   ├─ SlidesAssignment.processAllSubmissions()
   │   │   └─ SlidesParser.extractSubmissionArtifacts() [for each student]
   │   │       └─ StudentSubmission.upsertItemFromExtraction()

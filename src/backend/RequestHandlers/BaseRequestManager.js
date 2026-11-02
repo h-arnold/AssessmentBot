@@ -86,6 +86,22 @@ class BaseRequestManager {
   }
 
   /**
+   * Reports whether one HTTP status is retryable under the shared transport policy:
+   * 429 Too Many Requests, or any 5xx server error. This is the single owner of the
+   * retryable-status predicate; callers classify terminal outcomes by delegating here
+   * rather than re-deriving the ranges, so the retryable set cannot drift.
+   * @param {number} status HTTP status code.
+   * @returns {boolean} True when the status is retryable.
+   * @remarks Retry and backoff decisions remain owned by the shared retry engine.
+   */
+  static isRetryableStatus(status) {
+    return (
+      status === HTTP_STATUS_TOO_MANY_REQUESTS ||
+      (status >= HTTP_STATUS_SERVER_ERROR && status <= HTTP_STATUS_SERVER_ERROR_MAX)
+    );
+  }
+
+  /**
    * Classifies one received HTTP response.
    * @param {Object} response Native HTTP response.
    * @param {Object} policy Caller status policy.
@@ -98,9 +114,7 @@ class BaseRequestManager {
       status,
       accepted: policy.acceptedStatuses.includes(status),
       stopped: policy.stopStatuses.includes(status),
-      retryable:
-        status === HTTP_STATUS_TOO_MANY_REQUESTS ||
-        (status >= HTTP_STATUS_SERVER_ERROR && status <= HTTP_STATUS_SERVER_ERROR_MAX),
+      retryable: BaseRequestManager.isRetryableStatus(status),
     };
   }
 

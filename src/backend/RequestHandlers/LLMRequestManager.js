@@ -8,9 +8,6 @@
 const LLM_CACHE_KEY_VERSION = 'v1';
 const LLM_ACCEPTED_STATUSES = [200, 201];
 const LLM_STOP_STATUSES = [401, 403, 404];
-const LLM_TOO_MANY_REQUESTS = 429;
-const LLM_RETRYABLE_SERVER_MIN = 500;
-const LLM_RETRYABLE_SERVER_MAX = 599;
 const LLM_CRITERIA = ['completeness', 'accuracy', 'spag'];
 const LLM_ERROR_STAGE = 'assessment';
 
@@ -421,9 +418,9 @@ class LLMRequestManager extends BaseRequestManager {
    * A retryable status or network failure means the shared budget was exhausted only
    * when the outcome shows the full attempt budget spent; with unspent budget the
    * shared engine's pending work was cancelled by a run stop, so the item is affected
-   * remaining eligible work and terminalises as LLM_RUN_STOPPED. The range mirrors the
-   * shared engine's retry classification for outcome mapping only — the retry/backoff
-   * decisions remain owned by the shared engine.
+   * remaining eligible work and terminalises as LLM_RUN_STOPPED. The retryable status
+   * set is delegated to the shared engine's own predicate for outcome mapping only —
+   * the retry/backoff decisions remain owned by the shared engine.
    * @param {number|null} code - The final HTTP status, or null for a network failure.
    * @param {number} attempts - Attempt provenance carried by the final outcome.
    * @returns {string} The catalogue error code.
@@ -431,10 +428,7 @@ class LLMRequestManager extends BaseRequestManager {
    */
   _terminalCodeFor(code, attempts) {
     if (LLM_STOP_STATUSES.includes(code)) return 'LLM_RUN_STOPPED';
-    const isRetryable =
-      code === null ||
-      code === LLM_TOO_MANY_REQUESTS ||
-      (code >= LLM_RETRYABLE_SERVER_MIN && code <= LLM_RETRYABLE_SERVER_MAX);
+    const isRetryable = code === null || BaseRequestManager.isRetryableStatus(code);
     if (!isRetryable) return 'LLM_HTTP_FAILED';
     return attempts >= this.maxAttempts ? 'LLM_UNAVAILABLE' : 'LLM_RUN_STOPPED';
   }

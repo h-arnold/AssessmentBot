@@ -260,17 +260,6 @@ class Assignment {
   }
 
   /**
-   * Processes a single attachment for a student's submission.
-   * @param {object} attachment - The attachment object from Classroom submission.
-   * @param {string} studentId - The Google Classroom student ID.
-   * @param {string} mimeType - The expected MIME type to validate against.
-   * @returns {void}
-   */
-  _processAttachmentForSubmission(attachment, studentId, mimeType) {
-    return this._submissions._processAttachmentForSubmission(attachment, studentId, mimeType);
-  }
-
-  /**
    * Fetches and assigns submitted Google Drive documents for each student, filtered by the provided MIME type.
    * @param {string} mimeType - The Google Drive MIME type to filter for.
    * @returns {void}
