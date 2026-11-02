@@ -198,6 +198,9 @@ describe('AssignmentController - UserProperties Migration', () => {
       globalThis.Assignment = {
         create: vi.fn().mockReturnValue({
           assignmentDefinition: mockDefinition,
+          // Completed-run counting reads the persisted submission graph, so the
+          // stub must expose the submissions structure a real assignment carries.
+          submissions: [],
           addStudent: vi.fn(),
           populateTasks: vi.fn(),
           fetchSubmittedDocuments: vi.fn(),

@@ -166,20 +166,35 @@ class AssignmentController {
    * Counts distinct failed submission items after a persisted run. One item with
    * any explicit error criterion is one failed task, regardless of how many of
    * its criteria carry the error.
+   *
+   * @remarks Consumes the validated completed structure directly: there are no
+   * permissive defaults, so a missing submissions, items or assessments
+   * structure throws rather than silently counting zero failures. A run whose
+   * handled errors were persisted beside successes therefore cannot report a
+   * false success.
+   *
    * @param {Assignment} assignment - The persisted assignment.
    * @returns {number} The number of distinct failed submission items.
+   * @throws {Error} If the completed submissions, items or assessments structure is missing.
    * @private
    */
   _countFailedSubmissionItems(assignment) {
     const submissions = assignment.submissions;
-    if (!submissions) return 0;
+    if (!submissions) {
+      throw new Error('AssignmentController: missing submissions/items/assessments');
+    }
     let failedItemCount = 0;
     for (const submission of submissions) {
       const items = submission.items;
-      if (!items) continue;
+      if (!items) {
+        throw new Error('AssignmentController: missing submissions/items/assessments');
+      }
       const itemValues = Object.values(items);
       for (const item of itemValues) {
-        const assessments = item.assessments ?? {};
+        const assessments = item.assessments;
+        if (!assessments) {
+          throw new Error('AssignmentController: missing submissions/items/assessments');
+        }
         const hasErrorResult = Object.values(assessments).some((entry) => entry?.score === 'E');
         if (hasErrorResult) failedItemCount += 1;
       }

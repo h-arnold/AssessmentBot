@@ -427,6 +427,7 @@ g.ABClassValidation = require('../src/backend/y_controllers/ABClassController/AB
 g.ABClassMutationOps = require('../src/backend/y_controllers/ABClassController/ABClassMutationOps.js');
 g.ABClassPersistence = require('../src/backend/y_controllers/ABClassController/ABClassPersistence.js');
 g.ABClassRoster = require('../src/backend/y_controllers/ABClassController/ABClassRoster.js');
+g.ABClassAssignmentValidation = require('../src/backend/y_controllers/ABClassController/ABClassAssignmentValidation.js');
 g.ABClassAssignmentOps = require('../src/backend/y_controllers/ABClassController/ABClassAssignmentOps.js');
 g.ABClassResponseMapper = require('../src/backend/y_controllers/ABClassController/ABClassResponseMapper.js');
 

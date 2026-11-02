@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { ABClass } from '#backend/Models/ABClass.js';
 import { loadBackendModelInputs } from '#synthetic-data/toBackendModelInputs.js';
 import ABClassPersistence from '#backend/y_controllers/ABClassController/ABClassPersistence.js';
+import ABClassValidation from '#backend/y_controllers/ABClassController/ABClassValidation.js';
 import ABClassResponseMapper from '#backend/y_controllers/ABClassController/ABClassResponseMapper.js';
 import { withTemporaryGlobals } from '#test-helpers/globalMockManager.js';
 import { currentAssignmentJson } from '../assignment/assignmentRehydrationCurrentSupport.js';
@@ -43,7 +44,7 @@ function storageHarness(classId) {
       name === 'abclass_partials' ? partial : name === classId ? full : assignmentCollection
     ),
   };
-  const persistence = new ABClassPersistence({ dbManager, validation: {} });
+  const persistence = new ABClassPersistence({ dbManager, validation: new ABClassValidation() });
   return { full, partial, assignmentCollection, persistence, dbManager, classId };
 }
 
@@ -193,7 +194,7 @@ describe('legacy ABClass assessment persistence lifecycle', () => {
     };
     const ops = new globalThis.ABClassAssignmentOps({
       dbManager,
-      validation: {},
+      validation: new ABClassValidation(),
       persistence: classStorage.persistence,
     });
     expect(typeof ops.persistAssignmentRun).toBe('function');

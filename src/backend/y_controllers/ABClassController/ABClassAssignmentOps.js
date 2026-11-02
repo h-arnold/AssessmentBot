@@ -1,4 +1,4 @@
-/* global ABLogger, Assignment, AssignmentNotFoundError, TypeError, AssignmentDefinitionController, Validate, Assessment, AssignmentCurrentRestoration, AssignmentSerialisation */
+/* global ABLogger, Assignment, AssignmentNotFoundError, TypeError, AssignmentDefinitionController, Validate, AssignmentSerialisation, ABClassAssignmentValidation */
 
 /**
  * ABClassAssignmentOps
@@ -6,6 +6,8 @@
  * Assignment run persistence and rehydration operations. Persists full
  * assignment payloads to dedicated collections and manages the
  * hydration lifecycle between partial and full assignment representations.
+ * Completed-run validation is delegated to {@link ABClassAssignmentValidation}
+ * and class-save validation to the injected `ABClassValidation`.
  */
 class ABClassAssignmentOps {
   /** Constructs ABClassAssignmentOps.
@@ -13,11 +15,13 @@ class ABClassAssignmentOps {
    * @param {Object} options.dbManager - The DbManager instance for collection access.
    * @param {Object} options.validation - An ABClassValidation instance.
    * @param {Object} options.persistence - An ABClassPersistence instance.
+   * @param {ABClassAssignmentValidation} [options.assignmentValidation] - Completed-run validation owner; defaults to a new instance.
    */
-  constructor({ dbManager, validation, persistence }) {
+  constructor({ dbManager, validation, persistence, assignmentValidation }) {
     this._dbManager = dbManager;
     this._validation = validation;
     this._persistence = persistence;
+    this._assignmentValidation = assignmentValidation ?? new ABClassAssignmentValidation();
   }
 
   /** Generates the collection name for a full assignment.
@@ -35,7 +39,12 @@ class ABClassAssignmentOps {
    *
    * @remarks Deliberately NOT transactional, no rollback: the full assignment
    * store is written first, then the class store, then the abclass_partials
-   * registry. All four projections (full assignment, embedded partial,
+   * registry. Completed-run validation is delegated to
+   * {@link ABClassAssignmentValidation}; the same class-save contract that
+   * `saveClass()` enforces (`ABClassValidation._validateClassForSave`) also runs
+   * here before the first mutation, so an invalid class cannot commit the full
+   * assignment and then fail outside both persistence owners' diagnostics.
+   * All four projections (full assignment, embedded partial,
    * prospective full class, class-partials registry) are prepared through the
    * existing class preparation owner before the first collection mutation, and
    * every later write consumes those exact prepared payloads. A storage failure
@@ -46,6 +55,7 @@ class ABClassAssignmentOps {
    *   a `classId` property and a `toPartialJSON()` method.
    * @param {Assignment} assignment - The assignment to persist
    * @returns {Object} Prepared class and registry payloads for the facade write.
+   * @see ABClassAssignmentValidation
    */
   persistAssignmentRun(abClass, assignment) {
     const logger = ABLogger.getInstance();
@@ -89,7 +99,11 @@ class ABClassAssignmentOps {
 
       // Completed-write gate: reject an incomplete or invalid terminal result
       // before any projection or collection mutation.
-      this._validateCompletedAssignmentRun(assignment);
+      this._assignmentValidation._validateCompletedAssignmentRun(assignment);
+
+      // Reuse the existing class-save contract so an invalid class cannot commit
+      // the full assignment and then fail outside both persistence diagnostics.
+      this._validation._validateClassForSave(abClass);
 
       // Stamp the result-format marker only after the completed state is valid
       // and before the full and partial payloads are serialised.
@@ -176,176 +190,6 @@ class ABClassAssignmentOps {
       });
       throw error;
     }
-  }
-
-  /** Validates a terminal item against its result map and source state.
-   * Validates that the assignment holds a completed terminal result for every
-   * known task before persistence: every submission covers the known task
-   * universe, every item carries exactly the three canonical criteria as valid
-   * complete results with a consistent source state, and every known task's
-   * required shared reference/template artefacts are usable.
-   *
-   * @remarks Preserves blank content with a hash, source-less acquisition/extraction errors, sourced assessment errors and genuine no-submission.
-   * Not a run-start eligibility gate.
-   *
-   * @param {Assignment} assignment - The assignment to validate.
-   * @returns {void}
-   * @throws {Error} With the owning task and a semantic reason when the state
-   *   is not a valid completed run.
-   * @private
-   */
-  _validateCompletedAssignmentRun(assignment) {
-    const tasks = assignment.assignmentDefinition?.tasks ?? {};
-    const taskIds = Object.keys(tasks);
-    const submissions = assignment.submissions ?? [];
-    for (const submission of submissions) {
-      const items = submission.items ?? {};
-      // A genuine no-submission has no document or observed task results.
-      if (submission.documentId == null && Object.keys(items).length === 0) continue;
-      for (const taskId of taskIds) {
-        const item = items[taskId];
-        if (!item) {
-          throw new Error(
-            `Completed assignment run is invalid: submission for student ${submission.studentId} has no result for known task ${taskId} (incomplete task coverage).`
-          );
-        }
-        this._validateCompletedItem(taskId, item, submission.documentId);
-      }
-    }
-    this._validateCompletedSharedArtefacts(taskIds, tasks);
-  }
-
-  /** Validates completed item results and source consistency.
-   * @param {string} taskId - Task identity.
-   * @param {Object} item - Completed item.
-   * @param {string|null} parentDocumentId - Parent source identity.
-   * @returns {void}
-   * @private
-   */
-  _validateCompletedItem(taskId, item, parentDocumentId) {
-    const assessments = item.assessments ?? {};
-    if (!AssignmentCurrentRestoration._hasValidCompletedCurrentAssessments(assessments, 'full')) {
-      throw this._invalidCompletedRun(taskId, this._completedAssessmentsReason(assessments));
-    }
-    this._validateCompletedItemSource(taskId, item, Object.values(assessments), parentDocumentId);
-  }
-  /**
-   * Returns a safe explanation for an invalid completed criterion map.
-   * @param {Object} assessments - Criterion result map.
-   * @returns {string} Contextual validation reason.
-   */
-  _completedAssessmentsReason(assessments) {
-    if (!assessments || typeof assessments !== 'object' || Array.isArray(assessments))
-      return 'criterion result map is missing or invalid';
-    const criteria = ['completeness', 'accuracy', 'spag'];
-    const keys = Object.keys(assessments);
-    const missing = criteria.find((criterion) => !Object.hasOwn(assessments, criterion));
-    if (missing) return `missing required ${missing} criterion result`;
-    if (keys.some((key) => !criteria.includes(key))) return 'unexpected criterion result key';
-    for (const criterion of criteria) {
-      const entry = assessments[criterion];
-      if (entry?.score === 'E' && (typeof entry.reasoning !== 'string' || !entry.reasoning.trim()))
-        return `${criterion} reasoning must be non-blank`;
-      if (!Assessment.isValidRawResult(entry)) return `invalid ${criterion} criterion result`;
-    }
-    return 'invalid criterion results';
-  }
-
-  /** Validates permitted terminal errors when source content is null.
-   * @param {string} taskId - Task identity.
-   * @param {Object} item - Completed item.
-   * @param {Array<Object>} entries - Criterion results.
-   * @param {string|null} parentDocumentId - Parent source identity.
-   * @returns {void}
-   * @private
-   */
-  _validateCompletedItemSource(taskId, item, entries, parentDocumentId) {
-    const artifact = item.artifact;
-    if (parentDocumentId == null && artifact.content != null) {
-      throw this._invalidCompletedRun(
-        taskId,
-        'a submission without a source document cannot carry artefact content'
-      );
-    }
-    if (artifact.content == null) {
-      this._validateNullSourceItem(taskId, entries, parentDocumentId);
-      return;
-    }
-    if (typeof artifact.contentHash !== 'string' || artifact.contentHash.length === 0) {
-      throw this._invalidCompletedRun(
-        taskId,
-        'present submission content requires a usable content hash'
-      );
-    }
-  }
-
-  /** Validates null-source items against their parent submission and error causes.
-   * @param {string} taskId - Task identity.
-   * @param {Array<Object>} entries - Criterion results.
-   * @param {string|null} parentDocumentId - Parent source identity.
-   * @returns {void}
-   * @private
-   */
-  _validateNullSourceItem(taskId, entries, parentDocumentId) {
-    const isNullDocument = parentDocumentId == null;
-    const allowedStages = isNullDocument
-      ? ['acquisition', 'validation']
-      : ['acquisition', 'extraction', 'validation'];
-    const allErrors = entries.every((entry) => entry.score === 'E');
-    if (allErrors && entries.every((entry) => allowedStages.includes(entry.error?.stage))) return;
-    if (isNullDocument) {
-      throw this._invalidCompletedRun(
-        taskId,
-        'a submission without a source document may only carry acquisition or validation error placeholders'
-      );
-    }
-    throw this._invalidCompletedRun(
-      taskId,
-      'submission artefact has no source content beside terminal results that are not acquisition/extraction error placeholders (pending or unavailable content)'
-    );
-  }
-
-  /** Creates a task-contextual completion validation error.
-   * @param {string} taskId - Task identity.
-   * @param {string} reason - Rejection reason.
-   * @returns {Error} Contextual error.
-   * @private
-   */
-  _invalidCompletedRun(taskId, reason) {
-    return new Error(`Completed assignment run is invalid for task ${taskId}: ${reason}`);
-  }
-
-  /** Validates shared artefacts for all completed tasks.
-   * @param {Array<string>} taskIds - Known task identities.
-   * @param {Object} tasks - Known task definitions.
-   * @returns {void}
-   * @private
-   */
-  _validateCompletedSharedArtefacts(taskIds, tasks) {
-    taskIds.forEach((taskId) => {
-      const artifacts = tasks[taskId]?.artifacts ?? {};
-      ['reference', 'template'].forEach((role) => {
-        const roleArtifacts = artifacts[role];
-        if (!roleArtifacts) return;
-        if (roleArtifacts.length === 0)
-          throw this._invalidCompletedRun(
-            taskId,
-            `the required shared ${role} artefact array is empty`
-          );
-        roleArtifacts.forEach((artefact) => {
-          if (artefact?.content == null)
-            throw this._invalidCompletedRun(
-              taskId,
-              `the shared ${role} artefact has no usable content`
-            );
-          if (typeof artefact.contentHash !== 'string' || artefact.contentHash.length === 0)
-            throw this._invalidCompletedRun(
-              taskId,
-              `the shared ${role} artefact has no usable content hash`
-            );
-        });
-      });
-    });
   }
 
   /**

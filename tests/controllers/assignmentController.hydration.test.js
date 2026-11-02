@@ -1,4 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { loadBackendModelInputs } from '#synthetic-data/toBackendModelInputs.js';
+import { withTemporaryGlobals } from '#test-helpers/globalMockManager.js';
 import { createMockABLogger } from '../helpers/mockFactories.js';
 
 // Setup global mocks
@@ -7,6 +9,8 @@ const DefinitionStaleError = require('#backend/Utils/ErrorTypes/DefinitionStaleE
 
 // Import classes after mocks
 const AssignmentController = require('#backend/y_controllers/AssignmentController.js');
+
+const Assignment = require('#backend/AssignmentProcessor/Assignment/index.js');
 
 const { AssignmentDefinition } = require('#backend/Models/AssignmentDefinition.js');
 
@@ -125,6 +129,9 @@ describe('AssignmentController - Definition Hydration', () => {
 
     globalThis.SlidesAssignment = vi.fn().mockImplementation(function () {
       this.assignmentDefinition = null;
+      // Completed-run counting reads the persisted submission graph, so the stub
+      // must expose the submissions structure a real assignment carries.
+      this.submissions = [];
       this.populateTasks = vi.fn();
       this.fetchSubmittedDocuments = vi.fn();
       this.processAllSubmissions = vi.fn();
@@ -293,5 +300,65 @@ describe('AssignmentController - Definition Hydration', () => {
       // Should proceed with other pipeline steps
       expect(mockAssignment.processAllSubmissions).toHaveBeenCalled();
     });
+  });
+});
+
+describe('AssignmentController - completed-run failed-item counting', () => {
+  /**
+   * Restores a real canonical completed assignment so the counter runs over the graph
+   * the completed-write gate is meant to establish, not a hand-built stub. The enclosing
+   * suite stubs the Assignment subclasses for orchestration tests, so the real
+   * polymorphic subclasses are installed for the duration of the restoration only.
+   * @returns {Assignment} A freshly restored, independently owned full assignment.
+   */
+  const restoreCanonicalAssignment = () => {
+    const inputs = loadBackendModelInputs('medium');
+    const record = structuredClone(inputs.assignmentsByKey['assignment-0-4']);
+    return withTemporaryGlobals(
+      {
+        Assignment: () => require('#backend/AssignmentProcessor/Assignment/index.js'),
+        SlidesAssignment: () => require('#backend/AssignmentProcessor/SlidesAssignment.js'),
+        SheetsAssignment: () => require('#backend/AssignmentProcessor/SheetsAssignment.js'),
+      },
+      () => Assignment.fromJSON(record, 'full')
+    );
+  };
+
+  /** Picks a submission that genuinely carries a document, so its items are meaningful. */
+  const documentBearingSubmission = (assignment) =>
+    assignment.submissions.find((submission) => submission.documentId !== null);
+
+  it('counts each failed item once for a healthy restored canonical assignment', () => {
+    const controller = new AssignmentController();
+    const assignment = restoreCanonicalAssignment();
+
+    // Canonical medium assignment-0-4 carries four all-three-E items and twelve E
+    // criteria in total, so this pins once-per-item counting rather than per-criterion.
+    expect(controller._countFailedSubmissionItems(assignment)).toBe(4);
+  });
+
+  it('fails loudly when the submissions structure is missing', () => {
+    const controller = new AssignmentController();
+    const assignment = restoreCanonicalAssignment();
+    delete assignment.submissions;
+
+    expect(() => controller._countFailedSubmissionItems(assignment)).toThrow(/submissions/i);
+  });
+
+  it('fails loudly when a document-bearing submission is missing its items structure', () => {
+    const controller = new AssignmentController();
+    const assignment = restoreCanonicalAssignment();
+    delete documentBearingSubmission(assignment).items;
+
+    expect(() => controller._countFailedSubmissionItems(assignment)).toThrow(/items/i);
+  });
+
+  it('fails loudly when an item is missing its assessments structure', () => {
+    const controller = new AssignmentController();
+    const assignment = restoreCanonicalAssignment();
+    const items = documentBearingSubmission(assignment).items;
+    delete Object.values(items)[0].assessments;
+
+    expect(() => controller._countFailedSubmissionItems(assignment)).toThrow(/assessments/i);
   });
 });

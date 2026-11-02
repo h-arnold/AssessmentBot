@@ -84,6 +84,10 @@ Deferred-findings log: `.opencode/scratchpad/assessment-errors-322-341-deferred-
 | ------------------------------------------------------ | -------- | ------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
 | Settings authentication-mode E2E retry-recovered flake | Material | Unchanged frontend journey outside Section 4 backend/docs surface; no causal link evidenced | `.opencode/scratchpad/section4-regression-e2e-investigation.md`; regression comparison `2026-10-28T06-48-49.500Z` | noted       | User explicitly selected “Accept as flaky debt”; accept this identified gate exception, no frontend fix or baseline/checker change authorised |
 
+| Finding                                                    | Severity | Scope rationale                                                                                                                                                                                                                                                    | Evidence                                                                                                                                                                                                                             | Disposition | User decision                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| ---------------------------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Section 8 completion-gate companion exceeds below-500 gate | Material | Approved single companion cannot hold the 23 moved rows plus the narrowed 14 G1/G2/G4 intentional Reds below 500 lines; every in-surface reduction route (condensation, assertion loss, second file, shared helper, limit raise) is excluded by existing approvals | `.opencode/scratchpad/section8-g1-g2-g4-red.md`: companion 656 lines (ESLint max-lines warning), OPS unit file 267 after the 225-line move; 14 intentional Reds verified, 867 sweep and 750 synthetic pass, zero unexpected failures | approved    | User approves re-balancing the split: return the 23 moved rows (18 completion-gate rows + 5 completed-run controls) to ABClassAssignmentOps.unit.test.js, restoring its exact pre-split 492-line state, and keep only the 14 new G1/G2/G4 Red rows with the harness they need in the companion; both files strictly below 500, still exactly one new test file, no shared helper, no formatting condensation or assertion loss |
+
 User sizing clarification: files below500 physical lines may exceed earlier predicted
 or section-specific estimated sizes without further approval. Apply this allowance to
 the in-scope test/owner files; no formatting condensation or assertion loss is needed
@@ -405,218 +409,84 @@ separation if the estimate crosses 500; this is a maintenance gate, not a produc
 
 ## Section 1 — Add result primitives and separate submission responsibilities
 
-**Status: complete.** Additive result/partial primitives only. Independent full-section sign-off is **PASS** (`.opencode/scratchpad/review-section1-clean-signoff.md`, G1–G11 resolved).
-
-### Implemented outcomes
-
-- `Assessment` owns catalogue/result validation and error construction: it round-trips numeric fractions in [0,5], N and E; rejects NaN/infinity, out-of-range scores, missing/whitespace E reasoning, invalid stage/code pairs and error metadata on non-E; and preserves non-blank reasoning without trimming.
-- The former 387-line `StudentSubmission.js` is split into `Models/StudentSubmission/00_StudentSubmissionItem.js` (item model: atomic task-error replacement, raw full/partial item validation and partial projection) and `Models/StudentSubmission/index.js` (submission entry). Both stay within the 320-line budget; public classes/methods are preserved and no obsolete source copy survives.
-- Atomic task failure replaces every old criterion. Partial E retains reasoning/cause, partial success/N remains score-only, and in-flight incompleteness is still permitted. Content replacement invalidates old assessments and feedback, including reuse of an existing item; unchanged content is not reclassified. Partial restoration never hashes redacted content, and missing full keys remain detectable by raw validation.
-- Generated GAS output places item support before the submission entry, and Node test setup exposes both globals in the same order.
-- Import-path/global migration covers `tests/smoke.js`, `tests/helpers/modelFactories.js`, the touched model, assessor, request-handler and serialisation suites, and `tests/setupGlobals.js`. `backend-copy.spec.ts` exercises the real repository source tree and asserts both copied files, content match and relative order; there is no concatenated bundle.
-- Shared frontend `services/assignmentAssessment/assessmentResult.zod.ts` (the single result/cause schema owner) and its co-located spec are added. They are **additive and unconsumed**: consumer activation, graph coverage, markers, normalisers, analyser and preview remain Section 2+ work.
-
-### Verification and completion gates
-
-- Backend: **2,991 tests / 213 files pass**; branch coverage **85.04% (3,280/3,857)** against the unchanged 85% gate. Frontend 2,902 tests / 299 files and builder 252 tests / 23 files pass.
-- Focused additions (`Assessment.validation`, `studentSubmission.validation`, `.contentReplacement`, `.branchCoverage`, the frontend schema spec and the extended builder spec) remain within module/test budgets.
-- Lint: backend exits non-zero solely for exactly six explicitly accepted pre-existing max-lines warnings, with zero errors; frontend exits 0 with its unchanged 19 baseline max-lines warnings; builder passes. Frontend `tsc -b` and builder compile pass.
-- Section-completion regression gate: **zero new failures and zero regressions** (seven checks pass, including full Playwright) against the accepted baseline: `.ts-regression-checker/reports/session-assessment-errors-322-341/runs/2026-10-23T12-05-26.865Z/comparison.txt`. Overall checker status remains FAILING solely for the six accepted unchanged backend max-lines warnings.
-- Documentation/Data Shapes implemented slices are updated: `AssessmentFlow`, frontend helper register §9.29 and `assignment.md` result/partial entries. Later planned graph/marker/read slices remain `Not implemented`.
-- No commits, push or deployment were performed.
-
-### Cross-section handoff
-
-`assessmentResult.zod.ts` is available for Section 2 to consume, but no production read consumer uses it yet. Do not assume changed wire schemas or graph-read rules are active until Section 2 lands.
-
-## Section 2 — Atomic read-contract and canonical-corpus cut-over
-
-**Status: complete.** User-authorised completion with one recorded flaky-test exception
-(deferred ledger, disposition approved); no checker policy change, hook bypass or
-assertion weakening.
-
-**Section checks:** backend **3,181** tests; frontend **2,923**; builder **252**;
-synthetic **750** with coverage thresholds; `typecheck:all`; production build; plugin
-coverage; fresh **69/69** affected browser tests. Required compact synthetic coverage
-passes with finite local budgets (15 s regeneration, 20 s rollback). Lint has zero
-errors; backend exits non-zero solely for five accepted historical `max-lines` warnings.
-Optional full-profile stress is **not** counted as passing (see Implementation notes).
-
-**Regression comparison:** session `assessment-errors-322-341`; baseline
-`2026-10-23T05:20:43.034Z`; current `2026-10-25T17:06:01.503Z`; report
-`.ts-regression-checker/reports/session-assessment-errors-322-341/runs/2026-10-25T17-06-01.503Z/comparison.json`.
-One retry-recovered Manage Year Groups case is accepted under the recorded exception;
-five historical backend warnings unchanged; one former factory warning fixed.
+**Status: complete.** Additive result/partial primitives only. Independent full-section sign-off PASS (`.opencode/scratchpad/review-section1-clean-signoff.md`, G1–G11 resolved).
 
 ### Outcome (compacted)
 
-One atomic 2a–2d cut-over: version-1 marker-1 canonical corpus; constructor-based
-`Assignment` restoration with strict names; raw-validation/current-restoration and
-opaque legacy persistence; one detached reassessment projector; shared frontend read
-normalisation activated in both read services; explicit E analysis input;
-formatter-stable deterministic fixture writer. Contract tests and canonical docs were
-reconciled in the same change.
+`Assessment` owns catalogue/result validation and error construction (fractional [0,5], N, E; rejects NaN/infinity, out-of-range, blank E reasoning, invalid stage/code pairs and error metadata on non-E). The former 387-line `StudentSubmission.js` is split into `Models/StudentSubmission/00_StudentSubmissionItem.js` (item model) and `Models/StudentSubmission/index.js` (submission entry), both within the 320-line budget with public APIs preserved. Shared frontend `services/assignmentAssessment/assessmentResult.zod.ts` (single result/cause schema owner) and its spec are added, **additive and unconsumed**.
+
+### Retained for later sections
+
+- Atomic task failure replaces every old criterion; partial E retains reasoning/cause, partial success/N stays score-only, in-flight incompleteness is permitted. Content replacement invalidates old assessments/feedback (including reuse of an existing item); unchanged content is not reclassified. Partial restoration never hashes redacted content; missing full keys remain detectable by raw validation.
+- Generated GAS output places item support before the submission entry; Node test setup exposes both globals in the same order. `backend-copy.spec.ts` exercises the real source tree and asserts both copied files, content match and relative order; there is no concatenated bundle.
+- Import-path/global migration covers `tests/smoke.js`, `tests/helpers/modelFactories.js`, `tests/setupGlobals.js` and the touched model, assessor, request-handler and serialisation suites.
+- **Cross-section handoff:** `assessmentResult.zod.ts` is available for Section 2 to consume, but no production read consumer uses it yet. Do not assume changed wire schemas or graph-read rules are active until Section 2 lands.
+- Later planned graph/marker/read slices remain `Not implemented` in docs.
+
+### Checks record
+
+Backend **2,991 tests / 213 files pass**, branches **85.04% (3,280/3,857)** against the unchanged 85% gate; frontend 2,902 tests / 299 files and builder 252 tests / 23 files pass. Focused additions within budgets. Lint: backend non-zero solely for six then-accepted pre-existing `max-lines` warnings with zero errors; frontend exits 0 with its unchanged 19 baseline warnings; builder passes; frontend `tsc -b` and builder compile pass. Regression gate: **zero new failures, zero regressions**, seven checks pass, report `.ts-regression-checker/reports/session-assessment-errors-322-341/runs/2026-10-23T12-05-26.865Z/comparison.txt`; checker overall FAILING solely for the six accepted warnings. Docs/Data Shapes slices updated (`AssessmentFlow`, frontend helper register §9.29, `assignment.md`). No commits, push or deployment.
+
+## Section 2 — Atomic read-contract and canonical-corpus cut-over
+
+**Status: complete.** User-authorised completion with one recorded flaky-test exception (deferred ledger, disposition approved); no checker policy change, hook bypass or assertion weakening.
+
+### Outcome (compacted)
+
+One atomic 2a–2d cut-over: version-1 marker-1 canonical corpus; constructor-based `Assignment` restoration with strict names; raw-validation/current-restoration and opaque legacy persistence; one detached reassessment projector; shared frontend read normalisation activated in both read services; explicit E analysis input; formatter-stable deterministic fixture writer. Contract tests and canonical docs were reconciled in the same change.
 
 ### Retained for later sections
 
 **Backend restoration and reads**
 
-- `Assignment` accepts an optional fourth constructor argument `restoration` carrying
-  saved `assignmentName` (string), `createdAt` and caller `representationMode`.
-  Presence of that object skips Classroom `CourseWork.get`; normal three-argument
-  creation still fetches exactly once. The constructor owns transient
-  `_restorationMode` (default `full` only there), validates explicit `full`/`partial`,
-  throws on invalid values, and excludes the field from persistence/read JSON.
-  Stored/raw `_restorationMode` cannot override it. Restored objects carry no
-  hydration marker.
-- Strict assignment names: **no generated fallback**. Saved `null`/missing/non-string
-  names throw unhandled without a fetch; a fetched `null`/missing/non-string title
-  throws after one fetch. Valid strings, including blank, and saved `createdAt` are
-  preserved. The assignment-name read schema remains `z.string()`; no widening or
-  recovery fetch.
-- Direct full reads use `Assignment.toReadJSON()` after `_ensureFullDefinition`; class
-  reads invoke the projector before replacing the embedded definition with
-  `assignmentDefinitionKey`.
-- Caller owns restoration mode (`full`/`partial`); never use stored
-  `representationMode`. The non-legacy plain-object serializer fallback is removed;
-  current submissions must supply `toJSON`.
-- Current-format restoration (`02_AssignmentCurrentRestoration.js`) validates raw
-  records before typed construction. Identifiable invalid items become all-three
-  `CORRUPT_RECORD` E with healthy siblings preserved; missing known tasks are
-  materialised from the embedded snapshot. Unknown stored task, untrustworthy
-  student/root/definition and constructor/wiring faults fail the owned dataset rather
-  than becoming E.
-- Full-read null source beside numeric/N or assessment-stage E becomes
-  `CORRUPT_RECORD`; partial redaction never triggers that check or hash generation.
-  Null-document/empty-map is the only confirmed no-submission omission.
-- Sole projector: `AssignmentRehydration.projectReassessmentSubmissions(assignment, students, form)`
-  with `form` exactly `'full' | 'partial'`. It emits detached placeholders through
-  model constructors: deterministic identity/times, validated
-  source IDs only, nullable `studentName`, marker `null`, and all three validation
-  `REASSESSMENT_REQUIRED` E. No roster/fetch on the full path; the class path uses its
-  loaded roster and stored task summaries. Projected entries never enter persistence
-  preparation.
-- Opaque legacy submission body and original marker presence/value are re-emitted
-  unchanged by `toJSON()`/`toPartialJSON()` on ordinary class saves. Read projections
-  never become write input. Legacy compatibility is reviewed **24 April 2027**; it
-  does not auto-expire.
-- Integration evidence boundary: class graphs use the existing real dispatcher/GAS
-  bridge and `getABClass`; full wire payloads use the real `getAssignment` service
-  with only `callApi` stubbed. Do not claim dispatcher/controller/database proof from
-  the stubbed transport, invent a full-assignment bridge seam, or introduce read
-  writes/roster refresh.
+- `Assignment` accepts an optional fourth constructor argument `restoration` carrying saved `assignmentName` (string), `createdAt` and caller `representationMode`. Presence of that object skips Classroom `CourseWork.get`; normal three-argument creation still fetches exactly once. The constructor owns transient `_restorationMode` (default `full` only there), validates explicit `full`/`partial`, throws on invalid values, and excludes the field from persistence/read JSON. Stored/raw `_restorationMode` cannot override it. Restored objects carry no hydration marker.
+- Strict assignment names: **no generated fallback**. Saved `null`/missing/non-string names throw unhandled without a fetch; a fetched `null`/missing/non-string title throws after one fetch. Valid strings, including blank, and saved `createdAt` are preserved. The assignment-name read schema remains `z.string()`; no widening or recovery fetch.
+- Direct full reads use `Assignment.toReadJSON()` after `_ensureFullDefinition`; class reads invoke the projector before replacing the embedded definition with `assignmentDefinitionKey`.
+- Caller owns restoration mode (`full`/`partial`); never use stored `representationMode`. The non-legacy plain-object serializer fallback is removed; current submissions must supply `toJSON`.
+- Current-format restoration (`02_AssignmentCurrentRestoration.js`) validates raw records before typed construction. Identifiable invalid items become all-three `CORRUPT_RECORD` E with healthy siblings preserved; missing known tasks are materialised from the embedded snapshot. Unknown stored task, untrustworthy student/root/definition and constructor/wiring faults fail the owned dataset rather than becoming E.
+- Full-read null source beside numeric/N or assessment-stage E becomes `CORRUPT_RECORD`; partial redaction never triggers that check or hash generation. Null-document/empty-map is the only confirmed no-submission omission.
+- Sole projector: `AssignmentRehydration.projectReassessmentSubmissions(assignment, students, form)` with `form` exactly `'full' | 'partial'`. It emits detached placeholders through model constructors: deterministic identity/times, validated source IDs only, nullable `studentName`, marker `null`, and all three validation `REASSESSMENT_REQUIRED` E. No roster/fetch on the full path; the class path uses its loaded roster and stored task summaries. Projected entries never enter persistence preparation.
+- Opaque legacy submission body and original marker presence/value are re-emitted unchanged by `toJSON()`/`toPartialJSON()` on ordinary class saves. Read projections never become write input. Legacy compatibility is reviewed **24 April 2027**; it does not auto-expire.
+- Integration evidence boundary: class graphs use the existing real dispatcher/GAS bridge and `getABClass`; full wire payloads use the real `getAssignment` service with only `callApi` stubbed. Do not claim dispatcher/controller/database proof from the stubbed transport, invent a full-assignment bridge seam, or introduce read writes/roster refresh.
 
 **Frontend read and analysis contracts**
 
-- `assignmentReadNormalisation.ts` (pure; no React, API dispatch or JSON decoding) is
-  active in both `assignmentAssessmentService` and `classDetailService`;
-  `assignmentReadItemValidation.ts` is the approved adjacent extraction. Final
-  `parseApiResponse`, not-found null, envelopes and transport semantics are unchanged.
-- Full normalisation validates strict roots/shared definitions, isolates only
-  identifiable items, logs bounded field paths/IDs (never payloads, names or arbitrary
-  keys), and revalidates the normalised result. Full `studentName` is `string | null`.
-- Partial normalisation validates provided entries only: no full fetch, roster query,
-  registry coverage inference or legacy graph synthesis. G5 marker-null entries require
-  exact provided reassessment maps.
-- G4 null-parent canonical corruption replacement is identity/idempotent in both
-  services. G6 safe paths collapse arbitrary unexpected criterion keys to the
-  assessments map (only known `formulaComparison` gets a bounded path); omitted partial
-  hash is valid and no longer masks assessment diagnostics; full hash diagnostics are
-  unchanged.
-- Full missing-wire-item defence uses the same payload only and never overwrites
-  backend E; test it separately from normal coverage.
-- E is an explicit analyser input. E increments no numeric/N/`totalDataPoints`/weight
-  counter and adds no denominator; wholly errored items resolve all four metrics to E.
-  Numeric, fractional, N, zero-weight, mixed and aggregate `excluded` semantics are
-  unchanged. `MetricResult` gains no reasoning/history. Individual fractional scores
-  are supported; presentation remains 0 dp.
+- `assignmentReadNormalisation.ts` (pure; no React, API dispatch or JSON decoding) is active in both `assignmentAssessmentService` and `classDetailService`; `assignmentReadItemValidation.ts` is the approved adjacent extraction. Final `parseApiResponse`, not-found null, envelopes and transport semantics are unchanged.
+- Full normalisation validates strict roots/shared definitions, isolates only identifiable items, logs bounded field paths/IDs (never payloads, names or arbitrary keys), and revalidates the normalised result. Full `studentName` is `string | null`.
+- Partial normalisation validates provided entries only: no full fetch, roster query, registry coverage inference or legacy graph synthesis. G5 marker-null entries require exact provided reassessment maps.
+- G4 null-parent canonical corruption replacement is identity/idempotent in both services. G6 safe paths collapse arbitrary unexpected criterion keys to the assessments map (only known `formulaComparison` gets a bounded path); omitted partial hash is valid and no longer masks assessment diagnostics; full hash diagnostics are unchanged.
+- Full missing-wire-item defence uses the same payload only and never overwrites backend E; test it separately from normal coverage.
+- E is an explicit analyser input. E increments no numeric/N/`totalDataPoints`/weight counter and adds no denominator; wholly errored items resolve all four metrics to E. Numeric, fractional, N, zero-weight, mixed and aggregate `excluded` semantics are unchanged. `MetricResult` gains no reasoning/history. Individual fractional scores are supported; presentation remains 0 dp.
 
 **Canonical corpus and generator**
 
-- Canonical profiles `small`, `medium` and `large-representative` are regenerated
-  (18 compact outputs). Full/embedded records carry `assessmentContractVersion: 1`
-  and exactly three assessments including accuracy; no `formulaComparison` map key.
-  `STUDENT_INDEX_WITH_NULL_DOCUMENT` is an acquisition `SOURCE_UNREADABLE` E scenario;
-  genuine no-submission remains roster omission/local probes. IMAGE and SPREADSHEET
-  bodies are usable; pending IMAGE is not a completed assignment. Sections 3–4 may
-  reuse these bodies and local corruption probes; do not add a competing realistic
-  fixture family.
-- The marker is set once on the persistence record and explicitly copied by both
-  whitelist projections (`toTransportViews.js::toFullAssignment`,
-  `projectClassTransportViews.js::toPartialAssignment`).
-- `fixtureWriter` formats with the installed Prettier using the canonical repository
-  filepath/config, including staging/scratch output roots. Format/stage/write/
-  generation/CLI are async and awaited; `commitStagedProfiles` (no Promise) and cleanup
-  are synchronous; every profile is staged before atomic replacement/rollback. Two runs
-  reproduce all 18 committed outputs byte-for-byte with hash parity.
-- Synthetic guard owners: `artefactSourceGuards.js`, `assessmentEntryGuards.js`,
-  `validationRecordGuards.js`, `validateAssessmentState.js`; single
-  `assessmentScoreSchema` (duplicate partial export removed; cross-module consumer
-  migrated).
-- Generated GAS order: `02_AssignmentReadProjection.js` before
-  `02_AssignmentRehydration.js`, and `StudentSubmission/00_StudentSubmissionItem.js`
-  before `index.js`; covered by copied-output assertions.
-- Existing Playwright journeys were reconciled to the new wire contract. Deliberate
-  local score/layout overrides and the local unsupported TABLE exception remain.
-  Marker-less/unsupported wire roots are local invalid probes, not valid current
-  results; new error/legacy/refresh journeys belong to Section 10.
+- Canonical profiles `small`, `medium` and `large-representative` are regenerated (18 compact outputs). Full/embedded records carry `assessmentContractVersion: 1` and exactly three assessments including accuracy; no `formulaComparison` map key. `STUDENT_INDEX_WITH_NULL_DOCUMENT` is an acquisition `SOURCE_UNREADABLE` E scenario; genuine no-submission remains roster omission/local probes. IMAGE and SPREADSHEET bodies are usable; pending IMAGE is not a completed assignment. Sections 3–4 may reuse these bodies and local corruption probes; do not add a competing realistic fixture family.
+- The marker is set once on the persistence record and explicitly copied by both whitelist projections (`toTransportViews.js::toFullAssignment`, `projectClassTransportViews.js::toPartialAssignment`).
+- `fixtureWriter` formats with the installed Prettier using the canonical repository filepath/config, including staging/scratch output roots. Format/stage/write/generation/CLI are async and awaited; `commitStagedProfiles` (no Promise) and cleanup are synchronous; every profile is staged before atomic replacement/rollback. Two runs reproduce all 18 committed outputs byte-for-byte with hash parity.
+- Synthetic guard owners: `artefactSourceGuards.js`, `assessmentEntryGuards.js`, `validationRecordGuards.js`, `validateAssessmentState.js`; single `assessmentScoreSchema` (duplicate partial export removed; cross-module consumer migrated).
+- Generated GAS order: `02_AssignmentReadProjection.js` before `02_AssignmentRehydration.js`, and `StudentSubmission/00_StudentSubmissionItem.js` before `index.js`; covered by copied-output assertions.
+- Existing Playwright journeys were reconciled to the new wire contract. Deliberate local score/layout overrides and the local unsupported TABLE exception remain. Marker-less/unsupported wire roots are local invalid probes, not valid current results; new error/legacy/refresh journeys belong to Section 10.
 
 **Helper and documentation register**
 
-- Section 2 shared-helper slices are **implemented**: model raw validation;
-  rehydration traversal/coverage; `projectReassessmentSubmissions`;
-  `AssignmentSerialisation` read delegation; response mapper; frontend normaliser and
-  item validation; existing generator stages/validators.
-- Canonical docs reconciled with no new pages: `AssessmentFlow`, `rehydration`,
-  `api-layer`, frontend shared-helper §9.29, `metric-display-precision`,
-  synthetic-test-data, and data shapes `assignment`, `abclass`,
-  `assignment-definition`, `frontend-data-analysis-response`. Delivered `@remarks`
-  cover opaque legacy persistence versus detached read data, backend versus browser
-  coverage ownership, and constructor restoration. Sections 3–12 helper entries remain
-  `Not implemented`/planned.
-- Section 9 owns preview view-model fields and layout pointers; Section 10 owns new
-  browser journeys.
+- Section 2 shared-helper slices are **implemented**: model raw validation; rehydration traversal/coverage; `projectReassessmentSubmissions`; `AssignmentSerialisation` read delegation; response mapper; frontend normaliser and item validation; existing generator stages/validators.
+- Canonical docs reconciled with no new pages: `AssessmentFlow`, `rehydration`, `api-layer`, frontend shared-helper §9.29, `metric-display-precision`, synthetic-test-data, and data shapes `assignment`, `abclass`, `assignment-definition`, `frontend-data-analysis-response`. Delivered `@remarks` cover opaque legacy persistence versus detached read data, backend versus browser coverage ownership, and constructor restoration. Sections 3–12 helper entries remain `Not implemented`/planned.
+- Section 9 owns preview view-model fields and layout pointers; Section 10 owns new browser journeys.
 
-**Checks and commands**
+### Checks record
 
-- `npm run fixtures:synthetic` (twice; second output unchanged),
-  `npm run test:synthetic`, `test:backend`, `test:frontend`, `test:builder`,
-  `typecheck:all`, four scoped lint checks, production build, plugin coverage, and the
-  affected Playwright pattern
-  (`heatmap|task-preview|metric-range-filter|issue-320|navigation-screenshots`) form
-  the Section 2 gate. Compact synthetic tests use finite local budgets: 15 s
-  regeneration, 20 s rollback.
+Section 2 gate commands: `npm run fixtures:synthetic` (twice; second output unchanged), `npm run test:synthetic` (**750**), `test:backend` (**3,181**), `test:frontend` (**2,923**), `test:builder` (**252**), `typecheck:all`, four scoped lint checks, production build, plugin coverage, and the affected Playwright pattern (`heatmap|task-preview|metric-range-filter|issue-320|navigation-screenshots`; fresh **69/69**). Compact synthetic tests use finite local budgets: 15 s regeneration, 20 s rollback. Lint has zero errors; backend non-zero solely for five accepted historical `max-lines` warnings. Regression comparison: session `assessment-errors-322-341`; baseline `2026-10-23T05:20:43.034Z`; current `2026-10-25T17:06:01.503Z`; report `.ts-regression-checker/reports/session-assessment-errors-322-341/runs/2026-10-25T17-06-01.503Z/comparison.json`. One retry-recovered Manage Year Groups case accepted under the recorded exception; five historical backend warnings unchanged; one former factory warning fixed. Optional full-profile stress is **not** counted as passing.
 
 ### Implementation notes / deviations / follow-ups
 
 Authoritative for this section; keep in sync when later sections touch these owners.
 
-- **Docs sync:** all canonical non-shape and data-shape docs reconciled; no new pages;
-  JSDoc/comment corrections applied (constructor restoration/lazy getter,
-  `AssessmentSchema` alias, IMAGE/SPREADSHEET versus local TABLE capability, remaining
-  planned preview phrase).
-- **Regression:** report path above; the stable-ID comparison is the Section 2 gate
-  record. Five historical backend `max-lines` warnings remain accepted pre-existing
-  debt (`assignmentDefinitionPartials.unit`, `assignmentController.hydration`,
-  `dbManager`, `classroomApiClient`, `batchUpdateUtility`); no suppression or refactor
-  is authorised. The former `assignmentFactory.test.js` warning was fixed by the
-  planned split.
-- **Flaky-test exception:** Manage Year Groups background-refresh case failed first
-  attempt at Edit-dialog opening, passed configured retry; baseline and one focused
-  unchanged run passed first attempt. Cause unknown; accepted without repair under the
-  deferred-ledger approval. Follow-up: monitor/stabilise if it recurs; no checker
-  policy change.
-- **Full-profile stress:** opt-in and **unverified** after two heap failures (default
-  and 4 GB); attribution unknown. Not a required gate and not counted as passing. Do
-  not claim it passes or attribute it to baseline. Diagnosis:
-  `.opencode/scratchpad/section2-full-profile-memory-diagnosis.md`.
-- **Deferred minor:** pre-existing broken `DEFINITION_PARSE_FAILED` anchor; stale
-  Section 9 preview/source layout pointers (Section 9 owns); unrelated five
-  agent/template edits, `draft-scratch.md` and `.vitest/` excluded from feature commits.
-- **Plan maintenance:** after each complete section passes its independent review and
-  regression gate, compact it to outcomes, essential handoffs and verification
-  evidence; do not compact an incomplete section or discard unresolved findings.
-  Section 1 was compacted from 141 to 25 lines; this pass compacts Section 2.
+- **Docs sync:** all canonical non-shape and data-shape docs reconciled; no new pages; JSDoc/comment corrections applied (constructor restoration/lazy getter, `AssessmentSchema` alias, IMAGE/SPREADSHEET versus local TABLE capability, remaining planned preview phrase).
+- **Regression:** report path above; the stable-ID comparison is the Section 2 gate record. Five historical backend `max-lines` warnings remain accepted pre-existing debt (`assignmentDefinitionPartials.unit`, `assignmentController.hydration`, `dbManager`, `classroomApiClient`, `batchUpdateUtility`); no suppression or refactor is authorised. The former `assignmentFactory.test.js` warning was fixed by the planned split.
+- **Flaky-test exception:** Manage Year Groups background-refresh case failed first attempt at Edit-dialog opening, passed configured retry; baseline and one focused unchanged run passed first attempt. Cause unknown; accepted without repair under the deferred-ledger approval. Follow-up: monitor/stabilise if it recurs; no checker policy change.
+- **Full-profile stress:** opt-in and **unverified** after two heap failures (default and 4 GB); attribution unknown. Not a required gate and not counted as passing. Do not claim it passes or attribute it to baseline. Diagnosis: `.opencode/scratchpad/section2-full-profile-memory-diagnosis.md`.
+- **Deferred minor:** pre-existing broken `DEFINITION_PARSE_FAILED` anchor; stale Section 9 preview/source layout pointers (Section 9 owns); unrelated five agent/template edits, `draft-scratch.md` and `.vitest/` excluded from feature commits.
+- **Plan maintenance:** after each complete section passes its independent review and regression gate, compact it to outcomes, essential handoffs and verification evidence; do not compact an incomplete section or discard unresolved findings. Section 1 was compacted from 141 to 25 lines; this pass compacts Section 2.
 - **Commit record:** clean Red checkpoint `e71e309f` with message `feat(assessment): checkpoint explicit error contracts and section 2 red coverage`, pushed to `origin/assessment-errors-322-341`; checkpoint evidence `69d95fca` with message `docs(plan): record clean red checkpoint commit and push`. Final Section 2 completion commit `2a438a02` with message `feat(assessment): complete section 2 explicit error read contracts and activation`, pushed to `origin/assessment-errors-322-341` (push confirmed: `69d95fca..2a438a02`). Branch: `assessment-errors-322-341`. Pre-commit hook passed (lint-staged + typecheck:all); 42 files committed. Flaky-test exception recorded as approved deferred row.
 
 ## Section 3 — Usable shared definitions and canonical spreadsheet blanks
@@ -625,1220 +495,297 @@ Authoritative for this section; keep in sync when later sections touch these own
 
 ### Outcome (compacted)
 
-- Successfully read blank/all-null `SPREADSHEET` grids canonicalise to `[]` with the normal
-  `[]` hash through construction, serialisation and restoration, for templates and student
-  ranges. Literal `null` stays unavailable content; populated-formula normalisation is
-  unchanged.
-- A usable reference with a blank template/student range completes with completeness `0`,
-  accuracy `0` and SPaG `N`; fractional formula marks and existing cell-reference feedback
-  survive. `SheetsAssessor` keeps comparison transient: only the three assessments and
-  `cellReference` feedback persist, so no `assessments.formulaComparison` entry survives.
-- New non-IMAGE definition writes reject null content/hash while accepting valid blank
-  TEXT/array templates; a pending IMAGE artefact remains valid definition-store state.
-  A formula-free SPREADSHEET reference is rejected as an unusable shared definition.
-  Duplicate shared tags keep their existing blocking behaviour.
+Successfully read blank/all-null `SPREADSHEET` grids canonicalise to `[]` with the normal `[]` hash through construction, serialisation and restoration, for templates and student ranges; literal `null` stays unavailable content and populated-formula normalisation is unchanged. A usable reference with blank ranges completes with completeness `0`, accuracy `0` and SPaG `N`, keeping fractional formula marks and cell-reference feedback. `SheetsAssessor` keeps comparison transient, so no `assessments.formulaComparison` entry persists. New non-IMAGE definition writes reject null content/hash while accepting valid blank TEXT/array templates; a pending IMAGE artefact remains valid definition-store state; a formula-free SPREADSHEET reference is rejected as unusable; duplicate shared tags keep blocking.
 
 ### Retained for later sections
 
-- **Helper ownership.** `SpreadsheetTaskArtifact.normalizeContent` owns blank-grid
-  canonicalisation as the existing model rule, reused by parsers and restoration rather than
-  duplicated; no separate spreadsheet helper-register entry exists.
-  `AssignmentDefinitionValidation.validateSharedArtifacts` owns the definition-write
-  artefact/formula invariant; `AssignmentDefinitionUpsertOrchestrator.upsert()` invokes it on
-  final resolved tasks after weighting and before definition construction or persistence,
-  reusing existing failure reporting and rollback. Expected content rejections log bounded
-  `{ taskId }` context and throw `ApiValidationError` with the established safe
-  `DEFINITION_PARSE_FAILED` message/code; missing structure, serializer faults and other
-  wiring errors propagate unchanged. `@remarks` distinguish blank grids from unavailable
-  content and pending definition images from completed artefacts.
-- **Boundary split.** Pending IMAGE is permitted only in the definition store; the stricter
-  completed-full-assignment gate and completed-write preflight remain Section 8 work. No
-  run-preflight eligibility check, extra pipeline error-handling layer or parser/API
-  validator hierarchy exists.
-- **Delivered surface.** Definition-write validation, upsert wiring and `SheetsAssessor`
-  comparison removal; blank-grid canonicalisation was reused unchanged and `SheetsParser`
-  needed no change (it stays within its SPEC 400-line budget). New suites
-  `tests/models/spreadsheetContentAvailability.test.js` and
-  `tests/assignment/assignmentDefinitionArtifacts.validation.test.js`; extended
-  `sheetsAssessor`, `assignmentDefinitionValidation`,
-  `assignmentDefinitionController.upsert.validation` and `spreadsheetAssessorsCoverage`
-  (obsolete comparison-persistence assertions reconciled, formula/feedback coverage kept).
-- **Documentation and fixtures.** Four existing canonical pages reconciled, no new pages:
-  `AssessmentFlow`, `rehydration`, `assignment-definition`, `assignment`; JSDoc/comment
-  corrections in the touched owners. Their Section 3 helper entries now read as implemented
-  (blank-grid rule reuse, definition-write validation, `formulaComparison` removal).
-  Acquisition/extraction E creation, completed-write gates, image hydration scope and preview
-  error states remain `Not implemented`/planned. Fixtures use `small` SPREADSHEET tasks from
-  Section 2 plus local null/all-null/blank and formula-free reference mutations; no competing
-  realistic fixture family.
+- **Helper ownership.** `SpreadsheetTaskArtifact.normalizeContent` owns blank-grid canonicalisation as the existing model rule, reused by parsers and restoration rather than duplicated; no separate spreadsheet helper-register entry exists. `AssignmentDefinitionValidation.validateSharedArtifacts` owns the definition-write artefact/formula invariant; `AssignmentDefinitionUpsertOrchestrator.upsert()` invokes it on final resolved tasks after weighting and before definition construction or persistence, reusing existing failure reporting and rollback. Expected content rejections log bounded `{ taskId }` context and throw `ApiValidationError` with the established safe `DEFINITION_PARSE_FAILED` message/code; missing structure, serializer faults and other wiring errors propagate unchanged. `@remarks` distinguish blank grids from unavailable content and pending definition images from completed artefacts.
+- **Boundary split.** Pending IMAGE is permitted only in the definition store; the stricter completed-full-assignment gate and completed-write preflight remain Section 8 work. No run-preflight eligibility check, extra pipeline error-handling layer or parser/API validator hierarchy exists.
+- **Delivered surface.** Definition-write validation, upsert wiring and `SheetsAssessor` comparison removal; blank-grid canonicalisation was reused unchanged and `SheetsParser` needed no change (it stays within its SPEC 400-line budget). New suites `tests/models/spreadsheetContentAvailability.test.js` and `tests/assignment/assignmentDefinitionArtifacts.validation.test.js`; extended `sheetsAssessor`, `assignmentDefinitionValidation`, `assignmentDefinitionController.upsert.validation` and `spreadsheetAssessorsCoverage` (obsolete comparison-persistence assertions reconciled, formula/feedback coverage kept).
+- **Documentation and fixtures.** Four existing canonical pages reconciled, no new pages: `AssessmentFlow`, `rehydration`, `assignment-definition`, `assignment`; JSDoc/comment corrections in the touched owners. Their Section 3 helper entries now read as implemented (blank-grid rule reuse, definition-write validation, `formulaComparison` removal). Acquisition/extraction E creation, completed-write gates, image hydration scope and preview error states remain `Not implemented`/planned. Fixtures use `small` SPREADSHEET tasks from Section 2 plus local null/all-null/blank and formula-free reference mutations; no competing realistic fixture family.
 
 ### Implementation notes / deviations / follow-up
 
 Authoritative for this section.
 
-- **User decision (binding): run-preflight validation and prior-result preservation
-  integration coverage were removed from scope** — this feature records assessment errors, not
-  additional pipeline error-handling layers. The new run-preflight companion suite was
-  deleted, superseding its earlier R3 authorisation; existing parser/definition-write
-  eligibility coverage is retained, and no integration coverage or pipeline guards are to be
-  added. SPEC.md now states this explicitly (user confirmed), Section 8
-  persistence-preparation checks are unchanged, and stale run-start/bypass wording in
-  `assignment-definition.md` was reconciled to the retained definition-write boundary.
-- **Checks (passing).** `npm run test:backend:coverage`: 235 files / **3,206 tests**, branches
-  **85.02% (3,570/4,199)**; synthetic definition-backend validation 1 file / **2 tests**;
-  `npm run lint:backend:check` exits 1 solely for the five accepted historical `max-lines`
-  warnings, zero errors/new warnings; `git diff --check` clean. Evidence:
-  `.opencode/scratchpad/section3-clean-{coverage,lint,outcomes}.txt`,
-  `section3-signoff-synthetic.txt`.
-- **Review and coverage.** `.opencode/scratchpad/section3-green-clean-review.md`: PASS, no
-  critical/improvement/nitpick findings; G1–G4 and F1–F2 closed. F1 was duplicate
-  ESM/CommonJS identity in the new direct suite, not baseline debt: loading the shared
-  CommonJS owner from `tests/setupGlobals.js` raised owner branches 43.75% → 89.58% (100%
-  functions) and aggregate branches 84.49% → 85.02% (+22 covered) with the test count
-  unchanged; no threshold, config or production change. Evidence:
-  `.opencode/scratchpad/section3-coverage-attribution.md`,
-  `section3-green-coverage-signoff.md`.
-- **Docs sync complete.** Updated existing `docs/developer/backend/AssessmentFlow.md`,
-  `docs/developer/backend/rehydration.md`, `docs/developer/data-shapes/assignment.md`
-  and `docs/developer/data-shapes/assignment-definition.md`, plus JSDoc in the three
-  changed production owners. No pages created; helper registers agree with delivery.
-- **Compaction verification.** Only Section 3 changed; all other sections and the
-  deferred ledger preserved. Detail gaps resolved from final review/current files:
-  source LOC assessor 374, validator 169, orchestrator 476; test LOC availability 96,
-  artefact validation 113, assessor 302, definition validation 300, upsert 366,
-  coverage 294. Deleted suite was
-  `tests/controllers/assignmentController/assignmentController.runPreflightDefinition.test.js`.
-  Normaliser/parser source unchanged.
-- **Section regression gate:** completed 25 October 2026 using stable session
-  `assessment-errors-322-341`; zero regressions, zero new failures, one baseline fix.
-  Seven checks pass (including all coverage, browser E2E and type checks); checker
-  overall `FAILING`/exit 1 solely for the five expressly accepted historical backend
-  `max-lines` warnings, no new lint failure. Gate accepted under baseline-debt rule,
-  not a new waiver. Report:
-  `.ts-regression-checker/reports/session-assessment-errors-322-341/runs/2026-10-25T18-36-52.169Z/comparison.txt`.
-- **Commit/push:** `9f5dca8aeb97fcc36b78cbb7e79fbb9afe7171a6` —
-  `feat: validate shared definition artefacts and keep sheet comparisons transient`;
-  branch `assessment-errors-322-341`; `git push origin assessment-errors-322-341`
-  succeeded (`a53c1afe..9f5dca8a`). Normal formatting/staged-lint/all-TypeScript hooks
-  passed; no bypass. Subsequent plan-only recording commit uses message
-  `docs: record Section 3 completion and push evidence` on the same branch:
-  `8e273a821093ff2fdf82e8e27254b15c477ea946`; push succeeded
-  (`9f5dca8a..8e273a82`), normal hooks passed.
+- **User decision (binding): run-preflight validation and prior-result preservation integration coverage were removed from scope** — this feature records assessment errors, not additional pipeline error-handling layers. The new run-preflight companion suite was deleted, superseding its earlier R3 authorisation; existing parser/definition-write eligibility coverage is retained, and no integration coverage or pipeline guards are to be added. SPEC.md now states this explicitly (user confirmed), Section 8 persistence-preparation checks are unchanged, and stale run-start/bypass wording in `assignment-definition.md` was reconciled to the retained definition-write boundary.
+- **Checks (passing).** `npm run test:backend:coverage`: 235 files / **3,206 tests**, branches **85.02% (3,570/4,199)**; synthetic definition-backend validation 1 file / **2 tests**; `npm run lint:backend:check` exits 1 solely for the five accepted historical `max-lines` warnings, zero errors/new warnings; `git diff --check` clean. Evidence: `.opencode/scratchpad/section3-clean-{coverage,lint,outcomes}.txt`, `section3-signoff-synthetic.txt`.
+- **Review and coverage.** `.opencode/scratchpad/section3-green-clean-review.md`: PASS, no critical/improvement/nitpick findings; G1–G4 and F1–F2 closed. F1 was duplicate ESM/CommonJS identity in the new direct suite, not baseline debt: loading the shared CommonJS owner from `tests/setupGlobals.js` raised owner branches 43.75% → 89.58% (100% functions) and aggregate branches 84.49% → 85.02% (+22 covered) with the test count unchanged; no threshold, config or production change. Evidence: `.opencode/scratchpad/section3-coverage-attribution.md`, `section3-green-coverage-signoff.md`.
+- **Docs sync complete.** Updated existing `docs/developer/backend/AssessmentFlow.md`, `docs/developer/backend/rehydration.md`, `docs/developer/data-shapes/assignment.md` and `docs/developer/data-shapes/assignment-definition.md`, plus JSDoc in the three changed production owners. No pages created; helper registers agree with delivery.
+- **Compaction verification.** Only Section 3 changed; all other sections and the deferred ledger preserved. Detail gaps resolved from final review/current files: source LOC assessor 374, validator 169, orchestrator 476; test LOC availability 96, artefact validation 113, assessor 302, definition validation 300, upsert 366, coverage 294. Deleted suite was `tests/controllers/assignmentController/assignmentController.runPreflightDefinition.test.js`. Normaliser/parser source unchanged.
+- **Section regression gate:** completed 25 October 2026 using stable session `assessment-errors-322-341`; zero regressions, zero new failures, one baseline fix. Seven checks pass (including all coverage, browser E2E and type checks); checker overall `FAILING`/exit 1 solely for the five expressly accepted historical backend `max-lines` warnings, no new lint failure. Gate accepted under baseline-debt rule, not a new waiver. Report: `.ts-regression-checker/reports/session-assessment-errors-322-341/runs/2026-10-25T18-36-52.169Z/comparison.txt`.
+- **Commit/push:** `9f5dca8aeb97fcc36b78cbb7e79fbb9afe7171a6` — `feat: validate shared definition artefacts and keep sheet comparisons transient`; branch `assessment-errors-322-341`; `git push origin assessment-errors-322-341` succeeded (`a53c1afe..9f5dca8a`). Normal formatting/staged-lint/all-TypeScript hooks passed; no bypass. Subsequent plan-only recording commit uses message `docs: record Section 3 completion and push evidence` on the same branch: `8e273a821093ff2fdf82e8e27254b15c477ea946`; push succeeded (`9f5dca8a..8e273a82`), normal hooks passed.
 
 ## Section 4 — Student acquisition and extraction outcomes
 
-**Status: Green PASS; G1–G8, FG1–FG3, RR1/RR2/GR1, SG1/SG2, SC1–SC3, OD1/OD2,
-SB1–SB3, G6-R1–R4 and C1 closed. Documentation sync PASS. Section 4 complete:
-the regression checker is FAILING with one frontend E2E regression/new failure that
-the user explicitly accepted as flaky debt, so gate progression is an explicit
-exception, not a clean checker PASS. Compaction and implementation commit/push are
-complete; normal hooks passed. No deployment authorised.**
-Green review authority: `.opencode/scratchpad/section4-final-green-clean.md`;
-docs-sync authority: `.opencode/scratchpad/section4-docs-sync-final.md`.
+**Status: complete.** Green PASS; G1–G8, FG1–FG3, RR1/RR2/GR1, SG1/SG2, SC1–SC3, OD1/OD2, SB1–SB3, G6-R1–R4 and C1 closed; documentation sync PASS; compaction and implementation commit/push complete with normal hooks. The regression checker is FAILING with one frontend E2E regression/new failure the user explicitly accepted as flaky debt, so gate progression is an explicit exception, not a clean checker PASS. No deployment authorised. Green review authority `.opencode/scratchpad/section4-final-green-clean.md`; docs-sync authority `.opencode/scratchpad/section4-docs-sync-final.md`.
 
 ### Outcome (compacted)
 
-Section 4 makes incomplete Classroom acquisition and dropped extraction impossible to
-mistake for absence. Paginated `StudentSubmissions.list` scans complete before absence
-is concluded; a later-page failure escapes unchanged, so the run is not completed as
-no-submission/N and prior stored results are preserved. Acquisition and extraction
-failures materialise canonical E for known student tasks while healthy siblings and
-safe source identifiers survive; genuine no-submission retains the null-document/empty
-items representation.
-
-Full-section independent review is PASS with zero Critical, Improvement or Nitpick
-findings (`section4-final-green-clean.md`): G1–G8, FG1–FG3, RR1/RR2/GR1, SG1/SG2,
-SC1–SC3, OD1/OD2, SB1–SB3, G6-R1–R4 and C1 closed; no closed item reopened. Fresh
-evidence: 3,327 backend tests (242 files), 230 focused tests (15 suites), branches
-85.05% (3,676/4,322). Delivered owners are `04_AssignmentSubmissions`,
-`SlidesAssignment`, `SheetsAssignment`, the Slides facade/matcher/table-content owners,
-`SheetsParser` and `StudentSubmission`; canonical docs register the delivered slices
-and keep later slices planned.
+Section 4 makes incomplete Classroom acquisition and dropped extraction impossible to mistake for absence. Paginated `StudentSubmissions.list` scans complete before absence is concluded; a later-page failure escapes unchanged, so the run is not completed as no-submission/N and prior stored results are preserved. Acquisition and extraction failures materialise canonical E for known student tasks while healthy siblings and safe source identifiers survive; genuine no-submission retains the null-document/empty-items representation. Delivered owners are `04_AssignmentSubmissions`, `SlidesAssignment`, `SheetsAssignment`, the Slides facade/matcher/table-content owners, `SheetsParser` and `StudentSubmission`.
 
 ### Retained for later sections
 
-- **Delivered interfaces.** `04_AssignmentSubmissions` owns
-  `_recordAcquisitionFailure(studentId, code, scanState)`,
-  `_recordSupportedAttachment(studentId, scanState)` and
-  `_materialiseAcquisitionOutcome(studentId, code)`; `SlidesAssignment` and
-  `SheetsAssignment` `processAllSubmissions()` treat parser `null` as acquisition
-  `SOURCE_UNREADABLE`, materialise extraction `SOURCE_CONTENT_UNAVAILABLE` per known
-  task, warn/ignore unknown task IDs and pass `missingContentLogged` to suppress
-  duplicate model warnings. The Slides facade/matcher expose failed-open `null`, an
-  array otherwise, the canonical missing-match placeholder and the matched pending
-  IMAGE payload; `SheetsParser` exposes the native range read, failed-open `null` and
-  the unavailable range artefact.
-- **Source identity and selection.** The scan is scan-local (`Map`/`Set`) across
-  attachment arrays and duplicate Classroom records: last supported source wins; the
-  first failure is materialised only when no source is supported; an accepted source
-  suppresses/clears rejected-attachment E.
-- **Scope and matching.** A document-open failure affects that student's tasks; a
-  task-specific parse/read failure affects that task only. Unknown extraction task IDs
-  warn/ignore while expected known tasks end terminal. First-match/tag/type preference
-  and ambiguity warnings are unchanged; ambiguity is a warning, not E. Shared
-  duplicate-tag rejection still blocks. Successfully read blank/template-matching work
-  retains existing N/formula semantics.
-- **Canonical base producer.** Acquisition placeholders are constructed directly as
-  `BaseTaskArtifact`/`StudentSubmissionItem` over dictionary task IDs with null
-  source/body/hash and atomic all-three catalogue acquisition E, satisfying the
-  null-parent marker-1 read invariant. Do not reintroduce the
-  `upsertItemFromExtraction()` round-trip for this path.
-- **Null page and source.** Explicit `pageId: null` stays null with the known student
-  document retained; omitted/`undefined` keeps the task-definition fallback. The
-  existing frontend document-root fallback (`buildCellPreviewLookup.resolveSourceUrl`)
-  was verified read-only and needs no change.
-- **Native boundaries.** Conversion happens only at immediate native reads. Actually
-  thrown `TypeError`, `ReferenceError` and non-`Error` values propagate by identity;
-  ordinary internal faults escape. A literal `null` returned by a student `getCell`
-  read is unavailable content (whole TABLE, `SOURCE_CONTENT_UNAVAILABLE`), not a thrown
-  value. Shared-definition reads still throw. Native Sheets student extraction calls
-  `Sheet.getRange(...).getFormulas()` directly; the absent `TaskSheet` collaborator is
-  not restored.
-- **TABLE and IMAGE states.** The first TABLE failure makes the whole table
-  unavailable, aborts at the first failing coordinate, discards any prefix and leaves a
-  null hash; never a blank or partial table. Missing IMAGE match becomes extraction
-  `SOURCE_CONTENT_UNAVAILABLE`; a matched student page with parser `sourceUrl` remains
-  pending hydration with null content/hash. Do not claim hydration completion.
-- **Unhashability and diagnostics.** Failed/unavailable content is not hashable and
-  carries null content/hash. One original contextual diagnostic per owned failure with
-  opaque IDs and no student names; no matcher/model/progress duplicate.
-- **Private helpers and `@remarks`.** The six table-content helpers
-  `_readTableDimensions`, `_readTableRow`, `_readTableCell`, `_readCellText`,
-  `_isConvertibleSubmissionRead` and `_logTableReadFailure` are owner-local `@private`
-  methods; no generic wrapper, shared utility, exception hierarchy or lint suppression.
-  `@remarks` record pagination-before-absence, deferred materialisation, expected source
-  exceptions versus implementation faults, and the native-null policy.
-- **Non-Drive attachments.** Existing ignore behaviour is retained (no
-  `UNSUPPORTED_DOCUMENT` admission change). No supported source and no recorded failure
-  (absent or ignored-only candidates) retains no-submission; ignored candidates do not
-  erase a recorded Drive-candidate failure.
-- **Later ownership.** Transport retry ownership is Section 5; null-hash template
-  comparison is Section 6; image hydration is Section 7; completion-marker stamping and
-  completed-write preflight are Section 8; preview view models are Section 9; new
-  browser journeys are Section 10. Intermediate checkpoints are not deployable.
+- **Delivered interfaces.** `04_AssignmentSubmissions` owns `_recordAcquisitionFailure(studentId, code, scanState)`, `_recordSupportedAttachment(studentId, scanState)` and `_materialiseAcquisitionOutcome(studentId, code)`; `SlidesAssignment` and `SheetsAssignment` `processAllSubmissions()` treat parser `null` as acquisition `SOURCE_UNREADABLE`, materialise extraction `SOURCE_CONTENT_UNAVAILABLE` per known task, warn/ignore unknown task IDs and pass `missingContentLogged` to suppress duplicate model warnings. The Slides facade/matcher expose failed-open `null`, an array otherwise, the canonical missing-match placeholder and the matched pending IMAGE payload; `SheetsParser` exposes the native range read, failed-open `null` and the unavailable range artefact.
+- **Source identity and selection.** The scan is scan-local (`Map`/`Set`) across attachment arrays and duplicate Classroom records: last supported source wins; the first failure is materialised only when no source is supported; an accepted source suppresses/clears rejected-attachment E.
+- **Scope and matching.** A document-open failure affects that student's tasks; a task-specific parse/read failure affects that task only. Unknown extraction task IDs warn/ignore while expected known tasks end terminal. First-match/tag/type preference and ambiguity warnings are unchanged; ambiguity is a warning, not E. Shared duplicate-tag rejection still blocks. Successfully read blank/template-matching work retains existing N/formula semantics.
+- **Canonical base producer.** Acquisition placeholders are constructed directly as `BaseTaskArtifact`/`StudentSubmissionItem` over dictionary task IDs with null source/body/hash and atomic all-three catalogue acquisition E, satisfying the null-parent marker-1 read invariant. Do not reintroduce the `upsertItemFromExtraction()` round-trip for this path.
+- **Null page and source.** Explicit `pageId: null` stays null with the known student document retained; omitted/`undefined` keeps the task-definition fallback. The existing frontend document-root fallback (`buildCellPreviewLookup.resolveSourceUrl`) was verified read-only and needs no change.
+- **Native boundaries.** Conversion happens only at immediate native reads. Actually thrown `TypeError`, `ReferenceError` and non-`Error` values propagate by identity; ordinary internal faults escape. A literal `null` returned by a student `getCell` read is unavailable content (whole TABLE, `SOURCE_CONTENT_UNAVAILABLE`), not a thrown value. Shared-definition reads still throw. Native Sheets student extraction calls `Sheet.getRange(...).getFormulas()` directly; the absent `TaskSheet` collaborator is not restored.
+- **TABLE and IMAGE states.** The first TABLE failure makes the whole table unavailable, aborts at the first failing coordinate, discards any prefix and leaves a null hash; never a blank or partial table. Missing IMAGE match becomes extraction `SOURCE_CONTENT_UNAVAILABLE`; a matched student page with parser `sourceUrl` remains pending hydration with null content/hash. Do not claim hydration completion.
+- **Unhashability and diagnostics.** Failed/unavailable content is not hashable and carries null content/hash. One original contextual diagnostic per owned failure with opaque IDs and no student names; no matcher/model/progress duplicate.
+- **Private helpers and `@remarks`.** The six table-content helpers `_readTableDimensions`, `_readTableRow`, `_readTableCell`, `_readCellText`, `_isConvertibleSubmissionRead` and `_logTableReadFailure` are owner-local `@private` methods; no generic wrapper, shared utility, exception hierarchy or lint suppression. `@remarks` record pagination-before-absence, deferred materialisation, expected source exceptions versus implementation faults, and the native-null policy.
+- **Non-Drive attachments.** Existing ignore behaviour is retained (no `UNSUPPORTED_DOCUMENT` admission change). No supported source and no recorded failure (absent or ignored-only candidates) retains no-submission; ignored candidates do not erase a recorded Drive-candidate failure.
+- **Later ownership.** Transport retry ownership is Section 5; null-hash template comparison is Section 6; image hydration is Section 7; completion-marker stamping and completed-write preflight are Section 8; preview view models are Section 9; new browser journeys are Section 10. Intermediate checkpoints are not deployable.
 
-### Checks record (final full-section Green)
+### Checks record
 
-- `npm run test:backend:coverage`: 242 files / 3,327 tests PASS; statements 90.52%
-  (5,503/6,079), branches 85.05% (3,676/4,322), functions 89.34%, lines 91.2%.
-- Focused inventory: 15 suites / 230 tests PASS. Acquisition owner 100%
-  statements/functions/lines and 98% branches; both subclasses and table content 100%
-  statements/functions/lines.
-- Final source LOC: submissions owner 240, `SheetsAssignment` 142,
-  `SlidesAssignment` 209, `SheetsParser` 400, table content 331, matcher 351, Slides
-  facade 458, `StudentSubmission` 265. All 23 source/test inventory paths are below 500
-  lines (total 7,557).
-- `npm run lint:backend:check`: exit 1 with zero errors and exactly five accepted
-  historical `max-lines` warnings (`assignmentDefinitionPartials.unit` 2776,
-  `assignmentController.hydration` 653, `dbManager` 665, `classroomApiClient` 550,
-  `batchUpdateUtility` 615); no new warning. Prettier over the 23 inventory paths plus
-  four canonical docs PASS; scoped ESLint PASS; `git diff --check` clean. Evidence
-  prefix `.opencode/scratchpad/section4-final-clean-`; summary
-  `section4-final-clean-outcomes.txt`.
-- **Regression gate (user-accepted debt exception, not a clean pass).** Stable session
-  `assessment-errors-322-341` (baseline `2026-10-23T05:20:43.034Z`); compare run
-  `2026-10-28T06-48-49.500Z`; overall FAILING with 6 of 8 checks passing, 1 regression
-  and 1 new failure. Report:
-  `.ts-regression-checker/reports/session-assessment-errors-322-341/runs/2026-10-28T06-48-49.500Z/comparison.txt`.
-  The regression/new failure is `frontend-e2e-check` (Playwright):
-  `issue-320-layout.spec.ts` › `responsive page layout contracts` ›
-  `keeps the authentication provider-to-save gap at 24px in both modes and saves`.
-  The E2E runner exited 0 but the checker recorded the test as failed. Investigation
-  found an initial authentication-mode transition timeout, retry 1 PASS, and a targeted
-  rerun PASS on its first attempt; no causal link to Section 4 was evidenced. Evidence:
-  `.opencode/scratchpad/section4-regression-e2e-investigation.md`; deferred ledger:
-  `.opencode/scratchpad/assessment-errors-322-341-deferred-findings.md`. The user
-  explicitly selected “Accept as flaky debt”, so this identified regression is accepted
-  as an explicit gate-progression exception. The checker itself remains FAILING; it is
-  never a zero-regression or clean PASS. No frontend, baseline or checker edit was made.
-  Passing checks: backend, frontend and builder coverage tests; frontend and builder
-  lint; TypeScript compilation. `backend-lint-check` still fails only for the five
-  accepted historical `max-lines` warnings (one baseline fix recorded); no new lint
-  finding.
-- **Docs sync: PASS.** One factual correction in `AssessmentFlow.md` (Stage 4 progress
-  wording: Slides reports ordinal position, Sheets names the student); no new page and
-  no contract drift. Delivered shared-helper entries read as implemented; later slices
-  stay planned. Evidence: `.opencode/scratchpad/section4-docs-sync-final.md`.
-- **Commit/push:** `96153d8dd7173ebb8139310b37d2b08c1d94ea85` —
-  `feat: record explicit student acquisition and extraction errors`, branch
-  `assessment-errors-322-341`. Normal Prettier, staged lint and `typecheck:all` hooks
-  passed without bypass. `git push origin assessment-errors-322-341` succeeded
-  (`67d08df5..96153d8d`). This plan-only completion record follows in a separate
-  bookkeeping commit `c47b3feba455642b260ee7787b2b6c10eca5f85d` —
-  `docs: record Section 4 completion and accepted flaky debt`; its normal hooks and
-  push also succeeded (`96153d8d..c47b3feb`). No deployment performed.
+- `npm run test:backend:coverage`: 242 files / 3,327 tests PASS; statements 90.52% (5,503/6,079), branches 85.05% (3,676/4,322), functions 89.34%, lines 91.2%. Focused inventory: 15 suites / 230 tests PASS; acquisition owner 100% statements/functions/lines and 98% branches; both subclasses and table content 100% statements/functions/lines.
+- Final source LOC: submissions owner 240, `SheetsAssignment` 142, `SlidesAssignment` 209, `SheetsParser` 400, table content 331, matcher 351, Slides facade 458, `StudentSubmission` 265. All 23 source/test inventory paths are below 500 lines (total 7,557).
+- `npm run lint:backend:check`: exit 1 with zero errors and exactly five accepted historical `max-lines` warnings (`assignmentDefinitionPartials.unit` 2776, `assignmentController.hydration` 653, `dbManager` 665, `classroomApiClient` 550, `batchUpdateUtility` 615); no new warning. Prettier over the 23 inventory paths plus four canonical docs PASS; scoped ESLint PASS; `git diff --check` clean. Evidence prefix `.opencode/scratchpad/section4-final-clean-`; summary `section4-final-clean-outcomes.txt`.
+- **Regression gate (user-accepted debt exception, not a clean pass).** Stable session `assessment-errors-322-341` (baseline `2026-10-23T05:20:43.034Z`); compare run `2026-10-28T06-48-49.500Z`; overall FAILING with 6 of 8 checks passing, 1 regression and 1 new failure. Report: `.ts-regression-checker/reports/session-assessment-errors-322-341/runs/2026-10-28T06-48-49.500Z/comparison.txt`. The regression/new failure is `frontend-e2e-check` (Playwright): `issue-320-layout.spec.ts` › `responsive page layout contracts` › `keeps the authentication provider-to-save gap at 24px in both modes and saves`. The E2E runner exited 0 but the checker recorded the test as failed. Investigation found an initial authentication-mode transition timeout, retry 1 PASS, and a targeted rerun PASS on its first attempt; no causal link to Section 4 was evidenced. Evidence: `.opencode/scratchpad/section4-regression-e2e-investigation.md`; deferred ledger: `.opencode/scratchpad/assessment-errors-322-341-deferred-findings.md`. The user explicitly selected “Accept as flaky debt”, so this identified regression is accepted as an explicit gate-progression exception. The checker itself remains FAILING; it is never a zero-regression or clean PASS. No frontend, baseline or checker edit was made. Passing checks: backend, frontend and builder coverage tests; frontend and builder lint; TypeScript compilation. `backend-lint-check` still fails only for the five accepted historical `max-lines` warnings (one baseline fix recorded); no new lint finding.
+- **Docs sync: PASS.** One factual correction in `AssessmentFlow.md` (Stage 4 progress wording: Slides reports ordinal position, Sheets names the student); no new page and no contract drift. Delivered shared-helper entries read as implemented; later slices stay planned. Evidence: `.opencode/scratchpad/section4-docs-sync-final.md`.
+- **Commit/push:** `96153d8dd7173ebb8139310b37d2b08c1d94ea85` — `feat: record explicit student acquisition and extraction errors`, branch `assessment-errors-322-341`. Normal Prettier, staged lint and `typecheck:all` hooks passed without bypass. `git push origin assessment-errors-322-341` succeeded (`67d08df5..96153d8d`). This plan-only completion record follows in a separate bookkeeping commit `c47b3feba455642b260ee7787b2b6c10eca5f85d` — `docs: record Section 4 completion and accepted flaky debt`; its normal hooks and push also succeeded (`96153d8d..c47b3feb`). No deployment performed.
 
 ### Implementation notes / deviations / follow-up
 
 Authoritative for this section; keep in sync when later sections touch these owners.
 
-- **Student literal `getCell` null.** A literal `null` returned to a student read is
-  treated as unavailable content and becomes `SOURCE_CONTENT_UNAVAILABLE` for the whole
-  TABLE; it is not treated as an actually thrown value. Genuinely thrown `TypeError`,
-  `ReferenceError` and non-`Error` values propagate by identity. Shared-definition reads
-  still throw. This is the approved user decision, not an observed native guarantee.
-- **Slides helper placement.** The six table-content helpers are approved owner-local
-  private methods; do not replace them with a generic wrapper, shared utility,
-  exception hierarchy or lint suppression.
-- **Native Sheets student range.** Student extraction calls
-  `Sheet.getRange(...).getFormulas()` directly; the absent `TaskSheet` collaborator is
-  not restored. Definition parsing and bbox/blank-grid behaviour are unchanged.
-- **Non-Drive attachments.** Existing ignore behaviour is retained: no
-  `UNSUPPORTED_DOCUMENT` admission change. No supported source and no recorded failure
-  (absent or ignored-only candidates) retains the no-submission representation; ignored
-  candidates do not erase a recorded Drive-candidate failure.
-- **Selection policy.** Preserve the existing scan exactly: last supported source wins
-  across arrays/duplicate records; first failure is materialised only if no source is
-  supported; an accepted source suppresses/clears rejected-attachment E.
-- **Explicit-null page ID.** An explicit null stays null with the known student document
-  retained; omitted/`undefined` keeps the task-definition fallback. The frontend
-  document-root fallback was verified read-only.
-- **IMAGE states.** Missing IMAGE match → extraction `SOURCE_CONTENT_UNAVAILABLE`; actual
-  matched page plus parser `sourceUrl` → pending hydration with null content/hash. Do
-  not claim hydration completion.
-- **Canonical base producer.** Acquisition placeholders are constructed directly (not
-  through `upsertItemFromExtraction()`) so they satisfy the null-parent marker-1 read
-  invariant. Do not reintroduce the model-task round-trip for this path.
+- **Student literal `getCell` null.** A literal `null` returned to a student read is treated as unavailable content and becomes `SOURCE_CONTENT_UNAVAILABLE` for the whole TABLE; it is not treated as an actually thrown value. Genuinely thrown `TypeError`, `ReferenceError` and non-`Error` values propagate by identity. Shared-definition reads still throw. This is the approved user decision, not an observed native guarantee.
+- **Slides helper placement.** The six table-content helpers are approved owner-local private methods; do not replace them with a generic wrapper, shared utility, exception hierarchy or lint suppression.
+- **Native Sheets student range.** Student extraction calls `Sheet.getRange(...).getFormulas()` directly; the absent `TaskSheet` collaborator is not restored. Definition parsing and bbox/blank-grid behaviour are unchanged.
+- **Non-Drive attachments.** Existing ignore behaviour is retained: no `UNSUPPORTED_DOCUMENT` admission change. No supported source and no recorded failure (absent or ignored-only candidates) retains the no-submission representation; ignored candidates do not erase a recorded Drive-candidate failure.
+- **Selection policy.** Preserve the existing scan exactly: last supported source wins across arrays/duplicate records; first failure is materialised only if no source is supported; an accepted source suppresses/clears rejected-attachment E.
+- **Explicit-null page ID.** An explicit null stays null with the known student document retained; omitted/`undefined` keeps the task-definition fallback. The frontend document-root fallback was verified read-only.
+- **IMAGE states.** Missing IMAGE match → extraction `SOURCE_CONTENT_UNAVAILABLE`; actual matched page plus parser `sourceUrl` → pending hydration with null content/hash. Do not claim hydration completion.
+- **Canonical base producer.** Acquisition placeholders are constructed directly (not through `upsertItemFromExtraction()`) so they satisfy the null-parent marker-1 read invariant. Do not reintroduce the model-task round-trip for this path.
 - **`PARSE_FAILED`.** Reserved in the catalogue; no forced Section 4 producer or test.
-- **Proof limits.** G1 proves actual caller/store plus real full/partial
-  `Assignment.fromJSON()` restoration with a test-only marker and stubbed
-  extraction/assessment; it is not API-transport, production completion-stamping or
-  live-GAS evidence. Hermetic native mocks do not prove live GAS behaviour or
-  execution-log fidelity.
-- **Diagnostics.** One original contextual diagnostic per owned failure with opaque IDs
-  and no student names; immediate native ordinary-`Error` conversion; internal ordinary
-  faults escape.
-- **TABLE failure.** The first TABLE failure makes the whole table unavailable; never a
-  blank or partial table.
-- **Sizing.** The user's below-500-line allowance applies to these in-scope test/owner
-  files; final LOC are recorded in the checks record. Test suites remain within their
-  authorised budgets.
-- **Docs sync.** G8 and FG2/FG3 reconciled the four canonical pages; formal sync is PASS
-  in `.opencode/scratchpad/section4-docs-sync-final.md`. Final sync made one factual
-  progress-description correction in `AssessmentFlow.md`; no new page or source change.
-  Shared-helper registers agree with delivered acquisition/extraction and retain later
-  slices as planned. Minor documentation follow-ups are disregarded in the Nitpicks
-  table of `.opencode/scratchpad/assessment-errors-322-341-deferred-findings.md`.
-- **Compaction.** Section 4 was restored in full after the failed gate, then recompacted
-  after the user explicitly accepted the identified flaky debt. This pass replaces the
-  historical Red/Green step log with outcomes, handoffs and verification evidence; every
-  byte outside Section 4, including the entire deferred ledger, is unchanged.
-- **Gate exception (user accepted).** One frontend E2E regression/new failure
-  (`issue-320-layout.spec.ts` › `responsive page layout contracts` ›
-  `keeps the authentication provider-to-save gap at 24px in both modes and saves`) was
-  investigated: initial authentication-mode transition timeout, retry 1 PASS, targeted
-  rerun first-attempt PASS. The user explicitly accepted this as flaky debt. Evidence:
-  `.opencode/scratchpad/section4-regression-e2e-investigation.md` and the comparison
-  report recorded above. Gate progression is accepted by this exception; the checker
-  itself remains FAILING, not a clean PASS. No source, test, baseline or checker change
-  was made. Five historical lint warnings remain accepted separately. Commit-hook
-  validation and implementation commit/push are complete, recorded above; no deployment authorised.
+- **Proof limits.** G1 proves actual caller/store plus real full/partial `Assignment.fromJSON()` restoration with a test-only marker and stubbed extraction/assessment; it is not API-transport, production completion-stamping or live-GAS evidence. Hermetic native mocks do not prove live GAS behaviour or execution-log fidelity.
+- **Diagnostics.** One original contextual diagnostic per owned failure with opaque IDs and no student names; immediate native ordinary-`Error` conversion; internal ordinary faults escape.
+- **TABLE failure.** The first TABLE failure makes the whole table unavailable; never a blank or partial table.
+- **Sizing.** The user's below-500-line allowance applies to these in-scope test/owner files; final LOC are recorded in the checks record. Test suites remain within their authorised budgets.
+- **Docs sync.** G8 and FG2/FG3 reconciled the four canonical pages; formal sync is PASS in `.opencode/scratchpad/section4-docs-sync-final.md`. Final sync made one factual progress-description correction in `AssessmentFlow.md`; no new page or source change. Shared-helper registers agree with delivered acquisition/extraction and retain later slices as planned. Minor documentation follow-ups are disregarded in the Nitpicks table of `.opencode/scratchpad/assessment-errors-322-341-deferred-findings.md`.
+- **Compaction.** Section 4 was restored in full after the failed gate, then recompacted after the user explicitly accepted the identified flaky debt. This pass replaces the historical Red/Green step log with outcomes, handoffs and verification evidence; every byte outside Section 4, including the entire deferred ledger, is unchanged.
+- **Gate exception (user accepted).** One frontend E2E regression/new failure (`issue-320-layout.spec.ts` › `responsive page layout contracts` › `keeps the authentication provider-to-save gap at 24px in both modes and saves`) was investigated: initial authentication-mode transition timeout, retry 1 PASS, targeted rerun first-attempt PASS. The user explicitly accepted this as flaky debt. Evidence: `.opencode/scratchpad/section4-regression-e2e-investigation.md` and the comparison report recorded above. Gate progression is accepted by this exception; the checker itself remains FAILING, not a clean PASS. No source, test, baseline or checker change was made. Five historical lint warnings remain accepted separately. Commit-hook validation and implementation commit/push are complete, recorded above; no deployment authorised.
 
 ## Section 5 — One bounded transport owner
 
-### Status
-
-Runtime/test Green **PASS**, authority
-`.opencode/scratchpad/section5-transport-final-green-review.md`: G1–G4 CLOSED, no
-outstanding in-scope Critical, Improvement or Nitpick finding. Section 5 is **complete**.
-Formal Docs sync, plan compaction, the stable-ID regression comparison and implementation
-commit/push are **complete**. No deployment is authorised. Five historical backend `max-lines`
-warnings are accepted baseline debt only; the identified Settings E2E flake is Section 4
-accepted debt, not a prospective Section 5 regression waiver.
+**Status: complete.** Runtime/test Green PASS, authority `.opencode/scratchpad/section5-transport-final-green-review.md`: G1–G4 CLOSED, no outstanding in-scope Critical, Improvement or Nitpick finding. Formal Docs sync, plan compaction, the stable-ID regression comparison and implementation commit/push are complete. No deployment is authorised. Five historical backend `max-lines` warnings are accepted baseline debt only; the identified Settings E2E flake is Section 4 accepted debt, not a prospective Section 5 regression waiver.
 
 ### Outcome (compacted)
 
-`src/backend/RequestHandlers/BaseRequestManager.js` is the sole HTTP retry owner;
-`LLMRequestManager.js` and `ImageManager.js` were the two adapted callers. One private
-`_runRetryEngine` serves single dispatches and sequential member retries after the
-initial `fetchAll`. Duplicate dispatch/classification paths were replaced, attempts
-bounded, and per-batch consumption preserved without run-wide response accumulation.
-LLM semantic result replacement/cache and scoped image materialisation remain Sections 6/7.
+`src/backend/RequestHandlers/BaseRequestManager.js` is the sole HTTP retry owner; `LLMRequestManager.js` and `ImageManager.js` were the two adapted callers. One private `_runRetryEngine` serves single dispatches and sequential member retries after the initial `fetchAll`. Duplicate dispatch/classification paths were replaced, attempts bounded, and per-batch consumption preserved without run-wide response accumulation. LLM semantic result replacement/cache and scoped image materialisation remain Sections 6/7.
 
 ### Retained for later sections
 
 **Transport contracts**
 
-- Constructor owns `maxAttempts` (3 total including the initial `fetchAll`), 5000 ms
-  initial delay, 1.5 multiplier and native request defaults. Waits are exactly 5000/7500
-  ms only before actual attempts 2/3, never after exhaustion; retries are sequential and
-  never re-batched. A thrown batch call consumes attempt one for every member.
-- `sendRequestWithRetries(request, policy)` returns one final
-  `{ uid, response, error, attempts }`. `sendRequestsInBatches(requests, options)`
-  returns void with batch-local outcomes only; `options` carries `batchSize`,
-  `acceptedStatuses`, `stopStatuses` and `onBatchComplete`, which receives each completed
-  batch before any later dispatch. Returning exactly boolean `false` stops this sender;
-  `undefined`, numbers (including `Array.push()`), zero and `null` continue. This internal
-  stop feedback is not a public or persisted shape.
-- A final outcome retains its UID and final response OR final original network error plus
-  attempts; a later network failure never returns an earlier 429/5xx response.
-  Unknown/duplicate input UIDs, response-count mismatch and callback/routing/programming
-  faults throw, not network retry.
-- Classify every received response before retrying. LLM accepts only 200/201 and stops on
-  401/403/404; image accepts only 200 with no stop statuses, so a student-image 403 never
-  becomes an LLM-wide stop. Retry only network exceptions, 429 and 500–599. Valid
-  same-batch results survive any stop origin (initial batch, base retry or
-  validation-triggered single request) regardless of order.
-- LLM caller uses one full-list sender invocation with the explicit assessor batch size.
-  `runStopped` is constructor-initialised, reset each new public invocation, latched from
-  a validation retry's single outcome before another validation dispatch, and its
-  callback returns `false` to guard additional dispatch. Image caller uses one full
-  round-robin list with the explicit Slides batch size, document round-robin order and
-  UID association, reading blobs incrementally before the next dispatch. No nested
-  assessor-size image batches.
-- Public required-input validation runs before effects; empty `[]` keeps its existing
-  early return. UID unknown/duplicate and response-count mismatches are rejected before
-  arbitrary processing. Logging carries safe UID/status/attempt metadata only. Catches
-  are narrow native `fetch`/`fetchAll` catches; internal errors propagate with original
-  identity. Projection preserves explicit `false`/`null`/empty caller defaults and an
-  explicit marker distinguishes falsy thrown batch failures.
-- `@remarks` document initial-attempt accounting, classify-before-retry ordering,
-  exact-false cancellation and callback-before-later-batch consumption. No new module,
-  hierarchy, budget, API/envelope, stored body, config, dependency or corpus.
+- Constructor owns `maxAttempts` (3 total including the initial `fetchAll`), 5000 ms initial delay, 1.5 multiplier and native request defaults. Waits are exactly 5000/7500 ms only before actual attempts 2/3, never after exhaustion; retries are sequential and never re-batched. A thrown batch call consumes attempt one for every member.
+- `sendRequestWithRetries(request, policy)` returns one final `{ uid, response, error, attempts }`. `sendRequestsInBatches(requests, options)` returns void with batch-local outcomes only; `options` carries `batchSize`, `acceptedStatuses`, `stopStatuses` and `onBatchComplete`, which receives each completed batch before any later dispatch. Returning exactly boolean `false` stops this sender; `undefined`, numbers (including `Array.push()`), zero and `null` continue. This internal stop feedback is not a public or persisted shape.
+- A final outcome retains its UID and final response OR final original network error plus attempts; a later network failure never returns an earlier 429/5xx response. Unknown/duplicate input UIDs, response-count mismatch and callback/routing/programming faults throw, not network retry.
+- Classify every received response before retrying. LLM accepts only 200/201 and stops on 401/403/404; image accepts only 200 with no stop statuses, so a student-image 403 never becomes an LLM-wide stop. Retry only network exceptions, 429 and 500–599. Valid same-batch results survive any stop origin (initial batch, base retry or validation-triggered single request) regardless of order.
+- LLM caller uses one full-list sender invocation with the explicit assessor batch size. `runStopped` is constructor-initialised, reset each new public invocation, latched from a validation retry's single outcome before another validation dispatch, and its callback returns `false` to guard additional dispatch. Image caller uses one full round-robin list with the explicit Slides batch size, document round-robin order and UID association, reading blobs incrementally before the next dispatch. No nested assessor-size image batches.
+- Public required-input validation runs before effects; empty `[]` keeps its existing early return. UID unknown/duplicate and response-count mismatches are rejected before arbitrary processing. Logging carries safe UID/status/attempt metadata only. Catches are narrow native `fetch`/`fetchAll` catches; internal errors propagate with original identity. Projection preserves explicit `false`/`null`/empty caller defaults and an explicit marker distinguishes falsy thrown batch failures.
+- `@remarks` document initial-attempt accounting, classify-before-retry ordering, exact-false cancellation and callback-before-later-batch consumption. No new module, hierarchy, budget, API/envelope, stored body, config, dependency or corpus.
 
 **Tests and ownership**
 
-- User-approved test-only split: `baseRequestManager.test.js` (218),
-  `.policy.test.js` (461) and `.batching.test.js` (374); all 17 original behaviour cases
-  are represented under the tagged contract with no compatibility branch.
-  `assignmentPhase3.transport.test.js` (499) carries three moved transport controls;
-  `assignmentPhase3.test.js` (389) preserves the original six controls plus healthy/UID
-  guard coverage. Four original image write-back cases moved intact from
-  `imageManagerCoverage.test.js` (475) to existing `imageManagerPhase5.test.js` (469);
-  collection/round-robin/large-input coverage remains and no new image suite exists.
-- `tests/helpers/globalMockManager.js::withGlobalMocks` stays the shared global
-  installation/teardown owner (182 lines, unchanged); suites keep small local
-  fetch/config stubs and do not import one another. All eleven inventory paths are below
-  500 lines (total 4108); actual Base 317, LLM 496 and Image 228 supersede earlier
-  estimates under the user's below-500 allowance; the comment-only docs-sync follow-up
-  brings LLMRequestManager to 498 lines. No formatting condensation or
-  assertion loss.
+- User-approved test-only split: `baseRequestManager.test.js` (218), `.policy.test.js` (461) and `.batching.test.js` (374); all 17 original behaviour cases are represented under the tagged contract with no compatibility branch. `assignmentPhase3.transport.test.js` (499) carries three moved transport controls; `assignmentPhase3.test.js` (389) preserves the original six controls plus healthy/UID guard coverage. Four original image write-back cases moved intact from `imageManagerCoverage.test.js` (475) to existing `imageManagerPhase5.test.js` (469); collection/round-robin/large-input coverage remains and no new image suite exists.
+- `tests/helpers/globalMockManager.js::withGlobalMocks` stays the shared global installation/teardown owner (182 lines, unchanged); suites keep small local fetch/config stubs and do not import one another. All eleven inventory paths are below 500 lines (total 4108); actual Base 317, LLM 496 and Image 228 supersede earlier estimates under the user's below-500 allowance; the comment-only docs-sync follow-up brings LLMRequestManager to 498 lines. No formatting condensation or assertion loss.
 
-**Later ownership** — unchanged and unimplemented: Section 6 semantic retry removal,
-cache/result replacement and null-hash equality; Section 7 scoped image hydration and
-write-back catch handling; Section 8 prepared writes and marker stamping; Section 9
-preview. Existing 401/403 progress aborts do not yet materialise completed task E.
+**Later ownership** — unchanged and unimplemented: Section 6 semantic retry removal, cache/result replacement and null-hash equality; Section 7 scoped image hydration and write-back catch handling; Section 8 prepared writes and marker stamping; Section 9 preview. Existing 401/403 progress aborts do not yet materialise completed task E.
 
 ### Checks record (runtime/test Green)
 
-- `npm run test:backend:coverage`: **245 files / 3396 tests PASS**, all thresholds pass;
-  statements **91.23% (5621/6161)**, branches **85.88% (3765/4384)**, functions
-  **89.89% (1076/1197)**, lines **91.95% (5382/5853)**. Evidence:
-  `.opencode/scratchpad/s5-final-coverage.txt`.
-- `npm run test:backend -- tests/requestHandlers tests/assignment`: **40 files / 502
-  tests PASS**, including the seven authorised transport/caller suites and nine
-  stop-origin rows (`.opencode/scratchpad/s5-final-focused.txt`).
-- `npm run lint:backend:check`: exit 1, zero errors, exactly the five accepted historical
-  `max-lines` warnings (`assignmentDefinitionPartials.unit` 2776,
-  `assignmentController.hydration` 653, `dbManager` 665, `classroomApiClient` 550,
-  `batchUpdateUtility` 615), no new warning. Prettier over all eleven inventory paths,
-  scoped ESLint and `git diff --check` pass. Inline real-Base callback probe passes
-  (exact `false` stops after one dispatch; other values continue; sender returns
-  undefined) and is not in suite totals. Evidence:
-  `s5-final-{lint,format,scoped-lint,callback-probe}.txt`.
-- No regression checker, full-section gate, frontend/builder/browser check, commit, push
-  or deployment ran in this checkpoint.
+- `npm run test:backend:coverage`: **245 files / 3396 tests PASS**, all thresholds pass; statements **91.23% (5621/6161)**, branches **85.88% (3765/4384)**, functions **89.89% (1076/1197)**, lines **91.95% (5382/5853)**. Evidence: `.opencode/scratchpad/s5-final-coverage.txt`.
+- `npm run test:backend -- tests/requestHandlers tests/assignment`: **40 files / 502 tests PASS**, including the seven authorised transport/caller suites and nine stop-origin rows (`.opencode/scratchpad/s5-final-focused.txt`).
+- `npm run lint:backend:check`: exit 1, zero errors, exactly the five accepted historical `max-lines` warnings (`assignmentDefinitionPartials.unit` 2776, `assignmentController.hydration` 653, `dbManager` 665, `classroomApiClient` 550, `batchUpdateUtility` 615), no new warning. Prettier over all eleven inventory paths, scoped ESLint and `git diff --check` pass. Inline real-Base callback probe passes (exact `false` stops after one dispatch; other values continue; sender returns undefined) and is not in suite totals. Evidence: `s5-final-{lint,format,scoped-lint,callback-probe}.txt`.
+- No regression checker, full-section gate, frontend/builder/browser check, commit, push or deployment ran in this checkpoint.
 
 ### Implementation notes / deviations / follow-up
 
 Authoritative for this section; parent adds pending gate records after return.
 
-- **Docs sync PASS.** `AssessmentFlow.md` transport register/narrative and
-  `backend-testing.md` suite inventory updated; no new pages. A comment-only
-  `handleValidationFailure()` JSDoc follow-up documents stop early-return/latching;
-  source Prettier/scoped ESLint/diff checks pass, LLM owner 498 lines. Evidence:
-  `.opencode/scratchpad/section5-docs-sync.md`. Parent verified register agreement:
-  transport implemented, later cache/scoped-image/prepared-write/preview slices planned.
-- **Compaction verified.** Backup:
-  `.opencode/scratchpad/assessment-errors-322-341-section-5-pre-compaction.md`.
-  Parent byte comparison confirmed no other section or deferred ledger changed during
-  compaction. The 84-to-128-line rewrite retains delivered contracts and proof limits;
-  no future-relevant gap found. Report: `.opencode/scratchpad/section5-plan-compaction.md`.
-- **Deferred follow-ups.** Later Section 6/7 findings are noted in the deferred ledger;
-  minor documentation drift is disregarded in the Nitpicks table of
-  `.opencode/scratchpad/assessment-errors-322-341-deferred-findings.md`.
-- **Regression gate satisfied with accepted baseline debt.** Command:
-  `npm run regression-checker -- assessment-errors-322-341`. Report:
-  `.ts-regression-checker/reports/session-assessment-errors-322-341/runs/2026-10-29T07-11-53.069Z/comparison.txt`.
-  Compare mode, original baseline retained; **zero regressions, zero new failures,
-  one baseline fix**. Seven of eight checks pass, including all backend/frontend/builder
-  coverage tests, Playwright, frontend/builder lint and TypeScript compilation. Overall
-  checker status remains **FAILING** solely for the five explicitly accepted historical
-  backend `max-lines` warnings listed above. No new waiver or flaky outcome is used.
-- **Commit/push complete.** Branch `assessment-errors-322-341`; implementation commit
-  `bfdc1d07ca8fc8f32cc031c29c24a25ff66ea91d`, exact message
-  `feat: centralise bounded transport retries and caller stop handling`.
-  Normal hooks passed (Prettier unchanged, scoped ESLint and `typecheck:all`);
-  `git push origin assessment-errors-322-341` succeeded
-  (`c47b3feb..bfdc1d07`). Unrelated untracked work preserved. This completion record
-  is committed separately as `docs: record Section 5 completion and regression evidence`.
-  Completion-record commit `0161f7f499395c925094497c0440fa015c77625d` passed normal
-  hooks and pushed successfully (`bfdc1d07..0161f7f4`) to the same branch.
-  No deployment authorised.
-- **Deviation.** G1 added exact-false callback stop feedback after the validation-origin
-  stop was found; it is internal only and changes no public or persisted shape.
-- **Proof limits.** Hermetic native HTTP mocks and models prove the owned transport/caller
-  boundary, not live GAS/LLM/network behaviour, deployed logging fidelity, cache
-  identity, hydration, atomic writes or original-incident diagnosis. Local invalid
-  `{}`/HTTP/fault probes are boundary fixtures, not a realistic analysis corpus. No Data
-  Shapes update is required for these internal synchronous outcomes.
+- **Docs sync PASS.** `AssessmentFlow.md` transport register/narrative and `backend-testing.md` suite inventory updated; no new pages. A comment-only `handleValidationFailure()` JSDoc follow-up documents stop early-return/latching; source Prettier/scoped ESLint/diff checks pass, LLM owner 498 lines. Evidence: `.opencode/scratchpad/section5-docs-sync.md`. Parent verified register agreement: transport implemented, later cache/scoped-image/prepared-write/preview slices planned.
+- **Compaction verified.** Backup: `.opencode/scratchpad/assessment-errors-322-341-section-5-pre-compaction.md`. Parent byte comparison confirmed no other section or deferred ledger changed during compaction. The 84-to-128-line rewrite retains delivered contracts and proof limits; no future-relevant gap found. Report: `.opencode/scratchpad/section5-plan-compaction.md`.
+- **Deferred follow-ups.** Later Section 6/7 findings are noted in the deferred ledger; minor documentation drift is disregarded in the Nitpicks table of `.opencode/scratchpad/assessment-errors-322-341-deferred-findings.md`.
+- **Regression gate satisfied with accepted baseline debt.** Command: `npm run regression-checker -- assessment-errors-322-341`. Report: `.ts-regression-checker/reports/session-assessment-errors-322-341/runs/2026-10-29T07-11-53.069Z/comparison.txt`. Compare mode, original baseline retained; **zero regressions, zero new failures, one baseline fix**. Seven of eight checks pass, including all backend/frontend/builder coverage tests, Playwright, frontend/builder lint and TypeScript compilation. Overall checker status remains **FAILING** solely for the five explicitly accepted historical backend `max-lines` warnings listed above. No new waiver or flaky outcome is used.
+- **Commit/push complete.** Branch `assessment-errors-322-341`; implementation commit `bfdc1d07ca8fc8f32cc031c29c24a25ff66ea91d`, exact message `feat: centralise bounded transport retries and caller stop handling`. Normal hooks passed (Prettier unchanged, scoped ESLint and `typecheck:all`); `git push origin assessment-errors-322-341` succeeded (`c47b3feb..bfdc1d07`). Unrelated untracked work preserved. This completion record is committed separately as `docs: record Section 5 completion and regression evidence`. Completion-record commit `0161f7f499395c925094497c0440fa015c77625d` passed normal hooks and pushed successfully (`bfdc1d07..0161f7f4`) to the same branch. No deployment authorised.
+- **Deviation.** G1 added exact-false callback stop feedback after the validation-origin stop was found; it is internal only and changes no public or persisted shape.
+- **Proof limits.** Hermetic native HTTP mocks and models prove the owned transport/caller boundary, not live GAS/LLM/network behaviour, deployed logging fidelity, cache identity, hydration, atomic writes or original-incident diagnosis. Local invalid `{}`/HTTP/fault probes are boundary fixtures, not a realistic analysis corpus. No Data Shapes update is required for these internal synchronous outcomes.
 
 ## Section 6 — Atomic LLM completion and validated cache reuse
 
-### Status
-
-Runtime/test Green **PASS**, authority
-`.opencode/scratchpad/section6-green-approved.md`: G1–G6 CLOSED, every prior finding
-closed, no outstanding in-scope Critical, Improvement or Nitpick finding. Red authority:
-`.opencode/scratchpad/section6-consolidated-red-final.md`. Canonical data-shape slice
-reconciled (`section6-data-shapes-sync.md`). Documentation reconciliation is PASS
-(`section6-docs-approved.md`); plan compaction is verified. Section 6 is **complete**:
-the stable-ID regression gate and implementation commit/push are satisfied;
-no deployment authorised. Five historical backend `max-lines`
-warnings are accepted baseline debt only.
+**Status: complete.** Runtime/test Green PASS, authority `.opencode/scratchpad/section6-green-approved.md`: G1–G6 CLOSED, every prior finding closed, no outstanding in-scope Critical, Improvement or Nitpick finding. Red authority `.opencode/scratchpad/section6-consolidated-red-final.md`; canonical data-shape slice reconciled (`section6-data-shapes-sync.md`); documentation reconciliation PASS (`section6-docs-approved.md`); plan compaction verified. Stable-ID regression gate and implementation commit/push satisfied; no deployment authorised. Five historical backend `max-lines` warnings are accepted baseline debt only.
 
 ### Outcome (compacted)
 
-LLM assessment results are atomic and terminal, including service-wide stop, without
-semantic retries. `src/backend/RequestHandlers/LLMRequestManager.js` (499 lines) and
-generic `src/backend/RequestHandlers/CacheManager.js` (74 lines) are the only production
-owners; no new module, dependency, config or public/persisted shape. One
-read → parse → raw-key admission → normalise → shared validation → assign/cache path
-replaces duplicated decode/validation and component-build controls. Orphaned assessment
-cache wrappers, recursive validation retries, the `taskDef` alias and silent
-unknown-UID returns are removed.
+LLM assessment results are atomic and terminal, including service-wide stop, without semantic retries. `src/backend/RequestHandlers/LLMRequestManager.js` (499 lines) and generic `src/backend/RequestHandlers/CacheManager.js` (74 lines) are the only production owners; no new module, dependency, config or public/persisted shape. One read → parse → raw-key admission → normalise → shared validation → assign/cache path replaces duplicated decode/validation and component-build controls. Orphaned assessment cache wrappers, recursive validation retries, the `taskDef` alias and silent unknown-UID returns are removed.
 
 ### Retained for later sections
 
 **Eligibility and the stored-content hash invariant**
 
-- Stored reference/template/student content must carry a non-empty string
-  `contentHash` before any cache lookup or LLM dispatch (`_requireUsableHashes`, role
-  named). Null/empty is a loud internal invariant fault — never a cache miss with live
-  fallback, a new assessment E or a false template N. Paired null/empty hashes never
-  establish template N.
-- Known prior all-three E is preserved verbatim without dispatch or overwrite
-  (`_hasTerminalError`; relies on the validated-domain cause/reasoning invariant).
-  Successfully extracted blank work keeps N; canonical SPREADSHEET tasks stay local.
-  Non-empty matching student/template hashes remain the template-N rule.
+- Stored reference/template/student content must carry a non-empty string `contentHash` before any cache lookup or LLM dispatch (`_requireUsableHashes`, role named). Null/empty is a loud internal invariant fault — never a cache miss with live fallback, a new assessment E or a false template N. Paired null/empty hashes never establish template N.
+- Known prior all-three E is preserved verbatim without dispatch or overwrite (`_hasTerminalError`; relies on the validated-domain cause/reasoning invariant). Successfully extracted blank work keeps N; canonical SPREADSHEET tasks stay local. Non-empty matching student/template hashes remain the template-N rule.
 
 **Successful-result validation**
 
-- One validator serves live and cached results: exactly the three own canonical
-  criterion keys, no extra/inherited keys, each entry delegating to
-  `Assessment.isValidRawResult` restricted to a numeric score. Raw root keys are
-  admitted case-insensitively (canonical, non-colliding) **before** the Utils
-  normaliser, so inherited/`__proto__`/case-collision evidence is not erased; supported
-  mixed capitalisation stays valid.
-- Only `JSON.parse` is caught; invalid roots/structures are rejected atomically via
-  `_rejectInvalidResponse` (all-three `LLM_INVALID_RESPONSE`, no extra dispatch, no
-  partial salvage). Body-reader, normaliser, mutation, routing, cache-wiring and
-  serialisation faults propagate with original identity. No blanket decode catch and no
-  ordinary `ASSESSMENT_FAILED` producer exists.
+- One validator serves live and cached results: exactly the three own canonical criterion keys, no extra/inherited keys, each entry delegating to `Assessment.isValidRawResult` restricted to a numeric score. Raw root keys are admitted case-insensitively (canonical, non-colliding) **before** the Utils normaliser, so inherited/`__proto__`/case-collision evidence is not erased; supported mixed capitalisation stays valid.
+- Only `JSON.parse` is caught; invalid roots/structures are rejected atomically via `_rejectInvalidResponse` (all-three `LLM_INVALID_RESPONSE`, no extra dispatch, no partial salvage). Body-reader, normaliser, mutation, routing, cache-wiring and serialisation faults propagate with original identity. No blanket decode catch and no ordinary `ASSESSMENT_FAILED` producer exists.
 
 **Terminal outcomes and run stop**
 
-- Catalogue mapping is terminal: permanent per-request HTTP → `LLM_HTTP_FAILED`;
-  retryable HTTP/network budget exhaustion → `LLM_UNAVAILABLE`; 401/403/404 →
-  `LLM_RUN_STOPPED`; invalid success → `LLM_INVALID_RESPONSE`. Successfully extracted
-  content/hash and completed healthy, cached and genuine-N results survive.
-- `_routedOutcomeAttempts` is constructor-initialised and replaced on every public
-  `processStudentResponses` call before the empty-input return; each batch callback
-  records the actual outcome's `attempts` before processing. `_terminalCodeFor`
-  separates stop-cancelled retryable work from genuine exhaustion by the real spent
-  budget (no default, no Base policy change, no new cause). Non-success/null outcomes
-  require a safe-integer `attempts` in `[1, maxAttempts]` and throw a contextual
-  `Error` before `setError` when provenance is missing/invalid.
-- Never-dispatched eligible items are terminalised `LLM_RUN_STOPPED` after a stop.
-  Missing generated route map/entry/item (`_terminaliseUnprocessedItems`), missing
-  routed item (`assignAssessmentToStudentTask`) and missing retained cache key
-  (`_assignAndCacheAssessment`) fail loudly. No rollback is promised after a valid
-  assignment followed by a wiring failure.
+- Catalogue mapping is terminal: permanent per-request HTTP → `LLM_HTTP_FAILED`; retryable HTTP/network budget exhaustion → `LLM_UNAVAILABLE`; 401/403/404 → `LLM_RUN_STOPPED`; invalid success → `LLM_INVALID_RESPONSE`. Successfully extracted content/hash and completed healthy, cached and genuine-N results survive.
+- `_routedOutcomeAttempts` is constructor-initialised and replaced on every public `processStudentResponses` call before the empty-input return; each batch callback records the actual outcome's `attempts` before processing. `_terminalCodeFor` separates stop-cancelled retryable work from genuine exhaustion by the real spent budget (no default, no Base policy change, no new cause). Non-success/null outcomes require a safe-integer `attempts` in `[1, maxAttempts]` and throw a contextual `Error` before `setError` when provenance is missing/invalid.
+- Never-dispatched eligible items are terminalised `LLM_RUN_STOPPED` after a stop. Missing generated route map/entry/item (`_terminaliseUnprocessedItems`), missing routed item (`assignAssessmentToStudentTask`) and missing retained cache key (`_assignAndCacheAssessment`) fail loudly. No rollback is promised after a valid assignment followed by a wiring failure.
 
 **Cache identity and generic reuse**
 
-- `LLMRequestManager` owns the versioned identity: literal `v1`, task type,
-  reference/template/student hashes. The generation-time key is retained on the routed
-  entry and reused verbatim for writeback; old key spaces are misses (no
-  purge/migration). Cache hits run the same validator; malformed/N/E hits are logged
-  misses and re-requested. Only validated numeric results are cached — never E or
-  transport failures.
-- Storage uses generic `CacheManager.get`/`put` with an explicit
-  `CacheManager.CACHE_EXPIRY_SECONDS` TTL; native get/parse/put failures stay logged
-  best-effort and never become assessment E. Generic `get`/`put` behaviour and the
-  shared TTL are unchanged; authentication-cache semantics are untouched.
-- Do not reintroduce `generateCacheKey`, `getCachedAssessment`,
-  `setCachedAssessment`, recursive validation retries, component-build controls or the
-  `taskDef` alias, or add a second cache module.
+- `LLMRequestManager` owns the versioned identity: literal `v1`, task type, reference/template/student hashes. The generation-time key is retained on the routed entry and reused verbatim for writeback; old key spaces are misses (no purge/migration). Cache hits run the same validator; malformed/N/E hits are logged misses and re-requested. Only validated numeric results are cached — never E or transport failures.
+- Storage uses generic `CacheManager.get`/`put` with an explicit `CacheManager.CACHE_EXPIRY_SECONDS` TTL; native get/parse/put failures stay logged best-effort and never become assessment E. Generic `get`/`put` behaviour and the shared TTL are unchanged; authentication-cache semantics are untouched.
+- Do not reintroduce `generateCacheKey`, `getCachedAssessment`, `setCachedAssessment`, recursive validation retries, component-build controls or the `taskDef` alias, or add a second cache module.
 
 **Contracts, shared-helper register and ownership**
 
-- No persisted, transport or envelope change: the existing `Assessment` result union
-  and catalogue gain assessment-stage producers; the LLM request/response body is
-  unchanged; attempts, latch and key are internal runtime state.
-  `assessmentContractVersion` marker stamping and completed-write preflight remain
-  Section 8.
-- Delivered shared-helper entries: LLM single successful numeric validator
-  (live/cached), Assessment domain validation and `setError` atomic error creation,
-  LLM-owned versioned/retained request identity, and generic `CacheManager.get`/`put`
-  with explicit shared TTL. No helper remains `Not implemented` for this section; later
-  sections' entries are untouched.
-- Data Shapes reconciled `docs/developer/data-shapes/assignment.md` only
-  (`section6-data-shapes-sync.md`): LLM assessment-stage producers, internal versioned
-  cache identity, the stored-content hash invariant and the remaining Section 8 write
-  gap. No new contract or page.
-- Delivered Docs pass: activated the AssessmentFlow LLM
-  result/cache helper register and call-chain (versioned key, generic get/put, explicit
-  shared TTL, parse-only catch, provenance boundary), update the assessment-cache
-  subsection of `docs/developer/security/data-handling.md`, and registered all seven
-  focused suites plus two helpers in `backend-testing.md`. `@remarks` commitments:
-  semantic invalidity is terminal; key versioning is not a purge/migration; cache
-  cannot define authoritative success; parse-only catch with original reader-fault
-  propagation; attempt provenance validated before catalogue mutation.
+- No persisted, transport or envelope change: the existing `Assessment` result union and catalogue gain assessment-stage producers; the LLM request/response body is unchanged; attempts, latch and key are internal runtime state. `assessmentContractVersion` marker stamping and completed-write preflight remain Section 8.
+- Delivered shared-helper entries: LLM single successful numeric validator (live/cached), Assessment domain validation and `setError` atomic error creation, LLM-owned versioned/retained request identity, and generic `CacheManager.get`/`put` with explicit shared TTL. No helper remains `Not implemented` for this section; later sections' entries are untouched.
+- Data Shapes reconciled `docs/developer/data-shapes/assignment.md` only (`section6-data-shapes-sync.md`): LLM assessment-stage producers, internal versioned cache identity, the stored-content hash invariant and the remaining Section 8 write gap. No new contract or page.
+- Delivered Docs pass: activated the AssessmentFlow LLM result/cache helper register and call-chain (versioned key, generic get/put, explicit shared TTL, parse-only catch, provenance boundary), updated the assessment-cache subsection of `docs/developer/security/data-handling.md`, and registered all seven focused suites plus two helpers in `backend-testing.md`. `@remarks` commitments: semantic invalidity is terminal; key versioning is not a purge/migration; cache cannot define authoritative success; parse-only catch with original reader-fault propagation; attempt provenance validated before catalogue mutation.
 
 **Scope and fixtures**
 
-- Local HTTP/invalid-JSON/cache/fault probes only; no new realistic corpus family.
-  Section 2 `small`/`medium` canonical models are cloned/restored. The approved
-  run-stop fixture uses three numeric-healthy TEXT items plus one genuine
-  template-copy N item (no generator extension, no type-match relaxation).
-- Test surface is seven focused LLM suites plus two test-only harnesses, all below 500
-  lines, preserving every approved case; no production expansion. Later Section 7
-  image hydration and Section 8 persistence/marker/completion feedback remain pending.
+- Local HTTP/invalid-JSON/cache/fault probes only; no new realistic corpus family. Section 2 `small`/`medium` canonical models are cloned/restored. The approved run-stop fixture uses three numeric-healthy TEXT items plus one genuine template-copy N item (no generator extension, no type-match relaxation).
+- Test surface is seven focused LLM suites plus two test-only harnesses, all below 500 lines, preserving every approved case; no production expansion. Later Section 7 image hydration and Section 8 persistence/marker/completion feedback remain pending.
 
 ### Checks record (final full-section Green)
 
-- `npm run test:backend:coverage`: **252 files / 3,511 tests PASS**; statements
-  **91.46%**, branches **86.1%**, functions **89.99%**, lines **92.16%**.
-- Focused 21-file command: **330 tests PASS** (seven LLM suites, both Phase 3 suites,
-  generic cache, Base suites, image Phase 5, auth and trigger consumers). Exact
-  commands and partition are in `section6-green-approved.md`.
-- `npm run lint:backend:check`: exit 1 with zero errors and exactly the five accepted
-  historical `max-lines` warnings (`assignmentDefinitionPartials.unit`,
-  `assignmentController.hydration`, `dbManager`, `classroomApiClient`,
-  `batchUpdateUtility`); **not a clean lint PASS**. Scoped ESLint, Prettier and
-  `git diff --check` pass.
-- Inventory: all 14 source/test/helper paths below 500 lines (total 5,954); source
-  499/74; no new production owner.
-- Proof limits: hermetic real-owner/native-stub coverage, not live GAS/LLM/network,
-  deployed logging, cache expiry, durable persistence or original-incident cause.
+- `npm run test:backend:coverage`: **252 files / 3,511 tests PASS**; statements **91.46%**, branches **86.1%**, functions **89.99%**, lines **92.16%**.
+- Focused 21-file command: **330 tests PASS** (seven LLM suites, both Phase 3 suites, generic cache, Base suites, image Phase 5, auth and trigger consumers). Exact commands and partition are in `section6-green-approved.md`.
+- `npm run lint:backend:check`: exit 1 with zero errors and exactly the five accepted historical `max-lines` warnings (`assignmentDefinitionPartials.unit`, `assignmentController.hydration`, `dbManager`, `classroomApiClient`, `batchUpdateUtility`); **not a clean lint PASS**. Scoped ESLint, Prettier and `git diff --check` pass.
+- Inventory: all 14 source/test/helper paths below 500 lines (total 5,954); source 499/74; no new production owner.
+- Proof limits: hermetic real-owner/native-stub coverage, not live GAS/LLM/network, deployed logging, cache expiry, durable persistence or original-incident cause.
 
 ### Implementation notes / deviations / follow-up
 
-- **Full Green PASS:** `.opencode/scratchpad/section6-green-approved.md` independently
-  closes G6 and preserves G1–G5 closures; no outstanding in-scope findings. Fresh
-  backend coverage3511PASS and focused330PASS; only five accepted historical lint
-  warnings remain. Parent verified completed report and current reviewed LLM SHA256
-  `502ebb49aa7237c7cf94171536b37e3deef425a62cd9a2e0688d13c3ed886390`.
-- **Current phase:** Section6 complete; all exit gates satisfied with accepted
-  pre-existing lint debt. Sections7–12 remain not started.
-- **Commit/push:** branch `assessment-errors-322-341`; implementation commit
-  `242d778fb9b0b396a126fb753e68e17f25c7424f`, exact message
-  `feat: make LLM outcomes terminal and validate cached assessments`.
-  Normal hooks passed: Prettier unchanged, staged backend lint, `typecheck:all`.
-  Approved source/test hashes still match after hooks. Push succeeded via
-  `git push origin assessment-errors-322-341` (`0161f7f4..242d778f`). All19 feature
-  files committed; unrelated `.vitest/`, `draft-scratch.md`, `src/frontend/.opencode/`
-  preserved and excluded. This completion evidence is recorded in a plan-only
-  bookkeeping commit with message `docs: record Section 6 completion and regression evidence`.
-- **Section regression gate:** stable session `assessment-errors-322-341`, original
-  baseline `2026-10-23T05:20:43.034Z` unchanged; completed comparison
-  `2026-10-30T15:35:55.002Z`, zero regressions, zero new failures, one baseline fix.
-  Seven checks pass (all backend/frontend/builder coverage, frontend/builder lint,
-  Playwright and TypeScript). Overall checker remains FAILING/exit1 solely for the
-  five accepted historical backend max-lines warnings, not a new waiver. Report:
-  `.ts-regression-checker/reports/session-assessment-errors-322-341/runs/2026-10-30T15-35-55.002Z/comparison.txt`.
-- **Docs sync PASS:** `.opencode/scratchpad/section6-docs-approved.md` closes D1–D3
-  (suite-proof attribution, conditional sweep, provenance predicate). Updated existing
-  `AssessmentFlow.md`, `backend-testing.md`, `security/data-handling.md` and
-  `data-shapes/assignment.md`; no new pages, source or test edits. Helper registers
-  agree with delivered Section6; later slices remain planned. Historical documentation
-  nitpicks remain in the linked deferred log, no new finding or accepted debt.
-- **Compaction verified:** `.opencode/scratchpad/section6-plan-compaction.md` records
-  691→156 lines. Parent compared backup
-  `.opencode/scratchpad/assessment-errors-322-341-section-6-pre-compaction.md`: every
-  byte outside Section6 and authoritative notes unchanged at compaction; required
-  contracts/decisions retained, no detail gap. Subsequent parent notes record gates.
-- **Approved sizing deviations:** seven focused LLM suites and two test-only harnesses
-  preserve all coverage below500; the user approved the provenance companion when
-  existing capacity was exhausted. No production module or behaviour expansion.
-- **Proof limits:** hermetic real-owner/native-stub coverage is not live GAS/LLM,
-  deployed logging, expiry, durable persistence or original-incident-cause proof.
-  No deployment authorised. Sections7–12 remain not started.
+- **Full Green PASS:** `.opencode/scratchpad/section6-green-approved.md` independently closes G6 and preserves G1–G5 closures; no outstanding in-scope findings. Fresh backend coverage3511PASS and focused330PASS; only five accepted historical lint warnings remain. Parent verified completed report and current reviewed LLM SHA256 `502ebb49aa7237c7cf94171536b37e3deef425a62cd9a2e0688d13c3ed886390`.
+- **Current phase:** Section6 complete; all exit gates satisfied with accepted pre-existing lint debt. Sections7–12 remain not started.
+- **Commit/push:** branch `assessment-errors-322-341`; implementation commit `242d778fb9b0b396a126fb753e68e17f25c7424f`, exact message `feat: make LLM outcomes terminal and validate cached assessments`. Normal hooks passed: Prettier unchanged, staged backend lint, `typecheck:all`. Approved source/test hashes still match after hooks. Push succeeded via `git push origin assessment-errors-322-341` (`0161f7f4..242d778f`). All19 feature files committed; unrelated `.vitest/`, `draft-scratch.md`, `src/frontend/.opencode/` preserved and excluded. This completion evidence is recorded in a plan-only bookkeeping commit with message `docs: record Section 6 completion and regression evidence`.
+- **Section regression gate:** stable session `assessment-errors-322-341`, original baseline `2026-10-23T05:20:43.034Z` unchanged; completed comparison `2026-10-30T15:35:55.002Z`, zero regressions, zero new failures, one baseline fix. Seven checks pass (all backend/frontend/builder coverage, frontend/builder lint, Playwright and TypeScript). Overall checker remains FAILING/exit1 solely for the five accepted historical backend max-lines warnings, not a new waiver. Report: `.ts-regression-checker/reports/session-assessment-errors-322-341/runs/2026-10-30T15-35-55.002Z/comparison.txt`.
+- **Docs sync PASS:** `.opencode/scratchpad/section6-docs-approved.md` closes D1–D3 (suite-proof attribution, conditional sweep, provenance predicate). Updated existing `AssessmentFlow.md`, `backend-testing.md`, `security/data-handling.md` and `data-shapes/assignment.md`; no new pages, source or test edits. Helper registers agree with delivered Section6; later slices remain planned. Historical documentation nitpicks remain in the linked deferred log, no new finding or accepted debt.
+- **Compaction verified:** `.opencode/scratchpad/section6-plan-compaction.md` records 691→156 lines. Parent compared backup `.opencode/scratchpad/assessment-errors-322-341-section-6-pre-compaction.md`: every byte outside Section6 and authoritative notes unchanged at compaction; required contracts/decisions retained, no detail gap. Subsequent parent notes record gates.
+- **Approved sizing deviations:** seven focused LLM suites and two test-only harnesses preserve all coverage below500; the user approved the provenance companion when existing capacity was exhausted. No production module or behaviour expansion.
+- **Proof limits:** hermetic real-owner/native-stub coverage is not live GAS/LLM, deployed logging, expiry, durable persistence or original-incident-cause proof. No deployment authorised. Sections7–12 remain not started.
 
 ## Section 7 — Scoped image failures and hydration invariants
 
-**Status: complete — reviewed, gated, committed and pushed.** Independent authority
-`.opencode/scratchpad/section7-green-approved.md` closes R1–R8, SR1 and G1–G6 with zero
-outstanding in-scope Critical, Improvement or Nitpick finding. Docs sync and section
-compaction and the stable-ID regression gate are complete; commit and push succeeded; no deployment
-is authorised.
+**Status: complete — reviewed, gated, committed and pushed.** Independent authority `.opencode/scratchpad/section7-green-approved.md` closes R1–R8, SR1 and G1–G6 with zero outstanding in-scope Critical, Improvement or Nitpick finding. Docs sync, section compaction and the stable-ID regression gate are complete; commit and push succeeded; no deployment is authorised.
 
 ### Outcome (compacted)
 
-`src/backend/RequestHandlers/ImageManager.js` (499 lines) is the sole production owner and
-now materialises scoped image failures over the unchanged Section 5 transport owner. A
-student image failure becomes that task's atomic extraction `IMAGE_HYDRATION_FAILED` E
-with null content/hash and never reaches the LLM; a required shared reference/template
-failure blocks the run and preserves prior saved results. No new module, helper,
-dependency, configuration, URL policy or retry scheduler was added.
+`src/backend/RequestHandlers/ImageManager.js` (499 lines) is the sole production owner and now materialises scoped image failures over the unchanged Section 5 transport owner. A student image failure becomes that task's atomic extraction `IMAGE_HYDRATION_FAILED` E with null content/hash and never reaches the LLM; a required shared reference/template failure blocks the run and preserves prior saved results. No new module, helper, dependency, configuration, URL policy or retry scheduler was added.
 
 ### Retained for later sections
 
-- **Interfaces and source path.** `ImageManager.collectAllImageArtifacts()`,
-  `fetchImagesAsBlobs()` and `writeBackBlobs()` remain the public surface. Owner-local
-  `@private` helpers are `_isAdmissibleImageUrl`, `_isIPv4Hostname`,
-  `_materialiseHydrationFailure`, `_assertKnownOutcomeUids`, `_assignFinalImageFailure`,
-  `_collectWriteBackTargets`, `_applyHydratedBlob`, `_assignUnusableReturnedContent` and
-  `_hasUsableHydratedContent`.
-- **Private routing.** Collected entries carry `uid`, `url`, `documentId`, `scope`,
-  `taskId` and optional `itemId`; the owning submission item is resolved through the
-  private `_submissionItemByUid` map keyed by artefact UID. Routing does not expose a
-  public `entry.item`.
-- **Unchanged URL policy.** Admission is owner-local and mirrors the shared `Validate`
-  acceptance policy (HTTPS, DNS hostname only, no IP address, no localhost, no port)
-  without its progress diagnostics, so rejected raw URLs never reach a log channel. No
-  `Validate`-wide rewrite and no image URL/source-link policy change.
-- **One-read conversion.** Each blob is read once through a native `getBytes()`; those
-  bytes are exposed to the model writer as `{ getBytes: () => bytes }`, keeping data-URL
-  and hash generation model-owned. No second native read or second converter.
-- **Strict wiring.** A missing `setContentFromBlob` writer throws before returned-data
-  classification; required `submissions`/`items` structures are consumed directly without
-  fallbacks. Unknown/duplicate outcome UIDs, duplicate input UIDs, unmatched/duplicate
-  blob UIDs, duplicate model UIDs and scope-less failures throw rather than warn-and-continue.
-- **No broad catch or rollback.** No catch converts thrown native-read, base64, hash or
-  writer faults: they escape by original identity without setting E and without a manager
-  warning. Conversion assigns content before hashing; neither manager nor model promises
-  in-memory rollback after a thrown fault or earlier applied blobs.
-- **Upstream terminal-E bypass.** An item whose three criteria are already E from upstream
-  acquisition/extraction is preserved verbatim and never collected or overwritten (G1).
-- **Changed versus unchanged snapshots.** Usable hydration requires non-empty string
-  content and a non-empty hash. Changed content (null to content, or different content)
-  invalidates stale assessments/feedback; identical valid content preserves full snapshots.
-- **Transport policy.** Downloads accept only HTTP 200, so 201 is a final failure and is
-  never retried; no stop statuses mean an image 403 is local and never an LLM-wide stop.
-  One full round-robin list is sent at the explicit Slides batch size, successful blobs are
-  consumed before the next batch, and the three total attempts with 5000/7500 ms waits come
-  from the unchanged `BaseRequestManager`.
-- **Tests and canonical fixtures.** Eight suites (collection 299, failures 287, identity
-  299, integration 300, invalidation 300, writeBack 300, coverage remainder 298, Phase5
-  499 lines) preserve every approved matrix below the 500-line limit. They use `small`/
-  `medium` canonical IMAGE models through `loadBackendModelInputs` plus local missing-URL,
-  HTTP, blob, decode and fault probes; no competing realistic image graph.
-- **`@remarks` commitments.** Image HTTP failure scope differs from LLM-wide stop scope;
-  a matched pending IMAGE is valid internal state, never a completed null success; upstream
-  terminal-E survives collection; no in-memory rollback is claimed.
-- **Later boundaries.** Section 8 owns pending-image completion rejection, marker stamping
-  and prepared writes; Section 9 owns previews. Direct result/feedback invalidation matches
-  `StudentSubmission._mergeExtractedContent` but has no callable model hook (canonical
-  discrepancy 28).
-- **Shared-helper register.** Delivered Section 7 entries are **implemented**: the existing
-  image collection/fetch/writeback owner was extended, reusing base transport and
-  Assessment error creation, with no second retry or hydration manager and no new module.
-  Later-section entries remain `Not implemented`.
+- **Interfaces and source path.** `ImageManager.collectAllImageArtifacts()`, `fetchImagesAsBlobs()` and `writeBackBlobs()` remain the public surface. Owner-local `@private` helpers are `_isAdmissibleImageUrl`, `_isIPv4Hostname`, `_materialiseHydrationFailure`, `_assertKnownOutcomeUids`, `_assignFinalImageFailure`, `_collectWriteBackTargets`, `_applyHydratedBlob`, `_assignUnusableReturnedContent` and `_hasUsableHydratedContent`.
+- **Private routing.** Collected entries carry `uid`, `url`, `documentId`, `scope`, `taskId` and optional `itemId`; the owning submission item is resolved through the private `_submissionItemByUid` map keyed by artefact UID. Routing does not expose a public `entry.item`.
+- **Unchanged URL policy.** Admission is owner-local and mirrors the shared `Validate` acceptance policy (HTTPS, DNS hostname only, no IP address, no localhost, no port) without its progress diagnostics, so rejected raw URLs never reach a log channel. No `Validate`-wide rewrite and no image URL/source-link policy change.
+- **One-read conversion.** Each blob is read once through a native `getBytes()`; those bytes are exposed to the model writer as `{ getBytes: () => bytes }`, keeping data-URL and hash generation model-owned. No second native read or second converter.
+- **Strict wiring.** A missing `setContentFromBlob` writer throws before returned-data classification; required `submissions`/`items` structures are consumed directly without fallbacks. Unknown/duplicate outcome UIDs, duplicate input UIDs, unmatched/duplicate blob UIDs, duplicate model UIDs and scope-less failures throw rather than warn-and-continue.
+- **No broad catch or rollback.** No catch converts thrown native-read, base64, hash or writer faults: they escape by original identity without setting E and without a manager warning. Conversion assigns content before hashing; neither manager nor model promises in-memory rollback after a thrown fault or earlier applied blobs.
+- **Upstream terminal-E bypass.** An item whose three criteria are already E from upstream acquisition/extraction is preserved verbatim and never collected or overwritten (G1).
+- **Changed versus unchanged snapshots.** Usable hydration requires non-empty string content and a non-empty hash. Changed content (null to content, or different content) invalidates stale assessments/feedback; identical valid content preserves full snapshots.
+- **Transport policy.** Downloads accept only HTTP 200, so 201 is a final failure and is never retried; no stop statuses mean an image 403 is local and never an LLM-wide stop. One full round-robin list is sent at the explicit Slides batch size, successful blobs are consumed before the next batch, and the three total attempts with 5000/7500 ms waits come from the unchanged `BaseRequestManager`.
+- **Tests and canonical fixtures.** Eight suites (collection 299, failures 287, identity 299, integration 300, invalidation 300, writeBack 300, coverage remainder 298, Phase5 499 lines) preserve every approved matrix below the 500-line limit. They use `small`/`medium` canonical IMAGE models through `loadBackendModelInputs` plus local missing-URL, HTTP, blob, decode and fault probes; no competing realistic image graph.
+- **`@remarks` commitments.** Image HTTP failure scope differs from LLM-wide stop scope; a matched pending IMAGE is valid internal state, never a completed null success; upstream terminal-E survives collection; no in-memory rollback is claimed.
+- **Later boundaries.** Section 8 owns pending-image completion rejection, marker stamping and prepared writes; Section 9 owns previews. Direct result/feedback invalidation matches `StudentSubmission._mergeExtractedContent` but has no callable model hook (canonical discrepancy 28).
+- **Shared-helper register.** Delivered Section 7 entries are **implemented**: the existing image collection/fetch/writeback owner was extended, reusing base transport and Assessment error creation, with no second retry or hydration manager and no new module. Later-section entries remain `Not implemented`.
 
 ### Checks record (passed)
 
-- `npm run test:backend:coverage`: **258 files / 3,567 tests PASS**; statements **91.53%
-  (5,699/6,226)**, branches **86.31% (3,853/4,464)**, functions **90.04% (1,095/1,216)**,
-  lines **92.18% (5,449/5,911)**. ImageManager: 96.75% statements, 93.22% branches.
-- Focused composition covers **110 tests** (81 image plus 29 caller/eligibility controls)
-  and is subsumed by the fresh backend run.
-- `npm run lint:backend:check`: exit 1 with **zero errors** and exactly the five accepted
-  historical `max-lines` warnings (`assignmentDefinitionPartials.unit` 2776,
-  `assignmentController.hydration` 653, `dbManager` 665, `classroomApiClient` 550,
-  `batchUpdateUtility` 615); no new warning. Prettier, scoped ESLint and `git diff --check`
-  pass. Evidence: `s7-approved-green-{lint,coverage,format,hashes}.txt`.
-- Source SHA256 `8cf42c3115b714d4b5a7dd23bddeed1941794f8db5cde2e103dcff8f16d1bbc6`;
-  source and all eight test files remain below 500 lines (source 499, tests 2,582).
-- Section regression comparison passed with accepted baseline debt (record below);
-  commit/push succeeded. No deployment has run for Section 7.
+- `npm run test:backend:coverage`: **258 files / 3,567 tests PASS**; statements **91.53% (5,699/6,226)**, branches **86.31% (3,853/4,464)**, functions **90.04% (1,095/1,216)**, lines **92.18% (5,449/5,911)**. ImageManager: 96.75% statements, 93.22% branches. Focused composition covers **110 tests** (81 image plus 29 caller/eligibility controls) and is subsumed by the fresh backend run.
+- `npm run lint:backend:check`: exit 1 with **zero errors** and exactly the five accepted historical `max-lines` warnings (`assignmentDefinitionPartials.unit` 2776, `assignmentController.hydration` 653, `dbManager` 665, `classroomApiClient` 550, `batchUpdateUtility` 615); no new warning. Prettier, scoped ESLint and `git diff --check` pass. Evidence: `s7-approved-green-{lint,coverage,format,hashes}.txt`.
+- Source SHA256 `8cf42c3115b714d4b5a7dd23bddeed1941794f8db5cde2e103dcff8f16d1bbc6`; source and all eight test files remain below 500 lines (source 499, tests 2,582). Section regression comparison passed with accepted baseline debt; commit/push succeeded. No deployment has run for Section 7.
 
 ### Implementation notes / deviations / follow-up
 
-- Section7 runtime/test/shape review is PASS; no deployment authorised. Hermetic
-  real-owner/native-stub/memory-store evidence does not prove live GAS/network,
-  deployed logging, durable persistence, expiry or original-incident causation.
-- Approved test-only companions preserve all assertions within their ≤300-line
-  budgets; Phase5 and ImageManager remain499physical lines. No source split,
-  model refactor, URL policy change or retry redesign introduced.
-- Direct image result/feedback invalidation matches the model rule but has no
-  callable model hook; canonical discrepancy28 records the future drift risk.
-  Pending-image completion rejection and marker stamping remain Section8 work;
-  saved-record preservation is not in-memory rollback.
-- Docs D1/D2 CLOSED by `.opencode/scratchpad/section7-docs-final-approved.md`:
-  suite-level proof attribution and scope-less failure wording corrected. Docs sync
-  updated existing AssessmentFlow.md, rehydration.md and backend-testing.md; no new
-  pages or source edits. Shape contracts were reconciled before Green sign-off.
-- Compaction 139→99 lines retained future contracts and authoritative notes;
-  outside-section isolation verified against the saved pre-compaction copy. Canonical
-  helper registers agree: existing ImageManager extension implemented, Section 8
-  prepared projections remain planned. Fresh post-docs backend checks: 3,567 PASS,
-  branches 86.31%, exactly five accepted historical lint warnings, no new failures.
-- Reported historical documentation nits retain their existing dispositions; the
-  pre-existing ImageManager Processors/Parsers placement quirk is Minor, disregarded
-  in `.opencode/scratchpad/assessment-errors-322-341-deferred-findings.md` (Nitpicks).
-- Section regression gate: `npm run regression-checker -- assessment-errors-322-341`
-  (1200000 ms), comparison against unchanged baseline 2026-10-23T05:20:43.034Z.
-  Report `.ts-regression-checker/reports/session-assessment-errors-322-341/runs/2026-10-31T07-04-38.200Z/comparison.txt`.
-  Zero regressions / zero new failures / one baseline fix; seven checks pass.
-  Overall FAILING solely for five accepted historical backend max-lines warnings;
-  backend/frontend/builder coverage, E2E, frontend/builder lint and all type checks pass.
-- Commit `72d93bb16820a829c9bb5a4c00a52b9a97955c13`, exact message
-  `fix: scope image hydration failures and preserve upstream errors`, branch
-  `assessment-errors-322-341`; `git push origin assessment-errors-322-341` succeeded
-  (remote advanced 2b67e045→72d93bb1). Normal hooks passed without source/test changes:
-  Prettier, scoped backend lint and all-project TypeScript checks. This completion
-  record is committed separately as `docs: record Section 7 completion and regression evidence`.
+- Section7 runtime/test/shape review is PASS; no deployment authorised. Hermetic real-owner/native-stub/memory-store evidence does not prove live GAS/network, deployed logging, durable persistence, expiry or original-incident causation.
+- Approved test-only companions preserve all assertions within their ≤300-line budgets; Phase5 and ImageManager remain499physical lines. No source split, model refactor, URL policy change or retry redesign introduced.
+- Direct image result/feedback invalidation matches the model rule but has no callable model hook; canonical discrepancy28 records the future drift risk. Pending-image completion rejection and marker stamping remain Section8 work; saved-record preservation is not in-memory rollback.
+- Docs D1/D2 CLOSED by `.opencode/scratchpad/section7-docs-final-approved.md`: suite-level proof attribution and scope-less failure wording corrected. Docs sync updated existing AssessmentFlow.md, rehydration.md and backend-testing.md; no new pages or source edits. Shape contracts were reconciled before Green sign-off.
+- Compaction 139→99 lines retained future contracts and authoritative notes; outside-section isolation verified against the saved pre-compaction copy. Canonical helper registers agree: existing ImageManager extension implemented, Section 8 prepared projections remain planned. Fresh post-docs backend checks: 3,567 PASS, branches 86.31%, exactly five accepted historical lint warnings, no new failures.
+- Reported historical documentation nits retain their existing dispositions; the pre-existing ImageManager Processors/Parsers placement quirk is Minor, disregarded in `.opencode/scratchpad/assessment-errors-322-341-deferred-findings.md` (Nitpicks).
+- Section regression gate: `npm run regression-checker -- assessment-errors-322-341` (1200000 ms), comparison against unchanged baseline 2026-10-23T05:20:43.034Z. Report `.ts-regression-checker/reports/session-assessment-errors-322-341/runs/2026-10-31T07-04-38.200Z/comparison.txt`. Zero regressions / zero new failures / one baseline fix; seven checks pass. Overall FAILING solely for five accepted historical backend max-lines warnings; backend/frontend/builder coverage, E2E, frontend/builder lint and all type checks pass.
+- Commit `72d93bb16820a829c9bb5a4c00a52b9a97955c13`, exact message `fix: scope image hydration failures and preserve upstream errors`, branch `assessment-errors-322-341`; `git push origin assessment-errors-322-341` succeeded (remote advanced 2b67e045→72d93bb1). Normal hooks passed without source/test changes: Prettier, scoped backend lint and all-project TypeScript checks. This completion record is committed separately as `docs: record Section 7 completion and regression evidence`.
 
 ## Section 8 — Prepared persistence and truthful run completion
 
-### Current checkpoint — user-requested commit and push
+**Status: complete.** G1/G2/G4/G6 implemented, validated, independently reviewed and documented; all gates passed. Docs sync complete. No deployment authorised.
 
-The user requests updating progress and committing/pushing the current changes as-is.
-This is an explicit intermediate checkpoint, not Section 8 completion or deployment
-authorisation. Do not implement further fixes as part of this checkpoint. Normal
-commit hooks remain mandatory; no hook bypass is authorised.
+### Outcome (compacted)
 
-- Delivered so far: terminal-result/shared-input completion checks and marker stamping;
-  four independent pre-write projections with exact prepared-value forwarding through
-  existing persistence owners; sequential full/class/registry writes and phase/commit
-  diagnostics; mixed E/success completion feedback with distinct-item count; associated
-  tests and partial canonical assignment documentation.
-- Scope audit complete. G3 independently CLOSED: the introduced prototype wrapper and
-  frozen serializers were removed; existing `Assignment.fromJSON(partialJson, 'partial')`
-  now constructs the actual embedded partial before writes. No new model/restorer or
-  persistence framework. Evidence: `.opencode/scratchpad/section8-g3-minimal-green-review.md`.
-- Latest independent checks: backend 3,634 PASS; focused 102 PASS; synthetic 750 PASS.
-  Four historical backend lint warnings remain accepted debt. These results are not
-  a Section 8 regression-gate result.
-- Remaining runtime work: G1/G2 narrowly evidenced task/submission identity, task-universe
-  and source/hash/association contradictions; G4 reuse existing class-save validation
-  before first write under preparation diagnostics; G6 remove permissive count defaults.
-- Remaining documentation work: G5 reconcile canonical planned/implemented status and
-  complete relevant documentation/data-shape reconciliation after runtime corrections.
-- Remaining delivery gates: focused Red/Green and independent full-section review for
-  outstanding changes, docs sync, section compaction, stable-ID section regression gate,
-  then final section completion commit/push. No Section 8 regression run has occurred.
-- Preserve selected-only reassessment, opaque legacy bodies/markers, supplied metadata,
-  existing upstream blockers and read/write separation. Do not add a comprehensive
-  schema validator, new helper framework, transaction/rollback, read repair or preflight.
-- Branch: `assessment-errors-322-341`. Checkpoint commit message:
-  `wip: checkpoint Section 8 prepared persistence and completion progress`.
-  Commit: `e155ce4a36cd47da326f72c52b215279c964dea7`. Normal pre-commit formatting,
-  staged backend lint and `npm run typecheck:all` passed; formatting was unchanged.
-  `git push` succeeded to `origin/assessment-errors-322-341` (c4ee8388→e155ce4a).
-  Unrelated untracked `.vitest/`, `draft-scratch.md` and `src/frontend/.opencode/`
-  were excluded. This record is committed separately as
-  `docs: record Section 8 checkpoint push`; Section 8 remains incomplete.
+`ABClassAssignmentOps.persistAssignmentRun()` validates a completed run, stamps `assessmentContractVersion = 1`, prepares four independent payloads, then writes full assignment → class collection → `abclass_partials`, non-transactionally. Completion-gate validation moved to a new sibling owner `ABClassController/ABClassAssignmentValidation.js` (facade-pattern decomposition of the over-budget ops file). `AssignmentController.processSelectedAssignment()` reports mixed E/success feedback with a distinct failed-item count only after the final save succeeds.
 
-### Current execution hold — user-requested scope audit
+### Retained for later sections
 
-The user paused implementation after questioning the introduced partial wrapper and
-requested a scope audit focused on the simplest implementation meeting all six
-Section 8 acceptance criteria. No production/test/contract edits, new partial model,
-new restoration mechanism or additional regression expansion may proceed during this
-audit. Read-only delegated audit reports are authorised; compare the original HEAD
-path with the current diff, distinguish required work from introduced workarounds,
-and identify minimum existing-owner corrections without silently weakening criteria.
-Previous approval of the test-only completionGate split and Luna read-only exploration
-is recorded, but both are paused pending the audit outcome; no companion file exists.
-Latest user request is an audit, not authorisation for a persistence/model redesign.
-Read-only technical audit delegated to user-authorised Luna Explore; report pending.
-Independent acceptance/scope audit delegation to Planner Reviewer failed upstream
-`Insufficient account funds` before producing a report. No code/test/contract edits
-authorised or made during the audit. Stop that delegation pending model authorisation;
-do not substitute prior code-review findings for an independent minimal-scope audit.
-User authorises `openai/gpt-6-luna` for the independent read-only acceptance/scope
-audit as well. Technical audit report returned; no implementation decision or edits.
-Both read-only audits now complete:
-`.opencode/scratchpad/section8-scope-technical-audit.md` and
-`.opencode/scratchpad/section8-scope-acceptance-audit.md`. No runtime/test/contract
-edits or validation runs occurred during audit. Agreed minimum scope:
+**Write boundary and ordering**
 
-- KEEP six criteria, four independent pre-write JSON snapshots, existing serializers/
-  preparation/write owners, explicit prepared argument, sequential writes/diagnostics,
-  mixed E/success feedback, original legacy/sibling/metadata behaviour.
-- REMOVE introduced Object.create/full-model alias and closure-frozen serializers;
-  no new partial model class, wrapper, competing restorer or persistence framework.
-- G1/G2 corrections limited to demonstrated marker-1 graph/source contradictions and
-  required completion invariants; do not duplicate the whole read schema or implement
-  the earlier capacity report's broad malformed-record matrix by default.
-- Reuse existing class-save validator before first write (G4); remove new counter's
-  permissive defaults (G6); reconcile existing canonical status prose only (G5).
-- Independent live model ownership is not an additional four-snapshot criterion;
-  preserving ordinary-save behaviour is required because our wrapper broke it.
-  Decision needed before implementation: allow the original existing
-  `Assignment.fromJSON(partialJson, 'partial')` for actual embedded representation,
-  before writes, not as validation-only round-trip; reconcile only the stronger blanket
-  no-fromJSON test. Record `asked` in deferred ledger. No acceptance criterion is waived.
-- User approves this existing-construction approach after audit. Resume bounded G3
-  red-first test reconciliation and removal of introduced wrapper using existing
-  `Assignment.fromJSON(partialJson, 'partial')` before writes. No new model/restorer;
-  retain snapshot isolation/order/no-postcommit projection. Other fixes follow the
-  narrowed audit scope, not the earlier broad corruption matrix. The audit hold is
-  superseded for this approved minimal approach under the normal review/gates.
-- G3 minimal test reconciliation hit measured capacity: PERS499; readable candidate
-  extending three existing cases518. Candidate reverted byte-for-byte, no net code/
-  test change; unchanged focused95 PASS is not G3 proof. Evidence
-  `.opencode/scratchpad/section8-g3-minimal-red.md`. Stop for bounded test relocation
-  approval rather than violate below500 or weaken existing assertions. No new model,
-  production helper or persistence architecture is needed by this capacity issue.
-- User approves that existing-file test-only relocation. Continue minimal G3 Red
-  reconciliation using the saved candidate/checkpoint, not fresh architecture or broad
-  graph validation work. Both files below500; no new helper/test file.
-- G3 minimal Red delivered after approved relocation: three ordinary persistence cases
-  moved intact to existing partials suite; PERS468/destination321, all23 original
-  intents retained. Exactly three intentional failures/99 focused passes; backend
-  3,631 passes/three intended failures, zero unexpected. Independent review
-  `.opencode/scratchpad/section8-g3-minimal-red-review.md` approves readiness with no
-  new findings. Proceed to remove wrapper using only existing partial construction
-  in OPS; other G1/G2/G4/G5/G6 fixes remain separate narrowed milestones.
-- G3 minimal Green independently PASS/CLOSED:
-  `.opencode/scratchpad/section8-g3-minimal-green-review.md`. Removed alias/frozen
-  wrapper/helper; original existing partial construction now runs before projections/
-  writes and its actual result is installed. OPS471 (smaller), no new model/helper or
-  production owner. All three formerly failing regression tails execute and pass;
-  current selected partial state persists on subsequent ordinary save. Four snapshots,
-  exact prepared threading, failure/sibling/legacy/metadata semantics preserved.
-  Fresh independent backend3,634/focused102/synthetic750 PASS; four accepted historical
-  lint warnings only. G1/G2 bounded completion corrections, G4 pre-write existing class
-  validator, G5 canonical prose and G6 counter defaults remain OPEN. No full Section 8
-  Green, docs/compaction/regression gate or commit/push approval is implied.
+- Fail-fast order inside `persistAssignmentRun`: param/type guards → partial-definition guard → `_validateCompletedAssignmentRun` → `_validateClassForSave` → marker stamp → four prepared projections → writes. The catch logs `failedPhase` and boolean `fullWriteCommitted`, then rethrows; no empty catch, no `console.*`, no rollback claim.
+- The four snapshots are the full assignment, its embedded partial, the prospective full class and the class-partials payload. `ABClassPersistence._prepareClassAndPartial`/`_prepareClassPartial` remain the preparation owner; the existing write-through owner consumes those exact prepared snapshots and must not reserialise after the full commit. Ordinary class saves keep the same preparation path.
+- G4 reuses the existing `ABClassValidation._validateClassForSave` (injected as `this._validation`), matching `ABClassMutationOps`/`index.js` usage, before marker stamping and any mutation.
+- G3 uses the existing `Assignment.fromJSON(partialJson, 'partial')` to construct the actual embedded partial before writes — not a validation-only round-trip. No new model, restorer, wrapper, `Object.create` alias or frozen serializer. Snapshots do not alias or mutate each other and no projection runs after the full commit.
 
-### Active R7 test-owner checkpoint (user reconfirmed)
+**Completion gate (G1/G2)**
 
-The user explicitly approves a compact retry and adoption of these two existing
-Section 8 test files by Testing Specialist's default model. They are this delivery's
-owned edits, not external concurrent changes. Verify these pre-edit SHA256 values:
+- `ABClassAssignmentValidation` owns: task-universe integrity (`_validateCompletedTaskUniverse`: non-object/array, empty, entry `task.id !== taskId`); submission association (`_validateCompletedSubmissionIdentity`: `submission.assignmentId !== assignment.assignmentId`); item/artefact identity (`_validateCompletedItemIdentity`: unknown task keys, item/artefact `taskId` mismatch, artefact role); source/hash contradiction (null content requires own-property `contentHash === null`); and `_validateNullParentPlaceholder` (null `documentId` requires empty artefact metadata and empty item feedback).
+- Genuine no-submission (`documentId == null` plus empty items) remains valid and is skipped. `submissions: []` validly yields zero failed items.
+- `_validateNullParentPlaceholder` deliberately checks only metadata/feedback emptiness; it does not mirror the full read invariant `_hasConsistentCurrentSource` (which also requires `type === 'base'` and null `documentId`/`pageId`). Do not claim it mirrors that invariant.
+- A missing assessment map is still rejected: `_validateCompletedItem`'s `assessments ?? {}` is not permissive because `_hasValidCompletedCurrentAssessments({}, 'full')` is false (key count ≠ 3).
 
-- `tests/controllers/abclassController.persistAssignment.test.js`:
-  `93570f7dda75523b5e6148e40deccd234798728973b6ade9c4d6af9f774ac44f` (495 lines).
-- `tests/controllers/ABClassController/ABClassPersistence.unit.test.js`:
-  `e53c141c3b17377a178eabe9eea6f6c65b4133d373e40885ed106bb12020ef6a` (477 lines).
+**Completion feedback (G6)**
 
-Write only those two test files. In the facade-delegation row, retain the ops and
-saveClass assertions and pin that the exact prepared return is passed as the second
-saveClass argument. In `runConnectedPersistChain`, pass the real ops prepared return
-to `persistClassAndPartial`, matching the actual production facade. Preserve all
-mutation, no-alias, serializer-count, no-restoration and subsequent ordinary-save
-assertions. Both files must remain strictly below 500 physical lines; no new helper,
-formatting condensation or assertion loss. Source, other tests, docs, plan and
-unrelated untracked work are read-only for this delegation. Validate formatting,
-scoped lint, focused four suites, ten-suite composition and (if focused clean) backend
-coverage once. Save evidence to `.opencode/scratchpad/section8-supplemental-r7-tests.md`.
-Independent full-section test re-review follows; this is not Green sign-off.
+- `AssignmentController._countFailedSubmissionItems` throws a contextual `Error` naming `submissions`/`items`/`assessments` at each missing structure level instead of permissive `?? {}`/`continue`/`return 0`. JSDoc `@throws` records this.
+- A task counts once, not once per criterion. Progress detail reports `N tasks failed.` with the actual distinct-item count; the exact final sentence `Assessment run completed with errors.` stays unchanged in progress and toast. Healthy runs keep normal success feedback.
+- Handled E persists beside successes, including earlier/same-batch successes on an LLM stop. Persistence failure cannot report completion.
 
-R8 partial checkpoint: three ordinary-save matcher repairs pass; one acquisition
-fixture failure remains. Default Testing Specialist twice stopped without implementing
-the explicitly authorised producer composition. Report
-`.opencode/scratchpad/section8-r8-test-repair-report.md` records 22 passing / 1 failing
-focused tests, no broad/final validation. Acquisition test remains untouched, including
-all success assertions. No missing product decision or source fix has been established.
-Pause for user model/capability decision rather than repeatedly accepting incomplete work.
-The user now explicitly authorises `openai/gpt-6.1-sol` for the remaining Section 8
-Testing Specialist repair and validation; scope, assertions and review gates unchanged.
+**Preserved behaviour**
 
-R8 acquisition repair delivered by authorised Sol test agent: only success-row local
-parser composition changed (316 lines), original success assertions and all six intents
-retained. Real extraction-null branch produces terminal acquisition E; parser/native,
-image and LLM seams remain stubbed as recorded. R8 three-suite23 PASS, ten-suite144
-PASS, backend3,630 PASS (branches86.30%), synthetic750 PASS, formatting/scoped lint
-clean; full backend lint has exactly four accepted historical warnings/zero errors.
-Evidence `.opencode/scratchpad/section8-r8-sol-repair.md`. R7/R8 pending independent
-full-section test re-review; source Green/shape/docs/compaction/regression/commit gates
-remain outstanding. No regression checker or Section 8 commit/push has run.
+- Selected-only reassessment; opaque legacy bodies and marker presence/value on ordinary class saves; read E projections never become write input; supplied metadata semantics; existing upstream blockers (shared-definition/image failure, list-page failure) do not call completed-run persistence.
+- No comprehensive schema validator, helper framework, transaction/rollback, read repair or run-time preflight was added. Trigger admission/locks/API envelope unchanged.
 
-R7 tests reconciled: focused91 PASS / ten-suite144 PASS, no source edits. Backend
-coverage identifies R8 OPEN (in-scope Material regressions introduced by Section 8):
-the acquisition persistence success fixture leaves document-stage outcomes incomplete;
-three ordinary-save delegation assertions omit the newly explicit undefined optional
-prepared argument. Authorised test-only reconciliation extends to existing
-`tests/assignment/assignmentAcquisition.persistence.test.js`,
-`tests/controllers/abclassMutationDelegation.test.js` and
-`tests/controllers/abclass-controller-partials.test.js`. Preserve acquisition SUCCESS
-intent via completed canonical stage outcomes (never change success to rejection),
-and preserve exact ordinary-save delegation with no prepared snapshots. No other
-new test/helper/source surface. R7 and R8 require independent test re-review.
+**Sizing and ownership**
 
-Latest independent supplemental review: `.opencode/scratchpad/section8-r7-r8-test-review.md`.
-R8 CLOSED; R7 connected runner CLOSED, facade R7-I1 OPEN (in-scope Material): structural
-matcher must additionally pin second-argument reference identity and single invocation.
-SG1 and SG2 OPEN, in scope under criteria 1/3 and introduced by this section's source:
-SG1 empty required reference/template arrays evade completed shared-input validation;
-SG2 class/registry getCollection faults escape owned phase/full-commit diagnostics.
-Reviewer Critical maps to Material here: genuine delivery defects, but no evidenced
-security/data-loss/production regression; fix before Green sign-off, no scope question.
-Owner Testing Specialist: red-first empty-role and collection-access regressions plus
-R7 identity assertion in existing OPS/PERS/PA test owners, each strictly below500.
-Owner Implementation: subsequent bounded fixes within existing four controller owners.
-Prior R1–R6 closures retained. Fresh reviewer3630 backend/167 focused PASS; four
-historical lint warnings only. Shape/docs/section regression/commit remain pending.
-Supplemental Red readiness approved by independent review
-`.opencode/scratchpad/section8-sg-red-review.md`: R7-I1 CLOSED, all R7/R8 now closed.
-Exactly four intentional failures (empty reference/template, class/registry acquisition
-diagnostics), 3,630 backend passes / zero unexpected; these are Green obligations,
-not debt. Existing assertions preserved; OPS492/PERS499/PA499. SG1/SG2 runtime OPEN;
-authorise bounded existing-owner Green repair next. No section gate/commit yet.
-SG1/SG2 bounded Green fixes delivered in OPS/PERS only; empty required roles reject
-before mutation and collection acquisition now belongs to existing phase diagnostics.
-Focused95/context171/backend3,634/synthetic750 PASS; four historical lint warnings,
-zero new failures. Initial OPS500 size violated strict below500 and was returned to
-same owner; final OPS487 (prose-only shortening), PERS260/controller471/facade492.
-Evidence `.opencode/scratchpad/section8-sg-green.md`; independent full Green pending.
-Required Data Shapes Agent reconciliation failed upstream `Insufficient account funds`
-before any shape-doc edit or evidence report. Stop pending user capability/model
-decision; no canonical shape approval, full Green review, docs/compaction, Section 8
-regression gate or commit/push. Existing model authorisations cover Implementation
-and Testing Specialist, not this required data-shapes delegation.
-User now authorises `openai/gpt-6-luna` for the required Data Shapes Agent
-reconciliation; exact model ID verified available. All scope/review gates unchanged.
-Data-shape reconciliation delivered in existing `docs/developer/data-shapes/assignment.md`
-only, marker/gate discrepancies26/27 aligned; no class wire/schema/INDEX change needed.
-Report `.opencode/scratchpad/section8-shapes-sync.md` records remaining backend-guide
-helper/gate prose for subsequent Docs sync. Formatter/diff checks pass. This describes
-uncommitted implementation, not a deployment or final Green approval. Proceed to full
-independent source Green review; SG1/SG2 await that closure.
-Full source Green FAIL: `.opencode/scratchpad/section8-green-review.md`.
-SG1/SG2 CLOSED, all prior readiness closures retained. G1–G6 OPEN, all in scope:
-G1 marker-1 graph/task/submission identity validation; G2 null-source body/hash and
-association invariants; G3 genuinely independent live typed embedded partial (current
-prototype alias/frozen serializers violate subsequent ordinary-save semantics); G4
-existing class-save validation must precede full commit with preparation diagnostics;
-G5 contradictory canonical completed-gate status prose; G6 permissive counter defaults
-must consume validated model structure directly. Reviewer Critical G1–G4 are delivery
-blocking Material defects under orchestrator taxonomy (no evidenced security/data loss).
-Red-first regressions then bounded Green fixes, one complex issue at a time; no new
-module/model-owner surface authorised without a decision. G5 owner Data Shapes after
-gate fixes; G6 owner Implementation with any affected mocks owned by Testing Specialist.
-Passing3,634 backend/750 synthetic tests are not Green approval. No section gate/commit.
-G1/G2 test owner returned actionable capacity checkpoint WITHOUT edits: OPS492,
-all38 existing cases pass; required supplemental matrix cannot fit without split.
-Proposed gate companion preserves eighteen invalid rows/five controls and local real
-canonical harness, no shared helper; recorded `asked` in deferred ledger. No G1/G2
-Red implemented yet. Evidence `.opencode/scratchpad/section8-g1-g2-red.md`.
-Parallel read-only G3 feasibility explore failed upstream `[model_coming_soon]` before
-report; no accepted exploration result. Stop for user split/model authorisation rather
-than creating a file or improvising around unavailable required agent capability.
+- Final source LOC: `ABClassAssignmentOps.js` 315, `ABClassAssignmentValidation.js` 420, `ABClassPersistence.js` 260, `ABClassController/index.js` 492, `AssignmentController.js` 486. All below 500.
+- Completion-gate test split: `tests/controllers/ABClassController/ABClassAssignmentOps.completionGate.test.js` holds the 14 new G1/G2/G4 Red rows plus their local harness; `ABClassAssignmentOps.unit.test.js` returned to its pre-split 492-line state. Exactly one new test file, no shared helper.
+- G3 minimal reconciliation relocated three ordinary class-persistence cases intact into existing `tests/controllers/abclass-controller-partials.test.js` (PERS 468 / destination 321); no new test file or helper.
+- Section 8 also owns completion-marker stamping and pending-image completion rejection, both delivered here.
 
-### De-sloppification pass — three blocking fixes from SLOP_REVIEW.md (2 November 2026, uncommitted)
+**Shared-helper register**
 
-The user authorised delegating fixes for the three findings in `@SLOP_REVIEW.md` that
-block Section 8 onward. All three landed in the worktree on branch
-`assessment-errors-322-341`; nothing was committed or pushed.
+- Section 8 delivered entries are **implemented**: prepared projections in the existing persistence owner, completed-run validation in `ABClassAssignmentValidation`, and the marker/completion gate. No Section 8 entry remains `Not implemented`.
 
-- **Fix 1 (Section 4 dead code):** deleted the dead pass-through facade
-  `Assignment._processAttachmentForSubmission` from
-  `src/backend/AssignmentProcessor/Assignment/index.js`; corrected the single stale
-  flow-diagram mention in `docs/developer/backend/AssessmentFlow.md` (~line 1245) to
-  the real owner `AssignmentSubmissions._processAttachmentForSubmission()`.
-- **Fix 2 (Section 5 duplicated retry classification):** added
-  `static BaseRequestManager.isRetryableStatus(status)` (429 or 500–599) as the single
-  owner of the retryable predicate; `_classifyResponse` and
-  `LLMRequestManager._terminalCodeFor` both delegate to it; deleted the mirrored
-  private constants `LLM_TOO_MANY_REQUESTS` / `LLM_RETRYABLE_SERVER_MIN` /
-  `LLM_RETRYABLE_SERVER_MAX` (kept `LLM_ACCEPTED_STATUSES = [200, 201]`). Behaviour
-  identical: stop statuses, terminal-code mapping, retry budget and waits unchanged.
-- **Fix 3 (Section 6 stale test helper):** deleted `DummyCacheManager`,
-  `createDummyCacheManager()`, its `setupGlobalDummyClasses` branch and its exports
-  from `tests/helpers/modelFactories.js` (zero callers repo-wide; the real
-  `CacheManager` is registered globally by `tests/setupGlobals.js`).
+### Checks record
 
-Validation evidence: scoped backend suites pass (`tests/assignment` 32 files/367
-tests; `tests/requestHandlers` 21 files/306 tests; combined 53 files/673 tests; all 13
-`modelFactories` importers + `tests/assignment` 37 files/442 tests); full
-`npm run test:backend:coverage` 260 files / 3,634 tests PASS, branches 86.3% (above
-the 85% gate); `npm run lint:backend:check` zero errors with exactly the four accepted
-historical `max-lines` warnings; `git diff --check` and Prettier clean. Independent
-Code Reviewer verdict **PASS, zero findings** (report
-`.opencode/scratchpad/review-deslop-fixes-322-341.md`); diff audit confirmed the
-change is confined to exactly the five authorised files with no dangling references.
-Stable-ID regression comparison against baseline `assessment-errors-322-341` completed
-2 November 2026 (`npm run regression-checker -- assessment-errors-322-341`, current
-timestamp `2026-11-02T20:13:39.628Z`): **7 of 8 checks passing, 0 regressions, 0 new
-failures, 2 baseline fixes** (the two historical `max-lines` warnings already repaired
-earlier — `assignmentFactory.test.js`, `assignmentController.hydration.test.js`).
-`backend-lint-check` remains FAILING solely on the four accepted historical `max-lines`
-warnings (`assignmentDefinitionPartials.unit` 2776, `dbManager` 665,
-`classroomApiClient` 550, `batchUpdateUtility` 615); all coverage, Playwright, lint and
-type checks pass. No regression against the accepted baseline.
-Remaining non-blocking SLOP_REVIEW.md findings stay deferred (see ledger below and
-`@SLOP_REVIEW.md`).
+- Backend coverage: **260 files / 3,634 tests PASS**; statements 91.56% (5,808/6,343), branches 86.31% (3,922/4,544), functions 90.04%, lines 92.21%.
+- Synthetic: **52 files / 750 tests PASS**. Focused controller composition 19 files / 218 tests; controller sweep 49 files / 518 tests.
+- `npm run lint:backend:check`: exit 1 with **zero errors** and exactly the four accepted historical `max-lines` warnings (`assignmentDefinitionPartials.unit` 2776, `dbManager` 665, `classroomApiClient` 550, `batchUpdateUtility` 615). The former `assignmentController.hydration` warning is resolved by the M1 split. Prettier, scoped ESLint and `git diff --check` clean.
+- Behavioural probes confirmed: mismatched item identity, null source with stale hash and empty task universe are rejected before writes; a missing shared reference fails before any write; late facade save validation fails before mutation.
+- Evidence: `s8-full-green-review-{coverage,lint,synthetic,format,probes,extra-probes}.txt`, `g{1,2,4,6}-green-review-*`, `review-section8-green-g1g2g4-g6.md`.
 
-### Objective and constraints
+### Implementation notes / deviations / follow-up
 
-Validate completed terminal results, stamp marker 1, prepare four independent payloads
-before the first mutation, then write in existing order. Assignment controller 425→470;
-ABClass facade 490→490; assignment ops 279→410; persistence 223→275. Keep facades thin.
-No transaction, rollback claim, unconditional finally-save or read repair.
+Authoritative for this section; keep in sync when later sections touch these owners.
 
-### Delegation and planning blocks
-
-- Mandatory reads: Common + Backend + Contracts + Corpus + API;
-  @src/backend/y_controllers/AssignmentController.js
-  @src/backend/y_controllers/ABClassController/ABClassAssignmentOps.js
-  @src/backend/y_controllers/ABClassController/ABClassPersistence.js .
-- **Shared helpers — extend/reuse:** existing run controller and assignment ops;
-  `ABClassPersistence._prepareClassAndPartial`/`_prepareClassPartial` prepare prospective
-  class projections. Its existing write-through owner must consume those exact prepared
-  snapshots without reserializing after the full assignment commit. Ordinary class saves
-  keep the same preparation path, not a competing writer. Planned owners/status:
-  AssessmentFlow prepared-projections and rehydration entries (`Not implemented`).
-- **Data shapes:** planned completed-write/marker and legacy serializer rules in
-  `assignment.md`/`abclass.md`; retained collections/metadata contract unchanged.
-- **Canonical fixtures:** `small` complete full/class models and `medium` mixed E;
-  local injected projection/storage errors. Do not treat hand-built mocks with empty
-  assessments as completed version-1 successes.
-
-### Acceptance criteria / required tests (Red first)
-
-1. Reject incomplete/extra-criterion results and unusable shared inputs before ANY
-   insert/replace/save. Require all known submitted tasks terminal. Legitimate empty
-   no-submission remains valid. Stamp full and partial marker 1 only for completed runs.
-2. Prepare full assignment, embedded partial, prospective full class and class-partials
-   before mutation. No serialise→restore→serialise solely for validation; no new
-   projection runs after full commit. Prepared snapshots do not alias/mutate each other.
-3. Write full assignment, then class collection, then `abclass_partials`. Inject failure
-   in each projection and each write/save phase; errors propagate, diagnostics include
-   failed phase/full-commit state, and no false completion or implicit read repair occurs.
-4. Handled student/LLM E persists beside successes, including earlier/same-batch successes
-   on LLM stop. Final message is `Assessment run completed with errors.` and failed task
-   count counts each item once, not criteria. User-approved separate progress detail
-   reports `4 tasks failed.` (with the actual distinct-item count), preserving that exact
-   final sentence in progress and toast. Healthy run keeps normal success feedback.
-5. Shared-definition/image failure, list-page failure, unexpected wiring and storage
-   failures do not call completed-run persistence/success. Trigger admission/locks/API
-   envelope stay unchanged. Successful reassessment replaces only the selected result.
-6. Mixed legacy/current class save preserves opaque legacy bodies/marker values; a read
-   E projection never becomes write input. Existing supplied metadata semantics persist.
-
-### Red → Green → Refactor and checks
-
-- Extend persistence unit tests 40→≤250, assignment-ops unit tests 100→≤300 and
-  `abclassController.persistAssignment.test.js` 386→≤480; add
-  `tests/controllers/assignmentRunCompletion.test.js` (≤300). Run existing real-controller tests as well.
-- Touched `assignmentController.hydration.test.js` 653→about 700 unsplit: retain process/
-  pipeline hydration in that file and move definition-input/startProcessing cases into
-  `tests/controllers/assignmentController.definitionInputs.test.js`, each ≤380. Keep test setup reusable
-  within existing testing conventions. `runAssignmentPipeline` suite 407→≤480.
-- Green: preflight prospective class update before writes, thread prepared projections
-  through existing owners, then finalize progress only after the final successful save.
-  Refactor obsolete reconstruction/projection work, not unrelated metadata/recovery.
-- Checks: all assignment/ABClass controller and API assessment suites;
-  `npm run lint:backend:check`, `npm run test:synthetic`; full gate. `@remarks`: explicit
-  non-transactional write ordering and why completed-with-errors is not a storage success.
-- Execution record: Red initiated after Section 7 completion commit
-  `c4ee83885428141a45d10c4d477d7154b2bab598` (`docs: record Section 7 completion and regression evidence`)
-  and successful push on `assessment-errors-322-341`. Stable baseline retained;
-  no between-phase regression run. Test preflight must verify required split/capacity
-  and a criterion-by-criterion matrix before extending suites. Prior findings
-  R1–R8/SR1/G1–G6/D1–D2 remain closed; no new Section 8 findings yet.
-- Red M1 split delivered: hydration 653→297 lines (5 tests) and new definitionInputs
-  373 lines (11 tests); all 16 identities and 26 assertion calls preserved. Six-suite
-  baseline 56 PASS, controller neighbourhood 431 PASS. Parent drift audit confirms
-  only authorised split files changed; no helper/source changes. Backend lint now
-  has exactly four accepted historical warnings (hydration warning resolved), zero
-  errors/new warnings. Evidence `.opencode/scratchpad/section8-red-split.md`.
-  Next M2–M4 add behavioural Reds before full independent section Red review.
-- Red M2 delivered OPS299/PERS136: 11 intentional failures / 22 passes, zero
-  unexpected failures; gate/marker/four-projection cases and passing validity/no-alias
-  controls. Evidence `.opencode/scratchpad/section8-red-units.md`. No source changes.
-- Red M3 delivered completion suite298: 3 intentional failures / 5 passes; real
-  controller/persistence chain over memory stores, document pipeline stages stubbed.
-  Medium mixed-E persistence, healthy/no-submission feedback and no-false-completion
-  controls pass. Evidence `.opencode/scratchpad/section8-red-completion.md`.
-- Count-delivery decision approved by user: separate progress detail `4 tasks failed.`
-  with actual distinct-item count; preserve exact final errors sentence in progress/toast.
-  Reconcile M3's broad count assertion before full Red review. No M4, independent full
-  Red approval, Green work or Section 8 gate yet; tests uncommitted and unapproved.
-- M4 delivered connected PA499/PIPE479, M3 count assertion reconciled; parent audit
-  confirms authorised test-only paths. PA exceeds its 480 estimate under the existing
-  user below-500 allowance (global clarification); no assertion loss/condensation.
-  Cumulative inventory: 25 intentional Reds (11 OPS, 3 completion, 11 PA), zero
-  unexpected; controller/API sweep 968 PASS, synthetic750 PASS, exactly four accepted
-  historical lint warnings. Evidence `.opencode/scratchpad/section8-red-connected.md`.
-  All M1–M4 await full independent Section 8 Red review; no source repair yet.
-- Independent Red FAIL: `.opencode/scratchpad/section8-red-review.md`; 25 intentional
-  failures / 3,586 backend passes, zero unexpected; synthetic750 PASS. R1–R6 are
-  all in-scope Material test-readiness defects, owner Testing Specialist, OPEN:
-  R1 exact failed-phase/original-fault/full-commit diagnostics; R2 four detached
-  snapshots/exact prepared consumption/no restoration round-trip; R3 real OPS
-  preparation collaborators and contextual rejection reasons; R4 retained successful
-  persistence fixtures must be complete, not legacy/in-flight; R5 LLM-stop results
-  crossing real completion/persistence; R6 isolated hash/invalid Assessment probes.
-  Reviewer Critical automated status is intentional Red, not a new Critical defect
-  or accepted debt. Repair and independently re-review before Green. Existing global
-  below-500 sizing allowance applies to estimated suite sizes; no new helpers/modules.
-- R1–R6 repairs delivered, all PENDING independent closure. R3/R6 real OPS
-  collaborators/contextual reasons plus isolated hash/result probes; R4 canonical
-  complete success fixtures with original intent retained; R1 same-entry original err,
-  exact failedPhase and boolean fullWriteCommitted across projection/write failures;
-  R2 connected three-store graph capture, full-save mutation, no-round-trip observer
-  and ordinary-save preparation reuse; R5 real LLM stop manager outputs cross real
-  completed persistence with exact earlier/same-batch success and E maps.
-  Evidence `.opencode/scratchpad/section8-red-r{1,2,3-r6,4,5}-repair.md` (R3/R6 actual
-  filename `section8-red-r3-r6-repair.md`); R2 continuation supersedes ordinary-only
-  checkpoint. No new source/helpers/modules/dependencies. Physical LOC OPS493/PERS477/
-  PA495/completion498/PIPE479/hydration297/definitionInputs373; global allowance used.
-  Final section sweep: 41 intentional Reds / 971 controller/API passes, zero
-  unexpected; synthetic750 PASS, scoped format/lint clean, four historical warnings.
-  Full independent Red re-review pending; Green still prohibited.
-- Independent Red re-review closes R1–R6, with zero additional readiness findings:
-  `.opencode/scratchpad/section8-red-approved.md`. Reviewer binary FAIL solely reflects
-  mandatory automated status: all 41 failures are explicitly inventoried intended
-  production obligations (20 OPS, 12 PA, 5 completion, 4 PERS), not debt. Backend
-  3,589 passes / zero unexpected, synthetic750 PASS; fixtures/collection/format and
-  scoped lint sound, four accepted historical warnings only. Orchestrator accepts
-  reviewed Red for progression under the intentional-Red gate; do not weaken assertions.
-  Proceed to bounded existing-owner Green; runtime/docs/shape/gate/commit not approved.
-- Green delegation interrupted by upstream `Insufficient account funds` on required
-  `opencode-go/glm-5.3-flash`; no agent completion report/evidence returned. Partial
-  changes preserved in AssignmentController471, ABClassAssignmentOps548 and
-  ABClassPersistence283 lines; facade unchanged490. These edits are UNREVIEWED and
-  UNVALIDATED, not accepted. OPS548 violates the strict below-500 scope gate and
-  requires owner repair without assertion loss/formatting condensation; no new module
-  authorised. No Green completion, shape/docs sync, regression, commit or push.
-  Stop for user decision on restoring the required model capability or authorising
-  another model. Do not restart completed Red research or discard partial work.
-- User authorises Implementation's default model to resume/repair Section 8 after
-  GLM account-funds failure; all existing scope, tests, sizing and review gates remain.
-  Testing Specialist model preference is unchanged. Interrupted source edits remain
-  unaccepted pending implementation validation and independent Green review.
-- Default Implementation returned INCOMPLETE: four latest focused failures (facade
-  saveClass delegation, OPS-only store window, two prepared-graph controls); earlier
-  all-backend pass predates latest edits and is not final evidence. Parent drift audit
-  additionally found unauthorised edits to five canonical docs, CurrentRestoration
-  (new validation-reason helpers) and assignmentAcquisition.persistence.test.js
-  (success assertions changed to rejection). These changes are not accepted; source
-  owner surface remains the four named controllers. In-scope delivery gaps require
-  repair, but cross-owner/doc/test edits were not authorised for this delegation.
-  Return drift to same owner for exact reversion, preserving scratch evidence; no
-  shape/docs sign-off or Green approval. No Section 8 commit/push/regression run.
-- Drift checkpoint restored the seven unauthorised paths exactly to HEAD; backup
-  `.opencode/scratchpad/section8-unauthorised-green-drift.patch` is evidence only.
-  Its statement that seven reviewed test files match HEAD is incorrect: parent diff
-  confirms they remain uncommitted Red feature changes; transient edit history unknown.
-- Bounded source repair remains INCOMPLETE: source LOC471/499/260/492, no cross-owner
-  edits; reviewed gate and completion suites pass, but three focused failures remain.
-  R7 OPEN (in-scope Material test-harness defect): old facade assertion forbids an
-  explicit prepared argument; connected PERS runner drops ops' prepared return and
-  invokes an ordinary save, unlike updated real facade. Reconcile these harnesses to
-  explicit return/argument threading without weakening snapshot/no-reprojection proof
-  or adding hidden pending state. Evidence `section8-green-threading-repair.md`.
-  Last four-suite result 3 failed / 88 passed; broader legacy rerun still required.
-  Testing Specialist required GLM access failed for insufficient funds; ask whether
-  its default model may reconcile and independently review these test changes.
-- User authorises Testing Specialist's default model for remaining Section 8 test
-  repairs; Implementation default override also retained. Independent review and
-  assertion/scope/sizing gates unchanged.
-- Testing Specialist default returned twice without changes: it treated the known
-  Section 8 edits as unowned, then reported expected hashes missing despite their
-  inclusion in the handoff. Parent verified no concurrent external changes: PA SHA256
-  `93570f7dda75523b5e6148e40deccd234798728973b6ade9c4d6af9f774ac44f`, PERS SHA256
-  `e53c141c3b17377a178eabe9eea6f6c65b4133d373e40885ed106bb12020ef6a`.
-  These are this orchestrator's delegated Section 8 test edits, not unrelated work;
-  bounded R7 ownership transfer was explicitly authorised in both handoffs. No R7
-  repairs/validation occurred; stop for user decision before further delegation.
+- **Scope audit (user-requested).** Two independent read-only audits (`.opencode/scratchpad/section8-scope-technical-audit.md`, `section8-scope-acceptance-audit.md`) set the minimum scope: keep the six criteria, four pre-write snapshots, existing serializers/preparation/write owners, explicit prepared argument, sequential writes/diagnostics and mixed feedback; remove the introduced prototype wrapper and frozen serializers. G1/G2 corrections were limited to demonstrated marker-1 contradictions, not a broad malformed-record matrix.
+- **G3 construction decision.** The user approved using the existing `Assignment.fromJSON(partialJson, 'partial')` for the actual embedded representation before writes, and narrowing only the stronger blanket no-`fromJSON` test. Recorded in the deferred ledger; no acceptance criterion waived.
+- **Sizing deviation and facade split.** The first G1/G2/G4/G6 Green grew `ABClassAssignmentOps.js` to 641 lines with two new ESLint errors (`sonarjs/cognitive-complexity`, `unicorn/prefer-type-error`) and a `max-lines` warning (`review-section8-green-g1g2g4-g6.md`, verdict FAIL). Resolved by extracting the completion-gate validators into `ABClassAssignmentValidation.js` (facade pattern, same domain folder, GAS load order and guarded exports preserved) and correcting the error type — not by formatting condensation. Final sizes are in the checks record.
+- **JSDoc accuracy.** `_validateNullParentPlaceholder`'s JSDoc must not claim it mirrors `AssignmentCurrentRestoration._hasConsistentCurrentSource`; the write gate is deliberately narrower (see Retained).
+- **Test-owner capacity approvals (all user-authorised, test-only).** Completion-gate companion re-balanced to 14 new rows after the 23 moved rows returned to the unit file; G3 relocation into the existing partials suite; R7/R8 and SG1/SG2 reconciliation across existing OPS/PERS/PA and acquisition-persistence suites. No production expansion, no assertion loss.
+- **De-sloppification pass (2 November 2026).** Three blocking `SLOP_REVIEW.md` findings fixed: deleted dead `Assignment._processAttachmentForSubmission` pass-through facade (Section 4) and corrected its stale `AssessmentFlow.md` flow-diagram mention; added `BaseRequestManager.isRetryableStatus` as the single retryable predicate with `LLMRequestManager._terminalCodeFor` delegating to it (Section 5); deleted the unused `DummyCacheManager` and its exports from `tests/helpers/modelFactories.js` (Section 6). Independent Code Reviewer verdict PASS, zero findings (`review-deslop-fixes-322-341.md`); diff confined to five authorised files.
+- **Regression comparison.** Stable session `assessment-errors-322-341`, baseline `2026-10-23T05:20:43.034Z`. Latest recorded run `2026-11-02T20:13:39.628Z`: 7 of 8 checks passing, zero regressions, zero new failures, two baseline fixes. `backend-lint-check` remains FAILING solely on the four accepted historical `max-lines` warnings. That comparison was taken for the de-sloppification pass; the Section 8 section-gate comparison is recorded in the section-gate record for this delivery.
+- **Checkpoint commit.** `e155ce4a36cd47da326f72c52b215279c964dea7` — `wip: checkpoint Section 8 prepared persistence and completion progress`, pushed to `origin/assessment-errors-322-341`; bookkeeping commit `9b8afd62` — `docs: record Section 8 checkpoint push`. Normal hooks passed; unrelated untracked work excluded.
+- **Proof limits.** Real-controller/memory-store evidence does not prove live GAS, deployed logging, durable persistence or original-incident causation. No deployment authorised.
+- **Later ownership.** Section 9 owns preview view models; Section 10 owns new browser journeys. Sections 9–12 remain not started.
 
 ## Section 9 — Error-aware preview assembly and local source states
 

@@ -96,6 +96,9 @@ const mockAssignmentInstance = {
     referenceLastModified: '2025-01-01T00:00:00Z',
     templateLastModified: '2025-01-01T00:00:00Z',
   },
+  // Completed-run counting reads the persisted submission graph, so the stub
+  // must expose the submissions structure a real assignment carries.
+  submissions: [],
   addStudent: vi.fn(),
   populateTasks: vi.fn(),
   fetchSubmittedDocuments: vi.fn(),
