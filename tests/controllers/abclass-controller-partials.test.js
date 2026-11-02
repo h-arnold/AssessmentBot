@@ -15,12 +15,59 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { loadBackendModelInputs } from '#synthetic-data/toBackendModelInputs.js';
+import { withTemporaryGlobals } from '#test-helpers/globalMockManager.js';
+import { Teacher } from '#backend/Models/Teacher.js';
 import {
   cleanupControllerTestMocks,
   createMockCollection,
   createDualCollectionDbManager,
   setupControllerTestMocks,
 } from '../helpers/mockFactories.js';
+
+const ABClassPersistence = require('#backend/y_controllers/ABClassController/ABClassPersistence.js');
+const clone = (value) => structuredClone(value);
+const TEACHER_GLOBAL = { Teacher: () => Teacher };
+
+/**
+ * Hermetic per-name collection mocks recording every operation in call order.
+ * `findOne` resolves null so both writes use the insert path.
+ */
+function mockDb() {
+  const events = [];
+  const collections = {};
+  const makeCollection = (name) => {
+    const store = {
+      findOne: vi.fn(() => null),
+      insertOne: vi.fn(),
+      replaceOne: vi.fn(),
+      save: vi.fn(),
+    };
+    for (const op of ['findOne', 'insertOne', 'replaceOne', 'save']) {
+      store[op].mockImplementation(() => {
+        events.push(`${name}.${op}`);
+        return op === 'findOne' ? null : undefined;
+      });
+    }
+    return store;
+  };
+  return {
+    events,
+    collections,
+    getCollection: (name) => (collections[name] ??= makeCollection(name)),
+  };
+}
+
+/** Restores a real canonical small class and wires the persistence owner to mock stores. */
+function buildPreparedRun(classId) {
+  const inputs = loadBackendModelInputs('small');
+  const abClass = withTemporaryGlobals(TEACHER_GLOBAL, () =>
+    ABClass.fromJSON(clone(inputs.classesById[classId]))
+  );
+  const db = mockDb();
+  const owner = new ABClassPersistence({ dbManager: db, validation: {} });
+  return { abClass, db, owner };
+}
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -73,6 +120,59 @@ afterEach(() => {
 // ---------------------------------------------------------------------------
 // Test suite
 // ---------------------------------------------------------------------------
+
+describe('ABClassPersistence prepared class persistence', () => {
+  it('consumes the prepared class and partial payloads without re-projecting between phases', () => {
+    const { abClass, db, owner } = buildPreparedRun('class-1');
+    const toJSONSpy = vi.spyOn(abClass, 'toJSON');
+    const partialSpy = vi.spyOn(abClass, 'toPartialJSON');
+
+    owner.persistClassAndPartial(abClass);
+
+    expect(toJSONSpy).toHaveBeenCalledTimes(1);
+    expect(partialSpy).toHaveBeenCalledTimes(1);
+    const written = db.collections['abclass_partials'].insertOne.mock.calls[0][0];
+    expect(written).toEqual(partialSpy.mock.results[0].value);
+    expect(db.events).toEqual([
+      `${abClass.classId}.findOne`,
+      `${abClass.classId}.insertOne`,
+      `${abClass.classId}.save`,
+      'abclass_partials.findOne',
+      'abclass_partials.insertOne',
+      'abclass_partials.save',
+    ]);
+  });
+
+  it('retains the prepared partial snapshot through the class write when the model changes mid-flow', () => {
+    const { abClass, db, owner } = buildPreparedRun('class-1');
+    const partialSpy = vi.spyOn(abClass, 'toPartialJSON');
+    db.getCollection(abClass.classId).save.mockImplementation(() => {
+      abClass.setClassName('Mutated during class write');
+    });
+
+    owner.persistClassAndPartial(abClass);
+
+    const written = db.collections['abclass_partials'].insertOne.mock.calls[0][0];
+    expect(written.className).toBe(partialSpy.mock.results[0].value.className);
+    expect(written.className).not.toBe('Mutated during class write');
+  });
+
+  it('prepares independent full and partial payloads for real embedded-assignment shapes without mutating the caller', () => {
+    const { abClass, db, owner } = buildPreparedRun('class-1');
+    const before = clone(abClass.toJSON());
+
+    owner.persistClassAndPartial(abClass);
+
+    const fullPayload = db.collections[abClass.classId].insertOne.mock.calls[0][0];
+    const partialPayload = db.collections['abclass_partials'].insertOne.mock.calls[0][0];
+    expect(fullPayload).not.toBe(partialPayload);
+    expect(fullPayload.assignments).toHaveLength(4);
+    expect(partialPayload).not.toHaveProperty('assignments');
+    expect(fullPayload.metadata).not.toBe(partialPayload.metadata);
+    fullPayload.assignments[0].assignmentId = 'mutated';
+    expect(abClass.toJSON()).toEqual(before);
+  });
+});
 
 describe('ABClassController – class partials persistence', () => {
   // -------------------------------------------------------------------------
@@ -198,7 +298,7 @@ describe('ABClassController – class partials persistence', () => {
     controller.saveClass(abClass);
 
     expect(spy).toHaveBeenCalledTimes(1);
-    expect(spy).toHaveBeenCalledWith(abClass);
+    expect(spy).toHaveBeenCalledWith(abClass, undefined);
   });
 
   it('does not write a partial when the full class write fails', () => {

@@ -12,7 +12,7 @@ and [#341](https://github.com/h-arnold/AssessmentBot/issues/341).
 - Product and contract authority: @SPEC.md .
 - Preview layout, copy and interaction authority: @ASSESSMENT_ERROR_PREVIEW_LAYOUT.md .
 - This plan sequences delivery; it does not reopen either approved document.
-- Sections 1–7 are complete (Section 4 gate has an explicit user-accepted flaky-debt exception); Sections 8–12 are **Not started**. Record actual changes,
+- Sections 1–7 are complete (Section 4 gate has an explicit user-accepted flaky-debt exception); Section 8 is **Incomplete — user-requested as-is checkpoint**; Sections 9–12 are **Not started**. Record actual changes,
   checks/report paths, deviations and downstream implications under each section.
 
 ### Baseline execution record
@@ -70,6 +70,15 @@ and [#341](https://github.com/h-arnold/AssessmentBot/issues/341).
 | Section 5 ImageManager consumer test capacity | Material | Required connected-consumer reconciliation exceeds the below-500 limit | `section5-consumer-reconciliation-green.md`: existing482 lines; trial534, reverted | approved    | User authorises moving write-back describe block into existing imageManagerPhase5.test.js and reconciling coverage mocks; no new file or production scope; preserve assertions and keep both below500 |
 
 Deferred-findings log: `.opencode/scratchpad/assessment-errors-322-341-deferred-findings.md`.
+
+| Finding                             | Severity | Scope rationale                                                                                                                                                           | Evidence                                                                                                   | Disposition | User decision                                                                                                                                                                                                      |
+| ----------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Minimal G3 regression test capacity | Material | Existing persistence suite499; preserving all existing assertions plus minimal conversion/live-save regression candidate requires test relocation, no production redesign | `.opencode/scratchpad/section8-g3-minimal-red.md`: candidate518 reverted exactly; user approved relocation | approved    | User approves relocating ordinary class-persistence cases to existing `tests/controllers/abclass-controller-partials.test.js`, preserving all cases/assertions and both files below500; no new helper or test file |
+
+| Finding                                                                       | Severity | Scope rationale                                                                                                                                                                                                    | Evidence                                                                                                                                          | Disposition | User decision                                                                                                                                                                                                                                            |
+| ----------------------------------------------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Section 8 G1/G2 completion-gate test capacity                                 | Material | Existing OPS suite492 leaves seven lines; required completion regressions need a responsibility-preserving split                                                                                                   | `.opencode/scratchpad/section8-g1-g2-red.md`; user approved split before scope-audit hold                                                         | approved    | User approved `tests/controllers/ABClassController/ABClassAssignmentOps.completionGate.test.js`, test-only, both files below500, no new helper/production owner; not yet created and paused during audit; proposed extra cases narrowed by audit outcome |
+| Section 8 genuine partial construction versus blanket restoration prohibition | Material | Criterion 2 forbids restoration solely for validation, while current PERS assertion prohibits all Assignment.fromJSON during persistence; original supported partial construction is blocked by this stronger test | `.opencode/scratchpad/section8-scope-technical-audit.md`; `.opencode/scratchpad/section8-scope-acceptance-audit.md` §4; user decision after audit | approved    | User approves existing partial construction before writes for actual embedded representation; remove wrapper and narrow blanket assertion only, preserving four-snapshot/no-postcommit-projection requirements; no new model/restorer                    |
 
 | Finding                                                | Severity | Scope rationale                                                                             | Evidence                                                                                                          | Disposition | User decision                                                                                                                                 |
 | ------------------------------------------------------ | -------- | ------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -254,6 +263,8 @@ Five historical lint warnings remain accepted, not newly introduced by this atte
 | Full-profile writer stress verification exhausted heap | Material | Existing opt-in stress test directly calls the newly asynchronous writer; compact gates pass, but no successful full-profile validation or attribution to baseline exists | Two attempts exhausted Node heap (default and NODE_OPTIONS=--max-old-space-size=4096); no assertion result. Synthetic compact suite 750 pass, all18 regenerated outputs match twice | approved | User approves bounded read-only diagnosis and baseline comparison where feasible, not larger-heap reruns, performance refactoring or waiving validation. Diagnosis active; check remains unverified |
 
 | Unattributed optional full-profile stress limitation after diagnosis | Material | Compact required gates pass; opt-in full-profile check is not a required regression gate but writer path remains unverified at full scale | Two heap failures; bounded diagnosis found no crash trace/baseline run, attribution unknown; section2-full-profile-memory-diagnosis.md | approved | User approves proceeding with consolidated Green review and all required gates while deferring optional full-profile stress as an accepted validation limitation/follow-up. Do not claim stress passes or attribute it to baseline |
+
+| Failed-task count delivery location and copy | Material | Section 8 criterion 4 and SPEC require exact completion-with-errors feedback plus distinct-item count, but did not specify the count channel/copy | SPEC.md:432–433; section8-red-completion.md §8; user decision 31 October 2026 | approved | Separate progress detail: show “4 tasks failed.” (count each item once), preserving exact final “Assessment run completed with errors.” in progress and toast; no count appended to final message |
 
 ## Scope and assumptions
 
@@ -1378,6 +1389,229 @@ dependency, configuration, URL policy or retry scheduler was added.
 
 ## Section 8 — Prepared persistence and truthful run completion
 
+### Current checkpoint — user-requested commit and push
+
+The user requests updating progress and committing/pushing the current changes as-is.
+This is an explicit intermediate checkpoint, not Section 8 completion or deployment
+authorisation. Do not implement further fixes as part of this checkpoint. Normal
+commit hooks remain mandatory; no hook bypass is authorised.
+
+- Delivered so far: terminal-result/shared-input completion checks and marker stamping;
+  four independent pre-write projections with exact prepared-value forwarding through
+  existing persistence owners; sequential full/class/registry writes and phase/commit
+  diagnostics; mixed E/success completion feedback with distinct-item count; associated
+  tests and partial canonical assignment documentation.
+- Scope audit complete. G3 independently CLOSED: the introduced prototype wrapper and
+  frozen serializers were removed; existing `Assignment.fromJSON(partialJson, 'partial')`
+  now constructs the actual embedded partial before writes. No new model/restorer or
+  persistence framework. Evidence: `.opencode/scratchpad/section8-g3-minimal-green-review.md`.
+- Latest independent checks: backend 3,634 PASS; focused 102 PASS; synthetic 750 PASS.
+  Four historical backend lint warnings remain accepted debt. These results are not
+  a Section 8 regression-gate result.
+- Remaining runtime work: G1/G2 narrowly evidenced task/submission identity, task-universe
+  and source/hash/association contradictions; G4 reuse existing class-save validation
+  before first write under preparation diagnostics; G6 remove permissive count defaults.
+- Remaining documentation work: G5 reconcile canonical planned/implemented status and
+  complete relevant documentation/data-shape reconciliation after runtime corrections.
+- Remaining delivery gates: focused Red/Green and independent full-section review for
+  outstanding changes, docs sync, section compaction, stable-ID section regression gate,
+  then final section completion commit/push. No Section 8 regression run has occurred.
+- Preserve selected-only reassessment, opaque legacy bodies/markers, supplied metadata,
+  existing upstream blockers and read/write separation. Do not add a comprehensive
+  schema validator, new helper framework, transaction/rollback, read repair or preflight.
+- Branch: `assessment-errors-322-341`. Checkpoint commit message:
+  `wip: checkpoint Section 8 prepared persistence and completion progress`.
+  Commit SHA and push outcome will be recorded after the checkpoint push succeeds.
+
+### Current execution hold — user-requested scope audit
+
+The user paused implementation after questioning the introduced partial wrapper and
+requested a scope audit focused on the simplest implementation meeting all six
+Section 8 acceptance criteria. No production/test/contract edits, new partial model,
+new restoration mechanism or additional regression expansion may proceed during this
+audit. Read-only delegated audit reports are authorised; compare the original HEAD
+path with the current diff, distinguish required work from introduced workarounds,
+and identify minimum existing-owner corrections without silently weakening criteria.
+Previous approval of the test-only completionGate split and Luna read-only exploration
+is recorded, but both are paused pending the audit outcome; no companion file exists.
+Latest user request is an audit, not authorisation for a persistence/model redesign.
+Read-only technical audit delegated to user-authorised Luna Explore; report pending.
+Independent acceptance/scope audit delegation to Planner Reviewer failed upstream
+`Insufficient account funds` before producing a report. No code/test/contract edits
+authorised or made during the audit. Stop that delegation pending model authorisation;
+do not substitute prior code-review findings for an independent minimal-scope audit.
+User authorises `openai/gpt-6-luna` for the independent read-only acceptance/scope
+audit as well. Technical audit report returned; no implementation decision or edits.
+Both read-only audits now complete:
+`.opencode/scratchpad/section8-scope-technical-audit.md` and
+`.opencode/scratchpad/section8-scope-acceptance-audit.md`. No runtime/test/contract
+edits or validation runs occurred during audit. Agreed minimum scope:
+
+- KEEP six criteria, four independent pre-write JSON snapshots, existing serializers/
+  preparation/write owners, explicit prepared argument, sequential writes/diagnostics,
+  mixed E/success feedback, original legacy/sibling/metadata behaviour.
+- REMOVE introduced Object.create/full-model alias and closure-frozen serializers;
+  no new partial model class, wrapper, competing restorer or persistence framework.
+- G1/G2 corrections limited to demonstrated marker-1 graph/source contradictions and
+  required completion invariants; do not duplicate the whole read schema or implement
+  the earlier capacity report's broad malformed-record matrix by default.
+- Reuse existing class-save validator before first write (G4); remove new counter's
+  permissive defaults (G6); reconcile existing canonical status prose only (G5).
+- Independent live model ownership is not an additional four-snapshot criterion;
+  preserving ordinary-save behaviour is required because our wrapper broke it.
+  Decision needed before implementation: allow the original existing
+  `Assignment.fromJSON(partialJson, 'partial')` for actual embedded representation,
+  before writes, not as validation-only round-trip; reconcile only the stronger blanket
+  no-fromJSON test. Record `asked` in deferred ledger. No acceptance criterion is waived.
+- User approves this existing-construction approach after audit. Resume bounded G3
+  red-first test reconciliation and removal of introduced wrapper using existing
+  `Assignment.fromJSON(partialJson, 'partial')` before writes. No new model/restorer;
+  retain snapshot isolation/order/no-postcommit projection. Other fixes follow the
+  narrowed audit scope, not the earlier broad corruption matrix. The audit hold is
+  superseded for this approved minimal approach under the normal review/gates.
+- G3 minimal test reconciliation hit measured capacity: PERS499; readable candidate
+  extending three existing cases518. Candidate reverted byte-for-byte, no net code/
+  test change; unchanged focused95 PASS is not G3 proof. Evidence
+  `.opencode/scratchpad/section8-g3-minimal-red.md`. Stop for bounded test relocation
+  approval rather than violate below500 or weaken existing assertions. No new model,
+  production helper or persistence architecture is needed by this capacity issue.
+- User approves that existing-file test-only relocation. Continue minimal G3 Red
+  reconciliation using the saved candidate/checkpoint, not fresh architecture or broad
+  graph validation work. Both files below500; no new helper/test file.
+- G3 minimal Red delivered after approved relocation: three ordinary persistence cases
+  moved intact to existing partials suite; PERS468/destination321, all23 original
+  intents retained. Exactly three intentional failures/99 focused passes; backend
+  3,631 passes/three intended failures, zero unexpected. Independent review
+  `.opencode/scratchpad/section8-g3-minimal-red-review.md` approves readiness with no
+  new findings. Proceed to remove wrapper using only existing partial construction
+  in OPS; other G1/G2/G4/G5/G6 fixes remain separate narrowed milestones.
+- G3 minimal Green independently PASS/CLOSED:
+  `.opencode/scratchpad/section8-g3-minimal-green-review.md`. Removed alias/frozen
+  wrapper/helper; original existing partial construction now runs before projections/
+  writes and its actual result is installed. OPS471 (smaller), no new model/helper or
+  production owner. All three formerly failing regression tails execute and pass;
+  current selected partial state persists on subsequent ordinary save. Four snapshots,
+  exact prepared threading, failure/sibling/legacy/metadata semantics preserved.
+  Fresh independent backend3,634/focused102/synthetic750 PASS; four accepted historical
+  lint warnings only. G1/G2 bounded completion corrections, G4 pre-write existing class
+  validator, G5 canonical prose and G6 counter defaults remain OPEN. No full Section 8
+  Green, docs/compaction/regression gate or commit/push approval is implied.
+
+### Active R7 test-owner checkpoint (user reconfirmed)
+
+The user explicitly approves a compact retry and adoption of these two existing
+Section 8 test files by Testing Specialist's default model. They are this delivery's
+owned edits, not external concurrent changes. Verify these pre-edit SHA256 values:
+
+- `tests/controllers/abclassController.persistAssignment.test.js`:
+  `93570f7dda75523b5e6148e40deccd234798728973b6ade9c4d6af9f774ac44f` (495 lines).
+- `tests/controllers/ABClassController/ABClassPersistence.unit.test.js`:
+  `e53c141c3b17377a178eabe9eea6f6c65b4133d373e40885ed106bb12020ef6a` (477 lines).
+
+Write only those two test files. In the facade-delegation row, retain the ops and
+saveClass assertions and pin that the exact prepared return is passed as the second
+saveClass argument. In `runConnectedPersistChain`, pass the real ops prepared return
+to `persistClassAndPartial`, matching the actual production facade. Preserve all
+mutation, no-alias, serializer-count, no-restoration and subsequent ordinary-save
+assertions. Both files must remain strictly below 500 physical lines; no new helper,
+formatting condensation or assertion loss. Source, other tests, docs, plan and
+unrelated untracked work are read-only for this delegation. Validate formatting,
+scoped lint, focused four suites, ten-suite composition and (if focused clean) backend
+coverage once. Save evidence to `.opencode/scratchpad/section8-supplemental-r7-tests.md`.
+Independent full-section test re-review follows; this is not Green sign-off.
+
+R8 partial checkpoint: three ordinary-save matcher repairs pass; one acquisition
+fixture failure remains. Default Testing Specialist twice stopped without implementing
+the explicitly authorised producer composition. Report
+`.opencode/scratchpad/section8-r8-test-repair-report.md` records 22 passing / 1 failing
+focused tests, no broad/final validation. Acquisition test remains untouched, including
+all success assertions. No missing product decision or source fix has been established.
+Pause for user model/capability decision rather than repeatedly accepting incomplete work.
+The user now explicitly authorises `openai/gpt-6.1-sol` for the remaining Section 8
+Testing Specialist repair and validation; scope, assertions and review gates unchanged.
+
+R8 acquisition repair delivered by authorised Sol test agent: only success-row local
+parser composition changed (316 lines), original success assertions and all six intents
+retained. Real extraction-null branch produces terminal acquisition E; parser/native,
+image and LLM seams remain stubbed as recorded. R8 three-suite23 PASS, ten-suite144
+PASS, backend3,630 PASS (branches86.30%), synthetic750 PASS, formatting/scoped lint
+clean; full backend lint has exactly four accepted historical warnings/zero errors.
+Evidence `.opencode/scratchpad/section8-r8-sol-repair.md`. R7/R8 pending independent
+full-section test re-review; source Green/shape/docs/compaction/regression/commit gates
+remain outstanding. No regression checker or Section 8 commit/push has run.
+
+R7 tests reconciled: focused91 PASS / ten-suite144 PASS, no source edits. Backend
+coverage identifies R8 OPEN (in-scope Material regressions introduced by Section 8):
+the acquisition persistence success fixture leaves document-stage outcomes incomplete;
+three ordinary-save delegation assertions omit the newly explicit undefined optional
+prepared argument. Authorised test-only reconciliation extends to existing
+`tests/assignment/assignmentAcquisition.persistence.test.js`,
+`tests/controllers/abclassMutationDelegation.test.js` and
+`tests/controllers/abclass-controller-partials.test.js`. Preserve acquisition SUCCESS
+intent via completed canonical stage outcomes (never change success to rejection),
+and preserve exact ordinary-save delegation with no prepared snapshots. No other
+new test/helper/source surface. R7 and R8 require independent test re-review.
+
+Latest independent supplemental review: `.opencode/scratchpad/section8-r7-r8-test-review.md`.
+R8 CLOSED; R7 connected runner CLOSED, facade R7-I1 OPEN (in-scope Material): structural
+matcher must additionally pin second-argument reference identity and single invocation.
+SG1 and SG2 OPEN, in scope under criteria 1/3 and introduced by this section's source:
+SG1 empty required reference/template arrays evade completed shared-input validation;
+SG2 class/registry getCollection faults escape owned phase/full-commit diagnostics.
+Reviewer Critical maps to Material here: genuine delivery defects, but no evidenced
+security/data-loss/production regression; fix before Green sign-off, no scope question.
+Owner Testing Specialist: red-first empty-role and collection-access regressions plus
+R7 identity assertion in existing OPS/PERS/PA test owners, each strictly below500.
+Owner Implementation: subsequent bounded fixes within existing four controller owners.
+Prior R1–R6 closures retained. Fresh reviewer3630 backend/167 focused PASS; four
+historical lint warnings only. Shape/docs/section regression/commit remain pending.
+Supplemental Red readiness approved by independent review
+`.opencode/scratchpad/section8-sg-red-review.md`: R7-I1 CLOSED, all R7/R8 now closed.
+Exactly four intentional failures (empty reference/template, class/registry acquisition
+diagnostics), 3,630 backend passes / zero unexpected; these are Green obligations,
+not debt. Existing assertions preserved; OPS492/PERS499/PA499. SG1/SG2 runtime OPEN;
+authorise bounded existing-owner Green repair next. No section gate/commit yet.
+SG1/SG2 bounded Green fixes delivered in OPS/PERS only; empty required roles reject
+before mutation and collection acquisition now belongs to existing phase diagnostics.
+Focused95/context171/backend3,634/synthetic750 PASS; four historical lint warnings,
+zero new failures. Initial OPS500 size violated strict below500 and was returned to
+same owner; final OPS487 (prose-only shortening), PERS260/controller471/facade492.
+Evidence `.opencode/scratchpad/section8-sg-green.md`; independent full Green pending.
+Required Data Shapes Agent reconciliation failed upstream `Insufficient account funds`
+before any shape-doc edit or evidence report. Stop pending user capability/model
+decision; no canonical shape approval, full Green review, docs/compaction, Section 8
+regression gate or commit/push. Existing model authorisations cover Implementation
+and Testing Specialist, not this required data-shapes delegation.
+User now authorises `openai/gpt-6-luna` for the required Data Shapes Agent
+reconciliation; exact model ID verified available. All scope/review gates unchanged.
+Data-shape reconciliation delivered in existing `docs/developer/data-shapes/assignment.md`
+only, marker/gate discrepancies26/27 aligned; no class wire/schema/INDEX change needed.
+Report `.opencode/scratchpad/section8-shapes-sync.md` records remaining backend-guide
+helper/gate prose for subsequent Docs sync. Formatter/diff checks pass. This describes
+uncommitted implementation, not a deployment or final Green approval. Proceed to full
+independent source Green review; SG1/SG2 await that closure.
+Full source Green FAIL: `.opencode/scratchpad/section8-green-review.md`.
+SG1/SG2 CLOSED, all prior readiness closures retained. G1–G6 OPEN, all in scope:
+G1 marker-1 graph/task/submission identity validation; G2 null-source body/hash and
+association invariants; G3 genuinely independent live typed embedded partial (current
+prototype alias/frozen serializers violate subsequent ordinary-save semantics); G4
+existing class-save validation must precede full commit with preparation diagnostics;
+G5 contradictory canonical completed-gate status prose; G6 permissive counter defaults
+must consume validated model structure directly. Reviewer Critical G1–G4 are delivery
+blocking Material defects under orchestrator taxonomy (no evidenced security/data loss).
+Red-first regressions then bounded Green fixes, one complex issue at a time; no new
+module/model-owner surface authorised without a decision. G5 owner Data Shapes after
+gate fixes; G6 owner Implementation with any affected mocks owned by Testing Specialist.
+Passing3,634 backend/750 synthetic tests are not Green approval. No section gate/commit.
+G1/G2 test owner returned actionable capacity checkpoint WITHOUT edits: OPS492,
+all38 existing cases pass; required supplemental matrix cannot fit without split.
+Proposed gate companion preserves eighteen invalid rows/five controls and local real
+canonical harness, no shared helper; recorded `asked` in deferred ledger. No G1/G2
+Red implemented yet. Evidence `.opencode/scratchpad/section8-g1-g2-red.md`.
+Parallel read-only G3 feasibility explore failed upstream `[model_coming_soon]` before
+report; no accepted exploration result. Stop for user split/model authorisation rather
+than creating a file or improvising around unavailable required agent capability.
+
 ### Objective and constraints
 
 Validate completed terminal results, stamp marker 1, prepare four independent payloads
@@ -1416,7 +1650,9 @@ No transaction, rollback claim, unconditional finally-save or read repair.
    failed phase/full-commit state, and no false completion or implicit read repair occurs.
 4. Handled student/LLM E persists beside successes, including earlier/same-batch successes
    on LLM stop. Final message is `Assessment run completed with errors.` and failed task
-   count counts each item once, not criteria. Healthy run keeps normal success feedback.
+   count counts each item once, not criteria. User-approved separate progress detail
+   reports `4 tasks failed.` (with the actual distinct-item count), preserving that exact
+   final sentence in progress and toast. Healthy run keeps normal success feedback.
 5. Shared-definition/image failure, list-page failure, unexpected wiring and storage
    failures do not call completed-run persistence/success. Trigger admission/locks/API
    envelope stay unchanged. Successful reassessment replaces only the selected result.
@@ -1438,7 +1674,118 @@ No transaction, rollback claim, unconditional finally-save or read repair.
 - Checks: all assignment/ABClass controller and API assessment suites;
   `npm run lint:backend:check`, `npm run test:synthetic`; full gate. `@remarks`: explicit
   non-transactional write ordering and why completed-with-errors is not a storage success.
-- Execution record: Not started; changes/checks/deviations/downstream implications pending.
+- Execution record: Red initiated after Section 7 completion commit
+  `c4ee83885428141a45d10c4d477d7154b2bab598` (`docs: record Section 7 completion and regression evidence`)
+  and successful push on `assessment-errors-322-341`. Stable baseline retained;
+  no between-phase regression run. Test preflight must verify required split/capacity
+  and a criterion-by-criterion matrix before extending suites. Prior findings
+  R1–R8/SR1/G1–G6/D1–D2 remain closed; no new Section 8 findings yet.
+- Red M1 split delivered: hydration 653→297 lines (5 tests) and new definitionInputs
+  373 lines (11 tests); all 16 identities and 26 assertion calls preserved. Six-suite
+  baseline 56 PASS, controller neighbourhood 431 PASS. Parent drift audit confirms
+  only authorised split files changed; no helper/source changes. Backend lint now
+  has exactly four accepted historical warnings (hydration warning resolved), zero
+  errors/new warnings. Evidence `.opencode/scratchpad/section8-red-split.md`.
+  Next M2–M4 add behavioural Reds before full independent section Red review.
+- Red M2 delivered OPS299/PERS136: 11 intentional failures / 22 passes, zero
+  unexpected failures; gate/marker/four-projection cases and passing validity/no-alias
+  controls. Evidence `.opencode/scratchpad/section8-red-units.md`. No source changes.
+- Red M3 delivered completion suite298: 3 intentional failures / 5 passes; real
+  controller/persistence chain over memory stores, document pipeline stages stubbed.
+  Medium mixed-E persistence, healthy/no-submission feedback and no-false-completion
+  controls pass. Evidence `.opencode/scratchpad/section8-red-completion.md`.
+- Count-delivery decision approved by user: separate progress detail `4 tasks failed.`
+  with actual distinct-item count; preserve exact final errors sentence in progress/toast.
+  Reconcile M3's broad count assertion before full Red review. No M4, independent full
+  Red approval, Green work or Section 8 gate yet; tests uncommitted and unapproved.
+- M4 delivered connected PA499/PIPE479, M3 count assertion reconciled; parent audit
+  confirms authorised test-only paths. PA exceeds its 480 estimate under the existing
+  user below-500 allowance (global clarification); no assertion loss/condensation.
+  Cumulative inventory: 25 intentional Reds (11 OPS, 3 completion, 11 PA), zero
+  unexpected; controller/API sweep 968 PASS, synthetic750 PASS, exactly four accepted
+  historical lint warnings. Evidence `.opencode/scratchpad/section8-red-connected.md`.
+  All M1–M4 await full independent Section 8 Red review; no source repair yet.
+- Independent Red FAIL: `.opencode/scratchpad/section8-red-review.md`; 25 intentional
+  failures / 3,586 backend passes, zero unexpected; synthetic750 PASS. R1–R6 are
+  all in-scope Material test-readiness defects, owner Testing Specialist, OPEN:
+  R1 exact failed-phase/original-fault/full-commit diagnostics; R2 four detached
+  snapshots/exact prepared consumption/no restoration round-trip; R3 real OPS
+  preparation collaborators and contextual rejection reasons; R4 retained successful
+  persistence fixtures must be complete, not legacy/in-flight; R5 LLM-stop results
+  crossing real completion/persistence; R6 isolated hash/invalid Assessment probes.
+  Reviewer Critical automated status is intentional Red, not a new Critical defect
+  or accepted debt. Repair and independently re-review before Green. Existing global
+  below-500 sizing allowance applies to estimated suite sizes; no new helpers/modules.
+- R1–R6 repairs delivered, all PENDING independent closure. R3/R6 real OPS
+  collaborators/contextual reasons plus isolated hash/result probes; R4 canonical
+  complete success fixtures with original intent retained; R1 same-entry original err,
+  exact failedPhase and boolean fullWriteCommitted across projection/write failures;
+  R2 connected three-store graph capture, full-save mutation, no-round-trip observer
+  and ordinary-save preparation reuse; R5 real LLM stop manager outputs cross real
+  completed persistence with exact earlier/same-batch success and E maps.
+  Evidence `.opencode/scratchpad/section8-red-r{1,2,3-r6,4,5}-repair.md` (R3/R6 actual
+  filename `section8-red-r3-r6-repair.md`); R2 continuation supersedes ordinary-only
+  checkpoint. No new source/helpers/modules/dependencies. Physical LOC OPS493/PERS477/
+  PA495/completion498/PIPE479/hydration297/definitionInputs373; global allowance used.
+  Final section sweep: 41 intentional Reds / 971 controller/API passes, zero
+  unexpected; synthetic750 PASS, scoped format/lint clean, four historical warnings.
+  Full independent Red re-review pending; Green still prohibited.
+- Independent Red re-review closes R1–R6, with zero additional readiness findings:
+  `.opencode/scratchpad/section8-red-approved.md`. Reviewer binary FAIL solely reflects
+  mandatory automated status: all 41 failures are explicitly inventoried intended
+  production obligations (20 OPS, 12 PA, 5 completion, 4 PERS), not debt. Backend
+  3,589 passes / zero unexpected, synthetic750 PASS; fixtures/collection/format and
+  scoped lint sound, four accepted historical warnings only. Orchestrator accepts
+  reviewed Red for progression under the intentional-Red gate; do not weaken assertions.
+  Proceed to bounded existing-owner Green; runtime/docs/shape/gate/commit not approved.
+- Green delegation interrupted by upstream `Insufficient account funds` on required
+  `opencode-go/glm-5.3-flash`; no agent completion report/evidence returned. Partial
+  changes preserved in AssignmentController471, ABClassAssignmentOps548 and
+  ABClassPersistence283 lines; facade unchanged490. These edits are UNREVIEWED and
+  UNVALIDATED, not accepted. OPS548 violates the strict below-500 scope gate and
+  requires owner repair without assertion loss/formatting condensation; no new module
+  authorised. No Green completion, shape/docs sync, regression, commit or push.
+  Stop for user decision on restoring the required model capability or authorising
+  another model. Do not restart completed Red research or discard partial work.
+- User authorises Implementation's default model to resume/repair Section 8 after
+  GLM account-funds failure; all existing scope, tests, sizing and review gates remain.
+  Testing Specialist model preference is unchanged. Interrupted source edits remain
+  unaccepted pending implementation validation and independent Green review.
+- Default Implementation returned INCOMPLETE: four latest focused failures (facade
+  saveClass delegation, OPS-only store window, two prepared-graph controls); earlier
+  all-backend pass predates latest edits and is not final evidence. Parent drift audit
+  additionally found unauthorised edits to five canonical docs, CurrentRestoration
+  (new validation-reason helpers) and assignmentAcquisition.persistence.test.js
+  (success assertions changed to rejection). These changes are not accepted; source
+  owner surface remains the four named controllers. In-scope delivery gaps require
+  repair, but cross-owner/doc/test edits were not authorised for this delegation.
+  Return drift to same owner for exact reversion, preserving scratch evidence; no
+  shape/docs sign-off or Green approval. No Section 8 commit/push/regression run.
+- Drift checkpoint restored the seven unauthorised paths exactly to HEAD; backup
+  `.opencode/scratchpad/section8-unauthorised-green-drift.patch` is evidence only.
+  Its statement that seven reviewed test files match HEAD is incorrect: parent diff
+  confirms they remain uncommitted Red feature changes; transient edit history unknown.
+- Bounded source repair remains INCOMPLETE: source LOC471/499/260/492, no cross-owner
+  edits; reviewed gate and completion suites pass, but three focused failures remain.
+  R7 OPEN (in-scope Material test-harness defect): old facade assertion forbids an
+  explicit prepared argument; connected PERS runner drops ops' prepared return and
+  invokes an ordinary save, unlike updated real facade. Reconcile these harnesses to
+  explicit return/argument threading without weakening snapshot/no-reprojection proof
+  or adding hidden pending state. Evidence `section8-green-threading-repair.md`.
+  Last four-suite result 3 failed / 88 passed; broader legacy rerun still required.
+  Testing Specialist required GLM access failed for insufficient funds; ask whether
+  its default model may reconcile and independently review these test changes.
+- User authorises Testing Specialist's default model for remaining Section 8 test
+  repairs; Implementation default override also retained. Independent review and
+  assertion/scope/sizing gates unchanged.
+- Testing Specialist default returned twice without changes: it treated the known
+  Section 8 edits as unowned, then reported expected hashes missing despite their
+  inclusion in the handoff. Parent verified no concurrent external changes: PA SHA256
+  `93570f7dda75523b5e6148e40deccd234798728973b6ade9c4d6af9f774ac44f`, PERS SHA256
+  `e53c141c3b17377a178eabe9eea6f6c65b4133d373e40885ed106bb12020ef6a`.
+  These are this orchestrator's delegated Section 8 test edits, not unrelated work;
+  bounded R7 ownership transfer was explicitly authorised in both handoffs. No R7
+  repairs/validation occurred; stop for user decision before further delegation.
 
 ## Section 9 — Error-aware preview assembly and local source states
 

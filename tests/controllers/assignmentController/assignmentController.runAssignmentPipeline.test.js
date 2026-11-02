@@ -9,6 +9,7 @@
  * acceptance #2).
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { withTemporaryGlobals } from '#test-helpers/globalMockManager.js';
 
 // =========================================================================
 // Global mocks (before loading controller)
@@ -403,5 +404,76 @@ describe('AssignmentController - runAssignmentPipeline throw-on-stale', () => {
       // must not route the error through logAndThrowError itself.
       expect(mockProgressTracker.logAndThrowError).not.toHaveBeenCalled();
     });
+  });
+});
+
+describe('AssignmentController - runAssignmentPipeline persistence boundaries', () => {
+  let controller;
+  let mockAssignment;
+
+  const STUDENTS = [{ id: 's1', name: 'Student 1' }];
+  const NEXT_STAGE = {
+    fetchSubmittedDocuments: 'processAllSubmissions',
+    processAllSubmissions: 'processImages',
+    processImages: 'assessResponses',
+  };
+
+  beforeEach(() => {
+    setupModuleMocks();
+    DateUtils.isNewer.mockReturnValue(false);
+    DriveManager.getFileModifiedTime.mockReturnValue('2025-06-01T12:00:00Z');
+    controller = new AssignmentController();
+    mockAssignment = {
+      assignmentDefinition: {
+        referenceDocumentId: 'ref-doc-123',
+        templateDocumentId: 'tpl-doc-456',
+        referenceLastModified: '2025-05-01T12:00:00Z',
+        templateLastModified: '2025-05-01T12:00:00Z',
+        tasks: { t1: { taskTitle: 'Task 1' } },
+      },
+      addStudent: vi.fn(),
+      fetchSubmittedDocuments: vi.fn(),
+      processAllSubmissions: vi.fn(),
+      processImages: vi.fn(),
+      assessResponses: vi.fn(),
+    };
+  });
+
+  const runPipeline = () =>
+    controller.runAssignmentPipeline(mockAssignment, STUDENTS, { includeImages: true });
+
+  it('runs stages in the established order without persisting or completing', () => {
+    const dbManager = { getCollection: vi.fn() };
+    withTemporaryGlobals({ DbManager: () => ({ getInstance: () => dbManager }) }, runPipeline);
+    const order = (stage) => mockAssignment[stage].mock.invocationCallOrder[0];
+    expect(order('addStudent')).toBeLessThan(order('fetchSubmittedDocuments'));
+    expect(order('fetchSubmittedDocuments')).toBeLessThan(order('processAllSubmissions'));
+    expect(order('processAllSubmissions')).toBeLessThan(order('processImages'));
+    expect(order('processImages')).toBeLessThan(order('assessResponses'));
+    expect(dbManager.getCollection).not.toHaveBeenCalled();
+    expect(mockProgressTracker.complete).not.toHaveBeenCalled();
+    expect(mockAssignment.assessmentContractVersion).toBeUndefined();
+  });
+
+  it.each([
+    ['submission list paging', 'fetchSubmittedDocuments'],
+    ['student work extraction', 'processAllSubmissions'],
+    ['image hydration', 'processImages'],
+    ['response assessment', 'assessResponses'],
+  ])('stops the pipeline before later stages when %s fails', (_label, stage) => {
+    const fault = new Error(`${_label} failed`);
+    mockAssignment[stage].mockImplementation(() => {
+      throw fault;
+    });
+    let caught;
+    try {
+      runPipeline();
+    } catch (error) {
+      caught = error;
+    }
+    expect(caught).toBe(fault);
+    const laterStage = NEXT_STAGE[stage];
+    if (laterStage) expect(mockAssignment[laterStage]).not.toHaveBeenCalled();
+    expect(mockProgressTracker.complete).not.toHaveBeenCalled();
   });
 });

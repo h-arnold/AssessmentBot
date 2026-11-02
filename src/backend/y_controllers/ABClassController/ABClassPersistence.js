@@ -1,4 +1,4 @@
-/* global ABLogger, ABClassMetadata, ArrayUtils */
+/* global ABLogger, ABClassMetadata, ArrayUtils, AssignmentSerialisation */
 
 /**
  * ABClassPersistence
@@ -21,19 +21,31 @@ class ABClassPersistence {
   /**
    * Write-through persistence: saves the full class document to its own collection
    * and upserts a partial summary document to the partials registry.
+   *
+   * @remarks When an assessment run supplies prepared payloads, this write
+   * consumes those exact prepared documents and re-projects nothing. An ordinary class save prepares both
+   * payloads through the same preparation owner before the first mutation.
+   * The write is not transactional: a failure after the full-class write leaves
+   * the partial unrefreshed, and the failure log records the failed phase plus
+   * whether the assessment run's full assignment store had already committed.
+   *
    * @param {ABClass|Object} abClass - The class instance or plain object to persist.
+   * @param {Object} runPrepared - Optional assessment-run projections prepared before its first write.
    * @returns {void}
    * @throws {Error} Rethrows any persistence error from either collection.
    */
-  persistClassAndPartial(abClass) {
-    const prepared = this._prepareClassAndPartial(abClass);
+  persistClassAndPartial(abClass, runPrepared) {
+    const prepared = runPrepared
+      ? { fullData: runPrepared.fullData, partialData: runPrepared.partialData }
+      : this._prepareClassAndPartial(abClass);
+    const hasFullWriteCommitted = Boolean(runPrepared?.fullWriteCommitted);
     const logger = ABLogger.getInstance();
     const collectionName = String(abClass.classId);
-    const collection = this._dbManager.getCollection(collectionName);
 
     // Write the full class document first so partials are never visible
     // without a corresponding authoritative class record.
     try {
+      const collection = this._dbManager.getCollection(collectionName);
       const existing = collection.findOne({ classId: abClass.classId });
 
       if (existing) {
@@ -47,11 +59,13 @@ class ABClassPersistence {
       logger.error('persistClassAndPartial: class collection write failed', {
         classId: abClass.classId,
         err: error,
+        failedPhase: 'class-store',
+        fullWriteCommitted: hasFullWriteCommitted,
       });
       throw error;
     }
 
-    this._writePreparedClassPartial(abClass.classId, prepared.partialData);
+    this._writePreparedClassPartial(abClass.classId, prepared.partialData, hasFullWriteCommitted);
   }
 
   /**
@@ -63,13 +77,27 @@ class ABClassPersistence {
    * @private
    */
   _prepareClassAndPartial(abClass) {
+    return {
+      fullData: this._prepareFullClass(abClass),
+      partialData: this._prepareClassPartial(abClass),
+    };
+  }
+
+  /**
+   * Prepares the prospective full class document without mutating the caller.
+   * Uses the caller's own full serializer output (or supported plain-object input)
+   * and the domain-canonicalised metadata snapshot.
+   * @param {ABClass|Object} abClass - Class model or plain object.
+   * @returns {Object} Independent prepared full class document.
+   * @private
+   */
+  _prepareFullClass(abClass) {
     const fullSource = typeof abClass.toJSON === 'function' ? abClass.toJSON() : abClass;
     this._validateFullProjection(abClass, fullSource);
-    const partialData = this._prepareClassPartial(abClass);
-    return {
-      fullData: { ...fullSource, metadata: this._metadataCopy(abClass) },
-      partialData,
-    };
+    return AssignmentSerialisation.copyJsonSnapshot({
+      ...fullSource,
+      metadata: this._metadataCopy(abClass),
+    });
   }
 
   /**
@@ -106,7 +134,10 @@ class ABClassPersistence {
     const partialSource = abClass.toPartialJSON();
     const metadata = this._metadataCopy(abClass);
     this._validatePreparedMetadata(partialSource, metadata, 'partial');
-    return { ...partialSource, metadata: new ABClassMetadata(metadata).toJSON() };
+    return AssignmentSerialisation.copyJsonSnapshot({
+      ...partialSource,
+      metadata: new ABClassMetadata(metadata).toJSON(),
+    });
   }
 
   /**
@@ -185,20 +216,24 @@ class ABClassPersistence {
    */
   _upsertClassPartial(abClass) {
     const partialData = this._prepareClassPartial(abClass);
-    this._writePreparedClassPartial(abClass.classId, partialData);
+    // An ordinary partial upsert is not preceded by an assessment-run full
+    // assignment write, so the full write is never reported as committed.
+    this._writePreparedClassPartial(abClass.classId, partialData, false);
   }
 
   /**
    * Persists an already prepared partial projection without re-projecting the model.
    * @param {string} classId - Owning class ID for lookup and diagnostics.
    * @param {Object} partialData - Complete prepared partial document.
+   * @param {boolean} hasFullWriteCommitted - Whether the assessment run's full
+   *   assignment store had already committed when this write was reached.
    * @returns {void}
    * @private
    */
-  _writePreparedClassPartial(classId, partialData) {
+  _writePreparedClassPartial(classId, partialData, hasFullWriteCommitted) {
     const logger = ABLogger.getInstance();
-    const partialsCollection = this._dbManager.getCollection('abclass_partials');
     try {
+      const partialsCollection = this._dbManager.getCollection('abclass_partials');
       const existingPartial = partialsCollection.findOne({ classId });
       if (existingPartial) {
         partialsCollection.replaceOne({ classId }, partialData);
@@ -211,6 +246,8 @@ class ABClassPersistence {
       logger.error('_writePreparedClassPartial: partials collection write failed', {
         classId,
         err: error,
+        failedPhase: 'class-partials-store',
+        fullWriteCommitted: hasFullWriteCommitted,
       });
       throw error;
     }

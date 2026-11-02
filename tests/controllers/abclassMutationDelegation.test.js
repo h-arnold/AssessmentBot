@@ -163,7 +163,7 @@ describe('ABClass mutation owner boundary', () => {
     };
     const persist = vi.spyOn(controller, '_persistClassAndPartial').mockImplementation(() => {});
     expect(controller.saveClass(plainClass)).toBe(true);
-    expect(persist).toHaveBeenCalledWith(plainClass);
+    expect(persist).toHaveBeenCalledWith(plainClass, undefined);
   });
 
   it('calls shared save validation before its existing persistence delegator', () => {
@@ -189,7 +189,7 @@ describe('ABClass mutation owner boundary', () => {
     const persist = vi.spyOn(controller, '_persistClassAndPartial').mockImplementation(() => {});
 
     expect(controller.saveClass(model)).toBe(true);
-    expect(persist).toHaveBeenCalledWith(model);
+    expect(persist).toHaveBeenCalledWith(model, undefined);
     expect(() => controller.saveClass({ toPartialJSON: vi.fn() })).toThrow(
       'saveClass: missing required classId property on abClass argument'
     );

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { loadBackendModelInputs } from '#synthetic-data/toBackendModelInputs.js';
-import { withGlobalMocks } from '../helpers/globalMockManager.js';
+import { withGlobalMocks, withTemporaryGlobals } from '../helpers/globalMockManager.js';
 import { createMockUtils } from '../helpers/mockFactories.js';
 
 const AssignmentController = require('#backend/y_controllers/AssignmentController.js');
@@ -154,19 +154,47 @@ describe('acquisition failure and assignment persistence', () => {
       ],
     }));
     const state = setup(list);
-    state.controller.processSelectedAssignment({
-      assignmentId,
-      definitionKey,
-      courseId: classId,
-    });
-    const saved = state.full.docs[0];
-    expect(saved.submissions.find((row) => row.studentId === student.id).documentId).toBe(
-      'new-document'
+    vi.spyOn(SlidesAssignment.prototype, 'processAllSubmissions').mockRestore();
+    withTemporaryGlobals(
+      {
+        DocumentParser: () => require('#backend/DocumentParsers/DocumentParser.js').DocumentParser,
+      },
+      () => {
+        const SlidesParser = require('#backend/DocumentParsers/SlidesParser/index.js');
+        withTemporaryGlobals({ SlidesParser: () => SlidesParser }, () => {
+          const extraction = vi
+            .spyOn(SlidesParser.prototype, 'extractSubmissionArtifacts')
+            .mockReturnValue(null);
+          state.controller.processSelectedAssignment({
+            assignmentId,
+            definitionKey,
+            courseId: classId,
+          });
+          const saved = state.full.docs[0];
+          expect(saved.submissions.find((row) => row.studentId === student.id).documentId).toBe(
+            'new-document'
+          );
+          expect(state.full.replaceOne).toHaveBeenCalledTimes(1);
+          expect(state.classCollection.replaceOne).toHaveBeenCalledTimes(1);
+          expect(state.partials.replaceOne).toHaveBeenCalledTimes(1);
+          expect(state.progress.complete).toHaveBeenCalledOnce();
+          expect(extraction).toHaveBeenCalledOnce();
+          expect(extraction).toHaveBeenCalledWith('new-document', expect.any(Array));
+          const savedStudent = saved.submissions.find((row) => row.studentId === student.id);
+          expect(Object.keys(savedStudent.items)).toEqual(Object.keys(definition.tasks));
+          for (const item of Object.values(savedStudent.items)) {
+            expect(Object.keys(item.assessments)).toEqual(['completeness', 'accuracy', 'spag']);
+            for (const result of Object.values(item.assessments)) {
+              expect(result).toEqual({
+                score: 'E',
+                reasoning: 'The submitted document could not be accessed.',
+                error: { stage: 'acquisition', code: 'SOURCE_UNREADABLE' },
+              });
+            }
+          }
+        });
+      }
     );
-    expect(state.full.replaceOne).toHaveBeenCalledTimes(1);
-    expect(state.classCollection.replaceOne).toHaveBeenCalledTimes(1);
-    expect(state.partials.replaceOne).toHaveBeenCalledTimes(1);
-    expect(state.progress.complete).toHaveBeenCalledOnce();
   });
 
   it('does not persist or report success when a later acquisition page fails', () => {
