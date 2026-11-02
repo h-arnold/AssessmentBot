@@ -1,6 +1,7 @@
 ---
 description: Orchestrates delivery against ACTION_PLAN.md in a strict TDD-first workflow
 mode: all
+model: mistral/mistral-large-4
 steps: 100
 ---
 

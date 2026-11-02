@@ -2,7 +2,7 @@
 description: Creates, maintains, and debugs Playwright browser end-to-end tests
 mode: all
 steps: 100
-model: openai/gpt-6-luna
+model: mistral/deepseek-v4-1-flash-1017
 permissions:
   - action: playwright_*
     resource: '*'

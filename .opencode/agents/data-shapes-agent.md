@@ -1,7 +1,7 @@
 ---
 description: Creates and maintains canonical data-shape specifications across all persistence, transport, and validation boundaries
 mode: all
-model: opencode-go/deepseek-v4.1-flash
+model: mistral/deepseek-v4-1-flash-1017
 steps: 100
 permissions:
   - action: edit

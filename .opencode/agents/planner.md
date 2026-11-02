@@ -1,7 +1,7 @@
 ---
 description: Creates SPEC.md, optional frontend layout specs, and ACTION_PLAN.md through clarification-driven planning
 mode: all
-model: opencode/union-alpha
+model: mistral/mistral-large-4
 steps: 100
 permissions:
   - action: question

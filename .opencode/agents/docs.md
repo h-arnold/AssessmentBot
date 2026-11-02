@@ -1,7 +1,7 @@
 ---
 description: Keeps project documentation accurate, current, and aligned with actual code behaviour
 mode: all
-model: opencode-go/deepseek-v4.1-flash
+model: mistral/deepseek-v4-1-flash-1017
 steps: 100
 ---
 

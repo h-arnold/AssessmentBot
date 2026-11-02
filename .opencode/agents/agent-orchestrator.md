@@ -1,7 +1,7 @@
 ---
 description: Coordinates subagents to implement changes following a structured implement/review loop
 mode: all
-model: opencode-go/glm-5.3-flash
+model: mistral/mistral-large-4
 steps: 100
 ---
 

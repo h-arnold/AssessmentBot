@@ -1,7 +1,7 @@
 ---
 description: Creates, maintains, and debugs Vitest unit/component tests and backend tests
 mode: all
-model: openai/gpt-6-luna
+model: mistral/deepseek-v4-1-flash-1017
 steps: 100
 ---
 
