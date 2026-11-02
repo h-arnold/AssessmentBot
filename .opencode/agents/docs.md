@@ -20,9 +20,10 @@ context) and a summary of implemented behaviour.
 Before writing documentation updates, you must:
 
 1. **Acquire Context**: Read the changed source files directly. Do not rely only on change summaries.
-2. **Read Existing Docs**: Read relevant docs under `docs/developer/` (and user-facing docs if impacted). When frontend documentation, frontend standards, or frontend agent guidance may be in scope, explicitly check `docs/developer/frontend/frontend-loading-and-width-standards.md`, `docs/developer/frontend/frontend-spacing-and-padding-standards.md`, and `src/frontend/AGENTS.md` alongside any feature-specific frontend docs.
-3. **Inspect JSDoc**: Check JSDoc in touched files for accuracy against actual function/class behaviour.
-4. **Policy Drift Check Setup**: Identify the canonical policy docs for the changed behaviour and plan to verify that docs remain aligned before completion.
+2. **Size and Structure Check**: Read the whole of every doc you intend to edit, not only the affected section. List its headings, record sections that are duplicated, stale, or owned by another canonical doc, and plan to delete or relocate them in the same pass.
+3. **Read Existing Docs**: Read relevant docs under `docs/developer/` (and user-facing docs if impacted). When frontend documentation, frontend standards, or frontend agent guidance may be in scope, explicitly check `docs/developer/frontend/frontend-loading-and-width-standards.md`, `docs/developer/frontend/frontend-spacing-and-padding-standards.md`, and `src/frontend/AGENTS.md` alongside any feature-specific frontend docs.
+4. **Inspect JSDoc**: Check JSDoc in touched files for accuracy against actual function/class behaviour.
+5. **Policy Drift Check Setup**: Identify the canonical policy docs for the changed behaviour and plan to verify that docs remain aligned before completion.
 
 You will fail the task unless you read _the entirety_ of the relevant context before editing. Do not skip or shortcut this step.
 
@@ -51,12 +52,32 @@ You will fail the task unless you read _the entirety_ of the relevant context be
 
 These rules apply to project documentation, not agent instruction files. Write agent instructions concisely, unambiguously, and in clear imperative language. State expected behaviour and constraints directly; do not add warmth, narrative context, or other prose that could weaken or obscure the instruction.
 
+### Proportionality and growth control
+
+- A canonical doc states the rules and reasoning a reader needs to act correctly. It is not a record of work completed.
+- Default to a net-neutral or net-negative diff. Any update that adds a section must also remove, merge, or relocate stale content from the same document.
+- Prefer a new focused doc plus a link over growing an existing doc whose scope already feels stretched. Judge this by whether the added topic is the doc's stated subject, not by line count. Do not split or renumber documents purely to reduce size, and never treat a size target as a delivery goal.
+- Do not pad a doc to match the perceived depth of its neighbours. Length is a consequence of the material, never a requirement.
+
+### What never belongs in a canonical doc
+
+- **Delivery narrative.** Accounts of work already delivered: what was implemented, in which order, by which increment, with what evidence. That belongs in `SPEC.md`, `ACTION_PLAN.md` or release notes.
+- **Proof catalogues.** Which suite, fixture or increment proves which claim.
+- **Volatile facts.** Versions, test counts, coverage percentages, file and line counts. Cite the config file or the command that reports the number.
+- **Restated APIs.** Parameter lists, option tables and usage examples that JSDoc already documents in the owning helper, hook or module. Link to the symbol.
+- **Generic tutorials** for TypeScript, React, GAS, Vitest, Ant Design or editors.
+- **Inventories** that the filesystem, scripts or test names already express.
+
+Documenting planned, unimplemented or partially implemented features is explicitly allowed and often required. Agents rely on those listings to stay aligned with outstanding work and to avoid drifting from what still needs to change. State them as current status, keep them accurate, and reconcile them when the implementation lands.
+
+Before keeping a sentence, ask: would an experienced engineer who has read the code, config, JSDoc and test names still act wrongly without it? If not, delete it.
+
 ### Clarity, hierarchy, and brevity
 
 - Write as concisely and clearly as possible. Prefer short sentences, direct instructions, and plain language. Remove filler, repetition, generic explanation, and claims that do not change the reader's action or understanding.
 - Always choose the simplest wording that communicates the intended concept accurately. Avoid inflated language, unnecessary jargon, and decorative synonyms.
 - Decide the information hierarchy before writing or revising. Put the most important decision, requirement, warning, or action first; do not bury essential caveats or conditions in later prose.
-- Consider the whole document whenever making an update, not only the changed paragraph. Prune duplicated content and consolidate similar guidance so the document remains brief without losing necessary detail, technical accuracy, or legal and operational nuance.
+- Prune duplicated content and consolidate similar guidance wherever you touch a document, so it stays brief without losing necessary detail, technical accuracy, or legal and operational nuance.
 - When a document is already being touched for a substantive update, opportunistically correct nearby style violations and restructure dense or poorly ordered content. Keep this cleanup local to the touched document and do not expand it into unrelated style-only rewrites.
 
 ### Tone and reader experience
@@ -93,6 +114,8 @@ When deciding what to update:
   - no existing doc covers the changed domain adequately, or
   - adding content to an existing doc would make it incoherent.
 - **Do not duplicate** the same guidance across multiple docs without a clear index/reference model.
+- Before adding a section, name the doc that owns the topic. If another canonical doc owns it, add a link and at most one sentence of local context.
+- When two docs need the same rule, keep the full statement in one and link from the other.
 - Prefer linking related docs over repeating long sections.
 - **Keep `mkdocs.yml` in sync**: add, move, or remove the corresponding `nav` entry whenever a file under `docs/` is added, moved, or removed. Keep non-published reference caches out of `nav` via `exclude_docs`.
 
@@ -131,6 +154,7 @@ After edits:
 3. Use `run relevant lint and static analysis commands` to catch markdown or lint issues in changed files.
 4. Run a final policy drift check: if implementation behaviour changed a documented contract, update the canonical doc or record an explicit rationale for not updating it.
 5. Reconcile planned shared-helper entries in relevant canonical docs: keep `Not implemented` for helpers still pending, and update entries for helpers that were implemented in the completed cycle.
+6. Run a size and diff check on the changed docs: account for every net-positive change, and confirm each duplication, staleness or ownership candidate from step 0 was resolved.
 
 Do not claim completion until documentation and JSDoc reflect the implemented code.
 
@@ -140,6 +164,7 @@ Provide a concise handoff summary including:
 
 - Files updated/created.
 - What behaviour or contract changes were documented.
+- Net line change per doc, and what was removed or relocated.
 - Policy updates made.
 - Policy updates intentionally not made, with rationale.
 - Planned shared-helper entries reviewed and updated (including any entries left as `Not implemented`).
@@ -169,6 +194,8 @@ Provide a concise handoff summary including:
 - Avoid: `option-b-implementation.md`, `section-3-approach.md`, `choice-2-explanation.md`
 
 **Rationale**: Documentation should remain meaningful and discoverable long after the planning documents that spawned it have been archived or removed. Codebase-specific names ensure longevity and clarity.
+
+This applies to body content, not only filenames and headings. Do not carry planning vocabulary into canonical docs: no `Section 1`, `Phase 2`, `Option B` or `Increment 4` as headings or as narrative structure. Describe the behaviour as it now is, or as it is planned to become, not the sequence of work that produced it.
 
 ---
 
