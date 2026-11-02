@@ -434,7 +434,7 @@ Migration rule:
 
 ## Testing Guidance
 
-- Test ownership for this layer is defined in [Backend Testing §6.1 API Layer Tests](backend-testing.md#61-api-layer-tests-srcbackendz_api): API-layer functions are thin boundary wrappers, and heavy business-logic tests stay at controller/service level.
+- Test ownership for this layer is defined in [Backend Testing § API Layer Tests](backend-testing.md#api-layer-tests): API-layer functions are thin boundary wrappers, and heavy business-logic tests stay at controller/service level.
 - Do not call live GAS services in unit tests.
 
 ## API handler transport (`apiHandler`)

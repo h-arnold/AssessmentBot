@@ -133,6 +133,8 @@ The convention keeps the corpus realistic:
 - Embedded `updatedAt` values are strictly chronological by assignment index (oldest first), so a recent-assignment slice reads the newest record.
 - No clock, Faker, seed, or count changes are involved, so the corpus stays byte-reproducibly regenerable.
 
+Boundary probes that need equal `updatedAt` values across entries must clone a canonical snapshot locally. Do not weaken generated timestamps or add equal-timestamp rows to the corpus to manufacture them.
+
 Regeneration with `npm run fixtures:synthetic` rewrites the dependent `classesById` and `assignmentsByKey` views and commits only the files that actually change.
 
 This is **fixture realism only**, not a production nullable-contract change:
@@ -230,8 +232,8 @@ No new profile, transport view or realistic fixture family was added.
 > persistence, read projection and transport adaptation are delivered separately in
 > [abclass.md § ABClass `metadata` contract](../data-shapes/abclass.md#abclass-metadata-contract-domain-model-prepared-persistence-response-mapping-controller-request-replacement-and-transport-adaptation-delivered)
 > and [api-layer.md § ABClass metadata helpers](../backend/api-layer.md#abclass-metadata-helpers).
-> Cross-reference: [Backend Testing](../backend/backend-testing.md) §ABClass canonical
-> model-input adaptation.
+> Cross-reference: [Backend Testing](../backend/backend-testing.md) §Backend model-input
+> adapter.
 
 ### `generateClassMetadata.js` stage (`Implemented`)
 
