@@ -1421,7 +1421,12 @@ commit hooks remain mandatory; no hook bypass is authorised.
   schema validator, new helper framework, transaction/rollback, read repair or preflight.
 - Branch: `assessment-errors-322-341`. Checkpoint commit message:
   `wip: checkpoint Section 8 prepared persistence and completion progress`.
-  Commit SHA and push outcome will be recorded after the checkpoint push succeeds.
+  Commit: `e155ce4a36cd47da326f72c52b215279c964dea7`. Normal pre-commit formatting,
+  staged backend lint and `npm run typecheck:all` passed; formatting was unchanged.
+  `git push` succeeded to `origin/assessment-errors-322-341` (c4ee8388→e155ce4a).
+  Unrelated untracked `.vitest/`, `draft-scratch.md` and `src/frontend/.opencode/`
+  were excluded. This record is committed separately as
+  `docs: record Section 8 checkpoint push`; Section 8 remains incomplete.
 
 ### Current execution hold — user-requested scope audit
 
