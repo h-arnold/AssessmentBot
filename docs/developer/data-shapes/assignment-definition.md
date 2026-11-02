@@ -16,6 +16,7 @@ Sibling contracts:
 
 - [Contract: ABClass](abclass.md) — ABClass embeds assignment partials that reference this contract's `definitionKey`.
 - [Contract: Assignment](assignment.md) — Assignment embeds a full or partial `AssignmentDefinition` (copy-on-construct).
+- [Component Shape: BaseTaskArtifact](base-task-artifact.md) — the artifact shape embedded in `TaskDefinition.artifacts.{reference,template}`; this contract is its origin.
 - [Contract: Reference Data](reference-data.md) — `primaryTopicKey` references AssignmentTopics; `yearGroupKey` references YearGroups.
 - [Contract: BackendConfig](backend-config.md) — No direct relationship.
 
@@ -100,6 +101,14 @@ Key notes:
   both `buildEditableDefinitions()` and `buildAssignmentsByKey()`, so a keyed-task registry row
   missing either document ID never hydrates into an editable or full assignment view.
 - The `assignment_definitions` registry row is re-written on every upsert to keep it in sync.
+- **Artefact availability differs by store.** The registry redacts artefact `content`/`contentHash`
+  through `toPartialJSON()`; a `null` there is deliberate redaction, never evidence of extraction
+  failure. The full cache may legitimately retain a **pending `IMAGE`** reference/template
+  artefact with `content: null` and `contentHash: null` before an assessment run — the only
+  permitted pre-run null artefact. New definition writes enforce the availability invariant
+  described under [Component Shape: BaseTaskArtifact § Availability by parent store](base-task-artifact.md#availability-by-parent-store);
+  pre-existing stored definitions are not retroactively rewritten and are revalidated only on
+  their next definition write.
 
 ---
 
@@ -254,7 +263,7 @@ and **ID-shape** (link flow: `referenceDocumentId` + `templateDocumentId` + `doc
 | `alternateTopics`      | `string[]`                       | no        | Same semantics as `alternateTitles`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | `assignmentWeighting`  | `number\|null`                   | no        | 0–10 range.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | `taskWeightings`       | `Array<{taskId, taskWeighting}>` | no        | Array of `{taskId, taskWeighting}` objects. Both fields required per entry. `taskId` must be safe identifier.                                                                                                                                                                                                                                                                                                                                                                                                                 |
-| `forceReparse`         | `boolean`                        | no        | Optional. `true` forces document parsing regardless of timestamps; accepted only with an existing `definitionKey`. Never persisted or returned. Must not be combined with `taskWeightings`.                                                                                                                                                                                                                                                                                                                                   |
+| `forceReparse`         | `boolean`                        | no        | Optional. `true` is accepted **only with an existing `definitionKey`**; it forces document parsing regardless of timestamps. Omission or `false` retains existing upsert behaviour; a forced create and invalid types are rejected. Transport/control information — never persisted or returned. `forceReparse: true` must be **rejected when combined with `taskWeightings`** to avoid ambiguous patch precedence (explicit forced requests omit weighting patches).                                                         |
 | `updatedAt`            | `string` (ISO)                   | no        | Optional request-side optimistic-concurrency token: the frontend sends the reviewed definition's response `updatedAt` from the latest load/reparse, and only when that value is non-null. When supplied non-null it must be a strict ISO datetime string with timezone info; a mismatch with the stored `updatedAt` returns `DEFINITION_STALE` before any writes. Omission or explicit `null` means no stale-baseline check. Distinct from the persisted/response `AssignmentDefinition.updatedAt` field, which is unchanged. |
 
 **Forbidden request fields:** None — the request schema is flexible and controller-owned
@@ -269,10 +278,11 @@ Key contract notes:
 - URL-to-ID translation: the backend handler calls `extractSupportedDocumentDescriptor_()`
   to parse `referenceDocumentUrl`/`templateDocumentUrl`, producing `documentId` and `documentType`.
   The two URLs must point to different documents of the same type.
-- The frontend `UpsertAssignmentDefinitionRequestSchema` enforces a `superRefine` mutual-exclusion
-  rule between URL-shape and ID-shape fields. Payloads that include neither, only partial URL fields,
-  or only partial ID fields are rejected before reaching the backend. A second schema-level
-  `superRefine` rule rejects `forceReparse: true` combined with `taskWeightings`.
+- The frontend `UpsertAssignmentDefinitionRequestSchema` is `.strict()` and enforces a
+  `superRefine` mutual-exclusion rule between URL-shape and ID-shape fields. Payloads that include
+  neither, only partial URL fields, or only partial ID fields are rejected before reaching the
+  backend. A second schema-level `superRefine` rule rejects `forceReparse: true` combined with
+  `taskWeightings`. The recovery fields are accepted alongside the URL-shape/ID-shape contract.
 - Create upserts generate an opaque `definitionKey` from `Utilities.getUuid()` via
   `AssignmentDefinitionUpsertOrchestrator._generateStableKey()`. It is **not** derived from
   `(primaryTitle, primaryTopic, yearGroupKey)`.
@@ -283,6 +293,17 @@ Key contract notes:
   reuse the stored `documentType`.
 - `taskWeightings` shape is validated at the transport boundary; numeric weighting semantics
   (range 0–10, defaulting, matching task IDs) are controller-owned domain checks.
+- `alternateTitles` and `alternateTopics` must be arrays of **trimmed non-empty strings**
+  (`UpsertAssignmentDefinitionRequestSchema`). The link flow
+  (`src/frontend/src/features/classes/AssessTaskModal/assessTaskLinkPayload.ts`) enforces this
+  before payload construction: the candidate is trimmed, a blank (empty or whitespace-only)
+  candidate leaves the existing array unchanged, and `alternateTopics` treats a `null` candidate
+  the same way. The trimmed candidate is then deduplicated case-insensitively
+  (`areTrimmedStringsEqualIgnoringCase`) and appended only when absent. Both call sites in
+  `useAssessTaskLinkFlow.ts` pass the raw picker values and rely on these helpers, so only trimmed
+  non-empty entries reach the request payload. This is request construction only — no persistence,
+  transport, response or schema change. Regression coverage:
+  `assessTaskLinkPayload.spec.ts`.
 
 **Error states:**
 
@@ -294,75 +315,18 @@ Key contract notes:
 | Mismatched document types   | `INVALID_REQUEST` | Both URLs must resolve to same type                                                    |
 | Duplicate business tuple    | `INVALID_REQUEST` | Controller detects duplicate `(primaryTitle, primaryTopicKey, yearGroupKey)` on create |
 
-#### Link-flow alternate metadata normalisation
-
-> **Status: Implemented.** The landed frontend code and regression tests match the
-> canonical request contract below.
-
-The `upsertAssignmentDefinition` request contract requires `alternateTitles` and
-`alternateTopics` to be arrays of **trimmed non-empty strings** (see the
-[request table](#upsertassignmentdefinition-write) above and
-`UpsertAssignmentDefinitionRequestSchema` at `assignmentDefinition.zod.ts:136-137`).
-
-The link flow builds these arrays in
-`src/frontend/src/features/classes/AssessTaskModal/assessTaskLinkPayload.ts`, which
-now enforces the canonical contract before payload construction:
-
-| Field             | Link-flow construction (implemented)                                                                                                                                                                      | Frontend Zod                                    |
-| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
-| `alternateTitles` | The candidate is trimmed; a blank (empty or whitespace-only) candidate returns the existing array unchanged. The trimmed candidate is then deduplicated case-insensitively and appended only when absent. | `z.array(TrimmedNonEmptyStringSchema)` (`:136`) |
-| `alternateTopics` | A `null` candidate returns the existing array unchanged; otherwise the candidate is trimmed and blank candidates are rejected exactly as for `alternateTitles`.                                           | `z.array(TrimmedNonEmptyStringSchema)` (`:137`) |
-
-- Both call sites in `useAssessTaskLinkFlow.ts:259-267` still pass the raw picker
-  values (`selectedAssignmentForChoice.title` and `.topicName`); the helpers normalise
-  and filter them, so only trimmed non-empty entries are emitted into the request
-  payload and the service-side `UpsertAssignmentDefinitionRequestSchema` parse always
-  satisfies the trimmed non-empty string contract.
-- The existing case-insensitive trimmed dedupe basis
-  (`areTrimmedStringsEqualIgnoringCase`) is unchanged; the correction only normalises and
-  filters the candidate before it is considered for inclusion.
-- This is a frontend request-construction correction only. It does not change
-  persistence, the backend transport, the response shape, or any schema. No new
-  field, endpoint, or helper abstraction is introduced.
-
-Regression coverage:
-`src/frontend/src/features/classes/AssessTaskModal/assessTaskLinkPayload.spec.ts`
-asserts that a non-empty alternate title and topic are trimmed before being added,
-and that blank candidates (`''`, `'   '`, `'\t\n'`) are rejected for both collections
-before payload construction.
-
-#### Stale-definition recovery (Issue #301)
-
-> **Status: Implemented.** The weighting-reconciliation semantics below (task
-> equivalence comparator, reparse weighting preservation) are implemented in
-> `AssignmentDefinitionTaskEquivalence.js` and
-> `AssignmentDefinitionUpsertOrchestrator._resolveTaskState` (issue #301):
-> on a timestamp-triggered reparse, tasks with equivalent parsed content keep their
-> stored weighting (including valid zeroes), new or changed tasks default to `1`,
-> removed tasks disappear, and ordinary upserts without a document change never
-> invoke the comparator. The request-field extensions (`forceReparse`,
-> `updatedAt`), the save-time `DEFINITION_STALE` baseline check,
-> and the `DEFINITION_PARSE_FAILED` envelope are implemented in the backend. The
-> frontend `UpsertAssignmentDefinitionRequestSchema` extension and the shared frontend
-> error-registry entry are implemented; the frontend request schema is `.strict()` and
-> accepts the recovery fields alongside the existing URL-shape/ID-shape contract. The
-> equivalence, all-or-nothing parsing, invalid-request precondition, and
-> error-classification semantics in
-> [Equivalence, parsing and recovery corrections](#equivalence-parsing-and-recovery-corrections)
-> are implemented and covered by regression tests.
-
 #### Equivalence, parsing and recovery corrections
 
-The following semantics are the canonical implemented behaviour. Wontfix and Exclude
-decisions are out of scope.
+The following semantics are the canonical behaviour. Wontfix and Exclude decisions are out of
+scope.
 
-1. **Artefact equivalence canonicalisation / runtime exclusions (implemented).**
+1. **Artefact equivalence canonicalisation / runtime exclusions.**
    `compareTaskEquivalence_` compares canonical serialised artefact fields and
    excludes runtime-only state, so persisted artefact JSON and a rehydrated artefact
    model instance carrying identical assessment content compare equivalent. Model
    instances are serialised via `BaseTaskArtifact.toJSON()` before comparison.
    Canonical compared artefact fields are the documented
-   [BaseTaskArtifact](#sub-entity-basetaskartifact) fields (`taskId`, `role`, `pageId`,
+   [BaseTaskArtifact](base-task-artifact.md) fields (`taskId`, `role`, `pageId`,
    `documentId`, `content`, `metadata`, `type`). Excluded runtime-only fields are
    `contentHash`, `uid`/`_uid`, `taskIndex`, `artifactIndex`, and any non-serialised
    live-instance internals (e.g. `TableTaskArtifact._rows`). Task-level fields compared
@@ -380,7 +344,7 @@ decisions are out of scope.
    reversed direction, TABLE artefacts with live `_rows`, changed content).
    Source: `AssignmentDefinitionTaskEquivalence.js`.
 
-2. **All-or-nothing parser result rule (implemented).**
+2. **All-or-nothing parser result rule.**
    Any invalid task in parser output, or a zero-task parse, blocks persistence of the
    refreshed definition; only a fully valid, non-empty parse may persist. The Slides
    parser path validates each candidate task and records invalid-task presence on the
@@ -393,7 +357,7 @@ decisions are out of scope.
    (zero-task and mixed valid/invalid outcomes with zero writes).
    Source: `AssignmentDefinitionTaskParser.js`; `AssignmentDefinitionRecoveryRules.js`.
 
-3. **Recovery invalid-request preconditions (implemented).**
+3. **Recovery invalid-request preconditions.**
    A forced reparse without an existing `definitionKey`, and `forceReparse: true`
    combined with `taskWeightings`, are documented request-contract violations and
    surface as `INVALID_REQUEST` (`ApiValidationError` without a custom `code`, asserted
@@ -405,7 +369,7 @@ decisions are out of scope.
    (envelope assertion for the precondition failure).
    Source: `AssignmentDefinitionRecoveryRules.js` (`assertRecoveryPreconditions_`).
 
-4. **Non-content error classification preservation (implemented).**
+4. **Non-content error classification preservation.**
    Only recognised content parsing failures map to `DEFINITION_PARSE_FAILED`.
    `parseTasksOrThrow_` classifies an unclassified native `Error` (name `'Error'`) as a
    content failure and wraps it with `DEFINITION_PARSE_FAILED`. Typed/named errors —
@@ -419,23 +383,18 @@ decisions are out of scope.
    asserts safe context and the original parser error).
    Source: `AssignmentDefinitionRecoveryRules.js` (`isRecognisedContentParsingFailure_`).
 
-**`upsertAssignmentDefinition` recovery request fields (implemented):**
-
-| Field          | Type           | Required | Notes                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
-| -------------- | -------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `forceReparse` | `boolean`      | no       | Optional. `true` is accepted **only with an existing `definitionKey`**; it forces document parsing regardless of timestamps. Omission or `false` retains existing upsert behaviour; a forced create and invalid types are rejected. Transport/control information — never persisted or returned. `forceReparse: true` must be **rejected when combined with `taskWeightings`** to avoid ambiguous patch precedence (explicit forced requests omit weighting patches).                                                                                   |
-| `updatedAt`    | `string` (ISO) | no       | Optional request-side optimistic-concurrency token; the value is the existing response `updatedAt` from the latest load/reparse, sent by the frontend only when non-null. When supplied non-null it must be a strict ISO datetime string with timezone info. Compared against the currently stored `updatedAt` before applying edits; a mismatch returns `DEFINITION_STALE` with no writes. Omission or explicit `null` means no stale-baseline check. Distinct from the persisted/response `AssignmentDefinition.updatedAt` field, which is unchanged. |
-
-**Reparse, freshness and weighting semantics (implemented):**
+#### Reparse, freshness and weighting semantics
 
 - Explicit reparse uses the current persisted metadata/document identifiers (or the
   existing, explicitly confirmed URL-change workflow) and omits `taskWeightings`;
   omission preserves assignment weighting. `forceReparse: true` combined with
   `taskWeightings` is rejected before any parsing or persistence, as is a forced
   create with no existing `definitionKey`.
-- Task weighting rules are **unchanged**: unchanged tasks keep their stored weighting;
-  new or changed tasks use the `TaskDefinition` constructor default of `1`; removed
-  tasks disappear; valid zero weightings are preserved.
+- Task weighting rules: on a timestamp-triggered reparse, tasks with equivalent parsed
+  content keep their stored weighting (including valid zeroes), new or changed tasks use
+  the `TaskDefinition` constructor default of `1`, removed tasks disappear, and ordinary
+  upserts without a document change never invoke the comparator
+  (`AssignmentDefinitionUpsertOrchestrator._resolveTaskState`).
 - On approval saves the backend compares the request `updatedAt`
   token against the stored `updatedAt` before applying weighting patches or
   writing; a mismatch returns `DEFINITION_STALE` and makes no writes. Drive
@@ -443,10 +402,10 @@ decisions are out of scope.
   timestamp-triggered reparses; requests omitting the token retain ordinary
   upsert behaviour for existing non-wizard callers.
 
-**Parse-failure semantics (implemented):**
+#### Parse-failure semantics
 
 - A stable, non-retriable `DEFINITION_PARSE_FAILED` code (see
-  [`transport-envelope.md`](transport-envelope.md#error-code--definition_parse_failed))
+  [`transport-envelope.md`](transport-envelope.md#error-code-definition_parse_failed))
   covers recognised document/task parsing failures. The envelope mapper honours
   `ApiValidationError.code`, so the backend rejection surfaces with this code.
 - An invalid task or a zero-task result blocks the refresh and persists nothing; the
@@ -547,60 +506,15 @@ Key notes:
 
 ### Sub-entity: BaseTaskArtifact
 
-Backend model: `src/backend/Models/Artifacts/0_BaseTaskArtifact.js`
-Subclass: `src/backend/Models/Artifacts/1_TextTaskArtifact.js` (type: `'TEXT'`)
-Frontend Zod: — (no independent Zod schema; consumed as nested objects inside assignment schemas)
+See [Component Shape: BaseTaskArtifact](base-task-artifact.md). That file owns the
+artifact field table, the concrete artifact types, the partial redaction rules and the
+availability split between the definition store and a completed assignment. This
+contract's `TaskDefinition.artifacts.{reference,template}` use that shape; the artifact
+model originates there.
 
-Base class for all task artifacts. Subclasses override `getType()` and `normalizeContent()`.
-
-`BaseTaskArtifact.toJSON()` emits:
-
-| Field         | Type                  | Backend toJSON() | Notes                                                                          |
-| ------------- | --------------------- | ---------------- | ------------------------------------------------------------------------------ |
-| `taskId`      | `string`              | Always emitted   | Parent task ID.                                                                |
-| `role`        | `string`              | Always emitted   | One of `'reference'`, `'template'`, `'submission'`.                            |
-| `pageId`      | `string\|null`        | Always emitted   | Source page ID.                                                                |
-| `documentId`  | `string\|null`        | Always emitted   | Drive document ID.                                                             |
-| `content`     | `string\|Array\|null` | Always emitted   | Heavy content payload. Redacted to null in partial.                            |
-| `contentHash` | `string\|null`        | Always emitted   | Hash of content for change detection. Redacted to null in partial.             |
-| `metadata`    | `object`              | Always emitted   | Arbitrary metadata key-value store.                                            |
-| `uid`         | `string`              | Always emitted   | Unique ID: `{taskId}-{taskIndex}-{role}-{pageId}-{artifactIndex}`.             |
-| `type`        | `string`              | Always emitted   | Artifact type identifier (e.g. `'TEXT'`, `'base'`). **Not** a Drive MIME type. |
-
-`BaseTaskArtifact.toPartialJSON()` returns the same shape but with `content: null`
-and `contentHash: null` (payload redaction for list views).
-
-Key notes:
-
-- BaseTaskArtifact **originates** in the AssignmentDefinition contract (created via
-  `TaskDefinition.createArtifact()` and stored in `TaskDefinition.artifacts.{reference,template}`).
-- It is **cross-referenced** from the [Contract: Assignment](assignment.md) contract where
-  `StudentSubmissionItem.artifact` uses the same shape (with `role: 'submission'`).
-- The `type` field identifies the runtime artifact class, not a Drive MIME type. See
-  [§ Concrete artifact types](#concrete-artifact-types) below for the full list of known values.
-- `content` can be a string, array, or null depending on the artifact type. TextTaskArtifact
-  normalises content to a trimmed LF-only string.
-
-#### Concrete artifact types
-
-| `type` value    | Class                     | `normalizeContent()` behaviour                                                                                                                                                 | Frontend discriminated union content shape                                 |
-| --------------- | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------- |
-| `'TEXT'`        | `TextTaskArtifact`        | Returns trimmed LF-only string; null/undefined→null; non-string coerced via `String()`                                                                                         | `z.string().nullable()`                                                    |
-| `'TABLE'`       | `TableTaskArtifact`       | Returns Markdown table string; null→null (logged); string→trimmed string; 2D array→padded rows→Markdown; 50×50 hard limit; throws on limit exceeded                            | `z.union([z.string(), z.null()])`                                          |
-| `'SPREADSHEET'` | `SpreadsheetTaskArtifact` | Returns trimmed 2D array; null→null; string→null; fully blank/all-null grid→`[]`; formula strings canonicalised (space-stripped, uppercased); trailing empty rows/cols trimmed | `z.array(z.array(z.union([z.number(), z.string(), z.null()]))).nullable()` |
-| `'IMAGE'`       | `ImageTaskArtifact`       | Returns trimmed string (data URL) or null; null→null; non-string→null; empty→null                                                                                              | `z.string().nullable()`                                                    |
-| `'base'`        | `BaseTaskArtifact`        | Returns raw content as-is                                                                                                                                                      | `z.unknown()`                                                              |
-
-Key notes:
-
-- The frontend `BaseTaskArtifactSchema` in `assignmentAssessment.zod.ts` is a `z.discriminatedUnion('type', [...])` — each row above corresponds to one variant in the union.
-- The `content` field shape differs per type: `TEXT` uses string, `TABLE` uses a Markdown-formatted string, `SPREADSHEET` uses a 2D array of `(number|string|null)`, `IMAGE` uses a base64 data URL string, `base` uses `unknown`.
-- `contentHash` is `string|null` on all full variants and omitted entirely from the partial schema.
-- The `ArtifactFactory.create()` dispatches on `type` (uppercased): TEXT→TextTaskArtifact, TABLE→TableTaskArtifact, SPREADSHEET→SpreadsheetTaskArtifact, IMAGE→ImageTaskArtifact, anything else→BaseTaskArtifact (fallback).
-- TextTaskArtifact normalises CRLF/CR→LF and trims; SpreadsheetTaskArtifact canonicalises formula strings (strips non-quoted spaces, uppercases); TableTaskArtifact enforces a 50×50 size limit; ImageTaskArtifact provides `setContentFromBlob()` for binary-to-data-URL conversion.
-- A successfully read blank/all-null `SPREADSHEET` grid normalises to `[]` in `SpreadsheetTaskArtifact.normalizeContent()`, including a blank template, and therefore receives the normal hash of `[]` through construction, persistence and restoration. A literal `null` remains unavailable content, not blank content.
-- Definition-store availability is enforced at new definition writes by `AssignmentDefinitionValidation.validateSharedArtifacts()`: a pending `IMAGE` reference/template artefact may retain `content: null`/`contentHash: null`, while non-`IMAGE` shared artefacts require non-null `content` and a string `contentHash`. A `SPREADSHEET` reference must contain at least one assessable formula; a blank `SPREADSHEET` template normalised to `[]` remains valid. Completed full assignments have the stricter completion-boundary requirement (planned, Section 8). At the assignment pipeline, a matched student `IMAGE` remains pending until `ImageManager` hydration; a student hydration failure becomes extraction `IMAGE_HYDRATION_FAILED` `E` with null content/hash, and a required shared-image failure blocks the run (Section 7).
-- The partial variant (`BaseTaskArtifactPartialSchema` in `classDetailService.zod.ts`) omits `content` and `contentHash` entirely regardless of type.
+The definition-write availability invariant is owned by
+`AssignmentDefinitionValidation.validateSharedArtifacts()` and is documented under
+[Component Shape: BaseTaskArtifact § Availability by parent store](base-task-artifact.md#availability-by-parent-store).
 
 ---
 
@@ -627,16 +541,14 @@ Key notes:
 - `src/frontend/src/services/assignmentDefinition/assignmentTopics.zod.ts`:
   - `AssignmentTopicSchema` — validates topic reference data entries (`key: TrimmedNonEmptyStringSchema`, `name: TrimmedNonEmptyStringSchema`). Note: this schema does **not** include `yearGroupKeys`; see Reference Data contract for the authoritative 3-field schema.
 
-**Service response diagnostics (implemented):**
+**Service response diagnostics:**
 
 - `src/frontend/src/services/assignmentDefinition/assignmentDefinitionService.ts` →
   `getAssignmentDefinition()` and `upsertAssignmentDefinition()` both route response
   validation through the shared `parseApiResponse()` helper in
   `src/frontend/src/services/apiService.ts`. Schema-validation failures therefore emit
   the shared bounded diagnostics (`method`, structured `zodIssues`, truncated
-  `responsePreview`) before the `ZodError` is rethrown. The validated response shapes
-  (`AssignmentDefinitionSchema`) and all field tables above are unchanged — only the
-  service-boundary parse call and its diagnostics changed. Regression coverage:
+  `responsePreview`) before the `ZodError` is rethrown. Regression coverage:
   `src/frontend/src/services/assignmentDefinition/assignmentDefinitionService.parseApiResponse.spec.ts`.
 
 **Backend transport validation:**
@@ -669,7 +581,7 @@ Key notes:
 - The response mapper throws if any required field is `undefined` in the canonical response.
 - `deleteAssignmentDefinition` is idempotent: repeated deletes for the same key still succeed.
 - The `_validateFull()` method in the model enforces `referenceDocumentId` and `templateDocumentId` are truthy for full definitions (create path). Partial definitions do not require doc IDs.
-- New definition writes validate shared artefacts on the final resolved tasks before constructing or persisting the definition: non-`IMAGE` reference/template artefacts require non-null `content` and a string `contentHash`; a pending `IMAGE` is permitted; a `SPREADSHEET` reference must contain at least one assessable formula. Blank `TEXT`/array templates remain valid. The validator requires the resolved task and its `artifacts.reference`/`artifacts.template` arrays, so a malformed task fails loudly instead of being skipped. `AssignmentDefinitionValidation.validateSharedArtifacts()` owns this check; `AssignmentDefinitionUpsertOrchestrator` invokes it before persistence. Existing error propagation and rollback are retained, and there is no run-time eligibility preflight.
+- New definition writes validate shared artefacts on the final resolved tasks before constructing or persisting the definition: non-`IMAGE` reference/template artefacts require non-null `content` and a string `contentHash`; a pending `IMAGE` is permitted; a `SPREADSHEET` reference must contain at least one assessable formula. Blank `TEXT`/array templates remain valid. The validator requires the resolved task and its `artifacts.reference`/`artifacts.template` arrays, so a malformed task fails loudly instead of being skipped. `AssignmentDefinitionValidation.validateSharedArtifacts()` owns this check; `AssignmentDefinitionUpsertOrchestrator` invokes it before persistence. Existing error propagation and rollback are retained, and there is no run-time eligibility preflight. See [Component Shape: BaseTaskArtifact § Availability by parent store](base-task-artifact.md#availability-by-parent-store).
 
 ### Known discrepancies between backend and frontend
 
@@ -720,127 +632,6 @@ Key notes:
 6. **`AssignmentDefinitionPartialSchema` uses `z.array(z.string())` for `alternateTitles`/`alternateTopics` while full schema uses `z.array(TrimmedNonEmptyStringSchema)`.**
    Same pattern as above: partial is more permissive.
    **Classification: Aligned** — no risk of breakage.
-
-## Contract additions — definition artefact availability (Implemented at definition writes)
-
-> **Status: definition-write invariants implemented; the completed-assignment gate remains
-> planned.** The model-level blank/all-null `SPREADSHEET` canonicalisation (`[]` plus the normal
-> `[]` hash, including blank templates) is delivered through
-> `SpreadsheetTaskArtifact.normalizeContent()`. The new-definition-write content/hash invariant and
-> the formula-free `SPREADSHEET` reference rejection are implemented in
-> `AssignmentDefinitionValidation.validateSharedArtifacts()` and invoked by
-> `AssignmentDefinitionUpsertOrchestrator` on the final resolved tasks before persistence. The
-> completed-full-assignment artefact gate remains Section 8; the shared-image hydration scope is
-> implemented in the assignment image pipeline (`ImageManager`, Section 7). This contract adds
-> **no** run-time eligibility preflight and no run-start gate. These entries
-> record the target contract from `SPEC.md` (explicit Assessment errors and targeted pipeline
-> simplification); where a rule remains unimplemented it is marked explicitly below. The
-> implemented tables above remain authoritative. These are write-time validation rules only: no
-> definition field is added, removed or retyped, and the registry/full-cache transport shapes are
-> unchanged.
-
-### Definition artefact availability and pending image exception (Implemented at definition writes)
-
-The availability split between the independent definition store and a completed
-assignment result is:
-
-| Boundary                                         | Contract                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          | Current position                                                                                                                                                                                                                                                            |
-| ------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `assignment_definitions` registry                | Unchanged. Artefact `content`/`contentHash` are redacted by `toPartialJSON()`. A `null` here is deliberate redaction, never evidence of extraction failure.                                                                                                                                                                                                                                                                                                                                                                                                       | Implemented (unchanged)                                                                                                                                                                                                                                                     |
-| `assdef_full_<definitionKey>` full cache         | May legitimately retain a **pending `IMAGE`** reference/template artefact with `content: null` and `contentHash: null` before an assessment run. This is the only pending-artefact exception and must not be forbidden.                                                                                                                                                                                                                                                                                                                                           | New writes enforce it; pre-existing stored definitions are not retroactively rewritten                                                                                                                                                                                      |
-| New definition writes                            | Non-`IMAGE` artefacts must already have non-null content and a string hash. Valid blank `TEXT`/array templates are not rejected as empty. A pending `IMAGE` may remain null until hydration. Owned by `AssignmentDefinitionValidation.validateSharedArtifacts()`; the existing `AssignmentDefinitionUpsertOrchestrator` invokes it on final resolved tasks before persistence, retaining existing error propagation and rollback. Old definitions that cannot meet these invariants may be reparsed through the existing definition workflow; no marker is added. | **Implemented** — `validateSharedArtifacts()` runs before the `AssignmentDefinition` constructor and persistence                                                                                                                                                            |
-| Formula-free `SPREADSHEET` reference task        | Invalid shared definition, not a valid blank template. Reject it at the new-definition-write boundary before persistence. Blank templates `[]` remain valid; blank student ranges retain the current formula scores. This is a definition-write failure, never a student `E`.                                                                                                                                                                                                                                                                                     | **Implemented** at the definition-write boundary; no run-time eligibility preflight is added                                                                                                                                                                                |
-| Completed full assignment (`assign_full_*`)      | Required reference/template artefacts must have usable, non-null content/hash after hydration. A completed result with an unusable required shared artefact is invalid and must not be persisted as complete.                                                                                                                                                                                                                                                                                                                                                     | Planned (Section 8). Current `_validateFull()` checks only `documentType` and the two document IDs; artefact content/hash are not gated. The image pipeline now blocks shared-image hydration failures before completion, but the completion gate itself is still Section 8 |
-| Run boundary (shared-image handling implemented) | No new run-time eligibility preflight. Shared-definition failures continue through the existing definition error/rollback surface, and a rejected definition is not persisted. Required shared-image hydration failures are handled by the assignment image pipeline (`ImageManager`, Section 7): a shared reference/template image with no usable source, a final non-200/network failure or unusable returned hydrated content blocks the run by throwing. Completed-result gates remain the completion path (Section 8).                                       | Implemented in `ImageManager`; no run-start eligibility gate added by Section 3, and existing definition error/rollback semantics retained                                                                                                                                  |
-
-Rules:
-
-- The definition store's pending-image state is **internal and pre-run**. It is not a terminal
-  result and must not be converted into a student `E` or `N`. Only pending `IMAGE` artefacts may
-  legitimately remain null in this store.
-- At new definition writes, non-`IMAGE` artefacts must already have non-null content and a string
-  hash. Valid blank `TEXT`/array templates are not rejected as empty. A pending `IMAGE` may remain
-  null until hydration. `AssignmentDefinitionValidation.validateSharedArtifacts()` owns this
-  definition-write invariant; the existing `AssignmentDefinitionUpsertOrchestrator` invokes it on
-  the final resolved tasks before persistence, using existing error propagation and rollback. Do
-  not add separate parser/API validators or change definition rollback semantics. **Implemented.**
-- A successfully read blank/all-null `SPREADSHEET` grid is canonicalised to `[]` with the normal
-  hash of `[]`, including a blank template. Literal `null` means unavailable spreadsheet content,
-  not blank content. **Implemented at the model normaliser** and applied through construction,
-  persistence and restoration; existing normalisation of populated formulas is unchanged.
-  Submission-side content/hash rules are owned by
-  [Contract: Assignment §Source artefact content and hash semantics](assignment.md#source-artefact-content-and-hash-semantics-partially-implemented).
-- A spreadsheet reference task with zero assessable formulae is an invalid shared definition, not
-  a valid blank template. It is rejected at the new-definition-write boundary by
-  `AssignmentDefinitionValidation.validateSharedArtifacts()`; the parser normally creates no task
-  for a formula-free reference, and the write validator rejects any resolved task that still
-  carries one before persistence. This is a definition-write failure, never a student `E`, and it
-  adds **no** run-time eligibility preflight. Blank templates canonicalised to `[]` remain valid,
-  and blank student ranges retain the current formula scores (completeness `0`, accuracy `0`, SPaG
-  `N`). **Implemented.**
-- The strict non-null requirement for **completed full assignments** remains a
-  completion-boundary requirement and is not implemented by this definition-write validation. A
-  definition can legitimately exist before its images are hydrated; a pending `IMAGE` is the only
-  permitted null artefact in the definition store.
-- Submission artefact placeholders and the assessment-stage `E`/null-content corruption rule
-  belong to the assignment read projection, not the definition store: see
-  [Contract: Assignment §Source artefact content and hash semantics](assignment.md#source-artefact-content-and-hash-semantics-partially-implemented).
-  The definition store never materialises reassessment `E` entries.
-- The completed-assignment completion gate remains owned by the assignment-assessment pipeline.
-  The definition-write invariant above is a separate domain check owned by
-  `AssignmentDefinitionValidation`, not a completed-result gate. `AssignmentDefinition._validateFull()`
-  continues to validate the document type and document IDs only.
-- Required shared-image hydration failure handling is implemented in the assignment image
-  pipeline (`ImageManager`, Section 7): a required shared reference/template image with no usable
-  source URL or owning document ID, a final non-200/network download failure, or unusable returned
-  hydrated content blocks the run by throwing. It is never converted to a student `E`, and prior
-  saved results are preserved. This contract adds no run-start eligibility preflight and does not
-  fabricate per-student errors for a shared-input failure. The completed-result gate itself
-  remains Section 8.
-- A matched student IMAGE is valid pending internal state, not a completed result. `ImageManager`
-  hydrates it or materialises extraction `IMAGE_HYDRATION_FAILED` `E` with null content/hash on a
-  student source/download/content/hash failure. Successful hydration writes the data-URL content and
-  model-generated hash. See
-  [Contract: Assignment §Image hydration outcomes](assignment.md#image-hydration-outcomes-implemented).
-- Old definitions that cannot meet the non-`IMAGE` invariant may be reparsed through the existing
-  definition workflow. A stored definition is not revalidated at run start; it is validated on its
-  next definition write. No result-version marker is added to definitions.
-- Frontend `AssignmentDefinitionSchema` / `BaseTaskArtifactSchema` content nullability is
-  unchanged. Completed-assignment content guarantees are enforced at the backend completion
-  boundary, not by widening or narrowing the definition transport schemas.
-
-Alignment concerns:
-
-1. **Resolved — non-`IMAGE` availability at definition writes.** Only a pending `IMAGE` artefact
-   may remain null in the definition store; non-`IMAGE` artefacts must have non-null content and a
-   string hash at new definition writes. `AssignmentDefinitionValidation.validateSharedArtifacts()`
-   owns that invariant and is invoked by the existing `AssignmentDefinitionUpsertOrchestrator` on
-   final resolved tasks before persistence, retaining existing error propagation and rollback
-   semantics. **Aligned.**
-2. **New definition writes enforce the invariant; existing stored definitions are not
-   retroactively rewritten.** A pre-existing row that violates the rule remains until it is
-   reparsed through the existing definition workflow. The completed-assignment completion gate is
-   still **Misaligned** until Section 8; required shared-image hydration failures are now blocked
-   at the image pipeline (`ImageManager`, Section 7).
-3. **Resolved for definition writes — blank-grid canonicalisation and formula-free rejection are
-   implemented.** A successfully read blank/all-null `SPREADSHEET` grid canonicalises to `[]`
-   with the normal `[]` hash through `SpreadsheetTaskArtifact.normalizeContent()` at construction,
-   persistence and restoration, so literal `null` remains reserved for unavailable content. The
-   write-time artefact-content/hash invariant and formula-free-reference rejection are
-   **Aligned** at the definition-write boundary. The completed-assignment gate remains
-   **Misaligned** until Section 8; required shared-image hydration is **Aligned** through
-   `ImageManager` (Section 7).
-4. **Resolved — a formula-free spreadsheet reference task is rejected at definition write.**
-   `AssignmentDefinitionValidation.validateSharedArtifacts()` rejects it before persistence; it is
-   a definition-write failure, not a student `E`, and no run-time eligibility preflight is added.
-   Blank templates `[]` and blank student formula scoring remain valid. **Aligned.**
-5. **Resolved — required shared-image hydration failures block at the image pipeline (Section 7).**
-   `ImageManager` blocks the run for a required shared reference/template image with no usable
-   source/owning document, a final non-200/network failure or unusable returned hydrated content,
-   and materialises extraction `IMAGE_HYDRATION_FAILED` `E` only for student scope. This
-   contract's definition store still permits a pending `IMAGE`; the completed-assignment artefact
-   gate remains Section 8. **Aligned** for the run-blocking scope; the completion gate is still
-   pending.
 
 ---
 

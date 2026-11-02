@@ -17,15 +17,19 @@ Response mapper: Transport transformations applied by `src/backend/y_controllers
 Frontend service: `src/frontend/src/services/assignmentAssessment/assignmentAssessmentService.ts`
 Frontend Zod: `src/frontend/src/services/assignmentAssessment/assignmentAssessment.zod.ts` (full),
 `src/frontend/src/services/googleClassrooms/classDetail/classDetailService.zod.ts` (partial)
-Frontend read normalisation: `src/frontend/src/services/assignmentAssessment/assignmentReadNormalisation.ts` (implemented pure full/partial entry points, invoked by both read services before their final response parse),
+Frontend read normalisation: `src/frontend/src/services/assignmentAssessment/assignmentReadNormalisation.ts` (pure full/partial entry points, invoked by both read services before their final response parse),
 with item/source validation and corruption construction in `src/frontend/src/services/assignmentAssessment/assignmentReadItemValidation.ts`
 
 Sibling contracts:
 
 - [Contract: ABClass](abclass.md) — ABClass embeds Assignment partials (with `assignmentDefinitionKey` instead of `assignmentDefinition` as a transport transformation).
 - [Contract: AssignmentDefinition](assignment-definition.md) — AssignmentDefinition is embedded inside Assignment as a full or partial definition.
+- [Component Shape: Student Submission](student-submission.md) — Assignment embeds `StudentSubmission[]`, each holding `StudentSubmissionItem`s.
+- [Component Shape: Assessment](assessment.md) — each submission item holds `Assessment` results; the marker, write gate and legacy projection belong to that file.
+- [Component Shape: BaseTaskArtifact](base-task-artifact.md) — each submission item holds a submission-role artifact.
 - [Contract: BackendConfig](backend-config.md) — No direct relationship.
 - [Contract: Reference Data](reference-data.md) — No direct relationship.
+- [Transport envelope](transport-envelope.md) — Assignment API payloads use the shared `apiHandler` envelope; this contract documents only the inner payload.
 
 ---
 
@@ -40,21 +44,21 @@ but are not independently persisted.
 
 Stored via `Assignment.toJSON()` in `00_AssignmentSerialisation.js`.
 
-| #   | Field                       | Type                                   | Persistence            | Transport         | Frontend Zod                                                                        | Notes                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
-| --- | --------------------------- | -------------------------------------- | ---------------------- | ----------------- | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 1   | `courseId`                  | `string`                               | included               | same              | `AssignmentFullSchema.courseId: z.string()`                                         | Google Classroom course ID. Required, never null.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
-| 2   | `assignmentId`              | `string`                               | included               | same              | `AssignmentFullSchema.assignmentId: z.string()`                                     | Google Classroom coursework ID. Required, never null.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
-| 3   | `assignmentName`            | `string`                               | included               | same              | `AssignmentFullSchema.assignmentName: z.string()`                                   | Fetched from Google Classroom at construction via `fetchAssignmentName()` for a newly created assignment. Typed restoration supplies the saved value instead and skips that fetch (see [§Restoration construction and representation mode](#restoration-construction-and-representation-mode-implemented)).                                                                                                                                                                                                                                                                                                              |
-| 4   | `dueDate`                   | `string\|null`                         | included               | same              | `AssignmentFullSchema.dueDate: z.string().nullable()`                               | ISO 8601 string or `null`. Currently always `null` (homework tracker not implemented).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
-| 5   | `updatedAt`                 | `string\|null`                         | included               | same              | `AssignmentFullSchema.updatedAt: z.string().nullable()`                             | ISO 8601 string or `null`. Set via `touchUpdated()`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
-| 6   | `createdAt`                 | `string`                               | included               | same              | `AssignmentFullSchema.createdAt: z.string()`                                        | ISO 8601 string. Set from Google Classroom `creationTime` at construction for a new assignment, or from the saved metadata during typed restoration.                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
-| 7   | `documentType`              | `string\|null`                         | included (extracted)   | same              | `AssignmentFullSchema.documentType: z.string().nullable()`                          | `'SLIDES'` \| `'SHEETS'` or `null`. Extracted from embedded `assignmentDefinition` via `_extractFullDefinitionFields()`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
-| 8   | `referenceDocumentId`       | `string\|null`                         | included (extracted)   | same              | `AssignmentFullSchema.referenceDocumentId: z.string().nullable()`                   | Extracted from embedded `assignmentDefinition`. `null` when definition is partial.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
-| 9   | `templateDocumentId`        | `string\|null`                         | included (extracted)   | same              | `AssignmentFullSchema.templateDocumentId: z.string().nullable()`                    | Extracted from embedded `assignmentDefinition`. `null` when definition is partial.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
-| 10  | `tasks`                     | `Record<string, TaskDefinition>\|null` | included (extracted)   | same              | `AssignmentFullSchema.tasks: z.record(z.string(), TaskDefinitionSchema).nullable()` | Extracted from embedded `assignmentDefinition`. `null` when definition is partial. Only in full shape.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
-| 11  | `submissions`               | `StudentSubmission[]`                  | included               | same              | `AssignmentFullSchema.submissions: z.array(StudentSubmissionSchema)`                | Array of `StudentSubmission.toJSON()` objects. Empty array when no submissions.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
-| 12  | `assignmentDefinition`      | `AssignmentDefinition`                 | included               | same              | `AssignmentFullSchema.assignmentDefinition: AssignmentDefinitionSchema`             | Full definition object via `AssignmentDefinition.toJSON()`. Always included in full persistence.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
-| 13  | `assessmentContractVersion` | `1\|null\|unknown (legacy)\|omitted`   | included conditionally | `1\|null` on read | `AssignmentFullSchema.assessmentContractVersion: z.union([z.literal(1), z.null()])` | New completed results are validated and stamped `1` at the Section 8 write boundary (see [Known discrepancies](#known-discrepancies) item 26). Legacy records re-emit the exact stored marker presence/value opaquely, including an absent marker or an unsupported value; ordinary persistence never certifies or rewrites it. The full read serializer emits explicit `null` after legacy reassessment projection. The full read schema requires the read-wire field and the `getAssignment` service now runs the read normaliser before its final parse, so the marker-versus-result contract is enforced at runtime. |
+| #   | Field                       | Type                                   | Persistence            | Transport         | Frontend Zod                                                                        | Notes                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| --- | --------------------------- | -------------------------------------- | ---------------------- | ----------------- | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1   | `courseId`                  | `string`                               | included               | same              | `AssignmentFullSchema.courseId: z.string()`                                         | Google Classroom course ID. Required, never null.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| 2   | `assignmentId`              | `string`                               | included               | same              | `AssignmentFullSchema.assignmentId: z.string()`                                     | Google Classroom coursework ID. Required, never null.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| 3   | `assignmentName`            | `string`                               | included               | same              | `AssignmentFullSchema.assignmentName: z.string()`                                   | Fetched from Google Classroom at construction via `fetchAssignmentName()` for a newly created assignment. Typed restoration supplies the saved value instead and skips that fetch (see [§ Restoration construction and representation mode](#restoration-construction-and-representation-mode)).                                                                                                                                                                                                                                                                                                                                                                         |
+| 4   | `dueDate`                   | `string\|null`                         | included               | same              | `AssignmentFullSchema.dueDate: z.string().nullable()`                               | ISO 8601 string or `null`. Currently always `null` (homework tracker not implemented).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| 5   | `updatedAt`                 | `string\|null`                         | included               | same              | `AssignmentFullSchema.updatedAt: z.string().nullable()`                             | ISO 8601 string or `null`. Set via `touchUpdated()`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| 6   | `createdAt`                 | `string`                               | included               | same              | `AssignmentFullSchema.createdAt: z.string()`                                        | ISO 8601 string. Set from Google Classroom `creationTime` at construction for a new assignment, or from the saved metadata during typed restoration.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| 7   | `documentType`              | `string\|null`                         | included (extracted)   | same              | `AssignmentFullSchema.documentType: z.string().nullable()`                          | `'SLIDES'` \| `'SHEETS'` or `null`. Extracted from embedded `assignmentDefinition` via `_extractFullDefinitionFields()`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| 8   | `referenceDocumentId`       | `string\|null`                         | included (extracted)   | same              | `AssignmentFullSchema.referenceDocumentId: z.string().nullable()`                   | Extracted from embedded `assignmentDefinition`. `null` when definition is partial.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| 9   | `templateDocumentId`        | `string\|null`                         | included (extracted)   | same              | `AssignmentFullSchema.templateDocumentId: z.string().nullable()`                    | Extracted from embedded `assignmentDefinition`. `null` when definition is partial.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| 10  | `tasks`                     | `Record<string, TaskDefinition>\|null` | included (extracted)   | same              | `AssignmentFullSchema.tasks: z.record(z.string(), TaskDefinitionSchema).nullable()` | Extracted from embedded `assignmentDefinition`. `null` when definition is partial. Only in full shape.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| 11  | `submissions`               | `StudentSubmission[]`                  | included               | same              | `AssignmentFullSchema.submissions: z.array(StudentSubmissionSchema)`                | Array of `StudentSubmission.toJSON()` objects. Empty array when no submissions.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| 12  | `assignmentDefinition`      | `AssignmentDefinition`                 | included               | same              | `AssignmentFullSchema.assignmentDefinition: AssignmentDefinitionSchema`             | Full definition object via `AssignmentDefinition.toJSON()`. Always included in full persistence.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| 13  | `assessmentContractVersion` | `1\|null\|unknown (legacy)\|omitted`   | included conditionally | `1\|null` on read | `AssignmentFullSchema.assessmentContractVersion: z.union([z.literal(1), z.null()])` | New completed results are validated and stamped `1` at the completed-write boundary (see [Component Shape: Assessment § Write boundary](assessment.md#write-boundary-preflight-before-any-write)). Legacy records re-emit the exact stored marker presence/value opaquely, including an absent marker or an unsupported value; ordinary persistence never certifies or rewrites it. The full read serializer emits explicit `null` after legacy reassessment projection. The full read schema requires the read-wire field and the `getAssignment` service runs the read normaliser before its final parse, so the marker-versus-result contract is enforced at runtime. |
 
 Key notes:
 
@@ -62,29 +66,30 @@ Key notes:
 - `_hydrationLevel` is a runtime-only flag and never persisted.
 - Fields 7–10 are extracted from the embedded definition by `_extractFullDefinitionFields(definitionJson)`, which reads `documentType`, `referenceDocumentId`, `templateDocumentId`, and `tasks` from the definition's `toJSON()` output.
 - The `Assignment` class is a facade (`index.js`) that delegates serialisation to `AssignmentSerialisation` (`00_AssignmentSerialisation.js`).
+- Legacy persistence is opaque: a record whose `assessmentContractVersion` is absent, `null` or unsupported keeps its historical submission body and exact marker presence/value, and `toJSON()`/`toPartialJSON()` re-emit that state unchanged. They never emit projected reassessment `E` placeholders. See [Component Shape: Assessment § Legacy reassessment read projection](assessment.md#legacy-reassessment-read-projection).
 
 ### Partial variant — `Assignment.toPartialJSON()`
 
 Not independently persisted, but used for in-memory partial representations and
 for embedding inside `ABClass.assignments[]`. Behaviour differs from `toJSON()`:
 
-| #   | Field                       | Type                                 | Persistence            | Transport                             | Frontend Zod                                                                           | Notes                                                                                                                                                                                                                                                                                                                                                                                                                                 |
-| --- | --------------------------- | ------------------------------------ | ---------------------- | ------------------------------------- | -------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | `courseId`                  | `string`                             | same as full           | same                                  | stripped by `AssignmentPartialSchema`                                                  | Present in wire format; Zod `.strip()` default removes it (not included in schema).                                                                                                                                                                                                                                                                                                                                                   |
-| 2   | `assignmentId`              | `string`                             | same as full           | same                                  | `AssignmentPartialSchema.assignmentId: z.string()`                                     |                                                                                                                                                                                                                                                                                                                                                                                                                                       |
-| 3   | `assignmentName`            | `string`                             | same as full           | same                                  | stripped by `AssignmentPartialSchema`                                                  | Present in wire format; Zod `.strip()` default removes it.                                                                                                                                                                                                                                                                                                                                                                            |
-| 4   | `dueDate`                   | `string\|null`                       | same as full           | same                                  | `AssignmentPartialSchema.dueDate: z.string().nullable().optional()`                    |                                                                                                                                                                                                                                                                                                                                                                                                                                       |
-| 5   | `updatedAt`                 | `string\|null`                       | same as full           | same                                  | `AssignmentPartialSchema.updatedAt: z.string().nullable()`                             |                                                                                                                                                                                                                                                                                                                                                                                                                                       |
-| 6   | `createdAt`                 | `string`                             | same as full           | same                                  | `AssignmentPartialSchema.createdAt: z.string()`                                        |                                                                                                                                                                                                                                                                                                                                                                                                                                       |
-| 7   | `documentType`              | `string\|null`                       | same as full           | same                                  | `AssignmentPartialSchema.documentType: z.string().nullable()`                          | Only root-level field extracted in partial shape (via `_extractPartialRootFields()`).                                                                                                                                                                                                                                                                                                                                                 |
-| 8   | `referenceDocumentId`       | —                                    | omitted                | omitted                               | —                                                                                      | Not extracted in partial shape.                                                                                                                                                                                                                                                                                                                                                                                                       |
-| 9   | `templateDocumentId`        | —                                    | omitted                | omitted                               | —                                                                                      | Not extracted in partial shape.                                                                                                                                                                                                                                                                                                                                                                                                       |
-| 10  | `tasks`                     | —                                    | omitted                | omitted                               | —                                                                                      | Not extracted in partial shape.                                                                                                                                                                                                                                                                                                                                                                                                       |
-| 11  | `submissions`               | `StudentSubmissionPartial[]`         | included               | transformed                           | `AssignmentPartialSchema.submissions: z.array(StudentSubmissionPartialSchema)`         | Submissions via `StudentSubmission.toPartialJSON()` — artifact content redacted; numeric/`'N'` assessment reasoning stripped, `'E'` reasoning/cause retained.                                                                                                                                                                                                                                                                         |
-| 12  | `assignmentDefinition`      | `AssignmentDefinitionPartial`        | included               | replaced by `assignmentDefinitionKey` | `AssignmentPartialSchema.assignmentDefinitionKey: z.string()`                          | See Transport section for the transformation. `getABClass` endpoint replaces this with just the key.                                                                                                                                                                                                                                                                                                                                  |
-| 13  | `assessmentContractVersion` | `1\|null\|unknown (legacy)\|omitted` | included conditionally | `1\|null` on class read               | `AssignmentPartialSchema.assessmentContractVersion: z.union([z.literal(1), z.null()])` | New completed results are validated and stamped `1` at the Section 8 write boundary (see [Known discrepancies](#known-discrepancies) item 26). Legacy records re-emit the exact stored marker presence/value opaquely; the class read projection emits explicit `null` beside detached reassessment `E`. The partial read schema requires the field and the `getABClass` service now runs the read normaliser before its final parse. |
+| #   | Field                       | Type                                 | Persistence            | Transport                             | Frontend Zod                                                                           | Notes                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| --- | --------------------------- | ------------------------------------ | ---------------------- | ------------------------------------- | -------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | `courseId`                  | `string`                             | same as full           | same                                  | stripped by `AssignmentPartialSchema`                                                  | Present in wire format; Zod `.strip()` default removes it (not included in schema).                                                                                                                                                                                                                                                                                                                                                                                                   |
+| 2   | `assignmentId`              | `string`                             | same as full           | same                                  | `AssignmentPartialSchema.assignmentId: z.string()`                                     |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| 3   | `assignmentName`            | `string`                             | same as full           | same                                  | stripped by `AssignmentPartialSchema`                                                  | Present in wire format; Zod `.strip()` default removes it.                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| 4   | `dueDate`                   | `string\|null`                       | same as full           | same                                  | `AssignmentPartialSchema.dueDate: z.string().nullable().optional()`                    |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| 5   | `updatedAt`                 | `string\|null`                       | same as full           | same                                  | `AssignmentPartialSchema.updatedAt: z.string().nullable()`                             |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| 6   | `createdAt`                 | `string`                             | same as full           | same                                  | `AssignmentPartialSchema.createdAt: z.string()`                                        |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| 7   | `documentType`              | `string\|null`                       | same as full           | same                                  | `AssignmentPartialSchema.documentType: z.string().nullable()`                          | Only root-level field extracted in partial shape (via `_extractPartialRootFields()`).                                                                                                                                                                                                                                                                                                                                                                                                 |
+| 8   | `referenceDocumentId`       | —                                    | omitted                | omitted                               | —                                                                                      | Not extracted in partial shape.                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| 9   | `templateDocumentId`        | —                                    | omitted                | omitted                               | —                                                                                      | Not extracted in partial shape.                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| 10  | `tasks`                     | —                                    | omitted                | omitted                               | —                                                                                      | Not extracted in partial shape.                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| 11  | `submissions`               | `StudentSubmissionPartial[]`         | included               | transformed                           | `AssignmentPartialSchema.submissions: z.array(StudentSubmissionPartialSchema)`         | Submissions via `StudentSubmission.toPartialJSON()` — artifact content redacted; numeric/`'N'` assessment reasoning stripped, `'E'` reasoning/cause retained.                                                                                                                                                                                                                                                                                                                         |
+| 12  | `assignmentDefinition`      | `AssignmentDefinitionPartial`        | included               | replaced by `assignmentDefinitionKey` | `AssignmentPartialSchema.assignmentDefinitionKey: z.string()`                          | See Transport section for the transformation. `getABClass` endpoint replaces this with just the key.                                                                                                                                                                                                                                                                                                                                                                                  |
+| 13  | `assessmentContractVersion` | `1\|null\|unknown (legacy)\|omitted` | included conditionally | `1\|null` on class read               | `AssignmentPartialSchema.assessmentContractVersion: z.union([z.literal(1), z.null()])` | New completed results are validated and stamped `1` at the completed-write boundary (see [Component Shape: Assessment § Write boundary](assessment.md#write-boundary-preflight-before-any-write)). Legacy records re-emit the exact stored marker presence/value opaquely; the class read projection emits explicit `null` beside detached reassessment `E`. The partial read schema requires the field and the `getABClass` service runs the read normaliser before its final parse. |
 
-### Restoration construction and representation mode (Implemented)
+### Restoration construction and representation mode
 
 Typed restoration constructs an `Assignment` through its real constructor rather than
 `Object.create(Assignment.prototype)`. The constructor takes an optional fourth argument:
@@ -97,7 +102,7 @@ new Assignment(courseId, assignmentId, assignmentDefinition, {
 });
 ```
 
-| Aspect                       | Implemented behaviour                                                                                                                                                                                                                                                                                                                                                   |
+| Aspect                       | Behaviour                                                                                                                                                                                                                                                                                                                                                               |
 | ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Saved metadata               | `_baseFromJSON()` passes the stored `assignmentName` and `createdAt`, so restoration never calls Google Classroom. The presence of the `restoration` object (not the truthiness of the name) selects this path; a new three-argument construction still fetches the Classroom name/creation time.                                                                       |
 | Saved name validity          | The saved `assignmentName` must be a string. A `null`, `undefined` or other non-string saved name throws `TypeError` from the constructor before any Classroom access; there is no generated fallback and the exception propagates unhandled. Valid strings, including a blank string, are preserved verbatim. See [Known discrepancies](#known-discrepancies) item 22. |
@@ -154,15 +159,15 @@ when no persisted document exists.
 Key contract notes:
 
 - The response is built from `Assignment.toReadJSON()`, which delegates to `AssignmentSerialisation.toReadJSON()` and then calls `AssignmentDefinition.toJSON()` on the embedded definition. The `readRehydrateAssignment` handler internally performs full hydration (resolving partial definitions via `getDefinitionByKey`), so a throw only occurs when the authoritative record is itself unresolvable or partial.
-- `getAssignment_()` selects the read serializer, not the persistence serializer. A stored record with `assessmentContractVersion: 1` is restored through `AssignmentCurrentRestoration` (see [§Marker-1 CURRENT restoration](#marker-1-current-restoration-implemented)); a marker-less, `null` or unsupported record keeps an opaque legacy snapshot. The read serializer emits detached reassessment `E` submissions and `assessmentContractVersion: null` for that legacy snapshot, and `1` for a current result. Ordinary `toJSON()`/`toPartialJSON()` continue to re-emit the opaque stored body and marker unchanged.
-- The backend handler/controller read-serializer wiring is implemented and the scoped API integration review is clean. `AssignmentFullSchema` requires `assessmentContractVersion: 1 | null`, and `getAssignment()` runs `normaliseAssignmentRead()` before its final response parse, so item isolation, the marker/reassessment consistency check and the defensive same-payload coverage fallback are active at runtime. See [Known discrepancies](#known-discrepancies).
+- `getAssignment_()` selects the read serializer, not the persistence serializer. A stored record with `assessmentContractVersion: 1` is restored through `AssignmentCurrentRestoration` (see [Component Shape: Assessment § Marker-1 CURRENT restoration](assessment.md#marker-1-current-restoration)); a marker-less, `null` or unsupported record keeps an opaque legacy snapshot. The read serializer emits detached reassessment `E` submissions and `assessmentContractVersion: null` for that legacy snapshot, and `1` for a current result. Ordinary `toJSON()`/`toPartialJSON()` continue to re-emit the opaque stored body and marker unchanged.
+- `AssignmentFullSchema` requires `assessmentContractVersion: 1 | null`, and `getAssignment()` runs `normaliseAssignmentRead()` before its final response parse, so item isolation, the marker/reassessment consistency check and the defensive same-payload coverage fallback are active at runtime. See [Known discrepancies](#known-discrepancies).
 - `progressTracker` is stripped from the response at the transport boundary as defence-in-depth (already omitted by the read serialiser).
 - `DateUtils.deepConvertDates()` is called on the entire response before returning, because `google.script.run` prohibits `Date` objects in return values.
 - Returns `null` when no persisted assignment document exists for the given `courseId`/`assignmentId` pair (`AssignmentNotFoundError` caught at the transport boundary).
 
 #### `getAssignment` — Partial variant via ABClass transport
 
-When assignments are embedded inside the `getABClass` response (see [Contract: ABClass §getABClass](abclass.md#getabclass-read)), the shape differs from `Assignment.toPartialJSON()`:
+When assignments are embedded inside the `getABClass` response (see [Contract: ABClass § getABClass](abclass.md#getabclass-read)), the shape differs from `Assignment.toPartialJSON()`:
 
 > **Partial variant (ABClass transport):** Same as `Assignment.toPartialJSON()` except:
 >
@@ -171,7 +176,7 @@ When assignments are embedded inside the `getABClass` response (see [Contract: A
 > - `courseId` and `assignmentName` are present in the wire format but stripped by Zod `.strip()` on `AssignmentPartialSchema`.
 > - A current result carries `assessmentContractVersion: 1`. A legacy record's submissions are replaced with the detached partial reassessment projection and `assessmentContractVersion` is set to `null` before the definition key replacement. `AssignmentPartialSchema` requires `assessmentContractVersion: 1 | null`, and `getABClass()` runs `normaliseClassRead()` before its final response parse.
 
-This transformation is performed by `ABClassResponseMapper._toReadView()` — it is NOT part of `AssignmentSerialisation` and does not affect the `assign_full_*` persistence shape.
+This transformation is performed by `ABClassResponseMapper._toReadView()` — it is NOT part of `AssignmentSerialisation` and does not affect the `assign_full_*` persistence shape. The full class-read behaviour, including coverage and null-parent isolation, is documented in [Contract: ABClass § getABClass](abclass.md#getabclass-read).
 
 ### `startAssessmentRun` (write)
 
@@ -208,139 +213,29 @@ Key contract notes:
 
 ## Sub-entities
 
+This contract embeds three component shapes, each documented in its own file. The
+`Feedback` record is small enough to stay inline here.
+
 ### StudentSubmission
 
-Backend model: `src/backend/Models/StudentSubmission/index.js` (submission facade; item model in `src/backend/Models/StudentSubmission/00_StudentSubmissionItem.js`)
-Frontend Zod: `src/frontend/src/services/assignmentAssessment/assignmentAssessment.zod.ts` → `StudentSubmissionSchema`
-
-Represents a single student's submission for an assignment, containing submission
-items keyed by task ID.
-
-`StudentSubmission.toJSON()` emits:
-
-| Field          | Type                                    | Backend toJSON() | Frontend Zod                                        | Notes                                                                                                                                                                                                                                                                                                                                                                                                                 |
-| -------------- | --------------------------------------- | ---------------- | --------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `studentId`    | `string`                                | Always emitted   | `z.string()`                                        | Student's unique ID from Google Classroom.                                                                                                                                                                                                                                                                                                                                                                            |
-| `studentName`  | `string\|null`                          | Always emitted   | `z.string().nullable()`                             | Student's full name, or `null` per the constructor default (`studentName = null`). The full schema was aligned to the backend's nullable emission; the partial schema was already `z.string().nullable()`. See [Full submission studentName nullability alignment](#full-submission-studentname-nullability-alignment-implemented). Retain the field: historical notes calling it temporary do not authorise removal. |
-| `assignmentId` | `string`                                | Always emitted   | `z.string()`                                        | The parent assignment ID.                                                                                                                                                                                                                                                                                                                                                                                             |
-| `documentId`   | `string\|null`                          | Always emitted   | `z.string().nullable().optional()`                  | The Drive file ID of the student's submission document. Null for students who never opened the assignment; `.optional()` tolerates the key being omitted entirely from real payloads (see key note below).                                                                                                                                                                                                            |
-| `items`        | `Record<string, StudentSubmissionItem>` | Always emitted   | `z.record(z.string(), StudentSubmissionItemSchema)` | Dictionary of submission items keyed by taskId. Empty object when no items.                                                                                                                                                                                                                                                                                                                                           |
-| `createdAt`    | `string`                                | Always emitted   | `z.string()`                                        | ISO 8601 string. Set at construction.                                                                                                                                                                                                                                                                                                                                                                                 |
-| `updatedAt`    | `string`                                | Always emitted   | `z.string()`                                        | ISO 8601 string with monotonic counter suffix (e.g. `"2025-09-10T12:30:00Z#2"`). Set via `touchUpdated()`.                                                                                                                                                                                                                                                                                                            |
-
-**Partial variant** (`StudentSubmission.toPartialJSON()`): Same as `toJSON()` except:
-
-- Items use `StudentSubmissionItem.toPartialJSON()` (artifact content/contentHash set to `null`; numeric and `'N'` assessment reasoning stripped; `'E'` entries retain `{ score, reasoning, error }`).
-
-**Frontend partial schema** (`StudentSubmissionPartialSchema` in `classDetailService.zod.ts`):
-
-| Field          | Type                                                       | Notes                                                                                                                   |
-| -------------- | ---------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| `studentId`    | `z.string()`                                               |                                                                                                                         |
-| `studentName`  | `z.string().nullable()`                                    |                                                                                                                         |
-| `assignmentId` | `z.string()`                                               |                                                                                                                         |
-| `documentId`   | `z.string().nullable().optional()`                         | Tolerates absent or `null` — Google Classroom may omit the Drive reference for students who never opened an assignment. |
-| `items`        | `z.record(z.string(), StudentSubmissionItemPartialSchema)` |                                                                                                                         |
-| `createdAt`    | `z.string()`                                               |                                                                                                                         |
-| `updatedAt`    | `z.string()`                                               |                                                                                                                         |
-
-Key notes:
-
-- The `updatedAt` monotonic counter suffix (e.g., `...Z#2`) is a valid `z.string()` match; Zod does not enforce ISO format, only the string type.
-- `documentId` is `.nullable().optional()` in both the full (`StudentSubmissionSchema`) and partial (`StudentSubmissionPartialSchema`) frontend schemas. The optionality tolerates both `null` values and the key being omitted entirely from real payloads, even though both `StudentSubmission.toJSON()` and `toPartialJSON()` always emit it.
-- `upsertItemFromExtraction()` preserves an explicit `pageId: null` when the parent submission document is known, falls back to the task definition's page ID when the extraction omits the property or supplies `undefined`, and retains an explicit student page ID. The artefact document ID comes from the extraction when supplied, otherwise from the parent submission. See [§Acquisition and extraction outcomes](#acquisition-and-extraction-outcomes-implemented).
+See [Component Shape: Student Submission](student-submission.md). That file owns the
+`StudentSubmission` and `StudentSubmissionItem` field tables, the partial redaction
+rules, the acquisition/extraction and image-hydration outcomes, completed submission
+coverage, the trustworthy-identity/item-isolation rules and the marker-1 item
+restoration rules.
 
 ### StudentSubmissionItem
 
-Backend model: `src/backend/Models/StudentSubmission/00_StudentSubmissionItem.js` → `StudentSubmissionItem`
-Frontend Zod (full): `src/frontend/src/services/assignmentAssessment/assignmentAssessment.zod.ts` → `StudentSubmissionItemSchema`
-Frontend Zod (partial): `src/frontend/src/services/googleClassrooms/classDetail/classDetailService.zod.ts` → `StudentSubmissionItemPartialSchema`
-
-Represents a single task's submission within a student submission. Contains the
-submitted artifact, assessments, and feedback.
-
-`StudentSubmissionItem.toJSON()` emits:
-
-| Field         | Type                         | Backend toJSON()                     | Frontend Zod (full)                                                                | Notes                                                                                                                                                                                                                                           |
-| ------------- | ---------------------------- | ------------------------------------ | ---------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `id`          | `string`                     | Always emitted                       | `z.string()`                                                                       | Derived stable UID prefixed with `ssi_`.                                                                                                                                                                                                        |
-| `taskId`      | `string`                     | Always emitted                       | `z.string()`                                                                       | References the task definition ID.                                                                                                                                                                                                              |
-| `artifact`    | `BaseTaskArtifact`           | Always emitted (`artifact.toJSON()`) | `BaseTaskArtifactSchema`                                                           | The submission artifact (role=`'submission'`).                                                                                                                                                                                                  |
-| `assessments` | `Record<string, Assessment>` | Always emitted                       | `z.record(z.string(), AssessmentSchema)`                                           | Record keyed by criterion. Empty object when no assessments. Current producers write only `completeness`, `accuracy` and `spag`; `SheetsAssessor` no longer persists a `formulaComparison` entry (cell-reference feedback stays in `feedback`). |
-| `feedback`    | `Record<string, Feedback>`   | Always emitted                       | `z.record(z.string(), z.looseObject({ type: z.string(), createdAt: z.string() }))` | Record keyed by feedback type. Empty object when no feedback.                                                                                                                                                                                   |
-
-**Partial variant** (`StudentSubmissionItem.toPartialJSON()`): Same as `toJSON()` except:
-
-- `artifact` uses `artifact.toPartialJSON()` (content/contentHash set to `null`).
-- `assessments` uses `_stripAssessmentReasoning()`: numeric and `'N'` entries keep only `score`; an `'E'` entry with its cause is preserved intact, retaining `reasoning` and `error`.
-
-**Frontend partial schema** (`StudentSubmissionItemPartialSchema`):
-
-| Field         | Type                                                            | Notes                                                                                                                                                                           |
-| ------------- | --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `id`          | `z.string()`                                                    |                                                                                                                                                                                 |
-| `taskId`      | `z.string()`                                                    |                                                                                                                                                                                 |
-| `artifact`    | `BaseTaskArtifactPartialSchema`                                 | Content and contentHash omitted.                                                                                                                                                |
-| `assessments` | `z.record(z.string(), PartialAssessmentEntrySchema).optional()` | Provided entries are validated by the shared `partialAssessmentResultSchema`: numeric/`'N'` score-only, or `'E'` with `reasoning` and `error`. `.optional()` tolerates absence. |
-| `feedback`    | `z.record(z.string(), z.unknown()).optional()`                  | Loose type tolerates any feedback structure.                                                                                                                                    |
-
-Key notes:
-
-- `setError(stage, code)` replaces all three canonical criteria with the catalogue `'E'` result for that stage/code and clears `feedback`; it is the atomic task-wide error primitive. The acquisition, extraction and assessment boundaries now invoke it (Sections 4 and 6). See [§Acquisition and extraction outcomes](#acquisition-and-extraction-outcomes-implemented) and [§LLM assessment outcomes and validated cache reuse](#llm-assessment-outcomes-and-validated-cache-reuse-implemented).
-- `_deriveId()` generates a stable hash from `taskId` + artifact UID (falling back to `contentHash`), truncated to 16 hex characters prefixed with `ssi_`.
-- The `documentId` and `pageId` are intentionally omitted from `StudentSubmissionItem.toJSON()` — the parent submission holds `documentId`, and the artifact contains `pageId`.
+See [Component Shape: Student Submission § Persistence](student-submission.md#persistence).
+The item model, its partial projection and its `setError()` primitive are documented
+there.
 
 ### Assessment
 
-Backend model: `src/backend/Models/Assessment.js`
-Frontend Zod (full consumer, activated): `src/frontend/src/services/assignmentAssessment/assignmentAssessment.zod.ts` → `AssessmentSchema` (aliases `assessmentResultSchema`)
-Frontend Zod (partial consumer, activated): `src/frontend/src/services/googleClassrooms/classDetail/classDetailService.zod.ts` → `PartialAssessmentEntrySchema` (aliases `partialAssessmentResultSchema`)
-Frontend Zod (shared result/cause owner): `src/frontend/src/services/assignmentAssessment/assessmentResult.zod.ts` → `assessmentResultSchema`, `partialAssessmentResultSchema`, `assessmentCauseSchema`
-
-Represents the assessment result for a single criterion (e.g. `'completeness'`,
-`'accuracy'`, `'spag'`). Stored as a value in the `assessments` record on
-`StudentSubmissionItem`.
-
-`Assessment.toJSON()` emits:
-
-| Field       | Type                                     | Backend toJSON()     | Frontend Zod                                                                                                                                                                                                                  | Notes                                                                                                                                                                                                                                                                                |
-| ----------- | ---------------------------------------- | -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `score`     | `number \| 'N' \| 'E'`                   | Always emitted       | Shared `assessmentResultSchema` (consumed by `AssessmentSchema`): `z.union([z.number().min(0).max(5), z.literal('N')])` for the non-E branch, `z.literal('E')` for E. Zod 4 `z.number()` already rejects NaN and `±Infinity`. | Numeric scores must be finite and inclusive 0–5; fractions are valid. `'N'` remains genuine not-attempted/not-applicable evidence. `'E'` is an explicit error result and carries a cause. NaN, `±Infinity` and out-of-range values are rejected by the constructor and `fromJSON()`. |
-| `reasoning` | `string`                                 | Always emitted       | Shared `assessmentResultSchema`: `z.string()` for non-E, `z.string().refine((value) => value.trim().length > 0)` for E.                                                                                                       | Required string for every result. Numeric/`'N'` reasoning may be empty. `E` reasoning must be non-blank; the stored value is preserved verbatim, including surrounding whitespace, and is never trimmed or rewritten.                                                                |
-| `error`     | `{ stage: ErrorStage; code: ErrorCode }` | Emitted only for `E` | Shared `assessmentCauseSchema`: strict discriminated union by `stage`, with the exact catalogue codes below.                                                                                                                  | Non-`E` results must omit `error`; the constructor and `fromJSON()` reject error metadata on numeric/`'N'` results. `toJSON()` emits a detached copy, not the caller's object. No history, timestamp, retry ledger or stack trace is stored.                                         |
-
-Implemented cause catalogue (exact pairs; no raw exception interpolation):
-
-| Stage         | Code                         | Teacher-readable reasoning                                                    |
-| ------------- | ---------------------------- | ----------------------------------------------------------------------------- |
-| `acquisition` | `SOURCE_UNREADABLE`          | The submitted document could not be accessed.                                 |
-| `acquisition` | `UNSUPPORTED_DOCUMENT`       | The submitted attachment is not a supported document for this assignment.     |
-| `extraction`  | `SOURCE_CONTENT_UNAVAILABLE` | No source content could be extracted for this task.                           |
-| `extraction`  | `PARSE_FAILED`               | The submitted work could not be parsed for this task.                         |
-| `extraction`  | `IMAGE_HYDRATION_FAILED`     | The submitted slide image could not be loaded.                                |
-| `assessment`  | `LLM_HTTP_FAILED`            | The assessment service rejected the request.                                  |
-| `assessment`  | `LLM_UNAVAILABLE`            | The assessment service could not complete the request after retries.          |
-| `assessment`  | `LLM_INVALID_RESPONSE`       | The assessment service returned an invalid result.                            |
-| `assessment`  | `LLM_RUN_STOPPED`            | Assessment stopped because the service credentials or endpoint were rejected. |
-| `assessment`  | `ASSESSMENT_FAILED`          | The extracted work could not be assessed.                                     |
-| `validation`  | `CORRUPT_RECORD`             | The stored assessment data for this task is invalid. Reassess the assignment. |
-| `validation`  | `REASSESSMENT_REQUIRED`      | Reassessment required                                                         |
-
-**Partial variant**: In `StudentSubmissionItem.toPartialJSON()`, `_stripAssessmentReasoning()` keeps numeric and `'N'` entries score-only but preserves an `'E'` entry with its `reasoning` and `error`. The shared `partialAssessmentResultSchema` validates this union.
-
-| Assessment kind | Partial entry                      | Notes                                                                                      |
-| --------------- | ---------------------------------- | ------------------------------------------------------------------------------------------ |
-| Numeric         | `{ score: number }`                | Heavy reasoning remains stripped for successful numeric results.                           |
-| `N`             | `{ score: 'N' }`                   | Genuine not-attempted evidence stays score-only.                                           |
-| `E`             | `{ score: 'E', reasoning, error }` | A task failure must not lose its explanation when the item is embedded in a class partial. |
-
-Key notes:
-
-- `new Assessment(score, reasoning, error)` and `Assessment.fromJSON(json)` validate the union. They reject NaN/`±Infinity`, numeric scores outside 0–5, `E` without a valid cause or with blank reasoning, malformed causes, non-string reasoning, and `error` metadata on numeric/`'N'` results.
-- `Assessment.createError(stage, code)` constructs an `E` result using the catalogue's canonical reasoning; an unknown stage/code pair throws. A caller may also construct `E` directly with the same valid cause and its own non-blank reasoning.
-- `fromJSON()` ignores unrelated extra fields but still validates `score`, `reasoning` and `error`; it never silently repairs an invalid result.
-- The assessment-stage LLM producer uses `setError('assessment', code)` for `LLM_INVALID_RESPONSE`, `LLM_HTTP_FAILED`, `LLM_UNAVAILABLE` and `LLM_RUN_STOPPED`, replacing all three criteria atomically with the catalogue reasoning. That producer adds no field to this shape, no catalogue entry and no change to the validators; see [§LLM assessment outcomes and validated cache reuse](#llm-assessment-outcomes-and-validated-cache-reuse-implemented).
-- `AssessmentSchema` aliases `assessmentResultSchema` and `PartialAssessmentEntrySchema` aliases `partialAssessmentResultSchema`, so both read schemas enforce the finite fractional 0–5 range, the `'E'` branch and the non-blank E reasoning refinement. Both read services run the read normaliser, so the contextual item/source checks are active at runtime; see [Known discrepancies](#known-discrepancies).
+See [Component Shape: Assessment](assessment.md). That file owns the `Assessment` field
+table, the cause catalogue, the LLM assessment outcomes and validated cache reuse, the
+completed-write gate, the `assessmentContractVersion` marker, the legacy reassessment
+read projection and marker-1 CURRENT restoration.
 
 ### Feedback
 
@@ -377,45 +272,15 @@ Key notes:
 
 ### BaseTaskArtifact
 
-See [Contract: AssignmentDefinition §Sub-entity BaseTaskArtifact](assignment-definition.md#sub-entity-basetaskartifact). This contract's
-`StudentSubmissionItem.artifact` uses the same shape, with `role` set to `'submission'`.
-
-The full and partial schemas on the frontend are:
-
-- **Full** (`BaseTaskArtifactSchema` in `assignmentAssessment.zod.ts`): discriminated union by `type` — `TEXT`/`TABLE`/`IMAGE` have `content: string | null`; `SPREADSHEET` has `content: Array<Array<string | number | null>> | null`; `base` has `content: unknown`. Common fields: `taskId`, `role`, `pageId`, `documentId`, `uid`, `contentHash` (nullable), `metadata`. The shared `BaseTaskArtifactFields` object validates the two source IDs as required nullable strings (`pageId: z.string().nullable()`, `documentId: z.string().nullable()`); see the implemented alignment below. The parent submission `StudentSubmissionSchema.documentId` validator is deliberately unchanged and remains `.nullable().optional()`.
-- **Partial** (`BaseTaskArtifactPartialSchema` in `classDetailService.zod.ts`): reduced shape with `taskId`, `role`, `pageId` (nullable optional), `documentId` (nullable optional), `metadata` (optional), `uid`, `type`. `content` and `contentHash` are omitted entirely (set to `null` by `toPartialJSON()`).
-
-> **Status: Implemented (issue #19).** The full frontend `BaseTaskArtifactFields`
-> object in `assignmentAssessment.zod.ts` validates `pageId` and `documentId` as
-> required nullable strings (`z.string().nullable()`): both reject a missing key
-> and a non-string value, but accept the `null` source IDs the backend contract
-> permits. Numeric or object IDs and absent artefact fields remain invalid, and
-> types continue to derive from Zod. This was a frontend-only validation
-> alignment: the backend `BaseTaskArtifact` constructor already defaults
-> `pageId`/`documentId` to `null` and `toJSON()`/`toPartialJSON()` always emit
-> them as `string | null`
-> (`src/backend/Models/Artifacts/0_BaseTaskArtifact.js`), so no backend contract
-> change was required. **Parent optionality is unchanged:** the parent submission
-> `StudentSubmissionSchema.documentId` remains `.nullable().optional()` — the
-> optionality tolerates the key being omitted entirely from real payloads even
-> though the backend always emits it (see the `StudentSubmission` key note
-> above). The partial `BaseTaskArtifactPartialSchema` in `classDetailService.zod.ts`
-> likewise still accepts `string | null` via `.nullable().optional()` and is
-> unchanged.
+See [Component Shape: BaseTaskArtifact](base-task-artifact.md). That file owns the
+artifact field table, the concrete artifact types, the partial redaction rules and the
+availability split between the definition store and a completed assignment. This
+contract's `StudentSubmissionItem.artifact` uses the same shape with `role` set to
+`'submission'`.
 
 ---
 
 ## Validation
-
-> **Section 2c frontend read activation (implemented):** `assignmentReadNormalisation.ts`
-> and `assignmentReadItemValidation.ts` now run in both `getAssignment` and `getABClass`
-> services before the final `parseApiResponse` schema parse. Invalid identifiable items
-> are replaced with canonical corruption results; null-parent replacements are canonical
-> base placeholders, marker-null provided entries must already be reassessment E, and
-> safe diagnostics identify malformed result/artefact fields without logging payload data.
-> The obsolete partial-only score declaration was removed; score validation is owned by
-> `assessmentResult.zod.ts`. The schema and service notes below should be read with this
-> activated runtime status rather than their earlier staged-wiring wording.
 
 **Frontend Zod:**
 
@@ -425,32 +290,27 @@ The full and partial schemas on the frontend are:
   - `GetAssignmentRequestSchema` (`.strict()`) — validates `getAssignment` request parameters.
   - `StartAssessmentRunRequestSchema` (`.strict()`) — validates `startAssessmentRun` request parameters.
   - `StartAssessmentRunResponseSchema` — `z.void().nullable()`, accepts `null` from backend envelope.
-  - `StudentSubmissionSchema` — validates full submission shape.
-  - `StudentSubmissionItemSchema` — validates full submission item shape.
-  - `AssessmentSchema` — aliases the shared `assessmentResultSchema` (finite fractional 0–5, `'N'`, or `'E'` with non-blank reasoning and a catalogue cause).
-  - `TaskDefinitionSchema` — validates full task definition shape (cross-ref to AssignmentDefinition contract).
-  - `BaseTaskArtifactSchema` — discriminated union validating artifact by `type`.
   - `AssignmentDefinitionSchema` — validates full definition shape (cross-ref to AssignmentDefinition contract).
+  - `TaskDefinitionSchema` — validates full task definition shape (cross-ref to AssignmentDefinition contract).
+  - `StudentSubmissionSchema`, `StudentSubmissionItemSchema`, `AssessmentSchema` and `BaseTaskArtifactSchema` are re-exported/consumed here; their authoritative documentation lives in the component-shape files.
 
-- `src/frontend/src/services/assignmentAssessment/assessmentResult.zod.ts` (implemented shared result/cause owner; consumed by both read schemas):
+- `src/frontend/src/services/assignmentAssessment/assessmentResult.zod.ts` (shared result/cause owner; consumed by both read schemas):
   - `assessmentCauseSchema` — strict stage/code catalogue union.
   - `assessmentResultSchema` — full `number | 'N' | 'E'` union with finite 0–5 numeric range, required reasoning and `E`-only cause.
   - `partialAssessmentResultSchema` — numeric/`'N'` score-only entries, plus `E` entries retaining reasoning and cause.
 
-- `src/frontend/src/services/assignmentAssessment/assignmentReadNormalisation.ts` (implemented pure full/partial read normaliser; invoked by both read services):
+- `src/frontend/src/services/assignmentAssessment/assignmentReadNormalisation.ts` (pure full/partial read normaliser; invoked by both read services):
   - `normaliseAssignmentRead()` — strict full-root and shared-definition validation, per-item isolation, and the same-payload missing-task defence.
   - `normaliseClassRead()` — strict class/partial roots and per-item isolation of provided entries only.
 
-- `src/frontend/src/services/assignmentAssessment/assignmentReadItemValidation.ts` (implemented adjacent pure owner):
+- `src/frontend/src/services/assignmentAssessment/assignmentReadItemValidation.ts` (adjacent pure owner):
   - `isValidFullItem()` / `isValidPartialItem()` — item, artefact-association and parent-source contextual validation.
   - `corruptItem()` / `itemErrorPath()` — canonical all-three `CORRUPT_RECORD` replacement and safe diagnostic paths.
 
 - `src/frontend/src/services/googleClassrooms/classDetail/classDetailService.zod.ts`:
   - `AssignmentPartialSchema` — validates partial assignment shape as embedded in `getABClass` response, including the required `assessmentContractVersion: 1 | null`.
-  - `StudentSubmissionPartialSchema` — validates partial submission shape.
-  - `StudentSubmissionItemPartialSchema` — validates partial submission item shape (no content; numeric/`'N'` entries score-only; `'E'` entries retain reasoning/cause through the shared schema).
-  - `PartialAssessmentEntrySchema` — aliases the shared `partialAssessmentResultSchema` (score-only numeric/`'N'`, or `'E'` with reasoning and cause).
-  - `BaseTaskArtifactPartialSchema` — validates partial artifact shape (content/contentHash omitted).
+  - `ClassFullSchema`, `ClassFullResponseSchema` — class-level shapes.
+  - `StudentSubmissionPartialSchema`, `StudentSubmissionItemPartialSchema`, `PartialAssessmentEntrySchema` and `BaseTaskArtifactPartialSchema` are consumed here; their authoritative documentation lives in the component-shape files.
 
 **Backend transport validation:**
 
@@ -472,21 +332,12 @@ The full and partial schemas on the frontend are:
 - `Assignment._baseFromJSON()` validates the marker-1 root and authoritative task universe before constructing models. `AssignmentCurrentRestoration` validates raw submission items before constructors, isolates invalid known items and missing known coverage as all-three `CORRUPT_RECORD` `E`, preserves healthy siblings, and restores in the explicitly propagated full or partial mode. Marker-less, `null` and unsupported-marker records are not reconstructed: their historical body and exact marker presence/value are retained as an opaque snapshot, and the read serializer materialises detached reassessment `E` entries through `AssignmentRehydration.projectReassessmentSubmissions()`.
 - `AssignmentController.startAssessmentRun()` validates definition freshness: compares Drive modification timestamps for reference and template documents against stored `referenceLastModified`/`templateLastModified`. Throws `DefinitionStaleError` on mismatch.
 - `Assignment._requireImplementation()` enforces subclass implementation of document-type-specific methods.
-- Student acquisition follows every `StudentSubmissions.list` page before concluding absence; a later-page list failure propagates unchanged. Expected acquisition/extraction source failures become atomic task `E` at the student/task boundary, unknown extraction task IDs warn and are ignored, and known tasks whose extraction failed receive terminal failure items while healthy extracted items remain in flight. See [§Acquisition and extraction outcomes](#acquisition-and-extraction-outcomes-implemented) and [Known discrepancies](#known-discrepancies) items 23–26.
-- A newly created `Assignment` (three-argument construction) makes one Google Classroom coursework call: it throws if `creationTime` is missing, then throws `TypeError` if the fetched title is not a string. No generated name fallback remains. Typed restoration supplies the saved name/creation time and does not fetch; a saved name that is `null`, `undefined` or otherwise not a string throws `TypeError` before any Classroom access, and the exception propagates unhandled. See [§Restoration construction and representation mode](#restoration-construction-and-representation-mode-implemented).
+- Student acquisition follows every `StudentSubmissions.list` page before concluding absence; a later-page list failure propagates unchanged. Expected acquisition/extraction source failures become atomic task `E` at the student/task boundary, unknown extraction task IDs warn and are ignored, and known tasks whose extraction failed receive terminal failure items while healthy extracted items remain in flight. See [Component Shape: Student Submission § Acquisition and extraction outcomes](student-submission.md#acquisition-and-extraction-outcomes).
+- A newly created `Assignment` (three-argument construction) makes one Google Classroom coursework call: it throws if `creationTime` is missing, then throws `TypeError` if the fetched title is not a string. No generated name fallback remains. Typed restoration supplies the saved name/creation time and does not fetch; a saved name that is `null`, `undefined` or otherwise not a string throws `TypeError` before any Classroom access, and the exception propagates unhandled. See [§ Restoration construction and representation mode](#restoration-construction-and-representation-mode).
 - `AssignmentDefinition.toJSON()` throws `TypeError` when `tasks` is an array (partial shape) — callers must ensure full hydration before serialisation.
+- The completed-write gate (`ABClassAssignmentOps.persistAssignmentRun()`) rejects missing task coverage, malformed/incomplete criterion maps, contradictory null-content records, present content without a usable hash, still-pending student IMAGEs and missing/unusable required shared artefacts before marker stamping, serialisation or any collection mutation. See [Component Shape: Assessment § Write boundary](assessment.md#write-boundary-preflight-before-any-write).
 
 ### Known discrepancies
-
-> **Section 2c close-out:** The former frontend gaps G4–G8 below are resolved.
-> Corruption replacement now receives parent source state and creates a canonical
-> null-parent base placeholder; marker-null full/partial records validate only
-> backend-materialised reassessment entries; diagnostics point to safe malformed
-> fields; duplicate partial score declarations were removed in favour of the shared
-> result owner; and adjacent schema comments describe fractional scores and retained
-> E details. Both full and class-detail read services invoke the normaliser and then
-> retain the existing final response parse. The entries below retain their original
-> finding text and now record the resolved disposition.
 
 1. **`Assignment.toPartialJSON()` emits `courseId` and `assignmentName` but frontend `AssignmentPartialSchema` strips them.**
    Frontend `AssignmentPartialSchema` does not include `courseId` or `assignmentName`. Zod's default `.strip()` mode silently removes them. The ABClass transport includes them in the wire format but the frontend resolves assignment context from other sources.
@@ -496,1007 +347,25 @@ The full and partial schemas on the frontend are:
    The ABClassResponseMapper._toReadView() replaces the embedded `assignmentDefinition` object with a `assignmentDefinitionKey` string at the transport boundary. This is **not** part of `Assignment.toPartialJSON()` — it is a transport transformation specific to the `getABClass` endpoint. The frontend resolves definition details from its own `AssignmentDefinitionPartials` registry.
    **Classification: Aligned** — intentional transport-boundary transformation documented in ABClassResponseMapper.
 
-3. **`StudentSubmissionSchema.documentId` and `StudentSubmissionPartialSchema.documentId` are `.nullable().optional()` but the backend always emits the field.**
-   Backend `StudentSubmission.toJSON()` and `StudentSubmission.toPartialJSON()` always include `documentId` (which may be `null`). The frontend schemas tolerate both `null` and an absent field to handle cases where Google Classroom omits the Drive file reference for students who never opened an assignment.
-   **Classification: Aligned** — documented in the partial-vs-full hydration pattern in [rehydration.md](../backend/rehydration.md). The Zod schemas are permissive to handle both backend and Google Classroom edge cases.
-
-4. **`StudentSubmissionPartialSchema.studentName` is `z.string().nullable()` but backend always emits it as a nullable string.**
-   Backend `StudentSubmission.toPartialJSON()` always includes `studentName` (which may be `null` per constructor default). The frontend schema expects `string | null`. Both sides aligned.
-   **Classification: Aligned**.
-
-5. **Full and partial consumer schemas now match the implemented `Assessment` range and `E` union.**
-   `AssessmentSchema` aliases the shared `assessmentResultSchema` and `PartialAssessmentEntrySchema` aliases `partialAssessmentResultSchema`. Both enforce finite fractional 0–5, `'N'`, and `'E'` with non-blank reasoning plus a catalogue cause. A full or partial backend result the shared schema accepts is no longer rejected by the consumer schemas.
-   **Classification: Aligned** — activated in this slice.
-
-6. **`StudentSubmissionItemPartialSchema.assessments` is `.optional()` but backend `toPartialJSON()` always emits it.**
-   Backend `StudentSubmissionItem.toPartialJSON()` always includes `assessments` (even if empty `{}`). The frontend partial schema makes it `.optional()`, allowing the key to be absent. Since the backend always emits it, this only matters if the field is missing due to an unexpected code path.
-   **Classification: Aligned** — defensive tolerance.
-
-7. **`BaseTaskArtifactPartialSchema` omits `content` and `contentHash` entirely.**
-   Backend `BaseTaskArtifact.toPartialJSON()` emits them as `null`. The frontend partial schema simply omits them since null fields are not useful in partial views.
-   **Classification: Aligned** — intentional reduction.
-
-8. **`AssignmentFullResponseSchema` is `AssignmentFullSchema.nullable()`.**
+3. **`AssignmentFullResponseSchema` is `AssignmentFullSchema.nullable()`.**
    Backend `getAssignment_()` returns `null` when no persisted document exists. The frontend schema expects this.
    **Classification: Aligned** — documented contract.
 
-9. **`StudentSubmissionItemSchema.feedback` uses `z.looseObject` while `StudentSubmissionItemPartialSchema.feedback` uses `z.unknown()`.**
-   The full schema validates `type` and `createdAt` as strings, but tolerates extra fields (like `items` for CellReferenceFeedback). The partial schema uses `z.unknown()` for the entire value, accepting any feedback structure.
-   **Classification: Aligned** — intentional per feedback type complexity.
-
-10. **`StudentSubmission.updatedAt` uses a monotonic counter suffix (e.g. `"2025-09-10T12:30:00Z#2"`).**
-    This is not a standard ISO 8601 format. The frontend `StudentSubmissionSchema` uses `z.string()`, which accepts any string, so this passes validation. However, any downstream code that parses this as ISO 8601 will fail on the `#N` suffix.
-    **Classification: Aligned** — the Zod schema is intentionally loose (string), and consuming code is expected to handle the suffix. The monotonic counter is documented in [rehydration.md](../backend/rehydration.md) (§Hydration Guidelines).
-
-11. **`startAssessmentRun` returns `null` and the frontend schema uses `z.void().nullable()`.**
-    Backend returns `null` (no payload on success). The frontend `StartAssessmentRunResponseSchema` is `z.void().nullable()` which accepts both `undefined` (from the envelope's `data ?? null` coercion) and `null`.
-    **Classification: Aligned** — standard pattern for void-response endpoints.
-
-12. **Full `BaseTaskArtifactFields` requires `pageId`/`documentId` as nullable strings, while the partial `BaseTaskArtifactPartialSchema` accepts them as `.nullable().optional()`.**
-    Backend `BaseTaskArtifact.toJSON()` and `BaseTaskArtifact.toPartialJSON()` always emit both source IDs
-    as `pageId`/`documentId` (`string | null`); `toPartialJSON()` redacts only `content` and `contentHash`,
-    so neither ID is ever omitted (`src/backend/Models/Artifacts/0_BaseTaskArtifact.js`). Issue #19
-    deliberately tightened only the full `getAssignment` transport schema
-    (`assignmentAssessment.zod.ts`), which now rejects a missing `pageId`/`documentId` key while still
-    accepting the `null` the backend permits. The class-detail partial schema
-    (`classDetailService.zod.ts`) is intentionally left permissive: its `.optional()` is defensive
-    tolerance at the `getABClass` transport boundary, mirroring the pre-existing optionality of the
-    parent `StudentSubmissionPartialSchema.documentId`, and is not a response to any backend omission.
-    Because the backend always emits both fields, the partial schema accepts an absent key the backend
-    never produces.
-    **Classification: Aligned** — deliberate, scoped asymmetry. The full path is the canonical strict
-    contract; the partial path is unchanged by issue #19 and remains broad pending a separate decision
-    to tighten the class-detail contract.
-
-13. **Partial projection retains `E` reasoning/cause and the partial consumer accepts it.**
-    `StudentSubmissionItem.toPartialJSON()` preserves an `'E'` entry intact (`{ score: 'E', reasoning, error }`) while numeric and `'N'` entries remain `{ score }`. `PartialAssessmentEntrySchema` aliases `partialAssessmentResultSchema`, so a class-embedded `E` validates with its explanation.
-    **Classification: Aligned** — consumer activation and service wiring are complete; see items 14 and 16.
-
-14. **The shared result/cause owner is consumed by both read schemas and both read services run the normaliser.**
-    `services/assignmentAssessment/assessmentResult.zod.ts` is consumed by `assignmentAssessment.zod.ts` and `classDetailService.zod.ts`. `assignmentAssessmentService.getAssignment()` calls `normaliseAssignmentRead()` and `classDetailService.getABClass()` calls `normaliseClassRead()` before their final `parseApiResponse` call, each preceded by a root-only parse. Per-item isolation and contextual source/marker checks are active at runtime.
-    **Classification: Aligned** — resolved in the Section 2c Green slice.
-
-15. **`assessmentContractVersion` is required by both frontend read schemas and enforced contextually.**
-    `AssignmentFullSchema` and `AssignmentPartialSchema` both require `z.union([z.literal(1), z.null()])`, and the normaliser additionally requires marker-null provided entries to be backend-materialised reassessment `E`.
-    **Classification: Aligned** — root presence/type and the contextual check are both active.
-
-16. **Legacy records are opaque and the backend read projection plus browser normalisation are active.**
-    `AssignmentRehydration._rehydrateSubmission()` does not catch, reconstruct or drop non-marker-1 records: the historical body and exact marker presence/value are retained as an opaque snapshot. `AssignmentSerialisation.toJSON()` / `toPartialJSON()` re-emit that snapshot unchanged (no ordinary-save certification), while `toReadJSON()` and `ABClassResponseMapper._toReadView()` substitute detached reassessment `E` placeholders from `02_AssignmentReadProjection.js`. Both read services validate the resulting entries. Completed-write preflight/gates remain later-section work.
-    **Classification: Aligned for the read contract; completed-write gates remain planned** — recorded under [§Write boundary](#write-boundary--preflight-before-any-write-not-implemented).
-
-17. **Corruption replacements reconcile the parent source state (formerly G4).**
-    `corruptItem()` now receives `parentDocumentId`. A null parent produces the canonical base placeholder (null `pageId`/`documentId`/`content`/`contentHash`, empty metadata/feedback); otherwise only individually string-typed source IDs and the partial projection are retained. Replacement construction is deterministic and never generates a hash or reconstructs content.
-    **Classification: Aligned** — resolved; parent source context is threaded from the normaliser.
-
-18. **Marker-null payloads are checked against the materialised reassessment contract (formerly G5).**
-    `isReassessmentItem()` requires all three criteria to be the exact validation `REASSESSMENT_REQUIRED` `E`, and both full and partial item validation require it when `assessmentContractVersion` is `null`. Valid backend-materialised entries are preserved and no legacy graph is synthesised.
-    **Classification: Aligned** — resolved; marker-null success/N entries are isolated as `CORRUPT_RECORD`.
-
-19. **Corruption diagnostics report safe failing field paths (formerly G6).**
-    `itemErrorPath()` reports the artefact, `taskId`, criterion-map or individual criterion path (plus `contentHash` for full artefacts), falling back to the whole-item path only when no narrower safe field is identifiable. An omitted partial `contentHash` is valid redaction, and an arbitrary unexpected assessment key collapses to the criterion-map path rather than entering the log. Diagnostics remain value-free and identifier-bounded.
-    **Classification: Aligned** — resolved; no payload, reasoning, source content or student name is logged.
-
-20. **Duplicate partial score declarations were removed (formerly G7).**
-    `classDetailService.zod.ts` no longer declares `MAX_ASSESSMENT_SCORE`, `PartialAssessmentScoreSchema` or `PartialAssessmentScore`; `PartialAssessmentEntrySchema` aliases the shared result owner. The one cross-module consumer, `tests/synthetic-analysis/syntheticGraphIntegrityAndScenarios.test.ts`, now uses `assessmentScoreSchema` and retains its non-`E` assertions.
-    **Classification: Aligned** — resolved; a single result-schema owner remains.
-
-21. **Adjacent schema comments describe the activated contract (formerly G8).**
-    Comments beside `AssessmentSchema` and the class-detail partial entry declarations now state the fractional 0–5 range, the `'E'` branch and retained partial `E` reasoning/cause.
-    **Classification: Aligned** — resolved; documentation drift removed.
-
-22. **A restored `assignmentName` must be a string; there is no generated fallback (formerly a nullable-name fragility).**
-    The constructor's restoration branch requires `typeof restoration.assignmentName === 'string'` and throws `TypeError` before any Classroom access otherwise, so a stored `null`, `undefined` or other non-string fails loudly and propagates unhandled. The generated `Assignment <assignmentId>` fallback has been deleted, including from the fetched-title path, where `fetchAssignmentName()` throws `TypeError` when the Classroom title is not a string after its single coursework call. Valid strings — including a blank string — and the saved `createdAt` are preserved verbatim, so the normal construction and restoration paths cannot produce a `null` name and `AssignmentFullSchema.assignmentName: z.string()` remains the correct, unwidened contract.
-    **Classification: Aligned** — resolved by the user-directed strict-name contract (no schema widening, no recovery fetch, no fallback). It is no longer `Fragile`: an invalid saved name fails before it can reach persistence or transport.
-
-23. **The acquisition `E` producer emits the canonical base/null-parent placeholder, and marker-1 reads preserve the acquisition cause (formerly a typed-page conflict).**
-    `AssignmentSubmissions._materialiseAcquisitionOutcome()` constructs the placeholder explicitly through the model constructors instead of `upsertItemFromExtraction()` or a `TaskDefinition` round-trip: one `BaseTaskArtifact` per known dictionary task ID with `role: 'submission'`, explicit null `pageId`/`documentId`/`content`/`contentHash`, empty `metadata`, and a deterministic `${taskId}-${studentId}-na-0` UID; `StudentSubmissionItem` then receives `setError('acquisition', code)`. The serialised item is therefore `{ type: 'base', pageId: null, documentId: null, content: null, contentHash: null, metadata: {}, feedback: {} }` with all three acquisition `E` results, matching `AssignmentCurrentRestoration._hasConsistentCurrentSource()`'s null-parent invariant. Persisted marker-1 full and class-embedded partial reads preserve the acquisition stage/code/reasoning for both `SOURCE_UNREADABLE` and `UNSUPPORTED_DOCUMENT`. The earlier typed-artefact/task-reference-page claim described the normal `upsertItemFromExtraction()` model-task path, not the producer that shipped. Proof boundary: the regressions are real caller/store plus `Assignment.fromJSON()` restoration tests with extraction and assessment stubbed and an explicit test-only marker; they are not API-transport, live-storage or completion-stamping evidence.
-    **Classification: Aligned** — resolved by the canonical producer and the persisted full/partial read regressions. Do not reintroduce the `upsertItemFromExtraction()` fallback for null-parent acquisition placeholders.
-
-24. **Source-failure conversion is placed at immediate native access, not at an invented platform-error predicate.**
-    Conversion sits only around the native operation that can raise an expected source-access failure: `DriveApp.getFileById(id).getMimeType()` in `AssignmentSubmissions._processAttachmentForSubmission()`; `SlidesApp.openById()` in `SlidesParserSubmissionMatcher.extractSubmissionArtifacts()`; `SpreadsheetApp.openById()` and the native `sheet.getRange(...)/getFormulas()` reads in `SheetsParser.extractSubmissionArtifacts()`; and the native text/dimension/cell/merge reads in `SlidesParserTableContent`. An ordinary `Error` from those native operations converts to the scoped acquisition/extraction `E`; an actually thrown `TypeError`, `ReferenceError` or non-`Error` value propagates by identity. Internal matching, facade dispatch, bookkeeping, normalisation and mutation run outside the converting catches, so their ordinary failures are not relabelled. There is no exception hierarchy, typed source-error wrapper, message predicate or pipeline-wide guard, and none is proposed. The earlier "every non-`TypeError`/`ReferenceError` `Error` becomes `E`" wording described the removed whole-parser/whole-matcher catches.
-    **Classification: Aligned** — resolved by source-origin catch placement plus ordinary-internal-fault identity tests.
-
-25. **An attachment without a Drive file ID is ignored by design; genuine no-submission requires no supported source and no recorded acquisition failure.**
-    `AssignmentSubmissions._processAttachmentForSubmission()` logs at info level and returns when `attachment?.driveFile?.id` is absent. It records no acquisition failure, so a student whose candidates are absent or all ignored (non-Drive/missing-ID) keeps parent `documentId: null` and an empty item map — the same representation as confirmed no-submission. An ignored candidate does not erase a failure recorded for a Drive candidate: when rejected supported-admission candidates and ignored candidates coexist and no supported source is admitted, the first recorded failure is still materialised as acquisition `E` (item 23). This is the user-settled admission policy, not an unresolved ambiguity: do not materialise `UNSUPPORTED_DOCUMENT` for these attachments and do not change runtime admission. A known student's attachment that does have a Drive ID but fails access or MIME validation still produces the scoped acquisition `E` described in item 23.
-    **Classification: Aligned** — settled by explicit user decision (retain existing ignore behaviour; no-submission only when nothing supported is acquired and no acquisition failure is recorded).
-
-26. **Completion-time marker stamping and completed-write validation are implemented (Section 8).**
-    `ABClassAssignmentOps.persistAssignmentRun()` validates terminal coverage, exact canonical criteria, source consistency and required shared artefacts before projection or mutation. Only after that validation succeeds it sets `assignment.assessmentContractVersion = 1`, then serialises detached full and partial assignment payloads and prepares the prospective full class and partial-registry payloads before the first collection mutation. Both assignment serializers consequently emit marker `1` on newly completed/reassessed results. Legacy snapshots remain opaque: their exact stored body and marker presence/value are re-emitted, and read-only reassessment projections never enter persistence. Storage writes keep the existing full-assignment → class → `abclass_partials` order and are non-transactional.
-    **Classification: Aligned** — the prior marker gap is closed. Completed-write tests exercise validation, marker stamping and prepared projections; they do not establish live GAS or deployment behaviour.
-
-    > Resolved during the Section 8 data-shapes reconciliation (2 November 2026). Origin: the Section 8 completion boundary now owns both validation and marker stamping.
-
-27. **Pending IMAGE and other invalid terminal source states are rejected before completed persistence (Section 8).**
-    The completed-write gate rejects missing task coverage, malformed/incomplete criterion maps, null submission content paired with anything other than permitted all-three acquisition/extraction/validation `E`, present content without a usable hash, and missing/unusable required shared reference/template artefacts. This rejects a still-pending student IMAGE; successful student IMAGE hydration or its scoped `IMAGE_HYDRATION_FAILED` `E` is terminal. Genuine no-submission (null parent document and empty item map) remains valid. The gate runs before marker stamping, serialisation and any collection mutation.
-    **Classification: Aligned** — the Section 8 completion boundary enforces the terminal-result contract. Read-time `CORRUPT_RECORD` handling remains distinct from write-time rejection.
-
-    > Resolved during the Section 8 data-shapes reconciliation (2 November 2026). Origin: completed-run validation was added to the existing persistence owner.
-
-28. **Changed-content invalidation is duplicated owner-locally in `ImageManager`.**
-    `ImageManager._applyHydratedBlob()` clears `item.assessments`/`item.feedback` when hydrated non-null content changes, mirroring the model's `StudentSubmission._mergeExtractedContent()` replacement rule. `ImageTaskArtifact.setContentFromBlob()` exposes no invalidation hook and the item has no callable invalidation primitive, so the manager implements the rule directly; unchanged content preserves the complete snapshots.
-    **Classification: Fragile** — both owners currently agree, but a future change to the model replacement rule would not automatically update the manager. Recommended follow-up: expose one model-owned invalidation primitive and reuse it from the image writeback instead of duplicating the rule. No shape change is implied.
-    > Previously undocumented — surfaced during the 30 October 2026 Section 7 Green data-shapes audit. Origin: the Section 7 writeback slice.
-
-> **Previously undocumented — surfaced during the 25 October 2026 Section 2 Green data-shapes audit.**
-> Origin: the user-approved constructor-based restoration extension in Section 2. Resolved the
-> same day: the user directed deletion of every generated assignment-name fallback, so invalid
-> `null`/missing names now fail with an unhandled exception instead of being preserved or
-> recovered.
-
-## Planned contract additions — explicit Assessment errors and result-format marker (partially implemented)
-
-> **Status: Sections 1–4 and 6–7 implemented; later-section slices remain planned.** Section 1
-> delivered the `Assessment` result/cause primitives, `StudentSubmissionItem.setError()` and
-> partial `E` retention, plus the shared frontend `assessmentResult.zod.ts` schemas. Section 2b
-> delivered marker-1 CURRENT backend restoration (`AssignmentCurrentRestoration`) with raw
-> validation, coverage, null-parent isolation and full/partial mode threading, the opaque legacy
-> persistence snapshot, the backend legacy reassessment read projection
-> (`02_AssignmentReadProjection.js`) behind the sole
-> `AssignmentRehydration.projectReassessmentSubmissions()` entry, and marker emission on both
-> read transports. The Section 2c frontend slice activated the shared result schemas in both read
-> schemas, added the required `assessmentContractVersion: 1 | null` wire field, aligned the full
-> `studentName` validator, delivered the pure read normaliser
-> (`assignmentReadNormalisation.ts` + `assignmentReadItemValidation.ts`) and wired it into both
-> read services. The canonical corpus is regenerated and byte-reproducible. These implemented
-> pieces are recorded in [§Assessment](#assessment), [§StudentSubmissionItem](#studentsubmissionitem),
-> [§Marker-1 CURRENT restoration](#marker-1-current-restoration-implemented),
-> [§Legacy reassessment read projection](#legacy-reassessment-read-projection-implemented)
-> and [§Full and partial item isolation](#full-and-partial-item-isolation-with-trustworthy-identities-implemented).
-> The former review gaps G4–G8 are resolved and the restoration-name fragility is closed by the
-> strict saved-name contract; [Known discrepancies](#known-discrepancies) records their
-> disposition. Section 3 delivered the blank-grid canonicalisation, the
-> definition-write shared-artefact availability rules (owned by
-> [Contract: AssignmentDefinition](assignment-definition.md#definition-artefact-availability-and-pending-image-exception-implemented-at-definition-writes))
-> and removal of the persisted `assessments.formulaComparison` entry. Section 4 delivered the
-> student acquisition/extraction outcomes: pagination-before-absence, the
-> `SOURCE_UNREADABLE`/`UNSUPPORTED_DOCUMENT`/`SOURCE_CONTENT_UNAVAILABLE` producers, terminal
-> failure materialisation for known tasks, and the explicit-null page-ID contract (see
-> [§Acquisition and extraction outcomes](#acquisition-and-extraction-outcomes-implemented)).
-> Section 6 delivered the assessment-stage terminal outcomes and validated cache reuse: live and
-> cached successful bodies share one numeric validator, invalid/HTTP/network/run-stop outcomes
-> replace all three criteria atomically, and a versioned internal cache identity is retained
-> through generic `get`/`put` writeback (see
-> [§LLM assessment outcomes and validated cache reuse](#llm-assessment-outcomes-and-validated-cache-reuse-implemented)).
-> Section 7 delivered the scoped image-hydration outcomes: owner-local URL admission, atomic
-> student-task `IMAGE_HYDRATION_FAILED` materialisation with null content/hash, blocking required
-> shared-image failures, and writeback content/hash validation with changed-content invalidation
-> (see [§Image hydration outcomes](#image-hydration-outcomes-implemented)).
-> Section 8 completed-write preflight/gates and completion-time marker stamping are implemented
-> (see [§Write boundary](#write-boundary--preflight-before-any-write-implemented) and
-> [§assessmentContractVersion result marker](#assessmentcontractversion-result-marker-implemented)).
-> Preview error states (Section 9) remain planned. `PARSE_FAILED` remains a reserved catalogue
-> code with no forced producer. Related companions: [Contract: AssignmentDefinition §Definition artefact
-> availability](assignment-definition.md#definition-artefact-availability-and-pending-image-exception-implemented-at-definition-writes),
-> [Contract: ABClass §Planned embedded result marker and E
-> projections](abclass.md#planned-contract-additions--embedded-result-marker-and-e-projections-implemented),
-> [Frontend Data Analysis Response §Planned preview
-> errors](frontend-data-analysis-response.md#planned-contract-additions--preview-errors-analyser-e-input-implemented).
->
-> `SPEC.md` fixes the backend reassessment projection owner, preview field names,
-> explicit-`E` data-point accounting, blank spreadsheet canonicalisation, definition artefact
-> availability, completed-task coverage and the completion-write preflight; the resolved
-> decisions are recorded below.
-
-### `Assessment` — result/cause primitives (Implemented)
-
-The result union, cause catalogue and constructor/`fromJSON()` validation are implemented in
-`src/backend/Models/Assessment.js` and documented in [§Assessment](#assessment). The shared
-frontend schemas are implemented in `services/assignmentAssessment/assessmentResult.zod.ts`
-and are now consumed by both read schemas (`AssessmentSchema` and
-`PartialAssessmentEntrySchema`).
-
-Implemented primitive:
-
-- **Atomic task-wide failures.** `StudentSubmissionItem.setError(stage, code)` replaces all
-  three canonical criteria with the catalogue `E` result and clears feedback. The acquisition,
-  extraction and assessment boundaries invoke it (Sections 4 and 6); the assessment-stage
-  producer is documented under
-  [§LLM assessment outcomes and validated cache reuse](#llm-assessment-outcomes-and-validated-cache-reuse-implemented).
-
-Remaining planned invariants and staged read rules:
-
-- **Exactly the canonical criteria.** A completed task's `assessments` record contains exactly
-  `completeness`, `accuracy` and `spag`. Internal in-flight items may be incomplete, but
-  completed persistence must reject an incomplete or extra-key record. LLM live and cached
-  successful results already require exactly those three numeric criteria through the shared
-  validator (Section 6); completed-persistence rejection of an incomplete or extra-key record
-  is implemented at the Section 8 write boundary.
-- **Read-time criterion corruption is isolated per item (implemented for marker-1 CURRENT
-  backend restoration).** On both full and partial marker-1 reads,
-  `AssignmentCurrentRestoration` replaces an item whose criterion map is incomplete or contains
-  an extra key with all three validation `CORRUPT_RECORD` `E` entries (same `stage`, `code` and
-  reasoning), preserving healthy sibling items. It does not drop the item or salvage marks.
-  Completed persistence rejecting such a record remains planned. The browser normaliser
-  implements the equivalent isolation and is invoked by both read services.
-  Legacy reads already use reassessment projection rather than current-format criterion
-  isolation.
-- **No `formulaComparison` entry (Implemented).** `SheetsAssessor` no longer writes a
-  non-Assessment `assessments.formulaComparison` value. Transient formula-comparison results
-  remain assessor-local, and existing cell-reference feedback remains in `feedback`
-  (`CellReferenceFeedback`). This removes an unused non-Assessment entry; it is not a new
-  feedback-persistence feature. Completed persistence still must reject an incomplete or
-  extra-key criterion record (Section 8).
-- **Definition parse failures stay outside Assessment.** Duplicate reference/template title
-  tags continue to block definition parsing on the existing definition error surface and safe
-  cause; no student-level `DUPLICATE_TAG` E is introduced under the agreed first-match policy.
-- **Consumer schema activation (implemented).** `AssessmentSchema` aliases
-  `assessmentResultSchema` and `PartialAssessmentEntrySchema` aliases
-  `partialAssessmentResultSchema`, so both enforce the finite fractional 0–5 range and the `E`
-  branch. Both read services consume the pure read normaliser before their final parse.
-
-### Partial projection — retain E explanation (Implemented)
-
-`StudentSubmissionItem.toPartialJSON()` retains `E` entries with
-`{ score: 'E', reasoning, error }` while numeric/`N` entries stay score-only; see
-[§Assessment](#assessment). The shared `partialAssessmentResultSchema` validates that union, and
-`PartialAssessmentEntrySchema` now aliases it, so a class-embedded `E` retains its explanation.
-Partial artefact `content`/`contentHash` remain redacted; their `null` values are not evidence of
-extraction failure.
-
-### Marker-1 CURRENT restoration (Implemented)
-
-`Assignment._baseFromJSON()` routes a record whose `assessmentContractVersion` is exactly `1`
-through `AssignmentCurrentRestoration._rehydrateCurrentSubmission()`; every other record is kept
-as an opaque legacy snapshot and projected for reads as described under
-[§Legacy reassessment read projection](#legacy-reassessment-read-projection-implemented).
-The representation mode is threaded from `Assignment.fromJSON()` through
-`Assignment._baseFromJSON()` / `_rehydrateSubmission()`, `SlidesAssignment.fromJSON()` /
-`SheetsAssignment.fromJSON()` and `StudentSubmission.fromJSON()` into
-`StudentSubmissionItem.fromJSON()`.
-
-| Aspect                  | Implemented behaviour                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
-| ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Activation              | `assessmentContractVersion === 1` only. Newly completed runs are validated and stamped before both persistence serialisers emit the marker. Marker-less, `null` and unsupported records are retained as an opaque legacy snapshot; the read transport emits explicit `null` after reassessment projection. Both frontend read schemas require `1 \| null` and both read services run the normaliser before their final parse. See [Known discrepancies](#known-discrepancies).                                                            |
-| Root and task universe  | Validated once, before any model constructor runs: non-blank `courseId` / `assignmentId` strings, `submissions` as an array, and a non-empty embedded `assignmentDefinition.tasks` universe. In the full task-map form every key is non-blank and equals the embedded task's canonical `id`; an optional `taskId` must match that key. In the partial summary-array form every `taskId` is a non-empty unique string. Any failure throws and fails the owned dataset.                                                                     |
-| Shared identities       | The same task-universe check runs with an empty `submissions` array, so duplicate or inconsistent definition identities cannot be hidden by having no students. A submission must carry a non-blank string `studentId` and an `assignmentId` equal to the root assignment ID. Unknown stored task keys outside the authoritative universe throw; associations are never guessed.                                                                                                                                                          |
-| Empty no-submission     | A submission with parent `documentId: null` and an empty item object remains an empty submission record. It is not expanded into placeholders or fabricated `N` items.                                                                                                                                                                                                                                                                                                                                                                    |
-| Raw item validation     | Before construction, each item must match its authoritative task key. Its artefact must carry the same `taskId`, `role: 'submission'`, one of `base` / `TEXT` / `TABLE` / `IMAGE` / `SPREADSHEET`, a non-empty string `uid`, and `string\|null` `documentId` / `pageId`. Full mode requires own `content` and `contentHash` keys; body/hash are both `null` or both present with a string hash. Bodies are type-checked (`TEXT` / `TABLE` string or `null`, `IMAGE` image data URL or `null`, `SPREADSHEET` 2D primitive grid or `null`). |
-| Completed criteria      | Exactly `completeness`, `accuracy` and `spag`, with no extra keys. Full entries must be complete `Assessment` results. Partial entries are finite 0–5 numeric or `'N'` score-only objects, or an `'E'` with non-blank `reasoning` and a catalogue `error`.                                                                                                                                                                                                                                                                                |
-| Source consistency      | Full document-bearing items may carry null body/hash only when all three results are `'E'` with an `acquisition`, `extraction` or `validation` stage. Partial document-bearing records are redaction-exempt and are not checked for source presence or hashed. A null-parent item must be the canonical base placeholder: `type: 'base'`, `role: 'submission'`, null `documentId` / `pageId` / `content` / `contentHash`, empty `metadata` and `feedback`, and all three results `'E'` with an `acquisition` or `validation` stage.       |
-| Isolation               | An object item failing raw validation is replaced by a canonical `CORRUPT_RECORD` placeholder on all three criteria, created through the model constructors with the known task/student association. Healthy siblings and valid acquisition/validation placeholders are preserved. A missing known task receives the same placeholder; the placeholder is never constructed from the offending raw item.                                                                                                                                  |
-| Exact-once construction | Each healthy raw item is validated once and constructed at most once. An already-materialised `StudentSubmissionItem` instance is serialised in the requested mode, validated, and retained as the same instance when healthy; a serialisation or construction fault propagates unchanged, with no retry or corruption conversion.                                                                                                                                                                                                        |
-| Timestamps              | Valid stored submission `createdAt` / `updatedAt` values are retained independently. Otherwise `createdAt` falls back to the assignment `createdAt`; `updatedAt` falls back to the assignment `updatedAt` when non-null, otherwise the assignment `createdAt`. An invalid assignment timestamp throws. The wall clock is never used.                                                                                                                                                                                                      |
-
-`TABLE` artefact bodies remain supported as stored `string \| null` for document-bearing items,
-consistent with the existing artefact contract; marker-1 restoration neither generates TABLE
-fixtures nor introduces new TABLE feature work.
-
-The synthetic generator, projection and strict graph validators emit and accept marker-1
-records, real PNG/raw-grid bodies, paired reference formulae and retained partial `E` details.
-The committed canonical corpus has been regenerated from the existing generator: the compact
-profiles are byte-reproducible across two runs and six tracked wire files changed. Production
-persistence and both read transports emit the marker; the backend legacy read projection and the
-frontend read normaliser are implemented and active in both read services. The analyser accepts
-explicit `E` input. The acquisition/extraction boundary `E` producers are implemented (Section 4;
-see [§Acquisition and extraction outcomes](#acquisition-and-extraction-outcomes-implemented)).
-Completed-write gates (including pending-image rejection and completion-time marker stamping,
-Section 8) and preview error states (Section 9) remain pending.
-
-### Full submission `studentName` nullability alignment (Implemented)
-
-The backend `StudentSubmission.toJSON()` and `toPartialJSON()` always emit `studentName` as
-`string \| null`. Both frontend read schemas now validate that nullable emission.
-
-| Field         | Full schema (implemented) | Partial schema          | Notes                                                                                                                                                                                                                                                           |
-| ------------- | ------------------------- | ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `studentName` | `z.string().nullable()`   | `z.string().nullable()` | Matches the backend's nullable emission. Retain the field: historical notes calling it temporary do not authorise removal. The legacy reassessment placeholder also uses `studentName: string \| null`; do not fabricate a name when only an identity is known. |
-
-This was a frontend validator alignment only. It does not change the backend model, persistence,
-transport or the legacy reassessment projection.
-
-### Source artefact content and hash semantics (Partially implemented)
-
-> **Status: partially implemented.** The blank/all-null `SPREADSHEET` representation (`[]` with
-> the normal `[]` hash) is implemented in `SpreadsheetTaskArtifact.normalizeContent()` and applies
-> through construction, persistence and restoration. For marker-1 records,
-> `AssignmentCurrentRestoration` already enforces the full body/hash pairing and the null-content
-> consistency conversions, preserves valid acquisition/validation placeholders, and exempts partial
-> redaction. Detached legacy reassessment placeholders with explicit null content/hash are
-> implemented by `02_AssignmentReadProjection.js`. Section 3 delivered the definition-write
-> non-`IMAGE` availability rules and the formula-free reference rejection (documented in
-> [Contract: AssignmentDefinition](assignment-definition.md#definition-artefact-availability-and-pending-image-exception-implemented-at-definition-writes))
-> and removed the persisted `assessments.formulaComparison` entry. Section 4 delivered the
-> acquisition/extraction boundary producers for `SOURCE_UNREADABLE`, `UNSUPPORTED_DOCUMENT` and
-> `SOURCE_CONTENT_UNAVAILABLE`, including terminal failure materialisation for known tasks (see
-> [§Acquisition and extraction outcomes](#acquisition-and-extraction-outcomes-implemented));
-> their artefact source shapes are documented there and the acquisition placeholder matches the
-> marker-1 null-parent read invariant (see [Known discrepancies](#known-discrepancies) item 23).
-> Section 7 delivered the IMAGE hydration source rules: a matched pending IMAGE stays null until
-> hydration; a student hydration failure stores null content/hash beside the atomic extraction
-> `IMAGE_HYDRATION_FAILED` `E`; successful hydration writes the data-URL content and model hash; a
-> required shared-image failure blocks the run without a completed result (see
-> [§Image hydration outcomes](#image-hydration-outcomes-implemented)).
-> Completed-write preflight/gates (Section 8) are implemented. The
-> frontend read normaliser is implemented and active in both read services. The Section 3
-> delivery adds no transport field: completed tasks still use the three canonical criterion
-> keys, and cell-reference feedback remains in `feedback`.
-
-Full-artefact rules:
-
-| Situation                                                                             | `content`                           | `contentHash`             | Notes                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
-| ------------------------------------------------------------------------------------- | ----------------------------------- | ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Successfully read blank/all-null `SPREADSHEET` grid (blank template or student range) | `[]`                                | Normal hash of `[]`       | **Implemented** in `SpreadsheetTaskArtifact.normalizeContent()`; canonicalisation applies through construction, persistence and restoration. Literal `null` means unavailable content, not blank content. Existing populated-formula normalisation is unchanged.                                                                                                                                                                                          |
-| `SPREADSHEET` content unavailable                                                     | `null`                              | `null`                    | At the actual extraction boundary, confirmed unavailable content creates an extraction `SOURCE_CONTENT_UNAVAILABLE` `E`. A current-format full read that instead finds null content beside numeric/`N` marks converts all three results to validation `CORRUPT_RECORD` `E` (see the full-content consistency rule below). A `null` hash is never a usable content fingerprint and must not match another `null` hash for template-match or `N` decisions. |
-| Non-blank `SPREADSHEET` grid                                                          | Existing canonicalised 2D grid      | Existing content hash     | Formula canonicalisation (space stripping, uppercasing) and trailing-row/column trimming are unchanged.                                                                                                                                                                                                                                                                                                                                                   |
-| Matched student IMAGE pending hydration                                               | `null`                              | `null`                    | Valid internal state only (matched student `pageId` plus `metadata.sourceUrl`), never a completed result. `ImageManager` hydrates it or materialises extraction `IMAGE_HYDRATION_FAILED` `E` on failure.                                                                                                                                                                                                                                                  |
-| IMAGE hydration failure (student scope)                                               | `null`                              | `null`                    | The atomic all-three extraction `IMAGE_HYDRATION_FAILED` `E` replaces stale marks/feedback; the artefact body/hash are cleared.                                                                                                                                                                                                                                                                                                                           |
-| Successfully hydrated IMAGE                                                           | `string` (data URL)                 | Model-generated hash      | Written through `ImageTaskArtifact.setContentFromBlob()`; changed non-null content invalidates stale assessments/feedback, unchanged content preserves them.                                                                                                                                                                                                                                                                                              |
-| Required shared IMAGE hydration failure                                               | — (no completed result)             | — (no completed result)   | Run-blocking failure: the pipeline throws, prior saved results are preserved and no completed result is persisted. Never a student `E`. No in-memory rollback is promised: model conversion assigns `content` before hashing, so a shared write whose hash step fails can leave the new content and a null/old hash on the in-memory artefact.                                                                                                            |
-| Full submission artefact for an acquisition/extraction/validation `E`                 | `null` allowed                      | `null` allowed            | The placeholder uses the canonical model constructor with the known task/student association, explicit null content/hash and validated source identifiers when available.                                                                                                                                                                                                                                                                                 |
-| Assessment-only `E`                                                                   | Successfully extracted content kept | Existing hash kept        | An error in marking does not imply that the source preview is unavailable.                                                                                                                                                                                                                                                                                                                                                                                |
-| Stored reference/template/student content offered to the LLM                          | required by role                    | required non-empty string | `LLMRequestManager` treats a null or empty hash as an internal invariant fault before cache lookup or dispatch; it is not an assessment `E`, a cache miss, a live fallback or a template-match `N` (Section 6).                                                                                                                                                                                                                                           |
-| Assessment-stage `E` with null full content                                           | `null` stored                       | `null` stored             | Contradictory stored record. An existing assessment-stage `E` with null full content remains a validation `CORRUPT_RECORD` `E`, not an accepted assessment-only error; it is never relabelled as `SOURCE_UNREADABLE` and no historical extraction cause is inferred. Partial redaction is exempt.                                                                                                                                                         |
-| Partial artefact projection                                                           | `null`                              | `null`                    | Deliberate redaction. It is never evidence of extraction failure and is exempt from the full-content consistency check.                                                                                                                                                                                                                                                                                                                                   |
-
-Rules:
-
-- Canonicalising a blank student spreadsheet grid to `[]` does not change pedagogical scoring:
-  blank student grids still receive the current formula scores (completeness `0`, accuracy `0`,
-  SPaG `N`), not an extraction error or a new `N` rule.
-- A spreadsheet reference task with zero assessable formulae is an invalid shared definition,
-  not a valid blank template. It is rejected at the new-definition-write boundary by
-  `AssignmentDefinitionValidation.validateSharedArtifacts()`; it is never a student `E`, and this
-  contract adds no run-time eligibility preflight. Blank templates canonicalised to `[]` remain
-  valid, and blank student ranges retain the formula scores above. See
-  [Contract: AssignmentDefinition §Definition artefact availability and pending image
-  exception](assignment-definition.md#definition-artefact-availability-and-pending-image-exception-implemented-at-definition-writes).
-- In completed full results, null submission content is allowed only for
-  acquisition/extraction/validation `E` placeholders. On a current-format full read, null content
-  beside purported numeric/`N` marks is a contradictory stored record: replace all three results
-  with validation `CORRUPT_RECORD` `E` and its catalogue reasoning. Never guess
-  `SOURCE_UNREADABLE` or infer a historical extraction cause from that contradiction. An actual extraction boundary that
-  confirms content is unavailable creates an extraction `SOURCE_CONTENT_UNAVAILABLE` `E`
-  instead. An assessment-only `E` retains its successfully extracted content. An existing
-  assessment-stage `E` whose full record carries null content remains a contradictory stored
-  record and becomes validation `CORRUPT_RECORD` `E`; it is not accepted as an assessment-only
-  error. Partial artefact redaction is exempt from this full-content consistency check.
-- IMAGE is the only artefact type with a valid pre-hydration null state. A matched student IMAGE
-  (student `pageId` plus `metadata.sourceUrl`) remains pending with null content/hash until
-  `ImageManager` resolves it. A student download/content/hash failure becomes the atomic
-  extraction `IMAGE_HYDRATION_FAILED` `E` with null content/hash; a required shared
-  reference/template failure blocks the run and preserves prior saved results. A pending image is
-  never a completed null success, and completed persistence must not accept one (Section 8). See
-  [§Image hydration outcomes](#image-hydration-outcomes-implemented).
-- Any stored reference, template or student content offered to the LLM must carry a usable
-  non-empty string `contentHash`. A null or empty hash is an internal invariant fault, thrown
-  before cache lookup or dispatch; it is not an assessment `E`, a cache miss, a live fallback or
-  a template-match `N`. Prior all-three `E` results still bypass this check. See
-  [§LLM assessment outcomes and validated cache reuse](#llm-assessment-outcomes-and-validated-cache-reuse-implemented).
-- Confirmed no-submission is represented by parent `documentId: null` and an empty item map,
-  not fabricated null-content `N` items (see [Completed submission coverage](#completed-submission-coverage-implemented-for-reads)).
-- Section 4 placeholders are consistent with these rules. A document-bearing extraction failure
-  carries its matched/student document ID and page ID where available, null body/hash and all
-  three extraction `E` results. A null-parent acquisition failure is the canonical base
-  placeholder (null page/document/content/hash, empty metadata/feedback) described under
-  [§Acquisition and extraction outcomes](#acquisition-and-extraction-outcomes-implemented); it
-  satisfies the marker-1 null-parent read invariant rather than being converted to
-  `CORRUPT_RECORD`.
-- No `.optional()` relaxation of full artefact `content`/`contentHash` is permitted; a missing
-  required field is corruption, not legitimate null content.
-
-### Acquisition and extraction outcomes (Implemented)
-
-The student-stage producers establish acquisition before classification and materialise terminal
-task failures at the known identity boundary. Successfully extracted items are not completed
-results: they stay in flight with an empty assessment map until the later assessment stage. This
-slice adds no collection, transport field, persisted scan state or Assessment-code change; it
-wires the existing catalogue into the existing `StudentSubmissionItem.setError()` primitive.
-
-| Situation                                                                     | Scope                    | Recorded result                                                   | Source artefact                                                                                         | Notes                                                                                                                                                                                                                                    |
-| ----------------------------------------------------------------------------- | ------------------------ | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `StudentSubmissions.list` returns further `nextPageToken`                     | run                      | —                                                                 | —                                                                                                       | Every page is followed before absence is concluded.                                                                                                                                                                                      |
-| A later `StudentSubmissions.list` page fails                                  | run                      | —                                                                 | —                                                                                                       | The original error is logged and rethrown unchanged; completed-run persistence is never reached and prior stored results are preserved.                                                                                                  |
-| No submitted attachment for a roster student                                  | student                  | none                                                              | parent `documentId: null`, empty item map                                                               | Genuine no-submission evidence; no fabricated `N` items.                                                                                                                                                                                 |
-| Attachment lacks a Drive file ID (non-Drive)                                  | student                  | none                                                              | unchanged; parent `documentId` stays `null`                                                             | Ignored by the settled admission policy and records no failure. Genuine no-submission only when no supported source and no recorded acquisition failure exist; ignored candidates do not erase a failure recorded for a Drive candidate. |
-| Submitted Drive attachment is unreadable (expected `DriveApp` access failure) | student, all known tasks | `acquisition` / `SOURCE_UNREADABLE` on all three criteria         | canonical base placeholder: null `pageId`/`documentId`/`content`/`contentHash`, empty metadata/feedback | One original native diagnostic with the opaque file ID; atomic `setError()` replacement using the exact catalogue cause and reasoning.                                                                                                   |
-| Submitted attachment MIME type is not the assignment document type            | student, all known tasks | `acquisition` / `UNSUPPORTED_DOCUMENT` on all three criteria      | canonical base placeholder                                                                              | Same atomic replacement using the exact catalogue cause and reasoning; no document is admitted.                                                                                                                                          |
-| All supported-admission candidates rejected (ignored candidates may coexist)  | student, all known tasks | first observed acquisition cause on all three criteria            | canonical base placeholder                                                                              | The scan records the first failure only when no supported source was admitted; ignored non-Drive/missing-ID candidates record nothing and do not erase it. Order across attachment arrays and duplicate records is preserved.            |
-| Rejected attachment alongside an accepted supported attachment                | student                  | no acquisition `E`                                                | accepted typed extraction artefact with student source IDs                                              | Failure materialisation is deferred until the complete scan ends; the accepted source suppresses rejected-candidate `E` and is not contaminated by it.                                                                                   |
-| Multiple supported attachments or duplicate Classroom records                 | student                  | no acquisition `E`                                                | last supported source                                                                                   | The existing scan keeps the last supported attachment across attachment arrays and duplicate Classroom records. No persisted scan state or new upsert semantics are introduced.                                                          |
-| Submitted document cannot be opened by the Slides/Sheets parser               | student, all known tasks | `acquisition` / `SOURCE_UNREADABLE` on all three criteria         | `content: null`, `contentHash: null`; explicit `pageId: null` and parent/artefact document ID retained  | Parser returns a failed-open null sentinel distinct from a successful empty array; `SlidesAssignment.processAllSubmissions` / `SheetsAssignment.processAllSubmissions` isolate the student.                                              |
-| Slides task match is missing (TEXT/TABLE)                                     | task                     | `extraction` / `SOURCE_CONTENT_UNAVAILABLE` on all three criteria | `content: null`, `contentHash: null`; parent document ID retained; explicit `pageId: null`              | Parser emits a canonical placeholder and the assignment materialises `E`.                                                                                                                                                                |
-| Slides IMAGE task has no actual match/source evidence                         | task                     | `extraction` / `SOURCE_CONTENT_UNAVAILABLE` on all three criteria | `type: 'IMAGE'`, null `pageId`/`content`/`contentHash`, empty metadata, parent document ID              | A missing IMAGE match is unavailable extraction, not pending hydration.                                                                                                                                                                  |
-| Slides IMAGE task matched to a student page                                   | task                     | none                                                              | `type: 'IMAGE'`, matched student `pageId`, `metadata.sourceUrl`, null `content`/`contentHash`           | Valid pending internal state, not a completed result and not extraction `E`. `ImageManager` hydrates it or materialises `IMAGE_HYDRATION_FAILED` on failure (see [§Image hydration outcomes](#image-hydration-outcomes-implemented)).    |
-| Slides matched TEXT/TABLE content read fails                                  | task                     | `extraction` / `SOURCE_CONTENT_UNAVAILABLE` on all three criteria | `content: null`, `contentHash: null`; matched student `pageId` and document ID retained                 | `SlidesParserTableContent` converts only ordinary native read failures; one contextual diagnostic, never a duplicate matcher/model warning.                                                                                              |
-| Student `getCell` returns literal `null`                                      | task                     | `extraction` / `SOURCE_CONTENT_UNAVAILABLE` on all three criteria | whole TABLE content `null`; no hashable partial or blank fallback                                       | The first failing cell aborts the whole table. An actually thrown `TypeError`/`ReferenceError`/non-Error still escapes, and shared-definition reads still throw.                                                                         |
-| Sheets range read fails                                                       | task                     | `extraction` / `SOURCE_CONTENT_UNAVAILABLE` on all three criteria | `content: null`, `contentHash: null`; task `pageId` and student document ID retained                    | Only the immediate native `getRange(...)`/`getFormulas()` read converts; internal parsing and mutation faults escape.                                                                                                                    |
-| Extracted non-`IMAGE` artefact has null content                               | task                     | `extraction` / `SOURCE_CONTENT_UNAVAILABLE` on all three criteria | `content: null`, `contentHash: null`                                                                    | Final assignment pass materialises `E`; a matched pending IMAGE is excluded from this conversion.                                                                                                                                        |
-| Known task absent from the extracted artefact set                             | task                     | `extraction` / `SOURCE_CONTENT_UNAVAILABLE` on all three criteria | `content: null`, `contentHash: null`; parent document ID retained                                       | Final pass materialises a failure item for each known task with no extraction outcome; successfully extracted items remain in flight.                                                                                                    |
-| Extraction artefact references an unknown task ID                             | —                        | warning and ignore                                                | —                                                                                                       | Existing behaviour retained; known-task failure materialisation is unaffected.                                                                                                                                                           |
-| Ambiguous first match                                                         | —                        | warning                                                           | matched content                                                                                         | Warning, not `E`. Existing tag/type preference and first-match order are retained.                                                                                                                                                       |
-| Successfully extracted blank content (`''`, `[]`)                             | task                     | no error                                                          | normalised content/hash                                                                                 | Blank work/template matching and formula scoring are unchanged; the item stays in flight until assessment.                                                                                                                               |
-| `PARSE_FAILED`                                                                | —                        | catalogue code reserved                                           | —                                                                                                       | No distinct Section 4 task-parse producer exists; the catalogue entry remains without a producer.                                                                                                                                        |
-
-Rules:
-
-- `StudentSubmissionItem.setError(stage, code)` remains the sole atomic task-wide error
-  primitive: it replaces all three criteria and clears feedback.
-- Acquisition materialisation is scan-local. One `Map`/`Set` accumulator spans every attachment
-  array and duplicate Classroom record for a student. The existing scan keeps the **last**
-  supported attachment. A failure is recorded only while no supported source has been admitted,
-  and only the first such failure is materialised after the complete scan; any accepted source
-  clears the recorded failure. Ignored non-Drive/missing-ID candidates record nothing and do not
-  erase a failure recorded for a Drive candidate, so rejected Drive candidates alongside ignored
-  candidates still materialise the first failure when no supported source exists. Genuine
-  no-submission therefore requires both no supported source and no recorded acquisition failure.
-  This adds no persisted scan state, retry state or new upsert semantics.
-- `upsertItemFromExtraction()` preserves an explicitly supplied `pageId: null` when the parent
-  submission document is known; an omitted/`undefined` page ID still falls back to the task
-  definition's page ID, and an explicit student page ID is retained. An explicit `pageId: null`
-  is never replaced by the reference task page. This is the user-approved minimal page-ID
-  contract. The existing frontend document-root source-URL fallback already handles a known
-  document ID with a null page ID, so no frontend field or shape change is required.
-- The acquisition/extraction producers materialise terminal failure items for known tasks whose
-  extraction failed; they do not mark healthy extracted work terminal. Completed-persistence
-  _rejection_ of incomplete coverage is implemented at the Section 8 write boundary; read-time coverage remains
-  backend-owned as described under
-  [Completed submission coverage](#completed-submission-coverage-implemented-for-reads).
-- Source conversion is placed at the immediate native operation only: Drive file/MIME access,
-  document open, native range/formula reads and native text/dimension/cell/merge reads. An
-  ordinary `Error` from those native operations becomes the scoped acquisition/extraction `E`;
-  an actually thrown `TypeError`, `ReferenceError` or non-`Error` value propagates by identity.
-  Internal matching, facade dispatch, bookkeeping, normalisation and mutation run outside the
-  converting catches, so their ordinary failures propagate rather than being relabelled. There
-  is no platform-error predicate, typed wrapper or exception hierarchy (see
-  [Known discrepancies](#known-discrepancies) item 24).
-- An attachment without a Drive file ID is ignored by the settled admission policy and records
-  no failure. The student keeps the genuine no-submission representation only when no supported
-  source was admitted and no acquisition failure was recorded; ignored candidates do not erase a
-  failure recorded for a Drive candidate. See
-  [Known discrepancies](#known-discrepancies) item 25.
-- A matched IMAGE artefact (student page ID plus `metadata.sourceUrl`) is valid pending internal
-  state, not a completed result, and is not converted to extraction `E` here. `ImageManager`
-  hydrates it or materialises extraction `IMAGE_HYDRATION_FAILED` on failure; a matched pending
-  image is never persisted as a completed null success (see
-  [§Image hydration outcomes](#image-hydration-outcomes-implemented)). An IMAGE task with no
-  actual match or source evidence is unavailable extraction and receives all three
-  `SOURCE_CONTENT_UNAVAILABLE` results; IMAGE is not unconditionally pending.
-- Each owned native read failure emits one contextual diagnostic retaining the original error
-  object and only opaque identifiers (studentId/documentId/taskId/page ID/coordinates). Handled
-  paths never log `studentName`, source content or raw payloads, and never replace the original
-  error with a synthetic one. Downstream model and progress duplicates are suppressed.
-- Proof boundary: these outcomes are established by hermetic producer, model and
-  caller/store-restoration tests with native services mocked and an explicit test-only marker
-  where needed. They do not prove API transport, live GAS behaviour, image hydration or
-  completion stamping.
-
-### Image hydration outcomes (Implemented)
-
-`src/backend/RequestHandlers/ImageManager.js` owns the scoped IMAGE hydration boundary. It
-reuses the shared transport budget and the existing Slides document round-robin scheduling. It
-adds no retry scheduler, second hydration manager, public `entry.item` property, persisted
-status or transport field. A student image failure materialises the atomic extraction
-`IMAGE_HYDRATION_FAILED` `E` with null content/hash; a required shared reference/template
-failure blocks the run. Healthy siblings and successfully extracted items are not converted to a
-scoped failure.
-
-| Situation                                                                                                                                                                                       | Scope      | Recorded result                                      | Source artefact                                                                                                                                    | Notes                                                                                                                                                                                                                                                                                                                                                                                                                   |
-| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- | ---------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Student item already carrying an upstream all-three terminal `E`                                                                                                                                | task       | preserved verbatim; no hydration attempt             | unchanged                                                                                                                                          | `collectAllImageArtifacts()` returns before scheduling or overwriting, so an acquisition `SOURCE_UNREADABLE` or extraction `SOURCE_CONTENT_UNAVAILABLE` item is never relabelled or downloaded. No hydration warning is emitted.                                                                                                                                                                                        |
-| Matched student IMAGE with an admissible source URL                                                                                                                                             | task       | none yet; scheduled for hydration                    | `type: 'IMAGE'`, matched student `pageId`, `metadata.sourceUrl`; null `content`/`contentHash` while pending, existing values when already hydrated | Collected with its owning submission item retained privately; entry shape gains no public item property. An already-hydrated artefact with an admissible source is still scheduled; unchanged returned content preserves its results/feedback and changed content invalidates them.                                                                                                                                     |
-| Matched student IMAGE with absent/invalid source URL                                                                                                                                            | task       | `extraction` / `IMAGE_HYDRATION_FAILED` on all three | `content: null`, `contentHash: null`                                                                                                               | Applies only when no upstream all-three terminal `E` is already established. An already-hydrated artefact is skipped; a pending one is materialised at collection. One bounded diagnostic with opaque identifiers.                                                                                                                                                                                                      |
-| Final image download non-200 (including 201), permanent 4xx or network/transport exhaustion                                                                                                     | task       | `extraction` / `IMAGE_HYDRATION_FAILED` on all three | `content: null`, `contentHash: null`                                                                                                               | Images accept only HTTP 200 and declare no stop statuses, so a student-image 403 is local and never an LLM-wide stop. The shared three-total-attempt budget applies; no image-specific retry or semantic retry exists.                                                                                                                                                                                                  |
-| Returned blob/content/hash unusable on a student item (null/empty bytes, null blob, reader-less blob, unusable stored hash)                                                                     | task       | `extraction` / `IMAGE_HYDRATION_FAILED` on all three | `content: null`, `contentHash: null`                                                                                                               | Applies only to non-throwing unusable returned data and never lets retained old content certify hydration, even on an already-hydrated item. A thrown native read, base64, hash or writer fault propagates by original identity with no `E` and no manager warning.                                                                                                                                                     |
-| Required shared reference/template IMAGE with absent/invalid source URL or missing owning document ID                                                                                           | run        | none — not a student `E`                             | unchanged (no writeback)                                                                                                                           | Collection blocks the run by throwing. When no admissible source is available, an already-hydrated shared artefact is skipped; a pending one blocks the run.                                                                                                                                                                                                                                                            |
-| Required shared reference/template IMAGE final download failure                                                                                                                                 | run        | none — not a student `E`                             | unchanged (no writeback)                                                                                                                           | The run blocks by throwing; prior saved results are preserved and no completed result is persisted.                                                                                                                                                                                                                                                                                                                     |
-| Required shared reference/template IMAGE unusable returned content                                                                                                                              | run        | none — not a student `E`                             | not rolled back; `content` may already be assigned                                                                                                 | The run blocks by throwing; prior saved results are preserved and no completed result is persisted. Reader-less or unusable returned data on an already-hydrated shared artefact blocks rather than certifying retained content. Model conversion assigns `content` before hashing, so a shared write whose hash step fails can leave the new content and a null/old hash in memory. No in-memory rollback is promised. |
-| Successfully hydrated IMAGE                                                                                                                                                                     | task       | no `E`                                               | data-URL `content` plus model-generated `contentHash`                                                                                              | Changed non-null hydrated content clears stale assessments/feedback; unchanged content preserves the complete snapshots. Source `metadata.sourceUrl` is retained.                                                                                                                                                                                                                                                       |
-| Unknown/duplicate input or outcome UID, missing owning item, missing submissions/items structures, missing model methods, duplicate model artefact UIDs, unmatched/duplicate writeback blob UID | run/wiring | none — not an `Assessment` result                    | unchanged for the affected artefact; earlier applied blobs are not rolled back                                                                     | These are wiring faults and throw before the affected artefact's conversion or instead of a scoped result; a missing `setContentFromBlob` writer is a `TypeError` raised before any returned-data classification, so unusable data cannot hide it. Earlier blobs already applied in the same `writeBackBlobs()` call are not rolled back. They are not hydration failures.                                              |
-| Actually thrown native read, base64, hash or writer fault                                                                                                                                       | run/wiring | none — not an `Assessment` result                    | not rolled back; `content` may already be assigned before a hash or writer fault                                                                   | The original value escapes by reference identity. No converting catch, no catalogue `E`, no manager diagnostic. A thrown hash or writer fault can occur after `content` is assigned, leaving changed in-memory content with a null/old hash.                                                                                                                                                                            |
-
-Rules:
-
-- URL admission is owner-local and mirrors the shared `Validate` acceptance policy (HTTPS, DNS
-  hostname only, no IP address, no localhost, no port, hostname label limits) **without** the
-  shared validator's progress-tracking diagnostics. A rejected source URL therefore never reaches
-  a log channel. Shared `Validate` and the source-link policy are unchanged.
-- Scheduling and transport: one full-list `sendRequestsInBatches()` call carries the configured
-  Slides-fetch batch size, accepted statuses `[200]` and no stop statuses. Document round-robin
-  order and UID association are preserved, and final 200 blobs are read before the next batch.
-  At most three total dispatches per request, including its initial batch attempt; retries are
-  the shared transport's sequential member retries, never a nested scheduler.
-- A matched pending IMAGE is valid internal state, never a completed result or a null success.
-  The image stage must resolve each collected image to usable content/hash or its scoped `E` or
-  shared failure before completion. Completed-persistence gates remain Section 8 (see
-  [Known discrepancies](#known-discrepancies) item 27).
-- Scope split: a student image failure is task-scoped `E` and never reaches the LLM; a required
-  shared-image failure is run-blocking, fabricates no student `E` and never replaces prior saved
-  results. Healthy sibling items, including same-submission siblings, are not converted to `E`; a
-  shared failure does not roll back blobs already applied earlier in the same writeback call.
-- Successful writeback validates hydrated content and a usable non-empty hash before the write
-  stands. The manager reads the native bytes once and passes an owner-local adapter to
-  `ImageTaskArtifact.setContentFromBlob()`, so data-URL/hash conversion remains model-owned
-  without a second native read. Changed non-null content invalidates the reused item's stale
-  assessments and feedback; unchanged content preserves them. The invalidation rule is applied
-  owner-locally because `StudentSubmissionItem` exposes no callable invalidation primitive (see
-  [Known discrepancies](#known-discrepancies) item 28).
-- No in-memory rollback is promised. `ImageTaskArtifact.setContentFromBlob()` assigns `content`
-  before hashing, so a shared write whose hash step returns null or throws can leave the new
-  content and a null/old hash on the in-memory artefact before the run-blocking throw. Prior saved
-  records are preserved only because no completion persistence occurs; that is not rollback.
-- Diagnostics are one bounded `ABLogger` warn per converted failure with opaque `uid`, `taskId`
-  and `scope` (plus `attempts`/`responseCode` for transport failures). Source URLs, payloads,
-  student names and raw error text are never logged; propagated faults emit no manager warning.
-- Proof boundary: hermetic native HTTP/blob stubs, real models, memory collections and logger
-  observers prove the manager/model/caller boundary only. They do not prove live GAS/network
-  behaviour, deployed logging fidelity, durable persistence or completion-marker/prepared-write
-  guarantees (Section 8). The connected controller/store regression stubs extraction and
-  assessment and is not production persistence evidence.
-
-### LLM assessment outcomes and validated cache reuse (Implemented)
-
-Implemented in `src/backend/RequestHandlers/LLMRequestManager.js` (terminal outcomes, shared
-live/cache validation and internal cache identity) and `src/backend/RequestHandlers/CacheManager.js`
-(generic best-effort `get`/`put`). This slice adds no persisted field, no transport field, no
-service-envelope change, no run-status document and no schema-version change. It wires the
-existing assessment-stage catalogue into the existing atomic `StudentSubmissionItem.setError()`
-primitive; the LLM service request payload and response body are unchanged.
-
-| Situation                                                                                                                                | Scope         | Recorded result                                                                      | Source artefact                      | Notes                                                                                                                                                                                                                                                                                                                                                                     |
-| ---------------------------------------------------------------------------------------------------------------------------------------- | ------------- | ------------------------------------------------------------------------------------ | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Successful LLM response (HTTP 200/201) with exactly three criteria, each a finite 0–5 number and string reasoning                        | task          | three numeric `Assessment` results; reasoning preserved (empty allowed)              | content/hash retained                | Body read, parsed and validated once. No retry and no partial salvage. The validated numeric result is cached under the retained identity with the shared TTL.                                                                                                                                                                                                            |
-| Invalid JSON body                                                                                                                        | task          | `assessment` / `LLM_INVALID_RESPONSE` on all three criteria                          | content/hash retained                | One bounded diagnostic (opaque UID plus structural detail, never payload); no extra HTTP and no cache write. Only `JSON.parse` is caught; the native body read is outside the catch.                                                                                                                                                                                      |
-| Raw root or criterion keys not admissible before normalisation: non-object/array root, unknown raw key, or colliding case variants       | task          | `assessment` / `LLM_INVALID_RESPONSE` on all three criteria                          | content/hash retained                | The raw root is rejected before key normalisation can erase inherited-key, extra-key or case-collision evidence. No extra HTTP and no cache write.                                                                                                                                                                                                                        |
-| Structurally invalid successful body: missing/null/extra criterion, non-number or non-finite/out-of-range score, or non-string reasoning | task          | `assessment` / `LLM_INVALID_RESPONSE` on all three criteria                          | content/hash retained                | The shared validator requires exactly the three own canonical keys `completeness`, `accuracy` and `spag` (inherited or extra keys are rejected) and delegates each entry to `Assessment.isValidRawResult`, additionally requiring `typeof score === 'number'`. No semantic re-request and no partial criterion salvage.                                                   |
-| Permanent per-request HTTP failure (for example 400/413/422)                                                                             | task          | `assessment` / `LLM_HTTP_FAILED` on all three criteria                               | content/hash retained                | The shared transport does not retry non-retryable statuses; no body read and no cache write.                                                                                                                                                                                                                                                                              |
-| Exhausted retryable HTTP (429/500–599) or network/transport exhaustion                                                                   | task          | `assessment` / `LLM_UNAVAILABLE` on all three criteria                               | content/hash retained                | Only a genuinely spent budget (`attempts === maxAttempts`) is exhaustion. The shared transport budget is already spent; the LLM caller adds no dispatch, sleep or semantic retry.                                                                                                                                                                                         |
-| LLM 401/403/404                                                                                                                          | task, and run | `assessment` / `LLM_RUN_STOPPED` on the affected item; later dispatch is latched off | content/hash retained                | No abort toast or throw for an expected stop. Same-batch and earlier-batch completed numeric results, cached results and genuine `N` results survive unchanged. A retryable/network outcome whose pending retries were cancelled by a same-batch stop is `LLM_RUN_STOPPED`, not `LLM_UNAVAILABLE`.                                                                        |
-| Eligible item never dispatched after a run stop                                                                                          | task          | `assessment` / `LLM_RUN_STOPPED` on all three criteria                               | content/hash retained                | Terminalised by the stop sweep after the sender returns, with no further HTTP.                                                                                                                                                                                                                                                                                            |
-| Routed non-accepted outcome with missing or invalid attempt provenance                                                                   | run/wiring    | none — not an `Assessment` result                                                    | unchanged                            | The outcome must carry a safe integer `attempts` in `1..maxAttempts`. Missing, `undefined`/`null`, numeric-string, fractional, non-finite, unsafe-integer or out-of-budget provenance throws a contextual internal `Error` naming the UID and attempt provenance before `setError`/catalogue mapping. Broken wiring therefore produces no service `E` and no cache write. |
-| Prior all-three `E` result on the item                                                                                                   | task          | preserved verbatim; no dispatch and no overwrite                                     | content/hash retained                | The bypass runs before the hash invariant, cache lookup and dispatch. It recognises three `'E'` scores and relies on prior validation of their cause/reasoning rather than re-validating them here.                                                                                                                                                                       |
-| Genuine blank work (`content === ''`) or a usable-hash match with the template                                                           | task          | `N` / `'Task not attempted'` on all three criteria                                   | content/hash retained                | Requires usable hashes; a null or empty hash never establishes template `N`.                                                                                                                                                                                                                                                                                              |
-| Stored reference, template or student content without a usable non-empty string `contentHash`                                            | run/wiring    | none — not an `Assessment` result                                                    | content retained, no hash generation | `LLMRequestManager` throws an internal invariant `Error` naming the offending role and `taskId` before cache lookup or dispatch. It is not a cache miss, live fallback, new `E` or false `N`.                                                                                                                                                                             |
-| SPREADSHEET task                                                                                                                         | task          | none — not dispatched by the LLM                                                     | unchanged                            | Handled locally by `SheetsAssessor`.                                                                                                                                                                                                                                                                                                                                      |
-| Valid cache hit                                                                                                                          | task          | numeric `Assessment` results                                                         | content/hash retained                | Validated by the same successful-result validator as live output, then assigned without HTTP.                                                                                                                                                                                                                                                                             |
-| Malformed, `N` or `E` cache hit                                                                                                          | task          | logged miss, then the live outcome                                                   | content/hash retained                | Only validated numeric results are accepted from cache; the live validated result is written back at the retained key and shared TTL.                                                                                                                                                                                                                                     |
-| Cache-service read or write outage                                                                                                       | run           | logged best-effort miss or write failure; assessment result unaffected               | unchanged                            | Generic `CacheManager` behaviour is unchanged. Actual wiring, model-mutation and serialisation faults propagate with their original identity.                                                                                                                                                                                                                             |
-| Unknown or duplicate request UID                                                                                                         | run           | none — fail loudly                                                                   | —                                    | Rejected before arbitrary routing or mutation; duplicate input UIDs are rejected before dispatch.                                                                                                                                                                                                                                                                         |
-
-**Cache identity (internal, not a persisted or wire shape):**
-
-- The assessment cache key is derived inside `LLMRequestManager` as a hash of the literal
-  version tag `v1`, the task type, and the reference, template and student content hashes. It
-  is computed once during request generation and retained on the request entry through
-  writeback, so later fingerprint changes do not recompute it.
-- Reads and writes use generic `CacheManager.get()` / `put()`; writeback passes
-  `CacheManager.CACHE_EXPIRY_SECONDS` explicitly. That constant remains the single shared
-  six-hour TTL owner. Old key spaces are misses; there is no purge or migration.
-- The key, the retained identity and the run-stop latch are runtime state only. None is stored
-  in `assign_full_*`, transported, or represented as a schema version or persisted run status.
-
-Rules:
-
-- LLM outcomes are task-atomic: a failure replaces all three criteria together through
-  `setError()`, so stale numeric or `N` marks cannot survive beside the current failure.
-- A successfully extracted source is retained for assessment-stage `E`; a marking failure does
-  not imply unavailable source content.
-- Only validated numeric results are cached. `E` results and transport failures are never
-  cached.
-- There is no semantic retry: an invalid successful body is terminal, and no recursive
-  validation retry or second invalid-response budget remains.
-- The decode catch contains only `JSON.parse`. The native body read (`getContentText()`),
-  raw-root/criterion-key admission, key normalisation, shared validation, UID routing, model
-  mutation, cache wiring and serialisation all run outside it, so reader, wiring and
-  programming faults propagate with their original identity.
-- The batch callback records each routed outcome's attempt count in an invocation-local map
-  before processing. Non-accepted outcomes consume that provenance through
-  `_terminalCodeFor`: stop statuses map to `LLM_RUN_STOPPED`, permanent statuses to
-  `LLM_HTTP_FAILED`, and retryable/network outcomes distinguish a genuinely spent budget
-  (`attempts === maxAttempts`, `LLM_UNAVAILABLE`) from stop-cancelled pending retries
-  (`LLM_RUN_STOPPED`). The map holds numbers only and is reset per public invocation.
-- A missing or invalid provenance value is a wiring fault, not a service result: a value that
-  is not a safe integer in `1..maxAttempts` (including `undefined`, `null`, numeric strings,
-  fractions, `NaN`, infinities and unsafe integers) throws a contextual `Error` before
-  `setError` and before any catalogue mutation. No default attempt count, new cause or retry is
-  introduced.
-- No `ASSESSMENT_FAILED` producer is added by this slice. The current owner has no separate
-  ordinary assessment-failure boundary, and no blanket catch was introduced; the catalogue
-  entry remains available for a real boundary rather than being manufactured here.
-- Completion persistence, completion-time marker stamping and completion-with-errors feedback
-  are delivered in Section 8; handled errors persist beside healthy results and the marker is
-  stamped only after completed-result validation succeeds.
-
-Proof boundary: these outcomes are established by hermetic native HTTP/cache mocks with real
-domain models and the real shared transport. They do not prove live GAS/LLM/network behaviour,
-deployed execution-log fidelity, cache expiry or eviction, durable persistence, completion-time
-stamping or the original production incident.
-
-### Write boundary — preflight before any write (Implemented)
-
-Before any collection mutation, `ABClassAssignmentOps.persistAssignmentRun()` validates completed results and
-prepares independent full and partial payloads. It preflights all four projections together:
-the full assignment payload, its embedded partial, the prospective updated full-class payload
-and the prospective `abclass_partials` payload. The existing class persistence preparation owner
-is reused; no projection is first attempted after the full assignment has committed, and the
-prepared snapshots are preserved through each write. The authoritative full assignment write
-still precedes the class save and class-partials write. There is no cross-collection
-transaction; a storage failure throws, logs the failed phase and whether the full write
-committed, and never reports a completed run. Do not add unconditional saving in `finally` or
-claim rollback guarantees.
-
-### Completed submission coverage (Implemented for reads)
-
-> **Status: read coverage implemented on both representations; acquisition/extraction producers
-> materialise terminal failure items for known tasks; completed-persistence coverage rejection
-> remains planned.** `AssignmentCurrentRestoration` materialises a missing
-> known task as an all-three `CORRUPT_RECORD` `E`, isolates corrupt known items and incomplete/
-> extra-key criteria while preserving healthy siblings, keeps a null-parent empty item map as an
-> empty submission, and isolates contradictory null-parent items. For legacy records,
-> `02_AssignmentReadProjection.js` materialises one detached `REASSESSMENT_REQUIRED` `E` item per
-> known task/student pair on both reads. The browser normaliser implements the equivalent
-> provided-entry isolation and defensive full-payload coverage and is invoked by both read
-> services. Section 4 acquisition/extraction producers also materialise a failure item for every
-> known task whose extraction failed; successfully extracted items remain in flight until
-> assessment (see
-> [§Acquisition and extraction outcomes](#acquisition-and-extraction-outcomes-implemented)).
-> Completed-persistence coverage rejection is implemented (Section 8).
-
-Version 1 coverage rules:
-
-| Submission case                                     | Item map                                                                                               | Assessment values                                            | Notes                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
-| --------------------------------------------------- | ------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Identified submission with a document               | One terminal item for every task in the embedded definition, even when extraction or assessment failed | Numeric, genuine `N`, or explicit `E` per completed criteria | A missing known task becomes a `CORRUPT_RECORD` `E`, materialised by `AssignmentRehydration` during one-pass full or partial backend restoration from the embedded snapshot. Both the current version-1 full read output from `toReadJSON()` and the class-partial output carry it. The browser full-read normaliser fills a task only defensively if a wire payload nonetheless lacks it, using that same payload's definition; the partial normaliser validates provided entries only. A truncated item map must not silently create `N`. |
-| Confirmed no-submission (`documentId: null`)        | Empty item map                                                                                         | None                                                         | Sole confirmed no-submission omission case. Do not fabricate null-content `N` items for it.                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
-| Source-acquisition error with no usable document ID | Explicit `E` items for all known tasks                                                                 | Acquisition `E` (all three canonical criteria)               | The submission is not represented as an empty map when acquisition failed but the student/task identity is known.                                                                                                                                                                                                                                                                                                                                                                                                                           |
-| Other null-document, non-empty item map             | Explicit `E` items only; a contradicting item is isolated individually                                 | All-three acquisition or validation `E` only                 | A null parent document makes the submission's source state authoritative. Numeric/`N` marks, or assessment-/extraction-stage `E`, contradict that state: on full and partial reads each identifiable offending item becomes all three validation `CORRUPT_RECORD` `E`, is never dropped, and healthy siblings are preserved. Items carrying valid acquisition/validation `E` remain valid.                                                                                                                                                  |
-| Genuine no-submission                               | No observed item contributed to the analyser                                                           | Existing no-data `N` display placeholder                     | Do not insert raw `N` observations that would change existing average denominators.                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
-| Whole student absent from a direct full record      | —                                                                                                      | —                                                            | Missing students whose identity is not present in the direct full record are not invented.                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
-
-Coverage resolution rules:
-
-- The backend is authoritative for completed-item coverage on both read paths.
-  `AssignmentRehydration` materialises a missing known task as a `CORRUPT_RECORD` `E` during
-  one-pass full **and** partial restoration, using the assignment's own embedded task snapshot.
-  Both the current version-1 full read output from `toReadJSON()` and the class-partial output
-  therefore contain coverage `E` before transport. The browser's partial-read normaliser validates only
-  the entries it is given; it never infers extra coverage errors from the separately loaded,
-  potentially newer definition registry. Only if a full wire payload nonetheless lacks an
-  expected task does the full-read normaliser defensively produce a `CORRUPT_RECORD` `E` using
-  that same payload's definition. This mandatory fallback is a post-backend-validation
-  corruption defence, not the normal full coverage owner. Backend-materialised `E` entries are
-  never overwritten by coverage inference. No new task-universe transport field or full fetch is
-  needed.
-- A known dictionary task key paired with a mismatched item `taskId` becomes a
-  `CORRUPT_RECORD` `E` for that known key. A stored item referencing no task in the embedded
-  definition has no safe target and fails the owned assignment dataset; do not guess a task
-  association. Extraction's existing warn-and-ignore treatment for an unknown task ID remains;
-  known-task failure materialisation is unaffected.
-- A null parent `documentId` with a non-empty item map is valid only when every item carries a
-  complete all-three acquisition or validation `E` result. An identifiable item storing
-  numeric/`N` marks, or an assessment- or extraction-stage `E`, contradicts the parent
-  submission's null-document source state. On both full and partial reads, isolate that item by
-  replacing all three criteria with validation `CORRUPT_RECORD` `E` and its catalogue reasoning.
-  Never accept or drop the offending item, and never fail the whole owned dataset for an
-  identifiable item contradiction. Preserve healthy sibling items, healthy submissions and valid
-  acquisition/validation `E`; the rest of the owned assignment dataset remains available. This is
-  an item-scoped corruption outcome, not a re-diagnosis of the historical acquisition or
-  extraction cause. Null-document items carrying valid acquisition/validation `E` remain valid
-  and are not rewritten.
-- A matched pending IMAGE is in-flight, not terminal. The image stage hydrates it or materialises
-  extraction `IMAGE_HYDRATION_FAILED` `E`; a still-pending image at the completion boundary is
-  invalid and must be rejected by the Section 8 completed-persistence gate. Read restoration does
-  not treat pending null content as a completed null success. See
-  [§Image hydration outcomes](#image-hydration-outcomes-implemented).
-- Completed persistence rejects an incomplete or extra-key criterion record (see the
-  [Assessment invariants](#assessment--resultcause-primitives-implemented)); coverage and
-  criterion completeness are both completion gates, not transport assumptions. An already-stored
-  version-1 item with such a criterion map is converted to an isolated all-three
-  `CORRUPT_RECORD` `E` on both full and partial reads, as described in the assessment
-  invariants.
-- The no-submission omission contributes no observed item and leaves existing denominator
-  semantics unchanged; it is not an `error` or `excluded` observation.
-- A version-1 canonical completed fixture never contains an empty assessment map.
-  Missing-criterion and empty-map cases remain local corruption probes, not realistic success
-  data. See
-  [Synthetic Test Data §Explicit E outcomes and richer artefact types (implemented; corpus cut over)](../testing/synthetic-test-data.md#planned-generator-extension-explicit-e-outcomes-and-richer-artefact-types-not-implemented).
-
-### `assessmentContractVersion` result marker (Implemented)
-
-> **Status: persistence serialisers, completion-time stamping and read transport implemented; both
-> frontend read schemas are activated and both read services enforce them.** `AssignmentSerialisation.toJSON()` /
-> `toPartialJSON()` emit `1` when the assignment carries the current marker and re-emit the exact
-> opaque legacy marker. Both read serialisers always emit `1 | null`; completed writes stamp new
-> results before serialization (see [Known discrepancies](#known-discrepancies) item 26).
-> `AssignmentFullSchema` and `AssignmentPartialSchema` require
-> `z.union([z.literal(1), z.null()])`, and the read normaliser additionally requires marker-null
-> provided entries to be backend-materialised reassessment `E`.
-
-Backend top-level field on the full assignment record and on every class-embedded partial
-assignment:
-
-| Field                       | Type        | Persistence                                                                                                                                                                                                            | Transport                                                                                                          | Frontend Zod                        | Notes                                                                                                                                                                                                                                                                                                                |
-| --------------------------- | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ | ----------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `assessmentContractVersion` | `1 \| null` | Newly completed results are validated then stamped `1` before serialization. Legacy absence, `null` or unsupported values are preserved verbatim with the legacy body; stored values are never certified or rewritten. | Always present. `1` for current results; explicit `null` for legacy results after backend reassessment projection. | `z.union([z.literal(1), z.null()])` | Assessment-result marker, not a definition-version marker. Storage may omit the marker, store `null`, or retain an unsupported legacy value; that stored state means the result requires reassessment. The backend read transport normalises legacy storage to explicit `null` beside materialised reassessment `E`. |
-
-Persistence rules (serialisers, read handling and completion-time stamping implemented):
-
-- Newly completed/reassessed assignments are validated then stamped with
-  `assessmentContractVersion = 1` before either full or partial serialization. Both persisted
-  projections therefore carry `1`.
-- Storage may omit the marker, or retain `null`/an unsupported legacy value. The model keeps the
-  legacy submission body and the original marker presence/value as an opaque snapshot; ordinary
-  persistence serialisers re-emit that state unchanged rather than certifying or rewriting it
-  (see [Legacy reassessment read projection](#legacy-reassessment-read-projection-implemented)).
-- A successful reassessment replaces the full result and embedded partial with a fresh current
-  result carrying version `1`; it does not carry the legacy opaque snapshot.
-- Read-only reassessment projections do not write repaired results back to storage; there is no
-  bulk migration, deletion, reset or guessed historical cause.
-
-Transport and frontend-validation rules (backend transport implemented; both frontend read schemas activated):
-
-- The backend read transport always emits `assessmentContractVersion` on every full assignment
-  record and every class-embedded partial assignment. It emits `1` for a current result and
-  explicit `null` for a legacy result after materialising reassessment `E` entries. It never
-  omits the field and never emits a raw unsupported stored value.
-- Both frontend read schemas require `z.union([z.literal(1), z.null()])`.
-  A wire payload that omits the field or supplies any other value is an invalid root and fails
-  strict root validation.
-- Invalid-root rejection is not a browser compatibility path: the frontend must not certify
-  legacy scores, fabricate legacy `E` entries or build a second reassessment graph from a
-  marker-less/unsupported wire payload. Legacy `E` materialisation belongs solely to the backend
-  projector, whose output always carries the required marker (`1` or `null`).
-- Invalid-root validation precedes per-item isolation. The defensive full-read coverage fallback
-  for a missing known task applies only to a valid root carrying
-  `assessmentContractVersion: 1 | null`; it is not a marker-based legacy or reassessment-graph
-  path.
-
-This clarification pins the required read-wire union now implemented in both frontend read
-schemas; it does not introduce a new migration, storage rewrite or browser-side reassessment path.
-
-### Legacy reassessment read projection (Implemented)
-
-> **Status: implemented and active on both read paths.** The public owner
-> `AssignmentRehydration.projectReassessmentSubmissions(assignment, students, form)` delegates
-> to the pure helper `02_AssignmentReadProjection.js`. Both
-> `AssignmentSerialisation.toReadJSON()` (full) and `ABClassResponseMapper._toReadView()`
-> (partial) invoke it before response validation and definition-key replacement. Both read
-> services then validate the already-materialised entries; the browser does not materialise a
-> second reassessment graph.
-
-Public owner: the existing
-`AssignmentRehydration.projectReassessmentSubmissions(assignment, students, form)` entry. Its
-pure legacy projection/snapshot mapping is implemented in same-domain
-`02_AssignmentReadProjection.js`, behind that unchanged public entry; this is
-a module separation, not a second materialiser. That public entry remains the sole backend
-materialiser of legacy reassessment `E` entries and creates detached read snapshots, not durable
-repairs. The browser does not build a second reassessment graph. It applies when a **stored** full
-record or class-embedded partial is missing `assessmentContractVersion`, or carries `null`/an
-unsupported value; its read output always carries `assessmentContractVersion: null`. A missing or
-unsupported **wire** marker is instead an invalid root under strict frontend validation, not a
-legacy-result signal for the browser. The internal `form` argument is exactly `'full' | 'partial'`:
-full for `getAssignment`, partial for `getABClass`. It is not a new transport parameter.
-
-| Read path       | Invocation                                                                                                                                                                                                                                                                                                                          | Inputs                                                                                                                                                                                                                       | Output                                                                                           |
-| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| `getABClass`    | `ABClassResponseMapper._toReadView()` invokes it **before** replacing the embedded definition with `assignmentDefinitionKey`                                                                                                                                                                                                        | already loaded roster and embedded task summaries                                                                                                                                                                            | partial assignment entries include explicit partial `E` items; `assessmentContractVersion: null` |
-| `getAssignment` | `getAssignment_()` calls `Assignment.toReadJSON()`, which delegates to `AssignmentSerialisation.toReadJSON()`. That read projection invokes the same operation on the instance returned by `readRehydrateAssignment` (after its `_ensureFullDefinition` step), before final response validation and `DateUtils.deepConvertDates()`. | Validated stored student identities and the resolved embedded definition's tasks. A full stored snapshot is authoritative when present; the existing partial-definition fallback may resolve the registry's full definition. | Full `E` entries; `assessmentContractVersion: null`; no roster or class read                     |
-
-The class path keeps its stored task summaries. For abnormal legacy partial-definition records,
-the class read and the direct full read can therefore expose different known-task universes.
-All projected entries in both reads remain reassessment `E`; neither read repairs storage nor
-guesses historical task associations or causes.
-
-Placeholder construction (one per known student/task pair):
-
-| Aspect               | Value                                                                                                                                                                                                                                                                                                                                                        |
-| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Submission           | Existing `StudentSubmission` model constructor (public entry retained by the implemented model split). `studentId` from the validated identity. `studentName` is `string \| null`, matching the backend model; do not fabricate a name when only an identity is known. `documentId` retains only a validated historical ID, otherwise explicit `null`.       |
-| Item                 | Existing `StudentSubmissionItem` model constructor; known `taskId`; item ID uses the usual model derivation.                                                                                                                                                                                                                                                 |
-| Artefact             | Existing model constructor with `role: 'submission'`, `type: 'base'`, explicit `content: null`, `contentHash: null` and empty `metadata` (`{}`). Its UID is deterministically derived from the assignment/student/task identities. Only validated historical document/page IDs may be retained; otherwise explicit `null`, never guessed source identifiers. |
-| Assessments          | All three canonical criteria set to the validation `REASSESSMENT_REQUIRED` `E`: `reasoning: 'Reassessment required'` and `error: { stage: 'validation', code: 'REASSESSMENT_REQUIRED' }`.                                                                                                                                                                    |
-| Feedback             | Empty record (`{}`).                                                                                                                                                                                                                                                                                                                                         |
-| Timestamps           | Valid stored submission timestamps where available. Otherwise the detached placeholder uses the assignment's `createdAt` and its non-null `updatedAt` (or `createdAt` when no update exists). Never the wall clock and never a claim about the historical processing attempt.                                                                                |
-| Transport projection | Full reads emit full `E` entries. Class reads redact artefact content/hash as usual but retain `E` reasoning and cause. Both emit `assessmentContractVersion: null`.                                                                                                                                                                                         |
-
-The implemented `Models/StudentSubmission/` split keeps `index.js` as the public facade and
-the existing item model in `00_StudentSubmissionItem.js`; both remain at most 320 lines and
-preserve the constructors used above. This module separation is implemented; it is not a change
-to the placeholder contract.
-
-Format gate and persistence preservation:
-
-- Check the legacy marker before restoring historical items. Keep the legacy submission body and
-  the original marker presence/value as an opaque snapshot behind the typed `Assignment` facade
-  for unchanged persistence. Runtime snapshot fields themselves are not serialised. Legacy
-  persistence `toJSON()`/`toPartialJSON()` re-emit that stored submission body and the original
-  marker unchanged; they never emit projected `E` placeholders.
-- Do not validate or coerce historical marks into the new completed-item contract, strip stored
-  content on an ordinary class save, or persist the detached `E` projection. This is a format
-  gate, not historical-data repair. The read projection is detached: `_toReadView()` substitutes
-  the projector output for the class wire entry, and `Assignment.toReadJSON()` (delegating to
-  `AssignmentSerialisation.toReadJSON()`) does the same for a direct full read. Class
-  save/preparation never receives those read placeholders.
-- Historical scores/content are ignored for assessment resolution; do not attempt to reconstruct
-  past failure causes. Old-format data need not gain valid historical previews, but class
-  configuration, definitions and existing stored results are retained unchanged. Successful
-  reassessment is the authorised transition to a current result.
-- The frontend normaliser validates these already materialised entries and the required
-  `assessmentContractVersion: 1 | null` read field. It does not generate a second reassessment
-  graph, query a roster or infer historical outcomes. A wire payload with a missing or
-  unsupported marker is an invalid root; it is not a legacy-result signal for the browser. Both
-  read services invoke the normaliser before their final parse.
-- An invalid root/definition or untrustworthy required identity still fails the owned dataset;
-  this projection must not invent missing identities.
-
-> **Temporary compatibility.** The legacy opaque-persistence and detached-read compatibility
-> path — including the separate `Assignment.toReadJSON()` wrapper — is migration compatibility,
-> not an intended permanent second serialiser. Review it on **24 April 2027** to decide whether
-> legacy assessments have likely been rerun and the path can be retired. That date is a review
-> checkpoint only: it does not expire, remove or change the path automatically. Retiring the path
-> first requires confirming that remaining stored legacy assessments no longer need it and that
-> ordinary persistence cannot be damaged. No scheduled notification, automatic migration, data
-> deletion, background backfill or forced reassessment is promised or authorised.
-
-### Full and partial item isolation with trustworthy identities (Implemented)
-
-> **Status: implemented on both read paths; completed-write gates remain planned.** The backend raw
-> validation, exact-once construction, missing-task coverage, null-parent isolation, full/partial
-> mode threading and detached legacy reassessment projection described here are implemented by
-> `AssignmentCurrentRestoration` and `02_AssignmentReadProjection.js`; see
-> [§Marker-1 CURRENT restoration](#marker-1-current-restoration-implemented) and
-> [§Legacy reassessment read projection](#legacy-reassessment-read-projection-implemented).
-> The browser read-normalisation owners (`assignmentReadNormalisation.ts` and
-> `assignmentReadItemValidation.ts`) implement the full/partial isolation below and are invoked by
-> both read services. The former review gaps G4–G8 are resolved in
-> [Known discrepancies](#known-discrepancies); completed-write gates are implemented.
-
-Implemented restoration/validation behaviour for both the full `getAssignment` path and the
-class-embedded partial path:
-
-- Make full versus partial restoration explicit at the owning boundary. Partial redaction must
-  never trigger source-content failure detection or hash generation.
-- Legacy reassessment entries are already materialised by the backend
-  `AssignmentRehydration.projectReassessmentSubmissions()` owner. The frontend normaliser
-  validates those entries and retains defensive per-item corruption isolation; it does not
-  generate a second reassessment graph, query a roster or infer historical outcomes.
-- Restore each identified submission/item once. Validate raw current-version records **before**
-  coercive constructors can erase evidence of absent content/hash or malformed Assessment
-  entries. Retain model-owned content normalisation; do not duplicate a second domain model at
-  the API boundary.
-- Validate identifiable student items independently so a malformed item, mark or error detail
-  cannot discard healthy siblings. This includes an item whose null parent `documentId` is
-  contradicted by numeric/`N` marks or by an assessment-/extraction-stage `E`: isolate that item
-  as all-three validation `CORRUPT_RECORD` `E` under
-  [Completed submission coverage](#completed-submission-coverage-implemented-for-reads), never dropping
-  it or its healthy siblings. The contradiction is item-scoped; do not fail the whole owned
-  dataset for an identifiable item. Valid acquisition/validation `E` items under the same null
-  parent remain valid and are preserved. Apply the equivalent isolation to full and partial reads,
-  with their different content/reasoning presence rules, through the feature-domain
-  read-normalisation owner; do not weaken global `parseApiResponse` semantics.
-- Validate assignment/root/shared-definition structure atomically and strictly as today,
-  including the required `assessmentContractVersion: 1 | null` read-wire field. After
-  isolation, revalidate the canonical normalised result before returning typed data to
-  consumers; a missing required key (including a missing/unsupported wire marker) is never
-  accepted as a valid success.
-- Replace only explicitly detected invalid records with typed `E` placeholders. A placeholder
-  uses the canonical model constructors, preserves the known task/student association, and
-  carries explicit `null` content/hash plus validated source identifiers when available. It is
-  never passed to rendering as a malformed success-shaped object.
-- In backend restoration, `AssignmentRehydration` performs the one-pass full **and** partial
-  restoration. If a submission identity is valid but its item collection is corrupt, it marks
-  the known definition tasks `E` from the embedded snapshot. If student/task identity or the
-  shared root/definition is untrustworthy, fail the owned dataset loudly rather than guessing
-  associations. On the browser partial-read path, the normaliser validates only the entries it
-  is given and does not infer coverage from the separately loaded definition registry. On the
-  browser full-read path, a missing task is filled only defensively from that same payload's
-  definition when the wire payload nonetheless lacks it; that fallback never overwrites
-  backend-materialised `E` and is not the normal full coverage owner.
-- Data-corruption conversion is restricted to explicit raw-data validation failures. Do not
-  catch arbitrary constructor or programming faults and turn them into `E`.
-- Full artefact `content`/`contentHash` remain required in the full shape. No `.optional()`
-  relaxation is permitted; a missing required field is corruption, not legitimate null content.
-- Log structured field paths and available course/assignment/student/task identifiers; never
-  log source content, raw LLM payloads, credentials or student names.
-
-Owners:
-
-| Boundary                       | Owner                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           | Responsibilities                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
-| ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Frontend shared result schemas | `services/assignmentAssessment/assessmentResult.zod.ts` (implemented; consumed by both read schemas)                                                                                                                                                                                                                                                                                                                                                                                                                                            | Shared full/partial `Assessment` and error-cause schemas, so both assignment and class-detail services enforce the same score range, `E` catalogue and non-blank `E` reasoning refinement.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
-| Frontend read normalisation    | `services/assignmentAssessment/assignmentReadNormalisation.ts` and `services/assignmentAssessment/assignmentReadItemValidation.ts` (implemented pure owners; invoked by both read services before their final parse)                                                                                                                                                                                                                                                                                                                            | Pure full/partial item isolation. `assignmentReadNormalisation.ts` owns the two public entry points and root/definition checks; `assignmentReadItemValidation.ts` owns item/artefact/parent-source validation, canonical corruption construction and safe diagnostic paths. They contain no React, GAS dispatch or raw-JSON parsing. The browser partial path validates provided entries only and never infers coverage from the definition registry. The browser full path fills a task only defensively when a wire payload lacks it, using that same full payload's definition, and never overwrites backend-materialised `E`; it is not the normal full coverage owner. |
-| Backend raw domain validation  | `src/backend/Models/Assessment.js`, `src/backend/Models/StudentSubmission/index.js` (implemented facade), `src/backend/Models/StudentSubmission/00_StudentSubmissionItem.js` (implemented item model), `src/backend/AssignmentProcessor/Assignment/02_AssignmentRehydration.js` (restore/coverage facade), `src/backend/AssignmentProcessor/Assignment/02_AssignmentCurrentRestoration.js` (implemented marker-1 restoration), `src/backend/AssignmentProcessor/Assignment/02_AssignmentReadProjection.js` (implemented pure legacy projection) | `Assessment` validates its result/cause; the `StudentSubmission` facade and item model validate their own full/partial records; `AssignmentRehydration` owns one-pass full/partial graph traversal; `AssignmentCurrentRestoration` owns marker-1 root/task pre-validation, raw item validation, coverage, null-parent isolation and full/partial restoration; the legacy projection remains behind `AssignmentRehydration.projectReassessmentSubmissions()`, with pure projection/snapshot mapping in `02_AssignmentReadProjection.js` (implemented), not a second materialiser. Controllers select the representation explicitly.                                          |
-| Transport-boundary exclusion   | `src/backend/z_Api/*` handlers                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | API handlers do not introduce a second domain-validator hierarchy.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
-
-Backend module separations (from the `SPEC.md` sizing table) preserve the existing
-public owners and the existing File Index:
-
-- `src/backend/Models/StudentSubmission.js` has become `Models/StudentSubmission/index.js`
-  (public facade) plus `Models/StudentSubmission/00_StudentSubmissionItem.js` (item model),
-  each at most 320 lines. **Implemented in Section 1**; the existing public constructors
-  remain the entry points.
-- `src/backend/AssignmentProcessor/Assignment/02_AssignmentRehydration.js` keeps its
-  restore/coverage facade at most 320 lines; the pure legacy projection/snapshot mapping lives
-  in same-domain `02_AssignmentReadProjection.js` at most 280 lines, behind the unchanged
-  `AssignmentRehydration.projectReassessmentSubmissions()` entry. It is not a second
-  materialiser. **Implemented.**
-
-The StudentSubmission model split is implemented. The marker-1 CURRENT restoration slice and the
-legacy read-projection separation/opaque persistence are implemented and documented in
-[§Marker-1 CURRENT restoration](#marker-1-current-restoration-implemented) and
-[§Legacy reassessment read projection](#legacy-reassessment-read-projection-implemented);
-the frontend read normaliser is implemented and invoked by both read services. Completed-write
-gates remain pending.
-
-### Alignment concerns (planned vs current code)
-
-1. **`Assessment` has an `E` branch and both consumer schemas now accept it.** The backend
-   `Assessment.toJSON()` emits `number | 'N' | 'E'` with an `E`-only cause, and the shared
-   `assessmentResult.zod.ts` schemas validate it. `AssessmentSchema` and
-   `PartialAssessmentEntrySchema` alias those shared schemas, so a full or partial `E` cause and
-   retained partial reasoning validate.
-2. **Full/partial score validators now match the implemented range.** The backend rejects
-   NaN/`±Infinity` and values outside 0–5. Both read schemas consume the shared union:
-   `z.number().min(0).max(5)` (Zod 4 rejects NaN/`±Infinity`) plus `'N'`, and the `E` branch.
-   Fractional scores are accepted.
-3. **`formulaComparison` is no longer persisted; LLM live/cache results enforce exact-three
-   validation, while completed-persistence rejection remains planned.** `SheetsAssessor` now
-   writes only `completeness`, `accuracy` and `spag`; transient comparison data stays
-   assessor-local and cell-reference feedback remains in `feedback`. The LLM successful-result
-   validator requires exactly the three criteria and rejects missing/null/extra entries
-   (Section 6). Both assessment records still use `z.record(z.string(), ...)`, so a stored extra
-   key is not rejected by the frontend schema, and completed persistence rejecting an
-   incomplete/extra-key stored record remains **Misaligned** until Section 8. The
-   `formulaComparison` removal and the LLM-side validation are **Aligned**.
-4. **Partial projection retains E reasoning and the partial consumer validates it.**
-   `_stripAssessmentReasoning()` preserves an `E` entry intact while numeric/`N`
-   entries stay score-only. `PartialAssessmentEntrySchema` aliases the shared
-   `partialAssessmentResultSchema`, so the retained `E` details validate.
-5. **Preview/read-projection field shapes are now fixed by `SPEC.md`.** The planned
-   `CellPreviewData` adds the required `errors` map, and `TaskPreviewData` carries the selected
-   criterion's required `error` plus `sourceState`. Current derived shapes have none of these
-   fields, so the preview contract is **Misaligned** until implemented. The exact field names and
-   precedence are recorded in
-   [Frontend Data Analysis Response §Preview shapes](frontend-data-analysis-response.md#preview-shapes--explicit-source-and-error-state-not-implemented),
-   not duplicated here.
-6. **Coverage and blank spreadsheet canonicalisation are partially implemented.**
-   Marker-1 CURRENT backend restoration materialises one item per known task, converts a missing
-   or corrupt known item to all-three `CORRUPT_RECORD` `E`, and preserves healthy siblings on both
-   full and partial reads. The legacy read projection instead materialises every known
-   student/task pair as all-three `REASSESSMENT_REQUIRED` `E` without validating historical
-   assessment bodies. `SpreadsheetTaskArtifact.normalizeContent()` canonicalises a
-   successfully read blank/all-null grid to `[]` with the normal `[]` hash. The browser
-   normaliser implements provided-entry isolation and the defensive full-payload fallback and is
-   invoked by both read services; completed-persistence coverage rejection is now
-   implemented at the Section 8 write boundary. Existing formula scoring is unchanged.
-7. **The shared result schema owner and the read normaliser are both active.**
-   `services/assignmentAssessment/assessmentResult.zod.ts` is consumed by both read
-   schemas, and `services/assignmentAssessment/assignmentReadNormalisation.ts` plus
-   `assignmentReadItemValidation.ts` implement full/partial isolation. Both read services call
-   the normaliser before their final `parseApiResponse` parse. The former review gaps G4–G8 are
-   resolved in [Known discrepancies](#known-discrepancies).
-8. **Full `StudentSubmissionSchema.studentName` now accepts `null`, matching the backend's
-   `string \| null` emission.** The partial schema was already nullable. Retain the field;
-   historical notes calling it temporary do not authorise removal.
-9. **Section 6 LLM terminal outcomes and cache identity add no shape.** Assessment-stage
-   `LLM_INVALID_RESPONSE`, `LLM_HTTP_FAILED`, `LLM_UNAVAILABLE` and `LLM_RUN_STOPPED` results
-   use the existing `Assessment` `E` union and catalogue, and the cache key plus run-stop latch
-   are internal runtime state. There is no persisted run status, transport field, envelope
-   change, schema version or new catalogue entry; both frontend schemas already accept every
-   emitted assessment result. See
-   [§LLM assessment outcomes and validated cache reuse](#llm-assessment-outcomes-and-validated-cache-reuse-implemented).
-10. **Section 7 image hydration adds no shape.** `ImageManager` reuses the existing extraction
-    `IMAGE_HYDRATION_FAILED` catalogue cause and `StudentSubmissionItem.setError()` atomic
-    replacement. It adds no persisted field, transport field, public entry property or schema
-    version; a matched pending IMAGE remains a valid in-flight state and its resolved or failed
-    outcome is expressed through the existing artefact content/hash and Assessment union. See
-    [§Image hydration outcomes](#image-hydration-outcomes-implemented).
-
-**Classification of the entries above:** the `Assessment` result/cause primitives, atomic
-`setError()`, partial `E` retention, both consumer schema activations, the required wire marker,
-full `studentName` nullability, blank-grid canonicalisation, the definition-write shared-artefact
-availability rules and formula-free reference rejection, removal of the persisted
-`formulaComparison` entry, marker-1 CURRENT backend restoration (read validation, coverage and
-null-parent isolation), the legacy read projection/opaque persistence, the frontend read
-normaliser activation, the Section 4 acquisition/extraction `E` producers with terminal failure
-materialisation for known tasks, the Section 6 assessment-stage LLM producers with validated
-cache reuse, and the Section 7 scoped image-hydration outcomes are implemented.
-Completed-persistence gates (including completion-time marker stamping and pending-image
-rejection) are implemented; preview slices remain pending. The acquisition
-placeholder now matches the null-parent read invariant and source conversion is placed at
-immediate native access (see [Known discrepancies](#known-discrepancies) items 23–24); items 26–27
-record the resolved completion-marker and pending-image gates. None is
-a regression in the implemented backend result/cause, CURRENT restoration or legacy projection
-contracts.
+4. **`startAssessmentRun` returns `null` and the frontend schema uses `z.void().nullable()`.**
+   Backend returns `null` (no payload on success). The frontend `StartAssessmentRunResponseSchema` is `z.void().nullable()` which accepts both `undefined` (from the envelope's `data ?? null` coercion) and `null`.
+   **Classification: Aligned** — standard pattern for void-response endpoints.
+
+5. **`assessmentContractVersion` is required by both frontend read schemas and enforced contextually.**
+   `AssignmentFullSchema` and `AssignmentPartialSchema` both require `z.union([z.literal(1), z.null()])`, and the normaliser additionally requires marker-null provided entries to be backend-materialised reassessment `E`.
+   **Classification: Aligned** — root presence/type and the contextual check are both active.
+
+6. **Legacy records are opaque and the backend read projection plus browser normalisation are active.**
+   `AssignmentRehydration._rehydrateSubmission()` does not catch, reconstruct or drop non-marker-1 records: the historical body and exact marker presence/value are retained as an opaque snapshot. `AssignmentSerialisation.toJSON()` / `toPartialJSON()` re-emit that snapshot unchanged (no ordinary-save certification), while `toReadJSON()` and `ABClassResponseMapper._toReadView()` substitute detached reassessment `E` placeholders from `02_AssignmentReadProjection.js`. Both read services validate the resulting entries. Completed-write preflight/gates are enforced at the write boundary.
+   **Classification: Aligned** — recorded under [Component Shape: Assessment § Write boundary](assessment.md#write-boundary-preflight-before-any-write).
+
+7. **A restored `assignmentName` must be a string; there is no generated fallback.**
+   The constructor's restoration branch requires `typeof restoration.assignmentName === 'string'` and throws `TypeError` before any Classroom access otherwise, so a stored `null`, `undefined` or other non-string fails loudly and propagates unhandled. The generated `Assignment <assignmentId>` fallback has been deleted, including from the fetched-title path, where `fetchAssignmentName()` throws `TypeError` when the Classroom title is not a string after its single coursework call. Valid strings — including a blank string — and the saved `createdAt` are preserved verbatim, so the normal construction and restoration paths cannot produce a `null` name and `AssignmentFullSchema.assignmentName: z.string()` remains the correct, unwidened contract.
+   **Classification: Aligned** — the strict-name contract (no schema widening, no recovery fetch, no fallback) is deliberate. It is not `Fragile`: an invalid saved name fails before it can reach persistence or transport.
 
 ---
 
@@ -1512,68 +381,21 @@ Persistence model:         src/backend/AssignmentProcessor/Assignment/index.js
       └── _baseFromJSON()       — marker-1 root/task pre-validation; opaque legacy snapshot otherwise
       └── projectReassessmentSubmissions() — sole public legacy read-projection facade
   └── AssignmentReadProjection (02_AssignmentReadProjection.js)
-      └── projectReassessmentSubmissions() — implemented pure detached legacy projection
+      └── projectReassessmentSubmissions() — pure detached legacy projection
   └── AssignmentCurrentRestoration (02_AssignmentCurrentRestoration.js)
       └── _rehydrateCurrentSubmission() — marker-1 full/partial restoration, coverage,
                                            null-parent isolation and corrupt-item placeholders
 
-Sub-entity models:
-  ├── src/backend/Models/StudentSubmission/
-  │     ├── index.js                             — StudentSubmission facade
-  │     │     └── StudentSubmission.toJSON()         — full submission shape
-  │     │     └── StudentSubmission.toPartialJSON()   — partial submission shape
-  │     └── 00_StudentSubmissionItem.js           — StudentSubmissionItem model
-  │           └── StudentSubmissionItem.toJSON()      — full item shape
-  │           └── StudentSubmissionItem.toPartialJSON() — partial item shape
-  │           └── StudentSubmissionItem.setError()     — atomic all-three-criteria E replacement
-  ├── src/backend/Models/Assessment.js
-  │     └── Assessment.toJSON()                — full assessment shape (score/reasoning/error)
-  │     └── Assessment.createError()            — catalogue E construction
-  │     └── Assessment.fromJSON()               — validated result restoration
+Embedded component shapes (documented separately):
+  ├── StudentSubmission / StudentSubmissionItem → student-submission.md
+  ├── Assessment                                 → assessment.md
+  └── BaseTaskArtifact                           → base-task-artifact.md
+
+Inline sub-entity models:
   ├── src/backend/Models/Feedback/0_Feedback.js
   │     └── Feedback.toJSON()                  — base feedback shape
-  ├── src/backend/Models/Feedback/1_CellReferenceFeedback.js
-  │     └── CellReferenceFeedback.toJSON()     — cell reference feedback shape
-  └── src/backend/Models/Artifacts/0_BaseTaskArtifact.js
-        └── BaseTaskArtifact.toJSON()          — full artifact shape
-        └── BaseTaskArtifact.toPartialJSON()   — partial artifact shape
-
-Student stage:             src/backend/AssignmentProcessor/
-  ├── Assignment/04_AssignmentSubmissions.js    — paginated Classroom acquisition, scan-local
-  │                                               deferred failure materialisation and
-  │                                               acquisition E placeholders
-  ├── SlidesAssignment.js                       — Slides student-stage extraction outcomes
-  └── SheetsAssignment.js                       — Sheets student-stage extraction outcomes
-
-Document parsers:          src/backend/DocumentParsers/
-  ├── SlidesParser/
-  │     ├── index.js                            — Slides parser facade
-  │     ├── 00_SlidesParserTableContent.js      — native text/table read conversion,
-  │     │                                          whole-TABLE null on first failure
-  │     └── 01_SlidesParserSubmissionMatcher.js — failed-open sentinel, missing-match
-  │                                                placeholder and matched pending IMAGE
-  └── SheetsParser.js                           — failed-open sentinel and unavailable
-                                                  range-read artefact
-
-Assessment-stage LLM:      src/backend/RequestHandlers/
-  ├── LLMRequestManager.js                     — terminal assessment outcomes, run-stop
-  │                                               terminalisation, shared live/cache numeric
-  │                                               validation and versioned internal cache
-  │                                               identity retained through writeback
-  └── CacheManager.js                          — generic best-effort get/put and shared
-                                                  CACHE_EXPIRY_SECONDS (assessment-specific
-                                                  wrappers removed)
-
-Image hydration:           src/backend/RequestHandlers/ImageManager.js
-  ├── collectAllImageArtifacts()               — owner-local URL admission, scoped shared
-  │                                               blocking and student IMAGE_HYDRATION_FAILED
-  │                                               materialisation
-  ├── fetchImagesAsBlobs()                     — one full-list sender call, 200-only, no stop
-  │                                               statuses, document round-robin and scoped
-  │                                               final outcomes
-  └── writeBackBlobs()                         — UID-checked writeback, unusable-content scope
-                                                  rules, content/hash validation and
-                                                  changed-content invalidation
+  └── src/backend/Models/Feedback/1_CellReferenceFeedback.js
+        └── CellReferenceFeedback.toJSON()     — cell reference feedback shape
 
 Controller:                src/backend/y_controllers/
   ├── AssignmentController.js                   — startAssessmentRun, processSelectedAssignment
@@ -1582,6 +404,9 @@ Controller:                src/backend/y_controllers/
         └── ABClassAssignmentOps.js             — readRehydrateAssignment, _loadFullAssignmentDocument,
                                                   _validateAssignmentDocument, _ensureFullDefinition,
                                                   _getFullAssignmentCollectionName, persistAssignmentRun
+                                                  (completed-write gate, marker stamping, prepared payloads)
+        └── ABClassAssignmentValidation.js      — _validateCompletedAssignmentRun(),
+                                                  _validateCompletedSharedArtefacts()
         └── ABClassResponseMapper.js            — _toReadView() transport transformation
 
 API handlers:              src/backend/z_Api/assignmentAssessment.js
@@ -1595,25 +420,10 @@ Frontend:
   ├── src/frontend/src/services/assignmentAssessment/assignmentAssessment.zod.ts
   │     → AssignmentFullSchema, AssignmentFullResponseSchema,
   │       GetAssignmentRequestSchema, StartAssessmentRunRequestSchema,
-  │       StartAssessmentRunResponseSchema, StudentSubmissionSchema,
-  │       StudentSubmissionItemSchema, AssessmentSchema, TaskDefinitionSchema,
-  │       BaseTaskArtifactSchema, AssignmentDefinitionSchema
+  │       StartAssessmentRunResponseSchema, AssignmentDefinitionSchema,
+  │       TaskDefinitionSchema (re-exports the component shapes below)
   ├── src/frontend/src/services/assignmentAssessment/assignmentAssessmentService.ts
   │     → getAssignment(), startAssessmentRun()
-  ├── src/frontend/src/services/assignmentAssessment/assessmentResult.zod.ts
-  │     → assessmentResultSchema, partialAssessmentResultSchema,
-  │       assessmentCauseSchema (implemented shared owner; consumed by both read schemas)
-  ├── src/frontend/src/services/assignmentAssessment/assignmentReadNormalisation.ts
-  │     → normaliseAssignmentRead(), normaliseClassRead() (implemented pure full/partial
-  │       read normaliser; invoked by both read services before their final parse)
-  ├── src/frontend/src/services/assignmentAssessment/assignmentReadItemValidation.ts
-  │     → isValidFullItem(), isValidPartialItem(), corruptItem(), itemErrorPath(),
-  │       isRecord(), isIdentity() (implemented adjacent pure item/source validation and
-  │       canonical corruption construction)
-  ├── src/frontend/src/services/googleClassrooms/classDetail/classDetailService.zod.ts
-  │     → AssignmentPartialSchema, StudentSubmissionPartialSchema,
-  │       StudentSubmissionItemPartialSchema, PartialAssessmentEntrySchema,
-  │       BaseTaskArtifactPartialSchema, ClassFullSchema, ClassFullResponseSchema
-  └── src/frontend/src/services/googleClassrooms/classDetail/classDetailService.ts
-        → getABClass()
+  └── src/frontend/src/services/googleClassrooms/classDetail/classDetailService.zod.ts
+        → AssignmentPartialSchema, ClassFullSchema, ClassFullResponseSchema
 ```

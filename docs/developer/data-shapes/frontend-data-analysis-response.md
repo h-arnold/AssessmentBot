@@ -2,14 +2,11 @@
 
 ## Status
 
-**Implemented.** This is the canonical contract for the frontend-only, in-memory
-data-analysis response. It has **no backend API, persistence collection, transport
-envelope or migration**. The ABClass metadata lifecycle, the shared post-analysis
-contracts and both consumer surfaces are implemented and described below. Batch-1
-remediation adds the required `selectedClassId` ownership argument,
-readiness-independent feedback retention, the required App notification host and
-bounded `confirmedPersistence: true` refresh diagnostics; these affect local frontend
-execution only.
+**Implemented.** Canonical contract for the frontend-only, in-memory data-analysis response.
+It has **no backend API, persistence collection, transport envelope or migration**. The ABClass
+metadata lifecycle, the shared post-analysis contracts and both consumer surfaces are
+implemented and described below. The only outstanding planned change is the attempt-baseline
+analysis mode (see [Planned contract changes](#planned-contract-changes-not-implemented)).
 
 Sibling contracts:
 
@@ -21,32 +18,23 @@ Sibling contracts:
 Related frontend documents:
 
 - [`data-analysis-architecture.md`](../frontend/data-analysis-architecture.md)
-- [`TASK_HEATMAP_ZERO_WEIGHT_LAYOUT.md`](../../../TASK_HEATMAP_ZERO_WEIGHT_LAYOUT.md)
 
 ---
 
-## Boundary
-
-This is an in-memory frontend validation and service contract. It has **no
-persistence, backend API endpoint, transport envelope, or migration**.
-`DataAnalysisService.analyse()` validates its input with
-`AveragingAnalyserInputSchema` and its derived `DataAnalysisResponse` output with
-`DataAnalysisResponseSchema`. The shared API envelope documented in
-[transport-envelope.md](transport-envelope.md) does not apply to this contract.
-
 ## Persistence
 
-None. There is no collection, no `toJSON()`/`toPartialJSON()` serialisation, and
-no stored document. Analysis results and the local execution companions below are
-in-memory values. Only explicitly projected ABClass metadata crosses persistence,
-through the existing [ABClass contract](abclass.md#implemented-metadata-writer-projection-and-task).
+None. There is no collection, no `toJSON()`/`toPartialJSON()` serialisation, and no stored
+document. Analysis results and the local execution companions below are in-memory values. Only
+explicitly projected ABClass metadata crosses persistence, through the existing
+[ABClass contract](abclass.md#metadata-writer-projection-and-task).
 
-## Transport
+There is likewise no transport boundary: no `z_Api` handler, controller, response mapper, API
+endpoint, or `ALLOWLISTED_METHOD_HANDLERS` entry for this contract. `DataAnalysisService.analyse()`
+validates its input with `AveragingAnalyserInputSchema` and its derived `DataAnalysisResponse`
+output with `DataAnalysisResponseSchema`. The shared API envelope documented in
+[transport-envelope.md](transport-envelope.md) does not apply to this contract.
 
-None. There is no `z_Api` handler, controller, response mapper, API endpoint, or
-`ALLOWLISTED_METHOD_HANDLERS` entry for this contract.
-
-## Effective weighting
+### Effective weighting
 
 For each task observation whose `taskId` exists in the live partial:
 
@@ -76,9 +64,9 @@ adapters remain direct TypeScript projections rather than Zod parses, but their
 shared weighting boundary prevents an invalid `effectiveWeight` from
 escaping.
 
-## Response shapes
+### Response shapes
 
-### Assignment task summaries (#277)
+### Assignment task summaries
 
 `DataAnalysisService.analyseAssignmentSummary(input, classId, assignmentId)`
 validates the existing `AveragingAnalyserInput` and returns a separate
@@ -215,11 +203,11 @@ These input shapes are documented here only for boundary completeness; the
 zero-weight feature did not change them. The required metadata field is the
 later ABClass read-contract adoption, not part of that feature.
 
-### ABClass mutation boundary (implemented frontend prerequisite)
+### ABClass mutation boundary
 
-Frontend Section 3C adds strict request schemas and queued `upsertABClass` / `updateABClass`
+Frontend strict request schemas and queued `upsertABClass` / `updateABClass`
 services under `services/abClass/`; their fields and omission/null/whole-replacement semantics
-are owned by [Contract: ABClass — mutation schemas and queued services](abclass.md#implemented-mutation-schemas-and-queued-services).
+are owned by [Contract: ABClass — mutation schemas and queued services](abclass.md#mutation-schemas-and-queued-services).
 The wrappers validate before the shared `CLASSES_BULK_MUTATION_JOB_NAME`
 (`classesBulkMutation`) enqueue and parse real
 `ClassPartialSchema` responses.
@@ -235,7 +223,7 @@ This changes no analyser input/output shape and does not persist analysis automa
 not wire data; no callback/context transport schema is introduced here. Actual transport stays
 in `services/apiService.ts`, with direct-owner imports and no facade/barrel.
 
-### Metadata refresh execution contracts (implemented)
+### Metadata refresh execution contracts
 
 These are local TypeScript execution contracts, **not** API requests/responses or additions
 to `DataAnalysisResponseSchema`. The shared lifecycle validates its context and serialisable
@@ -314,7 +302,7 @@ instance into its summary. Both project all four weighted `perClass` metrics, in
 
 The exact source timestamp, summary clock, stable immutable rolling-three merge and
 `{ classId, metadata }` update are owned by
-[ABClass — implemented writer](abclass.md#implemented-metadata-writer-projection-and-task).
+[ABClass — implemented writer](abclass.md#metadata-writer-projection-and-task).
 The rolling merge validates through the non-nullable `NonNullableABClassMetadataSchema` and
 returns `NonNullable<ABClassMetadata>`, so the write path has no nullable-union branch;
 `UpdateABClassRequestSchema` validates the whole replacement. The nullable read/request
@@ -360,7 +348,7 @@ context for the unchanged `selectedClassId` indicates analysis readiness only, n
 departure: it clears published outcomes but leaves feedback ownership and a pending
 same-class attempt intact. The metadata refresh task consumes this shared type directly and
 declares no narrowed context (see
-[Metadata refresh execution contracts](#metadata-refresh-execution-contracts-implemented)).
+[Metadata refresh execution contracts](#metadata-refresh-execution-contracts)).
 
 #### Serialisable outcome data
 
@@ -368,17 +356,17 @@ Same schema owner → `PostAnalysisTaskOutcomeDataSchema`, a
 `z.discriminatedUnion('status', ...)` of strict objects; inferred type
 `PostAnalysisTaskOutcomeData`. **Serialisable does not mean wire data:** none is sent to GAS.
 
-| Field                  | Type                                          | Frontend Zod                 | Notes                                                                                                                                                                        |
-| ---------------------- | --------------------------------------------- | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `taskId`               | `string`                                      | `z.string().min(1)`          | Required in every variant; no trimming or identifier-safety refinement.                                                                                                      |
-| `status`               | `'pending'\|'succeeded'\|'skipped'\|'failed'` | Respective `z.literal(...)`  | Required discriminator; `saved` remains a writer-only status.                                                                                                                |
-| `confirmedPersistence` | `true\|undefined`                             | `z.literal(true).optional()` | Succeeded and failed variants only; absence is valid, false/null reject. Failed may retain a confirmed save after refresh failure (5C). No query-refresh success is implied. |
-| `reason`               | `'noAssignments'\|'unchanged'\|'staleSource'` | `z.enum(SKIPPED_REASONS)`    | Required only for skipped; other variants reject it. `SKIPPED_REASONS` is the pinned tuple.                                                                                  |
+| Field                  | Type                                          | Frontend Zod                 | Notes                                                                                                                                                                   |
+| ---------------------- | --------------------------------------------- | ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `taskId`               | `string`                                      | `z.string().min(1)`          | Required in every variant; no trimming or identifier-safety refinement.                                                                                                 |
+| `status`               | `'pending'\|'succeeded'\|'skipped'\|'failed'` | Respective `z.literal(...)`  | Required discriminator; `saved` remains a writer-only status.                                                                                                           |
+| `confirmedPersistence` | `true\|undefined`                             | `z.literal(true).optional()` | Succeeded and failed variants only; absence is valid, false/null reject. Failed may retain a confirmed save after refresh failure. No query-refresh success is implied. |
+| `reason`               | `'noAssignments'\|'unchanged'\|'staleSource'` | `z.enum(SKIPPED_REASONS)`    | Required only for skipped; other variants reject it. `SKIPPED_REASONS` is the pinned tuple.                                                                             |
 
 Pending contains exactly taskId/status; failed additionally permits optional
 `confirmedPersistence: true`. No technical Error, callback, user-copy or class partial
 field is accepted. The hook publishes pending with a separate null Error before awaiting
-each ordered result. Task results remain strictly succeeded/skipped: the 5C failed-data
+each ordered result. Task results remain strictly succeeded/skipped: the failed-data
 extension does not permit a descriptor to return pending/failed.
 
 #### Validated task results
@@ -507,9 +495,9 @@ only visible-key ownership; a committed class change/deselection and actual unmo
 this owner's visible keys. Notification hosts, callback/clock handles, React mount IDs, Maps/Sets
 and technical Errors stay local and have no serialised persistence/transport representation.
 
-#### Frontend test-only acceptance boundary (implemented)
+#### Frontend test-only acceptance boundary
 
-Section 6 adds browser and dispatcher acceptance coverage only. It adds no production helper or
+Browser and dispatcher acceptance coverage only. It adds no production helper or
 contract, introduces **no** new execution context, outcome, request or response field, and the
 lifecycle contracts above are unchanged.
 
@@ -532,7 +520,7 @@ lifecycle contracts above are unchanged.
   prove frontend consumer compatibility and envelope/error propagation only: the seams supply
   prepared controller/mutation data, so they are **not** evidence that the real controller,
   persistence layer or stored-integrity validator ran. Their test-only contract is recorded in
-  [Contract: ABClass — frontend test-only contracts](abclass.md#frontend-test-only-round-trip-and-browser-scenario-contracts-implemented).
+  [Contract: ABClass — frontend test-only contracts](abclass.md#test-only-synthetic-capability).
 
 ## Sub-entities
 
@@ -729,7 +717,7 @@ the Class-page zero-data placeholder:
 Neither shape is a raw analyser `N`, and neither can become `excluded`. The
 `totalDataPoints` difference is intentional and must not be normalised away.
 
-## State resolution
+### State resolution
 
 Task-level metrics resolve from display evidence; parent aggregates resolve from
 contribution evidence. For a parent aggregate, the analyser applies this strict
@@ -774,7 +762,7 @@ Recent Assignment card averages are aggregate scope. They apply this same
 contribution-aware roll-up over their per-task display inputs and resolve an
 all-zero-weight assignment to `excluded`, not a throw or a numeric task result.
 
-## Heatmap projection contract
+### Heatmap projection contract
 
 Heatmap adapters resolve `AverageContribution` from the live
 assignment-definition partial and emit it on task-column descriptors. UI code
@@ -798,9 +786,9 @@ is inherited unchanged. In merged heatmaps, a definition-scoped duplicate
 by `taskKey`, and every collapsed instance shares the same definition-scoped
 effective weighting.
 
-## Task preview derived shapes
+### Task preview derived shapes
 
-> **Status: Implemented (issue #19).** Both types below now carry one required
+> **Status: implemented.** Both types below carry one required
 > `readonly sourceUrl: string | null` field. It is resolved once in the lookup and
 > carried unchanged through assembly and merge. Neither type is persisted and
 > neither is added to any API request or response, so the standard
@@ -810,7 +798,7 @@ These are frontend-only derived types in the task-preview pipeline. They are
 in-memory companions to the derived `DataAnalysisResponse`, not analyser output,
 and are not validated by a Zod schema.
 
-### `CellPreviewData` (implemented)
+### `CellPreviewData`
 
 Owner: `src/frontend/src/features/taskHeatmap/buildCellPreviewLookup.ts` →
 `CellPreviewData`.
@@ -831,14 +819,14 @@ type CellPreviewData = {
 }[ArtifactType];
 ```
 
-| #   | Field             | Type                                     | Notes                                                                                                                                                         |
-| --- | ----------------- | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | `artifactType`    | `ArtifactType`                           | Discriminator derived from `BaseTaskArtifactSchema['type']`, so the two cannot drift.                                                                         |
-| 2   | `artifactContent` | `ArtifactContentByType<K>`               | `TEXT`/`TABLE`/`IMAGE` → `string \| null`; `SPREADSHEET` → 2D array or `null`; `base` → `unknown`.                                                            |
-| 3   | `reasoning`       | `Record<HeatmapMetricKey, string\|null>` | Per-metric reasoning strings; `null` when the assessment is absent for that metric.                                                                           |
-| 4   | `sourceUrl`       | `string\|null`                           | **Implemented (issue #19).** Editor link derived in the lookup, or `null` when the source is unavailable. Never persisted and never added to an API response. |
+| #   | Field             | Type                                     | Notes                                                                                                                            |
+| --- | ----------------- | ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | `artifactType`    | `ArtifactType`                           | Discriminator derived from `BaseTaskArtifactSchema['type']`, so the two cannot drift.                                            |
+| 2   | `artifactContent` | `ArtifactContentByType<K>`               | `TEXT`/`TABLE`/`IMAGE` → `string \| null`; `SPREADSHEET` → 2D array or `null`; `base` → `unknown`.                               |
+| 3   | `reasoning`       | `Record<HeatmapMetricKey, string\|null>` | Per-metric reasoning strings; `null` when the assessment is absent for that metric.                                              |
+| 4   | `sourceUrl`       | `string\|null`                           | Editor link derived in the lookup, or `null` when the source is unavailable. Never persisted and never added to an API response. |
 
-### `TaskPreviewData` (implemented)
+### `TaskPreviewData`
 
 Owner: `src/frontend/src/features/taskHeatmap/TaskPreviewCard.tsx` →
 `TaskPreviewData`.
@@ -861,17 +849,17 @@ interface TaskPreviewData {
 }
 ```
 
-| #   | Field             | Type                                     | Notes                                                                                                                                          |
-| --- | ----------------- | ---------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | `taskId`          | `string`                                 | The heatmap column's task ID, forwarded unchanged.                                                                                             |
-| 2   | `artifactType`    | `'IMAGE' \| 'TEXT' \| 'TABLE'`           | Narrowed from `CellPreviewData['artifactType']`: `SPREADSHEET` → `TABLE`, `base` → `TEXT`.                                                     |
-| 3   | `artifactContent` | `string`                                 | Rendered form; `SPREADSHEET` is converted to a Markdown table, `base` becomes `''`.                                                            |
-| 4   | `metricKey`       | `'completeness' \| 'accuracy' \| 'spag'` | Which metric column the preview is for.                                                                                                        |
-| 5   | `reasoning`       | `string`                                 | `cellData.reasoning[metricKey] ?? ''`; empty string when no reasoning exists.                                                                  |
-| 6   | `metric`          | `TaskDisplayMetric`                      | The analyser's task-display metric, except the no-submission branch substitutes the frozen `NOT_ATTEMPTED_METRIC`.                             |
-| 7   | `sourceUrl`       | `string\|null`                           | **Implemented (issue #19).** Carried unchanged from the source `CellPreviewData`; `null` when `cellData` is `null` or no usable source exists. |
+| #   | Field             | Type                                     | Notes                                                                                                              |
+| --- | ----------------- | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| 1   | `taskId`          | `string`                                 | The heatmap column's task ID, forwarded unchanged.                                                                 |
+| 2   | `artifactType`    | `'IMAGE' \| 'TEXT' \| 'TABLE'`           | Narrowed from `CellPreviewData['artifactType']`: `SPREADSHEET` → `TABLE`, `base` → `TEXT`.                         |
+| 3   | `artifactContent` | `string`                                 | Rendered form; `SPREADSHEET` is converted to a Markdown table, `base` becomes `''`.                                |
+| 4   | `metricKey`       | `'completeness' \| 'accuracy' \| 'spag'` | Which metric column the preview is for.                                                                            |
+| 5   | `reasoning`       | `string`                                 | `cellData.reasoning[metricKey] ?? ''`; empty string when no reasoning exists.                                      |
+| 6   | `metric`          | `TaskDisplayMetric`                      | The analyser's task-display metric, except the no-submission branch substitutes the frozen `NOT_ATTEMPTED_METRIC`. |
+| 7   | `sourceUrl`       | `string\|null`                           | Carried unchanged from the source `CellPreviewData`; `null` when `cellData` is `null` or no usable source exists.  |
 
-> **`sourceUrl` semantics (implemented, issue #19).** `sourceUrl` is an editor
+> **`sourceUrl` semantics.** `sourceUrl` is an editor
 > link to the displayed submission artifact's source document. It is **distinct
 > from image-export `artifact.metadata.sourceUrl`** — the PNG export URL consumed
 > by `src/backend/RequestHandlers/ImageManager.js` to hydrate image content — and
@@ -884,9 +872,9 @@ interface TaskPreviewData {
 > or a `null`/unsupported format, yields `sourceUrl: null`; so does missing cell
 > data. It depends on the implemented nullable artefact `pageId`/`documentId`
 > alignment recorded in
-> [Contract: Assignment §BaseTaskArtifact](assignment.md#basetaskartifact).
+> [Component Shape: BaseTaskArtifact](base-task-artifact.md).
 
-## Display contract
+### Display contract
 
 The `excluded` state is displayed as **Excluded** with accessible text:
 
@@ -905,8 +893,9 @@ The `excluded` state is displayed as **Excluded** with accessible text:
   `includeExcluded` filter toggle, appended as the fifth `|`-separated field of
   the encoded filter key. Legacy four-field keys decode with `includeExcluded`
   set to `false`.
-- Zero-effective-weight heatmap task headers show the explanatory text specified
-  by [`TASK_HEATMAP_ZERO_WEIGHT_LAYOUT.md`](../../../TASK_HEATMAP_ZERO_WEIGHT_LAYOUT.md).
+- Zero-effective-weight heatmap task headers show explanatory text; the layout
+  plan document that originally specified this behaviour has been retired, and
+  the behaviour is display-only with no data-shape impact.
 
 ## Validation
 
@@ -925,10 +914,10 @@ The `excluded` state is displayed as **Excluded** with accessible text:
   `ClassPageAdapterResultSchema`.
 - `src/frontend/src/services/dataAnalysis/postAnalysis/postAnalysis.zod.ts` →
   `PostAnalysisContextSchema`, `PostAnalysisTaskResultSchema`,
-  `PostAnalysisTaskOutcomeDataSchema` — cover the 5B local context, strict succeeded/skipped
-  task returns and serialisable lifecycle state; 5C's optional failed-outcome save
-  confirmation is implemented. Function/Error handles remain separate typed execution values,
-  never transport fields.
+  `PostAnalysisTaskOutcomeDataSchema` — cover the local context, strict succeeded/skipped
+  task returns and serialisable lifecycle state, including the optional failed-outcome save
+  confirmation. Function/Error handles remain separate typed execution values, never
+  transport fields.
 
 **Backend transport validation:**
 
@@ -965,6 +954,43 @@ from the schemas alone):
 - The Class-page no-data placeholder is the only accepted `notAttempted` shape
   with `totalDataPoints: 0`, and only through `ClassPageDisplayMetricSchema`.
 
+**Explicit `E` analyser input:**
+
+The analyser input accepts `'E'` explicitly instead of inferring failure from absent
+assessments or missing numeric contributions:
+
+| Contract                 | Position                                                                                                                                                                                                                                                 |
+| ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `AssessmentScore`        | `number \| 'N' \| 'E' \| undefined` (`averagingAnalyser.types.ts`). `'E'` is explicit known-error evidence from the Assessment union.                                                                                                                    |
+| `processItemAssessments` | Reads `assessments[criterion]?.score`; an absent criterion remains `undefined`, while a provided `'E'` is recognised rather than relying on absence.                                                                                                     |
+| `accumulateCriterion`    | Handles numeric and `'N'`; `'E'` (like `undefined`) contributes no numeric sum, no `N` evidence, no denominator weight, no `totalDataPoints` increment and no weight-counter increment. It is error evidence only.                                       |
+| `MetricAccumulator`      | `nCount` still distinguishes `notAttempted` from `error`; the type comment records that explicit error scores are accepted by `AssessmentScore`. Internal accumulator counter names are implementation-local and not part of this data-shape contract.   |
+| Metric resolution        | A wholly errored task resolves all display metrics to `E` from explicit evidence. A lone `E` display has zero applicable/total data points and zero weight. Existing numeric, genuine `N`, zero-weight and aggregate `excluded` semantics are unchanged. |
+
+Aggregate rules:
+
+- Explicit `E` increments no numeric/`N` evidence, `totalDataPoints` or weight counter, matching
+  the existing missing-assessment error accounting. No new coverage counter is introduced.
+- `E` contributes neither a numeric zero nor denominator weight to averages. Erroneous evidence
+  is excluded from averages while healthy sibling data is retained.
+- The public `MetricResult` and `TaskDisplayMetric` output shapes gain no error-history or
+  reasoning fields. `error` already carries value `'E'`; no new state member is added.
+- Existing mixed valid/error aggregate treatment is preserved; this change does not redesign
+  coverage counts, weighting or ranking.
+- A genuine no-submission contributes no observed item to the analyser and keeps the existing
+  no-data `N` display placeholder. Do not insert raw `N` observations that would change existing
+  average denominators.
+- A version-1 canonical completed fixture never contains an empty assessment map.
+  Missing-criterion and empty-map cases remain local corruption probes, not realistic success
+  data. See
+  [Synthetic Test Data § Explicit E outcomes and richer artefact types](../testing/synthetic-test-data.md#planned-generator-extension-explicit-e-outcomes-and-richer-artefact-types-not-implemented).
+- A version-1 item whose criterion map is incomplete or contains an extra key is an isolated
+  all-three validation `CORRUPT_RECORD` `E` on both full and partial reads; see
+  [Component Shape: Assessment § Persistence](assessment.md#persistence). This is read-time
+  isolation before analysis, not an analyser input rule or a new baseline feature.
+- A missing lookup entry must never be reinterpreted as `N` when an explicit `E` is available
+  from class-summary data. A failed/unavailable full query cannot hide known `E` reasoning.
+
 **Contract notes:**
 
 - The schemas enforce field-level invariants and shape placement only. The
@@ -987,7 +1013,7 @@ from the schemas alone):
 
 **Known discrepancies:**
 
-The Batch 1 reconciliation
+The reconciliation
 semantics are aligned across the analyser, both heatmap adapters, and the
 Class-page adapter:
 
@@ -1007,7 +1033,7 @@ Class-page adapter:
 3. **Aligned** — `resolveAggregateMetric` and `rollupMetric` retain zero-weight
    observed numeric and raw `N` inputs in computed and not-attempted aggregate
    `totalDataPoints`.
-4. **Aligned** — Section 4 projects the analyser's four-state union into the distinct
+4. **Aligned** — the metadata projection maps the analyser's four-state union into the distinct
    ABClass score union explicitly, mapping excluded/null to literal `excluded`. The
    metadata schema enforces finite 0–5 computed values, while `MetricResultSchema.value`
    remains `z.number()` without those bounds; out-of-range projection fails metadata
@@ -1015,37 +1041,24 @@ Class-page adapter:
    stricter than the existing nullable-string read shape; see
    [ABClass known discrepancy 9](abclass.md#known-discrepancies).
 
-   > Previously undocumented boundary narrowing — surfaced during the 20 October 2026
-   > Section 4 data-shapes audit. Origin: the new frontend projection/writer, with no
-   > analyser or backend schema change.
-
-5. **Aligned** — 5B's metadata descriptor translates writer `saved`/`classPartial` into shared
+5. **Aligned** — the metadata descriptor translates writer `saved`/`classPartial` into shared
    `succeeded`/`confirmedPersistence` state, without persisting the display result or
    transporting local Errors/functions. Context identity equality is checked by the
    hook; completeness and successful-run provenance remain caller responsibilities.
-6. **Aligned (resolved)** — `PostAnalysisTaskResultSchema` now admits only strict
+6. **Aligned** — `PostAnalysisTaskResultSchema` admits only strict
    succeeded/skipped results, and the runner parses it before adding descriptor-owned
    `taskId` and validating outcome data. The former wider outcome-only parse accepted
    untyped pending/failed task returns with `error: null`; both now become runner-owned
    failed outcomes with non-null local Errors, without blocking later tasks. Types derive
    from the result schema, whose variants are reused by the outcome schema.
 
-   > Previously undocumented — surfaced during the 20 October 2026 5B data-shapes audit.
-   > Origin: the new runner reusing the state schema for execution results. Resolved by
-   > the subsequent frontend audit fix; two red-first runner cases cover pending/failed
-   > rejection and continued execution.
-
-7. **Aligned** — 5C permits `confirmedPersistence?: true` on failed lifecycle data,
+7. **Aligned** — failed lifecycle data permits `confirmedPersistence?: true`,
    without widening `PostAnalysisTaskResultSchema`. Post-save query refresh failure
    retains a non-null local normalised Error and save confirmation; feedback selects
    saved-but-refresh-failed copy instead of claiming the save failed. False/null flags,
    failed/pending task returns and serialised technical handles remain invalid.
 
-   > Surfaced during the 20 October 2026 5C data-shapes audit. Origin: the intentional
-   > frontend-only refresh-settlement extension. No backend, envelope or analyser shape
-   > change.
-
-8. **Aligned** — Batch 1 makes class ownership explicit and independent of analysis
+8. **Aligned** — class ownership is explicit and independent of analysis
    readiness. `usePostAnalysisTasks` requires the committed `selectedClassId` as its third
    argument; a `null` context for the same class clears published state but does not destroy
    feedback or detach a pending attempt, while a changed/deselected class and unmount still
@@ -1055,14 +1068,12 @@ Class-page adapter:
    lifecycle execution only: no persistence, request, response, envelope or analyser shape
    changes.
 
-   > Surfaced during batch-1 remediation of the 21 October 2026 pre-PR review (EH-1/RRC-1).
-   > No wire or persistence change.
+## Planned contract changes (not implemented)
 
-## Planned contract additions (Not implemented, issue #305)
-
-**Status: `Not implemented`** — planned-only entries to support the top-decile
-attempt-baseline analysis mode. These describe the target contract; update this
-section to remove the marker as each addition is implemented and verified.
+Only the top-decile attempt-baseline analysis mode remains unimplemented (tracking issue:
+h-arnold/AssessmentBot#305). The explicit-`E` analyser input, the preview `sourceUrl` field and
+every other previously planned addition are implemented and documented in the sections above.
+The following declarative shapes are the intended target; nothing here exists in code today.
 
 1. **`AnalysisFilterSchema.analysisMode`** — required enum field
    `z.enum(['absolute', 'topDecileBaseline'])` on the existing strict filter
@@ -1083,8 +1094,8 @@ section to remove the marker as each addition is implemented and verified.
    }).optional(),
    ```
 
-   Domain rules (produced by the planned baseline-selection
-   post-accumulation derivation; not Zod refinements):
+   Intended domain rules (produced by a post-accumulation baseline-selection derivation; not
+   Zod refinements):
    - Candidates = roster students with at least one attempted task within the
      analysis input's in-scope assignments; pool = top
      `min(|candidates|, max(2, ceil(0.1 × rosterSize)))` candidates by count of
@@ -1096,15 +1107,13 @@ section to remove the marker as each addition is implemented and verified.
      score; all-`N` items, missing assessment criteria (the historical
      `E` condition), and absent items are not attempts. An explicit `E` result
      also yields no numeric criterion score and is therefore not an attempt.
-     This clarifies the existing numeric-evidence rule; it does not add a
-     baseline feature. Criterion weighting plays no part.
+     Criterion weighting plays no part.
    - Baseline task keys = intersection of the attempt sets across the whole
      pool. An empty intersection throws (descriptive error naming the class)
      before any result is produced, so the schema `min(1)` is protected.
-   - The baseline-selection derivation is recommended as a
-     **post-accumulation** pass over the analyser's accumulators (whose
-     per-criterion `displayCount` already encodes the attempt signal); it is
-     not a separate raw-data pre-pass.
+   - The derivation is a **post-accumulation** pass over the analyser's accumulators
+     (whose per-criterion `displayCount` already encodes the attempt signal); it is not a
+     separate raw-data pre-pass.
    - Applies to all four metric aggregates (per-student, per-class) built from
      per-(student, task) accumulators restricted to the baseline task set.
    - Students whose observed tasks fall entirely outside the baseline resolve
@@ -1138,9 +1147,8 @@ section to remove the marker as each addition is implemented and verified.
    `PerStudentTaskMetric` is unchanged. The array's **contents are also
    mode-independent**: baseline filtering restricts only the aggregation step,
    so `perStudentTaskMetrics` carries every observed (student, task) pair in
-   both modes (byte-identical arrays, pinned by a red-first analyser test) —
-   availability and heatmap substitution paths therefore see identical
-   evidence regardless of mode.
+   both modes — availability and heatmap substitution paths therefore see
+   identical evidence regardless of mode.
 
    **Baseline narrowing rule.** `attemptBaseline` is optional on the result
    because absolute mode omits it; the analyser always emits it in baseline
@@ -1166,10 +1174,9 @@ section to remove the marker as each addition is implemented and verified.
    `ExcludedMetricSchema` literals (`value: null`, `totalWeight: 0`,
    `applicableDataPoints: 0`; the conversion assumes a source rollup whose
    resolved `totalDataPoints` is ≥ 1 — the accumulator path guarantees this)
-   with the same observed-evidence semantics as
-   item 3; an already-`excluded` zero-weight rollup keeps its weighting
-   cause. Criteria with no observed evidence stay `error` (no `excluded` is
-   synthesised), the existing `rows.length === 0 → N` no-per-task-rows
+   with the same observed-evidence semantics as item 3; an already-`excluded`
+   zero-weight rollup keeps its weighting cause. Criteria with no observed
+   evidence stay `error` (no `excluded` is synthesised), the existing `rows.length === 0 → N` no-per-task-rows
    placeholder branch is untouched, and the converted **per-criterion**
    results flow through the existing `computeOverallComposite` (the composite
    itself is never converted): the card `average`'s resolved `totalDataPoints`
@@ -1178,219 +1185,62 @@ section to remove the marker as each addition is implemented and verified.
    `excluded`.
 
 7. **Display-only additions (no schema change):** the `excluded` aggregate
-   state now legitimately carries two causes (zero weighting vs baseline
-   exclusion); the accessible label is made mode-aware at the `metricDisplay`
-   layer (`metricTone`/`MetricPill`/`studentAveragesTableColumns`) without
-   widening any shape — in baseline mode the label names **both** possible
-   causes in one truthful wording, so no cause field exists. The Heatmaps-page
-   pipeline (`heatmapsPipeline.ts`)
-   never enters baseline mode (its input states
+   state would carry two causes (zero weighting vs baseline exclusion); the
+   accessible label becomes mode-aware at the `metricDisplay` layer
+   (`metricTone`/`MetricPill`/`studentAveragesTableColumns`) without widening
+   any shape — in baseline mode the label names **both** possible causes in one
+   truthful wording, so no cause field exists. The Heatmaps-page pipeline
+   (`heatmapsPipeline.ts`) never enters baseline mode (its input states
    `analysisMode: 'absolute'`), so its `includedInAttemptBaseline` flags are
    always `true` there. The Class page's embedded single-assignment heatmap
-   inherits the Class page's analysis result and therefore may render `false`
+   inherits the Class page's analysis result and may therefore render `false`
    markers in baseline mode while keeping absolute cell values.
 
-8. **Heatmap projection addition (planned, `Not implemented`):**
-   `HeatmapTaskColumn` gains `includedInAttemptBaseline: boolean`, set in
+8. **Heatmap projection addition:** `HeatmapTaskColumn` gains `includedInAttemptBaseline: boolean`, set in
    `heatmapAdapter.ts` from a required second `buildTaskColumns` parameter
    typed `ReadonlySet<string> | null` (`null` = absolute mode: every column
    included). **The supplier is `adaptMetricsToHeatmap`** — the only caller
-   that receives a mode-bearing `analyserResult` and therefore the only
-   caller that can supply a non-null baseline set: baseline mode →
+   that receives a mode-bearing `analyserResult`: baseline mode →
    `new Set(analyserResult.attemptBaseline.baselineTaskKeys)` under the
-   Baseline narrowing rule's fail-fast; absolute mode → `null`. No props
-   change hands because `adaptMetricsToHeatmap` is called only from
-   `TaskHeatmapPage`, which runs only inside the Class page. The merged chain
-   (three links: `adaptMetricsToMergedHeatmap` →
-   `buildMergedTaskColumnsInClassOrder` → `buildMergedTaskColumns` →
-   `buildTaskColumns`) passes `null` explicitly at each hop.
-   `MergedHeatmapTaskColumn` inherits the field via
-   its existing spread of the base projection. `HeatmapCell` is unchanged:
-   marking is **column-level only in v1**, and cell values stay absolute in
-   both modes.
+   Baseline narrowing rule's fail-fast; absolute mode → `null`. The merged chain
+   (`adaptMetricsToMergedHeatmap` → `buildMergedTaskColumnsInClassOrder` →
+   `buildMergedTaskColumns` → `buildTaskColumns`) passes `null` explicitly at
+   each hop. `MergedHeatmapTaskColumn` inherits the field via its existing spread
+   of the base projection. `HeatmapCell` is unchanged: marking is
+   **column-level only in v1**, and cell values stay absolute in both modes.
 
-## Planned contract additions — preview errors (analyser E input implemented)
+9. **Preview error fields.** The derived preview shapes cannot currently distinguish an
+   assessment-only error whose source is available, an unavailable/corrupt source, and a
+   `null` `artifactContent` caused by deliberate partial redaction. Intended additions
+   (in-memory only; never added to backend artefacts, persistence, API requests/responses or
+   the transport envelope; `CellPreviewData`/`TaskPreviewData` remain TS-only, non-Zod):
 
-> **Section 2c update:** The explicit E analyser input is implemented. E is accepted
-> by `AssessmentScore` and remains excluded from numeric/N counts, weights and data-point
-> totals. Preview error fields and rendering remain planned for their later section.
+   - `CellPreviewData.errors` — required
+     `Record<HeatmapMetricKey, { stage: ErrorStage; code: ErrorCode } | null>`; every
+     canonical criterion has an entry and non-`E` entries are `null`.
+   - `TaskPreviewData.error` — required `{ stage: ErrorStage; code: ErrorCode } | null`
+     carrying the selected criterion's cause.
+   - `TaskPreviewData.sourceState` — required `'loading' | 'available' | 'unavailable'`:
+     `available` = normal source region ready (usable content, or a confirmed no-submission
+     with no known `E` showing the legitimate `N` placeholder); `unavailable` = an error
+     source only (unavailable/corrupt/known-invalid source, a terminally failed or
+     `null`/not-found fallback fetch, or a known `E` with null `IMAGE`/`SPREADSHEET` content —
+     suppress the response renderer and show an inline error explanation); `loading` = pending
+     only, while a known partial `E` fallback's full fetch is in flight, never terminal.
 
-> **Status: partially implemented.** The explicit Assessment E input is implemented as
-> described below; preview fields remain planned. The backend read projection and both frontend
-> read services are implemented, and the assessment-error acquisition/extraction producers now
-> create these `E` results at the student/task boundary, so `E` reasoning/cause is already
-> available to the future preview slice. Section 4 added no frontend field or public shape: the
-> handled backend diagnostics are opaque and identifier-bounded, and the existing
-> `CellPreviewData`/`TaskPreviewData` shapes are unchanged until the planned preview slice. The Assessment
-> union itself is owned by
-> [Contract: Assignment §Planned contract additions](assignment.md#planned-contract-additions--explicit-assessment-errors-and-result-format-marker-partially-implemented).
-
-### Analyser input — explicit `E` evidence (Implemented)
-
-The analyser input accepts `'E'` explicitly instead of inferring failure from absent assessments
-or missing numeric contributions:
-
-| Contract                 | Implemented position                                                                                                                                                                                                                                     |
-| ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `AssessmentScore`        | `number \| 'N' \| 'E' \| undefined` (`averagingAnalyser.types.ts`). `'E'` is explicit known-error evidence from the Assessment union.                                                                                                                    |
-| `processItemAssessments` | Reads `assessments[criterion]?.score`; an absent criterion remains `undefined`, while a provided `'E'` is recognised rather than relying on absence.                                                                                                     |
-| `accumulateCriterion`    | Handles numeric and `'N'`; `'E'` (like `undefined`) contributes no numeric sum, no `N` evidence, no denominator weight, no `totalDataPoints` increment and no weight-counter increment. It is error evidence only.                                       |
-| `MetricAccumulator`      | `nCount` still distinguishes `notAttempted` from `error`; the type comment records that explicit error scores are accepted by `AssessmentScore`. Internal accumulator counter names are implementation-local and not part of this data-shape contract.   |
-| Metric resolution        | A wholly errored task resolves all display metrics to `E` from explicit evidence. A lone `E` display has zero applicable/total data points and zero weight. Existing numeric, genuine `N`, zero-weight and aggregate `excluded` semantics are unchanged. |
-
-Implemented aggregate rules:
-
-- Explicit `E` increments no numeric/`N` evidence, `totalDataPoints` or weight counter, matching
-  the existing missing-assessment error accounting. No new coverage counter is introduced.
-- `E` contributes neither a numeric zero nor denominator weight to averages. Erroneous evidence
-  is excluded from averages while healthy sibling data is retained.
-- The public `MetricResult` and `TaskDisplayMetric` output shapes gain no error-history or
-  reasoning fields. `error` already carries value `'E'`; no new state member is added.
-- Existing mixed valid/error aggregate treatment is preserved; this change does not redesign
-  coverage counts, weighting or ranking.
-- A genuine no-submission contributes no observed item to the analyser and keeps the existing
-  no-data `N` display placeholder. Do not insert raw `N` observations that would change existing
-  average denominators.
-- A version-1 canonical completed fixture never contains an empty assessment map.
-  Missing-criterion and empty-map cases remain local corruption probes, not realistic success
-  data. See
-  [Synthetic Test Data §Explicit E outcomes and richer artefact types (implemented; corpus cut over)](../testing/synthetic-test-data.md#planned-generator-extension-explicit-e-outcomes-and-richer-artefact-types-not-implemented).
-- A version-1 item whose criterion map is incomplete or contains an extra key is an isolated
-  all-three validation `CORRUPT_RECORD` `E` on both full and partial reads; see
-  [Contract: Assignment §Assessment
-  invariants](assignment.md#assessment--resultcause-primitives-implemented). This is read-time
-  isolation before analysis, not an analyser input rule or a new baseline feature.
-- A missing lookup entry must never be reinterpreted as `N` when an explicit `E` is available
-  from class-summary data. A failed/unavailable full query cannot hide known `E` reasoning.
-
-Alignment concerns:
-
-1. **Resolved — explicit `E` data-point accounting.** `SPEC.md` fixes the accounting: explicit
-   `E` increments no numeric/`N` evidence, `totalDataPoints` or weight counter, and a lone `E`
-   display has zero applicable/total data points and zero weight. This matches the existing
-   missing-assessment error accounting; the earlier open question is closed by the specification,
-   not invented here.
-2. **Output union unchanged.** `PerTaskRow`, `PerStudentTaskMetric`, `MetricResult` and
-   `TaskDisplayMetric` need no new state member: `error` already carries value `'E'`. The
-   planned change is input/accumulation only; no error-history or reasoning field is added to
-   public metric output. Internal accumulator counter naming is implementation-local and is not
-   a data-shape decision.
-
-### Preview shapes — explicit source and error state (Not implemented)
-
-The current derived preview shapes cannot safely distinguish:
-
-- an assessment-only error where the submitted source is available and should still render;
-- unavailable or corrupt source where the response renderer must be suppressed;
-- a missing `artifactContent` caused by deliberate partial redaction.
-
-Planned exact additions (fixed by `SPEC.md`):
-
-| Shape             | Field             | Planned type                                                                        | Notes                                                                                                                                                                                                                                                                                                                                                               |
-| ----------------- | ----------------- | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `CellPreviewData` | `errors`          | Required `Record<HeatmapMetricKey, { stage: ErrorStage; code: ErrorCode } \| null>` | Every canonical criterion has an entry; non-`E` entries are `null`. Cause types are the Assessment contract's `ErrorStage`/`ErrorCode`. Derived in memory.                                                                                                                                                                                                          |
-| `CellPreviewData` | `artifactContent` | Existing discriminated `ArtifactContentByType<K>`                                   | Unchanged shape. A `null` produced by partial redaction is not evidence of source failure; the selected preview view model's `sourceState` carries that evidence.                                                                                                                                                                                                   |
-| `CellPreviewData` | `reasoning`       | Existing `Record<HeatmapMetricKey, string \| null>`                                 | Unchanged shape. May now carry `E` reasoning from a class-embedded partial; `null` when the assessment is absent for that metric.                                                                                                                                                                                                                                   |
-| `CellPreviewData` | `sourceUrl`       | Existing `string \| null`                                                           | Unchanged nullable editor link.                                                                                                                                                                                                                                                                                                                                     |
-| `TaskPreviewData` | `error`           | Required `{ stage: ErrorStage; code: ErrorCode } \| null`                           | Carries the selected criterion's cause, or `null` for a non-`E` selected source, including a confirmed no-submission placeholder.                                                                                                                                                                                                                                   |
-| `TaskPreviewData` | `reasoning`       | Existing `string`                                                                   | Carries the selected source's reasoning, including `E` reasoning from a class-partial fallback.                                                                                                                                                                                                                                                                     |
-| `TaskPreviewData` | `sourceState`     | Required `'loading' \| 'available' \| 'unavailable'`                                | Required preview view-model field, derived in memory from the selected source; full-read builders only yield `available`/`unavailable`. See the no-submission rule below.                                                                                                                                                                                           |
-| `TaskPreviewData` | `artifactContent` | Existing `string`                                                                   | Unchanged type. A known `E` with null `IMAGE`/`SPREADSHEET` full content assembles as `''` with `sourceState: 'unavailable'`; this is not a successful blank extraction. A confirmed no-submission without a known `E` also assembles as `''`, but with `sourceState: 'available'`. Non-`E` unexpected null content still fails as an internal invariant violation. |
-| `TaskPreviewData` | `sourceUrl`       | Existing `string \| null`                                                           | Unchanged nullable editor link; retained only when the existing safe URL derivation succeeds. A confirmed no-submission placeholder has `sourceUrl: null`.                                                                                                                                                                                                          |
-| `TaskPreviewData` | `metric`          | Existing `TaskDisplayMetric`                                                        | Existing metric output shapes do not change; an errored selected source already uses state `error` with value `'E'`.                                                                                                                                                                                                                                                |
-
-Confirmed no-submission without a known `E` is not an error source. When `cellData === null`
-and no known `E` exists, assembly retains the normal ready `N` placeholder with
-`artifactContent: ''`, `error: null`, `sourceUrl: null` and `sourceState: 'available'`, using
-the existing `NOT_ATTEMPTED_METRIC`. Here `available` means the normal source region is ready to
-render its legitimate no-submission placeholder; it does not assert that a source document
-exists and must not produce an error Alert or a perpetual loading state. `unavailable` is
-reserved for an error source.
-
-`TaskPreviewData.sourceState` semantics:
-
-| Value         | Meaning                                                                                                                                                                                                                                                                          | Planned rendering                                                                                                                                                                                 |
-| ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `available`   | The normal source region is ready. Either the selected source content is usable, or the submission is a confirmed no-submission with no known `E` and the legitimate `N` placeholder is shown. The no-submission case does not assert that a source document exists.             | Normal response rendering or the normal no-submission placeholder. A source action is shown only when the existing safe URL derivation succeeds; a confirmed no-submission has `sourceUrl: null`. |
-| `unavailable` | An error source only: the selected source is unavailable, corrupt or known-invalid, **or** its fallback full fetch terminally failed or returned `null`/not found, **or** a known `E` carries null `IMAGE`/`SPREADSHEET` full content. Never used for a confirmed no-submission. | Suppress the response renderer and show an inline error explanation. Retain a source action only when the existing safe URL derivation succeeds.                                                  |
-| `loading`     | **Pending only.** The source region is still resolving while known `E` reasoning is already available.                                                                                                                                                                           | Permit a source-region skeleton. Known `E` reasoning stays visible; the response renderer is not presented as a confirmed success.                                                                |
-
-Planned derivation and precedence:
-
-- These fields are derived in memory only and are never added to backend artefacts, persistence,
-  API requests/responses or the standard transport envelope. `CellPreviewData`/`TaskPreviewData`
-  remain TS-only, non-Zod derived shapes.
-- Full-read builders only yield `available`/`unavailable`. The existing query/preview
-  composition supplies `loading` **only** for a known partial `E` fallback while the full fetch
-  is pending. Once that fetch terminally fails or returns `null`/not found, the fallback resolves
-  to `unavailable`, replaces the source skeleton with the inline Alert and keeps the known
-  reasoning visible. `loading` is never a terminal state.
-- When a known `E` carries null `IMAGE`/`SPREADSHEET` full content, assembly produces the
-  view-model representation `artifactContent: ''` with `sourceState: 'unavailable'` instead of
-  invoking the current throwing coercion. This is not a successful blank extraction. Non-`E`
-  unexpected null content that bypasses read validation still fails loudly as an internal
-  invariant violation; do not broaden a silent null fallback.
-- Legacy reassessment entries are materialised by the backend
-  `AssignmentRehydration.projectReassessmentSubmissions()` public entry, whose pure
-  projection/snapshot mapping is implemented behind it in `02_AssignmentReadProjection.js`
-  (not a second materialiser), and validated by the frontend normaliser, which is invoked by
-  both read services.
-  Preview composition selects those already-materialised entries; it does not generate a second
-  reassessment graph, query a roster or infer historical outcomes.
-- Every cause is the Assessment contract's `error: { stage, code }` pair; non-`E` selected
-  sources carry `error: null`. The public `MetricResult` output is unchanged.
-- Precedence in an opened preview is:
-  1. explicit full-record validation error;
-  2. the class-partial `E` for that criterion;
-  3. the selected full item's `E`;
-  4. the existing analyser metric.
-- Keep existing merged-source selection; do not merge or invent new reasoning from multiple
-  assignment instances. Error fields travel through that same selected source, with
-  class-partial fallback keyed by the actual assignment/student/task/criterion, not a
-  definition-scoped aggregate alone.
-
-Planned presentation rules (from `SPEC.md`):
-
-- Show `E` and its Reasoning. With an assessment-only error, show the valid student response and
-  source action. With unavailable/corrupt source, suppress the response renderer and show an
-  inline error explanation; retain a source action only when the existing safe URL derivation
-  succeeds.
-- A full-read-only corruption overrides the affected preview's score/reasoning with `E` even
-  when the class-derived heatmap cell still shows a historic numeric value. State:
-  `Source preview unavailable. Displayed scores are unchanged; reassess the assignment to refresh them.`
-- This override is local to the preview. It must not mutate class-query data, recompute analysed
-  class scores/averages, or persist a read repair.
-- A valid no-submission case retains `N`; no malformed record is silently dropped to create the
-  same no-submission state. A genuine no-submission contributes no observed item and does not
-  change existing average denominators. In the preview view model, a confirmed no-submission
-  without a known `E` uses `sourceState: 'available'` with `artifactContent: ''`, `error: null`
-  and `sourceUrl: null`; this is a ready normal placeholder, not an error source.
-- A missing lookup entry is never reinterpreted as `N` when an explicit `E` is available from
-  class-summary data; a failed/unavailable full query cannot hide known `E` reasoning.
-
-Alignment concerns:
-
-1. **Current preview shapes lack the planned fields.** The implemented `CellPreviewData` has no
-   `errors` map and `TaskPreviewData` has no `sourceState` or selected-criterion `error` field,
-   so the planned contract is **Misaligned** until implemented. Current assembly's coercion also
-   throws for null `IMAGE`/`SPREADSHEET` content; the planned `''` + `unavailable` representation
-   applies only to a known `E`, while non-`E` unexpected null remains an internal invariant
-   failure. They are TS-only derived shapes; the additions must not enter an API
-   request/response, persistence or the standard transport envelope.
-2. **Resolved — partial `Assignment` projection dependency.** Rendering `E` reasoning from
-   class-summary data requires the partial projection to retain `E` `reasoning` and `error`
-   (see [Contract: Assignment §Partial projection](assignment.md#partial-projection--retain-e-explanation-implemented)).
-   That retention is implemented, and the class-detail read service now validates the
-   materialised partial entries through the read normaliser.
-3. **Resolved — full-read-only corruption precedence.** `SPEC.md` pins the order above
-   (explicit full-record validation error, then class-partial `E`, then selected full item's
-   `E`, then analyser metric). The override remains preview-local, leaves class metrics
-   unchanged and persists no repair. Full-read builders only yield `available`/`unavailable`;
-   the existing composition supplies `loading` only while the fallback full fetch is pending,
-   and a terminal failure or `null`/not-found result resolves it to `unavailable`. No analyser
-   output shape changes.
-
----
+   Intended derivation: full-read builders yield only `available`/`unavailable`; the existing
+   query/preview composition supplies `loading` only while the fallback full fetch is pending.
+   A known `E` with null `IMAGE`/`SPREADSHEET` full content assembles as
+   `artifactContent: ''` with `sourceState: 'unavailable'`; non-`E` unexpected null content
+   remains an internal invariant violation. Precedence in an opened preview:
+   1. explicit full-record validation error; 2. the class-partial `E` for that criterion;
+   2. the selected full item's `E`; 4. the existing analyser metric. A full-read-only
+      corruption overrides the affected preview's score/reasoning with `E` even when the
+      class-derived heatmap cell still shows a historic numeric value, stating
+      `Source preview unavailable. Displayed scores are unchanged; reassess the assignment to refresh them.`
+      This override is preview-local: it must not mutate class-query data, recompute analysed
+      class scores/averages, or persist a read repair. The public `MetricResult` output is
+      unchanged.
 
 ## File Index
 
@@ -1433,12 +1283,12 @@ Shared lifecycle companions:
 ├── `src/frontend/src/hooks/postAnalysisInvalidation.ts` → both required query invalidations; refresh failures log bounded `confirmedPersistence: true` and return a confirmed-persistence failed outcome
 └── `src/frontend/src/hooks/postAnalysisFeedback.ts` → mount/selected-class/task/source-owned persistent warnings with required App host, dismissal memory and cleanup
 
-Frontend Section 6 test-only acceptance (implemented):
+Frontend test-only acceptance:
 ├── `src/frontend/e2e-tests/helpers/post-analysis-metadata-scenarios.ts` → canonical small class-2 historical-boundary and later-version browser queues
 ├── `src/frontend/e2e-tests/post-analysis-metadata.persistence.spec.ts` → three changed-write journeys
 └── `src/frontend/e2e-tests/post-analysis-metadata.feedback.spec.ts` → eight save/refresh feedback and viewport/theme cases
 
-Task preview derived shapes (implemented, issue #19):
+Task preview derived shapes:
 ├── `src/frontend/src/features/taskHeatmap/buildCellPreviewLookup.ts` → `CellPreviewData` (owner)
 ├── `src/frontend/src/features/taskHeatmap/assembleTaskPreviewData.ts` → `TaskPreviewData` assembly
 ├── `src/frontend/src/features/taskHeatmap/assembleMergedPreviewData.ts` → merged lookup/status

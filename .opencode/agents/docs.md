@@ -230,18 +230,21 @@ This applies to body content, not only filenames and headings. Do not carry plan
 │   │   │   └── Vendoring.md                            # Management of vendored third-party assets (JsonDbApp)
 │   │   │
 │   │   ├── data-shapes/                               # Canonical data-shape specifications (persistence, transport, validation)
-│   │   │   ├── INDEX.md                               # Contract registry, containment hierarchy, workflow
+│   │   │   ├── INDEX.md                               # Contract registry, component shapes, containment hierarchy, workflow
 │   │   │   ├── transport-envelope.md                   # Shared apiHandler success/error envelope
 │   │   │   ├── abclass.md                             # Contract: ABClass (+ Teacher, Student)
-│   │   │   ├── assignment-definition.md               # Contract: AssignmentDefinition (+ TaskDefinition, BaseTaskArtifact)
-│   │   │   ├── assignment.md                          # Contract: Assignment (+ StudentSubmission, StudentSubmissionItem, Assessment, Feedback)
+│   │   │   ├── assignment-definition.md               # Contract: AssignmentDefinition (+ TaskDefinition)
+│   │   │   ├── assignment.md                          # Contract: Assignment (+ Feedback)
 │   │   │   ├── auth-cache.md                          # Contract: AuthCache (CacheService auth entry, 6h TTL)
 │   │   │   ├── auth-users.md                          # Contract: AuthUsers (auth fields in config blob, AuthUserEntry)
 │   │   │   ├── backend-config.md                      # Contract: BackendConfig
 │   │   │   ├── google-classrooms.md                   # Contract: GoogleClassrooms (upstream API passthrough)
 │   │   │   ├── reference-data.md                      # Contract: Reference Data (cohorts, year groups, assignment topics)
 │   │   │   ├── request-store.md                       # Contract: RequestStore (internal backend API request tracking)
-│   │   │   └── trigger-context.md                     # Contract: TriggerContext (Script Properties trigger context)
+│   │   │   ├── trigger-context.md                     # Contract: TriggerContext (Script Properties trigger context)
+│   │   │   ├── student-submission.md                  # Component shape: StudentSubmission (+ StudentSubmissionItem)
+│   │   │   ├── assessment.md                          # Component shape: Assessment (+ assessment pipeline discipline rules)
+│   │   │   └── base-task-artifact.md                  # Component shape: BaseTaskArtifact (origin AssignmentDefinition, consumer Assignment)
 │   │   │
 │   │   ├── builder/
 │   │   │   ├── builder-script.md                      # Canonical: 10-stage pipeline, commands, configuration, error model, mode boundaries

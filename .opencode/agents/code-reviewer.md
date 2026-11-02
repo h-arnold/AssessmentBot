@@ -116,11 +116,14 @@ Consult these resources before and during review. Local docs contain project-spe
 
 **Data shapes (all modules — persistence, transport, validation)**:
 
-- [Data Shapes INDEX.md](../../docs/developer/data-shapes/INDEX.md) — entry point with contract registry and containment hierarchy
+- [Data Shapes INDEX.md](../../docs/developer/data-shapes/INDEX.md) — entry point with contract registry, component shapes, and containment hierarchy
 - [Transport Envelope](../../docs/developer/data-shapes/transport-envelope.md) — shared API handler success/error envelope
 - [Contract: ABClass](../../docs/developer/data-shapes/abclass.md)
 - [Contract: AssignmentDefinition](../../docs/developer/data-shapes/assignment-definition.md)
 - [Contract: Assignment](../../docs/developer/data-shapes/assignment.md)
+- [Component: Student Submission](../../docs/developer/data-shapes/student-submission.md) — StudentSubmission and StudentSubmissionItem shapes and item pipeline rules
+- [Component: Assessment](../../docs/developer/data-shapes/assessment.md) — Assessment shape and assessment pipeline discipline rules
+- [Component: BaseTaskArtifact](../../docs/developer/data-shapes/base-task-artifact.md) — shared artifact payload shape (origin AssignmentDefinition, consumer Assignment)
 - [Contract: BackendConfig](../../docs/developer/data-shapes/backend-config.md)
 - [Contract: AuthUsers](../../docs/developer/data-shapes/auth-users.md)
 - [Contract: GoogleClassrooms](../../docs/developer/data-shapes/google-classrooms.md)
