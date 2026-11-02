@@ -266,6 +266,10 @@ Five historical lint warnings remain accepted, not newly introduced by this atte
 
 | Failed-task count delivery location and copy | Material | Section 8 criterion 4 and SPEC require exact completion-with-errors feedback plus distinct-item count, but did not specify the count channel/copy | SPEC.md:432–433; section8-red-completion.md §8; user decision 31 October 2026 | approved | Separate progress detail: show “4 tasks failed.” (count each item once), preserving exact final “Assessment run completed with errors.” in progress and toast; no count appended to final message |
 
+| Finding                                                                                                                                                                                                                                                                                                                                                                                                                                                         | Severity | Scope rationale                                                                                                                                                                                                                                                       | Evidence                                                                                                                          | Disposition | User decision                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Sections 9–12 contain modest trimmable process scope (~10–20% of remaining effort): Section 11 criterion 5 already covered by `backend-copy.spec.ts` + `globalExposure.test.js`; Section 11 criteria 1–4 largely re-verify delivered Sections 1–8; Section 10 helper budget growth avoidable by test-local setup; Section 12 satisfiable from per-section docs-sync records. Sections 9–10 themselves are NOT trimmable without weakening the approved contract | Material | User asked whether over-engineering in Sections 9+ can be trimmed to ship faster; trimming the plan reopens plan-owned scope and needs explicit user authorisation; SPEC requirements in Sections 9–10 trace verbatim to SPEC.md:507–546, 595–598 and the layout spec | Read-only scan `.opencode/scratchpad/sections9-12-slop-scan.md` (7 trim candidates T1–T7, must-keep list, no SPEC contradictions) | approved    | User approved trimming Section 11 (T1/T2/T3, with T7 avoidance: Phase-1 deletions only, no new helpers) and Section 12 (T6: final audit consolidating per-section records + one rollout paragraph; criterion 5 recorded as handoff text only) on 2 November 2026; Sections 9 and 10 unchanged (contract-bound); T4 (Section 10 test-local setup) remains an execution-time choice under the plan's own reuse rule, not a plan edit |
+
 ## Scope and assumptions
 
 ### User-authorised Red checkpoint commit
@@ -1617,6 +1621,50 @@ Parallel read-only G3 feasibility explore failed upstream `[model_coming_soon]` 
 report; no accepted exploration result. Stop for user split/model authorisation rather
 than creating a file or improvising around unavailable required agent capability.
 
+### De-sloppification pass — three blocking fixes from SLOP_REVIEW.md (2 November 2026, uncommitted)
+
+The user authorised delegating fixes for the three findings in `@SLOP_REVIEW.md` that
+block Section 8 onward. All three landed in the worktree on branch
+`assessment-errors-322-341`; nothing was committed or pushed.
+
+- **Fix 1 (Section 4 dead code):** deleted the dead pass-through facade
+  `Assignment._processAttachmentForSubmission` from
+  `src/backend/AssignmentProcessor/Assignment/index.js`; corrected the single stale
+  flow-diagram mention in `docs/developer/backend/AssessmentFlow.md` (~line 1245) to
+  the real owner `AssignmentSubmissions._processAttachmentForSubmission()`.
+- **Fix 2 (Section 5 duplicated retry classification):** added
+  `static BaseRequestManager.isRetryableStatus(status)` (429 or 500–599) as the single
+  owner of the retryable predicate; `_classifyResponse` and
+  `LLMRequestManager._terminalCodeFor` both delegate to it; deleted the mirrored
+  private constants `LLM_TOO_MANY_REQUESTS` / `LLM_RETRYABLE_SERVER_MIN` /
+  `LLM_RETRYABLE_SERVER_MAX` (kept `LLM_ACCEPTED_STATUSES = [200, 201]`). Behaviour
+  identical: stop statuses, terminal-code mapping, retry budget and waits unchanged.
+- **Fix 3 (Section 6 stale test helper):** deleted `DummyCacheManager`,
+  `createDummyCacheManager()`, its `setupGlobalDummyClasses` branch and its exports
+  from `tests/helpers/modelFactories.js` (zero callers repo-wide; the real
+  `CacheManager` is registered globally by `tests/setupGlobals.js`).
+
+Validation evidence: scoped backend suites pass (`tests/assignment` 32 files/367
+tests; `tests/requestHandlers` 21 files/306 tests; combined 53 files/673 tests; all 13
+`modelFactories` importers + `tests/assignment` 37 files/442 tests); full
+`npm run test:backend:coverage` 260 files / 3,634 tests PASS, branches 86.3% (above
+the 85% gate); `npm run lint:backend:check` zero errors with exactly the four accepted
+historical `max-lines` warnings; `git diff --check` and Prettier clean. Independent
+Code Reviewer verdict **PASS, zero findings** (report
+`.opencode/scratchpad/review-deslop-fixes-322-341.md`); diff audit confirmed the
+change is confined to exactly the five authorised files with no dangling references.
+Stable-ID regression comparison against baseline `assessment-errors-322-341` completed
+2 November 2026 (`npm run regression-checker -- assessment-errors-322-341`, current
+timestamp `2026-11-02T20:13:39.628Z`): **7 of 8 checks passing, 0 regressions, 0 new
+failures, 2 baseline fixes** (the two historical `max-lines` warnings already repaired
+earlier — `assignmentFactory.test.js`, `assignmentController.hydration.test.js`).
+`backend-lint-check` remains FAILING solely on the four accepted historical `max-lines`
+warnings (`assignmentDefinitionPartials.unit` 2776, `dbManager` 665,
+`classroomApiClient` 550, `batchUpdateUtility` 615); all coverage, Playwright, lint and
+type checks pass. No regression against the accepted baseline.
+Remaining non-blocking SLOP_REVIEW.md findings stay deferred (see ledger below and
+`@SLOP_REVIEW.md`).
+
 ### Objective and constraints
 
 Validate completed terminal results, stamp marker 1, prepare four independent payloads
@@ -1951,19 +1999,30 @@ narrow viewport, reduced motion and refresh behaviour; no live Google/LLM calls.
 Verify the complete pipeline and detect residual duplicate retry/restoration paths.
 No unrelated cleanup or weakened assertions/coverage thresholds. Add any missing
 boundary regression before fixing the exposed code (Red → Green → Refactor).
+This section **re-verifies behaviour delivered in Sections 1–8**; it adds new tests only
+for genuinely missing boundary cases, not new combined fault matrices (trimmed
+2 November 2026 per `.opencode/scratchpad/sections9-12-slop-scan.md` T2).
 
 ### Delegation and planning blocks
 
 - Mandatory reads: Common + Backend + Frontend + Analysis/UI + Contracts + Corpus +
   API + Builder; Browser for browser work. Code Reviewer/De-Sloppification review only
   this feature's diff; Docs/Data Shapes Agent receive the same changed-owner references.
-- **Shared helpers:** reuse delivered owners; no additional planned extraction.
+- **Shared helpers:** reuse delivered owners; no additional planned extraction. The
+  De-Sloppification pass in this section applies **deletion-type (Phase 1) findings
+  only** — no new helper abstractions or extractions, per SPEC's
+  preserve-factories/don't-flatten guardrail (scan watch-item T7).
 - **Data shapes:** check all four canonical contracts against runtime/frontend and
   fixture outputs; no new contract decision belongs here.
 - **Canonical fixtures:** `small` cross-layer and `medium` mixed full/partial graphs;
   local faults for boundary/error cases. No broad historical test migration.
 
 ### Acceptance criteria / required tests (Red first)
+
+Criteria 1–4 re-verify contract behaviour already delivered in Sections 1–8 against the
+per-area testing expectations in SPEC.md; add a new test only where a boundary case is
+genuinely missing — do not build new combined fault matrices (trimmed 2 November 2026,
+scan T2).
 
 1. Contract regression combines no-submission/blank work, extraction E, image E, invalid
    LLM response, transient exhaustion and run-stop with healthy/cached results. Every
@@ -1975,21 +2034,28 @@ boundary regression before fixing the exposed code (Red → Green → Refactor).
    sleep assertions prove no surviving semantic retry path or doubled image batching.
 4. Numeric/fraction/N/zero-weight/excluded/mixed-E averages and metadata evidence remain
    contract-correct; preview-only full corruption cannot trigger class metadata writes.
-5. Both generated GAS output-order assertions and static public-entrypoint guards pass.
-   Touched file sizes honour the budgets/splits, with no line-condensing workaround.
+5. Generated GAS output-order assertions and static public-entrypoint guards **already
+   exist and run in the standard gates** — `backend-copy.spec.ts` asserts both generated
+   order pairs against the real source tree, and
+   `tests/api/apiHandler/globalExposure.test.js` scans the real backend for public
+   entrypoints. Re-run them here; add nothing new (trimmed 2 November 2026, scan T1).
+   Touched file sizes still honour the budgets/splits, with no line-condensing workaround.
 
 ### Red → Green → Refactor and checks
 
 - Add missing cross-boundary cases in focused companion tests (≤300), not oversized
   averaging rows/metric-resolution or graph suites. Run narrow suites before broad gates.
-- Run `npm run lint:check`, `npm run test:backend`, `npm run test:frontend`,
-  `npm run test:builder`, `npm run test:synthetic`, required preview/heatmap Playwright
-  suites, `npm run typecheck:all`, and finally `npm run run-all-checks` (coverage + build).
-- Verify two regenerations produce no further fixture changes; inspect generated GAS
-  runtime file list and successful production build. Run the full section regression
-  comparison with the stable ID and require zero new/unaccounted failures.
+- Run the mandatory final gates already defined globally rather than re-listing their
+  per-command equivalents (trimmed 2 November 2026, scan T3): `npm run run-all-checks`
+  (lint, coverage, type checks, production build, complete Playwright suite), then the
+  full section regression comparison with the stable ID
+  `assessment-errors-322-341`, requiring zero new/unaccounted failures.
+- Verify two regenerations produce no further fixture changes. (Generated-GAS file-list
+  inspection and production-build success are covered by `backend-copy.spec.ts` and the
+  build inside `run-all-checks` — no separate step.)
 - Obtain clean Code Reviewer sign-off after Data Shapes Agent reconciliation; apply
-  De-Sloppification findings only in scope, re-review/retest any resulting edits.
+  De-Sloppification findings only in scope — **Phase 1 deletions only, no new helpers**
+  (scan T7) — and re-review/retest any resulting edits.
 - Execution record: Not started; changes/checks/deviations/downstream implications pending.
 
 ## Section 12 — Documentation and coordinated rollout handoff
@@ -1999,6 +2065,11 @@ boundary regression before fixing the exposed code (Red → Green → Refactor).
 Finish same-change canonical documentation and a reproducible release-validation
 handoff, without deploying or claiming the original production cause is established.
 Documentation is also updated as each earlier section lands; this is the final audit.
+Trimmed 2 November 2026 (`.opencode/scratchpad/sections9-12-slop-scan.md` T6): this
+section is a **final audit that consolidates the per-section docs-sync records already
+delivered (Sections 2–7 each record a docs-sync PASS)** plus one rollout-handoff
+paragraph — it adds no new test, fixture or production work, and reuses the preceding
+clean section-gate comparison per the regression-checker policy.
 
 ### Delegation and planning blocks
 
@@ -2025,15 +2096,21 @@ Documentation is also updated as each earlier section lands; this is the final a
    projection, not a new endpoint. Scoring/analysis docs distinguish E from N and
    preserve average/denominator rules. Test docs describe canonical capability/commands.
 3. Preserve useful `@remarks` from earlier sections for non-obvious boundaries. Repoint
-   only touched obsolete preview-layout references. Record final tests/reviewer reports,
-   projected-versus-actual file sizes, deviations and any deployment validation limits.
+   only touched obsolete preview-layout references. Final tests/reviewer reports,
+   projected-versus-actual file sizes, deviations and deployment validation limits are
+   **already recorded per section in this plan** — consolidate them here; do not
+   re-derive them (trimmed 2 November 2026, scan T6).
 4. Rollout instructions require one coordinated frontend/backend build. Existing data,
    definitions and class configuration remain; legacy reads become reassessment E,
-   reassessment creates marker-1 results, old cache keys miss. No bulk reset/purge.
+   reassessment creates marker-1 results, old cache keys miss. No bulk reset/purge. This
+   is the single rollout-handoff paragraph this section produces.
 5. Manual validation checklist: mixed healthy/E class and standalone previews, safe source
    links, legacy reassessment then selected rerun/refresh, shared-input blocking preserves
    prior results, and safe completion-with-errors feedback. Do not publish synthetic
    fixtures or trigger live failure scenarios without a separately authorised deployment.
+   **This checklist cannot be executed inside this plan** — it needs a separately
+   authorised deployment — so it is recorded as handoff text only, not as a section gate
+   (trimmed 2 November 2026, scan T6).
 
 ### Red → Green → Refactor and checks
 
