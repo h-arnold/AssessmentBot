@@ -333,9 +333,9 @@ describe('Phase 3 LLMRequestManager integration (new model)', () => {
       const originalProcess = realManager._processSingleResponse.bind(realManager);
       processSpy = vi
         .spyOn(realManager, '_processSingleResponse')
-        .mockImplementation((response, request, model) => {
+        .mockImplementation((response, request, attempts) => {
           expect(response).toBe(nativeResponse);
-          return originalProcess(response, request, model);
+          return originalProcess(response, request, attempts);
         });
       validationSpy = vi.spyOn(realManager, 'validateAssessmentData');
 

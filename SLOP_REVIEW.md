@@ -42,7 +42,7 @@ These issues introduce duplication, drift risk, or unnecessary complexity.
 | **3** ✅ | Duplicated `DEFINITION_PARSE_FAILED` message/code/log string                       | Silent drift risk      | `AssignmentDefinitionValidation.js:151-163`                       | Reference existing `DEFINITION_PARSE_FAILED_MESSAGE`                                             |
 | **4** ✅ | Duplicated submission-outcome logic across `SlidesAssignment`/`SheetsAssignment`   | Duplicated logic       | `SlidesAssignment.js:149-203` vs `SheetsAssignment.js:72-118`     | Hoist shared helper to `05_AssignmentAssessmentBase.js`                                          |
 | **5** ✅ | Duplicated HTTP/retry classification (`BaseRequestManager` vs `LLMRequestManager`) | Silent drift risk      | `BaseRequestManager.js:101-104` vs `LLMRequestManager.js:434-438` | Expose shared `BaseRequestManager.isRetryableStatus()` — **FIXED 2026-11-02** (see Progress log) |
-| **6**    | `_routedOutcomeAttempts` Map (indirection for a locally available value)           | Unnecessary complexity | `LLMRequestManager.js:30-31, 166, 210, 385-387`                   | Pass `attempts` as parameter to `_processSingleResponse`                                         |
+| **6** ✅ | `_routedOutcomeAttempts` Map (indirection for a locally available value)           | Unnecessary complexity | `LLMRequestManager.js:30-31, 166, 210, 385-387`                   | Pass `attempts` as parameter to `_processSingleResponse`                                         |
 | **7**    | Duplicated URL validation vs `Validate.js` (~45 lines)                             | Silent drift risk      | `ImageManager.js:66-105`                                          | Extract pure `Validate.isValidUrlShape()`; delegate to it                                        |
 
 ---
@@ -56,7 +56,7 @@ These issues violate project policies but have lower maintenance cost.
 | **1** ✅ | Test-only `typeof Assessment` guard                   | Defensive code, violates AGENTS.md §2                 | `04_AssignmentSubmissions.js:96`      | Call `submissionObject.touchUpdated()` directly    |
 | **4** ✅ | Test-only dual mode in `_recordAcquisitionFailure`    | Production code for tests, violates prime directive 8 | `04_AssignmentSubmissions.js:116-135` | Make `scanState` required; delete immediate branch |
 | **5** ✅ | `sendRequestWithRetries` public API with zero callers | Dead code                                             | `BaseRequestManager.js:114-118`       | Delete or document as intentional public API       |
-| **6**    | `uidIndex` default set outside constructor            | Violates AGENTS.md §2.1.10                            | `LLMRequestManager.js:46`             | Initialize `this.uidIndex = {}` in constructor     |
+| **6** ✅ | `uidIndex` default set outside constructor            | Violates AGENTS.md §2.1.10                            | `LLMRequestManager.js:46`             | Initialize `this.uidIndex = {}` in constructor     |
 | **7**    | Inconsistent defensive guards (`                      |                                                       | []`, `                                |                                                    | {}`) | Silent masking of missing structures | `ImageManager.js:176-181` | Drop fallbacks; fail loudly |
 
 ---
@@ -364,3 +364,45 @@ Regression-compare against the `assessment-errors-322-341` baseline (3 November
 2026): **7/8 checks passing, 0 regressions, 0 new failures**; only
 `backend-lint-check` fails, with the same four accepted historical `max-lines`
 warnings. Baseline not degraded.
+
+---
+
+## Progress log — Section 6 desloppification (3 November 2026)
+
+The Section 6 items were delivered under the full implement/review loop on branch
+`assessment-errors-322-341`, committed together with this report update. The Phase 1
+`DummyCacheManager` deletion was already delivered with the blocking fixes on
+2 November.
+
+1. **`_routedOutcomeAttempts` Map — FIXED (removed).** The Map was pure indirection:
+   the batch callback set `outcome.attempts` immediately before the sole production
+   call to `_processSingleResponse`, which read it back by UID. The method now takes
+   `attempts` as its third parameter (JSDoc `@param` added); the call site passes
+   `outcome.attempts` directly. The existing safe-integer validation and the
+   `_terminalCodeFor(code, attempts)` argument are unchanged; the Map is fully gone
+   (zero references in `src/` and `tests/`).
+2. **`uidIndex` default outside constructor — FIXED.** `this.uidIndex = {}` is now
+   constructor-initialised with a `@type` JSDoc (GAS parser-safe). The per-generation
+   reset in `generateRequestObjects`, the fail-loudly `if (!this.uidIndex)` guard
+   (test-backed via explicit deletion/nulling) and the optional-chain reads are
+   deliberately retained — a per-run reset is a re-initialisation, not a default.
+3. **Test re-points.** `assignmentPhase3.transport.test.js`'s exact-arity assertion now
+   includes the attempts value (`…, 1` — provable from the fixture: the plain-array
+   `fetchAll` response takes `_consumeBatch`'s non-retry branch, which sets
+   `attempts: 1`); the two spy mocks' third parameter renamed `model` → `attempts`
+   (positional forward unchanged). No assertion weakened.
+
+Docs sync: skipped — internal indirection removal plus constructor field initialisation
+changes no documented behaviour, public API, data shape or command; the governing
+`ACTION_PLAN.md` transport-design line was updated in the same commit (plan
+maintenance).
+
+Validation: 5 named suites PASS (5 files / 105 tests); requestHandlers +
+`llmRunStopHarness` consumers PASS (23 files / 319 tests); full backend coverage 263
+files / 3,665 tests PASS, branches 85.89% > 85% gate; `lint:backend:check` 0 errors
+with only the four accepted historical `max-lines` warnings; `git diff --check` clean.
+Independent Code Reviewer verdict **PASS, zero findings**
+(`.opencode/scratchpad/review-section6-desloppification.md`). Regression-compare
+against the `assessment-errors-322-341` baseline (3 November 2026): **7/8 checks
+passing, 0 regressions, 0 new failures**; only `backend-lint-check` fails, with the
+same four accepted historical `max-lines` warnings. Baseline not degraded.

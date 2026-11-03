@@ -166,11 +166,11 @@ describe('LLM transport caller policy', () => {
           const routedStopResponse = mode === 'INITIAL' ? firstBatchResponse : fetchedStopResponse;
           const validProcessing = vi
             .spyOn(manager, '_processSingleResponse')
-            .mockImplementation((nativeResponse, request, model) => {
+            .mockImplementation((nativeResponse, request, attempts) => {
               if (request === validRequest) expect(nativeResponse).toBe(nativeValidResponse);
               if (request === requests[0]) expect(nativeResponse).toBe(routedStopResponse);
               if (request === requests[1]) expect(nativeResponse).toBe(invalidResponse);
-              return processResponse(nativeResponse, request, model);
+              return processResponse(nativeResponse, request, attempts);
             });
           requests.forEach((request, index) => {
             request.url = `https://llm.test/${['stop', 'invalid', 'valid', 'later'][index]}`;
@@ -190,7 +190,7 @@ describe('LLM transport caller policy', () => {
           // are the intended business Reds: all six reconciled rows require the
           // no-abort completion-with-errors contract instead.
           expect(caught).toBe(null);
-          expect(validProcessing).toHaveBeenCalledWith(nativeValidResponse, validRequest);
+          expect(validProcessing).toHaveBeenCalledWith(nativeValidResponse, validRequest, 1);
           expect(validation).toHaveBeenCalledWith({});
           expect(validation.mock.results[0].value).toBe(false);
           expect(context.scriptCache.get).toHaveBeenCalled();

@@ -24,8 +24,8 @@ class LLMRequestManager extends BaseRequestManager {
     this.cacheManager = new CacheManager(); // Generic cache owner; identity lives here.
     /** @type {boolean} Whether this processing invocation received an LLM run-stop. */
     this.runStopped = false;
-    /** @type {Map<string, number>} Attempt provenance per routed outcome, reset per run. */
-    this._routedOutcomeAttempts = new Map();
+    /** @type {Object<string, Object>} UID to routed submission/item/task/cache-key entry. */
+    this.uidIndex = {};
   }
 
   /**
@@ -160,7 +160,6 @@ class LLMRequestManager extends BaseRequestManager {
    */
   processStudentResponses(requests, assignment) {
     this.runStopped = false;
-    this._routedOutcomeAttempts = new Map();
     if (!requests || requests.length === 0) {
       ABLogger.getInstance().info('No requests to send.');
       return;
@@ -202,10 +201,7 @@ class LLMRequestManager extends BaseRequestManager {
         this.progressTracker.updateProgress('Double-checking all assessments.', true);
         routed.forEach(({ outcome, request }) => {
           processedUids.add(outcome.uid);
-          // The full outcome is available here: retain its attempt provenance so the
-          // terminal mapping can distinguish stop-cancelled work from exhaustion.
-          this._routedOutcomeAttempts.set(outcome.uid, outcome.attempts);
-          this._processSingleResponse(outcome.response, request);
+          this._processSingleResponse(outcome.response, request, outcome.attempts);
         });
         // Exactly false stops the shared sender: no later batch is dispatched, while
         // every response already received in this batch has been processed above.
@@ -367,9 +363,10 @@ class LLMRequestManager extends BaseRequestManager {
    * swallowed either.
    * @param {Object|null} response - The HTTP response object, or null for a network failure.
    * @param {Object} request - The original request object.
+   * @param {number} attempts - Attempt provenance carried by the final outcome.
    * @returns {void}
    */
-  _processSingleResponse(response, request) {
+  _processSingleResponse(response, request, attempts) {
     const uid = request.uid;
     const entry = this.uidIndex?.[uid];
     if (!entry) {
@@ -378,7 +375,6 @@ class LLMRequestManager extends BaseRequestManager {
     const item = entry.item;
     const code = response ? response.getResponseCode() : null;
     if (code === null || !LLM_ACCEPTED_STATUSES.includes(code)) {
-      const attempts = this._routedOutcomeAttempts.get(uid);
       if (!Number.isSafeInteger(attempts) || attempts < 1 || attempts > this.maxAttempts)
         throw new Error(`Missing or invalid routed attempt provenance for UID: ${uid}`);
       item.setError(LLM_ERROR_STAGE, this._terminalCodeFor(code, attempts));
