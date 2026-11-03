@@ -1175,7 +1175,13 @@ scan T2).
   at `.ts-regression-checker/reports/session-assessment-errors-322-341/runs/2026-11-03T14-34-24.841Z/`):
   7 checks passing, 0 regressions, 0 new failures, 2 fixes; the only failing check is
   the accepted backend `max-lines` baseline debt (4 pre-existing warnings, unchanged).
-- **Commit/push:** pending — SHA, message and push range to be recorded.
+- **Commit/push:** commit `af24c669` "test(backend): pin LLM terminal outcomes and
+  corruption isolation at the controller seam (#322)" (3 files: the two companions +
+  this plan) on branch `assessment-errors-322-341`; pushed to
+  `origin/assessment-errors-322-341` (`423e4cf7..af24c669`), push confirmed.
+  Pre-commit hooks (Prettier, staged lint, typecheck) passed without bypass.
+  Concurrent worktree changes (`AGENTS.md`, `opencode.jsonc`) excluded as before.
+  Section 11 complete.
 
 ## Section 12 — Documentation and coordinated rollout handoff
 
