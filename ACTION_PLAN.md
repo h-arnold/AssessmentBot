@@ -12,7 +12,8 @@ and [#341](https://github.com/h-arnold/AssessmentBot/issues/341).
 - Product and contract authority: @SPEC.md .
 - Preview layout, copy and interaction authority: @ASSESSMENT_ERROR_PREVIEW_LAYOUT.md .
 - This plan sequences delivery; it does not reopen either approved document.
-- Sections 1–7 are complete (Section 4 gate has an explicit user-accepted flaky-debt exception); Section 8 is **Incomplete — user-requested as-is checkpoint**; Section 9 is **complete**; Sections 10–12 are **Not started**. Record actual changes,
+- Sections 1–7 are complete (Section 4 gate has an explicit user-accepted
+  flaky-debt exception); Section 8 is **Incomplete — user-requested as-is checkpoint**; Sections 9–10 are **complete**; Sections 11–12 are **Not started**. Record actual changes,
   checks/report paths, deviations and downstream implications under each section.
 
 ### Baseline execution record
