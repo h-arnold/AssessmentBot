@@ -148,7 +148,13 @@ None. This shape embeds no other shape; `error` is an inline `{ stage, code }` o
 - `Assessment.isValidRawScore()` / `isValidRawResult()` — raw-entry validation used by the
   constructor, the LLM response validator and marker-1 restoration.
 - `Assessment.CRITERIA` — the canonical criteria list (`completeness`, `accuracy`, `spag`),
-  assigned after the class definition. `StudentSubmissionItem.setError()` iterates it.
+  assigned after the class definition. It is the single owner of criterion identities:
+  `StudentSubmissionItem.setError()`, the LLM response and cache validators, the image
+  terminal-error check, the completed-write gate and marker-1 restoration all read it
+  rather than declaring their own list. `ABClassMetadata` derives a superset at call time
+  (`[...Assessment.CRITERIA, 'overall']`) because that file sorts before
+  `Models/Assessment.js` in the concatenated script, so a module-level copy would read the
+  class before it is defined.
 - `ABClassAssignmentValidation._validateCompletedAssignmentRun()` — completed-write
   gate requiring exactly the three canonical criteria as valid complete results.
 

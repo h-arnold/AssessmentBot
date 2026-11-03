@@ -226,7 +226,7 @@ class ABClassAssignmentValidation {
   _completedAssessmentsReason(assessments) {
     if (!assessments || typeof assessments !== 'object' || Array.isArray(assessments))
       return 'criterion result map is missing or invalid';
-    const criteria = ['completeness', 'accuracy', 'spag'];
+    const criteria = Assessment.CRITERIA;
     const keys = Object.keys(assessments);
     const missing = criteria.find((criterion) => !Object.hasOwn(assessments, criterion));
     if (missing) return `missing required ${missing} criterion result`;

@@ -19,7 +19,7 @@
   - Status: `Implemented` (Section 1)
   - Owning path: `src/backend/Models/Assessment.js` — the `ASSESSMENT_ERROR_MESSAGES` catalogue plus `Assessment` construction, validation and serialisation.
   - Result validation: the constructor accepts a finite numeric score in inclusive 0–5 (fractions included), `'N'`, or `'E'` with non-blank string reasoning and a catalogue-valid `{ stage, code }`. Numeric and `'N'` results reject any supplied `error`. Reasoning is preserved verbatim; `trim()` is used only to reject blank E reasoning, never to rewrite the stored value. Invalid results throw. The constructor builds the candidate entry and delegates to `Assessment.isValidRawResult()`, so the accept/reject rules have one owner.
-  - Criteria list: `Assessment.CRITERIA` (`completeness`, `accuracy`, `spag`), assigned after the class definition, is the canonical criteria list that `StudentSubmissionItem.setError()` iterates.
+  - Criteria list: `Assessment.CRITERIA` (`completeness`, `accuracy`, `spag`), assigned after the class definition, is the canonical criteria list that `StudentSubmissionItem.setError()` iterates. It is the single owner of criterion identities: the LLM request manager, `ImageManager`, `ABClassAssignmentValidation` and marker-1 restoration read it instead of declaring their own list, and `ABClassMetadata` derives its four metrics from it at call time (`[...Assessment.CRITERIA, 'overall']`) because that file sorts before `Models/Assessment.js`.
   - Catalogue: `acquisition` (`SOURCE_UNREADABLE`, `UNSUPPORTED_DOCUMENT`); `extraction` (`SOURCE_CONTENT_UNAVAILABLE`, `PARSE_FAILED`, `IMAGE_HYDRATION_FAILED`); `assessment` (`LLM_HTTP_FAILED`, `LLM_UNAVAILABLE`, `LLM_INVALID_RESPONSE`, `LLM_RUN_STOPPED`, `ASSESSMENT_FAILED`); `validation` (`CORRUPT_RECORD`, `REASSESSMENT_REQUIRED`).
   - Result creation: `Assessment.createError(stage, code)` selects the catalogue reasoning and returns the E result, and `Assessment.isValidCause(error)` guards pair membership. `toJSON()` emits `{ score, reasoning }` plus a detached `error` for E; `fromJSON()` validates the raw record by reusing the constructor.
   - Ownership rule: the assessment domain creates every E result, choosing `stage`/`code` and teacher-readable reasoning together. Task-wide failures replace every criterion in `Assessment.CRITERIA` atomically (see the `StudentSubmissionItem` entry below). Partial success/N entries stay `{ score }`; partial E entries retain `{ score: 'E', reasoning, error }`. No generic failure manager, run-level status framework or parallel persisted outcome hierarchy.
@@ -1374,10 +1374,12 @@ To add a new document type (e.g., Google Docs):
 
 To add a new assessment category (beyond completeness, accuracy, spag):
 
-1. Update LLM backend API to return new category
-2. Modify `LLMRequestManager._assignAssessmentArtifacts()` to handle new category
+1. Add the criterion to `Assessment.CRITERIA` in `src/backend/Models/Assessment.js`. Every
+   backend validator, restoration path and terminal-error primitive derives from it, so
+   no other backend list needs editing.
+2. Update the LLM backend API to return the new category
 3. Update any analysis or reporting views to display the new category
-4. No changes needed to data models (assessments stored as flexible objects)
+4. No changes needed to the stored data models (assessments are stored as flexible objects)
 
 ### Extending the Pipeline
 

@@ -2,7 +2,9 @@
  * AssignmentCurrentRestoration — restores current-format submissions and validates
  * their assessment and source state.
  *
- * Depends on the model classes and Assessment as GAS runtime globals.
+ * Depends on the model classes and Assessment as GAS runtime globals. This file sorts
+ * before `Models/Assessment.js` in the concatenated script, so `Assessment.CRITERIA` is
+ * read inside method bodies, never at evaluation time.
  * @namespace
  */
 const AssignmentCurrentRestoration = {
@@ -177,7 +179,7 @@ const AssignmentCurrentRestoration = {
    * @returns {boolean} Whether the map contains exactly three valid completed results.
    */
   _hasValidCompletedCurrentAssessments(assessments, mode) {
-    const criteria = ['completeness', 'accuracy', 'spag'];
+    const criteria = Assessment.CRITERIA;
     if (
       !assessments ||
       typeof assessments !== 'object' ||

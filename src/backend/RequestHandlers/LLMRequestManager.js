@@ -4,11 +4,12 @@
  * LLMRequestManager Class
  *
  * Manages the creation, caching, and sending of request objects to the LLM.
+ * Criterion identities come from `Assessment.CRITERIA`, read at call time: this file
+ * sorts after `Models/Assessment.js` in the concatenated script.
  */
 const LLM_CACHE_KEY_VERSION = 'v1';
 const LLM_ACCEPTED_STATUSES = [200, 201];
 const LLM_STOP_STATUSES = [401, 403, 404];
-const LLM_CRITERIA = ['completeness', 'accuracy', 'spag'];
 const LLM_ERROR_STAGE = 'assessment';
 
 /**
@@ -135,16 +136,17 @@ class LLMRequestManager extends BaseRequestManager {
    * @returns {boolean} True if valid, false otherwise.
    */
   validateAssessmentData(data) {
+    const criteria = Assessment.CRITERIA;
     if (
       !data ||
       typeof data !== 'object' ||
       Array.isArray(data) ||
-      Object.keys(data).length !== LLM_CRITERIA.length ||
-      LLM_CRITERIA.some((criterion) => !Object.hasOwn(data, criterion))
+      Object.keys(data).length !== criteria.length ||
+      criteria.some((criterion) => !Object.hasOwn(data, criterion))
     ) {
       return false;
     }
-    return LLM_CRITERIA.every((criterion) => {
+    return criteria.every((criterion) => {
       const entry = data[criterion];
       return Assessment.isValidRawResult(entry) && typeof entry.score === 'number';
     });
@@ -284,7 +286,7 @@ class LLMRequestManager extends BaseRequestManager {
   createNotAttemptedAssessment() {
     const assessments = {};
 
-    LLM_CRITERIA.forEach((criterion) => {
+    Assessment.CRITERIA.forEach((criterion) => {
       assessments[criterion] = new Assessment('N', 'Task not attempted');
     });
 
@@ -301,7 +303,8 @@ class LLMRequestManager extends BaseRequestManager {
   _hasTerminalError(item) {
     const existing = item.getAssessment();
     return (
-      Boolean(existing) && LLM_CRITERIA.every((criterion) => existing[criterion]?.score === 'E')
+      Boolean(existing) &&
+      Assessment.CRITERIA.every((criterion) => existing[criterion]?.score === 'E')
     );
   }
 
@@ -453,7 +456,7 @@ class LLMRequestManager extends BaseRequestManager {
   _rawCriteriaAreAdmissible(parsed) {
     if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return false;
     const loweredKeys = Object.keys(parsed).map((key) => key.toLowerCase());
-    const canonical = new Set(LLM_CRITERIA);
+    const canonical = new Set(Assessment.CRITERIA);
     return (
       loweredKeys.every((key) => canonical.has(key)) &&
       new Set(loweredKeys).size === loweredKeys.length

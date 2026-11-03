@@ -120,9 +120,12 @@ against the current specification first.
 - Timestamp validation delegates to the canonical UTC predicate below. `recentAssignments`
   must hold zero to three dense entries with unique `assignmentId` values ordered by
   non-increasing `updatedAt`.
-- Runtime references to `Validate` and `ABClassMetadataValidationError` resolve only inside
-  method bodies, matching the concatenated GAS load model; the file performs no top-level
-  dependency evaluation and no Node module wiring beyond its guarded `module.exports` block.
+- Runtime references to `Validate`, `Assessment` and `ABClassMetadataValidationError`
+  resolve only inside method bodies, matching the concatenated GAS load model; the file
+  performs no top-level dependency evaluation and no Node module wiring beyond its guarded
+  `module.exports` block. The four metric names come from `Assessment.CRITERIA` plus
+  `'overall'`, derived in `ABClassMetadata._metrics()` at call time because this file sorts
+  before `Models/Assessment.js`.
 - **Implemented:** `ABClass` owns a plain metadata snapshot or `null`; construction and
   `fromJSON()` distinguish actual own-property absence (normalised through the domain
   constructor) from explicitly supplied values, including invalid own `undefined`.

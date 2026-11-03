@@ -18,7 +18,9 @@
  * completed null success. Unmatched or duplicate UIDs, missing model methods
  * and other wiring faults throw; returned unusable blob/content/hash data
  * converts by scope, while thrown native-read, base64, hash and writer
- * faults escape by original identity.
+ * faults escape by original identity. Criterion identities come from
+ * `Assessment.CRITERIA`, read at call time: this file sorts after
+ * `Models/Assessment.js` in the concatenated script.
  * @remarks URL admission delegates to the shared `Validate.isValidUrlShape`
  * policy, which emits no progress-tracking diagnostics, so rejected source
  * URLs never reach a log channel.
@@ -139,7 +141,7 @@ class ImageManager extends BaseRequestManager {
         if (!this.isImageArtifact(art)) return;
         // An upstream-established terminal failure is preserved verbatim: no download, no overwrite.
         const existing = item.getAssessment?.() || {};
-        const hasEstablishedError = ['completeness', 'accuracy', 'spag'].every(
+        const hasEstablishedError = Assessment.CRITERIA.every(
           (criterion) => existing[criterion]?.score === 'E'
         );
         if (hasEstablishedError) return;

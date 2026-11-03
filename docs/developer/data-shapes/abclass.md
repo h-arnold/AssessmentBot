@@ -664,6 +664,11 @@ including lower case, is rejected).
 - Every listed property of a non-null metadata object is required and must be an **own**
   property. Only the top-level `metadata` value may be `null`; no metric, `classAverages`,
   entry, `averages`, identifier or timestamp may be `null`.
+- The metric names are not declared here. `ABClassMetadata._metrics()` derives them at call
+  time as `[...Assessment.CRITERIA, 'overall']`, so `Assessment.CRITERIA` remains the single
+  owner of the three criterion identities and this file adds only the weighted `overall`
+  metric. The derivation is lazy because `Models/ABClassMetadata.js` sorts before
+  `Models/Assessment.js` in the concatenated script.
 - Nested objects must be ordinary data records (`Object.prototype` or a null prototype
   accepted); arrays, `Date` objects, class instances and values requiring coercion are
   rejected.

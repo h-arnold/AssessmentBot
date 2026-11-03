@@ -152,8 +152,17 @@ follow-ups are out-of-scope findings tracked in
 (OOS-1 criteria-list consolidation onto `Assessment.CRITERIA`; OOS-2 the dead
 `Assignment._rehydrateSubmission` facade), to be executed as their own change units
 now that the final clean regression compare is recorded. The Sections 11–12
-process-scope question (`.opencode/scratchpad/sections9-12-slop-scan.md`) remains
-with the user.
+process-scope question is closed — the user approved the trim on 2 November 2026
+and Sections 9–12 are complete (Section 12 closed 3 November 2026; see the
+`ACTION_PLAN.md` status block), so no decision remains there. The two deferred
+Material rows (LLM and image defect groups, owned by the delivered `ACTION_PLAN.md`
+Sections 6/7) were authorised for verify-and-fix on 3 November 2026; the verification
+pass returned 9/9 RESOLVED with zero stragglers
+(`.opencode/scratchpad/material-rows-verification.md`), so both rows are closed with no
+fix unit required. The ledgered nitpicks (several already verified resolved by the
+delivered sections' own docs syncs — see
+`.opencode/scratchpad/nits-verification-sweep.md`) are authorised for a final tidy unit
+after OOS-2.
 
 ---
 
@@ -197,6 +206,9 @@ Deferred follow-up (out of scope for Section 1 by design): the other literal cop
 criteria list (`LLM_CRITERIA`, `ABCLASS_METADATA_METRICS`, the inline arrays in
 `ImageManager.js`, `02_AssignmentCurrentRestoration.js`, `ABClassAssignmentValidation.js`)
 still exist; consolidating them onto `Assessment.CRITERIA` is recorded as a follow-up.
+**Delivered 3 November 2026** as OOS-1 after Sections 1–7 completed (see
+`.opencode/scratchpad/assessment-errors-322-341-out-of-scope-fix-plan.md` §1 and its
+review record `review-oos1-criteria-consolidation.md`).
 
 ---
 
