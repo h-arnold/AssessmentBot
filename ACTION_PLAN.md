@@ -13,7 +13,7 @@ and [#341](https://github.com/h-arnold/AssessmentBot/issues/341).
 - Preview layout, copy and interaction authority: @ASSESSMENT_ERROR_PREVIEW_LAYOUT.md .
 - This plan sequences delivery; it does not reopen either approved document.
 - Sections 1–7 are complete (Section 4 gate has an explicit user-accepted
-  flaky-debt exception); Section 8 is **Incomplete — user-requested as-is checkpoint**; Sections 9–11 are **complete**; Section 12 is **Not started**. Record actual changes,
+  flaky-debt exception); Section 8 is **Incomplete — user-requested as-is checkpoint**; Sections 9–12 are **complete** (Section 12 closed 3 November 2026; post-implementation de-slop pass clean; final comparison zero regressions). Record actual changes,
   checks/report paths, deviations and downstream implications under each section.
 
 ### Baseline execution record
