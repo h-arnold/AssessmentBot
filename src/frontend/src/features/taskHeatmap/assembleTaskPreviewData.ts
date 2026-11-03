@@ -1,9 +1,34 @@
-import type { CellPreviewData } from './buildCellPreviewLookup';
+import type { AssessmentError, CellPreviewData } from './buildCellPreviewLookup';
 import type { TaskDisplayMetric } from '@/services/dataAnalysis/dataAnalysis.zod';
 import { NOT_ATTEMPTED_METRIC } from '@/services/dataAnalysis/heatmapAdapter';
 import type { HeatmapMetricKey } from '@/services/dataAnalysis/metricDisplay/metricDisplayMeta';
-import type { TaskPreviewData } from './TaskPreviewCard';
+import type { TaskPreviewData, TaskPreviewSourceState } from './TaskPreviewCard';
 import { spreadsheetToMarkdownTable } from './spreadsheetToMarkdownTable';
+
+/**
+ * Whether a known `E` cause leaves a source region that can be rendered.
+ *
+ * @remarks
+ * Only an assessment-stage failure means the source was extracted successfully,
+ * so its response still renders. Acquisition, extraction and validation causes
+ * all leave the source region unavailable, whatever content the cell carries.
+ *
+ * @param {AssessmentError | null} error - The selected criterion's cause.
+ * @returns {boolean} `true` when the source region must show the error Alert.
+ */
+function isUnavailableSource(error: AssessmentError | null): boolean {
+  return error !== null && error.stage !== 'assessment';
+}
+
+/**
+ * Resolve the preview's source readiness from the selected cause.
+ *
+ * @param {AssessmentError | null} error - The selected criterion's cause.
+ * @returns {TaskPreviewSourceState} The derived source state.
+ */
+function resolveSourceState(error: AssessmentError | null): TaskPreviewSourceState {
+  return isUnavailableSource(error) ? 'unavailable' : 'available';
+}
 
 /**
  * Assembles a `TaskPreviewData` from a `CellPreviewData` (or `null`), the
@@ -40,13 +65,23 @@ export function assembleTaskPreviewData(
       metricKey,
       metric: NOT_ATTEMPTED_METRIC,
       reasoning: '',
+      // Type-satisfaction only: a confirmed no-submission is the ready N
+      // placeholder with no known error.
+      error: null,
+      sourceState: 'available',
       sourceUrl: null,
     };
   }
 
   // Map the cell's artifact type into the TaskPreviewCard contract
   const artifactType = coerceArtifactType(cellData.artifactType);
-  const artifactContent = coerceArtifactContent(cellData);
+  const error = cellData.errors[metricKey];
+  // A known `E` whose full content is null (IMAGE/SPREADSHEET) is an
+  // unavailable source, not a blank extraction: represent it as empty content
+  // instead of invoking the throwing coercion. Any other null content still
+  // fails loudly below.
+  const hasKnownErrorWithoutContent = error !== null && cellData.artifactContent === null;
+  const artifactContent = hasKnownErrorWithoutContent ? '' : coerceArtifactContent(cellData);
 
   return {
     taskId,
@@ -55,6 +90,8 @@ export function assembleTaskPreviewData(
     metricKey,
     metric: metricResult,
     reasoning: cellData.reasoning[metricKey] ?? '',
+    error,
+    sourceState: resolveSourceState(error),
     sourceUrl: cellData.sourceUrl,
   };
 }

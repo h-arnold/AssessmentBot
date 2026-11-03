@@ -15,6 +15,16 @@ import type { z } from 'zod';
 type Assessment = z.infer<typeof AssessmentSchema>;
 
 /**
+ * Structured error cause carried by an explicit `E` result, derived from the
+ * shared {@link AssessmentSchema} union so the two cannot drift.
+ *
+ * @remarks
+ * Exported for the preview view models that carry the selected criterion's
+ * cause (`TaskPreviewData.error`). It is an in-memory type only.
+ */
+export type AssessmentError = Extract<Assessment, { score: 'E' }>['error'];
+
+/**
  * Discriminant values for a task artifact's type, derived from the
  * {@link BaseTaskArtifactSchema} discriminated union so the two cannot drift.
  */
@@ -42,6 +52,16 @@ export type CellPreviewData = {
     readonly artifactContent: ArtifactContentByType<K>;
     /** Per-metric reasoning strings (null when assessment is absent for that metric). */
     readonly reasoning: Record<HeatmapMetricKey, string | null>;
+    /**
+     * Per-metric error cause for an explicit `E` result: every canonical
+     * criterion has an entry, and a non-`E` (or absent) assessment is `null`.
+     *
+     * @remarks
+     * In-memory view-model field only. It is derived from the read payload's
+     * validated `Assessment.error` and is never persisted or added to a backend
+     * artefact or API response.
+     */
+    readonly errors: Record<HeatmapMetricKey, AssessmentError | null>;
     /**
      * Derived editor source link for this submission artefact, resolved in the
      * lookup; `null` when the source is unavailable. Never persisted and never
@@ -180,6 +200,17 @@ function createCellPreviewData(
     reasoning: Object.fromEntries(
       HEATMAP_METRIC_KEYS.map((key) => [key, assessments[key]?.reasoning ?? null])
     ) as Record<HeatmapMetricKey, string | null>,
+    // Each criterion's cause comes from that criterion's own validated
+    // assessment: an explicit `E` contributes its `{ stage, code }`, while a
+    // numeric, `N` or absent assessment contributes `null`. Deriving it here
+    // (rather than from the artefact type) keeps an assessment-only error
+    // beside its surviving source content.
+    errors: Object.fromEntries(
+      HEATMAP_METRIC_KEYS.map((key) => {
+        const assessment = assessments[key];
+        return [key, assessment?.score === 'E' ? assessment.error : null];
+      })
+    ) as Record<HeatmapMetricKey, AssessmentError | null>,
     sourceUrl,
   } as CellPreviewData;
 }
@@ -203,9 +234,9 @@ function createCellPreviewData(
  * 1. **Cross-fetch invariant.** The embedded popover path relies on
  *    `getABClass.assignments[].assignmentDefinitionKey` (class-fetch side)
  *    equalling `getAssignment.assignmentDefinition.definitionKey` (assignment-fetch
- *    side) for the same assignment. The backend guarantees this today because the
- *    class mapper derives `assignmentDefinitionKey` from the very same embedded
- *    definition document (`src/backend/y_controllers/ABClassController/ABClassResponseMapper.js:88`).
+ *    side) for the same assignment. The backend guarantees this today because
+ *    `ABClassResponseMapper._toReadView` derives `assignmentDefinitionKey` from
+ *    the very same embedded definition document.
  *    Keying the lookup by the composite `taskKey` therefore keeps the embedded
  *    flow correct once keys widen, and the invariant is pinned by a dedicated
  *    cross-fetch parity test.

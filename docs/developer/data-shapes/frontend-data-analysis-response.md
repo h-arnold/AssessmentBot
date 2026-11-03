@@ -4,9 +4,10 @@
 
 **Implemented.** Canonical contract for the frontend-only, in-memory data-analysis response.
 It has **no backend API, persistence collection, transport envelope or migration**. The ABClass
-metadata lifecycle, the shared post-analysis contracts and both consumer surfaces are
-implemented and described below. The only outstanding planned change is the attempt-baseline
-analysis mode (see [Planned contract changes](#planned-contract-changes-not-implemented)).
+metadata lifecycle, the shared post-analysis contracts, both consumer surfaces and the
+error-aware task-preview view models are implemented and described below. The only outstanding
+planned change is the attempt-baseline analysis mode (see
+[Planned contract changes](#planned-contract-changes-not-implemented)).
 
 Sibling contracts:
 
@@ -790,8 +791,10 @@ effective weighting.
 
 > **Status: implemented.** Both types below carry one required
 > `readonly sourceUrl: string | null` field. It is resolved once in the lookup and
-> carried unchanged through assembly and merge. Neither type is persisted and
-> neither is added to any API request or response, so the standard
+> carried unchanged through assembly and merge. `CellPreviewData` also carries the
+> per-criterion `errors` map, and `TaskPreviewData` the selected criterion's
+> `error` plus `sourceState`. None of these fields is persisted or added to any
+> API request or response, so the standard
 > [transport envelope](transport-envelope.md) still does not apply.
 
 These are frontend-only derived types in the task-preview pipeline. They are
@@ -814,17 +817,27 @@ type CellPreviewData = {
     readonly artifactType: K;
     readonly artifactContent: ArtifactContentByType<K>;
     readonly reasoning: Record<HeatmapMetricKey, string | null>;
+    readonly errors: Record<HeatmapMetricKey, AssessmentError | null>;
     readonly sourceUrl: string | null;
   };
 }[ArtifactType];
 ```
 
-| #   | Field             | Type                                     | Notes                                                                                                                            |
-| --- | ----------------- | ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | `artifactType`    | `ArtifactType`                           | Discriminator derived from `BaseTaskArtifactSchema['type']`, so the two cannot drift.                                            |
-| 2   | `artifactContent` | `ArtifactContentByType<K>`               | `TEXT`/`TABLE`/`IMAGE` → `string \| null`; `SPREADSHEET` → 2D array or `null`; `base` → `unknown`.                               |
-| 3   | `reasoning`       | `Record<HeatmapMetricKey, string\|null>` | Per-metric reasoning strings; `null` when the assessment is absent for that metric.                                              |
-| 4   | `sourceUrl`       | `string\|null`                           | Editor link derived in the lookup, or `null` when the source is unavailable. Never persisted and never added to an API response. |
+`AssessmentError` is `Extract<Assessment, { score: 'E' }>['error']`, derived from the
+shared `AssessmentSchema` union so the preview cause cannot drift from the read
+contract.
+
+| #   | Field             | Type                                              | Notes                                                                                                                                                                        |
+| --- | ----------------- | ------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | `artifactType`    | `ArtifactType`                                    | Discriminator derived from `BaseTaskArtifactSchema['type']`, so the two cannot drift.                                                                                        |
+| 2   | `artifactContent` | `ArtifactContentByType<K>`                        | `TEXT`/`TABLE`/`IMAGE` → `string \| null`; `SPREADSHEET` → 2D array or `null`; `base` → `unknown`.                                                                           |
+| 3   | `reasoning`       | `Record<HeatmapMetricKey, string\|null>`          | Per-metric reasoning strings; `null` when the assessment is absent for that metric.                                                                                          |
+| 4   | `errors`          | `Record<HeatmapMetricKey, AssessmentError\|null>` | Per-metric cause. Every canonical criterion has an entry; an explicit `E` contributes its own `{ stage, code }`, and a numeric, `N` or absent assessment contributes `null`. |
+| 5   | `sourceUrl`       | `string\|null`                                    | Editor link derived in the lookup, or `null` when the source is unavailable. Never persisted and never added to an API response.                                             |
+
+Each criterion's cause is derived from that criterion's own validated assessment, not
+from the artefact type. An assessment-only error therefore keeps its surviving source
+content beside the error.
 
 ### `TaskPreviewData`
 
@@ -834,8 +847,8 @@ Owner: `src/frontend/src/features/taskHeatmap/TaskPreviewCard.tsx` →
 Assembled by `assembleTaskPreviewData.ts` from a `CellPreviewData` (or `null`) plus
 the analyser's [`TaskDisplayMetric`](#metricresult) and metric key, then consumed by
 `TaskPreviewCard`. In merged heatmaps, `assembleMergedPreviewData.ts` merges
-per-assignment lookups first-wins; `sourceUrl` travels with its cell and is never
-re-derived during merge.
+per-assignment lookups first-wins; `sourceUrl`, `reasoning` and `errors` travel with
+their cell and are never re-derived during merge.
 
 ```ts
 interface TaskPreviewData {
@@ -845,9 +858,13 @@ interface TaskPreviewData {
   readonly metricKey: 'completeness' | 'accuracy' | 'spag';
   readonly reasoning: string;
   readonly metric: TaskDisplayMetric;
+  readonly error: AssessmentError | null;
+  readonly sourceState: TaskPreviewSourceState;
   readonly sourceUrl: string | null;
 }
 ```
+
+`TaskPreviewSourceState` is `'loading' | 'available' | 'unavailable'`.
 
 | #   | Field             | Type                                     | Notes                                                                                                              |
 | --- | ----------------- | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
@@ -857,7 +874,26 @@ interface TaskPreviewData {
 | 4   | `metricKey`       | `'completeness' \| 'accuracy' \| 'spag'` | Which metric column the preview is for.                                                                            |
 | 5   | `reasoning`       | `string`                                 | `cellData.reasoning[metricKey] ?? ''`; empty string when no reasoning exists.                                      |
 | 6   | `metric`          | `TaskDisplayMetric`                      | The analyser's task-display metric, except the no-submission branch substitutes the frozen `NOT_ATTEMPTED_METRIC`. |
-| 7   | `sourceUrl`       | `string\|null`                           | Carried unchanged from the source `CellPreviewData`; `null` when `cellData` is `null` or no usable source exists.  |
+| 7   | `error`           | `AssessmentError\|null`                  | The selected criterion's cause: `cellData.errors[metricKey]`, or `null` when that criterion is not an error.       |
+| 8   | `sourceState`     | `TaskPreviewSourceState`                 | Readiness of the source region, derived from the selected cause (see below).                                       |
+| 9   | `sourceUrl`       | `string\|null`                           | Carried unchanged from the source `CellPreviewData`; `null` when `cellData` is `null` or no usable source exists.  |
+
+> **`sourceState` derivation.** Assembly yields only `available` or `unavailable`;
+> the query/preview composition supplies `loading`. A cause whose `stage` is not
+> `assessment` (acquisition, extraction or validation) means no renderable source
+> remains, so assembly resolves `unavailable`; an assessment-stage cause, or no
+> cause, resolves `available`. `available` does not claim a document exists: a
+> confirmed no-submission is the ready `N` placeholder with
+> `artifactContent: ''`, `error: null`, `sourceUrl: null` and `sourceState: 'available'`.
+> `loading` is set only by `TaskMetricPreviewContent` while a known class-partial
+> `E`'s full fetch is pending, and is never terminal: a terminally failed or
+> `null` full read resolves that fallback to `unavailable`.
+>
+> **Known `E` with null content.** A known `E` whose full `IMAGE`/`SPREADSHEET`
+> content is `null` assembles as `artifactContent: ''` with
+> `sourceState: 'unavailable'` rather than invoking the throwing coercion. This is
+> not a successful blank extraction. Unexpected non-`E` null content that bypasses
+> read validation still throws.
 
 > **`sourceUrl` semantics.** `sourceUrl` is an editor
 > link to the displayed submission artifact's source document. It is **distinct
@@ -990,6 +1026,10 @@ Aggregate rules:
   isolation before analysis, not an analyser input rule or a new baseline feature.
 - A missing lookup entry must never be reinterpreted as `N` when an explicit `E` is available
   from class-summary data. A failed/unavailable full query cannot hide known `E` reasoning.
+- A preview's `sourceState` is derived from the selected criterion's cause, not from
+  whether content happens to be present. An assessment-stage cause keeps the response
+  renderer; any other cause suppresses it. `loading` is supplied only by the
+  query/preview composition and never by a full-read builder.
 
 **Contract notes:**
 
@@ -1209,17 +1249,20 @@ The following declarative shapes are the intended target; nothing here exists in
    of the base projection. `HeatmapCell` is unchanged: marking is
    **column-level only in v1**, and cell values stay absolute in both modes.
 
-9. **Preview error fields.** The derived preview shapes cannot currently distinguish an
+9. **Preview error fields — implemented.** The derived preview shapes now distinguish an
    assessment-only error whose source is available, an unavailable/corrupt source, and a
-   `null` `artifactContent` caused by deliberate partial redaction. Intended additions
-   (in-memory only; never added to backend artefacts, persistence, API requests/responses or
-   the transport envelope; `CellPreviewData`/`TaskPreviewData` remain TS-only, non-Zod):
+   `null` `artifactContent` caused by deliberate partial redaction. These fields are
+   in-memory only; they are never added to backend artefacts, persistence, API
+   requests/responses or the transport envelope, and `CellPreviewData`/`TaskPreviewData`
+   remain TS-only, non-Zod. See
+   [Task preview derived shapes](#task-preview-derived-shapes) for the current field
+   tables.
 
    - `CellPreviewData.errors` — required
-     `Record<HeatmapMetricKey, { stage: ErrorStage; code: ErrorCode } | null>`; every
-     canonical criterion has an entry and non-`E` entries are `null`.
-   - `TaskPreviewData.error` — required `{ stage: ErrorStage; code: ErrorCode } | null`
-     carrying the selected criterion's cause.
+     `Record<HeatmapMetricKey, AssessmentError | null>`; every canonical criterion has an
+     entry and non-`E` entries are `null`.
+   - `TaskPreviewData.error` — required `AssessmentError | null` carrying the selected
+     criterion's cause.
    - `TaskPreviewData.sourceState` — required `'loading' | 'available' | 'unavailable'`:
      `available` = normal source region ready (usable content, or a confirmed no-submission
      with no known `E` showing the legitimate `N` placeholder); `unavailable` = an error
@@ -1228,11 +1271,13 @@ The following declarative shapes are the intended target; nothing here exists in
      suppress the response renderer and show an inline error explanation); `loading` = pending
      only, while a known partial `E` fallback's full fetch is in flight, never terminal.
 
-   Intended derivation: full-read builders yield only `available`/`unavailable`; the existing
-   query/preview composition supplies `loading` only while the fallback full fetch is pending.
-   A known `E` with null `IMAGE`/`SPREADSHEET` full content assembles as
+   Derivation as implemented: `buildCellPreviewLookup` derives each criterion's cause from
+   that criterion's own validated assessment. `assembleTaskPreviewData` yields only
+   `available`/`unavailable`; `TaskMetricPreviewContent` supplies `loading` only while the
+   fallback full fetch is pending, and resolves it to `unavailable` on a terminal failure or
+   `null` result. A known `E` with null `IMAGE`/`SPREADSHEET` full content assembles as
    `artifactContent: ''` with `sourceState: 'unavailable'`; non-`E` unexpected null content
-   remains an internal invariant violation. Precedence in an opened preview:
+   still throws. Precedence in an opened preview:
    1. explicit full-record validation error; 2. the class-partial `E` for that criterion;
    2. the selected full item's `E`; 4. the existing analyser metric. A full-read-only
       corruption overrides the affected preview's score/reasoning with `E` even when the
@@ -1289,7 +1334,8 @@ Frontend test-only acceptance:
 └── `src/frontend/e2e-tests/post-analysis-metadata.feedback.spec.ts` → eight save/refresh feedback and viewport/theme cases
 
 Task preview derived shapes:
-├── `src/frontend/src/features/taskHeatmap/buildCellPreviewLookup.ts` → `CellPreviewData` (owner)
-├── `src/frontend/src/features/taskHeatmap/assembleTaskPreviewData.ts` → `TaskPreviewData` assembly
+├── `src/frontend/src/features/taskHeatmap/buildCellPreviewLookup.ts` → `CellPreviewData`, `AssessmentError` (owners)
+├── `src/frontend/src/features/taskHeatmap/assembleTaskPreviewData.ts` → `TaskPreviewData` assembly and `sourceState` derivation
 ├── `src/frontend/src/features/taskHeatmap/assembleMergedPreviewData.ts` → merged lookup/status
-└── `src/frontend/src/features/taskHeatmap/TaskPreviewCard.tsx` → `TaskPreviewData` (owner)
+├── `src/frontend/src/features/taskHeatmap/TaskMetricPreviewContent.tsx` → pending/failed/ready popover body; supplies `loading`
+└── `src/frontend/src/features/taskHeatmap/TaskPreviewCard.tsx` → `TaskPreviewData` and `TaskPreviewSourceState` (owners)

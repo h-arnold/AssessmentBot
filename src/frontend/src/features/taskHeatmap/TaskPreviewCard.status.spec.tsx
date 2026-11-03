@@ -2,10 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { screen, within } from '@testing-library/react';
 
 import { renderWithFrontendProviders } from '@/test/renderWithFrontendProviders';
-import {
-  createComputedMetricResult,
-  createErrorMetricResult,
-} from '@/test/dataAnalysis/fixtures';
+import { createComputedMetricResult, createErrorMetricResult } from '@/test/dataAnalysis/fixtures';
 import { NOT_ATTEMPTED_METRIC } from '@/services/dataAnalysis/heatmapAdapter';
 import type { TaskDisplayMetric } from '@/services/dataAnalysis/dataAnalysis.zod';
 import { TaskPreviewCard, type TaskPreviewData } from './TaskPreviewCard';
@@ -31,6 +28,8 @@ const PREVIEW_DATA = {
   metricKey: 'completeness',
   metric: createComputedMetricResult({ value: COMPUTED_SCORE }),
   reasoning: 'Reasoning for the current score',
+  error: null,
+  sourceState: 'available',
   sourceUrl: null,
 } satisfies TaskPreviewData;
 

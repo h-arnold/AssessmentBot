@@ -12,7 +12,7 @@
  * Geometry, whole-card metric centring and rendered icon sizing are measured in
  * the Playwright visual suite, not here: happy-dom performs no layout.
  *
- * @see TASK_PREVIEW_SOURCE_LINK_LAYOUT.md
+ * @see ASSESSMENT_ERROR_PREVIEW_LAYOUT.md
  * @see docs/developer/frontend/frontend-testing.md
  */
 
@@ -21,16 +21,19 @@ import { act, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import { renderWithFrontendProviders } from '@/test/renderWithFrontendProviders';
-import {
-  createComputedMetricResult,
-  createErrorMetricResult,
-} from '@/test/dataAnalysis/fixtures';
+import { createComputedMetricResult, createErrorMetricResult } from '@/test/dataAnalysis/fixtures';
 import { NOT_ATTEMPTED_METRIC } from '@/services/dataAnalysis/heatmapAdapter';
 import { METRIC_DISPLAY_META } from '@/services/dataAnalysis/metricDisplay/metricDisplayMeta';
 import type { TaskDisplayMetric } from '@/services/dataAnalysis/dataAnalysis.zod';
 import { CANONICAL_READY_CELL } from '@/test/taskHeatmap/previewFixtures';
 import { CANONICAL_SOURCE_URL } from '@/test/taskHeatmap/previewSourceActionTestHelpers';
-import { SOURCE_ACTION_LABEL, TaskPreviewCard, type TaskPreviewData } from './TaskPreviewCard';
+import {
+  SOURCE_ACTION_LABEL,
+  TaskPreviewCard,
+  type TaskPreviewData,
+  type TaskPreviewSourceState,
+} from './TaskPreviewCard';
+import type { AssessmentError } from './buildCellPreviewLookup';
 
 // ---------------------------------------------------------------------------
 // Fixture constants
@@ -42,18 +45,12 @@ const METRIC_LABEL_WITH_COLON = `${METRIC_DISPLAY_META.get('completeness')!.labe
 /** Score the canonical ready cell's completeness metric carries. */
 const CANONICAL_SCORE = CANONICAL_READY_CELL.completenessScore;
 
-/**
- * Budget for the Ant Design tooltip to mount.
- *
- * The tooltip opens on a short internal delay, so it cannot be observed in the
- * same tick as the interaction that triggered it.
- */
+/** Budget for the Ant Design tooltip to mount: it opens on a short internal delay. */
 const TOOLTIP_WAIT_MS = 3000;
 
 /**
  * Non-computed metric states that must still offer the action when the record
- * carries a source, because action visibility depends on source availability
- * rather than on the metric's computed state.
+ * carries a source: visibility depends on source availability, not metric state.
  */
 const NON_COMPUTED_PREVIEW_METRICS: ReadonlyArray<{
   readonly state: TaskDisplayMetric['state'];
@@ -68,13 +65,10 @@ const NON_COMPUTED_PREVIEW_METRICS: ReadonlyArray<{
 // ---------------------------------------------------------------------------
 
 /**
- * Build a `TaskPreviewData` fixture from the canonical ready cell.
+ * Build a `TaskPreviewData` fixture from the canonical ready cell, so the suite
+ * asserts against real record data rather than restated literals.
  *
- * The canonical TEXT artefact, reasoning and derived source URL all come from
- * the selected `small` record, so the card suite asserts against real data
- * rather than restated literals.
- *
- * @param {Partial<TaskPreviewData>} [overrides] - Fields to override on the default fixture.
+ * @param {Partial<TaskPreviewData>} [overrides] - Fields to override.
  * @returns {TaskPreviewData} A fully-formed preview data object for rendering.
  */
 function createPreviewData(overrides: Partial<TaskPreviewData> = {}): TaskPreviewData {
@@ -85,6 +79,8 @@ function createPreviewData(overrides: Partial<TaskPreviewData> = {}): TaskPrevie
     metricKey: 'completeness',
     metric: createComputedMetricResult({ value: CANONICAL_SCORE }),
     reasoning: CANONICAL_READY_CELL.completenessReasoning,
+    error: null,
+    sourceState: 'available',
     sourceUrl: CANONICAL_SOURCE_URL,
   } satisfies TaskPreviewData;
 
@@ -138,7 +134,6 @@ describe('TaskPreviewCard source action', () => {
     expect(relationship).toContain('noopener');
     expect(relationship).toContain('noreferrer');
   });
-
   it('renders the action icon decoratively rather than as a labelled image', () => {
     renderWithFrontendProviders(<TaskPreviewCard data={createPreviewData()} />);
 
@@ -150,22 +145,6 @@ describe('TaskPreviewCard source action', () => {
     // technology rather than announced alongside the action's name.
     expect(icon?.closest('[aria-hidden="true"]')).not.toBeNull();
     expect(within(action).queryByRole('img')).not.toBeInTheDocument();
-  });
-
-  it('keeps the action outside the metric live status region and inside the card header', () => {
-    renderWithFrontendProviders(<TaskPreviewCard data={createPreviewData()} />);
-
-    const status = screen.getByRole('status');
-    const action = screen.getByRole('link', { name: SOURCE_ACTION_LABEL });
-
-    // The action is a static link, so announcing it as part of the metric's
-    // score status would be wrong; it must be a sibling of that region.
-    expect(status.contains(action)).toBe(false);
-    expect(
-      within(status).queryByRole('link', { name: SOURCE_ACTION_LABEL })
-    ).not.toBeInTheDocument();
-    expect(action.closest('.ant-card-head')).not.toBeNull();
-    expect(document.querySelector('.ant-card-body')?.contains(action)).toBe(false);
   });
 
   it('leaves the metric status, reasoning and student response unchanged when the action renders', () => {
@@ -181,19 +160,45 @@ describe('TaskPreviewCard source action', () => {
     expect(screen.getByText(CANONICAL_READY_CELL.artifactContent)).toBeInTheDocument();
   });
 
+  it('keeps the action outside the metric live status region and inside the card header', () => {
+    renderWithFrontendProviders(<TaskPreviewCard data={createPreviewData()} />);
+
+    const status = screen.getByRole('status');
+    const action = screen.getByRole('link', { name: SOURCE_ACTION_LABEL });
+
+    // A static link announced inside the metric's score status would be wrong.
+    expect(status.contains(action)).toBe(false);
+    expect(within(status).queryByRole('link', { name: SOURCE_ACTION_LABEL })).toBeNull();
+    expect(action.closest('.ant-card-head')).not.toBeNull();
+    expect(document.querySelector('.ant-card-body')?.contains(action)).toBe(false);
+  });
+
   it.each(NON_COMPUTED_PREVIEW_METRICS)(
     'still offers the source action for a $state metric when a source exists',
     ({ metric }) => {
       renderWithFrontendProviders(<TaskPreviewCard data={createPreviewData({ metric })} />);
 
       // Visibility depends on source availability, not on the metric state, so
-      // an unattempted cell with a stored source still gets the action.
+      // an unattempted or errored cell with a stored source still gets the action.
       expect(screen.getByRole('link', { name: SOURCE_ACTION_LABEL })).toHaveAttribute(
         'href',
         CANONICAL_SOURCE_URL
       );
     }
   );
+
+  it('renders no action and no disabled placeholder when the record offers no source', () => {
+    renderWithFrontendProviders(<TaskPreviewCard data={createPreviewData({ sourceUrl: null })} />);
+
+    expect(screen.queryByRole('link', { name: SOURCE_ACTION_LABEL })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: SOURCE_ACTION_LABEL })).not.toBeInTheDocument();
+    // No inert placeholder may carry the action's name either.
+    expect(screen.queryByLabelText(SOURCE_ACTION_LABEL)).not.toBeInTheDocument();
+    // The existing empty-content treatment and the rest of the card stand.
+    expect(screen.getByRole('status')).toBeInTheDocument();
+    expect(screen.getByText('Student Response')).toBeInTheDocument();
+    expect(screen.getByText(CANONICAL_READY_CELL.artifactContent)).toBeInTheDocument();
+  });
 
   it('shows the action name as a tooltip on pointer hover', async () => {
     renderWithFrontendProviders(<TaskPreviewCard data={createPreviewData()} />);
@@ -210,9 +215,8 @@ describe('TaskPreviewCard source action', () => {
 
     // Focus is set directly, with no pointer interaction, so the tooltip can
     // only be the focus trigger answering a keyboard user. Wrapped in `act`
-    // because this programmatic focus is what opens the action's own
-    // hover/focus tooltip, and Ant Design mounts the overlay's Trigger, Portal
-    // and CSSMotion updates outside any user interaction.
+    // because that focus opens the action's own hover/focus tooltip, whose
+    // Trigger, Portal and CSSMotion updates happen outside any interaction.
     const action = screen.getByRole('link', { name: SOURCE_ACTION_LABEL });
     act(() => {
       action.focus();
@@ -222,17 +226,78 @@ describe('TaskPreviewCard source action', () => {
     const tooltip = await screen.findByRole('tooltip', {}, { timeout: TOOLTIP_WAIT_MS });
     expect(tooltip).toHaveTextContent(SOURCE_ACTION_LABEL);
   });
+});
 
-  it('renders no action and no disabled placeholder when the record offers no source', () => {
-    renderWithFrontendProviders(<TaskPreviewCard data={createPreviewData({ sourceUrl: null })} />);
+// ---------------------------------------------------------------------------
+// Known-error source states
+// ---------------------------------------------------------------------------
 
+/** Cause recorded for an extraction failure with no usable source. */
+const EXTRACTION_CAUSE: AssessmentError = {
+  stage: 'extraction',
+  code: 'SOURCE_CONTENT_UNAVAILABLE',
+};
+
+/**
+ * Build a known-`E` preview fixture.
+ *
+ * @param {TaskPreviewSourceState} sourceState - Derived source readiness.
+ * @param {string|null} [sourceUrl] - Derived editor link, if any.
+ * @returns {TaskPreviewData} The error probe.
+ */
+function createErrorPreviewData(
+  sourceState: TaskPreviewSourceState,
+  sourceUrl: string | null = null
+): TaskPreviewData {
+  return createPreviewData({
+    metric: createErrorMetricResult(),
+    error: EXTRACTION_CAUSE,
+    reasoning: 'No source content could be extracted for this task.',
+    sourceState,
+    sourceUrl,
+    artifactContent: '',
+  });
+}
+
+describe('TaskPreviewCard known-error source action', () => {
+  it.each(['unavailable', 'loading'] as const)(
+    'keeps the action for a known error while the source is %s',
+    (sourceState) => {
+      renderWithFrontendProviders(
+        <TaskPreviewCard data={createErrorPreviewData(sourceState, CANONICAL_SOURCE_URL)} />
+      );
+
+      // The link survives the failed extraction: it is derived from validated
+      // source identifiers, not from usable content.
+      expect(screen.getByRole('link', { name: SOURCE_ACTION_LABEL })).toHaveAttribute(
+        'href',
+        CANONICAL_SOURCE_URL
+      );
+    }
+  );
+
+  it('omits the action and its balancing space when no safe link is derivable', () => {
+    renderWithFrontendProviders(<TaskPreviewCard data={createErrorPreviewData('unavailable')} />);
     expect(screen.queryByRole('link', { name: SOURCE_ACTION_LABEL })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: SOURCE_ACTION_LABEL })).not.toBeInTheDocument();
-    // No inert placeholder may carry the action's name either.
-    expect(screen.queryByLabelText(SOURCE_ACTION_LABEL)).not.toBeInTheDocument();
-    // The existing empty-content treatment and the rest of the card stand.
-    expect(screen.getByRole('status')).toBeInTheDocument();
-    expect(screen.getByText('Student Response')).toBeInTheDocument();
-    expect(screen.getByText(CANONICAL_READY_CELL.artifactContent)).toBeInTheDocument();
+    expect(screen.queryByTestId('task-preview-header-balance')).not.toBeInTheDocument();
+  });
+
+  it('never steals focus when source content arrives after the card is open', async () => {
+    // A null URL stands in for the moment before content arrives, while
+    // something else on the page owns focus.
+    const { rerender } = renderWithFrontendProviders(
+      <TaskPreviewCard data={createPreviewData({ sourceUrl: null })} />
+    );
+    const outsideControl = document.createElement('button');
+    document.body.append(outsideControl);
+    act(() => {
+      outsideControl.focus();
+    });
+    await act(async () => {
+      rerender(<TaskPreviewCard data={createPreviewData()} />);
+    });
+
+    expect(screen.getByRole('link', { name: SOURCE_ACTION_LABEL })).toBeInTheDocument();
+    expect(outsideControl).toHaveFocus();
   });
 });

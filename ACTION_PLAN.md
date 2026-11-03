@@ -790,95 +790,114 @@ Authoritative for this section; keep in sync when later sections touch these own
 
 ## Section 9 — Error-aware preview assembly and local source states
 
-### Objective and constraints
+**Status: Red and Green delivered; Green review PASS.** Section regression gate and commit are **pending**; docs sync runs in parallel and lands in the Implementation notes below. No deployment is authorised.
 
-Apply approved preview precedence without changing class analysis from a full preview
-fetch. Keep the existing card/popover, source action and query owners. Budgets:
-lookup 251→340; task assembly 141→195; merged assembly 195→255; preview content 128→185;
-preview cell 309→335; card 280→330; page 392→435; data hook 394→445; columns 403→455;
-preview queries 100→155. The cell passes derived states through its existing controlled
-popover/focus owner; it does not become a second query or error-resolution owner.
-No new generic fallback helper, navigation, retry button or broad null coercion.
+### Outcome (compacted)
 
-### Delegation and planning blocks
+An opened heatmap preview now resolves a known explicit `E` before the analyser metric and renders it locally: error and reasoning appear immediately, an assessment-stage `E` keeps its valid response and safe source action, and an unavailable/corrupt/legacy source shows a non-dismissible inline Alert instead of the response renderer. Precedence is full-record validation `E` → class-partial `E` → selected full-item `E` → analyser metric, keyed to the actual assignment/student/task/criterion and carried by the existing first-selected merged instance. Class analysis is untouched: a full-fetch-only corruption overrides that preview only and states that displayed scores are unchanged. Production surface is the four existing owners — `buildCellPreviewLookup.ts` (282), `assembleTaskPreviewData.ts` (178), `TaskPreviewCard.tsx` (393) and `TaskMetricPreviewContent.tsx` (196). No new module, helper, dependency, query owner, navigation, retry control or spacing/width constant.
 
-- Mandatory reads: Common + Frontend + Analysis/UI + Contracts + Corpus;
-  @src/frontend/src/features/taskHeatmap/buildCellPreviewLookup.ts
-  @src/frontend/src/features/taskHeatmap/assembleTaskPreviewData.ts
-  @src/frontend/src/features/taskHeatmap/assembleMergedPreviewData.ts
-  @src/frontend/src/features/taskHeatmap/heatmapsPreviewQueries.ts
-  @src/frontend/src/features/taskHeatmap/TaskPreviewCard.tsx
-  @src/frontend/src/features/taskHeatmap/TaskMetricPreviewContent.tsx
-  @src/frontend/src/features/taskHeatmap/TaskMetricPreviewCell.tsx
-  @src/frontend/src/features/taskHeatmap/taskHeatmapTableColumns.tsx
-  @src/frontend/src/features/taskHeatmap/TaskHeatmapPage.tsx
-  @src/frontend/src/features/taskHeatmap/useHeatmapsPageData.ts .
-- **Shared helpers — extend/reuse:** lookup and task/merged assemblers retain source
-  selection/URLs; query composition supplies pending/failed states and class-partial E
-  by actual assignment/student/task/criterion. Card/content render the derived state;
-  columns/page/hook pass it through. All owners recorded `Not implemented` in frontend
-  standards §9.29; no shared service depending on React/heatmap components.
-- **Data shapes:** implement planned `CellPreviewData.errors`, selected `error`,
-  `sourceState` and retained reasoning in `frontend-data-analysis-response.md`.
-  These are in-memory view models, not backend artefact or MetricResult fields.
-- **Canonical fixtures:** `small` valid TEXT/IMAGE/SPREADSHEET and `medium` mixed E;
-  local stale query, unavailable/invalid full item and legacy mutations. Reuse and
-  opportunistically migrate touched preview fixtures, not unrelated browser helpers.
+### Retained for later sections
 
-### Acceptance criteria / required tests (Red first)
+**View-model contract**
 
-1. Precedence: full-record validation E, class-partial E, selected full-item E, analyser
-   metric. Errors/reasoning follow existing first-selected merged source, never another
-   assignment sharing its definition/task key. Missing lookup cannot erase known E.
-2. Known E + pending full fetch shows card/E/reasoning now, source-only skeleton; terminal
-   fetch failure/null switches source to unavailable/local Alert, never perpetual loading.
-   No known result preserves current whole-preview loading/blocking-query treatment.
-3. Assessment-only E with valid content renders response normally and safe source action.
-   Known E with null IMAGE/SPREADSHEET uses `artifactContent: ''`/unavailable without
-   invoking throwing coercion; unexpected non-E null bypassing validation still throws.
-4. Genuine no-submission shows ready N, `sourceState: 'available'`, empty content/null
-   error/null source URL, no Alert. Legacy shows safe reassessment copy/local Alert.
-5. Full-fetch-only corruption overrides preview and shows exact scores-unchanged notice;
-   class query cache, heatmap scores, averages, filters and metadata persistence are
-   unchanged. Separately, E already in class input affects normal analysis.
-6. Cover every layout state/copy, non-dismissible fail-closed source Alert, safe source
-   link omission/retention, focus-once/Escape/return/untrapped Tab, no focus theft on
-   source arrival. Label source skeleton with busy output, not redundant status role.
-   Background refetch eligibility alone does not discard usable content.
+- `CellPreviewData.errors` is required: `Record<HeatmapMetricKey, AssessmentError | null>`, one entry per canonical criterion, `null` for non-`E` or absent assessments. `AssessmentError` is exported from `buildCellPreviewLookup.ts` as `Extract<Assessment, { score: 'E' }>['error']`, derived from the read payload's validated assessment — never from artefact type.
+- `TaskPreviewData` (`TaskPreviewCard.tsx`) carries required `error` (selected criterion's cause or `null`) and required `sourceState: TaskPreviewSourceState` (`'loading' | 'available' | 'unavailable'`), beside the existing `reasoning` and `sourceUrl`. All are in-memory view-model fields: never persisted, never added to backend artefacts, persistence, API requests/responses or the transport envelope; `CellPreviewData`/`TaskPreviewData` remain TS-only, non-Zod.
+- Contract location: item 9, **Preview error fields**, in `docs/developer/data-shapes/frontend-data-analysis-response.md`. The code matches item 9 verbatim; that doc is the authority for the field semantics (including `available` meaning a ready source region, which includes the legitimate no-submission `N` placeholder).
 
-### Red → Green → Refactor and checks
+**`sourceState` ownership**
 
-- Add `heatmapsPreviewQueries.spec.ts` and scenario-focused
-  `assembleTaskPreviewData.errors.spec.ts`, `assembleMergedPreviewData.errors.spec.ts`,
-  `TaskPreviewCard.errors.spec.tsx`, and
-  `src/frontend/src/features/taskHeatmap/buildCellPreviewLookup.errors.spec.ts`
-  (≤300 each). The lookup companion pins per-criterion error/reasoning maps, full-record
-  validation-error derivation and safe source state; query/assembly companions pin
-  precedence and missing-lookup known-E fallback. Extend content spec 212→≤340, source-link
-  spec 238→≤300 and hook preview spec 392→≤480. Existing assertion matrices stay in
-  place, but required typed-fixture fields must be adapted during Red: assembly spec
-  437→≤470, merged assembly spec 311→≤340, lookup specs (main 173→≤200, content
-  192→≤220, indexing 289→≤320), and
-  `src/frontend/src/test/taskHeatmap/previewSourceActionTestHelpers.ts` 316→≤350.
-  Add `errors` maps and `error`/`sourceState` fields as appropriate; healthy fixtures
-  use explicit null causes and ready source state, error probes use their valid
-  cause/state. Keep the merged-table spec's assertion matrix unchanged, allowing
-  only this mechanical fixture repair (478→≤495). Other discovered typed literals
-  receive the same required-field adaptation under the sizing gate. New behavioural
-  matrices belong in the focused companion suites, not these existing large specs.
-- Green: extend view-model maps, propagate instance-scoped partial fallback through
-  existing query composition and render source states. Refactor no-data fallback only
-  where it currently conceals known E. Consult official Ant Design Card/Alert/Popover/
-  Skeleton docs again before editing components; preserve the approved layout.
-- Update stale removed-layout pointers in touched card/CSS and focus/source-link specs
-  to the approved layout companion. In the touched lookup module, replace its stale
-  `ABClassResponseMapper.js:88` comment pointer with the stable `_toReadView` owner
-  reference, not a new brittle line number. Do not introduce spacing/width constants.
-- Checks: `npm run test:frontend -- src/features/taskHeatmap`, analyser E suite,
-  `npm run lint:frontend:check`, `npm run typecheck:all`; full section gate.
-  `@remarks`: preview-only corruption intentionally does not rewrite class analysis,
-  merged source identity, and ready no-submission versus unavailable error source.
-- Execution record: Not started; changes/checks/deviations/downstream implications pending.
+- Assembly (`assembleTaskPreviewData.ts`) yields only `available`/`unavailable`: `isUnavailableSource(error)` returns true only when `error !== null && error.stage !== 'assessment'`, so acquisition/extraction/validation causes are unavailable regardless of carried content, and an assessment-stage `E` stays `available`.
+- `loading` is produced in exactly one layer: `TaskMetricPreviewContent.tsx::resolveKnownErrorSourceState`, driven by the owning column's `isLoading`/`hasError` status. Pending → `loading`; terminal failure → `unavailable` (only from `loading`, so a settled state is never re-opened); otherwise unchanged. The whole-preview skeleton/Alert path (`isWholePreviewPlaceholder`) is preserved whenever no known result exists.
+- The `status.isLoading → 'loading'` branch is **defensive and currently unreachable**: `isLoading` derives from the same query result that builds the lookup, so a populated known-error cell cannot coexist with `isLoading`. The card-level `loading` render and the terminal-failure switch are both test-pinned. Do not delete the branch as dead code, and do not claim it is exercised.
+
+**Layout and copy authority**
+
+- `ASSESSMENT_ERROR_PREVIEW_LAYOUT.md` is the approved layout and copy authority for this surface; it supersedes the removed `TASK_PREVIEW_SOURCE_LINK_LAYOUT.md` pointer.
+- Copy constants exported from `TaskPreviewCard.tsx` (byte-verified against the layout doc and `SPEC.md`; Section 10 browser journeys should assert these):
+  - `SOURCE_ACTION_LABEL` — `Open source document (opens in a new tab)`
+  - `SOURCE_LOADING_LABEL` — `Loading source preview`
+  - `SOURCE_UNAVAILABLE_TITLE` — `Source unavailable`
+  - `SOURCE_UNAVAILABLE_DESCRIPTION` — `The response cannot be shown. Reassess the assignment to try again.`
+  - `SOURCE_CORRUPTION_DESCRIPTION` — `Source preview unavailable. Displayed scores are unchanged; reassess the assignment to refresh them.`
+  - `REASSESSMENT_DESCRIPTION` — `Reassess this assignment to create results in the current format.`
+- `resolveUnavailableDescription` selects by cause: `CORRUPT_RECORD` → corruption copy, `REASSESSMENT_REQUIRED` → legacy copy, else ordinary. Alerts are non-dismissible (no `closable`; Ant Design default `false`), and no duplicate generic Alert appears above a valid response for an assessment-only `E`.
+- Source-region `loading` is a labelled `<output aria-busy="true" aria-label={SOURCE_LOADING_LABEL}>` wrapping a `Skeleton`, with **no** explicit `role="status"` (`<output>` already exposes it; redundancy trips SonarCloud `typescript:S6822`). This follows `docs/developer/frontend/frontend-loading-and-width-standards.md` §8.1.
+- Layout preserved: `Card size="small"`, same title/`extra`, Reasoning section, `Divider`, Student Response section, body max-height/scroll, header balance span, source-action retention/omission. Reasoning stays plain text. No new developer-details panel, badge, disclosure or tooltip.
+
+**Null-content and no-submission rules**
+
+- A known `E` with `null` `IMAGE`/`SPREADSHEET` full content assembles to `artifactContent: ''` with `sourceState: 'unavailable'` **without** invoking the throwing coercion. This is not a successful blank extraction.
+- Non-`E` unexpected `null` content that bypasses read validation still throws (`TypeError('IMAGE artifact content is null')` / `TypeError('SPREADSHEET artifact content is null')`). Do not broaden a silent null fallback.
+- Confirmed no-submission (`cellData === null`, no known `E`) yields `NOT_ATTEMPTED_METRIC`, `artifactContent: ''`, `error: null`, `sourceUrl: null`, `sourceState: 'available'` — the ready `N` placeholder, no Alert, no busy output.
+
+**Test-surface decisions**
+
+- **Hook-spec split (user-directed, 3 November 2026).** The plan's ≤480 extension budget for `useHeatmapsPageData.preview.spec.ts` proved undeliverable with the four required matrices, so the file was split per repo rules: new known-error material (two helpers plus the known class-partial error describe block) lives in `useHeatmapsPageData.knownErrorPreview.spec.ts` (235 lines) and the original returned to its 392-line state. The ≤480 budget is superseded; do not re-merge the files.
+- **User sizing allowance (binding, already recorded in the deferred ledger).** Files below 500 physical lines may exceed earlier predicted or section-specific estimates without further approval. Applied here to `TaskPreviewCard.tsx` (393 vs the plan's 330) and `TaskMetricPreviewContent.tsx` (196 vs 185); the overage is proportionate decomposition (copy constants plus JSDoc, `renderSourceRegion`/`resolveUnavailableDescription`, `WholePreviewSkeleton`/`renderWholePreviewPlaceholder`, `resolveKnownErrorSourceState`), not formatting condensation or avoidable design. `buildCellPreviewLookup.ts` (282 ≤ 340) and `assembleTaskPreviewData.ts` (178 ≤ 195) stayed inside their plan budgets. All touched files remain below the 500-line hard limit.
+- **Companion suites (all ≤300 lines):** `buildCellPreviewLookup.errors.spec.ts` 241, `heatmapsPreviewQueries.spec.ts` 265, `assembleTaskPreviewData.errors.spec.ts` 194, `assembleMergedPreviewData.errors.spec.ts` 208, `TaskPreviewCard.errors.spec.tsx` 300. Extended existing specs: `TaskMetricPreviewContent.spec.tsx` 335, `TaskPreviewCard.sourceLink.spec.tsx` 303 (≤300 budget superseded by the sizing allowance), plus mechanical typed-fixture adaptation in `assembleTaskPreviewData.spec.ts`, `assembleTaskPreviewData.sourceUrl.spec.ts`, `assembleMergedPreviewData.spec.ts`, `TaskPreviewCard.spec.tsx`, `TaskPreviewCard.status.spec.tsx`, `previewSourceActionTestHelpers.ts` and `taskHeatmapTableTestHelpers.ts`.
+- **Accepted characterisation disposition.** The merged and queries companions pass rather than fail red because they pin behaviour criterion 1 explicitly preserves ("existing first-selected merged source"): merged error identity travels with the winning instance, and class-partial `E` is addressable by actual assignment/student/task identity without a missing lookup erasing it. Characterisation pinning is sanctioned; no production change was manufactured to force failures.
+- **20-red → green inventory (delivered-behaviour evidence).** All 20 intended reds (assembly 6, lookup 5, card 5, content 4) fail for their intended reason before Green and pass after it, with assertions unchanged (the test diff is additions-only versus HEAD and Green modified no test file). Use this inventory as the behavioural record; do not re-derive it.
+
+**`@remarks` commitments**
+
+- Preview-only corruption intentionally does not rewrite class analysis: no class-query mutation, no recomputed scores/averages, no persisted read repair.
+- Merged source identity is preserved first-wins; another assignment instance sharing a definition/task key never supplies reasoning or content.
+- Ready no-submission (`available` with the `N` placeholder) is distinct from an unavailable error source; `available` does not assert that a document exists.
+
+**Later ownership**
+
+- Section 10 owns the browser journeys (embedded and standalone/merged) that exercise these states end to end, including the two-instance shared-definition case and the legacy reassessment journey.
+- Residual stale layout pointers in untouched files (cell CSS, both focus specs, parity spec) are disregarded nitpicks in the deferred-findings log; repoint only when those files are touched.
+
+**Shared-helper register**
+
+- Section 9 delivered entries in frontend standards §9.29 are **implemented**: the E preview reuse of `TaskMetricPreviewCell`/`TaskPreviewCard`/`buildCellPreviewLookup`/`assembleTaskPreviewData`/`TaskMetricPreviewContent`/`assembleMergedPreviewData`/`taskHeatmapTableColumns`/`heatmapsPreviewQueries` (item 2), and the full-read corruption precedence kept feature-local (item 4). No Section 9 entry remains `Not implemented`; entries for later sections are untouched.
+
+### Checks record
+
+- Focused `src/features/taskHeatmap`: **42 files / 358 tests pass**.
+- Analyser suite: **16 files / 132 tests pass**.
+- `npm run lint:frontend:check`: exit 0 with exactly the **19 baseline warnings**, none in touched files.
+- `npm run typecheck:all`: exit 0.
+- Green review: PASS (`.opencode/scratchpad/section9-green-review.md`), no outstanding in-scope finding.
+- Full section regression gate: **passed** (zero regressions, zero new failures).
+
+### Implementation notes / deviations / follow-up
+
+Authoritative for this section; keep in sync when later sections touch these owners.
+
+- **Section regression gate: passed (3 November 2026).** Report:
+  `.ts-regression-checker/reports/session-assessment-errors-322-341/runs/2026-11-03T05-54-54.889Z/`.
+  Overall FAILING with **0 regressions and 0 new failures**: 7 of 8 checks pass
+  (frontend lint, builder lint, backend/frontend/builder coverage tests, full Playwright
+  E2E suite, TypeScript compile). `backend-lint-check` exits 1 with exactly the accepted
+  baseline debt — four historical `max-lines` warnings in untouched backend test files
+  (`assignmentDefinitionPartials.unit.test.js`, `dbManager.test.js`,
+  `classroomApiClient.test.js`, `batchUpdateUtility.test.js`); the checker also records
+  two fixes against the baseline (two of the six baseline `max-lines` files now pass).
+  All four remaining failures are the user-accepted baseline debt; no new failure is
+  attributed to this section.
+- **Docs sync: landed (3 November 2026).** Six existing pages reconciled, no new pages:
+  `docs/developer/data-shapes/frontend-data-analysis-response.md` (item 9 preview error
+  fields moved from planned to implemented, with the assembled `CellPreviewData`/
+  `TaskPreviewData` shapes and `sourceState` derivation rules),
+  `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` (§9.29
+  items 2 and 4 implemented; browser journeys stay `Not implemented` for Section 10),
+  `docs/developer/frontend/frontend-loading-and-width-standards.md` (new §5.1 partial
+  known results behind a pending/failed fetch; §8.1 source-region skeleton example),
+  `docs/developer/frontend/frontend-logging-and-error-handling.md` (new §4 inline preview
+  source failures), `docs/developer/frontend/frontend-testing.md` (helper caller list,
+  test-helper note, example split section) and a comment-only header correction in
+  `TaskMetricPreviewContent.spec.tsx` (its old header claimed loading unconditionally wins
+  over an error, now false for a known class-partial `E`). Drift audit: the sync also
+  added the contract doc to `.opencode/agents/code-reviewer.md`'s reading list — a gap
+  previously dispositioned `disregarded` in Section 4 and outside the docs-sync surface;
+  the orchestrator reverted that one-line edit and the nitpick disposition stands.
+- **Section regression gate:** pending.
+- **Commit/push:** pending.
+- **Sizing deviations:** `TaskPreviewCard.tsx` 393 and `TaskMetricPreviewContent.tsx` 196 exceed their plan budgets under the recorded user <500 allowance; the `useHeatmapsPageData.preview.spec.ts` ≤480 budget is superseded by the user-directed split. See Retained for detail.
+- **Defensive branch:** the `status.isLoading → 'loading'` mapping in `resolveKnownErrorSourceState` is currently unreachable with existing wiring; retained deliberately and recorded in the green review.
+- **Proof limits:** component and hook-level Vitest evidence does not prove browser journey behaviour, live GAS/network responses or deployed logging. Section 10 owns the end-to-end proof.
 
 ## Section 10 — Browser journeys across both heatmap entry points
 

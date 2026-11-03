@@ -109,7 +109,8 @@ export const CANONICAL_SOURCE_URL = requireCanonicalSourceUrl();
  * A record whose artefact and parent submission both carry no usable document
  * is the realistic "no link available" boundary; clearing the derived URL on a
  * clone reproduces exactly that lookup output without mutating the shared
- * frozen canonical record.
+ * frozen record. The cell's per-criterion reasoning and error causes carry
+ * through unchanged, so only the source link differs.
  *
  * @returns {CellPreviewData} A detached cell carrying no source URL.
  */

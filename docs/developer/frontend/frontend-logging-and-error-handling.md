@@ -123,6 +123,15 @@ Use Ant Design feedback components according to UI persistence and user intent:
 
 Use context-aware APIs (`App.useApp`, `message.useMessage`, `notification.useNotification`) rather than static methods, so ConfigProvider tokens and context are respected.
 
+### Inline preview source failures
+
+A failed source region inside a task preview is an item-level, non-dismissible inline `Alert`, not a toast or notification. `TaskPreviewCard.tsx` owns the copy and `TaskMetricPreviewContent.tsx` owns the pending/failed/ready decision; the state and loading rules are in `docs/developer/frontend/frontend-loading-and-width-standards.md` §5.1.
+
+- The `Alert` title is **Source unavailable**. The description is cause-specific: an ordinary unavailable source, the full-read-only corruption notice, or the legacy reassessment copy. The recorded Assessment reasoning stays in the card's Reasoning section and is never replaced by generic fetch copy.
+- Do not add a retry button, toast or developer-details panel. The existing refresh and reassessment controls remain the recovery paths.
+- An assessment-only failure with usable content renders the response normally; do not add a duplicate generic `Alert` above it.
+- These are user-safe strings. Structured stage/code stays in diagnostics, never in the rendered copy.
+
 **Documented deviation — Heatmaps blocking state:** the standalone Heatmaps builder surface (`HeatmapBuilderSurface.tsx`) intentionally renders an Ant Design `Result` (rather than the default `Alert`) for its blocking state. This is a documented deviation recorded in the `@remarks` at `HeatmapBuilderSurface.tsx:14`; it satisfies the documented-deviation escape clause in `docs/developer/frontend/frontend-loading-and-width-standards.md` (§2.2) and is not a violation of this policy. Future reviewers should treat it as an accepted exception rather than a missing `Alert`.
 
 ### Post-analysis metadata failures

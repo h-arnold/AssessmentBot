@@ -40,6 +40,7 @@ function makeCell(tag: string, sourceUrl: string | null = null): CellPreviewData
     artifactType: 'base',
     artifactContent: tag,
     reasoning: { completeness: null, accuracy: null, spag: null },
+    errors: { completeness: null, accuracy: null, spag: null },
     sourceUrl,
   };
 }

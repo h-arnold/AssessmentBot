@@ -59,6 +59,15 @@ Use it alongside:
 - Keep wider surrounding regions visible only when they remain independently usable and trustworthy.
 - Query-library staleness or ordinary refetch eligibility alone does not make data degraded and does not trigger fail-closed behaviour.
 
+### 5.1 Partial known results behind a pending or failed fetch
+
+A region whose own result is already known stays usable when a wider fetch for the same data is pending or has failed. Do not replace a known result with a whole-region skeleton or generic error.
+
+- Keep the known result visible and scope the pending/failed treatment to the part that is genuinely unknown. The task-preview card is the reference case: a known class-partial `E` shows its metric and reasoning immediately, with a source-region skeleton while the full read is pending.
+- A pending state is never terminal. When the wider fetch fails or returns `null`, resolve the unknown part to its unavailable treatment instead of leaving a perpetual skeleton.
+- A known error whose source content is unavailable suppresses only the response renderer, using a non-dismissible inline `Alert` inside the region. Hiding an unresolved source error must not expose the normal renderer.
+- Confirmed absence of data is not a degraded state. A genuine no-submission renders its normal placeholder, not an error `Alert`.
+
 ## 6. Short-running mutation rules
 
 ### 6.1 Modal mutations
@@ -170,7 +179,7 @@ This is a deliberately narrow exception:
 
 Two accessible-loading patterns are compliant; choose by container semantics, and do not churn existing call sites between them:
 
-- `<output>` (implicit `status` role): use when the loading indicator is a self-contained element, such as a single shape-matched skeleton (for example `AssignmentSelectSkeleton`, or `TaskPreviewSkeleton` in `TaskHeatmapTable.tsx`). Because `<output>` already exposes the `status` role implicitly, never add an explicit `role="status"` to it — the redundancy trips SonarCloud `typescript:S6822`. Pair with `aria-busy="true"` while loading and an `aria-label` where the region needs a name.
+- `<output>` (implicit `status` role): use when the loading indicator is a self-contained element, such as a single shape-matched skeleton (for example `AssignmentSelectSkeleton`, or `TaskPreviewSkeleton` in `TaskHeatmapTable.tsx`). Because `<output>` already exposes the `status` role implicitly, never add an explicit `role="status"` to it — the redundancy trips SonarCloud `typescript:S6822`. Pair with `aria-busy="true"` while loading and an `aria-label` where the region needs a name. The task-preview card's source-region skeleton (`SOURCE_LOADING_LABEL` in `TaskPreviewCard.tsx`) follows this pattern so it announces only the source region, not the whole known-error card.
 - Explicit `role="status"` on a generic container (`<div>`): required when wrapping arbitrary content that has no implicit status semantics of its own, such as several sibling skeletons composing one loading region. An `aria-label` alone does not give a generic container status semantics. Pair with `aria-live="polite"` where announcement behaviour matters (for example `ClassPageContent`'s `ClassPageLoading`, `ClassesPage`, `ReferenceDataManagementModalScaffold`, `BackendSettingsPanel`, `AssignmentDefinitionWizardModalShell`).
 
 Both patterns yield an equivalent accessible status region; existing call sites of either pattern comply as written.
