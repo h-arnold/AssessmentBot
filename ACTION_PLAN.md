@@ -12,7 +12,7 @@ and [#341](https://github.com/h-arnold/AssessmentBot/issues/341).
 - Product and contract authority: @SPEC.md .
 - Preview layout, copy and interaction authority: @ASSESSMENT_ERROR_PREVIEW_LAYOUT.md .
 - This plan sequences delivery; it does not reopen either approved document.
-- Sections 1–7 are complete (Section 4 gate has an explicit user-accepted flaky-debt exception); Section 8 is **Incomplete — user-requested as-is checkpoint**; Sections 9–12 are **Not started**. Record actual changes,
+- Sections 1–7 are complete (Section 4 gate has an explicit user-accepted flaky-debt exception); Section 8 is **Incomplete — user-requested as-is checkpoint**; Section 9 is **complete**; Sections 10–12 are **Not started**. Record actual changes,
   checks/report paths, deviations and downstream implications under each section.
 
 ### Baseline execution record
@@ -877,6 +877,14 @@ Authoritative for this section; keep in sync when later sections touch these own
   two fixes against the baseline (two of the six baseline `max-lines` files now pass).
   All four remaining failures are the user-accepted baseline debt; no new failure is
   attributed to this section.
+- **Commit and push: done (3 November 2026).** Commit `e02499f0` —
+  `feat(assessment): render explicit error states in heatmap cell previews (Section 9)` —
+  on branch `assessment-errors-322-341`; pushed to `origin/assessment-errors-322-341`
+  (`8673520a..e02499f0`), push confirmed. 25 files: the four production owners, six
+  companions, five modified specs, two shared test helpers, six documentation pages and
+  this plan. Pre-commit hooks (Prettier, staged lint, `typecheck:all`) passed without
+  bypass. Concurrent worktree changes (`AGENTS.md`, `.opencode/agents/implementation.md`,
+  `.opencode/agents/testing-specialist.md`) were excluded from the commit as required.
 - **Docs sync: landed (3 November 2026).** Six existing pages reconciled, no new pages:
   `docs/developer/data-shapes/frontend-data-analysis-response.md` (item 9 preview error
   fields moved from planned to implemented, with the assembled `CellPreviewData`/
