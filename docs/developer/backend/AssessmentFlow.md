@@ -50,7 +50,7 @@
   - Collection: `collectAllImageArtifacts()` admits a source URL through an owner-local predicate that mirrors the shared `Validate` acceptance policy (HTTPS, DNS hostname only, no IP address, no localhost, no port) without its progress-tracking diagnostics, so a rejected URL never reaches a log channel. A student item already carrying an upstream all-three terminal `E` is preserved verbatim and never collected. A matched student IMAGE with no admissible source URL materialises the atomic extraction `IMAGE_HYDRATION_FAILED` E on its owning item (null content/hash, cleared feedback), unless it is already hydrated; an already-hydrated artefact with an admissible source is still scheduled. A required shared reference/template IMAGE with no admissible source URL or owning document ID throws, blocking the run, unless it is already hydrated.
   - Download: `fetchImagesAsBlobs()` makes one full-list sender call with the configured Slides-fetch batch size, accepted `[200]` and no stop statuses, preserving document round-robin order and UID association. Final 200 blobs are read before the next batch, and the shared three-total-attempt budget applies. A final non-200 (including 201), a permanent 4xx or an exhausted retryable/network outcome is routed by scope instead of retried, so a student-image 403 stays local and never becomes an LLM-wide stop. Duplicate input UIDs and unknown/duplicate outcome UIDs throw, and a scope-less failure outcome throws; a scope-less successful 200 outcome remains valid.
   - Writeback: `writeBackBlobs()` verifies the required `setContentFromBlob` writer before classifying returned data, then reads native bytes once and passes them through an owner-local adapter so data-URL/hash conversion stays model-owned. Unusable returned content (null/empty bytes, null or reader-less blob, unusable stored hash) converts by scope: a student task E with null content/hash, or a run-blocking throw for a shared artefact. Changed non-null hydrated content clears the reused item's stale assessments/feedback; unchanged content preserves the complete snapshots. Thrown native-read, base64, hash and writer faults escape by original identity with no E and no manager diagnostic.
-  - Scope, diagnostics and later work: a required shared-image failure blocks the run and preserves prior saved results without promising in-memory rollback (conversion assigns `content` before hashing). Each converted student failure emits one bounded `ABLogger` warn with opaque `uid`/`taskId`/`scope` (plus `attempts`/`responseCode` for transport failures); source URLs, payloads and student names are never logged. Pending IMAGE remains valid internal state, never a completed null success: the completion gate, pending-image rejection and marker stamping are Section 8 work, and preview error states are Section 9.
+  - Scope, diagnostics and later work: a required shared-image failure blocks the run and preserves prior saved results without promising in-memory rollback (conversion assigns `content` before hashing). Each converted student failure emits one bounded `ABLogger` warn with opaque `uid`/`taskId`/`scope` (plus `attempts`/`responseCode` for transport failures); source URLs, payloads and student names are never logged. Pending IMAGE remains valid internal state, never a completed null success: the completed-run validation gate rejects a still-pending image before persistence, and marker stamping follows that gate. Preview error states are delivered in the heatmap preview.
 - LLM terminal assessment outcomes and validated cache reuse (`LLMRequestManager`)
   - Status: `Implemented` (backend, Section 6)
   - Owning paths: `src/backend/RequestHandlers/LLMRequestManager.js` owns terminal outcome mapping, assessment-specific key derivation and cache-hit result validation beside request generation; `src/backend/RequestHandlers/CacheManager.js` remains the generic best-effort `get`/`put` owner.
@@ -86,10 +86,18 @@
   - Status: `Implemented` (backend, Section 3)
   - Owning paths: `src/backend/y_controllers/AssignmentDefinition/AssignmentDefinitionValidation.js`, invoked by `AssignmentDefinitionUpsertOrchestrator.upsert()` on the final resolved tasks after weighting and before constructing or persisting the definition.
   - Behaviour: at new definition writes, non-IMAGE reference/template artefacts require non-null content and a string hash; valid blank TEXT/array templates are not rejected as empty, and a successfully read blank/all-null SPREADSHEET grid is `[]` while literal `null` means unavailable content. Pending IMAGE artefacts remain allowed only in the definition store, distinct from the stricter completed-full-assignment artefact gate (Section 8). A formula-free spreadsheet reference task is rejected as an unusable shared definition. Expected content rejections log bounded `{ taskId }` context and throw `ApiValidationError` with the established safe `DEFINITION_PARSE_FAILED` message and code. Missing task/artefact structure and other wiring faults propagate unchanged; there is no broad catch. Existing definition rollback semantics are unchanged, and there is no run-time eligibility preflight. Boundaries are recorded in [rehydration.md](rehydration.md).
+- Completed-run validation gate (`ABClassAssignmentValidation`)
+  - Status: `Implemented` (backend, Section 8)
+  - Owning path: `src/backend/y_controllers/ABClassController/ABClassAssignmentValidation.js` — invoked by `ABClassAssignmentOps.persistAssignmentRun()` before marker stamping and any collection mutation.
+  - Behaviour: pure pre-write validation mirroring the marker-1 read invariants. Rejects an untrustworthy embedded task universe, a submission whose `assignmentId` differs from the assignment root, unknown task keys and item/artefact `taskId` mismatches, criterion maps that are not exactly the three canonical valid results, and source/hash contradictions. Genuine no-submission (`documentId == null` plus an empty item map) remains valid and is skipped.
 - Prepared write projections (`ABClassAssignmentOps.persistAssignmentRun` with `ABClassPersistence` preparation)
-  - Status: `Not implemented` (planned extension of the existing owners)
-  - Current: `persistAssignmentRun()` writes the full assignment before constructing its partial, and `ABClassPersistence.persistClassAndPartial()` prepares the class/partials pair only when `saveClass()` runs.
-  - Planned owning path: `src/backend/y_controllers/ABClassController/ABClassAssignmentOps.js` with `ABClassPersistence._prepareClassAndPartial()`/`_prepareClassPartial()` in `src/backend/y_controllers/ABClassController/ABClassPersistence.js` — validate the completed result and preflight four independent payloads before the first collection mutation: the full assignment, its embedded partial, and the prospective updated full-class and class-partials documents. Reuse the existing preparation owner for the class projections rather than adding a second preparation path. Read projections are never inputs to this preparation; it serialises the authoritative assignment's own current-version or opaque legacy state. Keep the write order and non-transactional failure semantics, retain prepared snapshots through each write, and log the failed phase plus whether the full write committed. Boundaries are recorded in [rehydration.md](rehydration.md).
+  - Status: `Implemented` (backend, Section 8)
+  - Owning paths: `src/backend/y_controllers/ABClassController/ABClassAssignmentOps.js` with `ABClassPersistence._prepareFullClass()`/`_prepareClassPartial()` in `src/backend/y_controllers/ABClassController/ABClassPersistence.js`.
+  - Behaviour: `persistAssignmentRun()` validates the completed run through the completed-run validation gate (see the entry above), reuses the existing class-save contract (`ABClassValidation._validateClassForSave`), stamps `assessmentContractVersion = 1`, then prepares four independent payloads — the full assignment, its embedded partial, the prospective updated full class and the class-partials registry document — before the first collection mutation. Every later write consumes those exact prepared payloads; a storage failure throws after logging the failed phase plus whether the full assignment write committed. Boundaries are recorded in [rehydration.md](rehydration.md).
+- Completion-with-errors feedback (`AssignmentController._countFailedSubmissionItems`)
+  - Status: `Implemented` (backend, Section 8)
+  - Owning path: `src/backend/y_controllers/AssignmentController.js` — counted after the final save succeeds in `processSelectedAssignment()`.
+  - Behaviour: one item with any explicit error criterion counts as one failed task, regardless of how many criteria carry the error. Progress reports `N tasks failed.` followed by the exact final message `Assessment run completed with errors.` in progress and toast; healthy runs keep normal success feedback. A missing `submissions`, `items` or `assessments` structure throws a contextual error instead of silently counting zero, so a run whose handled errors were persisted beside successes cannot report a false success. Persistence failure cannot report completion.
 
 ### Assignment-definition upsert contract note
 
@@ -926,18 +934,24 @@ submission.items["task_001"] = {
 
 **Method**: `ABClassController.persistAssignmentRun(abClass, assignment)`
 
-- **Location**: `src/backend/y_controllers/ABClassController/index.js`
-- **Purpose**: Saves assignment data in two forms
+- **Location**: `src/backend/y_controllers/ABClassController/index.js`, delegating to `ABClassAssignmentOps.persistAssignmentRun()` and `ABClassPersistence.persistClassAndPartial()`
+- **Purpose**: Validates the completed run, stamps the result-format marker, then saves assignment data in two forms
 - **Process**:
-  1. Saves full assignment to dedicated collection
+  1. Validates the completed run before any mutation
+     - `ABClassAssignmentValidation._validateCompletedAssignmentRun()` mirrors the marker-1 read invariants: task-universe integrity, submission association, item/artefact identity, exactly three canonical criterion results per item, and source/hash consistency. Genuine no-submission (`documentId == null` plus an empty item map) remains valid and is skipped.
+     - Reuses the existing class-save contract (`ABClassValidation._validateClassForSave`) before the first mutation.
+  2. Stamps the result-format marker
+     - Sets `assignment.assessmentContractVersion = 1` only after the completed-run gate passes and before serialisation.
+  3. Prepares four independent payloads before the first collection mutation
+     - Full assignment via `Assignment.toJSON()`; embedded partial via `Assignment.toPartialJSON()`, then constructed back through `Assignment.fromJSON(partialPayload, 'partial')` as the actual partial representation that will live in the class (a representation conversion, not a validation-only round-trip)
+     - Prospective updated full-class and class-partials documents via `ABClassPersistence._prepareFullClass()`/`_prepareClassPartial()` with the partial temporarily spliced into `abClass.assignments`
+  4. Writes the full assignment to its dedicated collection
      - Collection key: `assign_full_{courseId}_{assignmentId}`
-     - Contains complete data with all artifacts and content
-  2. Creates partial (summary) assignment
-     - Redacts artifact content and hashes
-     - Keeps structure but removes heavy payloads
-  3. Updates/adds partial assignment to ABClass.assignments array
-  4. Saves updated ABClass to database
-     - Collection key: `class_{courseId}`
+     - Contains complete data with all artifacts, content and the marker
+  5. Writes the prepared full-class and class-partials payloads
+     - Full class: collection key `class_{courseId}`; partials registry: `abclass_partials`
+     - Both writes consume the exact prepared payloads; nothing re-serialises after the full commit
+  - The write order is deliberately non-transactional (full assignment → class → partials). A storage failure throws after logging the failed phase and whether the full assignment write committed; it never reports a completed run and nothing repairs the state.
 
 **Data Shapes Persisted**:
 
@@ -945,6 +959,7 @@ submission.items["task_001"] = {
 
 ```javascript
 {
+  assessmentContractVersion: 1,
   courseId: string,
   assignmentId: string,
   assignmentName: string,
@@ -992,6 +1007,7 @@ submission.items["task_001"] = {
 ```javascript
 {
   // Same structure but:
+  // - assessmentContractVersion: 1 (retained by the marker stamp)
   // - artifact.content = null
   // - artifact.contentHash = null
   // - Lightweight for list views and cohort analysis

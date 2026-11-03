@@ -2,7 +2,7 @@
 
 ## Status and purpose
 
-Reviewed for action-plan preparation; not implemented. Companion to `SPEC.md`;
+Reviewed for action-plan preparation; implemented in Sections 9–10. Companion to `SPEC.md`;
 defines the small preview-state change for
 explicit Assessment E outcomes. The user confirmed retaining the existing card,
 Reasoning section and valid source content, with a local Alert for unavailable source.

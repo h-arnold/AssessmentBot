@@ -1247,7 +1247,64 @@ clean section-gate comparison per the regression-checker policy.
   final review and the stable-ID regression comparison after cleanup/documentation
   changes. If final cleanup changes nothing, record that and reuse the preceding clean
   comparison per regression-checker policy. No unverified production-test claims.
-- Execution record: Not started; changes/checks/deviations/downstream implications pending.
+- Execution record: see ### Execution record below.
+
+### Execution record
+
+- **Status: complete** (3 November 2026). Red audit (read-only, complete coverage:
+  stale-claim audit, cross-section drift, `@remarks` preservation, rollout facts) found
+  all 13 canonical claim classes verified except two P1 stale-doc clusters; green
+  reconciled both; final review pending at the time of writing (recorded below when
+  done).
+- **Red audit outcome:** 14/14 claim classes verified (bounded retries 3×5000/7500,
+  whole-submission retry/drop removed, E reasoning/cause catalogue, partial retention,
+  marker semantics across assignment/abclass/api-layer, raw validation/read-persistence
+  separation/no repairs, formulaComparison non-persistence, hash invariant/no purge,
+  scoped image failure, prepared writes + partial-write diagnostics, preview-only
+  corruption limitation, E vs N + denominator rules, response projection not a new
+  endpoint, canonical capability/commands). All delivered `@remarks` survive with no
+  doc contradictions. Fix list: P1 `AssessmentFlow.md` (prepared-write register entry
+  stale `Not implemented`; missing register entries for the completed-run validation
+  gate and completion-with-errors feedback; Phase 5 Step 5.2 narrative and persisted
+  -shape examples pre-Section-8; future-tense ImageManager line) and P1 `rehydration
+.md` (three "remains Section 8" lines; planned-imperative projection-preparation
+  bullet).
+- **Green outcome:** both P1 clusters reconciled against delivered source
+  (`ABClassAssignmentOps.js`, `ABClassAssignmentValidation.js`, `AssignmentController
+.js`, `ABClassPersistence.js`): register flipped to Implemented with two new
+  entries, Step 5.2 rewritten to the delivered five-step flow (gate → class-save
+  contract → marker stamp → four prepared payloads → full →
+  class → partials,
+  non-transactional failure semantics), marker added to persisted-shape examples, four stale rehydration
+  lines delivered. Prettier pass on both; `git diff --check` clean. The
+  `ASSESSMENT_ERROR_PREVIEW_LAYOUT.md` status line was updated separately by the orchestrator under the user's explicit
+  approval (recorded `approved` in the deferred-findings log; no content change).
+- **Docs sync:** this section IS the final docs pass; no separate sync needed. Data
+  Shapes Agent: not required — the audit verified all four canonical contracts against
+  delivered behaviour with no contract-level discrepancy.
+- **Rollout handoff (the single rollout paragraph, handoff text):** Deploy Assessment
+  Bot as one coordinated frontend/backend build from this branch: the raw-E contract
+  and the `assessmentContractVersion` marker change both read contracts, so a mixed
+  deployment would mis-read results. Existing data, definitions and class
+  configuration remain as-is — there is no deletion, reset or purge operation; legacy
+  stored reads (opaque, markerless) surface as reassessment-required E in the read
+  projection, and reassessing an assignment replaces its full result and embedded
+  partial with marker-1 records; old cache key spaces miss naturally and are never
+  purged. After deployment, manually validate once per environment: mixed healthy/E
+  previews on the class (embedded) and standalone merged surfaces; safe source links
+  (derived URL, new tab, keyboard focus); a legacy reassessment followed by a selected
+  rerun/refresh to marker-1; shared-input blocking preserving prior saved results; and
+  safe completion-with-errors feedback (exact final sentence plus the separate
+  `N tasks failed.` detail). Do not publish synthetic fixtures or trigger live failure
+  scenarios without a separately authorised deployment. This checklist cannot be
+  executed inside this plan — it needs a separately authorised deployment — and is
+  recorded as handoff text only, not a section gate.
+- **Automated evidence already on record:** Section 11's clean gate comparison
+  (run `2026-11-03T14-34-24.841Z`) is reused
+  for this documentation-only section per the regression-checker policy (this section
+  changed no code or tests; the comparison requirement is satisfied by explicit reuse).
+- **Final review:** pending — verdict recorded below.
+- **Commit/push:** pending — SHA, message and push range to be recorded.
 
 ## Implementation order and final readiness
 
