@@ -107,7 +107,7 @@ class AssignmentDefinitionValidation {
    *   completed-full-assignment artefact gate belongs to the completion path, not here.
    */
   validateSharedArtifacts(task) {
-    /* global ABLogger, ApiValidationError */
+    /* global ABLogger, ApiValidationError, DEFINITION_PARSE_FAILED_MESSAGE */
     Validate.requireParams({ task }, 'validateSharedArtifacts');
     const taskJson = typeof task.toJSON === 'function' ? task.toJSON() : task;
     const taskId = taskJson.id || taskJson.taskId;
@@ -145,21 +145,20 @@ class AssignmentDefinitionValidation {
    * Reports expected unusable shared document content using the established safe definition failure.
    * @param {string} diagnostic - Internal content-rejection detail.
    * @param {Object} context - Safe task context for diagnostics.
-   * @throws {ApiValidationError} Definition content is unusable.
+   * @throws {ApiValidationError} Definition content is unusable; the message is
+   *   `DEFINITION_PARSE_FAILED_MESSAGE` from `AssignmentDefinitionRecoveryRules.js`.
    * @private
    */
   _rejectDefinitionContent(diagnostic, context) {
+    /* global DEFINITION_PARSE_FAILED_MESSAGE */
     ABLogger.getInstance().error('Assignment definition documents could not be parsed.', {
       ...context,
       detail: diagnostic,
     });
-    throw new ApiValidationError(
-      'The assignment documents could not be parsed. Check the reference and template documents, then try again.',
-      {
-        method: 'upsertAssignmentDefinition',
-        code: 'DEFINITION_PARSE_FAILED',
-      }
-    );
+    throw new ApiValidationError(DEFINITION_PARSE_FAILED_MESSAGE, {
+      method: 'upsertAssignmentDefinition',
+      code: 'DEFINITION_PARSE_FAILED',
+    });
   }
 }
 

@@ -209,8 +209,11 @@ function applyEquivalentStoredWeightings_(existingTasks, parsedTasks) {
 
 // Export for Node tests / CommonJS environments. The script-scope functions keep
 // trailing underscores so GAS does not expose them to google.script.run.
+// DEFINITION_PARSE_FAILED_MESSAGE is exported so the test bootstrap can attach it
+// as a global for the script-scope reference in AssignmentDefinitionValidation.js.
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
+    DEFINITION_PARSE_FAILED_MESSAGE,
     assertRecoveryPreconditions_,
     assertApprovalBaselineFresh_,
     parseTasksOrThrow_,

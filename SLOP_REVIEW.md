@@ -39,7 +39,7 @@ These issues introduce duplication, drift risk, or unnecessary complexity.
 | Section  | Finding                                                                            | Impact                 | Evidence                                                          | Recommended Fix                                                                                  |
 | -------- | ---------------------------------------------------------------------------------- | ---------------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
 | **2** ✅ | Duplicated root-object + marker construction in `00_AssignmentSerialisation.js`    | Duplicated logic       | `toJSON()` vs `toPartialJSON()`                                   | Extract `_rootOutput` + `_applyContractMarker` helpers                                           |
-| **3**    | Duplicated `DEFINITION_PARSE_FAILED` message/code/log string                       | Silent drift risk      | `AssignmentDefinitionValidation.js:151-163`                       | Reference existing `DEFINITION_PARSE_FAILED_MESSAGE`                                             |
+| **3** ✅ | Duplicated `DEFINITION_PARSE_FAILED` message/code/log string                       | Silent drift risk      | `AssignmentDefinitionValidation.js:151-163`                       | Reference existing `DEFINITION_PARSE_FAILED_MESSAGE`                                             |
 | **4**    | Duplicated submission-outcome logic across `SlidesAssignment`/`SheetsAssignment`   | Duplicated logic       | `SlidesAssignment.js:149-203` vs `SheetsAssignment.js:72-118`     | Hoist shared helper to `05_AssignmentAssessmentBase.js`                                          |
 | **5**    | Duplicated HTTP/retry classification (`BaseRequestManager` vs `LLMRequestManager`) | Silent drift risk      | `BaseRequestManager.js:101-104` vs `LLMRequestManager.js:434-438` | Expose shared `BaseRequestManager.isRetryableStatus()` — **FIXED 2026-11-02** (see Progress log) |
 | **6**    | `_routedOutcomeAttempts` Map (indirection for a locally available value)           | Unnecessary complexity | `LLMRequestManager.js:30-31, 166, 210, 385-387`                   | Pass `attempts` as parameter to `_processSingleResponse`                                         |
@@ -246,3 +246,36 @@ zero-caller `Assignment._rehydrateSubmission` static facade in
 `Assignment/index.js:114-129` (OOS-2, noted); header note omission of
 `AssignmentReadProjection` and doc-inventory omissions of the new private helpers
 (OOS-3/OOS-4, disregarded nitpicks).
+
+---
+
+## Progress log — Section 3 desloppification (3 November 2026)
+
+The Section 3 item was delivered under the full implement/review loop on branch
+`assessment-errors-322-341`, committed together with this report update.
+
+1. **Duplicated `DEFINITION_PARSE_FAILED` message — FIXED.** `_rejectDefinitionContent`
+   in `AssignmentDefinitionValidation.js` now throws
+   `ApiValidationError(DEFINITION_PARSE_FAILED_MESSAGE, …)`, referencing the existing
+   const from `AssignmentDefinitionRecoveryRules.js`; the thrown text,
+   `code: 'DEFINITION_PARSE_FAILED'` and `method: 'upsertAssignmentDefinition'` are
+   byte-identical. The const was added to RecoveryRules' guarded `module.exports` so the
+   existing `Object.assign(g, require(…))` wiring in `tests/setupGlobals.js` exposes it
+   to Node (`setupGlobals.js` itself unchanged); GAS visibility is guaranteed by bundle
+   order (`AssignmentDefinitionRecoveryRules.js` sorts before
+   `AssignmentDefinitionValidation.js`). The `ABLogger` log string stays verbatim and no
+   const was introduced for the `DEFINITION_PARSE_FAILED` code string, both per the
+   scoped fix. No test files changed; the literal-asserting suites pass unchanged.
+
+Docs sync: skipped — the thrown message, code, method and log output are byte-identical,
+so no documented behaviour, public API, data shape or command changed; the
+`transport-envelope.md` example quote remains accurate.
+
+Validation: affected suites 5 files / 73 tests PASS; full backend coverage 263 files /
+3,665 tests PASS, branches 85.95% > 85% gate; `lint:backend:check` 0 errors with only
+the four accepted historical `max-lines` warnings; `git diff --check` clean. Independent
+Code Reviewer verdict **PASS, zero findings**
+(`.opencode/scratchpad/review-section3-desloppification.md`). Regression-compare
+against the `assessment-errors-322-341` baseline (3 November 2026): **7/8 checks
+passing, 0 regressions, 0 new failures**; only `backend-lint-check` fails, with the
+same four accepted historical `max-lines` warnings. Baseline not degraded.
