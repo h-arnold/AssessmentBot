@@ -18,17 +18,17 @@ No behavioural changes are required—these are pure refactors to align with pro
 
 These issues violate core principles and must be addressed immediately.
 
-| Section | Finding                                                                        | Impact                                              | Evidence                                          | Recommended Fix                                                                                      |
-| ------- | ------------------------------------------------------------------------------ | --------------------------------------------------- | ------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| **1**   | `StudentSubmissionRepresentationConfig` (class + singleton + write-only field) | Dead state, violates KISS                           | `00_StudentSubmissionItem.js:3-24`, `index.js:27` | Replace with `'full'` constant; delete write-only `this.representationMode`                          |
-| **1**   | Canonical criteria list hardcoded in `setError` (5th copy)                     | Silent drift risk                                   | `00_StudentSubmissionItem.js:107`                 | Add `Assessment.CRITERIA` and use it in `setError`                                                   |
-| **1**   | `Assessment` constructor duplicates `isValidRawResult` validation              | Duplicated logic, violates DRY                      | `Assessment.js:37-59` vs `85-111`                 | Delegate constructor to `isValidRawResult`                                                           |
-| **2**   | Dead legacy branch in `_rehydrateSubmission` (whole-submission restoration)    | Dead code, violates SPEC                            | `02_AssignmentRehydration.js:120-121`             | Inline current branch, delete legacy branch                                                          |
-| **4**   | Dead `Assignment._processAttachmentForSubmission` wrapper                      | Dead code, no callers                               | `Assignment/index.js:262-271`                     | Delete wrapper; update stale doc reference — **FIXED 2026-11-02** (see Progress log)                 |
-| **5**   | Unused `this.cache` in `BaseRequestManager`                                    | Dead state, unnecessary GAS service acquisition     | `BaseRequestManager.js:20`                        | Delete line 20                                                                                       |
-| **5**   | Unused `this.apiKey` in `ImageManager`                                         | Dead state, defensive guard on known-internal field | `ImageManager.js:37-40`                           | Delete lines 37-40                                                                                   |
-| **6**   | Dead `DummyCacheManager` with removed pre-Section-6 interface                  | Dead code, misleading names                         | `tests/helpers/modelFactories.js:205-218`         | Delete or update to generic `get`/`put` interface — **FIXED 2026-11-02 (deleted; see Progress log)** |
-| **7**   | Dead `this.apiKey` in `ImageManager`                                           | Dead state, defensive guard                         | `ImageManager.js:37-40`                           | Delete lines 37-40                                                                                   |
+| Section  | Finding                                                                        | Impact                                              | Evidence                                          | Recommended Fix                                                                                      |
+| -------- | ------------------------------------------------------------------------------ | --------------------------------------------------- | ------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| **1** ✅ | `StudentSubmissionRepresentationConfig` (class + singleton + write-only field) | Dead state, violates KISS                           | `00_StudentSubmissionItem.js:3-24`, `index.js:27` | Replace with `'full'` constant; delete write-only `this.representationMode`                          |
+| **1** ✅ | Canonical criteria list hardcoded in `setError` (5th copy)                     | Silent drift risk                                   | `00_StudentSubmissionItem.js:107`                 | Add `Assessment.CRITERIA` and use it in `setError`                                                   |
+| **1** ✅ | `Assessment` constructor duplicates `isValidRawResult` validation              | Duplicated logic, violates DRY                      | `Assessment.js:37-59` vs `85-111`                 | Delegate constructor to `isValidRawResult`                                                           |
+| **2**    | Dead legacy branch in `_rehydrateSubmission` (whole-submission restoration)    | Dead code, violates SPEC                            | `02_AssignmentRehydration.js:120-121`             | Inline current branch, delete legacy branch                                                          |
+| **4**    | Dead `Assignment._processAttachmentForSubmission` wrapper                      | Dead code, no callers                               | `Assignment/index.js:262-271`                     | Delete wrapper; update stale doc reference — **FIXED 2026-11-02** (see Progress log)                 |
+| **5**    | Unused `this.cache` in `BaseRequestManager`                                    | Dead state, unnecessary GAS service acquisition     | `BaseRequestManager.js:20`                        | Delete line 20                                                                                       |
+| **5**    | Unused `this.apiKey` in `ImageManager`                                         | Dead state, defensive guard on known-internal field | `ImageManager.js:37-40`                           | Delete lines 37-40                                                                                   |
+| **6**    | Dead `DummyCacheManager` with removed pre-Section-6 interface                  | Dead code, misleading names                         | `tests/helpers/modelFactories.js:205-218`         | Delete or update to generic `get`/`put` interface — **FIXED 2026-11-02 (deleted; see Progress log)** |
+| **7**    | Dead `this.apiKey` in `ImageManager`                                           | Dead state, defensive guard                         | `ImageManager.js:37-40`                           | Delete lines 37-40                                                                                   |
 
 ---
 
@@ -51,13 +51,13 @@ These issues introduce duplication, drift risk, or unnecessary complexity.
 
 These issues violate project policies but have lower maintenance cost.
 
-| Section | Finding                                               | Impact                                                | Evidence                              | Recommended Fix                                    |
-| ------- | ----------------------------------------------------- | ----------------------------------------------------- | ------------------------------------- | -------------------------------------------------- |
-| **1**   | Test-only `typeof Assessment` guard                   | Defensive code, violates AGENTS.md §2                 | `04_AssignmentSubmissions.js:96`      | Call `submissionObject.touchUpdated()` directly    |
-| **4**   | Test-only dual mode in `_recordAcquisitionFailure`    | Production code for tests, violates prime directive 8 | `04_AssignmentSubmissions.js:116-135` | Make `scanState` required; delete immediate branch |
-| **5**   | `sendRequestWithRetries` public API with zero callers | Dead code                                             | `BaseRequestManager.js:114-118`       | Delete or document as intentional public API       |
-| **6**   | `uidIndex` default set outside constructor            | Violates AGENTS.md §2.1.10                            | `LLMRequestManager.js:46`             | Initialize `this.uidIndex = {}` in constructor     |
-| **7**   | Inconsistent defensive guards (`                      |                                                       | []`, `                                |                                                    | {}`) | Silent masking of missing structures | `ImageManager.js:176-181` | Drop fallbacks; fail loudly |
+| Section  | Finding                                               | Impact                                                | Evidence                              | Recommended Fix                                    |
+| -------- | ----------------------------------------------------- | ----------------------------------------------------- | ------------------------------------- | -------------------------------------------------- |
+| **1** ✅ | Test-only `typeof Assessment` guard                   | Defensive code, violates AGENTS.md §2                 | `04_AssignmentSubmissions.js:96`      | Call `submissionObject.touchUpdated()` directly    |
+| **4**    | Test-only dual mode in `_recordAcquisitionFailure`    | Production code for tests, violates prime directive 8 | `04_AssignmentSubmissions.js:116-135` | Make `scanState` required; delete immediate branch |
+| **5**    | `sendRequestWithRetries` public API with zero callers | Dead code                                             | `BaseRequestManager.js:114-118`       | Delete or document as intentional public API       |
+| **6**    | `uidIndex` default set outside constructor            | Violates AGENTS.md §2.1.10                            | `LLMRequestManager.js:46`             | Initialize `this.uidIndex = {}` in constructor     |
+| **7**    | Inconsistent defensive guards (`                      |                                                       | []`, `                                |                                                    | {}`) | Silent masking of missing structures | `ImageManager.js:176-181` | Drop fallbacks; fail loudly |
 
 ---
 
@@ -150,3 +150,46 @@ Awaiting user direction on the remaining (non-blocking) findings — Phase 1 ite
 Sections 1/2/5/7, Phase 2 duplication fixes and Phase 3 policy nitpicks — and on whether
 to trim the modest over-engineered process scope identified in Sections 11–12
 (`.opencode/scratchpad/sections9-12-slop-scan.md`).
+
+---
+
+## Progress log — Section 1 desloppification (3 November 2026)
+
+The user authorised addressing all remaining findings, so the Section 1 items were
+delivered under the full implement/review loop on branch `assessment-errors-322-341`.
+
+1. **Config class/singleton + write-only field — FIXED.** `StudentSubmissionRepresentationConfig`,
+   `STUDENT_SUBMISSION_REPRESENTATION` and `getDefaultRepresentationMode()` deleted from
+   `00_StudentSubmissionItem.js`; the default mode is now the module-level
+   `DEFAULT_REPRESENTATION_MODE = 'full'` constant (GAS script scope, guarded export,
+   attached to `globalThis` in `tests/setupGlobals.js`). The write-only
+   `this.representationMode` field was removed from the `StudentSubmission` constructor.
+2. **`Assessment.CRITERIA` — FIXED.** Added as a post-class assignment on `Assessment`
+   (Apps Script parser rejects static field declarations); `StudentSubmissionItem.setError`
+   now iterates it instead of a hardcoded array.
+3. **Constructor duplication — FIXED.** The `Assessment` constructor now builds the raw
+   entry and delegates to `Assessment.isValidRawResult`; accept/reject parity proven over
+   a 29-case edge matrix, same `'Invalid assessment result'` message.
+4. **`typeof touchUpdated` guard — FIXED.** `04_AssignmentSubmissions.js` now calls
+   `submissionObject.touchUpdated()` directly; the paired test was strengthened to assert
+   the wiring fault propagates (`TypeError`).
+
+Docs sync: `docs/developer/data-shapes/student-submission.md` (stale `representationMode`
+sentence rewritten), `docs/developer/data-shapes/assessment.md` and
+`docs/developer/backend/AssessmentFlow.md` (constructor delegation + `Assessment.CRITERIA`
+ownership) updated; no new pages.
+
+Validation: scoped Vitest PASS (137 files / 1,743 tests; full backend coverage 263 files /
+3,665 tests, branches 85.99% > 85% gate); `lint:backend:check` 0 errors with only the four
+accepted historical `max-lines` warnings; `git diff --check` clean. Independent Code
+Reviewer verdict **PASS, zero findings** after re-review
+(`.opencode/scratchpad/review-section1-desloppification-rereview.md`). Regression-compare
+against the `assessment-errors-322-341` baseline (3 November 2026): **7/8 checks passing,
+0 regressions, 0 new failures**; the only failing check remains `backend-lint-check` with
+the accepted historical `max-lines` test-file warnings (two earlier warnings now fixed,
+none introduced). Baseline not degraded.
+
+Deferred follow-up (out of scope for Section 1 by design): the other literal copies of the
+criteria list (`LLM_CRITERIA`, `ABCLASS_METADATA_METRICS`, the inline arrays in
+`ImageManager.js`, `02_AssignmentCurrentRestoration.js`, `ABClassAssignmentValidation.js`)
+still exist; consolidating them onto `Assessment.CRITERIA` is recorded as a follow-up.

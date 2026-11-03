@@ -276,17 +276,19 @@ describe('Assignment submissions behaviour', () => {
     expect(touchUpdated).toHaveBeenCalled();
   });
 
-  it('handles submissions without a touchUpdated helper', () => {
+  it('propagates a missing touchUpdated helper as a wiring fault', () => {
     const assignment = { submissions: [{ studentId: 's-one' }] };
     globalThis.DriveApp = {
       getFileById: vi.fn(() => ({ getMimeType: () => 'mime-ok' })),
     };
     const submissions = new globalThis.AssignmentSubmissions(assignment);
-    submissions._processAttachmentForSubmission(
-      { driveFile: { id: 'file-two' } },
-      's-one',
-      'mime-ok'
-    );
+    expect(() =>
+      submissions._processAttachmentForSubmission(
+        { driveFile: { id: 'file-two' } },
+        's-one',
+        'mime-ok'
+      )
+    ).toThrow(TypeError);
     expect(assignment.submissions[0].documentId).toBe('file-two');
   });
 

@@ -140,21 +140,24 @@ None. This shape embeds no other shape; `error` is an inline `{ stage, code }` o
 
 **Backend validation:**
 
-- `Assessment` constructor and `Assessment.fromJSON()` — the union above.
+- `Assessment` constructor and `Assessment.fromJSON()` — the union above. The constructor
+  builds the candidate entry and delegates to `Assessment.isValidRawResult()`; it holds no
+  separate validation logic, so the accept/reject rules have one owner.
 - `Assessment.isValidCause()` — strict two-key `{ stage, code }` object present in the
   catalogue.
-- `Assessment.isValidRawScore()` / `isValidRawResult()` — raw-entry validation used by
-  the LLM response validator and marker-1 restoration.
+- `Assessment.isValidRawScore()` / `isValidRawResult()` — raw-entry validation used by the
+  constructor, the LLM response validator and marker-1 restoration.
+- `Assessment.CRITERIA` — the canonical criteria list (`completeness`, `accuracy`, `spag`),
+  assigned after the class definition. `StudentSubmissionItem.setError()` iterates it.
 - `ABClassAssignmentValidation._validateCompletedAssignmentRun()` — completed-write
   gate requiring exactly the three canonical criteria as valid complete results.
 
 **Key domain validation rules:**
 
 - `setError(stage, code)` on `StudentSubmissionItem` is the atomic task-wide failure
-  primitive: it replaces all three canonical criteria with the catalogue `E` result and
-  clears feedback. Exactly the canonical criteria (`completeness`, `accuracy`, `spag`)
-  are written; an incomplete or extra-key criterion map is a read-time isolation case
-  (below) and a completed-write rejection.
+  primitive: it writes the catalogue `E` result for every entry in `Assessment.CRITERIA`
+  and clears feedback. An incomplete or extra-key criterion map is a read-time isolation
+  case (below) and a completed-write rejection.
 - Read-time criterion corruption is isolated per item on both full and partial marker-1
   reads: `AssignmentCurrentRestoration` replaces an item whose criterion map is
   incomplete or contains an extra key with all three validation `CORRUPT_RECORD` `E`

@@ -35,27 +35,12 @@ class Assessment {
    * @param {{stage: string, code: string}} [error] - Catalogue cause required for E.
    */
   constructor(score, reasoning, error) {
-    const isNumeric =
-      typeof score === 'number' &&
-      Number.isFinite(score) &&
-      score >= 0 &&
-      score <= MAXIMUM_ASSESSMENT_SCORE;
-    const isOrdinary = score === 'N';
-    const failed =
-      score === 'E' &&
-      typeof reasoning === 'string' &&
-      reasoning.trim().length > 0 &&
-      error &&
-      Assessment.isValidCause(error);
-    if (
-      (!isNumeric && !isOrdinary && !failed) ||
-      typeof reasoning !== 'string' ||
-      ((isNumeric || isOrdinary) && error !== undefined)
-    )
-      throw new Error('Invalid assessment result');
+    const entry = { score, reasoning };
+    if (error !== undefined) entry.error = error;
+    if (!Assessment.isValidRawResult(entry)) throw new Error('Invalid assessment result');
     this.score = score;
     this.reasoning = reasoning;
-    if (failed) this.error = { stage: error.stage, code: error.code };
+    if (error !== undefined) this.error = { stage: error.stage, code: error.code };
   }
 
   /**
@@ -143,3 +128,5 @@ class Assessment {
 }
 
 if (typeof module !== 'undefined') module.exports = { Assessment };
+
+Assessment.CRITERIA = ['completeness', 'accuracy', 'spag'];

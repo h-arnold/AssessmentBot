@@ -92,8 +92,7 @@ class AssignmentSubmissions {
       if (submissionObject) {
         submissionObject.documentId = documentId;
         this._recordSupportedAttachment(studentId, scanState);
-        // Keep updatedAt coherent if method exists
-        if (typeof submissionObject.touchUpdated === 'function') submissionObject.touchUpdated();
+        submissionObject.touchUpdated();
       } else {
         ABLogger.getInstance().info(`No matching submission found for student ID: ${studentId}`);
         return;

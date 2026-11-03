@@ -24,7 +24,6 @@ class StudentSubmission {
     this.createdAt = now;
     this.updatedAt = now;
     this._updateCounter = 0;
-    this.representationMode = StudentSubmissionItem.getDefaultRepresentationMode();
   }
 
   /**
@@ -197,7 +196,7 @@ class StudentSubmission {
    * @returns {StudentSubmission} A new StudentSubmission instance
    */
   static fromJSON(json, mode) {
-    if (mode === undefined) mode = StudentSubmissionItem.getDefaultRepresentationMode();
+    if (mode === undefined) mode = DEFAULT_REPRESENTATION_MODE;
     return StudentSubmission._restore(json, mode);
   }
 
@@ -211,9 +210,7 @@ class StudentSubmission {
       !json ||
       typeof json !== 'object' ||
       Array.isArray(json) ||
-      !['full', 'partial'].includes(
-        mode === undefined ? StudentSubmissionItem.getDefaultRepresentationMode() : mode
-      ) ||
+      !['full', 'partial'].includes(mode === undefined ? DEFAULT_REPRESENTATION_MODE : mode) ||
       typeof json.studentId !== 'string' ||
       json.studentId.trim().length === 0 ||
       typeof json.assignmentId !== 'string' ||
@@ -223,8 +220,7 @@ class StudentSubmission {
       Array.isArray(json.items)
     )
       return false;
-    const representationMode =
-      mode === undefined ? StudentSubmissionItem.getDefaultRepresentationMode() : mode;
+    const representationMode = mode === undefined ? DEFAULT_REPRESENTATION_MODE : mode;
     return Object.values(json.items).every((item) => {
       if (item instanceof StudentSubmissionItem) return true;
       return StudentSubmissionItem.validateRaw(item, representationMode);
@@ -261,5 +257,9 @@ class StudentSubmission {
 }
 
 if (typeof module !== 'undefined') {
-  module.exports = { StudentSubmission, StudentSubmissionItem: globalThis.StudentSubmissionItem };
+  module.exports = {
+    StudentSubmission,
+    StudentSubmissionItem: globalThis.StudentSubmissionItem,
+    DEFAULT_REPRESENTATION_MODE: globalThis.DEFAULT_REPRESENTATION_MODE,
+  };
 }

@@ -30,8 +30,10 @@ g.SheetsAssignment = require('../src/backend/AssignmentProcessor/SheetsAssignmen
 g.Assessment = require('../src/backend/Models/Assessment.js').Assessment;
 const {
   StudentSubmissionItem,
+  DEFAULT_REPRESENTATION_MODE,
 } = require('../src/backend/Models/StudentSubmission/00_StudentSubmissionItem.js');
 g.StudentSubmissionItem = StudentSubmissionItem;
+g.DEFAULT_REPRESENTATION_MODE = DEFAULT_REPRESENTATION_MODE;
 const { StudentSubmission } = require('../src/backend/Models/StudentSubmission/index.js');
 g.StudentSubmission = StudentSubmission;
 

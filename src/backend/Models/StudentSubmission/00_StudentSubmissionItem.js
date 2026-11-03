@@ -1,28 +1,10 @@
 const STUDENT_SUBMISSION_ITEM_HASH_LENGTH = 16;
 
-/** Owns the default representation shared by submission models. */
-class StudentSubmissionRepresentationConfig {
-  /** Creates representation configuration with the backwards-compatible default. */
-  constructor() {
-    this.defaultMode = 'full';
-  }
-}
-
-const STUDENT_SUBMISSION_REPRESENTATION = new StudentSubmissionRepresentationConfig();
-
 /**
  * Represents a single submission item within a student submission.
  * Each item corresponds to a task and holds the submitted artifact, assessments, and feedback.
  */
 class StudentSubmissionItem {
-  /**
-   * Returns the constructor-owned default representation mode.
-   * @returns {'full'} The default representation mode.
-   */
-  static getDefaultRepresentationMode() {
-    return STUDENT_SUBMISSION_REPRESENTATION.defaultMode;
-  }
-
   /**
    * Constructs a StudentSubmissionItem instance.
    * @param {Object} p - Constructor parameters
@@ -104,7 +86,7 @@ class StudentSubmissionItem {
     Validate.requireParams({ stage, code }, 'StudentSubmissionItem.setError');
     const errorResult = Assessment.createError(stage, code).toJSON();
     const assessments = {};
-    for (const criterion of ['completeness', 'accuracy', 'spag']) {
+    for (const criterion of Assessment.CRITERIA) {
       assessments[criterion] = { ...errorResult };
     }
     this.assessments = assessments;
@@ -192,8 +174,7 @@ class StudentSubmissionItem {
    * @returns {boolean} Whether the raw item has the required shape.
    */
   static validateRaw(json, mode) {
-    const representationMode =
-      mode === undefined ? STUDENT_SUBMISSION_REPRESENTATION.defaultMode : mode;
+    const representationMode = mode === undefined ? DEFAULT_REPRESENTATION_MODE : mode;
     if (
       !json ||
       typeof json !== 'object' ||
@@ -332,9 +313,12 @@ class StudentSubmissionItem {
    * @returns {StudentSubmissionItem} The restored item.
    */
   static fromJSON(json, mode) {
-    if (mode === undefined) mode = STUDENT_SUBMISSION_REPRESENTATION.defaultMode;
+    if (mode === undefined) mode = DEFAULT_REPRESENTATION_MODE;
     return StudentSubmissionItem._restore(json, mode);
   }
 }
 
-if (typeof module !== 'undefined') module.exports = { StudentSubmissionItem };
+const DEFAULT_REPRESENTATION_MODE = 'full';
+
+if (typeof module !== 'undefined')
+  module.exports = { StudentSubmissionItem, DEFAULT_REPRESENTATION_MODE };

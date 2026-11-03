@@ -103,17 +103,24 @@ Key notes:
   artifact holds `pageId`.
 - `_deriveId()` generates a stable hash from `taskId` + artifact UID (falling back to
   `contentHash`), truncated to 16 hex characters prefixed with `ssi_`.
-- `setError(stage, code)` replaces all three canonical criteria with the catalogue
-  `'E'` result for that stage/code and clears `feedback`; it is the atomic task-wide
-  error primitive. See [§ Acquisition and extraction outcomes](#acquisition-and-extraction-outcomes)
+- `setError(stage, code)` replaces every criterion in `Assessment.CRITERIA` with the
+  catalogue `'E'` result for that stage/code and clears `feedback`; it is the atomic
+  task-wide error primitive. See [§ Acquisition and extraction outcomes](#acquisition-and-extraction-outcomes)
   and [§ Image hydration outcomes](#image-hydration-outcomes).
 
 ### Representation mode
 
-`StudentSubmission.fromJSON(json, mode)` and `StudentSubmissionItem.fromJSON` take an
-explicit `'full' | 'partial'` mode. Partial redaction must never trigger
-source-content failure detection or hash generation. `StudentSubmission` stores the
-resolved default on `representationMode` at construction; it is not serialised.
+`StudentSubmission.fromJSON(json, mode)` and `StudentSubmissionItem.fromJSON(json, mode)`
+take an explicit `'full' | 'partial'` mode. Partial redaction must never trigger
+source-content failure detection or hash generation.
+
+When the caller omits the mode, both methods fall back to the module-level constant
+`DEFAULT_REPRESENTATION_MODE = 'full'` in `00_StudentSubmissionItem.js`. It is a GAS
+script-scope constant, exported for Node tests through the guarded `module.exports`
+block and attached in `tests/setupGlobals.js`.
+
+Neither model stores a representation-mode field: `StudentSubmission` has no
+`representationMode` property, and no mode value is serialised.
 
 ---
 
@@ -186,7 +193,7 @@ This shape embeds [Contract: BaseTaskArtifact](base-task-artifact.md) and
 **Key domain validation rules:**
 
 - `StudentSubmissionItem.setError(stage, code)` remains the sole atomic task-wide error
-  primitive: it replaces all three criteria and clears feedback.
+  primitive: it replaces every criterion in `Assessment.CRITERIA` and clears feedback.
 - `upsertItemFromExtraction()` preserves an explicitly supplied `pageId: null` when the
   parent submission document is known; an omitted/`undefined` page ID falls back to the
   task definition's page ID, and an explicit student page ID is retained. An explicit
@@ -275,8 +282,8 @@ Assessment-code change; it wires the existing catalogue into the existing
 
 Rules:
 
-- `StudentSubmissionItem.setError(stage, code)` remains the sole atomic task-wide error
-  primitive: it replaces all three criteria and clears feedback.
+- `StudentSubmissionItem.setError(stage, code)` is the sole atomic task-wide error
+  primitive (see [§ Validation](#validation)).
 - Acquisition materialisation is scan-local. One `Map`/`Set` accumulator spans every
   attachment array and duplicate Classroom record for a student. The existing scan
   keeps the **last** supported attachment. A failure is recorded only while no
