@@ -34,10 +34,6 @@ class ImageManager extends BaseRequestManager {
    */
   constructor() {
     super();
-    this.apiKey =
-      this.configManager && typeof this.configManager.getApiKey === 'function'
-        ? this.configManager.getApiKey()
-        : null;
     this.progressTracker = ProgressTracker.getInstance();
     /** @private @type {Map<string, Object>} Owning submission item by artefact UID. */
     this._submissionItemByUid = new Map();

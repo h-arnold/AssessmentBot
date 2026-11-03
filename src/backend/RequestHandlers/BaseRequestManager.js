@@ -17,7 +17,6 @@ class BaseRequestManager {
   /** Initialises shared services and constructor-owned transport defaults. */
   constructor() {
     this.configManager = ConfigurationManager.getInstance();
-    this.cache = CacheService.getScriptCache();
     this.progressTracker = ProgressTracker.getInstance();
     this.logger = ABLogger.getInstance();
     this.maxAttempts = DEFAULT_MAX_ATTEMPTS;
@@ -124,6 +123,10 @@ class BaseRequestManager {
    * @param {{acceptedStatuses:number[], stopStatuses:number[]}} policy Caller HTTP policy.
    * @returns {{uid:string,response:Object|null,error:Error|null,attempts:number}} Final outcome.
    * @remarks The dispatch that supplies an initial response counts as attempt one; waits occur only before actual subsequent dispatches.
+   * This method is retained as the class's single-dispatch entry: it shares the retry engine with
+   * `sendRequestsInBatches`, and production currently dispatches only through the batch sender.
+   * The policy suites call it directly as the specification of the retry engine's single-dispatch
+   * behaviour.
    */
   sendRequestWithRetries(request, policy) {
     this._validateRequest(request);
