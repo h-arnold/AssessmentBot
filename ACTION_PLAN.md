@@ -1133,7 +1133,49 @@ scan T2).
 - Obtain clean Code Reviewer sign-off after Data Shapes Agent reconciliation; apply
   De-Sloppification findings only in scope — **Phase 1 deletions only, no new helpers**
   (scan T7) — and re-review/retest any resulting edits.
-- Execution record: Not started; changes/checks/deviations/downstream implications pending.
+
+### Execution record
+
+- **Status:** Red and Green complete (3 November 2026). Code Reviewer red review
+  **PASS**, zero findings (`.opencode/scratchpad/section11-red-review.md`); both
+  companions pass; backend coverage **263 files / 3,665 tests**, branches **85.77%**
+  (≥ 85% gate). Green was a **no-op**: no red failure appeared, so no production change
+  was made. Docs sync **skipped** — test-only diff with no effect on documented
+  behaviour, public APIs, data shapes or commands. Section regression gate and commit
+  **pending**.
+- **Outcome (compacted):** the gap matrix found genuine gaps in criteria 1 and 2 and
+  verified 3, 4 and 5 as already covered. Two characterisation companions were added,
+  both mutation-probe-verified against the behaviour they pin:
+  - `tests/controllers/assignmentRunCompletion.llmOutcomes.test.js` (382 lines) —
+    connected completion through real `LLMRequestManager` and
+    `AssignmentController.processSelectedAssignment` for `LLM_INVALID_RESPONSE` and
+    `LLM_UNAVAILABLE`, pinning exact dispatch/sleep counts, three terminal criteria on
+    both projections, marker `1`, retained source content beside assessment E, and
+    truthful completion-with-errors feedback.
+  - `tests/controllers/abclassReadCorruptionProjections.test.js` (300 lines) — one
+    corrupt item through real `readClass`/`z_Api`/`readRehydrateAssignment` →
+    `toReadJSON`, pinning the exact `validation/CORRUPT_RECORD` placeholder, a
+    byte-identical healthy sibling, repeat reads deep-equal with zero store writes, and
+    loud root/identity faults.
+- **Retained for later sections:**
+  - Criterion 4 stays covered by combination, not a new combined test (scan T2): the
+    criterion-2 companion's zero-store-write pin (any metadata write surfaces as a
+    collection write), the Section 10 browser journey pinning class cell/summary values
+    under preview-only corruption, and `tests/api/apiHandler/abclassMetadata*.test.js`.
+  - Criterion 5 stays a re-run only: `backend-copy.spec.ts` 6/6 (builder project) and
+    `tests/api/apiHandler/globalExposure.test.js` 6/6 (node project).
+  - The 382-line companion exceeds the 300-line companion target under the recorded
+    user <500 sizing allowance; the reviewer accepted the size as assertion-justified,
+    mirroring the owner suite's non-importable suite-local helpers. Treat that as the
+    precedent for further Section 11 companions.
+  - Mutation-probe verification is the accepted proof pattern for characterisation
+    companions here: a passing characterisation test only counts once a deliberate
+    production mutation is shown to fail it.
+- **Section regression gate:** PASS (3 November 2026, run `2026-11-03T14-34-24.841Z`
+  at `.ts-regression-checker/reports/session-assessment-errors-322-341/runs/2026-11-03T14-34-24.841Z/`):
+  7 checks passing, 0 regressions, 0 new failures, 2 fixes; the only failing check is
+  the accepted backend `max-lines` baseline debt (4 pre-existing warnings, unchanged).
+- **Commit/push:** pending — SHA, message and push range to be recorded.
 
 ## Section 12 — Documentation and coordinated rollout handoff
 
