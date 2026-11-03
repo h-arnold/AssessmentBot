@@ -480,7 +480,7 @@ exactly `1` through `AssignmentCurrentRestoration._rehydrateCurrentSubmission()`
 other record is kept as an opaque legacy snapshot and projected for reads as described
 under [§ Legacy reassessment read projection](#legacy-reassessment-read-projection).
 The representation mode is threaded from `Assignment.fromJSON()` through
-`Assignment._baseFromJSON()` / `_rehydrateSubmission()` and
+`Assignment._baseFromJSON()` / `AssignmentRehydration._rehydrateSubmission()` and
 `AssignmentRehydration._rehydrateCurrentSubmission()` /
 `AssignmentCurrentRestoration._rehydrateCurrentSubmission()`, then through
 `SlidesAssignment.fromJSON()` / `SheetsAssignment.fromJSON()` and

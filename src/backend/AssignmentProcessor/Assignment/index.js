@@ -111,23 +111,6 @@ class Assignment {
     return AssignmentRehydration._baseFromJSON(data, representationMode);
   }
 
-  /**
-   * Rehydrates a submission object from JSON data.
-   * @param {Assignment} inst - The Assignment instance to add the submission to.
-   * @param {object} subObject - The submission object to rehydrate.
-   * @param {object} assignmentData - Assignment JSON containing restoration metadata.
-   * @param {string} representationMode - Representation mode used when restoring submissions.
-   * @returns {void}
-   */
-  static _rehydrateSubmission(inst, subObject, assignmentData, representationMode) {
-    return AssignmentRehydration._rehydrateSubmission(
-      inst,
-      subObject,
-      assignmentData,
-      representationMode
-    );
-  }
-
   // ---------------------------------------------------------------------------
   // Private lifecycle initialiser (on the facade directly)
   // ---------------------------------------------------------------------------

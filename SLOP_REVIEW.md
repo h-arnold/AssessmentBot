@@ -146,12 +146,13 @@ approved only the three blocking fixes. Progress is recorded in `ACTION_PLAN.md`
 
 ## Next Steps
 
-All Sections 1–7 are delivered (see the progress logs above). The remaining recorded
-follow-ups are out-of-scope findings tracked in
-`.opencode/scratchpad/assessment-errors-322-341-out-of-scope-fix-plan.md`
-(OOS-1 criteria-list consolidation onto `Assessment.CRITERIA`; OOS-2 the dead
-`Assignment._rehydrateSubmission` facade), to be executed as their own change units
-now that the final clean regression compare is recorded. The Sections 11–12
+All Sections 1–7 are delivered (see the progress logs above), and both out-of-scope
+follow-ups tracked in
+`.opencode/scratchpad/assessment-errors-322-341-out-of-scope-fix-plan.md` are now
+delivered as their own change units: OOS-1 (criteria-list consolidation onto
+`Assessment.CRITERIA`, commit `14b169ba`) and OOS-2 (the dead
+`Assignment._rehydrateSubmission` facade deleted, delivered 3 November 2026). The
+Sections 11–12
 process-scope question is closed — the user approved the trim on 2 November 2026
 and Sections 9–12 are complete (Section 12 closed 3 November 2026; see the
 `ACTION_PLAN.md` status block), so no decision remains there. The two deferred
@@ -259,9 +260,11 @@ same four accepted historical `max-lines` warnings. Baseline not degraded.
 Deferred follow-ups recorded out of scope for Section 2 (tracked in
 `.opencode/scratchpad/assessment-errors-322-341-out-of-scope-fix-plan.md`): the
 zero-caller `Assignment._rehydrateSubmission` static facade in
-`Assignment/index.js:114-129` (OOS-2, noted); header note omission of
-`AssignmentReadProjection` and doc-inventory omissions of the new private helpers
-(OOS-3/OOS-4, disregarded nitpicks).
+`Assignment/index.js:114-129` — **delivered 3 November 2026** as OOS-2 (facade deleted;
+docs qualified in `assessment.md`, `student-submission.md` and `rehydration.md`; review
+PASS zero findings, `.opencode/scratchpad/review-oos2-dead-facade-deletion.md`);
+header note omission of `AssignmentReadProjection` (OOS-3) and doc-inventory omissions
+of the private serialisation helpers (OOS-4) — approved into the final nit-tidy unit.
 
 ---
 

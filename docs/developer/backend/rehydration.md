@@ -252,8 +252,9 @@ boundary is implemented and summarised below; prepared write projections (Sectio
 delivered and summarised below.
 
 - **Single restoration pass.** `AssignmentRehydration._baseFromJSON()` and
-  `AssignmentCurrentRestoration` restore each identified marker-1 submission and item once with an
-  explicit full/partial mode. The whole-submission catch/retry flow, per-item drop and plain-object
+  `AssignmentRehydration._rehydrateSubmission()` (delegating to `AssignmentCurrentRestoration`)
+  restore each identified marker-1 submission and item once with an explicit full/partial mode.
+  The whole-submission catch/retry flow, per-item drop and plain-object
   fallback are removed; explicitly invalid records become typed E placeholders and healthy siblings
   are preserved.
 - **Submission model domain split.** `StudentSubmissionItem` now lives in
