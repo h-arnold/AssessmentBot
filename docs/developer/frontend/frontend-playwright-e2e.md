@@ -75,6 +75,23 @@ npm run test:frontend:e2e
 - Feature-specific E2E helpers: `src/frontend/e2e-tests/helpers/**`
 - Vite dev server is used as the web server (configured in `playwright.config.ts`)
 
+### Class-page prefetch consumes the `getAssignment` queue
+
+Opening a class page fires the assignment prefetch before any heatmap opens, so the
+`getAssignment` queue is consumed in prefetch order rather than by the journey's own
+read. `useClassPageAssignmentPrefetch` warms the three newest assignments
+(updatedAt descending), and the embedded heatmap then joins the same query key as a
+cache hit instead of issuing another request.
+
+A journey that controls the opened assignment's full read must therefore place that
+payload in the slot matching its prefetch position, not first in the queue. The
+assessment-error journeys do this through `CLASS_PAGE_PREFETCH_ASSIGNMENT_IDS` and
+`warmUpQueue` in `e2e-tests/helpers/assessment-error-preview-journeys.ts`. A
+`deferredSuccess` in that slot holds the preview pending; a `failureEnvelope` there
+makes it settle failed. The canonical `medium` class references
+`assignment-2-5`, which has no full record in `assignmentsByKey`, so slot 1 serves
+another valid canonical record whose content no journey asserts.
+
 ## Behaviour Split: Vitest vs Playwright
 
 **Mandatory rule:** every new or changed **user-visible interaction** must have Playwright coverage.
@@ -559,6 +576,7 @@ unauthorised, backend error, delayed loading) to quickly verify usability during
   - Use `createClassesOrderScenario(classPartials)` for ordering tests
 - Class metadata browser fixtures: `src/frontend/e2e-tests/helpers/class-metadata-fixtures.ts` serves detached clones of committed canonical `small` metadata snapshots. `task-heatmap-class-fixtures.ts` owns the split class-snapshot/score builders, and `classes-crud-mock-runtime.ts` owns the split Classes CRUD transport-mock installation.
 - Post-analysis metadata scenarios: `src/frontend/e2e-tests/helpers/post-analysis-metadata-scenarios.ts` builds the canonical changed-write and newer-version journeys used by `post-analysis-metadata.persistence.spec.ts` and `post-analysis-metadata.feedback.spec.ts`. Extend this helper rather than duplicating its canonical `small` class-2 setup in new specs.
+- Assessment-error preview journeys: `assessment-error-preview-fixtures.ts` selects the canonical `medium` `class-2` roster, assignment instances and definition partials, validates each full record through its transport schema, and owns the controlled variants (`withMissingCriterion`, `withLegacyReassessment`, `withLegacyClassAssignment`, `withClassPartialAssessmentError`). `assessment-error-preview-journeys.ts` owns the runtime scenario, navigation, locators and copy re-exports. `assessment-error-previews.spec.ts` covers the embedded surface and `assessment-error-merged-previews.spec.ts` the standalone merged surface. Extend these helpers for further error-preview journeys instead of adding a parallel scenario builder.
 
 **Do not import `src/test/**` from production source.\*\* The frontend ESLint config enforces this boundary.
 

@@ -303,6 +303,18 @@ describe('TaskMetricPreviewContent known-error source states', () => {
     expect(screen.getByRole('alert')).toBeInTheDocument();
     expect(document.querySelector('output[aria-busy="true"]')).toBeNull();
   });
+
+  it('shows the source Alert for a known error whose redacted cell carries no content', () => {
+    // A class-partial `E` has no source content at all, so a settled read that
+    // cannot supply the cell must not render a blank response in its place.
+    const partialCell = buildKnownErrorCell('base', KNOWN_ERROR_REASONING);
+
+    renderContent({ cellData: partialCell, hasError: false });
+
+    expect(screen.getByText(KNOWN_ERROR_REASONING)).toBeInTheDocument();
+    expect(screen.getByRole('alert')).toBeInTheDocument();
+    expect(screen.queryByText('No content available')).not.toBeInTheDocument();
+  });
 });
 
 describe('TaskMetricPreviewContent full-read-only corruption', () => {

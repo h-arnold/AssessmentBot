@@ -75,6 +75,9 @@ export const PREVIEW_ERROR_TEXT = "Couldn't load task details";
  * @remarks
  * A pending fetch leaves only the source region loading; a terminal failure
  * resolves it to unavailable so the preview never stays on a perpetual load.
+ * A class-partial `E` carries no source content at all, so a settled read that
+ * cannot supply the cell leaves nothing to render and the same unavailable
+ * Alert applies.
  *
  * @param {TaskPreviewData} previewData - The assembled preview data.
  * @param {Object} status - The owning column's query status.
@@ -89,7 +92,7 @@ function resolveKnownErrorSourceState(
   if (status.isLoading) {
     return { ...previewData, sourceState: 'loading' };
   }
-  if (status.hasError && previewData.sourceState === 'loading') {
+  if (status.hasError) {
     return { ...previewData, sourceState: 'unavailable' };
   }
   return previewData;

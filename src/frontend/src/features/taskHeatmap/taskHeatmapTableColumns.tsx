@@ -39,7 +39,7 @@ import { buildMetricRangeFilter } from '@/services/dataAnalysis/metricDisplay/me
 import { decodeFilterToRange } from '@/services/dataAnalysis/metricDisplay/metricRangeKey';
 import { MetricIconLabel } from '@/components/MetricIconLabel/MetricIconLabel';
 import { TaskMetricPreviewCell } from './TaskMetricPreviewCell';
-import type { CellPreviewLookup } from './buildCellPreviewLookup';
+import type { CellPreviewData, CellPreviewLookup } from './buildCellPreviewLookup';
 import type { PreviewStatus } from './assembleMergedPreviewData';
 import { APP_COL_WIDTH_METRIC } from '@/theme/spacing';
 import { getZeroWeightMetricEdgeClass } from './taskHeatmapZeroWeightHeader';
@@ -232,6 +232,53 @@ export function resolveColumnPreviewStatus(
 }
 
 /**
+ * Read one cell from a lookup.
+ *
+ * @param {CellPreviewLookup | null | undefined} lookup - The lookup to read.
+ * @param {string} studentId - The row's student.
+ * @param {string} taskKey - The column's composite task key.
+ * @returns {CellPreviewData | undefined} The cell, or `undefined` when the lookup has no entry.
+ */
+function readLookupCell(
+  lookup: CellPreviewLookup | null | undefined,
+  studentId: string,
+  taskKey: string
+): CellPreviewData | undefined {
+  return lookup?.get(studentId)?.get(taskKey);
+}
+
+/**
+ * Resolve one cell's preview data, falling back to the class partial.
+ *
+ * @remarks
+ * The full read's lookup is authoritative whenever it holds the cell. The class
+ * snapshot is consulted only when that read cannot supply the cell at all — it
+ * is pending, failed, returned `null`, or has no entry for this
+ * (student, taskKey) pair — so a settled full read always wins, including a
+ * current numeric result over a stale class-partial `E`.
+ *
+ * @param {CellPreviewLookup | null} cellPreviewLookup - The full read's lookup.
+ * @param {CellPreviewLookup | undefined} classPartialPreviewLookup - The class snapshot's lookup.
+ * @param {boolean} isFullReadUnusable - Whether the full read is pending or failed.
+ * @param {string} studentId - The row's student.
+ * @param {string} taskKey - The column's composite task key.
+ * @returns {CellPreviewData | null} The cell preview data, or `null` when neither lookup has it.
+ */
+function resolvePreviewCellData(
+  cellPreviewLookup: CellPreviewLookup | null,
+  classPartialPreviewLookup: CellPreviewLookup | undefined,
+  isFullReadUnusable: boolean,
+  studentId: string,
+  taskKey: string
+): CellPreviewData | null {
+  const fullCell = readLookupCell(cellPreviewLookup, studentId, taskKey);
+  if (fullCell !== undefined && !isFullReadUnusable) {
+    return fullCell;
+  }
+  return readLookupCell(classPartialPreviewLookup, studentId, taskKey) ?? fullCell ?? null;
+}
+
+/**
  * Build the three metric sub-columns (Completeness, Accuracy, SPaG) for a
  * single task group.
  *
@@ -249,6 +296,7 @@ export function resolveColumnPreviewStatus(
  * @param {CellPreviewLookup | null} cellPreviewLookup - Assignment lookup keyed by studentId × taskKey.
  * @param {boolean} isColumnLoading - Per-column resolved loading status.
  * @param {boolean} hasColumnError - Per-column resolved error status.
+ * @param {CellPreviewLookup} [classPartialPreviewLookup] - Class-snapshot lookup consulted while the full read is pending or failed.
  * @returns {TableColumnsType<TaskHeatmapRow>} Three metric sub-column definitions.
  */
 export function buildTaskMetricSubColumns(
@@ -257,7 +305,8 @@ export function buildTaskMetricSubColumns(
   tableFilters: Record<string, FilterValue | null>,
   cellPreviewLookup: CellPreviewLookup | null,
   isColumnLoading: boolean,
-  hasColumnError: boolean
+  hasColumnError: boolean,
+  classPartialPreviewLookup?: CellPreviewLookup
 ): TableColumnsType<TaskHeatmapRow> {
   const taskTitle = taskColumn.taskTitle ?? taskColumn.taskId;
 
@@ -307,7 +356,13 @@ export function buildTaskMetricSubColumns(
       },
       render: (_: unknown, record: TaskHeatmapRow): JSX.Element => {
         const m = getCellMetric(record.cells[taskIndex], metric);
-        const cellData = cellPreviewLookup?.get(record.studentId)?.get(taskColumn.taskKey) ?? null;
+        const cellData = resolvePreviewCellData(
+          cellPreviewLookup,
+          classPartialPreviewLookup,
+          isColumnLoading || hasColumnError,
+          record.studentId,
+          taskColumn.taskKey
+        );
         const score = formatMetricDisplayText(m, INDIVIDUAL_SCORE_PRECISION);
         const ariaLabel = buildMetricCellAccessibleLabel(
           record.studentName,

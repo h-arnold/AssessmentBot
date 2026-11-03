@@ -886,8 +886,9 @@ interface TaskPreviewData {
 > confirmed no-submission is the ready `N` placeholder with
 > `artifactContent: ''`, `error: null`, `sourceUrl: null` and `sourceState: 'available'`.
 > `loading` is set only by `TaskMetricPreviewContent` while a known class-partial
-> `E`'s full fetch is pending, and is never terminal: a terminally failed or
-> `null` full read resolves that fallback to `unavailable`.
+> `E`'s full fetch is pending, and is never terminal: any `hasError` on the owning
+> column resolves that fallback to `unavailable`, whether the read failed or
+> returned `null`, so the known reasoning stays visible beside the inline Alert.
 >
 > **Known `E` with null content.** A known `E` whose full `IMAGE`/`SPREADSHEET`
 > content is `null` assembles as `artifactContent: ''` with
