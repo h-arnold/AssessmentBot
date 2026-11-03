@@ -632,10 +632,16 @@ Current state: `startProcessing` stores context via `GASPropertiesUtils.getUserP
      - Skips submissions without `documentId`; a failed acquisition has already materialised its failure items
      - Updates progress before extraction (Slides reports ordinal position; Sheets names the student)
      - Calls `parser.extractSubmissionArtifacts(documentId, taskDefs)`
-     - If the parser returns its failed-open null sentinel, creates one item per known task with `setError('acquisition', 'SOURCE_UNREADABLE')`
-     - Otherwise upserts each returned artifact through `submission.upsertItemFromExtraction(taskDef, extractionData)`, warning and ignoring unknown task IDs
-     - Materialises extraction `SOURCE_CONTENT_UNAVAILABLE` for known tasks with no extraction outcome, and for returned artifacts whose content is null, except a Slides IMAGE with a matched student page and `metadata.sourceUrl`
+     - Applies the outcome through the shared `_applyExtractedArtifacts(submission, artifacts, taskDefs, handlers)` helper (below)
   3. Healthy extracted items keep an empty assessment map until the assessment stage; a matched Slides IMAGE stays legitimately pending until image hydration
+
+**Helper Method**: `AssignmentAssessmentBase._applyExtractedArtifacts(submission, artifacts, taskDefinitions, handlers)`
+
+- **Location**: `src/backend/AssignmentProcessor/Assignment/05_AssignmentAssessmentBase.js`, reached from both runners through the `Assignment._applyExtractedArtifacts` forwarder
+- **Process**:
+  1. If the parser returns its failed-open null sentinel, creates one item per known task with `setError('acquisition', 'SOURCE_UNREADABLE')`
+  2. Otherwise upserts each returned artifact through `submission.upsertItemFromExtraction(taskDef, extractionData)`, warning and ignoring unknown task IDs via the `onUnknownTask` handler
+  3. Materialises extraction `SOURCE_CONTENT_UNAVAILABLE` for known tasks with no extraction outcome, and for returned artifacts whose content is null unless the `isPendingArtifact` handler reports the artifact as legitimately pending. Slides treats a matched IMAGE with a student `pageId` and `metadata.sourceUrl` as pending; Sheets treats every IMAGE artifact as pending
 
 **Method**: `SlidesParser.extractSubmissionArtifacts(documentId, taskDefs)`
 

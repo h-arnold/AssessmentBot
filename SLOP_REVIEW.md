@@ -40,7 +40,7 @@ These issues introduce duplication, drift risk, or unnecessary complexity.
 | -------- | ---------------------------------------------------------------------------------- | ---------------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
 | **2** ✅ | Duplicated root-object + marker construction in `00_AssignmentSerialisation.js`    | Duplicated logic       | `toJSON()` vs `toPartialJSON()`                                   | Extract `_rootOutput` + `_applyContractMarker` helpers                                           |
 | **3** ✅ | Duplicated `DEFINITION_PARSE_FAILED` message/code/log string                       | Silent drift risk      | `AssignmentDefinitionValidation.js:151-163`                       | Reference existing `DEFINITION_PARSE_FAILED_MESSAGE`                                             |
-| **4**    | Duplicated submission-outcome logic across `SlidesAssignment`/`SheetsAssignment`   | Duplicated logic       | `SlidesAssignment.js:149-203` vs `SheetsAssignment.js:72-118`     | Hoist shared helper to `05_AssignmentAssessmentBase.js`                                          |
+| **4** ✅ | Duplicated submission-outcome logic across `SlidesAssignment`/`SheetsAssignment`   | Duplicated logic       | `SlidesAssignment.js:149-203` vs `SheetsAssignment.js:72-118`     | Hoist shared helper to `05_AssignmentAssessmentBase.js`                                          |
 | **5**    | Duplicated HTTP/retry classification (`BaseRequestManager` vs `LLMRequestManager`) | Silent drift risk      | `BaseRequestManager.js:101-104` vs `LLMRequestManager.js:434-438` | Expose shared `BaseRequestManager.isRetryableStatus()` — **FIXED 2026-11-02** (see Progress log) |
 | **6**    | `_routedOutcomeAttempts` Map (indirection for a locally available value)           | Unnecessary complexity | `LLMRequestManager.js:30-31, 166, 210, 385-387`                   | Pass `attempts` as parameter to `_processSingleResponse`                                         |
 | **7**    | Duplicated URL validation vs `Validate.js` (~45 lines)                             | Silent drift risk      | `ImageManager.js:66-105`                                          | Extract pure `Validate.isValidUrlShape()`; delegate to it                                        |
@@ -54,7 +54,7 @@ These issues violate project policies but have lower maintenance cost.
 | Section  | Finding                                               | Impact                                                | Evidence                              | Recommended Fix                                    |
 | -------- | ----------------------------------------------------- | ----------------------------------------------------- | ------------------------------------- | -------------------------------------------------- |
 | **1** ✅ | Test-only `typeof Assessment` guard                   | Defensive code, violates AGENTS.md §2                 | `04_AssignmentSubmissions.js:96`      | Call `submissionObject.touchUpdated()` directly    |
-| **4**    | Test-only dual mode in `_recordAcquisitionFailure`    | Production code for tests, violates prime directive 8 | `04_AssignmentSubmissions.js:116-135` | Make `scanState` required; delete immediate branch |
+| **4** ✅ | Test-only dual mode in `_recordAcquisitionFailure`    | Production code for tests, violates prime directive 8 | `04_AssignmentSubmissions.js:116-135` | Make `scanState` required; delete immediate branch |
 | **5**    | `sendRequestWithRetries` public API with zero callers | Dead code                                             | `BaseRequestManager.js:114-118`       | Delete or document as intentional public API       |
 | **6**    | `uidIndex` default set outside constructor            | Violates AGENTS.md §2.1.10                            | `LLMRequestManager.js:46`             | Initialize `this.uidIndex = {}` in constructor     |
 | **7**    | Inconsistent defensive guards (`                      |                                                       | []`, `                                |                                                    | {}`) | Silent masking of missing structures | `ImageManager.js:176-181` | Drop fallbacks; fail loudly |
@@ -276,6 +276,54 @@ Validation: affected suites 5 files / 73 tests PASS; full backend coverage 263 f
 the four accepted historical `max-lines` warnings; `git diff --check` clean. Independent
 Code Reviewer verdict **PASS, zero findings**
 (`.opencode/scratchpad/review-section3-desloppification.md`). Regression-compare
+against the `assessment-errors-322-341` baseline (3 November 2026): **7/8 checks
+passing, 0 regressions, 0 new failures**; only `backend-lint-check` fails, with the
+same four accepted historical `max-lines` warnings. Baseline not degraded.
+
+---
+
+## Progress log — Section 4 desloppification (3 November 2026)
+
+The Section 4 items were delivered under the full implement/review loop on branch
+`assessment-errors-322-341`, committed together with this report update.
+
+1. **Duplicated submission-outcome logic — FIXED.** New private helper
+   `_applyExtractedArtifacts(submission, artifacts, taskDefinitions, handlers)` on
+   `AssignmentAssessmentBase`, reached from both runners through a single new
+   `Assignment._applyExtractedArtifacts` forwarder (the established delegation
+   pattern; no new exports). `SlidesAssignment.processAllSubmissions` and
+   `SheetsAssignment.processAllSubmissions` keep their own preambles (parser,
+   progress message and ordering, missing-document warning) and pass per-subclass
+   handlers: `onUnknownTask` preserves each runner's warning text and metadata
+   (including the asserted `workflow: 'SlidesAssignment.processAllSubmissions'`
+   metadata), and `isPendingArtifact` parameterises the final-sweep IMAGE nuance
+   without unifying it (Slides: a matched pending IMAGE with `pageId != null` and
+   truthy `metadata.sourceUrl`; Sheets: every IMAGE artifact). The null-sentinel
+   sweep, upsert payload, unmatched-task sweep, error codes and stages are identical.
+2. **Test-only dual mode in `_recordAcquisitionFailure` — FIXED.** `scanState` is
+   now a required parameter of `_processAttachmentForSubmission`,
+   `_recordAcquisitionFailure` and `_recordSupportedAttachment`; the `!scanState`
+   immediate-materialisation branch and the dead `if (!scanState) return;` guard are
+   deleted, and the JSDoc states the required-parameter contract.
+   `_materialiseAcquisitionOutcome` is retained (still called at scan end), and
+   production behaviour is unchanged — `fetchSubmittedDocumentsByMimeType` already
+   always created and passed `scanState`.
+3. **Test re-points.** Direct `_processAttachmentForSubmission` calls now pass a
+   `scanState` accumulator and assert its effects (first-failure recording,
+   supported-set membership) instead of the deleted immediate-materialisation path;
+   log assertions retained. No assertion weakened; no production code added for
+   tests.
+
+Docs sync: `docs/developer/backend/AssessmentFlow.md` Stage 4 now names the shared
+`_applyExtractedArtifacts` helper, its location and forwarder, and documents the
+per-runner `isPendingArtifact` difference; no new pages.
+
+Validation: 7 affected suites PASS (7 files / 87 tests); `tests/assignment` full run
+PASS (32 files / 367 tests); full backend coverage 263 files / 3,665 tests PASS,
+branches 85.9% > 85% gate; `lint:backend:check` 0 errors with only the four accepted
+historical `max-lines` warnings; `git diff --check` clean. Independent Code Reviewer
+verdict **PASS, zero findings**
+(`.opencode/scratchpad/review-section4-desloppification.md`). Regression-compare
 against the `assessment-errors-322-341` baseline (3 November 2026): **7/8 checks
 passing, 0 regressions, 0 new failures**; only `backend-lint-check` fails, with the
 same four accepted historical `max-lines` warnings. Baseline not degraded.

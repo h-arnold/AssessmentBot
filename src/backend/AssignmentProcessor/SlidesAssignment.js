@@ -146,58 +146,27 @@ class SlidesAssignment extends Assignment {
       // Update progress with ordinal position (e.g. "Extracting response 3 of 12...")
       this.progressTracker.updateProgress(`Extracting response ${index + 1} of ${total}...`, false);
       const artifacts = parser.extractSubmissionArtifacts(sub.documentId, taskDefs);
-      if (artifacts === null) {
-        taskDefs.forEach((taskDefinition) => {
-          const item = sub.upsertItemFromExtraction(taskDefinition, {
-            pageId: null,
-            content: null,
-            documentId: sub.documentId,
-            missingContentLogged: true,
-          });
-          item.setError('acquisition', 'SOURCE_UNREADABLE');
-        });
-        return;
-      }
-      const processedTaskIds = new Set();
-      artifacts.forEach((a) => {
-        const taskDefinition = this.assignmentDefinition.tasks[a.taskId];
-        if (!taskDefinition) {
-          ABLogger.getInstance().warn('Submission artifact references unknown taskId ' + a.taskId, {
-            workflow: 'SlidesAssignment.processAllSubmissions',
-            courseId: this.courseId,
-            assignmentId: this.assignmentId,
-            taskId: a.taskId,
-            documentId: a.documentId,
-          });
-          return;
-        }
-        sub.upsertItemFromExtraction(taskDefinition, {
-          pageId: a.pageId,
-          content: a.content,
-          metadata: a.metadata,
-          documentId: a.documentId,
-          // Parser placeholders already carry the single missing-content diagnostic,
-          // so the model layer stores them silently without duplicate warnings.
-          missingContentLogged: a.content == null,
-        });
-        processedTaskIds.add(a.taskId);
-      });
-      taskDefs.forEach((taskDefinition) => {
-        if (processedTaskIds.has(taskDefinition.getId())) return;
-        const item = sub.upsertItemFromExtraction(taskDefinition, {
-          pageId: null,
-          content: null,
-          documentId: sub.documentId,
-          missingContentLogged: true,
-        });
-        item.setError('extraction', 'SOURCE_CONTENT_UNAVAILABLE');
-      });
-      artifacts.forEach((artifact) => {
-        const isMatchedPendingImage =
-          artifact.type === 'IMAGE' && artifact.pageId != null && artifact.metadata.sourceUrl;
-        if (artifact.content != null || isMatchedPendingImage) return;
-        const item = sub.getItem(artifact.taskId);
-        if (item) item.setError('extraction', 'SOURCE_CONTENT_UNAVAILABLE');
+      this._applyExtractedArtifacts(sub, artifacts, taskDefs, {
+        onUnknownTask: (artifact) => {
+          ABLogger.getInstance().warn(
+            'Submission artifact references unknown taskId ' + artifact.taskId,
+            {
+              workflow: 'SlidesAssignment.processAllSubmissions',
+              courseId: this.courseId,
+              assignmentId: this.assignmentId,
+              taskId: artifact.taskId,
+              documentId: artifact.documentId,
+            }
+          );
+        },
+        // A matched IMAGE placeholder is legitimately pending until image hydration.
+        isPendingArtifact: (artifact) => {
+          return (
+            artifact.type === 'IMAGE' &&
+            artifact.pageId != null &&
+            Boolean(artifact.metadata.sourceUrl)
+          );
+        },
       });
     });
   }

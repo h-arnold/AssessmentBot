@@ -52,9 +52,9 @@ class AssignmentSubmissions {
    * @param {object} attachment - The attachment object from Classroom submission.
    * @param {string} studentId - The Google Classroom student ID.
    * @param {string} mimeType - The expected MIME type to validate against.
-   * @param {{failures: Map<string, string>, supported: Set<string>}|undefined} scanState -
-   *   Optional scan-local accumulator. The complete scan applies its first failure only
-   *   when it found no supported attachment; direct calls materialise immediately.
+   * @param {{failures: Map<string, string>, supported: Set<string>}} scanState -
+   *   Scan-local accumulator. The complete scan applies its first failure only
+   *   when it found no supported attachment.
    */
   _processAttachmentForSubmission(attachment, studentId, mimeType, scanState) {
     const driveFileId = attachment?.driveFile?.id;
@@ -106,17 +106,12 @@ class AssignmentSubmissions {
   }
 
   /**
-   * Accumulates scan failures without creating provisional items; direct calls keep
-   * their historical immediate materialisation behaviour.
+   * Accumulates the first scan failure for a student that has no supported attachment yet.
    * @param {string} studentId - The affected student identity.
    * @param {'SOURCE_UNREADABLE'|'UNSUPPORTED_DOCUMENT'} code - The first observed failure.
-   * @param {{failures: Map<string, string>, supported: Set<string>}|undefined} scanState - Scan-local state.
+   * @param {{failures: Map<string, string>, supported: Set<string>}} scanState - Scan-local state.
    */
   _recordAcquisitionFailure(studentId, code, scanState) {
-    if (!scanState) {
-      this._materialiseAcquisitionOutcome(studentId, code);
-      return;
-    }
     if (!scanState.supported.has(studentId) && !scanState.failures.has(studentId)) {
       scanState.failures.set(studentId, code);
     }
@@ -125,10 +120,9 @@ class AssignmentSubmissions {
   /**
    * Marks that scanning found an admitted source, discarding earlier provisional failures.
    * @param {string} studentId - The student with an admitted document.
-   * @param {{failures: Map<string, string>, supported: Set<string>}|undefined} scanState - Scan-local state.
+   * @param {{failures: Map<string, string>, supported: Set<string>}} scanState - Scan-local state.
    */
   _recordSupportedAttachment(studentId, scanState) {
-    if (!scanState) return;
     scanState.supported.add(studentId);
     scanState.failures.delete(studentId);
   }

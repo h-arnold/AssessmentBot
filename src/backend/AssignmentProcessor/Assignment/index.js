@@ -307,6 +307,25 @@ class Assignment {
   }
 
   /**
+   * Applies one submission's extraction outcome to its items.
+   * @param {StudentSubmission} submission - The submission receiving the outcome.
+   * @param {Array<Object>|null} artifacts - Extracted artifacts, or null when the source could not be read.
+   * @param {Array<Object>} taskDefinitions - Every known task definition for the assignment.
+   * @param {{onUnknownTask: function(Object): void, isPendingArtifact: function(Object): boolean}} handlers -
+   *   `onUnknownTask` warns about an artifact whose taskId is unknown; `isPendingArtifact`
+   *   reports artifacts that must not be marked content-unavailable.
+   * @returns {void}
+   */
+  _applyExtractedArtifacts(submission, artifacts, taskDefinitions, handlers) {
+    return this._assessmentBase._applyExtractedArtifacts(
+      submission,
+      artifacts,
+      taskDefinitions,
+      handlers
+    );
+  }
+
+  /**
    * Small helper used by base-class methods that must be implemented by subclasses.
    * @param {string} methodName - Name of the method that should be implemented
    * @returns {void}
