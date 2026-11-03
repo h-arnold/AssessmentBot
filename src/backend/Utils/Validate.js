@@ -4,6 +4,7 @@ const HOSTNAME_MAX_LENGTH = 253;
 const MIN_HOSTNAME_LABEL_COUNT = 2;
 const HOSTNAME_LABEL_MAX_LENGTH = 63;
 const IPV4_OCTET_MAX_VALUE = 255;
+const HTTPS_URL_PREFIX_PATTERN = /^https:\/\/([\d.A-Za-z-]+)(?:[#/?]|$)/u;
 const CANONICAL_UTC_MONTH_COUNT = 12;
 const CANONICAL_UTC_MAX_HOUR = 23;
 const CANONICAL_UTC_MAX_MINUTE_OR_SECOND = 59;
@@ -158,12 +159,41 @@ const Validate = {
   },
 
   /**
+   * Determines whether a value has the shape of an accepted HTTPS URL.
+   *
+   * Rules:
+   * - Protocol must be HTTPS
+   * - Host must be a DNS hostname (not an IP address and not localhost)
+   * - Port numbers are not permitted
+   *
+   * Pure: it never logs, so callers that must not emit diagnostics can use it
+   * directly.
+   *
+   * @param {*} url - The URL candidate to test.
+   * @returns {boolean} True if the value has an accepted URL shape.
+   */
+  isValidUrlShape(url) {
+    if (typeof url !== 'string') return false;
+
+    const trimmed = url.trim();
+    if (trimmed.length === 0 || /\s/u.test(trimmed)) return false;
+
+    const match = HTTPS_URL_PREFIX_PATTERN.exec(trimmed);
+    if (!match) return false;
+
+    return Validate._isValidHostnameShape(match[1].toLowerCase());
+  },
+
+  /**
    * Validates an HTTPS URL string.
    *
    * Rules:
    * - Protocol must be HTTPS
    * - Host must be a DNS hostname (not an IP address and not localhost)
    * - Port numbers are not permitted
+   *
+   * Logs a progress-tracking error (with a developer-log fallback) only when
+   * the HTTPS prefix does not match; hostname rejections are silent.
    *
    * @param {string} url - The URL to validate.
    * @returns {boolean} True if the URL is valid.
@@ -174,7 +204,7 @@ const Validate = {
     const trimmed = url.trim();
     if (trimmed.length === 0 || /\s/u.test(trimmed)) return false;
 
-    const match = /^https:\/\/([\d.A-Za-z-]+)(?:[#/?]|$)/u.exec(trimmed);
+    const match = HTTPS_URL_PREFIX_PATTERN.exec(trimmed);
     if (!match) {
       try {
         ProgressTracker.getInstance().logError(`Invalid URL found: ${trimmed}`, { url: trimmed });
@@ -184,7 +214,19 @@ const Validate = {
       return false;
     }
 
-    const hostname = match[1].toLowerCase();
+    return Validate._isValidHostnameShape(match[1].toLowerCase());
+  },
+
+  /**
+   * Determines whether a lowercased hostname is an accepted DNS hostname.
+   *
+   * Rejects localhost, IP addresses and hostnames that break the length or
+   * label rules. Silent: it never logs.
+   *
+   * @param {string} hostname - Lowercased hostname to test.
+   * @returns {boolean} True when the hostname is accepted.
+   */
+  _isValidHostnameShape(hostname) {
     if (hostname === 'localhost' || hostname.length === 0) return false;
 
     // Reject IP addresses (including public) - we only accept hostnames.

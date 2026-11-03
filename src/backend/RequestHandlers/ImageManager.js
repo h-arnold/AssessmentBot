@@ -1,11 +1,7 @@
 /* eslint-disable no-magic-numbers */
 
-// Hostname admission limits mirroring the shared URL acceptance policy, kept
-// owner-local (never a Validate change); see the class @remarks for the privacy rationale.
-const IMAGE_HOSTNAME_MAX_LENGTH = 253;
-const IMAGE_MIN_HOSTNAME_LABEL_COUNT = 2;
-const IMAGE_HOSTNAME_LABEL_MAX_LENGTH = 63;
-const IMAGE_IPV4_MAX_OCTET = 255;
+// Hostname admission limits now live in the shared Validate URL policy; see the
+// class @remarks for the privacy rationale.
 
 /**
  * Image manager.
@@ -23,9 +19,9 @@ const IMAGE_IPV4_MAX_OCTET = 255;
  * and other wiring faults throw; returned unusable blob/content/hash data
  * converts by scope, while thrown native-read, base64, hash and writer
  * faults escape by original identity.
- * @remarks URL admission is owner-local and privacy-safe: the shared Validate
- * acceptance policy applies without its progress-tracking diagnostics, so
- * rejected source URLs never reach a log channel.
+ * @remarks URL admission delegates to the shared `Validate.isValidUrlShape`
+ * policy, which emits no progress-tracking diagnostics, so rejected source
+ * URLs never reach a log channel.
  */
 class ImageManager extends BaseRequestManager {
   /**
@@ -51,53 +47,17 @@ class ImageManager extends BaseRequestManager {
   }
 
   /**
-   * Decides whether an image source URL is admissible for download: the
-   * shared Validate acceptance policy (HTTPS, DNS hostname only, no IP
-   * address, no localhost, no port) without its progress-tracking
-   * diagnostics.
+   * Decides whether an image source URL is admissible for download by
+   * delegating to the shared `Validate.isValidUrlShape` policy (HTTPS, DNS
+   * hostname only, no IP address, no localhost, no port). The shared shape
+   * predicate emits no diagnostics, so rejected source URLs never reach a log
+   * channel.
    * @param {unknown} url - Candidate image source URL.
    * @returns {boolean} Whether the URL is admissible.
    * @private
    */
   _isAdmissibleImageUrl(url) {
-    if (typeof url !== 'string') return false;
-    const trimmed = url.trim();
-    if (trimmed.length === 0 || /\s/u.test(trimmed)) return false;
-    const match = /^https:\/\/([\d.A-Za-z-]+)(?:[#/?]|$)/u.exec(trimmed);
-    if (!match) return false;
-    const hostname = match[1].toLowerCase();
-    if (
-      hostname === 'localhost' ||
-      hostname.length === 0 ||
-      this._isIPv4Hostname(hostname) ||
-      hostname.length > IMAGE_HOSTNAME_MAX_LENGTH
-    ) {
-      return false;
-    }
-    const labels = hostname.split('.');
-    return !(
-      labels.length < IMAGE_MIN_HOSTNAME_LABEL_COUNT ||
-      labels.some(
-        (label) => label.length === 0 || label.length > IMAGE_HOSTNAME_LABEL_MAX_LENGTH
-      ) ||
-      labels.some((label) => label.startsWith('-') || label.endsWith('-')) ||
-      labels.some((label) => !/^[\da-z-]+$/u.test(label))
-    );
-  }
-
-  /**
-   * Determines whether a hostname string is a valid dotted IPv4 address.
-   * @param {string} hostname - Hostname candidate to test.
-   * @returns {boolean} True when the hostname is an IPv4 address.
-   * @private
-   */
-  _isIPv4Hostname(hostname) {
-    const ipv4Exec = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/u.exec(hostname);
-    if (!ipv4Exec) return false;
-    const octets = [ipv4Exec[1], ipv4Exec[2], ipv4Exec[3], ipv4Exec[4]].map(Number);
-    return octets.every(
-      (octet) => !Number.isNaN(octet) && octet >= 0 && octet <= IMAGE_IPV4_MAX_OCTET
-    );
+    return Validate.isValidUrlShape(url);
   }
 
   /**
@@ -169,10 +129,10 @@ class ImageManager extends BaseRequestManager {
     });
 
     // Submission items (current structure uses `assignment.submissions` only)
-    const submissions = assignment.submissions || [];
+    const submissions = assignment.submissions;
     submissions.forEach((sub) => {
       if (!sub?.documentId) return;
-      const items = sub.items || {};
+      const items = sub.items;
       Object.values(items).forEach((item) => {
         if (!item?.artifact) return;
         const art = item.artifact;

@@ -43,7 +43,7 @@ These issues introduce duplication, drift risk, or unnecessary complexity.
 | **4** ✅ | Duplicated submission-outcome logic across `SlidesAssignment`/`SheetsAssignment`   | Duplicated logic       | `SlidesAssignment.js:149-203` vs `SheetsAssignment.js:72-118`     | Hoist shared helper to `05_AssignmentAssessmentBase.js`                                          |
 | **5** ✅ | Duplicated HTTP/retry classification (`BaseRequestManager` vs `LLMRequestManager`) | Silent drift risk      | `BaseRequestManager.js:101-104` vs `LLMRequestManager.js:434-438` | Expose shared `BaseRequestManager.isRetryableStatus()` — **FIXED 2026-11-02** (see Progress log) |
 | **6** ✅ | `_routedOutcomeAttempts` Map (indirection for a locally available value)           | Unnecessary complexity | `LLMRequestManager.js:30-31, 166, 210, 385-387`                   | Pass `attempts` as parameter to `_processSingleResponse`                                         |
-| **7**    | Duplicated URL validation vs `Validate.js` (~45 lines)                             | Silent drift risk      | `ImageManager.js:66-105`                                          | Extract pure `Validate.isValidUrlShape()`; delegate to it                                        |
+| **7** ✅ | Duplicated URL validation vs `Validate.js` (~45 lines)                             | Silent drift risk      | `ImageManager.js:66-105`                                          | Extract pure `Validate.isValidUrlShape()`; delegate to it                                        |
 
 ---
 
@@ -57,7 +57,7 @@ These issues violate project policies but have lower maintenance cost.
 | **4** ✅ | Test-only dual mode in `_recordAcquisitionFailure`    | Production code for tests, violates prime directive 8 | `04_AssignmentSubmissions.js:116-135` | Make `scanState` required; delete immediate branch |
 | **5** ✅ | `sendRequestWithRetries` public API with zero callers | Dead code                                             | `BaseRequestManager.js:114-118`       | Delete or document as intentional public API       |
 | **6** ✅ | `uidIndex` default set outside constructor            | Violates AGENTS.md §2.1.10                            | `LLMRequestManager.js:46`             | Initialize `this.uidIndex = {}` in constructor     |
-| **7**    | Inconsistent defensive guards (`                      |                                                       | []`, `                                |                                                    | {}`) | Silent masking of missing structures | `ImageManager.js:176-181` | Drop fallbacks; fail loudly |
+| **7** ✅ | Inconsistent defensive guards (`                      |                                                       | []`, `                                |                                                    | {}`) | Silent masking of missing structures | `ImageManager.js:176-181` | Drop fallbacks; fail loudly |
 
 ---
 
@@ -146,10 +146,14 @@ approved only the three blocking fixes. Progress is recorded in `ACTION_PLAN.md`
 
 ## Next Steps
 
-Awaiting user direction on the remaining (non-blocking) findings — Phase 1 items for
-Sections 1/2/5/7, Phase 2 duplication fixes and Phase 3 policy nitpicks — and on whether
-to trim the modest over-engineered process scope identified in Sections 11–12
-(`.opencode/scratchpad/sections9-12-slop-scan.md`).
+All Sections 1–7 are delivered (see the progress logs above). The remaining recorded
+follow-ups are out-of-scope findings tracked in
+`.opencode/scratchpad/assessment-errors-322-341-out-of-scope-fix-plan.md`
+(OOS-1 criteria-list consolidation onto `Assessment.CRITERIA`; OOS-2 the dead
+`Assignment._rehydrateSubmission` facade), to be executed as their own change units
+now that the final clean regression compare is recorded. The Sections 11–12
+process-scope question (`.opencode/scratchpad/sections9-12-slop-scan.md`) remains
+with the user.
 
 ---
 
@@ -406,3 +410,52 @@ Independent Code Reviewer verdict **PASS, zero findings**
 against the `assessment-errors-322-341` baseline (3 November 2026): **7/8 checks
 passing, 0 regressions, 0 new failures**; only `backend-lint-check` fails, with the
 same four accepted historical `max-lines` warnings. Baseline not degraded.
+
+---
+
+## Progress log — Section 7 desloppification (3 November 2026)
+
+The Section 7 items were delivered under the full implement/review loop on branch
+`assessment-errors-322-341`, committed together with this report update.
+
+1. **Duplicated URL validation — FIXED.** New pure `Validate.isValidUrlShape(url)`
+   owns the shared HTTPS/DNS-hostname shape policy (never logs); a shared private
+   `_isValidHostnameShape` tail serves both it and `isValidUrl`, and the HTTPS regex
+   literal exists once (`HTTPS_URL_PREFIX_PATTERN`).
+   `ImageManager._isAdmissibleImageUrl` now delegates to the shared predicate; the
+   duplicated `_isIPv4Hostname` and the four `IMAGE_*` limit constants (253/2/63/255,
+   value-identical to Validate's) are deleted. `isValidUrl`'s diagnostic trigger set
+   is preserved exactly: the ProgressTracker error (ABLogger warn fallback) fires
+   only on prefix-regex failure; hostname/label rejections stay silent, and
+   image-source admission never logs.
+2. **Inconsistent defensive guards — FIXED (cited range).** `assignment.submissions`
+   and `sub.items` are consumed directly without `|| []`/`|| {}` fallbacks; missing
+   structures now fail loudly through the subsequent `forEach`/`Object.values`
+   instead of silently producing no work. `item.getAssessment?.() || {}` (outside
+   the cited range) is untouched.
+3. **Test additions.** `tests/utils/validateCoverage.test.js` gains an
+   `isValidUrlShape` accept/reject matrix, a no-diagnostics assertion and an
+   11-candidate parity test against `isValidUrl`. No existing fixture needed
+   re-pointing; no assertion weakened.
+
+Docs sync: `docs/developer/backend/AssessmentFlow.md` and
+`docs/developer/data-shapes/student-submission.md` now describe URL admission as
+delegating to the shared `Validate.isValidUrlShape` policy (previously
+"owner-local … mirrors"), and
+`docs/developer/builder/TypeScriptAndLintConfigHierarchy.md`'s example names
+`_isAdmissibleImageUrl`/the shared predicate accurately; no new pages.
+`ACTION_PLAN.md`'s ImageManager helper inventory and URL-policy lines were updated
+in the same commit (plan maintenance).
+
+Validation: 6 named suites PASS (6 files / 80 tests); requestHandlers +
+slidesSheets + tests/utils PASS (42 files / 676 tests); full backend coverage 263
+files / 3,667 tests PASS, branches 85.97% > 85% gate; `lint:backend:check` 0 errors
+with only the four accepted historical `max-lines` warnings; `git diff --check`
+clean. Independent Code Reviewer verdict **PASS, zero findings**
+(`.opencode/scratchpad/review-section7-desloppification.md`). Regression-compare
+against the `assessment-errors-322-341` baseline (3 November 2026): **7/8 checks
+passing, 0 regressions, 0 new failures**; only `backend-lint-check` fails, with the
+same four accepted historical `max-lines` warnings. Baseline not degraded. All
+Sections 1–7 are now delivered; the final clean regression compare required by the
+out-of-scope fix plan's execution trigger is this run (only report updates landed
+after it).

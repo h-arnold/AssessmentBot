@@ -357,11 +357,11 @@ items are not converted to a scoped failure.
 
 Rules:
 
-- URL admission is owner-local and mirrors the shared `Validate` acceptance policy
-  (HTTPS, DNS hostname only, no IP address, no localhost, no port, hostname label
-  limits) **without** the shared validator's progress-tracking diagnostics. A rejected
-  source URL therefore never reaches a log channel. Shared `Validate` and the
-  source-link policy are unchanged.
+- URL admission delegates to the shared `Validate.isValidUrlShape` policy (HTTPS, DNS
+  hostname only, no IP address, no localhost, no port, hostname label limits). That
+  predicate emits no diagnostics, so a rejected source URL never reaches a log channel.
+  `Validate.isValidUrl` shares the same hostname/label rules but keeps its
+  progress-tracking error for HTTPS-prefix failures only.
 - Scheduling and transport: one full-list `sendRequestsInBatches()` call carries the
   configured Slides-fetch batch size, accepted statuses `[200]` and no stop statuses.
   Document round-robin order and UID association are preserved, and final 200 blobs are
@@ -691,9 +691,9 @@ Document parsers:          src/backend/DocumentParsers/
                                                   range-read artefact
 
 Image hydration:           src/backend/RequestHandlers/ImageManager.js
-  ├── collectAllImageArtifacts()               — owner-local URL admission, scoped shared
-  │                                               blocking and student IMAGE_HYDRATION_FAILED
-  │                                               materialisation
+  ├── collectAllImageArtifacts()               — `Validate.isValidUrlShape` URL admission,
+  │                                               scoped shared blocking and student
+  │                                               IMAGE_HYDRATION_FAILED materialisation
   ├── fetchImagesAsBlobs()                     — one full-list sender call, 200-only, no stop
   │                                               statuses, document round-robin and scoped
   │                                               final outcomes

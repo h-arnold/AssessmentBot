@@ -95,6 +95,48 @@ describe('Validate edge behaviour', () => {
     expect(Validate._isIPv4('1.2.3')).toBe(false);
   });
 
+  it('accepts and rejects url shapes without emitting diagnostics', () => {
+    expect(Validate.isValidUrlShape('https://example.com/valid-path')).toBe(true);
+    expect(Validate.isValidUrlShape('  https://example.com/valid-path  ')).toBe(true);
+    expect(Validate.isValidUrlShape(null)).toBe(false);
+    expect(Validate.isValidUrlShape(123)).toBe(false);
+    expect(Validate.isValidUrlShape('   ')).toBe(false);
+    expect(Validate.isValidUrlShape('https://example.com/has space')).toBe(false);
+    expect(Validate.isValidUrlShape('http://example.com')).toBe(false);
+    expect(Validate.isValidUrlShape('ftp://example.com')).toBe(false);
+    expect(Validate.isValidUrlShape('https://example.com:443/a')).toBe(false);
+    expect(Validate.isValidUrlShape('https://localhost/path')).toBe(false);
+    expect(Validate.isValidUrlShape('https://192.168.1.1/path')).toBe(false);
+    expect(Validate.isValidUrlShape('https://example/path')).toBe(false);
+    expect(Validate.isValidUrlShape('https://-bad.example.com/')).toBe(false);
+    expect(Validate.isValidUrlShape('https://bad-.example.com/')).toBe(false);
+    expect(Validate.isValidUrlShape('https://bad_host.example.com/')).toBe(false);
+    expect(Validate.isValidUrlShape('https://example..com/')).toBe(false);
+    expect(Validate.isValidUrlShape(`https://${'a'.repeat(64)}.example.com/`)).toBe(false);
+    expect(Validate.isValidUrlShape(`https://${'a'.repeat(254)}.com/`)).toBe(false);
+    expect(mockTracker.logError).not.toHaveBeenCalled();
+    expect(mockLogger.warn).not.toHaveBeenCalled();
+  });
+
+  it('agrees with isValidUrl on every shape decision', () => {
+    const candidates = [
+      'https://example.com/valid-path',
+      'https://docs.google.com/presentation/d/abc/export/png?id=abc&pageid=def',
+      'http://example.com',
+      'https://localhost/path',
+      'https://8.8.8.8/a',
+      'https://example.com:8443/a',
+      'https://example..com/',
+      'https://example.com/a b',
+      '',
+      null,
+      42,
+    ];
+    for (const candidate of candidates) {
+      expect(Validate.isValidUrlShape(candidate)).toBe(Validate.isValidUrl(candidate));
+    }
+  });
+
   it('rejects non object params for requireParams', () => {
     expect(() => Validate.requireParams(null)).toThrow('params must be an object');
     expect(() => Validate.requireParams([1])).toThrow('params must be an object');
