@@ -190,11 +190,7 @@ describe('LLM transport caller policy', () => {
           // are the intended business Reds: all six reconciled rows require the
           // no-abort completion-with-errors contract instead.
           expect(caught).toBe(null);
-          expect(validProcessing).toHaveBeenCalledWith(
-            nativeValidResponse,
-            validRequest,
-            assignment
-          );
+          expect(validProcessing).toHaveBeenCalledWith(nativeValidResponse, validRequest);
           expect(validation).toHaveBeenCalledWith({});
           expect(validation.mock.results[0].value).toBe(false);
           expect(context.scriptCache.get).toHaveBeenCalled();

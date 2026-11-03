@@ -1314,6 +1314,21 @@ clean section-gate comparison per the regression-checker policy.
   `origin/assessment-errors-322-341` (`a0d8f0df..27186fa4`), push confirmed.
   Pre-commit hooks passed without bypass. Concurrent worktree changes (`AGENTS.md`,
   `opencode.jsonc`) excluded as before. All twelve sections delivered.
+- **Post-implementation de-sloppification (3 November 2026):** plan-level pass over the
+  full delivered diff (`6ca5fbe7..HEAD`, 309 files) returned **Pass** — no Critical or
+  Improvement findings; M2 (a duplicated in-memory DbManager fake across the two
+  Section 11 sibling companions) recorded as accepted duplication under Section 11's
+  no-new-helpers constraint (promote only if a third consumer appears). M1 (unused
+  `assignment` pass-through in `LLMRequestManager._processSingleResponse`) fixed:
+  signature and call site reduced to two arguments, stale JSDoc `@param` removed,
+  the two tests pinning the old 3-arg contract reconciled (routing-identity assertions
+  preserved), and the documented signature in `AssessmentFlow.md` updated. Code
+  Reviewer re-review: PASS, zero findings
+  (`.opencode/scratchpad/m1-deslop-final-rereview.md`). Final post-cleanup comparison
+  (run `2026-11-03T16-21-49.471Z` at
+  `.ts-regression-checker/reports/session-assessment-errors-322-341/runs/2026-11-03T16-21-49.471Z/`):
+  **zero regressions, zero new failures**; the only failing check remains the accepted
+  backend `max-lines` baseline debt. The branch is ready for handoff.
 
 ## Implementation order and final readiness
 

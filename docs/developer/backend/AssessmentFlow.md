@@ -806,7 +806,7 @@ assignment.submissions = [
   4. Returns exactly `false` to the sender when stopped, preventing later batches while completed same-batch successes are retained.
   5. After the sender returns, if the run stopped, terminalises every eligible item that was never routed as `LLM_RUN_STOPPED` with no further HTTP.
 
-**Method**: `_processSingleResponse(response, request, assignment)`
+**Method**: `_processSingleResponse(response, request)`
 
 - **Process**:
   1. Resolves the routed entry and item by UID; a missing route throws.

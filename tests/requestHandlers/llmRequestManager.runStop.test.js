@@ -439,7 +439,6 @@ function expectCachedStopSurvival(collected) {
   expect(spies.processor).toHaveBeenCalledTimes(1);
   expect(spies.processor.mock.calls[0][0]).toBe(stopResponse);
   expect(spies.processor.mock.calls[0][1]).toBe(requests[0]);
-  expect(spies.processor.mock.calls[0][2]).toBe(collected.assignment);
 
   // Survival identities: current artefact references, detached full snapshots
   // and parent document IDs execute before every stop-domain requirement.

@@ -205,7 +205,7 @@ class LLMRequestManager extends BaseRequestManager {
           // The full outcome is available here: retain its attempt provenance so the
           // terminal mapping can distinguish stop-cancelled work from exhaustion.
           this._routedOutcomeAttempts.set(outcome.uid, outcome.attempts);
-          this._processSingleResponse(outcome.response, request, assignment);
+          this._processSingleResponse(outcome.response, request);
         });
         // Exactly false stops the shared sender: no later batch is dispatched, while
         // every response already received in this batch has been processed above.
@@ -367,10 +367,9 @@ class LLMRequestManager extends BaseRequestManager {
    * swallowed either.
    * @param {Object|null} response - The HTTP response object, or null for a network failure.
    * @param {Object} request - The original request object.
-   * @param {Object} assignment - The Assignment instance.
    * @returns {void}
    */
-  _processSingleResponse(response, request, assignment) {
+  _processSingleResponse(response, request) {
     const uid = request.uid;
     const entry = this.uidIndex?.[uid];
     if (!entry) {
