@@ -1,7 +1,8 @@
 /**
  * AssignmentSerialisation — Serialisation sub-class
  *
- * Owns toJSON(), toPartialJSON(), _extractFullDefinitionFields(), _extractPartialRootFields().
+ * Owns toJSON(), toPartialJSON(), _rootOutput(), _applyContractMarker(),
+ * _extractFullDefinitionFields(), _extractPartialRootFields().
  * Operates on the parent Assignment instance's state via this._assignment.
  * @class
  */
@@ -57,24 +58,50 @@ class AssignmentSerialisation {
       ? AssignmentSerialisation.copyJsonSnapshot(legacy.submissions)
       : this._assignment.submissions.map((submission) => submission.toJSON());
 
-    const output = {
+    const output = this._rootOutput(
+      this._extractFullDefinitionFields(definitionJson),
+      submissions,
+      definitionJson || this._assignment.assignmentDefinition
+    );
+    this._applyContractMarker(output);
+    return output;
+  }
+
+  /**
+   * Builds the assignment root fields shared by the full and partial payloads.
+   * @param {object} definitionRootFields - Root definition fields for this payload form.
+   * @param {Array<object>} submissions - Serialised submissions for this payload form.
+   * @param {object} assignmentDefinition - Definition payload for this payload form.
+   * @returns {object} Root output object without the contract marker.
+   */
+  _rootOutput(definitionRootFields, submissions, assignmentDefinition) {
+    return {
       courseId: this._assignment.courseId,
       assignmentId: this._assignment.assignmentId,
       assignmentName: this._assignment.assignmentName,
       dueDate: this._assignment.dueDate ? this._assignment.dueDate.toISOString() : null,
       updatedAt: this._assignment.updatedAt ? this._assignment.updatedAt.toISOString() : null,
       createdAt: this._assignment.createdAt.toISOString(),
-      ...this._extractFullDefinitionFields(definitionJson),
+      ...definitionRootFields,
       submissions,
-      assignmentDefinition: definitionJson || this._assignment.assignmentDefinition,
+      assignmentDefinition,
     };
+  }
+
+  /**
+   * Writes the contract marker onto a serialised payload: the opaque legacy marker
+   * when a legacy snapshot is present, otherwise `1` for current-format assignments.
+   * @param {object} output - Serialised payload to annotate in place.
+   * @returns {void}
+   */
+  _applyContractMarker(output) {
+    const legacy = this._assignment._legacyPersistenceSnapshot;
     if (legacy) {
       if (legacy.markerPresent)
         output.assessmentContractVersion = AssignmentSerialisation.copyJsonSnapshot(legacy.marker);
     } else if (this._assignment.assessmentContractVersion === 1) {
       output.assessmentContractVersion = 1;
     }
-    return output;
   }
 
   /**
@@ -134,23 +161,12 @@ class AssignmentSerialisation {
       ? AssignmentSerialisation.copyJsonSnapshot(legacy.submissions)
       : (this._assignment.submissions || []).map((submission) => submission.toPartialJSON());
 
-    const output = {
-      courseId: this._assignment.courseId,
-      assignmentId: this._assignment.assignmentId,
-      assignmentName: this._assignment.assignmentName,
-      dueDate: this._assignment.dueDate ? this._assignment.dueDate.toISOString() : null,
-      updatedAt: this._assignment.updatedAt ? this._assignment.updatedAt.toISOString() : null,
-      createdAt: this._assignment.createdAt.toISOString(),
-      ...this._extractPartialRootFields(definitionJson),
-      submissions: partialSubmissions,
-      assignmentDefinition: definitionJson,
-    };
-    if (legacy) {
-      if (legacy.markerPresent)
-        output.assessmentContractVersion = AssignmentSerialisation.copyJsonSnapshot(legacy.marker);
-    } else if (this._assignment.assessmentContractVersion === 1) {
-      output.assessmentContractVersion = 1;
-    }
+    const output = this._rootOutput(
+      this._extractPartialRootFields(definitionJson),
+      partialSubmissions,
+      definitionJson
+    );
+    this._applyContractMarker(output);
     return output;
   }
 }

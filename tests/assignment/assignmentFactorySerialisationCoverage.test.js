@@ -314,17 +314,33 @@ describe('AssignmentRehydration behaviour', () => {
     });
   });
 
-  it('rehydrates valid submissions directly', () => {
+  it('delegates every submission to current restoration without Classroom recovery', () => {
     const instance = { assignmentId: 'assignment-one', submissions: [] };
     const subObject = { studentId: 's-one', assignmentId: 'assignment-one' };
-    const original = globalThis.StudentSubmission.fromJSON;
-    const created = { studentId: 's-one' };
-    globalThis.StudentSubmission.fromJSON = vi.fn(() => created);
-    try {
-      globalThis.AssignmentRehydration._rehydrateSubmission(instance, subObject);
-      expect(instance.submissions).toEqual([created]);
-    } finally {
-      globalThis.StudentSubmission.fromJSON = original;
-    }
+    const assignmentData = { assignmentId: 'assignment-one', assessmentContractVersion: 1 };
+    const getCourseWork = vi.fn(() => {
+      throw new Error('Restoration must not fetch Classroom metadata');
+    });
+    const currentRestoration = vi
+      .spyOn(globalThis.AssignmentCurrentRestoration, '_rehydrateCurrentSubmission')
+      .mockImplementation((target, raw, data, mode) => {
+        target.submissions.push({ studentId: raw.studentId, restoredWith: mode, from: data });
+      });
+
+    withClassroomCoursework(getCourseWork, () => {
+      globalThis.AssignmentRehydration._rehydrateSubmission(
+        instance,
+        subObject,
+        assignmentData,
+        'partial'
+      );
+    });
+
+    expect(currentRestoration).toHaveBeenCalledTimes(1);
+    expect(currentRestoration).toHaveBeenCalledWith(instance, subObject, assignmentData, 'partial');
+    expect(instance.submissions).toEqual([
+      { studentId: 's-one', restoredWith: 'partial', from: assignmentData },
+    ]);
+    expect(getCourseWork).not.toHaveBeenCalled();
   });
 });

@@ -137,7 +137,9 @@ Assignment read payloads:
 Key contract notes:
 
 - The **representation mode is threaded explicitly** from `Assignment.fromJSON()`
-  through `Assignment._baseFromJSON()` / `_rehydrateSubmission()`,
+  through `Assignment._baseFromJSON()` / `_rehydrateSubmission()` and
+  `AssignmentRehydration._rehydrateCurrentSubmission()` /
+  `AssignmentCurrentRestoration._rehydrateCurrentSubmission()`, then through
   `SlidesAssignment.fromJSON()` / `SheetsAssignment.fromJSON()` and
   `StudentSubmission.fromJSON()` into `StudentSubmissionItem.fromJSON()`. It is not
   inferred from payload contents.

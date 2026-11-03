@@ -4,8 +4,8 @@
  * Owns static _baseFromJSON(), _rehydrateSubmission(), and the knownFields set
  * for deserialising Assignment instances from JSON data.
  *
- * Depends on global `AssignmentDefinition`, `StudentSubmission`, `ProgressTracker`,
- * `ABLogger`, and `Validate` (GAS runtime globals).
+ * Depends on global `AssignmentDefinition`, `AssignmentCurrentRestoration`,
+ * `ProgressTracker`, `ABLogger`, and `Validate` (GAS runtime globals).
  * @namespace
  */
 const AssignmentRehydration = {
@@ -104,8 +104,8 @@ const AssignmentRehydration = {
   },
 
   /**
-   * Rehydrates a submission object from JSON data and adds it to the assignment's submissions array.
-   * Restores the opaque legacy snapshot or delegates current records to typed restoration.
+   * Rehydrates a current-format submission object and adds it to the assignment's submissions array.
+   * Only marker-1 assignments reach this helper; legacy history stays opaque in the snapshot.
    * @param {Assignment} inst - The Assignment instance to add the submission to.
    * @param {object} subObject - The submission object to rehydrate.
    * @param {object} assignmentData - The assignment JSON containing restoration metadata.
@@ -113,12 +113,7 @@ const AssignmentRehydration = {
    * @returns {void}
    */
   _rehydrateSubmission(inst, subObject, assignmentData, representationMode) {
-    if (assignmentData?.assessmentContractVersion === 1) {
-      this._rehydrateCurrentSubmission(inst, subObject, assignmentData, representationMode);
-      return;
-    }
-    const submission = StudentSubmission.fromJSON(subObject);
-    inst.submissions.push(submission);
+    this._rehydrateCurrentSubmission(inst, subObject, assignmentData, representationMode);
   },
 
   /**

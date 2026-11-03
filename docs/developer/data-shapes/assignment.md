@@ -360,7 +360,7 @@ contract's `StudentSubmissionItem.artifact` uses the same shape with `role` set 
    **Classification: Aligned** — root presence/type and the contextual check are both active.
 
 6. **Legacy records are opaque and the backend read projection plus browser normalisation are active.**
-   `AssignmentRehydration._rehydrateSubmission()` does not catch, reconstruct or drop non-marker-1 records: the historical body and exact marker presence/value are retained as an opaque snapshot. `AssignmentSerialisation.toJSON()` / `toPartialJSON()` re-emit that snapshot unchanged (no ordinary-save certification), while `toReadJSON()` and `ABClassResponseMapper._toReadView()` substitute detached reassessment `E` placeholders from `02_AssignmentReadProjection.js`. Both read services validate the resulting entries. Completed-write preflight/gates are enforced at the write boundary.
+   `Assignment._baseFromJSON()` does not catch, reconstruct or drop non-marker-1 records: it retains the historical body and exact marker presence/value as an opaque snapshot in `_legacyPersistenceSnapshot` and leaves `submissions` empty. `AssignmentRehydration._rehydrateSubmission()` handles marker-1 records only — it delegates each one to `_rehydrateCurrentSubmission()` — so non-marker-1 records never reach it. `AssignmentSerialisation.toJSON()` / `toPartialJSON()` re-emit that snapshot unchanged (no ordinary-save certification), while `toReadJSON()` and `ABClassResponseMapper._toReadView()` substitute detached reassessment `E` placeholders from `02_AssignmentReadProjection.js`. Both read services validate the resulting entries. Completed-write preflight/gates are enforced at the write boundary.
    **Classification: Aligned** — recorded under [Component Shape: Assessment § Write boundary](assessment.md#write-boundary-preflight-before-any-write).
 
 7. **A restored `assignmentName` must be a string; there is no generated fallback.**
@@ -379,6 +379,7 @@ Persistence model:         src/backend/AssignmentProcessor/Assignment/index.js
       └── toReadJSON()          — full read shape (current marker 1 / legacy marker null + reassessment E)
   └── AssignmentRehydration (02_AssignmentRehydration.js)
       └── _baseFromJSON()       — marker-1 root/task pre-validation; opaque legacy snapshot otherwise
+      └── _rehydrateSubmission() — marker-1 only; delegates to _rehydrateCurrentSubmission()
       └── projectReassessmentSubmissions() — sole public legacy read-projection facade
   └── AssignmentReadProjection (02_AssignmentReadProjection.js)
       └── projectReassessmentSubmissions() — pure detached legacy projection

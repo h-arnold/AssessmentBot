@@ -23,7 +23,7 @@ These issues violate core principles and must be addressed immediately.
 | **1** ✅ | `StudentSubmissionRepresentationConfig` (class + singleton + write-only field) | Dead state, violates KISS                           | `00_StudentSubmissionItem.js:3-24`, `index.js:27` | Replace with `'full'` constant; delete write-only `this.representationMode`                          |
 | **1** ✅ | Canonical criteria list hardcoded in `setError` (5th copy)                     | Silent drift risk                                   | `00_StudentSubmissionItem.js:107`                 | Add `Assessment.CRITERIA` and use it in `setError`                                                   |
 | **1** ✅ | `Assessment` constructor duplicates `isValidRawResult` validation              | Duplicated logic, violates DRY                      | `Assessment.js:37-59` vs `85-111`                 | Delegate constructor to `isValidRawResult`                                                           |
-| **2**    | Dead legacy branch in `_rehydrateSubmission` (whole-submission restoration)    | Dead code, violates SPEC                            | `02_AssignmentRehydration.js:120-121`             | Inline current branch, delete legacy branch                                                          |
+| **2** ✅ | Dead legacy branch in `_rehydrateSubmission` (whole-submission restoration)    | Dead code, violates SPEC                            | `02_AssignmentRehydration.js:120-121`             | Inline current branch, delete legacy branch                                                          |
 | **4**    | Dead `Assignment._processAttachmentForSubmission` wrapper                      | Dead code, no callers                               | `Assignment/index.js:262-271`                     | Delete wrapper; update stale doc reference — **FIXED 2026-11-02** (see Progress log)                 |
 | **5**    | Unused `this.cache` in `BaseRequestManager`                                    | Dead state, unnecessary GAS service acquisition     | `BaseRequestManager.js:20`                        | Delete line 20                                                                                       |
 | **5**    | Unused `this.apiKey` in `ImageManager`                                         | Dead state, defensive guard on known-internal field | `ImageManager.js:37-40`                           | Delete lines 37-40                                                                                   |
@@ -36,14 +36,14 @@ These issues violate core principles and must be addressed immediately.
 
 These issues introduce duplication, drift risk, or unnecessary complexity.
 
-| Section | Finding                                                                            | Impact                 | Evidence                                                          | Recommended Fix                                                                                  |
-| ------- | ---------------------------------------------------------------------------------- | ---------------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| **2**   | Duplicated root-object + marker construction in `00_AssignmentSerialisation.js`    | Duplicated logic       | `toJSON()` vs `toPartialJSON()`                                   | Extract `_rootOutput` + `_applyContractMarker` helpers                                           |
-| **3**   | Duplicated `DEFINITION_PARSE_FAILED` message/code/log string                       | Silent drift risk      | `AssignmentDefinitionValidation.js:151-163`                       | Reference existing `DEFINITION_PARSE_FAILED_MESSAGE`                                             |
-| **4**   | Duplicated submission-outcome logic across `SlidesAssignment`/`SheetsAssignment`   | Duplicated logic       | `SlidesAssignment.js:149-203` vs `SheetsAssignment.js:72-118`     | Hoist shared helper to `05_AssignmentAssessmentBase.js`                                          |
-| **5**   | Duplicated HTTP/retry classification (`BaseRequestManager` vs `LLMRequestManager`) | Silent drift risk      | `BaseRequestManager.js:101-104` vs `LLMRequestManager.js:434-438` | Expose shared `BaseRequestManager.isRetryableStatus()` — **FIXED 2026-11-02** (see Progress log) |
-| **6**   | `_routedOutcomeAttempts` Map (indirection for a locally available value)           | Unnecessary complexity | `LLMRequestManager.js:30-31, 166, 210, 385-387`                   | Pass `attempts` as parameter to `_processSingleResponse`                                         |
-| **7**   | Duplicated URL validation vs `Validate.js` (~45 lines)                             | Silent drift risk      | `ImageManager.js:66-105`                                          | Extract pure `Validate.isValidUrlShape()`; delegate to it                                        |
+| Section  | Finding                                                                            | Impact                 | Evidence                                                          | Recommended Fix                                                                                  |
+| -------- | ---------------------------------------------------------------------------------- | ---------------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| **2** ✅ | Duplicated root-object + marker construction in `00_AssignmentSerialisation.js`    | Duplicated logic       | `toJSON()` vs `toPartialJSON()`                                   | Extract `_rootOutput` + `_applyContractMarker` helpers                                           |
+| **3**    | Duplicated `DEFINITION_PARSE_FAILED` message/code/log string                       | Silent drift risk      | `AssignmentDefinitionValidation.js:151-163`                       | Reference existing `DEFINITION_PARSE_FAILED_MESSAGE`                                             |
+| **4**    | Duplicated submission-outcome logic across `SlidesAssignment`/`SheetsAssignment`   | Duplicated logic       | `SlidesAssignment.js:149-203` vs `SheetsAssignment.js:72-118`     | Hoist shared helper to `05_AssignmentAssessmentBase.js`                                          |
+| **5**    | Duplicated HTTP/retry classification (`BaseRequestManager` vs `LLMRequestManager`) | Silent drift risk      | `BaseRequestManager.js:101-104` vs `LLMRequestManager.js:434-438` | Expose shared `BaseRequestManager.isRetryableStatus()` — **FIXED 2026-11-02** (see Progress log) |
+| **6**    | `_routedOutcomeAttempts` Map (indirection for a locally available value)           | Unnecessary complexity | `LLMRequestManager.js:30-31, 166, 210, 385-387`                   | Pass `attempts` as parameter to `_processSingleResponse`                                         |
+| **7**    | Duplicated URL validation vs `Validate.js` (~45 lines)                             | Silent drift risk      | `ImageManager.js:66-105`                                          | Extract pure `Validate.isValidUrlShape()`; delegate to it                                        |
 
 ---
 
@@ -193,3 +193,56 @@ Deferred follow-up (out of scope for Section 1 by design): the other literal cop
 criteria list (`LLM_CRITERIA`, `ABCLASS_METADATA_METRICS`, the inline arrays in
 `ImageManager.js`, `02_AssignmentCurrentRestoration.js`, `ABClassAssignmentValidation.js`)
 still exist; consolidating them onto `Assessment.CRITERIA` is recorded as a follow-up.
+
+---
+
+## Progress log — Section 2 desloppification (3 November 2026)
+
+The Section 2 items were delivered under the full implement/review loop on branch
+`assessment-errors-322-341`, committed together with this report update.
+
+1. **Dead legacy branch in `_rehydrateSubmission` — FIXED.** Repo-wide caller audit
+   confirmed the only production caller is `_baseFromJSON` (which calls it only when
+   `assessmentContractVersion === 1`), so the whole-submission
+   `StudentSubmission.fromJSON` restoration branch was unreachable. The branch is
+   deleted; `_rehydrateSubmission` now unconditionally delegates to
+   `_rehydrateCurrentSubmission` (the delegation seam is kept, matching the file's
+   existing style). Legacy records stay opaque in `_legacyPersistenceSnapshot`; the
+   `assignmentRehydration.legacy*` suites pass untouched.
+2. **Duplicated root-object + marker construction — FIXED.** New private helpers
+   `_rootOutput(definitionRootFields, submissions, assignmentDefinition)` and
+   `_applyContractMarker(output)` on `AssignmentSerialisation`; `toJSON()` and
+   `toPartialJSON()` both call them. Byte-identical output proven over an eight-case
+   harness (marker-1, legacy markers `null`/`2`/`'old'`, marker-absent, tasks-array
+   definition branch, null-definition fallback) — key order preserved, marker appended
+   last.
+3. **Test re-point.** `rehydrates valid submissions directly` (the only test exercising
+   the dead branch) rewritten as `delegates every submission to current restoration
+without Classroom recovery`, spying on
+   `globalThis.AssignmentCurrentRestoration._rehydrateCurrentSubmission` with exact
+   call-argument assertions and the no-Classroom-fetch guard retained. No assertion
+   weakened; no production code added for tests.
+
+Docs sync: `docs/developer/data-shapes/assignment.md` (opaque non-marker-1 retention
+re-attributed to `_baseFromJSON`; `_rehydrateSubmission` documented as marker-1-only
+delegation; File Index updated), `docs/developer/data-shapes/student-submission.md`
+and `docs/developer/data-shapes/assessment.md` (representation-mode chains now name the
+`_rehydrateCurrentSubmission` / `AssignmentCurrentRestoration._rehydrateCurrentSubmission`
+seam); no new pages.
+
+Validation: scoped `tests/assignment` 32 files / 367 tests PASS; full backend coverage
+263 files / 3,665 tests PASS, branches 85.95% > 85% gate; `lint:backend:check` 0 errors
+with only the four accepted historical `max-lines` warnings; `git diff --check` clean.
+Independent Code Reviewer verdict **PASS, zero findings** after docs sync
+(`.opencode/scratchpad/review-section2-desloppification.md`,
+`.opencode/scratchpad/rereview-section2-desloppification.md`). Regression-compare
+against the `assessment-errors-322-341` baseline (3 November 2026): **7/8 checks
+passing, 0 regressions, 0 new failures**; only `backend-lint-check` fails, with the
+same four accepted historical `max-lines` warnings. Baseline not degraded.
+
+Deferred follow-ups recorded out of scope for Section 2 (tracked in
+`.opencode/scratchpad/assessment-errors-322-341-out-of-scope-fix-plan.md`): the
+zero-caller `Assignment._rehydrateSubmission` static facade in
+`Assignment/index.js:114-129` (OOS-2, noted); header note omission of
+`AssignmentReadProjection` and doc-inventory omissions of the new private helpers
+(OOS-3/OOS-4, disregarded nitpicks).
