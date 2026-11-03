@@ -1003,7 +1003,13 @@ Authoritative for this section; keep in sync when later sections touch these own
   backend
   `max-lines` baseline debt (4 pre-existing warnings, unchanged from the
   Section 9 gate).
-- **Commit/push:** pending.
+- **Commit/push:** commit `d371a639` "feat(frontend): browser journeys for explicit
+  error previews on both heatmap surfaces (#322)" (19 files, 2037 insertions,
+  52 deletions) on branch `assessment-errors-322-341`; pushed to
+  `origin/assessment-errors-322-341` (`dece2e05..d371a639`). Pre-commit hooks
+  (Prettier, staged lint, typecheck) passed without bypass. Concurrent worktree
+  changes excluded: `AGENTS.md`, `opencode.jsonc`,
+  `buildCellPreviewLookup.errors.spec.ts` (staged portions reset before staging).
 
 ### Objective and constraints
 
