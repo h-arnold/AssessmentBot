@@ -1303,8 +1303,17 @@ clean section-gate comparison per the regression-checker policy.
   (run `2026-11-03T14-34-24.841Z`) is reused
   for this documentation-only section per the regression-checker policy (this section
   changed no code or tests; the comparison requirement is satisfied by explicit reuse).
-- **Final review:** pending — verdict recorded below.
-- **Commit/push:** pending — SHA, message and push range to be recorded.
+- **Final review:** PASS (3 November 2026, Code Reviewer, pinned model) — every
+  changed doc claim verified against delivered source; layout doc confirmed
+  status-line-only; gate-reuse policy compliant; one nitpick (a 13-vs-14 claim-class
+  count mismatch in this record) fixed immediately after review.
+- **Commit/push:** commit `27186fa4` "docs: final audit reconciliation and rollout
+  handoff (#322)" (4 files: both reconciled docs, the layout status line,
+  this plan)
+  on branch `assessment-errors-322-341`; pushed to
+  `origin/assessment-errors-322-341` (`a0d8f0df..27186fa4`), push confirmed.
+  Pre-commit hooks passed without bypass. Concurrent worktree changes (`AGENTS.md`,
+  `opencode.jsonc`) excluded as before. All twelve sections delivered.
 
 ## Implementation order and final readiness
 
