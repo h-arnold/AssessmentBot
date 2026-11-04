@@ -16,7 +16,7 @@
 import { describe, it, expect } from 'vitest';
 import { assembleTaskPreviewData } from './assembleTaskPreviewData';
 import type { CellPreviewData, AssessmentError } from './buildCellPreviewLookup';
-import { NOT_ATTEMPTED_METRIC } from '@/services/dataAnalysis/heatmapAdapter';
+import { ERROR_METRIC, NOT_ATTEMPTED_METRIC } from '@/services/dataAnalysis/heatmapAdapter';
 import type { TaskDisplayMetric } from '@/services/dataAnalysis/dataAnalysis.zod';
 import { createComputedMetricResult, createErrorMetricResult } from '@/test/dataAnalysis/fixtures';
 
@@ -40,7 +40,7 @@ const ITEM_REASONING = 'The assessment service rejected the request.';
 /** Analyser metric used where the analyser layer must win. */
 const ANALYSER_METRIC: TaskDisplayMetric = createComputedMetricResult({ value: 4 });
 /** Error metric used where the analyser layer reports an error. */
-const ERROR_METRIC: TaskDisplayMetric = createErrorMetricResult();
+const ANALYSER_ERROR_METRIC: TaskDisplayMetric = createErrorMetricResult();
 
 /**
  * Build a TEXT cell preview fixture carrying explicit per-criterion outcomes.
@@ -80,7 +80,12 @@ describe('assembleTaskPreviewData error precedence', () => {
       completenessError: ASSESSMENT_CAUSE,
     });
 
-    const result = assembleTaskPreviewData(cell, ERROR_METRIC, 'completeness', 'task-error-1');
+    const result = assembleTaskPreviewData(
+      cell,
+      ANALYSER_ERROR_METRIC,
+      'completeness',
+      'task-error-1'
+    );
 
     expect(result.error).toEqual(ASSESSMENT_CAUSE);
     expect(result.reasoning).toBe(ITEM_REASONING);
@@ -107,7 +112,12 @@ describe('assembleTaskPreviewData error precedence', () => {
       completenessError: VALIDATION_CAUSE,
     });
 
-    const result = assembleTaskPreviewData(cell, ERROR_METRIC, 'completeness', 'task-error-3');
+    const result = assembleTaskPreviewData(
+      cell,
+      ANALYSER_ERROR_METRIC,
+      'completeness',
+      'task-error-3'
+    );
 
     expect(result.error).toEqual(VALIDATION_CAUSE);
     expect(result.error).not.toEqual(EXTRACTION_CAUSE);
@@ -122,7 +132,12 @@ describe('assembleTaskPreviewData error precedence', () => {
       completenessError: EXTRACTION_CAUSE,
     });
 
-    const result = assembleTaskPreviewData(cell, ERROR_METRIC, 'completeness', 'task-error-3b');
+    const result = assembleTaskPreviewData(
+      cell,
+      ANALYSER_ERROR_METRIC,
+      'completeness',
+      'task-error-3b'
+    );
 
     expect(result.error).toEqual(EXTRACTION_CAUSE);
     expect(result.error).not.toEqual(ASSESSMENT_CAUSE);
@@ -141,7 +156,7 @@ describe('assembleTaskPreviewData error precedence', () => {
 
     const result = assembleTaskPreviewData(cell, ANALYSER_METRIC, 'completeness', 'task-error-4a');
 
-    expect(result.metric).toMatchObject({ state: 'error', value: 'E' });
+    expect(result.metric).toBe(ERROR_METRIC);
     expect(result.error).toEqual(VALIDATION_CAUSE);
     expect(result.reasoning).toBe(VALIDATION_REASONING);
   });
@@ -157,7 +172,7 @@ describe('assembleTaskPreviewData error precedence', () => {
     // The known cause wins over the analyser metric: the preview shows the
     // error state for the affected criterion instead of the class-derived
     // numeric score, and the cause is never replaced by the metric state.
-    expect(result.metric).toMatchObject({ state: 'error', value: 'E' });
+    expect(result.metric).toBe(ERROR_METRIC);
     expect(result.error).toEqual(ASSESSMENT_CAUSE);
   });
 
@@ -178,7 +193,12 @@ describe('assembleTaskPreviewData error precedence', () => {
       sourceUrl: null,
     });
 
-    const result = assembleTaskPreviewData(cell, ERROR_METRIC, 'completeness', 'task-error-6');
+    const result = assembleTaskPreviewData(
+      cell,
+      ANALYSER_ERROR_METRIC,
+      'completeness',
+      'task-error-6'
+    );
 
     expect(result.error).toEqual(EXTRACTION_CAUSE);
     expect(result.sourceUrl).toBeNull();
@@ -193,7 +213,12 @@ describe('assembleTaskPreviewData error precedence', () => {
       sourceUrl,
     });
 
-    const result = assembleTaskPreviewData(cell, ERROR_METRIC, 'completeness', 'task-error-7');
+    const result = assembleTaskPreviewData(
+      cell,
+      ANALYSER_ERROR_METRIC,
+      'completeness',
+      'task-error-7'
+    );
 
     expect(result.error).toEqual(ASSESSMENT_CAUSE);
     expect(result.sourceState).toBe('available');
