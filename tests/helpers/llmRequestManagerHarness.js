@@ -163,7 +163,7 @@ function catalogueHTTPAssessments(reasoning, code) {
 }
 
 // Mixed stale numeric/N marks through the domain API; never a prior E, so
-// request generation stays eligible in both the Red and later Green runs.
+// request generation stays eligible.
 function seedStaleMixedMarks(item) {
   item.addAssessment('completeness', { score: 4, reasoning: 'stale numeric mark' });
   item.addAssessment('accuracy', { score: 'N', reasoning: 'stale N mark' });
@@ -184,7 +184,7 @@ const STALE_MIXED_MARKS = {
  * native HTTP fixtures. Spies installed through the required prepareManager
  * call-through seam observe the real seams (no mock returns an outcome; a
  * caller needing none passes a no-op recorder). The caught value is captured
- * so a swallowed fault cannot masquerade as a Red.
+ * so a swallowed fault cannot masquerade as a passing case.
  */
 function runTransportCase(natives, prepareManager) {
   const context = loadManager(natives);
@@ -459,14 +459,14 @@ function expectRunStopTerminalStops(collected) {
   expectSignatureEntries(collected);
 
   // The stop must be domain completion-with-errors, never an unhandled run
-  // abort; the current 401/403 abort is the intended business Red here
+  // abort; the current 401/403 abort is the intended behaviour here
   // (404 reaches the terminal maps below instead).
   expect(caught).toBe(null);
 
   // The stopped target, unprocessed sibling and stop-cancelled retryable
   // sibling (when configured) must each be terminal with the exact canonical
   // LLM_RUN_STOPPED map; the cancelled sibling currently receives
-  // LLM_UNAVAILABLE instead — the new Red boundary for stop-cancelled work.
+  // LLM_UNAVAILABLE instead — the remaining gap for stop-cancelled work.
   [target, unprocessed, cancelled].filter(Boolean).forEach((entry) => {
     expect(entry.item.getAssessment()).toEqual(canonical);
   });

@@ -21,8 +21,8 @@ import {
  * factories in `syntheticAssessmentValidationOwners.js`.
  *
  * @remarks
- * These probes retain local canonicalisation from their historical Red origin;
- * the generator and committed corpus have since cut over. Validation-context
+ * These probes retain local canonicalisation from their original boundary
+ * setup; the generator and committed corpus have since cut over. Validation-context
  * nodes hold identifiers only, and document submissions carry complete
  * numeric maps, so mutations in one view cannot alias another owner's state.
  * The helper exports below are shared within this test-only family and are not
@@ -88,7 +88,7 @@ export function canonicalisePersistence(persistence) {
 /**
  * Retains E reasoning and causes in the partial view and stamps the current
  * marker on both wire views so the local baseline stays coherent with the
- * canonical contract. This preserves the boundary setup used by historical Red
+ * canonical contract. This preserves the boundary setup used by the original
  * probes while exercising the current generator contract.
  *
  * @param {{assignmentsByKey: unknown, classesById: unknown}} views Transport views.

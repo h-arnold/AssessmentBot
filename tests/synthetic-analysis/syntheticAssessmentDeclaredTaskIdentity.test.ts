@@ -4,7 +4,7 @@ import { readItemMap, requireArray, requireRecord } from './syntheticAssessmentC
 import { createPersistenceBoundary } from './syntheticAssessmentValidationOwners.js';
 
 type RawRecord = Record<string, unknown>;
-import { DECLARED_ITEM_IDENTITY_RULE } from './syntheticAssessmentRedRules.js';
+import { DECLARED_ITEM_IDENTITY_RULE } from './syntheticAssessmentRejectionRules.js';
 import { expectRule } from './syntheticAssessmentValidationRules.js';
 
 /**

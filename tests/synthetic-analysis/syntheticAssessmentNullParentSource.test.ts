@@ -11,7 +11,7 @@ import {
   NULL_PARENT_FEEDBACK_RULE,
   NULL_PARENT_METADATA_RULE,
   NULL_PARENT_SOURCE_FIELD_RULE,
-} from './syntheticAssessmentRedRules.js';
+} from './syntheticAssessmentRejectionRules.js';
 import { expectRule } from './syntheticAssessmentValidationRules.js';
 
 /**

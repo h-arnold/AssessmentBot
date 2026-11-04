@@ -52,7 +52,7 @@ export const ASSESSMENT_NULL_SOURCE_RULE = 'assessment-stage';
  *   criterion path). A generic marker alone can never satisfy an expectation:
  *   for example the existing blanket partial-redaction message names only the
  *   item, neither the mutated criterion nor the non-blank requirement, so it
- *   cannot green the malformed-E-reasoning rows.
+ *   cannot satisfy the malformed-E-reasoning rows.
  */
 export function expectRule(validate, rule, tokens) {
   let failure = null;

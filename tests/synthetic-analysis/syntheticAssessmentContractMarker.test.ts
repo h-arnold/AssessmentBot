@@ -5,7 +5,7 @@ import {
   createPersistenceBoundary,
   createFullTransportBoundary,
 } from './syntheticAssessmentValidationOwners.js';
-import { MARKER_RULE } from './syntheticAssessmentRedRules.js';
+import { MARKER_RULE } from './syntheticAssessmentRejectionRules.js';
 import { expectRule } from './syntheticAssessmentValidationRules.js';
 
 /**

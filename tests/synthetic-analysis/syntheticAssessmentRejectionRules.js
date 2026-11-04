@@ -1,12 +1,12 @@
 import { CRITERIA } from './syntheticAssessmentContractSupport.js';
 
 /**
- * Rule markers owned by the Section-2a red regression suites.
+ * Rule markers owned by the assessment rejection suites.
  *
  * @remarks
- * Each marker names the boundary the future validator change must report, per
- * the companion review; wording of the surrounding message stays free. The
- * null-content hash rows reuse the established `contentHash` marker from
+ * Each marker names the boundary the validator reports, per the companion
+ * review; wording of the surrounding message stays free. The null-content hash
+ * rows reuse the established `contentHash` marker from
  * `syntheticAssessmentValidationRules.js`.
  */
 

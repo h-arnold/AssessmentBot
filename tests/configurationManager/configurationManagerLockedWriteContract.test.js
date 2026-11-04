@@ -2,11 +2,11 @@
  * Tests for the ConfigurationManager decomposition — locked write path
  * and freshness detection.
  *
- * These tests define the TARGET CONTRACT only. Production code implementing the
+ * These tests define the target contract. Production code implements the
  * decomposition (facade in `98_ConfigurationManagerClass.js`, sub-classes
  * `96_ConfigurationManagerStorage.js`, `97_ConfigurationManagerDefaults.js`,
- * `97_ConfigurationManagerLockedWrite.js`) and the new locked write path / freshness
- * method does NOT yet exist, so the behaviour tests below fail in the RED phase.
+ * `97_ConfigurationManagerLockedWrite.js`) together with the locked write path
+ * and freshness method exercised below.
  *
  * No production code is modified by this file.
  *
@@ -43,7 +43,7 @@ const {
 
 const CONFIG_STORE_KEY = ConfigurationManager.CONFIG_STORE_KEY || '__CONFIG_STORE_KEY__';
 
-describe('ConfigurationManager Section 2 — locked write path, freshness, facade (RED contract)', () => {
+describe('ConfigurationManager — locked write path, freshness, facade', () => {
   let mocks;
   let configManager;
   let restoreLockService;
@@ -179,7 +179,7 @@ describe('ConfigurationManager Section 2 — locked write path, freshness, facad
 
   describe('locked merge — no clobber of a concurrent writer', () => {
     it('merges an out-of-band storage change with the writer change, writing once', () => {
-      // RED guard: the locked-write entrypoint must exist on the facade.
+      // The locked-write entrypoint must exist on the facade.
       expect(typeof configManager.writeConfigurationLocked).toBe('function');
 
       const store = installInMemoryStore({ apiKey: 'original' });
