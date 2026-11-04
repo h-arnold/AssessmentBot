@@ -37,17 +37,30 @@ function realBaseRequestManager() {
 }
 
 /**
+ * Installs the given BaseRequestManager class as the global for this test file
+ * and restores the previous value after the file's tests complete. An already
+ * installed global is preserved rather than replaced.
+ *
+ * @param {Function} BaseRequestManagerClass The class to install when no global
+ *   is already present.
+ * @returns {void}
+ */
+function installBaseRequestManagerGlobal(BaseRequestManagerClass) {
+  const savedGlobals = saveGlobals(['BaseRequestManager']);
+  globalThis.BaseRequestManager = globalThis.BaseRequestManager || BaseRequestManagerClass;
+  afterAll(() => {
+    restoreGlobals(savedGlobals);
+  });
+}
+
+/**
  * Installs the dummy BaseRequestManager global for this test file and restores
  * the previous value after the file's tests complete.
  *
  * @returns {void}
  */
 function installDummyBaseRequestManager() {
-  const savedGlobals = saveGlobals(['BaseRequestManager']);
-  globalThis.BaseRequestManager = globalThis.BaseRequestManager || DummyBaseRequestManager;
-  afterAll(() => {
-    restoreGlobals(savedGlobals);
-  });
+  installBaseRequestManagerGlobal(DummyBaseRequestManager);
 }
 
 /**
@@ -57,12 +70,7 @@ function installDummyBaseRequestManager() {
  * @returns {void}
  */
 function installRealBaseRequestManager() {
-  const savedGlobals = saveGlobals(['BaseRequestManager']);
-  const RealBaseRequestManager = realBaseRequestManager();
-  globalThis.BaseRequestManager = globalThis.BaseRequestManager || RealBaseRequestManager;
-  afterAll(() => {
-    restoreGlobals(savedGlobals);
-  });
+  installBaseRequestManagerGlobal(realBaseRequestManager());
 }
 
 /**
@@ -255,6 +263,7 @@ export {
   expectLlmBypass,
   httpOutcome,
   imageArtifact,
+  installBaseRequestManagerGlobal,
   installDummyBaseRequestManager,
   installRealBaseRequestManager,
   loadImageManager,

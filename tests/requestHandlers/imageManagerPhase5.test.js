@@ -2,7 +2,12 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { withGlobalMocks, withTemporaryGlobals } from '../helpers/globalMockManager.js';
 import { loadManager } from '../helpers/llmRequestManagerHarness.js';
 import { loadBackendModelInputs } from '#synthetic-data/toBackendModelInputs.js';
-import { buildManager, expectLlmBypass, loadImageManager } from './imageManagerTestHelpers.js';
+import {
+  buildManager,
+  expectLlmBypass,
+  installBaseRequestManagerGlobal,
+  loadImageManager,
+} from './imageManagerTestHelpers.js';
 
 // Stubs for globals required by ImageManager & Artifacts
 globalThis.Utils = {
@@ -51,7 +56,8 @@ class DummyBaseRequestManager {
 DummyBaseRequestManager.HTTP_STATUS_OK = 200;
 DummyBaseRequestManager.HTTP_STATUS_CREATED = 201;
 
-globalThis.BaseRequestManager = DummyBaseRequestManager;
+// Install the BaseRequestManager stub parent; the helper saves and restores it.
+installBaseRequestManagerGlobal(DummyBaseRequestManager);
 
 // Import artifacts & ImageManager
 const { ArtifactFactory } = loadImageManager();
