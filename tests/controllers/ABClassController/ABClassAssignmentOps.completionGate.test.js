@@ -7,113 +7,30 @@ import {
   setupControllerTestMocks,
   cleanupControllerTestMocks,
 } from '#test-helpers/mockFactories.js';
+import {
+  buildCompletedRun,
+  captureRunWithDiagnostics,
+  captureThrown,
+  clone,
+  findDiagnosticEntry,
+  FIXTURE_ASSIGNMENT_ID,
+  FIXTURE_CLASS_ID,
+  HEAD_TASK_ID,
+  persistedFullPayload,
+  SIBLING_TASK_ID,
+  TEACHER_GLOBAL,
+  writeEvents,
+} from './abclassPersistenceTestHelpers.js';
 
 const MODULE_PATH = '#backend/y_controllers/ABClassController/ABClassAssignmentOps.js';
 const Assignment = require('#backend/AssignmentProcessor/Assignment/index.js');
-const ABClassAssignmentOps = require(MODULE_PATH);
-const ABClassPersistence = require('#backend/y_controllers/ABClassController/ABClassPersistence.js');
-const ABClassValidation = require('#backend/y_controllers/ABClassController/ABClassValidation.js');
 const ABClassController = require('#backend/y_controllers/ABClassController/index.js');
 const {
   StudentSubmissionItem,
 } = require('#backend/Models/StudentSubmission/00_StudentSubmissionItem.js');
 const BaseTaskArtifact = require('#backend/Models/Artifacts/0_BaseTaskArtifact.js');
 
-const clone = (value) => structuredClone(value);
-const TEACHER_GLOBAL = { Teacher: () => Teacher };
-const FIXTURE_ASSIGNMENT_ID = 'assignment-0-1';
-const FIXTURE_CLASS_ID = 'class-0';
-const HEAD_TASK_ID = 'task-1-0';
-const SIBLING_TASK_ID = 'task-1-1';
 const NULL_PARENT_SUBMISSION_INDEX = 2;
-
-/** Hermetic per-name collection mocks recording every operation in call order. */
-function mockDb() {
-  const events = [];
-  const collections = {};
-  const makeCollection = (name) =>
-    Object.fromEntries(
-      ['findOne', 'insertOne', 'replaceOne', 'save'].map((op) => [
-        op,
-        vi.fn(() => {
-          events.push(`${name}.${op}`);
-          return op === 'findOne' ? null : undefined;
-        }),
-      ])
-    );
-  return {
-    events,
-    collections,
-    getCollection: (name) => (collections[name] ??= makeCollection(name)),
-  };
-}
-
-/**
- * Restores a healthy canonical run before each local corruption. Real validation
- * and persistence share the ops owner's hermetic stores, matching facade wiring.
- */
-function buildCompletedRun(recordOverride) {
-  const inputs = loadBackendModelInputs('small');
-  const assignment = Assignment.fromJSON(
-    recordOverride ?? clone(inputs.assignmentsByKey[FIXTURE_ASSIGNMENT_ID]),
-    'full'
-  );
-  const abClass = withTemporaryGlobals(TEACHER_GLOBAL, () =>
-    ABClass.fromJSON(clone(inputs.classesById[FIXTURE_CLASS_ID]))
-  );
-  const db = mockDb();
-  const validation = new ABClassValidation();
-  const persistence = new ABClassPersistence({ dbManager: db, validation });
-  const ops = new ABClassAssignmentOps({ dbManager: db, validation, persistence });
-  return { assignment, abClass, ops, persistence, validation, db };
-}
-
-function fullStore(db, assignment) {
-  return db.getCollection(`assign_full_${assignment.courseId}_${assignment.assignmentId}`);
-}
-
-function persistedFullPayload(db, assignment) {
-  return fullStore(db, assignment).insertOne.mock.calls[0][0];
-}
-
-function captureThrown(run) {
-  try {
-    return run();
-  } catch (error) {
-    return error;
-  }
-}
-
-function writeEvents(db) {
-  return db.events.filter((event) => !event.endsWith('.findOne'));
-}
-
-/**
- * One ABLogger.error entry must associate the original err by identity with the
- * exact failedPhase and fullWriteCommitted boolean. See the connected facade
- * suite for the complete matrix; these fields are internal log metadata.
- */
-function findDiagnosticEntry(errorCalls, fault) {
-  return errorCalls
-    .map((call) => call[1] ?? {})
-    .find(
-      (metadata) =>
-        metadata.err === fault &&
-        Object.hasOwn(metadata, 'failedPhase') &&
-        Object.hasOwn(metadata, 'fullWriteCommitted')
-    );
-}
-
-/** Runs one operation with the ABLogger singleton's error channel spied. */
-function captureRunWithDiagnostics(run) {
-  const logger = require('#backend/Utils/ABLogger.js').getInstance();
-  const errorSpy = vi.spyOn(logger, 'error').mockImplementation(() => {});
-  try {
-    return { thrown: captureThrown(run), errorCalls: errorSpy.mock.calls };
-  } finally {
-    errorSpy.mockRestore();
-  }
-}
 
 const headItem = (assignment) => assignment.submissions[0].items[HEAD_TASK_ID];
 

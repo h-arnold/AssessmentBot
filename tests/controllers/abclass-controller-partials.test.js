@@ -15,59 +15,13 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { loadBackendModelInputs } from '#synthetic-data/toBackendModelInputs.js';
-import { withTemporaryGlobals } from '#test-helpers/globalMockManager.js';
-import { Teacher } from '#backend/Models/Teacher.js';
 import {
   cleanupControllerTestMocks,
   createMockCollection,
   createDualCollectionDbManager,
   setupControllerTestMocks,
 } from '../helpers/mockFactories.js';
-
-const ABClassPersistence = require('#backend/y_controllers/ABClassController/ABClassPersistence.js');
-const clone = (value) => structuredClone(value);
-const TEACHER_GLOBAL = { Teacher: () => Teacher };
-
-/**
- * Hermetic per-name collection mocks recording every operation in call order.
- * `findOne` resolves null so both writes use the insert path.
- */
-function mockDb() {
-  const events = [];
-  const collections = {};
-  const makeCollection = (name) => {
-    const store = {
-      findOne: vi.fn(() => null),
-      insertOne: vi.fn(),
-      replaceOne: vi.fn(),
-      save: vi.fn(),
-    };
-    for (const op of ['findOne', 'insertOne', 'replaceOne', 'save']) {
-      store[op].mockImplementation(() => {
-        events.push(`${name}.${op}`);
-        return op === 'findOne' ? null : undefined;
-      });
-    }
-    return store;
-  };
-  return {
-    events,
-    collections,
-    getCollection: (name) => (collections[name] ??= makeCollection(name)),
-  };
-}
-
-/** Restores a real canonical small class and wires the persistence owner to mock stores. */
-function buildPreparedRun(classId) {
-  const inputs = loadBackendModelInputs('small');
-  const abClass = withTemporaryGlobals(TEACHER_GLOBAL, () =>
-    ABClass.fromJSON(clone(inputs.classesById[classId]))
-  );
-  const db = mockDb();
-  const owner = new ABClassPersistence({ dbManager: db, validation: {} });
-  return { abClass, db, owner };
-}
+import { buildPreparedRun, clone } from './ABClassController/abclassPersistenceTestHelpers.js';
 
 // ---------------------------------------------------------------------------
 // Helpers

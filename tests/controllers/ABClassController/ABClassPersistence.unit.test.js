@@ -1,46 +1,14 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { loadBackendModelInputs } from '#synthetic-data/toBackendModelInputs.js';
 import { withTemporaryGlobals } from '#test-helpers/globalMockManager.js';
-import { Teacher } from '#backend/Models/Teacher.js';
 import { ABClass } from '#backend/Models/ABClass.js';
+import { clone, mockDb, TEACHER_GLOBAL } from './abclassPersistenceTestHelpers.js';
 
 const MODULE_PATH = '#backend/y_controllers/ABClassController/ABClassPersistence.js';
 const ABClassPersistence = require(MODULE_PATH);
 const Assignment = require('#backend/AssignmentProcessor/Assignment/index.js');
 const ABClassAssignmentOps = require('#backend/y_controllers/ABClassController/ABClassAssignmentOps.js');
 const ABClassValidation = require('#backend/y_controllers/ABClassController/ABClassValidation.js');
-
-const clone = (value) => structuredClone(value);
-const TEACHER_GLOBAL = { Teacher: () => Teacher };
-
-/**
- * Hermetic per-name collection mocks recording every operation in call order.
- * `findOne` resolves null so both writes use the insert path.
- */
-function mockDb() {
-  const events = [];
-  const collections = {};
-  const makeCollection = (name) => {
-    const store = {
-      findOne: vi.fn(() => null),
-      insertOne: vi.fn(),
-      replaceOne: vi.fn(),
-      save: vi.fn(),
-    };
-    for (const op of ['findOne', 'insertOne', 'replaceOne', 'save']) {
-      store[op].mockImplementation(() => {
-        events.push(`${name}.${op}`);
-        return op === 'findOne' ? null : undefined;
-      });
-    }
-    return store;
-  };
-  return {
-    events,
-    collections,
-    getCollection: (name) => (collections[name] ??= makeCollection(name)),
-  };
-}
 
 describe('ABClassPersistence sub-class', () => {
   it('is available in GREEN phase (module exists)', () => {
