@@ -129,6 +129,23 @@ describe('assembleTaskPreviewData error precedence', () => {
     expect(result.reasoning).toBe(PARTIAL_REASONING);
   });
 
+  it('overrides a class-derived numeric score with the error state when a full-record E wins', () => {
+    // Precedence 1 over a class-derived numeric: the class partial (and so the
+    // analyser metric) still carries the historic numeric value, but the
+    // full-record validation error overrides the preview's score with E. The
+    // table keeps its class-derived value; only the preview is overridden.
+    const cell = textCell({
+      completenessReasoning: VALIDATION_REASONING,
+      completenessError: VALIDATION_CAUSE,
+    });
+
+    const result = assembleTaskPreviewData(cell, ANALYSER_METRIC, 'completeness', 'task-error-4a');
+
+    expect(result.metric).toMatchObject({ state: 'error', value: 'E' });
+    expect(result.error).toEqual(VALIDATION_CAUSE);
+    expect(result.reasoning).toBe(VALIDATION_REASONING);
+  });
+
   it('keeps a known error over the analyser metric', () => {
     const cell = textCell({
       completenessReasoning: ITEM_REASONING,
@@ -137,9 +154,10 @@ describe('assembleTaskPreviewData error precedence', () => {
 
     const result = assembleTaskPreviewData(cell, ANALYSER_METRIC, 'completeness', 'task-error-4');
 
-    // The analyser metric is carried unchanged, but the known cause is never
-    // replaced by the metric state.
-    expect(result.metric).toBe(ANALYSER_METRIC);
+    // The known cause wins over the analyser metric: the preview shows the
+    // error state for the affected criterion instead of the class-derived
+    // numeric score, and the cause is never replaced by the metric state.
+    expect(result.metric).toMatchObject({ state: 'error', value: 'E' });
     expect(result.error).toEqual(ASSESSMENT_CAUSE);
   });
 

@@ -1,6 +1,6 @@
 import type { AssessmentError, CellPreviewData } from './buildCellPreviewLookup';
 import type { TaskDisplayMetric } from '@/services/dataAnalysis/dataAnalysis.zod';
-import { NOT_ATTEMPTED_METRIC } from '@/services/dataAnalysis/heatmapAdapter';
+import { ERROR_METRIC, NOT_ATTEMPTED_METRIC } from '@/services/dataAnalysis/heatmapAdapter';
 import type { HeatmapMetricKey } from '@/services/dataAnalysis/metricDisplay/metricDisplayMeta';
 import type { TaskPreviewData, TaskPreviewSourceState } from './TaskPreviewCard';
 import { spreadsheetToMarkdownTable } from './spreadsheetToMarkdownTable';
@@ -35,8 +35,11 @@ function resolveSourceState(error: AssessmentError | null): TaskPreviewSourceSta
  * analyser's `TaskDisplayMetric`, the metric key, and the task ID.
  *
  * @remarks
- * The analyser's metric is carried onto `TaskPreviewData` unchanged, as is the
- * cell's derived `sourceUrl` (never re-derived here). A `null` `cellData` is
+ * The analyser's metric is carried onto `TaskPreviewData` unchanged when the
+ * cell records no cause for the criterion; a known cause overrides the preview's
+ * metric with the shared error state (the table keeps its class-derived value).
+ * The cell's derived `sourceUrl` is carried unchanged (never re-derived here).
+ * A `null` `cellData` is
  * the one exception: no submission exists for the (student, task) pair, so the
  * metric is overridden with the shared `NOT_ATTEMPTED_METRIC` placeholder even
  * when the analyser reported `computed`, and `sourceUrl` is `null`.
@@ -88,7 +91,9 @@ export function assembleTaskPreviewData(
     artifactType,
     artifactContent,
     metricKey,
-    metric: metricResult,
+    // A known cause for the criterion overrides the class-derived numeric or
+    // `N` score on the preview only; the table keeps its class-derived value.
+    metric: error !== null && metricResult.state !== 'error' ? ERROR_METRIC : metricResult,
     reasoning: cellData.reasoning[metricKey] ?? '',
     error,
     sourceState: resolveSourceState(error),

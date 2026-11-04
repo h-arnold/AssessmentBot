@@ -339,12 +339,9 @@ describe('TaskMetricPreviewContent full-read-only corruption', () => {
 
     renderContent({ cellData: corruptCell, metricResult: METRIC_RESULT, hasError: false });
 
-    // The class-derived score is still displayed, so the notice explains that
-    // the preview is stale rather than implying the score itself is wrong.
-    expect(screen.getByRole('status')).toHaveAttribute(
-      'aria-label',
-      `Completeness score: ${CANONICAL_READY_CELL.completenessScore}`
-    );
+    // The known full-record cause overrides the preview's score with E, while
+    // the notice explains that the heatmap's displayed scores are unchanged.
+    expect(screen.getByRole('status')).toHaveAttribute('aria-label', 'Completeness score: E');
     expect(screen.getByText(CORRUPTION_REASONING)).toBeInTheDocument();
     expect(screen.getByRole('alert')).toHaveTextContent(CORRUPTION_DESCRIPTION);
   });

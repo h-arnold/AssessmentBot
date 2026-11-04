@@ -40,34 +40,55 @@ const AssignmentReadProjection = {
     return typeof value === 'string' && value.trim().length > 0;
   },
 
-  /** Selects and validates the canonical task universe for a projection.
+  /**
+   * Selects and validates the canonical task universe for a projection.
+   *
+   * @remarks
+   * Both stored definition shapes are accepted: a keyed task map (full
+   * definition) for either projection form, and, for the class-embedded
+   * partial form, the lightweight task-summary array. A summary array on a
+   * full read is rejected — the full read resolves the full definition first.
+   *
    * @param {*} rawTasks - Definition task representation.
    * @param {string} form - Projection representation.
    * @returns {string[]} Ordered canonical task IDs.
    */
   _getTaskIds(rawTasks, form) {
     const taskIds = [];
-    if (form === 'full' && rawTasks && !Array.isArray(rawTasks) && typeof rawTasks === 'object') {
-      for (const [key, task] of Object.entries(rawTasks)) {
-        if (
-          !this._isValidId(key) ||
-          !task ||
-          task.id !== key ||
-          (task.taskId != null && task.taskId !== key)
-        )
-          throw new TypeError('Invalid canonical full task identity');
-        taskIds.push(key);
-      }
+    if (rawTasks && !Array.isArray(rawTasks) && typeof rawTasks === 'object') {
+      this._appendKeyedTasks(rawTasks, taskIds);
     } else if (form === 'partial' && Array.isArray(rawTasks)) {
       const seen = new Set();
       for (const task of rawTasks) {
         this._appendPartialTask(task, seen, taskIds);
       }
+    } else if (form === 'full' && Array.isArray(rawTasks)) {
+      throw new Error(
+        'Full read requires the resolved full definition, but the stored tasks are still summaries'
+      );
     } else {
-      throw new Error('Invalid task universe for projection mode');
+      throw new Error('Stored assignment definition has no task list to project');
     }
     if (taskIds.length === 0) throw new Error('Empty task definition for reassessment projection');
     return taskIds;
+  },
+
+  /** Adds every validated keyed task identity to the ordered output.
+   * @param {Object} rawTasks - Keyed full task map.
+   * @param {string[]} taskIds - Ordered ID output.
+   * @returns {void}
+   */
+  _appendKeyedTasks(rawTasks, taskIds) {
+    for (const [key, task] of Object.entries(rawTasks)) {
+      if (
+        !this._isValidId(key) ||
+        !task ||
+        task.id !== key ||
+        (task.taskId != null && task.taskId !== key)
+      )
+        throw new TypeError('Invalid canonical full task identity');
+      taskIds.push(key);
+    }
   },
 
   /** Adds one valid partial task identity.
