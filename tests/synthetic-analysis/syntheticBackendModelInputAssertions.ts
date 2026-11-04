@@ -166,10 +166,7 @@ export function expectRestoredAssignmentMatches(
   expect(encoded.createdAt).toBe(source.createdAt);
   expect(restored.createdAt).toEqual(expect.any(Date));
   expect(restored.createdAt.toISOString()).toBe(source.createdAt);
-  const restoredWeighting =
-    definition.assignmentWeighting === null || definition.assignmentWeighting === undefined
-      ? 1
-      : definition.assignmentWeighting;
+  const restoredWeighting = definition.assignmentWeighting ?? 1;
   expectDefinitionResolution(encoded.assignmentDefinition, definition, restoredWeighting);
   expect(Array.isArray(definition.tasks)).toBe(true);
   expect(encoded.assignmentDefinition.tasks).toEqual(definition.tasks);

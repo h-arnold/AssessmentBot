@@ -52,7 +52,7 @@ export type AdapterSources = CanonicalSources & AdapterContext;
  * @returns The sorted key list.
  */
 export function keySet(value: Record<string, unknown>): string[] {
-  return Object.keys(value).sort();
+  return Object.keys(value).sort((a, b) => a.localeCompare(b));
 }
 
 /**
