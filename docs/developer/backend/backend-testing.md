@@ -154,13 +154,13 @@ Shared backend model-input assertions live in `tests/synthetic-analysis/backendM
 | ------------------- | ------------------------------------------- | ------------------------------------------- |
 | `#backend/*`        | `src/backend/*`                             | Backend CommonJS owners                     |
 | `#synthetic-data/*` | `scripts/synthetic-test-data/*`             | ESM-only loader, adapter and bridge modules |
-| `#test-helpers/*`   | `tests/helpers/*`                           | Shared test helpers                         |
+| `#test-helpers/*`   | `tests/helpers/*`                           | Shared test helpers, two or more parents up |
 | `#synthetic/*`      | `tests/__mocks__/data/synthetic-analysis/*` | Committed JSON views                        |
 
 - Suites that consume bootstrap globals must load backend CommonJS owners through `#backend/*` with `require()`. Mixing static ESM backend imports with the bootstrap CommonJS globals creates duplicate module identities and silently splits coverage counters.
 - The synthetic adapter and loader are ESM-only, so import them with static named `import` from `#synthetic-data/*`.
 - `#test-helpers/*` resolves to CommonJS helpers. Use one route for a given helper within a suite; do not mix `require` and `import` of the same module.
-- Relative imports may traverse at most one parent. Two or more parents require a configured alias. Nearby helpers reached as `../helpers/...` stay relative.
+- Relative imports may traverse at most one parent. Two or more parents require a configured alias. Nearby helpers reached as `../helpers/...` stay relative: from `tests/requestHandlers/`, use `../helpers/globalMockManager.js`, not `#test-helpers/globalMockManager.js`.
 
 ### Real-path dispatcher suites
 
