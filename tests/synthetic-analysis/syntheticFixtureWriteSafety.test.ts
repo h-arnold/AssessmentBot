@@ -11,6 +11,8 @@ import {
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import type * as prettier from 'prettier';
+
 import { afterAll, describe, expect, it, vi } from 'vitest';
 
 import { writeProfileFixtures } from '#synthetic-data/fixtureWriter.js';
@@ -30,6 +32,8 @@ const STAGING_PREFIX = '.synthetic-staging-';
 const BACKUP_SUFFIX = '-previous';
 const INJECTED_WRITE_FAILURE_MESSAGE = 'injected synthetic fixture write failure';
 const INJECTED_REPLACEMENT_FAILURE_MESSAGE = 'injected synthetic fixture replacement failure';
+const INJECTED_SERIALISATION_FAILURE_PREFIX =
+  'injected synthetic fixture serialisation failure for ';
 const COMMITTED_PROFILE_NAMES = ['small', 'medium', REPRESENTATIVE_PROFILE_NAME] as const;
 const FORMATTER_HEAVY_TEST_TIMEOUT_MS = 20_000;
 
@@ -45,6 +49,13 @@ const fileSystemFailureControl = vi.hoisted(() => ({
   writeFileSuffix: null as string | null,
   renameDestinationSuffix: null as string | null,
 }));
+
+// Separate control for the serialisation failure injected through the Prettier
+// mock below. A graph that fails `JSON.stringify` (for example a circular view)
+// is already rejected by graph validation, so the serialisation failure path is
+// only reachable through the formatter itself. The injected message carries the
+// failing file path, so an assertion can distinguish which view rejected.
+const serialisationFailureControl = vi.hoisted(() => ({ failEverySerialisation: false }));
 
 vi.mock('node:fs', async (importOriginal) => {
   const actual = await importOriginal<typeof import('node:fs')>();
@@ -72,6 +83,19 @@ vi.mock('node:fs', async (importOriginal) => {
         throw new Error(INJECTED_REPLACEMENT_FAILURE_MESSAGE);
       }
       return actual.renameSync(source, destination);
+    },
+  };
+});
+
+vi.mock('prettier', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('prettier')>();
+  return {
+    ...actual,
+    format: (source: string, options?: prettier.Options) => {
+      if (serialisationFailureControl.failEverySerialisation) {
+        throw new Error(`${INJECTED_SERIALISATION_FAILURE_PREFIX}${String(options?.filepath)}`);
+      }
+      return actual.format(source, options);
     },
   };
 });
@@ -211,6 +235,31 @@ describe('atomic committed profile writing', () => {
     }
 
     expect(snapshotDirectory(outputRoot)).toEqual(before);
+    expect(readStagingDirectoryNames(outputRoot)).toEqual([]);
+  });
+
+  it('cleans up the staging directory and rethrows the first in-order rejection when a view fails to serialise', async () => {
+    const outputRoot = createTemporaryOutputRoot();
+    const graph = generateGraph(SMALL_PROFILE_NAME);
+
+    // Every view rejects and the injected message carries the failing file
+    // path, so the propagated reason identifies which rejection the walk
+    // rethrew. The manifest is first in the writer's view order, so the
+    // first in-order rejection must win rather than a later one.
+    serialisationFailureControl.failEverySerialisation = true;
+    try {
+      await expect(writeProfileFixtures({ graph, outputRoot })).rejects.toThrow(
+        `${INJECTED_SERIALISATION_FAILURE_PREFIX}${join(
+          REPOSITORY_ROOT,
+          COMMITTED_FIXTURE_ROOT,
+          SMALL_PROFILE_NAME,
+          'manifest.json'
+        )}`
+      );
+    } finally {
+      serialisationFailureControl.failEverySerialisation = false;
+    }
+
     expect(readStagingDirectoryNames(outputRoot)).toEqual([]);
   });
 });

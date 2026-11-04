@@ -1,16 +1,6 @@
 import { generateSyntheticAnalysisGraph } from '#synthetic-data/generateSyntheticAnalysisGraph.js';
-import { buildValidationContext } from '#synthetic-data/validationContext.js';
-import { toTransportViews } from '#synthetic-data/toTransportViews.js';
-import { validatePersistenceGraph } from '#synthetic-data/validatePersistenceGraph.js';
-import { validateTransportGraph } from '#synthetic-data/validateTransportGraph.js';
-import { assertAssignmentsByKeyView } from '#synthetic-data/validateAssignmentsByKeyView.js';
 
-import {
-  readItemMap,
-  recordsOf,
-  requireDefined,
-  requireRecord,
-} from './syntheticAssessmentContractSupport.js';
+import { readItemMap, recordsOf, requireDefined } from './syntheticAssessmentContractSupport.js';
 import {
   assessmentCauseEntries,
   canonicalNumericAssessments,

@@ -94,15 +94,25 @@ async function buildProfileViewContents(graph) {
     ['assignmentsByKey', graph.transport.assignmentsByKey],
   ]);
 
+  // Serialisations are independent, so they run concurrently. Each resolves to
+  // its own file name and content pair, and the outcome walk throws on the
+  // first in-order failure, so serialisation never reorders what the writer
+  // persists.
+  const serialisations = Array.from(PROFILE_VIEW_FILE_NAMES, ([viewName, fileName]) =>
+    serialiseView(
+      views.get(viewName),
+      join(COMMITTED_FIXTURE_DIRECTORY, graph.manifest.profile, fileName)
+    ).then((content) => [fileName, content])
+  );
+  const outcomes = await Promise.allSettled(serialisations);
+
   const files = new Map();
-  for (const [viewName, fileName] of PROFILE_VIEW_FILE_NAMES) {
-    files.set(
-      fileName,
-      await serialiseView(
-        views.get(viewName),
-        join(COMMITTED_FIXTURE_DIRECTORY, graph.manifest.profile, fileName)
-      )
-    );
+  for (const outcome of outcomes) {
+    if (outcome.status === 'rejected') {
+      throw outcome.reason;
+    }
+    const [fileName, content] = outcome.value;
+    files.set(fileName, content);
   }
 
   return files;

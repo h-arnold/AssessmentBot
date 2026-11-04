@@ -33,7 +33,7 @@ const CAUSE_CATALOGUE = {
   validation: ['CORRUPT_RECORD', 'REASSESSMENT_REQUIRED'],
 };
 /** Cause stages permitted beside a null parent document. */
-const NULL_DOCUMENT_STAGES = ['acquisition', 'validation'];
+const NULL_DOCUMENT_STAGES = new Set(['acquisition', 'validation']);
 const CAUSE_KEY_COUNT = 2;
 const MIN_SCORE = 0;
 const MAX_SCORE = 5;
@@ -135,7 +135,7 @@ function assertErrorEntry({ entry, label, criterion }) {
  */
 function assertNullDocumentCauseStage({ entry, label, criterion }) {
   const stage = /** @type {import('./validationRecordGuards.js').RawRecord} */ (entry.error).stage;
-  if (NULL_DOCUMENT_STAGES.includes(stage)) {
+  if (NULL_DOCUMENT_STAGES.has(stage)) {
     return;
   }
   fail(

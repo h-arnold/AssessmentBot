@@ -3,7 +3,7 @@ import { toTransportViews } from '#synthetic-data/toTransportViews.js';
 import { validatePersistenceGraph } from '#synthetic-data/validatePersistenceGraph.js';
 import { validateTransportGraph } from '#synthetic-data/validateTransportGraph.js';
 import { assertAssignmentsByKeyView } from '#synthetic-data/validateAssignmentsByKeyView.js';
-import { recordsOf, requireDefined, requireRecord } from './syntheticAssessmentContractSupport.js';
+import { recordsOf, requireRecord } from './syntheticAssessmentContractSupport.js';
 import {
   canonicalisePersistence,
   canonicaliseTransportViews,

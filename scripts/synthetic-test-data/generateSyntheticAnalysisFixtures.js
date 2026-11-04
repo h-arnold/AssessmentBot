@@ -109,22 +109,36 @@ export async function generateCommittedProfiles({ outputRoot }) {
  * @throws {Error} When a profile cannot be generated, validated, or staged.
  */
 async function stageCommittedProfiles(outputRoot) {
-  const stagedProfiles = [];
+  // Profiles are generated and staged independently, so staging runs
+  // concurrently. The outcome walk collects staged profiles in name order,
+  // keeps the first in-order failure, and discards every fully staged profile
+  // before rethrowing, so a failure leaves no staged profile behind.
+  const outcomes = await Promise.allSettled(
+    COMMITTED_PROFILE_NAMES.map(async (profileName) =>
+      stageProfileFixtures({
+        graph: generateSyntheticAnalysisGraph(profileName),
+        outputRoot,
+      })
+    )
+  );
 
-  try {
-    for (const profileName of COMMITTED_PROFILE_NAMES) {
-      stagedProfiles.push(
-        await stageProfileFixtures({
-          graph: generateSyntheticAnalysisGraph(profileName),
-          outputRoot,
-        })
-      );
+  const stagedProfiles = [];
+  let firstFailure;
+  let hasFailure = false;
+  for (const outcome of outcomes) {
+    if (outcome.status === 'fulfilled') {
+      stagedProfiles.push(outcome.value);
+    } else if (!hasFailure) {
+      hasFailure = true;
+      firstFailure = outcome.reason;
     }
-  } catch (error) {
+  }
+
+  if (hasFailure) {
     for (const stagedProfile of stagedProfiles) {
       discardStagedProfile(stagedProfile);
     }
-    throw error;
+    throw firstFailure;
   }
 
   return stagedProfiles;

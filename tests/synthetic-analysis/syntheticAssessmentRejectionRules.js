@@ -1,5 +1,3 @@
-import { CRITERIA } from './syntheticAssessmentContractSupport.js';
-
 /**
  * Rule markers owned by the assessment rejection suites.
  *
