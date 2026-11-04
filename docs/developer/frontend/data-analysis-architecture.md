@@ -187,9 +187,6 @@ remounts while logging distinct errors.
    validation union permits only that zero-data shape without weakening the
    shared raw-`N` contract or reclassifying it as `excluded`.
 
-The complete user-interface contract is in
-[`TASK_HEATMAP_ZERO_WEIGHT_LAYOUT.md`](../../../TASK_HEATMAP_ZERO_WEIGHT_LAYOUT.md).
-
 ## Delivered modular boundaries
 
 Dual accumulation was added after extracting coherent, analyser-local

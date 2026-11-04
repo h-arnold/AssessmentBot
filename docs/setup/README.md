@@ -2,18 +2,18 @@
 
 This guide will walk you through setting up the Google Slides Assessor, a tool designed to streamline the assessment of student work in Google Slides.
 
-- [🛠️ Setting up Assessment Bot](#️-setting-up-assessment-bot)
-  - [📝 Prerequisites](#-prerequisites)
-  - [🧩 Core Components](#-core-components)
-    - [1️⃣ Assessment Bot LLM Service](#1️⃣-assessment-bot-llm-service)
-    - [2️⃣ Assessment Records](#2️⃣-assessment-records)
-  - [🚀 The Setup Process](#-the-setup-process)
-    - [🌐 Setting up the LLM Service](#-setting-up-the-llm-service)
-    - [🖥️ Setting up the Google Apps Script Frontend](#️-setting-up-the-google-apps-script-frontend)
-      - [1️⃣ Configuring Assessment Bot](#1️⃣-configuring-assessment-bot)
-      - [2️⃣ Creating the Assessment Records](#2️⃣-creating-the-assessment-records)
-      - [3️⃣ Getting started with your first assessment.](#3️⃣-getting-started-with-your-first-assessment)
-  - [🌟 Final Thoughts](#-final-thoughts)
+- [🛠️ Setting up Assessment Bot](#setting-up-assessment-bot)
+  - [📝 Prerequisites](#prerequisites)
+  - [🧩 Core Components](#core-components)
+    - [1️⃣ Assessment Bot LLM Service](#1-assessment-bot-llm-service)
+    - [2️⃣ Assessment Records](#2-assessment-records)
+  - [🚀 The Setup Process](#the-setup-process)
+    - [🌐 Setting up the LLM Service](#setting-up-the-llm-service)
+    - [🖥️ Setting up the Google Apps Script Frontend](#setting-up-the-google-apps-script-frontend)
+      - [1️⃣ Configuring Assessment Bot](#1-configuring-assessment-bot)
+      - [2️⃣ Creating the Assessment Records](#2-creating-the-assessment-records)
+      - [3️⃣ Getting started with your first assessment.](#3-getting-started-with-your-first-assessment)
+  - [🌟 Final Thoughts](#final-thoughts)
 
 ## 📝 Prerequisites
 

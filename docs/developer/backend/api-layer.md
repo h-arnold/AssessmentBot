@@ -89,7 +89,7 @@ against the current specification first.
 
 > **Status: implemented — backend contract and companion documentation delivered.** The metadata
 > domain owner, its typed domain error, the canonical UTC predicate and ABClass model
-> construction/restoration/serialization support are implemented, including the partial-aware
+> construction/restoration/serialisation support are implemented, including the partial-aware
 > embedded-assignment projection. The ABClass mutation-owner decomposition, shared save
 > validation, prepared whole/partial persistence, field-scoped roster persistence,
 > response-mapper reuse, the controller request gate and the transport request-error adaptation
@@ -133,7 +133,7 @@ against the current specification first.
   before changing model state.
 - **Implemented:** `toJSON()` and `toPartialJSON()` always include metadata, revalidate mutable
   model state and return defensive copies through the domain owner. Missing/deleted model state
-  is invalid at serialization, not silently defaulted.
+  is invalid at serialisation, not silently defaulted.
 - **Implemented:** response mapping emits validated, nullable `metadata` on registry, full-read
   and mutation-summary responses (see "Response mapper reuse" below).
 - **Implemented:** `ABClassValidation._validateRequestMetadata(parameters)` gates request
@@ -300,7 +300,7 @@ abClass)` and `_writePreparedRosterPartial(prepared, classId)`. `ABClassRoster._
   it carries its actual non-empty partial/full assignment population alongside validated
   metadata. A true partial-save or patch failure keeps the existing logged propagation and
   non-transactional partial-success risk; no rollback or retry is added.
-- See [abclass.md § Field-scoped roster persistence](../data-shapes/abclass.md#field-scoped-roster-persistence-delivered).
+- See [abclass.md § Field-scoped roster persistence](../data-shapes/abclass.md#field-scoped-roster-persistence).
 
 ### Companion deletion-documentation reconciliation (`Implemented`)
 

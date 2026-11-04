@@ -405,7 +405,7 @@ scope.
 #### Parse-failure semantics
 
 - A stable, non-retriable `DEFINITION_PARSE_FAILED` code (see
-  [`transport-envelope.md`](transport-envelope.md#error-code--definition_parse_failed))
+  [`transport-envelope.md`](transport-envelope.md#error-code-definition_parse_failed))
   covers recognised document/task parsing failures. The envelope mapper honours
   `ApiValidationError.code`, so the backend rejection surfaces with this code.
 - An invalid task or a zero-task result blocks the refresh and persists nothing; the

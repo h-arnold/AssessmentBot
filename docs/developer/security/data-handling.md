@@ -83,7 +83,7 @@ storage**. Two kinds of entries:
   `CacheManager.CACHE_EXPIRY_SECONDS` TTL. Only results that pass the same numeric validator as
   live output are reused; malformed, `N` or `E` entries are logged misses and never cached. Old
   key spaces are misses, with no purge. See
-  [assignment.md § LLM assessment outcomes and validated cache reuse](../data-shapes/assignment.md#llm-assessment-outcomes-and-validated-cache-reuse-implemented).
+  [assessment.md § LLM assessment outcomes and validated cache reuse](../data-shapes/assessment.md#llm-assessment-outcomes-and-validated-cache-reuse).
 
 Writes are **best-effort**: `put()` catches and logs cache-service failures via `ABLogger`
 and does not throw, so a cache outage degrades performance (re-processing) rather than

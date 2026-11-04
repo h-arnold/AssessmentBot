@@ -923,7 +923,7 @@ submission.items["task_001"] = {
   }
   ```
 
-`formulaComparisonResults` is transient. The assessor writes only the three assessments and the `cellReference` feedback to the submission item; it no longer writes an `assessments.formulaComparison` entry. A successfully read blank/all-null grid arrives as `[]` with the normal `[]` hash; literal `null` means unavailable content and is not coerced to a blank grid here. See [Contract: AssignmentDefinition §Concrete artifact types](../data-shapes/assignment-definition.md#concrete-artifact-types).
+`formulaComparisonResults` is transient. The assessor writes only the three assessments and the `cellReference` feedback to the submission item; it no longer writes an `assessments.formulaComparison` entry. A successfully read blank/all-null grid arrives as `[]` with the normal `[]` hash; literal `null` means unavailable content and is not coerced to a blank grid here. See [Component Shape: BaseTaskArtifact § Concrete artifact types](../data-shapes/base-task-artifact.md#concrete-artifact-types).
 
 ---
 

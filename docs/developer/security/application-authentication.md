@@ -377,7 +377,7 @@ secrets in log output and mandates `ABLogger` for all backend code — see
   the compulsory-once-set group email and a membership note) and, for the Script Properties
   provider, a staged user table with add/remove and role changes. A single atomic Save carries
   `expectedAuthRevision` so a stale-revision conflict is surfaced without losing the staged
-  edits. See `AUTHENTICATION_SETTINGS_LAYOUT.md` for the full layout contract.
+  edits.
 - **`FORBIDDEN` message mapping.** `FORBIDDEN` is registered in
   `src/frontend/src/errors/map-error-to-ui.ts` with the user-safe message
   "You do not have permission to access this application. Please contact your
@@ -411,5 +411,3 @@ secrets in log output and mandates `ABLogger` for all backend code — see
   logging policy that governs the audit trail
 - [src/backend/AGENTS.md](../../../src/backend/AGENTS.md) §7 — the `AuthService`
   singleton contract for backend development
-- [AUTHENTICATION_SETTINGS_LAYOUT.md](../../../AUTHENTICATION_SETTINGS_LAYOUT.md) — the
-  admin Authentication tab layout contract

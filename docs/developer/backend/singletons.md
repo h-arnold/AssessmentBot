@@ -2,26 +2,26 @@
 
 This document explains the lazy singleton pattern used throughout the AssessmentBot codebase and provides guidelines for developers working with or extending singleton classes.
 
-- [🏗️ Singleton Pattern Guide](#️-singleton-pattern-guide)
-  - [📖 Overview](#-overview)
-  - [✅ Correct Pattern (Do This)](#-correct-pattern-do-this)
+- [🏗️ Singleton Pattern Guide](#singleton-pattern-guide)
+  - [📖 Overview](#overview)
+  - [✅ Correct Pattern (Do This)](#correct-pattern-do-this)
     - [Basic Singleton Structure](#basic-singleton-structure)
     - [Using Singletons](#using-singletons)
     - [Heavy Initialization Pattern](#heavy-initialization-pattern)
-  - [❌ Anti-Patterns (Don't Do This)](#-anti-patterns-dont-do-this)
+  - [❌ Anti-Patterns (Don't Do This)](#anti-patterns-dont-do-this)
     - [Direct Constructor Calls](#direct-constructor-calls)
     - [Eager Heavy Work](#eager-heavy-work)
     - [Global Variable Instantiation](#global-variable-instantiation)
-  - [🧪 Testing Conventions](#-testing-conventions)
+  - [🧪 Testing Conventions](#testing-conventions)
     - [Test Setup](#test-setup)
     - [Testing Laziness](#testing-laziness)
     - [Testing Idempotency](#testing-idempotency)
-  - [🔄 Migration Guide](#-migration-guide)
+  - [🔄 Migration Guide](#migration-guide)
     - [Converting a Regular Class to Singleton](#converting-a-regular-class-to-singleton)
     - [Updating Code that Uses Singletons](#updating-code-that-uses-singletons)
-  - [🏛️ Architecture Principles](#️-architecture-principles)
-  - [💡 Best Practices](#-best-practices)
-  - [🐛 Common Pitfalls](#-common-pitfalls)
+  - [🏛️ Architecture Principles](#architecture-principles)
+  - [💡 Best Practices](#best-practices)
+  - [🐛 Common Pitfalls](#common-pitfalls)
 
 ---
 

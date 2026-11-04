@@ -4,12 +4,12 @@
 
 This guide explains how to create Assessment Records using Assessment Bot. These records allow you to track the progress of all students in a selected class and form the core of the tool.
 
-- [📚 Create Classroom Assessment Records](#-create-classroom-assessment-records)
-  - [📄 Overview](#-overview)
-  - [🚀 Quickstart](#-quickstart)
-  - [📒 Creating the Assessment Records](#-creating-the-assessment-records)
-    - [✅ Prerequisites](#-prerequisites)
-    - [🪜 Steps to Follow](#-steps-to-follow)
+- [📚 Create Classroom Assessment Records](#create-classroom-assessment-records)
+  - [📄 Overview](#overview)
+  - [🚀 Quickstart](#quickstart)
+  - [📒 Creating the Assessment Records](#creating-the-assessment-records)
+    - [✅ Prerequisites](#prerequisites)
+    - [🪜 Steps to Follow](#steps-to-follow)
 
 ---
 

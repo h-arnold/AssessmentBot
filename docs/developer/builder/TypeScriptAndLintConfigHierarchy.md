@@ -110,7 +110,6 @@ The alias convention for choosing between relative and alias imports is defined 
   - `crossRuntimeUnicornPreferenceRules` — the four cross-runtime preferences (`catch-error-name`, `no-null`, `no-keyword-prefix`, `filename-case`), applied to backend source and to frontend TypeScript/TSX files only.
 - Keeps each rule's rationale, caveats and issue links beside the rule it explains.
 - Runtime-specific and file-scoped overrides stay local to their leaf config; only preferences shared across runtimes live here.
-- The move changes no effective rule severity or scope.
 - Parameter defaults outside constructors are permitted only for six existing conversions: `absentToNull_`, the class-table filter-key map callback, the optional folder-ID form transform, the heatmap class-selection callback, and the two teacher-name schema transforms. These preserve their existing null, undefined and empty-value behaviour. This is a scoped exception to constructor-owned defaults (root `AGENTS.md` §2.1 rule 10), not a general ownership-policy change.
 
 ### 3) Component ESLint configs
@@ -168,7 +167,7 @@ The alias convention for choosing between relative and alias imports is defined 
   - Disables `unicorn/class-reference-in-static-methods` for backend files only. Explicit class references preserve fixed hydration prototypes, shared configuration fields and helper bindings, while singleton factories intentionally use receiver-relative `this`/`super` for inheritance. Enforcing either style everywhere can change inherited or unbound static calls; existing bindings are retained. Frontend enforcement remains enabled.
   - Disables `unicorn/prefer-default-parameters` only for `src/backend/Models/ABClass.js` and `src/backend/y_controllers/AssignmentDefinition/AssignmentDefinitionValidation.js`. Their falsy normalisation preserves empty class names as null and prevents malformed persisted titles from falsely matching legitimate titles. Parameter defaults handle undefined only; enforcement remains enabled in other backend files.
 - Two file-scoped exceptions sit outside the shared preference module:
-  - `unicorn/no-unnecessary-global-this` stays enabled in both runtimes. Frontend findings use direct globals; reduced-motion availability checks stay guarded, and test setup targets the DOM Window through `document.defaultView` separately from the Vitest global.
+  - `unicorn/no-unnecessary-global-this` stays enabled in both runtimes. It arrives through `unicorn.configs.all`, which both configs apply at `error`, so it is deliberately absent from the shared preference module and needs no override. Frontend findings use direct globals; reduced-motion availability checks stay guarded, and test setup targets the DOM Window through `document.defaultView` separately from the Vitest global.
   - The frontend config disables `unicorn/no-top-level-side-effects` only for `eslint.config.js`, `playwright.config.ts`, `vite.config.ts` and `src/test/taskHeatmapPageMocks.ts`. The first three use standard configuration entry points evaluated at load time; the shared mock module must register Vitest factories before production imports. Application modules and other files retain enforcement.
 
 ### 4) Shared import-path depth rule
