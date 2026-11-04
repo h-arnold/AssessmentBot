@@ -23,7 +23,8 @@ class AssignmentDefinition {
    * @param {string} params.templateDocumentId - Template document ID.
    * @param {string|null} [params.referenceLastModified=null] - ISO timestamp snapshot for reference document.
    * @param {string|null} [params.templateLastModified=null] - ISO timestamp snapshot for template document.
-   * @param {number} [params.assignmentWeighting=1] - Optional weighting value. Defaults to 1. Must be in range 0-10.
+   * @param {number|null} [params.assignmentWeighting] - Optional weighting value. Null, undefined or
+   *   missing defaults to 1. Must be in range 0-10.
    * @param {Object<string, TaskDefinition>|Array} [params.tasks] - Task definitions keyed by taskId (full definition,
    *   rehydrated via {@link _hydrateTasks}) or an array of lightweight `{taskId, taskWeighting, taskTitle}` summaries
    *   (partial wire format, stored verbatim). Must be provided — null/undefined is a hard error.
@@ -293,12 +294,7 @@ class AssignmentDefinition {
     }
 
     const tasks = Object.fromEntries(
-      Object.entries(this.tasks).map(([taskId, task]) => {
-        return [
-          taskId,
-          task.toJSON ? task.toJSON() : task,
-        ];
-      })
+      Object.entries(this.tasks).map(([taskId, task]) => [taskId, task.toJSON ? task.toJSON() : task])
     );
     return {
       primaryTitle: this.primaryTitle,

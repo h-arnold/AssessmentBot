@@ -446,7 +446,7 @@ class AssignmentDefinitionUpsertOrchestrator {
     const rows = this.dbManager.readAll(this.persistence.registryCollectionName) || [];
     const expectedTitle = this.validation.normaliseTitleForDuplicate(primaryTitle);
 
-    const conflict = rows.find((row) => {
+    const hasConflict = rows.some((row) => {
       if (!row || typeof row !== 'object') {
         return false;
       }
@@ -462,7 +462,7 @@ class AssignmentDefinitionUpsertOrchestrator {
       );
     });
 
-    if (conflict) {
+    if (hasConflict) {
       throw new Error(
         `Duplicate assignment definition for tuple (${primaryTitle}, ${primaryTopicKey}, ${yearGroupKey})`
       );

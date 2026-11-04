@@ -1,6 +1,6 @@
 if (typeof module !== 'undefined') {
   // Required for testing in a Node.js environment with Vitest
-  BaseTaskArtifact = require('./0_BaseTaskArtifact.js');
+  globalThis.BaseTaskArtifact = require('./0_BaseTaskArtifact.js');
 }
 
 const LAST_ROW_INDEX = -1;
