@@ -10,13 +10,25 @@ import {
 /**
  * Builds a minimal schema-valid `AssignmentFull` fixture for the default mock value.
  *
+ * @param {Object} [overrides] - Optional identity overrides.
+ * @param {string} [overrides.courseId='class-1'] - Course the assignment belongs to.
+ * @param {string} [overrides.assignmentName='Assignment One'] - Assignment name.
+ * @param {string} [overrides.primaryTitle=overrides.assignmentName] - Definition primary title.
  * @returns {AssignmentFull} A valid assignment with no submissions.
  */
-export function buildDefaultAssignmentFixture(): AssignmentFull {
+export function buildDefaultAssignmentFixture({
+  courseId = 'class-1',
+  assignmentName = 'Assignment One',
+  primaryTitle = assignmentName,
+}: {
+  courseId?: string;
+  assignmentName?: string;
+  primaryTitle?: string;
+} = {}): AssignmentFull {
   return {
-    courseId: 'class-1',
+    courseId,
     assignmentId: 'a-1',
-    assignmentName: 'Assignment One',
+    assignmentName,
     dueDate: null,
     updatedAt: null,
     createdAt: '2026-01-01T00:00:00.000Z',
@@ -27,7 +39,7 @@ export function buildDefaultAssignmentFixture(): AssignmentFull {
     tasks: null,
     submissions: [],
     assignmentDefinition: {
-      primaryTitle: 'Assignment One',
+      primaryTitle,
       primaryTopic: null,
       primaryTopicKey: null,
       yearGroupKey: 'yg-10',

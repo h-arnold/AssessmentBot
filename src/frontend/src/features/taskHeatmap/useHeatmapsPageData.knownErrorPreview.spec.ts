@@ -5,118 +5,44 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, renderHook } from '@testing-library/react';
-import type { QueryClient } from '@tanstack/react-query';
-import type { StartupWarmupDatasetKey } from '@/query/sharedQueries';
 import type { ClassFull } from '@/services/googleClassrooms/classDetail/classDetailService.zod';
 import '@/test/abClass/postAnalysisHookMockSetup';
+import '@/test/taskHeatmap/useHeatmapsPageData.mockSetup';
 import { useHeatmapsPageData } from './useHeatmapsPageData';
+import {
+  createHeatmapsPageDataHarness,
+  heatmapsPageDataMocks,
+  mockWarmupDatasetsReady,
+} from '@/test/taskHeatmap/useHeatmapsPageDataSpecMocks';
 import type { AssignmentPreviewInput } from './assembleMergedPreviewData';
 import {
   DEFAULT_CLASS_ID,
   createAveragingResult,
   createClassFull,
   createMockQueryResult,
-  createTestWrapper,
 } from '@/test/heatmapsPageDataFixtures';
-import {
-  createHeatmapMergedResult as createMergedResult,
-  createTestQueryClient,
-} from '@/test/dataAnalysis/heatmapFixtures';
-import { createReadyHeatmapsDatasetResult } from '@/test/taskHeatmap/hookMockFactories';
+import { createHeatmapMergedResult as createMergedResult } from '@/test/dataAnalysis/heatmapFixtures';
 import { createSubmission, createSubmissionItem } from '@/test/dataAnalysis/fixtures';
 
 const {
   mockUseQuery,
   mockUseQueries,
-  mockUsePageDataset,
   mockGetABClassQueryOptions,
   mockGetAssignmentQueryOptions,
   mockAnalyse,
   mockAdaptMergedHeatmap,
   mockAssembleMergedPreviewData,
-} = vi.hoisted(() => {
-  return {
-    mockUseQuery: vi.fn(),
-    mockUseQueries: vi.fn(),
-    mockUsePageDataset: vi.fn(),
-    mockGetABClassQueryOptions: vi.fn(),
-    mockGetAssignmentQueryOptions: vi.fn(),
-    mockAnalyse: vi.fn(),
-    mockAdaptMergedHeatmap: vi.fn(),
-    mockAssembleMergedPreviewData: vi.fn(),
-  };
-});
+} = heatmapsPageDataMocks;
 
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const actual = (await importOriginal()) as Record<string, unknown>;
-  return { ...actual, useQuery: mockUseQuery, useQueries: mockUseQueries };
-});
-
-vi.mock('@/hooks/usePageDataset', async (importOriginal) => {
-  const actual = (await importOriginal()) as Record<string, unknown>;
-  return { ...actual, usePageDataset: mockUsePageDataset };
-});
-
-vi.mock('@/query/sharedQueries', async (importOriginal) => {
-  const actual = (await importOriginal()) as Record<string, unknown>;
-  return {
-    ...actual,
-    getABClassQueryOptions: mockGetABClassQueryOptions,
-    getAssignmentQueryOptions: mockGetAssignmentQueryOptions,
-  };
-});
-
-vi.mock('@/services/dataAnalysis/dataAnalysisService', () => {
-  return {
-    DataAnalysisService: vi.fn().mockImplementation(function () {
-      return { analyse: mockAnalyse };
-    }),
-  };
-});
-
-vi.mock('@/services/dataAnalysis/heatmapAdapter.merged', async (importOriginal) => {
-  const actual = (await importOriginal()) as Record<string, unknown>;
-  return { ...actual, adaptMetricsToMergedHeatmap: mockAdaptMergedHeatmap };
-});
-
-vi.mock('./assembleMergedPreviewData', () => {
-  return {
-    assembleMergedPreviewData: mockAssembleMergedPreviewData,
-  };
-});
-
-/** Installs the dynamic query mock, including React Query's combine callback. */
-function installUseQueriesMock(): void {
-  mockUseQueries.mockImplementation(
-    (options: {
-      queries: ReadonlyArray<unknown>;
-      combine?: (results: ReadonlyArray<unknown>) => unknown;
-    }) => {
-      const results = options.queries.map((query) => mockUseQuery(query));
-      return typeof options.combine === 'function' ? options.combine(results) : results;
-    }
-  );
-}
-
-let queryClient: QueryClient;
-let wrapper: ReturnType<typeof createTestWrapper>;
+let wrapper: ReturnType<typeof createHeatmapsPageDataHarness>['wrapper'];
 
 beforeEach(() => {
-  queryClient = createTestQueryClient();
-  wrapper = createTestWrapper(queryClient);
-  installUseQueriesMock();
+  ({ wrapper } = createHeatmapsPageDataHarness());
 });
 
 afterEach(() => {
   vi.resetAllMocks();
 });
-
-/** Configures both selector datasets as trustworthily ready. */
-function mockWarmupDatasetsReady(): void {
-  mockUsePageDataset.mockImplementation((datasetKey: StartupWarmupDatasetKey) =>
-    createReadyHeatmapsDatasetResult(datasetKey)
-  );
-}
 
 /**
  * Build a class whose embedded partial records a known `E` for one task.

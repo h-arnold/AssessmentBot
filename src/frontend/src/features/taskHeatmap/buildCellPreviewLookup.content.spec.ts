@@ -64,6 +64,50 @@ function canonicalSubmissionItem(assignment: AssignmentFull): AssignmentSubmissi
   return item;
 }
 
+/**
+ * Replace the ready cell's artifact with a canonical artifact body of the given
+ * type and assert the derived cell content.
+ *
+ * @param {'IMAGE' | 'SPREADSHEET'} artifactType - Canonical artifact type to adopt.
+ * @param {Function} expectContent - Asserts the derived content against the canonical item.
+ * @returns {void}
+ */
+function expectCanonicalArtifactBody(
+  artifactType: 'IMAGE' | 'SPREADSHEET',
+  expectContent: (cellData: CellPreviewData, canonical: AssignmentSubmissionItem) => void
+): void {
+  const assignment = cloneCanonicalSlidesAssignment();
+  const item = canonicalSubmissionItem(assignment);
+  const canonical = Object.values(CANONICAL_ASSIGNMENTS)
+    .flatMap((assignment) =>
+      assignment.submissions.flatMap((submission) => Object.values(submission.items))
+    )
+    .find((candidate) => candidate.artifact.type === artifactType);
+  if (canonical == null) throw new Error(`Canonical ${artifactType} submission item is missing.`);
+  const canonicalArtifactTaskId = canonical.artifact.taskId;
+  const canonicalArtifact = structuredClone(canonical.artifact);
+  const canonicalArtifactSnapshot = structuredClone(canonical.artifact);
+  const canonicalUidTaskSuffix = `-${canonicalArtifactTaskId}`;
+  item.artifact = {
+    ...canonicalArtifact,
+    taskId: item.taskId,
+    uid: `${canonicalArtifact.uid.slice(0, -canonicalUidTaskSuffix.length)}-${item.taskId}`,
+  };
+
+  const lookup: CellPreviewLookup = buildCellPreviewLookup(assignment);
+  const cellData = lookup.get(CANONICAL_READY_CELL.studentId)?.get(CANONICAL_READY_CELL.taskKey);
+
+  expect(cellData).toBeDefined();
+  expect(cellData!.artifactType).toBe(artifactType);
+  expectContent(cellData!, canonical);
+  expect(item.artifact.taskId).toBe(item.taskId);
+  expect(canonicalArtifact.uid.endsWith(canonicalUidTaskSuffix)).toBe(true);
+  expect(item.artifact.uid).toBe(
+    `${canonicalArtifact.uid.slice(0, -canonicalUidTaskSuffix.length)}-${item.taskId}`
+  );
+  expect(canonical.artifact).toEqual(canonicalArtifactSnapshot);
+}
+
 describe('buildCellPreviewLookup cell content', () => {
   // -----------------------------------------------------------------------
   // Canonical TEXT artifact with the record's own assessments
@@ -114,39 +158,9 @@ describe('buildCellPreviewLookup cell content', () => {
   // -----------------------------------------------------------------------
 
   it('builds CellPreviewData for an IMAGE artifact body', () => {
-    const assignment = cloneCanonicalSlidesAssignment();
-    const item = canonicalSubmissionItem(assignment);
-    const canonical = Object.values(CANONICAL_ASSIGNMENTS)
-      .flatMap((assignment) =>
-        assignment.submissions.flatMap((submission) => Object.values(submission.items))
-      )
-      .find(
-        (candidate) =>
-          candidate.artifact.type === 'IMAGE' && typeof candidate.artifact.content === 'string'
-      );
-    if (canonical == null) throw new Error('Canonical IMAGE submission item is missing.');
-    const canonicalArtifactTaskId = canonical.artifact.taskId;
-    const canonicalArtifact = structuredClone(canonical.artifact);
-    const canonicalArtifactSnapshot = structuredClone(canonical.artifact);
-    const canonicalUidTaskSuffix = `-${canonicalArtifactTaskId}`;
-    item.artifact = {
-      ...canonicalArtifact,
-      taskId: item.taskId,
-      uid: `${canonicalArtifact.uid.slice(0, -canonicalUidTaskSuffix.length)}-${item.taskId}`,
-    };
-
-    const lookup: CellPreviewLookup = buildCellPreviewLookup(assignment);
-    const cellData = lookup.get(CANONICAL_READY_CELL.studentId)?.get(CANONICAL_READY_CELL.taskKey);
-
-    expect(cellData).toBeDefined();
-    expect(cellData!.artifactType).toBe('IMAGE');
-    expect(cellData!.artifactContent).toBe(canonical.artifact.content);
-    expect(item.artifact.taskId).toBe(item.taskId);
-    expect(canonicalArtifact.uid.endsWith(canonicalUidTaskSuffix)).toBe(true);
-    expect(item.artifact.uid).toBe(
-      `${canonicalArtifact.uid.slice(0, -canonicalUidTaskSuffix.length)}-${item.taskId}`
-    );
-    expect(canonical.artifact).toEqual(canonicalArtifactSnapshot);
+    expectCanonicalArtifactBody('IMAGE', (cellData, canonical) => {
+      expect(cellData.artifactContent).toBe(canonical.artifact.content);
+    });
   });
 
   // -----------------------------------------------------------------------
@@ -191,38 +205,8 @@ describe('buildCellPreviewLookup cell content', () => {
   // -----------------------------------------------------------------------
 
   it('exposes artifactType SPREADSHEET and artifactContent as a 2D array', () => {
-    const assignment = cloneCanonicalSlidesAssignment();
-    const item = canonicalSubmissionItem(assignment);
-    const canonical = Object.values(CANONICAL_ASSIGNMENTS)
-      .flatMap((assignment) =>
-        assignment.submissions.flatMap((submission) => Object.values(submission.items))
-      )
-      .find(
-        (candidate) =>
-          candidate.artifact.type === 'SPREADSHEET' && Array.isArray(candidate.artifact.content)
-      );
-    if (canonical == null) throw new Error('Canonical SPREADSHEET submission item is missing.');
-    const canonicalArtifactTaskId = canonical.artifact.taskId;
-    const canonicalArtifact = structuredClone(canonical.artifact);
-    const canonicalArtifactSnapshot = structuredClone(canonical.artifact);
-    const canonicalUidTaskSuffix = `-${canonicalArtifactTaskId}`;
-    item.artifact = {
-      ...canonicalArtifact,
-      taskId: item.taskId,
-      uid: `${canonicalArtifact.uid.slice(0, -canonicalUidTaskSuffix.length)}-${item.taskId}`,
-    };
-
-    const lookup: CellPreviewLookup = buildCellPreviewLookup(assignment);
-    const cellData = lookup.get(CANONICAL_READY_CELL.studentId)?.get(CANONICAL_READY_CELL.taskKey);
-
-    expect(cellData).toBeDefined();
-    expect(cellData!.artifactType).toBe('SPREADSHEET');
-    expect(cellData!.artifactContent).toEqual(canonical.artifact.content);
-    expect(item.artifact.taskId).toBe(item.taskId);
-    expect(canonicalArtifact.uid.endsWith(canonicalUidTaskSuffix)).toBe(true);
-    expect(item.artifact.uid).toBe(
-      `${canonicalArtifact.uid.slice(0, -canonicalUidTaskSuffix.length)}-${item.taskId}`
-    );
-    expect(canonical.artifact).toEqual(canonicalArtifactSnapshot);
+    expectCanonicalArtifactBody('SPREADSHEET', (cellData, canonical) => {
+      expect(cellData.artifactContent).toEqual(canonical.artifact.content);
+    });
   });
 });
