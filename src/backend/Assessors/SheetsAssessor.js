@@ -63,10 +63,6 @@ class SheetsAssessor {
         submissionItem.addAssessment('completeness', assessmentResults.completenessAssessment);
         submissionItem.addAssessment('accuracy', assessmentResults.accuracyAssessment);
         submissionItem.addAssessment('spag', assessmentResults.spagAssessment);
-        submissionItem.assessments.formulaComparison = this._serialiseFormulaComparisonResults(
-          assessmentResults.formulaComparisonResults
-        );
-
         if (assessmentResults.formulaComparisonResults.cellReferenceFeedback) {
           submissionItem.addFeedback(
             'cellReference',
@@ -85,6 +81,10 @@ class SheetsAssessor {
    * @param {string} taskKey - The key identifying the task.
    * @param {string} studentName - The name of the student (for logging purposes).
    * @returns {Object|null} An object containing assessment instances and comparison results, or null if inputs are invalid.
+   * @remarks Comparison results are transient and are not persisted; only the three assessments
+   *   and `cellReference` feedback are written to the submission item. A successfully read
+   *   blank/all-null grid arrives as `[]`; literal `null` means unavailable content and is not
+   *   coerced to a blank grid here.
    */
   assessFormulaeTasks(submissionItem, referenceTask, taskKey, studentName) {
     const studentArray = submissionItem?.artifact?.content;
@@ -142,20 +142,6 @@ class SheetsAssessor {
       accuracyAssessment: accuracyAssessment,
       spagAssessment: spagAssessment,
       formulaComparisonResults: comparisonResults,
-    };
-  }
-
-  /**
-   * Converts formula comparison results into plain JSON-safe data.
-   * @param {Object} comparisonResults - Comparison results to serialise.
-   * @returns {Object} Serialised comparison results.
-   */
-  _serialiseFormulaComparisonResults(comparisonResults) {
-    return {
-      ...comparisonResults,
-      cellReferenceFeedback: comparisonResults.cellReferenceFeedback?.toJSON
-        ? comparisonResults.cellReferenceFeedback.toJSON()
-        : comparisonResults.cellReferenceFeedback,
     };
   }
 

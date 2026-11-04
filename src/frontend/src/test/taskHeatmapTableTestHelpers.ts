@@ -74,6 +74,8 @@ export const TEXT_CELL_PREVIEW_DATA: CellPreviewData = {
     accuracy: null,
     spag: null,
   },
+  // Healthy cell: every criterion carries an explicit null cause.
+  errors: { completeness: null, accuracy: null, spag: null },
   sourceUrl: TEXT_CELL_SOURCE_URL,
 };
 

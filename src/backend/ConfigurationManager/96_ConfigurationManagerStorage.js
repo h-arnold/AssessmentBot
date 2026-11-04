@@ -2,8 +2,7 @@
  * ConfigurationManager storage concern (blob read / serialise / parse).
  *
  * @remarks
- * This is a delegated sub-class of the `ConfigurationManager` facade
- * (ACTION_PLAN.md Section 2, §11 facade pattern). It owns the low-level
+ * This is a delegated sub-class of the `ConfigurationManager` facade. It owns the low-level
  * serialisation primitives: safely parsing the raw `__CONFIG_STORE_KEY__` blob
  * read from Script Properties. Higher-level config-cache management stays on the
  * facade; the locked write path (97_ConfigurationManagerLockedWrite.js) is the

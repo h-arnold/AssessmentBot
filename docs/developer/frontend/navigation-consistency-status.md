@@ -33,7 +33,7 @@ This separation keeps title and navigation concerns independent, so child pages 
 [Task Heatmap table]
 ```
 
-`Re-run Assessment` sits immediately left of `Refresh` and renders only when the owning Class page supplies an `onReRunAssessment` callback (see Completed Work §9).
+`Re-run Assessment` sits immediately left of `Refresh` and renders only when the owning Class page supplies an `onReRunAssessment` callback (see [frontend-modal-patterns.md §3.6](frontend-modal-patterns.md#36-assess-task-modal-re-run-entry)).
 
 Parent-level action buttons (Edit Student Details, Start New Assessment) do NOT appear on the child page.
 
@@ -151,11 +151,11 @@ Adds a `Re-run Assessment` action immediately left of `Refresh` in the child hea
 
 Changes:
 
-- `TaskHeatmapPage` accepts an optional `onReRunAssessment(context)` callback and renders the `Re-run Assessment` button (Lucide `RotateCcw`) only when the callback is supplied, immediately left of `Refresh`; `Back to Class overview` stays on the left. `TaskHeatmapPage.reRunAssessment.spec.tsx` pins the placement, the `{ assignmentId, definitionKey }` payload, and the omission when no callback is supplied.
-- `ClassPageContent` forwards `onReRunAssessment` to `TaskHeatmapPage`; `ClassPage` owns the `reRunContext` state and opens the modal with it. `handleStartNewAssessment` clears any re-run context so the manual entry never carries one, and `handleCloseModal` clears it on close.
-- `AssessTaskModal` renders the re-run body/footer (`AssessTaskReRunSurface`) and auto-starts one run (`useAssessTaskReRunFlow`) instead of the assignment selector. The full entry, matching, success, failure, and recovery contract is recorded in `frontend-modal-patterns.md` §3.6 and `frontend-shared-helpers-and-abstraction-standards.md` §9.25.
-- The entry uses the class's persisted `assignmentDefinitionKey` and never re-matches by title, topic, or year group; a missing assignment, null key, or unreadable registry fails closed with an in-modal `Alert` instead of starting against a different definition.
-- A success response means the run has been queued in the background, not that results are ready; the heatmap `Refresh` action reloads results after processing.
+- The child heatmap `PageNavCard` gained the `Re-run Assessment` action (Lucide `RotateCcw`), and the class-page composition now wires it into the existing `AssessTaskModal`.
+- `AssessTaskModal` gained the re-run body and footer (`AssessTaskReRunSurface`) and the auto-start path (`useAssessTaskReRunFlow`) in place of the assignment selector.
+- `TaskHeatmapPage.reRunAssessment.spec.tsx` pins the action's placement and omission cases; `AssessTaskModal.reRunAssessment.spec.tsx` pins the modal re-run contract.
+
+The entry, matching, success, failure, and recovery contract is owned by `frontend-modal-patterns.md` §3.6 and `frontend-shared-helpers-and-abstraction-standards.md` §9.25.
 
 The full frontend suite, frontend lint check, and Playwright navigation screenshots passed during the issue #298 regression comparison.
 

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { assessmentResultSchema } from './assessmentResult.zod';
 
 export const StartAssessmentRunRequestSchema = z
   .object({
@@ -19,18 +20,13 @@ export type StartAssessmentRunResponse = z.infer<typeof StartAssessmentRunRespon
  * `src/backend/Models/Assessment.js`.
  *
  * @remarks
- * `score` accepts a numeric value or the literal string `'N'`. The backend
- * emits `'N'` (via `LLMRequestManager.createNotAttemptedAssessment()` →
- * `new Assessment('N', ...)`) for criteria a student did not attempt, so `'N'`
- * is a valid, intentional sentinel rather than a parse error. `null` is
- * intentionally rejected; the data-analysis layer models this same contract as
- * `AssessmentScore = number | 'N' | undefined` (see
+ * `score` accepts finite numeric values from 0 to 5, `'N'` for a genuine
+ * not-attempted result, or `'E'` with a non-blank explanation and catalogue
+ * cause. Numeric scores may be fractional. `null` is intentionally rejected;
+ * the data-analysis layer explicitly models `E` as an input (see
  * `src/frontend/src/services/dataAnalysis/analysers/averagingAnalyser.types.ts`).
  */
-export const AssessmentSchema = z.object({
-  score: z.union([z.number(), z.literal('N')]),
-  reasoning: z.string(),
-});
+export const AssessmentSchema = assessmentResultSchema;
 
 const BaseTaskArtifactFields = z.object({
   taskId: z.string(),
@@ -116,7 +112,7 @@ export const StudentSubmissionItemSchema = z.object({
  */
 export const StudentSubmissionSchema = z.object({
   studentId: z.string(),
-  studentName: z.string(),
+  studentName: z.string().nullable(),
   assignmentId: z.string(),
   // `documentId` may be absent from real backend payloads (the key is omitted
   // entirely, not merely `null`), so it is both nullable and optional.
@@ -183,6 +179,7 @@ export const AssignmentFullSchema = z
     tasks: z.record(z.string(), TaskDefinitionSchema).nullable(),
     submissions: z.array(StudentSubmissionSchema),
     assignmentDefinition: AssignmentDefinitionSchema,
+    assessmentContractVersion: z.union([z.literal(1), z.null()]),
   })
   .strict();
 

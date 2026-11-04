@@ -6,8 +6,6 @@
  * `MetricResult['state']`, the direction-selecting rank resolver consumed by
  * state-aware metric column sorting in both the Class overview table and the
  * heatmap table, and fail-fast handling for an unknown state.
- *
- * @see SPEC.md decisions 3-4 — shared services-layer placement
  */
 
 import { describe, expect, it } from 'vitest';

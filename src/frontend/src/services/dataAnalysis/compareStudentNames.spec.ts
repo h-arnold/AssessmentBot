@@ -7,8 +7,6 @@
  * direction-neutral single-comparator contract under which call sites invert
  * the result themselves to obtain descending order. Structural acceptance is
  * asserted with bare `{ studentName, studentId }` literals — no casts.
- *
- * @see SPEC.md decision 4 — flat shared services-layer placement
  */
 
 import { describe, expect, it } from 'vitest';

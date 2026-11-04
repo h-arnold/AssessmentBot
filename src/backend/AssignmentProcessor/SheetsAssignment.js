@@ -22,10 +22,11 @@ class SheetsAssignment extends Assignment {
   /**
    * Deserialises SheetsAssignment from JSON data.
    * @param {object} data - JSON data object.
+   * @param {string} representationMode - Representation mode used when restoring assignment data.
    * @returns {SheetsAssignment} Reconstructed SheetsAssignment instance.
    */
-  static fromJSON(data) {
-    const inst = Assignment._baseFromJSON(data);
+  static fromJSON(data, representationMode) {
+    const inst = Assignment._baseFromJSON(data, representationMode);
     Object.setPrototypeOf(inst, SheetsAssignment.prototype);
     return inst;
   }
@@ -68,20 +69,14 @@ class SheetsAssignment extends Assignment {
         return;
       }
       const artifacts = parser.extractSubmissionArtifacts(sub.documentId, taskDefs);
-      artifacts.forEach((a) => {
-        const taskDefinition = this.assignmentDefinition.tasks[a.taskId];
-        if (!taskDefinition) {
+      this._applyExtractedArtifacts(sub, artifacts, taskDefs, {
+        onUnknownTask: (artifact) => {
           ABLogger.getInstance().warn(
-            'Unknown taskId ' + a.taskId + ' in spreadsheet submission extraction'
+            'Unknown taskId ' + artifact.taskId + ' in spreadsheet submission extraction'
           );
-          return;
-        }
-        sub.upsertItemFromExtraction(taskDefinition, {
-          pageId: a.pageId,
-          content: a.content,
-          metadata: a.metadata,
-          documentId: a.documentId,
-        });
+        },
+        // Spreadsheet IMAGE artifacts never carry content; they are not treated as missing.
+        isPendingArtifact: (artifact) => artifact.type === 'IMAGE',
       });
     });
   }

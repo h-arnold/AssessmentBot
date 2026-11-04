@@ -2,7 +2,7 @@
 
 This document covers the TypeScript builder pipeline in `scripts/builder`.
 
-## 1. Usage guidance
+## Usage guidance
 
 ### What the builder produces
 
@@ -161,7 +161,7 @@ The builder fails fast with stage-specific messages. Stage IDs map directly to p
 - `materialise-output`
 - `validate-output`
 
-## 2. How it works
+## How it works
 
 The entrypoint is `scripts/builder/src/build-gas-bundle.ts`. It resolves config and runs ten stages in order.
 
@@ -292,7 +292,7 @@ const JsonDbApp = (function () {
   - `JsonDbApp.inlined.js`
   - `UI/ReactApp.html`
 
-## 3. Builder mode and logging boundaries
+## Builder mode and logging boundaries
 
 The builder already exposes two workflows:
 

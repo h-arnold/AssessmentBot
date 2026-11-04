@@ -13,7 +13,6 @@
  * calling production code, so an assertion pins the rendered link to the mocked
  * record. No derived `sourceUrl` is ever placed in a mocked API payload.
  *
- * @see TASK_PREVIEW_SOURCE_LINK_LAYOUT.md
  * @see docs/developer/testing/synthetic-test-data.md
  */
 
@@ -23,6 +22,7 @@ import { requireTextArtifactContent } from '@/test/shared/canonicalFixturePrimit
 import {
   CANONICAL_SHEETS_ASSIGNMENT,
   CANONICAL_SLIDES_ASSIGNMENT,
+  CANONICAL_CLASS,
   selectPrimarySubmission,
   selectPrimaryTaskDefinition,
   type CanonicalSubmission,
@@ -203,6 +203,20 @@ function resolveCellParts(assignment: AssignmentFull): ResolvedCellParts {
   }
 
   const scoreText = requireDisplayScoreText(item);
+  const rosterStudent = CANONICAL_CLASS.students.find(
+    (student) => student.id === submission.studentId
+  );
+  if (rosterStudent?.name == null) {
+    throw new Error(
+      `task-preview-source-link-expectations: canonical roster has no named student ${submission.studentId}.`
+    );
+  }
+  const studentName = submission.studentName;
+  if (studentName == null) {
+    throw new Error(
+      `task-preview-source-link-expectations: ${assignment.assignmentId} requires a named submission for its accessible cell assertion, but studentName is null.`
+    );
+  }
 
   return {
     submission,
@@ -211,12 +225,12 @@ function resolveCellParts(assignment: AssignmentFull): ResolvedCellParts {
     selection: {
       studentId: submission.studentId,
       assignmentId: assignment.assignmentId,
-      studentName: submission.studentName,
+      studentName,
       taskId: taskDefinition.id,
       taskTitle: taskDefinition.taskTitle,
       scoreText,
       cellAccessibleLabel: buildMetricCellAccessibleLabel(
-        submission.studentName,
+        studentName,
         taskDefinition.taskTitle,
         COMPLETENESS_METRIC_KEY,
         scoreText
@@ -246,6 +260,16 @@ export function deriveSourceLinkCell(assignment: AssignmentFull): SourceLinkCell
     ...resolved.selection,
     artifactContent: requireTextArtifactContent(resolved.item, resolved.submission.studentId),
   };
+}
+
+/** Derive the source-less journey's cell identity without requiring a ready body.
+ * @param {AssignmentFull} assignment Source-less acquisition record.
+ * @returns {SourceLinkCellSelection} Identity and source expectations for the cell.
+ */
+export function deriveUnavailableSourceLinkCell(
+  assignment: AssignmentFull
+): SourceLinkCellSelection {
+  return resolveCellParts(assignment).selection;
 }
 
 /**
@@ -319,9 +343,9 @@ function isRenderableBodyType(artifactType: string): artifactType is RenderableB
  * Derive the expectations for a preview whose body is not necessarily TEXT.
  *
  * @remarks
- * The IMAGE and TABLE bodies come from the recorded local-content exception, so
- * the cell choice, score, label and source URL still derive from the canonical
- * record rather than from the reused body.
+ * The IMAGE body comes from a canonical record and the TABLE body from the
+ * recorded local-content exception, so the cell choice, score, label and source
+ * URL still derive from the canonical record rather than from the reused body.
  *
  * @param {AssignmentFull} assignment - The served assignment record.
  * @returns {SourceLinkBodySelection} The derived body selection.

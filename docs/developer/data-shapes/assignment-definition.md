@@ -16,6 +16,7 @@ Sibling contracts:
 
 - [Contract: ABClass](abclass.md) — ABClass embeds assignment partials that reference this contract's `definitionKey`.
 - [Contract: Assignment](assignment.md) — Assignment embeds a full or partial `AssignmentDefinition` (copy-on-construct).
+- [Component Shape: BaseTaskArtifact](base-task-artifact.md) — the artifact shape embedded in `TaskDefinition.artifacts.{reference,template}`; this contract is its origin.
 - [Contract: Reference Data](reference-data.md) — `primaryTopicKey` references AssignmentTopics; `yearGroupKey` references YearGroups.
 - [Contract: BackendConfig](backend-config.md) — No direct relationship.
 
@@ -100,6 +101,14 @@ Key notes:
   both `buildEditableDefinitions()` and `buildAssignmentsByKey()`, so a keyed-task registry row
   missing either document ID never hydrates into an editable or full assignment view.
 - The `assignment_definitions` registry row is re-written on every upsert to keep it in sync.
+- **Artefact availability differs by store.** The registry redacts artefact `content`/`contentHash`
+  through `toPartialJSON()`; a `null` there is deliberate redaction, never evidence of extraction
+  failure. The full cache may legitimately retain a **pending `IMAGE`** reference/template
+  artefact with `content: null` and `contentHash: null` before an assessment run — the only
+  permitted pre-run null artefact. New definition writes enforce the availability invariant
+  described under [Component Shape: BaseTaskArtifact § Availability by parent store](base-task-artifact.md#availability-by-parent-store);
+  pre-existing stored definitions are not retroactively rewritten and are revalidated only on
+  their next definition write.
 
 ---
 
@@ -254,7 +263,7 @@ and **ID-shape** (link flow: `referenceDocumentId` + `templateDocumentId` + `doc
 | `alternateTopics`      | `string[]`                       | no        | Same semantics as `alternateTitles`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | `assignmentWeighting`  | `number\|null`                   | no        | 0–10 range.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | `taskWeightings`       | `Array<{taskId, taskWeighting}>` | no        | Array of `{taskId, taskWeighting}` objects. Both fields required per entry. `taskId` must be safe identifier.                                                                                                                                                                                                                                                                                                                                                                                                                 |
-| `forceReparse`         | `boolean`                        | no        | Optional. `true` forces document parsing regardless of timestamps; accepted only with an existing `definitionKey`. Never persisted or returned. Must not be combined with `taskWeightings`.                                                                                                                                                                                                                                                                                                                                   |
+| `forceReparse`         | `boolean`                        | no        | Optional. `true` is accepted **only with an existing `definitionKey`**; it forces document parsing regardless of timestamps. Omission or `false` retains existing upsert behaviour; a forced create and invalid types are rejected. Transport/control information — never persisted or returned. `forceReparse: true` must be **rejected when combined with `taskWeightings`** to avoid ambiguous patch precedence (explicit forced requests omit weighting patches).                                                         |
 | `updatedAt`            | `string` (ISO)                   | no        | Optional request-side optimistic-concurrency token: the frontend sends the reviewed definition's response `updatedAt` from the latest load/reparse, and only when that value is non-null. When supplied non-null it must be a strict ISO datetime string with timezone info; a mismatch with the stored `updatedAt` returns `DEFINITION_STALE` before any writes. Omission or explicit `null` means no stale-baseline check. Distinct from the persisted/response `AssignmentDefinition.updatedAt` field, which is unchanged. |
 
 **Forbidden request fields:** None — the request schema is flexible and controller-owned
@@ -269,10 +278,11 @@ Key contract notes:
 - URL-to-ID translation: the backend handler calls `extractSupportedDocumentDescriptor_()`
   to parse `referenceDocumentUrl`/`templateDocumentUrl`, producing `documentId` and `documentType`.
   The two URLs must point to different documents of the same type.
-- The frontend `UpsertAssignmentDefinitionRequestSchema` enforces a `superRefine` mutual-exclusion
-  rule between URL-shape and ID-shape fields. Payloads that include neither, only partial URL fields,
-  or only partial ID fields are rejected before reaching the backend. A second schema-level
-  `superRefine` rule rejects `forceReparse: true` combined with `taskWeightings`.
+- The frontend `UpsertAssignmentDefinitionRequestSchema` is `.strict()` and enforces a
+  `superRefine` mutual-exclusion rule between URL-shape and ID-shape fields. Payloads that include
+  neither, only partial URL fields, or only partial ID fields are rejected before reaching the
+  backend. A second schema-level `superRefine` rule rejects `forceReparse: true` combined with
+  `taskWeightings`. The recovery fields are accepted alongside the URL-shape/ID-shape contract.
 - Create upserts generate an opaque `definitionKey` from `Utilities.getUuid()` via
   `AssignmentDefinitionUpsertOrchestrator._generateStableKey()`. It is **not** derived from
   `(primaryTitle, primaryTopic, yearGroupKey)`.
@@ -283,6 +293,17 @@ Key contract notes:
   reuse the stored `documentType`.
 - `taskWeightings` shape is validated at the transport boundary; numeric weighting semantics
   (range 0–10, defaulting, matching task IDs) are controller-owned domain checks.
+- `alternateTitles` and `alternateTopics` must be arrays of **trimmed non-empty strings**
+  (`UpsertAssignmentDefinitionRequestSchema`). The link flow
+  (`src/frontend/src/features/classes/AssessTaskModal/assessTaskLinkPayload.ts`) enforces this
+  before payload construction: the candidate is trimmed, a blank (empty or whitespace-only)
+  candidate leaves the existing array unchanged, and `alternateTopics` treats a `null` candidate
+  the same way. The trimmed candidate is then deduplicated case-insensitively
+  (`areTrimmedStringsEqualIgnoringCase`) and appended only when absent. Both call sites in
+  `useAssessTaskLinkFlow.ts` pass the raw picker values and rely on these helpers, so only trimmed
+  non-empty entries reach the request payload. This is request construction only — no persistence,
+  transport, response or schema change. Regression coverage:
+  `assessTaskLinkPayload.spec.ts`.
 
 **Error states:**
 
@@ -294,75 +315,18 @@ Key contract notes:
 | Mismatched document types   | `INVALID_REQUEST` | Both URLs must resolve to same type                                                    |
 | Duplicate business tuple    | `INVALID_REQUEST` | Controller detects duplicate `(primaryTitle, primaryTopicKey, yearGroupKey)` on create |
 
-#### Link-flow alternate metadata normalisation
-
-> **Status: Implemented.** The landed frontend code and regression tests match the
-> canonical request contract below.
-
-The `upsertAssignmentDefinition` request contract requires `alternateTitles` and
-`alternateTopics` to be arrays of **trimmed non-empty strings** (see the
-[request table](#upsertassignmentdefinition-write) above and
-`UpsertAssignmentDefinitionRequestSchema` at `assignmentDefinition.zod.ts:136-137`).
-
-The link flow builds these arrays in
-`src/frontend/src/features/classes/AssessTaskModal/assessTaskLinkPayload.ts`, which
-now enforces the canonical contract before payload construction:
-
-| Field             | Link-flow construction (implemented)                                                                                                                                                                      | Frontend Zod                                    |
-| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
-| `alternateTitles` | The candidate is trimmed; a blank (empty or whitespace-only) candidate returns the existing array unchanged. The trimmed candidate is then deduplicated case-insensitively and appended only when absent. | `z.array(TrimmedNonEmptyStringSchema)` (`:136`) |
-| `alternateTopics` | A `null` candidate returns the existing array unchanged; otherwise the candidate is trimmed and blank candidates are rejected exactly as for `alternateTitles`.                                           | `z.array(TrimmedNonEmptyStringSchema)` (`:137`) |
-
-- Both call sites in `useAssessTaskLinkFlow.ts:259-267` still pass the raw picker
-  values (`selectedAssignmentForChoice.title` and `.topicName`); the helpers normalise
-  and filter them, so only trimmed non-empty entries are emitted into the request
-  payload and the service-side `UpsertAssignmentDefinitionRequestSchema` parse always
-  satisfies the trimmed non-empty string contract.
-- The existing case-insensitive trimmed dedupe basis
-  (`areTrimmedStringsEqualIgnoringCase`) is unchanged; the correction only normalises and
-  filters the candidate before it is considered for inclusion.
-- This is a frontend request-construction correction only. It does not change
-  persistence, the backend transport, the response shape, or any schema. No new
-  field, endpoint, or helper abstraction is introduced.
-
-Regression coverage:
-`src/frontend/src/features/classes/AssessTaskModal/assessTaskLinkPayload.spec.ts`
-asserts that a non-empty alternate title and topic are trimmed before being added,
-and that blank candidates (`''`, `'   '`, `'\t\n'`) are rejected for both collections
-before payload construction.
-
-#### Stale-definition recovery (Issue #301)
-
-> **Status: Implemented.** The weighting-reconciliation semantics below (task
-> equivalence comparator, reparse weighting preservation) are implemented in
-> `AssignmentDefinitionTaskEquivalence.js` and
-> `AssignmentDefinitionUpsertOrchestrator._resolveTaskState` (issue #301):
-> on a timestamp-triggered reparse, tasks with equivalent parsed content keep their
-> stored weighting (including valid zeroes), new or changed tasks default to `1`,
-> removed tasks disappear, and ordinary upserts without a document change never
-> invoke the comparator. The request-field extensions (`forceReparse`,
-> `updatedAt`), the save-time `DEFINITION_STALE` baseline check,
-> and the `DEFINITION_PARSE_FAILED` envelope are implemented in the backend. The
-> frontend `UpsertAssignmentDefinitionRequestSchema` extension and the shared frontend
-> error-registry entry are implemented; the frontend request schema is `.strict()` and
-> accepts the recovery fields alongside the existing URL-shape/ID-shape contract. The
-> equivalence, all-or-nothing parsing, invalid-request precondition, and
-> error-classification semantics in
-> [Equivalence, parsing and recovery corrections](#equivalence-parsing-and-recovery-corrections)
-> are implemented and covered by regression tests.
-
 #### Equivalence, parsing and recovery corrections
 
-The following semantics are the canonical implemented behaviour. Wontfix and Exclude
-decisions are out of scope.
+The following semantics are the canonical behaviour. Wontfix and Exclude decisions are out of
+scope.
 
-1. **Artefact equivalence canonicalisation / runtime exclusions (implemented).**
+1. **Artefact equivalence canonicalisation / runtime exclusions.**
    `compareTaskEquivalence_` compares canonical serialised artefact fields and
    excludes runtime-only state, so persisted artefact JSON and a rehydrated artefact
    model instance carrying identical assessment content compare equivalent. Model
    instances are serialised via `BaseTaskArtifact.toJSON()` before comparison.
    Canonical compared artefact fields are the documented
-   [BaseTaskArtifact](#sub-entity-basetaskartifact) fields (`taskId`, `role`, `pageId`,
+   [BaseTaskArtifact](base-task-artifact.md) fields (`taskId`, `role`, `pageId`,
    `documentId`, `content`, `metadata`, `type`). Excluded runtime-only fields are
    `contentHash`, `uid`/`_uid`, `taskIndex`, `artifactIndex`, and any non-serialised
    live-instance internals (e.g. `TableTaskArtifact._rows`). Task-level fields compared
@@ -380,7 +344,7 @@ decisions are out of scope.
    reversed direction, TABLE artefacts with live `_rows`, changed content).
    Source: `AssignmentDefinitionTaskEquivalence.js`.
 
-2. **All-or-nothing parser result rule (implemented).**
+2. **All-or-nothing parser result rule.**
    Any invalid task in parser output, or a zero-task parse, blocks persistence of the
    refreshed definition; only a fully valid, non-empty parse may persist. The Slides
    parser path validates each candidate task and records invalid-task presence on the
@@ -393,7 +357,7 @@ decisions are out of scope.
    (zero-task and mixed valid/invalid outcomes with zero writes).
    Source: `AssignmentDefinitionTaskParser.js`; `AssignmentDefinitionRecoveryRules.js`.
 
-3. **Recovery invalid-request preconditions (implemented).**
+3. **Recovery invalid-request preconditions.**
    A forced reparse without an existing `definitionKey`, and `forceReparse: true`
    combined with `taskWeightings`, are documented request-contract violations and
    surface as `INVALID_REQUEST` (`ApiValidationError` without a custom `code`, asserted
@@ -405,7 +369,7 @@ decisions are out of scope.
    (envelope assertion for the precondition failure).
    Source: `AssignmentDefinitionRecoveryRules.js` (`assertRecoveryPreconditions_`).
 
-4. **Non-content error classification preservation (implemented).**
+4. **Non-content error classification preservation.**
    Only recognised content parsing failures map to `DEFINITION_PARSE_FAILED`.
    `parseTasksOrThrow_` classifies an unclassified native `Error` (name `'Error'`) as a
    content failure and wraps it with `DEFINITION_PARSE_FAILED`. Typed/named errors —
@@ -419,23 +383,18 @@ decisions are out of scope.
    asserts safe context and the original parser error).
    Source: `AssignmentDefinitionRecoveryRules.js` (`isRecognisedContentParsingFailure_`).
 
-**`upsertAssignmentDefinition` recovery request fields (implemented):**
-
-| Field          | Type           | Required | Notes                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
-| -------------- | -------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `forceReparse` | `boolean`      | no       | Optional. `true` is accepted **only with an existing `definitionKey`**; it forces document parsing regardless of timestamps. Omission or `false` retains existing upsert behaviour; a forced create and invalid types are rejected. Transport/control information — never persisted or returned. `forceReparse: true` must be **rejected when combined with `taskWeightings`** to avoid ambiguous patch precedence (explicit forced requests omit weighting patches).                                                                                   |
-| `updatedAt`    | `string` (ISO) | no       | Optional request-side optimistic-concurrency token; the value is the existing response `updatedAt` from the latest load/reparse, sent by the frontend only when non-null. When supplied non-null it must be a strict ISO datetime string with timezone info. Compared against the currently stored `updatedAt` before applying edits; a mismatch returns `DEFINITION_STALE` with no writes. Omission or explicit `null` means no stale-baseline check. Distinct from the persisted/response `AssignmentDefinition.updatedAt` field, which is unchanged. |
-
-**Reparse, freshness and weighting semantics (implemented):**
+#### Reparse, freshness and weighting semantics
 
 - Explicit reparse uses the current persisted metadata/document identifiers (or the
   existing, explicitly confirmed URL-change workflow) and omits `taskWeightings`;
   omission preserves assignment weighting. `forceReparse: true` combined with
   `taskWeightings` is rejected before any parsing or persistence, as is a forced
   create with no existing `definitionKey`.
-- Task weighting rules are **unchanged**: unchanged tasks keep their stored weighting;
-  new or changed tasks use the `TaskDefinition` constructor default of `1`; removed
-  tasks disappear; valid zero weightings are preserved.
+- Task weighting rules: on a timestamp-triggered reparse, tasks with equivalent parsed
+  content keep their stored weighting (including valid zeroes), new or changed tasks use
+  the `TaskDefinition` constructor default of `1`, removed tasks disappear, and ordinary
+  upserts without a document change never invoke the comparator
+  (`AssignmentDefinitionUpsertOrchestrator._resolveTaskState`).
 - On approval saves the backend compares the request `updatedAt`
   token against the stored `updatedAt` before applying weighting patches or
   writing; a mismatch returns `DEFINITION_STALE` and makes no writes. Drive
@@ -443,10 +402,10 @@ decisions are out of scope.
   timestamp-triggered reparses; requests omitting the token retain ordinary
   upsert behaviour for existing non-wizard callers.
 
-**Parse-failure semantics (implemented):**
+#### Parse-failure semantics
 
 - A stable, non-retriable `DEFINITION_PARSE_FAILED` code (see
-  [`transport-envelope.md`](transport-envelope.md#error-code--definition_parse_failed))
+  [`transport-envelope.md`](transport-envelope.md#error-code-definition_parse_failed))
   covers recognised document/task parsing failures. The envelope mapper honours
   `ApiValidationError.code`, so the backend rejection surfaces with this code.
 - An invalid task or a zero-task result blocks the refresh and persists nothing; the
@@ -547,58 +506,15 @@ Key notes:
 
 ### Sub-entity: BaseTaskArtifact
 
-Backend model: `src/backend/Models/Artifacts/0_BaseTaskArtifact.js`
-Subclass: `src/backend/Models/Artifacts/1_TextTaskArtifact.js` (type: `'TEXT'`)
-Frontend Zod: — (no independent Zod schema; consumed as nested objects inside assignment schemas)
+See [Component Shape: BaseTaskArtifact](base-task-artifact.md). That file owns the
+artifact field table, the concrete artifact types, the partial redaction rules and the
+availability split between the definition store and a completed assignment. This
+contract's `TaskDefinition.artifacts.{reference,template}` use that shape; the artifact
+model originates there.
 
-Base class for all task artifacts. Subclasses override `getType()` and `normalizeContent()`.
-
-`BaseTaskArtifact.toJSON()` emits:
-
-| Field         | Type                  | Backend toJSON() | Notes                                                                          |
-| ------------- | --------------------- | ---------------- | ------------------------------------------------------------------------------ |
-| `taskId`      | `string`              | Always emitted   | Parent task ID.                                                                |
-| `role`        | `string`              | Always emitted   | One of `'reference'`, `'template'`, `'submission'`.                            |
-| `pageId`      | `string\|null`        | Always emitted   | Source page ID.                                                                |
-| `documentId`  | `string\|null`        | Always emitted   | Drive document ID.                                                             |
-| `content`     | `string\|Array\|null` | Always emitted   | Heavy content payload. Redacted to null in partial.                            |
-| `contentHash` | `string\|null`        | Always emitted   | Hash of content for change detection. Redacted to null in partial.             |
-| `metadata`    | `object`              | Always emitted   | Arbitrary metadata key-value store.                                            |
-| `uid`         | `string`              | Always emitted   | Unique ID: `{taskId}-{taskIndex}-{role}-{pageId}-{artifactIndex}`.             |
-| `type`        | `string`              | Always emitted   | Artifact type identifier (e.g. `'TEXT'`, `'base'`). **Not** a Drive MIME type. |
-
-`BaseTaskArtifact.toPartialJSON()` returns the same shape but with `content: null`
-and `contentHash: null` (payload redaction for list views).
-
-Key notes:
-
-- BaseTaskArtifact **originates** in the AssignmentDefinition contract (created via
-  `TaskDefinition.createArtifact()` and stored in `TaskDefinition.artifacts.{reference,template}`).
-- It is **cross-referenced** from the [Contract: Assignment](assignment.md) contract where
-  `StudentSubmissionItem.artifact` uses the same shape (with `role: 'submission'`).
-- The `type` field identifies the runtime artifact class, not a Drive MIME type. See
-  [§ Concrete artifact types](#concrete-artifact-types) below for the full list of known values.
-- `content` can be a string, array, or null depending on the artifact type. TextTaskArtifact
-  normalises content to a trimmed LF-only string.
-
-#### Concrete artifact types
-
-| `type` value    | Class                     | `normalizeContent()` behaviour                                                                                                                      | Frontend discriminated union content shape                                 |
-| --------------- | ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
-| `'TEXT'`        | `TextTaskArtifact`        | Returns trimmed LF-only string; null/undefined→null; non-string coerced via `String()`                                                              | `z.string().nullable()`                                                    |
-| `'TABLE'`       | `TableTaskArtifact`       | Returns Markdown table string; null→null (logged); string→trimmed string; 2D array→padded rows→Markdown; 50×50 hard limit; throws on limit exceeded | `z.union([z.string(), z.null()])`                                          |
-| `'SPREADSHEET'` | `SpreadsheetTaskArtifact` | Returns trimmed 2D array; null→null; string→null; formula strings canonicalised (space-stripped, uppercased); trailing empty rows/cols trimmed      | `z.array(z.array(z.union([z.number(), z.string(), z.null()]))).nullable()` |
-| `'IMAGE'`       | `ImageTaskArtifact`       | Returns trimmed string (data URL) or null; null→null; non-string→null; empty→null                                                                   | `z.string().nullable()`                                                    |
-| `'base'`        | `BaseTaskArtifact`        | Returns raw content as-is                                                                                                                           | `z.unknown()`                                                              |
-
-Key notes:
-
-- The frontend `BaseTaskArtifactSchema` in `assignmentAssessment.zod.ts` is a `z.discriminatedUnion('type', [...])` — each row above corresponds to one variant in the union.
-- The `content` field shape differs per type: `TEXT` uses string, `TABLE` uses a Markdown-formatted string, `SPREADSHEET` uses a 2D array of `(number|string|null)`, `IMAGE` uses a base64 data URL string, `base` uses `unknown`.
-- `contentHash` is `string|null` on all full variants and omitted entirely from the partial schema.
-- The `ArtifactFactory.create()` dispatches on `type` (uppercased): TEXT→TextTaskArtifact, TABLE→TableTaskArtifact, SPREADSHEET→SpreadsheetTaskArtifact, IMAGE→ImageTaskArtifact, anything else→BaseTaskArtifact (fallback).
-- TextTaskArtifact normalises CRLF/CR→LF and trims; SpreadsheetTaskArtifact canonicalises formula strings (strips non-quoted spaces, uppercases); TableTaskArtifact enforces a 50×50 size limit; ImageTaskArtifact provides `setContentFromBlob()` for binary-to-data-URL conversion.
-- The partial variant (`BaseTaskArtifactPartialSchema` in `classDetailService.zod.ts`) omits `content` and `contentHash` entirely regardless of type.
+The definition-write availability invariant is owned by
+`AssignmentDefinitionValidation.validateSharedArtifacts()` and is documented under
+[Component Shape: BaseTaskArtifact § Availability by parent store](base-task-artifact.md#availability-by-parent-store).
 
 ---
 
@@ -625,16 +541,14 @@ Key notes:
 - `src/frontend/src/services/assignmentDefinition/assignmentTopics.zod.ts`:
   - `AssignmentTopicSchema` — validates topic reference data entries (`key: TrimmedNonEmptyStringSchema`, `name: TrimmedNonEmptyStringSchema`). Note: this schema does **not** include `yearGroupKeys`; see Reference Data contract for the authoritative 3-field schema.
 
-**Service response diagnostics (implemented):**
+**Service response diagnostics:**
 
 - `src/frontend/src/services/assignmentDefinition/assignmentDefinitionService.ts` →
   `getAssignmentDefinition()` and `upsertAssignmentDefinition()` both route response
   validation through the shared `parseApiResponse()` helper in
   `src/frontend/src/services/apiService.ts`. Schema-validation failures therefore emit
   the shared bounded diagnostics (`method`, structured `zodIssues`, truncated
-  `responsePreview`) before the `ZodError` is rethrown. The validated response shapes
-  (`AssignmentDefinitionSchema`) and all field tables above are unchanged — only the
-  service-boundary parse call and its diagnostics changed. Regression coverage:
+  `responsePreview`) before the `ZodError` is rethrown. Regression coverage:
   `src/frontend/src/services/assignmentDefinition/assignmentDefinitionService.parseApiResponse.spec.ts`.
 
 **Backend transport validation:**
@@ -667,6 +581,7 @@ Key notes:
 - The response mapper throws if any required field is `undefined` in the canonical response.
 - `deleteAssignmentDefinition` is idempotent: repeated deletes for the same key still succeed.
 - The `_validateFull()` method in the model enforces `referenceDocumentId` and `templateDocumentId` are truthy for full definitions (create path). Partial definitions do not require doc IDs.
+- New definition writes validate shared artefacts on the final resolved tasks before constructing or persisting the definition: non-`IMAGE` reference/template artefacts require non-null `content` and a string `contentHash`; a pending `IMAGE` is permitted; a `SPREADSHEET` reference must contain at least one assessable formula. Blank `TEXT`/array templates remain valid. The validator requires the resolved task and its `artifacts.reference`/`artifacts.template` arrays, so a malformed task fails loudly instead of being skipped. `AssignmentDefinitionValidation.validateSharedArtifacts()` owns this check; `AssignmentDefinitionUpsertOrchestrator` invokes it before persistence. Existing error propagation and rollback are retained, and there is no run-time eligibility preflight. See [Component Shape: BaseTaskArtifact § Availability by parent store](base-task-artifact.md#availability-by-parent-store).
 
 ### Known discrepancies between backend and frontend
 
@@ -747,14 +662,16 @@ TextTaskArtifact model:    src/backend/Models/Artifacts/1_TextTaskArtifact.js
 
 Controller:                src/backend/y_controllers/AssignmentDefinition/
   ├── index.js                              — AssignmentDefinitionController facade
-  ├── AssignmentDefinitionValidation.js      — Domain validation
+  ├── AssignmentDefinitionValidation.js      — Domain validation, including
+  │                                             validateSharedArtifacts() at definition writes
   ├── AssignmentDefinitionReferenceData.js   — Reference data resolution
   ├── AssignmentDefinitionTaskParser.js      — Task document parsing
   ├── AssignmentDefinitionTaskWeighting.js   — Task weighting logic
   ├── AssignmentDefinitionTaskEquivalence.js — Task equivalence comparator (reparse reconciliation)
   ├── AssignmentDefinitionRecoveryRules.js   — Recovery and reparse rules (forced-reparse gating, approval baseline, parse-failure mapping, weighting restoration)
   ├── AssignmentDefinitionPersistence.js     — Database read/write
-  ├── AssignmentDefinitionUpsertOrchestrator.js — Upsert orchestration (_generateStableKey() = opaque Utilities.getUuid())
+  ├── AssignmentDefinitionUpsertOrchestrator.js — Upsert orchestration (_generateStableKey() = opaque Utilities.getUuid();
+  │                                             invokes validateSharedArtifacts() on final resolved tasks)
   └── AssignmentDefinitionResponseMapper.js  — _getFullAssignmentDefinition()
 
 API handlers:              src/backend/z_Api/

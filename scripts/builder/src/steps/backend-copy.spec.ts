@@ -37,6 +37,39 @@ describe('runBackendCopy', () => {
     await fs.rm(tempRoot, { recursive: true, force: true });
   });
 
+  it('copies the split submission model files in dependency order from the real backend tree', async () => {
+    const repoRoot = path.resolve(import.meta.dirname, '../../../..');
+    const backendDir = path.join(repoRoot, 'src/backend');
+    const realPaths = createBuilderPaths(tempRoot, {
+      repoRoot,
+      backendDir,
+      buildGasDir: paths.buildGasDir,
+    });
+    const itemPath = 'Models/StudentSubmission/00_StudentSubmissionItem.js';
+    const entryPath = 'Models/StudentSubmission/index.js';
+    const projectionPath = 'AssignmentProcessor/Assignment/02_AssignmentReadProjection.js';
+    const rehydrationPath = 'AssignmentProcessor/Assignment/02_AssignmentRehydration.js';
+
+    const result = await runBackendCopy(realPaths);
+
+    for (const file of [itemPath, entryPath, projectionPath, rehydrationPath]) {
+      expect(result.copiedFiles).toContain(file);
+    }
+    expect(result.copiedFiles.indexOf(itemPath)).toBeLessThan(
+      result.copiedFiles.indexOf(entryPath)
+    );
+    // Equal 02_ prefixes rely on lexicographic filename sorting.
+    expect(result.copiedFiles.indexOf(projectionPath)).toBeLessThan(
+      result.copiedFiles.indexOf(rehydrationPath)
+    );
+    for (const file of [itemPath, entryPath, projectionPath, rehydrationPath]) {
+      await expect(fs.readFile(path.join(paths.buildGasDir, file), 'utf-8')).resolves.toBe(
+        await fs.readFile(path.join(backendDir, file), 'utf-8')
+      );
+    }
+    expect(result.copiedFiles).not.toContain('Models/StudentSubmission.js');
+  });
+
   it('copies runtime backend files preserving relative structure', async () => {
     await fs.mkdir(path.join(paths.backendDir, 'nested'), { recursive: true });
     await fs.writeFile(path.join(paths.backendDir, 'Main.js'), 'function main() {}', 'utf-8');
@@ -49,8 +82,12 @@ describe('runBackendCopy', () => {
     expect(result.stage).toBe('backend-copy');
     expect(result.copiedFiles).toEqual(['Main.js', 'nested/Helper.js']);
     await expect(fs.stat(path.join(paths.buildGasDir, 'Main.js'))).resolves.toBeDefined();
-    await expect(fs.stat(path.join(paths.buildGasDir, 'nested', 'Helper.js'))).resolves.toBeDefined();
-    await expect(fs.stat(path.join(paths.buildGasDir, 'nested', 'Helper.test.js'))).rejects.toBeDefined();
+    await expect(
+      fs.stat(path.join(paths.buildGasDir, 'nested', 'Helper.js'))
+    ).resolves.toBeDefined();
+    await expect(
+      fs.stat(path.join(paths.buildGasDir, 'nested', 'Helper.test.js'))
+    ).rejects.toBeDefined();
   });
 
   it('wraps destination-directory creation failures with backend-copy stage context and file detail', async () => {

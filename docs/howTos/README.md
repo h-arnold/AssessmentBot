@@ -1,18 +1,18 @@
 # 📝 Using Assessment Bot
 
-- [📝 Using Assessment Bot](#-using-assessment-bot)
-  - [📋 What You Need](#-what-you-need)
-  - [🏷️ Tagging](#️-tagging)
+- [📝 Using Assessment Bot](#using-assessment-bot)
+  - [📋 What You Need](#what-you-need)
+  - [🏷️ Tagging](#tagging)
     - [Google Slides Tagging](#google-slides-tagging)
-      - [🔖 How to Tag a Task for Assessment](#-how-to-tag-a-task-for-assessment)
-        - [📝 Text or Table Tasks](#-text-or-table-tasks)
-        - [🖼️ Image Tasks](#️-image-tasks)
+      - [🔖 How to Tag a Task for Assessment](#how-to-tag-a-task-for-assessment)
+        - [📝 Text or Table Tasks](#text-or-table-tasks)
+        - [🖼️ Image Tasks](#image-tasks)
     - [Google Sheets Tagging](#google-sheets-tagging)
-  - [📤 Distributing Tasks to Your Students](#-distributing-tasks-to-your-students)
-  - [🔍 Assessing Student Work](#-assessing-student-work)
-    - [✅ Prerequisites](#-prerequisites)
-    - [🆔 Getting the Slide IDs](#-getting-the-slide-ids)
-    - [⚙️ The Assessment Process](#️-the-assessment-process)
+  - [📤 Distributing Tasks to Your Students](#distributing-tasks-to-your-students)
+  - [🔍 Assessing Student Work](#assessing-student-work)
+    - [✅ Prerequisites](#prerequisites)
+    - [🆔 Getting the Slide IDs](#getting-the-slide-ids)
+    - [⚙️ The Assessment Process](#the-assessment-process)
 
 ## 📋 What You Need
 
@@ -116,7 +116,7 @@ You need the _Reference Slides_ and _Slide Template_ IDs to assess the work. To 
 3. Click the **Assess Task** button on the class card.
 4. Select the Google Classroom assignment you want to assess from the dropdown.
 5. If no matching assignment definition exists, you will be prompted to either:
-   - **Create a new definition** — this opens the definition wizard where you enter the _Reference Slides_ and _Slide Template_ IDs [which you obtained earlier](#-getting-the-slide-ids).
+   - **Create a new definition** — this opens the definition wizard where you enter the _Reference Slides_ and _Slide Template_ IDs [which you obtained earlier](#getting-the-slide-ids).
    - **Link to an existing definition** — choose a previously created definition from the list.
 6. Click **Start Assessment**.
 7. Wait patiently. The assessment can take 2 to 10 minutes depending on the document's size and complexity. Image tasks take significantly longer than text or table tasks.

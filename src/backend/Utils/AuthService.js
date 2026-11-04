@@ -312,7 +312,7 @@ class AuthService extends BaseSingleton {
    * overwriting it. The claim writes ONLY auth fields; default seeding
    * (`ensureDefaultConfiguration`) is deliberately NOT invoked, so non-auth
    * getters continue to fall back to `DEFAULTS` on a claimed install (intended
-   * behaviour — see SPEC.md "Bootstrap claim"). Contention, cap-excess or any
+   * behaviour). Contention, cap-excess or any
    * other write failure denies the request (fail closed) with a safe audit (no
    * raw auth values) and leaves a later request able to retry the claim.
    * @param {string} email - The resolved active-user email (normalised to

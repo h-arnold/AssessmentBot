@@ -204,6 +204,133 @@ function hasControlCharacters(value: string): boolean {
   return false;
 }
 
+/** Records a contractually nullable identifier only when it is present. */
+function pushIdentifier(identifiers: string[], value: string | null | undefined): void {
+  if (typeof value === 'string') {
+    identifiers.push(value);
+  }
+}
+
+/** Collects the reference-data identifiers. */
+function collectReferenceIdentifiers(
+  referenceData: GeneratedSyntheticAnalysisGraph['referenceData'],
+  identifiers: string[]
+): void {
+  for (const cohort of referenceData.cohorts) {
+    pushIdentifier(identifiers, cohort.key);
+  }
+  for (const yearGroup of referenceData.yearGroups) {
+    pushIdentifier(identifiers, yearGroup.key);
+  }
+  for (const topic of referenceData.assignmentTopics) {
+    pushIdentifier(identifiers, topic.key);
+    topic.yearGroupKeys.forEach((key) => pushIdentifier(identifiers, key));
+  }
+}
+
+/** Collects the class-partial transport identifiers. */
+function collectClassPartialIdentifiers(
+  classPartials: ClassPartial[],
+  identifiers: string[]
+): void {
+  for (const classPartial of classPartials) {
+    pushIdentifier(identifiers, classPartial.classId);
+    pushIdentifier(identifiers, classPartial.cohortKey);
+    pushIdentifier(identifiers, classPartial.yearGroupKey);
+    pushIdentifier(identifiers, classPartial.classOwner?.userId);
+    for (const teacher of classPartial.teachers) {
+      pushIdentifier(identifiers, teacher.userId);
+    }
+  }
+}
+
+/** Collects the identifiers of one submission item and its artefact. */
+function collectItemIdentifiers(
+  item: StudentSubmissionItemPartial | FullAssignmentSubmissionItem,
+  identifiers: string[]
+): void {
+  pushIdentifier(identifiers, item.id);
+  pushIdentifier(identifiers, item.taskId);
+  pushIdentifier(identifiers, item.artifact.uid);
+  pushIdentifier(identifiers, item.artifact.pageId);
+  pushIdentifier(identifiers, item.artifact.documentId);
+}
+
+/** Collects the class transport identifiers. */
+function collectClassFullIdentifiers(
+  classesById: Record<string, ClassFull>,
+  identifiers: string[]
+): void {
+  for (const classFull of Object.values(classesById)) {
+    pushIdentifier(identifiers, classFull.classId);
+    for (const student of classFull.students) {
+      pushIdentifier(identifiers, student.id);
+    }
+    for (const assignment of classFull.assignments) {
+      pushIdentifier(identifiers, assignment.assignmentId);
+      pushIdentifier(identifiers, assignment.assignmentDefinitionKey);
+      for (const submission of assignment.submissions) {
+        pushIdentifier(identifiers, submission.studentId);
+        pushIdentifier(identifiers, submission.assignmentId);
+        pushIdentifier(identifiers, submission.documentId);
+        for (const item of Object.values(submission.items)) {
+          collectItemIdentifiers(item, identifiers);
+          pushIdentifier(identifiers, item.artifact.taskId);
+        }
+      }
+    }
+  }
+}
+
+/** Collects the assignment-definition partial identifiers. */
+function collectDefinitionPartialIdentifiers(
+  definitions: AssignmentDefinitionPartial[],
+  identifiers: string[]
+): void {
+  for (const definition of definitions) {
+    pushIdentifier(identifiers, definition.definitionKey);
+    pushIdentifier(identifiers, definition.primaryTopicKey);
+    pushIdentifier(identifiers, definition.yearGroupKey);
+    pushIdentifier(identifiers, definition.referenceDocumentId);
+    pushIdentifier(identifiers, definition.templateDocumentId);
+    for (const task of definition.tasks) {
+      pushIdentifier(identifiers, task.taskId);
+    }
+  }
+}
+
+/** Collects the full-assignment transport identifiers. */
+function collectFullAssignmentIdentifiers(
+  assignmentsByKey: Record<string, AssignmentFull>,
+  identifiers: string[]
+): void {
+  for (const assignment of Object.values(assignmentsByKey)) {
+    pushIdentifier(identifiers, assignment.courseId);
+    pushIdentifier(identifiers, assignment.assignmentId);
+    pushIdentifier(identifiers, assignment.referenceDocumentId);
+    pushIdentifier(identifiers, assignment.templateDocumentId);
+    pushIdentifier(identifiers, assignment.assignmentDefinition.definitionKey);
+    pushIdentifier(identifiers, assignment.assignmentDefinition.referenceDocumentId);
+    pushIdentifier(identifiers, assignment.assignmentDefinition.templateDocumentId);
+    for (const task of Object.values(assignment.assignmentDefinition.tasks)) {
+      pushIdentifier(identifiers, task.id);
+      for (const artifact of [...task.artifacts.reference, ...task.artifacts.template]) {
+        pushIdentifier(identifiers, artifact.uid);
+        pushIdentifier(identifiers, artifact.documentId);
+        pushIdentifier(identifiers, artifact.pageId);
+      }
+    }
+    for (const submission of assignment.submissions) {
+      pushIdentifier(identifiers, submission.studentId);
+      pushIdentifier(identifiers, submission.assignmentId);
+      pushIdentifier(identifiers, submission.documentId);
+      for (const item of Object.values(submission.items)) {
+        collectItemIdentifiers(item, identifiers);
+      }
+    }
+  }
+}
+
 /**
  * Collects every generated identifier used by the logical graph so the
  * serialisation safety check covers the full identifier surface rather than a
@@ -214,104 +341,11 @@ function hasControlCharacters(value: string): boolean {
  */
 function collectIdentifiers(source: GeneratedSyntheticAnalysisGraph): string[] {
   const identifiers: string[] = [];
-
-  /**
-   * Records a contractually nullable identifier only when it is present.
-   *
-   * @param value The candidate identifier.
-   */
-  function pushIdentifier(value: string | null | undefined): void {
-    if (typeof value === 'string') {
-      identifiers.push(value);
-    }
-  }
-
-  for (const cohort of source.referenceData.cohorts) {
-    pushIdentifier(cohort.key);
-  }
-  for (const yearGroup of source.referenceData.yearGroups) {
-    pushIdentifier(yearGroup.key);
-  }
-  for (const topic of source.referenceData.assignmentTopics) {
-    pushIdentifier(topic.key);
-    topic.yearGroupKeys.forEach(pushIdentifier);
-  }
-
-  for (const classPartial of source.transport.classPartials) {
-    pushIdentifier(classPartial.classId);
-    pushIdentifier(classPartial.cohortKey);
-    pushIdentifier(classPartial.yearGroupKey);
-    pushIdentifier(classPartial.classOwner?.userId);
-    for (const teacher of classPartial.teachers) {
-      pushIdentifier(teacher.userId);
-    }
-  }
-
-  for (const classFull of Object.values(source.transport.classesById)) {
-    pushIdentifier(classFull.classId);
-    for (const student of classFull.students) {
-      pushIdentifier(student.id);
-    }
-    for (const assignment of classFull.assignments) {
-      pushIdentifier(assignment.assignmentId);
-      pushIdentifier(assignment.assignmentDefinitionKey);
-      for (const submission of assignment.submissions) {
-        pushIdentifier(submission.studentId);
-        pushIdentifier(submission.assignmentId);
-        pushIdentifier(submission.documentId);
-        for (const item of Object.values(submission.items)) {
-          pushIdentifier(item.id);
-          pushIdentifier(item.taskId);
-          pushIdentifier(item.artifact.uid);
-          pushIdentifier(item.artifact.taskId);
-          pushIdentifier(item.artifact.pageId);
-          pushIdentifier(item.artifact.documentId);
-        }
-      }
-    }
-  }
-
-  for (const definition of source.transport.assignmentDefinitionPartials) {
-    pushIdentifier(definition.definitionKey);
-    pushIdentifier(definition.primaryTopicKey);
-    pushIdentifier(definition.yearGroupKey);
-    pushIdentifier(definition.referenceDocumentId);
-    pushIdentifier(definition.templateDocumentId);
-    for (const task of definition.tasks) {
-      pushIdentifier(task.taskId);
-    }
-  }
-
-  for (const assignment of Object.values(source.transport.assignmentsByKey)) {
-    pushIdentifier(assignment.courseId);
-    pushIdentifier(assignment.assignmentId);
-    pushIdentifier(assignment.referenceDocumentId);
-    pushIdentifier(assignment.templateDocumentId);
-    pushIdentifier(assignment.assignmentDefinition.definitionKey);
-    pushIdentifier(assignment.assignmentDefinition.referenceDocumentId);
-    pushIdentifier(assignment.assignmentDefinition.templateDocumentId);
-    for (const task of Object.values(assignment.assignmentDefinition.tasks)) {
-      pushIdentifier(task.id);
-      for (const artifact of [...task.artifacts.reference, ...task.artifacts.template]) {
-        pushIdentifier(artifact.uid);
-        pushIdentifier(artifact.documentId);
-        pushIdentifier(artifact.pageId);
-      }
-    }
-    for (const submission of assignment.submissions) {
-      pushIdentifier(submission.studentId);
-      pushIdentifier(submission.assignmentId);
-      pushIdentifier(submission.documentId);
-      for (const item of Object.values(submission.items)) {
-        pushIdentifier(item.id);
-        pushIdentifier(item.taskId);
-        pushIdentifier(item.artifact.uid);
-        pushIdentifier(item.artifact.pageId);
-        pushIdentifier(item.artifact.documentId);
-      }
-    }
-  }
-
+  collectReferenceIdentifiers(source.referenceData, identifiers);
+  collectClassPartialIdentifiers(source.transport.classPartials, identifiers);
+  collectClassFullIdentifiers(source.transport.classesById, identifiers);
+  collectDefinitionPartialIdentifiers(source.transport.assignmentDefinitionPartials, identifiers);
+  collectFullAssignmentIdentifiers(source.transport.assignmentsByKey, identifiers);
   return identifiers;
 }
 
@@ -388,7 +422,7 @@ describe('synthetic transport view redaction and identifier retention', () => {
     expect(checkedAssignments).toBeGreaterThan(0);
   });
 
-  it('redacts artefact content and assessment reasoning in partial views only', () => {
+  it('redacts partial source and non-error reasoning while retaining E reasoning and cause', () => {
     const partialItems = collectPartialItems(graph);
     expect(partialItems.length).toBeGreaterThan(0);
 
@@ -397,7 +431,12 @@ describe('synthetic transport view redaction and identifier retention', () => {
       expect(artifact.content).toBeNull();
       expect(artifact.contentHash).toBeNull();
       for (const assessment of Object.values(item.assessments ?? {})) {
-        expect('reasoning' in assessment).toBe(false);
+        if (assessment.score === 'E') {
+          expect(assessment.reasoning).toEqual(expect.any(String));
+          expect(assessment.error).toEqual({ stage: expect.any(String), code: expect.any(String) });
+        } else {
+          expect('reasoning' in assessment).toBe(false);
+        }
       }
     }
 

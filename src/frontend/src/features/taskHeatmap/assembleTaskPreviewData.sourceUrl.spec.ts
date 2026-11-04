@@ -26,6 +26,16 @@ const CARRY_THROUGH_SCORE = 4;
 /** Student score carried inside the SPREADSHEET cell fixture content. */
 const SPREADSHEET_CELL_SCORE = 95;
 
+/**
+ * Per-metric error-cause record carried by these healthy fixtures: every
+ * criterion has an entry and a non-`E` result is `null`.
+ */
+const NO_CELL_ERRORS: CellPreviewData['errors'] = {
+  completeness: null,
+  accuracy: null,
+  spag: null,
+};
+
 /** Cell fixtures covering every artifact content shape assembly coerces. */
 const CONTENT_SOURCE_URL_CELLS: ReadonlyArray<{ label: string; cell: CellPreviewData }> = [
   {
@@ -34,6 +44,7 @@ const CONTENT_SOURCE_URL_CELLS: ReadonlyArray<{ label: string; cell: CellPreview
       artifactType: 'TEXT',
       artifactContent: 'Essay body',
       reasoning: { completeness: 'Covered the brief', accuracy: null, spag: null },
+      errors: NO_CELL_ERRORS,
       sourceUrl: SOURCE_URL,
     },
   },
@@ -43,6 +54,7 @@ const CONTENT_SOURCE_URL_CELLS: ReadonlyArray<{ label: string; cell: CellPreview
       artifactType: 'TABLE',
       artifactContent: '| A | B |\n|---|---|\n| 1 | 2 |',
       reasoning: { completeness: null, accuracy: 'Accurate values', spag: null },
+      errors: NO_CELL_ERRORS,
       sourceUrl: SOURCE_URL,
     },
   },
@@ -52,6 +64,7 @@ const CONTENT_SOURCE_URL_CELLS: ReadonlyArray<{ label: string; cell: CellPreview
       artifactType: 'IMAGE',
       artifactContent: 'data:image/png;base64,iVBORw0KGgo=',
       reasoning: { completeness: null, accuracy: null, spag: 'Clear labels' },
+      errors: NO_CELL_ERRORS,
       sourceUrl: SOURCE_URL,
     },
   },
@@ -64,6 +77,7 @@ const CONTENT_SOURCE_URL_CELLS: ReadonlyArray<{ label: string; cell: CellPreview
         ['Alice', SPREADSHEET_CELL_SCORE],
       ],
       reasoning: { completeness: 'Complete grid', accuracy: null, spag: null },
+      errors: NO_CELL_ERRORS,
       sourceUrl: SOURCE_URL,
     },
   },
@@ -73,6 +87,7 @@ const CONTENT_SOURCE_URL_CELLS: ReadonlyArray<{ label: string; cell: CellPreview
       artifactType: 'base',
       artifactContent: null,
       reasoning: { completeness: null, accuracy: null, spag: null },
+      errors: NO_CELL_ERRORS,
       sourceUrl: SOURCE_URL,
     },
   },
@@ -117,6 +132,7 @@ describe('assembleTaskPreviewData sourceUrl carry-through', () => {
       artifactType: 'TEXT',
       artifactContent: 'No stored link',
       reasoning: { completeness: null, accuracy: null, spag: null },
+      errors: NO_CELL_ERRORS,
       sourceUrl: null,
     };
 

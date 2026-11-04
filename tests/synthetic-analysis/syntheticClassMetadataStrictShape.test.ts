@@ -36,6 +36,44 @@ function metadataAt(graph: RawGraph, path: (typeof RECORD_PATHS)[number]): RawRe
   return metadata.recentAssignments[0].averages;
 }
 
+/**
+ * Resolves the record that directly owns the metadata field at `path`.
+ *
+ * @param root The class metadata record.
+ * @param path The field path whose parent is required.
+ * @returns The owning record.
+ */
+function ownerAt(root: RawRecord, path: (typeof RECORD_PATHS)[number]): RawRecord {
+  if (path === 'classAverages') return root;
+  if (path === 'recentAssignments[0]') return root.recentAssignments;
+  return root.recentAssignments[0];
+}
+
+/**
+ * Resolves the key that `path` names inside its owning record.
+ *
+ * @param path The field path whose key is required.
+ * @returns The owning record's key.
+ */
+function keyAt(path: (typeof RECORD_PATHS)[number]): string | number {
+  if (path === 'classAverages') return 'classAverages';
+  if (path === 'recentAssignments[0]') return 0;
+  return 'averages';
+}
+
+/**
+ * Resolves the contract field that `path` must carry as an own property.
+ *
+ * @param path The field path under test.
+ * @returns The required own field name.
+ */
+function requiredFieldAt(path: (typeof RECORD_PATHS)[number]): string {
+  if (path === 'metadata') return 'classAverages';
+  if (path === 'classAverages') return 'completeness';
+  if (path === 'recentAssignments[0]') return 'assignmentId';
+  return 'overall';
+}
+
 function synchroniseMetadataViews(graph: RawGraph): void {
   const classDocument = graph.persistence.classes[0];
   const partial = graph.transport.classPartials.find(
@@ -106,19 +144,7 @@ describe('generator-owned strict raw metadata shape', () => {
       if (path === 'metadata') {
         classDocument.metadata = new Date('2026-10-16T00:00:00.000Z') as any;
       } else {
-        const parent =
-          path === 'classAverages'
-            ? root
-            : path === 'recentAssignments[0]'
-              ? root.recentAssignments
-              : root.recentAssignments[0];
-        const key =
-          path === 'classAverages'
-            ? 'classAverages'
-            : path === 'recentAssignments[0]'
-              ? 0
-              : 'averages';
-        parent[key] = new Date('2026-10-16T00:00:00.000Z');
+        ownerAt(root, path)[keyAt(path)] = new Date('2026-10-16T00:00:00.000Z');
       }
       synchroniseMetadataViews(graph);
       checkBothValidators(graph, /plain record|ordinary object|is required|live Date/iu);
@@ -139,14 +165,7 @@ describe('generator-owned strict raw metadata shape', () => {
   it.each(RECORD_PATHS)('requires own contract fields at %s', (path) => {
     const graph = makeGraph();
     const record = metadataAt(graph, path);
-    const required =
-      path === 'metadata'
-        ? 'classAverages'
-        : path === 'classAverages'
-          ? 'completeness'
-          : path === 'recentAssignments[0]'
-            ? 'assignmentId'
-            : 'overall';
+    const required = requiredFieldAt(path);
     const inherited = record[required];
     delete record[required];
     Object.setPrototypeOf(record, { [required]: inherited });

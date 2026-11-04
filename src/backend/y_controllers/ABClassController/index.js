@@ -185,12 +185,13 @@ class ABClassController {
    * Save a class representation to its collection named by classId.
    * Delegates to _persistClassAndPartial for write-through persistence to both full and partial stores.
    * @param {ABClass|Object} abClass - The class instance or plain object with classId property and toPartialJSON() method.
+   * @param {Object} runPrepared - Optional assessment-run projections prepared before its first write.
    * @returns {boolean} True after the class is delegated for persistence.
    * @throws {TypeError} If abClass is missing required properties or methods.
    */
-  saveClass(abClass) {
+  saveClass(abClass, runPrepared) {
     this._validation._validateClassForSave(abClass);
-    this._persistClassAndPartial(abClass);
+    this._persistClassAndPartial(abClass, runPrepared);
     return true;
   }
 
@@ -353,8 +354,8 @@ class ABClassController {
    * @param {Object} assignment - The assignment to persist.
    */
   persistAssignmentRun(abClass, assignment) {
-    this._assignmentOps.persistAssignmentRun(abClass, assignment);
-    this.saveClass(abClass);
+    const prepared = this._assignmentOps.persistAssignmentRun(abClass, assignment);
+    this.saveClass(abClass, prepared);
   }
 
   /**
@@ -379,10 +380,11 @@ class ABClassController {
    * Write-through persistence: saves the full class document and upserts the partial.
    * Delegates to ABClassPersistence.
    * @param {Object} abClass - The ABClass instance to persist.
+   * @param {Object} runPrepared - Optional prepared assessment-run projections.
    * @returns {void}
    */
-  _persistClassAndPartial(abClass) {
-    return this._persistence.persistClassAndPartial(abClass);
+  _persistClassAndPartial(abClass, runPrepared) {
+    return this._persistence.persistClassAndPartial(abClass, runPrepared);
   }
   /**
    * Delegates to ABClassPersistence._upsertClassPartial.

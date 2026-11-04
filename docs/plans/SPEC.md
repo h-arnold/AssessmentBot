@@ -3,7 +3,7 @@
 ## Status
 
 Backend ABClass metadata contract support is delivered and reconciled across all eleven sections of
-[ACTION_PLAN.md](../../ACTION_PLAN.md), together with its explicitly approved companions: the
+its action plan, together with its explicitly approved companions: the
 always-present `Teacher.toJSON().teacherName` correction and the factual collection/deletion
 documentation corrections. The numbered sections, their approved companions and the mandatory
 post-implementation cleanup are committed and pushed on the delivery branch; per-section independent

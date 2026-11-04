@@ -2,7 +2,7 @@
  * ConfigurationManager default-seeding concern.
  *
  * @remarks
- * Delegated sub-class of the ConfigurationManager facade (ACTION_PLAN.md Section 2).
+ * Delegated sub-class of the ConfigurationManager facade.
  * Owns `ensureDefaultConfiguration()`, which seeds default values on first use and
  * is otherwise a no-op once any configuration has been stored. It routes every
  * seed through the facade setters so the writes serialise through the locked write

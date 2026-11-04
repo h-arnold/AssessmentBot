@@ -22,10 +22,11 @@ class SlidesAssignment extends Assignment {
   /**
    * Deserialises SlidesAssignment from JSON data.
    * @param {object} data - JSON data object.
+   * @param {string} representationMode - Representation mode used when restoring assignment data.
    * @returns {SlidesAssignment} Reconstructed SlidesAssignment instance.
    */
-  static fromJSON(data) {
-    const inst = Assignment._baseFromJSON(data);
+  static fromJSON(data, representationMode) {
+    const inst = Assignment._baseFromJSON(data, representationMode);
     Object.setPrototypeOf(inst, SlidesAssignment.prototype);
     return inst;
   }
@@ -134,38 +135,38 @@ class SlidesAssignment extends Assignment {
     const total = this.submissions.length;
     this.submissions.forEach((sub, index) => {
       if (!sub.documentId) {
-        ABLogger.getInstance().warn(`No document ID for student: ${sub.studentName}. Skipping.`, {
+        ABLogger.getInstance().warn(`No document ID for student: ${sub.studentId}. Skipping.`, {
           workflow: 'SlidesAssignment.processAllSubmissions',
           courseId: this.courseId,
           assignmentId: this.assignmentId,
-          studentName: sub.studentName,
+          studentId: sub.studentId,
         });
         return;
       }
       // Update progress with ordinal position (e.g. "Extracting response 3 of 12...")
       this.progressTracker.updateProgress(`Extracting response ${index + 1} of ${total}...`, false);
       const artifacts = parser.extractSubmissionArtifacts(sub.documentId, taskDefs);
-      artifacts.forEach((a) => {
-        const taskDefinition = this.assignmentDefinition.tasks[a.taskId];
-        if (!taskDefinition) {
-          ABLogger.getInstance().warn('Submission artifact references unknown taskId ' + a.taskId, {
-            workflow: 'SlidesAssignment.processAllSubmissions',
-            courseId: this.courseId,
-            assignmentId: this.assignmentId,
-            taskId: a.taskId,
-            documentId: a.documentId,
-          });
-          return;
-        }
-        sub.upsertItemFromExtraction(taskDefinition, {
-          pageId: a.pageId,
-          content: a.content,
-          metadata: a.metadata,
-          documentId: a.documentId,
-          // Parser placeholders already carry the single missing-content diagnostic,
-          // so the model layer stores them silently without duplicate warnings.
-          missingContentLogged: a.content == null && a.pageId == null,
-        });
+      this._applyExtractedArtifacts(sub, artifacts, taskDefs, {
+        onUnknownTask: (artifact) => {
+          ABLogger.getInstance().warn(
+            'Submission artifact references unknown taskId ' + artifact.taskId,
+            {
+              workflow: 'SlidesAssignment.processAllSubmissions',
+              courseId: this.courseId,
+              assignmentId: this.assignmentId,
+              taskId: artifact.taskId,
+              documentId: artifact.documentId,
+            }
+          );
+        },
+        // A matched IMAGE placeholder is legitimately pending until image hydration.
+        isPendingArtifact: (artifact) => {
+          return (
+            artifact.type === 'IMAGE' &&
+            artifact.pageId != null &&
+            Boolean(artifact.metadata.sourceUrl)
+          );
+        },
       });
     });
   }

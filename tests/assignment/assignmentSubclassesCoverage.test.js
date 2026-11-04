@@ -251,11 +251,13 @@ describe('Assignment submissions behaviour', () => {
 
   it('ignores attachments without a drive file id', () => {
     const submissions = new globalThis.AssignmentSubmissions({ submissions: [] });
-    submissions._processAttachmentForSubmission({}, 's-one', 'mime');
-    submissions._processAttachmentForSubmission({ driveFile: {} }, 's-one', 'mime');
+    const scanState = { failures: new Map(), supported: new Set() };
+    submissions._processAttachmentForSubmission({}, 's-one', 'mime', scanState);
+    submissions._processAttachmentForSubmission({ driveFile: {} }, 's-one', 'mime', scanState);
     expect(mockLogger.info).toHaveBeenCalledWith(
       'Attachment for student ID s-one is not a Drive File or lacks a valid ID.'
     );
+    expect(scanState.failures.size).toBe(0);
   });
 
   it('assigns matching submissions and touches the updated timestamp', () => {
@@ -267,26 +269,34 @@ describe('Assignment submissions behaviour', () => {
       getFileById: vi.fn(() => ({ getMimeType: () => 'mime-ok' })),
     };
     const submissions = new globalThis.AssignmentSubmissions(assignment);
+    const scanState = { failures: new Map(), supported: new Set() };
     submissions._processAttachmentForSubmission(
       { driveFile: { id: 'file-one' } },
       's-one',
-      'mime-ok'
+      'mime-ok',
+      scanState
     );
     expect(assignment.submissions[0].documentId).toBe('file-one');
     expect(touchUpdated).toHaveBeenCalled();
+    expect(scanState.supported.has('s-one')).toBe(true);
+    expect(scanState.failures.size).toBe(0);
   });
 
-  it('handles submissions without a touchUpdated helper', () => {
+  it('propagates a missing touchUpdated helper as a wiring fault', () => {
     const assignment = { submissions: [{ studentId: 's-one' }] };
     globalThis.DriveApp = {
       getFileById: vi.fn(() => ({ getMimeType: () => 'mime-ok' })),
     };
     const submissions = new globalThis.AssignmentSubmissions(assignment);
-    submissions._processAttachmentForSubmission(
-      { driveFile: { id: 'file-two' } },
-      's-one',
-      'mime-ok'
-    );
+    const scanState = { failures: new Map(), supported: new Set() };
+    expect(() =>
+      submissions._processAttachmentForSubmission(
+        { driveFile: { id: 'file-two' } },
+        's-one',
+        'mime-ok',
+        scanState
+      )
+    ).toThrow(TypeError);
     expect(assignment.submissions[0].documentId).toBe('file-two');
   });
 
@@ -298,46 +308,55 @@ describe('Assignment submissions behaviour', () => {
     new globalThis.AssignmentSubmissions(assignment)._processAttachmentForSubmission(
       { driveFile: { id: 'file-three' } },
       'missing-student',
-      'mime-ok'
+      'mime-ok',
+      { failures: new Map(), supported: new Set() }
     );
     expect(mockLogger.info).toHaveBeenCalledWith(
       'No matching submission found for student ID: missing-student'
     );
   });
 
-  it('logs unsupported mime types', () => {
+  it('records the first unsupported candidate without materialising items', () => {
     globalThis.DriveApp = {
       getFileById: vi.fn(() => ({ getMimeType: () => 'mime-other' })),
     };
+    const scanState = { failures: new Map(), supported: new Set() };
     new globalThis.AssignmentSubmissions({ submissions: [] })._processAttachmentForSubmission(
       { driveFile: { id: 'file-four' } },
       's-one',
-      'mime-ok'
+      'mime-ok',
+      scanState
     );
     expect(mockLogger.info).toHaveBeenCalledWith(
       'Attachment with Drive File ID file-four is not a supported document (MIME type: mime-other).'
     );
+    expect(scanState.failures.get('s-one')).toBe('UNSUPPORTED_DOCUMENT');
+    expect(scanState.supported.size).toBe(0);
   });
 
-  it('logs drive fetch failures without throwing', () => {
+  it('records the first unreadable candidate without materialising items', () => {
     const failure = new Error('drive unavailable');
     globalThis.DriveApp = {
       getFileById: vi.fn(() => {
         throw failure;
       }),
     };
+    const scanState = { failures: new Map(), supported: new Set() };
     new globalThis.AssignmentSubmissions({ submissions: [] })._processAttachmentForSubmission(
       { driveFile: { id: 'file-five' } },
       's-one',
-      'mime-ok'
+      'mime-ok',
+      scanState
     );
     expect(mockLogger.error).toHaveBeenCalledWith(
       'Error fetching Drive file with ID file-five:',
       failure
     );
+    expect(scanState.failures.get('s-one')).toBe('SOURCE_UNREADABLE');
+    expect(scanState.supported.size).toBe(0);
   });
 
-  it('reports classroom fetch failures', () => {
+  it('logs and propagates classroom fetch failures', () => {
     const failure = new Error('classroom down');
     globalThis.Classroom = {
       Courses: {
@@ -355,7 +374,13 @@ describe('Assignment submissions behaviour', () => {
       assignmentId: 'a-five',
       submissions: [],
     });
-    submissions.fetchSubmittedDocumentsByMimeType('mime-ok');
+    let thrown;
+    try {
+      submissions.fetchSubmittedDocumentsByMimeType('mime-ok');
+    } catch (error) {
+      thrown = error;
+    }
+    expect(thrown).toBe(failure);
     expect(mockLogger.error).toHaveBeenCalledWith(
       'Error fetching submissions for assignment ID a-five:',
       failure
@@ -404,7 +429,12 @@ describe('Assignment submissions behaviour', () => {
       },
     };
     submissions.fetchSubmittedDocumentsByMimeType('mime-ok');
-    expect(processSpy).toHaveBeenCalledWith({ driveFile: { id: 'f-one' } }, 's-one', 'mime-ok');
+    expect(processSpy).toHaveBeenCalledWith(
+      { driveFile: { id: 'f-one' } },
+      's-one',
+      'mime-ok',
+      expect.objectContaining({ failures: expect.any(Map), supported: expect.any(Set) })
+    );
     expect(mockLogger.info).toHaveBeenCalledWith('No attachments found for student ID: s-two');
   });
 });

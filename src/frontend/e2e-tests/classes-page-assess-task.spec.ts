@@ -1008,8 +1008,8 @@ test.describe('Assess Task modal', () => {
       await pickLinkableDefinitionE2E(dialog, page, 'Algebra HW');
       await dialog.getByRole('button', { name: 'Link' }).click();
 
-      // Section 9 contract (see ACTION_PLAN.md and STALE_RECOVERY_LAYOUT.md):
-      // link-flow DEFINITION_STALE enters the in-modal recovery prompt in the
+      // Stale-recovery contract: link-flow DEFINITION_STALE enters the in-modal
+      // recovery prompt in the
       // single owning dialog and must NOT mount the stacked create wizard.
       // Settle on the committed link outcome first, so the recovery assertions
       // below cannot pass before the stale response has been processed.

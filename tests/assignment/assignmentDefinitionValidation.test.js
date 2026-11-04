@@ -1,8 +1,26 @@
 import { describe, it, expect } from 'vitest';
 import { AssignmentDefinition } from '#backend/Models/AssignmentDefinition.js';
+import { TaskDefinition } from '#backend/Models/TaskDefinition.js';
+import ArtifactFactory from '#backend/Models/Artifacts/5_ArtifactFactory.js';
 import { DUMMY_TASK_PARTIALS } from '../helpers/modelFactories.js';
 
 describe('AssignmentDefinition Validation', () => {
+  it('restores blank spreadsheet task artefacts as empty grids', () => {
+    const artifact = ArtifactFactory.spreadsheet({
+      role: 'reference',
+      taskId: 'blank-task',
+      content: [[null]],
+    });
+    const restored = TaskDefinition.fromJSON({
+      id: 'blank-task',
+      taskTitle: 'Blank grid',
+      pageId: 'page-blank',
+      artifacts: { reference: [artifact.toJSON()], template: [] },
+    });
+
+    expect(restored.getPrimaryReference().content).toEqual([]);
+  });
+
   describe('Partial Definition Validation', () => {
     it('should validate a partial definition with tasks array', () => {
       const partialDef = new AssignmentDefinition({

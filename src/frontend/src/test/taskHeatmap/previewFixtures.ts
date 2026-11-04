@@ -12,8 +12,8 @@
  * This module selects from the existing corpus; it is not a second fixture
  * corpus and it never restates realistic labels or content as literals.
  * Deliberately invalid, boundary and state fixtures stay with their owning
- * specs, and the unsupported IMAGE/TABLE/SPREADSHEET submission bodies remain
- * local under the corpus-capability exception recorded in `ACTION_PLAN.md`.
+ * specs, and unsupported TABLE submission bodies remain local under the
+ * capability notes in the synthetic test-data guide.
  *
  * @see docs/developer/testing/synthetic-test-data.md
  * @see docs/developer/frontend/frontend-testing.md
@@ -49,9 +49,6 @@ const SHEETS_ASSIGNMENT_ID = 'assignment-2-2';
 /** Canonical task whose submission item backs the ready-preview cell. */
 const READY_TASK_ID = 'task-0-0';
 
-/** Array offset that selects the last entry of the canonical class roster. */
-const LAST_ROSTER_OFFSET = -1;
-
 const classesById = JSON.parse(classesByIdRaw) as Record<string, unknown>;
 const assignmentsByKey = JSON.parse(assignmentsByKeyRaw) as Record<string, unknown>;
 
@@ -83,7 +80,7 @@ export interface CanonicalReadyCell {
   /** Rostered student ID owning the cell. */
   readonly studentId: string;
   /** Display name carried by the canonical roster. */
-  readonly studentName: string;
+  readonly studentName: string | null;
   /** Assignment owning the submission. */
   readonly assignmentId: string;
   /** Embedded definition key used to compose the lookup's inner key. */
@@ -100,27 +97,10 @@ export interface CanonicalReadyCell {
   readonly completenessScore: number;
   /** Completeness reasoning assessed for the selected student. */
   readonly completenessReasoning: string;
-  /** Accuracy reasoning, absent from the corpus and therefore `null`. */
-  readonly accuracyReasoning: string | null;
+  /** Accuracy reasoning assessed for the selected student. */
+  readonly accuracyReasoning: string;
   /** SPaG reasoning assessed for the selected student. */
   readonly spagReasoning: string | null;
-}
-
-/**
- * Read one submission for a rostered student, failing loudly when absent.
- *
- * @param {AssignmentFull} assignment - The validated canonical assignment.
- * @param {string} studentId - Student ID the submission must belong to.
- * @returns {CanonicalSubmission} The matching submission.
- */
-function requireSubmission(assignment: AssignmentFull, studentId: string): CanonicalSubmission {
-  const submission = assignment.submissions.find((candidate) => candidate.studentId === studentId);
-  if (submission == null) {
-    throw new Error(
-      `previewFixtures: student "${studentId}" has no submission in ${assignment.assignmentId}.`
-    );
-  }
-  return submission;
 }
 
 /**
@@ -181,26 +161,102 @@ function requireNumericCompleteness(
 }
 
 /**
- * Select the ready-preview student's ID from the canonical class roster.
- *
- * @remarks
- * The selection is derived from the roster (its last entry) rather than
- * restating a generated student identifier, so a corpus regeneration cannot
- * silently drift away from this fixture. `requireSubmission` and
- * `requireNumericCompleteness` then fail loudly if that rostered student no
- * longer carries the expected submission or numeric score.
- *
- * @param {ClassFull} canonicalClass - The validated canonical class roster.
- * @returns {string} The selected rostered student ID.
+ * Read required accuracy reasoning from a completed canonical item.
+ * @param {CanonicalSubmissionItem} item - The submission item to assess.
+ * @param {string} studentId - Student ID quoted in the failure message.
+ * @returns {string} The numeric accuracy assessment reasoning.
  */
-function selectReadyStudentId(canonicalClass: ClassFull): string {
-  const selectedStudent = canonicalClass.students.at(LAST_ROSTER_OFFSET);
-  if (selectedStudent == null) {
+function requireAccuracyReasoning(item: CanonicalSubmissionItem, studentId: string): string {
+  const accuracy = item.assessments.accuracy;
+  if (accuracy == null || typeof accuracy.score !== 'number') {
     throw new Error(
-      `previewFixtures: the canonical ${CLASS_ID} roster carries no students to select a ready cell from.`
+      `previewFixtures: ${studentId} / ${item.taskId} has no numeric accuracy score to characterise.`
     );
   }
-  return selectedStudent.id;
+  return accuracy.reasoning;
+}
+
+/**
+ * Select the canonical ready submission by its linked, healthy TEXT record.
+ *
+ * @remarks
+ * Candidate assignments come from the selected class's assignment links;
+ * candidates must belong to its roster and have a TEXT body/hash, numeric
+ * completeness and accuracy, and a matching embedded task identity.
+ *
+ * @param {ClassFull} canonicalClass - The validated canonical class roster.
+ * @param {Record<string, unknown>} assignments - Parsed canonical full-assignment view.
+ * @returns {{ assignment: AssignmentFull; submission: CanonicalSubmission }} The healthy linked pair.
+ */
+function selectReadySubmission(
+  canonicalClass: ClassFull,
+  assignments: Record<string, unknown>
+): { assignment: AssignmentFull; submission: CanonicalSubmission } {
+  const rosterIds = new Set(canonicalClass.students.map(({ id }) => id));
+  const linkedAssignments = canonicalClass.assignments.flatMap(({ assignmentId }) => {
+    const rawAssignment = assignments[assignmentId];
+    if (rawAssignment == null) return [];
+    const assignment = AssignmentFullSchema.parse(rawAssignment);
+    const linked = canonicalClass.assignments.find(
+      (row) => row.assignmentId === assignment.assignmentId
+    );
+    if (linked?.assignmentDefinitionKey !== assignment.assignmentDefinition.definitionKey)
+      return [];
+    return [assignment];
+  });
+
+  for (const assignment of linkedAssignments) {
+    const item = assignment.submissions
+      .filter((submission) => rosterIds.has(submission.studentId))
+      .map((submission) => ({ submission, item: submission.items[READY_TASK_ID] }))
+      .find(({ item }) => isHealthyTextItem(item));
+    if (item != null) {
+      const taskDefinition = assignment.assignmentDefinition.tasks[READY_TASK_ID];
+      if (taskDefinition == null || item.item.taskId !== READY_TASK_ID) {
+        throw new Error(
+          `previewFixtures: canonical ${assignment.assignmentId} has no matching ${READY_TASK_ID} definition/item identity.`
+        );
+      }
+      return { assignment, submission: item.submission };
+    }
+  }
+  throw new Error(
+    `previewFixtures: no healthy linked TEXT submission for ${READY_TASK_ID} exists in the canonical ${CLASS_ID} graph.`
+  );
+}
+
+/**
+ * Check source usability and numeric result completeness for the chosen task.
+ * @param {CanonicalSubmissionItem | undefined} item - Candidate task item.
+ * @returns {boolean} Whether the item satisfies the healthy TEXT contract.
+ */
+function isHealthyTextItem(item: CanonicalSubmissionItem | undefined): boolean {
+  return item?.taskId === READY_TASK_ID && hasUsableTextSource(item) && hasNumericCoreMarks(item);
+}
+
+/**
+ * Check that a TEXT artifact carries its source body and hash.
+ * @param {CanonicalSubmissionItem} item - Candidate item.
+ * @returns {boolean} Whether its source body and hash are usable.
+ */
+function hasUsableTextSource(item: CanonicalSubmissionItem): boolean {
+  return (
+    item.artifact.type === 'TEXT' &&
+    typeof item.artifact.content === 'string' &&
+    typeof item.artifact.contentHash === 'string'
+  );
+}
+
+/**
+ * Check that both required numeric criteria are present.
+ * @param {CanonicalSubmissionItem} item - Candidate item.
+ * @returns {boolean} Whether completeness and accuracy are numeric.
+ */
+function hasNumericCoreMarks(item: CanonicalSubmissionItem): boolean {
+  return (
+    typeof item.assessments.completeness?.score === 'number' &&
+    typeof item.assessments.accuracy?.score === 'number'
+  );
 }
 
 /**
@@ -216,7 +272,15 @@ function deriveReadyCell(
   canonicalClass: ClassFull,
   assignment: AssignmentFull
 ): CanonicalReadyCell {
-  const submission = requireSubmission(assignment, selectReadyStudentId(canonicalClass));
+  const { assignment: selectedAssignment, submission } = selectReadySubmission(
+    canonicalClass,
+    assignmentsByKey
+  );
+  if (selectedAssignment.assignmentId !== assignment.assignmentId) {
+    throw new Error(
+      `previewFixtures: selected canonical assignment ${selectedAssignment.assignmentId} does not match ${assignment.assignmentId}.`
+    );
+  }
   const item = requireTaskItem(submission, READY_TASK_ID);
   const taskDefinition = requireTaskDefinition(assignment, item.taskId);
   const completeness = requireNumericCompleteness(item, submission.studentId);
@@ -234,7 +298,7 @@ function deriveReadyCell(
     artifactContent: requireTextArtifactContent(item, submission.studentId),
     completenessScore: completeness.score,
     completenessReasoning: completeness.reasoning,
-    accuracyReasoning: item.assessments.accuracy?.reasoning ?? null,
+    accuracyReasoning: requireAccuracyReasoning(item, submission.studentId),
     spagReasoning: item.assessments.spag?.reasoning ?? null,
   };
 }

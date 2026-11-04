@@ -17,6 +17,8 @@ g.RuntimeConstants = require('../src/backend/00_RuntimeConstants.js').RuntimeCon
 // GAS concatenation order where sub-class files load before the facade file.
 g.AssignmentSerialisation = require('../src/backend/AssignmentProcessor/Assignment/00_AssignmentSerialisation.js');
 g.AssignmentFactory = require('../src/backend/AssignmentProcessor/Assignment/01_AssignmentFactory.js');
+g.AssignmentCurrentRestoration = require('../src/backend/AssignmentProcessor/Assignment/02_AssignmentCurrentRestoration.js');
+g.AssignmentReadProjection = require('../src/backend/AssignmentProcessor/Assignment/02_AssignmentReadProjection.js');
 g.AssignmentRehydration = require('../src/backend/AssignmentProcessor/Assignment/02_AssignmentRehydration.js');
 g.AssignmentTimestamps = require('../src/backend/AssignmentProcessor/Assignment/03_AssignmentTimestamps.js');
 g.AssignmentSubmissions = require('../src/backend/AssignmentProcessor/Assignment/04_AssignmentSubmissions.js');
@@ -25,7 +27,14 @@ g.AssignmentLLMOrchestration = require('../src/backend/AssignmentProcessor/Assig
 g.Assignment = require('../src/backend/AssignmentProcessor/Assignment/index.js');
 g.SlidesAssignment = require('../src/backend/AssignmentProcessor/SlidesAssignment.js');
 g.SheetsAssignment = require('../src/backend/AssignmentProcessor/SheetsAssignment.js');
-const { StudentSubmission } = require('../src/backend/Models/StudentSubmission.js');
+g.Assessment = require('../src/backend/Models/Assessment.js').Assessment;
+const {
+  StudentSubmissionItem,
+  DEFAULT_REPRESENTATION_MODE,
+} = require('../src/backend/Models/StudentSubmission/00_StudentSubmissionItem.js');
+g.StudentSubmissionItem = StudentSubmissionItem;
+g.DEFAULT_REPRESENTATION_MODE = DEFAULT_REPRESENTATION_MODE;
+const { StudentSubmission } = require('../src/backend/Models/StudentSubmission/index.js');
 g.StudentSubmission = StudentSubmission;
 
 g.Utils = {
@@ -163,7 +172,7 @@ g.toReadableKey_ = validators.toReadableKey_;
 // Default LockService mock — always acquires the lock successfully.
 // Individual tests that need to control lock behaviour should override
 // globalThis.LockService in their own beforeEach/afterEach. The script lock is the
-// single serialisation point for ALL configuration writes (ACTION_PLAN.md Section 2),
+// single serialisation point for ALL configuration writes,
 // so it must always be present so setters serialise through the locked write path.
 g.LockService = {
   getUserLock() {
@@ -420,6 +429,7 @@ g.ABClassValidation = require('../src/backend/y_controllers/ABClassController/AB
 g.ABClassMutationOps = require('../src/backend/y_controllers/ABClassController/ABClassMutationOps.js');
 g.ABClassPersistence = require('../src/backend/y_controllers/ABClassController/ABClassPersistence.js');
 g.ABClassRoster = require('../src/backend/y_controllers/ABClassController/ABClassRoster.js');
+g.ABClassAssignmentValidation = require('../src/backend/y_controllers/ABClassController/ABClassAssignmentValidation.js');
 g.ABClassAssignmentOps = require('../src/backend/y_controllers/ABClassController/ABClassAssignmentOps.js');
 g.ABClassResponseMapper = require('../src/backend/y_controllers/ABClassController/ABClassResponseMapper.js');
 

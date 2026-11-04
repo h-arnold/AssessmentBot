@@ -253,21 +253,20 @@ describe('SheetsParser internal behaviour', () => {
       taskMetadata: {},
       getPrimaryReference: () => reference,
     };
-    globalThis.SpreadsheetApp = {
-      openById: vi.fn(() => ({
-        getSheets: () => [{ getSheetId: () => 11 }],
-      })),
+    const getRange = vi.fn(() => ({ getFormulas: () => [['=STUDENT', '']] }));
+    const sheet = {
+      getSheetId: () => 11,
+      getRange,
     };
-    globalThis.TaskSheet = class {
-      getRange() {
-        return [['=STUDENT', '']];
-      }
+    globalThis.SpreadsheetApp = {
+      openById: vi.fn(() => ({ getSheets: () => [sheet] })),
     };
     const artifacts = parser.extractSubmissionArtifacts('student-doc', [
       complete,
       missingSheet,
       missingBbox,
     ]);
+    expect(getRange).toHaveBeenCalledWith(1, 1, 1, 2);
     expect(artifacts).toHaveLength(1);
     expect(artifacts[0]).toMatchObject({
       taskId: 'task-one',
@@ -287,7 +286,141 @@ describe('SheetsParser internal behaviour', () => {
     ]);
   });
 
-  it('skips student sheets when formula reads fail', () => {
+  it('records native formula range failures while retaining successful sibling reads', () => {
+    const parser = new SheetsParser();
+    parser.progressTracker = mockTracker;
+    const bbox = { startRow: 1, startColumn: 1, numRows: 1, numColumns: 1 };
+    const definition = (id, title) => ({
+      getId: () => id,
+      pageId: '11',
+      taskTitle: title,
+      taskMetadata: { bbox },
+      getPrimaryReference: () => ({ content: [[null]] }),
+    });
+    const failure = new Error('native range read failed');
+    const getRange = vi
+      .fn()
+      .mockImplementationOnce(() => {
+        throw failure;
+      })
+      .mockImplementationOnce(() => ({ getFormulas: () => [['=OK']] }));
+    const sheet = { getSheetId: () => 11, getRange };
+    globalThis.SpreadsheetApp = {
+      openById: vi.fn(() => ({ getSheets: () => [sheet] })),
+    };
+    const artifacts = parser.extractSubmissionArtifacts('student-doc', [
+      definition('failed', 'Failing'),
+      definition('healthy', 'Healthy'),
+    ]);
+    expect(artifacts).toMatchObject([
+      {
+        taskId: 'failed',
+        pageId: '11',
+        documentId: 'student-doc',
+        type: 'SPREADSHEET',
+        content: null,
+      },
+      {
+        taskId: 'healthy',
+        pageId: '11',
+        documentId: 'student-doc',
+        type: 'SPREADSHEET',
+        content: [['=OK']],
+      },
+    ]);
+    expect(getRange).toHaveBeenCalledTimes(2);
+    expect(getRange).toHaveBeenNthCalledWith(1, 1, 1, 1, 1);
+    expect(getRange).toHaveBeenNthCalledWith(2, 1, 1, 1, 1);
+    expect(mockLogger.error).toHaveBeenCalledTimes(1);
+    expect(mockLogger.error).toHaveBeenCalledWith(expect.any(String), {
+      error: failure,
+      documentId: 'student-doc',
+      taskId: 'failed',
+      pageId: '11',
+      bbox,
+    });
+    expect(mockTracker.logError).not.toHaveBeenCalled();
+  });
+
+  it('returns null for failed opening but an empty list for a successfully empty spreadsheet', () => {
+    const parser = new SheetsParser();
+    parser.progressTracker = mockTracker;
+    globalThis.SpreadsheetApp = { openById: vi.fn(() => ({ getSheets: () => [] })) };
+    expect(parser.extractSubmissionArtifacts('empty-doc', [])).toEqual([]);
+    const failure = new Error('open failed');
+    globalThis.SpreadsheetApp.openById.mockImplementation(() => {
+      throw failure;
+    });
+    expect(parser.extractSubmissionArtifacts('failed-doc', [])).toBeNull();
+  });
+
+  it('propagates ordinary internal grid failures without converting them to unavailable content', () => {
+    const parser = new SheetsParser();
+    parser.progressTracker = mockTracker;
+    const failure = new Error('internal grid failure');
+    const reference = {
+      get content() {
+        throw failure;
+      },
+    };
+    const definition = {
+      getId: () => 'internal-fail',
+      pageId: '11',
+      taskTitle: 'Private sheet',
+      taskMetadata: { bbox: { startRow: 1, startColumn: 1, numRows: 1, numColumns: 1 } },
+      getPrimaryReference: () => reference,
+    };
+    globalThis.SpreadsheetApp = {
+      openById: vi.fn(() => ({
+        getSheets: () => [
+          {
+            getSheetId: () => 11,
+            getRange: () => ({ getFormulas: () => [['=A1']] }),
+          },
+        ],
+      })),
+    };
+    let caught;
+    try {
+      parser.extractSubmissionArtifacts('student-doc', [definition]);
+    } catch (error) {
+      caught = error;
+    }
+    expect(caught).toBe(failure);
+  });
+
+  it('does not construct TaskSheet for native student formula extraction', () => {
+    const parser = new SheetsParser();
+    parser.progressTracker = mockTracker;
+    const bbox = { startRow: 1, startColumn: 1, numRows: 1, numColumns: 1 };
+    globalThis.SpreadsheetApp = {
+      openById: vi.fn(() => ({
+        getSheets: () => [
+          {
+            getSheetId: () => 11,
+            getRange: () => ({ getFormulas: () => [['=FORMULA']] }),
+          },
+        ],
+      })),
+    };
+    globalThis.TaskSheet = class {
+      constructor() {
+        throw new Error('must not be used');
+      }
+    };
+    const definition = {
+      getId: () => 'task',
+      pageId: '11',
+      taskTitle: 'Sheet',
+      taskMetadata: { bbox },
+      getPrimaryReference: () => ({ content: [[null]] }),
+    };
+    expect(parser.extractSubmissionArtifacts('student-doc', [definition])[0].content).toEqual([
+      ['=FORMULA'],
+    ]);
+  });
+
+  it('keeps generic native formula range failures scoped to the affected artifact', () => {
     const parser = new SheetsParser();
     parser.progressTracker = mockTracker;
     const bbox = { startRow: 1, startColumn: 1, numRows: 1, numColumns: 1 };
@@ -296,22 +429,40 @@ describe('SheetsParser internal behaviour', () => {
       pageId: '11',
       taskTitle: 'Failing',
       taskMetadata: { bbox },
-      getPrimaryReference: () => ({ content: [[null]], getType: () => 'spreadsheet' }),
+      getPrimaryReference: () => ({ content: [[null]] }),
     };
+    const failure = new Error('range read failed');
     globalThis.SpreadsheetApp = {
       openById: vi.fn(() => ({
-        getSheets: () => [{ getSheetId: () => 11 }],
+        getSheets: () => [
+          {
+            getSheetId: () => 11,
+            getRange: () => ({
+              getFormulas: () => {
+                throw failure;
+              },
+            }),
+          },
+        ],
       })),
     };
-    globalThis.TaskSheet = class {
-      getRange() {
-        throw new Error('range read failed');
-      }
-    };
-    expect(parser.extractSubmissionArtifacts('student-doc', [definition])).toEqual([]);
-    expect(mockTracker.logError).toHaveBeenCalledWith(
-      'Failed to read formulas for sheet Failing',
-      expect.any(Error)
-    );
+    const artifacts = parser.extractSubmissionArtifacts('student-doc', [definition]);
+    expect(artifacts).toHaveLength(1);
+    expect(artifacts[0]).toMatchObject({
+      taskId: 'task-fail',
+      pageId: '11',
+      documentId: 'student-doc',
+      type: 'SPREADSHEET',
+      content: null,
+    });
+    expect(mockLogger.error).toHaveBeenCalledTimes(1);
+    expect(mockLogger.error).toHaveBeenCalledWith(expect.any(String), {
+      error: failure,
+      documentId: 'student-doc',
+      taskId: 'task-fail',
+      pageId: '11',
+      bbox,
+    });
+    expect(mockTracker.logError).not.toHaveBeenCalled();
   });
 });

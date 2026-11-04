@@ -67,18 +67,24 @@ import { buildTaskHeaderPresentation } from './taskHeatmapZeroWeightHeader';
  * `showAssignmentError` booleans when the map is absent — keeping the embedded
  * render byte-identical.
  *
- * @param {Readonly<{ heatmapResult: TaskHeatmapData; cellPreviewLookup: CellPreviewLookup | null; isAssignmentLoading: boolean; showAssignmentError: boolean; previewStatusByTaskKey?: ReadonlyMap<string, PreviewStatus> }>} props - Component properties.
+ * **Known-error fallback.** `classPartialPreviewLookup` supplies the class
+ * snapshot's known explicit `E` cells. It is consulted only while the full read
+ * is pending or failed, so a settled full read always wins.
+ *
+ * @param {Readonly<{ heatmapResult: TaskHeatmapData; cellPreviewLookup: CellPreviewLookup | null; classPartialPreviewLookup?: CellPreviewLookup; isAssignmentLoading: boolean; showAssignmentError: boolean; previewStatusByTaskKey?: ReadonlyMap<string, PreviewStatus> }>} props - Component properties.
  * @returns {JSX.Element} The rendered table.
  */
 export function TaskHeatmapTable({
   heatmapResult,
   cellPreviewLookup,
+  classPartialPreviewLookup,
   isAssignmentLoading,
   showAssignmentError,
   previewStatusByTaskKey,
 }: Readonly<{
   heatmapResult: TaskHeatmapData;
   cellPreviewLookup: CellPreviewLookup | null;
+  classPartialPreviewLookup?: CellPreviewLookup;
   isAssignmentLoading: boolean;
   showAssignmentError: boolean;
   previewStatusByTaskKey?: ReadonlyMap<string, PreviewStatus>;
@@ -98,35 +104,30 @@ export function TaskHeatmapTable({
   // Determine whether every cell across every row is not-attempted (the "no
   // submissions" empty-state variant). The guard includes `taskColumns.length > 0`
   // to prevent a false caption when the assignment has zero tasks.
-  const hasNoSubmissions = useMemo(
-    () => {
-      return taskColumns.length > 0 &&
+  const hasNoSubmissions = useMemo(() => {
+    return (
+      taskColumns.length > 0 &&
       rows.length > 0 &&
       rows.every((row) => {
-        return row.cells.every(
-          (cell) => {
-            return cell.completeness.state === 'notAttempted' &&
+        return row.cells.every((cell) => {
+          return (
+            cell.completeness.state === 'notAttempted' &&
             cell.accuracy.state === 'notAttempted' &&
-            cell.spag.state === 'notAttempted';
-          }
-        );
-      }
-      );
-    },
-    [rows, taskColumns]
-  );
+            cell.spag.state === 'notAttempted'
+          );
+        });
+      })
+    );
+  }, [rows, taskColumns]);
 
   // Adaptive assignment-tier grouping (merged mode, ≥2 sources). Hoisted into
   // its own memo keyed on `[sourceAssignments, taskColumns]` so filter and
   // cell state changes recompute only the column tree, not the grouping.
-  const tierGroups = useMemo(
-    () => {
-      return sourceAssignments && sourceAssignments.length > 1
-        ? buildAdaptiveTierGroups(sourceAssignments, taskColumns)
-        : null;
-    },
-    [sourceAssignments, taskColumns]
-  );
+  const tierGroups = useMemo(() => {
+    return sourceAssignments && sourceAssignments.length > 1
+      ? buildAdaptiveTierGroups(sourceAssignments, taskColumns)
+      : null;
+  }, [sourceAssignments, taskColumns]);
 
   const columns: TableColumnsType<TaskHeatmapRow> = useMemo(() => {
     // ── Forename / Surname (top-level sticky columns, no children) ──
@@ -157,7 +158,8 @@ export function TaskHeatmapTable({
           tableFilters,
           cellPreviewLookup,
           status.isLoading,
-          status.hasError
+          status.hasError,
+          classPartialPreviewLookup
         ),
       };
     });
@@ -181,6 +183,7 @@ export function TaskHeatmapTable({
     taskColumns,
     tableFilters,
     cellPreviewLookup,
+    classPartialPreviewLookup,
     isAssignmentLoading,
     showAssignmentError,
     previewStatusByTaskKey,

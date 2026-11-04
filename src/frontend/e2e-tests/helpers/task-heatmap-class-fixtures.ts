@@ -129,7 +129,17 @@ function buildItem(
     : (HEATMAP_SUBMISSION_SCORES[student.id]?.[taskId] ?? fallback);
   return {
     taskId,
-    artifact: { taskId, role: 'submission', uid: `uid-${student.id}-${taskId}`, type: 'page' },
+    artifact: {
+      taskId,
+      role: 'submission',
+      uid: `uid-${student.id}-${taskId}`,
+      type: 'TEXT',
+      pageId: `page-${student.id}-${taskId}`,
+      documentId: `doc-${student.id}`,
+      content: null,
+      contentHash: null,
+      metadata: {},
+    },
     assessments: {
       completeness: { score: metrics.completeness },
       accuracy: { score: metrics.accuracy },
@@ -187,6 +197,7 @@ export function buildClassFullDocument(hasEmptySubmissions: boolean): Record<str
     }),
     assignments: [
       {
+        assessmentContractVersion: 1,
         courseId: HEATMAP_CLASS_ID,
         assignmentId: HEATMAP_ASSIGNMENT_ID,
         assignmentName: HEATMAP_ASSIGNMENT_NAME,

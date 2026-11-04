@@ -63,6 +63,7 @@ const classFullFixture: ClassFull = {
       updatedAt: null,
       createdAt: DEFAULT_DATE,
       documentType: 'assessment',
+      assessmentContractVersion: 1,
       submissions: [],
       assignmentDefinitionKey: DEFINITION_KEY,
     },
@@ -80,6 +81,7 @@ const assignmentFullFixture: AssignmentFull = {
   updatedAt: null,
   createdAt: DEFAULT_DATE,
   documentType: 'assessment',
+  assessmentContractVersion: 1,
   referenceDocumentId: null,
   templateDocumentId: null,
   tasks: null,
@@ -248,6 +250,7 @@ describe('buildCellPreviewLookup merged-path taskKey parity (T-9)', () => {
     assignments: [
       {
         assignmentId: MERGED_ASSIGNMENT_ID,
+        assessmentContractVersion: 1,
         assignmentDefinitionKey: MERGED_DEF,
         updatedAt: null,
       },
@@ -323,6 +326,7 @@ describe('buildCellPreviewLookup merged-path taskKey parity (T-9)', () => {
     updatedAt: null,
     createdAt: DEFAULT_DATE,
     documentType: null,
+    assessmentContractVersion: 1,
     referenceDocumentId: null,
     templateDocumentId: null,
     tasks: null,

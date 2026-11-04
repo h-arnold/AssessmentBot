@@ -117,6 +117,25 @@ export const NOT_ATTEMPTED_METRIC: Readonly<TaskDisplayMetric> = Object.freeze({
 });
 
 /**
+ * Shared task-display metric for a criterion whose preview carries a known `E`.
+ *
+ * @remarks
+ * Consumed by the task-preview card's error branch in
+ * `features/taskHeatmap/assembleTaskPreviewData.ts` when a known cause wins
+ * over a class-derived numeric or `N` metric: the preview shows `E` while the
+ * heatmap table keeps its class-derived value. A lone `E` display contributes
+ * no weight and no data points, so every count is zero. Exporting it keeps a
+ * single frozen definition rather than one byte-identical copy per consumer.
+ */
+export const ERROR_METRIC: Readonly<TaskDisplayMetric> = Object.freeze({
+  state: 'error' as const,
+  value: 'E' as const,
+  totalWeight: 0,
+  applicableDataPoints: 0,
+  totalDataPoints: 0,
+});
+
+/**
  * Build the ordered task-column descriptors from a warm-up assignment-definition
  * partial.
  *

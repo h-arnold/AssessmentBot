@@ -12,8 +12,6 @@
  *   a control Card (refresh), and `<TaskHeatmapTable heatmapResult={...} />`.
  * - On `adaptMetricsToHeatmap` throw, it logs via `logFrontendError` and calls
  *   `onBack` (no in-view error UI).
- *
- * @see SPEC.md — §"Page composition", §"Navigation / breadcrumb", §"Error handling"
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -22,7 +20,7 @@ import userEvent from '@testing-library/user-event';
 import { createElement, useState } from 'react';
 import { App } from 'antd';
 import { QueryClientProvider, QueryClient } from '@tanstack/react-query';
-import type { AssignmentFull } from '@/services/assignmentAssessment/assignmentAssessment.zod';
+import { buildDefaultAssignmentFixture } from '@/test/taskHeatmapPageFixtures';
 import { ClassPageContent } from './ClassPageContent';
 import type { ClassPageSurfaceState } from './useClassPageData';
 import type { ClassPageAdapterResult } from './classPageAdapter.zod';
@@ -41,46 +39,6 @@ import { createCanonicalMetadataFixture } from '@/test/abClass/abClassMetadataFi
 // exercised end-to-end.
 //
 // Also mock the frontend logger to spy on error-handling pathways.
-
-/**
- * Builds a minimal schema-valid `AssignmentFull` fixture for default mock.
- *
- * @returns {AssignmentFull} A valid, empty-submissions assignment.
- */
-function buildDefaultAssignmentFixture(): AssignmentFull {
-  return {
-    courseId: 'class-1',
-    assignmentId: 'a-1',
-    assignmentName: 'Assignment One',
-    dueDate: null,
-    updatedAt: null,
-    createdAt: '2026-01-01T00:00:00.000Z',
-    documentType: 'assessment',
-    referenceDocumentId: null,
-    templateDocumentId: null,
-    tasks: null,
-    submissions: [],
-    assignmentDefinition: {
-      primaryTitle: 'Assignment One',
-      primaryTopic: null,
-      primaryTopicKey: null,
-      yearGroupKey: 'yg-10',
-      yearGroupLabel: null,
-      alternateTitles: [],
-      alternateTopics: [],
-      documentType: 'assessment',
-      referenceDocumentId: null,
-      templateDocumentId: null,
-      referenceLastModified: null,
-      templateLastModified: null,
-      assignmentWeighting: 1,
-      definitionKey: 'def-1',
-      tasks: {},
-      createdAt: '2026-01-01T00:00:00.000Z',
-      updatedAt: '2026-01-01T00:00:00.000Z',
-    },
-  };
-}
 
 const { mockGetAssignment } = vi.hoisted(() => ({ mockGetAssignment: vi.fn() }));
 mockGetAssignment.mockResolvedValue(buildDefaultAssignmentFixture());
@@ -164,6 +122,7 @@ const classFullFixture: ClassFull = {
       updatedAt: null,
       createdAt: '2026-01-01T00:00:00.000Z',
       documentType: 'assessment',
+      assessmentContractVersion: 1,
       submissions: [],
       assignmentDefinitionKey: 'def-1',
     },

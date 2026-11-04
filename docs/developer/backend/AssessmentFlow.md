@@ -6,7 +6,7 @@
 
 - `AssignmentDefinitionController.upsertDefinition()` assignment-definition upsert orchestration helper
   - Status: `Implemented`
-  - Supporting helpers: `_buildUpsertContext()`, `_resolveTaskStateForUpsert()`, `_applyTaskWeightingsIfProvided()`, and `_persistDefinitionWithRollback()` in `src/backend/y_controllers/AssignmentDefinitionController.js`
+  - Supporting helpers: `_buildUpsertContext()`, `_resolveTaskStateForUpsert()`, `_applyTaskWeightingsIfProvided()`, and `_persistDefinitionWithRollback()` via the `src/backend/y_controllers/AssignmentDefinition/index.js` facade
   - Behaviour: centralises create/update sequencing, stable opaque `definitionKey` handling, authoritative topic-key joins, duplicate-tuple rejection, parsing/reparse decisions, weighting application, and dual-store persistence.
 - `AssignmentDefinitionController._rollbackFullStoreWrite()` rollback helper
   - Status: `Implemented`
@@ -15,6 +15,90 @@
   - Status: `Implemented`
   - Behaviour: paginating fetch of Google Classroom coursework by courseId, sorted by updateTime descending, throws on API failure
   - Owning path: `ClassroomApiClient.fetchCourseWork()` in `src/backend/GoogleClassroom/ClassroomApiClient.js`
+- Explicit assessment-error result creation (`Assessment` E results and error catalogue)
+  - Status: `Implemented`
+  - Owning path: `src/backend/Models/Assessment.js` — the `ASSESSMENT_ERROR_MESSAGES` catalogue plus `Assessment` construction, validation and serialisation.
+  - Result validation: the constructor accepts a finite numeric score in inclusive 0–5 (fractions included), `'N'`, or `'E'` with non-blank string reasoning and a catalogue-valid `{ stage, code }`. Numeric and `'N'` results reject any supplied `error`. Reasoning is preserved verbatim; `trim()` is used only to reject blank E reasoning, never to rewrite the stored value. Invalid results throw. The constructor builds the candidate entry and delegates to `Assessment.isValidRawResult()`, so the accept/reject rules have one owner.
+  - Criteria list: `Assessment.CRITERIA` (`completeness`, `accuracy`, `spag`), assigned after the class definition, is the canonical criteria list that `StudentSubmissionItem.setError()` iterates. It is the single owner of criterion identities: the LLM request manager, `ImageManager`, `ABClassAssignmentValidation` and marker-1 restoration read it instead of declaring their own list, and `ABClassMetadata` derives its four metrics from it at call time (`[...Assessment.CRITERIA, 'overall']`) because that file sorts before `Models/Assessment.js`.
+  - Catalogue: `acquisition` (`SOURCE_UNREADABLE`, `UNSUPPORTED_DOCUMENT`); `extraction` (`SOURCE_CONTENT_UNAVAILABLE`, `PARSE_FAILED`, `IMAGE_HYDRATION_FAILED`); `assessment` (`LLM_HTTP_FAILED`, `LLM_UNAVAILABLE`, `LLM_INVALID_RESPONSE`, `LLM_RUN_STOPPED`, `ASSESSMENT_FAILED`); `validation` (`CORRUPT_RECORD`, `REASSESSMENT_REQUIRED`).
+  - Result creation: `Assessment.createError(stage, code)` selects the catalogue reasoning and returns the E result, and `Assessment.isValidCause(error)` guards pair membership. `toJSON()` emits `{ score, reasoning }` plus a detached `error` for E; `fromJSON()` validates the raw record by reusing the constructor.
+  - Ownership rule: the assessment domain creates every E result, choosing `stage`/`code` and teacher-readable reasoning together. Task-wide failures replace every criterion in `Assessment.CRITERIA` atomically (see the `StudentSubmissionItem` entry below). Partial success/N entries stay `{ score }`; partial E entries retain `{ score: 'E', reasoning, error }`. No generic failure manager, run-level status framework or parallel persisted outcome hierarchy.
+- `StudentSubmissionItem` task-error replacement and partial result projection
+  - Status: `Implemented`
+  - Owning path: `src/backend/Models/StudentSubmission/00_StudentSubmissionItem.js`.
+  - Atomic replacement: `setError(stage, code)` writes the same catalogue E result for every entry in `Assessment.CRITERIA`, clears feedback, and invokes the item's mutation callback so the parent submission's timestamp advances. The callback is installed on items created through `upsertItemFromExtraction` and on acquisition placeholders that `AssignmentSubmissions._materialiseAcquisitionOutcome()` constructs directly with `onMutate: () => submission.touchUpdated()`; items reconstructed by `StudentSubmission._restore` are built without one, so `setError` on a restored item leaves the parent timestamp unchanged. Stale numeric/`N` marks cannot survive beside the current failure.
+  - Partial projection: `toPartialJSON()` keeps E entries complete (`{ score: 'E', reasoning, error }`) while numeric and `'N'` entries remain `{ score }`, so a class-embedded failure keeps its explanation.
+  - Raw restoration: `validateRaw(json, mode)` rejects missing item/artifact identity and, in full mode, an artifact without its own `content`/`contentHash` keys. `fromJSON(json, mode)` restores once in the requested mode and normalises redacted partial content/hash to explicit `null`. Criterion-completeness and assessment-map validation are enforced by `AssignmentCurrentRestoration` during marker-1 restoration, not by this additive layer.
+  - Boundary wiring: the acquisition, extraction and assessment owners invoke `setError()`. See [rehydration.md](rehydration.md) for read-time cause selection.
+- Acquisition pagination and student-document outcomes (`Assignment.fetchSubmittedDocumentsByMimeType`)
+  - Status: `Implemented` (backend)
+  - Owning path: `src/backend/AssignmentProcessor/Assignment/04_AssignmentSubmissions.js`.
+  - Behaviour: follows every `StudentSubmissions.list` `nextPageToken` page before concluding absence. A later-page list failure is logged and rethrown unchanged, so the run fails and prior stored results are preserved instead of manufacturing no-submission/N. The scan is scan-local: one `Map`/`Set` accumulator spans every attachment array and duplicate Classroom record. The existing scan keeps the last supported attachment; a failure is recorded only while no supported source has been admitted, and only the first such failure is materialised after the complete scan, as acquisition `UNSUPPORTED_DOCUMENT` or `SOURCE_UNREADABLE` E for the student's known tasks. An accepted source clears the recorded failure and suppresses rejected-candidate E. Placeholders are constructed directly through `BaseTaskArtifact` and `StudentSubmissionItem` (null `pageId`/`documentId`/`content`/`contentHash`, empty metadata/feedback) rather than `upsertItemFromExtraction()`, matching the null-parent read invariant. Non-Drive/missing-ID attachments are ignored by the settled admission policy and record no failure. The genuine no-submission representation applies only when no supported source was admitted and no acquisition failure was recorded; ignored candidates alongside failed Drive candidates do not erase that failure, which is materialised as acquisition `E` when no supported source exists. Drive conversion is limited to the immediate `DriveApp.getFileById(...).getMimeType()` expression: an ordinary native `Error` converts, while an actually thrown `TypeError`, `ReferenceError` or non-`Error` value propagates by identity. No new matching policy, multi-file UI or acquisition helper.
+- Student extraction outcomes (`SlidesAssignment.processAllSubmissions`, `SheetsAssignment.processAllSubmissions`)
+  - Status: `Implemented` (backend)
+  - Owning paths: `src/backend/AssignmentProcessor/SlidesAssignment.js`, `src/backend/AssignmentProcessor/SheetsAssignment.js` and their parser owners (`src/backend/DocumentParsers/SlidesParser/`, `src/backend/DocumentParsers/SheetsParser.js`).
+  - Behaviour: a failed document open returns an internal null sentinel, distinct from a successful empty array, and becomes acquisition `SOURCE_UNREADABLE` for all known tasks while retaining the student document ID with explicit null `pageId`/`content`/`contentHash`. Failed or unavailable per-task content becomes extraction `SOURCE_CONTENT_UNAVAILABLE`, as does a known task with no extraction outcome; healthy extracted items stay in flight with an empty assessment map until the assessment stage. A Slides IMAGE task is pending only when it has a matched student page and parser-generated `metadata.sourceUrl`; a missing IMAGE match is unavailable extraction, not pending hydration. A literal-null `getCell` aborts the whole TABLE with null content, while shared-definition reads still throw. Conversion is limited to immediate native Drive/open/range/formula/text/dimension/cell/merge reads: ordinary native `Error`s convert, while actually thrown `TypeError`/`ReferenceError`/non-`Error` values and internal matching/facade/normalisation/mutation faults propagate. Each owned native failure emits one contextual diagnostic with opaque identifiers and the original error; student names, source content and raw payloads are never logged, and downstream model/progress duplicates are suppressed. Unknown extraction task IDs still warn and are ignored, and `PARSE_FAILED` remains reserved with no forced producer. No failure registry, error hierarchy or pipeline guard.
+- Transport retry ownership (`BaseRequestManager`)
+  - Status: `Implemented` (backend)
+  - Owning path: `src/backend/RequestHandlers/BaseRequestManager.js` — sole HTTP dispatch and retry owner for `LLMRequestManager` and `ImageManager`.
+  - Budget and backoff: at most three total dispatches per request, including its initial `fetchAll` batch attempt. Wait 5,000 ms before attempt two and 7,500 ms before attempt three; never sleep after the final attempt. A thrown batch call counts as attempt one for every member. Retries are sequential per-member `UrlFetchApp.fetch` calls and are never re-batched. Constructor-owned retry and native UrlFetch defaults apply only to omitted fields, so supplied `false`/`null`/empty values survive projection.
+  - Classification: only network exceptions, HTTP 429 and HTTP 500–599 retry. Every response received in a batch is classified before any retry dispatch, so a caller stop response prevents further calls while successes already received in that batch are retained. Accepted and stop statuses are caller policy: LLM accepts 200/201 and stops on 401/403/404; image downloads accept only 200 and declare no stop statuses, so a student-image 403 is not an LLM-wide stop.
+  - Outcomes: each final outcome carries the request UID plus either the final response or the original final network error, and its attempt count. A later network failure never returns an earlier 429/5xx response. `sendRequestsInBatches()` returns no run-wide collection: it consumes each completed batch through `onBatchComplete` before dispatching another, and returning exactly `false` stops any later retries and batches (retries already performed in the consumed batch are not cancelled); other callback return values continue. Unknown/duplicate identities and callback, routing or programming faults throw instead of becoming network retries. Diagnostics are limited to UID, status and attempt metadata.
+  - Caller adaptation: `LLMRequestManager.processStudentResponses()` sends one full request list at the configured assessor batch size, rejects duplicate input UIDs and unknown/duplicate outcome UIDs before routing, applies accepted outcomes before failures in the same batch, and latches a 401/403/404 stop so no later batch dispatches. It adds no semantic validation retry: an invalid successful response is terminal. The batch callback retains each outcome's attempt count in an invocation-local map so non-accepted outcomes distinguish stop-cancelled work (unspent budget, `LLM_RUN_STOPPED`) from genuine exhaustion (`attempts === maxAttempts`, `LLM_UNAVAILABLE`); missing/invalid provenance throws before catalogue mutation. After a stop, never-dispatched eligible items are terminalised without further HTTP. `ImageManager.fetchImagesAsBlobs()` sends one full round-robin list at the configured Slides batch size and reads final 200 blobs before the next batch; blob-read faults escape by identity. These outcomes are internal GAS runtime objects: no public API, persistence or LLM request/response body shape changed.
+- Scoped image hydration outcomes (`ImageManager`)
+  - Status: `Implemented` (backend)
+  - Owning path: `src/backend/RequestHandlers/ImageManager.js` — scoped IMAGE collection, download and writeback. It reuses the shared transport budget and the existing Slides document round-robin scheduling; it adds no second retry or hydration manager, no persisted status, no transport field, no public `entry.item` property and no image URL/source-link policy change.
+  - Collection: `collectAllImageArtifacts()` admits a source URL by delegating to the shared `Validate.isValidUrlShape` policy (HTTPS, DNS hostname only, no IP address, no localhost, no port). That predicate emits no diagnostics, so a rejected URL never reaches a log channel. A student item already carrying an upstream all-three terminal `E` is preserved verbatim and never collected. A matched student IMAGE with no admissible source URL materialises the atomic extraction `IMAGE_HYDRATION_FAILED` E on its owning item (null content/hash, cleared feedback), unless it is already hydrated; an already-hydrated artefact with an admissible source is still scheduled. A required shared reference/template IMAGE with no admissible source URL or owning document ID throws, blocking the run, unless it is already hydrated.
+  - Download: `fetchImagesAsBlobs()` makes one full-list sender call with the configured Slides-fetch batch size, accepted `[200]` and no stop statuses, preserving document round-robin order and UID association. Final 200 blobs are read before the next batch, and the shared three-total-attempt budget applies. A final non-200 (including 201), a permanent 4xx or an exhausted retryable/network outcome is routed by scope instead of retried, so a student-image 403 stays local and never becomes an LLM-wide stop. Duplicate input UIDs and unknown/duplicate outcome UIDs throw, and a scope-less failure outcome throws; a scope-less successful 200 outcome remains valid.
+  - Writeback: `writeBackBlobs()` verifies the required `setContentFromBlob` writer before classifying returned data, then reads native bytes once and passes them through an owner-local adapter so data-URL/hash conversion stays model-owned. Unusable returned content (null/empty bytes, null or reader-less blob, unusable stored hash) converts by scope: a student task E with null content/hash, or a run-blocking throw for a shared artefact. Changed non-null hydrated content clears the reused item's stale assessments/feedback; unchanged content preserves the complete snapshots. Thrown native-read, base64, hash and writer faults escape by original identity with no E and no manager diagnostic.
+  - Scope, diagnostics and later work: a required shared-image failure blocks the run and preserves prior saved results without promising in-memory rollback (conversion assigns `content` before hashing). Each converted student failure emits one bounded `ABLogger` warn with opaque `uid`/`taskId`/`scope` (plus `attempts`/`responseCode` for transport failures); source URLs, payloads and student names are never logged. Pending IMAGE remains valid internal state, never a completed null success: the completed-run validation gate rejects a still-pending image before persistence, and marker stamping follows that gate. Preview error states are delivered in the heatmap preview.
+- LLM terminal assessment outcomes and validated cache reuse (`LLMRequestManager`)
+  - Status: `Implemented` (backend)
+  - Owning paths: `src/backend/RequestHandlers/LLMRequestManager.js` owns terminal outcome mapping, assessment-specific key derivation and cache-hit result validation beside request generation; `src/backend/RequestHandlers/CacheManager.js` remains the generic best-effort `get`/`put` owner.
+  - Terminal outcomes: successful 200/201 responses are read, parsed and validated once; invalid JSON/structure becomes atomic `LLM_INVALID_RESPONSE`. Permanent failures become `LLM_HTTP_FAILED`, genuinely exhausted retryable/network work becomes `LLM_UNAVAILABLE`, and 401/403/404 (plus stop-cancelled pending work and never-dispatched eligible items) become `LLM_RUN_STOPPED`. No semantic retry remains. Missing/invalid routed attempt provenance throws before catalogue mutation.
+  - Behaviour: `generateRequestObjects()` derives one versioned assessment identity from the literal version tag `v1`, the task type and the reference, template and student content hashes. It retains that opaque key on the routed request entry and reuses the retained value at writeback, so later fingerprint changes do not recompute it. Old key spaces are misses; there is no purge or migration.
+  - Cache reads and writes use generic `CacheManager.get()` / `put()`. LLM writeback passes `CacheManager.CACHE_EXPIRY_SECONDS` explicitly; that constant remains the single shared six-hour TTL owner, with no duplicated TTL constant or default. Generic `get()`/`put()` behaviour and native best-effort failures are unchanged.
+  - Cache hits are validated by the same successful-result validator as live output: exactly the three own canonical numeric criteria, each reusing `Assessment.isValidRawResult` and requiring a numeric score. A malformed, `N` or `E` hit is logged as a miss and the item is assessed live. Only validated numeric LLM results are cached; `E` results and transport failures never are.
+  - The obsolete `CacheManager.generateCacheKey()`, `getCachedAssessment()` and `setCachedAssessment()` wrappers are removed with their sole production caller. The generic `CacheManager` suite keeps `get`/`put`, malformed-cache/best-effort and shared-TTL regression coverage; LLM key/hit assertions live in the LLM cache suites.
+- Read serializer for direct full assignment transport (`AssignmentSerialisation.toReadJSON`)
+  - Status: `Implemented` (backend)
+  - Owning paths: `src/backend/AssignmentProcessor/Assignment/00_AssignmentSerialisation.js` and the `Assignment.toReadJSON()` facade delegation in `src/backend/AssignmentProcessor/Assignment/index.js`.
+  - Behaviour: `getAssignment_` calls `readRehydrateAssignment()`, then `toReadJSON()`, strips `progressTracker` and applies `DateUtils.deepConvertDates()`. `toReadJSON()` builds its payload through `_rootOutput()` and stamps it through `_applyContractMarker()`, both in `00_AssignmentSerialisation.js`. A marker-1 record keeps its serialised submissions and marker. A legacy record receives the detached `projectReassessmentSubmissions(assignment, [], 'full')` output and `assessmentContractVersion: null`, using validated stored submission identities and the definition resolved by `_ensureFullDefinition`; there is no roster or class read.
+  - Persistence stays separate: `toJSON()`/`toPartialJSON()` keep their current-version semantics and, for legacy records, re-emit the opaque stored body/original marker; they never emit projected E. Read projections are not persisted and never reach class persistence preparation. Boundaries are recorded in [rehydration.md](rehydration.md).
+- Legacy reassessment read projection (`AssignmentRehydration.projectReassessmentSubmissions`)
+  - Status: `Implemented` (backend)
+  - Owning paths: facade in `src/backend/AssignmentProcessor/Assignment/02_AssignmentRehydration.js`; pure projection/snapshot mapping in `src/backend/AssignmentProcessor/Assignment/02_AssignmentReadProjection.js`, loaded first by lexicographic filename order.
+  - Behaviour: one pure `projectReassessmentSubmissions(assignment, students, form)` operation reused by `ABClassResponseMapper._toReadView` (loaded roster, before definition-key replacement) and `AssignmentSerialisation.toReadJSON()` (direct full read, stored identities, no roster). Each student/task pair becomes a detached `StudentSubmission` with `BaseTaskArtifact` placeholders carrying validation `REASSESSMENT_REQUIRED` E for all three criteria. The backend materialises these entries; the browser normaliser never generates a second reassessment graph.
+  - Detached read snapshots only: no roster refresh on the direct full path, no write-back repair and no current-clock placeholders. Persistence `toJSON()`/`toPartialJSON()` re-emit the opaque stored legacy body and original marker and never emit projected E; class persistence preparation and writes never receive read placeholders. Placeholder timestamps, opaque legacy state and the exact projected model fields are recorded in [rehydration.md](rehydration.md).
+  - The frontend normaliser is active in both read services, the committed synthetic corpus is regenerated, and the generated-bundle load-order assertion is implemented. The SPEC's line-count budgets are approximate planning margins, not implementation claims.
+- One partial-aware restoration path (`AssignmentRehydration` with `AssignmentCurrentRestoration`)
+  - Status: `Implemented` (backend; marker-1 records)
+  - Owning paths: `src/backend/AssignmentProcessor/Assignment/02_AssignmentRehydration.js` and `src/backend/AssignmentProcessor/Assignment/02_AssignmentCurrentRestoration.js`.
+  - Behaviour: `_baseFromJSON()` restores marker-1 submissions in one validated pass per identified submission/item with explicit full/partial mode. Invalid items and known tasks with no item become typed `CORRUPT_RECORD` E placeholders; healthy siblings are retained. There is no whole-submission reconstruction, item dropping or plain-object fallback. Untrustworthy submission identity, task universe or timestamps throw. Raw current-version validation stays in the existing model restoration owners (`Assessment`, `StudentSubmissionItem`, `StudentSubmission`); the API boundary does not add a second domain validator. On a current-format full read, null content beside numeric/N marks yields all-three validation `CORRUPT_RECORD` E; confirmed unavailability at the actual extraction boundary instead yields extraction `SOURCE_CONTENT_UNAVAILABLE` E. Partial redaction is exempt from the full-content consistency check. Boundaries are recorded in [rehydration.md](rehydration.md).
+- `StudentSubmission` model domain split
+  - Owning paths: `src/backend/Models/StudentSubmission/00_StudentSubmissionItem.js` (item model) and `src/backend/Models/StudentSubmission/index.js` (submission entry). The former `src/backend/Models/StudentSubmission.js` is deleted; no compatibility barrel remains.
+  - Public surface: the item file exports `StudentSubmissionItem`; the entry exports `StudentSubmission` and re-exports the item class through the existing guarded `module.exports` block, preserving the public class/namespace API and guarded test exports.
+  - Load order: `00_StudentSubmissionItem.js` sorts before `index.js`, so generated GAS output loads the item model before the submission entry. `scripts/builder/src/steps/backend-copy.spec.ts` asserts that order against the real backend tree, including that both files exist, their copied contents match source, and the obsolete source path is absent. `tests/setupGlobals.js` installs `StudentSubmissionItem` before `StudentSubmission`.
+  - Each file stays within the ≤320-line target.
+- Completed-item coverage materialisation (`AssignmentCurrentRestoration`)
+  - Status: `Implemented` (backend and browser)
+  - Owning path: `src/backend/AssignmentProcessor/Assignment/02_AssignmentCurrentRestoration.js` — backend-authoritative missing-task `CORRUPT_RECORD` E materialisation from the assignment's own embedded task snapshot during the one-pass full or partial restoration, before class transport strips that snapshot. The backend materialises coverage E once on marker-1 read paths; both browser normalisers validate the already-materialised result. The browser full-read normaliser provides a mandatory defensive same-payload fallback that produces `CORRUPT_RECORD` E from that payload's own definition only if an expected wire item is nonetheless absent; it never overwrites backend-materialised E. The browser partial-read normaliser validates provided entries only and never infers coverage from the separately loaded, potentially newer definition registry. No new task-universe field or full fetch is needed. Boundaries are recorded in [rehydration.md](rehydration.md).
+- Definition-write artefact invariant (`AssignmentDefinitionValidation.validateSharedArtifacts`)
+  - Status: `Implemented` (backend)
+  - Owning paths: `src/backend/y_controllers/AssignmentDefinition/AssignmentDefinitionValidation.js`, invoked by `AssignmentDefinitionUpsertOrchestrator.upsert()` on the final resolved tasks after weighting and before constructing or persisting the definition.
+  - Behaviour: at new definition writes, non-IMAGE reference/template artefacts require non-null content and a string hash; valid blank TEXT/array templates are not rejected as empty, and a successfully read blank/all-null SPREADSHEET grid is `[]` while literal `null` means unavailable content. Pending IMAGE artefacts remain allowed only in the definition store, distinct from the stricter completed-full-assignment artefact gate. A formula-free spreadsheet reference task is rejected as an unusable shared definition. Expected content rejections log bounded `{ taskId }` context and throw `ApiValidationError` with the established safe `DEFINITION_PARSE_FAILED` message and code. Missing task/artefact structure and other wiring faults propagate unchanged; there is no broad catch. Existing definition rollback semantics are unchanged, and there is no run-time eligibility preflight. Boundaries are recorded in [rehydration.md](rehydration.md).
+- Completed-run validation gate (`ABClassAssignmentValidation`)
+  - Status: `Implemented` (backend)
+  - Owning path: `src/backend/y_controllers/ABClassController/ABClassAssignmentValidation.js` — invoked by `ABClassAssignmentOps.persistAssignmentRun()` before marker stamping and any collection mutation.
+  - Behaviour: pure pre-write validation mirroring the marker-1 read invariants. Rejects an untrustworthy embedded task universe, a submission whose `assignmentId` differs from the assignment root, unknown task keys and item/artefact `taskId` mismatches, criterion maps that are not exactly the three canonical valid results, and source/hash contradictions. Genuine no-submission (`documentId == null` plus an empty item map) remains valid and is skipped.
+- Prepared write projections (`ABClassAssignmentOps.persistAssignmentRun` with `ABClassPersistence` preparation)
+  - Status: `Implemented` (backend)
+  - Owning paths: `src/backend/y_controllers/ABClassController/ABClassAssignmentOps.js` with `ABClassPersistence._prepareFullClass()`/`_prepareClassPartial()` in `src/backend/y_controllers/ABClassController/ABClassPersistence.js`.
+  - Behaviour: `persistAssignmentRun()` validates the completed run through the completed-run validation gate (see the entry above), reuses the existing class-save contract (`ABClassValidation._validateClassForSave`), stamps `assessmentContractVersion = 1`, then prepares four independent payloads — the full assignment, its embedded partial, the prospective updated full class and the class-partials registry document — before the first collection mutation. Every later write consumes those exact prepared payloads; a storage failure throws after logging the failed phase plus whether the full assignment write committed. Boundaries are recorded in [rehydration.md](rehydration.md).
+- Completion-with-errors feedback (`AssignmentController._countFailedSubmissionItems`)
+  - Status: `Implemented` (backend)
+  - Owning path: `src/backend/y_controllers/AssignmentController.js` — counted after the final save succeeds in `processSelectedAssignment()`.
+  - Behaviour: one item with any explicit error criterion counts as one failed task, regardless of how many criteria carry the error. Progress reports `N tasks failed.` followed by the exact final message `Assessment run completed with errors.` in progress and toast; healthy runs keep normal success feedback. A missing `submissions`, `items` or `assessments` structure throws a contextual error instead of silently counting zero, so a run whose handled errors were persisted beside successes cannot report a false success. Persistence failure cannot report completion.
 
 ### Assignment-definition upsert contract note
 
@@ -65,7 +149,7 @@ This document traces the complete assessment flow in AssessmentBot, starting fro
 9. **Trigger Pattern**: Time-based trigger decouples user action from heavy processing (5-second delay)
 10. **User Properties**: Used for cross-execution parameter passing between trigger setup and execution
 11. **Lazy Loading**: Task definitions only re-parsed when Drive file modification times are newer than cached timestamps
-12. **Batch Operations**: LLM requests sent in batches via `UrlFetchApp.fetchAll()` for efficiency
+12. **Batch Operations**: LLM and image requests are sent in batches via `UrlFetchApp.fetchAll()`, with bounded per-member retries owned by `BaseRequestManager`
 13. **Configuration Transport**: Frontend configuration reads and writes now flow through `apiHandler` using `getBackendConfig` and `setBackendConfig` in `src/backend/z_Api/apiConfig.js`, with typed frontend access in `src/frontend/src/services/backendConfiguration/backendConfigurationService.ts`
 
 ---
@@ -311,7 +395,7 @@ Current state: `startProcessing` stores context via `GASPropertiesUtils.getUserP
    - Shows success toast message
    - Logs completion
 
-**Error Handling** (lines 210-226):
+**Error Handling**:
 
 - Catches any errors in try-catch
 - Logs error via ProgressTracker
@@ -410,7 +494,7 @@ Current state: `startProcessing` stores context via `GASPropertiesUtils.getUserP
 
 **Pipeline Stages**:
 
-##### Stage 1: Add Students (lines 256-262)
+##### Stage 1: Add Students
 
 - **Progress**: "Adding students from class record."
 - **Process**: Iterates through students array and calls `assignment.addStudent(student)` for each
@@ -497,7 +581,7 @@ Current state: `startProcessing` stores context via `GASPropertiesUtils.getUserP
   - `getPrimaryReference()`: Gets first reference artifact
   - `getPrimaryTemplate()`: Gets first template artifact
 
-##### Stage 3: Fetch Submitted Documents (lines 291-297)
+##### Stage 3: Fetch Submitted Documents
 
 - **Progress**: "Fetching submitted documents from students."
 - **Process**: Calls `assignment.fetchSubmittedDocuments()`
@@ -514,74 +598,78 @@ Current state: `startProcessing` stores context via `GASPropertiesUtils.getUserP
 
 - **Location**: `src/backend/AssignmentProcessor/Assignment/04_AssignmentSubmissions.js`
 - **Process**:
-  1. Calls Google Classroom API:
-     - `Classroom.Courses.CourseWork.StudentSubmissions.list(courseId, assignmentId)`
-  2. Iterates through submissions
+  1. Calls `Classroom.Courses.CourseWork.StudentSubmissions.list(courseId, assignmentId)`, following every `nextPageToken` page before concluding that a student has no attachment. A later-page list failure is logged and rethrown unchanged, so the run stops instead of manufacturing no-submission.
+  2. Iterates through the accumulated submissions
   3. For each submission:
      - Extracts userId (student ID)
      - Gets attachments array
-     - Processes each attachment via `_processAttachmentForSubmission()`
-  4. Logs if no submissions or attachments found
+     - Processes each attachment via `_processAttachmentForSubmission()` with a scan-local `{ failures, supported }` accumulator
+  4. After the complete scan, materialises the recorded first failure, if one exists, for each student with no supported attachment; an accepted source clears any earlier rejected-candidate failure. Logs if no submissions or attachments found.
 
-**Helper Method**: `_processAttachmentForSubmission(attachment, studentId, mimeType)`
+**Helper Method**: `_processAttachmentForSubmission(attachment, studentId, mimeType, scanState)`
 
 - **Location**: `src/backend/AssignmentProcessor/Assignment/04_AssignmentSubmissions.js`
 - **Process**:
-  1.  Extracts driveFileId from attachment
-  2.  Fetches file from Drive
-  3.  Validates MIME type matches expected type
-  4.  Finds matching StudentSubmission in submissions array
-  5.  Sets documentId on submission
-  6.  Updates submission timestamp via `touchUpdated()`
-- **Result**: Each StudentSubmission now has a documentId property pointing to their submission
+  1.  Extracts driveFileId from attachment; non-Drive/missing-ID attachments are logged and ignored without recording a failure
+  2.  Reads the MIME type through the immediate native `DriveApp.getFileById(id).getMimeType()` call; an ordinary native `Error` records `SOURCE_UNREADABLE`, while an actually thrown `TypeError`, `ReferenceError` or non-`Error` value propagates
+  3.  Validates the MIME type; a mismatched supported-Drive attachment records `UNSUPPORTED_DOCUMENT`
+  4.  On a valid type, finds the matching StudentSubmission, sets its `documentId` (the last supported attachment wins) and marks the student as supported
+  5.  Updates the submission timestamp via `touchUpdated()`
+- **Result**: Each admitted StudentSubmission has a `documentId`. A student whose supported-admission candidates all fail receives acquisition `E` items for every known task, using the first recorded failure. A student with no supported source and no recorded acquisition failure keeps `documentId: null` and an empty item map (genuine no-submission); absent attachments and ignored non-Drive/missing-ID candidates are the only routes to that state. Ignored candidates alongside failed Drive candidates do not erase the recorded failure.
 
-##### Stage 4: Extract Student Work (lines 299-305)
+##### Stage 4: Extract Student Work
 
 - **Progress**: "Extracting student work from documents."
 - **Process**: Calls `assignment.processAllSubmissions()`
 - **Completion**: "All student work extracted."
 
-**Method**: `SlidesAssignment.processAllSubmissions()`
+**Method**: `SlidesAssignment.processAllSubmissions()` (and the `SheetsAssignment` equivalent)
 
-- **Location**: `/src/backend/AssignmentProcessor/SlidesAssignment.js`
+- **Location**: `/src/backend/AssignmentProcessor/SlidesAssignment.js`, `/src/backend/AssignmentProcessor/SheetsAssignment.js`
 - **Process**:
-  1. Creates `SlidesParser` instance
-  2. Gets task definitions from assignment
-  3. Iterates through each submission
-  4. For each submission:
-     - Updates progress with ordinal position
+  1. Creates the parser instance and gets task definitions from the assignment
+  2. Iterates through each submission:
+     - Skips submissions without `documentId`; a failed acquisition has already materialised its failure items
+     - Updates progress before extraction (Slides reports ordinal position; Sheets names the student)
      - Calls `parser.extractSubmissionArtifacts(documentId, taskDefs)`
-     - For each artifact returned:
-       - Gets corresponding TaskDefinition
-       - Calls `submission.upsertItemFromExtraction(taskDef, extractionData)`
-  5. Skips submissions without documentId
+     - Applies the outcome through the shared `_applyExtractedArtifacts(submission, artifacts, taskDefs, handlers)` helper (below)
+  3. Healthy extracted items keep an empty assessment map until the assessment stage; a matched Slides IMAGE stays legitimately pending until image hydration
+
+**Helper Method**: `AssignmentAssessmentBase._applyExtractedArtifacts(submission, artifacts, taskDefinitions, handlers)`
+
+- **Location**: `src/backend/AssignmentProcessor/Assignment/05_AssignmentAssessmentBase.js`, reached from both runners through the `Assignment._applyExtractedArtifacts` forwarder
+- **Process**:
+  1. If the parser returns its failed-open null sentinel, creates one item per known task with `setError('acquisition', 'SOURCE_UNREADABLE')`
+  2. Otherwise upserts each returned artifact through `submission.upsertItemFromExtraction(taskDef, extractionData)`, warning and ignoring unknown task IDs via the `onUnknownTask` handler
+  3. Materialises extraction `SOURCE_CONTENT_UNAVAILABLE` for known tasks with no extraction outcome, and for returned artifacts whose content is null unless the `isPendingArtifact` handler reports the artifact as legitimately pending. Slides treats a matched IMAGE with a student `pageId` and `metadata.sourceUrl` as pending; Sheets treats every IMAGE artifact as pending
 
 **Method**: `SlidesParser.extractSubmissionArtifacts(documentId, taskDefs)`
 
-- **Location**: `/src/backend/DocumentParsers/SlidesParser/index.js`
+- **Location**: `/src/backend/DocumentParsers/SlidesParser/index.js` (delegating to `01_SlidesParserSubmissionMatcher.js`)
 - **Process**:
-  1. Fetches presentation via Slides API
+  1. Opens the presentation through the immediate native `SlidesApp.openById(documentId)` call; an ordinary native `Error` logs once and returns `null`, while an actually thrown `TypeError`, `ReferenceError` or non-`Error` value propagates
   2. Builds an index of tagged student slide elements across the whole deck
   3. For each task definition:
      - Matches student content by stable task ID first, then task title
      - Accepts moved or copied slides with different page IDs
      - Extracts text, table, or tagged image artefacts based on the definition type
      - Preserves the matched student `pageId` and submission `documentId` on the extraction
-  4. Returns array of artifacts
+     - Emits a canonical placeholder with null `pageId`/`content` for a missing match
+  4. Returns an array of artifacts; `null` is reserved for a failed document open
 
 **Method**: `StudentSubmission.upsertItemFromExtraction(taskDef, extractionData)`
 
-- **Location**: `/src/backend/Models/StudentSubmission.js`
+- **Location**: `src/backend/Models/StudentSubmission/index.js`
 - **Process**:
   1. Gets or creates StudentSubmissionItem for taskId
   2. Creates new artifact from extraction data
-  3. Sets artifact properties (pageId, content, metadata, documentId)
+  3. Sets artifact properties (pageId, content, metadata, documentId); an explicit `pageId: null` is preserved when the parent submission document is known, while an omitted/`undefined` page ID falls back to the task definition page
   4. Stores artifact in item
   5. Updates item timestamp
 
 **Class**: `StudentSubmissionItem`
 
-- **Location**: `/src/backend/Models/StudentSubmission.js` (both classes in the same file)
+- **Location**: `src/backend/Models/StudentSubmission/00_StudentSubmissionItem.js` (item model; `StudentSubmission` itself is the entry in `src/backend/Models/StudentSubmission/index.js`)
 - **Properties**:
 
   ```javascript
@@ -622,7 +710,7 @@ assignment.submissions = [
 ];
 ```
 
-##### Stage 5: Process Images (lines 307-315) - SLIDES ONLY
+##### Stage 5: Process Images - SLIDES ONLY
 
 - **Condition**: Only runs if `includeImages` is true (Slides assignments)
 - **Progress**: "Processing Images."
@@ -634,22 +722,22 @@ assignment.submissions = [
 - **Location**: `/src/backend/AssignmentProcessor/SlidesAssignment.js`
 - **Process**:
   1. Creates `ImageManager` instance
-  2. Collects all image artifacts via `imageManager.collectAllImageArtifacts(this)`
-  3. If no artifacts, returns early
-  4. Fetches images as blobs via `imageManager.fetchImagesAsBlobs(entries)`
-  5. Writes blobs back to artifacts via `imageManager.writeBackBlobs(this, blobs)`
-  6. Logs completion
+  2. Collects image artefacts via `imageManager.collectAllImageArtifacts(this)`; a pending required shared image with no usable source or owning document throws, while a pending student image with no usable source becomes that task's hydration `E` instead of an entry
+  3. If no artefacts are collected, logs and returns early
+  4. Fetches images as blobs via `imageManager.fetchImagesAsBlobs(entries)`, routing final failures by scope
+  5. Writes blobs back via `imageManager.writeBackBlobs(this, blobs)`, converting unusable returned content by scope and invalidating stale results only when content changed
+  6. Logs completion; a thrown fault is logged at this caller boundary (developer and user channels) and rethrown, so the run stops before persistence
 
 **Class**: `ImageManager`
 
 - **Location**: `src/backend/RequestHandlers/ImageManager.js`
-- **Purpose**: Batch-processes images for LLM consumption
+- **Purpose**: Owns scoped image hydration (collection, download and writeback) for LLM consumption
 - **Methods**:
-  - `collectAllImageArtifacts(assignment)`: Gathers all image artifact references
-  - `fetchImagesAsBlobs(entries)`: Downloads images in batches; empty input returns an empty array before reading the batch-size configuration, so empty input does not acquire configuration or trigger its failures. Non-empty fetching is unchanged.
-  - `writeBackBlobs(assignment, blobs)`: Updates artifacts with base64 content
+  - `collectAllImageArtifacts(assignment)`: Gathers reference, template and submission IMAGE artefacts with their scope, document and task identities. Preserves an upstream all-three terminal `E` verbatim, materialises extraction `IMAGE_HYDRATION_FAILED` for a pending student image with no admissible source, and throws for a pending required shared image with no admissible source or owning document.
+  - `fetchImagesAsBlobs(entries)`: Downloads images in document round-robin order through the shared sender, using the configured Slides-fetch batch size, accepted `[200]` and no stop statuses. Empty input returns an empty array before reading the batch-size configuration, so empty input does not acquire configuration or trigger its failures. Final 200 blobs are read before the next batch; final non-200/network outcomes are routed by scope (student task `E` or a run-blocking throw), and blob-read faults propagate unchanged.
+  - `writeBackBlobs(assignment, blobs)`: Applies fetched blobs by UID, requiring the model writer before classifying returned data and reading native bytes once. Unusable returned content converts by scope; changed non-null content clears stale assessments/feedback, unchanged content preserves them; thrown faults escape by original identity.
 
-##### Stage 6: Assess Responses (lines 317-323)
+##### Stage 6: Assess Responses
 
 - **Progress**: "Assessing student responses."
 - **Process**: Calls `assignment.assessResponses()`
@@ -677,20 +765,22 @@ assignment.submissions = [
 
 **Method**: `generateRequestObjects(assignment)`
 
-- **Location**: Lines 24-105
+- **Location**: `src/backend/RequestHandlers/LLMRequestManager.js`
 - **Purpose**: Creates HTTP request objects for LLM API calls
 - **Process**:
-  1. Initialises counters and UID index
+  1. Initialises counters and the generated UID route index
   2. Gets backend URL and API key from configuration
   3. For each submission's items:
      - Gets task definition and artifact type
      - Skips SPREADSHEET types (handled by SheetsAssessor)
-     - Checks for "not attempted" (student hash equals template hash)
-       - If not attempted, creates special assessment and skips LLM
-     - Checks cache using reference and student content hashes
-       - If cached, assigns cached assessment and skips LLM
-     - If no cache hit, creates request object
-  4. Builds UID index for response routing
+     - Preserves a prior all-three `E` result verbatim without dispatch
+     - Requires usable non-empty string hashes on the reference, template and student artefacts; a null/empty hash throws before lookup or dispatch
+     - Checks for "not attempted" (student hash equals template hash, or blank work)
+       - If not attempted, creates the `N` assessment and skips LLM
+     - Builds the versioned cache identity from task type plus reference/template/student hashes and reads generic `CacheManager.get()`
+       - A hit is accepted only after shared numeric validation; a malformed/`N`/`E` hit is logged as a miss
+     - If no cache hit, creates the request object and records the retained key on the route entry
+  4. Rejects duplicate generated UIDs before returning
   5. Returns array of request objects
 - **Request Object Structure**:
 
@@ -715,23 +805,29 @@ assignment.submissions = [
 
 **Method**: `processStudentResponses(requests, assignment)`
 
-- **Purpose**: Sends requests and processes responses
+- **Purpose**: Sends requests through the shared batch transport and applies final outcomes
 - **Process**:
-  1. Sends all requests in batch via `UrlFetchApp.fetchAll(requests)`
-  2. Calls `processResponses(responses, requests, assignment)`
-  3. Processes each response individually
+  1. Resets the run-stop latch and the routed-attempt provenance map. Returns before input validation when `requests` is empty; otherwise validates the assignment and rejects duplicate request UIDs.
+  2. Calls `sendRequestsInBatches()` once with the configured assessor batch size, accepted statuses `[200, 201]` and stop statuses `[401, 403, 404]`.
+  3. For each completed batch, rejects unknown/duplicate outcome UIDs, records a run stop when any outcome is 401/403/404, applies accepted responses before non-success outcomes, and routes each outcome by its retained request UID. Immediately before routing, it records that outcome's attempt count in the invocation-local map.
+  4. Returns exactly `false` to the sender when stopped, preventing later batches while completed same-batch successes are retained.
+  5. After the sender returns, if the run stopped, terminalises every eligible item that was never routed as `LLM_RUN_STOPPED` with no further HTTP.
 
-**Method**: `_processSingleResponse(response, request, assignment)`
+**Method**: `_processSingleResponse(response, request)`
 
 - **Process**:
-  1. Checks HTTP response code
-  2. Parses JSON response body
-  3. Validates assessment structure
-  4. Extracts UID from request
-  5. Looks up submission and item from UID index
-  6. Assigns assessment artifacts to item via `_assignAssessmentArtifacts()`
-  7. Caches successful assessments
-  8. Handles validation failures with retry logic
+  1. Resolves the routed entry and item by UID; a missing route throws.
+  2. For a null or non-accepted response, reads the attempt count retained by the batch callback. Requires a safe integer in `1..maxAttempts`; missing, `undefined`/`null`, numeric-string, fractional, non-finite, unsafe-integer or out-of-budget provenance throws a contextual `Error` naming the UID before any mutation.
+  3. Maps the non-accepted outcome through `_terminalCodeFor`: stop status → `LLM_RUN_STOPPED`; permanent status → `LLM_HTTP_FAILED`; retryable/network with a spent budget (`attempts === maxAttempts`) → `LLM_UNAVAILABLE`; retryable/network with unspent budget (pending retries cancelled by a same-batch stop) → `LLM_RUN_STOPPED`. Calls `item.setError('assessment', code)` atomically.
+  4. For an accepted response, reads `getContentText()` outside the catch, then catches only `JSON.parse`.
+  5. Rejects non-object roots and raw criterion keys that are not admissible case-insensitive canonical identities before normalisation, so inherited-key, extra-key and colliding case-variant evidence cannot be erased.
+  6. Normalises keys, validates the result once through `validateAssessmentData()` (exact own canonical keys, each `Assessment.isValidRawResult` and numeric), and assigns the three `Assessment` instances.
+  7. Writes the validated numeric result through generic `CacheManager.put()` at the retained generation-time key with `CacheManager.CACHE_EXPIRY_SECONDS`. There is no semantic retry and no partial salvage.
+
+**Method**: `_terminaliseUnprocessedItems(processedUids)`
+
+- **Purpose**: Completes a stopped run without extra HTTP
+- **Process**: iterates the generated UID route map and calls `setError('assessment', 'LLM_RUN_STOPPED')` for every eligible item whose UID was not routed. A missing route map, entry or item throws; earlier-batch and same-batch outcomes, cached results and genuine `N` results are never touched.
 
 **Method**: `_assignAssessmentArtifacts(item, assessmentData)`
 
@@ -746,7 +842,7 @@ assignment.submissions = [
   - `spag`: Spelling, Punctuation, and Grammar
 - **Assessment Model**:
   - Each assessment is an instance of the `Assessment` class
-  - Contains `score` (0-5 or 'N' for not attempted) and `reasoning` (explanation text); partial hydration summaries remove `reasoning` to keep the payload lightweight
+  - Contains `score` (0-5 or 'N' for not attempted) and `reasoning` (explanation text); partial hydration summaries strip `reasoning` from numeric and `'N'` results only, while an `'E'` result keeps its `reasoning` and `error` cause
   - Stored as JSON in StudentSubmissionItem.assessments
 
 **Class**: `Assessment`
@@ -756,8 +852,9 @@ assignment.submissions = [
 
   ```javascript
   {
-    score: number | string, // 0-5 or 'N' (for not attempted)
-    reasoning: string       // Explanation
+    score: number | 'N' | 'E',      // 0-5, 'N' (not attempted), or 'E' (explicit error)
+    reasoning: string,              // Explanation
+    error?: { stage, code }         // Catalogue cause, emitted only for 'E'
   }
   ```
 
@@ -794,16 +891,14 @@ submission.items["task_001"] = {
 
 **Method**: `SheetsAssessor.assessResponses()`
 
-- **Location**: Lines 18-84
 - **Process**:
   1. Iterates through submissions
   2. For each submission's items:
      - Gets corresponding task definition
      - Skips non-formula responses
      - Calls `assessFormulaeTasks()` for formula assessment
-     - Adds assessments to submission
-     - Adds formula comparison results
-     - Adds cell reference feedback
+     - Adds the three assessments to the submission
+     - Uses the transient comparison results to add cell-reference feedback; the comparison result itself is not persisted
 
 **Method**: `assessFormulaeTasks()`
 
@@ -828,6 +923,8 @@ submission.items["task_001"] = {
   }
   ```
 
+`formulaComparisonResults` is transient. The assessor writes only the three assessments and the `cellReference` feedback to the submission item; it no longer writes an `assessments.formulaComparison` entry. A successfully read blank/all-null grid arrives as `[]` with the normal `[]` hash; literal `null` means unavailable content and is not coerced to a blank grid here. See [Component Shape: BaseTaskArtifact § Concrete artifact types](../data-shapes/base-task-artifact.md#concrete-artifact-types).
+
 ---
 
 ### Phase 5: Data Persistence
@@ -844,18 +941,24 @@ submission.items["task_001"] = {
 
 **Method**: `ABClassController.persistAssignmentRun(abClass, assignment)`
 
-- **Location**: `src/backend/y_controllers/ABClassController/index.js`
-- **Purpose**: Saves assignment data in two forms
+- **Location**: `src/backend/y_controllers/ABClassController/index.js`, delegating to `ABClassAssignmentOps.persistAssignmentRun()` and `ABClassPersistence.persistClassAndPartial()`
+- **Purpose**: Validates the completed run, stamps the result-format marker, then saves assignment data in two forms
 - **Process**:
-  1. Saves full assignment to dedicated collection
+  1. Validates the completed run before any mutation
+     - `ABClassAssignmentValidation._validateCompletedAssignmentRun()` mirrors the marker-1 read invariants: task-universe integrity, submission association, item/artefact identity, exactly three canonical criterion results per item, and source/hash consistency. Genuine no-submission (`documentId == null` plus an empty item map) remains valid and is skipped.
+     - Reuses the existing class-save contract (`ABClassValidation._validateClassForSave`) before the first mutation.
+  2. Stamps the result-format marker
+     - Sets `assignment.assessmentContractVersion = 1` only after the completed-run gate passes and before serialisation.
+  3. Prepares four independent payloads before the first collection mutation
+     - Full assignment via `Assignment.toJSON()`; embedded partial via `Assignment.toPartialJSON()`, then constructed back through `Assignment.fromJSON(partialPayload, 'partial')` as the actual partial representation that will live in the class (a representation conversion, not a validation-only round-trip)
+     - Prospective updated full-class and class-partials documents via `ABClassPersistence._prepareFullClass()`/`_prepareClassPartial()` with the partial temporarily spliced into `abClass.assignments`
+  4. Writes the full assignment to its dedicated collection
      - Collection key: `assign_full_{courseId}_{assignmentId}`
-     - Contains complete data with all artifacts and content
-  2. Creates partial (summary) assignment
-     - Redacts artifact content and hashes
-     - Keeps structure but removes heavy payloads
-  3. Updates/adds partial assignment to ABClass.assignments array
-  4. Saves updated ABClass to database
-     - Collection key: `class_{courseId}`
+     - Contains complete data with all artifacts, content and the marker
+  5. Writes the prepared full-class and class-partials payloads
+     - Full class: collection key `class_{courseId}`; partials registry: `abclass_partials`
+     - Both writes consume the exact prepared payloads; nothing re-serialises after the full commit
+  - The write order is deliberately non-transactional (full assignment → class → partials). A storage failure throws after logging the failed phase and whether the full assignment write committed; it never reports a completed run and nothing repairs the state.
 
 **Data Shapes Persisted**:
 
@@ -863,6 +966,7 @@ submission.items["task_001"] = {
 
 ```javascript
 {
+  assessmentContractVersion: 1,
   courseId: string,
   assignmentId: string,
   assignmentName: string,
@@ -910,6 +1014,7 @@ submission.items["task_001"] = {
 ```javascript
 {
   // Same structure but:
+  // - assessmentContractVersion: 1 (retained by the marker stamp)
   // - artifact.content = null
   // - artifact.contentHash = null
   // - Lightweight for list views and cohort analysis
@@ -1040,14 +1145,15 @@ submission.items["task_001"] = {
 }
 ```
 
-> **Note:** Partial summaries (such as the ABClass/JsonDbApp payloads) keep the assessment map but remove each `reasoning` field so only the `score` (and any non-reasoning metadata) remains until a full hydration rehydrates the explanations.
+> **Note:** Partial summaries (such as the ABClass/JsonDbApp payloads) keep the assessment map but strip `reasoning` from numeric and `'N'` entries so only the `score` remains until a full hydration restores the explanations. An `'E'` entry keeps `{ score: 'E', reasoning, error }` so a class-embedded failure retains its explanation and cause.
 
 ### Assessment
 
 ```javascript
 {
-  score: number | string,  // 0-5 or 'N' (for not attempted)
-  reasoning: string        // Explanation text from LLM
+  score: number | 'N' | 'E',      // 0-5, 'N' (not attempted), or 'E' (explicit error)
+  reasoning: string,              // Explanation text from the LLM or catalogue
+  error?: { stage, code }         // Catalogue cause, emitted only for 'E'
 }
 ```
 
@@ -1089,12 +1195,14 @@ submission.items["task_001"] = {
 
 ### LLM Assessment Cache
 
-- **Manager**: `CacheManager`
-- **Location**: `src/backend/RequestHandlers/CacheManager.js`
-- **Key**: `{referenceHash}_{studentHash}`
-- **Stored**: Assessment objects (completeness, accuracy, spag)
+- **Manager**: `CacheManager` (generic `get`/`put`) with assessment identity owned by `LLMRequestManager`
+- **Location**: `src/backend/RequestHandlers/CacheManager.js`, `src/backend/RequestHandlers/LLMRequestManager.js`
+- **Key**: versioned hash of literal `v1`, task type, and the reference, template and student content hashes. The key is computed once at request generation and retained on the route entry through writeback.
+- **Stored**: validated numeric assessment results (completeness, accuracy, spag) as JSON. `E` results and transport failures are never cached.
+- **Validation**: hits use the same successful-result validator as live output; malformed, `N` or `E` entries are logged misses and re-assessed.
+- **TTL**: `CacheManager.CACHE_EXPIRY_SECONDS` (shared six-hour constant) passed explicitly by the LLM writeback; no duplicate default.
 - **Purpose**: Avoid re-assessing identical student responses
-- **Invalidation**: When reference content changes (new hash)
+- **Invalidation**: A change in task type or any reference/template/student content hash yields a new key. Old key spaces are misses; there is no purge or migration. Cache read/write failures remain logged best-effort and never define authoritative success.
 
 ### Assignment Definition Cache
 
@@ -1157,7 +1265,7 @@ AssignmentController.processSelectedAssignment()
   │   ├─ Assignment.fetchSubmittedDocuments()
   │   │   └─ Assignment.fetchSubmittedDocumentsByMimeType()
   │   │       ├─ Classroom.Courses.CourseWork.StudentSubmissions.list()
-  │   │       └─ Assignment._processAttachmentForSubmission() [for each]
+  │   │       └─ AssignmentSubmissions._processAttachmentForSubmission() [for each]
   │   ├─ SlidesAssignment.processAllSubmissions()
   │   │   └─ SlidesParser.extractSubmissionArtifacts() [for each student]
   │   │       └─ StudentSubmission.upsertItemFromExtraction()
@@ -1168,13 +1276,17 @@ AssignmentController.processSelectedAssignment()
   │   └─ Assignment.assessResponses()
   │       ├─ [If SLIDES/TEXT]: LLMRequestManager flow
   │       │   ├─ LLMRequestManager.generateRequestObjects()
-  │       │   │   ├─ CacheManager.getCachedAssessment() [for each item]
+  │       │   │   ├─ CacheManager.get() [versioned v1/type/reference/template/student key]
   │       │   │   └─ Build HTTP request objects
   │       │   └─ LLMRequestManager.processStudentResponses()
-  │       │       ├─ UrlFetchApp.fetchAll()
-  │       │       ├─ Process each response
-  │       │       ├─ Assign assessments to items
-  │       │       └─ CacheManager.cacheAssessment() [for each]
+  │       │       ├─ BaseRequestManager.sendRequestsInBatches()
+  │       │       │   ├─ UrlFetchApp.fetchAll() [per batch]
+  │       │       │   └─ UrlFetchApp.fetch() [sequential member retries]
+  │       │       ├─ Record attempt provenance per routed outcome
+  │       │       ├─ Process each final outcome by request UID
+  │       │       ├─ Assign validated numeric assessments
+  │       │       ├─ CacheManager.put(..., CacheManager.CACHE_EXPIRY_SECONDS) [for each]
+  │       │       └─ Terminalise never-dispatched items after a run stop
   │       └─ [If SHEETS]: SheetsAssessor.assessResponses()
   │           └─ SheetsAssessor.assessFormulaeTasks() [for each item]
   ├─ Assignment.touchUpdated()
@@ -1215,7 +1327,10 @@ AssignmentController.processSelectedAssignment()
 
 - `SlidesParser`: Extracts content from Google Slides
 - `SheetsParser`: Extracts content from Google Sheets
-- `ImageManager`: Batch-processes images
+
+### Managers
+
+- `ImageManager`: Owns scoped image hydration (download and writeback)
 
 ### Assessors
 
@@ -1262,10 +1377,12 @@ To add a new document type (e.g., Google Docs):
 
 To add a new assessment category (beyond completeness, accuracy, spag):
 
-1. Update LLM backend API to return new category
-2. Modify `LLMRequestManager._assignAssessmentArtifacts()` to handle new category
+1. Add the criterion to `Assessment.CRITERIA` in `src/backend/Models/Assessment.js`. Every
+   backend validator, restoration path and terminal-error primitive derives from it, so
+   no other backend list needs editing.
+2. Update the LLM backend API to return the new category
 3. Update any analysis or reporting views to display the new category
-4. No changes needed to data models (assessments stored as flexible objects)
+4. No changes needed to the stored data models (assessments are stored as flexible objects)
 
 ### Extending the Pipeline
 

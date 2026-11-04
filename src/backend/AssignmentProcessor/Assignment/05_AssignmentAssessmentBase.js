@@ -2,8 +2,8 @@
  * AssignmentAssessmentBase — Abstract assessment base sub-class
  *
  * Owns fetchSubmittedDocuments(), populateTasks(), processAllSubmissions(),
- * _requireImplementation(), getTasks(), setTasks(), getDocumentType(),
- * getReferenceDocumentId(), and getTemplateDocumentId().
+ * _applyExtractedArtifacts(), _requireImplementation(), getTasks(), setTasks(),
+ * getDocumentType(), getReferenceDocumentId(), and getTemplateDocumentId().
  *
  * Operates on the parent Assignment instance's assignmentDefinition via this._assignment.
  * @class
@@ -43,6 +43,74 @@ class AssignmentAssessmentBase {
    */
   processAllSubmissions() {
     this._requireImplementation('processAllSubmissions');
+  }
+
+  /**
+   * Applies one submission's extraction outcome to its items.
+   *
+   * Shared by the Slides and Sheets runners once each has handled its own
+   * progress reporting and document-id check. A null extraction marks every
+   * known task SOURCE_UNREADABLE; otherwise extracted artifacts are upserted,
+   * known tasks with no artifact are marked SOURCE_CONTENT_UNAVAILABLE, and
+   * artifacts left without content are marked likewise unless `isPendingArtifact`
+   * reports that the artifact is legitimately awaiting later hydration.
+   * @param {StudentSubmission} submission - The submission receiving the outcome.
+   * @param {Array<Object>|null} artifacts - Extracted artifacts, or null when the source could not be read.
+   * @param {Array<Object>} taskDefinitions - Every known task definition for the assignment.
+   * @param {{onUnknownTask: function(Object): void, isPendingArtifact: function(Object): boolean}} handlers -
+   *   `onUnknownTask` warns about an artifact whose taskId is unknown; `isPendingArtifact`
+   *   reports artifacts that must not be marked content-unavailable.
+   * @returns {void}
+   */
+  _applyExtractedArtifacts(submission, artifacts, taskDefinitions, handlers) {
+    if (artifacts === null) {
+      taskDefinitions.forEach((taskDefinition) => {
+        const item = submission.upsertItemFromExtraction(taskDefinition, {
+          pageId: null,
+          content: null,
+          documentId: submission.documentId,
+          missingContentLogged: true,
+        });
+        item.setError('acquisition', 'SOURCE_UNREADABLE');
+      });
+      return;
+    }
+
+    const processedTaskIds = new Set();
+    artifacts.forEach((artifact) => {
+      const taskDefinition = this._assignment.assignmentDefinition.tasks[artifact.taskId];
+      if (!taskDefinition) {
+        handlers.onUnknownTask(artifact);
+        return;
+      }
+      submission.upsertItemFromExtraction(taskDefinition, {
+        pageId: artifact.pageId,
+        content: artifact.content,
+        metadata: artifact.metadata,
+        documentId: artifact.documentId,
+        // Parser placeholders already carry the single missing-content diagnostic,
+        // so the model layer stores them silently without duplicate warnings.
+        missingContentLogged: artifact.content == null,
+      });
+      processedTaskIds.add(artifact.taskId);
+    });
+
+    taskDefinitions.forEach((taskDefinition) => {
+      if (processedTaskIds.has(taskDefinition.getId())) return;
+      const item = submission.upsertItemFromExtraction(taskDefinition, {
+        pageId: null,
+        content: null,
+        documentId: submission.documentId,
+        missingContentLogged: true,
+      });
+      item.setError('extraction', 'SOURCE_CONTENT_UNAVAILABLE');
+    });
+
+    artifacts.forEach((artifact) => {
+      if (artifact.content != null || handlers.isPendingArtifact(artifact)) return;
+      const item = submission.getItem(artifact.taskId);
+      if (item) item.setError('extraction', 'SOURCE_CONTENT_UNAVAILABLE');
+    });
   }
 
   /**

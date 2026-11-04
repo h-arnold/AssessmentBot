@@ -237,10 +237,9 @@ parameters:
   throw. A denied or errored trigger is released so failed authorisations do not
   accumulate scheduled work; malformed input that never resolves a triggerUid is logged
   and left alone.
-- **Trigger context contents.** The stored context
-  (`trigger:<uid>:method` and `trigger:<uid>:params` in Script Properties, keyed by the
-  opaque `triggerUid`) carries only the dispatch method and opaque identifiers
-  (for example an assignment ID) — never student content — see
+- **Trigger context contents.** The stored context carries only the dispatch method and
+  opaque identifiers (for example an assignment ID) — never student content. The key
+  format and lifecycle are owned by
   [Contract: TriggerContext](../data-shapes/trigger-context.md).
 
 ## Caching policy
@@ -249,28 +248,18 @@ Authorisation results for the **Google Groups provider** are cached through the 
 `CacheManager` (`src/backend/RequestHandlers/CacheManager.js`) to avoid a `GroupsApp`
 round-trip on every call:
 
-- **Key.** `auth:<groupEmail>:<email>` (`GoogleGroupsAuthService.js`) — a composite key
-  embedding both the configured group and the caller.
-- **Only successes are cached.** The cached value is always the success shape
-  `{ allowed: true, role }` with the 6-hour TTL supplied explicitly as
-  `CacheManager.CACHE_EXPIRY_SECONDS` (6 hours, defined in `CacheManager.js`). Denials
-  short-circuit before the write. A user _added_ to the group is therefore authorised on
-  their very next request, with no wait for expiry.
+- **Only successes are cached.** A cached value is always a grant, so a user _added_ to the
+  group is authorised on their very next request, with no wait for expiry.
 - **Bypass semantics.** `bypassCache: true` skips the cache _read_ but still writes the
   refreshed allowed result, so a trigger-execution grant refreshes the API-call grant.
-- **Group change invalidation by construction.** Because the key embeds the group email,
-  changing `authGroupEmail` changes every future key; stale entries under the old key
-  simply expire and are never consulted. No explicit invalidation on config change is
-  needed.
 - **Revocation latency.** A user whose membership is revoked remains authorised for API
-  calls until their cached entry expires — bounded by the 6-hour TTL and recorded as an
+  calls until their cached entry expires — bounded by the six-hour TTL and recorded as an
   accepted risk (see [accepted-risks.md](./accepted-risks.md) risk 2).
-- **Storage mechanics.** `CacheManager.get()` degrades to a miss on malformed JSON or
-  cache-service read failure, and `put()` is best-effort: write failures are logged
-  through `ABLogger` and do not fail the calling workflow. Both behaviours are relevant
-  to the gate because they mean the cache can never be a new denial-of-service vector —
-  a failed read simply re-runs the `GroupsApp` check. See
-  [Contract: AuthCache](../data-shapes/auth-cache.md) for the full entry contract.
+- **Failure is not a denial of service.** A failed or unreadable cache entry is treated as
+  a miss, so the gate re-runs the `GroupsApp` check instead of denying the caller.
+
+The entry contract — key format and TTL — is owned by
+[Contract: AuthCache](../data-shapes/auth-cache.md).
 
 The **Script Properties provider does not cache**: the configured user list is parsed fresh
 on every request, so membership and role changes take effect on the very next call with no
@@ -388,7 +377,7 @@ secrets in log output and mandates `ABLogger` for all backend code — see
   the compulsory-once-set group email and a membership note) and, for the Script Properties
   provider, a staged user table with add/remove and role changes. A single atomic Save carries
   `expectedAuthRevision` so a stale-revision conflict is surfaced without losing the staged
-  edits. See `AUTHENTICATION_SETTINGS_LAYOUT.md` for the full layout contract.
+  edits.
 - **`FORBIDDEN` message mapping.** `FORBIDDEN` is registered in
   `src/frontend/src/errors/map-error-to-ui.ts` with the user-safe message
   "You do not have permission to access this application. Please contact your
@@ -422,5 +411,3 @@ secrets in log output and mandates `ABLogger` for all backend code — see
   logging policy that governs the audit trail
 - [src/backend/AGENTS.md](../../../src/backend/AGENTS.md) §7 — the `AuthService`
   singleton contract for backend development
-- [AUTHENTICATION_SETTINGS_LAYOUT.md](../../../AUTHENTICATION_SETTINGS_LAYOUT.md) — the
-  admin Authentication tab layout contract

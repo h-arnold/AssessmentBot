@@ -106,6 +106,7 @@ function buildAssignmentPartial(assignmentId: string, definitionKey: string) {
     updatedAt: null,
     createdAt: '2026-01-15T09:00:00.000Z',
     documentType: 'assessment',
+    assessmentContractVersion: 1 as const,
     submissions: [],
     assignmentDefinitionKey: definitionKey,
   };

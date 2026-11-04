@@ -6,11 +6,11 @@
  * while keeping the live assignment definition partial separate from the class
  * snapshot.
  *
- * The source JSON cannot be imported here because Vite's `server.fs.allow`
- * blocks the cross-root path from `src/frontend/e2e-tests` to
- * `tests/__mocks__/data/anon-test-data.json`. These builders therefore retain
- * the typed, plain-object journey payload locally.
+ * Realistic full-result source bodies and hashes are selected from the committed
+ * canonical corpus; local identifiers and score/layout boundaries remain owned here.
  */
+
+import assignmentsByKeyRaw from '@synthetic/small/assignmentsByKey.json';
 
 export const HEATMAP_CLASS_ID = '100000000001';
 export const HEATMAP_ASSIGNMENT_NAME = '4. Presenting our Findings - Video Plan';
@@ -112,22 +112,104 @@ const ARTIFACT_CONTENT: Readonly<Record<string, string>> = {
   task_003: '| Criteria | Met |\n| --- | --- |\n| Layout | Yes |\n| Accuracy | Yes |',
 };
 
+type CanonicalSourceArtifact = {
+  type: string;
+  content: unknown;
+  contentHash: string | null;
+};
+type CanonicalTask = Record<string, unknown> & { id: string };
+const canonicalAssignments = assignmentsByKeyRaw as Record<
+  string,
+  {
+    tasks: Record<string, CanonicalTask>;
+    assignmentDefinition: { tasks: Record<string, CanonicalTask> };
+    submissions: Array<{ items: Record<string, { artifact: CanonicalSourceArtifact }> }>;
+  }
+>;
+
 /**
- * The IMAGE and TABLE artefact bodies this fixture already seeds.
+ * Find an actual usable body and paired source hash for a canonical artefact type.
+ * @param {"TEXT" | "IMAGE" | "SPREADSHEET"} type - Canonical artefact type to select.
+ * @returns {{ content: unknown; contentHash: string }} Paired body and source hash.
+ */
+function canonicalSource(type: 'TEXT' | 'IMAGE' | 'SPREADSHEET'): {
+  content: unknown;
+  contentHash: string;
+} {
+  for (const assignment of Object.values(canonicalAssignments)) {
+    for (const submission of assignment.submissions) {
+      for (const item of Object.values(submission.items)) {
+        if (
+          item.artifact.type === type &&
+          item.artifact.content != null &&
+          item.artifact.contentHash != null
+        ) {
+          return { content: item.artifact.content, contentHash: item.artifact.contentHash };
+        }
+      }
+    }
+  }
+  throw new Error(`Canonical corpus has no usable ${type} submission source.`);
+}
+
+/**
+ * Return canonical task records under this journey's local IDs. Compact
+ * assignments contain two tasks; the existing three-task journey maps its
+ * third local display boundary to the first canonical task record.
+ * @returns {Record<string, CanonicalTask>} Canonical task projections.
+ */
+function canonicalHeatmapTasks(): Record<string, CanonicalTask> {
+  const source = Object.values(canonicalAssignments).find(
+    (assignment) => Object.keys(assignment.assignmentDefinition.tasks).length > 0
+  );
+  if (!source) throw new Error('Canonical corpus has no task records.');
+  return Object.fromEntries(
+    HEATMAP_TASK_IDS.map((taskId, index) => {
+      const canonicalTasks = Object.values(source.assignmentDefinition.tasks);
+      const task = canonicalTasks[index] ?? canonicalTasks[0];
+      if (!task) throw new Error('Canonical task record is unavailable.');
+      const artifacts = task.artifacts as
+        | { reference?: Array<Record<string, unknown>>; template?: Array<Record<string, unknown>> }
+        | undefined;
+      return [
+        taskId,
+        {
+          ...task,
+          id: taskId,
+          ...(artifacts && {
+            artifacts: {
+              ...artifacts,
+              reference: artifacts.reference?.map((artifact) => ({ ...artifact, taskId })),
+              template: artifacts.template?.map((artifact) => ({ ...artifact, taskId })),
+            },
+          }),
+        },
+      ];
+    })
+  );
+}
+
+/**
+ * Narrow a fixture artefact type to one backed by the canonical corpus.
+ * @param {string | undefined} type - Candidate fixture artefact type.
+ * @returns {boolean} Whether the type has a canonical source.
+ */
+function isCanonicalSourceType(type: string | undefined): type is 'TEXT' | 'IMAGE' | 'SPREADSHEET' {
+  return ['TEXT', 'IMAGE', 'SPREADSHEET'].includes(type ?? '');
+}
+
+/**
+ * The deliberately local TABLE body used for renderer-boundary coverage.
  *
- * Exported so a new spec reuses the content that the preview renderer is already
- * covered against rather than inventing a second corpus. The committed
- * synthetic `small` profile ships TEXT-only artefacts, so reviewing the image
- * and table renderers needs this documented local-content exception.
+ * Exported so a new spec reuses the existing TABLE body rather than inventing
+ * another local source. IMAGE and SPREADSHEET are canonical corpus capabilities.
  *
  * Kept alongside `ARTIFACT_CONTENT` on purpose: one source of truth for the
  * seeded bodies, no copy of the data URLs or markdown here.
  */
 export const HEATMAP_UNSUPPORTED_ARTIFACT_CONTENT: Readonly<{
-  readonly IMAGE: string;
   readonly TABLE: string;
 }> = Object.freeze({
-  IMAGE: ARTIFACT_CONTENT.task_001,
   TABLE: ARTIFACT_CONTENT.task_003,
 });
 
@@ -151,6 +233,19 @@ function reasoningFor(taskId: string, metric: string): string {
  */
 function buildArtifact(taskId: string, studentId: string): Record<string, unknown> {
   const artifactType = { task_001: 'IMAGE', task_002: 'TEXT', task_003: 'TABLE' }[taskId];
+  let canonical: ReturnType<typeof canonicalSource> | null;
+  if (artifactType === 'TABLE') {
+    canonical = {
+      content: ARTIFACT_CONTENT.task_003,
+      // SHA-256 (Utils.generateHash) of the exact local Markdown body above.
+      contentHash: 'b446679746be123af926fef8ca0f1b4956ce2a10d1d3ab0ef8adf4f30cfd8422',
+    };
+  } else {
+    if (!isCanonicalSourceType(artifactType)) {
+      throw new Error(`Heatmap fixture has no supported artefact type for ${taskId}.`);
+    }
+    canonical = canonicalSource(artifactType);
+  }
 
   return {
     taskId,
@@ -158,10 +253,10 @@ function buildArtifact(taskId: string, studentId: string): Record<string, unknow
     pageId: 'page-1',
     documentId: `doc-${studentId}`,
     uid: `uid-${studentId}-${taskId}`,
-    contentHash: null,
+    contentHash: canonical?.contentHash ?? null,
     metadata: {},
     type: artifactType,
-    content: ARTIFACT_CONTENT[taskId],
+    content: canonical?.content ?? ARTIFACT_CONTENT[taskId],
   };
 }
 
@@ -197,7 +292,9 @@ function buildAssignmentItem(taskId: string, studentId: string) {
  */
 export function buildAssignmentFullDocument(): Record<string, unknown> {
   const studentId = '100000000005';
+  const tasks = canonicalHeatmapTasks();
   return {
+    assessmentContractVersion: 1,
     courseId: HEATMAP_CLASS_ID,
     assignmentId: HEATMAP_ASSIGNMENT_ID,
     assignmentName: HEATMAP_ASSIGNMENT_NAME,
@@ -207,7 +304,7 @@ export function buildAssignmentFullDocument(): Record<string, unknown> {
     documentType: 'SLIDES',
     referenceDocumentId: 'ref',
     templateDocumentId: 'tpl',
-    tasks: {},
+    tasks,
     submissions: [
       {
         studentId,
@@ -236,7 +333,7 @@ export function buildAssignmentFullDocument(): Record<string, unknown> {
       templateLastModified: '2026-07-07T07:45:23.916Z',
       assignmentWeighting: 1,
       definitionKey: HEATMAP_DEFINITION_KEY,
-      tasks: {},
+      tasks,
       createdAt: '2026-07-07T07:45:23.916Z',
       updatedAt: '2026-07-07T07:49:06.791Z',
     },

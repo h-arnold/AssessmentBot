@@ -1,65 +1,15 @@
 /**
- * Assignment Factory Pattern Tests (RED Phase)
+ * Assignment factory and serialization regression tests
  *
- * Tests for polymorphic assignment creation and deserialization.
- * All tests should FAIL initially as the factory pattern is not yet implemented.
+ * Covers polymorphic assignment creation, deserialization and serialization
+ * controls, including current-read serializer rejection of plain submissions.
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import Assignment from '#backend/AssignmentProcessor/Assignment/index.js';
 import { AssignmentDefinition } from '#backend/Models/AssignmentDefinition.js';
-import {
-  createSlidesAssignment,
-  createSheetsAssignment,
-  createTextTask,
-  createStudentSubmission,
-} from '../helpers/modelFactories.js';
-
-/**
- * Helper function to create standard test data for deserialization tests.
- * @param {string} docType - Document type (SLIDES or SHEETS)
- * @param {string} courseId - Course ID prefix
- * @return {object} Standard test data
- */
-function createTestData(docType, courseId) {
-  const definition = new AssignmentDefinition({
-    primaryTitle: 'Test Assignment',
-    primaryTopic: 'Topic',
-    yearGroupKey: 'year-group-test',
-    yearGroupLabel: 'Year Test',
-    documentType: docType,
-    referenceDocumentId: courseId.replace('c', 'ref'),
-    templateDocumentId: courseId.replace('c', 'tpl'),
-    tasks: {},
-    referenceLastModified: '2024-01-01T00:00:00.000Z',
-    templateLastModified: '2024-01-01T00:00:00.000Z',
-  });
-
-  return {
-    courseId,
-    assignmentId: courseId.replace('c', 'a'),
-    assignmentName: 'Test Assignment',
-    assignmentDefinition: definition.toJSON(),
-    createdAt: '2026-01-01T00:00:00.000Z',
-    submissions: [],
-  };
-}
-
-/**
- * Helper function to assert basic assignment properties.
- * @param {object} assignment - The assignment to check
- * @param {string} docType - Expected document type
- * @param {string} courseId - Expected course ID
- */
-function assertAssignmentProperties(assignment, docType, courseId) {
-  expect(assignment).toBeDefined();
-  expect(assignment.assignmentDefinition).toBeDefined();
-  expect(assignment.assignmentDefinition.documentType).toBe(docType);
-  expect(assignment.courseId).toBe(courseId);
-  expect(assignment.assignmentId).toBe(courseId.replace('c', 'a'));
-  expect(assignment.assignmentDefinition.referenceDocumentId).toBe(courseId.replace('c', 'ref'));
-  expect(assignment.assignmentDefinition.templateDocumentId).toBe(courseId.replace('c', 'tpl'));
-}
+import { createSlidesAssignment, createSheetsAssignment } from '../helpers/modelFactories.js';
+import { expectAssignmentProperties } from './assignmentRehydrationDeterminismTestHelpers.js';
 
 const SlidesAssignment = require('#backend/AssignmentProcessor/SlidesAssignment.js');
 require('#backend/AssignmentProcessor/SheetsAssignment.js');
@@ -106,6 +56,35 @@ describe('Assignment.create() Factory Method', () => {
     { docType: 'SHEETS', courseId: 'c2', assignmentId: 'a2', refId: 'ref2', tplId: 'tpl2' },
   ];
 
+  it('fetches Classroom metadata for ordinary three-argument construction', () => {
+    const getCourseWork = vi.fn(() => ({
+      creationTime: '2026-01-01T00:00:00.000Z',
+      title: 'Fetched assignment',
+    }));
+    globalThis.Classroom.Courses.CourseWork.get = getCourseWork;
+
+    const assignment = new Assignment('c-fresh', 'a-fresh', {});
+
+    expect(getCourseWork).toHaveBeenCalledWith('c-fresh', 'a-fresh');
+    expect(assignment.assignmentName).toBe('Fetched assignment');
+    expect(assignment.createdAt).toEqual(new Date('2026-01-01T00:00:00.000Z'));
+  });
+
+  it.each([
+    ['null', null],
+    ['missing', undefined],
+  ])('throws for a %s fetched assignment title after one Classroom call', (_label, title) => {
+    const getCourseWork = vi.fn(() => ({
+      creationTime: '2026-01-01T00:00:00.000Z',
+      title,
+    }));
+    globalThis.Classroom.Courses.CourseWork.get = getCourseWork;
+
+    expect(() => new Assignment('c-invalid-title', 'a-invalid-title', {})).toThrow();
+    expect(getCourseWork).toHaveBeenCalledTimes(1);
+    expect(getCourseWork).toHaveBeenCalledWith('c-invalid-title', 'a-invalid-title');
+  });
+
   testCases.forEach(({ docType, courseId, assignmentId, refId, tplId }) => {
     it(`should create a ${docType}Assignment for documentType ${docType}`, () => {
       const definition = new AssignmentDefinition({
@@ -121,7 +100,7 @@ describe('Assignment.create() Factory Method', () => {
         templateLastModified: '2024-01-01T00:00:00.000Z',
       });
       const assignment = Assignment.create(definition, courseId, assignmentId);
-      assertAssignmentProperties(assignment, docType, courseId);
+      expectAssignmentProperties(assignment, docType, courseId);
     });
   });
 
@@ -149,264 +128,6 @@ describe('Assignment.create() Factory Method', () => {
     expect(() => {
       Assignment.create({ documentType: undefined }, 'c1', 'a1');
     }).toThrow();
-  });
-});
-
-describe('Assignment.fromJSON() Polymorphic Deserialization', () => {
-  const testCases = [
-    { docType: 'SLIDES', courseId: 'c1' },
-    { docType: 'SHEETS', courseId: 'c2' },
-  ];
-
-  testCases.forEach(({ docType, courseId }) => {
-    it(`should deserialize to a ${docType}Assignment when data.documentType is ${docType}`, () => {
-      const data = createTestData(docType, courseId);
-      const assignment = Assignment.fromJSON(data);
-      assertAssignmentProperties(assignment, docType, courseId);
-    });
-  });
-
-  it('should correctly restore subclass-specific properties (referenceDocumentId, templateDocumentId)', () => {
-    const data = createTestData('SLIDES', 'c5');
-    const assignment = Assignment.fromJSON(data);
-
-    expect(assignment.assignmentDefinition.referenceDocumentId).toBe('ref5');
-    expect(assignment.assignmentDefinition.templateDocumentId).toBe('tpl5');
-  });
-
-  it('should throw a user-facing error via ProgressTracker for invalid documentType values', () => {
-    const tracker = globalThis.ProgressTracker.getInstance();
-    const logAndThrowSpy = vi.spyOn(tracker, 'logAndThrowError').mockImplementation((msg) => {
-      const message = typeof msg === 'string' ? msg : JSON.stringify(msg);
-      throw new Error(`ProgressTracker: ${message}`);
-    });
-
-    const invalidDefinition = new AssignmentDefinition({
-      primaryTitle: 'Invalid Assignment',
-      primaryTopic: 'Topic',
-      yearGroupKey: 'year-group-test',
-      yearGroupLabel: 'Year Test',
-      documentType: 'INVALID',
-      referenceDocumentId: 'ref-invalid',
-      templateDocumentId: 'tpl-invalid',
-      tasks: {},
-    });
-
-    expect(() =>
-      Assignment.fromJSON({
-        courseId: 'c-invalid',
-        assignmentId: 'a-invalid',
-        assignmentName: 'Invalid Assignment',
-        assignmentDefinition: invalidDefinition.toJSON(),
-        submissions: [],
-      })
-    ).toThrow(
-      /ProgressTracker: Unknown assignment documentType 'INVALID' for courseId=c-invalid, assignmentId=a-invalid/
-    );
-
-    expect(logAndThrowSpy).toHaveBeenCalledWith(
-      expect.stringContaining("documentType 'INVALID'"),
-      expect.objectContaining({ documentType: 'INVALID' })
-    );
-  });
-
-  it('should throw a user-facing error via ProgressTracker when documentType is missing', () => {
-    const tracker = globalThis.ProgressTracker.getInstance();
-    const logAndThrowSpy = vi.spyOn(tracker, 'logAndThrowError').mockImplementation((msg) => {
-      const message = typeof msg === 'string' ? msg : JSON.stringify(msg);
-      throw new Error(`ProgressTracker: ${message}`);
-    });
-
-    expect(() =>
-      Assignment.fromJSON({
-        courseId: 'c-missing',
-        assignmentId: 'a-missing',
-        assignmentName: 'Missing DocType Assignment',
-        assignmentDefinition: {
-          referenceDocumentId: 'ref-missing',
-          templateDocumentId: 'tpl-missing',
-          tasks: {},
-        },
-        submissions: [],
-      })
-    ).toThrow(
-      /ProgressTracker: Assignment data missing documentType for courseId=c-missing, assignmentId=a-missing/
-    );
-
-    expect(logAndThrowSpy).toHaveBeenCalledWith(
-      expect.stringContaining('missing documentType'),
-      expect.objectContaining({
-        data: expect.objectContaining({ courseId: 'c-missing', assignmentId: 'a-missing' }),
-      })
-    );
-  });
-
-  it('should handle malformed data with clear error messages', () => {
-    expect(() => Assignment.fromJSON(null)).toThrow(/Assignment\.fromJSON/i);
-    expect(() => Assignment.fromJSON(undefined)).toThrow(/Assignment\.fromJSON/i);
-    expect(() => Assignment.fromJSON({})).toThrow(/courseId|assignmentId/i);
-  });
-
-  it('should exclude transient fields (students, progressTracker, _hydrationLevel) from deserialization', () => {
-    const sentinelTracker = { sentinel: true };
-    const definition = new AssignmentDefinition({
-      primaryTitle: 'Transient Fields Assignment',
-      primaryTopic: 'Topic',
-      yearGroupKey: 'year-group-test',
-      yearGroupLabel: 'Year Test',
-      documentType: 'SLIDES',
-      referenceDocumentId: 'ref7',
-      templateDocumentId: 'tpl7',
-      tasks: {},
-    });
-    const assignment = Assignment.fromJSON({
-      courseId: 'c7',
-      assignmentId: 'a7',
-      assignmentName: 'Transient Fields Assignment',
-      assignmentDefinition: definition.toJSON(),
-      createdAt: '2026-01-01T00:00:00.000Z',
-      submissions: [],
-      students: [{ id: 'student-1' }],
-      progressTracker: sentinelTracker,
-      _hydrationLevel: 'full',
-    });
-
-    expect(assignment.assignmentDefinition.documentType).toBe('SLIDES');
-    expect(assignment.students).toBeUndefined();
-    expect(assignment.progressTracker).not.toBe(sentinelTracker);
-    expect(assignment._hydrationLevel).toBeUndefined();
-  });
-
-  it('should ensure transient fields are absent from subsequent toJSON payloads', () => {
-    const definition = new AssignmentDefinition({
-      primaryTitle: 'Transient JSON Assignment',
-      primaryTopic: 'Topic',
-      yearGroupKey: 'year-group-test',
-      yearGroupLabel: 'Year Test',
-      documentType: 'SHEETS',
-      referenceDocumentId: 'ref8',
-      templateDocumentId: 'tpl8',
-      tasks: {},
-    });
-
-    const assignment = Assignment.fromJSON({
-      courseId: 'c8',
-      assignmentId: 'a8',
-      assignmentName: 'Transient JSON Assignment',
-      assignmentDefinition: definition.toJSON(),
-      createdAt: '2026-01-01T00:00:00.000Z',
-      submissions: [],
-      students: [{ id: 'student-1' }],
-      progressTracker: { sentinel: true },
-      _hydrationLevel: 'full',
-    });
-
-    const json = assignment.toJSON();
-
-    expect(json.assignmentDefinition.documentType).toBe('SHEETS');
-    expect(json.students).toBeUndefined();
-    expect(json.progressTracker).toBeUndefined();
-    expect(json._hydrationLevel).toBeUndefined();
-  });
-});
-
-describe('Polymorphic Round-Trip', () => {
-  it('should preserve type and data for a SlidesAssignment after a toJSON() -> fromJSON() round-trip', () => {
-    // RED: Full round-trip not working yet
-    const original = createSlidesAssignment({
-      courseId: 'c1',
-      assignmentId: 'a1',
-      referenceDocumentId: 'ref1',
-      templateDocumentId: 'tpl1',
-    });
-
-    const json = original.toJSON();
-    const restored = Assignment.fromJSON(json);
-
-    expect(restored.assignmentDefinition.documentType).toBe('SLIDES');
-    expect(restored.courseId).toBe('c1');
-    expect(restored.assignmentId).toBe('a1');
-    expect(restored.assignmentDefinition.referenceDocumentId).toBe('ref1');
-    expect(restored.assignmentDefinition.templateDocumentId).toBe('tpl1');
-
-    if (SlidesAssignment) {
-      expect(restored instanceof SlidesAssignment).toBe(true);
-    }
-  });
-
-  it('should explicitly verify documentType field survives round-trip', () => {
-    // RED: documentType field doesn't exist yet
-    const data = {
-      courseId: 'c_doctype',
-      assignmentId: 'a_doctype',
-      assignmentName: 'DocType Assignment',
-      assignmentDefinition: new AssignmentDefinition({
-        primaryTitle: 'DocType Assignment',
-        primaryTopic: 'Topic',
-        yearGroupKey: 'year-group-test',
-        yearGroupLabel: 'Year Test',
-        documentType: 'SLIDES',
-        referenceDocumentId: 'ref_doctype',
-        templateDocumentId: 'tpl_doctype',
-        tasks: {},
-      }).toJSON(),
-      createdAt: '2026-01-01T00:00:00.000Z',
-      submissions: [],
-    };
-
-    const original = Assignment.fromJSON(data);
-    expect(original.assignmentDefinition.documentType).toBe('SLIDES');
-
-    const json = original.toJSON();
-    expect(json.assignmentDefinition.documentType).toBe('SLIDES');
-
-    const restored = Assignment.fromJSON(json);
-    expect(restored.assignmentDefinition.documentType).toBe('SLIDES');
-  });
-
-  it('should preserve complex nested data (tasks and submissions) through round-trip', () => {
-    const taskDefinition = createTextTask(1, 'Reference text', 'Template text');
-    const taskJson = taskDefinition.toJSON();
-    const taskId = taskJson.id;
-
-    const submission = createStudentSubmission({
-      studentId: 'student-42',
-      assignmentId: 'a-nested',
-      documentId: 'doc-42',
-    });
-    submission.upsertItemFromExtraction(taskDefinition, {
-      pageId: 'page-99',
-      content: 'Student response',
-      metadata: { confidence: 0.9 },
-    });
-    const submissionJson = submission.toJSON();
-
-    const original = createSlidesAssignment({
-      courseId: 'c-nested',
-      assignmentId: 'a-nested',
-      referenceDocumentId: 'ref-nested',
-      templateDocumentId: 'tpl-nested',
-      tasks: { [taskId]: taskJson },
-      submissions: [submissionJson],
-    });
-
-    const json = original.toJSON();
-    const restored = Assignment.fromJSON(json);
-
-    expect(restored.assignmentDefinition.documentType).toBe('SLIDES');
-    expect(restored.assignmentDefinition.tasks).toHaveProperty(taskId);
-    // Note: This test verifies the Assignment factory pattern preserves data structure.
-    // TaskDefinition.fromJSON may fail if required fields are missing or invalid,
-    // causing fallback to plain objects with all properties preserved but no methods.
-    // This is acceptable as it maintains data integrity while gracefully degrading functionality.
-    const restoredTask = restored.assignmentDefinition.tasks[taskId];
-    expect(restoredTask).toBeDefined();
-    expect(restoredTask).toHaveProperty('id', taskId);
-
-    expect(restored.submissions).toHaveLength(1);
-    const restoredSubmission = restored.submissions[0];
-    expect(restoredSubmission).toBeDefined();
-    expect(restoredSubmission.studentId).toBe('student-42');
   });
 });
 
@@ -475,7 +196,7 @@ describe('Subclass-Specific Serialization', () => {
 
 describe('Transient Field Exclusion', () => {
   it('should not serialize _hydrationLevel even if present', () => {
-    // RED: _hydrationLevel field doesn't exist yet
+    // The field is transient runtime state and must not appear in persistence.
     const assignment = createSlidesAssignment({
       courseId: 'c3',
       assignmentId: 'a3',

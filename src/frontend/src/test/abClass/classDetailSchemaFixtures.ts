@@ -39,6 +39,7 @@ export const validStudentSubmissionItemPartial = {
   assessments: {
     accuracy: { score: 4 },
     completeness: { score: 5 },
+    spag: { score: 'N' },
   },
   feedback: { comment: 'Great effort' },
 };
@@ -72,6 +73,7 @@ export const validAssignmentDefinitionPartial = {
 };
 
 export const validAssignmentPartial = {
+  assessmentContractVersion: 1,
   assignmentId: 'assign-1',
   dueDate: '2025-06-01T23:59:59.000Z',
   updatedAt: '2025-05-15T12:00:00.000Z',

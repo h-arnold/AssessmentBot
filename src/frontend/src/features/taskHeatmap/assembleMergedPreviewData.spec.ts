@@ -40,6 +40,7 @@ function makeCell(tag: string, sourceUrl: string | null = null): CellPreviewData
     artifactType: 'base',
     artifactContent: tag,
     reasoning: { completeness: null, accuracy: null, spag: null },
+    errors: { completeness: null, accuracy: null, spag: null },
     sourceUrl,
   };
 }
@@ -105,6 +106,36 @@ function sharedTaskColumns(): ReadonlyArray<MergedHeatmapTaskColumn> {
   return [col('a1', 'def1', 'tA'), col('a2', 'def1', 'tA')];
 }
 
+/**
+ * Build the two same-taskKey preview inputs used by the first-wins cases, in
+ * column order, from the cells each assignment carries for the shared taskKey.
+ *
+ * @param {string} taskKey - Composite task key both assignments share.
+ * @param {CellPreviewData} a1Cell - Cell carried by the first assignment.
+ * @param {CellPreviewData} a2Cell - Cell carried by the second assignment.
+ * @returns {ReadonlyArray<AssignmentPreviewInput>} The two preview inputs.
+ */
+function sharedTaskKeyInputs(
+  taskKey: string,
+  a1Cell: CellPreviewData,
+  a2Cell: CellPreviewData
+): ReadonlyArray<AssignmentPreviewInput> {
+  return [
+    {
+      assignmentId: 'a1',
+      lookup: buildLookup({ s1: { [taskKey]: a1Cell } }),
+      isLoading: false,
+      hasError: false,
+    },
+    {
+      assignmentId: 'a2',
+      lookup: buildLookup({ s1: { [taskKey]: a2Cell } }),
+      isLoading: false,
+      hasError: false,
+    },
+  ];
+}
+
 describe('assembleMergedPreviewData — merged lookup', () => {
   it('merges per-assignment lookups, first-wins in stable column order for duplicate taskKeys', () => {
     const taskKey = 'def1::tA';
@@ -158,17 +189,12 @@ describe('assembleMergedPreviewData — first-wins sourceUrl', () => {
 
   it('pins content and sourceUrl from the same first-wins item', () => {
     const taskKey = 'def1::tA';
-    const a1Lookup = buildLookup({ s1: { [taskKey]: makeCell('a1', WINNER_SOURCE_URL) } });
-    const a2Lookup = buildLookup({ s1: { [taskKey]: makeCell('a2', LOSER_SOURCE_URL) } });
-
-    const inputs: ReadonlyArray<AssignmentPreviewInput> = [
-      { assignmentId: 'a1', lookup: a1Lookup, isLoading: false, hasError: false },
-      { assignmentId: 'a2', lookup: a2Lookup, isLoading: false, hasError: false },
-    ];
-    const columnOrder: ReadonlyArray<MergedHeatmapTaskColumn> = [
-      col('a1', 'def1', 'tA'),
-      col('a2', 'def1', 'tA'),
-    ];
+    const inputs = sharedTaskKeyInputs(
+      taskKey,
+      makeCell('a1', WINNER_SOURCE_URL),
+      makeCell('a2', LOSER_SOURCE_URL)
+    );
+    const columnOrder = sharedTaskColumns();
 
     const result: MergedPreviewAssemblyResult = assembleMergedPreviewData(inputs, columnOrder);
     const cell = result.mergedLookup.get('s1')?.get(taskKey);
@@ -181,17 +207,12 @@ describe('assembleMergedPreviewData — first-wins sourceUrl', () => {
 
   it('keeps a first winner with null sourceUrl over a link-bearing loser', () => {
     const taskKey = 'def1::tA';
-    const a1Lookup = buildLookup({ s1: { [taskKey]: makeCell('a1', null) } });
-    const a2Lookup = buildLookup({ s1: { [taskKey]: makeCell('a2', LOSER_SOURCE_URL) } });
-
-    const inputs: ReadonlyArray<AssignmentPreviewInput> = [
-      { assignmentId: 'a1', lookup: a1Lookup, isLoading: false, hasError: false },
-      { assignmentId: 'a2', lookup: a2Lookup, isLoading: false, hasError: false },
-    ];
-    const columnOrder: ReadonlyArray<MergedHeatmapTaskColumn> = [
-      col('a1', 'def1', 'tA'),
-      col('a2', 'def1', 'tA'),
-    ];
+    const inputs = sharedTaskKeyInputs(
+      taskKey,
+      makeCell('a1', null),
+      makeCell('a2', LOSER_SOURCE_URL)
+    );
+    const columnOrder = sharedTaskColumns();
 
     const result: MergedPreviewAssemblyResult = assembleMergedPreviewData(inputs, columnOrder);
     const cell = result.mergedLookup.get('s1')?.get(taskKey);

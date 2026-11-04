@@ -48,7 +48,11 @@ const METRIC_RESULT = createComputedMetricResult({ value: CANONICAL_READY_CELL.c
 const SCORE_TEXT = formatMetricDisplayText(METRIC_RESULT, 0);
 /** Accessible label shared by the table cell and the popover trigger. */
 const ACCESSIBLE_LABEL = buildMetricCellAccessibleLabel(
-  CANONICAL_READY_CELL.studentName,
+  (() => {
+    const { studentName } = CANONICAL_READY_CELL;
+    if (typeof studentName !== 'string') throw new TypeError('Expected a named canonical student.');
+    return studentName;
+  })(),
   CANONICAL_READY_CELL.taskTitle,
   'completeness',
   SCORE_TEXT

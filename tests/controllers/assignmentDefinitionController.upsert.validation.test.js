@@ -65,6 +65,101 @@ describe('AssignmentDefinitionController upsert behaviour — validation', () =>
     expect(() => controller.upsertDefinition(createUpsertPayload())).toThrow(/primaryTopicKey/i);
   });
 
+  it.each([{ content: [] }, { content: [['ordinary value']] }])(
+    'rejects a SHEETS upsert whose reference task has no assessable formulas: %o',
+    ({ content }) => {
+      const task = {
+        getId: () => 't_blank_reference',
+        validate: () => ({ ok: true, errors: [] }),
+        toJSON: () => ({
+          id: 't_blank_reference',
+          taskTitle: 'Blank reference',
+          pageId: 'p_blank_reference',
+          taskWeighting: null,
+          index: 0,
+          artifacts: {
+            reference: [
+              {
+                type: 'SPREADSHEET',
+                role: 'reference',
+                taskId: 't_blank_reference',
+                content,
+                contentHash: 'empty-hash',
+              },
+            ],
+            template: [],
+          },
+        }),
+      };
+      const taskJSON = task.toJSON();
+      expect(taskJSON.artifacts.reference[0].content).toEqual(content);
+      expect(Array.isArray(taskJSON.artifacts.reference[0].content)).toBe(true);
+      extractSheetsTaskDefinitionsMock.mockReturnValueOnce([task]);
+
+      let failure;
+      try {
+        controller.upsertDefinition(createUpsertPayload({ documentType: 'SHEETS' }));
+      } catch (error) {
+        failure = error;
+      }
+      expect(failure).toMatchObject({
+        name: 'ApiValidationError',
+        code: 'DEFINITION_PARSE_FAILED',
+        message:
+          'The assignment documents could not be parsed. Check the reference and template documents, then try again.',
+      });
+      expect(mockFullCollection.insertOne).not.toHaveBeenCalled();
+      expect(mockFullCollection.replaceOne).not.toHaveBeenCalled();
+      expect(mockRegistryCollection.insertOne).not.toHaveBeenCalled();
+      expect(mockRegistryCollection.replaceOne).not.toHaveBeenCalled();
+    }
+  );
+
+  it('rejects non-IMAGE artefacts without content or a string hash before definition writes', () => {
+    extractSlidesTaskDefinitionsMock.mockReturnValueOnce([
+      {
+        getId: () => 't_unavailable_reference',
+        validate: () => ({ ok: true, errors: [] }),
+        toJSON: () => ({
+          id: 't_unavailable_reference',
+          taskTitle: 'Unavailable reference',
+          pageId: 'p_unavailable_reference',
+          taskWeighting: null,
+          index: 0,
+          artifacts: {
+            reference: [
+              {
+                type: 'TEXT',
+                role: 'reference',
+                taskId: 't_unavailable_reference',
+                content: null,
+                contentHash: null,
+              },
+            ],
+            template: [],
+          },
+        }),
+      },
+    ]);
+
+    let failure;
+    try {
+      controller.upsertDefinition(createUpsertPayload());
+    } catch (error) {
+      failure = error;
+    }
+    expect(failure).toMatchObject({
+      name: 'ApiValidationError',
+      code: 'DEFINITION_PARSE_FAILED',
+      message:
+        'The assignment documents could not be parsed. Check the reference and template documents, then try again.',
+    });
+    expect(mockFullCollection.insertOne).not.toHaveBeenCalled();
+    expect(mockFullCollection.replaceOne).not.toHaveBeenCalled();
+    expect(mockRegistryCollection.insertOne).not.toHaveBeenCalled();
+    expect(mockRegistryCollection.replaceOne).not.toHaveBeenCalled();
+  });
+
   it('reparses and refreshes timestamps when document IDs change for a slides definition', () => {
     seedExistingDefinition({
       mockFullCollection,

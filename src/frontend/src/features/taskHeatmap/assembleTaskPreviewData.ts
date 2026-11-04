@@ -1,17 +1,45 @@
-import type { CellPreviewData } from './buildCellPreviewLookup';
+import type { AssessmentError, CellPreviewData } from './buildCellPreviewLookup';
 import type { TaskDisplayMetric } from '@/services/dataAnalysis/dataAnalysis.zod';
-import { NOT_ATTEMPTED_METRIC } from '@/services/dataAnalysis/heatmapAdapter';
+import { ERROR_METRIC, NOT_ATTEMPTED_METRIC } from '@/services/dataAnalysis/heatmapAdapter';
 import type { HeatmapMetricKey } from '@/services/dataAnalysis/metricDisplay/metricDisplayMeta';
-import type { TaskPreviewData } from './TaskPreviewCard';
+import type { TaskPreviewData, TaskPreviewSourceState } from './TaskPreviewCard';
 import { spreadsheetToMarkdownTable } from './spreadsheetToMarkdownTable';
+
+/**
+ * Whether a known `E` cause leaves a source region that can be rendered.
+ *
+ * @remarks
+ * Only an assessment-stage failure means the source was extracted successfully,
+ * so its response still renders. Acquisition, extraction and validation causes
+ * all leave the source region unavailable, whatever content the cell carries.
+ *
+ * @param {AssessmentError | null} error - The selected criterion's cause.
+ * @returns {boolean} `true` when the source region must show the error Alert.
+ */
+function isUnavailableSource(error: AssessmentError | null): boolean {
+  return error !== null && error.stage !== 'assessment';
+}
+
+/**
+ * Resolve the preview's source readiness from the selected cause.
+ *
+ * @param {AssessmentError | null} error - The selected criterion's cause.
+ * @returns {TaskPreviewSourceState} The derived source state.
+ */
+function resolveSourceState(error: AssessmentError | null): TaskPreviewSourceState {
+  return isUnavailableSource(error) ? 'unavailable' : 'available';
+}
 
 /**
  * Assembles a `TaskPreviewData` from a `CellPreviewData` (or `null`), the
  * analyser's `TaskDisplayMetric`, the metric key, and the task ID.
  *
  * @remarks
- * The analyser's metric is carried onto `TaskPreviewData` unchanged, as is the
- * cell's derived `sourceUrl` (never re-derived here). A `null` `cellData` is
+ * The analyser's metric is carried onto `TaskPreviewData` unchanged when the
+ * cell records no cause for the criterion; a known cause overrides the preview's
+ * metric with the shared error state (the table keeps its class-derived value).
+ * The cell's derived `sourceUrl` is carried unchanged (never re-derived here).
+ * A `null` `cellData` is
  * the one exception: no submission exists for the (student, task) pair, so the
  * metric is overridden with the shared `NOT_ATTEMPTED_METRIC` placeholder even
  * when the analyser reported `computed`, and `sourceUrl` is `null`.
@@ -40,21 +68,35 @@ export function assembleTaskPreviewData(
       metricKey,
       metric: NOT_ATTEMPTED_METRIC,
       reasoning: '',
+      // Type-satisfaction only: a confirmed no-submission is the ready N
+      // placeholder with no known error.
+      error: null,
+      sourceState: 'available',
       sourceUrl: null,
     };
   }
 
   // Map the cell's artifact type into the TaskPreviewCard contract
   const artifactType = coerceArtifactType(cellData.artifactType);
-  const artifactContent = coerceArtifactContent(cellData);
+  const error = cellData.errors[metricKey];
+  // A known `E` whose full content is null (IMAGE/SPREADSHEET) is an
+  // unavailable source, not a blank extraction: represent it as empty content
+  // instead of invoking the throwing coercion. Any other null content still
+  // fails loudly below.
+  const hasKnownErrorWithoutContent = error !== null && cellData.artifactContent === null;
+  const artifactContent = hasKnownErrorWithoutContent ? '' : coerceArtifactContent(cellData);
 
   return {
     taskId,
     artifactType,
     artifactContent,
     metricKey,
-    metric: metricResult,
+    // A known cause for the criterion overrides the class-derived numeric or
+    // `N` score on the preview only; the table keeps its class-derived value.
+    metric: error !== null && metricResult.state !== 'error' ? ERROR_METRIC : metricResult,
     reasoning: cellData.reasoning[metricKey] ?? '',
+    error,
+    sourceState: resolveSourceState(error),
     sourceUrl: cellData.sourceUrl,
   };
 }

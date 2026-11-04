@@ -1,5 +1,31 @@
 import { fail, isRecord } from './invariantGuards.js';
+import { assertDefinitionTaskArtefacts } from './artefactSourceGuards.js';
+import {
+  assertSubmissionState,
+  assertCurrentAssessmentContractVersion,
+} from './validateAssessmentState.js';
 import { assertTransportView } from './validateTransportViews.js';
+
+/**
+ * Asserts the embedded full definition of one assignmentsByKey entry carries
+ * usable required reference/template artefacts in their raw shapes.
+ *
+ * @param {string} assignmentId The assignmentsByKey key under test.
+ * @param {object} assignment The assignmentsByKey entry under test.
+ */
+function assertEmbeddedDefinitionArtefacts(assignmentId, assignment) {
+  const definition = assignment.assignmentDefinition;
+  if (!isRecord(definition) || !isRecord(definition.tasks)) {
+    return;
+  }
+  for (const [taskId, task] of Object.entries(definition.tasks)) {
+    assertDefinitionTaskArtefacts({
+      task,
+      taskId,
+      location: `transport.assignmentsByKey assignment "${assignmentId}"`,
+    });
+  }
+}
 
 /**
  * Asserts an assignmentsByKey key resolves to a full persistence assignment.
@@ -157,6 +183,10 @@ function assertAssignmentByKeyEntry({
   }
   const persistenceAssignment = persistenceAssignmentByAssignmentId.get(assignmentId);
   assertAssignmentIdentity(assignmentId, assignment, persistenceAssignment);
+  assertCurrentAssessmentContractVersion({
+    assignment,
+    location: `transport.assignmentsByKey assignment "${assignmentId}"`,
+  });
   assertAssignmentDefinitionKey(assignmentId, assignment, persistenceAssignment);
   assertSubmissionParentAssignments(assignmentId, assignment);
   assertSubmissionRosterMembership(
@@ -165,12 +195,27 @@ function assertAssignmentByKeyEntry({
     persistenceAssignment,
     rosterByClassId
   );
+  const taskIds = definitionTaskIdsByKey.get(persistenceAssignment.assignmentDefinitionKey);
+  if (taskIds === undefined) {
+    fail(
+      `transport.assignmentsByKey assignment "${assignmentId}" definition "${persistenceAssignment.assignmentDefinitionKey}" does not declare tasks.`
+    );
+  }
   assertSubmissionItemTaskReferences(
     assignmentId,
     assignment,
     persistenceAssignment,
     definitionTaskIdsByKey
   );
+  for (const submission of assignment.submissions) {
+    assertSubmissionState({
+      submission,
+      taskIds,
+      location: `transport.assignmentsByKey assignment "${assignmentId}"`,
+      representation: 'full',
+    });
+  }
+  assertEmbeddedDefinitionArtefacts(assignmentId, assignment);
 }
 
 /**

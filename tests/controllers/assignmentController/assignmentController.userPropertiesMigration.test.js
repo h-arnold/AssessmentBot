@@ -12,77 +12,18 @@
  * from or clean up UserProperties — triggerHandler() owns all cleanup.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import {
+  installTriggerContextMocks,
+  installUserPropertiesMocks,
+  mockTriggerController,
+} from '#test-helpers/assignmentControllerTriggerContextMocks.js';
 
 // =========================================================================
 // Global mocks (before loading controller)
 // =========================================================================
 
-// Mock LockService
-globalThis.LockService = {
-  getDocumentLock: vi.fn(),
-};
-
-// Mock ABLogger
-const mockLoggerInstance = {
-  info: vi.fn(),
-  error: vi.fn(),
-};
-globalThis.ABLogger = {
-  getInstance: vi.fn().mockReturnValue(mockLoggerInstance),
-};
-
-// Mock PropertiesService (still used by current code; migration changes to GASPropertiesUtils)
-const mockDocProperties = {
-  getProperty: vi.fn(),
-  setProperty: vi.fn(),
-  deleteProperty: vi.fn(),
-  getKeys: vi.fn().mockReturnValue([]),
-  deleteAllProperties: vi.fn(),
-};
-globalThis.PropertiesService = {
-  getDocumentProperties: vi.fn().mockReturnValue(mockDocProperties),
-  getScriptProperties: vi.fn(),
-  getUserProperties: vi.fn(),
-};
-
-// Mock TriggerController
-const mockTriggerController = {
-  createTimeBasedTrigger: vi.fn(),
-  deleteTriggerById: vi.fn(),
-  removeTriggers: vi.fn(),
-  storeTriggerContext: vi.fn(),
-};
-globalThis.TriggerController = vi.fn().mockImplementation(function () {
-  return mockTriggerController;
-});
-
-// Mock Utils
-globalThis.Utils = {
-  toastMessage: vi.fn(),
-  definitionNeedsRefresh: vi.fn(),
-  isNewer: vi.fn().mockReturnValue(false),
-};
-
-// Mock ProgressTracker
-const mockProgressTracker = {
-  startTracking: vi.fn(),
-  updateProgress: vi.fn(),
-  complete: vi.fn(),
-  logError: vi.fn(),
-  logAndThrowError: vi.fn((msg) => {
-    throw new Error(msg);
-  }),
-};
-globalThis.ProgressTracker = {
-  getInstance: vi.fn().mockReturnValue(mockProgressTracker),
-};
-
-// Mock ConfigurationManager
-globalThis.ConfigurationManager = {
-  getInstance: vi.fn().mockReturnValue({
-    getAssessmentRecordCourseId: vi.fn().mockReturnValue('course-123'),
-  }),
-};
+installTriggerContextMocks();
+installUserPropertiesMocks();
 
 // Load the controller
 const AssignmentController = require('#backend/y_controllers/AssignmentController.js');
@@ -198,6 +139,9 @@ describe('AssignmentController - UserProperties Migration', () => {
       globalThis.Assignment = {
         create: vi.fn().mockReturnValue({
           assignmentDefinition: mockDefinition,
+          // Completed-run counting reads the persisted submission graph, so the
+          // stub must expose the submissions structure a real assignment carries.
+          submissions: [],
           addStudent: vi.fn(),
           populateTasks: vi.fn(),
           fetchSubmittedDocuments: vi.fn(),

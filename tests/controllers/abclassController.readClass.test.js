@@ -3,177 +3,24 @@
  *
  * RED phase: tests for the new pure-read methods readClass(classId) and
  * _toReadView(abClass). All tests fail because the methods don't exist yet.
- *
- * See ACTION_PLAN.md §3 and SPEC.md §"Backend changes required" steps 2-3.
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { TaskDefinition } from '#backend/Models/TaskDefinition.js';
 import {
-  buildTestTeacher,
-  buildTestStudent,
+  ABClass,
+  Assignment,
+  ClassNotFoundError,
+  Student,
+  Teacher,
+  buildExistingClassDoc,
+  buildExpectedReadView,
+  setupCollectionRouter,
+} from '../helpers/abclassReadClassTestHelpers.js';
+import {
   cleanupControllerTestMocks,
   createMockCollection,
   setupControllerTestMocks,
 } from '../helpers/mockFactories.js';
-
-/* ------------------------------------------------------------------ */
-/*  Helpers                                                            */
-/* ------------------------------------------------------------------ */
-
-const ABClassModule = require('#backend/Models/ABClass.js');
-const TeacherModule = require('#backend/Models/Teacher.js');
-const StudentModule = require('#backend/Models/Student.js');
-const AssignmentModule = require('#backend/AssignmentProcessor/Assignment/index.js');
-const AssignmentDefinitionModule = require('#backend/Models/AssignmentDefinition.js');
-
-const ABClass = ABClassModule.ABClass || ABClassModule;
-const Teacher = TeacherModule.Teacher || TeacherModule;
-const Student = StudentModule.Student || StudentModule;
-const Assignment = AssignmentModule.default || AssignmentModule;
-const AssignmentDefinition =
-  AssignmentDefinitionModule.AssignmentDefinition || AssignmentDefinitionModule;
-
-let ClassNotFoundError;
-try {
-  ClassNotFoundError = require('#backend/Utils/ErrorTypes/ClassNotFoundError.js');
-} catch (e) {
-  // RED phase — may not be resolvable yet in all environments
-  if (e.code !== 'MODULE_NOT_FOUND') throw e;
-  ClassNotFoundError = class ClassNotFoundError extends Error {
-    constructor(message, options) {
-      super(message);
-      this.name = 'ClassNotFoundError';
-      this.courseId = options?.courseId;
-    }
-  };
-}
-
-function buildTeacher(overrides = {}) {
-  return buildTestTeacher(Teacher, overrides);
-}
-
-function buildStudent(overrides = {}) {
-  return buildTestStudent(Student, overrides);
-}
-
-/**
- * Returns a plain object matching the shape stored in the DB for an existing class.
- */
-function buildExistingClassDoc(overrides = {}) {
-  const teacherObj = buildTeacher({
-    email: 'teacher.existing@example.com',
-    userId: 'teacher-existing',
-    teacherName: 'Teacher Existing',
-  });
-  const studentObj = buildStudent({
-    name: 'Student Existing',
-    email: 'student.existing@example.com',
-    id: 'student-existing',
-  });
-  return {
-    classId: 'class-existing',
-    className: '10A Computer Science',
-    cohortKey: 'coh-2025',
-    courseLength: 2,
-    yearGroupKey: 'yg-10',
-    classOwner: teacherObj.toJSON
-      ? teacherObj.toJSON()
-      : {
-          email: teacherObj.getEmail(),
-          userId: teacherObj.getUserId(),
-          teacherName: teacherObj.getName(),
-        },
-    teachers: [
-      teacherObj.toJSON
-        ? teacherObj.toJSON()
-        : {
-            email: teacherObj.getEmail(),
-            userId: teacherObj.getUserId(),
-            teacherName: teacherObj.getName(),
-          },
-    ],
-    students: [
-      studentObj.toJSON
-        ? studentObj.toJSON()
-        : {
-            name: studentObj.getName(),
-            email: studentObj.getEmail(),
-            id: studentObj.getId(),
-          },
-    ],
-    assignments: [
-      {
-        courseId: 'class-existing',
-        assignmentId: 'assignment-001',
-        assignmentName: 'Essay Draft',
-        dueDate: '2026-01-15T23:59:59Z',
-        updatedAt: '2026-01-10T12:00:00Z',
-        createdAt: '2026-01-01T09:00:00Z',
-        documentType: 'SLIDES',
-        submissions: [],
-        assignmentDefinition: {
-          primaryTitle: 'Essay Draft',
-          primaryTopicKey: 'topic-english',
-          documentType: 'SLIDES',
-          referenceDocumentId: 'ref-doc-001',
-          templateDocumentId: 'tpl-doc-001',
-          assignmentWeighting: null,
-          definitionKey: 'def-key-001',
-          tasks: null,
-          createdAt: '2026-01-01T09:00:00Z',
-          updatedAt: '2026-01-01T09:00:00Z',
-        },
-      },
-    ],
-    active: true,
-    ...overrides,
-  };
-}
-
-/**
- * Builds the expected read-view shape from an existing class document.
- * Mirrors what _toReadView should produce.
- */
-function buildExpectedReadView(doc) {
-  return {
-    classId: doc.classId,
-    className: doc.className,
-    cohortKey: doc.cohortKey,
-    courseLength: doc.courseLength,
-    yearGroupKey: doc.yearGroupKey,
-    classOwner: doc.classOwner,
-    teachers: doc.teachers,
-    students: doc.students,
-    metadata: null,
-    assignments: doc.assignments.map((a) => ({
-      courseId: a.courseId,
-      assignmentId: a.assignmentId,
-      assignmentName: a.assignmentName,
-      dueDate: a.dueDate,
-      updatedAt: a.updatedAt,
-      createdAt: a.createdAt,
-      documentType: a.documentType,
-      submissions: a.submissions,
-      assignmentDefinitionKey: a.assignmentDefinition?.definitionKey ?? null,
-    })),
-    active: doc.active,
-  };
-}
-
-function setupCollectionRouter(classCollection, classId = 'class-existing') {
-  const mockDbManager = {
-    getCollection: vi.fn((name) => {
-      if (name === classId) {
-        return classCollection;
-      }
-      // For unknown classIds, return a fresh mock so the controller can proceed
-      return createMockCollection(vi);
-    }),
-  };
-  globalThis.DbManager = { getInstance: () => mockDbManager };
-  return mockDbManager;
-}
 
 /* ------------------------------------------------------------------ */
 /*  Variables shared across tests                                      */
@@ -195,7 +42,7 @@ beforeEach(() => {
   classCollection = createMockCollection(vi);
 
   setupControllerTestMocks(vi);
-  setupCollectionRouter(classCollection);
+  setupCollectionRouter(vi, classCollection);
 
   globalThis.ABClass = ABClass;
   globalThis.Teacher = Teacher;

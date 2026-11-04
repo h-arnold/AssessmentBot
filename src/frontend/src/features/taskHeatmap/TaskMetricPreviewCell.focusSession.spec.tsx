@@ -36,7 +36,6 @@
  * what the column builder does when the column's preview query settles; the
  * real cell, overlay and card are rendered throughout.
  *
- * @see TASK_PREVIEW_SOURCE_LINK_LAYOUT.md
  * @see docs/developer/frontend/frontend-testing.md
  */
 

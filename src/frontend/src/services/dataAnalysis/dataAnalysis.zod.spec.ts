@@ -35,6 +35,7 @@ async function loadDataAnalysisZod(): Promise<InputSchemaModule> {
 
 const validIsoTimestamp = '2026-01-15T10:00:00.000Z';
 const validIsoTimestampLater = '2026-06-01T00:00:00.000Z';
+const validFractionalScore = 3.5;
 
 const minimalAssignmentDefinitionPartial = {
   primaryTitle: 'Test',
@@ -84,6 +85,7 @@ const minimalClassFull = {
         },
       ],
       assignmentDefinitionKey: 'def-1',
+      assessmentContractVersion: 1,
     },
   ],
   active: true,
@@ -317,13 +319,13 @@ describe('StudentSubmissionItemPartialSchema.assessments', () => {
     }).toThrow();
   });
 
-  it('rejects non-integer score', () => {
-    expect(() => {
-      return StudentSubmissionItemPartialSchema.parse({
-        ...validItemBase,
-        assessments: { completeness: { score: 3.5 } },
-      });
-    }).toThrow();
+  it('accepts fractional scores within the valid range', () => {
+    const result = StudentSubmissionItemPartialSchema.parse({
+      ...validItemBase,
+      assessments: { completeness: { score: validFractionalScore } },
+    });
+
+    expect(result.assessments!.completeness.score).toBe(validFractionalScore);
   });
 });
 

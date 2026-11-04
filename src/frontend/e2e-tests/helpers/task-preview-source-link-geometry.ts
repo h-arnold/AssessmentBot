@@ -30,8 +30,6 @@
  * loudly if a preview is open. A caller cannot re-order the two readings, which
  * is what made the earlier comparison vacuous — two open readings match
  * whatever overflow the preview permanently added.
- *
- * @see TASK_PREVIEW_SOURCE_LINK_LAYOUT.md — acceptance evidence
  */
 
 import { expect, type Locator, type Page } from '@playwright/test';

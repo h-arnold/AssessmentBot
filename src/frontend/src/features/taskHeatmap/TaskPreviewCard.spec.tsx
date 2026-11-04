@@ -5,10 +5,7 @@
 import { describe, it, expect } from 'vitest';
 import { screen } from '@testing-library/react';
 import { renderWithFrontendProviders } from '@/test/renderWithFrontendProviders';
-import {
-  createComputedMetricResult,
-  createErrorMetricResult,
-} from '@/test/dataAnalysis/fixtures';
+import { createComputedMetricResult, createErrorMetricResult } from '@/test/dataAnalysis/fixtures';
 import { NOT_ATTEMPTED_METRIC } from '@/services/dataAnalysis/heatmapAdapter';
 import type { TaskDisplayMetric } from '@/services/dataAnalysis/dataAnalysis.zod';
 import { TaskPreviewCard, type TaskPreviewData } from './TaskPreviewCard';
@@ -71,6 +68,8 @@ function createPreviewData(overrides: Partial<TaskPreviewData> = {}): TaskPrevie
     metricKey: 'completeness',
     metric: createComputedMetricResult({ value: COMPUTED_SCORE }),
     reasoning: REASONING_TEXT,
+    error: null,
+    sourceState: 'available',
     sourceUrl: PREVIEW_SOURCE_URL,
   } satisfies TaskPreviewData;
 

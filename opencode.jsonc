@@ -1,5 +1,6 @@
 {
   "$schema": "https://opencode.ai/config.json",
+  "plugins": ["-assessmentbot-no-task-resume"],
   "lsp": true,
   "formatter": true,
   "permissions": [
@@ -65,9 +66,7 @@
       "model": "opencode-go/step-5-preview-free",
     },
     "build": {
-      "permissions": [
-        { "action": "playwright_*", "resource": "*", "effect": "allow" },
-      ],
+      "permissions": [{ "action": "playwright_*", "resource": "*", "effect": "allow" }],
     },
   },
 }

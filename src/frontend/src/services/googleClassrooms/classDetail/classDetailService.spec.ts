@@ -1,20 +1,24 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import smallClassesRaw from '@synthetic/small/classesById.json?raw';
 import { CANONICAL_NON_NULL_METADATA } from '@/test/abClass/abClassMetadataFixtures';
+import { ClassFullSchema } from './classDetailService.zod';
+import type {
+  AssignmentPartial,
+  ClassFull,
+  StudentSubmissionPartial,
+} from './classDetailService.zod';
 
 const callApiMock = vi.fn();
 
-vi.mock('@/services/apiService', () => {
+vi.mock('@/services/apiService', async () => {
+  const actual = await vi.importActual('@/services/apiService');
   return {
+    ...actual,
     callApi: callApiMock,
-    parseApiResponse: (
-      schema: { parse: (data: unknown) => unknown },
-      _method: string,
-      data: unknown
-    ) => schema.parse(data),
   };
 });
 
-const validSubmissionPartial = {
+const validSubmissionPartial: StudentSubmissionPartial = {
   studentId: 'student-1',
   studentName: 'Alice Johnson',
   assignmentId: 'assign-1',
@@ -25,16 +29,18 @@ const validSubmissionPartial = {
       taskId: 'task-1',
       artifact: {
         taskId: 'task-1',
-        role: 'student',
+        role: 'submission',
         pageId: 'slide-5',
         documentId: 'doc-abc',
-        content: null,
-        contentHash: null,
         metadata: { slideOrder: 3 },
         uid: 'uid-artifact-1',
-        type: 'slides',
+        type: 'base',
       },
-      assessments: { accuracy: { score: 4 } },
+      assessments: {
+        completeness: { score: 4 },
+        accuracy: { score: 4 },
+        spag: { score: 'N' },
+      },
       feedback: { comment: 'Great effort' },
     },
   },
@@ -42,19 +48,18 @@ const validSubmissionPartial = {
   updatedAt: '2025-05-15T12:00:00.000Z',
 };
 
-const validAssignmentPartial = {
-  courseId: 'course-1',
+const validAssignmentPartial: AssignmentPartial = {
   assignmentId: 'assign-1',
-  assignmentName: 'Algebra Basics',
-  dueDate: '2025-06-01T23:59:59.000Z',
+  dueDate: null,
   updatedAt: '2025-05-15T12:00:00.000Z',
   createdAt: '2025-05-01T08:00:00.000Z',
   documentType: 'SLIDES',
   submissions: [validSubmissionPartial],
   assignmentDefinitionKey: 'algebra-baseline',
+  assessmentContractVersion: 1,
 };
 
-const validClassFull = {
+const validClassFull: ClassFull = {
   classId: 'class-1',
   className: 'Mathematics 10A',
   cohortKey: 'cohort-2025',
@@ -77,6 +82,10 @@ const validClassFull = {
   active: true,
   metadata: structuredClone(CANONICAL_NON_NULL_METADATA),
 };
+
+const canonicalClass = ClassFullSchema.parse(
+  (JSON.parse(smallClassesRaw) as Record<string, unknown>)['class-0']
+);
 
 describe('classDetailService.getABClass', () => {
   afterEach(() => {
@@ -109,6 +118,73 @@ describe('classDetailService.getABClass', () => {
     });
     expect(result?.assignments).toHaveLength(1);
     expect(result?.assignments[0].assignmentDefinitionKey).toBe('algebra-baseline');
+  });
+
+  it('isolates a corrupt provided item to all criteria and preserves its healthy sibling', async () => {
+    const payload: ClassFull = structuredClone(canonicalClass);
+    const assignment = payload.assignments.find(
+      (candidate) => candidate.assignmentId === 'assignment-0-1'
+    )!;
+    payload.assignments = [assignment];
+    const submission = assignment.submissions[0]!;
+    const [healthyTask, corruptTask] = Object.keys(submission.items);
+    expect(Object.keys(submission.items)).toEqual(['task-1-0', 'task-1-1']);
+    const originalTaskIds = Object.keys(submission.items);
+    const originalStudentIds = assignment.submissions.map(({ studentId }) => studentId);
+    for (const item of Object.values(submission.items)) {
+      expect(item.artifact.role).toBe('submission');
+    }
+    submission.items[corruptTask]!.artifact.role = 'reference';
+    callApiMock.mockResolvedValueOnce(payload);
+
+    const { getABClass } = await import('./classDetailService');
+    const result = await getABClass({ classId: 'class-1' });
+    const items = result!.assignments[0]!.submissions[0]!.items;
+
+    expect(items[healthyTask]!.assessments).toEqual(submission.items[healthyTask]!.assessments);
+    const corruption = {
+      score: 'E',
+      reasoning: 'The stored assessment data for this task is invalid. Reassess the assignment.',
+      error: { stage: 'validation', code: 'CORRUPT_RECORD' },
+    };
+    expect.soft(items[corruptTask]!.assessments).toEqual({
+      completeness: corruption,
+      accuracy: corruption,
+      spag: corruption,
+    });
+    expect(Object.keys(items)).toEqual(originalTaskIds);
+    expect(result!.assignments[0]!.submissions.map(({ studentId }) => studentId)).toEqual(
+      originalStudentIds
+    );
+    expect(items[healthyTask]).toEqual(submission.items[healthyTask]);
+  });
+
+  it('preserves marker-null reassessment E and redacted partial source fields', async () => {
+    const payload: ClassFull = structuredClone(validClassFull);
+    const assignment = payload.assignments[0]!;
+    assignment.assessmentContractVersion = null;
+    const item = assignment.submissions[0]!.items['task-1']!;
+    const reassessment = {
+      score: 'E' as const,
+      reasoning: 'Reassessment required',
+      error: { stage: 'validation' as const, code: 'REASSESSMENT_REQUIRED' as const },
+    };
+    item.assessments = {
+      completeness: reassessment,
+      accuracy: reassessment,
+      spag: reassessment,
+    };
+    callApiMock.mockResolvedValueOnce(payload);
+
+    const { getABClass } = await import('./classDetailService');
+    const result = await getABClass({ classId: 'class-1' });
+    const actualAssignment = result!.assignments[0]!;
+    const actualItem = actualAssignment.submissions[0]!.items['task-1']!;
+
+    expect(actualAssignment.assessmentContractVersion).toBeNull();
+    expect(actualItem.assessments).toEqual(item.assessments);
+    expect(actualItem.artifact).not.toHaveProperty('content');
+    expect(actualItem.artifact).not.toHaveProperty('contentHash');
   });
 
   it('returns null when the backend returns data: null', async () => {

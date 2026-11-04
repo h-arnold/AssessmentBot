@@ -6,8 +6,6 @@
  * handles projection errors through the established title-error Alert or
  * logged navigation flow. Optional summary failures are logged separately
  * and show a local Alert while preserving the valid heatmap.
- *
- * @see SPEC.md
  */
 
 import { useEffect, useMemo, type JSX } from 'react';
@@ -31,6 +29,7 @@ import { toError } from '@/errors/normaliseUnknownError';
 import { logPipelineError } from './heatmapsPipeline';
 import { buildCellPreviewLookup } from './buildCellPreviewLookup';
 import type { CellPreviewLookup } from './buildCellPreviewLookup';
+import { buildClassPartialPreviewLookup } from './buildClassPartialPreviewLookup';
 import { getAssignmentQueryOptions } from '@/query/sharedQueries';
 import { TaskHeatmapTable } from './TaskHeatmapTable';
 import { TaskHeatmapSummaryCards } from './TaskHeatmapSummaryCards';
@@ -248,6 +247,13 @@ export function TaskHeatmapPage({
     [assignmentQuery.data]
   );
 
+  // The class snapshot is the only source of a known result while the full read
+  // is pending or has failed, so its explicit `E` cells keep the preview usable.
+  const classPartialPreviewLookup = useMemo<CellPreviewLookup>(
+    () => buildClassPartialPreviewLookup(classFull, assignmentId),
+    [classFull, assignmentId]
+  );
+
   const isAssignmentError: boolean = assignmentQuery.isError || assignmentQuery.data === null;
   const isAssignmentLoading: boolean = assignmentQuery.isPending;
 
@@ -383,6 +389,7 @@ export function TaskHeatmapPage({
         <TaskHeatmapTable
           heatmapResult={heatmapResult!}
           cellPreviewLookup={cellPreviewLookup}
+          classPartialPreviewLookup={classPartialPreviewLookup}
           isAssignmentLoading={isAssignmentLoading}
           showAssignmentError={isAssignmentError}
         />

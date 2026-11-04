@@ -22,16 +22,26 @@ class Assignment {
    * Constructs an Assignment instance.
    * @param {string} courseId - The ID of the course.
    * @param {string} assignmentId - The ID of the assignment.
-   * @param {AssignmentDefinition|Object} assignmentDefinition - Embedded definition containing document type, reference/template IDs, and task metadata.
+   * @param {AssignmentDefinition|Object|null} assignmentDefinition - Embedded definition containing document type, reference/template IDs, and task metadata, or null during restoration.
+   * @param {{assignmentName: string, createdAt: Date, representationMode?: 'full'|'partial'}} [restoration] - Saved metadata and optional caller-owned restoration mode. Supplying it skips the Classroom fetch.
+   * @throws {TypeError} When a supplied restoration name is not a string, or the representation mode is neither 'full' nor 'partial'.
    */
-  constructor(courseId, assignmentId, assignmentDefinition) {
+  constructor(courseId, assignmentId, assignmentDefinition, restoration) {
     // Declared in the constructor rather than as a class field: the Apps Script parser
     // rejects class field declarations at push time, so Sonar S7757 is suppressed below.
     /** @type {Date} Populated from Classroom creationTime by fetchAssignmentName(). */
     this.createdAt = null; // NOSONAR
     this.courseId = courseId;
     this.assignmentId = assignmentId;
-    this.assignmentName = this.fetchAssignmentName(courseId, assignmentId);
+    if (restoration === undefined) {
+      this.assignmentName = this.fetchAssignmentName(courseId, assignmentId);
+    } else {
+      if (typeof restoration.assignmentName !== 'string') {
+        throw new TypeError('Restored assignment name must be a string.');
+      }
+      this.assignmentName = restoration.assignmentName;
+      this.createdAt = restoration.createdAt;
+    }
     this.dueDate = null; //to be implemented later with the homework tracker.
     // Timestamp for when this assignment was last updated. Use Date or null.
     this.updatedAt = null;
@@ -47,6 +57,15 @@ class Assignment {
     // to keep the hydrated roster handy. That property is transient and must never be persisted
     // (see docs/developer/DATA_SHAPES.md and rehydration.md).
     this._hydrationLevel = 'full';
+    if (
+      restoration?.representationMode !== undefined &&
+      restoration.representationMode !== 'full' &&
+      restoration.representationMode !== 'partial'
+    ) {
+      throw new TypeError(`Invalid assignment restoration mode: ${restoration.representationMode}`);
+    }
+    this._restorationMode =
+      restoration?.representationMode === undefined ? 'full' : restoration.representationMode;
     // Sub-class instances are lazily initialised via prototype getters defined below.
     // Constructor-created instances will get own properties on first access.
   }
@@ -69,10 +88,11 @@ class Assignment {
   /**
    * Polymorphic deserialisation routing based on documentType field.
    * @param {object} data - JSON data object.
+   * @param {string} representationMode - Representation mode used when restoring assignment data.
    * @returns {Assignment} Instance of appropriate class.
    */
-  static fromJSON(data) {
-    return AssignmentFactory.fromJSON(data);
+  static fromJSON(data, representationMode) {
+    return AssignmentFactory.fromJSON(data, representationMode);
   }
 
   // ---------------------------------------------------------------------------
@@ -84,20 +104,11 @@ class Assignment {
    * Sub-class instances are lazily initialised via prototype getters
    * when first accessed.
    * @param {object} data - JSON data object.
+   * @param {'full'|'partial'} representationMode - Caller-owned representation mode used when restoring assignment data.
    * @returns {Assignment} Assignment instance with base fields populated.
    */
-  static _baseFromJSON(data) {
-    return AssignmentRehydration._baseFromJSON(data);
-  }
-
-  /**
-   * Rehydrates a submission object from JSON data.
-   * @param {Assignment} inst - The Assignment instance to add the submission to.
-   * @param {object} subObject - The submission object to rehydrate.
-   * @returns {void}
-   */
-  static _rehydrateSubmission(inst, subObject) {
-    return AssignmentRehydration._rehydrateSubmission(inst, subObject);
+  static _baseFromJSON(data, representationMode) {
+    return AssignmentRehydration._baseFromJSON(data, representationMode);
   }
 
   // ---------------------------------------------------------------------------
@@ -117,8 +128,11 @@ class Assignment {
         `Google Classroom assignment ${assignmentId} (course ${courseId}) has no creationTime.`
       );
     }
+    if (typeof courseWork.title !== 'string') {
+      throw new TypeError(`Google Classroom assignment ${assignmentId} has no string title.`);
+    }
     this.createdAt = new Date(courseWork.creationTime);
-    return courseWork.title || `Assignment ${assignmentId}`;
+    return courseWork.title;
   }
 
   // ---------------------------------------------------------------------------
@@ -131,6 +145,14 @@ class Assignment {
    */
   toJSON() {
     return this._serialisation.toJSON();
+  }
+
+  /**
+   * Serialises this Assignment for a full read response.
+   * @returns {object} Full read payload.
+   */
+  toReadJSON() {
+    return this._serialisation.toReadJSON();
   }
 
   /**
@@ -221,17 +243,6 @@ class Assignment {
   }
 
   /**
-   * Processes a single attachment for a student's submission.
-   * @param {object} attachment - The attachment object from Classroom submission.
-   * @param {string} studentId - The Google Classroom student ID.
-   * @param {string} mimeType - The expected MIME type to validate against.
-   * @returns {void}
-   */
-  _processAttachmentForSubmission(attachment, studentId, mimeType) {
-    return this._submissions._processAttachmentForSubmission(attachment, studentId, mimeType);
-  }
-
-  /**
    * Fetches and assigns submitted Google Drive documents for each student, filtered by the provided MIME type.
    * @param {string} mimeType - The Google Drive MIME type to filter for.
    * @returns {void}
@@ -276,6 +287,25 @@ class Assignment {
    */
   processAllSubmissions() {
     return this._assessmentBase.processAllSubmissions();
+  }
+
+  /**
+   * Applies one submission's extraction outcome to its items.
+   * @param {StudentSubmission} submission - The submission receiving the outcome.
+   * @param {Array<Object>|null} artifacts - Extracted artifacts, or null when the source could not be read.
+   * @param {Array<Object>} taskDefinitions - Every known task definition for the assignment.
+   * @param {{onUnknownTask: function(Object): void, isPendingArtifact: function(Object): boolean}} handlers -
+   *   `onUnknownTask` warns about an artifact whose taskId is unknown; `isPendingArtifact`
+   *   reports artifacts that must not be marked content-unavailable.
+   * @returns {void}
+   */
+  _applyExtractedArtifacts(submission, artifacts, taskDefinitions, handlers) {
+    return this._assessmentBase._applyExtractedArtifacts(
+      submission,
+      artifacts,
+      taskDefinitions,
+      handlers
+    );
   }
 
   /**
@@ -358,11 +388,12 @@ class Assignment {
 }
 
 // ---------------------------------------------------------------------------
-// Lazy sub-class getters — handle bare prototype instances created via
-// Object.create(Assignment.prototype) without running the constructor
-// (e.g. in _baseFromJSON or test code). The first access defines a
-// non-enumerable own property that caches the instance and shadows the
-// prototype getter for subsequent accesses.
+// Lazy sub-class getters — handle instances whose sub-class helpers have not
+// been created yet: subclass restoration re-prototypes the base instance from
+// _baseFromJSON with Object.setPrototypeOf, and test code may create bare
+// prototype instances via Object.create(Assignment.prototype). The first
+// access defines a non-enumerable own property that caches the instance and
+// shadows the prototype getter for subsequent accesses.
 // ---------------------------------------------------------------------------
 
 /**

@@ -271,11 +271,10 @@ registry.
   deny paths fail closed with an error-level audit; the single legacy leniency
   (absent/blank `authMode` + non-blank `authGroupEmail` → `googleGroups`) is the only
   fallback and every other broken state denies; the removed `'none'` bypass is gone
-  (stored `'none'` is an unrecognised mode → deny); cache policy splits by provider —
-  `GoogleGroupsAuthService` uses the `auth:<groupEmail>:<email>` key with a 21600-second
-  TTL, `OWNER`/`MANAGER` → `admin`, `MEMBER` → `user`, denials never cached,
-  `bypassCache: true` forces a fresh `GroupsApp` lookup, while `ScriptPropertiesAuthService`
-  has no success cache and reads the list fresh per request; the trigger execution
+  (stored `'none'` is an unrecognised mode → deny); cache policy is provider-split and owned
+  by [Contract: AuthCache](auth-cache.md); `bypassCache: true` forces a fresh `GroupsApp`
+  lookup, while `ScriptPropertiesAuthService` has no success cache and reads the list fresh
+  per request; the trigger execution
   context passes `neverClaim: true` and `bypassCache: true` (the defunct
   `requireConfigured` option is dropped). Since the remediation batch, `checkAccess()` is a
   thin caller-facing wrapper over the single shared `_resolveAccessDecision()` pipeline

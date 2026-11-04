@@ -6,19 +6,30 @@ from ABClass, with partial summaries carried inside the ABClass document.
 
 Backend model: `src/backend/AssignmentProcessor/Assignment/index.js` (facade)
 Serialisation: `src/backend/AssignmentProcessor/Assignment/00_AssignmentSerialisation.js`
+Read projection: `src/backend/AssignmentProcessor/Assignment/02_AssignmentReadProjection.js`
+Marker-1 restoration: `src/backend/AssignmentProcessor/Assignment/02_AssignmentCurrentRestoration.js`
+Assessment-stage producer: `src/backend/RequestHandlers/LLMRequestManager.js` (LLM terminal outcomes, shared live/cache numeric validation and internal cache identity)
+Image hydration producer: `src/backend/RequestHandlers/ImageManager.js` (scoped student `IMAGE_HYDRATION_FAILED` materialisation, shared-image run blocking and hydration writeback invalidation)
+Generic cache: `src/backend/RequestHandlers/CacheManager.js` (generic best-effort `get`/`put` and the shared `CACHE_EXPIRY_SECONDS`)
 Collections: `assign_full_<courseId>_<assignmentId>` (full records only — no partial registry)
 API handlers: `src/backend/z_Api/assignmentAssessment.js`
 Response mapper: Transport transformations applied by `src/backend/y_controllers/ABClassController/ABClassResponseMapper._toReadView()` (for `getABClass` embedding) — not part of Assignment's own serialisation.
 Frontend service: `src/frontend/src/services/assignmentAssessment/assignmentAssessmentService.ts`
 Frontend Zod: `src/frontend/src/services/assignmentAssessment/assignmentAssessment.zod.ts` (full),
 `src/frontend/src/services/googleClassrooms/classDetail/classDetailService.zod.ts` (partial)
+Frontend read normalisation: `src/frontend/src/services/assignmentAssessment/assignmentReadNormalisation.ts` (pure full/partial entry points, invoked by both read services before their final response parse),
+with item/source validation and corruption construction in `src/frontend/src/services/assignmentAssessment/assignmentReadItemValidation.ts`
 
 Sibling contracts:
 
 - [Contract: ABClass](abclass.md) — ABClass embeds Assignment partials (with `assignmentDefinitionKey` instead of `assignmentDefinition` as a transport transformation).
 - [Contract: AssignmentDefinition](assignment-definition.md) — AssignmentDefinition is embedded inside Assignment as a full or partial definition.
+- [Component Shape: Student Submission](student-submission.md) — Assignment embeds `StudentSubmission[]`, each holding `StudentSubmissionItem`s.
+- [Component Shape: Assessment](assessment.md) — each submission item holds `Assessment` results; the marker, write gate and legacy projection belong to that file.
+- [Component Shape: BaseTaskArtifact](base-task-artifact.md) — each submission item holds a submission-role artifact.
 - [Contract: BackendConfig](backend-config.md) — No direct relationship.
 - [Contract: Reference Data](reference-data.md) — No direct relationship.
+- [Transport envelope](transport-envelope.md) — Assignment API payloads use the shared `apiHandler` envelope; this contract documents only the inner payload.
 
 ---
 
@@ -33,20 +44,21 @@ but are not independently persisted.
 
 Stored via `Assignment.toJSON()` in `00_AssignmentSerialisation.js`.
 
-| #   | Field                  | Type                                   | Persistence          | Transport | Frontend Zod                                                                        | Notes                                                                                                                    |
-| --- | ---------------------- | -------------------------------------- | -------------------- | --------- | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| 1   | `courseId`             | `string`                               | included             | same      | `AssignmentFullSchema.courseId: z.string()`                                         | Google Classroom course ID. Required, never null.                                                                        |
-| 2   | `assignmentId`         | `string`                               | included             | same      | `AssignmentFullSchema.assignmentId: z.string()`                                     | Google Classroom coursework ID. Required, never null.                                                                    |
-| 3   | `assignmentName`       | `string`                               | included             | same      | `AssignmentFullSchema.assignmentName: z.string()`                                   | Fetched from Google Classroom at construction via `fetchAssignmentName()`.                                               |
-| 4   | `dueDate`              | `string\|null`                         | included             | same      | `AssignmentFullSchema.dueDate: z.string().nullable()`                               | ISO 8601 string or `null`. Currently always `null` (homework tracker not implemented).                                   |
-| 5   | `updatedAt`            | `string\|null`                         | included             | same      | `AssignmentFullSchema.updatedAt: z.string().nullable()`                             | ISO 8601 string or `null`. Set via `touchUpdated()`.                                                                     |
-| 6   | `createdAt`            | `string`                               | included             | same      | `AssignmentFullSchema.createdAt: z.string()`                                        | ISO 8601 string. Set from Google Classroom `creationTime` at construction.                                               |
-| 7   | `documentType`         | `string\|null`                         | included (extracted) | same      | `AssignmentFullSchema.documentType: z.string().nullable()`                          | `'SLIDES'` \| `'SHEETS'` or `null`. Extracted from embedded `assignmentDefinition` via `_extractFullDefinitionFields()`. |
-| 8   | `referenceDocumentId`  | `string\|null`                         | included (extracted) | same      | `AssignmentFullSchema.referenceDocumentId: z.string().nullable()`                   | Extracted from embedded `assignmentDefinition`. `null` when definition is partial.                                       |
-| 9   | `templateDocumentId`   | `string\|null`                         | included (extracted) | same      | `AssignmentFullSchema.templateDocumentId: z.string().nullable()`                    | Extracted from embedded `assignmentDefinition`. `null` when definition is partial.                                       |
-| 10  | `tasks`                | `Record<string, TaskDefinition>\|null` | included (extracted) | same      | `AssignmentFullSchema.tasks: z.record(z.string(), TaskDefinitionSchema).nullable()` | Extracted from embedded `assignmentDefinition`. `null` when definition is partial. Only in full shape.                   |
-| 11  | `submissions`          | `StudentSubmission[]`                  | included             | same      | `AssignmentFullSchema.submissions: z.array(StudentSubmissionSchema)`                | Array of `StudentSubmission.toJSON()` objects. Empty array when no submissions.                                          |
-| 12  | `assignmentDefinition` | `AssignmentDefinition`                 | included             | same      | `AssignmentFullSchema.assignmentDefinition: AssignmentDefinitionSchema`             | Full definition object via `AssignmentDefinition.toJSON()`. Always included in full persistence.                         |
+| #   | Field                       | Type                                   | Persistence            | Transport         | Frontend Zod                                                                        | Notes                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| --- | --------------------------- | -------------------------------------- | ---------------------- | ----------------- | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1   | `courseId`                  | `string`                               | included               | same              | `AssignmentFullSchema.courseId: z.string()`                                         | Google Classroom course ID. Required, never null.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| 2   | `assignmentId`              | `string`                               | included               | same              | `AssignmentFullSchema.assignmentId: z.string()`                                     | Google Classroom coursework ID. Required, never null.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| 3   | `assignmentName`            | `string`                               | included               | same              | `AssignmentFullSchema.assignmentName: z.string()`                                   | Fetched from Google Classroom at construction via `fetchAssignmentName()` for a newly created assignment. Typed restoration supplies the saved value instead and skips that fetch (see [§ Restoration construction and representation mode](#restoration-construction-and-representation-mode)).                                                                                                                                                                                                                                                                                                                                                                         |
+| 4   | `dueDate`                   | `string\|null`                         | included               | same              | `AssignmentFullSchema.dueDate: z.string().nullable()`                               | ISO 8601 string or `null`. Currently always `null` (homework tracker not implemented).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| 5   | `updatedAt`                 | `string\|null`                         | included               | same              | `AssignmentFullSchema.updatedAt: z.string().nullable()`                             | ISO 8601 string or `null`. Set via `touchUpdated()`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| 6   | `createdAt`                 | `string`                               | included               | same              | `AssignmentFullSchema.createdAt: z.string()`                                        | ISO 8601 string. Set from Google Classroom `creationTime` at construction for a new assignment, or from the saved metadata during typed restoration.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| 7   | `documentType`              | `string\|null`                         | included (extracted)   | same              | `AssignmentFullSchema.documentType: z.string().nullable()`                          | `'SLIDES'` \| `'SHEETS'` or `null`. Extracted from embedded `assignmentDefinition` via `_extractFullDefinitionFields()`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| 8   | `referenceDocumentId`       | `string\|null`                         | included (extracted)   | same              | `AssignmentFullSchema.referenceDocumentId: z.string().nullable()`                   | Extracted from embedded `assignmentDefinition`. `null` when definition is partial.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| 9   | `templateDocumentId`        | `string\|null`                         | included (extracted)   | same              | `AssignmentFullSchema.templateDocumentId: z.string().nullable()`                    | Extracted from embedded `assignmentDefinition`. `null` when definition is partial.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| 10  | `tasks`                     | `Record<string, TaskDefinition>\|null` | included (extracted)   | same              | `AssignmentFullSchema.tasks: z.record(z.string(), TaskDefinitionSchema).nullable()` | Extracted from embedded `assignmentDefinition`. `null` when definition is partial. Only in full shape.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| 11  | `submissions`               | `StudentSubmission[]`                  | included               | same              | `AssignmentFullSchema.submissions: z.array(StudentSubmissionSchema)`                | Array of `StudentSubmission.toJSON()` objects. Empty array when no submissions.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| 12  | `assignmentDefinition`      | `AssignmentDefinition`                 | included               | same              | `AssignmentFullSchema.assignmentDefinition: AssignmentDefinitionSchema`             | Full definition object via `AssignmentDefinition.toJSON()`. Always included in full persistence.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| 13  | `assessmentContractVersion` | `1\|null\|unknown (legacy)\|omitted`   | included conditionally | `1\|null` on read | `AssignmentFullSchema.assessmentContractVersion: z.union([z.literal(1), z.null()])` | New completed results are validated and stamped `1` at the completed-write boundary (see [Component Shape: Assessment § Write boundary](assessment.md#write-boundary-preflight-before-any-write)). Legacy records re-emit the exact stored marker presence/value opaquely, including an absent marker or an unsupported value; ordinary persistence never certifies or rewrites it. The full read serializer emits explicit `null` after legacy reassessment projection. The full read schema requires the read-wire field and the `getAssignment` service runs the read normaliser before its final parse, so the marker-versus-result contract is enforced at runtime. |
 
 Key notes:
 
@@ -54,26 +66,50 @@ Key notes:
 - `_hydrationLevel` is a runtime-only flag and never persisted.
 - Fields 7–10 are extracted from the embedded definition by `_extractFullDefinitionFields(definitionJson)`, which reads `documentType`, `referenceDocumentId`, `templateDocumentId`, and `tasks` from the definition's `toJSON()` output.
 - The `Assignment` class is a facade (`index.js`) that delegates serialisation to `AssignmentSerialisation` (`00_AssignmentSerialisation.js`).
+- Legacy persistence is opaque: a record whose `assessmentContractVersion` is absent, `null` or unsupported keeps its historical submission body and exact marker presence/value, and `toJSON()`/`toPartialJSON()` re-emit that state unchanged. They never emit projected reassessment `E` placeholders. See [Component Shape: Assessment § Legacy reassessment read projection](assessment.md#legacy-reassessment-read-projection).
 
 ### Partial variant — `Assignment.toPartialJSON()`
 
 Not independently persisted, but used for in-memory partial representations and
 for embedding inside `ABClass.assignments[]`. Behaviour differs from `toJSON()`:
 
-| #   | Field                  | Type                          | Persistence  | Transport                             | Frontend Zod                                                                   | Notes                                                                                                |
-| --- | ---------------------- | ----------------------------- | ------------ | ------------------------------------- | ------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------- |
-| 1   | `courseId`             | `string`                      | same as full | same                                  | stripped by `AssignmentPartialSchema`                                          | Present in wire format; Zod `.strip()` default removes it (not included in schema).                  |
-| 2   | `assignmentId`         | `string`                      | same as full | same                                  | `AssignmentPartialSchema.assignmentId: z.string()`                             |                                                                                                      |
-| 3   | `assignmentName`       | `string`                      | same as full | same                                  | stripped by `AssignmentPartialSchema`                                          | Present in wire format; Zod `.strip()` default removes it.                                           |
-| 4   | `dueDate`              | `string\|null`                | same as full | same                                  | `AssignmentPartialSchema.dueDate: z.string().nullable().optional()`            |                                                                                                      |
-| 5   | `updatedAt`            | `string\|null`                | same as full | same                                  | `AssignmentPartialSchema.updatedAt: z.string().nullable()`                     |                                                                                                      |
-| 6   | `createdAt`            | `string`                      | same as full | same                                  | `AssignmentPartialSchema.createdAt: z.string()`                                |                                                                                                      |
-| 7   | `documentType`         | `string\|null`                | same as full | same                                  | `AssignmentPartialSchema.documentType: z.string().nullable()`                  | Only root-level field extracted in partial shape (via `_extractPartialRootFields()`).                |
-| 8   | `referenceDocumentId`  | —                             | omitted      | omitted                               | —                                                                              | Not extracted in partial shape.                                                                      |
-| 9   | `templateDocumentId`   | —                             | omitted      | omitted                               | —                                                                              | Not extracted in partial shape.                                                                      |
-| 10  | `tasks`                | —                             | omitted      | omitted                               | —                                                                              | Not extracted in partial shape.                                                                      |
-| 11  | `submissions`          | `StudentSubmissionPartial[]`  | included     | transformed                           | `AssignmentPartialSchema.submissions: z.array(StudentSubmissionPartialSchema)` | Submissions via `StudentSubmission.toPartialJSON()` — artifact content redacted, reasoning stripped. |
-| 12  | `assignmentDefinition` | `AssignmentDefinitionPartial` | included     | replaced by `assignmentDefinitionKey` | `AssignmentPartialSchema.assignmentDefinitionKey: z.string()`                  | See Transport section for the transformation. `getABClass` endpoint replaces this with just the key. |
+| #   | Field                       | Type                                 | Persistence            | Transport                             | Frontend Zod                                                                           | Notes                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| --- | --------------------------- | ------------------------------------ | ---------------------- | ------------------------------------- | -------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | `courseId`                  | `string`                             | same as full           | same                                  | stripped by `AssignmentPartialSchema`                                                  | Present in wire format; Zod `.strip()` default removes it (not included in schema).                                                                                                                                                                                                                                                                                                                                                                                                   |
+| 2   | `assignmentId`              | `string`                             | same as full           | same                                  | `AssignmentPartialSchema.assignmentId: z.string()`                                     |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| 3   | `assignmentName`            | `string`                             | same as full           | same                                  | stripped by `AssignmentPartialSchema`                                                  | Present in wire format; Zod `.strip()` default removes it.                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| 4   | `dueDate`                   | `string\|null`                       | same as full           | same                                  | `AssignmentPartialSchema.dueDate: z.string().nullable().optional()`                    |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| 5   | `updatedAt`                 | `string\|null`                       | same as full           | same                                  | `AssignmentPartialSchema.updatedAt: z.string().nullable()`                             |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| 6   | `createdAt`                 | `string`                             | same as full           | same                                  | `AssignmentPartialSchema.createdAt: z.string()`                                        |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| 7   | `documentType`              | `string\|null`                       | same as full           | same                                  | `AssignmentPartialSchema.documentType: z.string().nullable()`                          | Only root-level field extracted in partial shape (via `_extractPartialRootFields()`).                                                                                                                                                                                                                                                                                                                                                                                                 |
+| 8   | `referenceDocumentId`       | —                                    | omitted                | omitted                               | —                                                                                      | Not extracted in partial shape.                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| 9   | `templateDocumentId`        | —                                    | omitted                | omitted                               | —                                                                                      | Not extracted in partial shape.                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| 10  | `tasks`                     | —                                    | omitted                | omitted                               | —                                                                                      | Not extracted in partial shape.                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| 11  | `submissions`               | `StudentSubmissionPartial[]`         | included               | transformed                           | `AssignmentPartialSchema.submissions: z.array(StudentSubmissionPartialSchema)`         | Submissions via `StudentSubmission.toPartialJSON()` — artifact content redacted; numeric/`'N'` assessment reasoning stripped, `'E'` reasoning/cause retained.                                                                                                                                                                                                                                                                                                                         |
+| 12  | `assignmentDefinition`      | `AssignmentDefinitionPartial`        | included               | replaced by `assignmentDefinitionKey` | `AssignmentPartialSchema.assignmentDefinitionKey: z.string()`                          | See Transport section for the transformation. `getABClass` endpoint replaces this with just the key.                                                                                                                                                                                                                                                                                                                                                                                  |
+| 13  | `assessmentContractVersion` | `1\|null\|unknown (legacy)\|omitted` | included conditionally | `1\|null` on class read               | `AssignmentPartialSchema.assessmentContractVersion: z.union([z.literal(1), z.null()])` | New completed results are validated and stamped `1` at the completed-write boundary (see [Component Shape: Assessment § Write boundary](assessment.md#write-boundary-preflight-before-any-write)). Legacy records re-emit the exact stored marker presence/value opaquely; the class read projection emits explicit `null` beside detached reassessment `E`. The partial read schema requires the field and the `getABClass` service runs the read normaliser before its final parse. |
+
+### Restoration construction and representation mode
+
+Typed restoration constructs an `Assignment` through its real constructor rather than
+`Object.create(Assignment.prototype)`. The constructor takes an optional fourth argument:
+
+```ts
+new Assignment(courseId, assignmentId, assignmentDefinition, {
+  assignmentName: string,
+  createdAt: Date,
+  representationMode?: 'full' | 'partial',
+});
+```
+
+| Aspect                       | Behaviour                                                                                                                                                                                                                                                                                                                                                               |
+| ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Saved metadata               | `_baseFromJSON()` passes the stored `assignmentName` and `createdAt`, so restoration never calls Google Classroom. The presence of the `restoration` object (not the truthiness of the name) selects this path; a new three-argument construction still fetches the Classroom name/creation time.                                                                       |
+| Saved name validity          | The saved `assignmentName` must be a string. A `null`, `undefined` or other non-string saved name throws `TypeError` from the constructor before any Classroom access; there is no generated fallback and the exception propagates unhandled. Valid strings, including a blank string, are preserved verbatim. See [Known discrepancies](#known-discrepancies) item 22. |
+| Representation mode          | `_restorationMode` is a constructor-owned transient. It defaults to `'full'` when the caller omits it, accepts only explicit `'full'`/`'partial'`, and throws `TypeError` for any other value. Callers own it: `readRehydrateAssignment()` passes `'full'`, and `ABClass.fromJSON()` passes `'partial'` for a task-summary-array definition and `'full'` otherwise.     |
+| Stored mode isolation        | `_restorationMode` is listed in `_baseFromJSON()`'s `knownFields`, so a raw stored `_restorationMode` cannot overwrite the caller-owned value, and it is never emitted by `toJSON()`, `toPartialJSON()` or `toReadJSON()`.                                                                                                                                              |
+| Hydration marker             | Restoration leaves the transient `_hydrationLevel` unset (`undefined`); it is not a persisted hydration claim. `ABClass.fromJSON()` sets the in-memory partial marker on class-embedded instances itself.                                                                                                                                                               |
+| Persistence/transport effect | None beyond the saved `assignmentName`/`createdAt` values already in the record. No new wire field is added, and the full/partial/legacy persistence contracts below are unchanged.                                                                                                                                                                                     |
 
 ---
 
@@ -91,7 +127,7 @@ when no persisted document exists.
 | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Backend handler  | `src/backend/z_Api/assignmentAssessment.js` → `getAssignment_()`                                                                                  |
 | Controller       | `ABClassController.readRehydrateAssignment()`                                                                                                     |
-| Response mapper  | — (returns `Assignment.toJSON()` directly with `DateUtils.deepConvertDates()` and defensive `progressTracker` strip)                              |
+| Response mapper  | — (`Assignment.toReadJSON()` → `AssignmentSerialisation.toReadJSON()`, then `DateUtils.deepConvertDates()` and defensive `progressTracker` strip) |
 | Frontend Zod     | `src/frontend/src/services/assignmentAssessment/assignmentAssessment.zod.ts` → `AssignmentFullResponseSchema` (`AssignmentFullSchema.nullable()`) |
 | Frontend service | `src/frontend/src/services/assignmentAssessment/assignmentAssessmentService.ts` → `getAssignment()`                                               |
 
@@ -104,39 +140,43 @@ when no persisted document exists.
 
 **Response:** `AssignmentFullSchema` or `null`
 
-| Field                  | Type                                   | Required | Notes                                       |
-| ---------------------- | -------------------------------------- | -------- | ------------------------------------------- |
-| `courseId`             | `string`                               | yes      |                                             |
-| `assignmentId`         | `string`                               | yes      |                                             |
-| `assignmentName`       | `string`                               | yes      |                                             |
-| `dueDate`              | `string\|null`                         | yes      | ISO 8601 string or `null`                   |
-| `updatedAt`            | `string\|null`                         | yes      | ISO 8601 string or `null`                   |
-| `createdAt`            | `string`                               | yes      | ISO 8601 string                             |
-| `documentType`         | `string\|null`                         | yes      | `'SLIDES'` \| `'SHEETS'` or `null`          |
-| `referenceDocumentId`  | `string\|null`                         | yes      |                                             |
-| `templateDocumentId`   | `string\|null`                         | yes      |                                             |
-| `tasks`                | `Record<string, TaskDefinition>\|null` | yes      | `null` when definition is partial           |
-| `submissions`          | `StudentSubmission[]`                  | yes      | Full `StudentSubmission.toJSON()` array     |
-| `assignmentDefinition` | `AssignmentDefinition`                 | yes      | Full `AssignmentDefinition.toJSON()` object |
+| Field                       | Type                                   | Required | Notes                                                                                                                                                                                                                           |
+| --------------------------- | -------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `courseId`                  | `string`                               | yes      |                                                                                                                                                                                                                                 |
+| `assignmentId`              | `string`                               | yes      |                                                                                                                                                                                                                                 |
+| `assignmentName`            | `string`                               | yes      |                                                                                                                                                                                                                                 |
+| `dueDate`                   | `string\|null`                         | yes      | ISO 8601 string or `null`                                                                                                                                                                                                       |
+| `updatedAt`                 | `string\|null`                         | yes      | ISO 8601 string or `null`                                                                                                                                                                                                       |
+| `createdAt`                 | `string`                               | yes      | ISO 8601 string                                                                                                                                                                                                                 |
+| `documentType`              | `string\|null`                         | yes      | `'SLIDES'` \| `'SHEETS'` or `null`                                                                                                                                                                                              |
+| `referenceDocumentId`       | `string\|null`                         | yes      |                                                                                                                                                                                                                                 |
+| `templateDocumentId`        | `string\|null`                         | yes      |                                                                                                                                                                                                                                 |
+| `tasks`                     | `Record<string, TaskDefinition>\|null` | yes      | `null` when definition is partial                                                                                                                                                                                               |
+| `submissions`               | `StudentSubmission[]`                  | yes      | Full `StudentSubmission.toJSON()` array                                                                                                                                                                                         |
+| `assignmentDefinition`      | `AssignmentDefinition`                 | yes      | Full `AssignmentDefinition.toJSON()` object                                                                                                                                                                                     |
+| `assessmentContractVersion` | `1\|null`                              | yes      | `1` for a current result; explicit `null` for a legacy result after backend reassessment projection. Required by `AssignmentFullSchema`, and enforced at runtime by the `getAssignment` read normaliser before its final parse. |
 
 Key contract notes:
 
-- The response is built from `Assignment.toJSON()`, which calls `AssignmentDefinition.toJSON()` on the embedded definition. The `readRehydrateAssignment` handler internally performs full hydration (resolving partial definitions via `getDefinitionByKey`), so a throw only occurs when the authoritative record is itself unresolvable or partial.
-- `progressTracker` is stripped from the response at the transport boundary as defence-in-depth (already omitted by `toJSON()` per JSDoc).
+- The response is built from `Assignment.toReadJSON()`, which delegates to `AssignmentSerialisation.toReadJSON()` and then calls `AssignmentDefinition.toJSON()` on the embedded definition. The `readRehydrateAssignment` handler internally performs full hydration (resolving partial definitions via `getDefinitionByKey`), so a throw only occurs when the authoritative record is itself unresolvable or partial.
+- `getAssignment_()` selects the read serializer, not the persistence serializer. A stored record with `assessmentContractVersion: 1` is restored through `AssignmentCurrentRestoration` (see [Component Shape: Assessment § Marker-1 CURRENT restoration](assessment.md#marker-1-current-restoration)); a marker-less, `null` or unsupported record keeps an opaque legacy snapshot. The read serializer emits detached reassessment `E` submissions and `assessmentContractVersion: null` for that legacy snapshot, and `1` for a current result. Ordinary `toJSON()`/`toPartialJSON()` continue to re-emit the opaque stored body and marker unchanged.
+- `AssignmentFullSchema` requires `assessmentContractVersion: 1 | null`, and `getAssignment()` runs `normaliseAssignmentRead()` before its final response parse, so item isolation, the marker/reassessment consistency check and the defensive same-payload coverage fallback are active at runtime. See [Known discrepancies](#known-discrepancies).
+- `progressTracker` is stripped from the response at the transport boundary as defence-in-depth (already omitted by the read serialiser).
 - `DateUtils.deepConvertDates()` is called on the entire response before returning, because `google.script.run` prohibits `Date` objects in return values.
 - Returns `null` when no persisted assignment document exists for the given `courseId`/`assignmentId` pair (`AssignmentNotFoundError` caught at the transport boundary).
 
 #### `getAssignment` — Partial variant via ABClass transport
 
-When assignments are embedded inside the `getABClass` response (see [Contract: ABClass §getABClass](abclass.md#getabclass-read)), the shape differs from `Assignment.toPartialJSON()`:
+When assignments are embedded inside the `getABClass` response (see [Contract: ABClass § getABClass](abclass.md#getabclass-read)), the shape differs from `Assignment.toPartialJSON()`:
 
 > **Partial variant (ABClass transport):** Same as `Assignment.toPartialJSON()` except:
 >
 > - `_hydrationLevel` and `progressTracker` are stripped (defence-in-depth — already omitted by `toPartialJSON()`)
 > - The embedded `assignmentDefinition` object is replaced by `assignmentDefinitionKey` (the `definitionKey` from the stored definition). The frontend resolves definition details from its own `AssignmentDefinitionPartials` registry.
 > - `courseId` and `assignmentName` are present in the wire format but stripped by Zod `.strip()` on `AssignmentPartialSchema`.
+> - A current result carries `assessmentContractVersion: 1`. A legacy record's submissions are replaced with the detached partial reassessment projection and `assessmentContractVersion` is set to `null` before the definition key replacement. `AssignmentPartialSchema` requires `assessmentContractVersion: 1 | null`, and `getABClass()` runs `normaliseClassRead()` before its final response parse.
 
-This transformation is performed by `ABClassResponseMapper._toReadView()` — it is NOT part of `AssignmentSerialisation` and does not affect the `assign_full_*` persistence shape.
+This transformation is performed by `ABClassResponseMapper._toReadView()` — it is NOT part of `AssignmentSerialisation` and does not affect the `assign_full_*` persistence shape. The full class-read behaviour, including coverage and null-parent isolation, is documented in [Contract: ABClass § getABClass](abclass.md#getabclass-read).
 
 ### `startAssessmentRun` (write)
 
@@ -173,114 +213,29 @@ Key contract notes:
 
 ## Sub-entities
 
+This contract embeds three component shapes, each documented in its own file. The
+`Feedback` record is small enough to stay inline here.
+
 ### StudentSubmission
 
-Backend model: `src/backend/Models/StudentSubmission.js`
-Frontend Zod: `src/frontend/src/services/assignmentAssessment/assignmentAssessment.zod.ts` → `StudentSubmissionSchema`
-
-Represents a single student's submission for an assignment, containing submission
-items keyed by task ID.
-
-`StudentSubmission.toJSON()` emits:
-
-| Field          | Type                                    | Backend toJSON() | Frontend Zod                                        | Notes                                                                                                                                                                                                                                                                                    |
-| -------------- | --------------------------------------- | ---------------- | --------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `studentId`    | `string`                                | Always emitted   | `z.string()`                                        | Student's unique ID from Google Classroom.                                                                                                                                                                                                                                               |
-| `studentName`  | `string\|null`                          | Always emitted   | `z.string()`                                        | Student's full name, or `null` per the constructor default (`studentName = null`). The full schema remains `z.string()` and is stricter than the backend's nullable emission; the partial schema is `z.string().nullable()`. Will be removed in a future version (temporary for V0.7.2). |
-| `assignmentId` | `string`                                | Always emitted   | `z.string()`                                        | The parent assignment ID.                                                                                                                                                                                                                                                                |
-| `documentId`   | `string\|null`                          | Always emitted   | `z.string().nullable().optional()`                  | The Drive file ID of the student's submission document. Null for students who never opened the assignment; `.optional()` tolerates the key being omitted entirely from real payloads (see key note below).                                                                               |
-| `items`        | `Record<string, StudentSubmissionItem>` | Always emitted   | `z.record(z.string(), StudentSubmissionItemSchema)` | Dictionary of submission items keyed by taskId. Empty object when no items.                                                                                                                                                                                                              |
-| `createdAt`    | `string`                                | Always emitted   | `z.string()`                                        | ISO 8601 string. Set at construction.                                                                                                                                                                                                                                                    |
-| `updatedAt`    | `string`                                | Always emitted   | `z.string()`                                        | ISO 8601 string with monotonic counter suffix (e.g. `"2025-09-10T12:30:00Z#2"`). Set via `touchUpdated()`.                                                                                                                                                                               |
-
-**Partial variant** (`StudentSubmission.toPartialJSON()`): Same as `toJSON()` except:
-
-- Items use `StudentSubmissionItem.toPartialJSON()` (artifact content/contentHash set to `null`, assessment reasoning stripped).
-
-**Frontend partial schema** (`StudentSubmissionPartialSchema` in `classDetailService.zod.ts`):
-
-| Field          | Type                                                       | Notes                                                                                                                   |
-| -------------- | ---------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| `studentId`    | `z.string()`                                               |                                                                                                                         |
-| `studentName`  | `z.string().nullable()`                                    |                                                                                                                         |
-| `assignmentId` | `z.string()`                                               |                                                                                                                         |
-| `documentId`   | `z.string().nullable().optional()`                         | Tolerates absent or `null` — Google Classroom may omit the Drive reference for students who never opened an assignment. |
-| `items`        | `z.record(z.string(), StudentSubmissionItemPartialSchema)` |                                                                                                                         |
-| `createdAt`    | `z.string()`                                               |                                                                                                                         |
-| `updatedAt`    | `z.string()`                                               |                                                                                                                         |
-
-Key notes:
-
-- The `updatedAt` monotonic counter suffix (e.g., `...Z#2`) is a valid `z.string()` match; Zod does not enforce ISO format, only the string type.
-- `documentId` is `.nullable().optional()` in both the full (`StudentSubmissionSchema`) and partial (`StudentSubmissionPartialSchema`) frontend schemas. The optionality tolerates both `null` values and the key being omitted entirely from real payloads, even though both `StudentSubmission.toJSON()` and `toPartialJSON()` always emit it.
+See [Component Shape: Student Submission](student-submission.md). That file owns the
+`StudentSubmission` and `StudentSubmissionItem` field tables, the partial redaction
+rules, the acquisition/extraction and image-hydration outcomes, completed submission
+coverage, the trustworthy-identity/item-isolation rules and the marker-1 item
+restoration rules.
 
 ### StudentSubmissionItem
 
-Backend model: `src/backend/Models/StudentSubmission.js` → `StudentSubmissionItem`
-Frontend Zod (full): `src/frontend/src/services/assignmentAssessment/assignmentAssessment.zod.ts` → `StudentSubmissionItemSchema`
-Frontend Zod (partial): `src/frontend/src/services/googleClassrooms/classDetail/classDetailService.zod.ts` → `StudentSubmissionItemPartialSchema`
-
-Represents a single task's submission within a student submission. Contains the
-submitted artifact, assessments, and feedback.
-
-`StudentSubmissionItem.toJSON()` emits:
-
-| Field         | Type                         | Backend toJSON()                     | Frontend Zod (full)                                                                | Notes                                                                                            |
-| ------------- | ---------------------------- | ------------------------------------ | ---------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| `id`          | `string`                     | Always emitted                       | `z.string()`                                                                       | Derived stable UID prefixed with `ssi_`.                                                         |
-| `taskId`      | `string`                     | Always emitted                       | `z.string()`                                                                       | References the task definition ID.                                                               |
-| `artifact`    | `BaseTaskArtifact`           | Always emitted (`artifact.toJSON()`) | `BaseTaskArtifactSchema`                                                           | The submission artifact (role=`'submission'`).                                                   |
-| `assessments` | `Record<string, Assessment>` | Always emitted                       | `z.record(z.string(), AssessmentSchema)`                                           | Array-valued in legacy model; now a record keyed by criterion. Empty object when no assessments. |
-| `feedback`    | `Record<string, Feedback>`   | Always emitted                       | `z.record(z.string(), z.looseObject({ type: z.string(), createdAt: z.string() }))` | Record keyed by feedback type. Empty object when no feedback.                                    |
-
-**Partial variant** (`StudentSubmissionItem.toPartialJSON()`): Same as `toJSON()` except:
-
-- `artifact` uses `artifact.toPartialJSON()` (content/contentHash set to `null`).
-- `assessments` uses `_stripAssessmentReasoning()` which removes the `reasoning` field from each assessment entry, keeping only `score`.
-
-**Frontend partial schema** (`StudentSubmissionItemPartialSchema`):
-
-| Field         | Type                                                            | Notes                                                                    |
-| ------------- | --------------------------------------------------------------- | ------------------------------------------------------------------------ |
-| `id`          | `z.string()`                                                    |                                                                          |
-| `taskId`      | `z.string()`                                                    |                                                                          |
-| `artifact`    | `BaseTaskArtifactPartialSchema`                                 | Content and contentHash omitted.                                         |
-| `assessments` | `z.record(z.string(), PartialAssessmentEntrySchema).optional()` | Score-only entries; reasoning stripped. `.optional()` tolerates absence. |
-| `feedback`    | `z.record(z.string(), z.unknown()).optional()`                  | Loose type tolerates any feedback structure.                             |
-
-Key notes:
-
-- `_deriveId()` generates a stable hash from `taskId` + artifact UID (falling back to `contentHash`), truncated to 16 hex characters prefixed with `ssi_`.
-- The `documentId` and `pageId` are intentionally omitted from `StudentSubmissionItem.toJSON()` — the parent submission holds `documentId`, and the artifact contains `pageId`.
+See [Component Shape: Student Submission § Persistence](student-submission.md#persistence).
+The item model, its partial projection and its `setError()` primitive are documented
+there.
 
 ### Assessment
 
-Backend model: `src/backend/Models/Assessment.js`
-Frontend Zod (full): `src/frontend/src/services/assignmentAssessment/assignmentAssessment.zod.ts` → `AssessmentSchema`
-Frontend Zod (partial): `src/frontend/src/services/googleClassrooms/classDetail/classDetailService.zod.ts` → `PartialAssessmentEntrySchema`
-
-Represents the assessment result for a single criterion (e.g. `'completeness'`,
-`'accuracy'`, `'spag'`). Stored as a value in the `assessments` record on
-`StudentSubmissionItem`.
-
-`Assessment.toJSON()` emits:
-
-| Field       | Type     | Backend toJSON() | Frontend Zod (full) | Notes                                                                                                                          |
-| ----------- | -------- | ---------------- | ------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| `score`     | `number` | Always emitted   | `z.number()`        | Integer 0–5, or `'N'` for non-applicable (Zod: `z.union([z.number().int().min(0).max(5), z.literal('N')])` in partial schema). |
-| `reasoning` | `string` | Always emitted   | `z.string()`        | The LLM's explanation for the score.                                                                                           |
-
-**Partial variant**: In `StudentSubmissionItem.toPartialJSON()`, `_stripAssessmentReasoning()` removes the `reasoning` field entirely. The frontend `PartialAssessmentEntrySchema` validates only `{ score }`.
-
-| Field   | Type          | Frontend Zod (partial)                                                                          | Notes                 |
-| ------- | ------------- | ----------------------------------------------------------------------------------------------- | --------------------- |
-| `score` | `number\|'N'` | `PartialAssessmentEntrySchema.score: z.union([z.number().int().min(0).max(5), z.literal('N')])` | Integer 0–5 or `'N'`. |
-
-Key notes:
-
-- The full `AssessmentSchema` (`score + reasoning`) matches `Assessment.toJSON()`.
-- The partial `PartialAssessmentEntrySchema` (`score` only) matches the transport after `_stripAssessmentReasoning()`.
-- Score range validation (0–5 or `'N'`) is enforced by the frontend partial schema only. The full `AssessmentSchema` uses `z.number()` without range enforcement.
+See [Component Shape: Assessment](assessment.md). That file owns the `Assessment` field
+table, the cause catalogue, the LLM assessment outcomes and validated cache reuse, the
+completed-write gate, the `assessmentContractVersion` marker, the legacy reassessment
+read projection and marker-1 CURRENT restoration.
 
 ### Feedback
 
@@ -311,37 +266,17 @@ Extends base Feedback with `items` array:
 
 Key notes:
 
-- Feedback objects are fully preserved in both partial and full hydration — only assessment reasoning is stripped, not feedback.
+- Feedback objects are fully preserved in both partial and full hydration — only numeric/`'N'` assessment reasoning is stripped; `'E'` reasoning/cause is retained, and feedback is not stripped.
 - The frontend `StudentSubmissionItemSchema.feedback` uses `z.looseObject` to tolerate the extra `items` property on `CellReferenceFeedback`.
 - The frontend partial schema uses `z.unknown()` for the feedback value, accepting any structure.
 
 ### BaseTaskArtifact
 
-See [Contract: AssignmentDefinition §Sub-entity BaseTaskArtifact](assignment-definition.md#sub-entity-basetaskartifact). This contract's
-`StudentSubmissionItem.artifact` uses the same shape, with `role` set to `'submission'`.
-
-The full and partial schemas on the frontend are:
-
-- **Full** (`BaseTaskArtifactSchema` in `assignmentAssessment.zod.ts`): discriminated union by `type` — `TEXT`/`TABLE`/`IMAGE` have `content: string | null`; `SPREADSHEET` has `content: Array<Array<string | number | null>> | null`; `base` has `content: unknown`. Common fields: `taskId`, `role`, `pageId`, `documentId`, `uid`, `contentHash` (nullable), `metadata`. The shared `BaseTaskArtifactFields` object validates the two source IDs as required nullable strings (`pageId: z.string().nullable()`, `documentId: z.string().nullable()`); see the implemented alignment below. The parent submission `StudentSubmissionSchema.documentId` validator is deliberately unchanged and remains `.nullable().optional()`.
-- **Partial** (`BaseTaskArtifactPartialSchema` in `classDetailService.zod.ts`): reduced shape with `taskId`, `role`, `pageId` (nullable optional), `documentId` (nullable optional), `metadata` (optional), `uid`, `type`. `content` and `contentHash` are omitted entirely (set to `null` by `toPartialJSON()`).
-
-> **Status: Implemented (issue #19).** The full frontend `BaseTaskArtifactFields`
-> object in `assignmentAssessment.zod.ts` validates `pageId` and `documentId` as
-> required nullable strings (`z.string().nullable()`): both reject a missing key
-> and a non-string value, but accept the `null` source IDs the backend contract
-> permits. Numeric or object IDs and absent artefact fields remain invalid, and
-> types continue to derive from Zod. This was a frontend-only validation
-> alignment: the backend `BaseTaskArtifact` constructor already defaults
-> `pageId`/`documentId` to `null` and `toJSON()`/`toPartialJSON()` always emit
-> them as `string | null`
-> (`src/backend/Models/Artifacts/0_BaseTaskArtifact.js`), so no backend contract
-> change was required. **Parent optionality is unchanged:** the parent submission
-> `StudentSubmissionSchema.documentId` remains `.nullable().optional()` — the
-> optionality tolerates the key being omitted entirely from real payloads even
-> though the backend always emits it (see the `StudentSubmission` key note
-> above). The partial `BaseTaskArtifactPartialSchema` in `classDetailService.zod.ts`
-> likewise still accepts `string | null` via `.nullable().optional()` and is
-> unchanged.
+See [Component Shape: BaseTaskArtifact](base-task-artifact.md). That file owns the
+artifact field table, the concrete artifact types, the partial redaction rules and the
+availability split between the definition store and a completed assignment. This
+contract's `StudentSubmissionItem.artifact` uses the same shape with `role` set to
+`'submission'`.
 
 ---
 
@@ -355,19 +290,27 @@ The full and partial schemas on the frontend are:
   - `GetAssignmentRequestSchema` (`.strict()`) — validates `getAssignment` request parameters.
   - `StartAssessmentRunRequestSchema` (`.strict()`) — validates `startAssessmentRun` request parameters.
   - `StartAssessmentRunResponseSchema` — `z.void().nullable()`, accepts `null` from backend envelope.
-  - `StudentSubmissionSchema` — validates full submission shape.
-  - `StudentSubmissionItemSchema` — validates full submission item shape.
-  - `AssessmentSchema` — validates full assessment shape (`score` + `reasoning`).
-  - `TaskDefinitionSchema` — validates full task definition shape (cross-ref to AssignmentDefinition contract).
-  - `BaseTaskArtifactSchema` — discriminated union validating artifact by `type`.
   - `AssignmentDefinitionSchema` — validates full definition shape (cross-ref to AssignmentDefinition contract).
+  - `TaskDefinitionSchema` — validates full task definition shape (cross-ref to AssignmentDefinition contract).
+  - `StudentSubmissionSchema`, `StudentSubmissionItemSchema`, `AssessmentSchema` and `BaseTaskArtifactSchema` are re-exported/consumed here; their authoritative documentation lives in the component-shape files.
+
+- `src/frontend/src/services/assignmentAssessment/assessmentResult.zod.ts` (shared result/cause owner; consumed by both read schemas):
+  - `assessmentCauseSchema` — strict stage/code catalogue union.
+  - `assessmentResultSchema` — full `number | 'N' | 'E'` union with finite 0–5 numeric range, required reasoning and `E`-only cause.
+  - `partialAssessmentResultSchema` — numeric/`'N'` score-only entries, plus `E` entries retaining reasoning and cause.
+
+- `src/frontend/src/services/assignmentAssessment/assignmentReadNormalisation.ts` (pure full/partial read normaliser; invoked by both read services):
+  - `normaliseAssignmentRead()` — strict full-root and shared-definition validation, per-item isolation, and the same-payload missing-task defence.
+  - `normaliseClassRead()` — strict class/partial roots and per-item isolation of provided entries only.
+
+- `src/frontend/src/services/assignmentAssessment/assignmentReadItemValidation.ts` (adjacent pure owner):
+  - `isValidFullItem()` / `isValidPartialItem()` — item, artefact-association and parent-source contextual validation.
+  - `corruptItem()` / `itemErrorPath()` — canonical all-three `CORRUPT_RECORD` replacement and safe diagnostic paths.
 
 - `src/frontend/src/services/googleClassrooms/classDetail/classDetailService.zod.ts`:
-  - `AssignmentPartialSchema` — validates partial assignment shape as embedded in `getABClass` response.
-  - `StudentSubmissionPartialSchema` — validates partial submission shape.
-  - `StudentSubmissionItemPartialSchema` — validates partial submission item shape (no content, no reasoning).
-  - `PartialAssessmentEntrySchema` — validates score-only assessment entries.
-  - `BaseTaskArtifactPartialSchema` — validates partial artifact shape (content/contentHash omitted).
+  - `AssignmentPartialSchema` — validates partial assignment shape as embedded in `getABClass` response, including the required `assessmentContractVersion: 1 | null`.
+  - `ClassFullSchema`, `ClassFullResponseSchema` — class-level shapes.
+  - `StudentSubmissionPartialSchema`, `StudentSubmissionItemPartialSchema`, `PartialAssessmentEntrySchema` and `BaseTaskArtifactPartialSchema` are consumed here; their authoritative documentation lives in the component-shape files.
 
 **Backend transport validation:**
 
@@ -386,10 +329,13 @@ The full and partial schemas on the frontend are:
 **Key domain validation rules** (controller-level business logic not visible from schemas):
 
 - `ABClassAssignmentOps.readRehydrateAssignment()` ensures the assignment's embedded definition is fully hydrated before returning. It resolves partial definitions (where `tasks` is an array) via `AssignmentDefinitionController.getDefinitionByKey(definitionKey, { form: 'full' })` and throws only when the authoritative record is itself a partial (tasks is still an array after resolution).
+- `Assignment._baseFromJSON()` validates the marker-1 root and authoritative task universe before constructing models. `AssignmentCurrentRestoration` validates raw submission items before constructors, isolates invalid known items and missing known coverage as all-three `CORRUPT_RECORD` `E`, preserves healthy siblings, and restores in the explicitly propagated full or partial mode. Marker-less, `null` and unsupported-marker records are not reconstructed: their historical body and exact marker presence/value are retained as an opaque snapshot, and the read serializer materialises detached reassessment `E` entries through `AssignmentRehydration.projectReassessmentSubmissions()`.
 - `AssignmentController.startAssessmentRun()` validates definition freshness: compares Drive modification timestamps for reference and template documents against stored `referenceLastModified`/`templateLastModified`. Throws `DefinitionStaleError` on mismatch.
 - `Assignment._requireImplementation()` enforces subclass implementation of document-type-specific methods.
-- The `Assignment` constructor fetches `assignmentName` from Google Classroom and throws if `creationTime` is missing.
+- Student acquisition follows every `StudentSubmissions.list` page before concluding absence; a later-page list failure propagates unchanged. Expected acquisition/extraction source failures become atomic task `E` at the student/task boundary, unknown extraction task IDs warn and are ignored, and known tasks whose extraction failed receive terminal failure items while healthy extracted items remain in flight. See [Component Shape: Student Submission § Acquisition and extraction outcomes](student-submission.md#acquisition-and-extraction-outcomes).
+- A newly created `Assignment` (three-argument construction) makes one Google Classroom coursework call: it throws if `creationTime` is missing, then throws `TypeError` if the fetched title is not a string. No generated name fallback remains. Typed restoration supplies the saved name/creation time and does not fetch; a saved name that is `null`, `undefined` or otherwise not a string throws `TypeError` before any Classroom access, and the exception propagates unhandled. See [§ Restoration construction and representation mode](#restoration-construction-and-representation-mode).
 - `AssignmentDefinition.toJSON()` throws `TypeError` when `tasks` is an array (partial shape) — callers must ensure full hydration before serialisation.
+- The completed-write gate (`ABClassAssignmentOps.persistAssignmentRun()`) rejects missing task coverage, malformed/incomplete criterion maps, contradictory null-content records, present content without a usable hash, still-pending student IMAGEs and missing/unusable required shared artefacts before marker stamping, serialisation or any collection mutation. See [Component Shape: Assessment § Write boundary](assessment.md#write-boundary-preflight-before-any-write).
 
 ### Known discrepancies
 
@@ -401,57 +347,25 @@ The full and partial schemas on the frontend are:
    The ABClassResponseMapper._toReadView() replaces the embedded `assignmentDefinition` object with a `assignmentDefinitionKey` string at the transport boundary. This is **not** part of `Assignment.toPartialJSON()` — it is a transport transformation specific to the `getABClass` endpoint. The frontend resolves definition details from its own `AssignmentDefinitionPartials` registry.
    **Classification: Aligned** — intentional transport-boundary transformation documented in ABClassResponseMapper.
 
-3. **`StudentSubmissionSchema.documentId` and `StudentSubmissionPartialSchema.documentId` are `.nullable().optional()` but the backend always emits the field.**
-   Backend `StudentSubmission.toJSON()` and `StudentSubmission.toPartialJSON()` always include `documentId` (which may be `null`). The frontend schemas tolerate both `null` and an absent field to handle cases where Google Classroom omits the Drive file reference for students who never opened an assignment.
-   **Classification: Aligned** — documented in the partial-vs-full hydration pattern in [rehydration.md](../backend/rehydration.md). The Zod schemas are permissive to handle both backend and Google Classroom edge cases.
-
-4. **`StudentSubmissionPartialSchema.studentName` is `z.string().nullable()` but backend always emits it as a nullable string.**
-   Backend `StudentSubmission.toPartialJSON()` always includes `studentName` (which may be `null` per constructor default). The frontend schema expects `string | null`. Both sides aligned.
-   **Classification: Aligned**.
-
-5. **Full `AssessmentSchema` uses `z.number()` without range validation.**
-   Backend `Assessment` constructor accepts any number (conceptually 0–5). The frontend full schema uses `z.number()` with no range enforcement. However, the partial `PartialAssessmentEntrySchema` enforces `z.union([z.number().int().min(0).max(5), z.literal('N')])`. This means the full schema is less strict than the partial schema for scores.
-   **Classification: Aligned** — the full schema trusts the backend's domain logic, while the partial schema is stricter because it crosses a different trust boundary (class detail service).
-
-6. **`StudentSubmissionItemPartialSchema.assessments` is `.optional()` but backend `toPartialJSON()` always emits it.**
-   Backend `StudentSubmissionItem.toPartialJSON()` always includes `assessments` (even if empty `{}`). The frontend partial schema makes it `.optional()`, allowing the key to be absent. Since the backend always emits it, this only matters if the field is missing due to an unexpected code path.
-   **Classification: Aligned** — defensive tolerance.
-
-7. **`BaseTaskArtifactPartialSchema` omits `content` and `contentHash` entirely.**
-   Backend `BaseTaskArtifact.toPartialJSON()` emits them as `null`. The frontend partial schema simply omits them since null fields are not useful in partial views.
-   **Classification: Aligned** — intentional reduction.
-
-8. **`AssignmentFullResponseSchema` is `AssignmentFullSchema.nullable()`.**
+3. **`AssignmentFullResponseSchema` is `AssignmentFullSchema.nullable()`.**
    Backend `getAssignment_()` returns `null` when no persisted document exists. The frontend schema expects this.
    **Classification: Aligned** — documented contract.
 
-9. **`StudentSubmissionItemSchema.feedback` uses `z.looseObject` while `StudentSubmissionItemPartialSchema.feedback` uses `z.unknown()`.**
-   The full schema validates `type` and `createdAt` as strings, but tolerates extra fields (like `items` for CellReferenceFeedback). The partial schema uses `z.unknown()` for the entire value, accepting any feedback structure.
-   **Classification: Aligned** — intentional per feedback type complexity.
+4. **`startAssessmentRun` returns `null` and the frontend schema uses `z.void().nullable()`.**
+   Backend returns `null` (no payload on success). The frontend `StartAssessmentRunResponseSchema` is `z.void().nullable()` which accepts both `undefined` (from the envelope's `data ?? null` coercion) and `null`.
+   **Classification: Aligned** — standard pattern for void-response endpoints.
 
-10. **`StudentSubmission.updatedAt` uses a monotonic counter suffix (e.g. `"2025-09-10T12:30:00Z#2"`).**
-    This is not a standard ISO 8601 format. The frontend `StudentSubmissionSchema` uses `z.string()`, which accepts any string, so this passes validation. However, any downstream code that parses this as ISO 8601 will fail on the `#N` suffix.
-    **Classification: Aligned** — the Zod schema is intentionally loose (string), and consuming code is expected to handle the suffix. The monotonic counter is documented in [rehydration.md](../backend/rehydration.md) (§Hydration Guidelines).
+5. **`assessmentContractVersion` is required by both frontend read schemas and enforced contextually.**
+   `AssignmentFullSchema` and `AssignmentPartialSchema` both require `z.union([z.literal(1), z.null()])`, and the normaliser additionally requires marker-null provided entries to be backend-materialised reassessment `E`.
+   **Classification: Aligned** — root presence/type and the contextual check are both active.
 
-11. **`startAssessmentRun` returns `null` and the frontend schema uses `z.void().nullable()`.**
-    Backend returns `null` (no payload on success). The frontend `StartAssessmentRunResponseSchema` is `z.void().nullable()` which accepts both `undefined` (from the envelope's `data ?? null` coercion) and `null`.
-    **Classification: Aligned** — standard pattern for void-response endpoints.
+6. **Legacy records are opaque and the backend read projection plus browser normalisation are active.**
+   `Assignment._baseFromJSON()` does not catch, reconstruct or drop non-marker-1 records: it retains the historical body and exact marker presence/value as an opaque snapshot in `_legacyPersistenceSnapshot` and leaves `submissions` empty. `AssignmentRehydration._rehydrateSubmission()` handles marker-1 records only — it delegates each one to `_rehydrateCurrentSubmission()` — so non-marker-1 records never reach it. `AssignmentSerialisation.toJSON()` / `toPartialJSON()` re-emit that snapshot unchanged (no ordinary-save certification), while `toReadJSON()` and `ABClassResponseMapper._toReadView()` substitute detached reassessment `E` placeholders from `02_AssignmentReadProjection.js`. Both read services validate the resulting entries. Completed-write preflight/gates are enforced at the write boundary.
+   **Classification: Aligned** — recorded under [Component Shape: Assessment § Write boundary](assessment.md#write-boundary-preflight-before-any-write).
 
-12. **Full `BaseTaskArtifactFields` requires `pageId`/`documentId` as nullable strings, while the partial `BaseTaskArtifactPartialSchema` accepts them as `.nullable().optional()`.**
-    Backend `BaseTaskArtifact.toJSON()` and `BaseTaskArtifact.toPartialJSON()` always emit both source IDs
-    as `pageId`/`documentId` (`string | null`); `toPartialJSON()` redacts only `content` and `contentHash`,
-    so neither ID is ever omitted (`src/backend/Models/Artifacts/0_BaseTaskArtifact.js`). Issue #19
-    deliberately tightened only the full `getAssignment` transport schema
-    (`assignmentAssessment.zod.ts`), which now rejects a missing `pageId`/`documentId` key while still
-    accepting the `null` the backend permits. The class-detail partial schema
-    (`classDetailService.zod.ts`) is intentionally left permissive: its `.optional()` is defensive
-    tolerance at the `getABClass` transport boundary, mirroring the pre-existing optionality of the
-    parent `StudentSubmissionPartialSchema.documentId`, and is not a response to any backend omission.
-    Because the backend always emits both fields, the partial schema accepts an absent key the backend
-    never produces.
-    **Classification: Aligned** — deliberate, scoped asymmetry. The full path is the canonical strict
-    contract; the partial path is unchanged by issue #19 and remains broad pending a separate decision
-    to tighten the class-detail contract.
+7. **A restored `assignmentName` must be a string; there is no generated fallback.**
+   The constructor's restoration branch requires `typeof restoration.assignmentName === 'string'` and throws `TypeError` before any Classroom access otherwise, so a stored `null`, `undefined` or other non-string fails loudly and propagates unhandled. The generated `Assignment <assignmentId>` fallback has been deleted, including from the fetched-title path, where `fetchAssignmentName()` throws `TypeError` when the Classroom title is not a string after its single coursework call. Valid strings — including a blank string — and the saved `createdAt` are preserved verbatim, so the normal construction and restoration paths cannot produce a `null` name and `AssignmentFullSchema.assignmentName: z.string()` remains the correct, unwidened contract.
+   **Classification: Aligned** — the strict-name contract (no schema widening, no recovery fetch, no fallback) is deliberate. It is not `Fragile`: an invalid saved name fails before it can reach persistence or transport.
 
 ---
 
@@ -460,24 +374,31 @@ The full and partial schemas on the frontend are:
 ```
 Persistence model:         src/backend/AssignmentProcessor/Assignment/index.js
   └── AssignmentSerialisation (00_AssignmentSerialisation.js)
-      └── toJSON()              — full document shape
-      └── toPartialJSON()       — partial (summary) shape
+      └── toJSON()              — full document shape (opaque legacy snapshot re-emitted unchanged)
+      └── toPartialJSON()       — partial (summary) shape (opaque legacy snapshot re-emitted unchanged)
+      └── toReadJSON()          — full read shape (current marker 1 / legacy marker null + reassessment E)
+      └── _rootOutput()         — root fields shared by the full and partial payloads
+      └── _applyContractMarker() — stamps the current marker or re-emits the opaque legacy marker
+  └── AssignmentRehydration (02_AssignmentRehydration.js)
+      └── _baseFromJSON()       — marker-1 root/task pre-validation; opaque legacy snapshot otherwise
+      └── _rehydrateSubmission() — marker-1 only; delegates to _rehydrateCurrentSubmission()
+      └── projectReassessmentSubmissions() — sole public legacy read-projection facade
+  └── AssignmentReadProjection (02_AssignmentReadProjection.js)
+      └── projectReassessmentSubmissions() — pure detached legacy projection
+  └── AssignmentCurrentRestoration (02_AssignmentCurrentRestoration.js)
+      └── _rehydrateCurrentSubmission() — marker-1 full/partial restoration, coverage,
+                                           null-parent isolation and corrupt-item placeholders
 
-Sub-entity models:
-  ├── src/backend/Models/StudentSubmission.js
-  │     └── StudentSubmission.toJSON()         — full submission shape
-  │     └── StudentSubmission.toPartialJSON()   — partial submission shape
-  │     └── StudentSubmissionItem.toJSON()      — full item shape
-  │     └── StudentSubmissionItem.toPartialJSON() — partial item shape
-  ├── src/backend/Models/Assessment.js
-  │     └── Assessment.toJSON()                — full assessment shape
+Embedded component shapes (documented separately):
+  ├── StudentSubmission / StudentSubmissionItem → student-submission.md
+  ├── Assessment                                 → assessment.md
+  └── BaseTaskArtifact                           → base-task-artifact.md
+
+Inline sub-entity models:
   ├── src/backend/Models/Feedback/0_Feedback.js
   │     └── Feedback.toJSON()                  — base feedback shape
-  ├── src/backend/Models/Feedback/1_CellReferenceFeedback.js
-  │     └── CellReferenceFeedback.toJSON()     — cell reference feedback shape
-  └── src/backend/Models/Artifacts/0_BaseTaskArtifact.js
-        └── BaseTaskArtifact.toJSON()          — full artifact shape
-        └── BaseTaskArtifact.toPartialJSON()   — partial artifact shape
+  └── src/backend/Models/Feedback/1_CellReferenceFeedback.js
+        └── CellReferenceFeedback.toJSON()     — cell reference feedback shape
 
 Controller:                src/backend/y_controllers/
   ├── AssignmentController.js                   — startAssessmentRun, processSelectedAssignment
@@ -486,6 +407,9 @@ Controller:                src/backend/y_controllers/
         └── ABClassAssignmentOps.js             — readRehydrateAssignment, _loadFullAssignmentDocument,
                                                   _validateAssignmentDocument, _ensureFullDefinition,
                                                   _getFullAssignmentCollectionName, persistAssignmentRun
+                                                  (completed-write gate, marker stamping, prepared payloads)
+        └── ABClassAssignmentValidation.js      — _validateCompletedAssignmentRun(),
+                                                  _validateCompletedSharedArtefacts()
         └── ABClassResponseMapper.js            — _toReadView() transport transformation
 
 API handlers:              src/backend/z_Api/assignmentAssessment.js
@@ -499,15 +423,10 @@ Frontend:
   ├── src/frontend/src/services/assignmentAssessment/assignmentAssessment.zod.ts
   │     → AssignmentFullSchema, AssignmentFullResponseSchema,
   │       GetAssignmentRequestSchema, StartAssessmentRunRequestSchema,
-  │       StartAssessmentRunResponseSchema, StudentSubmissionSchema,
-  │       StudentSubmissionItemSchema, AssessmentSchema, TaskDefinitionSchema,
-  │       BaseTaskArtifactSchema, AssignmentDefinitionSchema
+  │       StartAssessmentRunResponseSchema, AssignmentDefinitionSchema,
+  │       TaskDefinitionSchema (re-exports the component shapes below)
   ├── src/frontend/src/services/assignmentAssessment/assignmentAssessmentService.ts
   │     → getAssignment(), startAssessmentRun()
-  ├── src/frontend/src/services/googleClassrooms/classDetail/classDetailService.zod.ts
-  │     → AssignmentPartialSchema, StudentSubmissionPartialSchema,
-  │       StudentSubmissionItemPartialSchema, PartialAssessmentEntrySchema,
-  │       BaseTaskArtifactPartialSchema, ClassFullSchema, ClassFullResponseSchema
-  └── src/frontend/src/services/googleClassrooms/classDetail/classDetailService.ts
-        → getABClass()
+  └── src/frontend/src/services/googleClassrooms/classDetail/classDetailService.zod.ts
+        → AssignmentPartialSchema, ClassFullSchema, ClassFullResponseSchema
 ```

@@ -7,7 +7,7 @@ import {
   SpreadsheetTaskArtifact,
   ImageTaskArtifact,
 } from '#backend/Models/Artifacts/index.js';
-import { StudentSubmission } from '#backend/Models/StudentSubmission.js';
+import { StudentSubmission } from '#backend/Models/StudentSubmission/index.js';
 import { createTaskDefinition } from '../helpers/modelFactories.js';
 
 describe('TaskDefinition, task artifacts and student submissions', () => {
@@ -266,6 +266,80 @@ describe('TaskDefinition, task artifacts and student submissions', () => {
     expect(item2.artifact.contentHash).not.toBe(firstHash);
     expect(sub.updatedAt > firstUpdateTime).toBe(true);
     expect(item2.artifact.metadata).toEqual({ a: 1, b: 2 });
+  });
+
+  it('StudentSubmission keeps an explicit missing-match page null without losing its student document', () => {
+    const task = new TaskDefinition({
+      taskTitle: 'Source task',
+      pageId: 'task-page',
+      id: 'task-id',
+    });
+    task.addReferenceArtifact({
+      type: 'TEXT',
+      pageId: 'reference-page',
+      documentId: 'reference-document',
+      content: 'Reference',
+    });
+    task.addTemplateArtifact({ type: 'TEXT', content: 'Template' });
+    const submission = new StudentSubmission('student-id', 'assignment-id', 'student-document');
+
+    const item = submission.upsertItemFromExtraction(task, { pageId: null, content: 'Response' });
+
+    expect(item.artifact.pageId).toBeNull();
+    expect(item.artifact.documentId).toBe('student-document');
+    expect(item.artifact.contentHash).toBeTruthy();
+  });
+
+  /**
+   * Upserts one extraction result against a task with its own reference page and
+   * returns the resulting item.
+   *
+   * @param {object} extraction - Extraction payload passed to the submission.
+   * @returns {object} The upserted submission item.
+   */
+  function upsertWithExtractionPage(extraction) {
+    const task = new TaskDefinition({
+      taskTitle: 'Source task',
+      pageId: 'task-page',
+      id: 'task-id',
+    });
+    task.addReferenceArtifact({ type: 'TEXT', pageId: 'reference-page', content: 'Reference' });
+    task.addTemplateArtifact({ type: 'TEXT', content: 'Template' });
+    const submission = new StudentSubmission('student-id', 'assignment-id', 'student-document');
+    return { item: submission.upsertItemFromExtraction(task, extraction) };
+  }
+
+  it('StudentSubmission uses the task page when extraction omits pageId', () => {
+    const { item } = upsertWithExtractionPage({ content: 'Response' });
+
+    expect(item.artifact.pageId).toBe('task-page');
+    expect(item.artifact.documentId).toBe('student-document');
+  });
+
+  it('StudentSubmission uses the task page when extraction pageId is explicitly undefined', () => {
+    const { item } = upsertWithExtractionPage({ pageId: undefined, content: 'Response' });
+
+    expect(item.artifact.pageId).toBe('task-page');
+    expect(item.artifact.documentId).toBe('student-document');
+  });
+
+  it('StudentSubmission retains an explicitly known student pageId', () => {
+    const task = new TaskDefinition({
+      taskTitle: 'Source task',
+      pageId: 'task-page',
+      id: 'task-id',
+    });
+    task.addReferenceArtifact({ type: 'TEXT', pageId: 'reference-page', content: 'Reference' });
+    task.addTemplateArtifact({ type: 'TEXT', content: 'Template' });
+    const submission = new StudentSubmission('student-id', 'assignment-id', 'student-document');
+
+    const item = submission.upsertItemFromExtraction(task, {
+      pageId: 'student-page',
+      content: 'Response',
+    });
+
+    expect(item.artifact.pageId).toBe('student-page');
+    expect(item.artifact.documentId).toBe('student-document');
   });
 
   it('StudentSubmissionItem assessment get/set and type proxy', () => {

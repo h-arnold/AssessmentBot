@@ -14,57 +14,16 @@
  * via GASPropertiesUtils.getUserProperties()/applyProperties().
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import {
+  installTriggerContextMocks,
+  mockTriggerController,
+} from '#test-helpers/assignmentControllerTriggerContextMocks.js';
 
 // =========================================================================
 // Global mocks (before loading controller)
 // =========================================================================
 
-// Mock LockService
-globalThis.LockService = {
-  getDocumentLock: vi.fn(),
-};
-
-// Mock ABLogger
-const mockLoggerInstance = {
-  info: vi.fn(),
-  error: vi.fn(),
-  warn: vi.fn(),
-};
-globalThis.ABLogger = {
-  getInstance: vi.fn().mockReturnValue(mockLoggerInstance),
-};
-
-// Mock TriggerController
-const mockTriggerController = {
-  createTimeBasedTrigger: vi.fn(),
-  deleteTriggerById: vi.fn(),
-  removeTriggers: vi.fn(),
-  storeTriggerContext: vi.fn(),
-};
-globalThis.TriggerController = vi.fn().mockImplementation(function () {
-  return mockTriggerController;
-});
-
-// Mock Utils
-globalThis.Utils = {
-  toastMessage: vi.fn(),
-  definitionNeedsRefresh: vi.fn(),
-  isNewer: vi.fn().mockReturnValue(false),
-};
-
-// Mock ProgressTracker
-const mockProgressTracker = {
-  startTracking: vi.fn(),
-  updateProgress: vi.fn(),
-  complete: vi.fn(),
-  logError: vi.fn(),
-  logAndThrowError: vi.fn((msg) => {
-    throw new Error(msg);
-  }),
-};
-globalThis.ProgressTracker = {
-  getInstance: vi.fn().mockReturnValue(mockProgressTracker),
-};
+installTriggerContextMocks();
 
 // Load the controller
 const AssignmentController = require('#backend/y_controllers/AssignmentController.js');

@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeAll, beforeEach, afterEach, vi } from 'vitest';
+import { saveGlobals, restoreGlobals } from '../helpers/globalMockManager.js';
 
 // Sheets parser matching and document ID coverage
 describe('SheetsParser matching and document ID propagation', () => {
@@ -8,8 +9,11 @@ describe('SheetsParser matching and document ID propagation', () => {
     const studentDocId = 'sheet-student-3';
     let SheetsParser;
     let parser;
+    let savedBootstrapGlobals;
+    let savedRuntimeGlobals;
 
     beforeAll(async () => {
+      savedBootstrapGlobals = saveGlobals(['DocumentParser', 'TaskDefinition']);
       const documentParserModule = await import('#backend/DocumentParsers/DocumentParser.js');
       const taskDefinitionModule = await import('#backend/Models/TaskDefinition.js');
 
@@ -20,39 +24,42 @@ describe('SheetsParser matching and document ID propagation', () => {
       SheetsParser = sheetsParserModule.SheetsParser;
     });
 
+    afterAll(() => restoreGlobals(savedBootstrapGlobals));
+
     beforeEach(() => {
+      savedRuntimeGlobals = saveGlobals(['SpreadsheetApp', 'TaskSheet', 'ABLogger']);
       globalThis.ABLogger = {
         getInstance: vi.fn().mockReturnValue({ warn: vi.fn(), error: vi.fn() }),
       };
 
+      const nativeSheet = {
+        getSheetId: vi.fn(() => 11),
+        getName: vi.fn(() => 'SheetOne'),
+        getRange: vi.fn(() => ({ getFormulas: () => [['=STUDENT']] })),
+      };
       globalThis.SpreadsheetApp = {
         openById: vi.fn(() => ({
-          getSheets: () => [
-            {
-              getSheetId: vi.fn(() => 11),
-            },
-          ],
+          getSheets: () => [nativeSheet],
         })),
       };
 
+      // Definition parsing still uses TaskSheet; student extraction uses native ranges.
       globalThis.TaskSheet = class TaskSheet {
-        constructor() {
+        constructor(sheet) {
+          this.sheetName = sheet.getName();
+          this.sheetId = sheet.getSheetId();
           this.formulaArray = [['=REF']];
         }
         getAllFormulae() {
           return this.formulaArray;
         }
-        getRange() {
-          return [['=STUDENT']];
-        }
       };
+
       parser = new SheetsParser();
     });
 
     afterEach(() => {
-      delete globalThis.SpreadsheetApp;
-      delete globalThis.TaskSheet;
-      delete globalThis.ABLogger;
+      restoreGlobals(savedRuntimeGlobals);
     });
 
     function buildSheetsParserHarness() {

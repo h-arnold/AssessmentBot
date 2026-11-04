@@ -1,4 +1,4 @@
-/* global ABLogger, Assignment, AssignmentNotFoundError, TypeError, AssignmentDefinitionController, Validate */
+/* global ABLogger, Assignment, AssignmentNotFoundError, TypeError, AssignmentDefinitionController, Validate, AssignmentSerialisation, ABClassAssignmentValidation */
 
 /**
  * ABClassAssignmentOps
@@ -6,24 +6,25 @@
  * Assignment run persistence and rehydration operations. Persists full
  * assignment payloads to dedicated collections and manages the
  * hydration lifecycle between partial and full assignment representations.
+ * Completed-run validation is delegated to {@link ABClassAssignmentValidation}
+ * and class-save validation to the injected `ABClassValidation`.
  */
 class ABClassAssignmentOps {
-  /**
-   * Constructs ABClassAssignmentOps.
+  /** Constructs ABClassAssignmentOps.
    * @param {Object} options - Options object.
    * @param {Object} options.dbManager - The DbManager instance for collection access.
    * @param {Object} options.validation - An ABClassValidation instance.
    * @param {Object} options.persistence - An ABClassPersistence instance.
+   * @param {ABClassAssignmentValidation} [options.assignmentValidation] - Completed-run validation owner; defaults to a new instance.
    */
-  constructor({ dbManager, validation, persistence }) {
+  constructor({ dbManager, validation, persistence, assignmentValidation }) {
     this._dbManager = dbManager;
     this._validation = validation;
     this._persistence = persistence;
+    this._assignmentValidation = assignmentValidation ?? new ABClassAssignmentValidation();
   }
 
-  /**
-   * Generate consistent collection name for full assignment persistence.
-   *
+  /** Generates the collection name for a full assignment.
    * @param {string} courseId - The Classroom course ID.
    * @param {string} assignmentId - The assignment ID.
    * @returns {string} Collection name following pattern: assign_full_<courseId>_<assignmentId>.
@@ -32,17 +33,34 @@ class ABClassAssignmentOps {
     return `assign_full_${courseId}_${assignmentId}`;
   }
 
-  /**
+  /** Persists a completed assignment run and its class projections.
    * Persist an assignment run by writing full payload to dedicated collection
    * and updating the ABClass with a partial summary.
+   *
+   * @remarks Deliberately NOT transactional, no rollback: the full assignment
+   * store is written first, then the class store, then the abclass_partials
+   * registry. Completed-run validation is delegated to
+   * {@link ABClassAssignmentValidation}; the same class-save contract that
+   * `saveClass()` enforces (`ABClassValidation._validateClassForSave`) also runs
+   * here before the first mutation, so an invalid class cannot commit the full
+   * assignment and then fail outside both persistence owners' diagnostics.
+   * All four projections (full assignment, embedded partial,
+   * prospective full class, class-partials registry) are prepared through the
+   * existing class preparation owner before the first collection mutation, and
+   * every later write consumes those exact prepared payloads. A storage failure
+   * throws after logging the failed phase and whether the full assignment write
+   * committed; it never reports a completed run and nothing repairs the state.
+   *
    * @param {ABClass|Object} abClass - An ABClass instance or plain object with
    *   a `classId` property and a `toPartialJSON()` method.
    * @param {Assignment} assignment - The assignment to persist
-   * @return {void}
+   * @returns {Object} Prepared class and registry payloads for the facade write.
+   * @see ABClassAssignmentValidation
    */
   persistAssignmentRun(abClass, assignment) {
     const logger = ABLogger.getInstance();
-
+    let failedPhase = 'completed-write-validation';
+    let hasFullWriteCommitted = false;
     try {
       Validate.requireParams({ abClass, assignment }, 'persistAssignmentRun');
 
@@ -79,14 +97,56 @@ class ABClassAssignmentOps {
         );
       }
 
-      // 1. Serialize full assignment and write to dedicated collection
+      // Completed-write gate: reject an incomplete or invalid terminal result
+      // before any projection or collection mutation.
+      this._assignmentValidation._validateCompletedAssignmentRun(assignment);
+
+      // Reuse the existing class-save contract so an invalid class cannot commit
+      // the full assignment and then fail outside both persistence diagnostics.
+      this._validation._validateClassForSave(abClass);
+
+      // Stamp the result-format marker only after the completed state is valid
+      // and before the full and partial payloads are serialised.
+      assignment.assessmentContractVersion = 1;
+
+      // 1. Prepare the full assignment and embedded partial projections, detached
+      // from the live model so later writes cannot observe model mutations.
+      failedPhase = 'full-assignment-projection';
+      assignment._hydrationLevel = 'full';
+      const fullPayload = AssignmentSerialisation.copyJsonSnapshot(assignment.toJSON());
+
+      failedPhase = 'embedded-partial-projection';
+      const partialPayload = AssignmentSerialisation.copyJsonSnapshot(assignment.toPartialJSON());
+
+      // Restore the actual partial representation that will live in the class.
+      // This is a representation conversion, not a validation-only round-trip.
+      const partialView = Assignment.fromJSON(partialPayload, 'partial');
+      partialView._hydrationLevel = 'partial';
+      const assignmentIndex = abClass.findAssignmentIndex(
+        (a) => a.assignmentId === assignment.assignmentId
+      );
+      const existingAssignment = assignmentIndex >= 0 ? abClass.assignments[assignmentIndex] : null;
+      if (assignmentIndex >= 0) abClass.assignments[assignmentIndex] = partialView;
+      else abClass.assignments.push(partialView);
+      let classFullData;
+      let classPartialData;
+      try {
+        failedPhase = 'prospective-class-projection';
+        classFullData = this._persistence._prepareFullClass(abClass);
+        failedPhase = 'class-partials-projection';
+        classPartialData = this._persistence._prepareClassPartial(abClass);
+      } finally {
+        if (assignmentIndex >= 0) abClass.assignments[assignmentIndex] = existingAssignment;
+        else abClass.assignments.pop();
+      }
+
+      // 3. Write the full assignment to its dedicated collection.
+      failedPhase = 'full-assignment-store';
       const collectionName = this._getFullAssignmentCollectionName(
         assignment.courseId,
         assignment.assignmentId
       );
       const fullCollection = this._dbManager.getCollection(collectionName);
-      assignment._hydrationLevel = 'full';
-      const fullPayload = assignment.toJSON();
 
       logger.info('persistAssignmentRun: writing full assignment', {
         courseId: assignment.courseId,
@@ -107,37 +167,26 @@ class ABClassAssignmentOps {
         fullCollection.insertOne(fullPayload);
       }
       fullCollection.save();
+      hasFullWriteCommitted = true;
 
-      // 2. Generate partial summary and reconstruct as typed instance
-      const partialJson = assignment.toPartialJSON();
-      const partialInstance = Assignment.fromJSON(partialJson);
-      partialInstance._hydrationLevel = 'partial';
-
-      // 3. Find and replace assignment in abClass.assignments
-      const index = abClass.findAssignmentIndex((a) => a.assignmentId === assignment.assignmentId);
-
-      if (index >= 0) {
-        abClass.assignments[index] = partialInstance;
-        logger.info('persistAssignmentRun: replaced existing assignment in ABClass', {
-          assignmentId: assignment.assignmentId,
-          index: index,
-        });
-      } else {
-        abClass.assignments.push(partialInstance);
-        logger.info('persistAssignmentRun: added new assignment to ABClass', {
-          assignmentId: assignment.assignmentId,
-        });
-      }
-
-      logger.info('persistAssignmentRun: completed successfully', {
-        courseId: assignment.courseId,
+      if (assignmentIndex >= 0) abClass.assignments[assignmentIndex] = partialView;
+      else abClass.assignments.push(partialView);
+      logger.info('persistAssignmentRun: prepared class projections', {
         assignmentId: assignment.assignmentId,
+        index: assignmentIndex,
       });
+      return {
+        fullData: classFullData,
+        partialData: classPartialData,
+        fullWriteCommitted: true,
+      };
     } catch (error) {
       logger.error('persistAssignmentRun failed', {
         courseId: assignment?.courseId,
         assignmentId: assignment?.assignmentId,
         err: error,
+        failedPhase,
+        fullWriteCommitted: hasFullWriteCommitted,
       });
       throw error;
     }
@@ -156,21 +205,8 @@ class ABClassAssignmentOps {
    * @throws {Error} If the document is corrupt or the definition cannot be resolved.
    */
   readRehydrateAssignment(courseId, assignmentId) {
-    // NOTE: Validate.requireParams is deliberately NOT used here.
-    // Sibling public ops methods (e.g. persistAssignmentRun) call
-    // Validate.requireParams as a presence guard, but in this method it would be
-    // both redundant and harmful to the error contract:
-    //   1. requireParams only rejects null/undefined. The combined
-    //      `typeof ... !== 'string' || ...trim().length === 0` guard below already
-    //      rejects null, undefined, non-strings, empty strings, and whitespace-only
-    //      strings in a single check, so a separate presence guard adds nothing.
-    //   2. The agreed contract mandates verbatim TypeError messages for invalid
-    //      inputs (e.g. "readRehydrateAssignment: expected courseId to be a
-    //      non-empty string"), and the unit tests assert those messages exactly
-    //      (not by substring). A requireParams failure would instead throw a
-    //      generic Error ("courseId is required for readRehydrateAssignment") for
-    //      null/undefined inputs, silently breaking that contract. The explicit
-    //      guards below preserve the exact TypeError messages the contract requires.
+    // Keep the direct guards: requireParams would replace the required exact
+    // TypeError messages with a generic Error for null or undefined inputs.
     if (typeof courseId !== 'string' || courseId.trim().length === 0) {
       throw new TypeError('readRehydrateAssignment: expected courseId to be a non-empty string');
     }
@@ -184,7 +220,7 @@ class ABClassAssignmentOps {
     const document = this._loadFullAssignmentDocument(courseId, assignmentId);
     this._validateAssignmentDocument(document);
 
-    const hydratedAssignment = Assignment.fromJSON(document);
+    const hydratedAssignment = Assignment.fromJSON(document, 'full');
     this._ensureFullDefinition(hydratedAssignment);
     hydratedAssignment._hydrationLevel = 'full';
 

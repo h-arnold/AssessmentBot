@@ -168,6 +168,7 @@ describe('ABClassMetadata ownership boundary', () => {
     const paths = [
       'src/backend/Models/ABClass.js',
       'src/backend/Models/ABClassMetadata.js',
+      'src/backend/Models/Assessment.js',
       'src/backend/Utils/Validate.js',
       'src/backend/Utils/ErrorTypes/ABClassMetadataValidationError.js',
     ];
@@ -189,6 +190,7 @@ describe('ABClassMetadata ownership boundary', () => {
         predicateResult: Validate.isCanonicalUtcDateTime('${instant}'),
         metadataTimestamp: model.toJSON().classAverages.updatedAt,
         classAvailable: typeof ABClass === 'function',
+        metrics: ABClassMetadata._metrics(),
         errorTypeResolved,
       };
     })()`,
@@ -199,6 +201,7 @@ describe('ABClassMetadata ownership boundary', () => {
       predicateResult: true,
       metadataTimestamp: instant,
       classAvailable: true,
+      metrics: ['completeness', 'accuracy', 'spag', 'overall'],
       errorTypeResolved: true,
     });
   });

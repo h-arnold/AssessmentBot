@@ -21,9 +21,6 @@ npm run test:frontend
 # Frontend tests in watch mode
 npm run test:frontend:watch
 
-# Frontend Playwright E2E suite (see frontend-playwright-e2e.md)
-npm run test:frontend:e2e
-
 # Frontend unit/component coverage check (minimum 85%)
 npm run test:frontend:coverage
 
@@ -96,6 +93,15 @@ The issue #19 source link moves duplicated interaction coverage to the layer tha
 
 When adding coverage to a duplicated interaction matrix, extend the unit suite. Add an E2E case only when the assertion needs a real browser: layout geometry, native navigation, tooltips, or cross-component runtime integration.
 
+### Example split for error-aware task previews
+
+The preview's error states split the same way.
+
+- **Vitest owns the state matrix.** `TaskPreviewCard.errors.spec.tsx` pins the card's source-region states and copy: a known `E` keeps its reasoning, an unavailable source replaces the renderer with the non-dismissible inline `Alert`, a pending full fetch shows only the source-region skeleton, an assessment-only `E` keeps rendering its surviving content, a genuine no-submission stays the ready `N` placeholder with no `Alert`, and a legacy result gets the reassessment copy. `TaskMetricPreviewContent.spec.tsx` pins the pending/failed/ready body decision, including the known-error fallback that never leaves a perpetual skeleton. `assembleTaskPreviewData.errors.spec.ts`, `assembleMergedPreviewData.errors.spec.ts`, `heatmapsPreviewQueries.spec.ts` and `buildCellPreviewLookup.errors.spec.ts` pin derivation and precedence. `useHeatmapsPageData.knownErrorPreview.spec.ts` holds the hook-level known-error material split out of `useHeatmapsPageData.preview.spec.ts`.
+- **Playwright owns the browser journeys.** `assessment-error-previews.spec.ts` covers the embedded surface and `assessment-error-merged-previews.spec.ts` the standalone merged surface: a healthy sibling beside an assessment `E` with valid source, an `E` without usable source, a known class-partial `E` while the full read is pending and after it terminally fails, the preview-only corruption notice with unchanged class cells, a legacy reassessment preview beside an unaffected current sibling, refresh from `E` to a current result, the two-instance shared-definition leak check, untrapped Tab, and narrow-viewport wrapping of the unavailable-source copy. Their scenario, navigation and locator helpers are `src/frontend/e2e-tests/helpers/assessment-error-preview-{fixtures,journeys}.ts`.
+
+Do not duplicate the whole state matrix in Playwright, and do not weaken the unit assertions to make a browser journey pass.
+
 ### Example split for the Select Add new command
 
 `SelectWithAddNew` appends an `Add new` sentinel that dispatches a command rather than selecting a value. Keep the split strict.
@@ -157,8 +163,7 @@ not a nested queued wrapper that would deadlock.
 
 ### Metadata refresh task and writer tests
 
-The independently review-clean task/writer coverage (Section 4 complete with zero
-new regressions) is split across seven suites:
+The task/writer coverage is split across seven suites:
 
 - `services/dataAnalysis/postAnalysis/metadataProjection.freshness.spec.ts` and
   `metadataProjection.merge.spec.ts`: timestamp gate, exact score/marker mapping,
@@ -190,10 +195,7 @@ and feedback coverage is described below.
 
 ### Shared post-analysis lifecycle tests
 
-The generic lifecycle, feedback and invalidation passed independent 5B and 5C
-reviews (47 plus 25 cases at that point). Consumer binding is now
-implemented. The 5C report is
-`.opencode/scratchpad/review-section5c-independent.md`. Coverage is split by responsibility:
+The generic lifecycle, feedback and invalidation coverage is split by responsibility:
 
 - `services/dataAnalysis/postAnalysis/postAnalysis.zod.spec.ts`: detached complete
   source context, matching class identity, selected display evidence and strict
@@ -235,7 +237,7 @@ cancellation of active work. Future task tests must cover their own key and elig
 rules; metadata freshness is never a global gate. See the
 [registration contract](data-analysis-architecture.md#shared-post-analysis-lifecycle-and-extension).
 
-The 5C suites render the real context-aware Ant Design `App` host and use the
+These suites render the real context-aware Ant Design `App` host and use the
 real query client through `src/test/abClass/postAnalysisFeedbackTestSupport.tsx`:
 
 - `hooks/usePostAnalysisTasks.feedback.spec.tsx` covers persistent polite safe copy,
@@ -257,60 +259,40 @@ cleanup, `completeNotificationLeave` waits for the actual leave-active class,
 dispatches `animationend` inside `act`, then asserts actual DOM removal. Do not
 disable production motion, manufacture a leave or weaken removal assertions.
 
-Consumer binding (5D) is implemented and independently review-clean, and the
-Section 5 regression comparison recorded zero regressions and zero new failures.
-Playwright runtime types and dispatch inventory register `upsertABClass` and
-`updateABClass`, and the nine existing Heatmaps summary journeys use explicit
-equal-version metadata boundaries so no background write occurs. The narrow
-390×844 standalone keyboard seam was diagnosed and fixed: the helper now asserts
-the assignment control is enabled and focused before typing, because `focus()` is
-a no-op on a disabled control. Six narrow repeats and the full **303**-test run
-passed with `--retries=0`; other attempts failed on infrastructure connection
-errors. The **13** consumer-binding cases (**6** Class
-page + **7** Heatmaps) sit in the suites above.
-
-Section 6 adds test-only Node dispatcher and browser changed-write/failure-feedback
-coverage. Those tests are complete and independently review-clean
-(`.opencode/scratchpad/review-section6-independent.md`), and the Section 6
-regression comparison recorded zero regressions and zero new failures.
+Consumer binding is implemented. Playwright runtime types and dispatch inventory
+register `upsertABClass` and `updateABClass`, and the nine existing Heatmaps
+summary journeys use explicit equal-version metadata boundaries so no background
+write occurs. The consumer-binding cases (6 Class page + 7 Heatmaps) sit in the
+suites above.
 
 ### Post-analysis metadata browser and Node integration coverage
 
 The changed-write and feedback journeys live in two browser specs plus a Node
 dispatcher suite:
 
-- `src/frontend/e2e-tests/helpers/post-analysis-metadata-scenarios.ts` (**297**
-  lines) builds canonical `small` class-2 scenarios. The historical source omits
-  only the final assignment because the committed newest instance has the known
-  null `studentName`; remaining names, assessments and supplied metadata are
-  unchanged. Do not "repair" the corpus to create this boundary.
-- `post-analysis-metadata.persistence.spec.ts` (**128** lines / **3** tests):
-  Class page writes once and re-reads; standalone Heatmaps writes once with no
-  loop on the same source; a newer assignment version writes once on manual
-  refresh (six reads and two writes).
-- `post-analysis-metadata.feedback.spec.ts` (**293** lines / **8** tests):
-  persistent safe save-failure copy on both surfaces, the distinct
-  confirmed-save/refresh-failure copy, retention of that warning on the Class page
-  when readiness blocks during a still-pending list refresh, keyboard dismissal, no
-  reopen on the same source, navigation cleanup, and four containment/theme checks at
-  1440×900 and 390×844 in light and dark.
-- `tests/synthetic-analysis/syntheticABClassMetadataRoundTrip.test.ts` (**188**
-  lines / **5** tests): real `apiHandler` read and mutation round trip through
-  `callApi`, service schemas and queued wrappers. It uses the existing test seams
-  and is not real controller/persistence evidence; see
-  [Synthetic Test Data](../testing/synthetic-test-data.md#node-dispatcher-metadata-round-trip-implemented-independently-review-clean).
+- `src/frontend/e2e-tests/helpers/post-analysis-metadata-scenarios.ts` builds
+  canonical `small` class-2 scenarios. The historical source omits only the final
+  assignment because the committed newest instance has the known null
+  `studentName`; remaining names, assessments and supplied metadata are unchanged.
+  Do not "repair" the corpus to create this boundary.
+- `post-analysis-metadata.persistence.spec.ts`: Class page writes once and
+  re-reads; standalone Heatmaps writes once with no loop on the same source; a
+  newer assignment version writes once on manual refresh (six reads and two
+  writes).
+- `post-analysis-metadata.feedback.spec.ts`: persistent safe save-failure copy on
+  both surfaces, the distinct confirmed-save/refresh-failure copy, retention of
+  that warning on the Class page when readiness blocks during a still-pending list
+  refresh, keyboard dismissal, no reopen on the same source, navigation cleanup,
+  and containment/theme checks at 1440×900 and 390×844 in light and dark.
+- `tests/synthetic-analysis/syntheticABClassMetadataRoundTrip.test.ts`: real
+  `apiHandler` read and mutation round trip through `callApi`, service schemas and
+  queued wrappers. It uses the existing test seams and is not real
+  controller/persistence evidence; see
+  [Synthetic Test Data](../testing/synthetic-test-data.md#node-dispatcher-metadata-round-trip).
 
 Both browser specs use the existing runtime response queues. Keep strict dispatch:
-an unknown method or exhausted queue must still fail. The original Section 6 review
-recorded **10** new browser tests green and the full synthetic project at **34 files /
-384 tests**. The reviewer's full **313**-test browser run passed with
-`--retries=0` (8.8 minutes), and the Section 6 regression comparison recorded zero
-regressions and zero new failures. Batch 1 later added the actual-consumer Class-page
-case, taking the two specs to **11** browser tests; independent batch-1 review
-(`.opencode/scratchpad/batch-1-review.md`) passed the full **314**-test browser run
-(`.opencode/scratchpad/batch1-review-e2e.txt`), and the batch-1 comparison recorded
-seven passing checks, zero regressions and zero new failures, with only the six
-accepted pre-existing backend max-lines warnings failing the aggregate gate.
+an unknown method or exhausted queue must still fail. The full browser suite
+currently runs **314** tests.
 
 ### API transport and queue suites
 
@@ -361,16 +343,9 @@ Frontend unit/component tests must meet a minimum coverage threshold of **85%** 
 
 Use the deterministic synthetic analysis corpus when a test needs realistic analysis-domain data.
 
-**Canonical-fixture directive:**
+All new or changed tests must use a canonical synthetic fixture when the corpus covers the scenario; for the directive, its exception path and the generator-extension process, see [Synthetic Test Data](../testing/synthetic-test-data.md#policy-canonical-fixtures-for-tests).
 
-- All new or changed tests must use an appropriate canonical synthetic fixture when the synthetic fixture system provides data for the scenario.
-- If the required realistic data is not yet supported, the test may use a local realistic fixture only when the owning feature work records a generator-extension plan (which profile, view, or generator stage to add and where).
-- Deliberately invalid or boundary fixtures remain local.
-- Migrate a touched existing test to a canonical fixture opportunistically; do not perform a wholesale migration.
-
-This policy is intentionally broader than the analysis graph and applies automatically as later domains are added.
-
-For frontend service round-trip tests, the Node integration spec composes the script-owned dispatcher bridge with the frontend adapter and supplies `callApi`, the service Zod schemas, and `DataAnalysisService` input. For the corpus topology, profile/view selection, commands, failure behaviour, and the full exception and extension path, see the canonical guide: [Synthetic Test Data](../testing/synthetic-test-data.md).
+For frontend service round-trip tests, the Node integration spec composes the script-owned dispatcher bridge with the frontend adapter and supplies `callApi`, the service Zod schemas, and `DataAnalysisService` input. For the corpus topology, profile/view selection, commands and failure behaviour, see the canonical guide: [Synthetic Test Data](../testing/synthetic-test-data.md).
 
 ### Importing canonical fixtures
 
@@ -403,27 +378,28 @@ Use shared helpers to keep fixtures and mocks consistent and avoid duplicate tes
 - Classes modal test helpers: `src/frontend/src/test/classes/modalTestHelpers.tsx` (shared interaction helpers, assertion utilities, and mock creators for Classes modal components).
 - Classes Page test helpers: `src/frontend/src/test/classes/classesPageTestHelpers.ts` is the compatibility facade and owns `toPlainClassPartials`; the split responsibilities live in `classesPageTestFixtures.ts` (fixture factories and constants), `classesPageRenderHelpers.tsx` (rendering and query-client helpers), `classesPageModelAssertions.ts` (model verification and type guards) and `classesPageScreenAssertions.tsx` (DOM/screen assertions).
 - Classes Page grouped view-model support: `src/frontend/src/test/classes/classesPageModelTestSupport.ts` (shared factories and assertion helpers for `classesPageModel.base.spec.ts`, `.sorting.spec.ts` and `.validation.spec.ts`).
-- Classes bulk test helpers and registration-only mock setup modules: `src/frontend/src/test/classes/bulkFlowTestHelpers.ts` exports the row fixture `makeRow` and the queued-batch assertions `assertQueuedBatchMutationCalledOnce` and `assertSingleSelectedRowEdit` (shared by the `bulkSetYearGroup` and `bulkSetCohort` flow specs), plus `createBulkPanelMocks`, `createBulkQueueModuleMock`, and `BULK_PANEL_COMPONENT_MOCKS` (shared by the `bulkActiveState` and `bulkDelete` panel specs); the `*.mockSetup.ts` files under `src/frontend/src/test/` — `classes/AssessTaskModal`, `classes/ClassesManagementPanel`, `classes/ClassesPage`, `classes/bulkPanel`, `assignmentDefinition/AssignmentDefinitionWizardModal`, `classPage/useClassPageData`, and `auth/appAuthGate` — are registration-only modules that register identical `vi.mock` doubles and export nothing (see [Shared mock-registration pattern](#shared-mock-registration-pattern)).
+- Classes bulk test helpers and registration-only mock setup modules: `src/frontend/src/test/classes/bulkFlowTestHelpers.ts` exports the row fixture `makeRow` and the queued-batch assertions `assertQueuedBatchMutationCalledOnce` and `assertSingleSelectedRowEdit` (shared by the `bulkSetYearGroup` and `bulkSetCohort` flow specs), plus `createBulkPanelMocks`, `createBulkQueueModuleMock`, and `BULK_PANEL_COMPONENT_MOCKS` (shared by the `bulkActiveState` and `bulkDelete` panel specs); the `*.mockSetup.ts` files under `src/frontend/src/test/` — `classes/AssessTaskModal`, `classes/ClassesManagementPanel`, `classes/ClassesPage`, `classes/bulkPanel`, `assignmentDefinition/AssignmentDefinitionWizardModal`, `classPage/useClassPageData`, `taskHeatmap/useHeatmapsPageData`, `abClass/postAnalysisHookMockSetup`, and `auth/appAuthGate` — are registration-only modules that register identical `vi.mock` doubles and export nothing (see [Shared mock-registration pattern](#shared-mock-registration-pattern)).
 - Builder fixture helpers: `scripts/builder/src/test/builder-fixture-test-helpers.ts` (shared by builder specs to build release archives, create path fixtures, and write release files/manifests).
 
 When adding test scenarios, prefer extending an existing helper before copying setup logic into each spec. In particular, Classes feature specs should reuse `src/frontend/src/test/classes/classesTestHelpers.ts` for row fixtures and state builders, `src/frontend/src/test/classes/modalTestHelpers.tsx` for modal interaction patterns, and the `classesPageTestHelpers` facade (or its owning companion modules) for ClassesPage fixtures and rendering, rather than redefining near-identical test utilities in each file.
 
 Shared frontend test helpers belong under `src/frontend/src/test/**`. Feature-scoped subfolders are allowed when they keep related fixtures together, but production feature folders should stay free of shared test helpers.
 
-- Data-analysis test fixtures: `src/frontend/src/test/dataAnalysis/fixtures.ts` — moved from `src/frontend/src/services/dataAnalysis/test/fixtures.ts` to the canonical shared-helpers location. Status: **Implemented**.
-- Data-analysis assertion helpers: `src/frontend/src/test/dataAnalysis/averagingAnalyserAssertions.ts` — shared module exporting `expectMetricResult` and `checkMetricInvariant` (extracted from `averagingAnalyser.spec.ts`). Status: **Implemented**.
-- Synthetic analysis API round-trip adapter: `src/frontend/src/test/syntheticApiRoundTripAdapter.ts` — exports `createSyntheticApiRoundTripRunner(invokeRequest)`, a thin test-only adapter that composes the script-owned synthetic `apiHandler` bridge with `googleScriptRunHarness`. It preserves the harness's single success JSON serialisation, raw failures, and per-request callback isolation, and it imports no `scripts/` code. Status: **Implemented** (synthetic analysis test-data delivery). See [Synthetic Test Data](../testing/synthetic-test-data.md).
-- Task-preview fixture selection: `src/frontend/src/test/taskHeatmap/previewFixtures.ts` — selects the canonical `small` `class-2` roster and its populated Slides `assignment-2-1` and Sheets `assignment-2-2` records through the frontend raw-JSON import convention, validates every selected full record through `ClassFullSchema` / `AssignmentFullSchema`, and derives and deep-freezes the preview identifiers, labels, metric values and content so the suites assert real record data rather than restated literals. It also exposes clone/build helpers so callers never mutate the shared records. Status: **Implemented**.
-- Task-preview source-action and focus-session helper: `src/frontend/src/test/taskHeatmap/previewSourceActionTestHelpers.ts` — owns the single shared contract for the issue #19 source action and the metric cell's preview focus session: the action's accessible name, the canonical editor URL derived through the production lookup, a no-source boundary cell, and a harness that renders the real `TaskMetricPreviewCell` between focusable neighbours with focus-transfer observation and overlay open/dismiss waits. Its four callers are `TaskPreviewCard.sourceLink.spec.tsx`, `TaskMetricPreviewContent.spec.tsx`, `TaskMetricPreviewCell.focus.spec.tsx` and `TaskMetricPreviewCell.focusSession.spec.tsx`. Status: **Implemented**.
-- Heatmaps hook ready-dataset mock factory: `src/frontend/src/test/taskHeatmap/hookMockFactories.ts` — exports `createReadyHeatmapsDatasetResult(datasetKey)` to build the ready query and dataset-state pair returned by the mocked `usePageDataset`, selecting `classPartials` or `assignmentDefinitionPartials` data for the requested key; shared by `useHeatmapsPageData.spec.ts` and `useHeatmapsPageData.preview.spec.ts`. Status: **Implemented**.
-- Class-page test helpers: `src/frontend/src/test/classPage/classPageFixtures.ts` exports `createReadyClassPageData(overrides?)` plus the shared class/identifier fixtures for the Class page composition specs (`ClassPage.spec.tsx`, `ClassPageContent.spec.tsx`); `useClassPageDataTestFixtures.ts` provides the pure query/dataset builders and the shared `createClassPageDataWrapper` provider wrapper for the hook suites; and `useClassPageDataMockHandles.ts` exports `createUseClassPageDataMockHandles()`, which binds typed `vi.mocked` handles for the hook's mocked dependencies (`useQuery`, `usePageDataset`, `getABClassQueryOptions`, `DataAnalysisService.analyse`, `adaptClassPageToViewModel`) for the main, blocking, and memoisation hook specs. The hook suites register their doubles through the registration-only `useClassPageData.mockSetup.ts`; `useClassPageData.assignmentQueries.spec.ts` keeps its own handle bindings, and `useClassPageData.diagnostics.spec.ts` declares local hoisted mocks and consumes only `createReadyClassQueryResult`. Status: **Implemented**.
-- Classes management panel test helpers: `src/frontend/src/test/classes/classesManagementPanelMockFactories.tsx` — `createClassesManagementPanelMocks()` builds the isolated panel module mocks (management state, batch mutation, queue, progress modal, bulk create, bulk delete); registered once by `ClassesManagementPanel.mockSetup.ts` for the `ClassesManagementPanel.*.spec.tsx` specs. The sibling `src/frontend/src/test/classes/classesManagementPanelHarness.tsx` exports `createClassesManagementPanelHarness(...)`, which owns those specs' `reset()` queue/modal behaviour, binds `buildClassesManagementState` to the hook mock, dynamically renders the real panel, and exports the shared `MutableQueueState` type; `ClassesManagementPanel.mockSetup.ts` stays a separate export-free registration module. Status: **Implemented**.
-- Auth gate test helpers: `src/frontend/src/test/auth/appAuthGateTestHelpers.tsx` — exports the access-result fixtures (`grantedAdminAccess`, `freshInstallAccess`, `brokenConfigAccess`, `deniedAccess`), `EMPTY_STARTUP_WARMUP_RESULT`, and `createQueryWrapper()`. The auth-gate specs import them statically and register their doubles through `auth/appAuthGate.mockSetup.ts` (`AppAuthGate.auth.spec.tsx` keeps its local hoisted mocks). Status: **Implemented**.
-- Focused analysis input builder: `buildSingleStudentInput(assessments, additionalOverrides?)` in `src/frontend/src/test/dataAnalysis/fixtures.ts` — builds a one-class, one-student `AveragingAnalyserInput` from a criterion-score map for focused analyser/service cases. Status: **Implemented**.
-- Heatmap adapter suite setup: `src/frontend/src/test/dataAnalysis/heatmapAdapterTestSetup.ts` — shared class/definition/averaging-result builders used by `heatmapAdapter.spec.ts` and `heatmapAdapter.weighting.spec.ts`; each builder returns a fresh instance. Status: **Implemented**.
-- Class-detail schema wire fixtures: `src/frontend/src/test/abClass/classDetailSchemaFixtures.ts` — shared wire payloads for the split `classDetailService.zod.full.spec.ts`, `.submissions.spec.ts`, `.definitions.spec.ts` and `.metadataIntegration.spec.ts`; `validClassFull` carries a detached canonical metadata snapshot, and deliberate invalid cases clone the shared objects locally. Status: **Implemented**.
-- ABClass metadata test selectors: `src/frontend/src/test/abClass/abClassMetadataFixtures.ts` — exports `METADATA_PROFILE_CLASS_PARTIALS` (deep-frozen parsed committed `small`, `medium` and `large-representative` class-partial views imported as raw text with `?raw`) and `cloneMetadata` (`structuredClone`). It re-exports `CANONICAL_NON_NULL_METADATA` and `createCanonicalMetadataFixture()` from the runner-neutral `abClassMetadataSharedFixtures.ts`. Callers clone before deliberate mutation; browser-shared providers import the neutral owner directly. The Node parity suite generates its graph directly and does not import these selectors. Status: **Implemented**.
-- Focused full-class fixture defaults: `src/frontend/src/test/abClass/classFullFixtureDefaults.ts` — constructor-owned defaults shared by `classPageAdapterTestFixtures.classFull` and `dataAnalysis/fixtures.createClassFull`. Omitted/undefined metadata receives a fresh canonical snapshot; explicit null and supplied snapshots are preserved. These are test defaults, not production read-schema fallbacks. Status: **Implemented**.
+- Data-analysis test fixtures: `src/frontend/src/test/dataAnalysis/fixtures.ts` — moved from `src/frontend/src/services/dataAnalysis/test/fixtures.ts` to the canonical shared-helpers location.
+- Data-analysis assertion helpers: `src/frontend/src/test/dataAnalysis/averagingAnalyserAssertions.ts` — shared module exporting `expectMetricResult` and `checkMetricInvariant` (extracted from `averagingAnalyser.spec.ts`).
+- Synthetic analysis API round-trip adapter: `src/frontend/src/test/syntheticApiRoundTripAdapter.ts` — exports `createSyntheticApiRoundTripRunner(invokeRequest)`, a thin test-only adapter that composes the script-owned synthetic `apiHandler` bridge with `googleScriptRunHarness`. It preserves the harness's single success JSON serialisation, raw failures, and per-request callback isolation, and it imports no `scripts/` code. See [Synthetic Test Data](../testing/synthetic-test-data.md).
+- Task-preview fixture selection: `src/frontend/src/test/taskHeatmap/previewFixtures.ts` — selects the canonical `small` `class-2` roster and its populated Slides `assignment-2-1` and Sheets `assignment-2-2` records through the frontend raw-JSON import convention, validates every selected full record through `ClassFullSchema` / `AssignmentFullSchema`, and derives and deep-freezes the preview identifiers, labels, metric values and content so the suites assert real record data rather than restated literals. It also exposes clone/build helpers so callers never mutate the shared records.
+- Task-preview source-action and focus-session helper: `src/frontend/src/test/taskHeatmap/previewSourceActionTestHelpers.ts` — owns the single shared contract for the issue #19 source action and the metric cell's preview focus session: the action's accessible name, the canonical editor URL derived through the production lookup, a no-source boundary cell, and a harness that renders the real `TaskMetricPreviewCell` between focusable neighbours with focus-transfer observation and overlay open/dismiss waits. The no-source boundary cell keeps the canonical per-criterion reasoning and error causes, so only the source link differs. Its four callers are `TaskPreviewCard.sourceLink.spec.tsx`, `TaskMetricPreviewContent.spec.tsx`, `TaskMetricPreviewCell.focus.spec.tsx` and `TaskMetricPreviewCell.focusSession.spec.tsx`.
+- Heatmaps hook ready-dataset mock factory: `src/frontend/src/test/taskHeatmap/hookMockFactories.ts` — exports `createReadyHeatmapsDatasetResult(datasetKey)` to build the ready query and dataset-state pair returned by the mocked `usePageDataset`, selecting `classPartials` or `assignmentDefinitionPartials` data for the requested key; shared by `useHeatmapsPageData.spec.ts`, `useHeatmapsPageData.preview.spec.ts`, `useHeatmapsPageData.knownErrorPreview.spec.ts` and `useHeatmapsPageData.postAnalysis.spec.ts`.
+- Heatmaps hook mock setup: `src/frontend/src/test/taskHeatmap/useHeatmapsPageData.mockSetup.ts` registers the `useHeatmapsPageData` hook doubles (`useQuery`, `useQueries`, `usePageDataset`, the shared query-options factories, `DataAnalysisService.analyse`, `adaptMetricsToMergedHeatmap`, `assembleMergedPreviewData`) and exports nothing, because `unicorn/no-top-level-side-effects` rejects top-level exports beside registration. Specs import it before `./useHeatmapsPageData`; `useHeatmapsPageData.knownErrorPreview.spec.ts` consumes it. The hoisted doubles are published through `useHeatmapsPageDataMockHandles.ts`, whose `heatmapsPageDataMockHandles.current` slot the setup module fills, because the class-shaped analysis-service mock cannot be reached through `vi.mocked(DataAnalysisService)`. `useHeatmapsPageDataSpecMocks.ts` binds them as `heatmapsPageDataMocks` and exports `installUseQueriesMock`, `createHeatmapsPageDataHarness` and `mockWarmupDatasetsReady`; it has no registration side effects and throws if imported before the setup module.
+- Class-page test helpers: `src/frontend/src/test/classPage/classPageFixtures.ts` exports `createReadyClassPageData(overrides?)` plus the shared class/identifier fixtures for the Class page composition specs (`ClassPage.spec.tsx`, `ClassPageContent.spec.tsx`); `useClassPageDataTestFixtures.ts` provides the pure query/dataset builders and the shared `createClassPageDataWrapper` provider wrapper for the hook suites; and `useClassPageDataMockHandles.ts` exports `createUseClassPageDataMockHandles()`, which binds typed `vi.mocked` handles for the hook's mocked dependencies (`useQuery`, `usePageDataset`, `getABClassQueryOptions`, `DataAnalysisService.analyse`, `adaptClassPageToViewModel`) for the main, blocking, and memoisation hook specs. The hook suites register their doubles through the registration-only `useClassPageData.mockSetup.ts`; `useClassPageData.assignmentQueries.spec.ts` keeps its own handle bindings, and `useClassPageData.diagnostics.spec.ts` declares local hoisted mocks and consumes only `createReadyClassQueryResult`.
+- Classes management panel test helpers: `src/frontend/src/test/classes/classesManagementPanelMockFactories.tsx` — `createClassesManagementPanelMocks()` builds the isolated panel module mocks (management state, batch mutation, queue, progress modal, bulk create, bulk delete); registered once by `ClassesManagementPanel.mockSetup.ts` for the `ClassesManagementPanel.*.spec.tsx` specs. The sibling `src/frontend/src/test/classes/classesManagementPanelHarness.tsx` exports `createClassesManagementPanelHarness(...)`, which owns those specs' `reset()` queue/modal behaviour, binds `buildClassesManagementState` to the hook mock, dynamically renders the real panel, and exports the shared `MutableQueueState` type; `ClassesManagementPanel.mockSetup.ts` stays a separate export-free registration module.
+- Auth gate test helpers: `src/frontend/src/test/auth/appAuthGateTestHelpers.tsx` — exports the access-result fixtures (`grantedAdminAccess`, `freshInstallAccess`, `brokenConfigAccess`, `deniedAccess`), `EMPTY_STARTUP_WARMUP_RESULT`, and `createQueryWrapper()`. The auth-gate specs import them statically and register their doubles through `auth/appAuthGate.mockSetup.ts` (`AppAuthGate.auth.spec.tsx` keeps its local hoisted mocks).
+- Focused analysis input builder: `buildSingleStudentInput(assessments, additionalOverrides?)` in `src/frontend/src/test/dataAnalysis/fixtures.ts` — builds a one-class, one-student `AveragingAnalyserInput` from a criterion-score map for focused analyser/service cases.
+- Heatmap adapter suite setup: `src/frontend/src/test/dataAnalysis/heatmapAdapterTestSetup.ts` — shared class/definition/averaging-result builders used by `heatmapAdapter.spec.ts` and `heatmapAdapter.weighting.spec.ts`; each builder returns a fresh instance.
+- Class-detail schema wire fixtures: `src/frontend/src/test/abClass/classDetailSchemaFixtures.ts` — shared wire payloads for the split `classDetailService.zod.full.spec.ts`, `.submissions.spec.ts`, `.definitions.spec.ts` and `.metadataIntegration.spec.ts`; `validClassFull` carries a detached canonical metadata snapshot, and deliberate invalid cases clone the shared objects locally.
+- ABClass metadata test selectors: `src/frontend/src/test/abClass/abClassMetadataFixtures.ts` — exports `METADATA_PROFILE_CLASS_PARTIALS` (deep-frozen parsed committed `small`, `medium` and `large-representative` class-partial views imported as raw text with `?raw`) and `cloneMetadata` (`structuredClone`). It re-exports `CANONICAL_NON_NULL_METADATA` and `createCanonicalMetadataFixture()` from the runner-neutral `abClassMetadataSharedFixtures.ts`. Callers clone before deliberate mutation; browser-shared providers import the neutral owner directly. The Node parity suite generates its graph directly and does not import these selectors.
+- Focused full-class fixture defaults: `src/frontend/src/test/abClass/classFullFixtureDefaults.ts` — constructor-owned defaults shared by `classPageAdapterTestFixtures.classFull` and `dataAnalysis/fixtures.createClassFull`. Omitted/undefined metadata receives a fresh canonical snapshot; explicit null and supplied snapshots are preserved. These are test defaults, not production read-schema fallbacks.
 
 ### Shared mock-registration pattern
 
@@ -567,7 +543,7 @@ When a frontend test needs to mock `google.script.run.apiHandler`, you must use 
 
 Do not introduce new ad-hoc `google.script.run` mocks that mutate one shared runner object or store handlers on shared mutable state. Each mocked call must model GAS-style per-call callback isolation so overlapping requests cannot overwrite one another's success or failure handlers.
 
-#### GAS serialization fidelity rule
+#### GAS serialisation fidelity rule
 
 The shared harness factory (`src/frontend/src/test/google-script-run-harness-factory.js`)
 automatically wraps `successHandler` with `JSON.stringify()`, faithfully simulating real GAS
@@ -576,7 +552,7 @@ behaviour where `google.script.run` auto-stringifies return values.
 - **Do not add `JSON.stringify()` in individual test files.** The factory handles this.
   Adding manual `JSON.stringify()` in a spec file is redundant and risks double-encoding.
 - **Do not add `JSON.parse()` in test callbacks.** The production `apiService.ts` (`dispatchAttempt`)
-  handles deserialization before Zod validation. Tests should pass raw objects to the factory's
+  handles deserialisation before Zod validation. Tests should pass raw objects to the factory's
   `successHandler` — the factory stringifies them, and `apiService.ts` parses them back.
 - **`failureHandler` must not be stringified.** Real GAS passes raw error strings to
   `failureHandler`. The factory leaves `failureHandler` unwrapped.
@@ -608,14 +584,6 @@ deleteResponses: [{ kind: 'success' }],
 ```
 
 This applies equally to Vitest mock responses and E2E `RuntimeScenario` entries.
-
-### Classes CRUD harness continuity rule
-
-For Settings-page Classes CRUD browser tests, extend the existing scenario harness in `src/frontend/e2e-tests/classes-crud.harness.spec.ts` and its shared queue/helpers.
-
-- Do not create a parallel Classes CRUD harness with duplicate backend queueing logic.
-- Keep new Classes CRUD journeys aligned with the shared harness fixtures so load-state, failure-state, and ordering semantics stay consistent across workstreams.
-- New Classes CRUD Playwright specs may be added for focused journeys, but they should consume the same shared harness primitives rather than reimplementing them.
 
 ### Mock Setup Order (Critical Anti-Pattern)
 
@@ -939,14 +907,6 @@ Object.defineProperty(globalThis.window, 'getComputedStyle', {
 });
 ```
 
-**Properties to include:** Focus on what Ant Design components check internally:
-
-- Modal: `position`, `z-index`, `left`, `top`, `width`, `height`, `display`
-- Table: `width`, `height`, `overflow`, `display`
-- Menu/Dropdown/Tooltip: `width`, `height`, `transform`, `display`, `z-index`
-- Select: `width`, `position`, `z-index`, `display`
-- Background checks: `background-color`
-
 **Reference:**
 
 - [HappyDOM getComputedStyle limitations](https://github.com/capricorn86/happy-dom/issues)
@@ -974,13 +934,13 @@ vi.mock('./some-module', () => ({ ... }));
 
 Ant Design components rely on `getComputedStyle` for layout calculations. When mocking this API, ensure your mock returns **non-empty values** for these commonly checked properties:
 
-| Component     | Properties Checked                                                                      |
-| ------------- | --------------------------------------------------------------------------------------- |
-| Modal         | `position`, `z-index`, `left`, `top`, `width`, `height`, `display`                      |
-| Table         | `width`, `height`, `overflow`, `display`                                                |
-| Menu/Dropdown | `width`, `height`, `transform`, `display`, `z-index`                                    |
-| Select        | `width`, `position`, `z-index`, `display`                                               |
-| General       | `box-sizing`, `padding`, `margin`, `border-*`, `background-color`, `color`, `font-size` |
+| Component             | Properties Checked                                                                      |
+| --------------------- | --------------------------------------------------------------------------------------- |
+| Modal                 | `position`, `z-index`, `left`, `top`, `width`, `height`, `display`                      |
+| Table                 | `width`, `height`, `overflow`, `display`                                                |
+| Menu/Dropdown/Tooltip | `width`, `height`, `transform`, `display`, `z-index`                                    |
+| Select                | `width`, `position`, `z-index`, `display`                                               |
+| General               | `box-sizing`, `padding`, `margin`, `border-*`, `background-color`, `color`, `font-size` |
 
 **Common failure pattern:** A mock that returns empty strings for all properties causes Ant Design components to miscalculate dimensions, leading to hidden elements, incorrect positioning, or rendering failures.
 

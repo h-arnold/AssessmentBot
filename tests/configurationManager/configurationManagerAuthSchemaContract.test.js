@@ -1,14 +1,12 @@
 /**
- * RED-phase contract tests for the Section 1 auth schema additions.
+ * Contract tests for the auth schema additions.
  *
- * These tests define the target contract from SPEC.md decision 2 and
- * docs/developer/data-shapes/auth-users.md (Persistence section) and MUST FAIL
- * against the current implementation (which still accepts `'none'`, has no
- * `authUsers`/`authRevision` validators, no 8KB cap constant, and no strict
- * auth-state validator). They are the specification the Implementation phase
- * must satisfy.
+ * These tests define the contract from
+ * docs/developer/data-shapes/auth-users.md (Persistence section): the
+ * `authUsers`/`authRevision` validators, the 8KB cap constant, and the strict
+ * auth-state validator, alongside the rejection of a stored `'none'` mode.
  *
- * Encoded API surface (to be delivered by 01_configKeysAndSchema.js):
+ * Encoded API surface (delivered by 01_configKeysAndSchema.js):
  *  - CONFIG_KEYS.AUTH_USERS === 'authUsers', CONFIG_KEYS.AUTH_REVISION === 'authRevision'
  *  - CONFIG_SCHEMA[CONFIG_KEYS.AUTH_USERS].validate(value: string, instance?) => string
  *      Validates a JSON string array of { email, role } entries; returns the

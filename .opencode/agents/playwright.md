@@ -2,7 +2,7 @@
 description: Creates, maintains, and debugs Playwright browser end-to-end tests
 mode: all
 steps: 100
-model: openai/gpt-6-luna
+model: opencode/glm-5.3-flash-free
 permissions:
   - action: playwright_*
     resource: '*'

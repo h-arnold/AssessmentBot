@@ -87,12 +87,13 @@ export function createAssignment(submissions: AssignmentFull['submissions']): As
     updatedAt: null,
     createdAt: DEFAULT_DATE,
     documentType: null,
+    assessmentContractVersion: 1,
     referenceDocumentId: null,
     templateDocumentId: null,
     tasks: null,
     submissions: structuredClone(submissions),
     assignmentDefinition: structuredClone(MINIMAL_ASSIGNMENT_DEFINITION),
-  } as AssignmentFull;
+  } satisfies AssignmentFull;
 }
 
 /**

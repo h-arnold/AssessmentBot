@@ -1,7 +1,7 @@
 ---
 description: Implements code changes in an idiomatic and type-safe manner with validated results
 mode: all
-model: openai/gpt-6-luna
+model: opencode/glm-5.3-flash-free
 steps: 100
 ---
 

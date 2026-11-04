@@ -125,15 +125,12 @@ When a call does reach `apiHandler` and fails, the response must reveal as littl
 possible about the backend:
 
 - **Stable envelope, no internals.** Every response uses the transport envelope documented
-  in [transport-envelope.md](../data-shapes/transport-envelope.md): a success shape
-  (`ok: true`, `requestId`, `data`) or an error shape (`ok: false`, `requestId`, `error: {
-code, message, isRetriable, details? }`). `_mapErrorToFailureEnvelope` in
-  `z_apiHandler.js` maps recognised error types (`ApiRateLimitError`, `ApiValidationError`,
-  `ApiDisabledError`, `DefinitionStaleError`, `reason === 'IN_USE'`) to fixed codes and
-  falls back to `INTERNAL_ERROR` with the generic message "Internal API error." for
-  anything else. Raw exception details, stack traces and internal error payloads are never
-  sent to callers; the full thrown value is preserved in GAS execution logs via one
-  boundary `ABLogger.error(...)` call (see `backend-logging-and-error-handling.md` §6).
+  in [transport-envelope.md](../data-shapes/transport-envelope.md). `_mapErrorToFailureEnvelope`
+  in `z_apiHandler.js` maps recognised error types to fixed codes and falls back to
+  `INTERNAL_ERROR` with the generic message "Internal API error." for anything else. Raw
+  exception details, stack traces and internal error payloads are never sent to callers; the
+  full thrown value is preserved in GAS execution logs via one boundary `ABLogger.error(...)`
+  call (see `backend-logging-and-error-handling.md` §6).
 - **Secrets never echo in config errors.** The configuration write handler aggregates
   per-field failures as `"${name}: REDACTED"` (the `safeSet` helper in
   `src/backend/z_Api/apiConfig.js`) and returns
@@ -141,19 +138,18 @@ code, message, isRetriable, details? }`). `_mapErrorToFailureEnvelope` in
   `apiKey` or `backendUrl` save therefore surfaces as `apiKey: REDACTED`, never as the
   offending value. See [backend-config.md](../data-shapes/backend-config.md).
 - **API keys are masked at the transport boundary.** `getBackendConfig_` emits
-  `apiKey: maskApiKey_(rawApiKey)` and `hasApiKey: !!rawApiKey`; `maskApiKey_()`
-  (`src/backend/z_Api/apiConfig.js`) returns `''` when no key is stored, `'****'` for
-  keys of four characters or fewer, and `'****'` plus the last four characters otherwise.
-  The raw key never crosses the transport boundary, and the frontend
-  `isMaskedBackendApiKeyValue` validator enforces that the returned value matches exactly
-  those shapes.
+  `apiKey: maskApiKey_(rawApiKey)` and `hasApiKey: !!rawApiKey` from
+  `src/backend/z_Api/apiConfig.js`. The raw key never crosses the transport boundary, and the
+  frontend `isMaskedBackendApiKeyValue` validator enforces that the returned value matches
+  exactly the documented masked shapes. See the
+  [masking contract](../data-shapes/backend-config.md#transport).
 - **Prohibited types are converted at the boundary.** `google.script.run` prohibits
   `Date`, `Function` and DOM elements in return values; a live `Date` degrades GAS
   serialisation to non-JSON output that the frontend parses as `null`. Handlers therefore
-  convert live `Date` objects to ISO 8601 strings before returning, via
-  `DateUtils.normaliseDateFields` or `DateUtils.deepConvertDates` (backend AGENTS §2 and
-  `docs/developer/backend/api-layer.md`). This keeps the
-  transport boundary JSON-clean.
+  convert live `Date` objects to ISO 8601 strings before returning, using the `DateUtils`
+  helpers documented in
+  [api-layer.md § prohibited types](../backend/api-layer.md#critical-prohibited-types-in-googlescriptrun-return-values)
+  (backend AGENTS §2). This keeps the transport boundary JSON-clean.
 - **Logging hygiene.** `ABLogger` is the mandatory logging primitive for backend code,
   and the policy forbids logging secrets, credentials, tokens or API keys
   (`backend-logging-and-error-handling.md` §8). The masking and redaction above keep

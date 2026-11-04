@@ -1,6 +1,6 @@
 if (typeof module !== 'undefined') {
   // Required for testing in a Node.js environment with Vitest
-  BaseTaskArtifact = require('./0_BaseTaskArtifact.js');
+  globalThis.BaseTaskArtifact = require('./0_BaseTaskArtifact.js');
 }
 
 const LAST_ROW_INDEX = -1;
@@ -33,7 +33,7 @@ class SpreadsheetTaskArtifact extends BaseTaskArtifact {
       Array.isArray(row) ? row.map((cell) => this._normCell(cell)) : []
     );
     const trimmed = this._trimEmpty(rows);
-    if (trimmed.length === 0) return null;
+    if (trimmed.length === 0) return [];
     for (const row of trimmed) {
       for (let c = 0; c < row.length; c++) {
         const cell = row[c];

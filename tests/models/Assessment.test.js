@@ -36,16 +36,12 @@ describe('Assessment', () => {
       expect(assessment.reasoning).toBe('');
     });
 
-    it('should create an Assessment with undefined score', () => {
-      const assessment = new Assessment(undefined, 'test');
-      expect(assessment.score).toBeUndefined();
-      expect(assessment.reasoning).toBe('test');
-    });
-
-    it('should create an Assessment with null reasoning', () => {
-      const assessment = new Assessment(2, null);
-      expect(assessment.score).toBe(2);
-      expect(assessment.reasoning).toBeNull();
+    it.each([
+      ['acquisition', 'PARSE_FAILED'],
+      [undefined, 'test'],
+      [2, null],
+    ])('rejects invalid constructor values %j', (score, reasoning) => {
+      expect(() => new Assessment(score, reasoning)).toThrow();
     });
   });
 
@@ -80,14 +76,8 @@ describe('Assessment', () => {
       });
     });
 
-    it('should serialize Assessment with undefined values', () => {
-      const assessment = new Assessment(undefined, undefined);
-      const json = assessment.toJSON();
-
-      expect(json).toEqual({
-        score: undefined,
-        reasoning: undefined,
-      });
+    it('rejects invalid serialized values', () => {
+      expect(() => new Assessment(undefined, undefined).toJSON()).toThrow();
     });
   });
 
@@ -128,35 +118,21 @@ describe('Assessment', () => {
       expect(assessment.reasoning).toBe('');
     });
 
-    it('should deserialize with missing reasoning field', () => {
-      const json = { score: 2 };
-      const assessment = Assessment.fromJSON(json);
-
-      expect(assessment).toBeInstanceOf(Assessment);
-      expect(assessment.score).toBe(2);
-      expect(assessment.reasoning).toBeUndefined();
-    });
-
-    it('should deserialize with missing score field', () => {
-      const json = { reasoning: 'test reasoning' };
-      const assessment = Assessment.fromJSON(json);
-
-      expect(assessment).toBeInstanceOf(Assessment);
-      expect(assessment.score).toBeUndefined();
-      expect(assessment.reasoning).toBe('test reasoning');
-    });
-
-    it('should deserialize with null values', () => {
-      const json = { score: null, reasoning: null };
-      const assessment = Assessment.fromJSON(json);
-
-      expect(assessment).toBeInstanceOf(Assessment);
-      expect(assessment.score).toBeNull();
-      expect(assessment.reasoning).toBeNull();
-    });
+    it.each([{ score: 2 }, { reasoning: 'test reasoning' }, { score: null, reasoning: null }, {}])(
+      'rejects incomplete or null JSON %j',
+      (json) => expect(() => Assessment.fromJSON(json)).toThrow()
+    );
   });
 
   describe('round-trip serialization', () => {
+    it.each([0.25, 2.75, 5])('round-trips finite fractional score %s', (score) => {
+      const assessment = new Assessment(score, ' Preserved reasoning ');
+      expect(Assessment.fromJSON(assessment.toJSON())).toMatchObject({
+        score,
+        reasoning: ' Preserved reasoning ',
+      });
+    });
+
     it('should preserve data through toJSON/fromJSON round-trip', () => {
       const original = new Assessment(4, 'This is well done');
       const json = original.toJSON();
@@ -195,6 +171,28 @@ describe('Assessment', () => {
       expect(restored.reasoning).toBe('');
     });
 
+    it.each([0, 2.75, 5, 'N'])('round-trips valid result score %s', (score) => {
+      const assessment = new Assessment(score, ' Preserved reasoning ');
+      expect(Assessment.fromJSON(assessment.toJSON())).toMatchObject({
+        score,
+        reasoning: ' Preserved reasoning ',
+      });
+    });
+
+    it('round-trips an error result with its cause', () => {
+      const error = { stage: 'extraction', code: 'PARSE_FAILED' };
+      const assessment = new Assessment(
+        'E',
+        'The submitted work could not be parsed for this task.',
+        error
+      );
+      expect(Assessment.fromJSON(assessment.toJSON())).toMatchObject({
+        score: 'E',
+        reasoning: 'The submitted work could not be parsed for this task.',
+        error,
+      });
+    });
+
     it('should handle multiple round-trips', () => {
       const original = new Assessment(4, 'Well done');
       let current = original;
@@ -209,16 +207,152 @@ describe('Assessment', () => {
   });
 
   describe('edge cases and validation', () => {
-    it('should create Assessment with negative score', () => {
-      const assessment = new Assessment(-1, 'Invalid but allowed');
-      expect(assessment.score).toBe(-1);
-      expect(assessment.reasoning).toBe('Invalid but allowed');
+    it.each([NaN, Infinity, -Infinity, -0.01, 5.01, '4', null, undefined])(
+      'rejects invalid score %s',
+      (score) => expect(() => Assessment.fromJSON({ score, reasoning: 'Reason' })).toThrow()
+    );
+
+    it.each(['', '   ', '\t\n', undefined])('rejects E with blank reasoning %j', (reasoning) =>
+      expect(() =>
+        Assessment.fromJSON({
+          score: 'E',
+          reasoning,
+          error: { stage: 'assessment', code: 'LLM_UNAVAILABLE' },
+        })
+      ).toThrow()
+    );
+
+    it('requires reasoning for E and preserves nonblank whitespace', () => {
+      const assessment = Assessment.fromJSON({
+        score: 'E',
+        reasoning: '  unavailable  ',
+        error: { stage: 'assessment', code: 'LLM_UNAVAILABLE' },
+      });
+      expect(assessment.reasoning).toBe('  unavailable  ');
     });
 
-    it('should create Assessment with score greater than 5', () => {
-      const assessment = new Assessment(10, 'Above maximum');
-      expect(assessment.score).toBe(10);
-      expect(assessment.reasoning).toBe('Above maximum');
+    it.each([
+      ['acquisition', 'PARSE_FAILED'],
+      ['extraction', 'SOURCE_UNREADABLE'],
+      ['assessment', 'CORRUPT_RECORD'],
+      ['validation', 'LLM_HTTP_FAILED'],
+      ['other', 'LLM_UNAVAILABLE'],
+      ['assessment', 'UNKNOWN'],
+    ])('rejects invalid error cause pair %s/%s', (stage, code) => {
+      expect(() =>
+        Assessment.fromJSON({ score: 'E', reasoning: 'Failure', error: { stage, code } })
+      ).toThrow();
+    });
+
+    it.each([
+      undefined,
+      null,
+      {},
+      { stage: 'assessment' },
+      { stage: 'assessment', code: null },
+      { stage: 'assessment', code: '' },
+      { stage: 42, code: 'LLM_UNAVAILABLE' },
+    ])('rejects malformed E cause %j', (error) => {
+      expect(() => Assessment.fromJSON({ score: 'E', reasoning: 'Failure', error })).toThrow();
+    });
+
+    it.each([undefined, null, 42])('rejects malformed E reasoning %j', (reasoning) => {
+      expect(() =>
+        Assessment.fromJSON({
+          score: 'E',
+          reasoning,
+          error: { stage: 'assessment', code: 'LLM_UNAVAILABLE' },
+        })
+      ).toThrow();
+    });
+
+    it('rejects error metadata on numeric and N results', () => {
+      for (const score of [0, 2.5, 5, 'N']) {
+        expect(() =>
+          Assessment.fromJSON({
+            score,
+            reasoning: 'Reason',
+            error: { stage: 'assessment', code: 'LLM_UNAVAILABLE' },
+          })
+        ).toThrow();
+      }
+    });
+
+    it.each([
+      { score: 'E', reasoning: 'Failure' },
+      { score: 'E', reasoning: 'Failure', error: null },
+      { score: 'E', reasoning: 'Failure', error: {} },
+      { score: 'E', reasoning: 'Failure', error: { stage: 'assessment' } },
+      { score: 'E', reasoning: undefined, error: { stage: 'assessment', code: 'LLM_UNAVAILABLE' } },
+      { score: 'E', reasoning: null, error: { stage: 'assessment', code: 'LLM_UNAVAILABLE' } },
+      { score: 'E', reasoning: 42, error: { stage: 'assessment', code: 'LLM_UNAVAILABLE' } },
+      { score: 2, reasoning: 'Reason', error: { stage: 'assessment', code: 'LLM_UNAVAILABLE' } },
+      {
+        score: 'N',
+        reasoning: 'Not attempted',
+        error: { stage: 'assessment', code: 'LLM_UNAVAILABLE' },
+      },
+    ])('rejects malformed public constructor input %j', (input) => {
+      expect(() => new Assessment(input.score, input.reasoning, input.error)).toThrow();
+    });
+
+    it('creates each catalogue error with its canonical reasoning', () => {
+      const cases = [
+        ['acquisition', 'SOURCE_UNREADABLE', 'The submitted document could not be accessed.'],
+        [
+          'acquisition',
+          'UNSUPPORTED_DOCUMENT',
+          'The submitted attachment is not a supported document for this assignment.',
+        ],
+        [
+          'extraction',
+          'SOURCE_CONTENT_UNAVAILABLE',
+          'No source content could be extracted for this task.',
+        ],
+        ['extraction', 'PARSE_FAILED', 'The submitted work could not be parsed for this task.'],
+        ['extraction', 'IMAGE_HYDRATION_FAILED', 'The submitted slide image could not be loaded.'],
+        ['assessment', 'LLM_HTTP_FAILED', 'The assessment service rejected the request.'],
+        [
+          'assessment',
+          'LLM_UNAVAILABLE',
+          'The assessment service could not complete the request after retries.',
+        ],
+        [
+          'assessment',
+          'LLM_INVALID_RESPONSE',
+          'The assessment service returned an invalid result.',
+        ],
+        [
+          'assessment',
+          'LLM_RUN_STOPPED',
+          'Assessment stopped because the service credentials or endpoint were rejected.',
+        ],
+        ['assessment', 'ASSESSMENT_FAILED', 'The extracted work could not be assessed.'],
+        [
+          'validation',
+          'CORRUPT_RECORD',
+          'The stored assessment data for this task is invalid. Reassess the assignment.',
+        ],
+        ['validation', 'REASSESSMENT_REQUIRED', 'Reassessment required'],
+      ];
+      for (const [stage, code, reasoning] of cases) {
+        expect(Assessment.createError(stage, code)).toMatchObject({
+          score: 'E',
+          reasoning,
+          error: { stage, code },
+        });
+      }
+    });
+
+    it.each([
+      ['acquisition', 'PARSE_FAILED'],
+      ['other', 'UNKNOWN'],
+    ])('rejects invalid error creator pair %s/%s', (stage, code) =>
+      expect(() => Assessment.createError(stage, code)).toThrow()
+    );
+
+    it.each([-1, 10])('rejects out-of-range constructor score %s', (score) => {
+      expect(() => new Assessment(score, 'Invalid')).toThrow();
     });
 
     it('should create Assessment with floating point score', () => {
@@ -278,15 +412,6 @@ describe('Assessment', () => {
       expect(assessment.score).toBe(4);
       expect(assessment.reasoning).toBe('Good');
       expect(assessment.extraField).toBeUndefined();
-    });
-
-    it('should handle fromJSON with empty object', () => {
-      const json = {};
-      const assessment = Assessment.fromJSON(json);
-
-      expect(assessment).toBeInstanceOf(Assessment);
-      expect(assessment.score).toBeUndefined();
-      expect(assessment.reasoning).toBeUndefined();
     });
   });
 });

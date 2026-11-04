@@ -10,7 +10,7 @@ import { render, screen, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createElement } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import type { AssignmentFull } from '@/services/assignmentAssessment/assignmentAssessment.zod';
+import { buildDefaultAssignmentFixture } from '@/test/taskHeatmapPageFixtures';
 import { ClassPage } from './ClassPage';
 import type { ClassPageContent as ClassPageContentType } from './ClassPageContent';
 import {
@@ -59,38 +59,12 @@ const { mockTaskHeatmapTable } = vi.hoisted(() => {
 });
 
 const { mockGetAssignment } = vi.hoisted(() => ({ mockGetAssignment: vi.fn() }));
-mockGetAssignment.mockResolvedValue({
-  courseId: 'class-abc-123',
-  assignmentId: 'a-1',
-  assignmentName: 'Test Assignment',
-  dueDate: null,
-  updatedAt: null,
-  createdAt: '2026-01-01T00:00:00.000Z',
-  documentType: 'assessment',
-  referenceDocumentId: null,
-  templateDocumentId: null,
-  tasks: null,
-  submissions: [],
-  assignmentDefinition: {
-    primaryTitle: 'Test Assignment',
-    primaryTopic: null,
-    primaryTopicKey: null,
-    yearGroupKey: 'yg-10',
-    yearGroupLabel: null,
-    alternateTitles: [],
-    alternateTopics: [],
-    documentType: 'assessment',
-    referenceDocumentId: null,
-    templateDocumentId: null,
-    referenceLastModified: null,
-    templateLastModified: null,
-    assignmentWeighting: 1,
-    definitionKey: 'def-1',
-    tasks: {},
-    createdAt: '2026-01-01T00:00:00.000Z',
-    updatedAt: '2026-01-01T00:00:00.000Z',
-  },
-} satisfies AssignmentFull);
+mockGetAssignment.mockResolvedValue(
+  buildDefaultAssignmentFixture({
+    courseId: 'class-abc-123',
+    assignmentName: 'Test Assignment',
+  })
+);
 
 const { mockUseClassSelection } = vi.hoisted(() => {
   return {

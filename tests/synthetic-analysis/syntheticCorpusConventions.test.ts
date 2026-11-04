@@ -67,6 +67,7 @@ const PROBE_ASSIGNMENT_ID = 'assignment-2-0';
 type ObservedAssignment = {
   assignmentId: string;
   courseId?: string;
+  assessmentContractVersion?: number | null;
   createdAt?: string | null;
   updatedAt?: string | null;
   submissions?: Array<{ studentId: string }>;
@@ -438,10 +439,12 @@ describe('synthetic corpus transport contract probes', () => {
     expect(full).toBeDefined();
 
     if (embedded !== undefined) {
+      embedded.assessmentContractVersion = 1;
       embedded.updatedAt = null;
       expect(AssignmentPartialSchema.parse(embedded).updatedAt).toBeNull();
     }
     if (full !== undefined) {
+      full.assessmentContractVersion = 1;
       full.updatedAt = null;
       expect(AssignmentFullSchema.parse(full).updatedAt).toBeNull();
     }
@@ -461,6 +464,9 @@ describe('synthetic corpus transport contract probes', () => {
     }
 
     probeStudent.id = SAMPLE_STUDENT_ID;
+    for (const assignment of probeClass.assignments) {
+      assignment.assessmentContractVersion = 1;
+    }
     const projected = buildClassTransportViews([probeClass], [], new Map());
     const projectedClass = (projected.classesById as Record<string, unknown>)[PROBE_CLASS_ID];
     const parsedClass = ClassFullSchema.parse(JSON.parse(JSON.stringify(projectedClass)));

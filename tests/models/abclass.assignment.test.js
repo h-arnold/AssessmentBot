@@ -1,9 +1,9 @@
 /**
- * ABClass Assignment Serialization Tests (RED Phase)
+ * ABClass assignment serialization regression tests
  *
- * Tests validating that ABClass correctly serializes and deserializes assignments
- * while preserving polymorphic types. These tests should FAIL initially as the
- * factory pattern and typed reconstruction are not yet implemented in ABClass.fromJSON().
+ * Covers ABClass serialization and deserialization of polymorphic assignments.
+ * The retained typed-restoration and assignment-index controls now pass; they
+ * record regression coverage rather than missing current behaviour.
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
@@ -53,7 +53,7 @@ describe('ABClass Assignment Serialization', () => {
       abClass.addAssignment(assignment2);
       abClass.addAssignment(assignment3);
 
-      // RED: findAssignmentIndex doesn't exist yet
+      // Confirm the lookup method is available before exercising its result.
       expect(typeof abClass.findAssignmentIndex).toBe('function');
 
       const idx = abClass.findAssignmentIndex((a) => a.assignmentId === 'a2');
@@ -70,7 +70,7 @@ describe('ABClass Assignment Serialization', () => {
 
       abClass.addAssignment(assignment1);
 
-      // RED: findAssignmentIndex doesn't exist yet
+      // Confirm the lookup method is available before exercising its result.
       expect(typeof abClass.findAssignmentIndex).toBe('function');
 
       const idx = abClass.findAssignmentIndex((a) => a.assignmentId === 'nonexistent');
@@ -80,7 +80,7 @@ describe('ABClass Assignment Serialization', () => {
     it('returns -1 for an empty assignments array', () => {
       const abClass = new ABClass({ classId: 'class-empty', className: 'Test Class' });
 
-      // RED: findAssignmentIndex doesn't exist yet
+      // Confirm the lookup method is available before exercising its result.
       expect(typeof abClass.findAssignmentIndex).toBe('function');
 
       const idx = abClass.findAssignmentIndex((a) => a.assignmentId === 'any');
@@ -102,7 +102,7 @@ describe('ABClass Assignment Serialization', () => {
       abClass.addAssignment(assignment1);
       abClass.addAssignment(assignment2);
 
-      // RED: findAssignmentIndex doesn't exist yet
+      // Confirm the lookup method is available before exercising its result.
       expect(typeof abClass.findAssignmentIndex).toBe('function');
 
       const idx = abClass.findAssignmentIndex((a) => a.assignmentId === 'a2');
@@ -246,7 +246,7 @@ describe('ABClass Assignment Serialization', () => {
       const json = abClass.toJSON();
       const restored = ABClass.fromJSON(json);
 
-      // RED: This will fail because ABClass.fromJSON doesn't call Assignment.fromJSON yet
+      // Restoration must retain the typed Assignment interface.
       expect(restored.assignments).toHaveLength(1);
 
       const restoredAssignment = restored.assignments[0];
@@ -276,7 +276,7 @@ describe('ABClass Assignment Serialization', () => {
       const json = abClass.toJSON();
       const restored = ABClass.fromJSON(json);
 
-      // RED: This will fail because assignments aren't properly typed after fromJSON
+      // Both assignment subclasses must retain their typed interfaces.
       expect(restored.assignments).toHaveLength(2);
 
       expect(restored.assignments[0].documentType).toBe('SLIDES');
@@ -302,9 +302,11 @@ describe('ABClass Assignment Serialization', () => {
       abClass.addAssignment(assignment);
 
       const json = abClass.toJSON();
+      const originalHistory = JSON.parse(JSON.stringify(json.assignments[0].submissions));
+      const originalMarker = json.assignments[0].assessmentContractVersion;
       const restored = ABClass.fromJSON(json);
 
-      // RED: Fields should be preserved but instance methods may be missing
+      // Polymorphic fields must survive restoration.
       const restoredAssignment = restored.assignments[0];
 
       expect(restoredAssignment.referenceDocumentId).toBe('ref-unique-123');
@@ -332,6 +334,8 @@ describe('ABClass Assignment Serialization', () => {
       abClass.addAssignment(assignment);
 
       const json = abClass.toJSON();
+      const originalHistory = JSON.parse(JSON.stringify(json.assignments[0].submissions));
+      const originalMarker = json.assignments[0].assessmentContractVersion;
       const restored = ABClass.fromJSON(json);
 
       const restoredAssignment = restored.assignments[0];
@@ -340,9 +344,9 @@ describe('ABClass Assignment Serialization', () => {
       expect(restoredAssignment.tasks).toBeDefined();
       expect(Object.keys(restoredAssignment.tasks)).toHaveLength(1);
 
-      expect(restoredAssignment.submissions).toBeDefined();
-      expect(restoredAssignment.submissions).toHaveLength(1);
-      expect(restoredAssignment.submissions[0].studentId).toBe('student-nested');
+      expect(restoredAssignment.toJSON().submissions).toEqual(originalHistory);
+      expect(restoredAssignment.toJSON()).not.toHaveProperty('assessmentContractVersion');
+      expect(originalMarker).toBeUndefined();
     });
 
     it('gracefully handles corrupt assignment data with logging', () => {
@@ -395,7 +399,7 @@ describe('ABClass Assignment Serialization', () => {
       const json2 = restored1.toJSON();
       const restored2 = ABClass.fromJSON(json2);
 
-      // RED: After two round-trips, should still have proper types
+      // Repeated round-trips must retain the typed Assignment interface.
       expect(restored2.assignments).toHaveLength(1);
       expect(typeof restored2.assignments[0].toJSON).toBe('function');
       expect(restored2.assignments[0].documentType).toBe('SLIDES');

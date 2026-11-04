@@ -17,7 +17,7 @@ reference.
 
 | Contract                            | File                                                                       | Persistence                                                        | API Endpoints                                                                                                                                                                                                                            | Sub-entities                                                                                                                  |
 | ----------------------------------- | -------------------------------------------------------------------------- | ------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| **ABClass**                         | [`abclass.md`](abclass.md)                                                 | Main doc + `abclass_partials` registry                             | `getABClassPartials`, `getABClass`, `upsertABClass`, `updateABClass`, `deleteABClass`                                                                                                                                                    | Teacher, Student, ABClassMetadata (embedded, nullable snapshot)                                                               |
+| **ABClass**                         | [`abclass.md`](abclass.md)                                                 | Main doc + `abclass_partials` registry                             | `getABClassPartials`, `getABClass`, `upsertABClass`, `updateABClass`, `deleteABClass`                                                                                                                                                    | Teacher, Student, ABClassMetadata (embedded, nullable snapshot), AssignmentPartial (embedded transport)                       |
 | **AssignmentDefinition**            | [`assignment-definition.md`](assignment-definition.md)                     | `assignment_definitions` registry + `assdef_full_*` full cache     | `getAssignmentDefinitionPartials`, `getAssignmentDefinition`, `upsertAssignmentDefinition`, `deleteAssignmentDefinition`                                                                                                                 | TaskDefinition, BaseTaskArtifact                                                                                              |
 | **Assignment**                      | [`assignment.md`](assignment.md)                                           | `assign_full_*` full records                                       | `getAssignment`, `startAssessmentRun`                                                                                                                                                                                                    | StudentSubmission, StudentSubmissionItem, Assessment, Feedback, AssignmentDefinition (embedded), BaseTaskArtifact (cross-ref) |
 | **BackendConfig**                   | [`backend-config.md`](backend-config.md)                                   | Singleton document                                                 | `getBackendConfig`, `setBackendConfig`                                                                                                                                                                                                   | —                                                                                                                             |
@@ -29,22 +29,35 @@ reference.
 | **AuthUsers**                       | [`auth-users.md`](auth-users.md)                                           | Auth fields inside the `__CONFIG_STORE_KEY__` blob                 | `getApplicationAccess`, `getAuthenticationSettings`, `setAuthenticationSettings`                                                                                                                                                         | AuthUserEntry (embedded)                                                                                                      |
 | **Frontend Data Analysis Response** | [`frontend-data-analysis-response.md`](frontend-data-analysis-response.md) | None — derived frontend validation contract                        | None — in-memory `DataAnalysisService` output                                                                                                                                                                                            | AverageContribution, MetricResult, ClassPageDisplayMetric (adapter-local), CellPreviewData, TaskPreviewData                   |
 
-> **Status: Implemented** — the `AuthCache`, `TriggerContext`, and the `AuthUsers` backend
-> transport contracts are delivered and documented above.
->
-> **Status: AuthUsers — backend transport + frontend Zod/services implemented.** The
-> persistence/validation layer, the AuthService provider resolution, strict deny, cache
-> policy, and never-claim trigger context, the fresh-install bootstrap claim, the three
-> `apiAuth.js` transport endpoints, and the frontend Zod/service layer (including the
-> `BackendConfig` frontend schema/transport lockstep that drops
-> `authMode`/`authGroupEmail`) have all landed and conform to this contract. The
-> settings UI/form/panel slimming has also landed, consistent with `auth-users.md` and
-> `backend-config.md`.
+Status: all eleven contracts are implemented and conform to their documented contracts.
+`frontend-data-analysis-response.md` remains the only contract with an outstanding planned
+change (the attempt-baseline analysis mode).
+
+## Component Shapes
+
+Three shapes are embedded by more than one contract and are large enough to warrant
+their own files. They have no independent persistence collection, no standalone
+endpoint and no root frontend schema; they are documented once here and cross-referenced
+from every contract that embeds them.
+
+| Component shape        | File                                             | Documented as                            | Embedded by                                                                                                   |
+| ---------------------- | ------------------------------------------------ | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| **BaseTaskArtifact**   | [`base-task-artifact.md`](base-task-artifact.md) | Artifact payload                         | `AssignmentDefinition` (`TaskDefinition.artifacts` — origin), `Assignment` (`StudentSubmissionItem.artifact`) |
+| **Student Submission** | [`student-submission.md`](student-submission.md) | Submission + item                        | `Assignment` (`submissions[]`), `ABClass` (partial submissions inside class-embedded assignment partials)     |
+| **Assessment**         | [`assessment.md`](assessment.md)                 | Criterion result + assessment discipline | `Assignment` (`StudentSubmissionItem.assessments`), `ABClass` (partial assessment entries)                    |
+
+Containment links:
+
+- `AssignmentDefinition` → `TaskDefinition` → **BaseTaskArtifact**
+- `Assignment` → **Student Submission** → **StudentSubmissionItem** → **BaseTaskArtifact**
+- `Assignment` → **Student Submission** → **StudentSubmissionItem** → **Assessment**
+- `Assignment` → **Assessment** (write gate, marker, legacy read projection, marker-1 restoration)
+- `ABClass` → `Assignment` partial → **Student Submission** (partial) → **Assessment** (partial)
 
 ## Containment Hierarchy
 
 - **ABClass** embeds **Teacher**, **Student**, **Assignment** partials, and the nullable **ABClassMetadata** assessment-summary snapshot.
-- **Assignment** embeds **StudentSubmission**, **StudentSubmissionItem** (which embeds **BaseTaskArtifact**), **Assessment**, **Feedback**, and a full/partial **AssignmentDefinition**.
+- **Assignment** embeds **StudentSubmission**, **StudentSubmissionItem** (which embeds **BaseTaskArtifact**), **Assessment**, **Feedback**, and a full/partial **AssignmentDefinition**. The submission, item, assessment and artifact shapes are documented in the component-shape files above.
 - **AssignmentDefinition** embeds **TaskDefinition** (which embeds **BaseTaskArtifact**).
 - **BackendConfig** is standalone — no embedded sub-entities.
 - **Reference Data** (Cohorts, YearGroups, AssignmentTopics) is standalone — no embedded sub-entities.
@@ -61,17 +74,16 @@ reference.
 
 ### Cross-reference rules
 
-- **BaseTaskArtifact** is shared between `AssignmentDefinition` (origin) and `Assignment` (consumer). Documented once in `assignment-definition.md`, cross-referenced from `assignment.md`.
+- **BaseTaskArtifact** is shared between `AssignmentDefinition` (origin) and `Assignment` (consumer). Documented once in `base-task-artifact.md`, cross-referenced from `assignment-definition.md`, `assignment.md` and `student-submission.md`.
+- **Student Submission** and **Assessment** are embedded by `Assignment` and transported inside class-embedded assignment partials. Documented in `student-submission.md` and `assessment.md`, cross-referenced from `assignment.md` and `abclass.md`.
 - **AssignmentDefinition** is embedded inside `Assignment` as a full or partial definition. Documented in `assignment-definition.md`; referenced from `assignment.md`.
+- **ABClassMetadata** is owned by `ABClass` and documented inline in `abclass.md` under Sub-entities; the frontend metadata writer/projection contracts live in `frontend-data-analysis-response.md`.
 
 ## Documented Contracts
 
-All eleven contracts are documented in this directory. `frontend-data-analysis-response.md`
-is **implemented** for issue #307 as an in-memory frontend validation and service
-contract with no persistence, API endpoint, or transport boundary; the remaining
-implemented contracts, including `AuthUsers`, conform to their documented
-contracts. The legacy `docs/developer/backend/DATA_SHAPES.md` has been deleted;
-all content has been migrated to the individual contract files listed below.
+All eleven contracts and three component shapes are documented in this directory. The legacy
+`docs/developer/backend/DATA_SHAPES.md` has been deleted; all content has been migrated to the
+individual contract and component-shape files listed above.
 
 ## Transport Envelope
 

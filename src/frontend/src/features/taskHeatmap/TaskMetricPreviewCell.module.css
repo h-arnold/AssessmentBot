@@ -1,4 +1,4 @@
-/* Keep the narrow viewport's popover arrow within the layout; see TASK_PREVIEW_SOURCE_LINK_LAYOUT.md. */
+/* Keep the narrow viewport's popover arrow within the layout. */
 @media (max-width: 390px) {
   .previewPopover :global(.ant-popover-arrow) {
     display: none;

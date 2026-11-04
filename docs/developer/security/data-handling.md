@@ -51,9 +51,9 @@ All `PropertiesService` access goes through `GASPropertiesUtils`
 - **Backend configuration** — a single JSON blob under `__CONFIG_STORE_KEY__`
   (`src/backend/ConfigurationManager/98_ConfigurationManagerClass.js`), whose contract is
   [backend-config.md](../data-shapes/backend-config.md). It includes `authGroupEmail` and
-  the LLM `apiKey`. The raw API key is never transported to the frontend: the read
-  transport masks it (`maskApiKey_()` emits `''`, `'****'`, or `'****'` + last 4
-  characters) and the frontend only ever receives the masked value.
+  the LLM `apiKey`. The raw API key is never transported to the frontend; the read
+  transport returns only the masked value defined by the
+  [BackendConfig masking contract](../data-shapes/backend-config.md#transport).
 - **Trigger context** — per-scheduled-trigger keys `trigger:<uid>:method` and
   `trigger:<uid>:params`, written and cleared by `TriggerController`
   (`src/backend/Triggers/TriggerController.js`:
@@ -74,14 +74,16 @@ entries; see [request-store.md](../data-shapes/request-store.md)).
 storage**. Two kinds of entries:
 
 - **Auth results** — only successful authorisations, shaped `{ allowed: true, role }`,
-  keyed `auth:<groupEmail>:<email>` with a 6-hour TTL, written by
+  keyed per user and group with a 6-hour TTL, written by
   `AuthService.checkAccess()` (`src/backend/Utils/AuthService.js`). Denials are never
   cached. See [auth-cache.md](../data-shapes/auth-cache.md).
-- **Assessment data** — content-hash-keyed results
-  (`generateCacheKey()` hashes `referenceHash::responseHash`), stored by
-  `setCachedAssessment()` to avoid redundant LLM processing; `LLMRequestManager`
-  (`src/backend/RequestHandlers/LLMRequestManager.js`) reads them via
-  `getCachedAssessment()`.
+- **Assessment data** — validated numeric LLM results keyed by a versioned assessment identity
+  (literal `v1`, task type, and the reference/template/student content hashes), read and written
+  through the generic `CacheManager.get()`/`put()` with the explicit shared six-hour
+  `CacheManager.CACHE_EXPIRY_SECONDS` TTL. Only results that pass the same numeric validator as
+  live output are reused; malformed, `N` or `E` entries are logged misses and never cached. Old
+  key spaces are misses, with no purge. See
+  [assessment.md § LLM assessment outcomes and validated cache reuse](../data-shapes/assessment.md#llm-assessment-outcomes-and-validated-cache-reuse).
 
 Writes are **best-effort**: `put()` catches and logs cache-service failures via `ABLogger`
 and does not throw, so a cache outage degrades performance (re-processing) rather than
@@ -98,12 +100,13 @@ the data actually resides long-term; the layers above keep it from leaking elsew
 
 Student work is transmitted to the separately-deployed LLM service during assessment.
 `LLMRequestManager.generateRequestObjects()` builds payloads containing the student's
-response (`studentResponse`), the task reference and template content, and sends them via
-`UrlFetchApp.fetchAll()` to `${backendUrl}/v1/assessor` with `Authorization: Bearer
-${apiKey}`. This is an **external network call — the data leaves the Google Workspace
-domain**. It is a documented trust boundary in the [overview](./README.md); the API key
-protecting that boundary is itself a stored asset (Script Properties above), so key
-hygiene is not optional.
+response (`studentResponse`), the task reference and template content, and sends them
+initially via `UrlFetchApp.fetchAll()` per batch, with bounded per-member
+`UrlFetchApp.fetch()` retries owned by `BaseRequestManager`, to `${backendUrl}/v1/assessor`
+with `Authorization: Bearer ${apiKey}`. This is an **external network call — the data leaves
+the Google Workspace domain**. It is a documented trust boundary in the
+[overview](./README.md); the API key protecting that boundary is itself a stored asset
+(Script Properties above), so key hygiene is not optional.
 
 The deployed service currently uses Mistral's `mistral-small-latest` model. It offers a very
 good price/performance ratio, and Zero Data Retention (ZDR) is easy to obtain with Mistral.

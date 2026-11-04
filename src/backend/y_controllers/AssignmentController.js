@@ -2,6 +2,7 @@
 
 const TOAST_DURATION_SECONDS = 5;
 const ASSESSMENT_RUN_SUCCESS_MESSAGE = 'Assessment run completed successfully.';
+const ASSESSMENT_RUN_ERRORS_MESSAGE = 'Assessment run completed with errors.';
 
 /**
  * AssignmentController Class
@@ -94,6 +95,14 @@ class AssignmentController {
    * @throws {Error} If required parameters are missing or if processing fails
    * @returns {void}
    *
+   * @remarks Completion feedback is finalised only after the final successful
+   * store save, and persistence failures propagate (never reported as a
+   * completed run). A run whose handled student/LLM errors were persisted beside
+   * successes completes with the explicit errors message: the storage write
+   * succeeded, so completed-with-errors is a truthful assessment outcome, not a
+   * storage success or failure signal. The failed-task count reports distinct
+   * submission items once, not once per errored criterion.
+   *
    * Dependencies:
    * - Uses services: DateUtils, DriveManager (via the pipeline)
    * - Relies on controllers: definitionController, abClassController, progressTracker
@@ -134,11 +143,63 @@ class AssignmentController {
     // collection and stores partial summary in ABClass
     abClassController.persistAssignmentRun(abClass, assignment);
 
-    this.progressTracker.updateProgress(ASSESSMENT_RUN_SUCCESS_MESSAGE, false);
-    this.progressTracker.complete();
+    // Truthful completion feedback, finalised only after the final successful save:
+    // handled student/LLM errors are persisted beside successes, so the final message
+    // reports assessment outcomes, not unconditional success.
+    const failedItemCount = this._countFailedSubmissionItems(assignment);
+    if (failedItemCount > 0) {
+      this.progressTracker.updateProgress(`${failedItemCount} tasks failed.`, false);
+      this.progressTracker.updateProgress(ASSESSMENT_RUN_ERRORS_MESSAGE, false);
+      this.progressTracker.complete();
+      this.utils.toastMessage(ASSESSMENT_RUN_ERRORS_MESSAGE, 'Warning', TOAST_DURATION_SECONDS);
+      ABLogger.getInstance().info(ASSESSMENT_RUN_ERRORS_MESSAGE);
+    } else {
+      this.progressTracker.updateProgress(ASSESSMENT_RUN_SUCCESS_MESSAGE, false);
+      this.progressTracker.complete();
 
-    this.utils.toastMessage(ASSESSMENT_RUN_SUCCESS_MESSAGE, 'Success', TOAST_DURATION_SECONDS);
-    ABLogger.getInstance().info(ASSESSMENT_RUN_SUCCESS_MESSAGE);
+      this.utils.toastMessage(ASSESSMENT_RUN_SUCCESS_MESSAGE, 'Success', TOAST_DURATION_SECONDS);
+      ABLogger.getInstance().info(ASSESSMENT_RUN_SUCCESS_MESSAGE);
+    }
+  }
+
+  /**
+   * Counts distinct failed submission items after a persisted run. One item with
+   * any explicit error criterion is one failed task, regardless of how many of
+   * its criteria carry the error.
+   *
+   * @remarks Consumes the validated completed structure directly: there are no
+   * permissive defaults, so a missing submissions, items or assessments
+   * structure throws rather than silently counting zero failures. A run whose
+   * handled errors were persisted beside successes therefore cannot report a
+   * false success.
+   *
+   * @param {Assignment} assignment - The persisted assignment.
+   * @returns {number} The number of distinct failed submission items.
+   * @throws {Error} If the completed submissions, items or assessments structure is missing.
+   * @private
+   */
+  _countFailedSubmissionItems(assignment) {
+    const submissions = assignment.submissions;
+    if (!submissions) {
+      throw new Error('AssignmentController: missing submissions/items/assessments');
+    }
+    let failedItemCount = 0;
+    for (const submission of submissions) {
+      const items = submission.items;
+      if (!items) {
+        throw new Error('AssignmentController: missing submissions/items/assessments');
+      }
+      const itemValues = Object.values(items);
+      for (const item of itemValues) {
+        const assessments = item.assessments;
+        if (!assessments) {
+          throw new Error('AssignmentController: missing submissions/items/assessments');
+        }
+        const hasErrorResult = Object.values(assessments).some((entry) => entry?.score === 'E');
+        if (hasErrorResult) failedItemCount += 1;
+      }
+    }
+    return failedItemCount;
   }
 
   /**
@@ -358,7 +419,7 @@ class AssignmentController {
    * @param {string|null} [params.yearGroupKey] - Year group key (optional).
    * @returns {Object} Object containing { definition, courseId, abClass }.
    * @throws {Error} If required parameters are missing or definition creation fails.
-   * @remarks Parameter renamed from `yearGroup` to `yearGroupKey` per SPEC.md v1.9.0 Option B.
+   * @remarks Parameter renamed from `yearGroup` to `yearGroupKey`.
    * Resolves `yearGroupKey` from input or `abClass.yearGroupKey` (fail-fast when both null).
    * Resolves `primaryTopicKey` from Classroom API `topicId`. Delegates to `controller.upsertDefinition`
    * (not the removed `controller.ensureDefinition`). No longer sets `abClass.yearGroup`.

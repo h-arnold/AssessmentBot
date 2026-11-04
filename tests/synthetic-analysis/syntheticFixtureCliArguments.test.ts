@@ -64,11 +64,14 @@ describe('synthetic analysis fixture CLI argument validation', () => {
   });
 
   it('honours an explicit output root in either mode', () => {
-    expect(parseCliOptions([OUTPUT_ROOT_FLAG, '/tmp/compact']).outputRoot).toBe('/tmp/compact');
+    const compactRoot = join(REPOSITORY_ROOT, '.opencode/scratchpad/synthetic-cli-compact');
+    const fullRoot = join(REPOSITORY_ROOT, '.opencode/scratchpad/synthetic-cli-full');
 
-    const fullOptions = parseCliOptions(['--full', OUTPUT_ROOT_FLAG, '/tmp/full']);
+    expect(parseCliOptions([OUTPUT_ROOT_FLAG, compactRoot]).outputRoot).toBe(compactRoot);
+
+    const fullOptions = parseCliOptions(['--full', OUTPUT_ROOT_FLAG, fullRoot]);
     expect(fullOptions.full).toBe(true);
-    expect(fullOptions.outputRoot).toBe('/tmp/full');
+    expect(fullOptions.outputRoot).toBe(fullRoot);
   });
 });
 
@@ -90,18 +93,18 @@ describe('synthetic analysis fixture full-output containment', () => {
 });
 
 describe('synthetic analysis fixture CLI dispatch', () => {
-  it('writes compact profiles to an explicit output root', () => {
+  it('writes compact profiles to an explicit output root', async () => {
     const outputRoot = createTemporaryOutputRoot();
 
-    runCli([OUTPUT_ROOT_FLAG, outputRoot]);
+    await runCli([OUTPUT_ROOT_FLAG, outputRoot]);
 
     expect(existsSync(join(outputRoot, 'small', 'manifest.json'))).toBe(true);
   });
 
-  it('rejects a disallowed full output root before generating the large graph', () => {
+  it('rejects a disallowed full output root before generating the large graph', async () => {
     const outsideRoot = createTemporaryOutputRoot();
 
-    expect(() => runCli(['--full', OUTPUT_ROOT_FLAG, outsideRoot])).toThrow(
+    await expect(runCli(['--full', OUTPUT_ROOT_FLAG, outsideRoot])).rejects.toThrow(
       /synthetic-analysis-full/u
     );
     expect(existsSync(join(outsideRoot, 'large-full'))).toBe(false);
@@ -109,12 +112,12 @@ describe('synthetic analysis fixture CLI dispatch', () => {
 });
 
 describe('synthetic analysis fixture CLI error reporting', () => {
-  it('reports a malformed invocation on stderr and sets a non-zero exit code', () => {
+  it('reports a malformed invocation on stderr and sets a non-zero exit code', async () => {
     const previousExitCode = process.exitCode;
     const stderrWrite = vi.spyOn(process.stderr, 'write').mockReturnValue(true);
 
     try {
-      executeCli(['--unknown-option']);
+      await executeCli(['--unknown-option']);
 
       expect(stderrWrite).toHaveBeenCalledWith(expect.stringContaining('--unknown-option'));
       expect(process.exitCode).toBe(1);

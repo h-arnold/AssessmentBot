@@ -233,7 +233,11 @@ describe('SlidesAssignment behaviour', () => {
       studentName: 'Student One',
       upsertItemFromExtraction: vi.fn(),
     };
-    const submissionWithoutDoc = { documentId: null, studentName: 'No Doc' };
+    const submissionWithoutDoc = {
+      studentId: 'student-without-document',
+      documentId: null,
+      studentName: 'No Doc',
+    };
     const assignment = buildAssignment();
     assignment.assignmentDefinition.tasks = { 'task-one': definition };
     assignment.submissions = [submissionWithoutDoc, submissionWithDoc];
@@ -265,12 +269,12 @@ describe('SlidesAssignment behaviour', () => {
     );
     expect(mockTracker.updateProgress).toHaveBeenCalled();
     expect(mockLogger.warn).toHaveBeenCalledWith(
-      'No document ID for student: No Doc. Skipping.',
+      'No document ID for student: student-without-document. Skipping.',
       expect.objectContaining({
         workflow: 'SlidesAssignment.processAllSubmissions',
         courseId: 'course-one',
         assignmentId: 'assignment-one',
-        studentName: 'No Doc',
+        studentId: 'student-without-document',
       })
     );
     expect(mockLogger.warn).toHaveBeenCalledWith(

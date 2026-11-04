@@ -89,7 +89,7 @@ against the current specification first.
 
 > **Status: implemented — backend contract and companion documentation delivered.** The metadata
 > domain owner, its typed domain error, the canonical UTC predicate and ABClass model
-> construction/restoration/serialization support are implemented, including the partial-aware
+> construction/restoration/serialisation support are implemented, including the partial-aware
 > embedded-assignment projection. The ABClass mutation-owner decomposition, shared save
 > validation, prepared whole/partial persistence, field-scoped roster persistence,
 > response-mapper reuse, the controller request gate and the transport request-error adaptation
@@ -120,9 +120,12 @@ against the current specification first.
 - Timestamp validation delegates to the canonical UTC predicate below. `recentAssignments`
   must hold zero to three dense entries with unique `assignmentId` values ordered by
   non-increasing `updatedAt`.
-- Runtime references to `Validate` and `ABClassMetadataValidationError` resolve only inside
-  method bodies, matching the concatenated GAS load model; the file performs no top-level
-  dependency evaluation and no Node module wiring beyond its guarded `module.exports` block.
+- Runtime references to `Validate`, `Assessment` and `ABClassMetadataValidationError`
+  resolve only inside method bodies, matching the concatenated GAS load model; the file
+  performs no top-level dependency evaluation and no Node module wiring beyond its guarded
+  `module.exports` block. The four metric names come from `Assessment.CRITERIA` plus
+  `'overall'`, derived in `ABClassMetadata._metrics()` at call time because this file sorts
+  before `Models/Assessment.js`.
 - **Implemented:** `ABClass` owns a plain metadata snapshot or `null`; construction and
   `fromJSON()` distinguish actual own-property absence (normalised through the domain
   constructor) from explicitly supplied values, including invalid own `undefined`.
@@ -130,7 +133,7 @@ against the current specification first.
   before changing model state.
 - **Implemented:** `toJSON()` and `toPartialJSON()` always include metadata, revalidate mutable
   model state and return defensive copies through the domain owner. Missing/deleted model state
-  is invalid at serialization, not silently defaulted.
+  is invalid at serialisation, not silently defaulted.
 - **Implemented:** response mapping emits validated, nullable `metadata` on registry, full-read
   and mutation-summary responses (see "Response mapper reuse" below).
 - **Implemented:** `ABClassValidation._validateRequestMetadata(parameters)` gates request
@@ -146,9 +149,11 @@ against the current specification first.
   array) is serialised via the assignment's existing `toPartialJSON()`; a genuinely full
   assignment keeps its existing `toJSON()`. Plain objects and other supported items retain
   `ArrayUtils.serialiseArray()` behaviour.
-- Standalone `Assignment` and `AssignmentDefinition` `toJSON()` calls remain strict and still
-  reject a partial definition. Serialisation errors from a genuine full assignment propagate
-  unchanged.
+- `AssignmentDefinition.toJSON()` remains strict and still rejects a partial definition.
+  `Assignment.toJSON()` remains strict for current-format and other non-legacy assignments. Its
+  only exception is the opaque legacy persistence path, where it re-emits the stored body and,
+  when the embedded definition is partial, uses `definition.toPartialJSON()` instead of throwing.
+  Serialisation errors from a genuine full assignment propagate unchanged.
 - This is the user-approved 17 October 2026 correction recorded in `docs/plans/SPEC.md`. It is
   missing Section 3 model integration delivered in Section 5, not a new frontend feature. No
   second persistence-specific class serializer, automatic hydration or catch-and-fallback is
@@ -295,7 +300,7 @@ abClass)` and `_writePreparedRosterPartial(prepared, classId)`. `ABClassRoster._
   it carries its actual non-empty partial/full assignment population alongside validated
   metadata. A true partial-save or patch failure keeps the existing logged propagation and
   non-transactional partial-success risk; no rollback or retry is added.
-- See [abclass.md § Field-scoped roster persistence](../data-shapes/abclass.md#field-scoped-roster-persistence-delivered).
+- See [abclass.md § Field-scoped roster persistence](../data-shapes/abclass.md#field-scoped-roster-persistence).
 
 ### Companion deletion-documentation reconciliation (`Implemented`)
 
@@ -432,8 +437,7 @@ Migration rule:
 
 ## Testing Guidance
 
-- Test API-layer functions as boundary wrappers: parameter handling, controller delegation, and error propagation.
-- Keep heavy business-logic tests at controller/service level.
+- Test ownership for this layer is defined in [Backend Testing § API Layer Tests](backend-testing.md#api-layer-tests): API-layer functions are thin boundary wrappers, and heavy business-logic tests stay at controller/service level.
 - Do not call live GAS services in unit tests.
 
 ## API handler transport (`apiHandler`)
@@ -451,16 +455,9 @@ If the payload is invalid, `apiHandler` returns an `INVALID_REQUEST` envelope an
 
 ### Response envelope
 
-All responses are envelopes:
+All responses use the stable [transport envelope](../data-shapes/transport-envelope.md).
 
-- Success: `{ ok: true, requestId, data }`
-- Error: `{ ok: false, requestId, error: { code, message, isRetriable, details? } }`
-
-The `details` field is optional and only present when the error carries structured metadata (for example, `DefinitionStaleError` includes `definitionKey`, `referenceStale`, `isTemplateStale`, `referenceLastModified`, `templateLastModified`). When `details` is absent, it is omitted from the envelope entirely — callers should treat it as `undefined`.
-
-**`data` coercion contract:** The `_success()` method in `z_apiHandler.js` wraps handler return data with `data: data ?? null`. This means `undefined` values (including implicit returns from void handlers) become `null` in the success envelope. The frontend transport layer (`apiService.ts`) always receives `data: null` for void backend methods, never a missing `data` key.
-
-This envelope shape is stable and should be treated as the transport contract between frontend and backend.
+**`data` coercion contract:** `_success()` in `z_apiHandler.js` wraps handler return data with `data: data ?? null`, so `undefined` values (including implicit returns from void handlers) become `null`. The frontend transport layer (`apiService.ts`) therefore always receives `data: null` for void backend methods, never a missing `data` key.
 
 ### Dispatch and allowlist pattern
 
@@ -506,16 +503,9 @@ Tracking data is compacted to maintain bounded storage (`MAX_TRACKED_REQUESTS`) 
 
 ### Error mapping
 
-Known backend error types are mapped to transport error codes:
+Error types are mapped to transport error codes by `_mapErrorToFailureEnvelope`; the canonical type→code table, including the `INTERNAL_ERROR` fallback for unmapped or malformed errors, is in [transport-envelope.md § Error code mapping](../data-shapes/transport-envelope.md#error-code-mapping).
 
-- `ApiRateLimitError` -> `RATE_LIMITED`
-- `ApiValidationError` -> `INVALID_REQUEST`
-- `ApiDisabledError` -> `UNKNOWN_METHOD`
-- `DefinitionStaleError` -> `DEFINITION_STALE` (non-retriable; includes `details` block with `definitionKey`, `referenceStale`, `isTemplateStale`, `referenceLastModified`, `templateLastModified`)
-- errors thrown with `reason === 'IN_USE'` -> `IN_USE` (used by `ReferenceDataController` when a cohort, year group, or assignment topic cannot be deleted because it is still referenced by persisted records)
-- Auth gate denial (authenticated but not a group member) -> `FORBIDDEN` (non-retriable)
-
-Unmapped or malformed errors return `INTERNAL_ERROR` with a generic message.
+`IN_USE` is raised when `ReferenceDataController` cannot delete a cohort, year group, or assignment topic because persisted records still reference it.
 
 ### Failure diagnostics and transport privacy
 
@@ -575,13 +565,13 @@ Reference: https://developers.google.com/apps-script/guides/html/reference/run
   Ownership note: first-time default seeding now belongs to `ConfigurationManager.ensureDefaultConfiguration()`. `getBackendConfig()` remains a thin transport read that delegates bootstrap to the manager before shaping the public payload.
 
 - `getBackendConfig` read data returns the public configuration payload with exactly the 12 non-auth stable fields: `backendAssessorBatchSize`, masked `apiKey`, `hasApiKey`, `backendUrl`, `revokeAuthTriggerSet`, `daysUntilAuthRevoke`, `slidesFetchBatchSize`, `jsonDbMasterIndexKey`, `jsonDbLockTimeoutMs`, `jsonDbLogLevel`, `jsonDbBackupOnInitialise`, and `jsonDbRootFolderId`. It does **not** emit `authGroupEmail` or `authMode`; auth state is read exclusively through the dedicated auth endpoints (`getApplicationAccess` / `getAuthenticationSettings`).
-  Masking contract: `apiKey` is never returned as the raw stored secret. It is returned as `''`, `'****'`, or `'****'` plus the visible four-character suffix.
+  Masking contract: the raw stored secret never crosses the transport boundary; the masked shapes are defined in [BackendConfig § Transport](../data-shapes/backend-config.md#transport).
   Bootstrap contract: when the persisted configuration store is completely empty, `ConfigurationManager` seeds the defaultable backend settings on first read before the payload is returned. `apiKey`, `backendUrl`, and `jsonDbRootFolderId` remain unseeded when absent.
   Response normalisation: `jsonDbRootFolderId` is returned as `''` when the stored value is blank or unset. `hasApiKey` reflects whether a raw key was present before masking.
 
 - `setBackendConfig` accepts a partial write payload of ordinary (non-auth) fields only; only supplied fields are written.
   Writable patch fields: `backendAssessorBatchSize`, `apiKey`, `backendUrl`, `revokeAuthTriggerSet`, `daysUntilAuthRevoke`, `slidesFetchBatchSize`, `jsonDbMasterIndexKey`, `jsonDbLockTimeoutMs`, `jsonDbLogLevel`, `jsonDbBackupOnInitialise`, and `jsonDbRootFolderId`.
-  Auth-field rejection: `setBackendConfig` rejects `authMode`, `authGroupEmail`, `authUsers`, and `authRevision` for every caller — including admins — as a single `INVALID_REQUEST` request-shape violation (`ApiValidationError`), before any ordinary field is staged. Auth state is managed only through the dedicated auth endpoints.
+  Auth-field rejection: `setBackendConfig` rejects `authMode`, `authGroupEmail`, `authUsers`, and `authRevision` as a single `INVALID_REQUEST` request-shape violation for every caller, including admins — see the [BackendConfig contract](../data-shapes/backend-config.md#setbackendconfig-write).
   Ordinary-field write path: every supplied ordinary field whose value is not `undefined` is validated/normalised through `ConfigurationManager.preparePropertyValue()` and staged, then the whole patch is committed through a single `writeConfigurationLocked` call (fresh re-read, merge, one write). The existing aggregate redaction behaviour for ordinary-field failures is preserved — secrets are never echoed in the `error` string.
   Validation contract: `params` must be an object; malformed payloads are reported by the transport as `INVALID_REQUEST`.
   Save-result contract: `{ success: true } | { success: false, error: string }`.
@@ -663,9 +653,9 @@ Reference: https://developers.google.com/apps-script/guides/html/reference/run
   Source: `src/backend/z_Api/assignmentAssessment.js`, via the `getAssignment_()` helper called from `ALLOWLISTED_METHOD_HANDLERS` in `src/backend/z_Api/z_apiHandler.js`. Delegates to `ABClassController.readRehydrateAssignment()` in `src/backend/y_controllers/ABClassController/index.js`.
   Required request fields: `courseId` and `assignmentId` (both non-empty, already-trimmed strings with no path/control characters).
   Validation: transport enforces `params` object shape, `courseId` and `assignmentId` presence, non-empty trimmed string, and path-character/control-character safety (using `validateSafeTrimmedIdentifier_`, which internally uses `hasControlCharacters_`, from `assignmentDefinition/assignmentDefinitionValidation.js`); the controller's `readRehydrateAssignment` method owns assignment-existence validation and throws `AssignmentNotFoundError` when no document exists.
-  Handler behaviour: calls `new ABClassController().readRehydrateAssignment(courseId, assignmentId)` for a read-only load and hydration (no roster refresh, no `loadClass`, no ABClass mutation). Serialises via `assignment.toJSON()`, defensively strips `progressTracker` at the boundary, and applies `DateUtils.deepConvertDates(response)` to recursively convert all `Date` objects to ISO 8601 strings (required because `google.script.run` prohibits `Date` objects in return values). On `AssignmentNotFoundError` thrown by `readRehydrateAssignment`, returns `null` (caught via `instanceof` check); all other errors from `readRehydrateAssignment` propagate.
+  Handler behaviour: calls `new ABClassController().readRehydrateAssignment(courseId, assignmentId)` for a read-only load and hydration (no roster refresh, no `loadClass`, no ABClass mutation), including full-definition resolution, then serialises via `assignment.toReadJSON()`. It defensively strips `progressTracker` at the boundary and applies `DateUtils.deepConvertDates(response)` to recursively convert all `Date` objects to ISO 8601 strings (required because `google.script.run` prohibits `Date` objects in return values). On `AssignmentNotFoundError` thrown by `readRehydrateAssignment`, returns `null` (caught via `instanceof` check); all other errors from `readRehydrateAssignment` propagate.
   Logging: `info` before loading the full assignment document (`"getAssignment: loading full assignment"` with `{ courseId, assignmentId }`), `info` after successful hydration (`"getAssignment: rehydrated assignment"`), `warn` for not-found (`"getAssignment: assignment not found"` — `warn`, not `error`, because the API returns `null` gracefully), `error` for other failures (`"getAssignment failed"` with `{ courseId, assignmentId, err }`).
-  Response data: the complete `Assignment.toJSON()` shape — `courseId`, `assignmentId`, `assignmentName`, `dueDate` (ISO string or `null`), `updatedAt` (ISO string or `null`), `documentType`, `referenceDocumentId`, `templateDocumentId`, `tasks`, `submissions` (full artifacts, assessments, feedback), and `assignmentDefinition`. Or `null` when no persisted assignment document exists.
+  Response data: the complete `Assignment.toReadJSON()` shape — `courseId`, `assignmentId`, `assignmentName`, `dueDate` (ISO string or `null`), `updatedAt` (ISO string or `null`), `documentType`, `referenceDocumentId`, `templateDocumentId`, `tasks`, `submissions` (full artifacts, assessments, feedback), `assignmentDefinition`, and `assessmentContractVersion`. Current results keep `assessmentContractVersion: 1`; a stored legacy record is projected to detached all-criteria `REASSESSMENT_REQUIRED` submissions with `assessmentContractVersion: null`, while persistence `toJSON()`/`toPartialJSON()` still emit the opaque stored body unchanged. See [Contract: Assignment §`getAssignment` (read)](../data-shapes/assignment.md#getassignment-read). Or `null` when no persisted assignment document exists.
   Error codes: `INVALID_REQUEST` (transport validation failure: non-object params, missing fields, unsafe characters). `INTERNAL_ERROR` (corrupt assignment document, partial-definition rejection, or any other `readRehydrateAssignment` failure). No new error code is introduced for not-found — the handler returns `null` for that case (catching the `AssignmentNotFoundError` typed error before it can reach the dispatcher's error envelope).
 
 - `getGoogleClassrooms` — returns active Classroom picker rows for ABClass creation flows.

@@ -274,7 +274,6 @@ export type AppliedCriterionWeightings = z.infer<typeof AppliedCriterionWeightin
  *
  * @remarks
  * `taskKey` omits `assignmentId` in v1 (deferred multi-assignment re-keying).
- * See SPEC.md §Deferrals.
  *
  * Metrics use the narrow task-level display union (no `excluded`) so heatmap
  * cells keep numeric zero-weight scores and raw `N` values; contribution is

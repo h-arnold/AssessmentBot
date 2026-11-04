@@ -110,7 +110,7 @@ The alias convention for choosing between relative and alias imports is defined 
   - `crossRuntimeUnicornPreferenceRules` — the four cross-runtime preferences (`catch-error-name`, `no-null`, `no-keyword-prefix`, `filename-case`), applied to backend source and to frontend TypeScript/TSX files only.
 - Keeps each rule's rationale, caveats and issue links beside the rule it explains.
 - Runtime-specific and file-scoped overrides stay local to their leaf config; only preferences shared across runtimes live here.
-- The move changes no effective rule severity or scope.
+- Parameter defaults outside constructors are permitted only for six existing conversions: `absentToNull_`, the class-table filter-key map callback, the optional folder-ID form transform, the heatmap class-selection callback, and the two teacher-name schema transforms. These preserve their existing null, undefined and empty-value behaviour. This is a scoped exception to constructor-owned defaults (root `AGENTS.md` §2.1 rule 10), not a general ownership-policy change.
 
 ### 3) Component ESLint configs
 
@@ -163,9 +163,12 @@ The alias convention for choosing between relative and alias imports is defined 
   - Temporarily disables `unicorn/try-complexity` for backend source pending the same [exception-boundary review](https://github.com/h-arnold/AssessmentBot/issues/325); existing logging and error-handling policy remains in force.
   - Disables `unicorn/prefer-string-repeat`. Short blank-input fixtures (three or five spaces) are clearer as literals than `' '.repeat(n)` expressions; keeping the literal is a deliberate readability preference.
   - Disables `unicorn/consistent-class-member-order`. Backend classes likewise keep logical member grouping rather than category-sorted order; no class members were reordered.
-  - Disables `unicorn/prefer-simple-condition-first` for the same semantic guard-order reason. For example, moving the missing-document-ID check ahead of `Validate.isValidUrl` in `ImageManager` would skip URL validation and its failure logging when the ID is absent.
+  - Disables `unicorn/prefer-simple-condition-first` for the same semantic guard-order reason. For example, moving the missing-document-ID check ahead of the `_isAdmissibleImageUrl` call in `ImageManager` would skip URL admission when the ID is absent.
   - Disables `unicorn/class-reference-in-static-methods` for backend files only. Explicit class references preserve fixed hydration prototypes, shared configuration fields and helper bindings, while singleton factories intentionally use receiver-relative `this`/`super` for inheritance. Enforcing either style everywhere can change inherited or unbound static calls; existing bindings are retained. Frontend enforcement remains enabled.
   - Disables `unicorn/prefer-default-parameters` only for `src/backend/Models/ABClass.js` and `src/backend/y_controllers/AssignmentDefinition/AssignmentDefinitionValidation.js`. Their falsy normalisation preserves empty class names as null and prevents malformed persisted titles from falsely matching legitimate titles. Parameter defaults handle undefined only; enforcement remains enabled in other backend files.
+- Two file-scoped exceptions sit outside the shared preference module:
+  - `unicorn/no-unnecessary-global-this` stays enabled in both runtimes. It arrives through `unicorn.configs.all`, which both configs apply at `error`, so it is deliberately absent from the shared preference module and needs no override. Frontend findings use direct globals; reduced-motion availability checks stay guarded, and test setup targets the DOM Window through `document.defaultView` separately from the Vitest global.
+  - The frontend config disables `unicorn/no-top-level-side-effects` only for `eslint.config.js`, `playwright.config.ts`, `vite.config.ts` and `src/test/taskHeatmapPageMocks.ts`. The first three use standard configuration entry points evaluated at load time; the shared mock module must register Vitest factories before production imports. Application modules and other files retain enforcement.
 
 ### 4) Shared import-path depth rule
 
@@ -177,67 +180,42 @@ The alias convention for choosing between relative and alias imports is defined 
   - The canonical alias registry (`pathAliases` in the same module) is the single source the configs compose, keeping the rule in step with the alias table in section 3.
   - The two frontend specs that read non-module assets with no canonical alias (`src/index.css.spec.ts`, `src/query/reactQueryFoundation.query.spec.tsx`) switch the rule off with a comment explaining why.
 
-### Scoped default-ownership permission
+### 5) Synthetic test scope
 
-Rule 30's user-approved cleanups permit parameter defaults outside constructors only for six existing conversions: `absentToNull_`, the class-table filter-key map callback, the optional folder-ID form transform, the heatmap class-selection callback, and the two teacher-name schema transforms. These preserve their existing null, undefined and empty-value behaviour. This is a scoped exception to constructor-owned defaults, not a general ownership-policy change; the approval and per-finding outcomes are recorded in `LINT_UPGRADE_REVIEW.md`.
+`scripts/synthetic-test-data/**`, `tests/synthetic-analysis/**` and `tests/synthetic-analysis-stress/**` are Node ESM, not GAS runtime source, and they run under the root `eslint.config.js`. `npm run lint:synthetic` and `npm run lint:synthetic:check` select these scopes; see [Synthetic Test Data](../testing/synthetic-test-data.md) for the corpus workflow.
 
-### Promise style
+Three blocks cover the scope:
 
-Backend and frontend configs disable `unicorn/prefer-await` by explicit user preference. Existing promise chaining can express non-blocking settlement observers, preserve in-flight promise identity and attach cleanup without extra async wrappers. This exclusion changes no promise implementation, error handling or concurrency contract.
+| Block                       | Files                                             | Rules                                                                                                                                                                                         |
+| --------------------------- | ------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Synthetic scripts           | `scripts/synthetic-test-data/**/*.js`             | Shared `nodeToolingRules` (the builder Node-tooling set), parsed against `scripts/synthetic-test-data/tsconfig.json`.                                                                         |
+| Synthetic suites (combined) | `tests/synthetic-analysis{,-stress}/**/*.{js,ts}` | Node-test baseline (Unicode security rules, `prefer-object-has-own`, `no-negated-condition`, `require-unicode-regexp` off), the full `sonarjs.configs.recommended` rule set, and `max-lines`. |
+| Synthetic TypeScript specs  | `tests/synthetic-analysis{,-stress}/**/*.test.ts` | Restores `require-unicode-regexp: 'error'` for TypeScript specs.                                                                                                                              |
 
-### Naming preference
+The combined block gives non-test helper modules in the suites a parser-bearing block and puts `.js` and `.test.ts` files under one rule regime. The full sonarjs set matches what SonarCloud enforces remotely, so local lint and the remote analysis agree.
 
-Backend and frontend configs disable `unicorn/name-replacements` by explicit user preference, retaining descriptive full names such as `ConfigurationManager` and `ApplicationAccess`. The rule succeeds Unicorn's older `prevent-abbreviations` spelling, but some replacements now shorten full words; no obsolete rule is re-enabled. Previous filename and module-specific overrides for this rule were removed so they cannot re-enable it. Names, API spellings and filenames remain unchanged.
+Three per-file exclusions relax single sonarjs rules. Each carries a config comment; do not widen them or replace them with inline disables:
 
-### Numeric parsing
+| File                                                                                                                                                                                                                        | Rule                              | Reason                                                                                                                           |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `tests/synthetic-analysis/syntheticAssessmentCauseCatalogue.test.ts`                                                                                                                                                        | `sonarjs/no-empty-test-file`      | Cases are registered through `runCauseCatalogueMatrix`, which the rule cannot see; the matching Sonar issue is a false positive. |
+| `tests/synthetic-analysis/syntheticAssessmentDefinitionSourceMatrices.js`, `tests/synthetic-analysis/syntheticAssessmentDeclaredTaskIdentity.test.ts`, `tests/synthetic-analysis/syntheticAssessmentSourceStateMatrices.js` | `sonarjs/assertions-in-tests`     | These suites assert through the shared `expectRule` helper, which the rule does not inspect.                                     |
+| `tests/synthetic-analysis/syntheticIgnoreBoundary.test.ts`                                                                                                                                                                  | `sonarjs/no-os-command-from-path` | `spawnSync('git', …)` is the only portable way to verify `.gitignore` behaviour.                                                 |
 
-Backend and frontend configs disable `unicorn/prefer-number-coercion` to preserve intentional prefix parsing and existing validation contracts. CSS values such as `'12px'` need prefix parsing; `Number()` produces NaN. Decimal `parseInt` also differs from `Math.trunc(Number())` for blank, scientific-notation and hexadecimal inputs. `unicorn/prefer-number-properties` remains enabled, retaining the `Number.parseInt`/`Number.parseFloat` spelling preference without changing parsing semantics.
+### 6) GAS runtime constraints
 
-### Iteration style
+The Apps Script script parser, not the V8 runtime, constrains backend source. It rejects class field declarations and logical assignment operators, so the root `eslint.config.js` bans both (see §3). Two further constraints shape individual rules:
 
-Backend and frontend configs disable `unicorn/no-for-each` by explicit user preference: `.forEach` is readable and preserves existing iteration semantics, and `for...of` offers no readability benefit here. This replaces the obsolete `unicorn/no-array-for-each` entries; no source or behaviour changed.
+- `unicorn/prefer-smaller-scope` keeps the GAS script-global `LOCK_WAIT_WARN_THRESHOLD_MS` at program top level because `src/backend/z_Api/z_apiHandler.js` reads it at script-evaluation time, before any dispatcher instance exists. The declaration in `src/backend/z_Api/apiConstants.js` carries `/* exported LOCK_WAIT_WARN_THRESHOLD_MS */`, the only use of this annotation in backend source; the established convention elsewhere in backend source is `/* global … */` on the consuming file. The annotation tells scope analysis that an external GAS consumer uses the binding. It does not disable the rule or change configuration. The documented GAS consumer is the API layer ([`docs/developer/backend/api-layer.md`](../backend/api-layer.md)).
+- `unicorn/prefer-iterator-to-array` is satisfied by collecting ordered `Map` values or keys with `Map.forEach`, which the shared iteration-style preference permits. Native `Iterator.prototype.toArray()` works on Node 24 but fails the current ES2024 frontend typings, and GAS support is unestablished. Do not add a library, polyfill, runtime fallback or Node wiring to satisfy it.
 
-### GAS exported globals and iterator compatibility
-
-- Rule 47's `unicorn/prefer-smaller-scope` keeps the GAS script-global `LOCK_WAIT_WARN_THRESHOLD_MS` at program top level because `src/backend/z_Api/z_apiHandler.js` reads it at script-evaluation time, before any dispatcher instance exists. The declaration now carries `/* exported LOCK_WAIT_WARN_THRESHOLD_MS */`, the **first use** of this annotation in the codebase; the established convention elsewhere is `/* global … */` on the consuming file. The annotation informs scope analysis that an external GAS consumer uses the binding — it does not disable the rule or change configuration, and the guarded CommonJS export block and load order are unchanged. The documented GAS consumer is the API layer (`docs/developer/backend/api-layer.md`).
-- Rule 54's `unicorn/prefer-iterator-to-array` is fixed by collecting ordered `Map` values/keys with `Map.forEach`, the same `.forEach` convention rule 41 permits. Native `Iterator.prototype.toArray()` works on Node 24 but fails the current ES2024 frontend typings, and GAS support is unestablished; no library, polyfill or runtime fallback was added, and no Node wiring was introduced.
-
-### GAS runtime compatibility caveats
-
-One backend API choice made during the post-55 collections work is **unverified in the Apps Script V8 runtime** and is explicitly accepted by the user pending live testing:
+One backend API choice is **unverified in the Apps Script V8 runtime** and is explicitly accepted pending live testing:
 
 - `Object.groupBy` in `src/backend/RequestHandlers/ImageManager.js`. Node lint and tests do not establish Apps Script availability, and Google's V8 overview names neither this API nor a guaranteeing engine version. The result is a **null-prototype** dictionary, so reserved keys such as `__proto__` and `constructor` become ordinary keys rather than throwing as the previous plain-object dictionary did; normal Drive-ID string keys are unaffected.
 
 No feature detection, polyfill, runtime fallback or deployment was added. Do not treat Node or browser results as Apps Script results, and do not describe these APIs as confirmed supported.
 
-Logical assignment `||=` in `src/backend/ConfigurationManager/98_ConfigurationManagerClass.js` was previously listed here as an accepted unverified feature. Live deployment testing has since established that the Apps Script parser **rejects** it with `ParseError: Unexpected token =`, so it was replaced with an explicit falsy-check `if` statement. The distinction that motivated the original choice still applies to the replacement: `||=` falls through on every falsy value, while `??=` falls through on `null` and `undefined` only, so the two are not interchangeable at this site — the differentiating inputs are the other falsy values (`false`, `0`, `''`). `unicorn/no-undeclared-class-members` is unaffected.
-
-### Global access and error-rule deferrals
-
-`unicorn/no-unnecessary-global-this` remains enabled in both runtimes. Frontend findings use direct globals; reduced-motion availability checks stay guarded, and test setup targets the DOM Window through `document.defaultView` separately from the Vitest global.
-
-Three error-focused Unicorn rules are **temporarily disabled in both runtimes**, each with an adjacent config comment carrying its issue link:
-
-- `unicorn/custom-error-definition` — [issue #328](https://github.com/h-arnold/AssessmentBot/issues/328) (universal custom-error approach across GAS and frontend runtimes). Existing constructor signatures, metadata and cause handling are retained.
-- `unicorn/no-error-property-assignment` — [issue #328](https://github.com/h-arnold/AssessmentBot/issues/328). Native error-constructor cause support should be established and property-descriptor/serialisation differences reviewed before any migration; original cause identity and `.cause` reads are unchanged.
-- `unicorn/prefer-error-is-error` — [issue #326](https://github.com/h-arnold/AssessmentBot/issues/326) (native `Error.isError` runtime, typing and recognition).
-
-### Configuration and mock registration
-
-The frontend config disables `unicorn/no-top-level-side-effects` only for `eslint.config.js`, `playwright.config.ts`, `vite.config.ts` and `src/test/taskHeatmapPageMocks.ts`. The first three use standard configuration entry points evaluated at load time; the shared mock module must register Vitest factories before production imports. Their exports and registration timing remain unchanged. Application modules and other files retain enforcement.
-
-### Post-55 Unicorn exclusions (implemented)
-
-Four post-55 Unicorn disables are implemented after independent research and configuration-only review. The opposite runtime keeps `error` severity for the three single-runtime rules, and no inline `eslint-disable` comment is used:
-
-| Rule                               | Disabled in              | Still `error` in | Rationale                                                                                                                                                                    |
-| ---------------------------------- | ------------------------ | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `unicorn/prefer-ternary`           | backend **and** frontend | —                | Guard clauses and comparator tie-breaks read more clearly as statements, and ternary conversion also conflicts with the enabled `prefer-logical-operator-over-ternary` rule. |
-| `unicorn/no-useless-override`      | **backend only**         | frontend         | Preserves the documented per-singleton `getInstance` forwarding convention.                                                                                                  |
-| `unicorn/prefer-uint8array-base64` | **backend only**         | frontend         | Keeps the Node 24 `Buffer` test fallback; `Uint8Array#toBase64` is unavailable there, and the installed rule carries an upstream Node-version caveat.                        |
-| `unicorn/prefer-iterator-concat`   | **frontend only**        | backend          | `Iterator.concat` is absent from Node 24 and from the project's ES2024 TypeScript typings.                                                                                   |
-
-These suppress diagnostics only: no source, contract or runtime path changed. The configuration-only review (`PASS` on scope) verified the effective settings with `ESLint.calculateConfigForFile`; whole-upgrade verification remains `FAIL` on inherited gates. The `apiService.ts` `unicorn/no-array-front-mutation` exception above is retained and stays file-scoped. The decision record is `LINT_UPGRADE_REVIEW.md`.
+Logical assignment `||=` in `src/backend/ConfigurationManager/98_ConfigurationManagerClass.js` was previously listed as an accepted unverified feature. Live deployment testing established that the Apps Script parser **rejects** it with `ParseError: Unexpected token =`, so it was replaced with an explicit falsy-check `if` statement. The distinction that motivated the original choice still applies to the replacement: `||=` falls through on every falsy value, while `??=` falls through on `null` and `undefined` only, so the two are not interchangeable at this site — the differentiating inputs are the other falsy values (`false`, `0`, `''`).
 
 ## Running lint and type checks
 

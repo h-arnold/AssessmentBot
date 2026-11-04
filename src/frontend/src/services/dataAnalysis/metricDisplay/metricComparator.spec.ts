@@ -7,8 +7,6 @@
  * direction-aware state ranking, numeric value comparison within the computed
  * band, the ascending row-id ultimate tie-break, and fail-fast handling for
  * unknown metric states.
- *
- * @see SPEC.md decisions 3-4 — shared services-layer placement
  */
 
 import { describe, expect, it } from 'vitest';

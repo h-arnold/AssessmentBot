@@ -5,6 +5,7 @@ import { resolveSubmissionCount } from './resolveSubmissionCount.js';
 const MINUTES_PER_CLASS = 1440;
 const MINUTES_PER_ASSIGNMENT = 60;
 const MINUTES_AFTER_ASSIGNMENT_CREATED = 3;
+const ASSESSMENT_CONTRACT_VERSION = 1;
 
 /**
  * Resolves the assignment definition for one class assignment.
@@ -101,6 +102,7 @@ function buildAssignment({
     assignmentId,
     assignmentName: `Synthetic Assignment ${classIndex + 1}.${assignmentIndex + 1}`,
     assignmentDefinitionKey: assignmentDefinition.definitionKey,
+    assessmentContractVersion: ASSESSMENT_CONTRACT_VERSION,
     dueDate: null,
     updatedAt: isoAt(assignmentMinuteOffset + MINUTES_AFTER_ASSIGNMENT_CREATED),
     createdAt: isoAt(assignmentMinuteOffset),

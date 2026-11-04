@@ -1,11 +1,11 @@
-const ABCLASS_METADATA_METRICS = ['completeness', 'accuracy', 'spag', 'overall'];
 const ABCLASS_METADATA_MAX_SCORE = 5;
 const ABCLASS_METADATA_MAX_RECENT_ASSIGNMENTS = 3;
 
 /**
  * Authoritative validation and ownership boundary for ABClass assessment snapshots.
- * Runtime references to Validate and the error class are resolved only when methods
- * run, matching the concatenated Google Apps Script load model.
+ * Runtime references to Validate, Assessment and the error class are resolved only when
+ * methods run, matching the concatenated Google Apps Script load model: this file sorts
+ * before `Models/Assessment.js`.
  */
 class ABClassMetadata {
   /**
@@ -40,6 +40,17 @@ class ABClassMetadata {
    */
   static _fail(message, path) {
     throw new ABClassMetadataValidationError(message, path);
+  }
+
+  /**
+   * Returns the four metadata metrics: the canonical criteria plus the weighted
+   * overall score. Derived at call time because this file loads before
+   * `Models/Assessment.js` in the concatenated script.
+   * @returns {string[]} Metric names in validation order.
+   * @private
+   */
+  static _metrics() {
+    return [...Assessment.CRITERIA, 'overall'];
   }
 
   /**
@@ -79,7 +90,7 @@ class ABClassMetadata {
    * @private
    */
   static _validateScoreFields(scores, context) {
-    for (const metric of ABCLASS_METADATA_METRICS) {
+    for (const metric of ABClassMetadata._metrics()) {
       ABClassMetadata.validateAverageScore(scores[metric], `${context}.${metric}`);
     }
   }
@@ -109,7 +120,7 @@ class ABClassMetadata {
    * @param {string} [context='metadata'] - Field path used in validation errors.
    */
   static validateAverageScores(scores, context = 'metadata') {
-    const metrics = ABCLASS_METADATA_METRICS;
+    const metrics = ABClassMetadata._metrics();
     ABClassMetadata._checkRecord(scores, context, metrics);
     ABClassMetadata._validateScoreFields(scores, context);
   }
@@ -120,7 +131,7 @@ class ABClassMetadata {
    * @param {string} [context='metadata.classAverages'] - Error path prefix.
    */
   static validateClassAverages(value, context = 'metadata.classAverages') {
-    const metrics = ABCLASS_METADATA_METRICS;
+    const metrics = ABClassMetadata._metrics();
     ABClassMetadata._checkRecord(value, context, [...metrics, 'updatedAt']);
     const scores = {};
     for (const metric of metrics) scores[metric] = value[metric];

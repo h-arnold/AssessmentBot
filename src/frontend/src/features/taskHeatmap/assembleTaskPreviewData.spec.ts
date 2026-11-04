@@ -10,6 +10,8 @@ import type { CellPreviewData } from './buildCellPreviewLookup';
 import { spreadsheetToMarkdownTable } from './spreadsheetToMarkdownTable';
 import { NOT_ATTEMPTED_METRIC } from '@/services/dataAnalysis/heatmapAdapter';
 import type { TaskDisplayMetric } from '@/services/dataAnalysis/dataAnalysis.zod';
+import type { HeatmapMetricKey } from '@/services/dataAnalysis/metricDisplay/metricDisplayMeta';
+import type { TaskPreviewData } from './TaskPreviewCard';
 import { createComputedMetricResult, createErrorMetricResult } from '@/test/dataAnalysis/fixtures';
 
 // ===========================================================================
@@ -80,6 +82,19 @@ function buildReasoning(
 }
 
 /**
+ * Build the per-metric error-cause record for a `CellPreviewData` fixture.
+ *
+ * These fixtures characterise healthy (non-`E`) results, so every criterion
+ * carries an explicit `null` cause; the error-bearing matrix lives in the
+ * focused `assembleTaskPreviewData.errors.spec.ts` companion.
+ *
+ * @returns {CellPreviewData['errors']} The all-null cause record for the cell.
+ */
+function buildNoErrors(): CellPreviewData['errors'] {
+  return { completeness: null, accuracy: null, spag: null };
+}
+
+/**
  * Create a CellPreviewData for the given artifact type, content and reasoning overrides.
  *
  * The `artifactType` argument is narrowed by switch case labels: the
@@ -87,9 +102,9 @@ function buildReasoning(
  * `base`, whose `unknown` slot accepts the same narrow content) share one
  * fall-through block, while `SPREADSHEET` keeps its narrower 2-D array cast.
  * Each returned object literal is still checked against the matching
- * `CellPreviewData` union members, and `sourceUrl` is written explicitly on
- * every path, so no whole-object cast can conceal an omitted required field. The
- * fixture does not carry a derived source URL.
+ * `CellPreviewData` union members, and `errors` and `sourceUrl` are written
+ * explicitly on every path, so no whole-object cast can conceal an omitted
+ * required field. The fixture does not carry a derived source URL.
  *
  * @param {CellPreviewData['artifactType']} artifactType - The artifact type discriminator.
  * @param {unknown} artifactContent - The raw artifact content.
@@ -102,6 +117,7 @@ function cellData(
   overrides?: Partial<CellPreviewData['reasoning']>
 ): CellPreviewData {
   const reasoning = buildReasoning(overrides);
+  const errors = buildNoErrors();
   const sourceUrl: string | null = null;
 
   switch (artifactType) {
@@ -113,6 +129,7 @@ function cellData(
         artifactType,
         artifactContent: artifactContent as string | null,
         reasoning,
+        errors,
         sourceUrl,
       };
     }
@@ -121,10 +138,28 @@ function cellData(
         artifactType,
         artifactContent: artifactContent as Array<Array<string | number | null>> | null,
         reasoning,
+        errors,
         sourceUrl,
       };
     }
   }
+}
+
+/**
+ * Assemble a preview for a TEXT cell, scored by a computed metric, under the
+ * given metric key and task ID.
+ *
+ * @param {HeatmapMetricKey} metricKey - Which metric column the preview is for.
+ * @param {string} taskId - The heatmap column's task ID.
+ * @returns {TaskPreviewData} The assembled preview.
+ */
+function assembleTextCellPreview(metricKey: HeatmapMetricKey, taskId: string): TaskPreviewData {
+  return assembleTaskPreviewData(
+    cellData('TEXT', 'X'),
+    createComputedMetricResult({ value: METRIC_KEY_SCORE }),
+    metricKey,
+    taskId
+  );
 }
 
 // ===========================================================================
@@ -369,40 +404,19 @@ describe('assembleTaskPreviewData', () => {
   // -------------------------------------------------------------------------
 
   it('passes metricKey completeness through unchanged', () => {
-    const data = cellData('TEXT', 'X');
-
-    const result = assembleTaskPreviewData(
-      data,
-      createComputedMetricResult({ value: METRIC_KEY_SCORE }),
-      'completeness',
-      'task-11'
-    );
+    const result = assembleTextCellPreview('completeness', 'task-11');
 
     expect(result.metricKey).toBe('completeness');
   });
 
   it('passes metricKey accuracy through unchanged', () => {
-    const data = cellData('TEXT', 'X');
-
-    const result = assembleTaskPreviewData(
-      data,
-      createComputedMetricResult({ value: METRIC_KEY_SCORE }),
-      'accuracy',
-      'task-12'
-    );
+    const result = assembleTextCellPreview('accuracy', 'task-12');
 
     expect(result.metricKey).toBe('accuracy');
   });
 
   it('passes metricKey spag through unchanged', () => {
-    const data = cellData('TEXT', 'X');
-
-    const result = assembleTaskPreviewData(
-      data,
-      createComputedMetricResult({ value: METRIC_KEY_SCORE }),
-      'spag',
-      'task-13'
-    );
+    const result = assembleTextCellPreview('spag', 'task-13');
 
     expect(result.metricKey).toBe('spag');
   });

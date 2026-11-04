@@ -10,28 +10,9 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import {
-  cleanupControllerTestMocks,
-  createMockCollection,
-  createDualCollectionDbManager,
-  setupControllerTestMocks,
-} from '../helpers/mockFactories.js';
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-/**
- * Override globalThis.DbManager with a dual-collection router after
- * setupControllerTestMocks() has set up ABLogger, ProgressTracker,
- * ConfigurationManager, and AssignmentDefinitionController.
- *
- * @param {object} classCollection - mock for the class-named collection
- * @param {object} partialsCollection - mock for the 'abclass_partials' collection
- */
-function setupMocks(classCollection, partialsCollection) {
-  const mockDbManager = createDualCollectionDbManager(vi, classCollection, partialsCollection);
-  globalThis.DbManager = { getInstance: () => mockDbManager };
-}
+  setupPartialRegistrySuite,
+  teardownPartialRegistrySuite,
+} from '../helpers/abclassPartialsRegistryTestHelpers.js';
 
 // ---------------------------------------------------------------------------
 // Module-level variables re-assigned in beforeEach
@@ -41,25 +22,12 @@ let ABClassController, ABClass;
 let classCollection, partialsCollection, mockABLogger;
 
 beforeEach(async () => {
-  classCollection = createMockCollection(vi);
-  partialsCollection = createMockCollection(vi);
-
-  const mocks = setupControllerTestMocks(vi);
-  mockABLogger = mocks.mockABLogger;
-
-  setupMocks(classCollection, partialsCollection);
-
-  // Dynamic import after globals are set to ensure globals are in place before module evaluation
-  const abClassModule = await import('#backend/Models/ABClass.js');
-  const controllerModule = await import('#backend/y_controllers/ABClassController/index.js');
-
-  ABClass = abClassModule.ABClass;
-  ABClassController = controllerModule.default ?? controllerModule;
+  ({ ABClassController, ABClass, classCollection, partialsCollection, mockABLogger } =
+    await setupPartialRegistrySuite());
 });
 
 afterEach(() => {
-  cleanupControllerTestMocks();
-  vi.restoreAllMocks();
+  teardownPartialRegistrySuite();
 });
 
 // ---------------------------------------------------------------------------

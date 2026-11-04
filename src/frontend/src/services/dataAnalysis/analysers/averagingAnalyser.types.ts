@@ -4,8 +4,8 @@
  * @remarks
  * `nCount` is the analyser's internal mechanism for distinguishing
  * `notAttempted` (`nCount > 0`) from `error` (`nCount === 0` and
- * `applicableDataPoints === 0`). It is **not** a raw-score type and the
- * `'E'` literal does not appear in `AssessmentScore`.
+ * `applicableDataPoints === 0`). It is **not** a raw-score type; explicit
+ * error scores are accepted by `AssessmentScore`.
  */
 export interface MetricAccumulator {
   weightedSum: number;
@@ -28,5 +28,5 @@ export interface DataPointAccumulator {
   overall: MetricAccumulator;
 }
 
-/** A nullable numeric assessment score — number, 'N' (not applicable), or absent. */
-export type AssessmentScore = number | 'N' | undefined;
+/** A numeric assessment score, 'N' (not applicable), 'E' (error), or absent. */
+export type AssessmentScore = number | 'N' | 'E' | undefined;

@@ -2,8 +2,6 @@
  * Mandatory Reading (Files read):
  * - AGENTS.md
  * - src/frontend/AGENTS.md
- * - SPEC.md
- * - CLASSES_PAGE_LAYOUT.md
  * - docs/developer/frontend/frontend-testing.md
  * - docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md
  * - src/frontend/src/services/classPartialsService.ts

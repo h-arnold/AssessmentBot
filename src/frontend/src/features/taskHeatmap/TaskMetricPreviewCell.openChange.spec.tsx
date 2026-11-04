@@ -62,7 +62,12 @@ describe('TaskMetricPreviewCell open-change focus scheduling', () => {
     });
     const scoreText = formatMetricDisplayText(metricResult, 0);
     const label = buildMetricCellAccessibleLabel(
-      CANONICAL_READY_CELL.studentName,
+      (() => {
+        const { studentName } = CANONICAL_READY_CELL;
+        if (typeof studentName !== 'string')
+          throw new TypeError('Expected a named canonical student.');
+        return studentName;
+      })(),
       CANONICAL_READY_CELL.taskTitle,
       'completeness',
       scoreText

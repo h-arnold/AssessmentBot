@@ -4,7 +4,7 @@
  */
 
 const { TaskDefinition } = require('#backend/Models/TaskDefinition.js');
-const { StudentSubmission } = require('#backend/Models/StudentSubmission.js');
+const { StudentSubmission } = require('#backend/Models/StudentSubmission/index.js');
 const { ArtifactFactory } = require('#backend/Models/Artifacts/index.js');
 const { AssignmentDefinition } = require('#backend/Models/AssignmentDefinition.js');
 const Assignment = require('#backend/AssignmentProcessor/Assignment/index.js');
@@ -200,24 +200,6 @@ function createDummyConfigurationManager(overrides = {}) {
 }
 
 /**
- * Dummy CacheManager class for testing
- */
-class DummyCacheManager {
-  constructor() {
-    this.store = new Map();
-  }
-  getCachedAssessment(refHash, respHash) {
-    return this.store.get(refHash + '::' + respHash) || null;
-  }
-  setCachedAssessment(refHash, respHash, val) {
-    this.store.set(refHash + '::' + respHash, val);
-  }
-  clearCache() {
-    this.store.clear();
-  }
-}
-
-/**
  * Dummy BaseRequestManager class for testing
  */
 class DummyBaseRequestManager {
@@ -245,14 +227,6 @@ class DummyBaseRequestManager {
 
 DummyBaseRequestManager.HTTP_STATUS_OK = 200;
 DummyBaseRequestManager.HTTP_STATUS_CREATED = 201;
-
-/**
- * Create a dummy CacheManager for testing
- * @returns {Object} Dummy CacheManager instance with in-memory store
- */
-function createDummyCacheManager() {
-  return new DummyCacheManager();
-}
 
 /**
  * Create a dummy BaseRequestManager for testing
@@ -289,10 +263,6 @@ function setupGlobalDummyClasses() {
   if (!globalThis.BaseRequestManager) {
     globalThis.BaseRequestManager = DummyBaseRequestManager;
   }
-
-  if (!globalThis.CacheManager) {
-    globalThis.CacheManager = DummyCacheManager;
-  }
 }
 
 /**
@@ -314,10 +284,8 @@ module.exports = {
   createSheetsAssignment,
   createDummyProgressTracker,
   createDummyConfigurationManager,
-  createDummyCacheManager,
   createDummyBaseRequestManager,
   setupGlobalDummyClasses,
-  DummyCacheManager,
   DummyBaseRequestManager,
   DUMMY_TASK_PARTIALS,
 };
