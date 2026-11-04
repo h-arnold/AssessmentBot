@@ -153,8 +153,7 @@ const AssignmentCurrentRestoration = {
     if (
       !raw ||
       typeof raw !== 'object' ||
-      !definition ||
-      !definition.tasks ||
+      !definition?.tasks ||
       typeof definition.tasks !== 'object'
     )
       throw new Error('Current assignment restoration requires an embedded task universe');

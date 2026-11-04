@@ -164,7 +164,7 @@ class BaseRequestManager {
       ) {
         isStopped = true;
       }
-      if (options.onBatchComplete && options.onBatchComplete(outcomes) === false) {
+      if (options.onBatchComplete?.(outcomes) === false) {
         isStopped = true;
       }
     }

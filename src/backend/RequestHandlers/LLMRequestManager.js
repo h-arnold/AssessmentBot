@@ -228,7 +228,7 @@ class LLMRequestManager extends BaseRequestManager {
       throw new Error('LLM generated route map is missing; cannot terminalise unprocessed items.');
     }
     Object.entries(this.uidIndex).forEach(([uid, entry]) => {
-      if (!entry || !entry.item) {
+      if (!entry?.item) {
         throw new Error(`LLM generated route entry or item is missing for UID: ${uid}`);
       }
       if (!processedUids.has(uid)) {
@@ -261,7 +261,7 @@ class LLMRequestManager extends BaseRequestManager {
    */
   assignAssessmentToStudentTask(uid, assessmentData) {
     const entry = this.uidIndex?.[uid];
-    if (!entry || !entry.item) {
+    if (!entry?.item) {
       throw new Error(`No routed submission item for LLM UID: ${uid}`);
     }
     this._assignAssessmentArtifacts(entry.item, assessmentData);
@@ -325,6 +325,9 @@ class LLMRequestManager extends BaseRequestManager {
       ['template', templateTask],
       ['student', studentArtifact],
     ].forEach(([role, artifact]) => {
+      if (typeof role !== 'string') {
+        throw new TypeError('Stored content role must be a string.');
+      }
       if (typeof artifact.contentHash !== 'string' || artifact.contentHash.length === 0) {
         throw new Error(
           `Stored ${role} content has no usable contentHash for taskId ${item.taskId}.`

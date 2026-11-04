@@ -60,7 +60,7 @@ const AssignmentRehydration = {
     } else {
       inst._legacyPersistenceSnapshot = AssignmentSerialisation.copyJsonSnapshot({
         submissions: data.submissions === undefined ? [] : data.submissions,
-        markerPresent: Object.prototype.hasOwnProperty.call(data, 'assessmentContractVersion'),
+        markerPresent: Object.hasOwn(data, 'assessmentContractVersion'),
         marker: data.assessmentContractVersion,
       });
     }

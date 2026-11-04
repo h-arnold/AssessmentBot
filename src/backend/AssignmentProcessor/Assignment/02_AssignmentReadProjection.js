@@ -80,12 +80,7 @@ const AssignmentReadProjection = {
    */
   _appendKeyedTasks(rawTasks, taskIds) {
     for (const [key, task] of Object.entries(rawTasks)) {
-      if (
-        !this._isValidId(key) ||
-        !task ||
-        task.id !== key ||
-        (task.taskId != null && task.taskId !== key)
-      )
+      if (!this._isValidId(key) || task?.id !== key || (task.taskId != null && task.taskId !== key))
         throw new TypeError('Invalid canonical full task identity');
       taskIds.push(key);
     }
