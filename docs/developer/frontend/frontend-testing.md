@@ -288,7 +288,7 @@ dispatcher suite:
   `apiHandler` read and mutation round trip through `callApi`, service schemas and
   queued wrappers. It uses the existing test seams and is not real
   controller/persistence evidence; see
-  [Synthetic Test Data](../testing/synthetic-test-data.md#node-dispatcher-metadata-round-trip-implemented).
+  [Synthetic Test Data](../testing/synthetic-test-data.md#node-dispatcher-metadata-round-trip).
 
 Both browser specs use the existing runtime response queues. Keep strict dispatch:
 an unknown method or exhausted queue must still fail. The full browser suite

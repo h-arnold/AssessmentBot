@@ -143,14 +143,7 @@ This is **fixture realism only**, not a production nullable-contract change:
 - Nullable transport acceptance is covered by explicit **local null-boundary probes**, not by generated null population. `tests/synthetic-analysis/syntheticCorpusConventions.test.ts` clones a canonical class-embedded assignment partial and a canonical full assignment, sets `updatedAt = null`, and parses both through the real frontend schemas. `tests/synthetic-analysis/syntheticGraphShapeCoverage.test.ts` clones a canonical class, nulls its first assignment's `updatedAt`, and re-parses it through `ClassFullSchema`.
 - The Class page's fail-closed rejection of a null or unparseable `updatedAt` is unchanged and tested with independent local invalid probes in `src/frontend/src/features/classPage/classPageAdapter.trustValidation.spec.ts`. Do not use canonical rows to assert that rejection.
 
-## Explicit E outcomes and richer artefact types (`Implemented`) {#planned-generator-extension-explicit-e-outcomes-and-richer-artefact-types-not-implemented}
-
-**Status:** The generator stages, partial projection, graph validators and committed compact corpus
-described here are `Implemented` and test-only. `npm run fixtures:synthetic` regenerated all 18
-compact output paths twice on 24 October 2026 with byte-identical results; six tracked wire files
-changed and no generated path was added or removed. Both frontend read services consume the new
-contract. No new profile, transport view or realistic fixture family was added. The atomic
-Section 2 regression gate is recorded separately and is not claimed by this guide.
+## Generated content: artefacts, contract marker and outcomes
 
 - **Artefact types.** The existing definition and submission builders cycle `TEXT`, `IMAGE` and
   `SPREADSHEET` bodies using their existing deterministic index arithmetic. IMAGE bodies are
@@ -183,56 +176,51 @@ Section 2 regression gate is recorded separately and is not claimed by this guid
   `artefactSourceGuards.js` (source body/hash, null-parent placeholders and definition artefacts)
   and `validateAssessmentState.js` (submission coverage and per-item orchestration).
   `validateSyntheticAnalysisGraph.js` orchestrates the three validators. They require marker `1`,
-  exactly the three criteria, strict `stage`/`code` pairs from the twelve-pair implemented
-  Assessment catalogue, declared-task coverage for document-bearing submissions, and
+  exactly the three criteria, strict `stage`/`code` pairs from the Assessment catalogue's twelve
+  pairs, declared-task coverage for document-bearing submissions, and
   representation-correct source state. A null-parent map may contain only acquisition or validation
   E entries and must match the canonical base placeholder. Null content must pair with null hash;
   beside present content, a full record must carry a usable raw body (TEXT string, image data URL,
   or 2D spreadsheet grid) and a non-blank hash. Blank templates and a successfully read blank student
-  SPREADSHEET grid remain accepted. No formula-comparison persistence or new feedback type was
-  added; spreadsheet feedback remains the existing cell-reference form.
-- **Unchanged metadata.** The class `metadata` stage is unchanged: supplied metadata remains an
-  independently generated snapshot, not a value derived from the assessment maps.
-- **Pipeline.** Outcomes flow through the existing projections; no new profile, view or
-  model-input adapter change was made.
+  SPREADSHEET grid remain accepted. Spreadsheet feedback stays in the existing cell-reference
+  form.
+- **Pipeline.** Outcomes flow through the existing projections; the corpus adds no profile, view or
+  model-input adapter.
+- **Unchanged metadata.** Supplied class `metadata` remains an independently generated snapshot,
+  not a value derived from the assessment maps.
 
-### Corpus cut-over and consumer activation (`Implemented`)
+### Corpus selection for consumers
 
-- **Canonical selection and regeneration.** `small` remains the healthy cross-layer graph and
-  `medium` the mixed healthy/E profile. The committed corpus now carries the marker, artefact types
-  and explicit outcomes; regeneration stayed byte-reproducible across the two runs.
-- **Existing Playwright fixture reconciliation.** `task-heatmap-fixtures.ts`,
+- **Profile roles.** `small` is the healthy cross-layer graph and `medium` the mixed healthy/E
+  profile.
+- **Playwright heatmap and source-link fixtures.** `task-heatmap-fixtures.ts`,
   `task-heatmap-class-fixtures.ts`, `task-heatmap-end-to-end-helpers.ts` and
-  `task-preview-source-link-fixtures.ts` were reconciled to `assessmentContractVersion: 1`, complete
-  three-criterion maps including accuracy, linked task/item records and usable source
-  identifiers/content. They import canonical `small`/`medium` views directly; there is no competing
-  realistic builder or heatmap/source-link import cycle. Purposeful local score/layout boundary
-  overrides and the unsupported TABLE exception remain; IMAGE content is derived from a canonical
-  full record.
-- **Preview-fixture capability comment.** `src/frontend/src/test/taskHeatmap/previewFixtures.ts` no
-  longer carries the resolved IMAGE/SPREADSHEET exceptions. It points to these capability notes and
-  keeps only genuinely unsupported cases such as TABLE.
-- **Browser journeys select the corpus directly.** `src/frontend/e2e-tests/helpers/assessment-error-preview-fixtures.ts` imports the committed `medium` `classesById`, `assignmentsByKey`, `classPartials` and `assignmentDefinitionPartials` views, validates every selected full record through its transport schema, and derives the controlled variants from detached clones. No competing realistic builder is introduced; corrupt, legacy and class-partial-E variants stay local to the helper.
+  `task-preview-source-link-fixtures.ts` import canonical `small`/`medium` views directly, carrying
+  `assessmentContractVersion: 1`, complete three-criterion maps including accuracy, linked
+  task/item records and usable source identifiers/content. Do not introduce a competing realistic
+  builder or a heatmap/source-link import cycle. Purposeful local score/layout boundary overrides
+  and the unsupported TABLE exception remain; IMAGE content is derived from a canonical full
+  record.
+- **Preview-fixture capability comment.** `src/frontend/src/test/taskHeatmap/previewFixtures.ts`
+  points to these capability notes and keeps only genuinely unsupported cases such as TABLE.
+- **Browser journeys select the corpus directly.** `src/frontend/e2e-tests/helpers/assessment-error-preview-fixtures.ts` imports the committed `medium` `classesById`, `assignmentsByKey`, `classPartials` and `assignmentDefinitionPartials` views, validates every selected full record through its transport schema, and derives the controlled variants from detached clones. Keep corrupt, legacy and class-partial-E variants local to the helper.
 - **Local probes stay local.** Corrupt records, missing-criterion and empty-map probes, HTTP
-  response variants, GAS failures and numeric boundary probes remain targeted local fixtures, not
+  response variants, GAS failures and numeric boundary probes are targeted local fixtures, not
   realistic success data.
-
-No new profile, transport view or realistic fixture family was added.
 
 ## ABClass metadata generator capability
 
-> **Status: `Implemented` (test-only).** The canonical corpus generates, validates and adapts
-> raw class `metadata` supplied snapshots for the backend ABClass `metadata` contract-support
-> cycle. The generator stage, the raw-view integrity helper and the model-input adapter are
-> test-only infrastructure: production `src/backend` source never imports them, and the fixtures
-> stay supplied snapshots that no backend code calculates or refreshes. Production acceptance,
-> persistence, read projection and transport adaptation are delivered separately in
-> [abclass.md § ABClass `metadata` contract](../data-shapes/abclass.md#abclass-metadata-contract-domain-model-prepared-persistence-response-mapping-controller-request-replacement-and-transport-adaptation-delivered)
-> and [api-layer.md § ABClass metadata helpers](../backend/api-layer.md#abclass-metadata-helpers).
-> Cross-reference: [Backend Testing](../backend/backend-testing.md) §Backend model-input
-> adapter.
+The corpus generates, validates and adapts raw class `metadata` supplied snapshots. The generator
+stage, the raw-view integrity helper and the model-input adapter are test-only infrastructure:
+production `src/backend` source never imports them, and the fixtures stay supplied snapshots that
+no backend code calculates or refreshes. Production acceptance, persistence, read projection and
+transport adaptation are documented in
+[abclass.md § Sub-entity: ABClassMetadata](../data-shapes/abclass.md#sub-entity-abclassmetadata)
+and [api-layer.md § ABClass metadata helpers](../backend/api-layer.md#abclass-metadata-helpers).
+Cross-reference: [Backend Testing](../backend/backend-testing.md) §Backend model-input
+adapter.
 
-### `generateClassMetadata.js` stage (`Implemented`)
+### `generateClassMetadata.js` stage
 
 - `scripts/synthetic-test-data/generateClassMetadata.js` runs once inside
   `generateSyntheticAnalysisGraph()`, after assignment generation and before
@@ -267,7 +255,7 @@ No new profile, transport view or realistic fixture family was added.
   and entry count. Current profiles match their matrices exactly, so this guards configuration
   drift rather than repairing existing fixtures.
 
-### `validateClassMetadata.js` helper (`Implemented`)
+### `validateClassMetadata.js` helper
 
 - `scripts/synthetic-test-data/validateClassMetadata.js` validates raw generated metadata
   independently of the frontend schemas. Both class-read schemas now require and retain
@@ -281,17 +269,17 @@ No new profile, transport view or realistic fixture family was added.
   every raw snapshot view through the real `ABClassMetadata.validateMetadata` domain owner,
   because frontend parse success alone is not sufficient evidence of correctness.
 
-### Frontend Zod parity (`Implemented`)
+### Frontend Zod parity
 
 - `tests/synthetic-analysis/syntheticABClassMetadataFrontendParity.test.ts` compares the frontend `ABClassMetadataSchema` with the real backend `ABClassMetadata.validateMetadata` for all three compact profiles, plus strict raw-object, score, identifier, ordering and canonical-timestamp boundary probes. It calls `generateSyntheticAnalysisGraph()` directly, so the generated snapshots stay in memory and the committed views are not rewritten.
 - Frontend Vitest schema coverage selects the committed `small`, `medium` and `large-representative` class-partial views through `src/frontend/src/test/abClass/abClassMetadataFixtures.ts` (raw `?raw` imports plus `cloneMetadata`). Backend imports stay test-local; frontend production code never imports `scripts/` or backend modules.
-- Runner-neutral typed fixture providers use `src/frontend/src/test/abClass/abClassMetadataSharedFixtures.ts`: direct JSON loading, schema validation, freezing and detached cloning own `CANONICAL_NON_NULL_METADATA` / `createCanonicalMetadataFixture()`. The Vitest-only raw selectors re-export those bindings for compatibility; shared browser import chains must not import the raw selector module. `ClassFullFixtureDefaults` owns the focused full-class builders' defaults and preserves explicit `metadata: null`, applying the canonical snapshot only for omitted/undefined metadata. `src/frontend/e2e-tests/helpers/class-metadata-fixtures.ts` serves cloned `small`-profile snapshots to browser scenarios. Class-read fixture browser validation and independent review completed in Section 2. Supplied values remain snapshots, not calculated-average oracles.
+- Runner-neutral typed fixture providers use `src/frontend/src/test/abClass/abClassMetadataSharedFixtures.ts`: direct JSON loading, schema validation, freezing and detached cloning own `CANONICAL_NON_NULL_METADATA` / `createCanonicalMetadataFixture()`. The Vitest-only raw selectors re-export those bindings for compatibility; shared browser import chains must not import the raw selector module. `ClassFullFixtureDefaults` owns the focused full-class builders' defaults and preserves explicit `metadata: null`, applying the canonical snapshot only for omitted/undefined metadata. `src/frontend/e2e-tests/helpers/class-metadata-fixtures.ts` serves cloned `small`-profile snapshots to browser scenarios. Supplied values remain snapshots, not calculated-average oracles.
 
-### Node dispatcher metadata round trip (`Implemented`)
+### Node dispatcher metadata round trip
 
-`tests/synthetic-analysis/syntheticABClassMetadataRoundTrip.test.ts` (**188** physical
-lines / **5** tests) composes the script-owned bridge, the frontend round-trip adapter
-and the real frontend `callApi`, service schemas and queued mutation wrappers. It proves:
+`tests/synthetic-analysis/syntheticABClassMetadataRoundTrip.test.ts` composes the script-owned
+bridge, the frontend round-trip adapter and the real frontend `callApi`, service schemas and queued
+mutation wrappers. It proves:
 
 - full and partial reads retain the canonical metadata snapshot through the real
   `apiHandler` and shared response schemas;
@@ -319,28 +307,22 @@ npm run test:synthetic -- tests/synthetic-analysis/syntheticABClassMetadataRound
 
 ### Metadata refresh analysis boundaries
 
-Frontend refresh projection/task/writer owners use actual assessment evidence,
-not supplied metadata scores, for full-class and isolated-target calculation.
-The generic context/result/outcome schemas, ordered runner, metadata-only descriptor
-factory, shared post-commit hook and consumer wiring are implemented.
-Both feature consumers call the shared page hook directly, and query invalidation
-and warning feedback are owned by their frontend contracts. Section 6 adds test-only
-Node dispatcher and browser changed-write/failure-feedback coverage.
-The real App-host/query-observer unit harness reuses these same boundary fixtures;
-it does not close the newest-target evidence gap, and the separate Section 6
-browser suite is the changed-write/failure acceptance record.
+Frontend refresh projection, task and writer owners calculate from actual assessment evidence,
+never from supplied metadata scores, for both full-class and isolated-target calculation. Both
+feature consumers call the shared page hook directly; query invalidation and warning feedback are
+owned by their frontend contracts.
 
 **Current corpus limitation:** every one of the 11 committed compact classes has
 a null submission `studentName` in its newest assignment. The existing analyser
 rejects that instance in isolation (`buildPerStudentRows: null studentName`), even
-where full-class analysis succeeds. Thus these fixtures do not prove successful
+where full-class analysis succeeds. These fixtures therefore do not cover successful
 refresh of untouched newest canonical targets. This is a test-data/analysis trust
-boundary, not an unimplemented metadata product function or permission to repair
+boundary, not a missing metadata product function or permission to repair
 production data.
 
-`src/frontend/src/test/abClass/metadataRefreshFixtures.ts` explicitly models the
-preceding source version by cloning and omitting **only the final assignment**.
-Remaining names, assessments and supplied metadata are unchanged:
+`src/frontend/src/test/abClass/metadataRefreshFixtures.ts` models the preceding source
+version by cloning and omitting **only the final assignment**. Remaining names,
+assessments and supplied metadata are unchanged:
 
 | Profile                | Class     | Historical target |
 | ---------------------- | --------- | ----------------- |
@@ -349,21 +331,23 @@ Remaining names, assessments and supplied metadata are unchanged:
 | `large-representative` | `class-1` | `assignment-1-3`  |
 
 These are historical-source **boundary probes**, not a new realistic fixture
-profile or a generator extension. Three untouched selected-class failure probes
-retain the newest null-name input and assert propagated rejection, no write,
-no clock access and released queue lane. `metadataEvidenceOracle.ts` derives
-independent numeric expectations from assessment records and live weights;
-supplied recent metadata remains retention evidence only. No names/scores are
-normalised, generator changed, corpus regenerated or production analyser repaired.
-Successful untouched-newest-corpus refresh remains an explicit evidence gap.
+profile or a generator extension. Untouched selected-class failure probes retain the
+newest null-name input and assert propagated rejection, no write, no clock access and
+released queue lane. `metadataEvidenceOracle.ts` derives independent numeric
+expectations from assessment records and live weights; supplied recent metadata
+remains retention evidence only. Do not normalise names or scores, change the
+generator, regenerate the corpus or repair the production analyser to make these
+fixtures pass. Successful untouched-newest-corpus refresh remains an explicit
+evidence gap.
 
-### Regeneration and scope (`Implemented`)
+### Regeneration and scope
 
 - Only `classPartials.json` and `classesById.json` change for each compact profile; the other
   four committed views carry no class `metadata` and are rewritten byte-identically.
 - Regenerate through the existing CLI only; never hand-edit JSON. The same stage covers the
   full graph, and full-stress output is never committed.
-- No new profile or view was introduced, and no frontend adapter change was required.
+- No new profile or view is introduced by the metadata stage, and no frontend adapter change is
+  required.
 - The compact synthetic project, the opt-in full-large stress project and the
   committed-fixture regeneration comparison all exercise the metadata stage. Synthetic
   coverage is restricted to `scripts/synthetic-test-data/**/*.js`, and the Node-project
@@ -394,6 +378,8 @@ Successful untouched-newest-corpus refresh remains an explicit evidence gap.
 | `npm run test:synthetic:stress`   | Opt-in stress run of the full-large profile.                                                         |
 | `npm run lint:synthetic`          | Lint the synthetic scripts and specs with `--fix`.                                                   |
 | `npm run lint:synthetic:check`    | Lint the synthetic scripts and specs with a zero-warning budget.                                     |
+
+The synthetic suites run the full `sonarjs.configs.recommended` set, matching SonarCloud. Three narrow per-file exclusions apply, each commented in `eslint.config.js`; see [Synthetic test scope](../builder/TypeScriptAndLintConfigHierarchy.md#5-synthetic-test-scope).
 
 The synthetic checks are wired into the aggregate commands: `lint` and `lint:check` include the synthetic lint scopes, `test` includes `test:synthetic`, and `test:coverage` includes `test:synthetic:coverage`.
 

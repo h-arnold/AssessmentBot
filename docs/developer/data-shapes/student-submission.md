@@ -547,7 +547,7 @@ Coverage resolution rules:
 - A version-1 canonical completed fixture never contains an empty assessment map.
   Missing-criterion and empty-map cases remain local corruption probes, not realistic
   success data. See
-  [Synthetic Test Data § Explicit E outcomes and richer artefact types](../testing/synthetic-test-data.md#planned-generator-extension-explicit-e-outcomes-and-richer-artefact-types-not-implemented).
+  [Synthetic Test Data § Generated content: artefacts, contract marker and outcomes](../testing/synthetic-test-data.md#generated-content-artefacts-contract-marker-and-outcomes).
 
 ### Full and partial item isolation with trustworthy identities
 

@@ -1020,7 +1020,7 @@ Aggregate rules:
 - A version-1 canonical completed fixture never contains an empty assessment map.
   Missing-criterion and empty-map cases remain local corruption probes, not realistic success
   data. See
-  [Synthetic Test Data § Explicit E outcomes and richer artefact types](../testing/synthetic-test-data.md#planned-generator-extension-explicit-e-outcomes-and-richer-artefact-types-not-implemented).
+  [Synthetic Test Data § Generated content: artefacts, contract marker and outcomes](../testing/synthetic-test-data.md#generated-content-artefacts-contract-marker-and-outcomes).
 - A version-1 item whose criterion map is incomplete or contains an extra key is an isolated
   all-three validation `CORRUPT_RECORD` `E` on both full and partial reads; see
   [Component Shape: Assessment § Persistence](assessment.md#persistence). This is read-time
