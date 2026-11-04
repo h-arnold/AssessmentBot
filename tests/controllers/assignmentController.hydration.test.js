@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { loadBackendModelInputs } from '#synthetic-data/toBackendModelInputs.js';
 import { withTemporaryGlobals } from '#test-helpers/globalMockManager.js';
 import { createMockABLogger } from '../helpers/mockFactories.js';
+import { createFullDefinition } from './assignmentControllerTestHelpers.js';
 
 // Setup global mocks
 globalThis.ABLogger = require('#backend/Utils/ABLogger.js');
@@ -13,63 +14,6 @@ const AssignmentController = require('#backend/y_controllers/AssignmentControlle
 const Assignment = require('#backend/AssignmentProcessor/Assignment/index.js');
 
 const { AssignmentDefinition } = require('#backend/Models/AssignmentDefinition.js');
-
-const createFullDefinition = function (options) {
-  if (options === void 0) {
-    options = {};
-  }
-  let primaryTitle = options.primaryTitle;
-  let primaryTopic = options.primaryTopic;
-  let yearGroupKey = options.yearGroupKey;
-  let yearGroupLabel = options.yearGroupLabel;
-  let documentType = options.documentType;
-  let referenceDocumentId = options.referenceDocumentId;
-  let templateDocumentId = options.templateDocumentId;
-  let tasks = options.tasks;
-  if (primaryTitle === void 0) {
-    primaryTitle = 'Test';
-  }
-  if (primaryTopic === void 0) {
-    primaryTopic = 'Topic';
-  }
-  if (yearGroupKey === void 0) {
-    yearGroupKey = 'year-group-10';
-  }
-  if (yearGroupLabel === void 0) {
-    yearGroupLabel = 'Year 10';
-  }
-  if (documentType === void 0) {
-    documentType = 'SLIDES';
-  }
-  if (referenceDocumentId === void 0) {
-    referenceDocumentId = 'ref';
-  }
-  if (templateDocumentId === void 0) {
-    templateDocumentId = 'tpl';
-  }
-  if (tasks === void 0) {
-    tasks = {
-      t1: {
-        id: 't1',
-        taskTitle: 'Task 1',
-        pageId: 'p1',
-        artifacts: {
-          reference: [{ taskId: 't1', role: 'reference', content: 'content', contentHash: 'hash' }],
-        },
-      },
-    };
-  }
-  return new AssignmentDefinition({
-    primaryTitle: primaryTitle,
-    primaryTopic: primaryTopic,
-    yearGroupKey: yearGroupKey,
-    yearGroupLabel: yearGroupLabel,
-    documentType: documentType,
-    referenceDocumentId: referenceDocumentId,
-    templateDocumentId: templateDocumentId,
-    tasks: tasks,
-  });
-};
 
 describe('AssignmentController - Definition Hydration', () => {
   let mockDefinitionController;
