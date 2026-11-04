@@ -1,0 +1,26 @@
+#!/usr/bin/env sh
+
+# Clear the disposable agent scratchpad after a pull or merge lands integration
+# changes. The scratchpad (`.opencode/scratchpad/`) holds ephemeral agent
+# artefacts and is git-ignored, so it never travels with the repository; this
+# only tidies the local working copy once a merge is integrated. The directory
+# itself is kept as the designated workspace for future tasks.
+
+SCRATCHPAD="$(git rev-parse --show-toplevel)/.opencode/scratchpad"
+
+# Nothing to do when the scratchpad has not been created on this machine.
+[ -d "$SCRATCHPAD" ] || exit 0
+
+# `rm -rf` on the glob removes dotfiles and nested directories while leaving the
+# scratchpad directory in place. An unmatched glob is skipped safely: we only
+# reach this with `[ -e ]` guarding the literal pattern.
+removed=0
+for entry in "$SCRATCHPAD"/* "$SCRATCHPAD"/.[!.]* "$SCRATCHPAD"/..?*; do
+	[ -e "$entry" ] || continue
+	rm -rf "$entry"
+	removed=1
+done
+
+[ "$removed" = 1 ] && echo "husky - cleared .opencode/scratchpad"
+
+exit 0
