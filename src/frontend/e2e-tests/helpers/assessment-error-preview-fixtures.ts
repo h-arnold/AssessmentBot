@@ -33,11 +33,6 @@ import {
   ClassFullSchema,
   type ClassFull,
 } from '@/services/googleClassrooms/classDetail/classDetailService.zod';
-import {
-  REASSESSMENT_DESCRIPTION,
-  SOURCE_CORRUPTION_DESCRIPTION,
-  SOURCE_UNAVAILABLE_TITLE,
-} from '@/features/taskHeatmap/TaskPreviewCard';
 import { deepFreeze, requireRecord } from '@/test/shared/canonicalFixturePrimitives';
 import assignmentsByKeyRaw from '@synthetic/medium/assignmentsByKey.json';
 import classesByIdRaw from '@synthetic/medium/classesById.json';
@@ -98,13 +93,13 @@ export const CORRUPT_RECORD_REASONING =
   'The stored assessment data for this task is invalid. Reassess the assignment.';
 
 /** Alert title of every unavailable source region. */
-export const UNAVAILABLE_TITLE = SOURCE_UNAVAILABLE_TITLE;
+export { SOURCE_UNAVAILABLE_TITLE as UNAVAILABLE_TITLE } from '@/features/taskHeatmap/TaskPreviewCard';
 
 /** Alert copy for a full-read-only corrupt record. */
-export const CORRUPTION_DESCRIPTION = SOURCE_CORRUPTION_DESCRIPTION;
+export { SOURCE_CORRUPTION_DESCRIPTION as CORRUPTION_DESCRIPTION } from '@/features/taskHeatmap/TaskPreviewCard';
 
 /** Alert copy for a legacy reassessment result. */
-export const REASSESSMENT_COPY = REASSESSMENT_DESCRIPTION;
+export { REASSESSMENT_DESCRIPTION as REASSESSMENT_COPY } from '@/features/taskHeatmap/TaskPreviewCard';
 
 const assignmentsByKey = assignmentsByKeyRaw as unknown as Record<string, unknown>;
 const classesById = classesByIdRaw as unknown as Record<string, unknown>;
