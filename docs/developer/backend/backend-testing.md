@@ -210,6 +210,7 @@ Most suites are self-describing. The following splits are not obvious from filen
 | `testUtils.js`                | Small generic helpers                                                    |
 | `llmRequestManagerHarness.js` | Real LLM runtime, native cache and model setup                           |
 | `llmRunStopHarness.js`        | Canonical multi-item run-stop fixture                                    |
+| `llmRunStopScenarioSteps.js`  | Stop-scenario validation, seeding and native-response steps              |
 
 Remaining helpers are domain-specific and belong with their own suites: `assignmentDefinition*TestHelpers.js`, `backendConfigTestHelpers.js`, `controllerTestHelpers.js`, `driveManagerFacadeMocks.js`, `feedbackTestHelpers.js`, `imageManagerTestHelpers.js`, `slidesParserTestHarness.js` and `validationTestHelpers.js`.
 

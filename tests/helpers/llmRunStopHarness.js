@@ -1,7 +1,18 @@
 import { expect, vi } from 'vitest';
 import { loadBackendModelInputs } from '#synthetic-data/toBackendModelInputs.js';
 import { withTemporaryGlobals } from './globalMockManager.js';
-import { httpResponse, loadManager, seedStaleMixedMarks } from './llmRequestManagerHarness.js';
+import { loadManager } from './llmRequestManagerHarness.js';
+import {
+  RUN_STOP_UNEXPECTED_PAYLOAD_GUARD,
+  answerHealthyMember,
+  answerRunStopMember,
+  buildHealthyNumericEntries,
+  prepareStopScenario,
+  readHealthyIndex,
+  readRunStopRole,
+  readRunStopScenario,
+  readUnprocessedIndex,
+} from './llmRunStopScenarioSteps.js';
 
 const RUN_STOP_CRITERIA = ['completeness', 'accuracy', 'spag'];
 
@@ -80,20 +91,17 @@ function collectRunStopRows(assignment, numericCount) {
   return rows;
 }
 
-/**
- * Run-stop healthy control fixture. Selects ONE canonical assignment from the
- * required profile holding `numericCount` numeric-healthy type-matched TEXT
- * pairs plus one genuine type-matched non-E template-signature pair (mixed
- * numeric/'N' marks) in the same real graph, then restores it through the real
- * `Assignment.fromJSON` inside the caller's `withTemporaryGlobals`. The four
- * real pairs keep their actual student/task/document/artifact associations and
- * unique UIDs; the assignment is narrowed to one real item per selected
- * submission, in discovery order. Selected source maps are validated through
- * the real Assessment owner first; only the ordered numeric items are cleared
- * to empty in-flight maps so they stay eligible for dispatch. The signature
- * item keeps its stored marks; the test alone converts it to genuine
- * template-copy evidence before generation. Nothing is manufactured.
- */
+/** Run-stop healthy control fixture. Selects ONE canonical assignment from the required
+ * profile holding `numericCount` numeric-healthy type-matched TEXT pairs plus one genuine
+ * type-matched non-E template-signature pair (mixed numeric/'N' marks) in the same real
+ * graph, then restores it through the real `Assignment.fromJSON` inside the caller's
+ * `withTemporaryGlobals`. The four real pairs keep their actual student/task/document/
+ * artifact associations and unique UIDs; the assignment is narrowed to one real item per
+ * selected submission, in discovery order. Selected source maps are validated through the
+ * real Assessment owner first; only the ordered numeric items are cleared to empty
+ * in-flight maps so they stay eligible for dispatch. The signature item keeps its stored
+ * marks; the test alone converts it to genuine template-copy evidence before generation.
+ * Nothing is manufactured. */
 function createRunStopAssignment(profile, numericCount) {
   if (typeof profile !== 'string' || profile.length === 0) {
     throw new Error('createRunStopAssignment requires an explicit profile name.');
@@ -159,92 +167,37 @@ function createRunStopAssignment(profile, numericCount) {
     numeric: restored
       .slice(0, numericCount)
       .map(({ submission, item, task }) => ({ submission, item, task })),
-    notAttempted: restored[restored.length - 1],
+    notAttempted: restored.at(-1),
   };
 }
 
-/** One complete distinct numeric body for one received run-stop member. */
-function runStopNumericBody(index) {
-  return {
-    completeness: { score: 0, reasoning: `Run-stop numeric outcome ${index} completeness.` },
-    accuracy: { score: 2.5, reasoning: '' },
-    spag: { score: 5, reasoning: `Run-stop numeric outcome ${index} spag.` },
-  };
+/** Builds the manager and fixture inside the caller's temporary globals, then configures
+ * the genuine template-copy signature evidence before generation. */
+function prepareRunStopFixture(context, profile, numericCount) {
+  delete require.cache[context.llmPath];
+  const manager = new (require(context.llmPath))();
+  const fixture = createRunStopAssignment(profile, numericCount);
+  const { notAttempted } = fixture;
+  const template = notAttempted.task.getPrimaryTemplate();
+  expect(template.content).toEqual(expect.any(String));
+  expect(template.content.length).toBeGreaterThan(0);
+  expect(template.contentHash).toEqual(expect.any(String));
+  expect(template.contentHash.length).toBeGreaterThan(0);
+  // Genuine template-copy N evidence configured before generation: the
+  // real task template content and usable hash, never manual N results.
+  notAttempted.item.artifact.content = template.content;
+  notAttempted.item.artifact.contentHash = template.contentHash;
+  return { manager, fixture };
 }
 
-/**
- * Reserve status far outside every LLM accepted/stop/retryable window so an
- * unexpected native dispatch can never be misread as a business outcome; the
- * stop rows fail on the recorded seam list instead.
- */
-const RUN_STOP_UNEXPECTED_PAYLOAD_GUARD = {
-  getResponseCode: () => 600,
-  getContentText: () => 'Run-stop unexpected native payload guard, never read.',
-};
-
-/**
- * Validates the caller's explicit run-stop scenario. `null` selects the healthy
- * control; a stop scenario requires the approved stop index for its batch
- * arrangement, an INITIAL or TRANSPORT_RETRY origin and one of the three
- * credential/endpoint stop statuses. `cancelledRetryable` configures the OTHER
- * same-batch member as a retryable HTTP 500 whose pending retries Base cancels
- * when the stop is classified: batch size 2 allows the stop at index 0 (forward)
- * or index 1 (reverse, INITIAL origin only), batch size 3 index 0 with a healthy
- * third numeric. `permanentSibling` swaps the sibling member for a permanent
- * HTTP 400 rejection. Exactly one sibling role is supported per scenario.
- */
-function readRunStopScenario(scenario, numericCount, batchSize) {
-  if (!scenario || typeof scenario !== 'object' || !Object.hasOwn(scenario, 'stop')) {
-    throw new Error(
-      'runRunStopControl requires an explicit scenario with an own stop key (null selects the healthy control).'
-    );
-  }
-  if (scenario.stop === null) return null;
-  if (numericCount !== 3) {
-    throw new Error('Run-stop scenarios support the approved three numeric candidates only.');
-  }
-  ['cancelledRetryable', 'permanentSibling'].forEach((flag) => {
-    if (scenario[flag] !== undefined && typeof scenario[flag] !== 'boolean') {
-      throw new Error(`Run-stop scenario ${flag} must be a boolean when provided.`);
-    }
-  });
-  const cancelledRetryable = scenario.cancelledRetryable === true;
-  const permanentSibling = scenario.permanentSibling === true;
-  const allowedBatchSizes = cancelledRetryable ? [2, 3] : [1, 2];
-  const { requestIndex, origin, status } = scenario.stop;
-  if (
-    !allowedBatchSizes.includes(batchSize) ||
-    (batchSize === 1 && requestIndex !== 1) ||
-    (batchSize !== 1 &&
-      requestIndex !== 0 &&
-      !(cancelledRetryable && batchSize === 2 && (requestIndex === 0 || origin === 'INITIAL')))
-  ) {
-    throw new Error(
-      'Run-stop scenarios support only the approved size-2/index-0 (same-batch), size-1/index-1 (earlier-batch) and size-2/index-1 INITIAL (reverse same-batch cancellation) stop arrangements.'
-    );
-  }
-  if (origin !== 'INITIAL' && origin !== 'TRANSPORT_RETRY') {
-    throw new Error(
-      'Run-stop scenarios require an explicit stop origin of INITIAL or TRANSPORT_RETRY.'
-    );
-  }
-  if (status !== 401 && status !== 403 && status !== 404) {
-    throw new Error('Run-stop scenarios require an explicit stop status of 401, 403 or 404.');
-  }
-  return { ...scenario.stop, cancelledRetryable, permanentSibling };
-}
-
-/**
- * Shared run-stop runner. Builds the canonical fixture, converts the signature
- * item to genuine template-copy evidence, runs the real request generation,
- * then dispatches the explicit batch size through the real Base transport.
- * `scenario.stop === null` runs the healthy control exactly as approved; a
- * stop scenario seeds the target, sibling and unprocessed numeric items with
- * the shared mixed stale numeric/N marks after generation, answers the actually
- * received members with the configured native responses and captures the process
- * outcome explicitly. The batch-size getter, processor and engine spies are
- * call-through; no outcome is ever substituted.
- */
+/** Shared run-stop runner. Builds the canonical fixture, converts the signature item to
+ * genuine template-copy evidence, runs the real request generation, then dispatches the
+ * explicit batch size through the real Base transport. `scenario.stop === null` runs the
+ * healthy control exactly as approved; a stop scenario seeds the target, sibling and
+ * unprocessed numeric items with the shared mixed stale numeric/N marks after generation,
+ * answers the actually received members with the configured native responses and captures
+ * the process outcome explicitly. The batch-size getter, processor and engine spies are
+ * call-through; no outcome is ever substituted. */
 function runRunStopControl(profile, numericCount, batchSize, scenario) {
   if (!Number.isInteger(batchSize) || batchSize < 1) {
     throw new Error('runRunStopControl requires an explicit positive integer batchSize.');
@@ -253,102 +206,48 @@ function runRunStopControl(profile, numericCount, batchSize, scenario) {
   const stopIndex = stop ? stop.requestIndex : null;
   // The cancelled sibling is the stop's other same-batch member: index 1 for the
   // approved forward arrangement, index 0 for the reverse (stop at index 1).
-  const cancelledIndex = stop && stop.cancelledRetryable ? 1 - stopIndex : null;
-  const healthyIndex =
-    stop && !stop.permanentSibling
-      ? stop.cancelledRetryable
-        ? batchSize === 3
-          ? 2
-          : null
-        : batchSize === 2
-          ? 1
-          : 0
-      : null;
-  const unprocessedIndex = stop && !(stop.cancelledRetryable && batchSize === 3) ? 2 : null;
+  const cancelledIndex = stop?.cancelledRetryable ? 1 - stopIndex : null;
+  const healthyIndex = readHealthyIndex(stop, batchSize);
+  const unprocessedIndex = readUnprocessedIndex(stop, batchSize);
   const bodies = new Map();
   const nativeResponsesBySource = new Map();
   const unexpectedNativePayloads = [];
-  let stopResponse = null;
-  let initialServerResponse = null;
-  let healthyNativeResponse = null;
-  let cancelledResponse = null;
-  let permanentResponse = null;
-  let targetRequestUrl = null;
   const fetchAll = vi.fn((nativeRequests) =>
-    nativeRequests.map((nativeRequest, memberIndex) => {
-      if (!stop) {
-        const body = bodies.get(JSON.parse(nativeRequest.payload).studentResponse);
-        if (!body) {
-          throw new Error('Run-stop healthy control received an unexpected native payload.');
-        }
-        return httpResponse(200, JSON.stringify(body));
-      }
-      const received = JSON.parse(nativeRequest.payload).studentResponse;
-      const configured = nativeResponsesBySource.get(received);
-      if (!configured) {
-        // Unexpected native payloads are recorded on their own seam and
-        // answered with the guard status instead of being thrown from inside
-        // dispatch, where Base would swallow them as network failures and
-        // mask the fault as a business outcome.
-        unexpectedNativePayloads.push({ seam: 'fetchAll', memberIndex, sourceKey: received });
-        return RUN_STOP_UNEXPECTED_PAYLOAD_GUARD;
-      }
-      return configured;
-    })
+    nativeRequests.map((nativeRequest, memberIndex) =>
+      stop
+        ? answerRunStopMember(
+            nativeRequest,
+            memberIndex,
+            nativeResponsesBySource,
+            unexpectedNativePayloads
+          )
+        : answerHealthyMember(nativeRequest, bodies)
+    )
   );
   const fetch = vi.fn((url) => {
-    if (!stop || url !== targetRequestUrl) {
+    if (!stop || url !== prepared.targetRequestUrl) {
       unexpectedNativePayloads.push({ seam: 'fetch', url: String(url) });
       return RUN_STOP_UNEXPECTED_PAYLOAD_GUARD;
     }
-    return stopResponse;
+    return prepared.stopResponse;
   });
   const sleep = vi.fn();
   const context = loadManager({ fetchAll, fetch, sleep });
   const collected = { batchSize, bodies, fetchAll, fetch, sleep };
+  // The stop response and target URL are only known once the real requests are
+  // generated inside the temporary globals, so the fetch seam reads them from
+  // the prepared scenario at call time.
+  let prepared = null;
   try {
     withTemporaryGlobals(context.globals, () => {
-      delete require.cache[context.llmPath];
-      const manager = new (require(context.llmPath))();
-      const fixture = createRunStopAssignment(profile, numericCount);
+      const { manager, fixture } = prepareRunStopFixture(context, profile, numericCount);
       const { assignment, notAttempted } = fixture;
-      // Genuine template-copy N evidence configured before generation: the
-      // real task template content and usable hash, never manual N results.
-      const template = notAttempted.task.getPrimaryTemplate();
-      expect(template.content).toEqual(expect.any(String));
-      expect(template.content.length).toBeGreaterThan(0);
-      expect(template.contentHash).toEqual(expect.any(String));
-      expect(template.contentHash.length).toBeGreaterThan(0);
-      notAttempted.item.artifact.content = template.content;
-      notAttempted.item.artifact.contentHash = template.contentHash;
-      let numeric;
-      if (stop) {
-        numeric = fixture.numeric.map((pair, index) => ({
-          ...pair,
-          role:
-            index === stopIndex
-              ? 'target'
-              : index === cancelledIndex
-                ? 'cancelled'
-                : index === unprocessedIndex
-                  ? 'unprocessed'
-                  : stop.permanentSibling
-                    ? 'permanent'
-                    : 'healthy',
-        }));
-      } else {
-        numeric = fixture.numeric.map((pair, index) => {
-          const expectedBody = runStopNumericBody(index);
-          bodies.set(pair.item.artifact.content, expectedBody);
-          return {
+      const numeric = stop
+        ? fixture.numeric.map((pair, index) => ({
             ...pair,
-            artifact: pair.item.artifact,
-            artifactSnapshot: structuredClone(pair.item.artifact.toJSON()),
-            documentId: pair.submission.documentId,
-            expectedBody,
-          };
-        });
-      }
+            role: readRunStopRole(index, stop, stopIndex, cancelledIndex, unprocessedIndex),
+          }))
+        : buildHealthyNumericEntries(fixture.numeric, bodies);
       const signature = {
         task: notAttempted.task,
         submission: notAttempted.submission,
@@ -369,73 +268,19 @@ function runRunStopControl(profile, numericCount, batchSize, scenario) {
       const entries = RUN_STOP_CRITERIA.map((criterion) =>
         notAttempted.item.getAssessment(criterion)
       );
-      if (stop) {
-        // Fixture payload fidelity is proven before any dispatch so a local
-        // fixture fault fails as setup and can never be caught as a network
-        // failure or misread as a business outcome.
-        requests.forEach((request, index) => {
-          expect(JSON.parse(request.payload).studentResponse).toBe(
-            numeric[index].item.artifact.content
-          );
-        });
-        // The approved mixed stale numeric/N seeding happens after request
-        // generation through the existing shared helper; no prior E is seeded.
-        seedStaleMixedMarks(numeric[stopIndex].item);
-        if (unprocessedIndex !== null) {
-          seedStaleMixedMarks(numeric[unprocessedIndex].item);
-        }
-        if (cancelledIndex !== null) {
-          seedStaleMixedMarks(numeric[cancelledIndex].item);
-        }
-        if (stop.permanentSibling) {
-          seedStaleMixedMarks(numeric[1 - stopIndex].item);
-        }
-        numeric.forEach((entry, index) => {
-          entry.artifact = entry.item.artifact;
-          entry.artifactSnapshot = structuredClone(entry.item.artifact.toJSON());
-          entry.documentId = entry.submission.documentId;
-          entry.request = requests[index];
-        });
-        // The signature snapshot is retained again after local mutations so
-        // all four detached captures are post-mutation evidence.
-        signature.artifactSnapshot = structuredClone(signature.item.artifact.toJSON());
-        stopResponse = httpResponse(
-          stop.status,
-          'Rejection body kept unread by the transport and every caller.'
-        );
-        if (stop.origin === 'TRANSPORT_RETRY') {
-          initialServerResponse = httpResponse(
-            500,
-            'Transient initial service failure body, never read.'
-          );
-        }
-        numeric.forEach((entry) => {
-          if (entry.role === 'target') {
-            nativeResponsesBySource.set(
-              entry.item.artifact.content,
-              stop.origin === 'INITIAL' ? stopResponse : initialServerResponse
-            );
-          } else if (entry.role === 'healthy') {
-            entry.expectedBody = runStopNumericBody(0);
-            bodies.set(entry.item.artifact.content, entry.expectedBody);
-            const healthyResponse = httpResponse(200, JSON.stringify(entry.expectedBody));
-            nativeResponsesBySource.set(entry.item.artifact.content, healthyResponse);
-            healthyNativeResponse = healthyResponse;
-          } else if (entry.role === 'cancelled') {
-            // The cancelled sibling's initial retryable response: Base's batch
-            // consumption returns it untouched (attempts 1) once the stop is
-            // classified, so its pending retries never dispatch.
-            cancelledResponse = httpResponse(500, 'Cancelled retryable body, never read.');
-            nativeResponsesBySource.set(entry.item.artifact.content, cancelledResponse);
-          } else if (entry.role === 'permanent') {
-            // The permanent sibling's per-request rejection: never read, never
-            // retried, and never relabelled by the latched run stop.
-            permanentResponse = httpResponse(400, 'Permanent rejection body, never read.');
-            nativeResponsesBySource.set(entry.item.artifact.content, permanentResponse);
-          }
-        });
-        targetRequestUrl = requests[stopIndex].url;
-      }
+      prepared = stop
+        ? prepareStopScenario({
+            stop,
+            numeric,
+            requests,
+            signature,
+            stopIndex,
+            cancelledIndex,
+            unprocessedIndex,
+            nativeResponsesBySource,
+            bodies,
+          })
+        : null;
       const batchSizeSpy = vi
         .spyOn(manager.configManager, 'getBackendAssessorBatchSize')
         .mockImplementation(() => batchSize);
@@ -459,35 +304,19 @@ function runRunStopControl(profile, numericCount, batchSize, scenario) {
       } else {
         manager.processStudentResponses(requests, assignment);
       }
+      const stopExtras = prepared && {
+        stop: { ...stop },
+        caught,
+        unexpectedNativePayloads,
+        ...prepared,
+        cancelled: stop.cancelledRetryable ? numeric[cancelledIndex] : null,
+        permanent: stop.permanentSibling ? numeric[1 - stopIndex] : null,
+      };
       Object.assign(
         collected,
-        stop
-          ? {
-              manager,
-              requests,
-              numeric,
-              signature: { ...signature, mapSnapshot, entries },
-              stop: { ...stop },
-              caught,
-              unexpectedNativePayloads,
-              stopResponse,
-              initialServerResponse,
-              healthyNativeResponse,
-              cancelled: stop.cancelledRetryable ? numeric[cancelledIndex] : null,
-              cancelledResponse,
-              permanent: stop.permanentSibling ? numeric[1 - stopIndex] : null,
-              permanentResponse,
-              scriptCache: context.scriptCache,
-              spies,
-            }
-          : {
-              manager,
-              requests,
-              numeric,
-              signature: { ...signature, mapSnapshot, entries },
-              scriptCache: context.scriptCache,
-              spies,
-            }
+        { manager, requests, numeric, signature: { ...signature, mapSnapshot, entries } },
+        stopExtras,
+        { scriptCache: context.scriptCache, spies }
       );
     });
     return collected;
