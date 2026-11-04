@@ -147,11 +147,13 @@ class AssignmentDefinitionValidation {
    * @param {Object} context - Safe task context for diagnostics.
    * @throws {ApiValidationError} Definition content is unusable; the message is
    *   `DEFINITION_PARSE_FAILED_MESSAGE` from `AssignmentDefinitionRecoveryRules.js`.
+   * @remarks Logs `DEFINITION_PARSE_FAILED_LOG_MESSAGE` from
+   *   `AssignmentDefinitionRecoveryRules.js`.
    * @private
    */
   _rejectDefinitionContent(diagnostic, context) {
-    /* global DEFINITION_PARSE_FAILED_MESSAGE */
-    ABLogger.getInstance().error('Assignment definition documents could not be parsed.', {
+    /* global DEFINITION_PARSE_FAILED_LOG_MESSAGE */
+    ABLogger.getInstance().error(DEFINITION_PARSE_FAILED_LOG_MESSAGE, {
       ...context,
       detail: diagnostic,
     });

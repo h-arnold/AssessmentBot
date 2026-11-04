@@ -1,8 +1,9 @@
 /**
  * AssignmentSubmissions — Student submission management sub-class
  *
- * Owns addStudent(), _processAttachmentForSubmission(), fetchSubmittedDocumentsByMimeType(),
- * and isValidMimeType().
+ * Owns addStudent(), _processAttachmentForSubmission(), _recordAcquisitionFailure(),
+ * _recordSupportedAttachment(), _materialiseAcquisitionOutcome(),
+ * fetchSubmittedDocumentsByMimeType(), and isValidMimeType().
  *
  * Operates on the parent Assignment instance's state via this._assignment.
  * Depends on global `Classroom`, `DriveApp`, `StudentSubmission`, and `ABLogger` (GAS runtime globals).

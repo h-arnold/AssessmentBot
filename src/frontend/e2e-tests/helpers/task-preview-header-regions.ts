@@ -26,7 +26,7 @@
  * union of the metric group's painted children — then happens in Node over
  * exactly those values.
  *
- * @see TASK_PREVIEW_SOURCE_LINK_LAYOUT.md — acceptance evidence
+ * @see ASSESSMENT_ERROR_PREVIEW_LAYOUT.md — acceptance evidence
  */
 
 import type { Locator } from '@playwright/test';

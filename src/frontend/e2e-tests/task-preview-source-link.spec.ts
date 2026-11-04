@@ -25,7 +25,7 @@
  * The suite pins the delivered interaction and navigation behaviour. Its
  * scenarios use the shared runtime mocks and canonical source-link records.
  *
- * @see TASK_PREVIEW_SOURCE_LINK_LAYOUT.md
+ * @see ASSESSMENT_ERROR_PREVIEW_LAYOUT.md
  * @see docs/developer/frontend/frontend-playwright-e2e.md — runtime mocks, StrictMode rule
  */
 

@@ -131,6 +131,7 @@ Consult these resources before and during review. Local docs contain project-spe
 - [Contract: RequestStore](../../docs/developer/data-shapes/request-store.md)
 - [Contract: AuthCache](../../docs/developer/data-shapes/auth-cache.md)
 - [Contract: TriggerContext](../../docs/developer/data-shapes/trigger-context.md)
+- [Contract: Frontend Data Analysis Response](../../docs/developer/data-shapes/frontend-data-analysis-response.md) — frontend-only in-memory data-analysis response shape
 
 **Security documentation (all modules — defence-in-depth model)**:
 

@@ -377,6 +377,8 @@ Persistence model:         src/backend/AssignmentProcessor/Assignment/index.js
       └── toJSON()              — full document shape (opaque legacy snapshot re-emitted unchanged)
       └── toPartialJSON()       — partial (summary) shape (opaque legacy snapshot re-emitted unchanged)
       └── toReadJSON()          — full read shape (current marker 1 / legacy marker null + reassessment E)
+      └── _rootOutput()         — root fields shared by the full and partial payloads
+      └── _applyContractMarker() — stamps the current marker or re-emits the opaque legacy marker
   └── AssignmentRehydration (02_AssignmentRehydration.js)
       └── _baseFromJSON()       — marker-1 root/task pre-validation; opaque legacy snapshot otherwise
       └── _rehydrateSubmission() — marker-1 only; delegates to _rehydrateCurrentSubmission()

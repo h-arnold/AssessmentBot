@@ -31,7 +31,7 @@
  * is what made the earlier comparison vacuous — two open readings match
  * whatever overflow the preview permanently added.
  *
- * @see TASK_PREVIEW_SOURCE_LINK_LAYOUT.md — acceptance evidence
+ * @see ASSESSMENT_ERROR_PREVIEW_LAYOUT.md — acceptance evidence
  */
 
 import { expect, type Locator, type Page } from '@playwright/test';

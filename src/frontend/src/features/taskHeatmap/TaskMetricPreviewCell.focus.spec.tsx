@@ -28,7 +28,7 @@
  * between two focusable neighbour controls so Tab order and focus departure are
  * genuine DOM focus movements.
  *
- * @see TASK_PREVIEW_SOURCE_LINK_LAYOUT.md
+ * @see ASSESSMENT_ERROR_PREVIEW_LAYOUT.md
  * @see docs/developer/frontend/frontend-testing.md
  */
 

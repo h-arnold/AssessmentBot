@@ -5,7 +5,8 @@
  * for deserialising Assignment instances from JSON data.
  *
  * Depends on global `AssignmentDefinition`, `AssignmentCurrentRestoration`,
- * `ProgressTracker`, `ABLogger`, and `Validate` (GAS runtime globals).
+ * `AssignmentReadProjection`, `ProgressTracker`, `ABLogger`, and `Validate`
+ * (GAS runtime globals).
  * @namespace
  */
 const AssignmentRehydration = {

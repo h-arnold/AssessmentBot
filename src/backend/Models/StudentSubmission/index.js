@@ -57,6 +57,8 @@ class StudentSubmission {
    * @param {boolean} [extraction.missingContentLogged] - True when the caller already emitted
    *   the missing-content diagnostic at the parser boundary, suppressing the duplicate warn here.
    * @returns {StudentSubmissionItem} The created or updated submission item
+   * @remarks An explicitly supplied `pageId: null` is preserved; it is never replaced by the
+   *   reference task page.
    */
   upsertItemFromExtraction(taskDefinition, extraction = {}) {
     if (!taskDefinition) {

@@ -160,10 +160,13 @@ Material rows (LLM and image defect groups, owned by the delivered `ACTION_PLAN.
 Sections 6/7) were authorised for verify-and-fix on 3 November 2026; the verification
 pass returned 9/9 RESOLVED with zero stragglers
 (`.opencode/scratchpad/material-rows-verification.md`), so both rows are closed with no
-fix unit required. The ledgered nitpicks (several already verified resolved by the
-delivered sections' own docs syncs — see
-`.opencode/scratchpad/nits-verification-sweep.md`) are authorised for a final tidy unit
-after OOS-2.
+fix unit required. The ledgered nitpicks were delivered in a final tidy unit (completed 4 November 2026;
+sweep record `.opencode/scratchpad/nits-verification-sweep.md`): the eleven ledgered
+fixes plus every doc issue flagged during review under the user's standing rule —
+stale layout pointers fully repointed (including six e2e-side files), the Shared
+Helper Status section de-planned, and a mis-targeted `rehydration.md`
+cross-reference corrected. Nothing deferred remains open except accepted decisions:
+the Settings E2E flake (flaky debt) and the four historical `max-lines` warnings.
 
 ---
 
@@ -298,6 +301,13 @@ Code Reviewer verdict **PASS, zero findings**
 against the `assessment-errors-322-341` baseline (3 November 2026): **7/8 checks
 passing, 0 regressions, 0 new failures**; only `backend-lint-check` fails, with the
 same four accepted historical `max-lines` warnings. Baseline not degraded.
+
+Addendum (4 November 2026): the companion log-text duplication reported out of scope
+during this section — the identical `ABLogger` "Assignment definition documents could
+not be parsed." diagnostic in `AssignmentDefinitionValidation.js` and
+`AssignmentDefinitionRecoveryRules.js` — was delivered in the final nit-tidy unit: a
+shared `DEFINITION_PARSE_FAILED_LOG_MESSAGE` const now serves both log sites, value
+byte-identical, exported through the existing guarded block.
 
 ---
 
