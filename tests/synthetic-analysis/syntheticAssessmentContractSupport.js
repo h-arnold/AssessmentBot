@@ -21,6 +21,19 @@ export const ASSESSMENT_FAILED_REASONING = 'The extracted work could not be asse
 export const NULL_DOCUMENT_ROSTER_INDEX = 2;
 
 /**
+ * Compares two strings by UTF-16 code unit, matching the default Array#sort order.
+ *
+ * @param {string} left Left string.
+ * @param {string} right Right string.
+ * @returns {number} Negative, zero or positive per the code-unit order.
+ */
+export function compareStrings(left, right) {
+  if (left < right) return -1;
+  if (left > right) return 1;
+  return 0;
+}
+
+/**
  * Verifies a value is a plain object record.
  *
  * @param {unknown} value Value to verify.
@@ -164,7 +177,7 @@ export function isHydratableDefinition(definition) {
  */
 export function expectAllThreeFailures(assessments, label, stage, code, reasoning) {
   const record = requireRecord(assessments, label);
-  expect(Object.keys(record).sort()).toEqual([...CRITERIA].sort());
+  expect(Object.keys(record).sort(compareStrings)).toEqual([...CRITERIA].sort(compareStrings));
   for (const criterion of CRITERIA) {
     const entry = requireRecord(record[criterion], `${label}.${criterion}`);
     expect(entry.score).toBe('E');
@@ -244,7 +257,9 @@ export function assertVariantProjection(assignment, submission, expectedTaskIds,
   );
   expect(projectedSubmission.documentId).toBeNull();
   const projectedItems = readItemMap(projectedSubmission.items);
-  expect(Object.keys(projectedItems).sort()).toEqual([...expectedTaskIds].sort());
+  expect(Object.keys(projectedItems).sort(compareStrings)).toEqual(
+    [...expectedTaskIds].sort(compareStrings)
+  );
   for (const taskId of expectedTaskIds) {
     expect(projectedItems[taskId]).toStrictEqual(items[taskId]);
   }

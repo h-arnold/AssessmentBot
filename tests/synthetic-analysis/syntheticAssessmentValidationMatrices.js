@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { CRITERIA, SOURCE_UNREADABLE_REASONING } from './syntheticAssessmentContractSupport.js';
+import {
+  compareStrings,
+  CRITERIA,
+  SOURCE_UNREADABLE_REASONING,
+} from './syntheticAssessmentContractSupport.js';
 import {
   assessmentCauseEntries,
   canonicalNumericAssessments,
@@ -47,7 +51,7 @@ export function expectCanonicalNullDocumentPlaceholder(item) {
   });
   expect(item.feedback).toStrictEqual({});
   const assessments = /** @type {Record<string, unknown>} */ (item.assessments);
-  expect(Object.keys(assessments).sort()).toEqual([...CRITERIA].sort());
+  expect(Object.keys(assessments).sort(compareStrings)).toEqual([...CRITERIA].sort(compareStrings));
   for (const criterion of CRITERIA) {
     const entry = /** @type {Record<string, unknown>} */ (assessments[criterion]);
     expect(entry.score).toBe('E');

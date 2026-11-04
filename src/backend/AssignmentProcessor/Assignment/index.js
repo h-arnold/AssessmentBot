@@ -33,14 +33,14 @@ class Assignment {
     this.createdAt = null; // NOSONAR
     this.courseId = courseId;
     this.assignmentId = assignmentId;
-    if (restoration !== undefined && restoration !== null) {
+    if (restoration === undefined) {
+      this.assignmentName = this.fetchAssignmentName(courseId, assignmentId);
+    } else {
       if (typeof restoration.assignmentName !== 'string') {
         throw new TypeError('Restored assignment name must be a string.');
       }
       this.assignmentName = restoration.assignmentName;
       this.createdAt = restoration.createdAt;
-    } else {
-      this.assignmentName = this.fetchAssignmentName(courseId, assignmentId);
     }
     this.dueDate = null; //to be implemented later with the homework tracker.
     // Timestamp for when this assignment was last updated. Use Date or null.

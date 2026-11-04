@@ -41,7 +41,8 @@ const AssignmentRehydration = {
     if (!data.createdAt) {
       throw new Error(`createdAt is required to deserialise Assignment ${data.assignmentId}`);
     }
-    const inst = new Assignment(data.courseId, data.assignmentId, null, {
+    // Assignment is a constructor class exported from ./index.js, so S2999 is suppressed.
+    /* NOSONAR */ const inst = new Assignment(data.courseId, data.assignmentId, null, {
       assignmentName: data.assignmentName,
       createdAt: new Date(data.createdAt),
       representationMode,

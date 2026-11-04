@@ -118,7 +118,7 @@ function createRunStopAssignment(profile, numericCount) {
     const submission = assignment.submissions.find(
       (restoredSubmission) => restoredSubmission.studentId === planned.submission.studentId
     );
-    const item = submission.getItem(planned.taskId);
+    const item = submission?.getItem(planned.taskId);
     const task = assignment.assignmentDefinition.tasks[planned.taskId];
     if (!submission || !item || !task) {
       throw new Error('Run-stop control fixture could not restore a selected canonical pair.');

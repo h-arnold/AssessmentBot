@@ -87,7 +87,7 @@ class LLMRequestManager extends BaseRequestManager {
         // Versioned cache identity: task type plus reference/template/student hashes.
         const cacheKey = this._buildCacheKey(type, referenceTask, templateTask, studentArtifact);
         const cached = this.cacheManager.get(cacheKey);
-        if (cached !== null && cached !== undefined) {
+        if (cached !== null) {
           if (this.validateAssessmentData(cached)) {
             this._assignAssessmentArtifacts(item, this.createAssessmentFromData(cached));
             cacheHits++;
