@@ -13,6 +13,7 @@ import {
   createTextTask,
   createStudentSubmission,
 } from '../helpers/modelFactories.js';
+import { expectAssignmentProperties } from './assignmentRehydrationDeterminismTestHelpers.js';
 import { withGlobalMocks } from '../helpers/globalMockManager.js';
 
 function withClassroomCoursework(getCourseWork, callback) {
@@ -50,16 +51,6 @@ function createTestData(docType, courseId) {
   };
 }
 
-function assertAssignmentProperties(assignment, docType, courseId) {
-  expect(assignment).toBeDefined();
-  expect(assignment.assignmentDefinition).toBeDefined();
-  expect(assignment.assignmentDefinition.documentType).toBe(docType);
-  expect(assignment.courseId).toBe(courseId);
-  expect(assignment.assignmentId).toBe(courseId.replace('c', 'a'));
-  expect(assignment.assignmentDefinition.referenceDocumentId).toBe(courseId.replace('c', 'ref'));
-  expect(assignment.assignmentDefinition.templateDocumentId).toBe(courseId.replace('c', 'tpl'));
-}
-
 const SlidesAssignment = require('#backend/AssignmentProcessor/SlidesAssignment.js');
 require('#backend/AssignmentProcessor/SheetsAssignment.js');
 
@@ -86,7 +77,7 @@ describe('Assignment.fromJSON() Polymorphic Deserialization', () => {
     it(`should deserialize to a ${docType}Assignment when data.documentType is ${docType}`, () => {
       const data = createTestData(docType, courseId);
       const assignment = Assignment.fromJSON(data);
-      assertAssignmentProperties(assignment, docType, courseId);
+      expectAssignmentProperties(assignment, docType, courseId);
     });
   });
 

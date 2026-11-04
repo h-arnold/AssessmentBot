@@ -14,6 +14,7 @@ import {
   expectSiblingIntact,
   storedItemJson,
 } from './assignmentRehydrationCurrentSupport.js';
+import { expectDeterministicRestore } from './assignmentRehydrationDeterminismTestHelpers.js';
 import { Assessment } from '#backend/Models/Assessment.js';
 
 afterEach(() => vi.restoreAllMocks());
@@ -219,22 +220,14 @@ describe('CURRENT shared task summaries and timestamp selection', () => {
       submission.createdAt = 'malformed';
       submission.updatedAt = 'malformed';
     }
-    const first = restoreAssignment(record).toJSON();
-    const second = restoreAssignment(record).toJSON();
-    expect(first).toEqual(second);
-    expect(first.submissions[0].createdAt).toBe(record.createdAt);
-    expect(first.submissions[0].updatedAt).toBe(record.updatedAt);
+    expectDeterministicRestore(record, 'updatedAt');
   });
 
   it('uses createdAt when assignment.updatedAt is null', () => {
     const record = currentAssignmentJson();
     record.updatedAt = null;
     delete record.submissions[0].updatedAt;
-    const first = restoreAssignment(record).toJSON();
-    const second = restoreAssignment(record).toJSON();
-    expect(first).toEqual(second);
-    expect(first.submissions[0].createdAt).toBe(record.createdAt);
-    expect(first.submissions[0].updatedAt).toBe(record.createdAt);
+    expectDeterministicRestore(record, 'createdAt');
   });
 });
 

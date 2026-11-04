@@ -12,6 +12,7 @@ import {
   storedItemJson,
   focusDocumentSubmission,
 } from './assignmentRehydrationCurrentSupport.js';
+import { expectDeterministicRestore } from './assignmentRehydrationDeterminismTestHelpers.js';
 
 afterEach(() => vi.restoreAllMocks());
 
@@ -193,13 +194,9 @@ describe('CURRENT deterministic timestamps and model input', () => {
         submission.createdAt = 'not-a-date';
         submission.updatedAt = 'not-a-date';
       }
-      const first = restoreAssignment(record).toJSON();
-      const second = restoreAssignment(record).toJSON();
-      expect(first).toEqual(second);
-      expect(first.submissions[0].createdAt).toBe(record.createdAt);
+      expectDeterministicRestore(record);
     }
   );
-
   it('accepts already materialised healthy submission item instances', () => {
     const raw = currentAssignmentJson();
     const materialised = restoreAssignment(raw).toJSON();

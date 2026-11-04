@@ -6,6 +6,7 @@ import {
   catalogueHTTPAssessments,
   canonicalRunStoppedAssessments,
   expectRunStopTerminalStops,
+  expectSignatureEntries,
   loadManager,
   RUN_STOP_CRITERIA,
   seedStaleMixedMarks,
@@ -45,19 +46,7 @@ describe('LLM controlled-batch run-stop healthy controls', () => {
       });
 
       // The genuine template signature keeps exact N JSON and its entries.
-      const signature = collected.signature;
-      expect(signature.item.artifact).toBe(signature.artifact);
-      expect(signature.item.artifact.toJSON()).toEqual(signature.artifactSnapshot);
-      expect(signature.item.taskId).toBe(signature.task.getId());
-      expect(signature.submission.documentId).toBe(signature.documentId);
-      expect(signature.item.getAssessment()).toEqual({
-        completeness: { score: 'N', reasoning: 'Task not attempted' },
-        accuracy: { score: 'N', reasoning: 'Task not attempted' },
-        spag: { score: 'N', reasoning: 'Task not attempted' },
-      });
-      ['completeness', 'accuracy', 'spag'].forEach((criterion, index) => {
-        expect(signature.item.getAssessment(criterion)).toBe(signature.entries[index]);
-      });
+      expectSignatureEntries(collected);
 
       // Healthy cache writes remain allowed: one per successful numeric item.
       expect(collected.scriptCache.put).toHaveBeenCalledTimes(3);

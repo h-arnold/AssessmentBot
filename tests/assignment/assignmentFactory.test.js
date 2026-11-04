@@ -9,16 +9,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import Assignment from '#backend/AssignmentProcessor/Assignment/index.js';
 import { AssignmentDefinition } from '#backend/Models/AssignmentDefinition.js';
 import { createSlidesAssignment, createSheetsAssignment } from '../helpers/modelFactories.js';
-
-function assertAssignmentProperties(assignment, docType, courseId) {
-  expect(assignment).toBeDefined();
-  expect(assignment.assignmentDefinition).toBeDefined();
-  expect(assignment.assignmentDefinition.documentType).toBe(docType);
-  expect(assignment.courseId).toBe(courseId);
-  expect(assignment.assignmentId).toBe(courseId.replace('c', 'a'));
-  expect(assignment.assignmentDefinition.referenceDocumentId).toBe(courseId.replace('c', 'ref'));
-  expect(assignment.assignmentDefinition.templateDocumentId).toBe(courseId.replace('c', 'tpl'));
-}
+import { expectAssignmentProperties } from './assignmentRehydrationDeterminismTestHelpers.js';
 
 const SlidesAssignment = require('#backend/AssignmentProcessor/SlidesAssignment.js');
 require('#backend/AssignmentProcessor/SheetsAssignment.js');
@@ -109,7 +100,7 @@ describe('Assignment.create() Factory Method', () => {
         templateLastModified: '2024-01-01T00:00:00.000Z',
       });
       const assignment = Assignment.create(definition, courseId, assignmentId);
-      assertAssignmentProperties(assignment, docType, courseId);
+      expectAssignmentProperties(assignment, docType, courseId);
     });
   });
 

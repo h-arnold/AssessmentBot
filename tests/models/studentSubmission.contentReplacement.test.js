@@ -1,22 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import { TaskDefinition } from '#backend/Models/TaskDefinition.js';
 const { StudentSubmission } = require('#backend/Models/StudentSubmission/index.js');
-import { loadBackendModelInputs } from '#synthetic-data/toBackendModelInputs.js';
+import { findTextSourceSubmission } from './studentSubmissionTextSourceTestHelpers.js';
 
 describe('StudentSubmission content replacement', () => {
   it('invalidates prior results only when reused item content changes', () => {
-    const assignment = Object.values(loadBackendModelInputs('small').assignmentsByKey).find(
-      (row) => row.submissions?.length
-    );
-    const source = assignment.submissions.find((row) =>
-      Object.values(row.items ?? {}).some(
-        (item) => item.artifact?.type === 'TEXT' && item.artifact.content != null
-      )
-    );
-    const taskId = Object.keys(source.items).find(
-      (id) =>
-        source.items[id].artifact?.type === 'TEXT' && source.items[id].artifact.content != null
-    );
+    const { assignment, source, taskId } = findTextSourceSubmission();
     const td = TaskDefinition.fromJSON(assignment.assignmentDefinition.tasks[taskId]);
     const sub = StudentSubmission.fromJSON({
       ...structuredClone(source),

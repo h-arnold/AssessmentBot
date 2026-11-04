@@ -9,6 +9,7 @@ const {
 import { createMockABLogger } from '../helpers/mockFactories.js';
 import { withGlobalMocks } from '../helpers/globalMockManager.js';
 import { loadBackendModelInputs } from '#synthetic-data/toBackendModelInputs.js';
+import { findTextSourceSubmission } from './studentSubmissionTextSourceTestHelpers.js';
 
 describe('StudentSubmission', () => {
   let mockABLogger;
@@ -201,18 +202,7 @@ describe('StudentSubmission', () => {
   });
 
   it('permits incomplete assessment maps while a task is in flight', () => {
-    const assignment = Object.values(loadBackendModelInputs('small').assignmentsByKey).find(
-      (row) => row.submissions?.length
-    );
-    const source = assignment.submissions.find((row) =>
-      Object.values(row.items ?? {}).some(
-        (item) => item.artifact?.type === 'TEXT' && item.artifact.content != null
-      )
-    );
-    const taskId = Object.keys(source.items).find(
-      (id) =>
-        source.items[id].artifact?.type === 'TEXT' && source.items[id].artifact.content != null
-    );
+    const { assignment, source, taskId } = findTextSourceSubmission();
     const raw = structuredClone(source);
     const sub = StudentSubmission.fromJSON({ ...raw, assignmentId: assignment.assignmentId });
     const item = sub.getItem(taskId);

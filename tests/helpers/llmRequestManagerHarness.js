@@ -24,8 +24,7 @@ export function validHttpResponse() {
 /**
  * The HISTORICAL two-hash cache key through the real simpleHash contract
  * (`referenceHash::studentHash`). Used ONLY to seed and assert the intentional
- * legacy-entry case. Every other control observes the runtime's own opaque key
- * instead; no future key format, version prefix or tuple encoding is asserted.
+ * legacy-entry case; every other control observes the runtime's own opaque key.
  * Never the obsolete generateCacheKey wrapper.
  */
 export function twoHashKey(fixture) {
@@ -71,8 +70,8 @@ function createAssignment(type) {
           item.artifact.content !== task.artifacts.template[0].content;
       } else if (type === 'IMAGE') {
         // Completed documented IMAGE artefact: real image data-URL body with a
-        // usable string hash, never a pending null-content match, and never a
-        // relabelled TEXT or wrong-typed artefact.
+        // usable string hash, never a pending null-content match or relabelled
+        // TEXT or wrong-typed artefact.
         typeSpecificContent =
           typeof item.artifact.content === 'string' &&
           item.artifact.content.startsWith('data:image/') &&
@@ -90,7 +89,7 @@ function createAssignment(type) {
     (entry) => entry.studentId === source.submission.studentId
   );
   const item = submission.getItem(source.taskId);
-  // Eligibility controls need an in-flight item; spreadsheet controls retain their completed results.
+  // Eligibility controls need an in-flight item; spreadsheet controls keep their results.
   if (type === 'TEXT') item.assessments = {};
   assignment.submissions = [submission];
   submission.items = { [source.taskId]: item };
@@ -103,11 +102,9 @@ function loadManager({ fetchAll, fetch, sleep }) {
   const llmPath = require.resolve('#backend/RequestHandlers/LLMRequestManager.js');
   const previousLlmModule = require.cache[llmPath];
   const BaseRequestManager = require(basePath);
-  // Faithful native script-cache storage for repeated writes: one per-context
-  // Map; native get returns the LAST value written for a key and null on miss;
-  // native put stores the actual serialised argument it receives and remains
-  // observable as vi.fn.
   const cacheStorage = new Map();
+  // Native script-cache storage: one Map per context; get returns the last
+  // value written or null; put stores the serialised value.
   const progressTracker = {
     updateProgress: vi.fn(),
     getCurrentProgress: () => ({ message: 'Assessing' }),
@@ -165,8 +162,8 @@ function catalogueHTTPAssessments(reasoning, code) {
   );
 }
 
-// Mixed stale numeric/N seeding through the existing domain API; never a prior E
-// so request generation stays eligible in both the Red and the later Green runs.
+// Mixed stale numeric/N marks through the domain API; never a prior E, so
+// request generation stays eligible in both the Red and later Green runs.
 function seedStaleMixedMarks(item) {
   item.addAssessment('completeness', { score: 4, reasoning: 'stale numeric mark' });
   item.addAssessment('accuracy', { score: 'N', reasoning: 'stale N mark' });
@@ -181,14 +178,13 @@ const STALE_MIXED_MARKS = {
 };
 
 /**
- * Shared transport runner. It establishes the real canonical TEXT model, seeds
- * mixed stale numeric/N marks, captures the mutated source identity, generates
- * one real request, then runs the real processStudentResponses against the
- * caller's complete native HTTP fixtures. Spies installed through the required
- * prepareManager call-through seam observe the real seams (no mock ever
- * returns an outcome; a caller that needs none passes a no-op recorder). The
- * caught value is captured explicitly so a swallowed or propagated fault can
- * never masquerade as a catalogue Red.
+ * Shared transport runner: establishes the real TEXT model, seeds mixed stale
+ * numeric/N marks, captures the mutated source identity, generates one real
+ * request, then runs the real processStudentResponses against the caller's
+ * native HTTP fixtures. Spies installed through the required prepareManager
+ * call-through seam observe the real seams (no mock returns an outcome; a
+ * caller needing none passes a no-op recorder). The caught value is captured
+ * so a swallowed fault cannot masquerade as a Red.
  */
 function runTransportCase(natives, prepareManager) {
   const context = loadManager(natives);
@@ -233,9 +229,9 @@ function runTransportCase(natives, prepareManager) {
 }
 
 /**
- * Executed transport-budget proof: the exact native dispatch counts and waits
- * happen before the catalogued outcome is asserted, and any escape from
- * processing surfaces here instead of behind the catalogue expectation.
+ * Executed transport-budget proof: exact native dispatch counts and waits
+ * happen before the catalogued outcome, and any escape from processing surfaces
+ * here rather than behind the catalogue expectation.
  */
 function expectExecutedTransportCounts(collected, { fetchCalls, sleeps }) {
   expect(collected.fetchAll).toHaveBeenCalledTimes(1);
@@ -256,8 +252,7 @@ function expectSourceRetained(collected) {
 /**
  * Test-only shared cache runner: one fresh real LLM manager inside one context
  * and cache under the real temporary globals. Required arguments, no defaults.
- * The collected object also exposes the context's stable logger and progress
- * tracker so suites can assert cached-hit diagnostics on real channels.
+ * Collected exposes the logger and progress tracker for cached-hit diagnostics.
  */
 function withCacheManager(natives, callback) {
   const context = loadManager(natives);
@@ -330,13 +325,37 @@ function canonicalRunStoppedAssessments() {
 }
 
 /**
- * Proof-first shared assertions for the mixed run-stop rows. Native budgets,
+ * Asserts the genuine template-copy N signature kept its source identity,
+ * snapshot, task association, parent ID, exact N map and entries.
+ * @param {{signature: object}} collected Run-stop collection.
+ */
+function expectSignatureEntries(collected) {
+  const { signature } = collected;
+  const { item } = signature;
+  expect(item.artifact).toBe(signature.artifact);
+  expect(item.artifact.toJSON()).toEqual(signature.artifactSnapshot);
+  expect(item.taskId).toBe(signature.task.getId());
+  expect(signature.submission.documentId).toBe(signature.documentId);
+  expect(item.getAssessment()).toEqual(
+    Object.fromEntries(
+      RUN_STOP_CRITERIA.map((criterion) => [
+        criterion,
+        { score: 'N', reasoning: 'Task not attempted' },
+      ])
+    )
+  );
+  RUN_STOP_CRITERIA.forEach((criterion, index) => {
+    expect(item.getAssessment(criterion)).toBe(signature.entries[index]);
+  });
+}
+
+/**
+ * Proof-first shared assertions for the mixed run-stop rows: native budgets,
  * routed identities and retained sources are proven BEFORE any catalogue
  * expectation. Rows with a stop-cancelled retryable sibling
- * (collected.cancelled) also prove that sibling's cancelled-outcome
- * provenance: the untouched initial retryable response with attempts 1 from
- * the real batch consumption, plus its canonical LLM_RUN_STOPPED map — the
- * current source mislabels it LLM_UNAVAILABLE, the intended business Red.
+ * (collected.cancelled) also prove its cancelled-outcome provenance: untouched
+ * initial response, attempts 1 from real batch consumption, and its canonical
+ * LLM_RUN_STOPPED map.
  */
 function expectRunStopTerminalStops(collected) {
   const canonical = canonicalRunStoppedAssessments();
@@ -381,9 +400,10 @@ function expectRunStopTerminalStops(collected) {
     expect(engineOutcome.response).toBe(collected.stopResponse);
     expect(engineOutcome.attempts).toBe(2);
   }
-  // Outcomes are routed to the original request objects with the original
-  // received response objects, pinned by identity; batch consumption carries
-  // the cancelled sibling's real attempts-1 provenance, size-3 its healthy member.
+
+  // Outcomes are routed to the original request and response objects, pinned
+  // by identity; batch consumption carries the cancelled sibling's real
+  // attempts-1 provenance, size-3 its healthy member.
   expect(spies.processor).toHaveBeenCalledTimes(cancelled && healthy ? 3 : 2);
   const routings = new Map(
     spies.processor.mock.calls.map((pair) => [pair[1].uid, { response: pair[0], request: pair[1] }])
@@ -410,7 +430,7 @@ function expectRunStopTerminalStops(collected) {
   if (cancelled) expect(collected.cancelledResponse.getContentText).not.toHaveBeenCalled();
 
   // The three numeric source identities, detached snapshots and parent IDs
-  // are preserved; the signature's fourth source identity is proven below.
+  // are preserved; the signature's source identity is proven below.
   numeric.forEach((entry) => {
     expect(entry.item.artifact).toBe(entry.artifact);
     expect(entry.item.artifact.toJSON()).toEqual(entry.artifactSnapshot);
@@ -434,39 +454,24 @@ function expectRunStopTerminalStops(collected) {
       catalogueHTTPAssessments('The assessment service rejected the request.', 'LLM_HTTP_FAILED')
     );
   }
-
-  // The genuine N sibling keeps its current source identity, detached
-  // snapshot, task association and parent document ID, plus its exact N map
-  // and all three entry references, proven before the stop-domain Reds below.
-  const signature = collected.signature;
-  expect(signature.item.artifact).toBe(signature.artifact);
-  expect(signature.item.artifact.toJSON()).toEqual(signature.artifactSnapshot);
-  expect(signature.item.taskId).toBe(signature.task.getId());
-  expect(signature.submission.documentId).toBe(signature.documentId);
-  expect(signature.item.getAssessment()).toEqual({
-    completeness: { score: 'N', reasoning: 'Task not attempted' },
-    accuracy: { score: 'N', reasoning: 'Task not attempted' },
-    spag: { score: 'N', reasoning: 'Task not attempted' },
-  });
-  RUN_STOP_CRITERIA.forEach((criterion, index) => {
-    expect(signature.item.getAssessment(criterion)).toBe(signature.entries[index]);
-  });
+  // The genuine N sibling keeps its source identity, snapshot, task
+  // association, parent ID, exact N map and entry references.
+  expectSignatureEntries(collected);
 
   // The stop must be domain completion-with-errors, never an unhandled run
-  // abort; the current 401/403 abort is the intended business Red here (404
-  // reaches the terminal maps below instead).
+  // abort; the current 401/403 abort is the intended business Red here
+  // (404 reaches the terminal maps below instead).
   expect(caught).toBe(null);
 
-  // The stopped target, the unprocessed sibling and the stop-cancelled
-  // retryable sibling (when configured) must each be terminal with the exact
-  // canonical LLM_RUN_STOPPED map. The cancelled sibling currently receives
+  // The stopped target, unprocessed sibling and stop-cancelled retryable
+  // sibling (when configured) must each be terminal with the exact canonical
+  // LLM_RUN_STOPPED map; the cancelled sibling currently receives
   // LLM_UNAVAILABLE instead — the new Red boundary for stop-cancelled work.
   [target, unprocessed, cancelled].filter(Boolean).forEach((entry) => {
     expect(entry.item.getAssessment()).toEqual(canonical);
   });
 
-  // Exactly one healthy cache put per healthy row and no E cache write;
-  // cancelled-only rows must not write any cache entry at all.
+  // Exactly one healthy cache put per healthy row; no E or cancelled write.
   expect(scriptCache.put).toHaveBeenCalledTimes(healthy ? 1 : 0);
   if (healthy) {
     const nativeCachePutValue = scriptCache.put.mock.calls[0][1];
@@ -481,6 +486,7 @@ export {
   createAssignment,
   expectExecutedTransportCounts,
   expectRunStopTerminalStops,
+  expectSignatureEntries,
   expectSourceRetained,
   httpResponse,
   loadManager,
