@@ -36,8 +36,12 @@ function collectSpreadsheetReferenceGrids(graph: Record<string, unknown>) {
   return grids;
 }
 
-/** Formula cell shape: a string body with an A1-style reference. */
-const FORMULA_PATTERN = /[A-Z]+\d+/u;
+/**
+ * Formula cell shape: a string body with an A1-style reference. The column and
+ * row bounds keep the pattern linear; they still cover every Excel address
+ * (at most three column letters, rows up to seven digits).
+ */
+const FORMULA_PATTERN = /[A-Z]{1,3}\d{1,7}/u;
 
 describe('synthetic generated SPREADSHEET reference bodies', () => {
   it('generates SPREADSHEET reference grids with at least one assessable formula cell', () => {

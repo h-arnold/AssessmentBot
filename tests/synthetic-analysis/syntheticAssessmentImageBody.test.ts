@@ -16,44 +16,53 @@ import { assertDecodablePngDataUrl } from './syntheticAssessmentImageBodySupport
  * carry the `data:image/` prefix around base64 prose.
  */
 
-/** @typedef {{label: string, content: unknown}} ArtefactBodyRow */
+/** One IMAGE artefact body with a label describing where it came from. */
+type ArtefactBodyRow = { label: string; content: unknown };
 
 /**
- * Collects every IMAGE artefact record from one generated graph.
+ * Collects the IMAGE artefact bodies from one definition's task artefacts.
  *
- * @param {Record<string, unknown>} graph Generated synthetic analysis graph.
- * @returns {ArtefactBodyRow[]} IMAGE artefact bodies in graph order.
+ * @param definition Raw definition document.
+ * @param definitionIndex Index of the definition in the persistence list.
+ * @returns IMAGE artefact bodies in definition order.
  */
-function collectGeneratedImageArtefacts(graph: Record<string, unknown>) {
-  const persistence = requireRecord(graph.persistence, 'persistence');
-  /** @type {ArtefactBodyRow[]} */
-  const artefacts = [];
-  for (const [definitionIndex, definition] of recordsOf(
-    persistence.assignmentDefinitions,
-    'assignmentDefinitions'
-  ).entries()) {
-    if (Array.isArray(definition.tasks)) continue;
-    for (const [taskId, taskRaw] of Object.entries(
-      requireRecord(definition.tasks, 'definition tasks')
-    )) {
-      const task = requireRecord(taskRaw, `task ${taskId}`);
-      const artifacts = requireRecord(task.artifacts, 'task artifacts');
-      for (const [role, roleArtefactList] of Object.entries(artifacts)) {
-        for (const [index, roleArtefactRaw] of /** @type {unknown[]} */ requireArray(
-          roleArtefactList,
-          `${role} artefacts`
-        ).entries()) {
-          const artefact = requireRecord(roleArtefactRaw, 'artefact');
-          if (artefact.type === 'IMAGE') {
-            artefacts.push({
-              label: `definition artefact (definition ${definitionIndex}, task ${taskId}, ${role}[${index}])`,
-              content: artefact.content,
-            });
-          }
+function collectDefinitionImageArtefacts(
+  definition: Record<string, unknown>,
+  definitionIndex: number
+) {
+  const artefacts: ArtefactBodyRow[] = [];
+  if (Array.isArray(definition.tasks)) return artefacts;
+  for (const [taskId, taskRaw] of Object.entries(
+    requireRecord(definition.tasks, 'definition tasks')
+  )) {
+    const task = requireRecord(taskRaw, `task ${taskId}`);
+    const artifacts = requireRecord(task.artifacts, 'task artifacts');
+    for (const [role, roleArtefactList] of Object.entries(artifacts)) {
+      for (const [index, roleArtefactRaw] of /** @type {unknown[]} */ requireArray(
+        roleArtefactList,
+        `${role} artefacts`
+      ).entries()) {
+        const artefact = requireRecord(roleArtefactRaw, 'artefact');
+        if (artefact.type === 'IMAGE') {
+          artefacts.push({
+            label: `definition artefact (definition ${definitionIndex}, task ${taskId}, ${role}[${index}])`,
+            content: artefact.content,
+          });
         }
       }
     }
   }
+  return artefacts;
+}
+
+/**
+ * Collects the IMAGE artefact bodies from every persisted submission item.
+ *
+ * @param persistence Raw persistence view.
+ * @returns IMAGE artefact bodies in submission order.
+ */
+function collectSubmissionImageArtefacts(persistence: Record<string, unknown>) {
+  const artefacts: ArtefactBodyRow[] = [];
   for (const assignment of recordsOf(persistence.assignments, 'assignments')) {
     for (const submission of recordsOf(assignment.submissions, 'submissions')) {
       for (const [taskId, item] of Object.entries(readItemMap(submission.items))) {
@@ -64,6 +73,25 @@ function collectGeneratedImageArtefacts(graph: Record<string, unknown>) {
       }
     }
   }
+  return artefacts;
+}
+
+/**
+ * Collects every IMAGE artefact record from one generated graph.
+ *
+ * @param {Record<string, unknown>} graph Generated synthetic analysis graph.
+ * @returns {ArtefactBodyRow[]} IMAGE artefact bodies in graph order.
+ */
+function collectGeneratedImageArtefacts(graph: Record<string, unknown>) {
+  const persistence = requireRecord(graph.persistence, 'persistence');
+  const artefacts: ArtefactBodyRow[] = [];
+  for (const [definitionIndex, definition] of recordsOf(
+    persistence.assignmentDefinitions,
+    'assignmentDefinitions'
+  ).entries()) {
+    artefacts.push(...collectDefinitionImageArtefacts(definition, definitionIndex));
+  }
+  artefacts.push(...collectSubmissionImageArtefacts(persistence));
   return artefacts;
 }
 

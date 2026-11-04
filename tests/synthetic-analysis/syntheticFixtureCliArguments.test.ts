@@ -64,11 +64,14 @@ describe('synthetic analysis fixture CLI argument validation', () => {
   });
 
   it('honours an explicit output root in either mode', () => {
-    expect(parseCliOptions([OUTPUT_ROOT_FLAG, '/tmp/compact']).outputRoot).toBe('/tmp/compact');
+    const compactRoot = join(REPOSITORY_ROOT, '.opencode/scratchpad/synthetic-cli-compact');
+    const fullRoot = join(REPOSITORY_ROOT, '.opencode/scratchpad/synthetic-cli-full');
 
-    const fullOptions = parseCliOptions(['--full', OUTPUT_ROOT_FLAG, '/tmp/full']);
+    expect(parseCliOptions([OUTPUT_ROOT_FLAG, compactRoot]).outputRoot).toBe(compactRoot);
+
+    const fullOptions = parseCliOptions(['--full', OUTPUT_ROOT_FLAG, fullRoot]);
     expect(fullOptions.full).toBe(true);
-    expect(fullOptions.outputRoot).toBe('/tmp/full');
+    expect(fullOptions.outputRoot).toBe(fullRoot);
   });
 });
 

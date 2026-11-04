@@ -18,6 +18,144 @@ import {
   requireRecord,
 } from './syntheticAssessmentContractSupport.js';
 
+/**
+ * Asserts the version marker and the three-criterion assessment map on every
+ * represented assignment and item.
+ *
+ * @param representedAssignments Persistence, partial and full assignment views.
+ * @param representedItems Submission items across those views.
+ */
+function expectContractVersionAndCriteria(
+  representedAssignments: RawRecord[],
+  representedItems: RawRecord[]
+): void {
+  for (const assignment of representedAssignments) {
+    expect(assignment.assessmentContractVersion).toBe(1);
+  }
+  for (const item of representedItems) {
+    const assessments = requireRecord(item.assessments, 'assessments');
+    expect(Object.keys(assessments).sort()).toEqual([...CRITERIA].sort());
+    expect(assessments).not.toHaveProperty('formulaComparison');
+  }
+}
+
+/**
+ * Asserts every persisted E entry carries non-blank reasoning and a cause.
+ *
+ * @param assignments Persisted assignment records.
+ */
+function expectErrorEntriesCarryReasoning(assignments: RawRecord[]): void {
+  const persistedItems = itemsOfAssignments(assignments);
+  const errorItems = persistedItems.filter((item) =>
+    CRITERIA.some(
+      (criterion) =>
+        requireRecord(requireRecord(item.assessments, 'assessments')[criterion], criterion)
+          .score === 'E'
+    )
+  );
+  expect(errorItems.length).toBeGreaterThan(0);
+  for (const item of errorItems) {
+    const assessments = requireRecord(item.assessments, 'assessments');
+    for (const criterion of CRITERIA) {
+      const entry = requireRecord(assessments[criterion], criterion);
+      expect(entry.score).toBe('E');
+      expect(typeof entry.reasoning === 'string' && entry.reasoning.trim().length > 0).toBe(true);
+      expect(isRecord(entry.error)).toBe(true);
+    }
+  }
+}
+
+/**
+ * Asserts full definitions and submissions carry usable artefact bodies in
+ * their raw shapes.
+ *
+ * @param definitions Persisted definition documents.
+ * @param assignments Persisted assignment records.
+ */
+function expectUsableArtefactBodies(definitions: RawRecord[], assignments: RawRecord[]): void {
+  const definitionArtefacts = definitions
+    .filter((definition) => !Array.isArray(definition.tasks))
+    .flatMap((definition) =>
+      Object.values(requireRecord(definition.tasks, 'tasks')).flatMap((task) =>
+        artefactsOfTask(task)
+      )
+    );
+  expect(new Set(definitionArtefacts.map((artefact) => artefact.type))).toEqual(
+    new Set(ARTEFACT_TYPES)
+  );
+  definitionArtefacts.forEach((artefact) =>
+    expectUsableArtefactBody(artefact, 'definition artefact')
+  );
+  const submissionItems = itemsOfAssignments(assignments);
+  expect(
+    new Set(submissionItems.map((item) => requireRecord(item.artifact, 'artefact').type))
+  ).toEqual(new Set([...ARTEFACT_TYPES, 'base']));
+  for (const item of submissionItems) {
+    const artefact = requireRecord(item.artifact, 'artefact');
+    if (artefact.type !== 'base') expectUsableArtefactBody(artefact, 'submission artefact');
+  }
+}
+
+/**
+ * Asserts every full projection retains its persistence source exactly.
+ *
+ * @param transport Raw transport view carrying the full projections.
+ * @param sourcesById Persisted assignments keyed by assignment ID.
+ * @param definitionsByKey Persisted definitions keyed by definition key.
+ */
+function expectFullProjectionsMatchSources(
+  transport: RawRecord,
+  sourcesById: Map<string, RawRecord>,
+  definitionsByKey: Map<string, RawRecord>
+): void {
+  const assignmentsByKey = requireRecord(transport.assignmentsByKey, 'assignmentsByKey');
+  for (const [assignmentKey, fullView] of Object.entries(assignmentsByKey)) {
+    const source = requireDefined(sourcesById.get(assignmentKey), 'persistence assignment');
+    const view = requireRecord(fullView, 'full view');
+    expect(view.assignmentDefinition).toStrictEqual(
+      requireDefined(
+        definitionsByKey.get(String(source.assignmentDefinitionKey)),
+        'persistence definition'
+      )
+    );
+    for (const projectedSubmission of recordsOf(view.submissions, 'projected submissions')) {
+      const sourceSubmission = requireDefined(
+        recordsOf(source.submissions, 'submissions').find(
+          (candidate) => candidate.studentId === projectedSubmission.studentId
+        ),
+        'persistence submission'
+      );
+      expect(projectedSubmission).toStrictEqual(sourceSubmission);
+    }
+  }
+}
+
+/**
+ * Asserts class-partial projections redact bodies and hashes only, keeping the
+ * explanation for every E entry.
+ *
+ * @param transport Raw transport view carrying the class partials.
+ */
+function expectPartialsRedactBodiesOnly(transport: RawRecord): void {
+  for (const item of itemsOfAssignments(embeddedPartialsOf(transport))) {
+    const artefact = requireRecord(item.artifact, 'artefact');
+    expect(artefact.content).toBeNull();
+    expect(artefact.contentHash).toBeNull();
+    const assessments = requireRecord(item.assessments, 'assessments');
+    for (const criterion of CRITERIA) {
+      const entry = requireRecord(assessments[criterion], criterion);
+      if (entry.score === 'E') {
+        expect(Object.hasOwn(entry, 'reasoning')).toBe(true);
+        expect(isRecord(entry.error)).toBe(true);
+      } else {
+        expect(Object.hasOwn(entry, 'reasoning')).toBe(false);
+      }
+    }
+  }
+}
+
+type RawRecord = Record<string, unknown>;
+
 describe('canonical synthetic assessment contract', () => {
   it.each(['small', 'medium'])(
     'emits the version marker, complete criteria and usable artefacts for %s',
@@ -35,104 +173,26 @@ describe('canonical synthetic assessment contract', () => {
         ),
       ];
       const representedItems = itemsOfAssignments(representedAssignments);
-      const sourcesById = new Map(
-        assignments.map((assignment) => [assignment.assignmentId, assignment])
+      const sourcesById = new Map<string, RawRecord>(
+        assignments.map((assignment) => [String(assignment.assignmentId), assignment])
       );
-      const definitionsByKey = new Map(
-        definitions.map((definition) => [definition.definitionKey, definition])
+      const definitionsByKey = new Map<string, RawRecord>(
+        definitions.map((definition) => [String(definition.definitionKey), definition])
       );
 
       // The version marker is stamped once on persistence and copied through both wire views.
-      for (const assignment of representedAssignments) {
-        expect(assignment.assessmentContractVersion).toBe(1);
-      }
-      for (const item of representedItems) {
-        const assessments = requireRecord(item.assessments, 'assessments');
-        expect(Object.keys(assessments).sort()).toEqual([...CRITERIA].sort());
-        expect(assessments).not.toHaveProperty('formulaComparison');
-      }
-      const persistedItems = itemsOfAssignments(assignments);
-      const errorItems = persistedItems.filter((item) =>
-        CRITERIA.some(
-          (criterion) =>
-            requireRecord(requireRecord(item.assessments, 'assessments')[criterion], criterion)
-              .score === 'E'
-        )
-      );
-      expect(errorItems.length).toBeGreaterThan(0);
-      for (const item of errorItems) {
-        const assessments = requireRecord(item.assessments, 'assessments');
-        for (const criterion of CRITERIA) {
-          const entry = requireRecord(assessments[criterion], criterion);
-          expect(entry.score).toBe('E');
-          expect(typeof entry.reasoning === 'string' && entry.reasoning.trim().length > 0).toBe(
-            true
-          );
-          expect(isRecord(entry.error)).toBe(true);
-        }
-      }
+      expectContractVersionAndCriteria(representedAssignments, representedItems);
+
+      expectErrorEntriesCarryReasoning(assignments);
 
       // Full definitions generate usable IMAGE and SPREADSHEET bodies beside TEXT in their raw shapes.
-      const definitionArtefacts = definitions
-        .filter((definition) => !Array.isArray(definition.tasks))
-        .flatMap((definition) =>
-          Object.values(requireRecord(definition.tasks, 'tasks')).flatMap((task) =>
-            artefactsOfTask(task)
-          )
-        );
-      expect(new Set(definitionArtefacts.map((artefact) => artefact.type))).toEqual(
-        new Set(ARTEFACT_TYPES)
-      );
-      definitionArtefacts.forEach((artefact) =>
-        expectUsableArtefactBody(artefact, 'definition artefact')
-      );
-      const submissionItems = itemsOfAssignments(assignments);
-      expect(
-        new Set(submissionItems.map((item) => requireRecord(item.artifact, 'artefact').type))
-      ).toEqual(new Set([...ARTEFACT_TYPES, 'base']));
-      for (const item of submissionItems) {
-        const artefact = requireRecord(item.artifact, 'artefact');
-        if (artefact.type !== 'base') expectUsableArtefactBody(artefact, 'submission artefact');
-      }
+      expectUsableArtefactBodies(definitions, assignments);
 
       // Full projections retain the persistence source exactly, scoped by assignment/student/task.
-      const assignmentsByKey = requireRecord(transport.assignmentsByKey, 'assignmentsByKey');
-      for (const [assignmentKey, fullView] of Object.entries(assignmentsByKey)) {
-        const source = requireDefined(sourcesById.get(assignmentKey), 'persistence assignment');
-        const view = requireRecord(fullView, 'full view');
-        expect(view.assignmentDefinition).toStrictEqual(
-          requireDefined(
-            definitionsByKey.get(source.assignmentDefinitionKey),
-            'persistence definition'
-          )
-        );
-        for (const projectedSubmission of recordsOf(view.submissions, 'projected submissions')) {
-          const sourceSubmission = requireDefined(
-            recordsOf(source.submissions, 'submissions').find(
-              (candidate) => candidate.studentId === projectedSubmission.studentId
-            ),
-            'persistence submission'
-          );
-          expect(projectedSubmission).toStrictEqual(sourceSubmission);
-        }
-      }
+      expectFullProjectionsMatchSources(transport, sourcesById, definitionsByKey);
 
       // Class-partial projections redact bodies/hash only; an E entry keeps its explanation.
-      for (const item of itemsOfAssignments(embeddedPartialsOf(transport))) {
-        const artefact = requireRecord(item.artifact, 'artefact');
-        expect(artefact.content).toBeNull();
-        expect(artefact.contentHash).toBeNull();
-        const assessments = requireRecord(item.assessments, 'assessments');
-        for (const criterion of CRITERIA) {
-          const entry = requireRecord(assessments[criterion], criterion);
-          if (entry.score === 'E') {
-            expect(Object.hasOwn(entry, 'reasoning')).toBe(true);
-            expect(isRecord(entry.error)).toBe(true);
-          } else {
-            expect(Object.hasOwn(entry, 'reasoning')).toBe(false);
-          }
-        }
-      }
+      expectPartialsRedactBodiesOnly(transport);
     }
   );
 

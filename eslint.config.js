@@ -294,6 +294,29 @@ module.exports = [
     rules: nodeToolingRules,
   },
   {
+    // `tests/**/*.js` above is the shared Node-test baseline. The synthetic
+    // analysis suites are Node ESM too, so they inherit it here and then add
+    // the full sonarjs recommended set, matching the backend scope.
+    files: [
+      'tests/synthetic-analysis/**/*.{js,ts}',
+      'tests/synthetic-analysis-stress/**/*.{js,ts}',
+    ],
+    languageOptions: {
+      ecmaVersion: 'latest',
+      sourceType: 'module',
+      parser: tseslintParser,
+    },
+    plugins: { security, sonarjs },
+    rules: {
+      ...unicodeSecurityRules,
+      'prefer-object-has-own': 'warn',
+      'no-negated-condition': 'warn',
+      'require-unicode-regexp': 'off',
+      ...sonarjs.configs.recommended.rules,
+      'max-lines': ['warn', 500],
+    },
+  },
+  {
     // Synthetic analysis integration specs are TypeScript executed in Node.
     // The stress specs are the opt-in full-large suite in the same runtime.
     files: [
@@ -305,10 +328,37 @@ module.exports = [
       sourceType: 'module',
       parser: tseslintParser,
     },
-    plugins: { security },
     rules: {
-      ...unicodeSecurityRules,
-      'max-lines': ['warn', 500],
+      // The shared Node-test baseline relaxes this rule to `off` for `.js` files, but
+      // TypeScript test specs are held to the stricter `error` severity, as before.
+      'require-unicode-regexp': 'error',
+    },
+  },
+  {
+    // The cause-catalogue suite registers its cases through `runCauseCatalogueMatrix`,
+    // so the rule cannot see them; the matching Sonar issue is a false positive.
+    files: ['tests/synthetic-analysis/syntheticAssessmentCauseCatalogue.test.ts'],
+    rules: {
+      'sonarjs/no-empty-test-file': 'off',
+    },
+  },
+  {
+    // These suites assert through the shared `expectRule` helper, which calls
+    // `expect` several times; the rule only inspects the test body itself.
+    files: [
+      'tests/synthetic-analysis/syntheticAssessmentDefinitionSourceMatrices.js',
+      'tests/synthetic-analysis/syntheticAssessmentDeclaredTaskIdentity.test.ts',
+      'tests/synthetic-analysis/syntheticAssessmentSourceStateMatrices.js',
+    ],
+    rules: {
+      'sonarjs/assertions-in-tests': 'off',
+    },
+  },
+  {
+    // `git check-ignore` is the only portable way to verify `.gitignore` behaviour.
+    files: ['tests/synthetic-analysis/syntheticIgnoreBoundary.test.ts'],
+    rules: {
+      'sonarjs/no-os-command-from-path': 'off',
     },
   },
   {

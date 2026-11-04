@@ -181,6 +181,66 @@ function collectTimestampPairs(graph: GeneratedSyntheticAnalysisGraph): Generate
   return pairs;
 }
 
+/** Asserts one partial submission's items match their full counterparts. */
+function expectSubmissionItemsMatch(
+  partialSubmission: ClassFull['assignments'][number]['submissions'][number],
+  fullSubmission: AssignmentFull['submissions'][number],
+  partialAssignmentId: string,
+  fullAssignmentId: string
+): void {
+  expect(partialSubmission.assignmentId).toBe(partialAssignmentId);
+  expect(fullSubmission.assignmentId).toBe(fullAssignmentId);
+  expect(Object.keys(partialSubmission.items).sort()).toEqual(
+    Object.keys(fullSubmission.items).sort()
+  );
+
+  for (const [taskId, partialItem] of Object.entries(partialSubmission.items)) {
+    const fullItem = fullSubmission.items[taskId];
+    expect(fullItem).toBeDefined();
+    if (fullItem === undefined) {
+      continue;
+    }
+
+    expect(partialItem.taskId).toBe(taskId);
+    expect(fullItem.taskId).toBe(taskId);
+    expect(fullItem.id).toBe(partialItem.id);
+    expect(fullItem.artifact.uid).toBe(partialItem.artifact.uid);
+  }
+}
+
+/** Asserts one class-view partial assignment matches its full counterpart. */
+function expectAssignmentViewsMatch(
+  partialAssignment: ClassFull['assignments'][number],
+  fullAssignment: AssignmentFull
+): void {
+  expect(fullAssignment.assignmentDefinition.definitionKey).toBe(
+    partialAssignment.assignmentDefinitionKey
+  );
+
+  const fullSubmissions = new Map(
+    fullAssignment.submissions.map((submission) => [submission.studentId, submission])
+  );
+  const partialSubmissions = new Map(
+    partialAssignment.submissions.map((submission) => [submission.studentId, submission])
+  );
+  expect([...partialSubmissions.keys()].sort()).toEqual([...fullSubmissions.keys()].sort());
+
+  for (const [studentId, partialSubmission] of partialSubmissions) {
+    const fullSubmission = fullSubmissions.get(studentId);
+    expect(fullSubmission).toBeDefined();
+    if (fullSubmission === undefined) {
+      continue;
+    }
+
+    expectSubmissionItemsMatch(
+      partialSubmission,
+      fullSubmission,
+      partialAssignment.assignmentId,
+      fullAssignment.assignmentId
+    );
+  }
+}
+
 describe('synthetic transport partial/full identity retention', () => {
   it('retains assignment, definition, submission, item, and artefact identifiers across views', () => {
     for (const graph of compactGraphs) {
@@ -204,44 +264,7 @@ describe('synthetic transport partial/full identity retention', () => {
             continue;
           }
 
-          expect(fullAssignment.assignmentDefinition.definitionKey).toBe(
-            partialAssignment.assignmentDefinitionKey
-          );
-
-          const fullSubmissions = new Map(
-            fullAssignment.submissions.map((submission) => [submission.studentId, submission])
-          );
-          const partialSubmissions = new Map(
-            partialAssignment.submissions.map((submission) => [submission.studentId, submission])
-          );
-          expect([...partialSubmissions.keys()].sort()).toEqual([...fullSubmissions.keys()].sort());
-
-          for (const [studentId, partialSubmission] of partialSubmissions) {
-            const fullSubmission = fullSubmissions.get(studentId);
-            expect(fullSubmission).toBeDefined();
-            if (fullSubmission === undefined) {
-              continue;
-            }
-
-            expect(partialSubmission.assignmentId).toBe(partialAssignment.assignmentId);
-            expect(fullSubmission.assignmentId).toBe(fullAssignment.assignmentId);
-            expect(Object.keys(partialSubmission.items).sort()).toEqual(
-              Object.keys(fullSubmission.items).sort()
-            );
-
-            for (const [taskId, partialItem] of Object.entries(partialSubmission.items)) {
-              const fullItem = fullSubmission.items[taskId];
-              expect(fullItem).toBeDefined();
-              if (fullItem === undefined) {
-                continue;
-              }
-
-              expect(partialItem.taskId).toBe(taskId);
-              expect(fullItem.taskId).toBe(taskId);
-              expect(fullItem.id).toBe(partialItem.id);
-              expect(fullItem.artifact.uid).toBe(partialItem.artifact.uid);
-            }
-          }
+          expectAssignmentViewsMatch(partialAssignment, fullAssignment);
         }
       }
 
@@ -254,6 +277,59 @@ describe('synthetic transport partial/full identity retention', () => {
     }
   });
 });
+
+/** Asserts one full assignment's definition fields match the persisted definition. */
+function expectDefinitionFieldsMatch(
+  fullAssignment: AssignmentFull,
+  persistedDefinition: GeneratedDefinitionDocument
+): void {
+  // Only valid full-model definitions may back a full assignment.
+  expect(persistedDefinition.referenceDocumentId).toEqual(expect.any(String));
+  expect(persistedDefinition.templateDocumentId).toEqual(expect.any(String));
+  expect(typeof persistedDefinition.assignmentWeighting).toBe('number');
+
+  expect(fullAssignment.referenceDocumentId).toBe(persistedDefinition.referenceDocumentId);
+  expect(fullAssignment.templateDocumentId).toBe(persistedDefinition.templateDocumentId);
+  expect(fullAssignment.assignmentDefinition.referenceDocumentId).toBe(
+    persistedDefinition.referenceDocumentId
+  );
+  expect(fullAssignment.assignmentDefinition.templateDocumentId).toBe(
+    persistedDefinition.templateDocumentId
+  );
+  expect(fullAssignment.assignmentDefinition.assignmentWeighting).toBe(
+    persistedDefinition.assignmentWeighting
+  );
+}
+
+/** Asserts one full assignment's items match their persisted counterparts. */
+function expectSubmissionItemsPreserved(
+  fullAssignment: AssignmentFull,
+  persistedAssignment: GeneratedPersistenceAssignment
+): void {
+  const persistedSubmissions = new Map(
+    persistedAssignment.submissions.map((submission) => [submission.studentId, submission])
+  );
+  for (const fullSubmission of fullAssignment.submissions) {
+    const persistedSubmission = persistedSubmissions.get(fullSubmission.studentId);
+    expect(persistedSubmission).toBeDefined();
+    if (persistedSubmission === undefined) {
+      continue;
+    }
+
+    for (const [taskId, fullItem] of Object.entries(fullSubmission.items)) {
+      const persistedItem = persistedSubmission.items[taskId];
+      expect(persistedItem).toBeDefined();
+      if (persistedItem === undefined) {
+        continue;
+      }
+
+      expect(fullItem.id).toBe(persistedItem.id);
+      expect(fullItem.artifact.uid).toBe(persistedItem.artifact.uid);
+      expect(fullItem.artifact.pageId).toBe(persistedItem.artifact.pageId);
+      expect(fullItem.artifact.documentId).toBe(persistedItem.artifact.documentId);
+    }
+  }
+}
 
 describe('synthetic full projection preserves persisted values exactly', () => {
   it('retains persisted definition document IDs, weighting, and artefact identifiers', () => {
@@ -282,46 +358,8 @@ describe('synthetic full projection preserves persisted values exactly', () => {
           continue;
         }
 
-        // Only valid full-model definitions may back a full assignment.
-        expect(persistedDefinition.referenceDocumentId).toEqual(expect.any(String));
-        expect(persistedDefinition.templateDocumentId).toEqual(expect.any(String));
-        expect(typeof persistedDefinition.assignmentWeighting).toBe('number');
-
-        expect(fullAssignment.referenceDocumentId).toBe(persistedDefinition.referenceDocumentId);
-        expect(fullAssignment.templateDocumentId).toBe(persistedDefinition.templateDocumentId);
-        expect(fullAssignment.assignmentDefinition.referenceDocumentId).toBe(
-          persistedDefinition.referenceDocumentId
-        );
-        expect(fullAssignment.assignmentDefinition.templateDocumentId).toBe(
-          persistedDefinition.templateDocumentId
-        );
-        expect(fullAssignment.assignmentDefinition.assignmentWeighting).toBe(
-          persistedDefinition.assignmentWeighting
-        );
-
-        const persistedSubmissions = new Map(
-          persistedAssignment.submissions.map((submission) => [submission.studentId, submission])
-        );
-        for (const fullSubmission of fullAssignment.submissions) {
-          const persistedSubmission = persistedSubmissions.get(fullSubmission.studentId);
-          expect(persistedSubmission).toBeDefined();
-          if (persistedSubmission === undefined) {
-            continue;
-          }
-
-          for (const [taskId, fullItem] of Object.entries(fullSubmission.items)) {
-            const persistedItem = persistedSubmission.items[taskId];
-            expect(persistedItem).toBeDefined();
-            if (persistedItem === undefined) {
-              continue;
-            }
-
-            expect(fullItem.id).toBe(persistedItem.id);
-            expect(fullItem.artifact.uid).toBe(persistedItem.artifact.uid);
-            expect(fullItem.artifact.pageId).toBe(persistedItem.artifact.pageId);
-            expect(fullItem.artifact.documentId).toBe(persistedItem.artifact.documentId);
-          }
-        }
+        expectDefinitionFieldsMatch(fullAssignment, persistedDefinition);
+        expectSubmissionItemsPreserved(fullAssignment, persistedAssignment);
       }
     }
   });
