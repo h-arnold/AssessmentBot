@@ -115,6 +115,9 @@ function createRunStopAssignment(profile, numericCount) {
   }
   const assignment = globalThis.Assignment.fromJSON(structuredClone(source.assignment));
   const restored = [...source.rows.numeric, source.rows.signature].map((planned) => {
+    if (!planned) {
+      throw new Error('Run-stop control fixture could not restore a selected canonical pair.');
+    }
     const submission = assignment.submissions.find(
       (restoredSubmission) => restoredSubmission.studentId === planned.submission.studentId
     );
