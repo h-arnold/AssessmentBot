@@ -113,52 +113,41 @@ describe('BaseRequestManager Error Handling', () => {
   });
 
   describe('Success responses (200/201)', () => {
-    it('should return response immediately for 200 status', () => {
+    /**
+     * Runs one immediate-success request and asserts the shared outcome shape.
+     *
+     * @param {{status: number, body: string, uid: string}} scenario - Status under test.
+     */
+    function expectImmediateSuccess({ status, body, uid }) {
       const mockResponse = {
-        getResponseCode: () => 200,
-        getContentText: () => '{"result": "success"}',
+        getResponseCode: () => status,
+        getContentText: () => body,
       };
       mockUrlFetchApp.fetch.mockReturnValue(mockResponse);
 
       const manager = new BaseRequestManager();
-      const request = { uid: 'success-200', url: 'https://api.test/endpoint', method: 'post' };
+      const request = { uid, url: 'https://api.test/endpoint', method: 'post' };
       const result = manager.sendRequestWithRetries(request, {
         acceptedStatuses: [200, 201],
         stopStatuses: [],
       });
 
       expect(result).toMatchObject({
-        uid: 'success-200',
+        uid,
         response: mockResponse,
         error: null,
         attempts: 1,
       });
       expect(mockUrlFetchApp.fetch).toHaveBeenCalledTimes(1);
       expect(mockUtilities.sleep).not.toHaveBeenCalled();
+    }
+
+    it('should return response immediately for 200 status', () => {
+      expectImmediateSuccess({ status: 200, body: '{"result": "success"}', uid: 'success-200' });
     });
 
     it('should return response immediately for 201 status', () => {
-      const mockResponse = {
-        getResponseCode: () => 201,
-        getContentText: () => '{"result": "created"}',
-      };
-      mockUrlFetchApp.fetch.mockReturnValue(mockResponse);
-
-      const manager = new BaseRequestManager();
-      const request = { uid: 'success-201', url: 'https://api.test/endpoint', method: 'post' };
-      const result = manager.sendRequestWithRetries(request, {
-        acceptedStatuses: [200, 201],
-        stopStatuses: [],
-      });
-
-      expect(result).toMatchObject({
-        uid: 'success-201',
-        response: mockResponse,
-        error: null,
-        attempts: 1,
-      });
-      expect(mockUrlFetchApp.fetch).toHaveBeenCalledTimes(1);
-      expect(mockUtilities.sleep).not.toHaveBeenCalled();
+      expectImmediateSuccess({ status: 201, body: '{"result": "created"}', uid: 'success-201' });
     });
   });
 

@@ -97,6 +97,26 @@ describe('assignment extraction outcomes', () => {
     return { logger, tracker, taskDefinitions, makeSubmission };
   }
 
+  /**
+   * Builds a Slides assignment around one extracted submission and runs the
+   * real processAllSubmissions so the caller can assert per-task outcomes.
+   * @param {Object} taskDefinitions Keyed task definitions for the assignment.
+   * @param {Object} submission The extracted student submission under test.
+   * @returns {Object} The assignment that was processed.
+   */
+  function processSlidesAssignment(taskDefinitions, submission) {
+    const assignment = Object.create(globalThis.SlidesAssignment.prototype);
+    Object.assign(assignment, {
+      courseId: canonicalAssignment.courseId,
+      assignmentId: canonicalAssignment.assignmentId,
+      assignmentDefinition: { tasks: taskDefinitions },
+      submissions: [submission],
+      progressTracker: { updateProgress: vi.fn() },
+    });
+    assignment.processAllSubmissions();
+    return assignment;
+  }
+
   it('turns a Slides missing-match placeholder into task E and keeps a healthy sibling', () => {
     const taskIds = Object.keys(canonicalAssignment.assignmentDefinition.tasks).slice(0, 2);
     const healthy = {
@@ -444,16 +464,7 @@ describe('assignment extraction outcomes', () => {
       taskCount: 1,
     });
     const submission = makeSubmission(canonicalStudent.documentId);
-    const assignment = Object.create(globalThis.SlidesAssignment.prototype);
-    Object.assign(assignment, {
-      courseId: canonicalAssignment.courseId,
-      assignmentId: canonicalAssignment.assignmentId,
-      assignmentDefinition: { tasks: taskDefinitions },
-      submissions: [submission],
-      progressTracker: { updateProgress: vi.fn() },
-    });
-
-    assignment.processAllSubmissions();
+    processSlidesAssignment(taskDefinitions, submission);
 
     expect(submission.items[taskId]?.artifact.toJSON()).toMatchObject({ content: '' });
     expect(submission.items[taskId]?.assessments).toEqual({});
@@ -475,16 +486,7 @@ describe('assignment extraction outcomes', () => {
     };
     const { taskDefinitions, makeSubmission } = assignmentHarness({ slides: [blankArtifact] });
     const submission = makeSubmission(canonicalStudent.documentId);
-    const assignment = Object.create(globalThis.SlidesAssignment.prototype);
-    Object.assign(assignment, {
-      courseId: canonicalAssignment.courseId,
-      assignmentId: canonicalAssignment.assignmentId,
-      assignmentDefinition: { tasks: taskDefinitions },
-      submissions: [submission],
-      progressTracker: { updateProgress: vi.fn() },
-    });
-
-    assignment.processAllSubmissions();
+    processSlidesAssignment(taskDefinitions, submission);
 
     expect(submission.items[taskId]?.artifact.toJSON()).toMatchObject({ content: '' });
     expect(submission.items[taskId]?.assessments).toEqual({});

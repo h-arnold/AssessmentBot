@@ -165,6 +165,41 @@ describe('BaseRequestManager retry policy and outcome identity', () => {
   });
 
   describe('Retryable errors with exponential backoff', () => {
+    /**
+     * Runs one retryable-status recovery and asserts the shared outcome shape.
+     *
+     * @param {{status: number, message: string, uid: string}} scenario - Status under test.
+     */
+    function expectRetryableRecovery({ status, message, uid }) {
+      const retryableResponse = {
+        getResponseCode: () => status,
+        getContentText: () => JSON.stringify({ statusCode: status, message }),
+      };
+      const mockResponse200 = {
+        getResponseCode: () => 200,
+        getContentText: () => '{"result": "success"}',
+      };
+
+      mockUrlFetchApp.fetch
+        .mockReturnValueOnce(retryableResponse)
+        .mockReturnValueOnce(mockResponse200);
+
+      const manager = new BaseRequestManager();
+      const request = { uid, url: 'https://api.test/endpoint', method: 'post' };
+      const result = manager.sendRequestWithRetries(request, {
+        acceptedStatuses: [200, 201],
+        stopStatuses: [],
+      });
+
+      expect(result).toMatchObject({
+        uid: request.uid,
+        response: mockResponse200,
+        error: null,
+        attempts: 2,
+      });
+      expect(mockUrlFetchApp.fetch).toHaveBeenCalledTimes(2);
+      expect(mockUtilities.sleep).toHaveBeenCalledTimes(1);
+    }
     it('should retry on 429 Too Many Requests with exponential backoff', () => {
       const mockResponse429 = {
         getResponseCode: () => 429,
@@ -205,74 +240,20 @@ describe('BaseRequestManager retry policy and outcome identity', () => {
     });
 
     it('should retry on 500 Internal Server Error', () => {
-      const mockResponse500 = {
-        getResponseCode: () => 500,
-        getContentText: () => JSON.stringify({ statusCode: 500, message: 'Internal server error' }),
-      };
-      const mockResponse200 = {
-        getResponseCode: () => 200,
-        getContentText: () => '{"result": "success"}',
-      };
-
-      mockUrlFetchApp.fetch
-        .mockReturnValueOnce(mockResponse500)
-        .mockReturnValueOnce(mockResponse200);
-
-      const manager = new BaseRequestManager();
-      const request = {
+      expectRetryableRecovery({
+        status: 500,
+        message: 'Internal server error',
         uid: 'http-500-recovery',
-        url: 'https://api.test/endpoint',
-        method: 'post',
-      };
-      const result = manager.sendRequestWithRetries(request, {
-        acceptedStatuses: [200, 201],
-        stopStatuses: [],
       });
-
-      expect(result).toMatchObject({
-        uid: request.uid,
-        response: mockResponse200,
-        error: null,
-        attempts: 2,
-      });
-      expect(mockUrlFetchApp.fetch).toHaveBeenCalledTimes(2);
-      expect(mockUtilities.sleep).toHaveBeenCalledTimes(1);
       expect(mockUtilities.sleep).toHaveBeenCalledWith(5000);
     });
 
     it('should retry on 503 Service Unavailable', () => {
-      const mockResponse503 = {
-        getResponseCode: () => 503,
-        getContentText: () => JSON.stringify({ statusCode: 503, message: 'Service unavailable' }),
-      };
-      const mockResponse200 = {
-        getResponseCode: () => 200,
-        getContentText: () => '{"result": "success"}',
-      };
-
-      mockUrlFetchApp.fetch
-        .mockReturnValueOnce(mockResponse503)
-        .mockReturnValueOnce(mockResponse200);
-
-      const manager = new BaseRequestManager();
-      const request = {
+      expectRetryableRecovery({
+        status: 503,
+        message: 'Service unavailable',
         uid: 'http-503-recovery',
-        url: 'https://api.test/endpoint',
-        method: 'post',
-      };
-      const result = manager.sendRequestWithRetries(request, {
-        acceptedStatuses: [200, 201],
-        stopStatuses: [],
       });
-
-      expect(result).toMatchObject({
-        uid: request.uid,
-        response: mockResponse200,
-        error: null,
-        attempts: 2,
-      });
-      expect(mockUrlFetchApp.fetch).toHaveBeenCalledTimes(2);
-      expect(mockUtilities.sleep).toHaveBeenCalledTimes(1);
     });
 
     it('returns the final retryable response after the constructor-owned attempt budget', () => {

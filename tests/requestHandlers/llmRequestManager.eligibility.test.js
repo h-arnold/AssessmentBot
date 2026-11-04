@@ -10,6 +10,29 @@ import {
   withCacheManager,
 } from '../helpers/llmRequestManagerHarness.js';
 
+/**
+ * Runs `body` with a fresh real LLMRequestManager loaded under the harness
+ * globals, then restores those globals. The body receives the loaded manager,
+ * the harness context (whose script cache the caller asserts on) and the
+ * native transport mocks the harness wired in, so a caller can prove they were
+ * never dispatched.
+ */
+function withLoadedManager(body) {
+  const natives = { fetchAll: vi.fn(), fetch: vi.fn(), sleep: vi.fn() };
+  const context = loadManager(natives);
+  const collected = { ...natives };
+  try {
+    withTemporaryGlobals(context.globals, () => {
+      delete require.cache[context.llmPath];
+      const Manager = require(context.llmPath);
+      body({ manager: new Manager(), context, natives: collected });
+    });
+  } finally {
+    vi.restoreAllMocks();
+    context.restore();
+  }
+}
+
 describe('LLMRequestManager eligibility outcomes', () => {
   // Approved hash invariant (user decision): stored content requires a usable
   // contentHash; paired unusable hashes fail loudly pre-lookup, never template N.
@@ -19,303 +42,247 @@ describe('LLMRequestManager eligibility outcomes', () => {
   ])(
     'fails generation loudly for paired unusable %s template/student hashes without false N or live marking',
     (_label, unusableValue) => {
-      const fetchAll = vi.fn(() => []);
-      const fetch = vi.fn();
-      const sleep = vi.fn();
-      const context = loadManager({ fetchAll, fetch, sleep });
-      try {
-        withTemporaryGlobals(context.globals, () => {
-          delete require.cache[context.llmPath];
-          const Manager = require(context.llmPath);
-          const manager = new Manager();
-          const { assignment, task, item } = createAssignment('TEXT');
-          task.getPrimaryTemplate().contentHash = unusableValue;
-          item.artifact.contentHash = unusableValue;
-          const artefactSnapshot = structuredClone(item.artifact.toJSON());
-          const documentId = assignment.submissions[0].documentId;
-          // Fail-loudly invariant Red: current null===null N mutation instead.
-          let caught = null;
-          try {
-            manager.generateRequestObjects(assignment);
-          } catch (error) {
-            caught = error;
-          }
-          expect(caught).toBeInstanceOf(Error);
-          expect(caught.message.toLowerCase()).toContain('hash');
-          expect(caught.message.length).toBeGreaterThan('hash'.length);
-          // No false N, no cache lookup/write, no HTTP dispatch, source retained.
-          expect(item.getAssessment()).toEqual({});
-          expect(item.artifact.toJSON()).toEqual(artefactSnapshot);
-          expect(item.taskId).toBe(task.getId());
-          expect(assignment.submissions[0].documentId).toBe(documentId);
-          expect(context.scriptCache.get).not.toHaveBeenCalled();
-          expect(context.scriptCache.put).not.toHaveBeenCalled();
-          expect(fetchAll).not.toHaveBeenCalled();
-          expect(fetch).not.toHaveBeenCalled();
-          expect(sleep).not.toHaveBeenCalled();
-        });
-      } finally {
-        context.restore();
-      }
+      withLoadedManager(({ manager, context, natives }) => {
+        const { assignment, task, item } = createAssignment('TEXT');
+        task.getPrimaryTemplate().contentHash = unusableValue;
+        item.artifact.contentHash = unusableValue;
+        const artefactSnapshot = structuredClone(item.artifact.toJSON());
+        const documentId = assignment.submissions[0].documentId;
+        // Fail-loudly invariant Red: current null===null N mutation instead.
+        let caught = null;
+        try {
+          manager.generateRequestObjects(assignment);
+        } catch (error) {
+          caught = error;
+        }
+        expect(caught).toBeInstanceOf(Error);
+        expect(caught.message.toLowerCase()).toContain('hash');
+        expect(caught.message.length).toBeGreaterThan('hash'.length);
+        // No false N, no cache lookup/write, no HTTP dispatch, source retained.
+        expect(item.getAssessment()).toEqual({});
+        expect(item.artifact.toJSON()).toEqual(artefactSnapshot);
+        expect(item.taskId).toBe(task.getId());
+        expect(assignment.submissions[0].documentId).toBe(documentId);
+        expect(context.scriptCache.get).not.toHaveBeenCalled();
+        expect(context.scriptCache.put).not.toHaveBeenCalled();
+        expect(natives.fetchAll).not.toHaveBeenCalled();
+        expect(natives.fetch).not.toHaveBeenCalled();
+        expect(natives.sleep).not.toHaveBeenCalled();
+      });
     }
   );
 
   it('classifies matching non-empty hashes as template N without changing the source', () => {
-    const context = loadManager({ fetchAll: vi.fn(), fetch: vi.fn(), sleep: vi.fn() });
-    try {
-      withTemporaryGlobals(context.globals, () => {
-        delete require.cache[context.llmPath];
-        const Manager = require(context.llmPath);
-        const manager = new Manager();
-        const { assignment, task, item } = createAssignment('TEXT');
-        const originalContent = item.artifact.content;
-        const matchingHash = task.getPrimaryTemplate().contentHash;
-        expect(matchingHash).toEqual(expect.any(String));
-        expect(matchingHash.length).toBeGreaterThan(0);
-        item.artifact.contentHash = matchingHash;
-        const originalHash = item.artifact.contentHash;
-        const originalUid = item.artifact.getUid();
-        const originalTaskId = item.taskId;
-        const originalArtefact = item.artifact;
-        const artefactSnapshot = structuredClone(originalArtefact.toJSON());
-        const originalDocumentId = assignment.submissions[0].documentId;
+    withLoadedManager(({ manager }) => {
+      const { assignment, task, item } = createAssignment('TEXT');
+      const originalContent = item.artifact.content;
+      const matchingHash = task.getPrimaryTemplate().contentHash;
+      expect(matchingHash).toEqual(expect.any(String));
+      expect(matchingHash.length).toBeGreaterThan(0);
+      item.artifact.contentHash = matchingHash;
+      const originalHash = item.artifact.contentHash;
+      const originalUid = item.artifact.getUid();
+      const originalTaskId = item.taskId;
+      const originalArtefact = item.artifact;
+      const artefactSnapshot = structuredClone(originalArtefact.toJSON());
+      const originalDocumentId = assignment.submissions[0].documentId;
 
-        expect(manager.generateRequestObjects(assignment)).toEqual([]);
-        expect(item.artifact).toBe(originalArtefact);
-        expect(item.artifact.content).toBe(originalContent);
-        expect(item.artifact.contentHash).toBe(matchingHash);
-        expect(item.artifact.contentHash).toBe(originalHash);
-        expect(item.artifact.getUid()).toBe(originalUid);
-        expect(item.taskId).toBe(originalTaskId);
-        expect(item.artifact.toJSON()).toEqual(artefactSnapshot);
-        expect(assignment.submissions[0].documentId).toBe(originalDocumentId);
-        expect(item.getAssessment()).toEqual({
-          completeness: { score: 'N', reasoning: 'Task not attempted' },
-          accuracy: { score: 'N', reasoning: 'Task not attempted' },
-          spag: { score: 'N', reasoning: 'Task not attempted' },
-        });
+      expect(manager.generateRequestObjects(assignment)).toEqual([]);
+      expect(item.artifact).toBe(originalArtefact);
+      expect(item.artifact.content).toBe(originalContent);
+      expect(item.artifact.contentHash).toBe(matchingHash);
+      expect(item.artifact.contentHash).toBe(originalHash);
+      expect(item.artifact.getUid()).toBe(originalUid);
+      expect(item.taskId).toBe(originalTaskId);
+      expect(item.artifact.toJSON()).toEqual(artefactSnapshot);
+      expect(assignment.submissions[0].documentId).toBe(originalDocumentId);
+      expect(item.getAssessment()).toEqual({
+        completeness: { score: 'N', reasoning: 'Task not attempted' },
+        accuracy: { score: 'N', reasoning: 'Task not attempted' },
+        spag: { score: 'N', reasoning: 'Task not attempted' },
       });
-    } finally {
-      context.restore();
-    }
+    });
   });
 
   it.each([
     ['substantive work', 'existing-content'],
     ['blank work', ''],
   ])('preserves prior E entries without dispatch for %s', (_label, content) => {
-    const context = loadManager({ fetchAll: vi.fn(), fetch: vi.fn(), sleep: vi.fn() });
-    try {
-      withTemporaryGlobals(context.globals, () => {
-        delete require.cache[context.llmPath];
-        const Manager = require(context.llmPath);
-        const manager = new Manager();
-        const { assignment, task, item } = createAssignment('TEXT');
-        item.artifact.content = content;
-        item.artifact.ensureHash();
-        if (content === '') {
-          expect(item.artifact.contentHash).not.toBe(task.getPrimaryTemplate().contentHash);
-        }
-        item.setError('extraction', 'SOURCE_CONTENT_UNAVAILABLE');
-        const priorAssessments = item.getAssessment();
-        const priorEntries = ['completeness', 'accuracy', 'spag'].map(
-          (criterion) => priorAssessments[criterion]
-        );
-        const priorCauses = priorEntries.map(({ error }) => error);
-        const expected = {
-          completeness: {
-            score: 'E',
-            reasoning: 'No source content could be extracted for this task.',
-            error: { stage: 'extraction', code: 'SOURCE_CONTENT_UNAVAILABLE' },
-          },
-          accuracy: {
-            score: 'E',
-            reasoning: 'No source content could be extracted for this task.',
-            error: { stage: 'extraction', code: 'SOURCE_CONTENT_UNAVAILABLE' },
-          },
-          spag: {
-            score: 'E',
-            reasoning: 'No source content could be extracted for this task.',
-            error: { stage: 'extraction', code: 'SOURCE_CONTENT_UNAVAILABLE' },
-          },
-        };
-        const originalContent = item.artifact.content;
-        const originalHash = item.artifact.contentHash;
-        const originalUid = item.artifact.getUid();
-        const originalTaskId = item.taskId;
-        const originalDocumentId = assignment.submissions[0].documentId;
-        const originalPageId = item.artifact.pageId;
-        const originalArtefact = item.artifact;
-        const artefactSnapshot = structuredClone(originalArtefact.toJSON());
+    withLoadedManager(({ manager }) => {
+      const { assignment, task, item } = createAssignment('TEXT');
+      item.artifact.content = content;
+      item.artifact.ensureHash();
+      if (content === '') {
+        expect(item.artifact.contentHash).not.toBe(task.getPrimaryTemplate().contentHash);
+      }
+      item.setError('extraction', 'SOURCE_CONTENT_UNAVAILABLE');
+      const priorAssessments = item.getAssessment();
+      const priorEntries = ['completeness', 'accuracy', 'spag'].map(
+        (criterion) => priorAssessments[criterion]
+      );
+      const priorCauses = priorEntries.map(({ error }) => error);
+      const expected = {
+        completeness: {
+          score: 'E',
+          reasoning: 'No source content could be extracted for this task.',
+          error: { stage: 'extraction', code: 'SOURCE_CONTENT_UNAVAILABLE' },
+        },
+        accuracy: {
+          score: 'E',
+          reasoning: 'No source content could be extracted for this task.',
+          error: { stage: 'extraction', code: 'SOURCE_CONTENT_UNAVAILABLE' },
+        },
+        spag: {
+          score: 'E',
+          reasoning: 'No source content could be extracted for this task.',
+          error: { stage: 'extraction', code: 'SOURCE_CONTENT_UNAVAILABLE' },
+        },
+      };
+      const originalContent = item.artifact.content;
+      const originalHash = item.artifact.contentHash;
+      const originalUid = item.artifact.getUid();
+      const originalTaskId = item.taskId;
+      const originalDocumentId = assignment.submissions[0].documentId;
+      const originalPageId = item.artifact.pageId;
+      const originalArtefact = item.artifact;
+      const artefactSnapshot = structuredClone(originalArtefact.toJSON());
 
-        expect(manager.generateRequestObjects(assignment)).toEqual([]);
-        expect(item.getAssessment()).toEqual(expected);
-        ['completeness', 'accuracy', 'spag'].forEach((criterion, index) => {
-          expect(item.getAssessment(criterion)).toBe(priorEntries[index]);
-          expect(item.getAssessment(criterion).error).toBe(priorCauses[index]);
-        });
-        expect(item.artifact).toBe(originalArtefact);
-        expect(item.artifact.content).toBe(originalContent);
-        expect(item.artifact.contentHash).toBe(originalHash);
-        expect(item.artifact.getUid()).toBe(originalUid);
-        expect(item.taskId).toBe(originalTaskId);
-        expect(assignment.submissions[0].documentId).toBe(originalDocumentId);
-        expect(item.artifact.pageId).toBe(originalPageId);
-        expect(item.artifact.toJSON()).toEqual(artefactSnapshot);
+      expect(manager.generateRequestObjects(assignment)).toEqual([]);
+      expect(item.getAssessment()).toEqual(expected);
+      ['completeness', 'accuracy', 'spag'].forEach((criterion, index) => {
+        expect(item.getAssessment(criterion)).toBe(priorEntries[index]);
+        expect(item.getAssessment(criterion).error).toBe(priorCauses[index]);
       });
-    } finally {
-      context.restore();
-    }
+      expect(item.artifact).toBe(originalArtefact);
+      expect(item.artifact.content).toBe(originalContent);
+      expect(item.artifact.contentHash).toBe(originalHash);
+      expect(item.artifact.getUid()).toBe(originalUid);
+      expect(item.taskId).toBe(originalTaskId);
+      expect(assignment.submissions[0].documentId).toBe(originalDocumentId);
+      expect(item.artifact.pageId).toBe(originalPageId);
+      expect(item.artifact.toJSON()).toEqual(artefactSnapshot);
+    });
   });
 
   it('does not generate LLM requests for spreadsheet items', () => {
-    const context = loadManager({ fetchAll: vi.fn(), fetch: vi.fn(), sleep: vi.fn() });
-    try {
-      withTemporaryGlobals(context.globals, () => {
-        delete require.cache[context.llmPath];
-        const Manager = require(context.llmPath);
-        const manager = new Manager();
-        const { assignment, task, item } = createAssignment('SPREADSHEET');
-        const submission = assignment.submissions[0];
-        const artefact = item.artifact;
-        const artefactSnapshot = structuredClone(artefact.toJSON());
-        const sourceIdentity = {
-          documentId: submission.documentId,
-          pageId: artefact.pageId,
-          artefactUid: artefact.getUid(),
-          itemId: item.taskId,
-        };
-        expect(item.taskId).toBe(task.getId());
-        expect(submission.items[task.getId()]).toBe(item);
-        const originalContent = structuredClone(item.artifact.content);
-        const originalHash = item.artifact.contentHash;
-        const originalAssessments = structuredClone(item.getAssessment());
+    withLoadedManager(({ manager }) => {
+      const { assignment, task, item } = createAssignment('SPREADSHEET');
+      const submission = assignment.submissions[0];
+      const artefact = item.artifact;
+      const artefactSnapshot = structuredClone(artefact.toJSON());
+      const sourceIdentity = {
+        documentId: submission.documentId,
+        pageId: artefact.pageId,
+        artefactUid: artefact.getUid(),
+        itemId: item.taskId,
+      };
+      expect(item.taskId).toBe(task.getId());
+      expect(submission.items[task.getId()]).toBe(item);
+      const originalContent = structuredClone(item.artifact.content);
+      const originalHash = item.artifact.contentHash;
+      const originalAssessments = structuredClone(item.getAssessment());
 
-        expect(item.getType()).toBe('SPREADSHEET');
-        expect(item.artifact.getType()).toBe('SPREADSHEET');
-        expect(Array.isArray(item.artifact.content)).toBe(true);
-        expect(item.artifact.contentHash).toBeTruthy();
-        expect(task.getPrimaryReference().getType()).toBe('SPREADSHEET');
-        expect(task.getPrimaryTemplate().getType()).toBe('SPREADSHEET');
-        expect(Array.isArray(task.getPrimaryTemplate().content)).toBe(true);
-        expect(task.getPrimaryTemplate().contentHash).toBeTruthy();
+      expect(item.getType()).toBe('SPREADSHEET');
+      expect(item.artifact.getType()).toBe('SPREADSHEET');
+      expect(Array.isArray(item.artifact.content)).toBe(true);
+      expect(item.artifact.contentHash).toBeTruthy();
+      expect(task.getPrimaryReference().getType()).toBe('SPREADSHEET');
+      expect(task.getPrimaryTemplate().getType()).toBe('SPREADSHEET');
+      expect(Array.isArray(task.getPrimaryTemplate().content)).toBe(true);
+      expect(task.getPrimaryTemplate().contentHash).toBeTruthy();
 
-        expect(manager.generateRequestObjects(assignment)).toEqual([]);
-        expect(item.artifact).toBe(artefact);
-        expect(item.artifact.content).toEqual(originalContent);
-        expect(item.artifact.contentHash).toBe(originalHash);
-        expect(item.getAssessment()).toEqual(originalAssessments);
-        expect(item.artifact.toJSON()).toEqual(artefactSnapshot);
-        expect({
-          documentId: submission.documentId,
-          pageId: item.artifact.pageId,
-          artefactUid: item.artifact.getUid(),
-          itemId: item.taskId,
-        }).toEqual(sourceIdentity);
-      });
-    } finally {
-      context.restore();
-    }
+      expect(manager.generateRequestObjects(assignment)).toEqual([]);
+      expect(item.artifact).toBe(artefact);
+      expect(item.artifact.content).toEqual(originalContent);
+      expect(item.artifact.contentHash).toBe(originalHash);
+      expect(item.getAssessment()).toEqual(originalAssessments);
+      expect(item.artifact.toJSON()).toEqual(artefactSnapshot);
+      expect({
+        documentId: submission.documentId,
+        pageId: item.artifact.pageId,
+        artefactUid: item.artifact.getUid(),
+        itemId: item.taskId,
+      }).toEqual(sourceIdentity);
+    });
   });
 
   it('keeps successfully extracted blank work as not attempted', () => {
-    const context = loadManager({ fetchAll: vi.fn(), fetch: vi.fn(), sleep: vi.fn() });
-    try {
-      withTemporaryGlobals(context.globals, () => {
-        delete require.cache[context.llmPath];
-        const Manager = require(context.llmPath);
-        const manager = new Manager();
-        const { assignment, task, item } = createAssignment('TEXT');
-        item.artifact.content = '';
-        item.artifact.ensureHash();
-        const originalHash = item.artifact.contentHash;
-        const originalUid = item.artifact.getUid();
-        const originalTaskId = item.taskId;
-        const originalDocumentId = assignment.submissions[0].documentId;
-        const originalPageId = item.artifact.pageId;
-        const originalArtefact = item.artifact;
-        const artefactSnapshot = structuredClone(originalArtefact.toJSON());
-        expect(originalHash).toEqual(expect.any(String));
-        expect(originalHash.length).toBeGreaterThan(0);
-        expect(originalHash).not.toBe(task.getPrimaryTemplate().contentHash);
+    withLoadedManager(({ manager }) => {
+      const { assignment, task, item } = createAssignment('TEXT');
+      item.artifact.content = '';
+      item.artifact.ensureHash();
+      const originalHash = item.artifact.contentHash;
+      const originalUid = item.artifact.getUid();
+      const originalTaskId = item.taskId;
+      const originalDocumentId = assignment.submissions[0].documentId;
+      const originalPageId = item.artifact.pageId;
+      const originalArtefact = item.artifact;
+      const artefactSnapshot = structuredClone(originalArtefact.toJSON());
+      expect(originalHash).toEqual(expect.any(String));
+      expect(originalHash.length).toBeGreaterThan(0);
+      expect(originalHash).not.toBe(task.getPrimaryTemplate().contentHash);
 
-        expect(manager.generateRequestObjects(assignment)).toEqual([]);
-        expect(item.getAssessment()).toEqual({
-          completeness: { score: 'N', reasoning: 'Task not attempted' },
-          accuracy: { score: 'N', reasoning: 'Task not attempted' },
-          spag: { score: 'N', reasoning: 'Task not attempted' },
-        });
-        expect(item.artifact.content).toBe('');
-        expect(item.artifact.contentHash).toBe(originalHash);
-        expect(item.artifact.getUid()).toBe(originalUid);
-        expect(item.taskId).toBe(originalTaskId);
-        expect(assignment.submissions[0].documentId).toBe(originalDocumentId);
-        expect(item.artifact.pageId).toBe(originalPageId);
-        expect(item.artifact).toBe(originalArtefact);
-        expect(item.artifact.toJSON()).toEqual(artefactSnapshot);
+      expect(manager.generateRequestObjects(assignment)).toEqual([]);
+      expect(item.getAssessment()).toEqual({
+        completeness: { score: 'N', reasoning: 'Task not attempted' },
+        accuracy: { score: 'N', reasoning: 'Task not attempted' },
+        spag: { score: 'N', reasoning: 'Task not attempted' },
       });
-    } finally {
-      context.restore();
-    }
+      expect(item.artifact.content).toBe('');
+      expect(item.artifact.contentHash).toBe(originalHash);
+      expect(item.artifact.getUid()).toBe(originalUid);
+      expect(item.taskId).toBe(originalTaskId);
+      expect(assignment.submissions[0].documentId).toBe(originalDocumentId);
+      expect(item.artifact.pageId).toBe(originalPageId);
+      expect(item.artifact).toBe(originalArtefact);
+      expect(item.artifact.toJSON()).toEqual(artefactSnapshot);
+    });
   });
 });
 
 describe('LLMRequestManager generated-route UID guards', () => {
   it('fails generation loudly when two eligible items produce the same request UID', () => {
-    const fetchAll = vi.fn();
-    const fetch = vi.fn();
-    const sleep = vi.fn();
-    const context = loadManager({ fetchAll, fetch, sleep });
-    try {
-      withTemporaryGlobals(context.globals, () => {
-        delete require.cache[context.llmPath];
-        const manager = new (require(context.llmPath))();
-        const fixture = createRunStopAssignment('medium', 3);
-        const [first, second] = fixture.numeric;
-        expect(first.item).not.toBe(second.item);
-        expect(first.item.taskId).toBe(first.task.getId());
-        expect(second.item.taskId).toBe(second.task.getId());
-        expect(first.submission.items[first.item.taskId]).toBe(first.item);
-        expect(second.submission.items[second.item.taskId]).toBe(second.item);
-        const firstUid = first.item.artifact.getUid();
-        const secondUid = second.item.artifact.getUid();
-        expect(secondUid).not.toBe(firstUid);
-        expect(first.item.artifact.contentHash).not.toBe(
-          first.task.getPrimaryTemplate().contentHash
-        );
-        expect(second.item.artifact.contentHash).not.toBe(
-          second.task.getPrimaryTemplate().contentHash
-        );
-        expect(first.item.artifact.content).not.toBe(second.item.artifact.content);
-        const firstSnapshot = structuredClone(first.item.artifact.toJSON());
-        const secondSnapshot = structuredClone(second.item.artifact.toJSON());
-        const firstVisited = vi.spyOn(first.item.artifact, 'getUid');
-        const duplicateUidSource = vi
-          .spyOn(second.item.artifact, 'getUid')
-          .mockImplementation(() => firstUid);
-        let caught = null;
-        try {
-          manager.generateRequestObjects(fixture.assignment);
-        } catch (error) {
-          caught = error;
-        }
-        expect(firstVisited).toHaveBeenCalled();
-        expect(duplicateUidSource).toHaveBeenCalled();
-        expect(caught).toBeInstanceOf(Error);
-        expect(caught.message).toContain(firstUid);
-        expect(fetchAll).not.toHaveBeenCalled();
-        expect(fetch).not.toHaveBeenCalled();
-        expect(sleep).not.toHaveBeenCalled();
-        expect(first.item.getAssessment()).toEqual({});
-        expect(second.item.getAssessment()).toEqual({});
-        expect(context.scriptCache.put).not.toHaveBeenCalled();
-        expect(first.item.artifact.toJSON()).toEqual(firstSnapshot);
-        expect(second.item.artifact.toJSON()).toEqual(secondSnapshot);
-      });
-    } finally {
-      vi.restoreAllMocks();
-      context.restore();
-    }
+    withLoadedManager(({ manager, context, natives }) => {
+      const fixture = createRunStopAssignment('medium', 3);
+      const [first, second] = fixture.numeric;
+      expect(first.item).not.toBe(second.item);
+      expect(first.item.taskId).toBe(first.task.getId());
+      expect(second.item.taskId).toBe(second.task.getId());
+      expect(first.submission.items[first.item.taskId]).toBe(first.item);
+      expect(second.submission.items[second.item.taskId]).toBe(second.item);
+      const firstUid = first.item.artifact.getUid();
+      const secondUid = second.item.artifact.getUid();
+      expect(secondUid).not.toBe(firstUid);
+      expect(first.item.artifact.contentHash).not.toBe(first.task.getPrimaryTemplate().contentHash);
+      expect(second.item.artifact.contentHash).not.toBe(
+        second.task.getPrimaryTemplate().contentHash
+      );
+      expect(first.item.artifact.content).not.toBe(second.item.artifact.content);
+      const firstSnapshot = structuredClone(first.item.artifact.toJSON());
+      const secondSnapshot = structuredClone(second.item.artifact.toJSON());
+      const firstVisited = vi.spyOn(first.item.artifact, 'getUid');
+      const duplicateUidSource = vi
+        .spyOn(second.item.artifact, 'getUid')
+        .mockImplementation(() => firstUid);
+      let caught = null;
+      try {
+        manager.generateRequestObjects(fixture.assignment);
+      } catch (error) {
+        caught = error;
+      }
+      expect(firstVisited).toHaveBeenCalled();
+      expect(duplicateUidSource).toHaveBeenCalled();
+      expect(caught).toBeInstanceOf(Error);
+      expect(caught.message).toContain(firstUid);
+      expect(natives.fetchAll).not.toHaveBeenCalled();
+      expect(natives.fetch).not.toHaveBeenCalled();
+      expect(natives.sleep).not.toHaveBeenCalled();
+      expect(first.item.getAssessment()).toEqual({});
+      expect(second.item.getAssessment()).toEqual({});
+      expect(context.scriptCache.put).not.toHaveBeenCalled();
+      expect(first.item.artifact.toJSON()).toEqual(firstSnapshot);
+      expect(second.item.artifact.toJSON()).toEqual(secondSnapshot);
+    });
   });
 
   it('fails processing loudly for a request UID absent from the generated route map', () => {
@@ -363,47 +330,36 @@ describe('LLMRequestManager generated-route UID guards', () => {
   });
 
   it('rejects duplicate request UIDs in processing before dispatch, mutation and cache writes', () => {
-    const fetchAll = vi.fn();
-    const fetch = vi.fn();
-    const sleep = vi.fn();
-    const context = loadManager({ fetchAll, fetch, sleep });
-    try {
-      withTemporaryGlobals(context.globals, () => {
-        delete require.cache[context.llmPath];
-        const manager = new (require(context.llmPath))();
-        const { assignment, item } = createAssignment('TEXT');
-        const requests = manager.generateRequestObjects(assignment);
-        expect(requests).toHaveLength(1);
-        const requestUid = requests[0].uid;
-        expect(requestUid).toBe(item.artifact.getUid());
-        const duplicateRequest = { ...requests[0] };
-        expect(duplicateRequest).not.toBe(requests[0]);
-        expect(duplicateRequest.uid).toBe(requestUid);
-        const artefactSnapshot = structuredClone(item.artifact.toJSON());
-        const documentId = assignment.submissions[0].documentId;
-        const mutation = vi.spyOn(item, 'addAssessment');
-        let caught = null;
-        try {
-          manager.processStudentResponses([requests[0], duplicateRequest], assignment);
-        } catch (error) {
-          caught = error;
-        }
-        expect(caught).toBeInstanceOf(Error);
-        expect(caught.message).toContain(requestUid);
-        expect(caught.message.toLowerCase()).toContain('duplicate');
-        expect(fetchAll).not.toHaveBeenCalled();
-        expect(fetch).not.toHaveBeenCalled();
-        expect(sleep).not.toHaveBeenCalled();
-        expect(mutation).not.toHaveBeenCalled();
-        expect(item.getAssessment()).toEqual({});
-        expect(context.scriptCache.put).not.toHaveBeenCalled();
-        expect(item.artifact.toJSON()).toEqual(artefactSnapshot);
-        expect(assignment.submissions[0].documentId).toBe(documentId);
-      });
-    } finally {
-      vi.restoreAllMocks();
-      context.restore();
-    }
+    withLoadedManager(({ manager, context, natives }) => {
+      const { assignment, item } = createAssignment('TEXT');
+      const requests = manager.generateRequestObjects(assignment);
+      expect(requests).toHaveLength(1);
+      const requestUid = requests[0].uid;
+      expect(requestUid).toBe(item.artifact.getUid());
+      const duplicateRequest = { ...requests[0] };
+      expect(duplicateRequest).not.toBe(requests[0]);
+      expect(duplicateRequest.uid).toBe(requestUid);
+      const artefactSnapshot = structuredClone(item.artifact.toJSON());
+      const documentId = assignment.submissions[0].documentId;
+      const mutation = vi.spyOn(item, 'addAssessment');
+      let caught = null;
+      try {
+        manager.processStudentResponses([requests[0], duplicateRequest], assignment);
+      } catch (error) {
+        caught = error;
+      }
+      expect(caught).toBeInstanceOf(Error);
+      expect(caught.message).toContain(requestUid);
+      expect(caught.message.toLowerCase()).toContain('duplicate');
+      expect(natives.fetchAll).not.toHaveBeenCalled();
+      expect(natives.fetch).not.toHaveBeenCalled();
+      expect(natives.sleep).not.toHaveBeenCalled();
+      expect(mutation).not.toHaveBeenCalled();
+      expect(item.getAssessment()).toEqual({});
+      expect(context.scriptCache.put).not.toHaveBeenCalled();
+      expect(item.artifact.toJSON()).toEqual(artefactSnapshot);
+      expect(assignment.submissions[0].documentId).toBe(documentId);
+    });
   });
 });
 

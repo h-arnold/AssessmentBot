@@ -310,6 +310,31 @@ describe('LLM internal fault original-error identity', () => {
   });
 });
 
+/**
+ * Shared terminal tail for the retry-exhaustion rows: the real retry engine
+ * reports the final attempt identity, routing and canonical outcome, then the
+ * safety tail runs against the caller's leak marker.
+ * @param {Object} collected The transport case result under test.
+ * @param {Object} options Row-specific expectations for the shared tail.
+ * @param {Error} options.finalError The error the engine must report.
+ * @param {boolean} options.expectSingleRouting Whether exactly one routing occurs.
+ * @param {string} options.leakMarker Leak text excluded from the safe reasoning.
+ */
+function expectExhaustedRetryOutcome(collected, { finalError, expectSingleRouting, leakMarker }) {
+  expectExecutedTransportCounts(collected, { fetchCalls: 2, sleeps: [5000, 7500] });
+  const engineResult = collected.spies.engine.mock.results[0].value;
+  expect(engineResult.uid).toBe(collected.requests[0].uid);
+  expect(engineResult.response).toBe(null);
+  expect(engineResult.error).toBe(finalError);
+  expect(engineResult.attempts).toBe(3);
+  if (expectSingleRouting) expect(collected.spies.routed).toHaveBeenCalledTimes(1);
+  const [routedResponse] = collected.spies.routed.mock.calls[0];
+  expect(routedResponse).toBe(null);
+  const expected = catalogueHTTPAssessments(SERVICE_EXHAUSTED_REASON, 'LLM_UNAVAILABLE');
+  expect(collected.item.getAssessment()).toEqual(expected);
+  expectTerminalIsolation(collected, leakMarker);
+}
+
 describe('LLM service transport catalogue outcomes', () => {
   it.each([400, 413, 422])(
     'makes HTTP %s a permanent per-request LLM_HTTP_FAILED failure without retry or body access',
@@ -411,21 +436,12 @@ describe('LLM service transport catalogue outcomes', () => {
         engine: vi.spyOn(manager, '_runRetryEngine'),
       })
     );
-    expectExecutedTransportCounts(collected, { fetchCalls: 2, sleeps: [5000, 7500] });
     // The native seam keeps the final original error across all three attempts.
-    const engineResult = collected.spies.engine.mock.results[0].value;
-    expect(engineResult.uid).toBe(collected.requests[0].uid);
-    expect(engineResult.response).toBe(null);
-    expect(engineResult.error).toBe(finalError);
-    expect(engineResult.attempts).toBe(3);
-    expect(collected.spies.routed).toHaveBeenCalledTimes(1);
-    const [routedResponse] = collected.spies.routed.mock.calls[0];
-    expect(routedResponse).toBe(null);
-    expect(collected.item.getAssessment()).toEqual(
-      catalogueHTTPAssessments(SERVICE_EXHAUSTED_REASON, 'LLM_UNAVAILABLE')
-    );
-    // Authored after the current production gap; reached only in Section 6 Green.
-    expectTerminalIsolation(collected, 'NETWORK_OUTAGE');
+    expectExhaustedRetryOutcome(collected, {
+      finalError,
+      expectSingleRouting: true,
+      leakMarker: 'NETWORK_OUTAGE',
+    });
   });
 
   it('replaces a stale HTTP 500 with the later network exhaustion outcome', () => {
@@ -450,20 +466,12 @@ describe('LLM service transport catalogue outcomes', () => {
         engine: vi.spyOn(manager, '_runRetryEngine'),
       })
     );
-    expectExecutedTransportCounts(collected, { fetchCalls: 2, sleeps: [5000, 7500] });
     // A later network failure replaces the stale 500 within the shared budget.
-    const engineResult = collected.spies.engine.mock.results[0].value;
-    expect(engineResult.uid).toBe(collected.requests[0].uid);
-    expect(engineResult.response).toBe(null);
-    expect(engineResult.error).toBe(attemptThreeError);
-    expect(engineResult.attempts).toBe(3);
-    const [routedResponse] = collected.spies.routed.mock.calls[0];
-    expect(routedResponse).toBe(null);
-    expect(collected.item.getAssessment()).toEqual(
-      catalogueHTTPAssessments(SERVICE_EXHAUSTED_REASON, 'LLM_UNAVAILABLE')
-    );
-    // Authored after the current production gap; reached only in Section 6 Green.
-    expectTerminalIsolation(collected, 'MIXED_OUTAGE');
+    expectExhaustedRetryOutcome(collected, {
+      finalError: attemptThreeError,
+      expectSingleRouting: false,
+      leakMarker: 'MIXED_OUTAGE',
+    });
   });
 
   it('recovers an initial HTTP 500 on the second native attempt without an extra semantic retry', () => {

@@ -28,6 +28,24 @@ describe('SlidesParser malformed table consumer path', () => {
   const refDocId = 'ref-doc-1';
   const studentDocId = 'student-doc-1';
 
+  /**
+   * Builds the parser harness for one reference table and one student table,
+   * both tagged `# Task Table`, then extracts the reference task definitions.
+   */
+  function buildTableParser(refTable, studentTable) {
+    const parser = buildSlidesParserHarness(vi, suite.SlidesParser, {
+      [refDocId]: [
+        createSlide(vi, 'ref-page', [createTableElementFromMock(vi, '# Task Table', refTable)]),
+      ],
+      [studentDocId]: [
+        createSlide(vi, 'student-page', [
+          createTableElementFromMock(vi, '# Task Table', studentTable),
+        ]),
+      ],
+    });
+    return { parser, defs: parser.extractTaskDefinitions(refDocId) };
+  }
+
   it('should preserve an unavailable TABLE artefact after an ordinary cell RPC failure', () => {
     const failure = new Error('Student cell RPC failed');
     const refTable = buildNormalTableMock(vi, [['Reference value']]);
@@ -162,17 +180,7 @@ describe('SlidesParser malformed table consumer path', () => {
         }),
       };
       const refTable = buildNormalTableMock(vi, [['Reference value']]);
-      const parser = buildSlidesParserHarness(vi, suite.SlidesParser, {
-        [refDocId]: [
-          createSlide(vi, 'ref-page', [createTableElementFromMock(vi, '# Task Table', refTable)]),
-        ],
-        [studentDocId]: [
-          createSlide(vi, 'student-page', [
-            createTableElementFromMock(vi, '# Task Table', studentTable),
-          ]),
-        ],
-      });
-      const defs = parser.extractTaskDefinitions(refDocId);
+      const { parser, defs } = buildTableParser(refTable, studentTable);
       const result = parser.extractSubmissionArtifacts(studentDocId, defs);
 
       expect(result[0]).toMatchObject({ content: null, type: 'TABLE', taskId: defs[0].getId() });
@@ -225,17 +233,7 @@ describe('SlidesParser malformed table consumer path', () => {
       })),
     };
     const refTable = buildNormalTableMock(vi, [['Reference value']]);
-    const parser = buildSlidesParserHarness(vi, suite.SlidesParser, {
-      [refDocId]: [
-        createSlide(vi, 'ref-page', [createTableElementFromMock(vi, '# Task Table', refTable)]),
-      ],
-      [studentDocId]: [
-        createSlide(vi, 'student-page', [
-          createTableElementFromMock(vi, '# Task Table', studentTable),
-        ]),
-      ],
-    });
-    const defs = parser.extractTaskDefinitions(refDocId);
+    const { parser, defs } = buildTableParser(refTable, studentTable);
     const result = parser.extractSubmissionArtifacts(studentDocId, defs);
     expect(result[0].content).toBeNull();
     expect(studentTable.getCell.mock.calls).toEqual([

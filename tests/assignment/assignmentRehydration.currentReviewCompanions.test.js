@@ -19,75 +19,51 @@ import { Assessment } from '#backend/Models/Assessment.js';
 afterEach(() => vi.restoreAllMocks());
 
 describe('CURRENT artefact body/hash pairing', () => {
+  /**
+   * Builds one body/hash mismatch row: corrupts a single artefact field and
+   * expects the paired field to remain intact.
+   *
+   * @param {string} label - Case label used in the test name.
+   * @param {object} fields - Row fields such as `score`, `stage` and `code`.
+   * @param {'content'|'contentHash'} corruptedField - Field to set to null.
+   * @returns {object} The mismatch case row.
+   */
+  function bodyHashMismatchCase(label, fields, corruptedField) {
+    const intactField = corruptedField === 'content' ? 'contentHash' : 'content';
+    return {
+      label,
+      ...fields,
+      corrupt: (artifact) => {
+        artifact[corruptedField] = null;
+      },
+      expected: (artifact) => artifact[intactField] !== null,
+    };
+  }
   const mismatchCases = [
-    {
-      label: 'numeric body/hash',
-      score: 4,
-      corrupt: (artifact) => {
-        artifact.content = null;
-      },
-      expected: (artifact) => artifact.contentHash !== null,
-    },
-    {
-      label: 'numeric hash/body',
-      score: 4,
-      corrupt: (artifact) => {
-        artifact.contentHash = null;
-      },
-      expected: (artifact) => artifact.content !== null,
-    },
-    {
-      label: 'N body/hash',
-      score: 'N',
-      corrupt: (artifact) => {
-        artifact.content = null;
-      },
-      expected: (artifact) => artifact.contentHash !== null,
-    },
-    {
-      label: 'N hash/body',
-      score: 'N',
-      corrupt: (artifact) => {
-        artifact.contentHash = null;
-      },
-      expected: (artifact) => artifact.content !== null,
-    },
-    {
-      label: 'assessment E body/hash',
-      stage: 'assessment',
-      code: 'ASSESSMENT_FAILED',
-      corrupt: (artifact) => {
-        artifact.content = null;
-      },
-      expected: (artifact) => artifact.contentHash !== null,
-    },
-    {
-      label: 'assessment E hash/body',
-      stage: 'assessment',
-      code: 'ASSESSMENT_FAILED',
-      corrupt: (artifact) => {
-        artifact.contentHash = null;
-      },
-      expected: (artifact) => artifact.content !== null,
-    },
-    {
-      label: 'extraction E body/hash',
-      stage: 'extraction',
-      code: 'SOURCE_CONTENT_UNAVAILABLE',
-      corrupt: (artifact) => {
-        artifact.content = null;
-      },
-      expected: (artifact) => artifact.contentHash !== null,
-    },
-    {
-      label: 'extraction E hash/body',
-      stage: 'extraction',
-      code: 'SOURCE_CONTENT_UNAVAILABLE',
-      corrupt: (artifact) => {
-        artifact.contentHash = null;
-      },
-      expected: (artifact) => artifact.content !== null,
-    },
+    bodyHashMismatchCase('numeric body/hash', { score: 4 }, 'content'),
+    bodyHashMismatchCase('numeric hash/body', { score: 4 }, 'contentHash'),
+    bodyHashMismatchCase('N body/hash', { score: 'N' }, 'content'),
+    bodyHashMismatchCase('N hash/body', { score: 'N' }, 'contentHash'),
+    bodyHashMismatchCase(
+      'assessment E body/hash',
+      { stage: 'assessment', code: 'ASSESSMENT_FAILED' },
+      'content'
+    ),
+    bodyHashMismatchCase(
+      'assessment E hash/body',
+      { stage: 'assessment', code: 'ASSESSMENT_FAILED' },
+      'contentHash'
+    ),
+    bodyHashMismatchCase(
+      'extraction E body/hash',
+      { stage: 'extraction', code: 'SOURCE_CONTENT_UNAVAILABLE' },
+      'content'
+    ),
+    bodyHashMismatchCase(
+      'extraction E hash/body',
+      { stage: 'extraction', code: 'SOURCE_CONTENT_UNAVAILABLE' },
+      'contentHash'
+    ),
   ];
   for (const { label, score, stage, code, corrupt, expected } of mismatchCases) {
     it(`rejects mismatched body/hash pair for ${label} without repairing target hash`, () => {

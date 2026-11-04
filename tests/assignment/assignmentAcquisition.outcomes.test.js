@@ -13,6 +13,42 @@ const mimeType = 'application/vnd.google-apps.presentation';
 const authoredLogProjection = (calls) =>
   JSON.stringify(calls, (_key, value) => (value instanceof Error ? undefined : value));
 
+/**
+ * Asserts that every known task carries the same acquisition error and an empty
+ * submission artefact after an unsuccessful document read.
+ *
+ * @param {object} submission - The submission whose items are checked.
+ * @param {string[]} taskIds - Known task identifiers expected on the submission.
+ * @param {{reasoning: string, code: string}} expected - Acquisition error to expect.
+ */
+function expectAcquisitionErrorsForEveryTask(submission, taskIds, { reasoning, code }) {
+  expect(taskIds.length).toBeGreaterThan(0);
+  expect(Object.keys(submission.items)).toEqual(expect.arrayContaining(taskIds));
+  for (const taskId of taskIds) {
+    expect(submission.items[taskId].assessments).toMatchObject({
+      completeness: {
+        score: 'E',
+        reasoning,
+        error: { stage: 'acquisition', code },
+      },
+      accuracy: { score: 'E', error: { stage: 'acquisition', code } },
+      spag: { score: 'E', error: { stage: 'acquisition', code } },
+    });
+    expect(submission.items[taskId].artifact.toJSON()).toMatchObject({
+      type: 'base',
+      role: 'submission',
+      pageId: null,
+      documentId: null,
+      content: null,
+      contentHash: null,
+      metadata: {},
+    });
+    for (const criterion of ['completeness', 'accuracy', 'spag']) {
+      expect(submission.items[taskId].assessments[criterion].reasoning).toBe(reasoning);
+    }
+  }
+}
+
 describe('submitted-document acquisition outcomes', () => {
   let restoreGlobals;
 
@@ -116,33 +152,10 @@ describe('submitted-document acquisition outcomes', () => {
 
     acquisition.fetchSubmittedDocumentsByMimeType(mimeType);
 
-    expect(taskIds.length).toBeGreaterThan(0);
-    expect(Object.keys(submission.items)).toEqual(expect.arrayContaining(taskIds));
-    for (const taskId of taskIds) {
-      expect(submission.items[taskId].assessments).toMatchObject({
-        completeness: {
-          score: 'E',
-          reasoning: 'The submitted attachment is not a supported document for this assignment.',
-          error: { stage: 'acquisition', code: 'UNSUPPORTED_DOCUMENT' },
-        },
-        accuracy: { score: 'E', error: { stage: 'acquisition', code: 'UNSUPPORTED_DOCUMENT' } },
-        spag: { score: 'E', error: { stage: 'acquisition', code: 'UNSUPPORTED_DOCUMENT' } },
-      });
-      expect(submission.items[taskId].artifact.toJSON()).toMatchObject({
-        type: 'base',
-        role: 'submission',
-        pageId: null,
-        documentId: null,
-        content: null,
-        contentHash: null,
-        metadata: {},
-      });
-      for (const criterion of ['completeness', 'accuracy', 'spag']) {
-        expect(submission.items[taskId].assessments[criterion].reasoning).toBe(
-          'The submitted attachment is not a supported document for this assignment.'
-        );
-      }
-    }
+    expectAcquisitionErrorsForEveryTask(submission, taskIds, {
+      reasoning: 'The submitted attachment is not a supported document for this assignment.',
+      code: 'UNSUPPORTED_DOCUMENT',
+    });
     expect(logger.warn).not.toHaveBeenCalled();
     expect(
       authoredLogProjection([
@@ -172,33 +185,10 @@ describe('submitted-document acquisition outcomes', () => {
 
     acquisition.fetchSubmittedDocumentsByMimeType(mimeType);
 
-    expect(taskIds.length).toBeGreaterThan(0);
-    expect(Object.keys(submission.items)).toEqual(expect.arrayContaining(taskIds));
-    for (const taskId of taskIds) {
-      expect(submission.items[taskId].assessments).toMatchObject({
-        completeness: {
-          score: 'E',
-          reasoning: 'The submitted document could not be accessed.',
-          error: { stage: 'acquisition', code: 'SOURCE_UNREADABLE' },
-        },
-        accuracy: { score: 'E', error: { stage: 'acquisition', code: 'SOURCE_UNREADABLE' } },
-        spag: { score: 'E', error: { stage: 'acquisition', code: 'SOURCE_UNREADABLE' } },
-      });
-      expect(submission.items[taskId].artifact.toJSON()).toMatchObject({
-        type: 'base',
-        role: 'submission',
-        pageId: null,
-        documentId: null,
-        content: null,
-        contentHash: null,
-        metadata: {},
-      });
-      for (const criterion of ['completeness', 'accuracy', 'spag']) {
-        expect(submission.items[taskId].assessments[criterion].reasoning).toBe(
-          'The submitted document could not be accessed.'
-        );
-      }
-    }
+    expectAcquisitionErrorsForEveryTask(submission, taskIds, {
+      reasoning: 'The submitted document could not be accessed.',
+      code: 'SOURCE_UNREADABLE',
+    });
     expect(getFileById).toHaveBeenCalledWith('unreadable-document');
     const rawErrorCalls = logger.error.mock.calls.filter((call) => call.includes(openFailure));
     expect(rawErrorCalls).toHaveLength(1);

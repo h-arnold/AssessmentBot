@@ -39,6 +39,23 @@ function expectedReassessment() {
   return Assessment.createError('validation', 'REASSESSMENT_REQUIRED').toJSON();
 }
 
+/**
+ * Asserts that every projected item carries the detached reassessment entries
+ * and no feedback, for each submission in the projection.
+ *
+ * @param {object[]} submissions - Projected submissions to inspect.
+ */
+function expectDetachedReassessmentItems(submissions) {
+  for (const submission of submissions) {
+    for (const item of Object.values(submission.items)) {
+      expect(Object.keys(item.assessments).sort()).toEqual(['accuracy', 'completeness', 'spag']);
+      for (const value of Object.values(item.assessments))
+        expect(value).toEqual(expectedReassessment());
+      expect(item.feedback).toEqual({});
+    }
+  }
+}
+
 describe('legacy detached reassessment projection', () => {
   it('projects the full stored-identity task universe without inventing roster students', () => {
     const graph = legacyGraph();
@@ -105,17 +122,7 @@ describe('legacy detached reassessment projection', () => {
         }
       }
       const result = project(graph, 'full');
-      for (const submission of result)
-        for (const item of Object.values(submission.items)) {
-          expect(Object.keys(item.assessments).sort()).toEqual([
-            'accuracy',
-            'completeness',
-            'spag',
-          ]);
-          for (const value of Object.values(item.assessments))
-            expect(value).toEqual(expectedReassessment());
-          expect(item.feedback).toEqual({});
-        }
+      expectDetachedReassessmentItems(result);
     }
   );
 
@@ -177,17 +184,8 @@ describe('legacy detached reassessment projection', () => {
       );
       for (const submission of result) {
         expect(Object.keys(submission.items).sort()).toEqual(taskIds);
-        for (const item of Object.values(submission.items)) {
-          expect(Object.keys(item.assessments).sort()).toEqual([
-            'accuracy',
-            'completeness',
-            'spag',
-          ]);
-          for (const value of Object.values(item.assessments))
-            expect(value).toEqual(expectedReassessment());
-          expect(item.feedback).toEqual({});
-        }
       }
+      expectDetachedReassessmentItems(result);
     }
   );
 

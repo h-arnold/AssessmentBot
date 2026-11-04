@@ -290,7 +290,14 @@ describe('TaskDefinition, task artifacts and student submissions', () => {
     expect(item.artifact.contentHash).toBeTruthy();
   });
 
-  it('StudentSubmission uses the task page when extraction omits pageId', () => {
+  /**
+   * Upserts one extraction result against a task with its own reference page and
+   * returns the resulting item.
+   *
+   * @param {object} extraction - Extraction payload passed to the submission.
+   * @returns {object} The upserted submission item.
+   */
+  function upsertWithExtractionPage(extraction) {
     const task = new TaskDefinition({
       taskTitle: 'Source task',
       pageId: 'task-page',
@@ -299,27 +306,18 @@ describe('TaskDefinition, task artifacts and student submissions', () => {
     task.addReferenceArtifact({ type: 'TEXT', pageId: 'reference-page', content: 'Reference' });
     task.addTemplateArtifact({ type: 'TEXT', content: 'Template' });
     const submission = new StudentSubmission('student-id', 'assignment-id', 'student-document');
+    return { item: submission.upsertItemFromExtraction(task, extraction) };
+  }
 
-    const item = submission.upsertItemFromExtraction(task, { content: 'Response' });
+  it('StudentSubmission uses the task page when extraction omits pageId', () => {
+    const { item } = upsertWithExtractionPage({ content: 'Response' });
 
     expect(item.artifact.pageId).toBe('task-page');
     expect(item.artifact.documentId).toBe('student-document');
   });
 
   it('StudentSubmission uses the task page when extraction pageId is explicitly undefined', () => {
-    const task = new TaskDefinition({
-      taskTitle: 'Source task',
-      pageId: 'task-page',
-      id: 'task-id',
-    });
-    task.addReferenceArtifact({ type: 'TEXT', pageId: 'reference-page', content: 'Reference' });
-    task.addTemplateArtifact({ type: 'TEXT', content: 'Template' });
-    const submission = new StudentSubmission('student-id', 'assignment-id', 'student-document');
-
-    const item = submission.upsertItemFromExtraction(task, {
-      pageId: undefined,
-      content: 'Response',
-    });
+    const { item } = upsertWithExtractionPage({ pageId: undefined, content: 'Response' });
 
     expect(item.artifact.pageId).toBe('task-page');
     expect(item.artifact.documentId).toBe('student-document');
