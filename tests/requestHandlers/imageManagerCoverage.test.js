@@ -1,55 +1,18 @@
-import { describe, it, expect, beforeEach, afterEach, afterAll, vi } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
+import { withGlobalMocks } from '../helpers/globalMockManager.js';
 import {
-  withGlobalMocks,
-  saveGlobals,
-  restoreGlobals as restoreSavedGlobals,
-} from '../helpers/globalMockManager.js';
+  buildManager,
+  installDummyBaseRequestManager,
+  useTransportGlobalMocks,
+} from './imageManagerTestHelpers.js';
 
 // Hermetic fetching-transport coverage for ImageManager: empty-input and
 // configuration-acquisition guards, document round-robin scheduling and
 // bounded large-input dispatch. All network and GAS collaborators are mocked.
-class DummyBaseRequestManager {
-  sendRequestsInBatches() {
-    return [];
-  }
-}
-
-const savedBaseRequestManagerGlobals = saveGlobals(['BaseRequestManager']);
-globalThis.BaseRequestManager = globalThis.BaseRequestManager || DummyBaseRequestManager;
-
-afterAll(() => {
-  restoreSavedGlobals(savedBaseRequestManagerGlobals);
-});
-
-const ImageManager = require('#backend/RequestHandlers/ImageManager.js');
-
-function buildManager(overrides = {}) {
-  const manager = new ImageManager();
-  manager.configManager = { getApiKey: () => 'test-key' };
-  Object.assign(manager, overrides);
-  return manager;
-}
+installDummyBaseRequestManager();
 
 describe('ImageManager fetching behaviour', () => {
-  let restoreGlobals;
-
-  beforeEach(() => {
-    const mockContext = withGlobalMocks({
-      ABLogger: () => ({
-        getInstance: () => ({ warn: vi.fn(), error: vi.fn(), info: vi.fn() }),
-      }),
-      ConfigurationManager: () => ({
-        getInstance: () => ({ getSlidesFetchBatchSize: () => 10 }),
-      }),
-      ScriptApp: () => ({ getOAuthToken: () => 'token' }),
-    });
-    restoreGlobals = mockContext.restore;
-  });
-
-  afterEach(() => {
-    restoreGlobals();
-    vi.restoreAllMocks();
-  });
+  useTransportGlobalMocks();
 
   it('returns early for empty entry lists', () => {
     const manager = buildManager();

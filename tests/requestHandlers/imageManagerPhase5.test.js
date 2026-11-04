@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { withGlobalMocks, withTemporaryGlobals } from '../helpers/globalMockManager.js';
 import { loadManager } from '../helpers/llmRequestManagerHarness.js';
 import { loadBackendModelInputs } from '#synthetic-data/toBackendModelInputs.js';
+import { buildManager, expectLlmBypass, loadImageManager } from './imageManagerTestHelpers.js';
 
 // Stubs for globals required by ImageManager & Artifacts
 globalThis.Utils = {
@@ -53,15 +54,7 @@ DummyBaseRequestManager.HTTP_STATUS_CREATED = 201;
 globalThis.BaseRequestManager = DummyBaseRequestManager;
 
 // Import artifacts & ImageManager
-const { ArtifactFactory } = require('#backend/Models/Artifacts/index.js');
-const ImageManager = require('#backend/RequestHandlers/ImageManager.js');
-
-function buildImageManager() {
-  const mgr = new ImageManager();
-  // Inject stub configManager expected by constructor / instance
-  mgr.configManager = { getApiKey: () => 'KEY' };
-  return mgr;
-}
+const { ArtifactFactory } = loadImageManager();
 
 /** A real pending submission IMAGE item awaiting hydration from sourceUrl. */
 function pendingStudentImage(taskId, sourceUrl) {
@@ -140,7 +133,7 @@ describe('Phase 5 ImageManager', () => {
   });
 
   it('collectAllImageArtifacts aggregates reference, template, and submission with correct scopes', () => {
-    const mgr = buildImageManager();
+    const mgr = buildManager();
     const entries = mgr.collectAllImageArtifacts(assignment);
     const scopes = entries.map((e) => e.scope).sort((a, b) => a.localeCompare(b));
     expect(scopes).toEqual(['reference', 'submission', 'template']);
@@ -154,7 +147,7 @@ describe('Phase 5 ImageManager', () => {
   });
 
   it('delegates the complete round-robin list with explicit Slides transport policy', () => {
-    const mgr = buildImageManager();
+    const mgr = buildManager();
     const requests = [
       { uid: 'first', url: 'https://images.test/first', documentId: 'doc-a' },
       { uid: 'second', url: 'https://images.test/second', documentId: 'doc-b' },
@@ -318,7 +311,7 @@ describe('Phase 5 ImageManager', () => {
   // NOTE: test for round-robin ordering was removed per request.
 
   it('writeBackBlobs sets base64 content and contentHash on artifacts', () => {
-    const mgr = buildImageManager();
+    const mgr = buildManager();
     const entries = mgr.collectAllImageArtifacts(assignment);
     // Simulate blobs for each uid
     const blobs = entries.map((e, idx) => ({
@@ -344,7 +337,7 @@ describe('Phase 5 ImageManager', () => {
     const item = pendingStudentImage('t1', 'https://images.test/student.png');
     item.addAssessment('completeness', { score: 4, reasoning: 'stale mark' });
     const getBytes = vi.fn(() => [1, 2, 3]);
-    buildImageManager().writeBackBlobs(
+    buildManager().writeBackBlobs(
       { assignmentDefinition: { tasks: {} }, submissions: [{ items: { t1: item } }] },
       [{ uid: item.artifact.getUid(), blob: { getBytes } }]
     );
@@ -378,7 +371,7 @@ describe('ImageManager transport UID guards', () => {
   ])(
     'rejects %s final image outcomes before blob access or another dispatch',
     (_kind, outcomeUids) => {
-      const manager = buildImageManager();
+      const manager = buildManager();
       const entries = [
         { uid: 'known', url: 'https://images.test/known', documentId: 'doc-a' },
         { uid: 'other', url: 'https://images.test/other', documentId: 'doc-b' },
@@ -417,7 +410,7 @@ describe('ImageManager transport UID guards', () => {
   );
 
   it('rejects duplicate image input UIDs before sender invocation', () => {
-    const manager = buildImageManager();
+    const manager = buildManager();
     const entries = [
       { uid: 'same', url: 'https://images.test/first', documentId: 'doc-a' },
       { uid: 'same', url: 'https://images.test/second', documentId: 'doc-b' },
@@ -476,21 +469,10 @@ describe('ImageManager collection preserves upstream extraction causes', () => {
         const prior = structuredClone(item.getAssessment());
         const established = item.getAssessment('completeness');
         expect(established).toMatchObject({ score: 'E', error: { stage, code } });
-        expect(buildImageManager().collectAllImageArtifacts(assignment)).toEqual([]);
+        expect(buildManager().collectAllImageArtifacts(assignment)).toEqual([]);
         expect(item.getAssessment()).toEqual(prior);
         expect(hydrationWarnings).not.toHaveBeenCalled();
-        const context = loadManager({ fetchAll: vi.fn(), fetch: vi.fn(), sleep: vi.fn() });
-        try {
-          withTemporaryGlobals(context.globals, () => {
-            delete require.cache[context.llmPath];
-            const llm = new (require(context.llmPath))();
-            expect(llm.generateRequestObjects(assignment)).toEqual([]);
-            expect(context.scriptCache.get).not.toHaveBeenCalled();
-          });
-        } finally {
-          vi.restoreAllMocks();
-          context.restore();
-        }
+        expectLlmBypass(loadManager, assignment);
       } finally {
         mockContext.restore();
       }

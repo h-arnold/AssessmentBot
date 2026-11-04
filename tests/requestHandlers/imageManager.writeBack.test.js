@@ -1,52 +1,28 @@
-import { describe, it, expect, beforeEach, afterEach, afterAll, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { withGlobalMocks } from '../helpers/globalMockManager.js';
 import {
-  withGlobalMocks,
-  saveGlobals,
-  restoreGlobals as restoreSavedGlobals,
-} from '../helpers/globalMockManager.js';
+  buildManager,
+  expectHydrationError,
+  imageArtifact,
+  installDummyBaseRequestManager,
+  loadImageManager,
+} from './imageManagerTestHelpers.js';
 
 // Blob write-back coverage for ImageManager: early returns, UID-matched
 // content/hash application and the scoped hydration failure/invalidation
 // contracts (routing-identity wiring faults live in the identity companion
 // suite). All network and GAS collaborators are mocked.
-class DummyBaseRequestManager {
-  sendRequestsInBatches() {
-    return [];
-  }
-}
+installDummyBaseRequestManager();
 
-const savedBaseRequestManagerGlobals = saveGlobals(['BaseRequestManager']);
-globalThis.BaseRequestManager = globalThis.BaseRequestManager || DummyBaseRequestManager;
+const { ArtifactFactory } = loadImageManager();
 
-afterAll(() => {
-  restoreSavedGlobals(savedBaseRequestManagerGlobals);
-});
-
-const { ArtifactFactory } = require('#backend/Models/Artifacts/index.js');
-const ImageManager = require('#backend/RequestHandlers/ImageManager.js');
-
-function buildManager(overrides = {}) {
-  const manager = new ImageManager();
-  manager.configManager = { getApiKey: () => 'KEY' };
-  Object.assign(manager, overrides);
-  return manager;
-}
-
-function imageArtifact(role, sourceUrl, uid = undefined) {
-  return ArtifactFactory.image({
-    type: 'image',
-    taskId: 'task-one',
-    role,
-    metadata: { sourceUrl },
-    taskIndex: 0,
-    artifactIndex: 0,
-    ...(uid ? { uid } : {}),
-  });
+function makeImageArtifact(role, sourceUrl, uid = undefined) {
+  return imageArtifact(ArtifactFactory, role, sourceUrl, uid);
 }
 
 /** A real pending submission image item: null content/hash awaiting hydration. */
 function pendingImageItem(sourceUrl) {
-  const artifact = imageArtifact('submission', sourceUrl);
+  const artifact = makeImageArtifact('submission', sourceUrl);
   return new globalThis.StudentSubmissionItem({ taskId: 'task-one', artifact });
 }
 
@@ -55,17 +31,6 @@ function submissionAssignment(item) {
     assignmentDefinition: { tasks: {} },
     submissions: [{ documentId: 'student-doc', items: { [item.taskId]: item } }],
   };
-}
-
-/** The exact atomic all-three extraction IMAGE_HYDRATION_FAILED E contract. */
-function expectHydrationError(item) {
-  for (const criterion of ['completeness', 'accuracy', 'spag']) {
-    expect(item.getAssessment(criterion)).toMatchObject({
-      score: 'E',
-      reasoning: 'The submitted slide image could not be loaded.',
-      error: { stage: 'extraction', code: 'IMAGE_HYDRATION_FAILED' },
-    });
-  }
 }
 
 describe('ImageManager write back behaviour', () => {
@@ -93,7 +58,7 @@ describe('ImageManager write back behaviour', () => {
 
   it('writes blobs to matching artefacts', () => {
     const manager = buildManager();
-    const reference = imageArtifact('reference', 'https://example.com/ref.png');
+    const reference = makeImageArtifact('reference', 'https://example.com/ref.png');
     const assignment = {
       assignmentDefinition: {
         tasks: {
@@ -112,7 +77,7 @@ describe('ImageManager write back behaviour', () => {
 
   it('writes submission artefacts by uid', () => {
     const manager = buildManager();
-    const submissionImage = imageArtifact('submission', 'https://example.com/student.png');
+    const submissionImage = makeImageArtifact('submission', 'https://example.com/student.png');
     const assignment = {
       assignmentDefinition: { tasks: {} },
       submissions: [

@@ -1,11 +1,16 @@
-import { describe, it, expect, beforeEach, afterEach, afterAll, vi } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { loadBackendModelInputs } from '#synthetic-data/toBackendModelInputs.js';
-import {
-  withGlobalMocks,
-  saveGlobals,
-  restoreGlobals as restoreSavedGlobals,
-} from '../helpers/globalMockManager.js';
+import { withGlobalMocks } from '../helpers/globalMockManager.js';
 import { createAssignment } from '../helpers/llmRequestManagerHarness.js';
+import {
+  buildManager,
+  expectHydrationError,
+  httpOutcome,
+  imageArtifact,
+  installDummyBaseRequestManager,
+  loadImageManager,
+  useTransportGlobalMocks,
+} from './imageManagerTestHelpers.js';
 
 // Hydrated-content availability, sibling survival and result invalidation
 // coverage for the ImageManager writeback boundary (companion to the writeBack
@@ -14,38 +19,12 @@ import { createAssignment } from '../helpers/llmRequestManagerHarness.js';
 // — with no image-format or source-policy validation. Sibling survival is
 // proved within one canonical submission for both the fetch path and a
 // writeback failure. All network and GAS collaborators are mocked.
-class DummyBaseRequestManager {
-  sendRequestsInBatches() {
-    return [];
-  }
-}
+installDummyBaseRequestManager();
 
-const savedBaseRequestManagerGlobals = saveGlobals(['BaseRequestManager']);
-globalThis.BaseRequestManager = globalThis.BaseRequestManager || DummyBaseRequestManager;
-
-afterAll(() => {
-  restoreSavedGlobals(savedBaseRequestManagerGlobals);
-});
-
-const { ArtifactFactory } = require('#backend/Models/Artifacts/index.js');
-const ImageManager = require('#backend/RequestHandlers/ImageManager.js');
-
-function buildManager(overrides = {}) {
-  const manager = new ImageManager();
-  manager.configManager = { getApiKey: () => 'KEY' };
-  Object.assign(manager, overrides);
-  return manager;
-}
+const { ArtifactFactory } = loadImageManager();
 
 function pendingImageItem(sourceUrl) {
-  const artifact = ArtifactFactory.image({
-    type: 'image',
-    taskId: 'task-one',
-    role: 'submission',
-    metadata: { sourceUrl },
-    taskIndex: 0,
-    artifactIndex: 0,
-  });
+  const artifact = imageArtifact(ArtifactFactory, 'submission', sourceUrl);
   return new globalThis.StudentSubmissionItem({ taskId: 'task-one', artifact });
 }
 
@@ -53,26 +32,6 @@ function submissionAssignment(item) {
   return {
     assignmentDefinition: { tasks: {} },
     submissions: [{ documentId: 'student-doc', items: { [item.taskId]: item } }],
-  };
-}
-
-/** The exact atomic all-three extraction IMAGE_HYDRATION_FAILED E contract. */
-function expectHydrationError(item) {
-  for (const criterion of ['completeness', 'accuracy', 'spag']) {
-    expect(item.getAssessment(criterion)).toMatchObject({
-      score: 'E',
-      reasoning: 'The submitted slide image could not be loaded.',
-      error: { stage: 'extraction', code: 'IMAGE_HYDRATION_FAILED' },
-    });
-  }
-}
-
-function httpOutcome(uid, status, attempts, getBlob) {
-  return {
-    uid,
-    response: { getResponseCode: () => status, getBlob },
-    error: null,
-    attempts,
   };
 }
 
@@ -172,25 +131,7 @@ describe('ImageManager hydrated content availability', () => {
 });
 
 describe('ImageManager sibling survival across hydration failures', () => {
-  let restoreGlobals;
-
-  beforeEach(() => {
-    const mockContext = withGlobalMocks({
-      ABLogger: () => ({
-        getInstance: () => ({ warn: vi.fn(), error: vi.fn(), info: vi.fn() }),
-      }),
-      ConfigurationManager: () => ({
-        getInstance: () => ({ getSlidesFetchBatchSize: () => 10 }),
-      }),
-      ScriptApp: () => ({ getOAuthToken: () => 'token' }),
-    });
-    restoreGlobals = mockContext.restore;
-  });
-
-  afterEach(() => {
-    restoreGlobals();
-    vi.restoreAllMocks();
-  });
+  useTransportGlobalMocks();
 
   it('keeps a healthy task beside a failed IMAGE task in the same submission', () => {
     const { assignment, failed, sibling } = mediumSameSubmissionFixture();

@@ -1,13 +1,16 @@
-import { describe, it, expect, beforeEach, afterEach, afterAll, vi } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { loadBackendModelInputs } from '#synthetic-data/toBackendModelInputs.js';
-import {
-  withGlobalMocks,
-  withTemporaryGlobals,
-  saveGlobals,
-  restoreGlobals as restoreSavedGlobals,
-} from '../helpers/globalMockManager.js';
+import { withGlobalMocks, withTemporaryGlobals } from '../helpers/globalMockManager.js';
 import { createMockUtils } from '../helpers/mockFactories.js';
 import { createAssignment, loadManager } from '../helpers/llmRequestManagerHarness.js';
+import {
+  buildManager,
+  expectLlmBypass,
+  httpOutcome,
+  installRealBaseRequestManager,
+  loadImageManager,
+  useTransportGlobalMocks,
+} from './imageManagerTestHelpers.js';
 
 const AssignmentController = require('#backend/y_controllers/AssignmentController.js');
 const { ABClass } = require('#backend/Models/ABClass.js');
@@ -21,50 +24,12 @@ const AssignmentDefinitionController = require('#backend/y_controllers/Assignmen
 // LLM eligibility after a hydrated IMAGE failure. Manager rows prove in-memory
 // preservation only; caller/store rows prove no replacement write reaches the
 // prior saved record (hermetic spies, no durable-storage claim).
-const savedBaseRequestManagerGlobals = saveGlobals(['BaseRequestManager']);
-const RealBaseRequestManager = require('#backend/RequestHandlers/BaseRequestManager.js');
-globalThis.BaseRequestManager = globalThis.BaseRequestManager || RealBaseRequestManager;
+installRealBaseRequestManager();
 
-afterAll(() => restoreSavedGlobals(savedBaseRequestManagerGlobals));
-
-const ImageManager = require('#backend/RequestHandlers/ImageManager.js');
-
-function buildManager(overrides = {}) {
-  const manager = new ImageManager();
-  manager.configManager = { getApiKey: () => 'test-key' };
-  Object.assign(manager, overrides);
-  return manager;
-}
-
-function httpOutcome(uid, status, attempts, getBlob) {
-  return {
-    uid,
-    response: { getResponseCode: () => status, getBlob },
-    error: null,
-    attempts,
-  };
-}
+const { ImageManager } = loadImageManager();
 
 describe('ImageManager shared-input run blocking', () => {
-  let restoreGlobals;
-
-  beforeEach(() => {
-    const mockContext = withGlobalMocks({
-      ABLogger: () => ({
-        getInstance: () => ({ warn: vi.fn(), error: vi.fn(), info: vi.fn() }),
-      }),
-      ConfigurationManager: () => ({
-        getInstance: () => ({ getSlidesFetchBatchSize: () => 10 }),
-      }),
-      ScriptApp: () => ({ getOAuthToken: () => 'token' }),
-    });
-    restoreGlobals = mockContext.restore;
-  });
-
-  afterEach(() => {
-    restoreGlobals();
-    vi.restoreAllMocks();
-  });
+  useTransportGlobalMocks();
 
   it.each(['reference', 'template'])(
     'throws for a final shared %s failure and preserves the active in-memory results',
@@ -106,18 +71,7 @@ describe('ImageManager shared-input run blocking', () => {
         error: { stage: 'extraction', code: 'IMAGE_HYDRATION_FAILED' },
       });
     }
-    const context = loadManager({ fetchAll: vi.fn(), fetch: vi.fn(), sleep: vi.fn() });
-    try {
-      withTemporaryGlobals(context.globals, () => {
-        delete require.cache[context.llmPath];
-        const llm = new (require(context.llmPath))();
-        expect(llm.generateRequestObjects(assignment)).toEqual([]);
-        expect(context.scriptCache.get).not.toHaveBeenCalled();
-      });
-    } finally {
-      vi.restoreAllMocks();
-      context.restore();
-    }
+    expectLlmBypass(loadManager, assignment);
   });
 });
 

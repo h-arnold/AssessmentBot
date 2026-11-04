@@ -1,12 +1,16 @@
-import { describe, it, expect, beforeEach, afterEach, afterAll, vi } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { loadBackendModelInputs } from '#synthetic-data/toBackendModelInputs.js';
-import {
-  withGlobalMocks,
-  withTemporaryGlobals,
-  saveGlobals,
-  restoreGlobals as restoreSavedGlobals,
-} from '../helpers/globalMockManager.js';
+import { withGlobalMocks, withTemporaryGlobals } from '../helpers/globalMockManager.js';
 import { createAssignment } from '../helpers/llmRequestManagerHarness.js';
+import {
+  buildManager,
+  expectHydrationError,
+  httpOutcome,
+  installRealBaseRequestManager,
+  loadImageManager,
+  networkOutcome,
+  useTransportGlobalMocks,
+} from './imageManagerTestHelpers.js';
 
 // Scoped image-failure coverage for ImageManager: final shared-transport
 // outcomes are assigned by scope (student-task hydration E versus a blocking
@@ -15,68 +19,12 @@ import { createAssignment } from '../helpers/llmRequestManagerHarness.js';
 // live in the identity companion suite. Canonical small/medium graphs are
 // restored through the existing backend adapter; response/blob/error fixtures
 // stay local.
-const savedBaseRequestManagerGlobals = saveGlobals(['BaseRequestManager']);
-const RealBaseRequestManager = require('#backend/RequestHandlers/BaseRequestManager.js');
-globalThis.BaseRequestManager = globalThis.BaseRequestManager || RealBaseRequestManager;
+installRealBaseRequestManager();
 
-afterAll(() => {
-  restoreSavedGlobals(savedBaseRequestManagerGlobals);
-});
-
-const { ArtifactFactory } = require('#backend/Models/Artifacts/index.js');
-const ImageManager = require('#backend/RequestHandlers/ImageManager.js');
-
-function buildManager(overrides = {}) {
-  const manager = new ImageManager();
-  manager.configManager = { getApiKey: () => 'test-key' };
-  Object.assign(manager, overrides);
-  return manager;
-}
-
-/** The exact atomic all-three extraction IMAGE_HYDRATION_FAILED E contract. */
-function expectHydrationError(item) {
-  for (const criterion of ['completeness', 'accuracy', 'spag']) {
-    expect(item.getAssessment(criterion)).toMatchObject({
-      score: 'E',
-      reasoning: 'The submitted slide image could not be loaded.',
-      error: { stage: 'extraction', code: 'IMAGE_HYDRATION_FAILED' },
-    });
-  }
-}
-
-function httpOutcome(uid, status, attempts, getBlob) {
-  return {
-    uid,
-    response: { getResponseCode: () => status, getBlob },
-    error: null,
-    attempts,
-  };
-}
-
-function networkOutcome(uid, error, attempts) {
-  return { uid, response: null, error, attempts };
-}
+const { ArtifactFactory, ImageManager } = loadImageManager();
 
 describe('ImageManager scoped image failure outcomes', () => {
-  let restoreGlobals;
-
-  beforeEach(() => {
-    const mockContext = withGlobalMocks({
-      ABLogger: () => ({
-        getInstance: () => ({ warn: vi.fn(), error: vi.fn(), info: vi.fn() }),
-      }),
-      ConfigurationManager: () => ({
-        getInstance: () => ({ getSlidesFetchBatchSize: () => 10 }),
-      }),
-      ScriptApp: () => ({ getOAuthToken: () => 'token' }),
-    });
-    restoreGlobals = mockContext.restore;
-  });
-
-  afterEach(() => {
-    restoreGlobals();
-    vi.restoreAllMocks();
-  });
+  useTransportGlobalMocks();
 
   it.each([
     { label: 'final HTTP failure', responseCode: 500, error: null, expectedStatus: 500 },

@@ -1,10 +1,13 @@
-import { describe, it, expect, beforeEach, afterEach, afterAll, vi } from 'vitest';
-import {
-  withGlobalMocks,
-  saveGlobals,
-  restoreGlobals as restoreSavedGlobals,
-} from '../helpers/globalMockManager.js';
+import { describe, it, expect, vi } from 'vitest';
+import { withGlobalMocks } from '../helpers/globalMockManager.js';
 import { createAssignment } from '../helpers/llmRequestManagerHarness.js';
+import {
+  buildManager,
+  imageArtifact,
+  installDummyBaseRequestManager,
+  loadImageManager,
+  useLoggerGlobalMocks,
+} from './imageManagerTestHelpers.js';
 
 // Collection-scope coverage for ImageManager: artefact type checks, image
 // collection filtering across reference, template and submission artefacts,
@@ -12,57 +15,16 @@ import { createAssignment } from '../helpers/llmRequestManagerHarness.js';
 // (required shared sources block the run; student sources materialise the
 // hydration error on the real model item). All network and GAS collaborators
 // are mocked.
-class DummyBaseRequestManager {
-  sendRequestsInBatches() {
-    return [];
-  }
-}
+installDummyBaseRequestManager();
 
-const savedBaseRequestManagerGlobals = saveGlobals(['BaseRequestManager']);
-globalThis.BaseRequestManager = globalThis.BaseRequestManager || DummyBaseRequestManager;
+const { ArtifactFactory } = loadImageManager();
 
-afterAll(() => {
-  restoreSavedGlobals(savedBaseRequestManagerGlobals);
-});
-
-const { ArtifactFactory } = require('#backend/Models/Artifacts/index.js');
-const ImageManager = require('#backend/RequestHandlers/ImageManager.js');
-
-function buildManager(overrides = {}) {
-  const manager = new ImageManager();
-  manager.configManager = { getApiKey: () => 'test-key' };
-  Object.assign(manager, overrides);
-  return manager;
-}
-
-function imageArtifact(role, sourceUrl, uid = undefined) {
-  return ArtifactFactory.image({
-    type: 'image',
-    taskId: 'task-one',
-    role,
-    metadata: { sourceUrl },
-    taskIndex: 0,
-    artifactIndex: 0,
-    ...(uid ? { uid } : {}),
-  });
+function makeImageArtifact(role, sourceUrl, uid = undefined) {
+  return imageArtifact(ArtifactFactory, role, sourceUrl, uid);
 }
 
 describe('ImageManager artefact behaviour', () => {
-  let restoreGlobals;
-
-  beforeEach(() => {
-    const mockContext = withGlobalMocks({
-      ABLogger: () => ({
-        getInstance: () => ({ warn: vi.fn(), error: vi.fn(), info: vi.fn() }),
-      }),
-    });
-    restoreGlobals = mockContext.restore;
-  });
-
-  afterEach(() => {
-    restoreGlobals();
-    vi.restoreAllMocks();
-  });
+  useLoggerGlobalMocks();
 
   it('identifies image artefacts only', () => {
     const manager = buildManager();
@@ -71,7 +33,7 @@ describe('ImageManager artefact behaviour', () => {
     expect(manager.isImageArtifact({ getType: 'not-a-function' })).toBe(false);
     expect(manager.isImageArtifact({ getType: () => 'TEXT' })).toBe(false);
 
-    const image = imageArtifact('reference', 'https://example.com/image.png');
+    const image = makeImageArtifact('reference', 'https://example.com/image.png');
     expect(manager.isImageArtifact(image)).toBe(true);
   });
 
@@ -111,7 +73,7 @@ describe('ImageManager artefact behaviour', () => {
     'blocks collection when a required shared %s image has an %s source URL',
     (role, _label, sourceUrl) => {
       const manager = buildManager();
-      const badImage = imageArtifact(role, sourceUrl);
+      const badImage = makeImageArtifact(role, sourceUrl);
       const artifacts =
         role === 'reference'
           ? { reference: [badImage], template: [] }
@@ -136,7 +98,7 @@ describe('ImageManager artefact behaviour', () => {
 
   it('blocks collection when a required shared template image has no owning document id', () => {
     const manager = buildManager();
-    const image = imageArtifact('template', 'https://example.com/image.png');
+    const image = makeImageArtifact('template', 'https://example.com/image.png');
     const assignment = {
       assignmentDefinition: {
         tasks: {

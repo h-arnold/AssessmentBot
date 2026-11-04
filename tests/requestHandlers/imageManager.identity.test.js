@@ -1,82 +1,29 @@
-import { describe, it, expect, beforeEach, afterEach, afterAll, vi } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import {
-  withGlobalMocks,
-  saveGlobals,
-  restoreGlobals as restoreSavedGlobals,
-} from '../helpers/globalMockManager.js';
+  buildManager,
+  httpOutcome,
+  imageArtifact,
+  installDummyBaseRequestManager,
+  loadImageManager,
+  networkOutcome,
+  useLoggerGlobalMocks,
+  useTransportGlobalMocks,
+} from './imageManagerTestHelpers.js';
 
 // Routing-identity and wiring-fault coverage for ImageManager: final failure
 // outcomes must route to a real owning item by scope (never log-only
 // omission), and unmatched writeback identities or missing model methods are
 // wiring faults that throw. All network and GAS collaborators are mocked.
-class DummyBaseRequestManager {
-  sendRequestsInBatches() {
-    return [];
-  }
-}
+installDummyBaseRequestManager();
 
-const savedBaseRequestManagerGlobals = saveGlobals(['BaseRequestManager']);
-globalThis.BaseRequestManager = globalThis.BaseRequestManager || DummyBaseRequestManager;
+const { ArtifactFactory } = loadImageManager();
 
-afterAll(() => {
-  restoreSavedGlobals(savedBaseRequestManagerGlobals);
-});
-
-const { ArtifactFactory } = require('#backend/Models/Artifacts/index.js');
-const ImageManager = require('#backend/RequestHandlers/ImageManager.js');
-
-function buildManager(overrides = {}) {
-  const manager = new ImageManager();
-  manager.configManager = { getApiKey: () => 'test-key' };
-  Object.assign(manager, overrides);
-  return manager;
-}
-
-function imageArtifact(role, sourceUrl, uid = undefined) {
-  return ArtifactFactory.image({
-    type: 'image',
-    taskId: 'task-one',
-    role,
-    metadata: { sourceUrl },
-    taskIndex: 0,
-    artifactIndex: 0,
-    ...(uid ? { uid } : {}),
-  });
-}
-
-function httpOutcome(uid, status, attempts, getBlob) {
-  return {
-    uid,
-    response: { getResponseCode: () => status, getBlob },
-    error: null,
-    attempts,
-  };
-}
-
-function networkOutcome(uid, error, attempts) {
-  return { uid, response: null, error, attempts };
+function makeImageArtifact(role, sourceUrl, uid = undefined) {
+  return imageArtifact(ArtifactFactory, role, sourceUrl, uid);
 }
 
 describe('ImageManager routing identity and wiring faults', () => {
-  let restoreGlobals;
-
-  beforeEach(() => {
-    const mockContext = withGlobalMocks({
-      ABLogger: () => ({
-        getInstance: () => ({ warn: vi.fn(), error: vi.fn(), info: vi.fn() }),
-      }),
-      ConfigurationManager: () => ({
-        getInstance: () => ({ getSlidesFetchBatchSize: () => 10 }),
-      }),
-      ScriptApp: () => ({ getOAuthToken: () => 'token' }),
-    });
-    restoreGlobals = mockContext.restore;
-  });
-
-  afterEach(() => {
-    restoreGlobals();
-    vi.restoreAllMocks();
-  });
+  useTransportGlobalMocks();
 
   it('throws for a final failure outcome on a scope-less entry instead of log-only omission', () => {
     const manager = buildManager();
@@ -122,7 +69,7 @@ describe('ImageManager routing identity and wiring faults', () => {
 
   it('throws when a writeback blob uid matches no collected artefact', () => {
     const manager = buildManager();
-    const reference = imageArtifact('reference', 'https://example.com/ref.png');
+    const reference = makeImageArtifact('reference', 'https://example.com/ref.png');
     const assignment = {
       assignmentDefinition: {
         tasks: { task_one: { artifacts: { reference: [reference], template: [] } } },
@@ -139,7 +86,7 @@ describe('ImageManager routing identity and wiring faults', () => {
 
   it('throws when writeback receives duplicate blob UIDs before applying any blob', () => {
     const manager = buildManager();
-    const reference = imageArtifact('reference', 'https://example.com/ref.png');
+    const reference = makeImageArtifact('reference', 'https://example.com/ref.png');
     const assignment = {
       assignmentDefinition: {
         tasks: { task_one: { artifacts: { reference: [reference], template: [] } } },
@@ -159,8 +106,8 @@ describe('ImageManager routing identity and wiring faults', () => {
 
   it('throws when the model contains duplicate image artefact UIDs instead of overwriting', () => {
     const manager = buildManager();
-    const first = imageArtifact('template', 'https://example.com/a.png', 'shared-uid');
-    const second = imageArtifact('template', 'https://example.com/b.png', 'shared-uid');
+    const first = makeImageArtifact('template', 'https://example.com/a.png', 'shared-uid');
+    const second = makeImageArtifact('template', 'https://example.com/b.png', 'shared-uid');
     const assignment = {
       assignmentDefinition: {
         tasks: { task_one: { artifacts: { reference: [], template: [first, second] } } },
@@ -197,7 +144,7 @@ describe('ImageManager routing identity and wiring faults', () => {
     'throws for a missing content writer before converting %s returned data',
     (_label, makeBlob) => {
       const manager = buildManager();
-      const artifact = imageArtifact('submission', 'https://images.test/student.png');
+      const artifact = makeImageArtifact('submission', 'https://images.test/student.png');
       artifact.setContentFromBlob = undefined;
       const item = new globalThis.StudentSubmissionItem({ taskId: 'task-one', artifact });
       const assignment = {
@@ -218,7 +165,7 @@ describe('ImageManager routing identity and wiring faults', () => {
     'fails fast on %s instead of hydrating shared artefacts through fallbacks',
     (_label, submissions) => {
       const manager = buildManager();
-      const shared = imageArtifact('reference', 'https://example.com/ref.png');
+      const shared = makeImageArtifact('reference', 'https://example.com/ref.png');
       const assignment = {
         assignmentDefinition: {
           tasks: { task_one: { artifacts: { reference: [shared], template: [] } } },
@@ -237,21 +184,7 @@ describe('ImageManager routing identity and wiring faults', () => {
 });
 
 describe('ImageManager shared unusable returned content blocking', () => {
-  let restoreGlobals;
-
-  beforeEach(() => {
-    const mockContext = withGlobalMocks({
-      ABLogger: () => ({
-        getInstance: () => ({ warn: vi.fn(), error: vi.fn(), info: vi.fn() }),
-      }),
-    });
-    restoreGlobals = mockContext.restore;
-  });
-
-  afterEach(() => {
-    restoreGlobals();
-    vi.restoreAllMocks();
-  });
+  useLoggerGlobalMocks();
 
   it.each([
     ['reference', 'null returned bytes', () => ({ getBytes: () => null }), false],
@@ -268,7 +201,7 @@ describe('ImageManager shared unusable returned content blocking', () => {
     'blocks writeback when a shared %s image returns %s without throwing',
     (role, _label, makeBlob, reused) => {
       const manager = buildManager();
-      const shared = imageArtifact(role, `https://example.com/${role}.png`);
+      const shared = makeImageArtifact(role, `https://example.com/${role}.png`);
       if (reused) {
         shared.content = 'data:image/png;base64,AQID';
         shared.contentHash = globalThis.Utils.generateHash(shared.content);
