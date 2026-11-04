@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { createMockABLogger } from '../helpers/mockFactories.js';
+import { installAssignmentControllerCollaboratorMocks } from '../helpers/assignmentControllerCollaboratorMocks.js';
 import { createFullDefinition } from './assignmentControllerTestHelpers.js';
 
 // Setup global mocks
@@ -28,46 +28,15 @@ describe('AssignmentController - Definition Inputs', () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    // Mock logger
-    loggerInstance = createMockABLogger(vi);
-    vi.spyOn(globalThis.ABLogger, 'getInstance').mockReturnValue(loggerInstance);
+    ({ mockDefinitionController, mockABClassController, mockProgressTracker, loggerInstance } =
+      installAssignmentControllerCollaboratorMocks());
 
-    // Mock ProgressTracker
-    mockProgressTracker = {
-      startTracking: vi.fn(),
-      updateProgress: vi.fn(),
-      complete: vi.fn(),
-      logAndThrowError: vi.fn((msg) => {
-        throw new Error(msg);
-      }),
-    };
-    globalThis.ProgressTracker = {
-      getInstance: vi.fn().mockReturnValue(mockProgressTracker),
-    };
+    // The ensureDefinitionFromInputs tests drive the upsert path, not the read path.
+    mockDefinitionController.ensureDefinition = vi.fn();
+    mockDefinitionController.upsertDefinition = vi.fn();
 
     // Mock TriggerController (the startProcessing test supplies its own implementation)
     globalThis.TriggerController = vi.fn();
-
-    // Mock ABClassController
-    const mockABClass = {
-      classId: 'course-123',
-      yearGroupKey: 'year-group-10',
-    };
-    mockABClassController = {
-      loadClass: vi.fn().mockReturnValue(mockABClass),
-    };
-    globalThis.ABClassController = vi.fn().mockImplementation(function () {
-      return mockABClassController;
-    });
-
-    // Mock AssignmentDefinitionController
-    mockDefinitionController = {
-      ensureDefinition: vi.fn(),
-      upsertDefinition: vi.fn(),
-    };
-    globalThis.AssignmentDefinitionController = vi.fn().mockImplementation(function () {
-      return mockDefinitionController;
-    });
 
     globalThis.Utils = {
       toastMessage: vi.fn(),

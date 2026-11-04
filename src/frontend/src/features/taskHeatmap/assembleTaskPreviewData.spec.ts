@@ -10,6 +10,8 @@ import type { CellPreviewData } from './buildCellPreviewLookup';
 import { spreadsheetToMarkdownTable } from './spreadsheetToMarkdownTable';
 import { NOT_ATTEMPTED_METRIC } from '@/services/dataAnalysis/heatmapAdapter';
 import type { TaskDisplayMetric } from '@/services/dataAnalysis/dataAnalysis.zod';
+import type { HeatmapMetricKey } from '@/services/dataAnalysis/metricDisplay/metricDisplayMeta';
+import type { TaskPreviewData } from './TaskPreviewCard';
 import { createComputedMetricResult, createErrorMetricResult } from '@/test/dataAnalysis/fixtures';
 
 // ===========================================================================
@@ -141,6 +143,23 @@ function cellData(
       };
     }
   }
+}
+
+/**
+ * Assemble a preview for a TEXT cell, scored by a computed metric, under the
+ * given metric key and task ID.
+ *
+ * @param {HeatmapMetricKey} metricKey - Which metric column the preview is for.
+ * @param {string} taskId - The heatmap column's task ID.
+ * @returns {TaskPreviewData} The assembled preview.
+ */
+function assembleTextCellPreview(metricKey: HeatmapMetricKey, taskId: string): TaskPreviewData {
+  return assembleTaskPreviewData(
+    cellData('TEXT', 'X'),
+    createComputedMetricResult({ value: METRIC_KEY_SCORE }),
+    metricKey,
+    taskId
+  );
 }
 
 // ===========================================================================
@@ -385,40 +404,19 @@ describe('assembleTaskPreviewData', () => {
   // -------------------------------------------------------------------------
 
   it('passes metricKey completeness through unchanged', () => {
-    const data = cellData('TEXT', 'X');
-
-    const result = assembleTaskPreviewData(
-      data,
-      createComputedMetricResult({ value: METRIC_KEY_SCORE }),
-      'completeness',
-      'task-11'
-    );
+    const result = assembleTextCellPreview('completeness', 'task-11');
 
     expect(result.metricKey).toBe('completeness');
   });
 
   it('passes metricKey accuracy through unchanged', () => {
-    const data = cellData('TEXT', 'X');
-
-    const result = assembleTaskPreviewData(
-      data,
-      createComputedMetricResult({ value: METRIC_KEY_SCORE }),
-      'accuracy',
-      'task-12'
-    );
+    const result = assembleTextCellPreview('accuracy', 'task-12');
 
     expect(result.metricKey).toBe('accuracy');
   });
 
   it('passes metricKey spag through unchanged', () => {
-    const data = cellData('TEXT', 'X');
-
-    const result = assembleTaskPreviewData(
-      data,
-      createComputedMetricResult({ value: METRIC_KEY_SCORE }),
-      'spag',
-      'task-13'
-    );
+    const result = assembleTextCellPreview('spag', 'task-13');
 
     expect(result.metricKey).toBe('spag');
   });

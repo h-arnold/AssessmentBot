@@ -16,31 +16,10 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import {
-  cleanupControllerTestMocks,
-  createMockCollection,
-  createDualCollectionDbManager,
-  setupControllerTestMocks,
-} from '../helpers/mockFactories.js';
+  setupPartialRegistrySuite,
+  teardownPartialRegistrySuite,
+} from '../helpers/abclassPartialsRegistryTestHelpers.js';
 import { buildPreparedRun, clone } from './ABClassController/abclassPersistenceTestHelpers.js';
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-/**
- * Override globalThis.DbManager with a dual-collection router after
- * setupControllerTestMocks() has already set up ABLogger, ProgressTracker,
- * ConfigurationManager, and AssignmentDefinitionController.
- *
- * @param {object} classCollection - mock for the class-named collection
- * @param {object} partialsCollection - mock for the 'abclass_partials' collection
- * @returns {{ mockDbManager }}
- */
-function setupMocks(classCollection, partialsCollection) {
-  const mockDbManager = createDualCollectionDbManager(vi, classCollection, partialsCollection);
-  globalThis.DbManager = { getInstance: () => mockDbManager };
-  return { mockDbManager };
-}
 
 // ---------------------------------------------------------------------------
 // Module-level variables re-assigned in beforeEach
@@ -50,25 +29,12 @@ let ABClassController, ABClass;
 let classCollection, partialsCollection, mockABLogger;
 
 beforeEach(async () => {
-  classCollection = createMockCollection(vi);
-  partialsCollection = createMockCollection(vi);
-
-  const mocks = setupControllerTestMocks(vi);
-  mockABLogger = mocks.mockABLogger;
-
-  setupMocks(classCollection, partialsCollection);
-
-  // Dynamic require after globals are set (CommonJS modules read globals at call time)
-  const abClassModule = await import('#backend/Models/ABClass.js');
-  const controllerModule = await import('#backend/y_controllers/ABClassController/index.js');
-
-  ABClass = abClassModule.ABClass;
-  ABClassController = controllerModule.default ?? controllerModule;
+  ({ ABClassController, ABClass, classCollection, partialsCollection, mockABLogger } =
+    await setupPartialRegistrySuite());
 });
 
 afterEach(() => {
-  cleanupControllerTestMocks();
-  vi.restoreAllMocks();
+  teardownPartialRegistrySuite();
 });
 
 // ---------------------------------------------------------------------------

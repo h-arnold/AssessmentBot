@@ -200,17 +200,21 @@ Most suites are self-describing. The following splits are not obvious from filen
 
 ## Test Helpers
 
-| Helper                        | Owns                                                                     |
-| ----------------------------- | ------------------------------------------------------------------------ |
-| `mockFactories.js`            | GAS and service mocks, controller setup, collection and dual-store mocks |
-| `modelFactories.js`           | Model and assignment factories                                           |
-| `singletonTestSetup.js`       | Singleton harness and controlled GAS mocks                               |
-| `apiHandlerTestUtils.js`      | Dispatcher context; controller and transport seam install/restore        |
-| `globalMockManager.js`        | Saving, restoring and temporarily replacing globals                      |
-| `testUtils.js`                | Small generic helpers                                                    |
-| `llmRequestManagerHarness.js` | Real LLM runtime, native cache and model setup                           |
-| `llmRunStopHarness.js`        | Canonical multi-item run-stop fixture                                    |
-| `llmRunStopScenarioSteps.js`  | Stop-scenario validation, seeding and native-response steps              |
+| Helper                                       | Owns                                                                     |
+| -------------------------------------------- | ------------------------------------------------------------------------ |
+| `mockFactories.js`                           | GAS and service mocks, controller setup, collection and dual-store mocks |
+| `modelFactories.js`                          | Model and assignment factories                                           |
+| `singletonTestSetup.js`                      | Singleton harness and controlled GAS mocks                               |
+| `apiHandlerTestUtils.js`                     | Dispatcher context; controller and transport seam install/restore        |
+| `globalMockManager.js`                       | Saving, restoring and temporarily replacing globals                      |
+| `testUtils.js`                               | Small generic helpers                                                    |
+| `llmRequestManagerHarness.js`                | Real LLM runtime, native cache and model setup                           |
+| `llmRunStopHarness.js`                       | Canonical multi-item run-stop fixture                                    |
+| `llmRunStopScenarioSteps.js`                 | Stop-scenario validation, seeding and native-response steps              |
+| `abclassReadClassTestHelpers.js`             | ABClass read-view fixtures and collection router                         |
+| `abclassPartialsRegistryTestHelpers.js`      | Partial-registry suite setup and teardown                                |
+| `assignmentControllerTriggerContextMocks.js` | Trigger-context and user-properties global mocks                         |
+| `assignmentControllerCollaboratorMocks.js`   | AssignmentController collaborator doubles                                |
 
 Remaining helpers are domain-specific and belong with their own suites: `assignmentDefinition*TestHelpers.js`, `backendConfigTestHelpers.js`, `controllerTestHelpers.js`, `driveManagerFacadeMocks.js`, `feedbackTestHelpers.js`, `imageManagerTestHelpers.js`, `slidesParserTestHarness.js` and `validationTestHelpers.js`.
 
