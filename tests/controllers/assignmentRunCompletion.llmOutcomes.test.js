@@ -38,9 +38,14 @@ import {
   catalogueHTTPAssessments,
   loadManager,
 } from '#test-helpers/llmRequestManagerHarness.js';
+import {
+  countItems,
+  createRun,
+  narrowDefinitionTasks,
+  wireRunAssignment,
+  wireRunStores,
+} from './assignmentRunCompletionTestHelpers.js';
 
-const AssignmentController = require('#backend/y_controllers/AssignmentController.js');
-const Assignment = require('#backend/AssignmentProcessor/Assignment/index.js');
 const ABClassController = require('#backend/y_controllers/ABClassController/index.js');
 
 const ERRORS_MESSAGE = 'Assessment run completed with errors.';
@@ -49,90 +54,6 @@ const CRITERIA = ['completeness', 'accuracy', 'spag'];
 let progress;
 let toast;
 let savedGlobals;
-
-const matchesFilter = (document, filter) =>
-  Object.entries(filter ?? {}).every(([key, value]) => document[key] === value);
-
-/** Hermetic per-name in-memory collections recording every store operation. */
-function createMockDb() {
-  const collections = new Map();
-  const instance = {
-    getCollection(name) {
-      if (!collections.has(name)) {
-        const docs = [];
-        collections.set(name, {
-          docs,
-          findOne: vi.fn((filter) => docs.find((doc) => matchesFilter(doc, filter)) ?? null),
-          insertOne: vi.fn((doc) => docs.push(doc)),
-          replaceOne: vi.fn((filter, doc) => {
-            const index = docs.findIndex((stored) => matchesFilter(stored, filter));
-            if (index >= 0) docs.splice(index, 1, doc);
-            else docs.push(doc);
-          }),
-          updateOne: vi.fn((filter, patch) => {
-            const stored = docs.find((doc) => matchesFilter(doc, filter));
-            if (stored && patch?.$set) Object.assign(stored, patch.$set);
-          }),
-          save: vi.fn(),
-        });
-      }
-      return collections.get(name);
-    },
-  };
-  return { collections, instance };
-}
-
-/** Counts distinct submission items by whether any criterion carries an explicit E. */
-function countItems(fullRecord, failed) {
-  let count = 0;
-  for (const submission of fullRecord.submissions) {
-    for (const item of Object.values(submission.items ?? {})) {
-      const hasError = Object.values(item.assessments ?? {}).some((entry) => entry.score === 'E');
-      if (hasError === failed) count += 1;
-    }
-  }
-  return count;
-}
-
-/** Wires the completion run's hermetic stores and the production seams it needs. */
-function wireRunStores(courseId, classDocument, definition) {
-  const db = createMockDb();
-  globalThis.DbManager = { getInstance: () => db.instance };
-  db.instance.getCollection(courseId).docs.push(classDocument);
-  globalThis.DriveManager = {
-    getFileModifiedTime: vi.fn((id) =>
-      id === definition.referenceDocumentId
-        ? definition.referenceLastModified
-        : definition.templateLastModified
-    ),
-  };
-  globalThis.ClassroomApiClient = {
-    fetchCourse: vi.fn(() => ({
-      id: courseId,
-      name: classDocument.className,
-      ownerId: classDocument.classOwner?.userId ?? null,
-    })),
-    fetchTeachers: vi.fn(() => structuredClone(classDocument.teachers)),
-    fetchAllStudents: vi.fn(() => structuredClone(classDocument.students)),
-  };
-  globalThis.AssignmentDefinitionController = class {
-    getDefinitionByKey() {
-      return structuredClone(definition);
-    }
-  };
-  return db;
-}
-
-/** Installs the Assignment.create seam and the no-op pipeline stage spies. */
-function wireRunAssignment(assignment, stages) {
-  vi.spyOn(Assignment, 'create').mockReturnValue(assignment);
-  for (const stage of ['fetchSubmittedDocuments', 'processAllSubmissions', 'assessResponses']) {
-    stages[stage] = vi.spyOn(assignment, stage).mockImplementation(() => {});
-  }
-  if (typeof assignment.processImages === 'function') {
-    stages.processImages = vi.spyOn(assignment, 'processImages').mockImplementation(() => {});
-  }
-}
 
 const fullRecordOf = (flow) =>
   flow.db.collections.get(`assign_full_${flow.record.courseId}_${flow.record.assignmentId}`)
@@ -246,20 +167,12 @@ function createConnectedOutcomeRun(kind) {
   const inputs = loadBackendModelInputs('medium');
   const classDocument = structuredClone(inputs.classesById[assignment.courseId]);
   const selectedTaskIds = new Set([dispatched.item.taskId, signature.item.taskId]);
-  assignment.assignmentDefinition.tasks = Object.fromEntries(
-    Object.entries(assignment.assignmentDefinition.tasks).filter(([id]) => selectedTaskIds.has(id))
-  );
+  narrowDefinitionTasks(assignment.assignmentDefinition, selectedTaskIds);
   const db = wireRunStores(assignment.courseId, classDocument, assignment.assignmentDefinition);
   delete assignment.assessmentContractVersion;
   const stages = {};
   wireRunAssignment(assignment, stages);
-  const controller = new AssignmentController();
-  const run = () =>
-    controller.processSelectedAssignment({
-      assignmentId: assignment.assignmentId,
-      definitionKey: assignment.assignmentDefinition.definitionKey,
-      courseId: assignment.courseId,
-    });
+  const run = createRun(assignment);
   return {
     record: inputs.assignmentsByKey[assignment.assignmentId],
     db,
