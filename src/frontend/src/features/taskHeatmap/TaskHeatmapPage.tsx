@@ -6,8 +6,6 @@
  * handles projection errors through the established title-error Alert or
  * logged navigation flow. Optional summary failures are logged separately
  * and show a local Alert while preserving the valid heatmap.
- *
- * @see SPEC.md
  */
 
 import { useEffect, useMemo, type JSX } from 'react';

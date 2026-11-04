@@ -8,8 +8,6 @@
  * Its consumers are the Class page overview table (via `classPageModel`) and
  * the Task Heatmap table; keep it here in the shared services layer so the
  * ordering semantics are not duplicated or drifted per feature.
- *
- * @see SPEC.md decisions 3-4 — shared services-layer placement
  */
 
 import type { MetricResult } from '../dataAnalysis.zod';

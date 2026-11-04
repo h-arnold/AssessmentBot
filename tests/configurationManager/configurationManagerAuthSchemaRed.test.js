@@ -1,7 +1,7 @@
 /**
  * RED-phase contract tests for the Section 1 auth schema additions.
  *
- * These tests define the target contract from SPEC.md decision 2 and
+ * These tests define the target contract from
  * docs/developer/data-shapes/auth-users.md (Persistence section) and MUST FAIL
  * against the current implementation (which still accepts `'none'`, has no
  * `authUsers`/`authRevision` validators, no 8KB cap constant, and no strict

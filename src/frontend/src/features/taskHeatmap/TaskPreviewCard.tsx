@@ -322,7 +322,7 @@ function renderSourceRegion(data: TaskPreviewData): JSX.Element {
 // ---------------------------------------------------------------------------
 
 /**
- * Task Preview Card — see `ASSESSMENT_ERROR_PREVIEW_LAYOUT.md` for its header layout.
+ * Task Preview Card.
  *
  * @param {Readonly<TaskPreviewCardProperties>} props - Component properties.
  * @returns {JSX.Element} The rendered card.

@@ -5,8 +5,6 @@
  * stored class exists, instead of auto-initialising. Test 1 is RED (fails
  * with current production code); tests 2–5 are regression tests that
  * document unchanged behaviour after the change.
- *
- * See SPEC.md agreed decision 8.
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';

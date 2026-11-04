@@ -1,6 +1,6 @@
 /**
- * RED-phase tests for ACTION_PLAN.md Section 2 — "ConfigurationManager decomposition,
- * locked write path, freshness detection".
+ * RED-phase tests for the ConfigurationManager decomposition — locked write path
+ * and freshness detection.
  *
  * These tests define the TARGET CONTRACT only. Production code implementing the
  * decomposition (facade in `98_ConfigurationManagerClass.js`, sub-classes

@@ -11,8 +11,7 @@ import type { AssignmentDefinitionPartial } from '@/services/assignmentDefinitio
  *
  * @remarks
  * The `fuse.js` score is an implementation detail of the picker ordering
- * and is not surfaced as a field on `LinkableDefinition` (per
- * `SPEC.md` display-resolution recommendation).
+ * and is not surfaced as a field on `LinkableDefinition`.
  *
  * @remarks
  * Both `referenceDocumentId` and `templateDocumentId` are non-nullable

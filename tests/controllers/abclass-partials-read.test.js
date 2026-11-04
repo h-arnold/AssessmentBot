@@ -1,8 +1,6 @@
 /**
  * ABClassController – Class Partials Read Tests (RED Phase)
  *
- * Section 4 of ACTION_PLAN.md: "Implement read path for all class partials"
- *
  * Tests validating the read contract for getAllClassPartials():
  * - Reads from the abclass_partials collection via DbManager
  * - Returns all documents as a plain array

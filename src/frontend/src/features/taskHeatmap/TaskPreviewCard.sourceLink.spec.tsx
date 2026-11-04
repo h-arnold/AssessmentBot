@@ -12,7 +12,6 @@
  * Geometry, whole-card metric centring and rendered icon sizing are measured in
  * the Playwright visual suite, not here: happy-dom performs no layout.
  *
- * @see ASSESSMENT_ERROR_PREVIEW_LAYOUT.md
  * @see docs/developer/frontend/frontend-testing.md
  */
 

@@ -3,14 +3,14 @@
  *
  * @remarks
  * Each journey serves controlled `getAssignment`/`getABClass` queues built from
- * the canonical `medium` class graph, so the preview states Section 9 renders
+ * the canonical `medium` class graph, so the preview states the feature renders
  * are proven end to end: a healthy sibling beside an assessment `E` with valid
  * source, an `E` whose source is unavailable, a known class-partial `E` while
  * the full read is pending or has failed, a preview-only corrupt record, a
  * legacy reassessment result, and a refresh that replaces `E` with a current
  * result. No live Google or LLM call is made.
  *
- * @see ASSESSMENT_ERROR_PREVIEW_LAYOUT.md
+ * @see docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md
  * @see docs/developer/frontend/frontend-playwright-e2e.md
  */
 

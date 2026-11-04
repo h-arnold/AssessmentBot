@@ -419,7 +419,7 @@ class AssignmentController {
    * @param {string|null} [params.yearGroupKey] - Year group key (optional).
    * @returns {Object} Object containing { definition, courseId, abClass }.
    * @throws {Error} If required parameters are missing or definition creation fails.
-   * @remarks Parameter renamed from `yearGroup` to `yearGroupKey` per SPEC.md v1.9.0 Option B.
+   * @remarks Parameter renamed from `yearGroup` to `yearGroupKey`.
    * Resolves `yearGroupKey` from input or `abClass.yearGroupKey` (fail-fast when both null).
    * Resolves `primaryTopicKey` from Classroom API `topicId`. Delegates to `controller.upsertDefinition`
    * (not the removed `controller.ensureDefinition`). No longer sets `abClass.yearGroup`.

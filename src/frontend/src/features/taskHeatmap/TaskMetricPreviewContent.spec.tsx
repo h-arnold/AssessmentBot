@@ -9,8 +9,7 @@
  *
  * A known class-partial `E` is usable card data: it renders the card while the
  * full read is pending or has terminally failed, with only the source region
- * loading or unavailable. Copy and state treatment come from
- * `ASSESSMENT_ERROR_PREVIEW_LAYOUT.md`.
+ * loading or unavailable.
  *
  * Pointer/keyboard activation and closed-overlay deferral are characterised in
  * `TaskMetricPreviewCell.spec.tsx`.

@@ -50,7 +50,6 @@
  * journey opens several previews in a row, `rebaselineClosedPage` closes the
  * open one and re-reads instead of reusing an earlier reading.
  *
- * @see ASSESSMENT_ERROR_PREVIEW_LAYOUT.md — acceptance evidence
  * @see docs/developer/frontend/frontend-playwright-e2e.md
  */
 

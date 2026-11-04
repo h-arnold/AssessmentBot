@@ -3,8 +3,6 @@
  *
  * RED phase: tests for the new pure-read methods readClass(classId) and
  * _toReadView(abClass). All tests fail because the methods don't exist yet.
- *
- * See ACTION_PLAN.md §3 and SPEC.md §"Backend changes required" steps 2-3.
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';

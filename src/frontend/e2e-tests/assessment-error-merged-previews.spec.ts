@@ -21,8 +21,7 @@
  * Every response is a route-controlled queue built from the committed canonical
  * records. No live Google or LLM call is made.
  *
- * @see ASSESSMENT_ERROR_PREVIEW_LAYOUT.md
- * @see ACTION_PLAN.md (Section 10, criterion 2)
+ * @see docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md
  * @see docs/developer/frontend/frontend-playwright-e2e.md
  */
 

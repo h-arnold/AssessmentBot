@@ -35,7 +35,7 @@ class AssignmentDefinition {
    * @throws {TypeError} If params contain deprecated yearGroup property.
    * @throws {TypeError} If yearGroupKey is not a string.
    * @throws {RangeError} If assignmentWeighting is outside range 0-10.
-   * @remarks This constructor enforces the refactored year-group handling per SPEC.md v1.9.0 Option B:
+   * @remarks This constructor enforces the year-group handling contract:
    * - The deprecated numeric `yearGroup` field is completely removed; its presence throws a TypeError.
    * - `yearGroupKey` (string) is now the canonical year-group reference and must be provided (controller guarantees non-null).
    * - `yearGroupLabel` is a display-only field resolved by the controller from reference data.
@@ -70,7 +70,7 @@ class AssignmentDefinition {
     this.primaryTopic = primaryTopic;
     this.primaryTopicKey = primaryTopicKey ?? null;
 
-    // Validate yearGroupKey type (controller guarantees non-null per SPEC.md)
+    // Validate yearGroupKey type (controller guarantees non-null)
     if (typeof yearGroupKey !== 'string') {
       throw new TypeError('yearGroupKey must be a string');
     }
@@ -248,7 +248,7 @@ class AssignmentDefinition {
    * @param {string} params.primaryTopic - The primary topic name
    * @param {string} params.yearGroupKey - The year group key
    * @returns {string} Metadata-derived definition key
-   * @remarks Parameter renamed from `yearGroup` to `yearGroupKey` per SPEC.md v1.9.0 Option B. This method
+   * @remarks Parameter renamed from `yearGroup` to `yearGroupKey`. This method
    * does NOT validate its parameters; validation is the caller's responsibility per the controller-resolution
    * pattern. Old definition keys using numeric yearGroup (e.g., `Math_Algebra_10`) will not be found by
    * new lookups using string yearGroupKey (e.g., `Math_Algebra_year-group-10`).
@@ -389,7 +389,7 @@ class AssignmentDefinition {
    * @throws {Error} If the JSON input is falsy
    * @throws {TypeError} If the JSON input contains a deprecated yearGroup field
    * @throws {TypeError} If json.yearGroupKey is not a string
-   * @remarks This method enforces fail-fast validation per SPEC.md v1.9.0: throws TypeError if the input JSON
+   * @remarks This method enforces fail-fast validation: throws TypeError if the input JSON
    * contains a `yearGroup` field (detecting missed migration entries). The `yearGroupKey` field must be a string
    * (type validation only; null/undefined is controller responsibility). Stored definitions with `yearGroup`
    * fields will fail to load and must be re-created through the new flow.

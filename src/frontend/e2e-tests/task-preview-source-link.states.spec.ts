@@ -11,7 +11,6 @@
  * Vitest owns loading, error and deferred-readiness focus behaviour. Playwright
  * owns unavailable-source rendering and the companion spec's browser navigation.
  *
- * @see ASSESSMENT_ERROR_PREVIEW_LAYOUT.md
  * @see docs/developer/frontend/frontend-playwright-e2e.md — runtime mocks, StrictMode rule
  */
 

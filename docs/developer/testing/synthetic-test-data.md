@@ -210,9 +210,8 @@ Section 2 regression gate is recorded separately and is not claimed by this guid
   overrides and the unsupported TABLE exception remain; IMAGE content is derived from a canonical
   full record.
 - **Preview-fixture capability comment.** `src/frontend/src/test/taskHeatmap/previewFixtures.ts` no
-  longer carries the resolved IMAGE/SPREADSHEET exceptions or the dead root `ACTION_PLAN.md`
-  pointer. It points to these capability notes and keeps only genuinely unsupported cases such as
-  TABLE.
+  longer carries the resolved IMAGE/SPREADSHEET exceptions. It points to these capability notes and
+  keeps only genuinely unsupported cases such as TABLE.
 - **Browser journeys select the corpus directly.** `src/frontend/e2e-tests/helpers/assessment-error-preview-fixtures.ts` imports the committed `medium` `classesById`, `assignmentsByKey`, `classPartials` and `assignmentDefinitionPartials` views, validates every selected full record through its transport schema, and derives the controlled variants from detached clones. No competing realistic builder is introduced; corrupt, legacy and class-partial-E variants stay local to the helper.
 - **Local probes stay local.** Corrupt records, missing-criterion and empty-map probes, HTTP
   response variants, GAS failures and numeric boundary probes remain targeted local fixtures, not

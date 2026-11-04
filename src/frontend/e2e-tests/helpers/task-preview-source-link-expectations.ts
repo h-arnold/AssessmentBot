@@ -13,7 +13,6 @@
  * calling production code, so an assertion pins the rendered link to the mocked
  * record. No derived `sourceUrl` is ever placed in a mocked API payload.
  *
- * @see ASSESSMENT_ERROR_PREVIEW_LAYOUT.md
  * @see docs/developer/testing/synthetic-test-data.md
  */
 

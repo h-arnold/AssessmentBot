@@ -2,7 +2,7 @@
  * ConfigurationManager locked write path and freshness detection.
  *
  * @remarks
- * Delegated sub-class of the ConfigurationManager facade (ACTION_PLAN.md Section 2).
+ * Delegated sub-class of the ConfigurationManager facade.
  * Implements `writeConfigurationLocked(mutator)` — the single serialisation point
  * for ALL configuration writes — and `isFreshInstall()`.
  *
@@ -10,7 +10,7 @@
  * the vendored JsonDbApp `DbLockService` uses. GAS script locks are NOT reentrant;
  * a caller must never invoke a configuration write while a DB operation already
  * holds the script lock. This is caller discipline and is intentionally NOT detected
- * here (per SPEC.md decision 12 and ACTION_PLAN.md Section 2).
+ * here.
  *
  * Under the lock the current blob is re-read from RAW storage (never the in-memory
  * cache), the mutator produces the next config, the 8KB cap is enforced, and a

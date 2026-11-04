@@ -22,7 +22,9 @@ const getAssignmentDefinitionMock = vi.mocked(getAssignmentDefinition) as Return
 const getAssignmentTopicsMock = vi.mocked(getAssignmentTopics) as ReturnType<typeof vi.fn>;
 const getCohortsMock = vi.mocked(getCohorts) as ReturnType<typeof vi.fn>;
 const getYearGroupsMock = vi.mocked(getYearGroups) as ReturnType<typeof vi.fn>;
-const upsertAssignmentDefinitionMock = vi.mocked(upsertAssignmentDefinition) as ReturnType<typeof vi.fn>;
+const upsertAssignmentDefinitionMock = vi.mocked(upsertAssignmentDefinition) as ReturnType<
+  typeof vi.fn
+>;
 const useStartupWarmupStateMock = vi.mocked(useStartupWarmupState) as ReturnType<typeof vi.fn>;
 
 const {
@@ -88,7 +90,7 @@ describe('AssignmentDefinitionWizardModal persistence and callbacks', () => {
     expect(parseCall.yearGroupKey).toBe('year-group-10');
     expect(parseCall.definitionKey).toBeUndefined(); // Stage-one create does not include definitionKey
 
-    // Verify the final save call includes definitionKey from parse response per SPEC.md #20 and #21
+    // Verify the final save call includes definitionKey from the parse response
     const saveCall = upsertAssignmentDefinitionMock.mock.calls[1][0] as Record<string, unknown>;
     expect(saveCall.primaryTitle).toBe('New Assessment');
     expect(saveCall.primaryTopicKey).toBe('topic-algebra');

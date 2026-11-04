@@ -1,8 +1,8 @@
 /**
  * Contract tests for the fresh-install bootstrap claim.
  *
- * These tests encode the target contract (ACTION_PLAN.md §4 / SPEC.md
- * "Bootstrap claim"): the first interactive caller with a non-blank
+ * These tests encode the bootstrap-claim contract: the first interactive caller
+ * with a non-blank
  * server-resolved email on a genuinely fresh install atomically becomes admin
  * through the shared access-resolution path — one locked mutation that writes
  * only auth fields (`authMode: 'scriptProperties'`, the caller as sole admin,

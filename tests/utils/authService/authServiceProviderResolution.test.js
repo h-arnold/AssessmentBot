@@ -1,7 +1,7 @@
 /**
  * Provider-resolution contract tests for the refactored AuthService base.
  *
- * Encodes the state-machine rows from SPEC.md (Application Authentication):
+ * Encodes the AuthService state-machine rows:
  * fresh install, legacy groups (with the single leniency), configured
  * googleGroups, configured scriptProperties, every broken-config row, and the
  * removed-bypass regression guards. Access decisions are driven through

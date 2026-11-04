@@ -389,7 +389,7 @@ describe('ABClassController._toReadView', () => {
    *     `Assignment.toJSON()` with no `toPartialJSON` method. This caused the full
    *     assignment payload — including `tasks`, `referenceDocumentId`, and
    *     `templateDocumentId` at the root — to leak into the API response, violating
-   *     SPEC.md decision 4 and `docs/developer/backend/DATA_SHAPES.md` "ABClass full-read".
+   *     the ABClass full-read data shape (`docs/developer/data-shapes/abclass.md`).
    *
    *     The mock used by tests 7–9 lacks `toJSON`, so the bug was masked; this test
    *     uses a real Assignment instance (constructed via `Object.create(Assignment.prototype)`

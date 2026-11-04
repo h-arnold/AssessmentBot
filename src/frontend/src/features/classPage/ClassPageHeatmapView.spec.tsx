@@ -12,8 +12,6 @@
  *   a control Card (refresh), and `<TaskHeatmapTable heatmapResult={...} />`.
  * - On `adaptMetricsToHeatmap` throw, it logs via `logFrontendError` and calls
  *   `onBack` (no in-view error UI).
- *
- * @see SPEC.md — §"Page composition", §"Navigation / breadcrumb", §"Error handling"
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';

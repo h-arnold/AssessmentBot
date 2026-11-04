@@ -166,8 +166,7 @@ export const HEATMAP_TABLE_NAME = 'Task Heatmap';
 
 /**
  * Valid Sheets tab id that must survive verbatim into the link fragment.
- *
- * @see SPEC.md — the Sheets value `"0"` is a valid gid
+ * The Sheets value `"0"` is a valid gid.
  */
 const NUMERIC_SHEETS_PAGE_ID = '0';
 

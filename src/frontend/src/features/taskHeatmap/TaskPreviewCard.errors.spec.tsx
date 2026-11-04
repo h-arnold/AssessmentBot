@@ -9,10 +9,9 @@
  * rendering the response. A genuine no-submission stays the ready `N`
  * placeholder with no Alert, and a legacy result gets the reassessment copy.
  *
- * Copy and state treatment come from `ASSESSMENT_ERROR_PREVIEW_LAYOUT.md`;
- * recorded reasoning comes from the Assessment catalogue. Realistic reasoning
- * and content come from the canonical `small` ready cell, and the error probes
- * are local fixtures built around it.
+ * Recorded reasoning comes from the Assessment error catalogue. Realistic
+ * reasoning and content come from the canonical `small` ready cell, and the
+ * error probes are local fixtures built around it.
  */
 
 import { describe, it, expect, afterEach } from 'vitest';

@@ -172,7 +172,7 @@ g.toReadableKey_ = validators.toReadableKey_;
 // Default LockService mock — always acquires the lock successfully.
 // Individual tests that need to control lock behaviour should override
 // globalThis.LockService in their own beforeEach/afterEach. The script lock is the
-// single serialisation point for ALL configuration writes (ACTION_PLAN.md Section 2),
+// single serialisation point for ALL configuration writes,
 // so it must always be present so setters serialise through the locked write path.
 g.LockService = {
   getUserLock() {

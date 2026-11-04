@@ -52,8 +52,8 @@ async function loadAssignmentWizardFormState(): Promise<Record<string, unknown>>
  * @returns {Promise<Record<string, unknown>>} Imported module namespace.
  */
 async function loadReviewContentModule(): Promise<Record<string, unknown>> {
-  // Decided filename is AssignmentDefinitionWizardReviewContent.tsx (natural
-  // extraction name, recorded in ACTION_PLAN.md).
+  // The review-content component keeps its natural extraction filename
+  // (AssignmentDefinitionWizardReviewContent.tsx).
   const modulePath = './AssignmentDefinitionWizardReviewContent';
   return import(/* @vite-ignore */ modulePath);
 }
@@ -150,10 +150,12 @@ function buildStageTwoContentProperties(): Record<string, unknown> {
  * @param {Record<string, unknown>} properties.content Content properties.
  * @returns {JSX.Element} Review-content harness element.
  */
-function ReviewContentHarness(properties: Readonly<{
-  component: ComponentType<Record<string, unknown>>;
-  content: Record<string, unknown>;
-}>): JSX.Element {
+function ReviewContentHarness(
+  properties: Readonly<{
+    component: ComponentType<Record<string, unknown>>;
+    content: Record<string, unknown>;
+  }>
+): JSX.Element {
   const [form] = Form.useForm();
   return createElement(properties.component, { ...properties.content, form });
 }
@@ -232,9 +234,7 @@ describe('AssignmentDefinitionWizardReviewContent', () => {
 
     expect(screen.getByRole('table', { name: /task weightings/i })).toBeInTheDocument();
     expect(screen.getByText(SEED_FIRST_TASK_TITLE)).toBeInTheDocument();
-    expect(
-      screen.getByRole('spinbutton', { name: /assignment weighting/i })
-    ).toBeInTheDocument();
+    expect(screen.getByRole('spinbutton', { name: /assignment weighting/i })).toBeInTheDocument();
   });
 
   it('renders chrome-free without Ant Design modal chrome', async () => {
