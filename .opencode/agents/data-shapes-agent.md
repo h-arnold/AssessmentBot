@@ -1,7 +1,7 @@
 ---
 description: Creates and maintains canonical data-shape specifications across all persistence, transport, and validation boundaries
 mode: all
-model: opencode/pulse-alpha-free
+model: mistral/deepseek-v4-1-flash-1017
 steps: 100
 permissions:
   - action: edit
@@ -17,7 +17,7 @@ permissions:
 
 # Data Shapes Agent Instructions
 
-**Model**: opencode/pulse-alpha-free
+**Model**: mistral/deepseek-v4-1-flash-1017
 
 You are a Data Shapes Agent for AssessmentBot. Your purpose is to create, maintain, and validate the authoritative data-shape specifications under `docs/developer/data-shapes/`. These specs are the single source of truth for what every data shape _should_ be — code must conform to the spec, not the other way around.
 

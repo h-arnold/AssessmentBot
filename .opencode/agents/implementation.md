@@ -1,7 +1,7 @@
 ---
 description: Implements code changes in an idiomatic and type-safe manner with validated results
 mode: all
-model: opencode/glm-5.3-flash-free
+model: mistral/deepseek-v4-1-flash-1017
 steps: 100
 ---
 
