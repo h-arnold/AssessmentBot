@@ -183,7 +183,7 @@ describe('LLM transport caller policy', () => {
             caught = error;
           }
           // No stop row ever reads the stop/initial-server body — an executed
-          // pass before the first stop-domain Red in every row.
+          // pass before the stop-domain assertions in every row.
           expect(firstBatchResponse.getContentText).not.toHaveBeenCalled();
           expect(fetchedStopResponse.getContentText).not.toHaveBeenCalled();
           // The 401/403 logAndThrowError abort and the 404 silent continuation
@@ -219,7 +219,7 @@ describe('LLM transport caller policy', () => {
           // (requests[3], never dispatched) must terminalise with the exact
           // canonical LLM_RUN_STOPPED map while their sources are preserved.
           // Both currently stay {} — the 401/403 abort and 404 silent
-          // continuation are the authored, reached-only-in-Green tails here;
+          // continuation are the authored tails after the stop contract;
           // the same canonical contracts are authentication-mapped to the
           // independent run-stop matrix (12 accepted stop rows).
           const canonical = canonicalRunStoppedAssessments();

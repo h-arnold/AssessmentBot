@@ -1,7 +1,7 @@
 /**
  * Current-format assignment rehydration: completed-item coverage materialisation.
  *
- * Regression coverage originating in the Section 2 Red phase: during a
+ * Regression coverage: during a
  * one-pass full or partial restoration, a known task missing from an
  * identified, otherwise trustworthy submission is materialised once as a
  * validation `CORRUPT_RECORD` placeholder from the assignment's own embedded

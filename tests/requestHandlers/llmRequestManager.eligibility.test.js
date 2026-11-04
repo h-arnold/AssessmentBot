@@ -48,7 +48,7 @@ describe('LLMRequestManager eligibility outcomes', () => {
         item.artifact.contentHash = unusableValue;
         const artefactSnapshot = structuredClone(item.artifact.toJSON());
         const documentId = assignment.submissions[0].documentId;
-        // Fail-loudly invariant Red: current null===null N mutation instead.
+        // Fail-loudly invariant: current null===null N mutation instead.
         let caught = null;
         try {
           manager.generateRequestObjects(assignment);
@@ -421,7 +421,7 @@ function runUsableHashCacheCase(component, unusableValue) {
     });
     const mutatedSnapshot = mutateUnusableHash(warm, component, unusableValue);
     const documentId = warm.assignment.submissions[0].documentId;
-    // Fail-loudly invariant Red: current silent hit/dispatch path instead.
+    // Fail-loudly invariant: current silent hit/dispatch path instead.
     let caught = null;
     try {
       warmManager.generateRequestObjects(warm.assignment);

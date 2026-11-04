@@ -308,9 +308,9 @@ describe('LLMRequestManager terminal assessment outcomes', () => {
         expect(diagnostics).not.toContain(body);
         sentinels.forEach((sentinel) => expect(diagnostics).not.toContain(sentinel));
         expect(diagnostics.length).toBeLessThan(1000);
-        // Authored against the Section 6 terminal completion path; while the
-        // existing semantic retry still dispatches, these stay Red after the
-        // primary diagnostic assertions and are unreachable this cycle.
+        // Authored against the terminal completion path; while the existing
+        // semantic retry still dispatches, these stay unreached after the
+        // primary diagnostic assertions this cycle.
         expect(fetch).not.toHaveBeenCalled();
         expect(sleep).not.toHaveBeenCalled();
         expect(context.scriptCache.put).not.toHaveBeenCalled();
@@ -434,7 +434,7 @@ describe('LLM successful decode through the real normaliser', () => {
   it.each(REAL_NORMALISER_BODIES)('%s', (_label, expectedOutcome, body) => {
     const collected = runRealNormaliserCase(body);
     if (expectedOutcome === 'invalid') {
-      // RED (exploit rows): the normalised object carries exactly three own
+      // Exploit rows: the normalised object carries exactly three own
       // keys — the '__proto__' assignment became the prototype and the
       // colliding duplicate resolved by last-write — so the validator accepts
       // the root and the atomic invalid-response contract never runs.

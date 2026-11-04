@@ -1,7 +1,7 @@
 /**
  * Current-format assignment rehydration: restoration identity and failure propagation.
  *
- * Regression coverage originating in the Section 2 Red phase: each identified
+ * Regression coverage: each identified
  * item is restored exactly once, corrupted raw data is converted to placeholders
  * without constructing and discarding the raw item first, and injected
  * construction/wiring faults propagate instead of being converted to

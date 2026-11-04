@@ -92,7 +92,7 @@ globalThis.StudentSubmission = StudentSubmission;
 // Now that globals exist, require runtime-dependent classes
 const LLMRequestManagerFresh = require('#backend/RequestHandlers/LLMRequestManager.js');
 
-describe('Phase 3 LLMRequestManager integration (new model)', () => {
+describe('LLMRequestManager assignment-run integration', () => {
   let assignment, manager;
   let savedCacheGlobals, nativeCache, nativeCacheStorage;
 

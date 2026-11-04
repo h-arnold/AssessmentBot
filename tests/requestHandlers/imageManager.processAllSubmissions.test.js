@@ -77,7 +77,7 @@ function pendingStudentImage(taskId, sourceUrl) {
   });
 }
 
-describe('Phase 5 ImageManager', () => {
+describe('ImageManager processAllSubmissions orchestration', () => {
   let assignment;
   beforeEach(() => {
     // Build assignment with TaskDefinition-like shape (no need for full class for mapping)

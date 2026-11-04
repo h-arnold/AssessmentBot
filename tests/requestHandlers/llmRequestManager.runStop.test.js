@@ -74,9 +74,9 @@ describe('LLM controlled-batch run-stop terminalisation', () => {
       const collected = runRunStopControl('medium', 3, batchSize, {
         stop: { requestIndex: stopIndex, origin, status },
       });
-      // Proof-first shared assertions. The intended first Red boundary is the
-      // completion expectation for the current 401/403 logAndThrowError abort
-      // and the canonical terminal map for 404's silent continuation.
+      // Proof-first shared assertions. The completion expectation is the
+      // current 401/403 logAndThrowError abort and the canonical terminal map
+      // for 404's silent continuation.
       expectRunStopTerminalStops(collected);
     }
   );
@@ -96,8 +96,8 @@ describe('LLM controlled-batch run-stop terminalisation', () => {
         cancelledRetryable: true,
       });
       // Proof-first shared assertions including the cancelled sibling's
-      // attempts-1 provenance from the real batch consumption. The intended
-      // Red boundary is the cancelled sibling's terminal map: Base returned
+      // attempts-1 provenance from the real batch consumption. The completion
+      // expectation is the cancelled sibling's terminal map: Base returned
       // its untouched initial 500 (retries cancelled by the stop), so it is
       // affected remaining eligible work — the current source labels it
       // LLM_UNAVAILABLE instead of the required LLM_RUN_STOPPED.
@@ -112,7 +112,7 @@ describe('LLM controlled-batch run-stop terminalisation', () => {
     });
     // One batch of three: stop target, cancelled retryable sibling and a
     // healthy member dispatched after both. All proof-first shared assertions
-    // run; the cancelled sibling's canonical map is the intended Red.
+    // run; the cancelled sibling's canonical map is the completion expectation.
     expectRunStopTerminalStops(collected);
   });
 
@@ -384,8 +384,8 @@ function runCachedStopControl(status, origin) {
 
 /**
  * Shared cached-stop assertions. Survival identities, native budgets, unread
- * bodies and routing execute BEFORE the no-abort requirement (first Red for
- * 401/403 rows); 404 rows first fail on the stopped target's canonical map, and
+ * bodies and routing execute BEFORE the no-abort requirement (the 401/403 rows
+ * fail there first); 404 rows first fail on the stopped target's canonical map, and
  * the not-attempted/cache tails stay authored behind those boundaries.
  */
 function expectCachedStopSurvival(collected) {
@@ -452,8 +452,8 @@ function expectCachedStopSurvival(collected) {
   });
 
   // The stop must be domain completion-with-errors, never an unhandled run
-  // abort; the current 401/403 logAndThrowError abort is the intended business
-  // Red here (404 reaches the terminal maps below instead).
+  // abort; the current 401/403 logAndThrowError abort is the gap this asserts
+  // (404 reaches the terminal maps below instead).
   expect(collected.caught).toBe(null);
 
   // Both the stopped and the LATER-unprocessed item must be terminal with the

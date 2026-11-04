@@ -299,8 +299,9 @@ const SENTINEL_CACHED_MISS_ROW = {
  * own opaque key with one real generation (no dispatch); the known priming
  * diagnostics are cleared explicitly; the row's seed factory then runs inside
  * the active context and its product is preflighted before the first business
- * Red boundary. Everything after the first validator assertion is the authored
- * Green tail: it is unreachable while the blind cache apply stays in place.
+ * assertion. Everything after the first validator assertion is the authored
+ * terminal-isolation tail: it is unreachable while the blind cache apply stays
+ * in place.
  */
 function runInvalidCacheHitCase(row) {
   const natives = liveBatchNatives();
@@ -331,7 +332,7 @@ function runInvalidCacheHitCase(row) {
     expect(testedManager).not.toBe(collected.manager);
     const validator = vi.spyOn(testedManager, 'validateAssessmentData');
     const lookup = observeLookup({ ...collected, manager: testedManager }, tested.assignment);
-    // FIRST RED BOUNDARY: the real shared validator must inspect the decoded
+    // Validator boundary: the real shared validator must inspect the decoded
     // cached value exactly once and reject it; the blind apply never calls it.
     expect(validator.mock.calls).toHaveLength(1);
     expect(validator.mock.calls[0][0]).toEqual(JSON.parse(seedJson));
@@ -438,7 +439,7 @@ describe('LLM shared validator applies the existing Assessment result union', ()
       // entries carrying error metadata, so the numeric entry is excluded
       // from the valid-criteria preflight of the cached row above.
       expect(globalThis.Assessment.isValidRawResult(result.accuracy)).toBe(false);
-      // RED: the shared validator must apply that same union and reject the
+      // The shared validator must apply that same union and reject the
       // whole root; it currently certifies the error-bearing numeric entry.
       expect(collected.manager.validateAssessmentData(result)).toBe(false);
     });
@@ -469,7 +470,7 @@ function runWritebackWiringCase(corruptRoute) {
     } catch (error) {
       caught = error;
     }
-    // RED: broken owned route state must fail loudly; the current source
+    // Broken owned route state must fail loudly; the current source
     // warns/returns for a missing item and silently skips a missing key.
     expect(caught).toBeInstanceOf(Error);
     // No pretend success: no cache write reaches the native store.

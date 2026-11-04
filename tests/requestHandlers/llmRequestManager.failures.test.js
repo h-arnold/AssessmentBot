@@ -90,9 +90,9 @@ function runInternalFaultCase(install) {
 /**
  * Authored processing-isolation controls shared by every fault row. Each row
  * first asserts its own explicit seam reach and exact original-error identity
- * before calling this helper; under Section 6 Green these checks must all hold
- * as well. Against the current source the helper is unreached because every
- * caller fails at its per-row identity assertion first.
+ * before calling this helper; these checks must all hold as well. Against the
+ * current source the helper is unreached: every caller fails at its per-row
+ * identity assertion first.
  */
 function expectOriginalErrorIsolation(collected) {
   const { fetchAll, fetch, sleep, item, artefact, artefactSnapshot, documentId, assignment } =
@@ -109,7 +109,7 @@ function expectOriginalErrorIsolation(collected) {
 }
 
 /**
- * Authored safety tail shared by the red transport rows: no leaked raw fault
+ * Authored safety tail shared by the transport rows: no leaked raw fault
  * text in the safe catalogue reasoning, retained source identity and no cache
  * write. Against the current source these are unreached because every row
  * fails at its catalogued outcome assertion first.
@@ -298,14 +298,14 @@ describe('LLM internal fault original-error identity', () => {
     // Real put serialisation throws BEFORE the native write, so the native script-cache
     // seam is never reached and this stays distinct from a generic cache outage.
     expect(collected.scriptCache.put).not.toHaveBeenCalled();
-    // RED check: the original sentinel must keep exact identity out of the public
+    // Identity check: the original sentinel must keep exact identity out of the public
     // processStudentResponses boundary instead of a broad decode/retry catch.
     expect(collected.caught).toBe(sentinel);
     // The valid numeric result may already be applied before serialisation; no catalogue
     // E relabelling of this programming fault is acceptable either way.
     expect(collected.item.getAssessment()).toEqual(STUDENT_RESULT_DATA);
     // Authored tail: no further dispatch or sleep beyond the original batch, retained
-    // source identity and no native write under the Section 6 GREEN path.
+    // source identity and no native write on the terminal-isolation path.
     expectOriginalErrorIsolation(collected);
   });
 });
@@ -355,7 +355,7 @@ describe('LLM service transport catalogue outcomes', () => {
       expect(collected.item.getAssessment()).toEqual(
         catalogueHTTPAssessments(HTTP_REJECTED_REASON, 'LLM_HTTP_FAILED')
       );
-      // Authored after the current production gap; reached only in Section 6 Green.
+      // Authored after the current production gap; reached only once permanent rejection retains the source with no cache write.
       expectSourceRetained(collected);
       expect(collected.scriptCache.put).not.toHaveBeenCalled();
     }
@@ -406,7 +406,7 @@ describe('LLM service transport catalogue outcomes', () => {
       expect(collected.item.getAssessment()).toEqual(
         catalogueHTTPAssessments(SERVICE_EXHAUSTED_REASON, 'LLM_UNAVAILABLE')
       );
-      // Authored after the current production gap; reached only in Section 6 Green.
+      // Authored after the current production gap; reached only once permanent rejection retains the source with no cache write.
       expectSourceRetained(collected);
       expect(collected.scriptCache.put).not.toHaveBeenCalled();
     }

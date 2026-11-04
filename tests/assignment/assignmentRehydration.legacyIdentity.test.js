@@ -1,4 +1,4 @@
-/** Unit 10: legacy projection identity and embedded-definition trust boundaries. */
+/** Legacy projection identity and embedded-definition trust boundaries. */
 import { describe, expect, it } from 'vitest';
 import {
   currentAssignmentJson,

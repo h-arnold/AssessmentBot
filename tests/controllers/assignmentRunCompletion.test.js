@@ -12,7 +12,7 @@
  *
  * Proof limits: nothing here proves live GAS/Classroom/LLM service behaviour, durable
  * JsonDbApp persistence, deployed logging fidelity or real completion-time stamping
- * (stamping is the intentional Red target). The real-LLM-stop rows exercise the real
+ * (stamping is the behaviour under test). The real-LLM-stop rows exercise the real
  * LLMRequestManager stop generation over hermetic native stubs and real canonical
  * models, not live network calls or GAS hosting; their seams are reported in place.
  */
@@ -272,11 +272,11 @@ describe('AssignmentController processSelectedAssignment run completion', () => 
 });
 
 /**
- * Connected real-LLM-stop composition. Phase 1 is real stop generation: the real
+ * Connected real-LLM-stop composition. The first step is real stop generation: the real
  * LLMRequestManager (real Base transport over native stubs, real cache seams) runs the
  * existing canonical run-stop fixture builder's medium model; the stopped E maps come
- * from the manager's own outcome routing, nothing is synthesised. Phase 2 feeds the
- * stopped model into the real completion flow (its assess stage observed as a no-op),
+ * from the manager's own outcome routing, nothing is synthesised. The second step feeds
+ * the stopped model into the real completion flow (its assess stage observed as a no-op),
  * with the model's definition task map narrowed to the pairs' one canonical task for
  * coverage-completeness at the completed-write boundary.
  */
@@ -361,7 +361,7 @@ function createConnectedStopRun(batchSize) {
     context.restore();
   }
 
-  // Phase 2 wiring runs outside the harness scope so these seams survive its restore.
+  // Completion-flow wiring runs outside the harness scope so these seams survive its restore.
   const assignment = fixture.assignment;
   const inputs = loadBackendModelInputs('medium');
   const record = inputs.assignmentsByKey[assignment.assignmentId];

@@ -1,5 +1,5 @@
 /**
- * RED-phase tests for the ConfigurationManager decomposition — locked write path
+ * Tests for the ConfigurationManager decomposition — locked write path
  * and freshness detection.
  *
  * These tests define the TARGET CONTRACT only. Production code implementing the

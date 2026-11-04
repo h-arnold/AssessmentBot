@@ -364,8 +364,8 @@ describe('ABClassController persistAssignmentRun connected three-store persisten
    *   store save had already succeeded (true only for class-store and
    *   class-partials-store failures).
    * These are structured log-metadata fields per the canonical ABLogger
-   * conventions, not public API or production function names. Documented in
-   * .opencode/scratchpad/section8-red-r1-repair.md.
+   * conventions, not public API or production function names. The failure
+   * rows in this suite assert that contract.
    */
   const PERSIST_FAILURE_PHASES = {
     fullAssignmentProjection: 'full-assignment-projection',

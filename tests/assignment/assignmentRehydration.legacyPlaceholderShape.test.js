@@ -1,4 +1,4 @@
-/** Unit 7: independent contract checks for legacy reassessment placeholders. */
+/** Independent contract checks for legacy reassessment placeholders. */
 import { describe, expect, it } from 'vitest';
 import {
   currentAssignmentJson,

@@ -1,7 +1,7 @@
 /**
  * Current-format assignment rehydration: partial redaction contracts.
  *
- * Regression coverage originating in the Section 2 Red phase: the partial
+ * Regression coverage: the partial
  * restoration path (`Assignment.fromJSON(json, 'partial')`) is exercised
  * against raw marker-1 embedded partial snapshots composed independently of
  * the restoration owner (task summaries and redacted artefacts), alongside the

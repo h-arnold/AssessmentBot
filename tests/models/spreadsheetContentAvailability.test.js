@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import SpreadsheetTaskArtifact from '#backend/Models/Artifacts/3_SpreadsheetTaskArtifact.js';
 
-describe('SpreadsheetTaskArtifact content availability (RED)', () => {
+describe('SpreadsheetTaskArtifact content availability', () => {
   it.each([
     { grid: [] },
     { grid: [[null]] },

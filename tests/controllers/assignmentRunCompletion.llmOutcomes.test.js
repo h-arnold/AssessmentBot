@@ -106,9 +106,9 @@ const OUTCOME_FIXTURES = {
 };
 
 /**
- * Builds one connected outcome run. Phase 1 runs the real `LLMRequestManager` over
- * the row's native stubs so the E maps come from the manager's own routing. Phase 2
- * feeds that same model into the real completion flow, with its assess stage
+ * Builds one connected outcome run. The first step runs the real `LLMRequestManager` over
+ * the row's native stubs so the E maps come from the manager's own routing. The second
+ * step feeds that same model into the real completion flow, with its assess stage
  * observed as a no-op, and narrows the definition task map to the dispatched pair
  * plus one genuine template-copy N sibling so completed-item coverage holds.
  */
@@ -162,7 +162,7 @@ function createConnectedOutcomeRun(kind) {
     context.restore();
   }
 
-  // Phase 2 wiring runs outside the harness scope so these seams survive its restore.
+  // Completion-flow wiring runs outside the harness scope so these seams survive its restore.
   const { assignment, dispatched, signature } = collected;
   const inputs = loadBackendModelInputs('medium');
   const classDocument = structuredClone(inputs.classesById[assignment.courseId]);
@@ -230,7 +230,7 @@ describe('AssignmentController processSelectedAssignment LLM terminal outcomes',
       flow.run();
 
       // The completion run's assess stage is observed, not re-executed: the E maps
-      // under test came from the real manager in phase 1.
+      // under test came from the real manager in the generation step.
       expect(flow.stages.assessResponses).toHaveBeenCalledTimes(1);
 
       const stored = fullRecordOf(flow);

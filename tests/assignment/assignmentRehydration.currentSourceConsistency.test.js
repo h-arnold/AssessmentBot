@@ -1,7 +1,7 @@
 /**
  * Current-format assignment rehydration: null-source consistency and redaction.
  *
- * Regression coverage originating in the Section 2 Red phase: on a full read,
+ * Regression coverage: on a full read,
  * numeric/`N` results and assessment-stage failures beside a null submission
  * source contradict the stored record and are replaced with validation
  * `CORRUPT_RECORD` placeholders for all three criteria. Document-bearing
