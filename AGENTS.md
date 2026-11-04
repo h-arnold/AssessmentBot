@@ -39,6 +39,7 @@ These apply to all components.
 9. Keep changes minimal, localised, and consistent with existing patterns.
 10. **Default values must be set in a module's constructor only.** If defaults are found elsewhere, they should be opportunistically moved to the constructor of the module.
 11. Use `./` or `../` (including immediate-parent descendants such as `../sibling/x`) for nearby modules; use configured aliases when reaching two or more parent traversals (for example `../../x`). Builder TypeScript and Node test code support component aliases, and backend tests use aliases; production backend GAS code is concatenated and does not use Node module aliases. Opportunistically migrate noncompliant imports in files already touched, preserving import semantics.
+12. Avoid empty filler adjectives and phrases (for example canonical, load-bearing, invariant, robust, comprehensive, idiomatic) in comments, docs, and user-facing text. If the sentence keeps its meaning without the word, omit it; otherwise use a plain-English term. Reserve 'canonical' for its technical meaning — a single source of truth that other representations derive from. Aim for the simplest and most concise explanation which preserves meaning.
 
 ### 2.2 Codebase Conduct
 
@@ -60,7 +61,9 @@ State 1-2 concise assumptions and proceed with the simplest compliant implementa
 
 Project agents are defined in `.opencode/agents` (source of truth). opencode injects the available agent list at runtime; delegate using those agent IDs.
 
-Sub-agents are stateless. Provide explicit context in prompts:
+Resume a sub-agent session using its session ID only when the agent returns an error or an empty response. In every other case, start a fresh session with fresh context, including review and implementation follow-ups.
+
+Provide explicit context in prompts:
 
 - relevant source snippets
 - concrete requirements
@@ -145,8 +148,8 @@ To avoid policy drift, keep detailed policy in dedicated docs and use AGENTS fil
 
 Module-specific test file naming and location conventions belong in the module testing docs; do not duplicate them in `AGENTS.md` files.
 
-If guidance appears in multiple places, update the canonical doc first, then keep AGENTS references brief and consistent.
+If guidance appears in multiple places, update the doc first, then keep AGENTS references brief and consistent.
 
 ### 7.2 Same-Change Documentation Obligation
 
-Any change that alters documented behaviour must carry its canonical documentation update in the same change. Delegate documentation updates to the `Docs` agent (`.opencode/agents/docs.md`) and canonical data-shape specification updates to the `Data Shapes Agent` (`.opencode/agents/data-shapes-agent.md`).
+Any change that alters documented behaviour must carry its documentation update in the same change. Delegate documentation updates to the `Docs` agent (`.opencode/agents/docs.md`) and canonical data-shape specification updates to the `Data Shapes Agent` (`.opencode/agents/data-shapes-agent.md`).
