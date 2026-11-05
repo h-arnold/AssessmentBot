@@ -232,8 +232,11 @@ against the current specification first.
   fail-fast: a missing embedded `assignmentDefinition`, or a `definitionKey` that is missing,
   non-string or empty, raises a `TypeError` instead of projecting `null` or omitting
   `assignmentDefinitionKey`, preserving the required-string response contract.
-- Metadata carries canonical timestamp strings only, so no extra `DateUtils.deepConvertDates()`
-  conversion is needed for the partial-list or mutation-summary responses. The existing full-read
+- Metadata is written as canonical timestamp strings, but JsonDbApp revives ISO strings as `Date`
+  objects when it reads a document. The stored-read gates (`ABClassResponseMapper._normaliseClassPartial()`
+  and `ABClass.fromJSON()`) therefore pass the stored metadata through
+  `DateUtils.deepConvertDates()` before `new ABClassMetadata(...)`, which would otherwise reject
+  the `Date` as not a canonical UTC datetime. The existing full-read
   `DateUtils.deepConvertDates()` call for the other ABClass fields is retained.
 - Request metadata acceptance and its request-provenance error adaptation are both delivered
   (see "Controller request gate" and "Transport error adaptation" above).
@@ -459,6 +462,16 @@ All responses use the stable [transport envelope](../data-shapes/transport-envel
 
 **`data` coercion contract:** `_success()` in `z_apiHandler.js` wraps handler return data with `data: data ?? null`, so `undefined` values (including implicit returns from void handlers) become `null`. The frontend transport layer (`apiService.ts`) therefore always receives `data: null` for void backend methods, never a missing `data` key.
 
+**String serialisation contract:** the global `apiHandler()` returns `JSON.stringify(ApiDispatcher.getInstance().handle(request))`, a JSON string, not an object. `ApiDispatcher.handle()` still returns the envelope object; only the global entry point serialises it.
+
+This is required because `google.script.run` does not reliably preserve `null` properties on returned objects. It can omit them, so a `null` field such as `metadata: null` reaches the browser as `undefined` and fails the frontend Zod schema (for example `ClassPartialSchema.metadata`). `google.script.run` leaves a returned string untouched, and `JSON.parse` keeps `null`. Keep this contract:
+
+- Do not return the envelope object from `apiHandler()`.
+- Do not stringify inside individual handlers or `ApiDispatcher`; the entry point is the single serialisation point.
+- Frontend `dispatchAttempt` in `apiService.ts` is the single place that parses the string (`deserialiseRawResponse`).
+- `undefined` properties are still dropped by `JSON.stringify`, so handlers must emit explicit `null` for absent nullable fields, as `_success()` does for `data`.
+- Tests that call `apiHandler()` directly must `JSON.parse()` the return value; tests of `ApiDispatcher.handle()` receive the object.
+
 ### Dispatch and allowlist pattern
 
 `ALLOWLISTED_METHOD_HANDLERS` in `z_apiHandler.js` is the single authoritative registry for all
@@ -555,6 +568,9 @@ Reference: https://developers.google.com/apps-script/guides/html/reference/run
    cannot serialise (e.g. `[Ljava.lang.Object;@...` references from Drive API wrappers).
 4. Test return values by inspecting `typeof` and `.constructor.name` at the transport boundary
    when diagnosing unexpected `null` responses.
+5. `apiHandler()` returns a JSON string, which preserves `null` properties that
+   `google.script.run` would otherwise omit from a returned object. See
+   [String serialisation contract](#response-envelope).
 
 ### Current migrated endpoints
 

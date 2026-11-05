@@ -184,6 +184,11 @@ z.object({
 
 - **Date serialisation:** `google.script.run` prohibits `Date`, `Function` and DOM values in
   parameters and return values; see [api-layer.md § Critical: prohibited types in `google.script.run` return values](../backend/api-layer.md#critical-prohibited-types-in-googlescriptrun-return-values) for the conversion rules.
+- **String transport:** the global `apiHandler()` returns the envelope as a JSON string
+  (`JSON.stringify`), not an object. `google.script.run` can omit `null` properties from
+  returned objects, which turns required nullable fields (for example ABClass `metadata: null`)
+  into `undefined` on the frontend. The frontend `JSON.parse`s the string in `apiService.ts`. See
+  [api-layer.md § Response envelope](../backend/api-layer.md#response-envelope).
 - **Defensive null coercion:** `_success()` maps `undefined` to `null` to
   prevent Zod `.nullable()` schema errors on the frontend.
 - **Handler failures** are caught by `apiHandler`, logged with the original

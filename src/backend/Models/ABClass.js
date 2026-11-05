@@ -387,7 +387,7 @@ class ABClass {
     // Object.create bypasses the constructor, so route actual absence through
     // the same constructor-owned null default used for new instances.
     const metadata = Object.hasOwn(json, 'metadata')
-      ? new ABClassMetadata(json.metadata)
+      ? new ABClassMetadata(DateUtils.deepConvertDates(json.metadata))
       : new ABClassMetadata();
     inst.metadata = metadata.toJSON();
     inst.classId = json.classId;

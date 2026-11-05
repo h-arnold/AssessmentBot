@@ -10,6 +10,11 @@
  * nested values); `JSON.stringify` would silently convert them to ISO strings and
  * hide the transport violation. ISO 8601 strings remain valid and pass through.
  *
+ * Real `google.script.run` also omits `null` properties from returned objects. When a
+ * success handler receives an object, `null` object properties are therefore dropped
+ * before it is stringified; a string (as returned by the backend `apiHandler`) passes
+ * through unchanged.
+ *
  * This factory is injected into Playwright via `Function.prototype.toString()`, so
  * every helper must stay nested inside the exported function (no outer-scope imports).
  *
@@ -67,6 +72,32 @@ export function createGoogleScriptRunApiHandlerMock(invokeRequest) {
   }
 
   /**
+   * Returns a copy of `value` with every `null` object property removed, matching how real
+   * `google.script.run` omits `null` properties from returned objects. `null` array elements
+   * are kept, and `undefined` properties are dropped later by `JSON.stringify`.
+   *
+   * @param {*} value - Success-response graph (already checked for live Dates).
+   * @returns {*} A copy without `null` object properties.
+   */
+  function dropNullProperties(value) {
+    if (Array.isArray(value)) {
+      return value.map((item) => dropNullProperties(item));
+    }
+
+    if (value === null || typeof value !== 'object') {
+      return value;
+    }
+
+    const result = {};
+    Object.keys(value).forEach((key) => {
+      if (value[key] !== null) {
+        result[key] = dropNullProperties(value[key]);
+      }
+    });
+    return result;
+  }
+
+  /**
    * Creates a runner snapshot with the currently registered handlers.
    *
    * @param {((response: unknown) => void) | undefined} successHandler The current success handler.
@@ -86,8 +117,13 @@ export function createGoogleScriptRunApiHandlerMock(invokeRequest) {
         invokeRequest(request, {
           successHandler: successHandler
             ? (value) => {
+                // The backend `apiHandler` returns a JSON string, which GAS passes through untouched.
+                if (typeof value === 'string') {
+                  successHandler(value);
+                  return;
+                }
                 assertNoLiveDates(value, 'success response');
-                successHandler(JSON.stringify(value));
+                successHandler(JSON.stringify(dropNullProperties(value)));
               }
             : undefined,
           failureHandler,

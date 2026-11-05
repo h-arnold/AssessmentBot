@@ -8,11 +8,14 @@
  */
 class AssignmentSerialisation {
   /**
-   * Copies a JSON snapshot without normalising historical values.
-   * @param {*} value - A JSON scalar, array, or plain object.
+   * Copies a JSON snapshot without normalising historical values, except that live `Date`
+   * values (for example those JsonDbApp revives from stored ISO strings) become ISO strings,
+   * as `JSON.stringify` would. Copying a `Date` key by key would otherwise produce `{}`.
+   * @param {*} value - A JSON scalar, array, plain object, or `Date`.
    * @returns {*} An independently owned snapshot value.
    */
   static copyJsonSnapshot(value) {
+    if (value instanceof Date) return DateUtils.deepConvertDates(value);
     if (Array.isArray(value))
       return value.map((entry) => AssignmentSerialisation.copyJsonSnapshot(entry));
     if (value !== null && typeof value === 'object') {

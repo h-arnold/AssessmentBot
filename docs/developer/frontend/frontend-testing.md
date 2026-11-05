@@ -546,8 +546,9 @@ Do not introduce new ad-hoc `google.script.run` mocks that mutate one shared run
 #### GAS serialisation fidelity rule
 
 The shared harness factory (`src/frontend/src/test/google-script-run-harness-factory.js`)
-automatically wraps `successHandler` with `JSON.stringify()`, faithfully simulating real GAS
-behaviour where `google.script.run` auto-stringifies return values.
+automatically wraps `successHandler` with `JSON.stringify()`, matching the backend `apiHandler()`,
+which returns the envelope as a JSON string. The backend stringifies explicitly because
+`google.script.run` does not stringify returned objects and can omit their `null` properties.
 
 - **Do not add `JSON.stringify()` in individual test files.** The factory handles this.
   Adding manual `JSON.stringify()` in a spec file is redundant and risks double-encoding.

@@ -31,7 +31,7 @@ class ABClassResponseMapper {
     }
 
     const metadata = Object.hasOwn(partialDocument, 'metadata')
-      ? new ABClassMetadata(partialDocument.metadata)
+      ? new ABClassMetadata(DateUtils.deepConvertDates(partialDocument.metadata))
       : new ABClassMetadata();
 
     return {
