@@ -648,10 +648,22 @@ generates TABLE fixtures nor introduces new TABLE feature work.
 
 ## Status
 
-No planned contract changes for this shape. The acquisition, extraction, image-hydration
-and coverage rules above are the current contract; preview error states and the
-attempt-baseline analysis mode are frontend analysis concerns, tracked in
+The acquisition, extraction, image-hydration and coverage rules above are the current
+contract; preview error states and the attempt-baseline analysis mode are frontend analysis
+concerns, tracked in
 [Frontend Data Analysis Response](frontend-data-analysis-response.md#planned-contract-changes-not-implemented).
+
+The legacy reassessment projection is superseded by the planned change recorded in
+[Contract: Assessment § Planned contract changes](assessment.md#planned-contract-changes-not-implemented).
+
+## Planned contract changes (Not implemented)
+
+Target: root `SPEC.md`, “Display Legacy Assignment Results”.
+
+1. Legacy read preparation reuses existing item validation on an independent result: valid items retained; corrupt items become `CORRUPT_RECORD` E. Null/missing/non-record item maps produce E per saved task on both read paths. Missing-task, no-submission and timestamp handling follow current restoration rules. Healthy neighbouring submissions remain visible. No result is written back.
+2. The blanket reassessment placeholder producer is removed; its error code may remain accepted. Legacy status is assignment-level `'legacy'`, not a replacement for scores.
+3. Corrupted/missing student IDs are out of scope (explicit user decision); existing identity checks remain, with no dropped-row recovery or new IDs. Unknown-task associations retain existing rejection.
+4. Frontend normalisers remove the legacy reassessment-item-only requirement and accept valid legacy items using the existing full/partial item checks. Backend preparation supplies legacy missing-task E; the browser defensive coverage fallback remains marker-1-only.
 
 ---
 

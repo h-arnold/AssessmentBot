@@ -450,3 +450,19 @@ Frontend:
   └── src/frontend/src/services/googleClassrooms/classDetail/classDetailService.zod.ts
         → AssignmentPartialSchema, ClassFullSchema, ClassFullResponseSchema
 ```
+
+## Planned contract changes (Not implemented)
+
+Tracked in the repository-root `SPEC.md` (Display Legacy Assignment Results); details live in
+[Contract: Assessment § Planned contract changes](assessment.md#planned-contract-changes-not-implemented).
+Nothing here exists in code yet; storage shapes are unchanged.
+
+1. **Read marker union `1 | 'legacy'`.** On both read transports, a stored record whose
+   `assessmentContractVersion` is not `1` emits `'legacy'` beside validated read submissions, retaining valid scores/content and isolating assessment corruption as E.
+   `AssignmentFullSchema` and `AssignmentPartialSchema` change to
+   `z.union([z.literal(1), z.literal('legacy')])`, and the reassessment projection is deleted.
+2. **Verbatim restore.** The legacy branch of `Assignment._baseFromJSON()` keeps a present
+   stored `submissions` value verbatim whatever its shape; only an absent field defaults to
+   `[]`. Persistence serialisers stop the `(submissions || [])` coercion. Read results never enter persistence; non-array transport roots still fail frontend validation.
+3. **Read preparation.** Both read paths reuse existing item validation, missing-item E, no-submission and timestamp handling on an independent result using the saved task list. Corrupted student IDs are explicitly out of scope; no recovery or invented identity is planned.
+4. **Frontend validation.** Both normalisers remove the reassessment-item-only rule for legacy entries. Valid legacy items pass normal full/partial checks. The browser full-read missing-task fallback stays marker-1-only; backend legacy preparation owns coverage.

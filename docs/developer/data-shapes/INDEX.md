@@ -30,8 +30,11 @@ reference.
 | **Frontend Data Analysis Response** | [`frontend-data-analysis-response.md`](frontend-data-analysis-response.md) | None — derived frontend validation contract                        | None — in-memory `DataAnalysisService` output                                                                                                                                                                                            | AverageContribution, MetricResult, ClassPageDisplayMetric (adapter-local), CellPreviewData, TaskPreviewData                   |
 
 Status: all eleven contracts are implemented and conform to their documented contracts.
-`frontend-data-analysis-response.md` remains the only contract with an outstanding planned
-change (the attempt-baseline analysis mode).
+`frontend-data-analysis-response.md` carries an outstanding planned change (the attempt-baseline
+analysis mode), and the `1 | null` read marker plus the legacy reassessment projection are
+superseded by a planned change recorded in
+[assessment.md § Planned contract changes](assessment.md#planned-contract-changes-not-implemented)
+(read marker union `1 | 'legacy'`, projection deletion).
 
 ## Component Shapes
 
@@ -51,7 +54,7 @@ Containment links:
 - `AssignmentDefinition` → `TaskDefinition` → **BaseTaskArtifact**
 - `Assignment` → **Student Submission** → **StudentSubmissionItem** → **BaseTaskArtifact**
 - `Assignment` → **Student Submission** → **StudentSubmissionItem** → **Assessment**
-- `Assignment` → **Assessment** (write gate, marker, legacy read projection, marker-1 restoration)
+- `Assignment` → **Assessment** (write gate, marker, current legacy read projection, marker-1 restoration; legacy display change planned below)
 - `ABClass` → `Assignment` partial → **Student Submission** (partial) → **Assessment** (partial)
 
 ## Containment Hierarchy

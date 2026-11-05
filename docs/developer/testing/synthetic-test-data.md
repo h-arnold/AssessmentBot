@@ -145,6 +145,10 @@ This is **fixture realism only**, not a production nullable-contract change:
 
 ## Generated content: artefacts, contract marker and outcomes
 
+### Planned legacy scenario derivation (Not implemented)
+
+For root `SPEC.md`, add a Node-test-only `deriveLegacyAssignmentScenario.js` under `scripts/synthetic-test-data/`. It derives linked legacy persistence/read scenarios from cloned canonical `small`/`medium` views and existing backend-model inputs: remove the stored assessment marker, or explicitly set the read marker to `'legacy'`, without inventing scores, names, artefacts or feedback. Keep the base corpus and version-1 validators unchanged. Node tests select this shared derivation. Frontend Vitest/Playwright use existing typed fixture helpers to clone committed canonical JSON and change only linked assignment markers; do not import script JavaScript into frontend projects or alter TypeScript configuration for this. Invalid item maps/nulls and malformed roots stay local. Add deterministic/no-input-mutation and linked full/partial tests. Only touched existing tests migrate.
+
 - **Artefact types.** The existing definition and submission builders cycle `TEXT`, `IMAGE` and
   `SPREADSHEET` bodies using their existing deterministic index arithmetic. IMAGE bodies are
   genuine PNG bytes (signature, IHDR, deflated IDAT, IEND) encoded as

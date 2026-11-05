@@ -1111,6 +1111,12 @@ Class-page adapter:
 
 ## Planned contract changes (not implemented)
 
+### Legacy assignment display (Not implemented)
+
+Root `SPEC.md` plans legacy score inclusion: valid legacy scores use existing heatmap/averaging and E rules, with no version-based filtering or new analyser/card-model field. The reassessment tag is task-heatmap-only (explicit user decision). No field is added to persisted metadata. Complete the existing attempt-baseline plan independently.
+
+### Attempt-baseline analysis mode
+
 Only the top-decile attempt-baseline analysis mode remains unimplemented (tracking issue:
 h-arnold/AssessmentBot#305). The explicit-`E` analyser input, the preview `sourceUrl` field and
 every other previously planned addition are implemented and documented in the sections above.

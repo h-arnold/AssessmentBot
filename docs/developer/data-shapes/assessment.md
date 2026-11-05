@@ -518,8 +518,21 @@ remain unimplemented (see
 
 ## Status
 
-No planned contract changes for this shape. The marker, write gate, legacy projection and
-marker-1 restoration rules above are the current contract.
+The marker, write gate and marker-1 restoration rules above are the current contract.
+
+The legacy read changes below are planned, not current behaviour.
+
+## Planned contract changes (Not implemented)
+
+Target: root `SPEC.md`, “Display Legacy Assignment Results”.
+
+1. Read version is required `1 | 'legacy'`; non-1 stored markers read as `'legacy'`. Storage retains original marker presence/value.
+2. Both legacy read paths keep valid results and reuse existing current-format item validation on an independent read result. Bad items become `CORRUPT_RECORD` E; healthy items/submissions remain. Malformed item maps and missing known items use the saved embedded task list on both full and partial reads, before the class mapper strips the definition. Existing no-submission and timestamp rules apply.
+3. The all-results `REASSESSMENT_REQUIRED` placeholder producer is removed. Its cause code may remain accepted for stored errors; no catalogue deletion is planned.
+4. Legacy raw `submissions` values are preserved on restoration and ordinary save, including non-array values. Non-array transport roots retain existing frontend rejection. Missing properties use constructor state; null is not absence.
+5. Corrupted student IDs are explicitly out of scope by user decision. No invented IDs, dropped-row recovery or new warning is planned. Identity/unknown-task association rejection stays unchanged. Assessment corruption does not block a valid identified submission's siblings.
+6. Read preparation validates in the existing restoration mode (summary tasks: partial; keyed tasks: full), then serialises the requested form. Non-array roots bypass preparation and reach frontend root rejection unchanged. The removed projector's `userId` fallback is not retained; the required identity is `studentId`.
+7. Both frontend normalisers remove the marker-null reassessment-item requirement and accept valid legacy items using their existing full/partial item checks. The browser defensive missing-task fallback stays marker-1-only; backend preparation owns legacy coverage, including non-empty null-parent submissions.
 
 ---
 

@@ -1463,3 +1463,16 @@ Regression suites:
   ├── tests/api/abclassMetadataApi.test.js                              — wrapper forwarding/adaptation
   └── tests/api/apiHandler/abclassMetadata{Reads,Writes,Errors}.test.js — real read/write/error envelopes
 ```
+
+## Planned contract changes (Not implemented)
+
+Tracked in the repository-root `SPEC.md` (Display Legacy Assignment Results). ABClass itself adds
+no field of its own; its embedded partial assignment entries carry the planned read marker:
+
+1. **Read marker union `1 | 'legacy'` on each `assignments[]` partial entry.** The class read
+   (`ABClassResponseMapper._toReadView()`) stops materialising reassessment placeholder
+   `E` entries and emits validated legacy read results (valid scores retained, corrupt items isolated as E) beside
+   `assessmentContractVersion: 'legacy'`. The class read schema's marker union becomes
+   `z.union([z.literal(1), z.literal('legacy')])`.
+2. Prepare legacy read submissions using the embedded assignment's saved tasks before replacing its definition with a key. Malformed item maps yield one E per known task, not a whole-class failure; healthy submissions remain visible. Do not use roster expansion or fetch full records just for this preparation.
+3. Ordinary class saves preserve raw legacy bodies and original version values, including non-array submissions roots. Reads do not change saved data. Corrupted student IDs are explicitly out of scope.

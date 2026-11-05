@@ -110,6 +110,8 @@ Test helper placement rules remain governed by `docs/developer/frontend/frontend
 
 ### 3.5 Shared presentational components
 
+- **Not implemented — PageNavCard action wrapping.** Root `LEGACY_ASSIGNMENT_READ_LAYOUT.md` plans optional `wrapActions?: boolean` on `components/PageHeader/PageHeader.tsx`. True enables outer Flex wrapping with `gap={APP_GAP_SM}` (8px), and action Space wrapping with existing tight spacing. Omitted/false keeps current layout. Only `TaskHeatmapPage`'s normal navigation opts in; its title-error branch stays unchanged. Wrapped single-item rows are left-aligned. No new tag helper or navigation component is needed.
+
 - `ImageRenderer` (planned → implemented, status: Implemented): shared presentational component at `src/frontend/src/components/ImageRenderer/ImageRenderer.tsx`. Renders a base64 data URL as a constrained `<img>` (maxWidth 100%, height auto, maxHeight 400, default alt "Student response image"). Introduced for the Task Preview Card; expected to be reused across the project. Reused by the Task Preview Card.
 - `MarkdownRenderer` (planned → implemented, status: Implemented): shared presentational component at `src/frontend/src/components/MarkdownRenderer/MarkdownRenderer.tsx`. Renders markdown text and tables via `react-markdown` + `remark-gfm` (no `rehype-raw`, for XSS safety). Co-located CSS for basic table styling. Introduced for the Task Preview Card; expected to be reused across the project. Implemented with `react-markdown` + `remark-gfm`, no `rehype-raw`, and a co-located `MarkdownRenderer.module.css`.
 

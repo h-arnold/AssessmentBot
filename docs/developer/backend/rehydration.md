@@ -9,6 +9,14 @@ This document describes how _full_ assignment hydration works when starting from
 lightweight (partially hydrated) assignment objects embedded inside an `ABClass`
 instance that was loaded from JsonDbApp.
 
+## Planned legacy-read helper (Not implemented)
+
+Root `SPEC.md` plans `AssignmentRehydration.prepareLegacyReadSubmissions(assignment, form)`, owned by a small `02_AssignmentLegacyRead.js` module under `Assignment/`. Both full and class read serialisers call it. Reuse `AssignmentCurrentRestoration` item checks, task-list, timestamp and model serialisation rules on an independent read result; do not validate/mutate the raw legacy persistence state. Valid items remain, corrupt items and malformed maps yield task-level `CORRUPT_RECORD` E. No roster expansion, write-back or identity recovery is planned. Current behaviour elsewhere in this document remains implemented until that change lands.
+
+Validation mode follows embedded tasks (summary array: partial; keyed map: full), matching current restoration; `form` selects full/partial output. Non-array submissions roots bypass preparation and are emitted preserved for existing frontend root rejection. The removed projector's `userId` fallback is not retained: student-ID recovery is explicitly out of scope.
+
+The new owner is a small `AssignmentLegacyRead` class; any accumulator/default state belongs in its constructor, not namespace/module initialisation.
+
 ## Goals
 
 - Keep `ABClassController.loadClass()` fast (only summary / partial assignments)
