@@ -18,7 +18,7 @@ Sibling contracts:
 - [Contract: Assignment](assignment.md) — Assignment partials are embedded inside ABClass's `assignments` array.
 - [Contract: BackendConfig](backend-config.md) — No direct relationship.
 - [Contract: Reference Data](reference-data.md) — ABClass references `cohortKey` and `yearGroupKey` which resolve to Cohorts and YearGroups respectively.
-- [Transport envelope](transport-envelope.md) — ABClass API payloads use the shared `apiHandler` envelope; this contract documents only the inner payload.
+- [Transport envelope](transport-envelope.md) — ABClass API payloads use the shared `apiHandler` envelope, which leaves the backend as a JSON string; this contract documents only the inner payload.
 - [Contract: Frontend Data Analysis Response](frontend-data-analysis-response.md#metadata-refresh-execution-contracts) — supplies weighted aggregates and documents the shared `PostAnalysisContext` plus the local metadata-refresh decision/outcome types; these are not wire values.
 
 ---
@@ -57,9 +57,9 @@ Key notes:
   genuine full assignment keeps full `toJSON()` output and its serializer errors propagate
   unchanged. `AssignmentDefinition.toJSON()` remains strict and still rejects a partial
   definition. `Assignment.toJSON()` remains strict for current-format and other non-legacy
-  assignments. Its only exception is the opaque legacy persistence path, where it re-emits the
-  stored body and, when the embedded definition is partial, uses `definition.toPartialJSON()`
-  instead of throwing. The class serializer performs no fetch, definition fabrication or
+  assignments. Its only exception is the legacy persistence path, where it re-emits the stored
+  body from ordinary instance state and, when the embedded definition is partial, uses
+  `definition.toPartialJSON()` instead of throwing. The class serializer performs no fetch, definition fabrication or
   assignment removal, adds no second serializer and uses no catch-and-fallback.
 - Class-embedded assignments are normally partial-hydration instances; fully hydrated records live
   in separate `assign_full_*` collections. Whatever representation the model currently holds is
@@ -148,15 +148,22 @@ Key contract notes:
   Present invalid metadata fails the request as an integrity error rather than dropping
   the row or falling back to a full-class read. Its reuse by `_buildClassSummary()`
   covers mutation summaries, so `getAllClassPartials()` adds no duplicate metadata pass.
+- JsonDbApp revives stored ISO date strings as live `Date` objects on read, and
+  `ABClassMetadata` accepts only canonical UTC strings. The stored-partial gate therefore
+  passes a present stored `metadata` value through `DateUtils.deepConvertDates()` before
+  `new ABClassMetadata(...)`; actual absence still routes through the constructor's `null`
+  default. Request and in-memory metadata paths are unaffected because `Date` is not
+  expected there.
 - The backend emits `metadata` on every row, and `ClassPartialSchema` requires the shared
   nullable schema, so legacy absence must arrive as explicit `null`; a missing or malformed field
   fails parsing.
 - The registry-only read path and the existing empty-list behaviour are preserved: metadata
   introduces no full-class reads, assignment hydration, definition lookups or upstream API
   calls on this path. Returns an empty array when no partial documents exist.
-- This endpoint does **not** pass through `DateUtils.deepConvertDates()`. `metadata`
-  timestamps are validated canonical strings, not live `Date` objects, so no additional
-  conversion is required, and `ABClass.toPartialJSON()` otherwise contains no Date objects.
+- This endpoint does **not** pass through `DateUtils.deepConvertDates()` on its response.
+  The stored-partial metadata gate (`_normaliseClassPartial()`) already normalises revived
+  `Date` values inside `metadata` to canonical strings, and `ABClass.toPartialJSON()`
+  otherwise contains no `Date` objects, so no additional conversion is required.
 - Reads never write and never backfill; a legacy row without the field is projected as
   explicit `null`. Invalid stored metadata fails the request; the row is not dropped and there is
   no fallback to a full-class fetch.
@@ -215,7 +222,7 @@ Key contract notes:
 - The response is built by `ABClassResponseMapper._toReadView()`, which:
   1. Calls `assignment.toPartialJSON()` on each assignment to get the lightweight shape.
   2. Strips `_hydrationLevel` and `progressTracker` as defence-in-depth.
-  3. For an assignment carrying an opaque legacy snapshot, replaces `submissions` with the
+  3. For a legacy assignment (`assessmentContractVersion !== 1`), replaces `submissions` with the
      detached partial reassessment projection from
      `AssignmentRehydration.projectReassessmentSubmissions(assignment, students, 'partial')`
      (pure helper `02_AssignmentReadProjection.js`) and sets
@@ -231,10 +238,13 @@ Key contract notes:
      failure. The frontend `AssignmentPartialSchema` continues to require a plain
      `z.string()`; neither side is widened to nullable/optional.
 - `_toReadView()` includes `metadata` by revalidating and defensively copying the mutable
-  model state through `ABClassMetadata`. Present invalid stored metadata fails the read as
-  an integrity error — it is not dropped, repaired or replaced — while absent or legacy
-  `null` metadata becomes explicit `null`. Reads perform no writes. An absent class still
-  returns top-level `null`, which is distinct from an existing class with `metadata: null`.
+  model state through `ABClassMetadata`. Model metadata restored by `ABClass.fromJSON()` has
+  already had revived `Date` values converted to canonical strings (see
+  [§ Model construction, restoration, replacement and serialisation](#model-construction-restoration-replacement-and-serialisation)).
+  Present invalid stored metadata fails the read as an integrity error — it is not dropped,
+  repaired or replaced — while absent or legacy `null` metadata becomes explicit `null`. Reads
+  perform no writes. An absent class still returns top-level `null`, which is distinct from an
+  existing class with `metadata: null`.
 - `ClassFullSchema` requires the emitted field: legacy backend absence must arrive as explicit
   `null`, and a missing or malformed field fails parsing instead of being stripped. Top-level
   not-found `null` and unrelated unknown-field stripping remain unchanged.
@@ -245,7 +255,9 @@ Key contract notes:
 - `DateUtils.deepConvertDates()` is called on the entire response before returning from
   the handler. This is required because `google.script.run` prohibits `Date` objects in
   return values (including nested objects). `metadata` timestamps are already canonical
-  strings, so this conversion only affects the other ABClass fields.
+  strings, so this conversion only affects the other ABClass fields. The whole response is
+  then serialised to a JSON string by `apiHandler()`; see
+  [Transport envelope](transport-envelope.md#key-contract-notes).
 - Returns `null` when no persisted class document exists for the given `classId`
   (`ClassNotFoundError` caught at the transport boundary).
 
@@ -254,11 +266,11 @@ Key contract notes:
 ABClass adds no persistence or transport field of its own for these; the marker and `E`
 projections ride inside the embedded assignment partials and their submission items.
 
-| Field                                  | Where                              | Type                       | Frontend Zod                                                  | Notes                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
-| -------------------------------------- | ---------------------------------- | -------------------------- | ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `assessmentContractVersion`            | Each `assignments[]` partial entry | `1 \| null`                | `z.union([z.literal(1), z.null()])`                           | `1` for a current result; `null` for a legacy result requiring reassessment. A stored marker may be absent, `null` or unsupported and is preserved opaquely. `Assignment.toPartialJSON()` emits `1` for current results, while the class read projection emits explicit `null` beside backend-materialised reassessment `E` for legacy results. The class read transport always emits the field as `1 \| null`; ABClass does not produce the marker independently. A wire payload with a missing/unsupported marker is an invalid root, not a frontend compatibility or second legacy-graph path. |
-| `submissions[].items[].assessments[*]` | Embedded partial submission items  | `Assessment` partial union | Score-only numeric/`N`, or `{ score: 'E', reasoning, error }` | `StudentSubmissionItem.toPartialJSON()` keeps numeric/`N` entries score-only and preserves an `'E'` entry's `reasoning` and `error`. `PartialAssessmentEntrySchema` aliases the shared `partialAssessmentResultSchema`, so a class-embedded `E` validates with its explanation; the read service validates the provided entries through the normaliser.                                                                                                                                                                                                                                           |
-| `assignmentDefinitionKey`              | Each `assignments[]` partial entry | `string`                   | `z.string()`                                                  | Unchanged read-boundary integrity rule (see the transport notes above).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| Field                                  | Where                              | Type                       | Frontend Zod                                                  | Notes                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| -------------------------------------- | ---------------------------------- | -------------------------- | ------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `assessmentContractVersion`            | Each `assignments[]` partial entry | `1 \| null`                | `z.union([z.literal(1), z.null()])`                           | `1` for a current result; `null` for a legacy result requiring reassessment. A stored marker may be absent, `null` or unsupported and is preserved exactly as stored. `Assignment.toPartialJSON()` emits `1` for current results, while the class read projection emits explicit `null` beside backend-materialised reassessment `E` for legacy results. The class read transport always emits the field as `1 \| null`; ABClass does not produce the marker independently. A wire payload with a missing/unsupported marker is an invalid root, not a frontend compatibility or second legacy-graph path. |
+| `submissions[].items[].assessments[*]` | Embedded partial submission items  | `Assessment` partial union | Score-only numeric/`N`, or `{ score: 'E', reasoning, error }` | `StudentSubmissionItem.toPartialJSON()` keeps numeric/`N` entries score-only and preserves an `'E'` entry's `reasoning` and `error`. `PartialAssessmentEntrySchema` aliases the shared `partialAssessmentResultSchema`, so a class-embedded `E` validates with its explanation; the read service validates the provided entries through the normaliser.                                                                                                                                                                                                                                                    |
+| `assignmentDefinitionKey`              | Each `assignments[]` partial entry | `string`                   | `z.string()`                                                  | Unchanged read-boundary integrity rule (see the transport notes above).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
 
 Class-read behaviour:
 
@@ -266,16 +278,16 @@ Class-read behaviour:
   the embedded definition with `assignmentDefinitionKey`. Current-result markers and `E` entries
   are carried by that same partial projection; the legacy read projection supplies the required
   `assessmentContractVersion: null` and reassessment `E` entries.
-- Legacy persistence is opaque. `Assignment.toJSON()`/`toPartialJSON()` re-emit the stored
-  submission body and the original marker presence/value unchanged; they never emit projected
-  `E` placeholders. `_toReadView()` substitutes the detached projector output for the class wire
+- Legacy persistence is unchanged by read. `Assignment.toJSON()`/`toPartialJSON()` re-emit the
+  stored submission body and the original marker presence/value from ordinary instance state;
+  they never emit projected `E` placeholders. `_toReadView()` substitutes the detached projector output for the class wire
   entry only. Class save/preparation never receives those read placeholders.
 - For a legacy class-embedded assignment (marker absent, `null` or unsupported),
   `ABClassResponseMapper._toReadView()` invokes
   `AssignmentRehydration.projectReassessmentSubmissions(assignment, students, form)` with the
   already loaded roster and the assignment's embedded task summaries **before** replacing the
   definition with `assignmentDefinitionKey`. The unchanged public entry remains on
-  `AssignmentRehydration`; its pure projection/snapshot mapping lives in
+  `AssignmentRehydration`; its pure projection mapping lives in
   `02_AssignmentReadProjection.js`, not a second materialiser. The wire therefore includes
   explicit partial `E` items and `assessmentContractVersion: null`.
 - Placeholder construction follows
@@ -290,8 +302,8 @@ Class-read behaviour:
   `Assignment.toReadJSON()`, which delegates to `AssignmentSerialisation.toReadJSON()`. That
   read projection invokes the same operation on the instance returned by
   `readRehydrateAssignment` (after its `_ensureFullDefinition` step), and uses the full stored
-  snapshot when present; the existing partial-definition fallback may resolve the registry's
-  full definition. This class path keeps its stored task summaries, so abnormal legacy
+  submission body when present; the existing partial-definition fallback may resolve the
+  registry's full definition. This class path keeps its stored task summaries, so abnormal legacy
   partial-definition records can expose different known-task universes between the two reads.
   All projected entries in both reads remain reassessment `E`; neither repairs storage nor
   guesses historical task associations or causes. See
@@ -299,12 +311,12 @@ Class-read behaviour:
 - The backend is authoritative for completed-item coverage on both read paths. For marker-1
   CURRENT records, `AssignmentRehydration` materialises a missing known task as a
   `CORRUPT_RECORD` `E` during one-pass full **and** partial restoration, using the assignment's
-  embedded task snapshot. Legacy reads do not run that current-record coverage check: they
+  embedded task list. Legacy reads do not run that current-record coverage check: they
   materialise every authoritative student/task pair as detached
   `REASSESSMENT_REQUIRED` `E` without validating historical assessment bodies. The browser
   normaliser implements the equivalent provided-entry isolation and is invoked by the read
   service. On this class read path those materialised entries are therefore already present in
-  the class-partial output before the embedded task snapshot is replaced by
+  the class-partial output before the embedded definition is replaced by
   `assignmentDefinitionKey`. The browser's partial-read normaliser validates only the entries it
   receives and never infers extra coverage errors from the separately loaded, potentially newer
   definition registry. Only if a full wire payload nonetheless lacks an expected task does the
@@ -718,7 +730,7 @@ request-time tagging step sets `inputSource: 'request'`.
 #### Model construction, restoration, replacement and serialisation
 
 - `new ABClass(options)` distinguishes an absent own `metadata` property from a present value. Absence is normalised by `new ABClassMetadata()` to `null`; present values, including own `undefined`, are passed explicitly to the domain constructor and validated.
-- `ABClass.fromJSON(json)` applies the same own-property distinction despite using `Object.create()` for restoration. Legacy full or partial JSON without an own `metadata` field therefore restores as an own `metadata: null`; explicitly present invalid data is rejected, not repaired.
+- `ABClass.fromJSON(json)` applies the same own-property distinction despite using `Object.create()` for restoration. Legacy full or partial JSON without an own `metadata` field therefore restores as an own `metadata: null`; explicitly present invalid data is rejected, not repaired. A present stored `metadata` value is passed through `DateUtils.deepConvertDates()` before validation, because JsonDbApp revives stored ISO timestamp strings as live `Date` objects and `ABClassMetadata` accepts only canonical UTC strings. The constructor and `setMetadata` take request or in-memory input, where `Date` is not expected, and apply no such conversion.
 - `ABClass.setMetadata(value)` replaces the whole snapshot or clears it with `null`. Its argument is always explicit, so `undefined` is invalid. Validation/copying completes before assignment, leaving existing state intact on failure.
 - `toJSON()` and `toPartialJSON()` always emit `metadata`; each revalidates mutable model state through `ABClassMetadata` and returns an independently owned plain snapshot (or `null`). Input, full output, partial output and model state do not share nested metadata objects or arrays.
 - A caller that deletes `model.metadata` or assigns `undefined` has corrupted model state; serialisation rejects it rather than invoking the absence default. Unrelated legacy-field restoration and serialization behaviour remains unchanged.
@@ -965,7 +977,7 @@ contract for StudentSubmission is documented in [Contract: Assignment](assignmen
   non-object partial document, or a `teachers` field that is not an array. It enforces no plain
   prototype, so an array document is not rejected on that basis (it still needs an array
   `teachers` field); nullable fields are then null-defaulted as described above.
-- ABClass model construction, restoration, explicit metadata replacement and both serializers enforce the shared strict metadata-domain contract. The response mappers (`_normaliseClassPartial()`, `_buildClassSummary()`, `_toReadView()`) project validated, detached `metadata` on partial-list, mutation-summary and full-read responses. `ABClassValidation._validateRequestMetadata()` validates explicitly supplied request `metadata` before any read/roster/write and tags only those failures with request provenance. The transport boundary (`abclassMutations.js` → `adaptMetadataRequestError_`) adapts only a request-provenance typed metadata failure to `ApiValidationError`/`INVALID_REQUEST`; stored/model, projection, persistence, upstream and wiring failures remain generic `INTERNAL_ERROR`. See [§ Sub-entity: ABClassMetadata](#sub-entity-abclassmetadata).
+- ABClass model construction, restoration, explicit metadata replacement and both serializers enforce the shared strict metadata-domain contract. The stored-read gates (`ABClass.fromJSON()`, `ABClassResponseMapper._normaliseClassPartial()`) convert revived `Date` values in a present stored `metadata` value through `DateUtils.deepConvertDates()` before validation; request and in-memory paths take no `Date`. The response mappers (`_normaliseClassPartial()`, `_buildClassSummary()`, `_toReadView()`) project validated, detached `metadata` on partial-list, mutation-summary and full-read responses. `ABClassValidation._validateRequestMetadata()` validates explicitly supplied request `metadata` before any read/roster/write and tags only those failures with request provenance. The transport boundary (`abclassMutations.js` → `adaptMetadataRequestError_`) adapts only a request-provenance typed metadata failure to `ApiValidationError`/`INVALID_REQUEST`; stored/model, projection, persistence, upstream and wiring failures remain generic `INTERNAL_ERROR`. See [§ Sub-entity: ABClassMetadata](#sub-entity-abclassmetadata).
 
 ### Mutation schemas and queued services
 

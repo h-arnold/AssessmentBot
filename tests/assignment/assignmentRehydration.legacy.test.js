@@ -42,6 +42,19 @@ function expectOpaqueRoundTrip(record, restored) {
   }
 }
 
+/** Asserts the restored instance exposes the stored legacy body and marker as ordinary state. */
+function expectLegacyInstanceState(record, restored) {
+  expect(restored.submissions).toEqual(record.submissions);
+  expect(restored.assessmentContractVersion).toEqual(record.assessmentContractVersion);
+  expect(restored._legacyMarkerPresent).toBe(Object.hasOwn(record, 'assessmentContractVersion'));
+}
+
+/** Asserts the restored instance's stored body is the same reference the caller supplied. */
+function expectRestoredBodyIsStoredBody(record, restored) {
+  expect(restored.submissions).toBe(record.submissions);
+  expect(restored.submissions[0]).toBe(record.submissions[0]);
+}
+
 afterEach(() => vi.restoreAllMocks());
 
 describe('legacy assignment restoration and persistence', () => {
@@ -65,12 +78,20 @@ describe('legacy assignment restoration and persistence', () => {
 
     expect(submissionRestore).not.toHaveBeenCalled();
     expect(itemRestore).not.toHaveBeenCalled();
+    expectLegacyInstanceState(record, restored);
+    expectRestoredBodyIsStoredBody(record, restored);
+    // The restored instance keeps the caller's stored body by reference, so a
+    // caller mutation is visible through the instance until it is re-serialised.
     record.submissions[0].historicalEnvelope.marks[0].opaque = false;
     const firstSnapshot = restored.toJSON();
-    firstSnapshot.submissions[0].historicalEnvelope.marks[0].opaque = false;
-    expectOpaqueRoundTrip(captured, restored);
-    expect(record.submissions[0].historicalEnvelope.marks[0].opaque).toBe(false);
+    expect(firstSnapshot.submissions[0].historicalEnvelope.marks[0].opaque).toBe(false);
+    // Serialisation emits an independently owned copy: mutating one payload
+    // never reaches the instance state or a later payload.
+    firstSnapshot.submissions[0].historicalEnvelope.marks[0].opaque = true;
+    expect(restored.submissions[0].historicalEnvelope.marks[0].opaque).toBe(false);
+    expect(restored.toJSON().submissions[0].historicalEnvelope.marks[0].opaque).toBe(false);
     expect(captured.submissions[0].historicalEnvelope.marks[0].opaque).toBe(true);
+    expectOpaqueRoundTrip(record, restored);
   });
 
   it.each([
@@ -81,7 +102,6 @@ describe('legacy assignment restoration and persistence', () => {
     'restores legacy %s marker from an actual partial definition without interpreting bodies',
     (_label, marker) => {
       const record = historicalAssignment(marker, true);
-      const captured = structuredClone(record);
       expect(Array.isArray(record.assignmentDefinition.tasks)).toBe(true);
       expect(record.assignmentDefinition.tasks).toHaveLength(2);
       expect(typeof StudentSubmission.fromJSON).toBe('function');
@@ -93,12 +113,30 @@ describe('legacy assignment restoration and persistence', () => {
 
       expect(submissionRestore).not.toHaveBeenCalled();
       expect(itemRestore).not.toHaveBeenCalled();
-      expectOpaqueRoundTrip(captured, restored);
+      expectLegacyInstanceState(record, restored);
+      expectOpaqueRoundTrip(record, restored);
     }
   );
 
   it('exposes the missing read projection seam independently of persistence', () => {
     const restored = restoreAssignment(currentAssignmentJson());
     expect(typeof restored.toReadJSON).toBe('function');
+  });
+
+  it('keeps the stored legacy marker value and presence distinct from the current marker', () => {
+    const markerless = restoreAssignment(historicalAssignment('missing', false));
+    expect(markerless._legacyMarkerPresent).toBe(false);
+    expect(markerless.assessmentContractVersion).toBeUndefined();
+    expect(Object.hasOwn(markerless.toJSON(), 'assessmentContractVersion')).toBe(false);
+
+    const nullMarked = restoreAssignment(historicalAssignment(null, false));
+    expect(nullMarked._legacyMarkerPresent).toBe(true);
+    expect(nullMarked.assessmentContractVersion).toBeNull();
+    expect(nullMarked.toJSON().assessmentContractVersion).toBeNull();
+
+    const unsupported = restoreAssignment(historicalAssignment(77, false));
+    expect(unsupported._legacyMarkerPresent).toBe(true);
+    expect(unsupported.assessmentContractVersion).toBe(77);
+    expect(unsupported.toJSON().assessmentContractVersion).toBe(77);
   });
 });

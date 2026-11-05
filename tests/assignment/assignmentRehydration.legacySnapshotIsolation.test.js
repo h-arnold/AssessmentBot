@@ -123,29 +123,87 @@ describe('legacy reassessment deep detachment', () => {
     expect(beforeStudents).toEqual(sourceStudents);
   });
 
-  it('retains an owned opaque persistence snapshot and isolates returned persistence JSON', () => {
+  it('re-emits a stored legacy body without snapshot ownership and converts live Dates to ISO strings', () => {
     const record = historicalRecord();
     record.submissions[0].historicalEnvelope = { nested: { value: 'stored' } };
-    const captured = structuredClone(record);
+    record.submissions[0].createdAt = new Date('2020-02-03T04:05:06.000Z');
+    record.submissions[0].updatedAt = new Date('2021-03-04T05:06:07.000Z');
     const restored = restoreAssignment(record);
+    expect(restored._legacyMarkerPresent).toBe(false);
+    expect(restored.submissions).toBe(record.submissions);
+
     const initial = restored.toJSON();
     expect(initial.submissions[0]).toHaveProperty('historicalEnvelope');
-    expect(initial.submissions[0].historicalEnvelope).toEqual(
-      captured.submissions[0].historicalEnvelope
-    );
-    const expectedSubmission = structuredClone(initial.submissions[0]);
-    const expectedMarker = Object.hasOwn(initial, 'assessmentContractVersion')
-      ? { present: true, value: initial.assessmentContractVersion }
-      : { present: false };
+    expect(initial.submissions[0].historicalEnvelope).toEqual({ nested: { value: 'stored' } });
+    // A Date has no own enumerable keys, so the plain-object fallback must
+    // delegate to date conversion rather than emitting `{}`.
+    expect(initial.submissions[0].createdAt).toBe('2020-02-03T04:05:06.000Z');
+    expect(initial.submissions[0].updatedAt).toBe('2021-03-04T05:06:07.000Z');
+    expect(restored.toPartialJSON().submissions[0].createdAt).toBe('2020-02-03T04:05:06.000Z');
+
+    // The instance keeps the caller's stored body by reference, so a caller
+    // mutation is visible through it; serialisation never returns that body.
     record.submissions[0].historicalEnvelope.nested.value = 'caller mutation';
-    expect(restored.toJSON().submissions[0].historicalEnvelope.nested.value).toBe('stored');
+    expect(restored.toJSON().submissions[0].historicalEnvelope.nested.value).toBe(
+      'caller mutation'
+    );
+    expect(restored.toJSON().submissions[0]).not.toBe(record.submissions[0]);
+
+    // Mutating a returned payload never reaches the instance state or a later payload.
     const returned = restored.toJSON();
     returned.submissions[0].historicalEnvelope.nested.value = 'returned mutation';
-    const later = restored.toJSON();
-    expect(later.submissions[0]).toEqual(expectedSubmission);
-    expect(Object.hasOwn(later, 'assessmentContractVersion')).toBe(expectedMarker.present);
-    if (expectedMarker.present) {
-      expect(later.assessmentContractVersion).toBe(expectedMarker.value);
-    }
+    expect(restored.toJSON().submissions[0].historicalEnvelope.nested.value).toBe(
+      'caller mutation'
+    );
+    expect(Object.hasOwn(restored.toJSON(), 'assessmentContractVersion')).toBe(false);
+  });
+});
+
+describe('legacy submission entries that are not plain records', () => {
+  const ENTRY_DATE = new Date('2022-05-06T07:08:09.000Z');
+  const ARRAY_DATE = new Date('2023-06-07T08:09:10.000Z');
+
+  /**
+   * Restores a legacy record whose stored submissions hold a bare `Date` entry
+   * and an array-valued entry containing a `Date`.
+   *
+   * @returns {{record: object, restored: object}} Stored record and restored instance.
+   */
+  function restoredRecordWithNonPlainEntries() {
+    const record = historicalRecord();
+    record.submissions = [ENTRY_DATE, [ARRAY_DATE]];
+    const restored = restoreAssignment(record);
+    expect(restored._legacyMarkerPresent).toBe(false);
+    return { record, restored };
+  }
+
+  it.each([
+    ['toJSON', (restored) => restored.toJSON()],
+    ['toPartialJSON', (restored) => restored.toPartialJSON()],
+  ])('emits ISO strings rather than `{}` for Date entries through %s', (_method, emit) => {
+    const { restored } = restoredRecordWithNonPlainEntries();
+    const emitted = emit(restored).submissions;
+    expect(emitted).toHaveLength(2);
+    expect(emitted[0]).toBe(ENTRY_DATE.toISOString());
+    expect(emitted[1]).toEqual([ARRAY_DATE.toISOString()]);
+    expect(emitted[0]).not.toEqual({});
+    expect(emitted[1]).not.toEqual([{}]);
+  });
+
+  it.each([
+    ['toJSON', (restored) => restored.toJSON()],
+    ['toPartialJSON', (restored) => restored.toPartialJSON()],
+  ])('emits an independently owned array for array entries through %s', (_method, emit) => {
+    const { record, restored } = restoredRecordWithNonPlainEntries();
+    const storedArray = record.submissions[1];
+    const emitted = emit(restored).submissions;
+    expect(emitted[1]).not.toBe(storedArray);
+    expect(emitted[1][0]).not.toBe(ARRAY_DATE);
+
+    emitted[1].push('returned mutation');
+    emitted[1][0] = 'returned mutation';
+    expect(storedArray).toEqual([ARRAY_DATE]);
+    expect(record.submissions[1][0]).toBe(ARRAY_DATE);
+    expect(emit(restored).submissions[1]).toEqual([ARRAY_DATE.toISOString()]);
   });
 });

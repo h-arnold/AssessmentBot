@@ -5,14 +5,13 @@
  * for deserialising Assignment instances from JSON data.
  *
  * Depends on global `AssignmentDefinition`, `AssignmentCurrentRestoration`,
- * `AssignmentReadProjection`, `ProgressTracker`, `ABLogger`, and `Validate`
- * (GAS runtime globals).
+ * `AssignmentReadProjection`, and `ProgressTracker` (GAS runtime globals).
  * @namespace
  */
 const AssignmentRehydration = {
   /**
    * Builds detached placeholders for a legacy read; historical assessment bodies are ignored.
-   * @param {object} assignment - Raw or opaque legacy assignment snapshot.
+   * @param {object} assignment - Raw or typed legacy assignment.
    * @param {Array<object>} students - Loaded roster for partial projections.
    * @param {'full'|'partial'} form - Projection representation.
    * @returns {StudentSubmission[]} Detached reassessment submissions.
@@ -58,11 +57,11 @@ const AssignmentRehydration = {
     if (isCurrent) {
       inst.assessmentContractVersion = 1;
     } else {
-      inst._legacyPersistenceSnapshot = AssignmentSerialisation.copyJsonSnapshot({
-        submissions: data.submissions === undefined ? [] : data.submissions,
-        markerPresent: Object.hasOwn(data, 'assessmentContractVersion'),
-        marker: data.assessmentContractVersion,
-      });
+      // Legacy record: keep the stored submission body and the exact marker
+      // presence/value as ordinary instance state.
+      inst.submissions = Array.isArray(data.submissions) ? data.submissions : [];
+      inst.assessmentContractVersion = data.assessmentContractVersion;
+      inst._legacyMarkerPresent = Object.hasOwn(data, 'assessmentContractVersion');
     }
     // Do not set transient hydration marker here — remain absent/undefined so
     // that deserialized objects don't claim a persisted hydration level.
@@ -90,7 +89,7 @@ const AssignmentRehydration = {
       'progressTracker', // Transient, don't restore
       '_hydrationLevel', // Transient, don't restore
       'assessmentContractVersion',
-      '_legacyPersistenceSnapshot',
+      '_legacyMarkerPresent',
       '_restorationMode',
     ]);
     Object.entries(data).forEach(([key, value]) => {
@@ -107,7 +106,7 @@ const AssignmentRehydration = {
 
   /**
    * Rehydrates a current-format submission object and adds it to the assignment's submissions array.
-   * Only marker-1 assignments reach this helper; legacy history stays opaque in the snapshot.
+   * Only marker-1 assignments reach this helper; legacy history stays as raw instance state.
    * @param {Assignment} inst - The Assignment instance to add the submission to.
    * @param {object} subObject - The submission object to rehydrate.
    * @param {object} assignmentData - The assignment JSON containing restoration metadata.

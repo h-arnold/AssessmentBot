@@ -39,7 +39,11 @@ describe('legacy full-keyed-definition assignment on the class read path', () =>
     const abClass = ABClass.fromJSON(classJson);
     expect(abClass).toBeTruthy();
     const embedded = abClass.assignments[0];
-    expect(embedded._legacyPersistenceSnapshot).toBeTruthy();
+    // The restored record is legacy: its marker is absent rather than 1, and the
+    // stored body is kept as ordinary instance state.
+    expect(embedded._legacyMarkerPresent).toBe(false);
+    expect(embedded.assessmentContractVersion).not.toBe(1);
+    expect(embedded.submissions).toEqual(assignment.submissions);
     // The embedded definition was restored in full mode: tasks is a keyed object.
     expect(Array.isArray(embedded.assignmentDefinition.tasks)).toBe(false);
 
@@ -71,10 +75,11 @@ describe('legacy full-keyed-definition assignment on the class read path', () =>
       }
     }
 
-    // The read is detached: the class model keeps its legacy snapshot and its
+    // The read is detached: the class model keeps its legacy state and its
     // un-rehydrated submissions, and the embedded definition is untouched.
-    expect(embedded._legacyPersistenceSnapshot).toBeTruthy();
-    expect(embedded.submissions).toEqual([]);
+    expect(embedded._legacyMarkerPresent).toBe(false);
+    expect(embedded.assessmentContractVersion).not.toBe(1);
+    expect(embedded.submissions).toEqual(assignment.submissions);
     expect(Array.isArray(embedded.assignmentDefinition.tasks)).toBe(false);
   });
 });

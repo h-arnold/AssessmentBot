@@ -92,7 +92,7 @@ class ABClassResponseMapper {
             const partial = assignment.toPartialJSON();
             // Defence-in-depth: strip _hydrationLevel and progressTracker
             const { _hydrationLevel, progressTracker, ...safe } = partial;
-            if (assignment._legacyPersistenceSnapshot) {
+            if (assignment.assessmentContractVersion !== 1) {
               safe.submissions = AssignmentRehydration.projectReassessmentSubmissions(
                 assignment,
                 abClass.students,

@@ -119,7 +119,7 @@ describe('synthetic analysis Node integration project', () => {
         requestId: 'synthetic-request-1',
         data: selectTransportView(request),
       };
-      callbacks.successHandler?.(envelope);
+      callbacks.successHandler?.(JSON.stringify(envelope));
     });
 
     globalScope.google = { script: { run: runner } };

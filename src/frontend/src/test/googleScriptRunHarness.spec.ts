@@ -195,9 +195,32 @@ describe('googleScriptRunHarness', () => {
     });
 
     it('passes a string response through unchanged so the backend serialisation keeps null', () => {
-      const serialised = JSON.stringify({ ok: true, data: { metadata: null } });
+      const serialised = JSON.stringify({
+        ok: true,
+        requestId: 'req-string-null',
+        data: [{ classId: '1', metadata: null }],
+      });
 
       expect(deliver(serialised)).toBe(serialised);
+      expect(JSON.parse(deliver(serialised) as string)).toEqual({
+        ok: true,
+        requestId: 'req-string-null',
+        data: [{ classId: '1', metadata: null }],
+      });
+    });
+
+    it('keeps a null error payload when the backend hands over its JSON string', () => {
+      const serialised = JSON.stringify({
+        ok: false,
+        requestId: 'req-string-error',
+        error: { code: 'INTERNAL_ERROR', message: 'Failed.', isRetriable: false, details: null },
+      });
+
+      expect(JSON.parse(deliver(serialised) as string)).toEqual({
+        ok: false,
+        requestId: 'req-string-error',
+        error: { code: 'INTERNAL_ERROR', message: 'Failed.', isRetriable: false, details: null },
+      });
     });
   });
 

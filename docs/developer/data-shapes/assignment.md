@@ -29,7 +29,7 @@ Sibling contracts:
 - [Component Shape: BaseTaskArtifact](base-task-artifact.md) — each submission item holds a submission-role artifact.
 - [Contract: BackendConfig](backend-config.md) — No direct relationship.
 - [Contract: Reference Data](reference-data.md) — No direct relationship.
-- [Transport envelope](transport-envelope.md) — Assignment API payloads use the shared `apiHandler` envelope; this contract documents only the inner payload.
+- [Transport envelope](transport-envelope.md) — Assignment API payloads use the shared `apiHandler` envelope, which leaves the backend as a JSON string; this contract documents only the inner payload.
 
 ---
 
@@ -62,11 +62,25 @@ Stored via `Assignment.toJSON()` in `00_AssignmentSerialisation.js`.
 
 Key notes:
 
+- `Assignment` serialisation converts its own live `Date` values to ISO strings: `dueDate`,
+  `updatedAt` and `createdAt` through `.toISOString()`. The embedded definition is not converted:
+  `AssignmentDefinition.toJSON()`/`toPartialJSON()` re-emit its stored date values unchanged, so
+  a revived `Date` there stays a `Date` in the payload (see
+  [Contract: AssignmentDefinition § Persistence](assignment-definition.md#persistence)).
+- A legacy (non-marker-1) record is restored into ordinary instance state rather than a
+  separate copy: `AssignmentRehydration._baseFromJSON()` keeps the stored submission records in
+  `inst.submissions`, the exact stored marker value in `inst.assessmentContractVersion` and its
+  presence in `inst._legacyMarkerPresent`. `toJSON()`/`toPartialJSON()` therefore re-emit that
+  state through the same paths as a current record. A stored submission record without a model
+  serialiser is copied by `AssignmentSerialisation._plainSubmissionJSON()`, which passes each
+  value through `DateUtils.deepConvertDates()` so a live `Date` (for example one JsonDbApp
+  revived from a stored ISO string) becomes its ISO string instead of `{}`. Historical values are
+  otherwise not normalised.
 - `progressTracker` is **intentionally not serialised** (it is a singleton/session-specific runtime property).
 - `_hydrationLevel` is a runtime-only flag and never persisted.
 - Fields 7–10 are extracted from the embedded definition by `_extractFullDefinitionFields(definitionJson)`, which reads `documentType`, `referenceDocumentId`, `templateDocumentId`, and `tasks` from the definition's `toJSON()` output.
 - The `Assignment` class is a facade (`index.js`) that delegates serialisation to `AssignmentSerialisation` (`00_AssignmentSerialisation.js`).
-- Legacy persistence is opaque: a record whose `assessmentContractVersion` is absent, `null` or unsupported keeps its historical submission body and exact marker presence/value, and `toJSON()`/`toPartialJSON()` re-emit that state unchanged. They never emit projected reassessment `E` placeholders. See [Component Shape: Assessment § Legacy reassessment read projection](assessment.md#legacy-reassessment-read-projection).
+- Legacy persistence is unchanged by read: a record whose `assessmentContractVersion` is absent, `null` or unsupported keeps its stored submission body and exact marker presence/value, and `toJSON()`/`toPartialJSON()` re-emit that state unchanged. They never emit projected reassessment `E` placeholders. See [Component Shape: Assessment § Legacy reassessment read projection](assessment.md#legacy-reassessment-read-projection).
 
 ### Partial variant — `Assignment.toPartialJSON()`
 
@@ -159,10 +173,14 @@ when no persisted document exists.
 Key contract notes:
 
 - The response is built from `Assignment.toReadJSON()`, which delegates to `AssignmentSerialisation.toReadJSON()` and then calls `AssignmentDefinition.toJSON()` on the embedded definition. The `readRehydrateAssignment` handler internally performs full hydration (resolving partial definitions via `getDefinitionByKey`), so a throw only occurs when the authoritative record is itself unresolvable or partial.
-- `getAssignment_()` selects the read serializer, not the persistence serializer. A stored record with `assessmentContractVersion: 1` is restored through `AssignmentCurrentRestoration` (see [Component Shape: Assessment § Marker-1 CURRENT restoration](assessment.md#marker-1-current-restoration)); a marker-less, `null` or unsupported record keeps an opaque legacy snapshot. The read serializer emits detached reassessment `E` submissions and `assessmentContractVersion: null` for that legacy snapshot, and `1` for a current result. Ordinary `toJSON()`/`toPartialJSON()` continue to re-emit the opaque stored body and marker unchanged.
+- `getAssignment_()` selects the read serializer, not the persistence serializer. A stored record with `assessmentContractVersion: 1` is restored through `AssignmentCurrentRestoration` (see [Component Shape: Assessment § Marker-1 CURRENT restoration](assessment.md#marker-1-current-restoration)); a marker-less, `null` or unsupported record is restored into ordinary instance state (stored submissions, marker value and marker presence) without reconstruction. The read serializer emits detached reassessment `E` submissions and `assessmentContractVersion: null` for that legacy state, and `1` for a current result. Ordinary `toJSON()`/`toPartialJSON()` continue to re-emit the stored body and marker unchanged.
 - `AssignmentFullSchema` requires `assessmentContractVersion: 1 | null`, and `getAssignment()` runs `normaliseAssignmentRead()` before its final response parse, so item isolation, the marker/reassessment consistency check and the defensive same-payload coverage fallback are active at runtime. See [Known discrepancies](#known-discrepancies).
 - `progressTracker` is stripped from the response at the transport boundary as defence-in-depth (already omitted by the read serialiser).
-- `DateUtils.deepConvertDates()` is called on the entire response before returning, because `google.script.run` prohibits `Date` objects in return values.
+- `DateUtils.deepConvertDates()` is called on the entire response before returning, because
+  `google.script.run` prohibits `Date` objects in return values. This is also what converts the
+  embedded definition's date values, which its own serialiser re-emits unchanged. The response is
+  then serialised to a JSON string by `apiHandler()`; see
+  [Transport envelope](transport-envelope.md#key-contract-notes).
 - Returns `null` when no persisted assignment document exists for the given `courseId`/`assignmentId` pair (`AssignmentNotFoundError` caught at the transport boundary).
 
 #### `getAssignment` — Partial variant via ABClass transport
@@ -329,7 +347,7 @@ contract's `StudentSubmissionItem.artifact` uses the same shape with `role` set 
 **Key domain validation rules** (controller-level business logic not visible from schemas):
 
 - `ABClassAssignmentOps.readRehydrateAssignment()` ensures the assignment's embedded definition is fully hydrated before returning. It resolves partial definitions (where `tasks` is an array) via `AssignmentDefinitionController.getDefinitionByKey(definitionKey, { form: 'full' })` and throws only when the authoritative record is itself a partial (tasks is still an array after resolution).
-- `Assignment._baseFromJSON()` validates the marker-1 root and authoritative task universe before constructing models. `AssignmentCurrentRestoration` validates raw submission items before constructors, isolates invalid known items and missing known coverage as all-three `CORRUPT_RECORD` `E`, preserves healthy siblings, and restores in the explicitly propagated full or partial mode. Marker-less, `null` and unsupported-marker records are not reconstructed: their historical body and exact marker presence/value are retained as an opaque snapshot, and the read serializer materialises detached reassessment `E` entries through `AssignmentRehydration.projectReassessmentSubmissions()`.
+- `Assignment._baseFromJSON()` validates the marker-1 root and authoritative task universe before constructing models. `AssignmentCurrentRestoration` validates raw submission items before constructors, isolates invalid known items and missing known coverage as all-three `CORRUPT_RECORD` `E`, preserves healthy siblings, and restores in the explicitly propagated full or partial mode. Marker-less, `null` and unsupported-marker records are not reconstructed: their stored submission records, exact marker value and marker presence are kept as ordinary instance state, and the read serializer materialises detached reassessment `E` entries through `AssignmentRehydration.projectReassessmentSubmissions()`.
 - `AssignmentController.startAssessmentRun()` validates definition freshness: compares Drive modification timestamps for reference and template documents against stored `referenceLastModified`/`templateLastModified`. Throws `DefinitionStaleError` on mismatch.
 - `Assignment._requireImplementation()` enforces subclass implementation of document-type-specific methods.
 - Student acquisition follows every `StudentSubmissions.list` page before concluding absence; a later-page list failure propagates unchanged. Expected acquisition/extraction source failures become atomic task `E` at the student/task boundary, unknown extraction task IDs warn and are ignored, and known tasks whose extraction failed receive terminal failure items while healthy extracted items remain in flight. See [Component Shape: Student Submission § Acquisition and extraction outcomes](student-submission.md#acquisition-and-extraction-outcomes).
@@ -359,8 +377,8 @@ contract's `StudentSubmissionItem.artifact` uses the same shape with `role` set 
    `AssignmentFullSchema` and `AssignmentPartialSchema` both require `z.union([z.literal(1), z.null()])`, and the normaliser additionally requires marker-null provided entries to be backend-materialised reassessment `E`.
    **Classification: Aligned** — root presence/type and the contextual check are both active.
 
-6. **Legacy records are opaque and the backend read projection plus browser normalisation are active.**
-   `Assignment._baseFromJSON()` does not catch, reconstruct or drop non-marker-1 records: it retains the historical body and exact marker presence/value as an opaque snapshot in `_legacyPersistenceSnapshot` and leaves `submissions` empty. `AssignmentRehydration._rehydrateSubmission()` handles marker-1 records only — it delegates each one to `_rehydrateCurrentSubmission()` — so non-marker-1 records never reach it. `AssignmentSerialisation.toJSON()` / `toPartialJSON()` re-emit that snapshot unchanged (no ordinary-save certification), while `toReadJSON()` and `ABClassResponseMapper._toReadView()` substitute detached reassessment `E` placeholders from `02_AssignmentReadProjection.js`. Both read services validate the resulting entries. Completed-write preflight/gates are enforced at the write boundary.
+6. **Legacy records are retained as ordinary instance state and the backend read projection plus browser normalisation are active.**
+   `Assignment._baseFromJSON()` does not catch, reconstruct or drop non-marker-1 records: it keeps the stored submission records in `inst.submissions`, the exact stored marker value in `inst.assessmentContractVersion` and its presence in `inst._legacyMarkerPresent`, and does not run the marker-1 submission rehydration. `AssignmentRehydration._rehydrateSubmission()` handles marker-1 records only — it delegates each one to `_rehydrateCurrentSubmission()` — so non-marker-1 records never reach it. `AssignmentSerialisation.toJSON()` / `toPartialJSON()` re-emit that state through their normal paths (no ordinary-save certification), while `toReadJSON()` and `ABClassResponseMapper._toReadView()` substitute detached reassessment `E` placeholders from `02_AssignmentReadProjection.js`. Both read services validate the resulting entries. Completed-write preflight/gates are enforced at the write boundary.
    **Classification: Aligned** — recorded under [Component Shape: Assessment § Write boundary](assessment.md#write-boundary-preflight-before-any-write).
 
 7. **A restored `assignmentName` must be a string; there is no generated fallback.**
@@ -374,13 +392,15 @@ contract's `StudentSubmissionItem.artifact` uses the same shape with `role` set 
 ```
 Persistence model:         src/backend/AssignmentProcessor/Assignment/index.js
   └── AssignmentSerialisation (00_AssignmentSerialisation.js)
-      └── toJSON()              — full document shape (opaque legacy snapshot re-emitted unchanged)
-      └── toPartialJSON()       — partial (summary) shape (opaque legacy snapshot re-emitted unchanged)
+      └── toJSON()              — full document shape (legacy state re-emitted unchanged)
+      └── toPartialJSON()       — partial (summary) shape (legacy state re-emitted unchanged)
       └── toReadJSON()          — full read shape (current marker 1 / legacy marker null + reassessment E)
       └── _rootOutput()         — root fields shared by the full and partial payloads
-      └── _applyContractMarker() — stamps the current marker or re-emits the opaque legacy marker
+      └── _applyContractMarker() — stamps the current marker or re-emits the stored legacy marker
+      └── _submissionJSON() / _plainSubmissionJSON() — per-submission serialisation; plain stored
+                                                       records copied through DateUtils.deepConvertDates()
   └── AssignmentRehydration (02_AssignmentRehydration.js)
-      └── _baseFromJSON()       — marker-1 root/task pre-validation; opaque legacy snapshot otherwise
+      └── _baseFromJSON()       — marker-1 root/task pre-validation; legacy records kept as instance state
       └── _rehydrateSubmission() — marker-1 only; delegates to _rehydrateCurrentSubmission()
       └── projectReassessmentSubmissions() — sole public legacy read-projection facade
   └── AssignmentReadProjection (02_AssignmentReadProjection.js)

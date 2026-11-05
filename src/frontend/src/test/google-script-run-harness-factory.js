@@ -72,32 +72,6 @@ export function createGoogleScriptRunApiHandlerMock(invokeRequest) {
   }
 
   /**
-   * Returns a copy of `value` with every `null` object property removed, matching how real
-   * `google.script.run` omits `null` properties from returned objects. `null` array elements
-   * are kept, and `undefined` properties are dropped later by `JSON.stringify`.
-   *
-   * @param {*} value - Success-response graph (already checked for live Dates).
-   * @returns {*} A copy without `null` object properties.
-   */
-  function dropNullProperties(value) {
-    if (Array.isArray(value)) {
-      return value.map((item) => dropNullProperties(item));
-    }
-
-    if (value === null || typeof value !== 'object') {
-      return value;
-    }
-
-    const result = {};
-    Object.keys(value).forEach((key) => {
-      if (value[key] !== null) {
-        result[key] = dropNullProperties(value[key]);
-      }
-    });
-    return result;
-  }
-
-  /**
    * Creates a runner snapshot with the currently registered handlers.
    *
    * @param {((response: unknown) => void) | undefined} successHandler The current success handler.
@@ -105,6 +79,32 @@ export function createGoogleScriptRunApiHandlerMock(invokeRequest) {
    * @returns {{ withSuccessHandler: (handler: (response: unknown) => void) => unknown; withFailureHandler: (handler: (error: unknown) => void) => unknown; apiHandler: (request: unknown) => void; }} The runner snapshot.
    */
   function createRunner(successHandler, failureHandler) {
+    /**
+     * Returns a copy of `value` with every `null` object property removed, matching how real
+     * `google.script.run` omits `null` properties from returned objects. `null` array elements
+     * are kept, and `undefined` properties are dropped later by `JSON.stringify`.
+     *
+     * @param {*} value - Success-response graph (already checked for live Dates).
+     * @returns {*} A copy without `null` object properties.
+     */
+    const dropNullProperties = (value) => {
+      if (Array.isArray(value)) {
+        return value.map((item) => dropNullProperties(item));
+      }
+
+      if (value === null || typeof value !== 'object') {
+        return value;
+      }
+
+      const result = {};
+      Object.keys(value).forEach((key) => {
+        if (value[key] !== null) {
+          result[key] = dropNullProperties(value[key]);
+        }
+      });
+      return result;
+    };
+
     return {
       withSuccessHandler(nextSuccessHandler) {
         return createRunner(nextSuccessHandler, failureHandler);
