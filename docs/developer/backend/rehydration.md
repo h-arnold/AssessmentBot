@@ -118,36 +118,25 @@ This ensures `ABClass` remains small and fast to load, while the full data is pr
 
 Classes and primary methods (in call order):
 
-1. **AssignmentDefinitionController.upsertDefinition()**
+1. **AssignmentDefinitionController.upsertDefinition()** — validates, resolves the topic, re-parses on source change and persists full then registry. See [Contract: AssignmentDefinition](../data-shapes/assignment-definition.md).
 
-- Validates inputs, resolves topic, and checks staleness.
-- Parses tasks via `_parseSlidesTasks`/`_parseSheetsTasks`, which now always rehydrate into `TaskDefinition` instances (`TaskDefinition.fromJSON(td.toJSON())`).
-- Persists both forms: `_persistDefinitionWithRollback` → full collection (`toJSON()`), partial registry (`toPartialJSON()`).
-
-2. **ABClassController.persistAssignmentRun()**
-
-- Persists full assignment to `assign_full_<courseId>_<assignmentId>` using `Assignment.toJSON()` (includes fully hydrated `AssignmentDefinition`, `TaskDefinition`, and `BaseTaskArtifact` subclasses with content).
-- Builds and stores partial summary via `Assignment.toPartialJSON()` (submissions/artifacts redacted) back into the owning `ABClass` document.
+2. **ABClassController.persistAssignmentRun()** — writes the full assignment, then the updated class with the embedded partial, then the partials registry. See [Contract: Assignment](../data-shapes/assignment.md).
 
 3. **ABClassController.loadClass()** (not changed)
-
-- Returns the lightweight `ABClass` with only partial assignments (heavy fields already stripped).
+   - Returns the lightweight `ABClass` with only partial assignments (heavy fields already stripped).
 
 4. **AssignmentController.processSelectedAssignment()**
-
-- Creates a fresh `Assignment` instance from the definition, runs the assessment pipeline, then persists via `ABClassController.persistAssignmentRun()`. Does not rehydrate from the full collection — the full document is written anew on each run.
+   - Creates a fresh `Assignment` instance from the definition, runs the assessment pipeline, then persists via `ABClassController.persistAssignmentRun()`. Does not rehydrate from the full collection — the full document is written anew on each run.
 
 5. **ABClassController.readRehydrateAssignment(courseId, assignmentId)**
-
-- Read-only operation: loads the full document from `assign_full_<courseId>_<assignmentId>` without refreshing roster data or mutating ABClass.
-- Reconstructs the typed instance via `Assignment.fromJSON()`; this cascades into `AssignmentDefinition.fromJSON()`, which in turn strictly hydrates tasks (`_hydrateTasks` requires `taskTitle` and instantiates `TaskDefinition`, whose artifacts are materialised via `ArtifactFactory.fromJSON`).
-- Resolves partial definitions via `AssignmentDefinitionController.getDefinitionByKey(definitionKey, { form: 'full' })`.
-- Marks `_hydrationLevel = 'full'` on the returned instance.
-- For a marker-1 record, restores submissions in one validated pass. For a legacy record (marker missing, `null`, or unsupported), keeps the stored submissions opaque and does not rehydrate historical items.
+   - Read-only operation: loads the full document from `assign_full_<courseId>_<assignmentId>` without refreshing roster data or mutating ABClass.
+   - Reconstructs the typed instance via `Assignment.fromJSON()`; this cascades into `AssignmentDefinition.fromJSON()`, which in turn strictly hydrates tasks (`_hydrateTasks` requires `taskTitle` and instantiates `TaskDefinition`, whose artifacts are materialised via `ArtifactFactory.fromJSON`).
+   - Resolves partial definitions via `AssignmentDefinitionController.getDefinitionByKey(definitionKey, { form: 'full' })`.
+   - Marks `_hydrationLevel = 'full'` on the returned instance.
+   - For a marker-1 record, restores submissions in one validated pass. For a legacy record (marker missing, `null`, or unsupported), keeps the stored submissions opaque and does not rehydrate historical items.
 
 6. **Assignment runtime**
-
-- Processing pipelines operate on the full instance; transient fields (`students`, `_hydrationLevel`) remain runtime-only and must never be persisted.
+   - Processing pipelines operate on the full instance; transient fields (`students`, `_hydrationLevel`) remain runtime-only and must never be persisted.
 
 ### Strictness notes
 
@@ -245,7 +234,7 @@ frontend read-normalisation activation and the regenerated canonical corpus are 
 Generated-bundle load order is asserted by
 `scripts/builder/src/steps/backend-copy.spec.ts`. The definition-write artefact invariant and the
 existing blank-grid model rule are documented below. The acquisition/extraction boundary producers
-are recorded in [AssessmentFlow.md](AssessmentFlow.md#shared-helper-status); read restoration
+are recorded in [Component Shape: Student Submission § Acquisition and extraction outcomes](../data-shapes/student-submission.md#acquisition-and-extraction-outcomes); read restoration
 preserves their valid `E` placeholders rather than re-diagnosing the cause. The `ImageManager`
 hydration boundary is summarised below, as are the prepared write projections.
 
@@ -289,10 +278,10 @@ hydration boundary is summarised below, as are the prepared write projections.
   null submission content beside numeric/N marks on a current-format full read as a contradictory
   stored record, not evidence of a past failure: all three results become validation
   `CORRUPT_RECORD` E with its catalogue reasoning. Confirmed unavailability at the actual extraction
-  boundary instead creates extraction `SOURCE_CONTENT_UNAVAILABLE` E (see
-  [AssessmentFlow.md](AssessmentFlow.md#shared-helper-status)). Partial redaction is exempt from
-  this full-content consistency check.
-- **Image hydration boundary.** `src/backend/RequestHandlers/ImageManager.js` owns the scoped IMAGE hydration boundary and reuses the shared transport budget plus the existing Slides document round-robin scheduling. Pending IMAGE content before hydration is valid internal state, never a terminal or completed result: a Slides IMAGE is pending only when it has a matched student page and parser-generated `metadata.sourceUrl`, and a missing IMAGE match is extraction `SOURCE_CONTENT_UNAVAILABLE` E. A student image with no admissible source URL, a final non-200/network outcome or unusable returned content becomes the atomic extraction `IMAGE_HYDRATION_FAILED` E with null content/hash on that task, while an item already carrying an upstream all-three terminal `E` is preserved verbatim and an already-hydrated artefact with no admissible source is skipped. A required shared reference/template image with no usable source or owning document, a final download failure or unusable returned content blocks the run by throwing (an already-hydrated shared artefact with no usable source is skipped); prior saved results are preserved because no completed persistence occurs, not because in-memory state is rolled back. Successful writeback writes data-URL content and the model hash, invalidating stale assessments/feedback only when content changed. Unmatched or duplicate UIDs, missing model methods or structures and other wiring faults throw; they are not hydration failures. Completion gating, pending-image rejection and marker stamping are owned by the completed-run gate (see [Projection preparation before write](#restoration-and-projection-ownership)). The full outcome table is recorded in [Component Shape: Student Submission § Image hydration outcomes](../data-shapes/student-submission.md#image-hydration-outcomes).
+  boundary instead creates extraction `SOURCE_CONTENT_UNAVAILABLE` E. See
+  [Component Shape: Student Submission § Acquisition and extraction outcomes](../data-shapes/student-submission.md#acquisition-and-extraction-outcomes).
+  Partial redaction is exempt from this full-content consistency check.
+- **Image hydration boundary.** `src/backend/RequestHandlers/ImageManager.js` owns the scoped IMAGE hydration boundary and reuses the shared transport budget plus the existing Slides document round-robin scheduling. Pending IMAGE content before hydration is valid internal state, never a terminal or completed result: a Slides IMAGE is pending only when it has a matched student page and parser-generated `metadata.sourceUrl`, and a missing IMAGE match is extraction `SOURCE_CONTENT_UNAVAILABLE` E. A student image with no admissible source URL, a final non-200/network outcome or unusable returned content becomes the atomic extraction `IMAGE_HYDRATION_FAILED` E with null content/hash on that task, while an item already carrying an upstream all-three terminal `E` is preserved verbatim and an already-hydrated artefact with no admissible source is skipped. A required shared reference/template image with no usable source or owning document, a final download failure or unusable returned content blocks the run by throwing (an already-hydrated shared artefact with no usable source is skipped); prior saved results are preserved because no completed persistence occurs, not because in-memory state is rolled back. Successful writeback writes data-URL content and the model hash, invalidating stale assessments/feedback only when content changed. Unmatched or duplicate UIDs, missing model methods or structures and other wiring faults throw; they are not hydration failures. Completion gating, pending-image rejection and marker stamping are owned by the completed-run gate (see [Restoration and projection ownership](#restoration-and-projection-ownership)). The full outcome table is recorded in [Component Shape: Student Submission § Image hydration outcomes](../data-shapes/student-submission.md#image-hydration-outcomes).
 - **Identity failure.** A valid submission with corrupt items yields E for its known definition tasks. If student/task identity or the shared root/definition is untrustworthy, the owned dataset fails loudly instead of guessing associations.
 - **Definition-write artefact invariant.** `AssignmentDefinitionValidation.validateSharedArtifacts()` in `src/backend/y_controllers/AssignmentDefinition/AssignmentDefinitionValidation.js` owns the definition-write invariant, invoked by `AssignmentDefinitionUpsertOrchestrator` on the final resolved tasks after weighting and before constructing or persisting the definition. At new definition writes, non-IMAGE artefacts must already have non-null content and a string hash; valid blank TEXT/array templates are not rejected as empty. Pending IMAGE artefacts remain allowed before an assessment run; this is distinct from the stricter completed-full-assignment artefact gate, which is implemented in `ABClassAssignmentValidation._validateCompletedSharedArtefacts()` and requires usable content and a non-empty string hash on every shared reference/template artefact of the known tasks. A formula-free spreadsheet reference task is an unusable shared definition and is rejected at the definition-write boundary. Expected content rejections log bounded `{ taskId }` context and throw `ApiValidationError` with the existing safe `DEFINITION_PARSE_FAILED` message and code; missing structure and other wiring faults propagate unchanged. Blank `[]` templates remain valid. Existing definition rollback semantics are unchanged, no separate parser/API validators are added, and no run-time eligibility preflight is introduced.
 - **Blank spreadsheet grids (existing model rule; reused).** The blank-grid owner is `SpreadsheetTaskArtifact.normalizeContent` in `src/backend/Models/Artifacts/3_SpreadsheetTaskArtifact.js`. It canonicalises a successfully read blank/all-null grid to `[]` with the normal hash of `[]`, for blank templates and blank student ranges through construction, persistence and restoration. Parsers and restoration reuse that model rule instead of adding competing blank-grid coercion. Literal `null` means unavailable spreadsheet content, not blank content. The extraction boundary materialises extraction `SOURCE_CONTENT_UNAVAILABLE` E for known tasks whose content is unavailable; read restoration still converts only contradictory stored records to validation `CORRUPT_RECORD` E. Existing populated-formula normalisation and blank-range formula scores are unchanged.
