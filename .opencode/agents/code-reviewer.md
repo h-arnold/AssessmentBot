@@ -283,8 +283,15 @@ Apply only the rows relevant to the module(s) under review.
 - [ ] British English in all comments, identifiers, and user-facing text.
 - [ ] No speculative features or scope beyond the explicit request.
 - [ ] No default values introduced without explicit instruction.
-- [ ] @remarks comments added to all key classes, methods and functions where additional explanation is required
+- [ ] @remarks comments added to all key classes, methods and functions where additional explanation is required.
 - [ ] Files are no longer than 500 lines. If they are, consider if they can be split into smaller modules or if some logic can be moved to helper functions.
+- [ ] **Logic Errors**: Are there off-by-one errors, incorrect assumptions, or unhandled edge cases?
+- [ ] **Side Effects**: Does this change introduce unintended side effects or alter behavior elsewhere?
+- [ ] **Data Flow**: Are inputs/outputs sanitized? Are there race conditions or data corruption risks?
+- [ ] **Redundancy**: Is this logic already implemented elsewhere? Could it be simplified or removed?
+- [ ] **Speculative Scope**: Is this code necessary, or could it be deferred until explicitly requested?
+- [ ] **Purpose Fulfillment**: Does this change solve the problem it claims to solve?
+- [ ] **Edge Case Testing**: Are boundary conditions and edge cases tested?
 
 ### Backend Only
 

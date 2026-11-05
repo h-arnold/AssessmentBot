@@ -160,7 +160,7 @@ A frontend source file under `src/frontend/src/**` that exceeds **550 lines** mu
 
 ## 5. Serialization boundary
 
-GAS `google.script.run` auto-JSON-stringifies backend return values before passing them to `withSuccessHandler`. The frontend reverses this at a single choke point.
+The backend global `apiHandler()` returns the response envelope as a JSON string. GAS does not stringify returned objects itself, and `google.script.run` can omit `null` properties from returned objects, so the backend serialises explicitly to preserve them (see [api-layer.md](../backend/api-layer.md#response-envelope)). The frontend reverses this at a single choke point.
 
 - **Deserialization:** `dispatchAttempt` in `src/frontend/src/services/apiService.ts` is the sole module that consumes `google.script.run` callbacks. It `JSON.parse()`-s string responses before Zod validation. No other module should `JSON.parse()` API responses or need to know about this boundary.
 - **Downstream code:** feature services, hooks, and components receive parsed, typed objects from `callApi`. They must never handle raw GAS transport details.

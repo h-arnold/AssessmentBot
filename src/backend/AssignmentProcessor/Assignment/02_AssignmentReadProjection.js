@@ -99,13 +99,12 @@ const AssignmentReadProjection = {
     taskIds.push(task.taskId);
   },
 
-  /** Uses opaque owned legacy history when present, otherwise raw submissions.
+  /** Uses the assignment's stored submissions as historical records.
    * @param {object} assignment - Raw or typed assignment.
    * @returns {Array<object>} Historical records.
    */
   _getHistoricalSubmissions(assignment) {
-    const snapshot = assignment._legacyPersistenceSnapshot;
-    const records = snapshot ? snapshot.submissions : assignment.submissions;
+    const records = assignment.submissions;
     if (!Array.isArray(records)) throw new TypeError('Invalid stored submissions');
     return records;
   },

@@ -135,7 +135,14 @@ Each `ResponseItem` has a `kind` field that controls how the mock behaves:
 | `transportFailure` | Calls the failure handler with an `Error`                       |
 | `deferredSuccess`  | Holds the promise open until `releaseNextDeferredSuccess(page)` |
 
-**Void/delete response rule:** For backend methods that return no data (for example deletes, start-assessment-run), every response entry kind (`success`, `deferredSuccess`) in a `RuntimeScenario` must include `data: null`. Omitting `data` or using `data: undefined` causes the frontend `ApiSuccessResponseSchema.superRefine` to reject the envelope with `"Success response envelope must include a data field."`. For the backend `_success()` coercion and the `JSON.stringify` cause, see [Void/delete response guidance: `data: null` required](frontend-testing.md#voiddelete-response-guidance-data-null-required).
+**Void/delete response rule:** For backend methods that return no data (for example deletes, start-assessment-run), every response entry kind (`success`, `deferredSuccess`) in a `RuntimeScenario` must include `data: null`. Omitting `data` or using `data: undefined` causes the frontend `ApiSuccessResponseSchema.superRefine` to reject the envelope with `"Success response envelope must include a data field."` For the backend `_success()` coercion and the `JSON.stringify` cause, see [Void/delete response guidance: `data: null` required](frontend-testing.md#voiddelete-response-guidance-data-null-required).
+
+**`null` properties survive runtime envelopes.** `installRuntimeMock` serialises each success and
+error envelope with `JSON.stringify` before handing it to the shared harness, mirroring the backend
+`apiHandler`, which also returns a JSON string. A queued `data` value therefore keeps its `null`
+properties, so a scenario can assert that a required nullable field (for example `metadata: null`
+on a class partial) survives transport. Do not pass a raw envelope object to `successHandler` from
+a new mock path: the harness would drop its `null` properties.
 
 ### Installing Mock Scenarios
 
@@ -490,18 +497,19 @@ deterministic responses. This keeps tests fast and eliminates flakiness from ext
 
 ### Summary of Anti-Patterns
 
-| Anti-Pattern                                                | Why It's Bad                                                                                                                             | Correct Approach                                                       |
-| ----------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| `page.waitForTimeout(N)`                                    | Always waits full duration, causes flakiness                                                                                             | Use web-first assertions                                               |
-| CSS/XPath selectors                                         | Break on DOM/class changes                                                                                                               | Use `getByRole`, `getByLabel`                                          |
-| Manual `isVisible()` assertions                             | No auto-wait, fails immediately                                                                                                          | Use `expect(...).toBeVisible()`                                        |
-| Single-entry StrictMode queues                              | Second effect call gets "Unexpected index"                                                                                               | Double every queue entry                                               |
-| `selectOption` on antd Select                               | antd uses custom dropdown, not `<select>`                                                                                                | Use `selectVisibleOption(page, ...)`                                   |
-| Clicking an antd Select option during entrance motion       | The body-portalled popup can realign between pointerdown and pointerup, so the click misses the option                                   | Call `waitForSelectPopupReady(option)` first at the affected seams     |
-| `.ant-modal-mask` click                                     | antd v6 uses `.ant-modal-wrap` for mask                                                                                                  | Click `.ant-modal-wrap` edge                                           |
-| `toBeVisible` on Typography.Text                            | Playwright may resolve as hidden                                                                                                         | Use `toHaveCount(1)` or structural                                     |
-| Mocks installed AFTER `page.goto`                           | Component renders with stale defaults                                                                                                    | Install mocks before `page.goto`                                       |
-| `{ kind: 'success' }` without `data: null` for void methods | Backend `_success` sends `data: null`; `JSON.stringify` strips `undefined`, and `ApiSuccessResponseSchema` requires `data` to be present | Always use `{ kind: 'success', data: null }` for void/delete responses |
+| Anti-Pattern                                                | Why It's Bad                                                                                                                             | Correct Approach                                                                |
+| ----------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| `page.waitForTimeout(N)`                                    | Always waits full duration, causes flakiness                                                                                             | Use web-first assertions                                                        |
+| CSS/XPath selectors                                         | Break on DOM/class changes                                                                                                               | Use `getByRole`, `getByLabel`                                                   |
+| Manual `isVisible()` assertions                             | No auto-wait, fails immediately                                                                                                          | Use `expect(...).toBeVisible()`                                                 |
+| Single-entry StrictMode queues                              | Second effect call gets "Unexpected index"                                                                                               | Double every queue entry                                                        |
+| `selectOption` on antd Select                               | antd uses custom dropdown, not `<select>`                                                                                                | Use `selectVisibleOption(page, ...)`                                            |
+| Clicking an antd Select option during entrance motion       | The body-portalled popup can realign between pointerdown and pointerup, so the click misses the option                                   | Call `waitForSelectPopupReady(option)` first at the affected seams              |
+| `.ant-modal-mask` click                                     | antd v6 uses `.ant-modal-wrap` for mask                                                                                                  | Click `.ant-modal-wrap` edge                                                    |
+| `toBeVisible` on Typography.Text                            | Playwright may resolve as hidden                                                                                                         | Use `toHaveCount(1)` or structural                                              |
+| Mocks installed AFTER `page.goto`                           | Component renders with stale defaults                                                                                                    | Install mocks before `page.goto`                                                |
+| `{ kind: 'success' }` without `data: null` for void methods | Backend `_success` sends `data: null`; `JSON.stringify` strips `undefined`, and `ApiSuccessResponseSchema` requires `data` to be present | Always use `{ kind: 'success', data: null }` for void/delete responses          |
+| Object response entry carrying a required `null` field      | The runtime mock serialises the envelope itself, so `null` properties survive                                                            | Queue the entry normally; do not hand a raw envelope object to `successHandler` |
 
 ---
 

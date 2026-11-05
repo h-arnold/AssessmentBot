@@ -19,6 +19,21 @@ const registryRows = [
 const replacement = Object.values(loadBackendModelInputs('medium').classesById).find(
   (row) => row.metadata
 )?.metadata;
+
+/**
+ * Calls the global `apiHandler` and parses the transport string it returns.
+ *
+ * @remarks `google.script.run` receives a JSON string so `null` properties survive the
+ * transport. Every direct consumer must therefore parse at this boundary.
+ * @param {object} api - The loaded `z_apiHandler` module.
+ * @param {object} request - The dispatcher request payload.
+ * @returns {object} The parsed response envelope.
+ */
+function dispatch(api, request) {
+  const raw = api.apiHandler(request);
+  expect(typeof raw).toBe('string');
+  return JSON.parse(raw);
+}
 describe('ABClass metadata dispatcher success writes', () => {
   let context;
   afterEach(() => {
@@ -32,7 +47,7 @@ describe('ABClass metadata dispatcher success writes', () => {
       partialRows: registryRows,
     });
     const request = { classId: context.classId, metadata: structuredClone(replacement) };
-    const response = context.api.apiHandler({ method: 'updateABClass', params: request });
+    const response = dispatch(context.api, { method: 'updateABClass', params: request });
     expect(response).toMatchObject({
       ok: true,
       data: { classId: context.classId, metadata: replacement },
@@ -64,7 +79,7 @@ describe('ABClass metadata dispatcher success writes', () => {
         ...(metadata === undefined ? {} : { metadata: structuredClone(metadata) }),
       };
       const expected = expectedFor(context);
-      const response = context.api.apiHandler({ method: 'upsertABClass', params: request });
+      const response = dispatch(context.api, { method: 'upsertABClass', params: request });
       const thrown = context.seams.errorSpy.mock.calls[0]?.[2];
       expect(
         response.ok,
@@ -91,13 +106,13 @@ describe('ABClass metadata dispatcher success writes', () => {
       partialRows: registryRows,
     });
     const original = structuredClone(context.source.metadata);
-    const updated = context.api.apiHandler({
+    const updated = dispatch(context.api, {
       method: 'updateABClass',
       params: { classId: context.classId, active: false },
     });
     expect(updated.data.metadata).toEqual(original);
     expect(context.full.rows()[0].metadata).toEqual(original);
-    const deleted = context.api.apiHandler({
+    const deleted = dispatch(context.api, {
       method: 'deleteABClass',
       params: { classId: context.classId },
     });
@@ -143,7 +158,7 @@ describe('ABClass metadata dispatcher success writes', () => {
             }
           : { classId: context.classId, metadata: structuredClone(metadata) };
 
-      const response = context.api.apiHandler({ method, params: request });
+      const response = dispatch(context.api, { method, params: request });
 
       expect(response.ok).toBe(true);
       expect(response.data.metadata.recentAssignments.map((entry) => entry.assignmentId)).toEqual(
@@ -173,9 +188,9 @@ describe('ABClass metadata dispatcher success writes', () => {
       metadata: structuredClone(supplied),
     };
 
-    const upsert = context.api.apiHandler({ method: 'upsertABClass', params: request });
+    const upsert = dispatch(context.api, { method: 'upsertABClass', params: request });
     expect(upsert.data.metadata).toStrictEqual(untouched);
-    context.api.apiHandler({
+    dispatch(context.api, {
       method: 'updateABClass',
       params: { classId: context.classId, active: false },
     });
@@ -209,8 +224,8 @@ describe('ABClass metadata dispatcher success writes', () => {
     const assignment = globalThis.Assignment.fromJSON(structuredClone(fullAssignmentInput));
     controller.persistAssignmentRun(rosterLoaded, assignment);
 
-    const list = context.api.apiHandler({ method: 'getABClassPartials' });
-    const fullRead = context.api.apiHandler({
+    const list = dispatch(context.api, { method: 'getABClassPartials' });
+    const fullRead = dispatch(context.api, {
       method: 'getABClass',
       params: { classId: context.classId },
     });
@@ -233,21 +248,21 @@ describe('ABClass metadata dispatcher success writes', () => {
       Object.values(loadBackendModelInputs('medium').classesById).find((row) => row.metadata)
         ?.metadata
     );
-    const replaced = context.api.apiHandler({
+    const replaced = dispatch(context.api, {
       method: 'updateABClass',
       params: { classId: context.classId, metadata: replacement },
     });
     expect(replaced.data.metadata).toStrictEqual(replacement);
     expect(context.full.rows()[0].metadata).toStrictEqual(replacement);
     expect(context.partial.rows()[0].metadata).toStrictEqual(replacement);
-    const cleared = context.api.apiHandler({
+    const cleared = dispatch(context.api, {
       method: 'updateABClass',
       params: { classId: context.classId, metadata: null },
     });
     expect(cleared.data.metadata).toBeNull();
     expect(context.full.rows()[0].metadata).toBeNull();
     expect(context.partial.rows()[0].metadata).toBeNull();
-    const deleted = context.api.apiHandler({
+    const deleted = dispatch(context.api, {
       method: 'deleteABClass',
       params: { classId: context.classId },
     });

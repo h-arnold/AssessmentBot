@@ -15,6 +15,8 @@ payload inside this envelope.
 }
 ```
 
+- The envelope leaves `apiHandler()` as a JSON string, not an object; see the string
+  transport note under [Key contract notes](#key-contract-notes).
 - `data` is coerced from `undefined` to `null` via `data ?? null` as a
   defensive measure to prevent Zod parsing errors on the frontend.
 - `requestId` is a V4 UUID produced by `Utilities.getUuid()` (GAS native).
@@ -83,14 +85,10 @@ back to the generic `INVALID_REQUEST` mapping.
 
 ### Error code — `DEFINITION_PARSE_FAILED`
 
-> **Status: Implemented.** The backend throws `ApiValidationError` with
-> `code: 'DEFINITION_PARSE_FAILED'` for recognised document/task parsing failures, and
-> `_mapErrorToFailureEnvelope` honours `ApiValidationError.code`, so the envelope
-> surfaces this code. The frontend error registry entry (`map-error-to-ui.ts`) maps it
-> to the safe user copy below.
-
 Stable, non-retriable `ApiValidationError` code for recognised
-document/task parsing failures. It maps to safe user copy: “The assignment documents
+document/task parsing failures. `_mapErrorToFailureEnvelope` honours
+`ApiValidationError.code`, so the envelope surfaces this code, and the frontend error
+registry entry (`map-error-to-ui.ts`) maps it to safe user copy: “The assignment documents
 could not be parsed. Check the reference and template documents, then try again.”
 Raw diagnostic details stay in logs, not user copy. An invalid task or a zero-task
 result must not persist a partial definition or start an assessment. Authorisation,
@@ -182,8 +180,27 @@ z.object({
 
 ## Key contract notes
 
+- **String transport:** the global `apiHandler()` returns the envelope as a JSON string
+  (`JSON.stringify(ApiDispatcher.getInstance().handle(request))`), not an object.
+  `ApiDispatcher.handle()` still returns the envelope object; the entry point is the single
+  serialisation point. The string is required because `google.script.run` can omit `null`
+  properties from returned objects, which turns required nullable fields (for example ABClass
+  `metadata: null`) into `undefined` on the frontend. `JSON.stringify` preserves explicit
+  `null`, and the frontend `JSON.parse`s the string in `apiService.ts`
+  (`deserialiseRawResponse`). Handlers must therefore emit explicit `null` for absent nullable
+  fields; an `undefined` property is still dropped by `JSON.stringify`. See
+  [api-layer.md § Response envelope](../backend/api-layer.md#response-envelope).
 - **Date serialisation:** `google.script.run` prohibits `Date`, `Function` and DOM values in
-  parameters and return values; see [api-layer.md § Critical: prohibited types in `google.script.run` return values](../backend/api-layer.md#critical-prohibited-types-in-googlescriptrun-return-values) for the conversion rules.
+  parameters and return values. Because the entry point passes `google.script.run` a string,
+  `JSON.stringify` has already converted any live `Date` in the payload to its ISO 8601 string
+  (`Date.prototype.toJSON()`), so a `Date` in a handler payload cannot reach GAS as an object.
+  Handler-level conversion is the preferred shape, not the only mechanism: handlers convert their
+  known date fields themselves (for example `DateUtils.normaliseDateFields()` in the
+  assignment-definition handlers, and `DateUtils.deepConvertDates()` in `getABClass_()` and
+  `getAssignment_()`), which keeps the emitted shape explicit and independent of string
+  serialisation. The envelope itself performs no date conversion. See
+  [api-layer.md § Critical: prohibited types in `google.script.run` parameters and return values](../backend/api-layer.md#critical-prohibited-types-in-googlescriptrun-parameters-and-return-values)
+  for the conversion rules.
 - **Defensive null coercion:** `_success()` maps `undefined` to `null` to
   prevent Zod `.nullable()` schema errors on the frontend.
 - **Handler failures** are caught by `apiHandler`, logged with the original
@@ -193,10 +210,6 @@ z.object({
   `request.params` is optional. Handlers validate their own parameters.
 
 ## Error `details` block
-
-> **Status: Implemented.** The typed frontend preservation below is the canonical
-> implemented behaviour, reconciled here from the previously recorded planned-only
-> entry.
 
 The backend error envelope may carry a structured `error.details` block: `_failure()`
 attaches it when non-null, and `_mapErrorToFailureEnvelope()` populates it for

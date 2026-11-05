@@ -136,16 +136,18 @@ export const RAW_RESPONSE_PREVIEW_MAX_LENGTH = 120;
 export const OVERSIZED_RAW_RESPONSE_PADDING_LENGTH = 200;
 
 /**
- * Delivers a raw success response to `callApi` without the shared harness factory's
- * automatic `JSON.stringify` wrapper.
+ * Delivers a deliberately malformed or otherwise raw success value to `callApi`,
+ * bypassing the shared harness factory's success-value handling.
  *
  * @remarks
- * The shared harness factory faithfully mimics `google.script.run`'s automatic JSON
- * stringification, so `apiService`'s JSON-parser error branch is unreachable through
- * it. This focused seam is the project-approved exception for parser-edge coverage: it
- * mirrors the GAS fallback to non-JSON string output (for example, when a prohibited
- * return type forces `Object.toString()` serialisation). Ordinary transport tests must
- * keep using `createGoogleScriptRunApiHandlerMock`.
+ * The shared harness factory models the current transport: a returned string passes
+ * through untouched and an object is serialised once. The valid backend `apiHandler`
+ * contract always returns a JSON string, so `apiService`'s JSON-parser error branch is
+ * unreachable through that factory. This focused seam is the project-approved
+ * exception for parser-edge coverage: it delivers a value that is not valid backend
+ * output, such as malformed JSON or a non-JSON string. It does not describe current
+ * valid backend behaviour. Ordinary transport tests must keep using
+ * `createGoogleScriptRunApiHandlerMock`.
  *
  * @param {unknown} rawResponse - The raw success value delivered to `dispatchAttempt`.
  * @returns {GoogleScriptRunApiHandler} A runner that replays the raw value once.

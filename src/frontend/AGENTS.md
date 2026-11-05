@@ -59,7 +59,7 @@ Read the matching doc before you act. When in doubt, read it.
 
 - Treat backend responses as envelopes handled by `callApi`; consume typed `data` results only.
 - Keep retry behaviour centralised in `callApi`; do not add per-feature retry loops.
-- `google.script.run` auto-JSON-stringifies backend return values; `apiService.ts` (`dispatchAttempt`) is the sole choke point that reverses this. Never `JSON.parse` API responses or handle raw GAS transport details outside `apiService.ts`. Consult `docs/developer/frontend/frontend-architecture.md` before changing deserialisation or the transport failure boundary.
+- The backend `apiHandler()` returns the envelope as a JSON string (GAS does not stringify objects and drops `null` properties from returned objects); `apiService.ts` (`dispatchAttempt`) is the sole choke point that reverses this. Never `JSON.parse` API responses or handle raw GAS transport details outside `apiService.ts`. Consult `docs/developer/frontend/frontend-architecture.md` before changing deserialisation or the transport failure boundary.
 - Use the backend configuration service for configuration reads and writes, with request and response validation in its adjacent Zod schema. Endpoint mapping, file paths, and the contract are in `docs/developer/backend/api-layer.md` and `docs/developer/data-shapes/backend-config.md`. `getBackendConfig` and `setBackendConfig` are the canonical method names; do not route configuration UI through legacy backend globals.
 - Keep the frontend free of GAS global/service assumptions.
 - `Date`, `Function`, and DOM values are prohibited in `google.script.run` payloads; a live `Date` breaks frontend parsing. See `docs/developer/backend/api-layer.md`.

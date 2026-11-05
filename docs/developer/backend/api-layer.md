@@ -130,7 +130,9 @@ against the current specification first.
   `fromJSON()` distinguish actual own-property absence (normalised through the domain
   constructor) from explicitly supplied values, including invalid own `undefined`.
   `setMetadata(value)` replaces the complete snapshot or clears it with `null`, and validates
-  before changing model state.
+  before changing model state. `fromJSON()` is a stored-read path, so it converts revived `Date`
+  values through `DateUtils.deepConvertDates()` first (see "Stored-read Date revival" in
+  [rehydration.md](rehydration.md#stored-read-date-revival)).
 - **Implemented:** `toJSON()` and `toPartialJSON()` always include metadata, revalidate mutable
   model state and return defensive copies through the domain owner. Missing/deleted model state
   is invalid at serialisation, not silently defaulted.
@@ -150,10 +152,9 @@ against the current specification first.
   assignment keeps its existing `toJSON()`. Plain objects and other supported items retain
   `ArrayUtils.serialiseArray()` behaviour.
 - `AssignmentDefinition.toJSON()` remains strict and still rejects a partial definition.
-  `Assignment.toJSON()` remains strict for current-format and other non-legacy assignments. Its
-  only exception is the opaque legacy persistence path, where it re-emits the stored body and,
-  when the embedded definition is partial, uses `definition.toPartialJSON()` instead of throwing.
-  Serialisation errors from a genuine full assignment propagate unchanged.
+  `Assignment.toJSON()` emits a partial definition (tasks stored as an array) through
+  `definition.toPartialJSON()` and a full definition through `toJSON()`. Serialisation errors
+  from a genuine full definition propagate unchanged.
 - This is the user-approved 17 October 2026 correction recorded in `docs/plans/SPEC.md`. It is
   missing Section 3 model integration delivered in Section 5, not a new frontend feature. No
   second persistence-specific class serializer, automatic hydration or catch-and-fallback is
@@ -232,8 +233,11 @@ against the current specification first.
   fail-fast: a missing embedded `assignmentDefinition`, or a `definitionKey` that is missing,
   non-string or empty, raises a `TypeError` instead of projecting `null` or omitting
   `assignmentDefinitionKey`, preserving the required-string response contract.
-- Metadata carries canonical timestamp strings only, so no extra `DateUtils.deepConvertDates()`
-  conversion is needed for the partial-list or mutation-summary responses. The existing full-read
+- Metadata is written as canonical timestamp strings, but JsonDbApp revives ISO strings as `Date`
+  objects when it reads a document. The stored-read gates (`ABClassResponseMapper._normaliseClassPartial()`
+  and `ABClass.fromJSON()`) therefore pass the stored metadata through
+  `DateUtils.deepConvertDates()` before `new ABClassMetadata(...)`, which would otherwise reject
+  the `Date` as not a canonical UTC datetime. The existing full-read
   `DateUtils.deepConvertDates()` call for the other ABClass fields is retained.
 - Request metadata acceptance and its request-provenance error adaptation are both delivered
   (see "Controller request gate" and "Transport error adaptation" above).
@@ -284,6 +288,10 @@ against the current specification first.
   `_validatePreparedMetadata()` own the defensive copy and consistency checks. A legacy plain
   projection may omit the field; only the prepared copies gain `metadata`, with independent
   nested ownership.
+- The full and partial projections are plain spreads of the model's own serializer output plus a
+  detached metadata copy, not deep-detached clones of the model. See
+  [rehydration.md § Stored-read Date revival](rehydration.md#stored-read-date-revival) for how
+  revived `Date` values are converted during serialisation.
 - `_upsertClassPartial()` and `_writePreparedClassPartial(classId, partialData)` persist a
   prepared partial without re-projecting the model.
 - Field-scoped roster persistence is implemented in `_prepareRosterPartial(existingPartial,
@@ -459,6 +467,16 @@ All responses use the stable [transport envelope](../data-shapes/transport-envel
 
 **`data` coercion contract:** `_success()` in `z_apiHandler.js` wraps handler return data with `data: data ?? null`, so `undefined` values (including implicit returns from void handlers) become `null`. The frontend transport layer (`apiService.ts`) therefore always receives `data: null` for void backend methods, never a missing `data` key.
 
+**String serialisation contract:** the global `apiHandler()` returns `JSON.stringify(ApiDispatcher.getInstance().handle(request))`, a JSON string, not an object. `ApiDispatcher.handle()` still returns the envelope object; only the global entry point serialises it.
+
+This is required because `google.script.run` does not reliably preserve `null` properties on returned objects. It can omit them, so a `null` field such as `metadata: null` reaches the browser as `undefined` and fails the frontend Zod schema (for example `ClassPartialSchema.metadata`). `google.script.run` leaves a returned string untouched, and `JSON.parse` keeps `null`. Keep this contract:
+
+- Do not return the envelope object from `apiHandler()`.
+- Do not stringify inside individual handlers or `ApiDispatcher`; the entry point is the single serialisation point.
+- Frontend `dispatchAttempt` in `apiService.ts` is the single place that parses the string (`deserialiseRawResponse`).
+- `undefined` properties are still dropped by `JSON.stringify`, so handlers must emit explicit `null` for absent nullable fields, as `_success()` does for `data`.
+- Tests that call `apiHandler()` directly must `JSON.parse()` the return value; tests of `ApiDispatcher.handle()` receive the object.
+
 ### Dispatch and allowlist pattern
 
 `ALLOWLISTED_METHOD_HANDLERS` in `z_apiHandler.js` is the single authoritative registry for all
@@ -526,21 +544,27 @@ Frontend code should call `callApi` from `src/frontend/src/services/apiService.t
 Feature services should expose typed helpers per method and return parsed `data` from `callApi`.
 Use the allowlisted method names exactly as implemented in `ALLOWLISTED_METHOD_HANDLERS`, for example `callApi('getGoogleClassrooms')`.
 
-### ⚠️ Critical: prohibited types in `google.script.run` return values
+### ⚠️ Critical: prohibited types in `google.script.run` parameters and return values
 
 `google.script.run` prohibits `Date`, `Function`, and DOM elements in both **parameters and
-return values** — including inside nested objects and arrays. If any value in the response graph
-is a live `Date` object (not an ISO string), GAS falls back to `Object.toString()` serialisation,
-producing non-JSON output (Java `HashMap.toString()` format with `=` separators instead of `:`)
-that breaks `JSON.parse()` and causes the frontend to receive `null`.
+return values** — including inside nested objects and arrays.
+
+The **return** direction is already safe at the entry point: `apiHandler()` returns a JSON string,
+and `JSON.stringify` calls `Date.prototype.toJSON()`, so a valid `Date` in a handler payload is an
+ISO string before GAS sees it. A `Date` in the response graph therefore cannot cause GAS to fall
+back to `Object.toString()` serialisation. The **request** direction still passes objects to GAS,
+so a live `Date` in a request remains a prohibited type. Code that returns or copies a raw object
+outside `apiHandler`, or copies a revived `Date` key by key, can still produce `{}` or non-JSON
+output; JsonDbApp Date revival is a common source (see
+[rehydration.md § Stored-read Date revival](rehydration.md#stored-read-date-revival)).
 
 Reference: https://developers.google.com/apps-script/guides/html/reference/run
 (myFunction section: prohibited types in parameters; return value note confirms same restrictions.)
 
 **Backend rules:**
 
-1. Convert live `Date` objects to ISO 8601 strings at the API boundary before the response
-   reaches `apiHandler` / `ALLOWLISTED_METHOD_HANDLERS`. Two utilities are available in
+1. Convert live `Date` objects to ISO 8601 strings in the handler so the emitted shape is explicit
+   and independent of string serialisation. Two utilities are available in
    `DateUtils` (at `src/backend/Utils/DateUtils.js`):
    - `DateUtils.normaliseDateFields(response, ['field1', 'field2'])` — for shallow or known
      date fields. Mutates the object in-place. Use this when the date fields are at a known
@@ -555,6 +579,9 @@ Reference: https://developers.google.com/apps-script/guides/html/reference/run
    cannot serialise (e.g. `[Ljava.lang.Object;@...` references from Drive API wrappers).
 4. Test return values by inspecting `typeof` and `.constructor.name` at the transport boundary
    when diagnosing unexpected `null` responses.
+5. `apiHandler()` returns a JSON string, which preserves `null` properties that
+   `google.script.run` would otherwise omit from a returned object. See
+   [String serialisation contract](#response-envelope).
 
 ### Current migrated endpoints
 
@@ -655,7 +682,7 @@ Reference: https://developers.google.com/apps-script/guides/html/reference/run
   Validation: transport enforces `params` object shape, `courseId` and `assignmentId` presence, non-empty trimmed string, and path-character/control-character safety (using `validateSafeTrimmedIdentifier_`, which internally uses `hasControlCharacters_`, from `assignmentDefinition/assignmentDefinitionValidation.js`); the controller's `readRehydrateAssignment` method owns assignment-existence validation and throws `AssignmentNotFoundError` when no document exists.
   Handler behaviour: calls `new ABClassController().readRehydrateAssignment(courseId, assignmentId)` for a read-only load and hydration (no roster refresh, no `loadClass`, no ABClass mutation), including full-definition resolution, then serialises via `assignment.toReadJSON()`. It defensively strips `progressTracker` at the boundary and applies `DateUtils.deepConvertDates(response)` to recursively convert all `Date` objects to ISO 8601 strings (required because `google.script.run` prohibits `Date` objects in return values). On `AssignmentNotFoundError` thrown by `readRehydrateAssignment`, returns `null` (caught via `instanceof` check); all other errors from `readRehydrateAssignment` propagate.
   Logging: `info` before loading the full assignment document (`"getAssignment: loading full assignment"` with `{ courseId, assignmentId }`), `info` after successful hydration (`"getAssignment: rehydrated assignment"`), `warn` for not-found (`"getAssignment: assignment not found"` — `warn`, not `error`, because the API returns `null` gracefully), `error` for other failures (`"getAssignment failed"` with `{ courseId, assignmentId, err }`).
-  Response data: the complete `Assignment.toReadJSON()` shape — `courseId`, `assignmentId`, `assignmentName`, `dueDate` (ISO string or `null`), `updatedAt` (ISO string or `null`), `documentType`, `referenceDocumentId`, `templateDocumentId`, `tasks`, `submissions` (full artifacts, assessments, feedback), `assignmentDefinition`, and `assessmentContractVersion`. Current results keep `assessmentContractVersion: 1`; a stored legacy record is projected to detached all-criteria `REASSESSMENT_REQUIRED` submissions with `assessmentContractVersion: null`, while persistence `toJSON()`/`toPartialJSON()` still emit the opaque stored body unchanged. See [Contract: Assignment §`getAssignment` (read)](../data-shapes/assignment.md#getassignment-read). Or `null` when no persisted assignment document exists.
+  Response data: the complete `Assignment.toReadJSON()` shape — `courseId`, `assignmentId`, `assignmentName`, `dueDate` (ISO string or `null`), `updatedAt` (ISO string or `null`), `documentType`, `referenceDocumentId`, `templateDocumentId`, `tasks`, `submissions` (full artifacts, assessments, feedback), `assignmentDefinition`, and `assessmentContractVersion`. Current results keep `assessmentContractVersion: 1`; a stored legacy record is projected to detached all-criteria `REASSESSMENT_REQUIRED` submissions with `assessmentContractVersion: null`, while persistence `toJSON()`/`toPartialJSON()` still serialise the stored submissions and marker from instance state. See [Contract: Assignment §`getAssignment` (read)](../data-shapes/assignment.md#getassignment-read). Or `null` when no persisted assignment document exists.
   Error codes: `INVALID_REQUEST` (transport validation failure: non-object params, missing fields, unsafe characters). `INTERNAL_ERROR` (corrupt assignment document, partial-definition rejection, or any other `readRehydrateAssignment` failure). No new error code is introduced for not-found — the handler returns `null` for that case (catching the `AssignmentNotFoundError` typed error before it can reach the dispatcher's error envelope).
 
 - `getGoogleClassrooms` — returns active Classroom picker rows for ABClass creation flows.

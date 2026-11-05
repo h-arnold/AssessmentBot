@@ -387,7 +387,7 @@ Shared frontend test helpers belong under `src/frontend/src/test/**`. Feature-sc
 
 - Data-analysis test fixtures: `src/frontend/src/test/dataAnalysis/fixtures.ts` — moved from `src/frontend/src/services/dataAnalysis/test/fixtures.ts` to the canonical shared-helpers location.
 - Data-analysis assertion helpers: `src/frontend/src/test/dataAnalysis/averagingAnalyserAssertions.ts` — shared module exporting `expectMetricResult` and `checkMetricInvariant` (extracted from `averagingAnalyser.spec.ts`).
-- Synthetic analysis API round-trip adapter: `src/frontend/src/test/syntheticApiRoundTripAdapter.ts` — exports `createSyntheticApiRoundTripRunner(invokeRequest)`, a thin test-only adapter that composes the script-owned synthetic `apiHandler` bridge with `googleScriptRunHarness`. It preserves the harness's single success JSON serialisation, raw failures, and per-request callback isolation, and it imports no `scripts/` code. See [Synthetic Test Data](../testing/synthetic-test-data.md).
+- Synthetic analysis API round-trip adapter: `src/frontend/src/test/syntheticApiRoundTripAdapter.ts` — exports `createSyntheticApiRoundTripRunner(invokeRequest)`, a thin test-only adapter that composes the script-owned synthetic `apiHandler` bridge with `googleScriptRunHarness`. The bridge hands the real `apiHandler` JSON string to the harness, which passes strings through unchanged, so the envelope is serialised once by the backend and parsed once by `apiService`. The adapter also preserves raw failures and per-request callback isolation, and it imports no `scripts/` code. See [Synthetic Test Data](../testing/synthetic-test-data.md).
 - Task-preview fixture selection: `src/frontend/src/test/taskHeatmap/previewFixtures.ts` — selects the canonical `small` `class-2` roster and its populated Slides `assignment-2-1` and Sheets `assignment-2-2` records through the frontend raw-JSON import convention, validates every selected full record through `ClassFullSchema` / `AssignmentFullSchema`, and derives and deep-freezes the preview identifiers, labels, metric values and content so the suites assert real record data rather than restated literals. It also exposes clone/build helpers so callers never mutate the shared records.
 - Task-preview source-action and focus-session helper: `src/frontend/src/test/taskHeatmap/previewSourceActionTestHelpers.ts` — owns the single shared contract for the issue #19 source action and the metric cell's preview focus session: the action's accessible name, the canonical editor URL derived through the production lookup, a no-source boundary cell, and a harness that renders the real `TaskMetricPreviewCell` between focusable neighbours with focus-transfer observation and overlay open/dismiss waits. The no-source boundary cell keeps the canonical per-criterion reasoning and error causes, so only the source link differs. Its four callers are `TaskPreviewCard.sourceLink.spec.tsx`, `TaskMetricPreviewContent.spec.tsx`, `TaskMetricPreviewCell.focus.spec.tsx` and `TaskMetricPreviewCell.focusSession.spec.tsx`.
 - Heatmaps hook ready-dataset mock factory: `src/frontend/src/test/taskHeatmap/hookMockFactories.ts` — exports `createReadyHeatmapsDatasetResult(datasetKey)` to build the ready query and dataset-state pair returned by the mocked `usePageDataset`, selecting `classPartials` or `assignmentDefinitionPartials` data for the requested key; shared by `useHeatmapsPageData.spec.ts`, `useHeatmapsPageData.preview.spec.ts`, `useHeatmapsPageData.knownErrorPreview.spec.ts` and `useHeatmapsPageData.postAnalysis.spec.ts`.
@@ -546,16 +546,34 @@ Do not introduce new ad-hoc `google.script.run` mocks that mutate one shared run
 #### GAS serialisation fidelity rule
 
 The shared harness factory (`src/frontend/src/test/google-script-run-harness-factory.js`)
-automatically wraps `successHandler` with `JSON.stringify()`, faithfully simulating real GAS
-behaviour where `google.script.run` auto-stringifies return values.
+models the real backend boundary: the backend `apiHandler()` returns the envelope as a JSON
+string, and `google.script.run` passes a returned string through untouched.
 
-- **Do not add `JSON.stringify()` in individual test files.** The factory handles this.
-  Adding manual `JSON.stringify()` in a spec file is redundant and risks double-encoding.
+What the factory does with a success value:
+
+- **A string passes through unchanged.** This is what the real backend returns, so a mock should
+  deliver a pre-serialised envelope when it is modelling the backend.
+- **An object is serialised once after dropping `null` object properties.** Real
+  `google.script.run` omits `null` properties from returned objects (which is why the backend
+  stringifies). Dropping them keeps object-style mocks faithful; `null` array elements are kept.
+  `JSON.stringify` then drops `undefined` properties.
+- **Live `Date` values are rejected** on both the request and success graphs, because real
+  `google.script.run` prohibits them and `JSON.stringify` would otherwise hide the violation.
+
+Rules:
+
+- **Do not add `JSON.stringify()` around an object you pass to `successHandler`.** The factory
+  serialises objects itself; wrapping again double-encodes. Pass a string only when you are
+  deliberately modelling the backend's own serialised output.
 - **Do not add `JSON.parse()` in test callbacks.** The production `apiService.ts` (`dispatchAttempt`)
-  handles deserialisation before Zod validation. Tests should pass raw objects to the factory's
-  `successHandler` — the factory stringifies them, and `apiService.ts` parses them back.
+  handles deserialisation before Zod validation.
 - **`failureHandler` must not be stringified.** Real GAS passes raw error strings to
   `failureHandler`. The factory leaves `failureHandler` unwrapped.
+- **Object-style mocks lose `null` properties.** A mock that must prove a required nullable field
+  (for example `metadata: null`) survives transport has to deliver a serialised string, as
+  `src/frontend/src/test/abClass/metadataRefreshTransport.ts` does. The E2E runtime mock does this
+  for every envelope it sends (see
+  [Playwright E2E § Runtime Mock Infrastructure](frontend-playwright-e2e.md#runtime-mock-infrastructure)).
 - **All `google.script.run` mocks must use the factory:**
   - Vitest: `createGoogleScriptRunApiHandlerMock(invokeRequest)`
   - E2E: inject `googleScriptRunApiHandlerFactorySource` via `page.addInitScript(...)`
@@ -564,8 +582,8 @@ behaviour where `google.script.run` auto-stringifies return values.
 
 #### Void/delete response guidance: `data: null` required
 
-The factory wraps `successHandler` with `JSON.stringify(value)`. `JSON.stringify` silently strips
-`undefined` values from objects, so `{ data: undefined }` becomes `{}` after serialisation.
+The factory serialises object success values with `JSON.stringify`. `JSON.stringify` silently
+strips `undefined` values from objects, so `{ data: undefined }` becomes `{}` after serialisation.
 
 The backend `_success()` contract converts `undefined → null` via `data: data ?? null`. Therefore,
 mock responses for void backend methods (for example deletes, start-assessment-run) **must always

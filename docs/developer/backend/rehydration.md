@@ -46,6 +46,10 @@ controllers use to understand whether an assignment instance represents a full
 payload. It is never persisted; callers set it when they rehydrate or when they
 store partial summaries.
 
+`_legacyMarkerPresent` is also transient. `_baseFromJSON()` sets it on a legacy record to
+record whether the stored document had an `assessmentContractVersion` field, so serialisation
+can re-emit the marker only when it was actually stored. It is never serialised itself.
+
 ## Collection Naming Convention
 
 Full (authoritative) assignment documents are stored in a per-assignment collection distinct from the class collection. Recommended pattern:
@@ -133,7 +137,7 @@ Classes and primary methods (in call order):
    - Reconstructs the typed instance via `Assignment.fromJSON()`; this cascades into `AssignmentDefinition.fromJSON()`, which in turn strictly hydrates tasks (`_hydrateTasks` requires `taskTitle` and instantiates `TaskDefinition`, whose artifacts are materialised via `ArtifactFactory.fromJSON`).
    - Resolves partial definitions via `AssignmentDefinitionController.getDefinitionByKey(definitionKey, { form: 'full' })`.
    - Marks `_hydrationLevel = 'full'` on the returned instance.
-   - For a marker-1 record, restores submissions in one validated pass. For a legacy record (marker missing, `null`, or unsupported), keeps the stored submissions opaque and does not rehydrate historical items.
+   - For a marker-1 record, restores submissions in one validated pass. For a legacy record (marker missing, `null`, or unsupported), restores the stored submissions into `submissions` and the marker into instance state, and does not rehydrate historical items.
 
 6. **Assignment runtime**
    - Processing pipelines operate on the full instance; transient fields (`students`, `_hydrationLevel`) remain runtime-only and must never be persisted.
@@ -182,10 +186,10 @@ the detached reassessment projection and a `null` marker described below.
 `Assignment._baseFromJSON()` selects the restoration path from the stored `assessmentContractVersion`
 marker:
 
-| Stored state                              | Behaviour                                                                                                                                                                            |
-| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `1`                                       | One validated pass per identified submission and item, using the requested `full` or `partial` mode.                                                                                 |
-| Missing, `null`, or any unsupported value | Opaque legacy history: submissions are **not** item-rehydrated. The stored submission body, marker presence and exact marker value are kept as a deep, independently owned snapshot. |
+| Stored state                              | Behaviour                                                                                                                                                                                                         |
+| ----------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `1`                                       | One validated pass per identified submission and item, using the requested `full` or `partial` mode.                                                                                                              |
+| Missing, `null`, or any unsupported value | Legacy history: submissions are **not** item-rehydrated. The stored submission body becomes the ordinary `submissions` array, and the marker value plus whether the field was present are kept as instance state. |
 
 The representation mode is caller-owned: `_baseFromJSON()` passes the requested mode to the
 constructor, which owns the `full` default. A stored `representationMode` field is never read as the
@@ -207,14 +211,17 @@ There is no whole-submission catch/reconstruct/retry flow, per-item drop or plai
 
 ### Legacy records
 
-For a non-marker-1 record, `_baseFromJSON()` leaves `inst.submissions` empty. Persistence
-(`toJSON()`/`toPartialJSON()`) copies the opaque snapshot and the original marker, so an ordinary
-save cannot validate, rewrite or re-certify the historical result.
+For a non-marker-1 record, `_baseFromJSON()` restores the stored submissions into
+`inst.submissions` and records the marker as ordinary instance state:
+`inst.assessmentContractVersion` holds the stored value, and `inst._legacyMarkerPresent`
+records whether the stored document actually had the field. Persistence
+(`toJSON()`/`toPartialJSON()`) serialises that state directly, so an ordinary save cannot
+validate, rewrite or re-certify the historical result.
 
 Reads derive a detached projection through
 `AssignmentRehydration.projectReassessmentSubmissions(assignment, students, form)`:
 
-- `full` form uses the stored submission identities from the opaque snapshot and reads no roster.
+- `full` form uses the stored submission identities from `inst.submissions` and reads no roster.
 - `partial` form uses the loaded class roster and treats stored summaries as source metadata only.
 - Each student/task pair becomes a `StudentSubmission` with one `BaseTaskArtifact`
   (`role: 'submission'`, `type: 'base'`, null content/hash, empty metadata, deterministic
@@ -224,6 +231,24 @@ Reads derive a detached projection through
 - Both read paths emit `assessmentContractVersion: null`.
 
 The projection is derived per read and is never persisted.
+
+### Stored-read Date revival
+
+JsonDbApp's reader revives any ISO-looking string as a `Date`. Two consequences matter when you
+read or re-save stored documents:
+
+- **Stored metadata.** `ABClassResponseMapper._normaliseClassPartial()` and
+  `ABClass.fromJSON()` pass stored metadata through `DateUtils.deepConvertDates()` before
+  `new ABClassMetadata(...)`, which otherwise rejects a `Date` as not a canonical UTC datetime.
+  See [api-layer.md § Response mapper reuse](api-layer.md#response-mapper-reuse-implemented).
+- **Legacy submissions.** `AssignmentSerialisation._submissionJSON()` prefers a model
+  `toJSON()`/`toPartialJSON()`. A stored record without that serialiser falls back to
+  `_plainSubmissionJSON()`, which converts each field through `DateUtils.deepConvertDates()`.
+  Copying a revived `Date` key by key would otherwise produce `{}` and persist that over the
+  stored timestamps. Every emit path therefore serialises live `Date` values to ISO strings.
+
+This conversion prevents new corruption. It does not repair documents already stored with `{}`
+values; those stay corrupted until rewritten from a correct source.
 
 ## Restoration and projection ownership
 
@@ -296,20 +321,21 @@ hydration boundary is summarised below, as are the prepared write projections.
   order requires `02_AssignmentReadProjection.js` before `02_AssignmentRehydration.js`; both share
   the `02_` prefix, so the generated-bundle order depends on the builder's lexicographic filename
   sort. `scripts/builder/src/steps/backend-copy.spec.ts` asserts that copied order.
-- **Safe placeholders and opaque legacy state.** `_baseFromJSON()` keeps the legacy submission body
-  plus the original marker presence/value as a deep, independently owned JSON snapshot behind the
-  typed `Assignment` facade; runtime snapshot fields are not serialised themselves. Placeholder
-  timestamps and source-ID rules are in [Legacy records](#legacy-records).
-- **Legacy persistence versus read projection.** Persistence `toJSON()`/`toPartialJSON()` re-emit
-  the opaque body and the original marker presence/value unchanged and never emit reassessment E
-  placeholders. Both read paths emit the marker as null. Class persistence preparation and writes
-  never receive read placeholders; current-version serialisers retain their normal full/partial
-  semantics. A freshly restored marker-1 partial instance has no legacy snapshot, so replacing a
-  class assignment after a run does not resurrect opaque history. An ordinary class save must not
-  validate historical marks against the completed-item contract, strip stored content or certify the
-  old result as current.
+- **Legacy instance state.** `_baseFromJSON()` stores the legacy submission body in
+  `submissions` and the original marker in `assessmentContractVersion`, with
+  `_legacyMarkerPresent` recording whether the stored field existed. `_legacyMarkerPresent` is
+  never serialised itself. Placeholder timestamps and source-ID rules are in
+  [Legacy records](#legacy-records).
+- **Legacy persistence versus read projection.** Persistence `toJSON()`/`toPartialJSON()`
+  serialise the legacy submission body and re-emit the marker only when `_legacyMarkerPresent`
+  records its presence; they never emit reassessment E placeholders. Both read paths emit the
+  marker as null. Class persistence preparation and writes never receive read placeholders;
+  current-version serialisers retain their normal full/partial semantics. A freshly restored
+  marker-1 partial instance carries no legacy marker, so replacing a class assignment after a run
+  does not resurrect legacy history. An ordinary class save must not validate historical marks
+  against the completed-item contract, strip stored content or certify the old result as current.
 - **Browser boundary.** Both frontend read services run the normaliser over these already materialised entries and keep defensive per-item corruption isolation. It does not generate a second reassessment graph, query a roster or infer historical outcomes.
-- **Projection preparation before write.** `ABClassAssignmentOps.persistAssignmentRun()` (`src/backend/y_controllers/ABClassController/ABClassAssignmentOps.js`) validates the completed result through `ABClassAssignmentValidation` and prepares four independent payloads before the first collection mutation: the full assignment and its embedded partial (from `Assignment.toJSON()`/`toPartialJSON()`), plus the prospective updated full-class and class-partials documents. The class projections reuse the existing preparation owner — `ABClassPersistence._prepareFullClass()`/`_prepareClassPartial()` in `src/backend/y_controllers/ABClassController/ABClassPersistence.js` — rather than adding a second preparation path. Read projections are never inputs to this preparation; it serialises the authoritative assignment's own current-version or opaque legacy state. The write order (full record, then `ABClass`/partials) and its non-transactional failure semantics are unchanged; prepared snapshots are retained through each write, and a storage failure throws and logs the failed phase plus whether the full write committed.
+- **Projection preparation before write.** `ABClassAssignmentOps.persistAssignmentRun()` (`src/backend/y_controllers/ABClassController/ABClassAssignmentOps.js`) validates the completed result through `ABClassAssignmentValidation` and prepares four payloads before the first collection mutation: the full assignment and its embedded partial (from `Assignment.toJSON()`/`toPartialJSON()`), plus the prospective updated full-class and class-partials documents. The class projections reuse the existing preparation owner — `ABClassPersistence._prepareFullClass()`/`_prepareClassPartial()` in `src/backend/y_controllers/ABClassController/ABClassPersistence.js` — rather than adding a second preparation path. Read projections are never inputs to this preparation; it serialises the authoritative assignment's own current-version or legacy instance state. The assignment and class payloads are plain serializer output, not deep-detached clones of the model. The write order (full record, then `ABClass`/partials) and its non-transactional failure semantics are unchanged; prepared payloads are retained through each write, and a storage failure throws and logs the failed phase plus whether the full write committed.
 - **Read paths stay read-only.** `readRehydrateAssignment` and class reads do not refresh rosters, repair records or write back. Reassessment E projections are derived per read, not persisted.
 
 ## Error Handling

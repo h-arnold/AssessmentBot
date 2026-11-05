@@ -401,7 +401,7 @@ The bridge composes existing test seams rather than reimplementing envelope beha
 
 Round-trip semantics:
 
-- A backend success envelope travels through the success path and is JSON-stringified exactly once by the frontend `googleScriptRunHarness`.
+- A backend success envelope is serialised once by the backend `apiHandler`; the frontend `googleScriptRunHarness` passes that string through unchanged, and `callApi` parses it once. The bridge passes the `apiHandler` return value to the success handler as-is; it never stringifies it again.
 - A backend failure envelope reaches `callApi` as an `ApiTransportError`; a raw transport failure is delivered raw through the harness failure handler without JSON serialisation.
 - Void responses resolve from envelope `data: null`, matching `apiHandler` behaviour.
 - Malformed JSON or a malformed-but-enveloped payload surfaces the existing parser or Zod error; the bridge never converts a failure into a synthetic success.

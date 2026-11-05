@@ -4,9 +4,13 @@ const ABClassResponseMapper = require('#backend/y_controllers/ABClassController/
 
 function assignment(definition) {
   return {
+    // Current-format marker: a non-marker-1 record is read as legacy and
+    // reassessment-projected, which this definition-key probe does not model.
+    assessmentContractVersion: 1,
     toPartialJSON: vi.fn(() => ({
       courseId: 'course-1',
       assignmentId: 'assignment-1',
+      assessmentContractVersion: 1,
       ...(definition === undefined ? {} : { assignmentDefinition: definition }),
     })),
   };

@@ -133,6 +133,7 @@ describe('ABClassController._toReadView', () => {
       createdAt: '2026-01-01T09:00:00Z',
       documentType: 'SLIDES',
       submissions: [],
+      assessmentContractVersion: 1,
       assignmentDefinitionKey: 'def-key-001',
     };
 
@@ -148,6 +149,9 @@ describe('ABClassController._toReadView', () => {
       documentType: 'SLIDES',
       submissions: [],
       assignmentDefinition: { definitionKey: 'def-key-001' },
+      // Current-format marker: the read view only reassessment-projects legacy
+      // (non-marker-1) records.
+      assessmentContractVersion: 1,
       _hydrationLevel: 'partial',
       progressTracker: {},
       toPartialJSON: vi.fn().mockReturnValue({
@@ -160,6 +164,7 @@ describe('ABClassController._toReadView', () => {
         documentType: 'SLIDES',
         submissions: [],
         assignmentDefinition: { definitionKey: 'def-key-001' },
+        assessmentContractVersion: 1,
         _hydrationLevel: 'partial',
         progressTracker: {},
       }),
@@ -201,6 +206,7 @@ describe('ABClassController._toReadView', () => {
       documentType: 'SLIDES',
       submissions: [],
       assignmentDefinition: { definitionKey: 'def-key-001' },
+      assessmentContractVersion: 1,
       _hydrationLevel: 'partial',
       progressTracker: { some: 'data' },
       toPartialJSON: vi.fn().mockReturnValue({
@@ -210,6 +216,7 @@ describe('ABClassController._toReadView', () => {
         documentType: 'SLIDES',
         submissions: [],
         assignmentDefinition: { definitionKey: 'def-key-001' },
+        assessmentContractVersion: 1,
         _hydrationLevel: 'partial',
         progressTracker: { some: 'data' },
       }),
@@ -273,6 +280,7 @@ describe('ABClassController._toReadView', () => {
     realAssignment.createdAt = new Date('2026-01-01T09:00:00.000Z');
     realAssignment.assignmentDefinition = fullDef;
     realAssignment.submissions = [];
+    realAssignment.assessmentContractVersion = 1;
     realAssignment.progressTracker = ProgressTracker.getInstance();
     realAssignment._hydrationLevel = 'partial';
 

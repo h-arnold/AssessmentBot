@@ -130,24 +130,31 @@ export async function installRuntimeMock(
       globalThis.${methodCallsTrackerName} = [];
       globalThis.${deferredQueueTrackerName} = [];
 
+      // The backend apiHandler returns the envelope as a JSON string and real GAS
+      // passes it through, so success and error envelopes are serialised here.
+      // Handing the harness a raw object would let it drop null properties.
       function sendSuccess(callbacks, method, responseIndex, data) {
-        callbacks.successHandler?.({
-          ok: true,
-          requestId: 'req-' + method + '-' + responseIndex,
-          data,
-        });
+        callbacks.successHandler?.(
+          JSON.stringify({
+            ok: true,
+            requestId: 'req-' + method + '-' + responseIndex,
+            data,
+          })
+        );
       }
 
       function sendFailureEnvelope(callbacks, method, responseIndex, response) {
-        callbacks.successHandler?.({
-          ok: false,
-          requestId: 'req-' + method + '-' + responseIndex,
-          error: {
-            code: response.code ?? 'INTERNAL_ERROR',
-            message: response.message,
-            isRetriable: false,
-          },
-        });
+        callbacks.successHandler?.(
+          JSON.stringify({
+            ok: false,
+            requestId: 'req-' + method + '-' + responseIndex,
+            error: {
+              code: response.code ?? 'INTERNAL_ERROR',
+              message: response.message,
+              isRetriable: false,
+            },
+          })
+        );
       }
 
       globalThis.${RELEASE_DEFERRED_FUNCTION} = () => {

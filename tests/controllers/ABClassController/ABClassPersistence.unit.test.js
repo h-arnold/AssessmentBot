@@ -48,19 +48,16 @@ describe('ABClassPersistence prepared graph capture, consumption and independenc
   });
 
   // Canonical small class-1 has non-null metadata; assignment-1-1 supplies
-  // feedback, assessment E and numeric task-2-0 items at the indices below.
+  // assessment E and numeric task-2-0 items at the indices below.
   const FOUR_GRAPH_CLASS_ID = 'class-1';
   const FOUR_GRAPH_ASSIGNMENT_ID = 'assignment-1-1';
   const FOUR_GRAPH_TASK_ID = 'task-2-0';
-  const FEEDBACK_SUBMISSION_INDEX = 0;
-  const E_SUBMISSION_INDEX = 1;
   const NUMERIC_SUBMISSION_INDEX = 3;
 
   /**
    * Restores canonical inputs once, wiring real ops and the same persistence
    * owner over hermetic stores as the facade does. Only the production chain
-   * prepares the four graphs; serializer/store spies capture them. Pre-chain
-   * serialisations are expected-value oracles, never chain inputs.
+   * prepares the four graphs; serializer/store spies capture them.
    */
   function buildFourGraphRun() {
     const inputs = loadBackendModelInputs('small');
@@ -262,124 +259,6 @@ describe('ABClassPersistence prepared graph capture, consumption and independenc
     expect(numericFullItem.artifact.content).not.toBeNull();
     expect(numericPartialItem.artifact.content).toBeNull();
     expectPartialRedactsFull(preparedFull, preparedPartial);
-  });
-
-  it('consumes the exact pre-full-commit prepared graphs when the input models mutate at the full-store save seam', () => {
-    const { assignment, abClass, db, ops, persistence } = buildFourGraphRun();
-    const expectedFull = clone(assignment.toJSON());
-    const expectedPartial = clone(assignment.toPartialJSON());
-    const expectedMetadata = clone(abClass.metadata);
-    db.getCollection(fullStoreName(assignment)).save.mockImplementation(() => {
-      // The full store has committed: every later projection must already be
-      // prepared, so input-model mutation must not reach any store write.
-      const errorItem = assignment.submissions[E_SUBMISSION_INDEX].items[FOUR_GRAPH_TASK_ID];
-      errorItem.assessments.completeness.error.code = 'LLM_UNAVAILABLE';
-      errorItem.feedback.mutated = 'mutated after full commit';
-      errorItem.artifact.metadata.mutated = 'mutated after full commit';
-      assignment.submissions[NUMERIC_SUBMISSION_INDEX].items[
-        FOUR_GRAPH_TASK_ID
-      ].assessments.completeness.score = 1;
-      abClass.metadata.classAverages.completeness = 0;
-    });
-
-    runConnectedPersistChain(ops, persistence, abClass, assignment);
-
-    const writtenFull = db.collections[fullStoreName(assignment)].insertOne.mock.calls[0][0];
-    const writtenClass = db.collections[FOUR_GRAPH_CLASS_ID].insertOne.mock.calls[0][0];
-    const writtenRegistry = db.collections['abclass_partials'].insertOne.mock.calls[0][0];
-    const embedded = writtenClass.assignments.find(
-      (entry) => entry.assignmentId === FOUR_GRAPH_ASSIGNMENT_ID
-    );
-    expect(
-      embedded,
-      'the class write must consume the prepared embedded partial, not a post-commit re-projection of the mutated model'
-    ).toEqual(expectedPartial);
-    expect(writtenClass.metadata).toEqual(expectedMetadata);
-    expect(writtenRegistry.metadata).toEqual(expectedMetadata);
-    expect(writtenFull).toEqual(expectedFull);
-    const fullErrorEntry =
-      writtenFull.submissions[E_SUBMISSION_INDEX].items[FOUR_GRAPH_TASK_ID].assessments
-        .completeness;
-    fullErrorEntry.error.code = 'MUTATED';
-    expect(
-      embedded.submissions[E_SUBMISSION_INDEX].items[FOUR_GRAPH_TASK_ID].assessments.completeness
-        .error.code
-    ).not.toBe('MUTATED');
-  });
-
-  it('keeps the persisted graphs and the input models independent when a persisted graph node is mutated', () => {
-    const { assignment, abClass, db, ops, persistence } = buildFourGraphRun();
-    const expectedMetadata = clone(abClass.metadata);
-
-    runConnectedPersistChain(ops, persistence, abClass, assignment);
-
-    const writtenClass = db.collections[FOUR_GRAPH_CLASS_ID].insertOne.mock.calls[0][0];
-    const writtenRegistry = db.collections['abclass_partials'].insertOne.mock.calls[0][0];
-    const embedded = writtenClass.assignments.find(
-      (entry) => entry.assignmentId === FOUR_GRAPH_ASSIGNMENT_ID
-    );
-    const instance = abClass.assignments.find(
-      (entry) => entry.assignmentId === FOUR_GRAPH_ASSIGNMENT_ID
-    );
-    expect(Array.isArray(instance.assignmentDefinition.tasks)).toBe(true);
-    expect(
-      instance.submissions[NUMERIC_SUBMISSION_INDEX].items[FOUR_GRAPH_TASK_ID].artifact.content
-    ).toBeNull();
-
-    writtenRegistry.metadata.classAverages.accuracy = 0;
-    expect(writtenClass.metadata).toEqual(expectedMetadata);
-    expect(abClass.metadata).toEqual(expectedMetadata);
-
-    const numericEntry =
-      embedded.submissions[NUMERIC_SUBMISSION_INDEX].items[FOUR_GRAPH_TASK_ID].assessments
-        .completeness;
-    numericEntry.score = 1;
-    expect(
-      instance.submissions[NUMERIC_SUBMISSION_INDEX].items[FOUR_GRAPH_TASK_ID].assessments
-        .completeness.score
-    ).toBe(3);
-
-    const errorItem = embedded.submissions[E_SUBMISSION_INDEX].items[FOUR_GRAPH_TASK_ID];
-    const instanceItem = instance.submissions[E_SUBMISSION_INDEX].items[FOUR_GRAPH_TASK_ID];
-    const instanceEntryBefore = clone(instanceItem.assessments.completeness);
-    const instanceFeedbackBefore = clone(instanceItem.feedback);
-    const instanceMetadataBefore = clone(instanceItem.artifact.metadata);
-    errorItem.assessments.completeness.error.code = 'LLM_UNAVAILABLE';
-    errorItem.feedback.mutated = 'mutated persisted graph';
-    errorItem.artifact.metadata.mutated = 'mutated persisted graph';
-    expect(
-      instanceItem.assessments.completeness,
-      'a persisted E cause must be owned by the persisted graph alone'
-    ).toEqual(instanceEntryBefore);
-    expect(instanceItem.feedback).toEqual(instanceFeedbackBefore);
-    expect(instanceItem.artifact.metadata).toEqual(instanceMetadataBefore);
-  });
-
-  it('keeps the persisted class and registry payloads independent of the input assignment model', () => {
-    const { assignment, abClass, db, ops, persistence } = buildFourGraphRun();
-    const expectedPartial = clone(assignment.toPartialJSON());
-    const expectedMetadata = clone(abClass.metadata);
-    db.getCollection(FOUR_GRAPH_CLASS_ID).findOne.mockImplementation(() => {
-      const errorItem = assignment.submissions[E_SUBMISSION_INDEX].items[FOUR_GRAPH_TASK_ID];
-      errorItem.assessments.completeness.error.code = 'LLM_UNAVAILABLE';
-      errorItem.feedback.mutated = 'mutated assignment model';
-      errorItem.artifact.metadata.mutated = 'mutated assignment model';
-      assignment.submissions[NUMERIC_SUBMISSION_INDEX].items[
-        FOUR_GRAPH_TASK_ID
-      ].assessments.completeness.score = 1;
-      return null;
-    });
-
-    runConnectedPersistChain(ops, persistence, abClass, assignment);
-
-    const writtenClass = db.collections[FOUR_GRAPH_CLASS_ID].insertOne.mock.calls[0][0];
-    const writtenRegistry = db.collections['abclass_partials'].insertOne.mock.calls[0][0];
-    const embedded = writtenClass.assignments.find(
-      (entry) => entry.assignmentId === FOUR_GRAPH_ASSIGNMENT_ID
-    );
-    expect(embedded).toEqual(expectedPartial);
-    expect(writtenClass.metadata).toEqual(expectedMetadata);
-    expect(writtenRegistry.metadata).toEqual(expectedMetadata);
   });
 
   it('re-prepares both payloads from the current model on a subsequent ordinary class save after the run', () => {

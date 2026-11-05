@@ -47,7 +47,9 @@ async function mockTopicsCrudRuntime(page: Page) {
 
       function sendSuccess(handler, data, requestId) {
         if (handler !== undefined) {
-          handler({ ok: true, requestId, data });
+          // The backend apiHandler returns the envelope as a JSON string and real GAS
+          // passes it through, so fixtures keep their explicit null properties.
+          handler(JSON.stringify({ ok: true, requestId, data }));
         }
       }
 
