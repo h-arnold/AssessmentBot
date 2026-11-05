@@ -2,7 +2,7 @@
 description: Creates, maintains, and debugs Playwright browser end-to-end tests
 mode: all
 steps: 100
-model: mistral/deepseek-v4-1-flash-1017
+model: opencode/pulse-alpha-free
 permissions:
   - action: playwright_*
     resource: '*'
