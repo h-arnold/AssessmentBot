@@ -145,9 +145,41 @@ This is **fixture realism only**, not a production nullable-contract change:
 
 ## Generated content: artefacts, contract marker and outcomes
 
-### Planned legacy scenario derivation (Not implemented)
+### Legacy scenario derivation
 
-For root `SPEC.md`, add a Node-test-only `deriveLegacyAssignmentScenario.js` under `scripts/synthetic-test-data/`. It derives linked legacy persistence/read scenarios from cloned canonical `small`/`medium` views and existing backend-model inputs: remove the stored assessment marker, or explicitly set the read marker to `'legacy'`, without inventing scores, names, artefacts or feedback. Keep the base corpus and version-1 validators unchanged. Node tests select this shared derivation. Frontend Vitest/Playwright use existing typed fixture helpers to clone committed canonical JSON and change only linked assignment markers; do not import script JavaScript into frontend projects or alter TypeScript configuration for this. Invalid item maps/nulls and malformed roots stay local. Add deterministic/no-input-mutation and linked full/partial tests. Only touched existing tests migrate.
+`scripts/synthetic-test-data/deriveLegacyAssignmentScenario.js` derives linked legacy copies of one
+selected assignment from canonical views. It is pure and test-only: it reads no files, imports
+neither the loader nor any generator, and changes no corpus, validator or committed fixture. The
+corpus stays version-1-only, so this helper is the only way Node tests obtain a legacy scenario.
+
+```js
+deriveLegacyAssignmentScenario({ profileName, assignmentId, variant, sources });
+```
+
+- `profileName` is used only in error messages.
+- `assignmentId` selects the assignment; the helper finds its owning class from
+  `sources.classesById`.
+- `variant` is explicit and has no default. `'stored'` deletes `assessmentContractVersion` from both
+  derived forms; `'read'` sets it to `'legacy'` on both.
+- `sources` holds caller-supplied `classesById` and `assignmentsByKey` views. Callers load them, for
+  example with `loadSyntheticAnalysisProfile`, which returns deep-frozen views.
+
+It returns `{ classId, classView, assignmentsByKey, full, classEmbedded }`. `full` and
+`classEmbedded` are the selected assignment's standalone and class-embedded forms, taken from the
+returned `assignmentsByKey` and `classView` copies. Outputs are deep clones, deterministic across
+calls and independently owned; inputs are never mutated. Scores, identities, artefacts, feedback and
+timestamps pass through unchanged.
+
+An unsupported variant, or an assignment absent from either view, throws an error naming the
+selection. Invalid item maps, `null` roots and other malformed data stay in local probes.
+
+`tests/synthetic-analysis/syntheticLegacyScenarios.test.ts` uses the `small` `class-0` /
+`assignment-0-1` healthy primary and the `medium` `class-0` / `assignment-0-2` mixed healthy/E
+selection. Frontend Vitest and Playwright do not import this module; they clone committed canonical
+JSON through their existing typed fixture helpers and change only the linked markers.
+
+The helper adds no profile, view or model-input adapter. The bullet notes below describe the
+generated version-1 corpus, which this derivation leaves untouched.
 
 - **Artefact types.** The existing definition and submission builders cycle `TEXT`, `IMAGE` and
   `SPREADSHEET` bodies using their existing deterministic index arithmetic. IMAGE bodies are

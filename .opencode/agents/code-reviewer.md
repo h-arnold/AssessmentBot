@@ -111,7 +111,7 @@ Consult these resources before and during review. Local docs contain project-spe
 
 - [AGENTS.md](../../AGENTS.md)
 - [CONTRIBUTING.md](../../CONTRIBUTING.md)
-- [Synthetic Test Data](../../docs/developer/testing/synthetic-test-data.md) — canonical architecture and canonical-fixture policy for the deterministic synthetic analysis corpus
+- [Synthetic Test Data](../../docs/developer/testing/synthetic-test-data.md) — canonical architecture, canonical-fixture policy and the test-only legacy scenario derivation for the deterministic synthetic analysis corpus
 - [Known Flaky Tests](../../docs/developer/known-flaky-tests.md) — catalogue of known flaky tests and root causes
 
 **Data shapes (all modules — persistence, transport, validation)**:

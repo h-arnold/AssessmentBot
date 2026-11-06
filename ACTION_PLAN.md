@@ -93,7 +93,7 @@ Provide realistic legacy fixtures from existing generated data, not a second dat
 
 ### Helper and data-shape plan
 
-- **New test-only derivation**, owner above, recorded **Not implemented** in @docs/developer/testing/synthetic-test-data.md . No production contract change in this section. Do not introduce a new committed profile or regenerate unchanged corpora.
+- **New test-only derivation**, owner above, recorded as implemented in @docs/developer/testing/synthetic-test-data.md ("Legacy scenario derivation"). No production contract change in this section. Do not introduce a new committed profile or regenerate unchanged corpora.
 
 ### Acceptance criteria and checks
 
@@ -102,11 +102,22 @@ Provide realistic legacy fixtures from existing generated data, not a second dat
 - `npm run lint:synthetic:check`; `npm run typecheck:all`.
 - Documentation records the actual helper API and profile/view selection.
 
+### Outcome
+
+Delivered `scripts/synthetic-test-data/deriveLegacyAssignmentScenario.js` (pure test-only helper) and `tests/synthetic-analysis/syntheticLegacyScenarios.test.ts`. Red, green and both reviews passed with no findings; no refactor was needed.
+
 ### Implementation notes / deviations / follow-up
 
-Not started. Later Node-side sections use this helper for healthy legacy records. Frontend tests use the explicit marker-only canonical-clone path above; local boundary probes are exempt.
+Complete. Recorded contract for later sections:
 
-Red phase delegated to Testing Specialist (tests only; the derivation helper is green-phase work). Baseline recorded under "Baseline record": 7/8 checks passing; backend-lint `max-lines` warnings in 4 unrelated test files are accepted pre-existing debt.
+- **Call:** `deriveLegacyAssignmentScenario({ profileName, assignmentId, variant, sources: { classesById, assignmentsByKey } })` → `{ classId, classView, assignmentsByKey, full, classEmbedded }`.
+- **Variants:** `'stored'` deletes the marker property; `'read'` sets `'legacy'`. No default profile or implicit version selection; invalid variant or unknown assignment throws naming the selection.
+- **Caller-supplied views:** the helper takes already-loaded, deep-frozen canonical views and never loads from disk. Callers own loading (for example `loadSyntheticAnalysisProfile`).
+- **Guarantees:** deep-cloned output is deterministic and independently owned; sibling assignments, IDs, scores, artefacts, feedback and timestamps are unchanged; inputs are never mutated.
+- **Canonical selections:** `small` `class-0`/`assignment-0-1` (healthy primary); `medium` `class-0`/`assignment-0-2` (mixed healthy/E). Reuses the existing `#synthetic-data/*` package-import alias; no new alias or config.
+- **Frontend boundary:** Vitest and Playwright keep their typed canonical-clone marker-only helpers; they must not import this scripts JavaScript.
+- **Docs (sync outcome):** reconciled `docs/developer/testing/synthetic-test-data.md` — "Planned legacy scenario derivation (Not implemented)" became "Legacy scenario derivation" with the implemented record (API, variant semantics, caller-supplied frozen views, canonical selections, frontend boundary). One-line sync to the Synthetic Test Data entry in `.opencode/agents/code-reviewer.md`'s doc-reference list. No pages created. Section 2+ planned data-shape contract entries remain **Not implemented**; this section changed no production contract.
+- **Section regression gate (§2.6):** PASSED — compare mode, session `legacy-assignment-results`, report `.ts-regression-checker/reports/session-legacy-assignment-results/runs/2026-11-06T06-58-28.981Z/comparison.txt` (2026-11-06T06:58Z). 0 regressions, 0 new failures, 0 fixes; 7/8 checks passing. The only failing check is `backend-lint-check` with exactly the 4 pre-existing unrelated `max-lines` warnings recorded as baseline debt. No skipped adjustments.
 
 ## Section 2 — Preserve saved legacy submissions
 
