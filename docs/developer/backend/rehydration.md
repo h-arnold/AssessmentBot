@@ -9,13 +9,65 @@ This document describes how _full_ assignment hydration works when starting from
 lightweight (partially hydrated) assignment objects embedded inside an `ABClass`
 instance that was loaded from JsonDbApp.
 
-## Planned legacy-read helper (Not implemented)
+## Legacy read preparation
 
-Root `SPEC.md` plans `AssignmentRehydration.prepareLegacyReadSubmissions(assignment, form)`, owned by a small `02_AssignmentLegacyRead.js` module under `Assignment/`. Both full and class read serialisers call it. Reuse `AssignmentCurrentRestoration` item checks, task-list, timestamp and model serialisation rules on an independent read result; do not validate/mutate the raw legacy persistence state. Valid items remain, corrupt items and malformed maps yield task-level `CORRUPT_RECORD` E. No roster expansion, write-back or identity recovery is planned. Current behaviour elsewhere in this document remains implemented until that change lands.
+`AssignmentLegacyRead` in
+`src/backend/AssignmentProcessor/Assignment/02_AssignmentLegacyRead.js` prepares an independent read
+result for a restored legacy assignment. It is a stateless class: every call constructs a fresh
+instance, and the class holds no instance or module-level state. The `AssignmentRehydration` facade
+exposes it as `prepareLegacyReadSubmissions(assignment, form)`.
 
-Validation mode follows embedded tasks (summary array: partial; keyed map: full), matching current restoration; `form` selects full/partial output. Non-array submissions roots bypass preparation and are emitted preserved for existing frontend root rejection. The removed projector's `userId` fallback is not retained: student-ID recovery is explicitly out of scope.
+**Status: not wired.** No read caller uses this helper yet. `AssignmentSerialisation.toReadJSON()`
+and `ABClassResponseMapper._toReadView()` still call
+`AssignmentRehydration.projectReassessmentSubmissions()`, so the reassessment projection described
+under [Legacy records](#legacy-records) remains the active read path. Wiring both serialisers and
+removing the projector is the read-activation change.
 
-The new owner is a small `AssignmentLegacyRead` class; any accumulator/default state belongs in its constructor, not namespace/module initialisation.
+### API
+
+| Item      | Behaviour                                                                                                                                         |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `prepare` | Returns prepared submissions in the requested form, or `null` when the submissions root is present but not an array.                              |
+| `form`    | `'full'` or `'partial'`; selects output serialisation only. Any other value throws.                                                               |
+| Throws    | Untrustworthy submission identity, unknown task association, missing embedded definition, invalid timestamps, and any injected restoration fault. |
+| Never     | Fetches a roster, reads storage, writes back, or mutates the restored assignment or its saved submissions.                                        |
+
+### Validation mode and output form
+
+Validation mode follows the embedded definition representation, matching current-format restoration:
+a summary task array selects partial validation, and a keyed task map selects full validation. The
+`form` argument controls output serialisation only, so a partial output form never weakens the
+validator. A redacted body stored under a full definition is therefore checked as full and its
+contradictory null source becomes `CORRUPT_RECORD` E.
+
+### Preparation rules
+
+Preparation reuses `AssignmentCurrentRestoration._rehydrateCurrentSubmission()` on an isolated
+receiver, so item validation, missing-item coverage, null-parent isolation and timestamp
+preparation are the current-format rules rather than a second validator.
+
+- Each stored submission is copied with its `items` deep-copied before validation. A non-record
+  `items` value (null, missing, array or other non-object) is passed as absent, so the existing
+  owner yields one `CORRUPT_RECORD` E per embedded task.
+- Valid items keep their score, reasoning, content, hash, source IDs and feedback. Invalid items and
+  missing known tasks become `CORRUPT_RECORD` E for that task; healthy siblings and neighbouring
+  submissions are unchanged.
+- A genuinely empty null-parent submission stays the no-submission representation.
+- Output uses the model serialisers: `toJSON()` for `full` and `toPartialJSON()` for `partial`.
+- The receiver is constructed with the saved name, timestamps and definition, and is never stamped
+  completed or current to enter validation. The restored assignment keeps its legacy marker state
+  and raw submissions, so later persistence output is unchanged.
+
+A present non-array `submissions` root bypasses preparation entirely and returns `null`; the caller
+emits the preserved value for existing frontend root rejection. This is the only `null` return.
+
+### Load order
+
+The module sorts between `AssignmentCurrentRestoration.js` and `02_AssignmentRehydration.js`:
+CurrentRestoration → LegacyRead → Rehydration. All three share the `02_` prefix, so the
+generated-bundle order depends on the builder's lexicographic filename sort.
+`scripts/builder/src/steps/backend-copy.spec.ts` asserts that order against the real backend tree,
+and `tests/setupGlobals.js` registers the same global order for Node tests.
 
 ## Goals
 
@@ -325,7 +377,7 @@ hydration boundary is summarised below, as are the prepared write projections.
 - **Identity failure.** A valid submission with corrupt items yields E for its known definition tasks. If student/task identity or the shared root/definition is untrustworthy, the owned dataset fails loudly instead of guessing associations.
 - **Definition-write artefact invariant.** `AssignmentDefinitionValidation.validateSharedArtifacts()` in `src/backend/y_controllers/AssignmentDefinition/AssignmentDefinitionValidation.js` owns the definition-write invariant, invoked by `AssignmentDefinitionUpsertOrchestrator` on the final resolved tasks after weighting and before constructing or persisting the definition. At new definition writes, non-IMAGE artefacts must already have non-null content and a string hash; valid blank TEXT/array templates are not rejected as empty. Pending IMAGE artefacts remain allowed before an assessment run; this is distinct from the stricter completed-full-assignment artefact gate, which is implemented in `ABClassAssignmentValidation._validateCompletedSharedArtefacts()` and requires usable content and a non-empty string hash on every shared reference/template artefact of the known tasks. A formula-free spreadsheet reference task is an unusable shared definition and is rejected at the definition-write boundary. Expected content rejections log bounded `{ taskId }` context and throw `ApiValidationError` with the existing safe `DEFINITION_PARSE_FAILED` message and code; missing structure and other wiring faults propagate unchanged. Blank `[]` templates remain valid. Existing definition rollback semantics are unchanged, no separate parser/API validators are added, and no run-time eligibility preflight is introduced.
 - **Blank spreadsheet grids (existing model rule; reused).** The blank-grid owner is `SpreadsheetTaskArtifact.normalizeContent` in `src/backend/Models/Artifacts/3_SpreadsheetTaskArtifact.js`. It canonicalises a successfully read blank/all-null grid to `[]` with the normal hash of `[]`, for blank templates and blank student ranges through construction, persistence and restoration. Parsers and restoration reuse that model rule instead of adding competing blank-grid coercion. Literal `null` means unavailable spreadsheet content, not blank content. The extraction boundary materialises extraction `SOURCE_CONTENT_UNAVAILABLE` E for known tasks whose content is unavailable; read restoration still converts only contradictory stored records to validation `CORRUPT_RECORD` E. Existing populated-formula normalisation and blank-range formula scores are unchanged.
-- **Legacy reassessment projection.** `AssignmentRehydration.projectReassessmentSubmissions()`
+- **Legacy reassessment projection (active read path).** `AssignmentRehydration.projectReassessmentSubmissions()`
   delegates to the pure `AssignmentReadProjection` in
   `src/backend/AssignmentProcessor/Assignment/02_AssignmentReadProjection.js`; the facade keeps one
   operation, not a second materialiser. `ABClassResponseMapper._toReadView` invokes it with the
@@ -336,6 +388,8 @@ hydration boundary is summarised below, as are the prepared write projections.
   order requires `02_AssignmentReadProjection.js` before `02_AssignmentRehydration.js`; both share
   the `02_` prefix, so the generated-bundle order depends on the builder's lexicographic filename
   sort. `scripts/builder/src/steps/backend-copy.spec.ts` asserts that copied order.
+  `AssignmentLegacyRead` is implemented beside it but has no caller yet; see
+  [Legacy read preparation](#legacy-read-preparation).
 - **Legacy instance state.** `_baseFromJSON()` stores the legacy submission body in
   `submissions` and the original marker in `assessmentContractVersion`, with
   `_legacyMarkerPresent` recording whether the stored field existed. A present body keeps its
@@ -354,7 +408,7 @@ hydration boundary is summarised below, as are the prepared write projections.
   against the completed-item contract, strip stored content or certify the old result as current.
 - **Browser boundary.** Both frontend read services run the normaliser over these already materialised entries and keep defensive per-item corruption isolation. It does not generate a second reassessment graph, query a roster or infer historical outcomes.
 - **Projection preparation before write.** `ABClassAssignmentOps.persistAssignmentRun()` (`src/backend/y_controllers/ABClassController/ABClassAssignmentOps.js`) validates the completed result through `ABClassAssignmentValidation` and prepares four payloads before the first collection mutation: the full assignment and its embedded partial (from `Assignment.toJSON()`/`toPartialJSON()`), plus the prospective updated full-class and class-partials documents. The class projections reuse the existing preparation owner — `ABClassPersistence._prepareFullClass()`/`_prepareClassPartial()` in `src/backend/y_controllers/ABClassController/ABClassPersistence.js` — rather than adding a second preparation path. Read projections are never inputs to this preparation; it serialises the authoritative assignment's own current-version or legacy instance state. The assignment and class payloads are plain serializer output, not deep-detached clones of the model. The write order (full record, then `ABClass`/partials) and its non-transactional failure semantics are unchanged; prepared payloads are retained through each write, and a storage failure throws and logs the failed phase plus whether the full write committed.
-- **Read paths stay read-only.** `readRehydrateAssignment` and class reads do not refresh rosters, repair records or write back. Reassessment E projections are derived per read, not persisted.
+- **Read paths stay read-only.** `readRehydrateAssignment` and class reads do not refresh rosters, repair records or write back. Reassessment E projections are derived per read, not persisted, and legacy read preparation runs on an independent receiver so saved state and later persistence output stay untouched.
 
 ## Error Handling
 

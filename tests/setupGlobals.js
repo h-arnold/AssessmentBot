@@ -19,6 +19,7 @@ g.AssignmentSerialisation = require('../src/backend/AssignmentProcessor/Assignme
 g.AssignmentFactory = require('../src/backend/AssignmentProcessor/Assignment/01_AssignmentFactory.js');
 g.AssignmentCurrentRestoration = require('../src/backend/AssignmentProcessor/Assignment/02_AssignmentCurrentRestoration.js');
 g.AssignmentReadProjection = require('../src/backend/AssignmentProcessor/Assignment/02_AssignmentReadProjection.js');
+g.AssignmentLegacyRead = require('../src/backend/AssignmentProcessor/Assignment/02_AssignmentLegacyRead.js');
 g.AssignmentRehydration = require('../src/backend/AssignmentProcessor/Assignment/02_AssignmentRehydration.js');
 g.AssignmentTimestamps = require('../src/backend/AssignmentProcessor/Assignment/03_AssignmentTimestamps.js');
 g.AssignmentSubmissions = require('../src/backend/AssignmentProcessor/Assignment/04_AssignmentSubmissions.js');

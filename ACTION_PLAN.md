@@ -196,7 +196,7 @@ New focused `tests/assignment/assignmentLegacyReadPreparation*.test.js` suites:
 
 ### Helper, data-shape and fixture plan
 
-- **New read-preparation owner, reuse existing validation**: planned **Not implemented** entry in @docs/developer/backend/rehydration.md . Record actual API and load order there.
+- **New read-preparation owner, reuse existing validation**: implemented entry "## Legacy read preparation" in @docs/developer/backend/rehydration.md (owner, API table, validation mode, bypass convention, load order; unwired status explicit).
 - Contracts: @docs/developer/data-shapes/assessment.md @docs/developer/data-shapes/student-submission.md @docs/developer/data-shapes/assignment.md @docs/developer/data-shapes/abclass.md . Keep public wire activation pending until Section 4.
 - Fixtures: Section 1 `small`/`medium` stored forms; local corruption probes. No competing realistic fixture.
 
@@ -207,9 +207,27 @@ New focused `tests/assignment/assignmentLegacyReadPreparation*.test.js` suites:
 - `npm run test:builder -- src/steps/backend-copy.spec.ts`
 - `npm run lint:backend:check`; `npm run lint:builder:check`.
 
+### Outcome
+
+Delivered `02_AssignmentLegacyRead.js` (stateless `AssignmentLegacyRead` class) and the thin `AssignmentRehydration.prepareLegacyReadSubmissions(assignment, form)` facade, with the GAS global registered in `tests/setupGlobals.js` and load order pinned in `scripts/builder/src/steps/backend-copy.spec.ts`. New focused suites: `tests/assignment/assignmentLegacyReadPreparation{Support,.healthy,.corruption,.validationMode}`. Red and green reviews passed with zero findings; no refactor was needed. Checks: preparation suites 35/35; `tests/assignment` 425/425; cross-suite (assignment + controllers + models) 1496/1496; `npm run test:builder` 252/252 including the new ordering assertion; `npm run lint:backend:check` exit 1 only from the 4 baseline-debt `max-lines` warnings; `npm run lint:builder:check` clean; `npm run typecheck:all` exit 0.
+
 ### Implementation notes / deviations / follow-up
 
-Not started. Only the enabling helper is added here; Section 4 activates both wire ends together.
+Complete for the enabling helper only; Section 4 activates both wire ends together. Contract for later sections:
+
+- **API:** `AssignmentRehydration.prepareLegacyReadSubmissions(assignment, form)` constructs `new AssignmentLegacyRead()` per call and delegates to `prepare(assignment, form)`. The class holds no instance or module state; all work is per call.
+- **`form` selects output serialisation only:** `'full'` or `'partial'`; any other value throws `Invalid legacy read preparation form: <value>`. It never weakens validation.
+- **Validation mode is definition-representation driven:** an array task list selects partial validation, a keyed task map selects full validation, independent of `form`. Full output uses the resolved full definition.
+- **Reuse, not a second validator:** the owner calls `AssignmentCurrentRestoration._rehydrateCurrentSubmission` on isolated raw copies (a shallow record copy whose `items` are deep-copied per key). Receivers are constructed with the assignment's true legacy marker state and are never stamped `1`; there is no blanket E materialiser and no second validator.
+- **Non-array root bypass:** a present non-array `submissions` value returns `null`; Section 4's caller emits the preserved, date-normalised value.
+- **Timestamps:** prepared via `_prepareCurrentTimestamps` with ISO-string assignment fallbacks; never a clock.
+- **Error propagation:** identity and unknown-task errors, and injected constructor faults, propagate unchanged; they are never relabelled `E`.
+- **Unwired state:** `toReadJSON()`, `ABClassResponseMapper` and the projector are unchanged. Section 4 owns wire activation, projector deletion and shape-doc reconciliation.
+- **Red-test adjustment (justified):** in `assignmentLegacyReadPreparation.corruption.test.js` the original snapshot was taken before the local mutate probe and then compared against the record, which was unsatisfiable because the probe itself mutates the record. The snapshot now happens after the mutation. No production surface changed.
+- **Process deviation:** the Implementation agent initially authored this section's outcome/notes in `ACTION_PLAN.md` without authorisation. The orchestrator reverted that text and composed this authoritative record. No later section is affected.
+- **Shape-doc reconciliation:** deliberately deferred to Section 4; this section left the shape docs' Not-implemented entries untouched.
+- **Section regression gate (§2.6):** PASSED — compare mode, report `.ts-regression-checker/reports/session-legacy-assignment-results/runs/2026-11-06T08-47-07.428Z/comparison.txt` (2026-11-06T08:47Z). 0 regressions, 0 new failures; 7/8 checks passing, the only failing check being the identical baseline-debt `backend-lint-check`.
+- **Docs sync (outcome):** `docs/developer/backend/rehydration.md` replaced the "Planned legacy-read helper (Not implemented)" section with the implemented "Legacy read preparation" record (owner/API table, validation mode, preparation rules, `null` bypass, load order, unwired status), plus ownership-section reconciliation; the stale "userId fallback" clause was folded away. No pages created. Shape docs deliberately untouched (Section 4 targets, reported by Docs). **Section 6 follow-up:** `02_AssignmentLegacyRead.js` still uses "task universe" in a throw message and one comment — the Section 6 plain-language pass must replace it with "tasks"/"task IDs".
 
 ## Section 4 — Activate the legacy wire version end to end
 

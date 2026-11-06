@@ -48,21 +48,46 @@ describe('runBackendCopy', () => {
     const itemPath = 'Models/StudentSubmission/00_StudentSubmissionItem.js';
     const entryPath = 'Models/StudentSubmission/index.js';
     const projectionPath = 'AssignmentProcessor/Assignment/02_AssignmentReadProjection.js';
+    const currentRestorationPath =
+      'AssignmentProcessor/Assignment/02_AssignmentCurrentRestoration.js';
+    const legacyReadPath = 'AssignmentProcessor/Assignment/02_AssignmentLegacyRead.js';
     const rehydrationPath = 'AssignmentProcessor/Assignment/02_AssignmentRehydration.js';
 
     const result = await runBackendCopy(realPaths);
 
-    for (const file of [itemPath, entryPath, projectionPath, rehydrationPath]) {
+    for (const file of [
+      itemPath,
+      entryPath,
+      projectionPath,
+      currentRestorationPath,
+      legacyReadPath,
+      rehydrationPath,
+    ]) {
       expect(result.copiedFiles).toContain(file);
     }
     expect(result.copiedFiles.indexOf(itemPath)).toBeLessThan(
       result.copiedFiles.indexOf(entryPath)
     );
-    // Equal 02_ prefixes rely on lexicographic filename sorting.
+    // Equal 02_ prefixes rely on lexicographic filename sorting. The legacy read
+    // owner sorts after the current-format restoration it reuses and before the
+    // rehydration facade that exposes both.
     expect(result.copiedFiles.indexOf(projectionPath)).toBeLessThan(
       result.copiedFiles.indexOf(rehydrationPath)
     );
-    for (const file of [itemPath, entryPath, projectionPath, rehydrationPath]) {
+    expect(result.copiedFiles.indexOf(currentRestorationPath)).toBeLessThan(
+      result.copiedFiles.indexOf(legacyReadPath)
+    );
+    expect(result.copiedFiles.indexOf(legacyReadPath)).toBeLessThan(
+      result.copiedFiles.indexOf(rehydrationPath)
+    );
+    for (const file of [
+      itemPath,
+      entryPath,
+      projectionPath,
+      currentRestorationPath,
+      legacyReadPath,
+      rehydrationPath,
+    ]) {
       await expect(fs.readFile(path.join(paths.buildGasDir, file), 'utf-8')).resolves.toBe(
         await fs.readFile(path.join(backendDir, file), 'utf-8')
       );

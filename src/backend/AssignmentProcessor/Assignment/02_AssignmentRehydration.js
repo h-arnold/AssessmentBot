@@ -5,10 +5,21 @@
  * for deserialising Assignment instances from JSON data.
  *
  * Depends on global `AssignmentDefinition`, `AssignmentCurrentRestoration`,
- * `AssignmentReadProjection`, and `ProgressTracker` (GAS runtime globals).
+ * `AssignmentLegacyRead`, `AssignmentReadProjection`, and `ProgressTracker`
+ * (GAS runtime globals).
  * @namespace
  */
 const AssignmentRehydration = {
+  /**
+   * Prepares an independent legacy read result, keeping valid stored data and
+   * isolating invalid assessment data as CORRUPT_RECORD E per task.
+   * @param {Assignment} assignment - Restored legacy assignment.
+   * @param {'full'|'partial'} form - Output serialisation form.
+   * @returns {Array<object>|null} Prepared read submissions, or null for a non-array root.
+   */
+  prepareLegacyReadSubmissions(assignment, form) {
+    return new AssignmentLegacyRead().prepare(assignment, form);
+  },
   /**
    * Builds detached placeholders for a legacy read; historical assessment bodies are ignored.
    * @param {object} assignment - Raw or typed legacy assignment.
