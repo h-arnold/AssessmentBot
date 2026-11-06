@@ -25,6 +25,12 @@ Planning artefacts reviewed; ready for implementation orchestration.
 6. Before code-review sign-off on shape changes, reconcile relevant planned entries with Data Shapes Agent. Do not remove unrelated planned attempt-baseline entries in shared docs.
 7. British English; short comments describing fields and behaviour. No invented terms, certification rationale or filler.
 
+### Baseline record
+
+- Branch `legacy-assignment-results` created at HEAD `a8cfa890abdcf735f6e62dc77d827ab2144ad076`. Unrelated worktree changes to classes-page/settings-backend E2E files, runtime mocks and deleted harness helpers are present and left untouched, per global constraint 1.
+- Baseline run: session identity `legacy-assignment-results`, report at `.ts-regression-checker/reports/session-legacy-assignment-results/baseline/baseline.txt` (2026-11-06T06:23Z). Overall status FAILING: 7 of 8 checks passing.
+- Accepted pre-existing baseline debt: `backend-lint-check` fails with 4 `max-lines` warnings in unrelated pre-existing backend test files — `tests/backend-api/assignmentDefinitionPartials.unit.test.js`, `tests/dbManager/dbManager.test.js`, `tests/googleClassroom/classroomApiClient.test.js`, `tests/utils/batchUpdateUtility.test.js`. Not caused by this plan; section gates must show zero regressions and zero new failures against this baseline. Do not fix these files within this plan (out of scope).
+
 ### Mandatory reading by delegated phase
 
 Every handoff includes @SPEC.md and its current plan section, plus these phase-specific reads and the exact relevant source/test files listed in that section:
@@ -99,6 +105,8 @@ Provide realistic legacy fixtures from existing generated data, not a second dat
 ### Implementation notes / deviations / follow-up
 
 Not started. Later Node-side sections use this helper for healthy legacy records. Frontend tests use the explicit marker-only canonical-clone path above; local boundary probes are exempt.
+
+Red phase delegated to Testing Specialist (tests only; the derivation helper is green-phase work). Baseline recorded under "Baseline record": 7/8 checks passing; backend-lint `max-lines` warnings in 4 unrelated test files are accepted pre-existing debt.
 
 ## Section 2 — Preserve saved legacy submissions
 
