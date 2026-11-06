@@ -126,8 +126,6 @@ Complete. Recorded contract for later sections:
 
 Fix the PR #346 data-loss regression without activating the new read contract yet. Preserve original version presence/value. Marker-1 restoration and the completed-write gate stay unchanged.
 
-Red phase delegated to Testing Specialist.
-
 ### Required tests — Red
 
 1. Legacy `submissions` array, explicit null, object, and absent property through restore, `toJSON()` and `toPartialJSON()`. Absent retains constructor state; present non-array values are not replaced by `[]`.
@@ -167,7 +165,7 @@ Complete. This section restores preservation only; legacy read activation comes 
 - **Persistence/read separation:** read activation is still pending, so persistence must not gain read-time marker or `E` behaviour here.
 - **Fixtures:** Section 1 canonical `small` stored scenario via the Section 1 helper or `loadBackendModelInputs`; null/object/Date probes stay local overrides on clones.
 - **Deferred finding:** the present-but-`undefined` probe nitpick is recorded as disregarded in `.opencode/scratchpad/legacy-assignment-results-deferred-findings.md`; it is outside the acceptance contract.
-- **Pending evidence:** section regression gate not yet run and no commit made. Committed evidence will be appended by the orchestrator at the commit gate.
+- **Pending evidence:** commit `f0b1960a` "fix(backend): preserve saved legacy submissions bodies (Section 2)", pushed to `origin/legacy-assignment-results` (cf9cfac4 → f0b1960a). Worktree clean after push.
 - **Docs sync (outcome):** `docs/developer/backend/rehydration.md` updated (+25/−15, four passages) for the preservation rule. Data Shapes Agent reconciled `assignment.md` ("### Legacy submissions persistence" preservation implemented; planned list narrowed to read-time items 1–3), `assessment.md` (preservation record implemented; planned items renumbered 1–6, all still **Not implemented**) and `INDEX.md` (status line updated). A fragile planned-vs-delivered reading — "Non-array transport roots retain existing frontend rejection" is unreachable while the current projector throws server-side — is recorded as Known discrepancy 8 in `assignment.md` pending Sections 3–4. No pages created.
 - **Section regression gate (§2.6):** PASSED — compare mode, session `legacy-assignment-results`, report `.ts-regression-checker/reports/session-legacy-assignment-results/runs/2026-11-06T07-37-27.167Z/comparison.txt` (2026-11-06T07:37Z). 0 regressions, 0 new failures, 0 fixes; 7/8 checks passing, the only failing check being the identical baseline-debt `backend-lint-check`.
 
