@@ -33,9 +33,13 @@ class AssignmentSerialisation {
       ? this._assignment.assignmentDefinition.toPartialJSON()
       : this._assignment.assignmentDefinition.toJSON();
 
-    const submissions = (this._assignment.submissions || []).map((submission) =>
-      AssignmentSerialisation._submissionJSON(submission, 'toJSON')
-    );
+    // An array body maps through the submission serialiser; a present non-array
+    // legacy value is preserved (date-normalised, independently copied).
+    const submissions = Array.isArray(this._assignment.submissions)
+      ? this._assignment.submissions.map((submission) =>
+          AssignmentSerialisation._submissionJSON(submission, 'toJSON')
+        )
+      : AssignmentSerialisation._plainSubmissionJSON(this._assignment.submissions);
 
     const output = this._rootOutput(
       this._extractFullDefinitionFields(definitionJson),
@@ -166,9 +170,13 @@ class AssignmentSerialisation {
   toPartialJSON() {
     const definitionJson = this._assignment.assignmentDefinition.toPartialJSON();
 
-    const partialSubmissions = (this._assignment.submissions || []).map((submission) =>
-      AssignmentSerialisation._submissionJSON(submission, 'toPartialJSON')
-    );
+    // An array body maps through the submission serialiser; a present non-array
+    // legacy value is preserved (date-normalised, independently copied).
+    const partialSubmissions = Array.isArray(this._assignment.submissions)
+      ? this._assignment.submissions.map((submission) =>
+          AssignmentSerialisation._submissionJSON(submission, 'toPartialJSON')
+        )
+      : AssignmentSerialisation._plainSubmissionJSON(this._assignment.submissions);
 
     const output = this._rootOutput(
       this._extractPartialRootFields(definitionJson),

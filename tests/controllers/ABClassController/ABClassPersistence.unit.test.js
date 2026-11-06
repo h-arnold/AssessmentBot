@@ -313,3 +313,76 @@ describe('ABClassPersistence prepared graph capture, consumption and independenc
     ).toBe(1);
   });
 });
+
+describe('ABClassPersistence ordinary save of legacy non-array submissions', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  const LEGACY_CLASS_ID = 'class-0';
+  const LEGACY_ASSIGNMENT_ID = 'assignment-0-1';
+  const OBJECT_SUBMISSIONS = {
+    legacyStudent: { studentId: 'legacy-student', createdAt: '2019-01-02T03:04:05.000Z' },
+  };
+
+  /**
+   * Restores the canonical small class with a present non-array legacy
+   * `submissions` value on its linked assignment and wires the persistence owner
+   * to hermetic stores.
+   *
+   * @param {object|null} submissions Stored legacy submissions value.
+   * @returns {{abClass: Object, db: Object, owner: Object}} Restored class, stores and owner.
+   */
+  function buildLegacyClassRun(submissions) {
+    const inputs = loadBackendModelInputs('small');
+    const classView = clone(inputs.classesById[LEGACY_CLASS_ID]);
+    const embedded = classView.assignments.find(
+      (assignment) => assignment.assignmentId === LEGACY_ASSIGNMENT_ID
+    );
+    delete embedded.assessmentContractVersion;
+    embedded.submissions = submissions;
+    const abClass = withTemporaryGlobals(TEACHER_GLOBAL, () => ABClass.fromJSON(classView));
+    const db = mockDb();
+    const owner = new ABClassPersistence({ dbManager: db, validation: {} });
+    return { abClass, db, owner };
+  }
+
+  /** Reads the embedded assignment's submissions from the stored class write payload. */
+  function storedSubmissions(db, abClass) {
+    const stored = db.collections[abClass.classId].insertOne.mock.calls[0][0];
+    return stored.assignments.find((assignment) => assignment.assignmentId === LEGACY_ASSIGNMENT_ID)
+      .submissions;
+  }
+
+  it.each([
+    ['object', OBJECT_SUBMISSIONS],
+    ['null', null],
+  ])('writes the preserved %s submissions value to the class store', (_label, submissions) => {
+    const { abClass, db, owner } = buildLegacyClassRun(submissions);
+    owner.persistClassAndPartial(abClass);
+    expect(storedSubmissions(db, abClass)).toEqual(submissions);
+  });
+
+  it('keeps the preserved object value through a save and reload round trip', () => {
+    const { abClass, db, owner } = buildLegacyClassRun(OBJECT_SUBMISSIONS);
+    owner.persistClassAndPartial(abClass);
+
+    const storedPayload = db.collections[abClass.classId].insertOne.mock.calls[0][0];
+    const reloaded = withTemporaryGlobals(TEACHER_GLOBAL, () =>
+      ABClass.fromJSON(clone(storedPayload))
+    );
+    const reloadedAssignment = reloaded.assignments.find(
+      (assignment) => assignment.assignmentId === LEGACY_ASSIGNMENT_ID
+    );
+    expect(reloadedAssignment.submissions).toEqual(OBJECT_SUBMISSIONS);
+  });
+
+  it('keeps the restored instance holding the preserved object after the save', () => {
+    const { abClass, owner } = buildLegacyClassRun(OBJECT_SUBMISSIONS);
+    owner.persistClassAndPartial(abClass);
+    const restoredAssignment = abClass.assignments.find(
+      (assignment) => assignment.assignmentId === LEGACY_ASSIGNMENT_ID
+    );
+    expect(restoredAssignment.submissions).toEqual(OBJECT_SUBMISSIONS);
+  });
+});

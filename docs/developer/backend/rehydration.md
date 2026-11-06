@@ -194,10 +194,10 @@ the detached reassessment projection and a `null` marker described below.
 `Assignment._baseFromJSON()` selects the restoration path from the stored `assessmentContractVersion`
 marker:
 
-| Stored state                              | Behaviour                                                                                                                                                                                                         |
-| ----------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `1`                                       | One validated pass per identified submission and item, using the requested `full` or `partial` mode.                                                                                                              |
-| Missing, `null`, or any unsupported value | Legacy history: submissions are **not** item-rehydrated. The stored submission body becomes the ordinary `submissions` array, and the marker value plus whether the field was present are kept as instance state. |
+| Stored state                              | Behaviour                                                                                                                                                                                                                                                                                     |
+| ----------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `1`                                       | One validated pass per identified submission and item, using the requested `full` or `partial` mode.                                                                                                                                                                                          |
+| Missing, `null`, or any unsupported value | Legacy history: submissions are **not** item-rehydrated. A present `submissions` value is kept as stored, whether an array, `null` or an object; only an absent property keeps the constructor's empty array. The marker value plus whether the field was present are kept as instance state. |
 
 The representation mode is caller-owned: `_baseFromJSON()` passes the requested mode to the
 constructor, which owns the `full` default. A stored `representationMode` field is never read as the
@@ -222,9 +222,15 @@ There is no whole-submission catch/reconstruct/retry flow, per-item drop or plai
 For a non-marker-1 record, `_baseFromJSON()` restores the stored submissions into
 `inst.submissions` and records the marker as ordinary instance state:
 `inst.assessmentContractVersion` holds the stored value, and `inst._legacyMarkerPresent`
-records whether the stored document actually had the field. Persistence
-(`toJSON()`/`toPartialJSON()`) serialises that state directly, so an ordinary save cannot
-validate, rewrite or re-certify the historical result.
+records whether the stored document actually had the field.
+
+A present `submissions` value is preserved exactly as stored: an array, `null` and an object
+all survive restoration unchanged, and only an absent property keeps the constructor's empty
+array (`Object.hasOwn` guard). Persistence (`toJSON()`/`toPartialJSON()`) serialises that state
+directly, so an ordinary save cannot validate, rewrite or re-certify the historical result.
+An array body maps through the submission serialiser; any other present value, including
+`null`, is emitted through `_plainSubmissionJSON()` and is never replaced with `[]`. Class save
+and reload preserve the same value.
 
 Reads derive a detached projection through
 `AssignmentRehydration.projectReassessmentSubmissions(assignment, students, form)`:
@@ -250,10 +256,11 @@ read or re-save stored documents:
   `new ABClassMetadata(...)`, which otherwise rejects a `Date` as not a canonical UTC datetime.
   See [api-layer.md § Response mapper reuse](api-layer.md#response-mapper-reuse-implemented).
 - **Legacy submissions.** `AssignmentSerialisation._submissionJSON()` prefers a model
-  `toJSON()`/`toPartialJSON()`. A stored record without that serialiser falls back to
-  `_plainSubmissionJSON()`, which converts each field through `DateUtils.deepConvertDates()`.
-  Copying a revived `Date` key by key would otherwise produce `{}` and persist that over the
-  stored timestamps. Every emit path therefore serialises live `Date` values to ISO strings.
+  `toJSON()`/`toPartialJSON()`. A stored record without that serialiser, and any present
+  non-array submission body, falls back to `_plainSubmissionJSON()`, which converts each field
+  through `DateUtils.deepConvertDates()`. Copying a revived `Date` key by key would otherwise
+  produce `{}` and persist that over the stored timestamps. Every emit path therefore serialises
+  live `Date` values to ISO strings.
 
 This conversion prevents new corruption. It does not repair documents already stored with `{}`
 values; those stay corrupted until rewritten from a correct source.
@@ -331,12 +338,15 @@ hydration boundary is summarised below, as are the prepared write projections.
   sort. `scripts/builder/src/steps/backend-copy.spec.ts` asserts that copied order.
 - **Legacy instance state.** `_baseFromJSON()` stores the legacy submission body in
   `submissions` and the original marker in `assessmentContractVersion`, with
-  `_legacyMarkerPresent` recording whether the stored field existed. `_legacyMarkerPresent` is
-  never serialised itself. Placeholder timestamps and source-ID rules are in
-  [Legacy records](#legacy-records).
+  `_legacyMarkerPresent` recording whether the stored field existed. A present body keeps its
+  stored shape; only an absent property keeps the constructor's empty array.
+  `_legacyMarkerPresent` is never serialised itself. Placeholder timestamps and source-ID rules
+  are in [Legacy records](#legacy-records).
 - **Legacy persistence versus read projection.** Persistence `toJSON()`/`toPartialJSON()`
   serialise the legacy submission body and re-emit the marker only when `_legacyMarkerPresent`
-  records its presence; they never emit reassessment E placeholders. Both read paths emit the
+  records its presence; they never emit reassessment E placeholders. An array body is serialised
+  per submission; a present non-array body (`null` or an object) is emitted through
+  `_plainSubmissionJSON()`, never as `[]`. Both read paths emit the
   marker as null. Class persistence preparation and writes never receive read placeholders;
   current-version serialisers retain their normal full/partial semantics. A freshly restored
   marker-1 partial instance carries no legacy marker, so replacing a class assignment after a run

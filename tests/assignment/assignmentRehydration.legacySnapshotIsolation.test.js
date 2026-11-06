@@ -1,6 +1,31 @@
 /** Historical reassessment timestamps and ownership boundaries. */
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { currentAssignmentJson, restoreAssignment } from './assignmentRehydrationCurrentSupport.js';
+import { loadSyntheticAnalysisProfile } from '#synthetic-data/loadSyntheticAnalysisProfile.js';
+import { deriveLegacyAssignmentScenario } from '#synthetic-data/deriveLegacyAssignmentScenario.js';
+
+/** Canonical `small` selection shared with the legacy restoration suite. */
+const LEGACY_ASSIGNMENT_ID = 'assignment-0-1';
+
+/**
+ * Clones the derived stored legacy full record with a local `submissions` override.
+ * The marker is removed on the linked assignment and its embedded form.
+ * @param {object|null} submissions Stored submissions value.
+ * @returns {object} Derived stored full record carrying the override.
+ */
+function storedLegacyRecord(submissions) {
+  const sources = {
+    classesById: loadSyntheticAnalysisProfile('small', 'classesById'),
+    assignmentsByKey: loadSyntheticAnalysisProfile('small', 'assignmentsByKey'),
+  };
+  const { full } = deriveLegacyAssignmentScenario({
+    profileName: 'small',
+    assignmentId: LEGACY_ASSIGNMENT_ID,
+    variant: 'stored',
+    sources,
+  });
+  return { ...structuredClone(full), submissions };
+}
 
 const AssignmentRehydration = require('#backend/AssignmentProcessor/Assignment/02_AssignmentRehydration.js');
 
@@ -205,5 +230,51 @@ describe('legacy submission entries that are not plain records', () => {
     expect(storedArray).toEqual([ARRAY_DATE]);
     expect(record.submissions[1][0]).toBe(ARRAY_DATE);
     expect(emit(restored).submissions[1]).toEqual([ARRAY_DATE.toISOString()]);
+  });
+});
+
+describe('legacy non-array submission payloads are independent of saved state', () => {
+  /** Legacy object submission body used by the object-payload independence cases. */
+  const OBJECT_BODY = {
+    legacyStudent: { studentId: 'legacy-student', marks: [{ taskId: 'task-1-0', score: 2 }] },
+  };
+
+  it.each([
+    ['toJSON', (restored) => restored.toJSON()],
+    ['toPartialJSON', (restored) => restored.toPartialJSON()],
+  ])('does not let a returned object payload mutate saved state through %s', (_method, emit) => {
+    const record = storedLegacyRecord(structuredClone(OBJECT_BODY));
+    const restored = restoreAssignment(record);
+    const before = structuredClone(restored.submissions);
+
+    const returned = emit(restored);
+    returned.submissions.legacyStudent.marks[0].score = 9;
+    returned.submissions.legacyStudent.marks.push({ taskId: 'task-1-1', score: 1 });
+    returned.submissions.injected = true;
+
+    expect(restored.submissions).toEqual(before);
+    expect(emit(restored).submissions).toEqual(OBJECT_BODY);
+  });
+
+  it.each([
+    ['toJSON', (restored) => restored.toJSON()],
+    ['toPartialJSON', (restored) => restored.toPartialJSON()],
+  ])('serialises the same preserved value on repeated calls through %s', (_method, emit) => {
+    const record = storedLegacyRecord(structuredClone(OBJECT_BODY));
+    const restored = restoreAssignment(record);
+    const first = emit(restored).submissions;
+    const second = emit(restored).submissions;
+    expect(first).toEqual(second);
+    expect(first).not.toBe(second);
+    expect(first.legacyStudent).not.toBe(second.legacyStudent);
+  });
+
+  it('keeps a returned null submissions payload independent of the restored null state', () => {
+    const restored = restoreAssignment(storedLegacyRecord(null));
+    const returned = restored.toJSON();
+    expect(returned.submissions).toBeNull();
+    returned.submissions = ['caller mutation'];
+    expect(restored.submissions).toBeNull();
+    expect(restored.toJSON().submissions).toBeNull();
   });
 });

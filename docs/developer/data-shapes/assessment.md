@@ -347,9 +347,9 @@ order and are non-transactional.
 Backend top-level field on the full assignment record and on every class-embedded
 partial assignment. It is an assessment-result marker, not a definition-version marker.
 
-| Field                       | Type        | Persistence                                                                                                                                                                                                            | Transport                                                                                                          | Frontend Zod                        | Notes                                                                                                                                                                                                                                                     |
-| --------------------------- | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ | ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `assessmentContractVersion` | `1 \| null` | Newly completed results are validated then stamped `1` before serialization. Legacy absence, `null` or unsupported values are preserved verbatim with the legacy body; stored values are never certified or rewritten. | Always present. `1` for current results; explicit `null` for legacy results after backend reassessment projection. | `z.union([z.literal(1), z.null()])` | Storage may omit the marker, store `null`, or retain an unsupported legacy value; that stored state means the result requires reassessment. The backend read transport normalises legacy storage to explicit `null` beside materialised reassessment `E`. |
+| Field                       | Type        | Persistence                                                                                                                                                                                                                                                               | Transport                                                                                                          | Frontend Zod                        | Notes                                                                                                                                                                                                                                                     |
+| --------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ | ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `assessmentContractVersion` | `1 \| null` | Newly completed results are validated then stamped `1` before serialization. Legacy absence, `null` or unsupported values are preserved verbatim with the legacy body, including a present non-array `submissions` value; stored values are never certified or rewritten. | Always present. `1` for current results; explicit `null` for legacy results after backend reassessment projection. | `z.union([z.literal(1), z.null()])` | Storage may omit the marker, store `null`, or retain an unsupported legacy value; that stored state means the result requires reassessment. The backend read transport normalises legacy storage to explicit `null` beside materialised reassessment `E`. |
 
 Persistence rules:
 
@@ -361,7 +361,9 @@ Persistence rules:
   keeps the legacy submission body in ordinary instance state alongside the original marker
   value and its presence (`_legacyMarkerPresent`); ordinary persistence serialisers re-emit
   that state unchanged rather than certifying or rewriting it (see
-  [§ Legacy reassessment read projection](#legacy-reassessment-read-projection)).
+  [§ Legacy reassessment read projection](#legacy-reassessment-read-projection)). A present
+  non-array `submissions` body is preserved by the same path; see
+  [§ Legacy `submissions` preservation](#legacy-submissions-preservation).
 - A successful reassessment replaces the full result and embedded partial with a fresh
   current result carrying version `1`; it does not carry the legacy state.
 - Read-only reassessment projections do not write repaired results back to storage; there
@@ -520,7 +522,9 @@ remain unimplemented (see
 
 The marker, write gate and marker-1 restoration rules above are the current contract.
 
-The legacy read changes below are planned, not current behaviour.
+Legacy `submissions` preservation on restoration and ordinary save is implemented; see
+[§ Legacy `submissions` preservation](#legacy-submissions-preservation). The legacy read
+changes below are planned, not current behaviour.
 
 ## Planned contract changes (Not implemented)
 
@@ -529,11 +533,20 @@ Target: root `SPEC.md`, “Display Legacy Assignment Results”.
 1. Read version is required `1 | 'legacy'`; non-1 stored markers read as `'legacy'`. Storage retains original marker presence/value.
 2. Both legacy read paths keep valid results and reuse existing current-format item validation on an independent read result. Bad items become `CORRUPT_RECORD` E; healthy items/submissions remain. Malformed item maps and missing known items use the saved embedded task list on both full and partial reads, before the class mapper strips the definition. Existing no-submission and timestamp rules apply.
 3. The all-results `REASSESSMENT_REQUIRED` placeholder producer is removed. Its cause code may remain accepted for stored errors; no catalogue deletion is planned.
-4. Legacy raw `submissions` values are preserved on restoration and ordinary save, including non-array values. Non-array transport roots retain existing frontend rejection. Missing properties use constructor state; null is not absence.
-5. Corrupted student IDs are explicitly out of scope by user decision. No invented IDs, dropped-row recovery or new warning is planned. Identity/unknown-task association rejection stays unchanged. Assessment corruption does not block a valid identified submission's siblings.
-6. Read preparation validates in the existing restoration mode (summary tasks: partial; keyed tasks: full), then serialises the requested form. Non-array roots bypass preparation and reach frontend root rejection unchanged. The removed projector's `userId` fallback is not retained; the required identity is `studentId`.
-7. Both frontend normalisers remove the marker-null reassessment-item requirement and accept valid legacy items using their existing full/partial item checks. The browser defensive missing-task fallback stays marker-1-only; backend preparation owns legacy coverage, including non-empty null-parent submissions.
+4. Corrupted student IDs are explicitly out of scope by user decision. No invented IDs, dropped-row recovery or new warning is planned. Identity/unknown-task association rejection stays unchanged. Assessment corruption does not block a valid identified submission's siblings.
+5. Read preparation validates in the existing restoration mode (summary tasks: partial; keyed tasks: full), then serialises the requested form. Non-array roots bypass preparation and reach frontend root rejection unchanged. The removed projector's `userId` fallback is not retained; the required identity is `studentId`.
+6. Both frontend normalisers remove the marker-null reassessment-item requirement and accept valid legacy items using their existing full/partial item checks. The browser defensive missing-task fallback stays marker-1-only; backend preparation owns legacy coverage, including non-empty null-parent submissions.
 
+### Legacy `submissions` preservation
+
+Implemented. A legacy (non-marker-1) record's present `submissions` value keeps its stored
+shape through restoration, `toJSON()`, `toPartialJSON()` and an ordinary class save: an array
+is preserved as stored, explicit `null` stays `null` (never `[]`), a plain object is emitted
+as an independently owned date-normalised copy (never `[]`), and only an absent property keeps
+the constructor's `[]`. The original stored `assessmentContractVersion` presence/value is
+preserved alongside it. Marker-1 records are unchanged: their root still requires an array.
+The full rule table lives in
+[Contract: Assignment § Legacy `submissions` preservation](assignment.md#legacy-submissions-preservation).
 ---
 
 ## File Index

@@ -31,10 +31,12 @@ reference.
 
 Status: all eleven contracts are implemented and conform to their documented contracts.
 `frontend-data-analysis-response.md` carries an outstanding planned change (the attempt-baseline
-analysis mode), and the `1 | null` read marker plus the legacy reassessment projection are
-superseded by a planned change recorded in
+analysis mode). Legacy `submissions` preservation on restoration and ordinary save is implemented
+(see [assignment.md § Legacy `submissions` preservation](assignment.md#legacy-submissions-preservation)).
+The `1 | null` read marker plus the legacy reassessment projection are superseded by a planned
+change recorded in
 [assessment.md § Planned contract changes](assessment.md#planned-contract-changes-not-implemented)
-(read marker union `1 | 'legacy'`, projection deletion).
+(read marker union `1 | 'legacy'`, projection deletion) — planned, not implemented.
 
 ## Component Shapes
 
@@ -54,7 +56,7 @@ Containment links:
 - `AssignmentDefinition` → `TaskDefinition` → **BaseTaskArtifact**
 - `Assignment` → **Student Submission** → **StudentSubmissionItem** → **BaseTaskArtifact**
 - `Assignment` → **Student Submission** → **StudentSubmissionItem** → **Assessment**
-- `Assignment` → **Assessment** (write gate, marker, current legacy read projection, marker-1 restoration; legacy display change planned below)
+- `Assignment` → **Assessment** (write gate, marker, current legacy read projection, marker-1 restoration; legacy read display change planned below)
 - `ABClass` → `Assignment` partial → **Student Submission** (partial) → **Assessment** (partial)
 
 ## Containment Hierarchy

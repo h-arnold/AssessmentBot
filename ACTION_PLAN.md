@@ -126,6 +126,8 @@ Complete. Recorded contract for later sections:
 
 Fix the PR #346 data-loss regression without activating the new read contract yet. Preserve original version presence/value. Marker-1 restoration and the completed-write gate stay unchanged.
 
+Red phase delegated to Testing Specialist.
+
 ### Required tests — Red
 
 1. Legacy `submissions` array, explicit null, object, and absent property through restore, `toJSON()` and `toPartialJSON()`. Absent retains constructor state; present non-array values are not replaced by `[]`.
@@ -142,7 +144,7 @@ Fix the PR #346 data-loss regression without activating the new read contract ye
 ### Helper, data-shape and fixture plan
 
 - **Reuse** existing date conversion and submission serialisers; no new generic clone helper.
-- Planned contracts: @docs/developer/data-shapes/assignment.md and @docs/developer/data-shapes/assessment.md , preservation items marked **Not implemented**. Reconcile these items when implemented, leaving future read changes pending.
+- Planned contracts: @docs/developer/data-shapes/assignment.md and @docs/developer/data-shapes/assessment.md , preservation items marked **Not implemented**. Reconciled as implemented by the Data Shapes Agent (see outcome); future read changes remain planned.
 - Fixtures: Section 1 canonical `small` stored scenario; null/object/absence/Date probes local. Only touched tests migrate.
 
 ### Acceptance criteria and checks
@@ -151,9 +153,23 @@ Fix the PR #346 data-loss regression without activating the new read contract ye
 - `npm run test:backend -- tests/assignment/assignmentRehydration.legacy tests/controllers/ABClassController/ABClassPersistence.unit.test.js`
 - `npm run lint:backend:check`; contract/persistence reviewer checks exact written payloads.
 
+### Outcome
+
+Preservation fix delivered in `02_AssignmentRehydration.js` (legacy branch) and `00_AssignmentSerialisation.js` (both persistence paths), with additive test extensions in `assignmentRehydration.legacy.test.js`, `assignmentRehydration.legacySnapshotIsolation.test.js` and `ABClassPersistence.unit.test.js`. Red and green reviews passed with zero findings; no refactor was needed. Checks: targeted 3 suites 51/51; `npm run test:backend -- tests/assignment tests/controllers` 920/920; `npm run lint:backend:check` exit 1 only from the 4 baseline-debt `max-lines` warnings.
+
 ### Implementation notes / deviations / follow-up
 
-Not started. This section restores preservation only; legacy read activation comes later.
+Complete. This section restores preservation only; legacy read activation comes later. Contract for later sections:
+
+- **Preservation rule:** absence is decided by `Object.hasOwn(data, 'submissions')`; only an absent property keeps the constructor's `[]`. A present array, `null` or object is preserved exactly through restore and through both persistence serialisers.
+- **Serialisation:** `toJSON()` and `toPartialJSON()` route present non-array values through `AssignmentSerialisation._plainSubmissionJSON()` (date-normalised, independently copied); array bodies keep `_submissionJSON()`. No new clone helper and no new fallback outside the constructor.
+- **Marker-1 unchanged:** marker-1 roots validate the submissions array, so no version check was added to the preservation path. Later sections touching read paths or replacing the projector must keep this fact.
+- **Persistence/read separation:** read activation is still pending, so persistence must not gain read-time marker or `E` behaviour here.
+- **Fixtures:** Section 1 canonical `small` stored scenario via the Section 1 helper or `loadBackendModelInputs`; null/object/Date probes stay local overrides on clones.
+- **Deferred finding:** the present-but-`undefined` probe nitpick is recorded as disregarded in `.opencode/scratchpad/legacy-assignment-results-deferred-findings.md`; it is outside the acceptance contract.
+- **Pending evidence:** section regression gate not yet run and no commit made. Committed evidence will be appended by the orchestrator at the commit gate.
+- **Docs sync (outcome):** `docs/developer/backend/rehydration.md` updated (+25/−15, four passages) for the preservation rule. Data Shapes Agent reconciled `assignment.md` ("### Legacy submissions persistence" preservation implemented; planned list narrowed to read-time items 1–3), `assessment.md` (preservation record implemented; planned items renumbered 1–6, all still **Not implemented**) and `INDEX.md` (status line updated). A fragile planned-vs-delivered reading — "Non-array transport roots retain existing frontend rejection" is unreachable while the current projector throws server-side — is recorded as Known discrepancy 8 in `assignment.md` pending Sections 3–4. No pages created.
+- **Section regression gate (§2.6):** PASSED — compare mode, session `legacy-assignment-results`, report `.ts-regression-checker/reports/session-legacy-assignment-results/runs/2026-11-06T07-37-27.167Z/comparison.txt` (2026-11-06T07:37Z). 0 regressions, 0 new failures, 0 fixes; 7/8 checks passing, the only failing check being the identical baseline-debt `backend-lint-check`.
 
 ## Section 3 — Prepare legacy read results with existing validation
 

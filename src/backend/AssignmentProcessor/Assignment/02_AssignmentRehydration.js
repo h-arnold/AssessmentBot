@@ -57,9 +57,10 @@ const AssignmentRehydration = {
     if (isCurrent) {
       inst.assessmentContractVersion = 1;
     } else {
-      // Legacy record: keep the stored submission body and the exact marker
-      // presence/value as ordinary instance state.
-      inst.submissions = Array.isArray(data.submissions) ? data.submissions : [];
+      // Legacy record: keep a present submission body exactly as stored, and keep
+      // the marker presence/value as ordinary instance state. Only an absent
+      // property keeps the constructor's empty array.
+      if (Object.hasOwn(data, 'submissions')) inst.submissions = data.submissions;
       inst.assessmentContractVersion = data.assessmentContractVersion;
       inst._legacyMarkerPresent = Object.hasOwn(data, 'assessmentContractVersion');
     }
