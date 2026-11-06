@@ -2,7 +2,7 @@
 description: Reviews code for quality, standards adherence, and defects using project-specific checklists
 mode: all
 steps: 100
-model: mistral/mistral-large-4
+model: opencode/beam-free
 permissions:
   - action: edit
     resource: '*'

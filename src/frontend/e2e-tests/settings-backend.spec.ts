@@ -1,6 +1,10 @@
 import { expect, test } from '@playwright/test';
 import { backendApiKeyValidationMessage } from '@/services/backendConfiguration/backendConfigurationValidation';
-import { mockBackendSettingsRuntime } from './helpers/settings-backend-runtime-mock';
+import {
+  createBackendSettingsScenario,
+  installRuntimeMock,
+  releaseRuntimeSignal,
+} from './shared/endToEndRuntimeMocks';
 import {
   baseBackendConfig,
   noStoredKeyBackendConfig,
@@ -20,7 +24,6 @@ import {
   loadingBackendSettingsLabel,
   openBackendSettings,
   partialLoadWarning,
-  releaseBackendSettingsSignal,
   saveButtonLabel,
 } from './helpers/settings-backend-journey';
 
@@ -31,16 +34,19 @@ test.describe('backend settings journey', () => {
   test('navigates to the backend settings tab after showing the loading skeleton', async ({
     page,
   }) => {
-    await mockBackendSettingsRuntime(page, {
-      getBackendConfig: [
-        {
-          kind: 'success',
-          data: baseBackendConfig,
-          releaseSignal: backendSettingsLoadReleaseSignal,
-        },
-      ],
-      setBackendConfig: [],
-    });
+    await installRuntimeMock(
+      page,
+      createBackendSettingsScenario({
+        getBackendConfig: [
+          {
+            kind: 'success',
+            data: baseBackendConfig,
+            releaseSignal: backendSettingsLoadReleaseSignal,
+          },
+        ],
+        setBackendConfig: [],
+      })
+    );
 
     await page.goto('/');
     await openBackendSettings(page);
@@ -48,22 +54,25 @@ test.describe('backend settings journey', () => {
     await expect(page.getByRole('status', { name: loadingBackendSettingsLabel })).toBeVisible();
     await expect(page.getByRole('button', { name: saveButtonLabel })).toHaveCount(0);
 
-    await releaseBackendSettingsSignal(page, backendSettingsLoadReleaseSignal);
+    await releaseRuntimeSignal(page, backendSettingsLoadReleaseSignal);
 
     await expect(page.getByRole('region', { name: backendSettingsPanelLabel })).toBeVisible();
     await expect(getField(page, apiKeyLabel)).toHaveValue('');
   });
 
   test('shows a top-level alert when loading backend settings fails hard', async ({ page }) => {
-    await mockBackendSettingsRuntime(page, {
-      getBackendConfig: [
-        {
-          kind: 'transportFailure',
-          message: 'Backend configuration fetch failed.',
-        },
-      ],
-      setBackendConfig: [],
-    });
+    await installRuntimeMock(
+      page,
+      createBackendSettingsScenario({
+        getBackendConfig: [
+          {
+            kind: 'transportFailure',
+            message: 'Backend configuration fetch failed.',
+          },
+        ],
+        setBackendConfig: [],
+      })
+    );
 
     await page.goto('/');
     await openBackendSettings(page);
@@ -75,15 +84,18 @@ test.describe('backend settings journey', () => {
   test('supports keyboard-only edits and focuses the first invalid field when API key is required', async ({
     page,
   }) => {
-    await mockBackendSettingsRuntime(page, {
-      getBackendConfig: [
-        {
-          kind: 'success',
-          data: noStoredKeyBackendConfig,
-        },
-      ],
-      setBackendConfig: [],
-    });
+    await installRuntimeMock(
+      page,
+      createBackendSettingsScenario({
+        getBackendConfig: [
+          {
+            kind: 'success',
+            data: noStoredKeyBackendConfig,
+          },
+        ],
+        setBackendConfig: [],
+      })
+    );
 
     await page.goto('/');
     await openBackendSettings(page);
@@ -114,15 +126,18 @@ test.describe('backend settings journey', () => {
   test('suppresses the backend settings form when the loaded configuration payload is incomplete', async ({
     page,
   }) => {
-    await mockBackendSettingsRuntime(page, {
-      getBackendConfig: [
-        {
-          kind: 'success',
-          data: partialLoadBackendConfig,
-        },
-      ],
-      setBackendConfig: [],
-    });
+    await installRuntimeMock(
+      page,
+      createBackendSettingsScenario({
+        getBackendConfig: [
+          {
+            kind: 'success',
+            data: partialLoadBackendConfig,
+          },
+        ],
+        setBackendConfig: [],
+      })
+    );
 
     await page.goto('/');
     await openBackendSettings(page);

@@ -5,7 +5,7 @@ export const settingsMenuLabel = 'Settings';
 /** Level-2 heading of the Settings page. */
 export const settingsPageHeading = 'Settings';
 /** Maximum Tab presses used to reach a backend settings field. */
-export const MAX_KEYBOARD_FOCUS_STEPS = 20;
+const MAX_KEYBOARD_FOCUS_STEPS = 20;
 /** Tab label that opens the backend settings panel. */
 export const backendSettingsTabLabel = 'Backend settings';
 /** Accessible name of the backend settings panel region. */
@@ -61,23 +61,6 @@ export async function openBackendSettings(page: Page): Promise<void> {
  */
 export function getField(page: Page, label: string) {
   return page.getByLabel(label);
-}
-
-/**
- * Releases one queued backend-settings response waiting on a browser-side signal.
- *
- * @param {Page} page The Playwright page under test.
- * @param {string} signal Release signal name.
- * @returns {Promise<void>} Completion signal.
- */
-export async function releaseBackendSettingsSignal(page: Page, signal: string): Promise<void> {
-  await page.evaluate((queuedSignal) => {
-    (
-      globalThis as typeof globalThis & {
-        __releaseBackendSettingsSignal?: (signalName: string) => void;
-      }
-    ).__releaseBackendSettingsSignal?.(queuedSignal);
-  }, signal);
 }
 
 /**

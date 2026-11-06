@@ -1,6 +1,10 @@
 import { expect, test } from '@playwright/test';
 import { pageContent } from '@/pages/pageContent';
-import { installRuntimeMock } from './shared/endToEndRuntimeMocks';
+import {
+  createShellNavigationScenario,
+  getMethodCalls,
+  installRuntimeMock,
+} from './shared/endToEndRuntimeMocks';
 import {
   CLASSES_LABEL,
   EXPECTED_MENU_ITEM_COUNT,
@@ -8,7 +12,6 @@ import {
   createClassesScenario,
   expectBreadcrumbLabels,
 } from './helpers/classes-page-end-to-end-helpers';
-import { mockAuthenticatedGoogleScriptRun } from './helpers/classes-page-navigation-runtime-mock';
 
 // ============================================================================
 // Navigation Tests
@@ -16,7 +19,7 @@ import { mockAuthenticatedGoogleScriptRun } from './helpers/classes-page-navigat
 
 test.describe('Classes page navigation', () => {
   test('user can navigate to Classes page via top-level menu click', async ({ page }) => {
-    await mockAuthenticatedGoogleScriptRun(page);
+    await installRuntimeMock(page, createShellNavigationScenario());
     await page.goto('/');
 
     await page.getByRole('menuitem', { name: CLASSES_LABEL }).click();
@@ -28,7 +31,7 @@ test.describe('Classes page navigation', () => {
   });
 
   test('Classes page breadcrumb updates correctly on navigation', async ({ page }) => {
-    await mockAuthenticatedGoogleScriptRun(page);
+    await installRuntimeMock(page, createShellNavigationScenario());
     await page.goto('/');
 
     await page.getByRole('menuitem', { name: CLASSES_LABEL }).click();
@@ -37,7 +40,7 @@ test.describe('Classes page navigation', () => {
   });
 
   test('Classes page menu item becomes selected when clicked', async ({ page }) => {
-    await mockAuthenticatedGoogleScriptRun(page);
+    await installRuntimeMock(page, createShellNavigationScenario());
     await page.goto('/');
 
     await page.getByRole('menuitem', { name: CLASSES_LABEL }).click();
@@ -74,7 +77,7 @@ test.describe('Classes page navigation', () => {
 
 test.describe('Classes page method call tracking', () => {
   test('opening Classes page does not call getGoogleClassrooms', async ({ page }) => {
-    await mockAuthenticatedGoogleScriptRun(page);
+    await installRuntimeMock(page, createShellNavigationScenario());
     await page.goto('/');
 
     await page.getByRole('menuitem', { name: CLASSES_LABEL }).click();
@@ -83,20 +86,15 @@ test.describe('Classes page method call tracking', () => {
       page.getByRole('heading', { level: 2, name: pageContent.classes.heading })
     ).toBeVisible();
 
-    const tracker = await page.evaluate(() => {
-      return (
-        (globalThis as { __methodCallTracker__?: Record<string, number> }).__methodCallTracker__ ||
-        {}
-      );
-    });
+    const methodCalls = await getMethodCalls(page);
 
-    expect(tracker['getGoogleClassrooms']).toBeUndefined();
+    expect(methodCalls).not.toContain('getGoogleClassrooms');
   });
 });
 
 test.describe('Classes page shell-wide integration', () => {
   test('Classes page integrates with shell-wide top-level navigation', async ({ page }) => {
-    await mockAuthenticatedGoogleScriptRun(page);
+    await installRuntimeMock(page, createShellNavigationScenario());
     await page.goto('/');
 
     const allPages = [

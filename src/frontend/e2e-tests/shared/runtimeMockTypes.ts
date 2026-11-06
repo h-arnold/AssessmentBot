@@ -1,10 +1,21 @@
+/** Hold controls shared by every response item kind. */
+type ResponseHold = Readonly<{
+  /** Fixed hold before the response is delivered, in milliseconds. */
+  delayMs?: number;
+  /** Named signal that holds the response until it is released. */
+  releaseSignal?: string;
+}>;
+
 /** Base response item type for API scenarios. */
 export type ResponseItem = Readonly<
-  | { kind: 'success'; data: unknown }
-  | { kind: 'failureEnvelope'; data?: unknown; message?: string; code?: string }
-  | { kind: 'transportFailure'; data?: unknown; message?: string; code?: string }
-  | { kind: 'deferredSuccess'; data: unknown }
-  | { kind: 'deferredFailure'; code?: string; message: string }
+  (
+    | { kind: 'success'; data: unknown }
+    | { kind: 'failureEnvelope'; data?: unknown; message?: string; code?: string }
+    | { kind: 'transportFailure'; data?: unknown; message?: string; code?: string }
+    | { kind: 'deferredSuccess'; data: unknown }
+    | { kind: 'deferredFailure'; code?: string; message: string }
+  ) &
+    ResponseHold
 >;
 
 /** Runtime scenario type for API method queues. */
@@ -13,6 +24,8 @@ export type RuntimeScenario = Readonly<{
   getApplicationAccess?: ReadonlyArray<ResponseItem>;
   getAuthenticationSettings?: ReadonlyArray<ResponseItem>;
   setAuthenticationSettings?: ReadonlyArray<ResponseItem>;
+  getBackendConfig?: ReadonlyArray<ResponseItem>;
+  setBackendConfig?: ReadonlyArray<ResponseItem>;
   getABClassPartials?: ReadonlyArray<ResponseItem>;
   getABClass?: ReadonlyArray<ResponseItem>;
   upsertABClass?: ReadonlyArray<ResponseItem>;

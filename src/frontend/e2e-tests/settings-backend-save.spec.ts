@@ -1,5 +1,9 @@
 import { expect, test } from '@playwright/test';
-import { mockBackendSettingsRuntime } from './helpers/settings-backend-runtime-mock';
+import {
+  createBackendSettingsScenario,
+  installRuntimeMock,
+  releaseRuntimeSignal,
+} from './shared/endToEndRuntimeMocks';
 import {
   baseBackendConfig,
   refreshedBackendConfig,
@@ -17,32 +21,34 @@ import {
   editFieldViaKeyboard,
   getField,
   openBackendSettings,
-  releaseBackendSettingsSignal,
   saveButtonLabel,
   storedApiKeyHelperCopy,
 } from './helpers/settings-backend-journey';
 
 test.describe('backend settings save journey', () => {
   test('retains the stored API key when saving refreshed backend data', async ({ page }) => {
-    await mockBackendSettingsRuntime(page, {
-      getBackendConfig: [
-        {
-          kind: 'success',
-          data: baseBackendConfig,
-        },
-        {
-          kind: 'success',
-          data: refreshedBackendConfig,
-        },
-      ],
-      setBackendConfig: [
-        {
-          kind: 'success',
-          data: refreshedWriteResult,
-          delayMs: backendSettingsSaveDelayMs,
-        },
-      ],
-    });
+    await installRuntimeMock(
+      page,
+      createBackendSettingsScenario({
+        getBackendConfig: [
+          {
+            kind: 'success',
+            data: baseBackendConfig,
+          },
+          {
+            kind: 'success',
+            data: refreshedBackendConfig,
+          },
+        ],
+        setBackendConfig: [
+          {
+            kind: 'success',
+            data: refreshedWriteResult,
+            delayMs: backendSettingsSaveDelayMs,
+          },
+        ],
+      })
+    );
 
     await page.goto('/');
     await openBackendSettings(page);
@@ -71,25 +77,28 @@ test.describe('backend settings save journey', () => {
   test('keeps populated settings visible while publishing panel busy state during a post-save refresh', async ({
     page,
   }) => {
-    await mockBackendSettingsRuntime(page, {
-      getBackendConfig: [
-        {
-          kind: 'success',
-          data: baseBackendConfig,
-        },
-        {
-          kind: 'success',
-          data: refreshedBackendConfig,
-          releaseSignal: backendSettingsRefreshReleaseSignal,
-        },
-      ],
-      setBackendConfig: [
-        {
-          kind: 'success',
-          data: refreshedWriteResult,
-        },
-      ],
-    });
+    await installRuntimeMock(
+      page,
+      createBackendSettingsScenario({
+        getBackendConfig: [
+          {
+            kind: 'success',
+            data: baseBackendConfig,
+          },
+          {
+            kind: 'success',
+            data: refreshedBackendConfig,
+            releaseSignal: backendSettingsRefreshReleaseSignal,
+          },
+        ],
+        setBackendConfig: [
+          {
+            kind: 'success',
+            data: refreshedWriteResult,
+          },
+        ],
+      })
+    );
 
     await page.goto('/');
     await openBackendSettings(page);
@@ -113,28 +122,31 @@ test.describe('backend settings save journey', () => {
       await expect(getField(page, backendUrlLabel)).toHaveValue('https://backend.example.com');
       await expect(getField(page, backendAssessorBatchSizeLabel)).toHaveValue('45');
     } finally {
-      await releaseBackendSettingsSignal(page, backendSettingsRefreshReleaseSignal);
+      await releaseRuntimeSignal(page, backendSettingsRefreshReleaseSignal);
     }
   });
 
   test('shows save failure feedback when the backend rejects an update', async ({ page }) => {
-    await mockBackendSettingsRuntime(page, {
-      getBackendConfig: [
-        {
-          kind: 'success',
-          data: baseBackendConfig,
-        },
-      ],
-      setBackendConfig: [
-        {
-          kind: 'success',
-          data: {
-            success: false,
-            error: backendSettingsSaveFailureCopy,
+    await installRuntimeMock(
+      page,
+      createBackendSettingsScenario({
+        getBackendConfig: [
+          {
+            kind: 'success',
+            data: baseBackendConfig,
           },
-        },
-      ],
-    });
+        ],
+        setBackendConfig: [
+          {
+            kind: 'success',
+            data: {
+              success: false,
+              error: backendSettingsSaveFailureCopy,
+            },
+          },
+        ],
+      })
+    );
 
     await page.goto('/');
     await openBackendSettings(page);

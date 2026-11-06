@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { pageContent } from '../src/pages/pageContent';
 import { googleScriptRunApiHandlerFactorySource } from '../src/test/googleScriptRunHarness';
+import { baseBackendConfig } from './helpers/settings-backend-fixtures';
 
 const breadcrumbNavigationName = 'Breadcrumb';
 const defaultNavigationLabel = 'Dashboard';
@@ -25,20 +26,6 @@ const classesLabel = 'Classes';
 const settingsLabel = 'Settings';
 const heatmapsPageHeading = pageContent.heatmaps.heading;
 const navigationMenuLabels = pageExpectations.map(({ heading }) => heading);
-const backendSettingsFixture = {
-  backendAssessorBatchSize: 30,
-  apiKey: '****cdef',
-  hasApiKey: true,
-  backendUrl: 'https://backend.example.com',
-  revokeAuthTriggerSet: false,
-  daysUntilAuthRevoke: 60,
-  slidesFetchBatchSize: 20,
-  jsonDbMasterIndexKey: 'master-index',
-  jsonDbLockTimeoutMs: 30_000,
-  jsonDbLogLevel: 'INFO',
-  jsonDbBackupOnInitialise: true,
-  jsonDbRootFolderId: 'folder-1234',
-};
 
 /**
  * Returns the rendered breadcrumb locator.
@@ -97,7 +84,7 @@ async function mockPendingGoogleScriptRun(page: Page) {
   await page.addInitScript(`
     (() => {
       const createGoogleScriptRunApiHandlerMock = ${googleScriptRunApiHandlerFactorySource};
-      const backendSettingsFixture = ${JSON.stringify(backendSettingsFixture)};
+      const backendConfigFixture = ${JSON.stringify(baseBackendConfig)};
 
       /**
        * Delivers a success envelope as the backend apiHandler does: a JSON string
@@ -115,7 +102,7 @@ async function mockPendingGoogleScriptRun(page: Page) {
         script: {
           run: createGoogleScriptRunApiHandlerMock((request, callbacks) => {
             if (request?.method === 'getBackendConfig') {
-              sendSuccess(callbacks.successHandler, 'req-backend-config', backendSettingsFixture);
+              sendSuccess(callbacks.successHandler, 'req-backend-config', backendConfigFixture);
               return;
             }
 
