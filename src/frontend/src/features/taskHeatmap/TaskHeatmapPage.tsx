@@ -10,7 +10,7 @@
 
 import { useEffect, useMemo, type JSX } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Alert, Button, Card, Flex, App as AntdApp } from 'antd';
+import { Alert, Button, Card, Flex, Tag, App as AntdApp } from 'antd';
 import { RefreshCw, RotateCcw } from 'lucide-react';
 import { APP_GAP_MD } from '@/theme/spacing';
 
@@ -68,6 +68,9 @@ type TaskHeatmapPageProperties = Readonly<{
   onReRunAssessment?: (context: ReRunContext) => void;
 }>;
 
+/** Status tag text shown for a legacy assignment on the navigation card. */
+const REASSESSMENT_TAG_TEXT = 'Reassessment required';
+
 /**
  * Reads the persisted definition key linked to an assignment.
  *
@@ -78,6 +81,21 @@ type TaskHeatmapPageProperties = Readonly<{
 function getAssignmentDefinitionKey(classFull: ClassFull, assignmentId: string): string | null {
   const assignment = classFull.assignments.find((a) => a.assignmentId === assignmentId);
   return assignment?.assignmentDefinitionKey ?? null;
+}
+
+/**
+ * Decide whether the selected assignment carries the legacy read marker.
+ *
+ * The loaded class snapshot is the tag's only status source: preview errors
+ * and the separately fetched full result never change it.
+ *
+ * @param {ClassFull} classFull - The full class data.
+ * @param {string} assignmentId - The assignment identifier.
+ * @returns {boolean} True when the selected assignment reads as `'legacy'`.
+ */
+function isLegacyAssignment(classFull: ClassFull, assignmentId: string): boolean {
+  const assignment = classFull.assignments.find((a) => a.assignmentId === assignmentId);
+  return assignment?.assessmentContractVersion === 'legacy';
 }
 
 /**
@@ -305,14 +323,16 @@ export function TaskHeatmapPage({
   }
 
   /**
-   * Renders the navigation-card action buttons for the normal heatmap view.
+   * Renders the navigation-card actions for the normal heatmap view.
    *
-   * @remarks Re-run Assessment sits immediately left of Refresh when the
-   * owner supplies a re-run callback; otherwise only Refresh renders. The
+   * @remarks The reassessment status tag precedes the actions when the selected
+   * assignment reads as `'legacy'`, so it sits immediately left of Re-run
+   * Assessment, or immediately left of Refresh when no re-run callback is
+   * supplied. Re-run Assessment itself sits immediately left of Refresh. The
    * buttons return as a fragment so Ant Design's `Space` flattens them into
    * adjacent items (a conditional null child would leave an empty item).
    *
-   * @returns {React.ReactNode} The action buttons.
+   * @returns {React.ReactNode} The status tag and action buttons.
    */
   function renderNavActions(): React.ReactNode {
     const refreshButton = (
@@ -326,19 +346,27 @@ export function TaskHeatmapPage({
         Refresh
       </Button>
     );
-    if (onReRunAssessment === undefined) {
-      return refreshButton;
-    }
+    const actions: React.ReactNode =
+      onReRunAssessment === undefined ? (
+        refreshButton
+      ) : (
+        <>
+          <Button icon={<RotateCcw size={16} />} onClick={handleReRunAssessment}>
+            Re-run Assessment
+          </Button>
+          {refreshButton}
+        </>
+      );
 
-    const reRunButton = (
-      <Button icon={<RotateCcw size={16} />} onClick={handleReRunAssessment}>
-        Re-run Assessment
-      </Button>
-    );
+    if (!isLegacyAssignment(classFull, assignmentId)) {
+      return actions;
+    }
     return (
       <>
-        {reRunButton}
-        {refreshButton}
+        <Tag color="warning" style={{ margin: 0 }}>
+          {REASSESSMENT_TAG_TEXT}
+        </Tag>
+        {actions}
       </>
     );
   }
@@ -378,6 +406,7 @@ export function TaskHeatmapPage({
         backLabel="Back to Class overview"
         backAriaLabel="Back to Class overview"
         actions={renderNavActions()}
+        wrapActions
       />
       <HeatmapSummary
         summary={summary}

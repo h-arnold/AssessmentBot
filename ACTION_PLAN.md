@@ -264,39 +264,29 @@ Complete and clean through the final re-review. Appended below: docs sync, Data 
 
 ## Section 5 — Task-heatmap reassessment tag
 
-### Objective and constraints
+Red and green complete and all reviews clean; the docs sync, section regression gate and commit record are appended to the Implementation notes below.
 
-Implement the reviewed layout, task heatmap only. No recent-card, metadata, standalone heatmap-builder or rerun-flow changes. Tag is read from the selected assignment in the loaded class; no new query.
+### Outcome
 
-### Required tests — Red
+Delivered the task-heatmap reassessment tag and the opt-in `wrapActions` prop on `PageNavCard` as planned. All suites green: scoped frontend 39/39, full frontend coverage 3033/3033, E2E 11/11, `lint:frontend:check` 0 errors (17 baseline warnings), `typecheck:all` exit 0. The red loop took three review rounds (initial FAIL: four structurally-unpassable journeys/tests and one missing planned case; repairs validated by measured mock-lifecycle evidence); the green loop took two (one antd-DOM reality fix, one comment-rationale nitpick).
 
-1. New `TaskHeatmapPage.legacy.spec.tsx`: legacy/current selection, tag only in normal navigation, no callback, full-preview loading/error, and title-error branch remains Back-only without tag. Scope text assertions to the navigation card because stored error reasoning can share the same text.
-2. `PageHeader.spec.tsx`: `wrapActions` omitted/false preserves current DOM/layout contract; true wraps both groups with outer `APP_GAP_SM` and tight action spacing. Existing button order and callback arguments stay unchanged.
-3. Playwright `legacy-assignment-results.spec.ts`: visible real score/content alongside corrupt E; no tag on recent cards/current siblings; tag before rerun/Refresh; no clipping/overlap at 1440×900 and 390×844; light/dark readability and keyboard order.
-4. Add rerun-with-legacy cases to the new `legacy-assignment-results.spec.ts`, reusing existing rerun journey helpers: no optimistic tag removal; failed rerun preserves tag/results; successful rerun followed by the existing class refresh yields marker 1 and removes tag. Do not add query invalidation behaviour to the rerun flow merely for this feature.
+### Retained for later sections
 
-### Green and Refactor
-
-- Add non-dismissible warning Tag in `TaskHeatmapPage.renderNavActions()` immediately before Re-run Assessment, or before Refresh without callback. Match existing feature tags with `style={{ margin: 0 }}` so the only horizontal gap is Space's 8px spacing.
-- Extend `PageNavCard` in `components/PageHeader/PageHeader.tsx` with optional `wrapActions?: boolean`; enable only on normal TaskHeatmapPage navigation. Keep title-error branch and other callers unchanged.
-- Use outer `APP_GAP_SM` (8px) when opted in and existing Space spacing, with left-aligned wrapped rows. No extra wrapper component, tag helper, tooltip or live region.
-
-### Helper, data-shape and fixture plan
-
-- **Extend** existing PageNavCard; planned **Not implemented** entry in @docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md . Follow @LEGACY_ASSIGNMENT_READ_LAYOUT.md .
-- No new persisted/wire/card-model fields. Section 4 version is the only transport dependency.
-- Fixtures: same linked `small`/`medium` canonical JSON views with typed local marker-only legacy derivation; local error-state variants. Reuse existing query/mock/provider/rerun helpers, without importing script-owned JavaScript or editing unrelated dirty harness files.
-
-### Acceptance criteria and checks
-
-- Status tag appears only at the agreed surface; scores/previews/actions work normally; current/error states and other header callers do not regress.
-- `npm run test:frontend -- src/features/taskHeatmap/TaskHeatmapPage src/components/PageHeader`
-- `npm run test:frontend:e2e -- e2e-tests/legacy-assignment-results.spec.ts`
-- `npm run lint:frontend:check`; `npm run typecheck:all`.
+- **Tag contract:** exact text "Reassessment required"; `<Tag color="warning" style={{ margin: 0 }}>`; static (no close/click/keyboard/tooltip/live region); immediately before Re-run Assessment (before Refresh without callback); sourced ONLY from the selected assignment's `'legacy'` marker in the loaded `classFull.assignments` (never preview errors or the fetched full result); title-error Back-only; no tag on other surfaces; tag removal only via successful rerun + existing class refresh (no optimistic removal, no query invalidation).
+- **`wrapActions` contract:** opt-in on `PageNavCard`; true → outer Flex `APP_GAP_SM` wrap + action Space wrap retaining `APP_SPACE_SIZE_TIGHT`; omitted/false byte-identical; enabled only on TaskHeatmapPage's normal nav card.
+- **Kebab-case `toHaveStyle` constraint:** the test `getComputedStyle` mock (`src/frontend/src/test/setup.ts:137-211`) resolves kebab-case keys only (camelCase accessors only fontSize/fontWeight/opacity), and antd v6 Space emits wrap as inline style, never a class — future specs asserting computed styles must use kebab-case keys; documented in-code at `PageHeader.spec.tsx:208`.
+- **Narrow-viewport (390px) contract:** the shell pre-exists overflow at 390px (documented; 450≡450 before/after); the tag pins page-level containment (right edge ≤ scrollWidth, no hidden/clip ancestor truncation, wrapped DOM order, row-start) — card-box containment is desktop-only; the layout spec rules out AppShell/card production changes ("keep the existing width/scroll policy").
+- **Files:** production `TaskHeatmapPage.tsx` + `PageHeader.tsx`; tests `TaskHeatmapPage.legacy.spec.tsx` (274 lines), `PageHeader.spec.tsx` (277), `legacy-assignment-results.spec.ts` (362); helpers `src/frontend/e2e-tests/helpers/legacy-reassessment-tag-layout.ts` (~408) + `legacy-assignment-results-journeys.ts` (237); 11 E2E journeys (9 legacy + 2 marker-1).
+- **Deviations:** line-count projections exceeded (274 vs ≤220; 277 vs 130; journeys helper created by the 550-line decomposition rule; layout helper grew for the wrap-aware/contrast work) — projections are estimates, hard limits respected; theme journeys merged (8→7 planned journeys, one toggle journey covers light/dark); antd warning contrast ≈1.83:1 makes a 4.5:1 contrast pin unachievable, so readability pins theme-toggle colour change instead.
+- **Review citations:** `.opencode/scratchpad/review-section5-red.md`, `review-section5-red-rereview.md`, `review-section5-red-final.md`, `review-section5-green.md`, `review-section5-green-rereview.md`.
+- **Baseline lint debt:** unchanged (4 backend / 17 frontend pre-existing warnings) — do not re-flag.
 
 ### Implementation notes / deviations / follow-up
 
-Not started. No new rerun orchestration is authorised.
+Complete and clean through the final re-review. Appended after compaction: docs sync, section regression gate (§2.6) and commit record (§2.7).
+
+- **Docs sync (outcome):** two files updated, no pages created — `navigation-consistency-status.md` (+34/−27: diagram, tag paragraph, `wrapActions` prop-table + design-choice entries, §2 test counts 10→15, §4 tag/wrapping bullets, file inventory 132/277 lines, Vitest total 43) and `frontend-shared-helpers-and-abstraction-standards.md` (§3.5 planned entry → Implemented, body review-verified verbatim). JSDoc in both production files verified accurate. Section 6 hand-off update: the legacy browser-journey inventories in `frontend-testing.md` / `frontend-playwright-e2e.md` must now record Section 5's final state (11 journeys — 9 legacy + 2 marker-1 — plus the two new helpers), superseding the earlier verify-only note; `frontend-data-analysis-response.md` ~L1114 reconciliation (score inclusion + tag now both delivered) also lands in Section 6.
+- **Section regression gate (§2.6):** PASSED — compare mode, session `legacy-assignment-results`, report `.ts-regression-checker/reports/session-legacy-assignment-results/runs/2026-11-07T14-30-40.595Z/comparison.txt` (2026-11-07T14:30Z). 0 regressions, 0 new failures, 0 fixes; 7/8 checks passing, the only failing check being the identical baseline-debt `backend-lint-check` (4 pre-existing `max-lines` warnings). E2E, all coverage suites, builder checks and typecheck passed.
 
 ## Section 6 — Regression hardening and plain-language documentation
 
