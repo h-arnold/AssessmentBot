@@ -18,7 +18,7 @@ Frontend Zod (shared owner): `src/frontend/src/services/assignmentAssessment/ass
 
 Sibling contracts:
 
-- [Contract: Assignment](assignment.md) — **origin**. `StudentSubmissionItem.assessments` holds this shape; the `assessmentContractVersion` marker, write boundary and legacy projection live there.
+- [Contract: Assignment](assignment.md) — **origin**. `StudentSubmissionItem.assessments` holds this shape; the `assessmentContractVersion` marker, write boundary and legacy read preparation live there.
 - [Contract: Student Submission](student-submission.md) — owns `StudentSubmissionItem`, whose `setError()` is the atomic all-three-criteria failure primitive this shape's catalogue feeds.
 - [Contract: BaseTaskArtifact](base-task-artifact.md) — supplies the `contentHash` this shape's cache identity and template-match `N` decisions depend on.
 - [Contract: ABClass](abclass.md) — embeds the partial assessment entry inside class-embedded assignment partials.
@@ -170,8 +170,8 @@ None. This shape embeds no other shape; `error` is an inline `{ stage, code }` o
   entries (same `stage`, `code` and reasoning), preserving healthy sibling items. It
   does not drop the item or salvage marks. Completed persistence rejects such a record
   at the write boundary. The browser normaliser implements the equivalent isolation and
-  is invoked by both read services. Legacy reads use reassessment projection rather than
-  current-format criterion isolation.
+  is invoked by both read services. Legacy reads use the same current-format criterion
+  isolation through read preparation rather than a separate placeholder rule.
 - Assessment-stage `E` results retain the successfully extracted source content; a
   marking failure does not imply unavailable source content. See
   [Contract: Student Submission § Source artefact content and hash semantics](student-submission.md#source-artefact-content-and-hash-semantics).
@@ -337,8 +337,8 @@ Only after that validation succeeds does `persistAssignmentRun()` set
 assignment payloads and prepare the prospective full class and partial-registry payloads.
 Both assignment serializers consequently emit marker `1` on newly completed/reassessed
 results. Legacy records are untouched by this write path: their stored body and exact
-marker presence/value are re-emitted from ordinary instance state, and read-only
-reassessment projections never enter persistence. Genuine no-submission (null parent document and empty item map) remains
+marker presence/value are re-emitted from ordinary instance state, and read-time
+preparation never enters persistence. Genuine no-submission (null parent document and empty item map) remains
 valid. Storage writes keep the existing full-assignment → class → `abclass_partials`
 order and are non-transactional.
 
@@ -347,9 +347,9 @@ order and are non-transactional.
 Backend top-level field on the full assignment record and on every class-embedded
 partial assignment. It is an assessment-result marker, not a definition-version marker.
 
-| Field                       | Type        | Persistence                                                                                                                                                                                                                                                               | Transport                                                                                                          | Frontend Zod                        | Notes                                                                                                                                                                                                                                                     |
-| --------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ | ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `assessmentContractVersion` | `1 \| null` | Newly completed results are validated then stamped `1` before serialization. Legacy absence, `null` or unsupported values are preserved verbatim with the legacy body, including a present non-array `submissions` value; stored values are never certified or rewritten. | Always present. `1` for current results; explicit `null` for legacy results after backend reassessment projection. | `z.union([z.literal(1), z.null()])` | Storage may omit the marker, store `null`, or retain an unsupported legacy value; that stored state means the result requires reassessment. The backend read transport normalises legacy storage to explicit `null` beside materialised reassessment `E`. |
+| Field                       | Type        | Persistence                                                                                                                                                                                                                                                               | Transport                                                                                                       | Frontend Zod                                   | Notes                                                                                                                                                                                                                                                   |
+| --------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- | ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `assessmentContractVersion` | `1 \| null` | Newly completed results are validated then stamped `1` before serialization. Legacy absence, `null` or unsupported values are preserved verbatim with the legacy body, including a present non-array `submissions` value; stored values are never certified or rewritten. | Always present. `1` for current results; `'legacy'` for every other stored marker, set on the read output only. | `z.union([z.literal(1), z.literal('legacy')])` | Storage may omit the marker, store `null`, or retain an unsupported legacy value; that stored state means the result requires reassessment. The backend read transport maps every non-`1` stored marker to `'legacy'` beside prepared read submissions. |
 
 Persistence rules:
 
@@ -361,12 +361,12 @@ Persistence rules:
   keeps the legacy submission body in ordinary instance state alongside the original marker
   value and its presence (`_legacyMarkerPresent`); ordinary persistence serialisers re-emit
   that state unchanged rather than certifying or rewriting it (see
-  [§ Legacy reassessment read projection](#legacy-reassessment-read-projection)). A present
+  [§ Legacy read preparation](#legacy-read-preparation)). A present
   non-array `submissions` body is preserved by the same path; see
   [§ Legacy `submissions` preservation](#legacy-submissions-preservation).
 - A successful reassessment replaces the full result and embedded partial with a fresh
   current result carrying version `1`; it does not carry the legacy state.
-- Read-only reassessment projections do not write repaired results back to storage; there
+- Read-time preparation does not write repaired results back to storage; there
   is no bulk migration, deletion, reset or guessed historical cause.
 - `AssignmentSerialisation._applyContractMarker()` writes the marker only when the instance
   carries `1`, or when the restored record had the marker present (then the stored value is
@@ -376,66 +376,67 @@ Transport and frontend-validation rules:
 
 - The backend read transport always emits `assessmentContractVersion` on every full
   assignment record and every class-embedded partial assignment. It emits `1` for a
-  current result and explicit `null` for a legacy result after materialising reassessment
-  `E` entries. It never omits the field and never emits a raw unsupported stored value.
-- Both frontend read schemas require `z.union([z.literal(1), z.null()])`. A wire payload
-  that omits the field or supplies any other value is an invalid root and fails strict
-  root validation.
+  current result and `'legacy'` for every other stored marker, beside prepared read
+  submissions. It never omits the field and never emits a raw unsupported stored value.
+- Both frontend read schemas require `z.union([z.literal(1), z.literal('legacy')])`. A wire
+  payload that omits the field or supplies any other value is an invalid root and fails
+  strict root validation.
 - Invalid-root rejection is not a browser compatibility path: the frontend must not
-  certify legacy scores, fabricate legacy `E` entries or build a second reassessment
-  graph from a marker-less/unsupported wire payload. Legacy `E` materialisation belongs
-  solely to the backend projector, whose output always carries the required marker
-  (`1` or `null`).
+  fabricate legacy `E` entries or build a second reassessment graph from a
+  marker-less/unsupported wire payload. Legacy preparation belongs solely to the backend,
+  whose output always carries the required marker (`1` or `'legacy'`).
 - Invalid-root validation precedes per-item isolation. The defensive full-read coverage
   fallback for a missing known task applies only to a valid root carrying
-  `assessmentContractVersion: 1 | null`; it is not a marker-based legacy or
-  reassessment-graph path.
+  `assessmentContractVersion: 1`; it is not a legacy path.
 
-### Legacy reassessment read projection
+### Legacy read preparation
 
 > **Status: active on both read paths.** The public owner
-> `AssignmentRehydration.projectReassessmentSubmissions(assignment, students, form)`
-> delegates to the pure helper `02_AssignmentReadProjection.js`. Both
+> `AssignmentRehydration.prepareLegacyReadSubmissions(assignment, form)` delegates to
+> `AssignmentLegacyRead.prepare()` in `02_AssignmentLegacyRead.js`. Both
 > `AssignmentSerialisation.toReadJSON()` (full) and `ABClassResponseMapper._toReadView()`
 > (partial) invoke it before response validation and definition-key replacement. Both
-> read services then validate the already-materialised entries; the browser does not
-> materialise a second reassessment graph.
+> read services then validate the prepared entries; the browser does not prepare a second
+> legacy graph.
 
-That public entry remains the sole backend materialiser of legacy reassessment `E`
-entries and creates detached read placeholders, not durable repairs. It applies when a
-**stored** full record or class-embedded partial is missing `assessmentContractVersion`,
-or carries `null`/an unsupported value; its read output always carries
-`assessmentContractVersion: null`. A missing or unsupported **wire** marker is instead an
-invalid root under strict frontend validation, not a legacy-result signal for the
-browser. The internal `form` argument is exactly `'full' | 'partial'`: full for
-`getAssignment`, partial for `getABClass`. It is not a new transport parameter.
+That public entry is the sole backend owner of legacy read preparation. It applies when a
+**stored** full record or class-embedded partial carries any `assessmentContractVersion`
+other than `1` (absent, `null` or unsupported); its read output always carries
+`assessmentContractVersion: 'legacy'`. A missing or unsupported **wire** marker is instead an
+invalid root under strict frontend validation, not a legacy-result signal for the browser.
+The internal `form` argument is exactly `'full' | 'partial'`: full for `getAssignment`,
+partial for `getABClass`. It selects output serialisation only, never a weaker validator, and
+is not a new transport parameter.
 
-| Read path       | Invocation                                                                                                                                                                                                                                                                                                                          | Inputs                                                                                                                                                                                                                                | Output                                                                                           |
-| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| `getABClass`    | `ABClassResponseMapper._toReadView()` invokes it **before** replacing the embedded definition with `assignmentDefinitionKey`                                                                                                                                                                                                        | already loaded roster and embedded task summaries                                                                                                                                                                                     | partial assignment entries include explicit partial `E` items; `assessmentContractVersion: null` |
-| `getAssignment` | `getAssignment_()` calls `Assignment.toReadJSON()`, which delegates to `AssignmentSerialisation.toReadJSON()`. That read projection invokes the same operation on the instance returned by `readRehydrateAssignment` (after its `_ensureFullDefinition` step), before final response validation and `DateUtils.deepConvertDates()`. | Validated stored student identities and the resolved embedded definition's tasks. The full stored submission body is authoritative when present; the existing partial-definition fallback may resolve the registry's full definition. | Full `E` entries; `assessmentContractVersion: null`; no roster or class read                     |
+| Read path       | Invocation                                                                                                                                                                                                                                                                                                                    | Inputs                                                                                                                                                                                        | Output                                                                                    |
+| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| `getABClass`    | `ABClassResponseMapper._toReadView()` invokes it **before** replacing the embedded definition with `assignmentDefinitionKey`                                                                                                                                                                                                  | embedded task summaries and the stored submission body                                                                                                                                        | prepared partial submissions; `assessmentContractVersion: 'legacy'`                       |
+| `getAssignment` | `getAssignment_()` calls `Assignment.toReadJSON()`, which delegates to `AssignmentSerialisation.toReadJSON()`. That read path invokes the same operation on the instance returned by `readRehydrateAssignment` (after its `_ensureFullDefinition` step), before final response validation and `DateUtils.deepConvertDates()`. | The resolved embedded definition's tasks. The full stored submission body is authoritative when present; the existing partial-definition fallback may resolve the registry's full definition. | prepared full submissions; `assessmentContractVersion: 'legacy'`; no roster or class read |
 
 The class path keeps its stored task summaries. For abnormal legacy partial-definition
-records, the class read and the direct full read can therefore expose different
-known-task universes. All projected entries in both reads remain reassessment `E`;
-neither read repairs storage nor guesses historical task associations or causes.
+records, the class read and the direct full read can therefore validate against different
+task lists. Neither read repairs storage nor guesses historical task associations or causes.
 
-Placeholder construction (one per known student/task pair):
+Preparation rules:
 
-| Aspect               | Value                                                                                                                                                                                                                                                                                                                                                        |
-| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Submission           | Existing `StudentSubmission` model constructor. `studentId` from the validated identity. `studentName` is `string \| null`, matching the backend model; do not fabricate a name when only an identity is known. `documentId` retains only a validated historical ID, otherwise explicit `null`.                                                              |
-| Item                 | Existing `StudentSubmissionItem` model constructor; known `taskId`; item ID uses the usual model derivation.                                                                                                                                                                                                                                                 |
-| Artefact             | Existing model constructor with `role: 'submission'`, `type: 'base'`, explicit `content: null`, `contentHash: null` and empty `metadata` (`{}`). Its UID is deterministically derived from the assignment/student/task identities. Only validated historical document/page IDs may be retained; otherwise explicit `null`, never guessed source identifiers. |
-| Assessments          | All three canonical criteria set to the validation `REASSESSMENT_REQUIRED` `E`: `reasoning: 'Reassessment required'` and `error: { stage: 'validation', code: 'REASSESSMENT_REQUIRED' }`.                                                                                                                                                                    |
-| Feedback             | Empty record (`{}`).                                                                                                                                                                                                                                                                                                                                         |
-| Timestamps           | Valid stored submission timestamps where available. Otherwise the detached placeholder uses the assignment's `createdAt` and its non-null `updatedAt` (or `createdAt` when no update exists). Never the wall clock and never a claim about the historical processing attempt.                                                                                |
-| Transport projection | Full reads emit full `E` entries. Class reads redact artefact content/hash as usual but retain `E` reasoning and cause. Both emit `assessmentContractVersion: null`.                                                                                                                                                                                         |
+| Aspect              | Behaviour                                                                                                                                                                                                     |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Validation owner    | `AssignmentCurrentRestoration._rehydrateCurrentSubmission()` runs on isolated copies of the stored items. There is no second assessment validator and no blanket `E` materialiser.                            |
+| Validation mode     | Follows the embedded definition representation, not `form`: a task-summary array selects partial validation, a keyed task map selects full validation. Full output uses the resolved full definition.         |
+| Valid item          | Scores, reasoning, feedback, artefact type/content and source identities are retained and serialised in the requested form.                                                                                   |
+| Invalid item        | A null/malformed assessment map, missing criterion, invalid score, invalid artefact or contradictory source state becomes all-three validation `CORRUPT_RECORD` `E` for that task; healthy siblings are kept. |
+| Malformed item map  | A null, missing, array or non-record `items` value yields one `CORRUPT_RECORD` `E` per task in the saved embedded definition, on both output forms.                                                           |
+| Missing known task  | Same missing-item `E` behaviour as current-format restoration, including non-empty null-parent submissions.                                                                                                   |
+| Empty no-submission | Null parent document with an empty item map stays the existing no-submission representation; no attempt or score is manufactured.                                                                             |
+| Timestamps          | Valid saved values are retained; otherwise the assignment's `createdAt` and non-null `updatedAt` (or `createdAt`) are used. Never the wall clock.                                                             |
+| Non-array root      | A present non-array `submissions` value returns `null` from the facade; the caller emits the preserved, date-normalised body from `toJSON()`/`toPartialJSON()` and the frontend root check rejects it.        |
+| Error propagation   | Identity failures, unknown-task associations and injected constructor faults propagate unchanged; they are never relabelled `E`.                                                                              |
+| Mutation            | The restored instance, its saved raw submissions and later persistence output are unchanged.                                                                                                                  |
 
-The `Models/StudentSubmission/` split keeps `index.js` as the public facade and the
-existing item model in `00_StudentSubmissionItem.js`; both remain at most 320 lines and
-preserve the constructors used above. This module separation is not a change to the
-placeholder contract.
+Stored explicit `REASSESSMENT_REQUIRED` errors remain supported: they are served as stored on
+both read paths and are not regenerated. The all-results placeholder producer
+(`AssignmentRehydration.projectReassessmentSubmissions()` and `02_AssignmentReadProjection.js`)
+has been removed; the catalogue entry remains accepted for previously stored errors.
 
 Format gate and persistence preservation:
 
@@ -444,28 +445,21 @@ Format gate and persistence preservation:
   `inst.assessmentContractVersion` / `inst._legacyMarkerPresent` for unchanged
   persistence. `_legacyMarkerPresent` itself is not serialised. Legacy persistence
   `toJSON()`/`toPartialJSON()` re-emit that stored submission body and the original
-  marker unchanged; they never emit projected `E` placeholders.
-- Do not validate or coerce historical marks into the new completed-item contract, strip
-  stored content on an ordinary class save, or persist the detached `E` projection. This
-  is a format gate, not historical-data repair. The read projection is detached:
-  `_toReadView()` substitutes the projector output for the class wire entry, and
-  `Assignment.toReadJSON()` (delegating to `AssignmentSerialisation.toReadJSON()`) does
-  the same for a direct full read. Class save/preparation never receives those read
-  placeholders.
-- Historical scores/content are ignored for assessment resolution; do not attempt to
-  reconstruct past failure causes. Old-format data need not gain valid historical
-  previews, but class configuration, definitions and existing stored results are
-  retained unchanged. Successful reassessment is the authorised transition to a current
-  result.
-- The frontend normaliser validates these already materialised entries and the required
-  `assessmentContractVersion: 1 | null` read field. It does not generate a second
-  reassessment graph, query a roster or infer historical outcomes. A wire payload with a
-  missing or unsupported marker is an invalid root; it is not a legacy-result signal for
-  the browser. Both read services invoke the normaliser before their final parse.
+  marker unchanged; they never emit prepared read submissions or `'legacy'`.
+- Do not persist the read result. The prepared submissions are detached: `_toReadView()`
+  substitutes them for the class wire entry, and `Assignment.toReadJSON()` (delegating to
+  `AssignmentSerialisation.toReadJSON()`) does the same for a direct full read. Class
+  save/preparation never receives those read values.
+- Class configuration, definitions and existing stored results are retained unchanged.
+  Successful reassessment is the authorised transition to a current result.
+- The frontend normaliser validates the prepared entries and the required
+  `assessmentContractVersion: 1 | 'legacy'` read field. It does not generate a second
+  legacy graph, query a roster or infer historical outcomes. Both read services invoke the
+  normaliser before their final parse.
 - An invalid root/definition or untrustworthy required identity still fails the owned
-  dataset; this projection must not invent missing identities.
+  dataset; preparation must not invent missing identities.
 
-> **Temporary compatibility.** The legacy persistence and detached-read
+> **Temporary compatibility.** The legacy persistence and read-preparation
 > compatibility path — including the separate `Assignment.toReadJSON()` wrapper — is
 > migration compatibility, not an intended permanent second serialiser. Review it on
 > **24 April 2027** to decide whether legacy assessments have likely been rerun and the
@@ -480,8 +474,8 @@ Format gate and persistence preservation:
 `Assignment._baseFromJSON()` routes a record whose `assessmentContractVersion` is
 exactly `1` through `AssignmentCurrentRestoration._rehydrateCurrentSubmission()`; every
 other record is kept as ordinary instance state (stored submissions, marker value and
-marker presence) and projected for reads as described under
-[§ Legacy reassessment read projection](#legacy-reassessment-read-projection).
+marker presence) and prepared for reads as described under
+[§ Legacy read preparation](#legacy-read-preparation).
 The representation mode is threaded from `Assignment.fromJSON()` through
 `Assignment._baseFromJSON()` / `AssignmentRehydration._rehydrateSubmission()` and
 `AssignmentRehydration._rehydrateCurrentSubmission()` /
@@ -491,7 +485,7 @@ The representation mode is threaded from `Assignment.fromJSON()` through
 
 | Aspect                  | Behaviour                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
 | ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Activation              | `assessmentContractVersion === 1` only. Newly completed runs are validated and stamped before both persistence serialisers emit the marker. Marker-less, `null` and unsupported records are retained as ordinary instance state without reconstruction; the read transport emits explicit `null` after reassessment projection. Both frontend read schemas require `1 \| null` and both read services run the normaliser before their final parse. See [Known discrepancies](#validation).                                                |
+| Activation              | `assessmentContractVersion === 1` only. Newly completed runs are validated and stamped before both persistence serialisers emit the marker. Marker-less, `null` and unsupported records are retained as ordinary instance state without reconstruction; the read transport emits `'legacy'` after read preparation. Both frontend read schemas require `1 \| 'legacy'` and both read services run the normaliser before their final parse. See [Known discrepancies](#validation).                                                        |
 | Root and task universe  | Validated once, before any model constructor runs: non-blank `courseId` / `assignmentId` strings, `submissions` as an array, and a non-empty embedded `assignmentDefinition.tasks` universe. In the full task-map form every key is non-blank and equals the embedded task's canonical `id`; an optional `taskId` must match that key. In the partial summary-array form every `taskId` is a non-empty unique string. Any failure throws and fails the owned dataset.                                                                     |
 | Shared identities       | The same task-universe check runs with an empty `submissions` array, so duplicate or inconsistent definition identities cannot be hidden by having no students. A submission must carry a non-blank string `studentId` and an `assignmentId` equal to the root assignment ID. Unknown stored task keys outside the authoritative universe throw; associations are never guessed.                                                                                                                                                          |
 | Empty no-submission     | A submission with parent `documentId: null` and an empty item object remains an empty submission record. It is not expanded into placeholders or fabricated `N` items.                                                                                                                                                                                                                                                                                                                                                                    |
@@ -509,7 +503,7 @@ generates TABLE fixtures nor introduces new TABLE feature work.
 The synthetic generator, projection and strict graph validators emit and accept marker-1
 records, real PNG/raw-grid bodies, paired reference formulae and retained partial `E`
 details. The committed canonical corpus is byte-reproducible across two runs. Production
-persistence and both read transports emit the marker; the backend legacy read projection
+persistence and both read transports emit the marker; the backend legacy read preparation
 and the frontend read normaliser are active in both read services. The analyser accepts
 explicit `E` input. The completed-write gates (including pending-image rejection and
 completion-time marker stamping) are enforced at the write boundary; preview error states
@@ -520,22 +514,19 @@ remain unimplemented (see
 
 ## Status
 
-The marker, write gate and marker-1 restoration rules above are the current contract.
-
-Legacy `submissions` preservation on restoration and ordinary save is implemented; see
-[§ Legacy `submissions` preservation](#legacy-submissions-preservation). The legacy read
-changes below are planned, not current behaviour.
+The marker, write gate and marker-1 restoration rules above are the current contract, as is
+legacy read preparation on both read paths.
 
 ## Planned contract changes (Not implemented)
 
-Target: root `SPEC.md`, “Display Legacy Assignment Results”.
-
-1. Read version is required `1 | 'legacy'`; non-1 stored markers read as `'legacy'`. Storage retains original marker presence/value.
-2. Both legacy read paths keep valid results and reuse existing current-format item validation on an independent read result. Bad items become `CORRUPT_RECORD` E; healthy items/submissions remain. Malformed item maps and missing known items use the saved embedded task list on both full and partial reads, before the class mapper strips the definition. Existing no-submission and timestamp rules apply.
-3. The all-results `REASSESSMENT_REQUIRED` placeholder producer is removed. Its cause code may remain accepted for stored errors; no catalogue deletion is planned.
-4. Corrupted student IDs are explicitly out of scope by user decision. No invented IDs, dropped-row recovery or new warning is planned. Identity/unknown-task association rejection stays unchanged. Assessment corruption does not block a valid identified submission's siblings.
-5. Read preparation validates in the existing restoration mode (summary tasks: partial; keyed tasks: full), then serialises the requested form. Non-array roots bypass preparation and reach frontend root rejection unchanged. The removed projector's `userId` fallback is not retained; the required identity is `studentId`.
-6. Both frontend normalisers remove the marker-null reassessment-item requirement and accept valid legacy items using their existing full/partial item checks. The browser defensive missing-task fallback stays marker-1-only; backend preparation owns legacy coverage, including non-empty null-parent submissions.
+None for this contract. The read version union `1 | 'legacy'`, legacy read preparation, the
+removal of the all-results `REASSESSMENT_REQUIRED` placeholder producer and the frontend
+normaliser change are implemented and documented above
+([§ `assessmentContractVersion` result marker](#assessmentcontractversion-result-marker),
+[§ Legacy read preparation](#legacy-read-preparation)). The `REASSESSMENT_REQUIRED` cause
+code remains accepted for previously stored errors; no catalogue deletion is planned.
+Corrupted student IDs remain out of scope by user decision: identity/unknown-task rejection
+is unchanged and no recovery is planned.
 
 ### Legacy `submissions` preservation
 
@@ -568,10 +559,12 @@ Assessment-stage LLM:      src/backend/RequestHandlers/
 
 Assignment serialisation:  src/backend/AssignmentProcessor/Assignment/
   ├── 00_AssignmentSerialisation.js      — toJSON()/toPartialJSON()/toReadJSON() marker emission
-  ├── 02_AssignmentRehydration.js        — marker routing and one-pass restore facade
+  ├── 02_AssignmentRehydration.js        — marker routing, one-pass restore facade and
+  │                                        prepareLegacyReadSubmissions()
+  ├── 02_AssignmentLegacyRead.js         — independent legacy read preparation; per-task
+  │                                        CORRUPT_RECORD isolation; non-array root bypass
   ├── 02_AssignmentCurrentRestoration.js — marker-1 root/task/item validation, coverage,
   │                                        null-parent isolation
-  └── 02_AssignmentReadProjection.js     — pure detached legacy reassessment projection
 
 Completed-write gate:      src/backend/y_controllers/ABClassController/
   ├── ABClassAssignmentOps.js            — persistAssignmentRun() (gate → stamp → projections → writes)

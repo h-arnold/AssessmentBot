@@ -1,4 +1,4 @@
-/** Historical reassessment timestamps and ownership boundaries. */
+/** Legacy read timestamps and the read/persistence separation boundary. */
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { currentAssignmentJson, restoreAssignment } from './assignmentRehydrationCurrentSupport.js';
 import { loadSyntheticAnalysisProfile } from '#synthetic-data/loadSyntheticAnalysisProfile.js';
@@ -27,7 +27,7 @@ function storedLegacyRecord(submissions) {
   return { ...structuredClone(full), submissions };
 }
 
-const AssignmentRehydration = require('#backend/AssignmentProcessor/Assignment/02_AssignmentRehydration.js');
+const Rehydration = require('#backend/AssignmentProcessor/Assignment/02_AssignmentRehydration.js');
 
 function historicalRecord() {
   const record = currentAssignmentJson();
@@ -38,16 +38,9 @@ function historicalRecord() {
   return record;
 }
 
-function roster(record) {
-  return record.submissions.map((submission) => ({
-    studentId: submission.studentId ?? submission.userId,
-    studentName: 'Canonical student',
-  }));
-}
-
-function project(record, students) {
-  expect(AssignmentRehydration.projectReassessmentSubmissions).toEqual(expect.any(Function));
-  return AssignmentRehydration.projectReassessmentSubmissions(record, students, 'full');
+/** Prepares the record's read result through the facade after restoration. */
+function prepare(record) {
+  return Rehydration.prepareLegacyReadSubmissions(restoreAssignment(record), 'full');
 }
 
 afterEach(() => {
@@ -55,13 +48,12 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe('legacy reassessment timestamp snapshots', () => {
+describe('legacy read preparation timestamp fallbacks', () => {
   it('preserves valid stored creation and update timestamps independently', () => {
     const record = historicalRecord();
-    const [submission] = project(record, roster(record));
-    const serialised = submission.toJSON();
-    expect(serialised.createdAt).toBe(record.submissions[0].createdAt);
-    expect(serialised.updatedAt).toBe(record.submissions[0].updatedAt);
+    const [prepared] = prepare(record);
+    expect(prepared.createdAt).toBe(record.submissions[0].createdAt);
+    expect(prepared.updatedAt).toBe(record.submissions[0].updatedAt);
   });
 
   it.each([
@@ -73,10 +65,9 @@ describe('legacy reassessment timestamp snapshots', () => {
     const stored = record.submissions[0];
     stored.createdAt = invalid;
     stored.updatedAt = invalid;
-    const [submission] = project(record, roster(record));
-    const serialised = submission.toJSON();
-    expect(serialised.createdAt).toBe(record.createdAt);
-    expect(serialised.updatedAt).toBe(record.updatedAt);
+    const [prepared] = prepare(record);
+    expect(prepared.createdAt).toBe(record.createdAt);
+    expect(prepared.updatedAt).toBe(record.updatedAt);
   });
 
   it('uses assignment creation time when both submission and assignment update times are unavailable', () => {
@@ -84,103 +75,20 @@ describe('legacy reassessment timestamp snapshots', () => {
     delete record.updatedAt;
     record.submissions[0].createdAt = null;
     record.submissions[0].updatedAt = 'malformed';
-    const [submission] = project(record, roster(record));
-    expect(submission.toJSON().updatedAt).toBe(record.createdAt);
+    const [prepared] = prepare(record);
+    expect(prepared.updatedAt).toBe(record.createdAt);
   });
 
-  it('keeps exact historical timestamps when the fake clock changes between projections', () => {
+  it('keeps exact historical timestamps when the fake clock changes between preparations', () => {
     const record = historicalRecord();
-    const students = roster(record);
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2030-01-01T00:00:00.000Z'));
-    const first = project(record, students).map((value) => value.toJSON());
+    const first = prepare(record);
     vi.setSystemTime(new Date('2040-01-01T00:00:00.000Z'));
-    const second = project(record, students).map((value) => value.toJSON());
+    const second = prepare(record);
     expect(first).toEqual(second);
     expect(first[0].createdAt).toBe(record.submissions[0].createdAt);
     expect(first[0].updatedAt).toBe(record.submissions[0].updatedAt);
-  });
-});
-
-describe('legacy reassessment deep detachment', () => {
-  it('does not mutate assignment or roster inputs and detaches nested projected values and serialisation', () => {
-    const record = historicalRecord();
-    const students = roster(record);
-    const beforeRecord = structuredClone(record);
-    const beforeStudents = structuredClone(students);
-    const restored = restoreAssignment(record);
-    const persistedBefore = restored.toJSON();
-    const first = project(record, students);
-    const second = project(record, students);
-    expect(first).toHaveLength(students.length);
-    expect(Object.keys(first[0].items)).toHaveLength(
-      Object.keys(record.assignmentDefinition.tasks).length
-    );
-    expect(record).toEqual(beforeRecord);
-    expect(students).toEqual(beforeStudents);
-
-    const firstJSON = first[0].toJSON();
-    const secondJSON = second[0].toJSON();
-    const taskId = Object.keys(firstJSON.items)[0];
-    const siblingTaskId = Object.keys(firstJSON.items).find((id) => id !== taskId);
-    const criterion = Object.keys(firstJSON.items[taskId].assessments)[0];
-    const otherCriteria = structuredClone(firstJSON.items[taskId].assessments);
-    delete otherCriteria[criterion];
-    const secondProjectionItem = structuredClone(secondJSON.items[taskId]);
-    const siblingItem = structuredClone(secondJSON.items[siblingTaskId]);
-    const sourceRecord = structuredClone(record);
-    const sourceStudents = structuredClone(students);
-    const assessment = firstJSON.items[taskId].assessments[criterion];
-    assessment.error.stage = 'changed';
-    assessment.error.code = 'changed';
-    assessment.reasoning = 'changed';
-    firstJSON.items[taskId].feedback.changed = { nested: true };
-    firstJSON.items[taskId].artifact.metadata.changed = true;
-    expect(second[0].toJSON().items[taskId]).toEqual(secondProjectionItem);
-    expect(second[0].toJSON().items[taskId].assessments).toEqual(
-      expect.objectContaining(otherCriteria)
-    );
-    expect(second[0].toJSON().items[siblingTaskId]).toEqual(siblingItem);
-    expect(restored.toJSON()).toEqual(persistedBefore);
-    expect(record).toEqual(sourceRecord);
-    expect(students).toEqual(sourceStudents);
-    expect(beforeRecord).toEqual(sourceRecord);
-    expect(beforeStudents).toEqual(sourceStudents);
-  });
-
-  it('re-emits a stored legacy body without snapshot ownership and converts live Dates to ISO strings', () => {
-    const record = historicalRecord();
-    record.submissions[0].historicalEnvelope = { nested: { value: 'stored' } };
-    record.submissions[0].createdAt = new Date('2020-02-03T04:05:06.000Z');
-    record.submissions[0].updatedAt = new Date('2021-03-04T05:06:07.000Z');
-    const restored = restoreAssignment(record);
-    expect(restored._legacyMarkerPresent).toBe(false);
-    expect(restored.submissions).toBe(record.submissions);
-
-    const initial = restored.toJSON();
-    expect(initial.submissions[0]).toHaveProperty('historicalEnvelope');
-    expect(initial.submissions[0].historicalEnvelope).toEqual({ nested: { value: 'stored' } });
-    // A Date has no own enumerable keys, so the plain-object fallback must
-    // delegate to date conversion rather than emitting `{}`.
-    expect(initial.submissions[0].createdAt).toBe('2020-02-03T04:05:06.000Z');
-    expect(initial.submissions[0].updatedAt).toBe('2021-03-04T05:06:07.000Z');
-    expect(restored.toPartialJSON().submissions[0].createdAt).toBe('2020-02-03T04:05:06.000Z');
-
-    // The instance keeps the caller's stored body by reference, so a caller
-    // mutation is visible through it; serialisation never returns that body.
-    record.submissions[0].historicalEnvelope.nested.value = 'caller mutation';
-    expect(restored.toJSON().submissions[0].historicalEnvelope.nested.value).toBe(
-      'caller mutation'
-    );
-    expect(restored.toJSON().submissions[0]).not.toBe(record.submissions[0]);
-
-    // Mutating a returned payload never reaches the instance state or a later payload.
-    const returned = restored.toJSON();
-    returned.submissions[0].historicalEnvelope.nested.value = 'returned mutation';
-    expect(restored.toJSON().submissions[0].historicalEnvelope.nested.value).toBe(
-      'caller mutation'
-    );
-    expect(Object.hasOwn(restored.toJSON(), 'assessmentContractVersion')).toBe(false);
   });
 });
 

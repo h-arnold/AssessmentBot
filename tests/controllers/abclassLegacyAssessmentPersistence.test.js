@@ -235,4 +235,28 @@ describe('legacy ABClass assessment persistence lifecycle', () => {
     expect(fullCollection.insertOne.mock.calls[0][0]).toEqual(fullBaseline);
     expect(fullCollection.insertOne.mock.calls[0][0].submissions).toEqual(fullBaseline.submissions);
   });
+
+  it('emits the legacy read marker on the new full and class read seams for a stored legacy record', () => {
+    const full = currentAssignmentJson();
+    delete full.assessmentContractVersion;
+    full.courseId = 'legacy-read-course';
+    full.assignmentId = 'legacy-read-assignment';
+    full.submissions.forEach((submission) => {
+      submission.assignmentId = full.assignmentId;
+    });
+    const fullRead = withTemporaryGlobals({ ...assignmentGlobal }, () =>
+      globalThis.Assignment.fromJSON(full).toReadJSON()
+    );
+    expect(fullRead.assessmentContractVersion).toBe('legacy');
+
+    const source = canonicalClass();
+    const embedded = source.assignments[0];
+    delete embedded.assessmentContractVersion;
+    const abClass = withTemporaryGlobals({ ...teacherGlobal, ...assignmentGlobal }, () =>
+      ABClass.fromJSON(source)
+    );
+    const classRead = new ABClassResponseMapper()._toReadView(abClass).assignments[0];
+    expect(classRead.assessmentContractVersion).toBe('legacy');
+    expect(classRead).not.toHaveProperty('assignmentDefinition');
+  });
 });

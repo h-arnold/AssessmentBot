@@ -8,9 +8,10 @@
  * using the Node-side direct-JSON-import convention already used by
  * `task-preview-source-link-fixtures.ts`, and validates every selected full
  * record through its real transport schema. It then owns the boundary variants
- * the error journeys need: a preview-only corrupt item, a legacy reassessment
- * projection, and a known class-partial `E` whose full read is still pending or
- * has failed.
+ * the error journeys need: a preview-only corrupt item, marker-only legacy full
+ * and class results that retain their saved scores and content, an explicit
+ * stored `REASSESSMENT_REQUIRED` record, and a known class-partial `E` whose full
+ * read is still pending or has failed.
  *
  * Every variant is a detached clone of a validated record, so the committed
  * fixtures are never mutated. No derived preview state (reasoning, source URL,
@@ -243,32 +244,61 @@ export function withMissingCriterion(
 }
 
 /**
- * Build the legacy wire projection of one canonical assignment.
+ * Clone a canonical assignment and mark it as a legacy read result.
  *
  * @remarks
- * The real backend materialises legacy reassessment entries before transport: a
- * null result marker, and every known item replaced by the canonical validation
- * `REASSESSMENT_REQUIRED` E with no source content. This mirrors that projection
- * so the browser receives exactly what it would in production for an old-format
- * record.
+ * The stored record has no `assessmentContractVersion`; a legacy read returns
+ * `'legacy'` with its saved scores, reasoning, artefacts and feedback intact.
+ * Only the marker changes, so the served payload is the canonical content the
+ * read contract must preserve rather than a blanket reassessment placeholder.
  *
  * @param {string} assignmentId - Canonical assignment identity.
- * @returns {Record<string, unknown>} The legacy wire payload.
+ * @returns {Record<string, unknown>} The legacy full-read payload.
  */
-export function withLegacyReassessment(assignmentId: string): Record<string, unknown> {
+export function withLegacyAssignment(assignmentId: string): Record<string, unknown> {
   const draft = structuredClone(canonicalAssignment(assignmentId));
   const payload = draft as unknown as Record<string, unknown>;
-  payload.assessmentContractVersion = null;
+  payload.assessmentContractVersion = 'legacy';
+  return payload;
+}
+
+/**
+ * Clone the canonical class and mark one embedded assignment as legacy.
+ *
+ * @remarks
+ * The class snapshot carries the same saved results as the full read, so only
+ * the selected assignment's marker changes. Every sibling assignment keeps `1`.
+ *
+ * @param {string} assignmentId - Assignment instance to mark legacy.
+ * @returns {Record<string, unknown>} The class wire payload with one legacy assignment.
+ */
+export function withLegacyClassAssignment(assignmentId: string): Record<string, unknown> {
+  const draft = structuredClone(CANONICAL_CLASS) as unknown as Record<string, unknown>;
+  const assignments = draft.assignments as Array<Record<string, unknown>>;
+  const target = assignments.find((row) => row.assignmentId === assignmentId);
+  if (target === undefined) {
+    throw new Error(`assessment-error-preview-fixtures: ${assignmentId} is not in the class.`);
+  }
+  target.assessmentContractVersion = 'legacy';
+  return draft;
+}
+
+/**
+ * Clone a canonical assignment and store an explicit `REASSESSMENT_REQUIRED` E.
+ *
+ * @remarks
+ * This is a current-format record whose saved items carry the explicit
+ * validation error the old projector produced. It proves the preview still
+ * supports previously stored reassessment results; the assignment marker stays
+ * `1`, so the legacy status tag is not involved.
+ *
+ * @param {string} assignmentId - Canonical assignment identity.
+ * @returns {Record<string, unknown>} The stored-error wire payload.
+ */
+export function withStoredReassessmentError(assignmentId: string): Record<string, unknown> {
+  const draft = structuredClone(canonicalAssignment(assignmentId));
   for (const submission of draft.submissions) {
-    submission.documentId = null;
     for (const item of Object.values(submission.items)) {
-      item.artifact.type = 'base';
-      item.artifact.documentId = null;
-      item.artifact.pageId = null;
-      item.artifact.content = null;
-      item.artifact.contentHash = null;
-      item.artifact.metadata = {};
-      item.feedback = {};
       const reassessment = {
         score: 'E' as const,
         reasoning: LEGACY_ASSESSMENT_REASONING,
@@ -281,53 +311,7 @@ export function withLegacyReassessment(assignmentId: string): Record<string, unk
       };
     }
   }
-  return payload;
-}
-
-/**
- * Clone the canonical class and give one assignment a legacy result marker.
- *
- * @remarks
- * The class snapshot is the only source of the known class-partial result, so
- * downgrading it alone proves the preview reads the class-partial E while the
- * assignment's own full read is still current.
- *
- * @param {string} assignmentId - Assignment instance to downgrade.
- * @returns {Record<string, unknown>} The legacy class wire payload.
- */
-export function withLegacyClassAssignment(assignmentId: string): Record<string, unknown> {
-  const draft = structuredClone(CANONICAL_CLASS) as unknown as Record<string, unknown>;
-  const assignments = draft.assignments as Array<Record<string, unknown>>;
-  const target = assignments.find((row) => row.assignmentId === assignmentId);
-  if (target === undefined) {
-    throw new Error(`assessment-error-preview-fixtures: ${assignmentId} is not in the class.`);
-  }
-  target.assessmentContractVersion = null;
-  for (const submission of target.submissions as Array<Record<string, unknown>>) {
-    submission.documentId = null;
-    for (const item of Object.values(submission.items as Record<string, Record<string, unknown>>)) {
-      item.artifact = {
-        taskId: item.taskId,
-        role: 'submission',
-        uid: `legacy-${String(item.id)}`,
-        type: 'base',
-        documentId: null,
-        pageId: null,
-        metadata: {},
-      };
-      const reassessment = {
-        score: 'E',
-        reasoning: LEGACY_ASSESSMENT_REASONING,
-        error: { stage: 'validation', code: 'REASSESSMENT_REQUIRED' },
-      };
-      item.assessments = {
-        completeness: { ...reassessment },
-        accuracy: { ...reassessment },
-        spag: { ...reassessment },
-      };
-    }
-  }
-  return draft;
+  return draft as unknown as Record<string, unknown>;
 }
 
 /**

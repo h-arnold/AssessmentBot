@@ -9,7 +9,7 @@ Acquisition/extraction producer: `src/backend/AssignmentProcessor/Assignment/04_
 `src/backend/AssignmentProcessor/SlidesAssignment.js`, `src/backend/AssignmentProcessor/SheetsAssignment.js`
 Image hydration producer: `src/backend/RequestHandlers/ImageManager.js`
 Current-format restoration: `src/backend/AssignmentProcessor/Assignment/02_AssignmentCurrentRestoration.js`
-Legacy read projection: `src/backend/AssignmentProcessor/Assignment/02_AssignmentReadProjection.js`
+Legacy read preparation: `src/backend/AssignmentProcessor/Assignment/02_AssignmentLegacyRead.js`
 Collections: none — embedded in `assign_full_<courseId>_<assignmentId>` only
 API handlers: none — no standalone endpoints
 Frontend Zod (full): `src/frontend/src/services/assignmentAssessment/assignmentAssessment.zod.ts` → `StudentSubmissionSchema`, `StudentSubmissionItemSchema`
@@ -32,15 +32,15 @@ Assignment serialisers. There is no collection of its own.
 
 ### `StudentSubmission.toJSON()`
 
-| #   | Field          | Type                                    | Persistence | Transport | Frontend Zod (full)                                                                | Notes                                                                                                                                                                                                                |
-| --- | -------------- | --------------------------------------- | ----------- | --------- | ---------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | `studentId`    | `string`                                | included    | unchanged | `StudentSubmissionSchema.studentId: z.string()`                                    | Student's unique ID from Google Classroom.                                                                                                                                                                           |
-| 2   | `studentName`  | `string\|null`                          | included    | unchanged | `StudentSubmissionSchema.studentName: z.string().nullable()`                       | Constructor default is `null`. Both full and partial schemas validate the nullable emission. The legacy reassessment placeholder also uses `string \| null`; do not fabricate a name when only an identity is known. |
-| 3   | `assignmentId` | `string`                                | included    | unchanged | `StudentSubmissionSchema.assignmentId: z.string()`                                 | The parent assignment ID.                                                                                                                                                                                            |
-| 4   | `documentId`   | `string\|null`                          | included    | unchanged | `StudentSubmissionSchema.documentId: z.string().nullable().optional()`             | Drive file ID of the student's submission document. `null` for students who never opened the assignment.                                                                                                             |
-| 5   | `items`        | `Record<string, StudentSubmissionItem>` | included    | unchanged | `StudentSubmissionSchema.items: z.record(z.string(), StudentSubmissionItemSchema)` | Dictionary keyed by taskId. Empty object when no items.                                                                                                                                                              |
-| 6   | `createdAt`    | `string`                                | included    | unchanged | `StudentSubmissionSchema.createdAt: z.string()`                                    | ISO 8601 string. Set at construction.                                                                                                                                                                                |
-| 7   | `updatedAt`    | `string`                                | included    | unchanged | `StudentSubmissionSchema.updatedAt: z.string()`                                    | ISO 8601 string with monotonic counter suffix (e.g. `"2025-09-10T12:30:00Z#2"`). Set via `touchUpdated()`.                                                                                                           |
+| #   | Field          | Type                                    | Persistence | Transport | Frontend Zod (full)                                                                | Notes                                                                                                                                                                                                                               |
+| --- | -------------- | --------------------------------------- | ----------- | --------- | ---------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | `studentId`    | `string`                                | included    | unchanged | `StudentSubmissionSchema.studentId: z.string()`                                    | Student's unique ID from Google Classroom.                                                                                                                                                                                          |
+| 2   | `studentName`  | `string\|null`                          | included    | unchanged | `StudentSubmissionSchema.studentName: z.string().nullable()`                       | Constructor default is `null`. Both full and partial schemas validate the nullable emission. Legacy read preparation preserves the stored value and keeps `string \| null`; do not fabricate a name when only an identity is known. |
+| 3   | `assignmentId` | `string`                                | included    | unchanged | `StudentSubmissionSchema.assignmentId: z.string()`                                 | The parent assignment ID.                                                                                                                                                                                                           |
+| 4   | `documentId`   | `string\|null`                          | included    | unchanged | `StudentSubmissionSchema.documentId: z.string().nullable().optional()`             | Drive file ID of the student's submission document. `null` for students who never opened the assignment.                                                                                                                            |
+| 5   | `items`        | `Record<string, StudentSubmissionItem>` | included    | unchanged | `StudentSubmissionSchema.items: z.record(z.string(), StudentSubmissionItemSchema)` | Dictionary keyed by taskId. Empty object when no items.                                                                                                                                                                             |
+| 6   | `createdAt`    | `string`                                | included    | unchanged | `StudentSubmissionSchema.createdAt: z.string()`                                    | ISO 8601 string. Set at construction.                                                                                                                                                                                               |
+| 7   | `updatedAt`    | `string`                                | included    | unchanged | `StudentSubmissionSchema.updatedAt: z.string()`                                    | ISO 8601 string with monotonic counter suffix (e.g. `"2025-09-10T12:30:00Z#2"`). Set via `touchUpdated()`.                                                                                                                          |
 
 ### `StudentSubmission.toPartialJSON()`
 
@@ -67,8 +67,9 @@ Key notes:
   though both serialisers always emit it.
 - Legacy records are **not** re-serialised from this shape: a non-marker-1 record's stored
   submission records are kept as ordinary instance state by the parent and re-emitted by its
-  serialisers without model reconstruction. See
-  [Component Shape: Assessment § Legacy reassessment read projection](assessment.md#legacy-reassessment-read-projection).
+  serialisers without model reconstruction. Read preparation produces separate read models from
+  those stored records. See
+  [Component Shape: Assessment § Legacy read preparation](assessment.md#legacy-read-preparation).
 
 ### `StudentSubmissionItem.toJSON()`
 
@@ -130,10 +131,10 @@ Neither model stores a representation-mode field: `StudentSubmission` has no
 This shape has no standalone endpoint. It is transported only inside the two
 Assignment read payloads:
 
-| Embedding boundary                                   | Projection                          | Transformation applied                                                                                                          |
-| ---------------------------------------------------- | ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| `getAssignment` (`Assignment.toReadJSON()`)          | `StudentSubmission.toJSON()`        | None beyond the parent read projection (marker-1 restoration or legacy reassessment projection). Validated by the full schemas. |
-| `getABClass` (`ABClassResponseMapper._toReadView()`) | `StudentSubmission.toPartialJSON()` | Artifact redaction and assessment-reasoning stripping as above. Validated by the partial schemas.                               |
+| Embedding boundary                                   | Projection                          | Transformation applied                                                                                                    |
+| ---------------------------------------------------- | ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `getAssignment` (`Assignment.toReadJSON()`)          | `StudentSubmission.toJSON()`        | None beyond the parent read preparation (marker-1 restoration or legacy read preparation). Validated by the full schemas. |
+| `getABClass` (`ABClassResponseMapper._toReadView()`) | `StudentSubmission.toPartialJSON()` | Artifact redaction and assessment-reasoning stripping as above. Validated by the partial schemas.                         |
 
 Key contract notes:
 
@@ -144,10 +145,10 @@ Key contract notes:
   `SlidesAssignment.fromJSON()` / `SheetsAssignment.fromJSON()` and
   `StudentSubmission.fromJSON()` into `StudentSubmissionItem.fromJSON()`. It is not
   inferred from payload contents.
-- On the legacy path, both reads substitute detached reassessment `E` submissions
-  produced by the backend projector; the frontend never materialises a second
-  reassessment graph. See
-  [Component Shape: Assessment § Legacy reassessment read projection](assessment.md#legacy-reassessment-read-projection).
+- On the legacy path, both reads emit submissions prepared by the backend
+  `AssignmentRehydration.prepareLegacyReadSubmissions()` owner; the frontend never builds a
+  second legacy graph. See
+  [Component Shape: Assessment § Legacy read preparation](assessment.md#legacy-read-preparation).
 - `progressTracker` is never part of this shape (it is an Assignment-level runtime
   property).
 - `DateUtils.deepConvertDates()` runs on the whole response at the transport boundary
@@ -240,11 +241,11 @@ This shape embeds [Contract: BaseTaskArtifact](base-task-artifact.md) and
    **Classification: Aligned** — deliberate, scoped asymmetry.
 
 7. **The source code comment on `StudentSubmission.studentName` still reads "Temporary addition for V0.7.2 - will be removed later", but the field is contractual.**
-   Both read schemas validate `studentName: string | null` and the legacy reassessment
-   placeholder depends on it. The comment is stale relative to the contract.
+   Both read schemas validate `studentName: string | null` and legacy read preparation
+   depends on it. The comment is stale relative to the contract.
    **Classification: Fragile** — the comment invites removal of a field the transport
-   contract requires. Removing it would break both read schemas and the placeholder
-   shape. Recommended follow-up: delete or correct the comment in
+   contract requires. Removing it would break both read schemas and the prepared
+   legacy shape. Recommended follow-up: delete or correct the comment in
    `src/backend/Models/StudentSubmission/index.js`.
 
 ---
@@ -481,9 +482,10 @@ Rules:
 > materialises a missing known task as an all-three `CORRUPT_RECORD` `E`, isolates
 > corrupt known items and incomplete/extra-key criteria while preserving healthy
 > siblings, keeps a null-parent empty item map as an empty submission, and isolates
-> contradictory null-parent items. For legacy records,
-> `02_AssignmentReadProjection.js` materialises one detached `REASSESSMENT_REQUIRED` `E`
-> item per known task/student pair on both reads. The browser normaliser implements the
+> contradictory null-parent items. For legacy records, the same current-format validation runs
+> during read preparation (`AssignmentRehydration.prepareLegacyReadSubmissions()`), so valid
+> stored marks are retained and malformed items or item maps become `CORRUPT_RECORD` `E` per
+> saved task on both reads. The browser normaliser implements the
 > equivalent provided-entry isolation and defensive full-payload coverage and is invoked
 > by both read services. Acquisition/extraction producers also materialise a failure item
 > for every known task whose extraction failed; successfully extracted items remain in
@@ -557,10 +559,11 @@ class-embedded partial path:
 
 - Make full versus partial restoration explicit at the owning boundary. Partial
   redaction must never trigger source-content failure detection or hash generation.
-- Legacy reassessment entries are already materialised by the backend
-  `AssignmentRehydration.projectReassessmentSubmissions()` owner. The frontend normaliser
+- Legacy reassessment entries are produced by the backend
+  `AssignmentRehydration.prepareLegacyReadSubmissions()` owner, which reuses the same
+  current-format item validation. The frontend normaliser
   validates those entries and retains defensive per-item corruption isolation; it does
-  not generate a second reassessment graph, query a roster or infer historical outcomes.
+  not generate a second legacy graph, query a roster or infer historical outcomes.
 - Restore each identified submission/item once. Validate raw current-version records
   **before** coercive constructors can erase evidence of absent content/hash or
   malformed Assessment entries. Retain model-owned content normalisation; do not
@@ -577,7 +580,7 @@ class-embedded partial path:
   the feature-domain read-normalisation owner; do not weaken global `parseApiResponse`
   semantics.
 - Validate assignment/root/shared-definition structure atomically and strictly as today,
-  including the required `assessmentContractVersion: 1 | null` read-wire field. After
+  including the required `assessmentContractVersion: 1 | 'legacy'` read-wire field. After
   isolation, revalidate the canonical normalised result before returning typed data to
   consumers; a missing required key (including a missing/unsupported wire marker) is
   never accepted as a valid success.
@@ -605,12 +608,12 @@ class-embedded partial path:
 
 Owners:
 
-| Boundary                       | Owner                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           | Responsibilities                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
-| ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Frontend shared result schemas | `services/assignmentAssessment/assessmentResult.zod.ts` (consumed by both read schemas)                                                                                                                                                                                                                                                                                                                                                                                                         | Shared full/partial `Assessment` and error-cause schemas, so both assignment and class-detail services enforce the same score range, `E` catalogue and non-blank `E` reasoning refinement.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
-| Frontend read normalisation    | `services/assignmentAssessment/assignmentReadNormalisation.ts` and `services/assignmentAssessment/assignmentReadItemValidation.ts` (pure owners; invoked by both read services before their final parse)                                                                                                                                                                                                                                                                                        | Pure full/partial item isolation. `assignmentReadNormalisation.ts` owns the two public entry points and root/definition checks; `assignmentReadItemValidation.ts` owns item/artefact/parent-source validation, canonical corruption construction and safe diagnostic paths. They contain no React, GAS dispatch or raw-JSON parsing. The browser partial path validates provided entries only and never infers coverage from the definition registry. The browser full path fills a task only defensively when a wire payload lacks it, using that same full payload's definition, and never overwrites backend-materialised `E`; it is not the normal full coverage owner. |
-| Backend raw domain validation  | `src/backend/Models/Assessment.js`, `src/backend/Models/StudentSubmission/index.js` (facade), `src/backend/Models/StudentSubmission/00_StudentSubmissionItem.js` (item model), `src/backend/AssignmentProcessor/Assignment/02_AssignmentRehydration.js` (restore/coverage facade), `src/backend/AssignmentProcessor/Assignment/02_AssignmentCurrentRestoration.js` (marker-1 restoration), `src/backend/AssignmentProcessor/Assignment/02_AssignmentReadProjection.js` (pure legacy projection) | `Assessment` validates its result/cause; the `StudentSubmission` facade and item model validate their own full/partial records; `AssignmentRehydration` owns one-pass full/partial graph traversal; `AssignmentCurrentRestoration` owns marker-1 root/task pre-validation, raw item validation, coverage, null-parent isolation and full/partial restoration; the legacy projection remains behind `AssignmentRehydration.projectReassessmentSubmissions()`, with pure projection mapping in `02_AssignmentReadProjection.js`, not a second materialiser. Controllers select the representation explicitly.                                                                 |
-| Transport-boundary exclusion   | `src/backend/z_Api/*` handlers                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | API handlers do not introduce a second domain-validator hierarchy.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| Boundary                       | Owner                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | Responsibilities                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| ------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Frontend shared result schemas | `services/assignmentAssessment/assessmentResult.zod.ts` (consumed by both read schemas)                                                                                                                                                                                                                                                                                                                                                                                                                                                                   | Shared full/partial `Assessment` and error-cause schemas, so both assignment and class-detail services enforce the same score range, `E` catalogue and non-blank `E` reasoning refinement.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| Frontend read normalisation    | `services/assignmentAssessment/assignmentReadNormalisation.ts` and `services/assignmentAssessment/assignmentReadItemValidation.ts` (pure owners; invoked by both read services before their final parse)                                                                                                                                                                                                                                                                                                                                                  | Pure full/partial item isolation. `assignmentReadNormalisation.ts` owns the two public entry points and root/definition checks; `assignmentReadItemValidation.ts` owns item/artefact/parent-source validation, canonical corruption construction and safe diagnostic paths. They contain no React, GAS dispatch or raw-JSON parsing. The browser partial path validates provided entries only and never infers coverage from the definition registry. The browser full path fills a task only defensively when a wire payload lacks it, using that same full payload's definition, and never overwrites backend-materialised `E`; it is not the normal full coverage owner. |
+| Backend raw domain validation  | `src/backend/Models/Assessment.js`, `src/backend/Models/StudentSubmission/index.js` (facade), `src/backend/Models/StudentSubmission/00_StudentSubmissionItem.js` (item model), `src/backend/AssignmentProcessor/Assignment/02_AssignmentRehydration.js` (restore/coverage facade and legacy read-preparation entry), `src/backend/AssignmentProcessor/Assignment/02_AssignmentCurrentRestoration.js` (marker-1 restoration and shared item validation), `src/backend/AssignmentProcessor/Assignment/02_AssignmentLegacyRead.js` (legacy read preparation) | `Assessment` validates its result/cause; the `StudentSubmission` facade and item model validate their own full/partial records; `AssignmentRehydration` owns one-pass full/partial graph traversal and exposes `prepareLegacyReadSubmissions()`; `AssignmentCurrentRestoration` owns marker-1 root/task pre-validation, raw item validation, coverage, null-parent isolation and full/partial restoration; `AssignmentLegacyRead` prepares an independent legacy read result through that same validation, not a second validator. Controllers select the representation explicitly.                                                                                        |
+| Transport-boundary exclusion   | `src/backend/z_Api/*` handlers                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            | API handlers do not introduce a second domain-validator hierarchy.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 
 Backend module separations preserve the existing public owners and the existing File
 Index:
@@ -620,10 +623,10 @@ Index:
   model), each at most 320 lines; the existing public constructors remain the entry
   points.
 - `src/backend/AssignmentProcessor/Assignment/02_AssignmentRehydration.js` keeps its
-  restore/coverage facade at most 320 lines; the pure legacy projection mapping
-  lives in same-domain `02_AssignmentReadProjection.js` at most 280 lines, behind the
-  unchanged `AssignmentRehydration.projectReassessmentSubmissions()` entry. It is not a
-  second materialiser.
+  restore/coverage facade at most 320 lines; the separate legacy read-preparation owner
+  lives in same-domain `02_AssignmentLegacyRead.js` behind the
+  `AssignmentRehydration.prepareLegacyReadSubmissions()` entry. It is not a
+  second validator.
 
 ### Marker-1 item restoration rules
 
@@ -653,17 +656,22 @@ contract; preview error states and the attempt-baseline analysis mode are fronte
 concerns, tracked in
 [Frontend Data Analysis Response](frontend-data-analysis-response.md#planned-contract-changes-not-implemented).
 
-The legacy reassessment projection is superseded by the planned change recorded in
-[Contract: Assessment § Planned contract changes](assessment.md#planned-contract-changes-not-implemented).
+The legacy read preparation described in
+[Contract: Assessment § Legacy read preparation](assessment.md#legacy-read-preparation) is
+implemented and is the current contract for both read paths.
 
 ## Planned contract changes (Not implemented)
 
-Target: root `SPEC.md`, “Display Legacy Assignment Results”.
-
-1. Legacy read preparation reuses existing item validation on an independent result: valid items retained; corrupt items become `CORRUPT_RECORD` E. Null/missing/non-record item maps produce E per saved task on both read paths. Missing-task, no-submission and timestamp handling follow current restoration rules. Healthy neighbouring submissions remain visible. No result is written back.
-2. The blanket reassessment placeholder producer is removed; its error code may remain accepted. Legacy status is assignment-level `'legacy'`, not a replacement for scores.
-3. Corrupted/missing student IDs are out of scope (explicit user decision); existing identity checks remain, with no dropped-row recovery or new IDs. Unknown-task associations retain existing rejection.
-4. Frontend normalisers remove the legacy reassessment-item-only requirement and accept valid legacy items using the existing full/partial item checks. Backend preparation supplies legacy missing-task E; the browser defensive coverage fallback remains marker-1-only.
+None for this shape. Legacy read preparation reuses the existing item validation on an
+independent read result, so valid items are retained and corrupt items or item maps become
+`CORRUPT_RECORD` `E` per saved task on both read paths. The blanket placeholder producer is
+removed; its error code remains accepted for stored errors. Legacy status is assignment-level
+`'legacy'`, not a replacement for scores. Corrupted/missing student IDs remain out of scope
+(explicit user decision), with existing identity and unknown-task rejection unchanged. The
+browser defensive coverage fallback remains marker-1-only; backend preparation owns legacy
+coverage. These rules are documented in
+[§ Completed submission coverage](#completed-submission-coverage) and
+[§ Full and partial item isolation with trustworthy identities](#full-and-partial-item-isolation-with-trustworthy-identities).
 
 ---
 
@@ -715,10 +723,11 @@ Image hydration:           src/backend/RequestHandlers/ImageManager.js
                                                   changed-content invalidation
 
 Restoration / projection:  src/backend/AssignmentProcessor/Assignment/
-  ├── 02_AssignmentRehydration.js               — one-pass full/partial restore facade
-  ├── 02_AssignmentCurrentRestoration.js        — marker-1 item validation, coverage and
+  ├── 02_AssignmentRehydration.js               — one-pass full/partial restore facade and
+  │                                               prepareLegacyReadSubmissions()
+  ├── 02_AssignmentLegacyRead.js                — independent legacy read preparation
+  └── 02_AssignmentCurrentRestoration.js        — marker-1 item validation, coverage and
   │                                               null-parent isolation
-  └── 02_AssignmentReadProjection.js            — pure detached legacy reassessment projection
 
 Frontend:
   ├── src/frontend/src/services/assignmentAssessment/assignmentAssessment.zod.ts

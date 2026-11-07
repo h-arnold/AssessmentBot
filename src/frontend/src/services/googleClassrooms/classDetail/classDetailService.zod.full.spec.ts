@@ -136,6 +136,30 @@ describe('AssignmentPartialSchema', () => {
     const result = AssignmentPartialSchema.parse(validAssignmentPartial);
     expect(result).toEqual(validAssignmentPartial);
   });
+
+  it.each([1, 'legacy'] as const)('accepts the class read version marker %s', (marker) => {
+    const candidate = { ...validAssignmentPartial, assessmentContractVersion: marker };
+    expect(AssignmentPartialSchema.parse(candidate).assessmentContractVersion).toBe(marker);
+  });
+
+  it.each([
+    ['null', null],
+    ['unsupported zero', 0],
+    ['unsupported draft', 'draft'],
+  ])('rejects the class read version marker %s', (_label, marker) => {
+    expect(
+      AssignmentPartialSchema.safeParse({
+        ...validAssignmentPartial,
+        assessmentContractVersion: marker,
+      }).success
+    ).toBe(false);
+  });
+
+  it('rejects an absent class read version marker', () => {
+    const markerless = { ...validAssignmentPartial };
+    delete (markerless as Record<string, unknown>).assessmentContractVersion;
+    expect(AssignmentPartialSchema.safeParse(markerless).success).toBe(false);
+  });
 });
 
 describe('TeacherSummarySchema', () => {

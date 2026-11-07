@@ -24,6 +24,36 @@ import {
   validFullAssignment,
 } from '@/test/assignmentAssessment/assignmentAssessment.zod.fixtures';
 
+/**
+ * Builds the original regression submission: absent `documentId` key and
+ * numeric/'N' criterion scores.
+ * @returns {Record<string, unknown>} The regression submission payload.
+ */
+function regressionSubmission(): Record<string, unknown> {
+  const baseSubmission = validFullAssignment.submissions[0];
+  return {
+    studentId: baseSubmission.studentId,
+    studentName: baseSubmission.studentName,
+    assignmentId: baseSubmission.assignmentId,
+    // documentId key intentionally absent — backend may omit the key entirely
+    items: {
+      'task-1': {
+        id: 'item-1',
+        taskId: 'task-1',
+        artifact: validBaseArtifact,
+        assessments: {
+          completeness: { score: 5, reasoning: 'Full coverage' },
+          accuracy: { score: 4, reasoning: 'Mostly correct' },
+          spag: { score: 'N', reasoning: 'Not applicable' },
+        },
+        feedback: {},
+      },
+    },
+    createdAt: baseSubmission.createdAt,
+    updatedAt: baseSubmission.updatedAt,
+  };
+}
+
 describe("assignmentAssessment.zod regression (score 'N' / absent documentId)", () => {
   it("accepts an assessment with the 'N' sentinel score (unattempted criterion)", () => {
     const assessment = { score: 'N' as const, reasoning: 'Task not attempted' };
@@ -52,29 +82,16 @@ describe("assignmentAssessment.zod regression (score 'N' / absent documentId)", 
   });
 
   it("accepts an end-to-end payload with absent documentId and 'N' scores (original regression)", () => {
-    const baseSubmission = validFullAssignment.submissions[0];
-    const regressionSubmission = {
-      studentId: baseSubmission.studentId,
-      studentName: baseSubmission.studentName,
-      assignmentId: baseSubmission.assignmentId,
-      // documentId key intentionally absent — backend may omit the key entirely
-      items: {
-        'task-1': {
-          id: 'item-1',
-          taskId: 'task-1',
-          artifact: validBaseArtifact,
-          assessments: {
-            completeness: { score: 5, reasoning: 'Full coverage' },
-            accuracy: { score: 4, reasoning: 'Mostly correct' },
-            spag: { score: 'N', reasoning: 'Not applicable' },
-          },
-          feedback: {},
-        },
-      },
-      createdAt: baseSubmission.createdAt,
-      updatedAt: baseSubmission.updatedAt,
+    const payload = { ...validFullAssignment, submissions: [regressionSubmission()] };
+    expect(AssignmentFullSchema.parse(payload)).toEqual(payload);
+  });
+
+  it("accepts the original regression payload when the read version marker is 'legacy'", () => {
+    const payload = {
+      ...validFullAssignment,
+      assessmentContractVersion: 'legacy' as const,
+      submissions: [regressionSubmission()],
     };
-    const payload = { ...validFullAssignment, submissions: [regressionSubmission] };
     expect(AssignmentFullSchema.parse(payload)).toEqual(payload);
   });
 });

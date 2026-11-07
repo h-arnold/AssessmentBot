@@ -5,7 +5,7 @@
  * for deserialising Assignment instances from JSON data.
  *
  * Depends on global `AssignmentDefinition`, `AssignmentCurrentRestoration`,
- * `AssignmentLegacyRead`, `AssignmentReadProjection`, and `ProgressTracker`
+ * `AssignmentLegacyRead`, and `ProgressTracker`
  * (GAS runtime globals).
  * @namespace
  */
@@ -19,16 +19,6 @@ const AssignmentRehydration = {
    */
   prepareLegacyReadSubmissions(assignment, form) {
     return new AssignmentLegacyRead().prepare(assignment, form);
-  },
-  /**
-   * Builds detached placeholders for a legacy read; historical assessment bodies are ignored.
-   * @param {object} assignment - Raw or typed legacy assignment.
-   * @param {Array<object>} students - Loaded roster for partial projections.
-   * @param {'full'|'partial'} form - Projection representation.
-   * @returns {StudentSubmission[]} Detached reassessment submissions.
-   */
-  projectReassessmentSubmissions(assignment, students, form) {
-    return AssignmentReadProjection.projectReassessmentSubmissions(assignment, students, form);
   },
   /**
    * Internal helper to restore base Assignment fields from JSON data.

@@ -121,17 +121,21 @@ class AssignmentSerialisation {
 
   /**
    * Serialises this assignment for a full read response.
+   *
+   * Legacy records (marker missing, null or unsupported) prepare an independent
+   * read result from the stored submissions. The read marker maps stored `1`
+   * to `1` and every other stored marker to `'legacy'`, set on the read output
+   * only — the stored instance is never rewritten. A present non-array
+   * submissions root bypasses preparation (the facade returns null) and keeps
+   * the preserved, date-normalised body already emitted by toJSON().
    * @returns {object} Full read payload.
    */
   toReadJSON() {
     const output = this.toJSON();
     if (this._assignment.assessmentContractVersion !== 1) {
-      output.submissions = AssignmentRehydration.projectReassessmentSubmissions(
-        this._assignment,
-        [],
-        'full'
-      ).map((submission) => submission.toJSON());
-      output.assessmentContractVersion = null;
+      const prepared = AssignmentRehydration.prepareLegacyReadSubmissions(this._assignment, 'full');
+      if (prepared !== null) output.submissions = prepared;
+      output.assessmentContractVersion = 'legacy';
     }
     return output;
   }

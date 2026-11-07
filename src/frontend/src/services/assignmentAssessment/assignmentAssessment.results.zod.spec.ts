@@ -83,17 +83,17 @@ describe('assignment assessment result schemas', () => {
     expect(AssignmentFullSchema.parse(candidate)).toEqual(candidate);
   });
 
-  it('requires marker 1 or null at the full-assignment consumer boundary', async () => {
+  it("requires marker 1 or 'legacy' at the full-assignment consumer boundary", async () => {
     const { validFullAssignment } =
       await import('@/test/assignmentAssessment/assignmentAssessment.zod.fixtures');
-    for (const marker of [1, null] as const) {
+    for (const marker of [1, 'legacy'] as const) {
       const candidate = { ...validFullAssignment, assessmentContractVersion: marker };
       expect(AssignmentFullSchema.safeParse(candidate).success).toBe(true);
     }
     const markerless = { ...validFullAssignment };
     delete (markerless as Record<string, unknown>).assessmentContractVersion;
     expect(AssignmentFullSchema.safeParse(markerless).success).toBe(false);
-    for (const unsupported of UNSUPPORTED_MARKERS) {
+    for (const unsupported of [null, ...UNSUPPORTED_MARKERS]) {
       expect(
         AssignmentFullSchema.safeParse({
           ...validFullAssignment,

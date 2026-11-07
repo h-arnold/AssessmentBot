@@ -93,12 +93,17 @@ class ABClassResponseMapper {
             // Defence-in-depth: strip _hydrationLevel and progressTracker
             const { _hydrationLevel, progressTracker, ...safe } = partial;
             if (assignment.assessmentContractVersion !== 1) {
-              safe.submissions = AssignmentRehydration.projectReassessmentSubmissions(
+              // Prepare from the stored submissions while the embedded task list
+              // is still available; a present non-array root bypasses preparation
+              // (null) and keeps the preserved body from toPartialJSON().
+              const prepared = AssignmentRehydration.prepareLegacyReadSubmissions(
                 assignment,
-                abClass.students,
                 'partial'
-              ).map((submission) => submission.toPartialJSON());
-              safe.assessmentContractVersion = null;
+              );
+              if (prepared !== null) safe.submissions = prepared;
+              // Stored 1 is handled above; every other stored marker reads as
+              // 'legacy' on the read output only, never on the stored instance.
+              safe.assessmentContractVersion = 'legacy';
             }
             // Replace the embedded assignmentDefinition with just the definitionKey.
             // The frontend resolves definition details from its own registry

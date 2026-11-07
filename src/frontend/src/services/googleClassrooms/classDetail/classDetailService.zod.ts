@@ -117,7 +117,7 @@ export const AssignmentPartialSchema = z.object({
   documentType: z.string().nullable(),
   submissions: z.array(StudentSubmissionPartialSchema),
   assignmentDefinitionKey: z.string(),
-  assessmentContractVersion: z.union([z.literal(1), z.null()]),
+  assessmentContractVersion: z.union([z.literal(1), z.literal('legacy')]),
 });
 
 export type AssignmentPartial = z.infer<typeof AssignmentPartialSchema>;

@@ -47,7 +47,6 @@ describe('runBackendCopy', () => {
     });
     const itemPath = 'Models/StudentSubmission/00_StudentSubmissionItem.js';
     const entryPath = 'Models/StudentSubmission/index.js';
-    const projectionPath = 'AssignmentProcessor/Assignment/02_AssignmentReadProjection.js';
     const currentRestorationPath =
       'AssignmentProcessor/Assignment/02_AssignmentCurrentRestoration.js';
     const legacyReadPath = 'AssignmentProcessor/Assignment/02_AssignmentLegacyRead.js';
@@ -58,7 +57,6 @@ describe('runBackendCopy', () => {
     for (const file of [
       itemPath,
       entryPath,
-      projectionPath,
       currentRestorationPath,
       legacyReadPath,
       rehydrationPath,
@@ -70,9 +68,10 @@ describe('runBackendCopy', () => {
     );
     // Equal 02_ prefixes rely on lexicographic filename sorting. The legacy read
     // owner sorts after the current-format restoration it reuses and before the
-    // rehydration facade that exposes both.
-    expect(result.copiedFiles.indexOf(projectionPath)).toBeLessThan(
-      result.copiedFiles.indexOf(rehydrationPath)
+    // rehydration facade that exposes it. The retired read projector must not
+    // return to the bundle.
+    expect(result.copiedFiles).not.toContain(
+      'AssignmentProcessor/Assignment/02_AssignmentReadProjection.js'
     );
     expect(result.copiedFiles.indexOf(currentRestorationPath)).toBeLessThan(
       result.copiedFiles.indexOf(legacyReadPath)
@@ -83,7 +82,6 @@ describe('runBackendCopy', () => {
     for (const file of [
       itemPath,
       entryPath,
-      projectionPath,
       currentRestorationPath,
       legacyReadPath,
       rehydrationPath,

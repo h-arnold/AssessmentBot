@@ -278,72 +278,6 @@ describe('normaliseClassRead partial payload', () => {
         Object.entries(normalised.submissions[0]!.items).map(([id, item]) => [id, item.assessments])
       )
     ).toEqual(expectedMaps);
-
-    const unmarked = structuredClone(assignment);
-    unmarked.assessmentContractVersion = null;
-    const documentSubmission = unmarked.submissions.find((entry) => entry.documentId !== null);
-    unmarked.submissions = [documentSubmission!];
-    const nonReassessmentMap = structuredClone(
-      Object.values(documentSubmission!.items)[1]!.assessments
-    );
-    const [nonReassessmentTask] = Object.keys(documentSubmission!.items);
-    if (!nonReassessmentTask) throw new Error('Expected a canonical task');
-    documentSubmission!.items[nonReassessmentTask].assessments = {
-      completeness: { score: 1 },
-      accuracy: { score: 2 },
-      spag: { score: 'N' },
-    };
-    documentSubmission!.items[Object.keys(documentSubmission!.items)[1]!].assessments =
-      nonReassessmentMap;
-    const unmarkedOutput = selectedNormalisedAssignment(
-      normaliseClassRead({ ...structuredClone(input), assignments: [unmarked] })
-    );
-    expect(unmarkedOutput.assessmentContractVersion).toBeNull();
-    const unmarkedAssessmentMaps = unmarkedOutput.submissions.flatMap((entry) =>
-      Object.values(entry.items).map((item) => item.assessments)
-    );
-    expect.soft(unmarkedAssessmentMaps).toEqual([allCorrupt(), allCorrupt()]);
-
-    const legacy = structuredClone(assignment);
-    legacy.assessmentContractVersion = null;
-    const reassessment = {
-      score: 'E',
-      reasoning: 'Reassessment required',
-      error: { stage: 'validation', code: 'REASSESSMENT_REQUIRED' },
-    };
-    for (const entry of legacy.submissions) {
-      for (const item of Object.values(entry.items)) {
-        item.artifact = {
-          ...item.artifact,
-          type: 'base',
-          role: 'submission',
-          content: null,
-          contentHash: null,
-          documentId: null,
-          pageId: null,
-          metadata: {},
-        };
-        item.feedback = {};
-        item.assessments = Object.fromEntries(criteria.map((key) => [key, reassessment]));
-      }
-    }
-    const legacyInput = { ...structuredClone(input), assignments: [legacy] };
-    const legacyExpected = legacy.submissions.map((entry) => {
-      return Object.fromEntries(
-        Object.entries(entry.items).map(
-          ([taskId, item]) => [taskId, structuredClone(item.assessments)] as const
-        )
-      );
-    });
-    const legacyOutput = selectedNormalisedAssignment(normaliseClassRead(legacyInput));
-    expect(legacyOutput.assessmentContractVersion).toBeNull();
-    expect(
-      legacyOutput.submissions.map((entry) => {
-        return Object.fromEntries(
-          Object.entries(entry.items).map(([taskId, item]) => [taskId, item.assessments])
-        );
-      })
-    ).toEqual(legacyExpected);
   });
 
   it('isolates malformed criteria and a dictionary-key identity mismatch without harming a sibling', () => {
@@ -455,12 +389,6 @@ describe('normaliseClassRead partial payload', () => {
   });
 
   it('rejects malformed roots, marker and identities, while preserving not-found null', () => {
-    const unsupported = probe();
-    selectedAssignment(unsupported).assessmentContractVersion = 2;
-    expect(() => normaliseClassRead(unsupported)).toThrow();
-    const missingMarker = probe();
-    delete selectedAssignment(missingMarker).assessmentContractVersion;
-    expect(() => normaliseClassRead(missingMarker)).toThrow();
     const badIdentity = probe();
     selectedAssignment(badIdentity).submissions[0]!.studentId = '';
     expect(() => normaliseClassRead(badIdentity)).toThrow();

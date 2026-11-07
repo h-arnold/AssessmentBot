@@ -33,10 +33,10 @@ Status: all eleven contracts are implemented and conform to their documented con
 `frontend-data-analysis-response.md` carries an outstanding planned change (the attempt-baseline
 analysis mode). Legacy `submissions` preservation on restoration and ordinary save is implemented
 (see [assignment.md § Legacy `submissions` preservation](assignment.md#legacy-submissions-preservation)).
-The `1 | null` read marker plus the legacy reassessment projection are superseded by a planned
-change recorded in
-[assessment.md § Planned contract changes](assessment.md#planned-contract-changes-not-implemented)
-(read marker union `1 | 'legacy'`, projection deletion) — planned, not implemented.
+The read marker union is `1 | 'legacy'` on both read paths, and legacy reads are prepared by
+`AssignmentRehydration.prepareLegacyReadSubmissions()` (see
+[assessment.md § Legacy read preparation](assessment.md#legacy-read-preparation)); the former
+`1 | null` read marker and the all-results reassessment projection are retired.
 
 ## Component Shapes
 
@@ -56,7 +56,7 @@ Containment links:
 - `AssignmentDefinition` → `TaskDefinition` → **BaseTaskArtifact**
 - `Assignment` → **Student Submission** → **StudentSubmissionItem** → **BaseTaskArtifact**
 - `Assignment` → **Student Submission** → **StudentSubmissionItem** → **Assessment**
-- `Assignment` → **Assessment** (write gate, marker, current legacy read projection, marker-1 restoration; legacy read display change planned below)
+- `Assignment` → **Assessment** (write gate, marker, legacy read preparation, marker-1 restoration)
 - `ABClass` → `Assignment` partial → **Student Submission** (partial) → **Assessment** (partial)
 
 ## Containment Hierarchy

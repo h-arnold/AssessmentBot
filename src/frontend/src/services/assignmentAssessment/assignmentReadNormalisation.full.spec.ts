@@ -46,11 +46,6 @@ const corruptAssessments = {
   accuracy: corruptResult,
   spag: corruptResult,
 };
-const reassessmentResult = {
-  score: 'E',
-  reasoning: 'Reassessment required',
-  error: { stage: 'validation', code: 'REASSESSMENT_REQUIRED' },
-};
 const assessmentErrorResult = {
   score: 'E',
   reasoning: 'The assessment service rejected the request.',
@@ -166,36 +161,6 @@ describe('normaliseAssignmentRead full payload', () => {
     expect(output).not.toBeNull();
     expect(output).toEqual(input);
     expect(AssignmentFullSchema.safeParse(output).success).toBe(true);
-
-    const legacy = currentProbe();
-    legacy.assessmentContractVersion = null;
-    legacy.submissions[0].documentId = null;
-    legacy.submissions[0].items = Object.fromEntries(
-      Object.keys(legacy.tasks).map((id) => {
-        const item = acquisitionErrorItem(id);
-        item.assessments = Object.fromEntries(
-          criteria.map((criterion) => [criterion, reassessmentResult])
-        );
-        return [id, item];
-      })
-    );
-    const legacyOutput = normaliseAssignmentRead(legacy);
-    expect(legacyOutput?.assessmentContractVersion).toBeNull();
-    expect(legacyOutput?.submissions[0].items).toEqual(legacy.submissions[0].items);
-    expect(AssignmentFullSchema.safeParse(legacyOutput).success).toBe(true);
-
-    const unmarkedSuccess = currentProbe();
-    unmarkedSuccess.assessmentContractVersion = null;
-    const unmarkedTask = Object.keys(unmarkedSuccess.tasks)[0]!;
-    unmarkedSuccess.submissions[0].items[unmarkedTask].assessments = assessmentErrorAssessments;
-    const unmarkedOutput = normaliseAssignmentRead(unmarkedSuccess);
-    expect(unmarkedOutput?.assessmentContractVersion).toBeNull();
-    expect(unmarkedOutput?.submissions[0].studentId).toBe(unmarkedSuccess.submissions[0].studentId);
-    expect(unmarkedOutput?.submissions[0].items).toHaveProperty(
-      Object.keys(unmarkedSuccess.tasks)[0]
-    );
-    const unmarkedItems = Object.values(unmarkedOutput!.submissions[0].items);
-    for (const item of unmarkedItems) expect.soft(item.assessments).toEqual(corruptAssessments);
   });
 
   it('isolates invalid items as exact catalogue corruption while preserving a healthy sibling', () => {
@@ -355,12 +320,6 @@ describe('normaliseAssignmentRead full payload', () => {
   });
 
   it('rejects invalid roots and definitions loudly while reserving null for not-found', () => {
-    const unsupported = currentProbe();
-    unsupported.assessmentContractVersion = 2;
-    expect(() => normaliseAssignmentRead(unsupported)).toThrow();
-    const missingMarker = currentProbe();
-    delete missingMarker.assessmentContractVersion;
-    expect(() => normaliseAssignmentRead(missingMarker)).toThrow();
     const invalidDefinition = currentProbe();
     invalidDefinition.tasks = null as unknown as Record<string, RawRecord>;
     expect(() => normaliseAssignmentRead(invalidDefinition)).toThrow();
