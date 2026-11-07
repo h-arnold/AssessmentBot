@@ -1109,7 +1109,13 @@ Class-page adapter:
    lifecycle execution only: no persistence, request, response, envelope or analyser shape
    changes.
 
+## Legacy assignment display
+
+Delivered: valid legacy scores are included in analysis through the existing heatmap/averaging and E rules, with no version-based filtering or new analyser/card-model field, and the task-heatmap `Reassessment required` tag is shown from the `'legacy'` marker (task-heatmap-only, by explicit user decision, with no field added to persisted metadata). The remaining planned work is the top-decile attempt-baseline analysis mode (tracking issue: h-arnold/AssessmentBot#305); complete the existing attempt-baseline plan independently.
+
 ## Planned contract changes (not implemented)
+
+### Attempt-baseline analysis mode
 
 Only the top-decile attempt-baseline analysis mode remains unimplemented (tracking issue:
 h-arnold/AssessmentBot#305). The explicit-`E` analyser input, the preview `sourceUrl` field and

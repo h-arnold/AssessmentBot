@@ -1,4 +1,4 @@
-/* global ABLogger, ABClassMetadata, ArrayUtils, AssignmentSerialisation */
+/* global ABLogger, ABClassMetadata, ArrayUtils */
 
 /**
  * ABClassPersistence
@@ -94,10 +94,10 @@ class ABClassPersistence {
   _prepareFullClass(abClass) {
     const fullSource = typeof abClass.toJSON === 'function' ? abClass.toJSON() : abClass;
     this._validateFullProjection(abClass, fullSource);
-    return AssignmentSerialisation.copyJsonSnapshot({
+    return {
       ...fullSource,
       metadata: this._metadataCopy(abClass),
-    });
+    };
   }
 
   /**
@@ -134,10 +134,10 @@ class ABClassPersistence {
     const partialSource = abClass.toPartialJSON();
     const metadata = this._metadataCopy(abClass);
     this._validatePreparedMetadata(partialSource, metadata, 'partial');
-    return AssignmentSerialisation.copyJsonSnapshot({
+    return {
       ...partialSource,
       metadata: new ABClassMetadata(metadata).toJSON(),
-    });
+    };
   }
 
   /**

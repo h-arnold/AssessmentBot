@@ -143,13 +143,17 @@ possible about the backend:
   frontend `isMaskedBackendApiKeyValue` validator enforces that the returned value matches
   exactly the documented masked shapes. See the
   [masking contract](../data-shapes/backend-config.md#transport).
-- **Prohibited types are converted at the boundary.** `google.script.run` prohibits
-  `Date`, `Function` and DOM elements in return values; a live `Date` degrades GAS
-  serialisation to non-JSON output that the frontend parses as `null`. Handlers therefore
-  convert live `Date` objects to ISO 8601 strings before returning, using the `DateUtils`
-  helpers documented in
-  [api-layer.md § prohibited types](../backend/api-layer.md#critical-prohibited-types-in-googlescriptrun-return-values)
-  (backend AGENTS §2). This keeps the transport boundary JSON-clean.
+- **Prohibited types stay out of the transport.** `google.script.run` prohibits live
+  `Date`, `Function` and DOM element values in request parameters. `apiHandler` returns a
+  JSON string, so a `Date` in a response payload reaches GAS already converted to an ISO
+  string and cannot force non-JSON output. The remaining hazards are a live `Date` sent in
+  a request, a raw object returned outside `apiHandler`, and code that copies a revived
+  JsonDbApp `Date` key by key. Handlers convert dates explicitly with the `DateUtils`
+  helpers so the emitted shape does not depend on serialisation. See
+  [api-layer.md § prohibited types](../backend/api-layer.md#critical-prohibited-types-in-googlescriptrun-parameters-and-return-values)
+  for the rules and
+  [rehydration.md § Stored-read Date revival](../backend/rehydration.md#stored-read-date-revival)
+  for the stored-read conversion.
 - **Logging hygiene.** `ABLogger` is the mandatory logging primitive for backend code,
   and the policy forbids logging secrets, credentials, tokens or API keys
   (`backend-logging-and-error-handling.md` §8). The masking and redaction above keep

@@ -28,6 +28,7 @@ import {
   CANONICAL_CLASS_PARTIAL,
   CANONICAL_DEFINITION_PARTIALS,
   CANONICAL_YEAR_GROUPS,
+  canonicalAssignment,
   ERROR_CLASS_NAME,
   UNAVAILABLE_TITLE,
 } from './assessment-error-preview-fixtures';
@@ -53,9 +54,10 @@ export {
   SOURCE_UNREADABLE_REASONING,
   UNAVAILABLE_TITLE,
   withClassPartialAssessmentError,
+  withLegacyAssignment,
   withLegacyClassAssignment,
-  withLegacyReassessment,
   withMissingCriterion,
+  withStoredReassessmentError,
 } from './assessment-error-preview-fixtures';
 
 // ---------------------------------------------------------------------------
@@ -164,6 +166,20 @@ export async function openEmbeddedHeatmap(page: Page, assignmentId: string): Pro
 // ---------------------------------------------------------------------------
 
 /**
+ * Read the rendered task title of one task from a canonical record.
+ * @param {string} assignmentId - Canonical assignment identity.
+ * @param {string} taskId - Task identity.
+ * @returns {string} The embedded definition's task title.
+ */
+export function taskTitle(assignmentId: string, taskId: string): string {
+  const { tasks } = canonicalAssignment(assignmentId).assignmentDefinition;
+  if (!Object.hasOwn(tasks, taskId)) {
+    throw new Error(`assessment-error-preview-journeys: ${assignmentId} has no ${taskId}.`);
+  }
+  return tasks[taskId].taskTitle;
+}
+
+/**
  * Build the shared cell/trigger accessible label for one criterion.
  * @param {string} studentName - Rendered student name.
  * @param {string} taskTitle - Rendered task title.
@@ -206,6 +222,20 @@ export async function openPreviewByKeyboard(page: Page, label: string): Promise<
 }
 
 /**
+ * Open one cell's preview from the keyboard and assert its reasoning and source
+ * headings.
+ * @param {Page} page - The Playwright page.
+ * @param {string} label - The cell's accessible label.
+ * @returns {Promise<Locator>} The open popover.
+ */
+export async function openCell(page: Page, label: string): Promise<Locator> {
+  const popover = await openPreviewByKeyboard(page, label);
+  await expect(popover.getByText('Reasoning', { exact: true })).toHaveCount(1);
+  await expect(popover.getByText('Student Response', { exact: true })).toHaveCount(1);
+  return popover;
+}
+
+/**
  * The source-region Alert inside a preview.
  * @param {Locator} popover - The open popover.
  * @returns {Locator} The Alert locator.
@@ -220,7 +250,8 @@ export function sourceAlert(popover: Locator): Locator {
  * @returns {Locator} The renderer locator.
  */
 export function responseRenderer(popover: Locator): Locator {
+  // CSS modules hash the token (`_markdown_<hash>_<line>`), so match by substring.
   return popover
-    .locator('.markdown')
+    .locator('[class*="markdown"]')
     .or(popover.getByRole('img', { name: 'Student response image' }));
 }

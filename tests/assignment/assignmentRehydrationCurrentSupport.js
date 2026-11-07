@@ -7,7 +7,7 @@
  * (completing the cut-over maps and representing null-document items as the
  * canonical acquisition placeholders) through the synthetic validation family
  * helper. No registry or controller materialisation is involved; the record's
- * own embedded keyed `assignmentDefinition` snapshot is the task universe.
+ * own embedded keyed `assignmentDefinition` snapshot is the task list.
  */
 
 import { expect } from 'vitest';

@@ -39,19 +39,23 @@ export function installMetadataRefreshTransport(initial: ClassFull | null) {
     const parsed = dispatched(request);
     const respond = () => {
       if (failures.has(parsed.method)) {
-        callbacks.successHandler?.({
-          ok: false,
-          requestId: 'metadata-failure',
-          error: {
-            code: 'INTERNAL_ERROR',
-            message: 'Metadata persistence failed',
-            isRetriable: false,
-          },
-        });
+        callbacks.successHandler?.(
+          JSON.stringify({
+            ok: false,
+            requestId: 'metadata-failure',
+            error: {
+              code: 'INTERNAL_ERROR',
+              message: 'Metadata persistence failed',
+              isRetriable: false,
+            },
+          })
+        );
         return;
       }
       const data = responseData(parsed);
-      callbacks.successHandler?.({ ok: true, requestId: `metadata-${requests.length}`, data });
+      callbacks.successHandler?.(
+        JSON.stringify({ ok: true, requestId: `metadata-${requests.length}`, data })
+      );
     };
     if (blocked.has(parsed.method)) holds.set(parsed.method, respond);
     else respond();

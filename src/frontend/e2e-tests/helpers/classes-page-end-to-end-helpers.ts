@@ -42,28 +42,6 @@ export const CLASSES_LABEL = 'Classes' as const;
 export const EXPECTED_MENU_ITEM_COUNT = 5;
 
 // ============================================================================
-// Backend Settings Fixture
-// ============================================================================
-
-/**
- * Standard backend settings fixture for E2E tests.
- */
-export const backendSettingsFixture = {
-  backendAssessorBatchSize: 30,
-  apiKey: '****cdef',
-  hasApiKey: true,
-  backendUrl: 'https://backend.example.com',
-  revokeAuthTriggerSet: false,
-  daysUntilAuthRevoke: 60,
-  slidesFetchBatchSize: 20,
-  jsonDbMasterIndexKey: 'master-index',
-  jsonDbLockTimeoutMs: 30_000,
-  jsonDbLogLevel: 'INFO',
-  jsonDbBackupOnInitialise: true,
-  jsonDbRootFolderId: 'folder-1234',
-} as const;
-
-// ============================================================================
 // Viewport Constants
 // ============================================================================
 

@@ -145,7 +145,7 @@ describe('AssignmentFactory behaviour', () => {
 });
 
 describe('AssignmentSerialisation behaviour', () => {
-  it('serialises current typed submissions and rejects plain submission fallbacks', () => {
+  it('serialises current typed submissions and passes plain submission records through the fallback', () => {
     const serialisation = new globalThis.AssignmentSerialisation({
       courseId: 'course-one',
       assignmentId: 'assignment-one',
@@ -178,8 +178,9 @@ describe('AssignmentSerialisation behaviour', () => {
     expect(json.submissions[0]).toEqual({ studentId: 's-one' });
     expect(json.assessmentContractVersion).toBe(1);
 
-    // Keep the rejection probe separate so it cannot skip the valid serialization assertions.
-    const invalidSerialisation = new globalThis.AssignmentSerialisation({
+    // Keep the plain-record fallback probe separate so it cannot skip the valid
+    // serialisation assertions.
+    const fallbackSerialisation = new globalThis.AssignmentSerialisation({
       courseId: 'course-one',
       assignmentId: 'assignment-one',
       assignmentName: 'Assignment One',
@@ -188,9 +189,17 @@ describe('AssignmentSerialisation behaviour', () => {
       createdAt: new Date('2026-01-02T03:04:05.000Z'),
       assignmentDefinition: {
         toJSON: () => ({ documentType: 'SLIDES', tasks: { task_one: true } }),
+        toPartialJSON: () => ({ documentType: 'SLIDES', tasks: [] }),
       },
       submissions: [
-        { studentId: 's-two', documentId: 'doc-two', score: 3, extra: 'must not persist' },
+        {
+          studentId: 's-two',
+          documentId: 'doc-two',
+          score: 3,
+          extra: 'must not persist',
+          createdAt: new Date('2026-02-03T04:05:06.000Z'),
+          nested: { updatedAt: new Date('2026-03-04T05:06:07.000Z'), missing: null },
+        },
       ],
       assessmentContractVersion: 1,
     });
@@ -205,7 +214,26 @@ describe('AssignmentSerialisation behaviour', () => {
       documentType: 'SHEETS',
     });
 
-    expect(() => invalidSerialisation.toJSON()).toThrow();
+    // A stored record without a model serialiser keeps its own enumerable keys,
+    // and live Dates become ISO strings instead of `{}`.
+    expect(fallbackSerialisation.toJSON().submissions).toEqual([
+      {
+        studentId: 's-two',
+        documentId: 'doc-two',
+        score: 3,
+        extra: 'must not persist',
+        createdAt: '2026-02-03T04:05:06.000Z',
+        nested: { updatedAt: '2026-03-04T05:06:07.000Z', missing: null },
+      },
+    ]);
+    expect(fallbackSerialisation.toPartialJSON().submissions[0]).toEqual({
+      studentId: 's-two',
+      documentId: 'doc-two',
+      score: 3,
+      extra: 'must not persist',
+      createdAt: '2026-02-03T04:05:06.000Z',
+      nested: { updatedAt: '2026-03-04T05:06:07.000Z', missing: null },
+    });
   });
 
   it('serialises partial assignments with redacted definitions', () => {

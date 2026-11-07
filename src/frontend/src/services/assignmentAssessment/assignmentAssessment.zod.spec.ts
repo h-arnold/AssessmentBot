@@ -106,6 +106,30 @@ describe('assignmentAssessment.zod schemas', () => {
         payloadWithNullDocumentId
       );
     });
+
+    it.each([1, 'legacy'] as const)('accepts the read version marker %s', (marker) => {
+      const candidate = { ...validFullAssignment, assessmentContractVersion: marker };
+      expect(AssignmentFullSchema.parse(candidate).assessmentContractVersion).toBe(marker);
+    });
+
+    it.each([
+      ['null', null],
+      ['unsupported zero', 0],
+      ['unsupported draft', 'draft'],
+    ])('rejects the read version marker %s', (_label, marker) => {
+      expect(
+        AssignmentFullSchema.safeParse({
+          ...validFullAssignment,
+          assessmentContractVersion: marker,
+        }).success
+      ).toBe(false);
+    });
+
+    it('rejects an absent read version marker', () => {
+      const markerless = { ...validFullAssignment };
+      delete (markerless as Record<string, unknown>).assessmentContractVersion;
+      expect(AssignmentFullSchema.safeParse(markerless).success).toBe(false);
+    });
   });
 
   describe('AssignmentFullResponseSchema', () => {

@@ -6,15 +6,15 @@
  * the canonical `medium` class graph, so the preview states the feature renders
  * are proven end to end: a healthy sibling beside an assessment `E` with valid
  * source, an `E` whose source is unavailable, a known class-partial `E` while
- * the full read is pending or has failed, a preview-only corrupt record, a
- * legacy reassessment result, and a refresh that replaces `E` with a current
- * result. No live Google or LLM call is made.
+ * the full read is pending or has failed, a preview-only corrupt record, and a
+ * refresh that replaces `E` with a current result. The legacy read journey lives
+ * in `legacy-assignment-results.spec.ts`. No live Google or LLM call is made.
  *
  * @see docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md
  * @see docs/developer/frontend/frontend-playwright-e2e.md
  */
 
-import { expect, test, type Locator, type Page } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 import {
   getMethodCalls,
   releaseNextDeferredSuccess,
@@ -28,20 +28,17 @@ import {
   CORRUPT_RECORD_REASONING,
   CORRUPTION_DESCRIPTION,
   JOURNEY_TASK_ID,
-  LEGACY_ASSESSMENT_REASONING,
+  openCell,
   openEmbeddedHeatmap,
   openErrorClass,
-  openPreviewByKeyboard,
   previewPopover,
-  REASSESSMENT_COPY,
   responseRenderer,
   MIXED_STUDENT_ID,
   SOURCE_UNREADABLE_REASONING,
   sourceAlert,
+  taskTitle,
   UNAVAILABLE_TITLE,
   withClassPartialAssessmentError,
-  withLegacyClassAssignment,
-  withLegacyReassessment,
   withMissingCriterion,
 } from './helpers/assessment-error-preview-journeys';
 import {
@@ -56,20 +53,7 @@ const MIXED_ASSIGNMENT_ID = 'assignment-2-4';
 const MIXED_STUDENT_NAME = 'Taylor Yundt-Hermiston';
 const SOURCE_LESS_STUDENT_NAME = 'Lou Cronin';
 const HEALTHY_STUDENT_NAME = 'Bryon Medhurst';
-const REASONING_HEADING = 'Reasoning';
-const RESPONSE_HEADING = 'Student Response';
 const PREVIEW_FAILURE_TEXT = "Couldn't load task details";
-/**
- * Current-version sibling the legacy journey opens beside the legacy assignment.
- *
- * @remarks
- * Recent Assignments only renders the three newest assignments, so the sibling
- * has to be one of them to have a card. `assignment-2-3` is the third of those
- * and its warmed full read is its own canonical record.
- */
-const SIBLING_ASSIGNMENT_ID = 'assignment-2-3';
-/** Task of the sibling assignment the journey reads. */
-const SIBLING_TASK_ID = 'task-3-0';
 
 /**
  * Default entries in a repeated success queue.
@@ -82,20 +66,6 @@ const DEFAULT_SUCCESS_QUEUE_LENGTH = 4;
 
 /** `getABClass` copies served when the journey also overrides `getAssignment`. */
 const CLASS_READ_QUEUE_LENGTH = 6;
-
-/**
- * Read the rendered task title of one task from a canonical record.
- * @param {string} assignmentId - Canonical assignment identity.
- * @param {string} taskId - Task identity.
- * @returns {string} The embedded definition's task title.
- */
-function taskTitle(assignmentId: string, taskId: string): string {
-  const { tasks } = canonicalAssignment(assignmentId).assignmentDefinition;
-  if (!Object.hasOwn(tasks, taskId)) {
-    throw new Error(`assessment-error-previews: ${assignmentId} has no ${taskId}.`);
-  }
-  return tasks[taskId].taskTitle;
-}
 
 const JOURNEY_TITLE = taskTitle(MIXED_ASSIGNMENT_ID, JOURNEY_TASK_ID);
 
@@ -171,19 +141,6 @@ function warmUpQueue(scenarioForMixed: ResponseItem): ResponseItem[] {
   ];
 }
 
-/**
- * Open one cell's preview and assert its header, reasoning and source headings.
- * @param {Page} page - The Playwright page.
- * @param {string} label - The cell's accessible label.
- * @returns {Promise<Locator>} The open popover.
- */
-async function openCell(page: Page, label: string): Promise<Locator> {
-  const popover = await openPreviewByKeyboard(page, label);
-  await expect(popover.getByText(REASONING_HEADING, { exact: true })).toHaveCount(1);
-  await expect(popover.getByText(RESPONSE_HEADING, { exact: true })).toHaveCount(1);
-  return popover;
-}
-
 test.describe('Embedded heatmap — explicit assessment errors', () => {
   test('keeps a healthy sibling usable beside an assessment E with valid source', async ({
     page,
@@ -241,7 +198,7 @@ test.describe('Embedded heatmap — explicit assessment errors', () => {
     await expect(alert).toContainText(SOURCE_UNAVAILABLE_DESCRIPTION);
     // No source identifiers exist, so no action and no renderer are offered.
     await expect(popover.getByRole('link')).toHaveCount(0);
-    await expect(popover.locator('.markdown')).toHaveCount(0);
+    await expect(responseRenderer(popover)).toHaveCount(0);
     await expect(popover.getByRole('img', { name: 'Student response image' })).toHaveCount(0);
   });
 
@@ -272,7 +229,7 @@ test.describe('Embedded heatmap — explicit assessment errors', () => {
     const popover = previewPopover(page);
     await expect(popover).toBeVisible();
     await expect(popover.getByLabel(WHOLE_PREVIEW_LOADING_LABEL)).toHaveCount(0);
-    await expect(popover.getByText(REASONING_HEADING, { exact: true })).toHaveCount(1);
+    await expect(popover.getByText('Reasoning', { exact: true })).toHaveCount(1);
     await expect(popover.getByText(ASSESSMENT_FAILED_REASONING)).toHaveCount(1);
     const sourceLoading = popover.getByLabel(SOURCE_LOADING_LABEL);
     await expect(sourceLoading).toHaveCount(1);
@@ -319,7 +276,7 @@ test.describe('Embedded heatmap — explicit assessment errors', () => {
     await expect(popover).toBeVisible();
     await expect(popover.getByText(PREVIEW_FAILURE_TEXT)).toHaveCount(0);
     await expect(popover.getByLabel(WHOLE_PREVIEW_LOADING_LABEL)).toHaveCount(0);
-    await expect(popover.getByText(REASONING_HEADING, { exact: true })).toHaveCount(1);
+    await expect(popover.getByText('Reasoning', { exact: true })).toHaveCount(1);
     await expect(popover.getByText(ASSESSMENT_FAILED_REASONING)).toHaveCount(1);
     await expect(popover.getByRole('status', { name: 'Completeness score: E' })).toHaveCount(1);
     const alert = sourceAlert(popover);
@@ -346,8 +303,8 @@ test.describe('Embedded heatmap — explicit assessment errors', () => {
     await page.keyboard.press('Enter');
     const siblingPopover = previewPopover(page);
     await expect(siblingPopover).toBeVisible();
-    await expect(siblingPopover.getByText(REASONING_HEADING, { exact: true })).toHaveCount(1);
-    await expect(siblingPopover.getByText(RESPONSE_HEADING, { exact: true })).toHaveCount(1);
+    await expect(siblingPopover.getByText('Reasoning', { exact: true })).toHaveCount(1);
+    await expect(siblingPopover.getByText('Student Response', { exact: true })).toHaveCount(1);
   });
 
   test('shows the corruption notice without changing class cell values', async ({ page }) => {
@@ -383,46 +340,6 @@ test.describe('Embedded heatmap — explicit assessment errors', () => {
     await expect(previewPopover(page)).toHaveCount(0);
     await expect(page.getByRole('button', { name: MIXED_CELL })).toHaveText('E');
     await expect(healthyCell).toHaveText('3');
-  });
-
-  test('shows the legacy reassessment copy while a current sibling stays unaffected', async ({
-    page,
-  }) => {
-    // The embedded preview reads the assignment's own full record, so the legacy
-    // projection is served there. The class snapshot keeps the current record,
-    // proving the class-partial E alone never overrides a current full read.
-    const legacy = withLegacyReassessment(MIXED_ASSIGNMENT_ID);
-    await openErrorClass(page, {
-      getABClass: successQueue(
-        withLegacyClassAssignment(MIXED_ASSIGNMENT_ID),
-        CLASS_READ_QUEUE_LENGTH
-      ),
-      getAssignment: warmUpQueue({ kind: 'success', data: legacy }),
-    });
-
-    await openEmbeddedHeatmap(page, MIXED_ASSIGNMENT_ID);
-    const legacyPopover = await openCell(page, MIXED_CELL);
-    await expect(legacyPopover.getByText(LEGACY_ASSESSMENT_REASONING)).toHaveCount(1);
-    const alert = sourceAlert(legacyPopover);
-    await expect(alert).toHaveCount(1);
-    await expect(alert).toContainText(REASSESSMENT_COPY);
-    await page.keyboard.press('Escape');
-    await expect(previewPopover(page)).toHaveCount(0);
-
-    // The current-version sibling still renders its numeric preview normally.
-    // Recent Assignments only lists the three newest assignments, so the
-    // sibling has to be one of them to have a clickable card.
-    await page.getByRole('button', { name: 'Back to Class overview' }).click();
-    await openEmbeddedHeatmap(page, SIBLING_ASSIGNMENT_ID);
-    const siblingTitle = taskTitle(SIBLING_ASSIGNMENT_ID, SIBLING_TASK_ID);
-    const siblingPopover = await openCell(
-      page,
-      cellLabel(HEALTHY_STUDENT_NAME, siblingTitle, 'completeness', '3')
-    );
-    await expect(sourceAlert(siblingPopover)).toHaveCount(0);
-    await expect(siblingPopover.getByRole('status', { name: 'Completeness score: 3' })).toHaveCount(
-      1
-    );
   });
 
   test('refresh replaces E with newly valid content under the current query owner', async ({

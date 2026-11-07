@@ -179,7 +179,7 @@ export const AssignmentFullSchema = z
     tasks: z.record(z.string(), TaskDefinitionSchema).nullable(),
     submissions: z.array(StudentSubmissionSchema),
     assignmentDefinition: AssignmentDefinitionSchema,
-    assessmentContractVersion: z.union([z.literal(1), z.null()]),
+    assessmentContractVersion: z.union([z.literal(1), z.literal('legacy')]),
   })
   .strict();
 

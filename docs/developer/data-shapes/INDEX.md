@@ -30,8 +30,13 @@ reference.
 | **Frontend Data Analysis Response** | [`frontend-data-analysis-response.md`](frontend-data-analysis-response.md) | None — derived frontend validation contract                        | None — in-memory `DataAnalysisService` output                                                                                                                                                                                            | AverageContribution, MetricResult, ClassPageDisplayMetric (adapter-local), CellPreviewData, TaskPreviewData                   |
 
 Status: all eleven contracts are implemented and conform to their documented contracts.
-`frontend-data-analysis-response.md` remains the only contract with an outstanding planned
-change (the attempt-baseline analysis mode).
+`frontend-data-analysis-response.md` carries an outstanding planned change (the attempt-baseline
+analysis mode). Legacy `submissions` preservation on restoration and ordinary save is implemented
+(see [assignment.md § Legacy `submissions` preservation](assignment.md#legacy-submissions-preservation)).
+The read marker union is `1 | 'legacy'` on both read paths, and legacy reads are prepared by
+`AssignmentRehydration.prepareLegacyReadSubmissions()` (see
+[assessment.md § Legacy read preparation](assessment.md#legacy-read-preparation)); the former
+`1 | null` read marker and the all-results reassessment projection are retired.
 
 ## Component Shapes
 
@@ -51,7 +56,7 @@ Containment links:
 - `AssignmentDefinition` → `TaskDefinition` → **BaseTaskArtifact**
 - `Assignment` → **Student Submission** → **StudentSubmissionItem** → **BaseTaskArtifact**
 - `Assignment` → **Student Submission** → **StudentSubmissionItem** → **Assessment**
-- `Assignment` → **Assessment** (write gate, marker, legacy read projection, marker-1 restoration)
+- `Assignment` → **Assessment** (write gate, marker, legacy read preparation, marker-1 restoration)
 - `ABClass` → `Assignment` partial → **Student Submission** (partial) → **Assessment** (partial)
 
 ## Containment Hierarchy

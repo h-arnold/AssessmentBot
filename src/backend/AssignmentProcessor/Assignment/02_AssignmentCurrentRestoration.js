@@ -24,7 +24,7 @@ const AssignmentCurrentRestoration = {
       throw new Error('Current assignment root is untrustworthy');
     const tasks = data.assignmentDefinition?.tasks;
     if (!tasks || typeof tasks !== 'object')
-      throw new Error('Current assignment requires an embedded task universe');
+      throw new Error('Current assignment requires embedded tasks');
     if (Array.isArray(tasks)) {
       const ids = tasks.map((task) => task?.taskId);
       if (
@@ -32,7 +32,7 @@ const AssignmentCurrentRestoration = {
         ids.some((id) => typeof id !== 'string' || !id.trim()) ||
         new Set(ids).size !== ids.length
       )
-        throw new Error('Current assignment task universe is untrustworthy');
+        throw new Error('Current assignment task list is untrustworthy');
       return;
     }
     const keys = Object.keys(tasks);
@@ -51,13 +51,13 @@ const AssignmentCurrentRestoration = {
         );
       })
     )
-      throw new Error('Current assignment task universe is untrustworthy');
+      throw new Error('Current assignment task list is untrustworthy');
   },
 
   /**
-   * Restores a current-format submission and its complete task-item universe.
+   * Restores a current-format submission and its complete task-item list.
    * Invalid items become corrupt-record placeholders; untrustworthy submission
-   * identity or task universes are rejected.
+   * identity or task lists are rejected.
    * @param {Assignment} inst - Assignment receiving the restored submission.
    * @param {object} raw - Current-format submission JSON.
    * @param {object} assignmentData - Parent assignment JSON and embedded definition.
@@ -156,7 +156,7 @@ const AssignmentCurrentRestoration = {
       !definition?.tasks ||
       typeof definition.tasks !== 'object'
     )
-      throw new Error('Current assignment restoration requires an embedded task universe');
+      throw new Error('Current assignment restoration requires embedded tasks');
     if (
       raw.assignmentId !== assignmentData.assignmentId ||
       typeof raw.studentId !== 'string' ||
@@ -167,7 +167,7 @@ const AssignmentCurrentRestoration = {
       ? definition.tasks.map((task) => task.taskId)
       : Object.keys(definition.tasks);
     if (taskIds.length === 0 || taskIds.some((id) => typeof id !== 'string' || !id))
-      throw new Error('Current assignment task universe is untrustworthy');
+      throw new Error('Current assignment task list is untrustworthy');
     return taskIds;
   },
 

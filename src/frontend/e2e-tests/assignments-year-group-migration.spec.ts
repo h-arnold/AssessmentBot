@@ -73,11 +73,15 @@ async function mockAssignmentsRuntime(page: Page) {
       };
 
       function sendSuccess(callbacks, method, responseIndex, data) {
-        callbacks.successHandler?.({
-          ok: true,
-          requestId: 'req-' + method + '-' + responseIndex,
-          data,
-        });
+        // The backend apiHandler returns the envelope as a JSON string and real GAS
+        // passes it through, so fixtures keep their explicit null properties.
+        callbacks.successHandler?.(
+          JSON.stringify({
+            ok: true,
+            requestId: 'req-' + method + '-' + responseIndex,
+            data,
+          })
+        );
       }
 
       globalThis.google = {

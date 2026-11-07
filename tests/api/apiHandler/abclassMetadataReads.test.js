@@ -11,6 +11,22 @@ const selectedPartial = canonical.classPartials.find(
   (row) => row.classId === selectedClass.classId
 );
 const registryRows = [{ ...selectedPartial, _id: 'partial-row' }];
+
+/**
+ * Calls the global `apiHandler` and parses the transport string it returns.
+ *
+ * @remarks `google.script.run` receives a JSON string so `null` properties survive the
+ * transport. Every direct consumer must therefore parse at this boundary.
+ * @param {object} api - The loaded `z_apiHandler` module.
+ * @param {object} request - The dispatcher request payload.
+ * @returns {object} The parsed response envelope.
+ */
+function dispatch(api, request) {
+  const raw = api.apiHandler(request);
+  expect(typeof raw).toBe('string');
+  return JSON.parse(raw);
+}
+
 describe('ABClass metadata dispatcher read contracts', () => {
   let context;
   afterEach(() => {
@@ -18,12 +34,22 @@ describe('ABClass metadata dispatcher read contracts', () => {
     context = undefined;
   });
 
+  it('returns the envelope as a JSON string so null properties survive the transport', () => {
+    context = setupRealAbclassDispatcher(vi, canonical, {
+      classId: selectedClass.classId,
+      partialRows: registryRows,
+    });
+    const raw = context.api.apiHandler({ method: 'getABClassPartials' });
+    expect(typeof raw).toBe('string');
+    expect(JSON.parse(raw).data[0]).toHaveProperty('metadata');
+  });
+
   it('dispatches registry rows through the real controller and mapper with raw metadata', () => {
     context = setupRealAbclassDispatcher(vi, canonical, {
       classId: selectedClass.classId,
       partialRows: registryRows,
     });
-    const response = context.api.apiHandler({ method: 'getABClassPartials' });
+    const response = dispatch(context.api, { method: 'getABClassPartials' });
     expect(response).toMatchObject({
       ok: true,
       data: [
@@ -42,7 +68,7 @@ describe('ABClass metadata dispatcher read contracts', () => {
       classId: selectedClass.classId,
       partialRows: registryRows,
     });
-    const response = context.api.apiHandler({
+    const response = dispatch(context.api, {
       method: 'getABClass',
       params: { classId: context.classId },
     });
@@ -64,7 +90,7 @@ describe('ABClass metadata dispatcher read contracts', () => {
       partialRows: registryRows,
     });
     context.full.findOne.mockReturnValue(null);
-    const response = context.api.apiHandler({
+    const response = dispatch(context.api, {
       method: 'getABClass',
       params: { classId: context.classId },
     });
@@ -77,7 +103,7 @@ describe('ABClass metadata dispatcher read contracts', () => {
       partialRows: [],
     });
     context.partial.find.mockReturnValue([]);
-    expect(context.api.apiHandler({ method: 'getABClassPartials' })).toMatchObject({
+    expect(dispatch(context.api, { method: 'getABClassPartials' })).toMatchObject({
       ok: true,
       data: [],
     });

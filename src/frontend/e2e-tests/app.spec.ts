@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { pageContent } from '../src/pages/pageContent';
 import { googleScriptRunApiHandlerFactorySource } from '../src/test/googleScriptRunHarness';
+import { baseBackendConfig } from './helpers/settings-backend-fixtures';
 
 const breadcrumbNavigationName = 'Breadcrumb';
 const defaultNavigationLabel = 'Dashboard';
@@ -25,20 +26,6 @@ const classesLabel = 'Classes';
 const settingsLabel = 'Settings';
 const heatmapsPageHeading = pageContent.heatmaps.heading;
 const navigationMenuLabels = pageExpectations.map(({ heading }) => heading);
-const backendSettingsFixture = {
-  backendAssessorBatchSize: 30,
-  apiKey: '****cdef',
-  hasApiKey: true,
-  backendUrl: 'https://backend.example.com',
-  revokeAuthTriggerSet: false,
-  daysUntilAuthRevoke: 60,
-  slidesFetchBatchSize: 20,
-  jsonDbMasterIndexKey: 'master-index',
-  jsonDbLockTimeoutMs: 30_000,
-  jsonDbLogLevel: 'INFO',
-  jsonDbBackupOnInitialise: true,
-  jsonDbRootFolderId: 'folder-1234',
-};
 
 /**
  * Returns the rendered breadcrumb locator.
@@ -97,17 +84,25 @@ async function mockPendingGoogleScriptRun(page: Page) {
   await page.addInitScript(`
     (() => {
       const createGoogleScriptRunApiHandlerMock = ${googleScriptRunApiHandlerFactorySource};
-      const backendSettingsFixture = ${JSON.stringify(backendSettingsFixture)};
+      const backendConfigFixture = ${JSON.stringify(baseBackendConfig)};
+
+      /**
+       * Delivers a success envelope as the backend apiHandler does: a JSON string
+       * that real GAS passes through, so explicit null properties survive.
+       *
+       * @param {*} handler The registered success handler.
+       * @param {string} requestId Request correlation identifier.
+       * @param {*} data Successful payload.
+       */
+      function sendSuccess(handler, requestId, data) {
+        handler?.(JSON.stringify({ ok: true, requestId, data }));
+      }
 
       globalThis.google = {
         script: {
           run: createGoogleScriptRunApiHandlerMock((request, callbacks) => {
             if (request?.method === 'getBackendConfig') {
-              callbacks.successHandler?.({
-                ok: true,
-                requestId: 'req-backend-config',
-                data: backendSettingsFixture,
-              });
+              sendSuccess(callbacks.successHandler, 'req-backend-config', backendConfigFixture);
               return;
             }
 
@@ -115,29 +110,22 @@ async function mockPendingGoogleScriptRun(page: Page) {
                // AppAuthGate (wrapping the whole app in main.tsx) blocks the shell until
                // authorisation and startup warm-up have resolved, so this shell fixture supplies
                // valid empty responses for every warm-up dataset.
-              callbacks.successHandler?.({
-                ok: true,
-                requestId: 'req-authorisation-status',
-                data: true,
-              });
+              sendSuccess(callbacks.successHandler, 'req-authorisation-status', true);
               return;
             }
 
             if (request?.method === 'getApplicationAccess') {
-              callbacks.successHandler?.({
-                ok: true,
-                requestId: 'req-application-access',
-                data: { allowed: true, role: 'admin', email: 'owner@example.com', reason: 'ok' },
+              sendSuccess(callbacks.successHandler, 'req-application-access', {
+                allowed: true,
+                role: 'admin',
+                email: 'owner@example.com',
+                reason: 'ok',
               });
               return;
             }
 
             if (request?.method === 'getABClassPartials') {
-              callbacks.successHandler?.({
-                ok: true,
-                requestId: 'req-class-partials',
-                data: [],
-              });
+              sendSuccess(callbacks.successHandler, 'req-class-partials', []);
               return;
             }
 
@@ -147,11 +135,7 @@ async function mockPendingGoogleScriptRun(page: Page) {
               request?.method === 'getCohorts' ||
               request?.method === 'getYearGroups'
             ) {
-              callbacks.successHandler?.({
-                ok: true,
-                requestId: 'req-' + request.method,
-                data: [],
-              });
+              sendSuccess(callbacks.successHandler, 'req-' + request.method, []);
             }
           }),
         },

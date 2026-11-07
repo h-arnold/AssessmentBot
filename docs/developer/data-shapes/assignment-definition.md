@@ -19,6 +19,7 @@ Sibling contracts:
 - [Component Shape: BaseTaskArtifact](base-task-artifact.md) — the artifact shape embedded in `TaskDefinition.artifacts.{reference,template}`; this contract is its origin.
 - [Contract: Reference Data](reference-data.md) — `primaryTopicKey` references AssignmentTopics; `yearGroupKey` references YearGroups.
 - [Contract: BackendConfig](backend-config.md) — No direct relationship.
+- [Transport envelope](transport-envelope.md) — definition API payloads use the shared `apiHandler` envelope, which leaves the backend as a JSON string; this contract documents only the inner payload.
 
 ---
 
@@ -94,6 +95,12 @@ Key notes:
 - `tasks` is stored as a `Record<string, TaskDefinition>` keyed object but arrives at
   the frontend as a `Array<{taskId, taskTitle, taskWeighting}>` lightweight array after
   response-mapper transformation.
+- Stored dates are ISO strings: the constructor stores `createdAt`/`updatedAt`/
+  `referenceLastModified`/`templateLastModified` as supplied strings (or from `new Date().toISOString()`),
+  and `toJSON()`/`toPartialJSON()` re-emit them unchanged. JsonDbApp revives those stored ISO strings
+  as live `Date` objects on read, so a restored model can hold `Date` values in those four fields.
+  `fromJSON()` passes them through unchanged; the definition transport handlers normalise
+  `createdAt`/`updatedAt` themselves, and the two `*LastModified` fields are not transported.
 - `toJSON()` throws `TypeError` if called on a partial instance (where `tasks` is an array).
 - Full-definition eligibility is a single predicate: keyed (non-array) `tasks` **and** non-null
   `referenceDocumentId`/`templateDocumentId`. The synthetic transport projection
@@ -162,8 +169,10 @@ Key contract notes:
   and `createdAt`/`updatedAt` must be null or strict ISO datetime strings with timezone info.
 - Returns an empty array when no registry documents exist.
 - `referenceLastModified` and `templateLastModified` are omitted from the partial transport.
-- `DateUtils.normaliseDateFields()` is called on each row to convert `Date` objects to ISO strings
-  (required because `google.script.run` prohibits `Date` in return values).
+- `DateUtils.normaliseDateFields()` is called on each row to convert `createdAt`/`updatedAt` to ISO
+  strings. This is required because `google.script.run` prohibits `Date` in return values and
+  JsonDbApp revives stored ISO strings as `Date` objects on read. It also keeps the emitted shape
+  explicit rather than relying on `JSON.stringify` at the entry point.
 
 ### `getAssignmentDefinition` (read)
 
@@ -230,7 +239,10 @@ Key contract notes:
 - The response shape is shared with `upsertAssignmentDefinition` — both read and write
   transports use the same canonical editable entity contract (`AssignmentDefinitionSchema`).
 - Returns `null` when no persisted definition exists for the given `definitionKey`.
-- `DateUtils.normaliseDateFields()` is called on the response before returning from the handler.
+- `DateUtils.normaliseDateFields()` is called on the response before returning from the handler,
+  converting `createdAt`/`updatedAt` to ISO strings. The same conversion applies to the
+  `upsertAssignmentDefinition` response. `referenceLastModified`/`templateLastModified` are not
+  part of the response, so revived `Date` values in those fields never reach the frontend.
 
 ### `upsertAssignmentDefinition` (write)
 
@@ -641,7 +653,7 @@ The definition-write availability invariant is owned by
 Persistence model:         src/backend/Models/AssignmentDefinition.js
   └── AssignmentDefinition.toJSON()          — full definition shape (tasks as keyed object)
   └── AssignmentDefinition.toPartialJSON()   — partial registry shape (tasks as array)
-  └── AssignmentDefinition.fromJSON()        — deserialisation (coerces tasks: null → [])
+  └── AssignmentDefinition.fromJSON()        — deserialisation (coerces tasks: null → []; leaves revived Date values unchanged)
   └── AssignmentDefinition.buildDefinitionKey() — constructor-fallback metadata key (production create uses the orchestrator's opaque UUID)
   └── AssignmentDefinition._computePartialTasks() — partial tasks array computation
 
@@ -679,7 +691,7 @@ API handlers:              src/backend/z_Api/
   │                                             getAssignmentDefinition_(),
   │                                             upsertAssignmentDefinition_(),
   │                                             deleteAssignmentDefinition_(),
-  │                                             toTransportPartialRow_()   (remains flat)
+  │                                             toTransportPartialRow_()   (remains flat; normalises createdAt/updatedAt to ISO)
   └── assignmentDefinition/
         ├── assignmentDefinitionValidation.js            — validateReadParameters_(),
         │                                                  validateDeleteParameters_()

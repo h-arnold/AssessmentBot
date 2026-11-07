@@ -127,7 +127,7 @@ Use context-aware APIs (`App.useApp`, `message.useMessage`, `notification.useNot
 
 A failed source region inside a task preview is an item-level, non-dismissible inline `Alert`, not a toast or notification. `TaskPreviewCard.tsx` owns the copy and `TaskMetricPreviewContent.tsx` owns the pending/failed/ready decision; the state and loading rules are in `docs/developer/frontend/frontend-loading-and-width-standards.md` §5.1.
 
-- The `Alert` title is **Source unavailable**. The description is cause-specific: an ordinary unavailable source, the full-read-only corruption notice, or the legacy reassessment copy. The recorded Assessment reasoning stays in the card's Reasoning section and is never replaced by generic fetch copy.
+- The `Alert` title is **Source unavailable**. The description is cause-specific: an ordinary unavailable source, the full-read-only corruption notice, or the copy for a stored `REASSESSMENT_REQUIRED` error. The recorded Assessment reasoning stays in the card's Reasoning section and is never replaced by generic fetch copy.
 - Do not add a retry button, toast or developer-details panel. The existing refresh and reassessment controls remain the recovery paths.
 - An assessment-only failure with usable content renders the response normally; do not add a duplicate generic `Alert` above it.
 - These are user-safe strings. Structured stage/code stays in diagnostics, never in the rendered copy.
