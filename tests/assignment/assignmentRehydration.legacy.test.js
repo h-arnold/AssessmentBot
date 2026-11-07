@@ -1,47 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { currentAssignmentJson, restoreAssignment } from './assignmentRehydrationCurrentSupport.js';
-import { loadSyntheticAnalysisProfile } from '#synthetic-data/loadSyntheticAnalysisProfile.js';
-import { deriveLegacyAssignmentScenario } from '#synthetic-data/deriveLegacyAssignmentScenario.js';
+import { healthyFullRecord, storedLegacyRecord } from './assignmentLegacyReadPreparationSupport.js';
 
 const { StudentSubmission } = require('#backend/Models/StudentSubmission/index.js');
 const {
   StudentSubmissionItem,
 } = require('#backend/Models/StudentSubmission/00_StudentSubmissionItem.js');
-
-/** Canonical `small` selection for the realistic healthy legacy record. */
-const LEGACY_ASSIGNMENT_ID = 'assignment-0-1';
-
-/**
- * Derives the stored legacy scenario (marker removed) from the canonical views.
- * @returns {object} Derived stored scenario with standalone and class-embedded records.
- */
-function storedLegacyScenario() {
-  const sources = {
-    classesById: loadSyntheticAnalysisProfile('small', 'classesById'),
-    assignmentsByKey: loadSyntheticAnalysisProfile('small', 'assignmentsByKey'),
-  };
-  return deriveLegacyAssignmentScenario({
-    profileName: 'small',
-    assignmentId: LEGACY_ASSIGNMENT_ID,
-    variant: 'stored',
-    sources,
-  });
-}
-
-/**
- * Clones the derived stored full record and applies a local `submissions` override.
- * @param {object|null|undefined} submissions Stored value; `undefined` leaves the property absent.
- * @returns {object} Clone of the canonical full record with the override applied.
- */
-function storedLegacyRecord(submissions) {
-  const record = structuredClone(storedLegacyScenario().full);
-  if (submissions === undefined) {
-    Reflect.deleteProperty(record, 'submissions');
-  } else {
-    record.submissions = submissions;
-  }
-  return record;
-}
 
 function historicalAssignment(marker, partial) {
   const record = currentAssignmentJson();
@@ -194,8 +158,7 @@ describe('legacy submissions preservation through restoration and persistence', 
   });
 
   it('preserves a present array submission body without substitution or reordering', () => {
-    const { full } = storedLegacyScenario();
-    const stored = structuredClone(full);
+    const stored = healthyFullRecord();
     const restored = restoreAssignment(stored);
     expect(restored.submissions).toHaveLength(stored.submissions.length);
     expect(restored.submissions).toEqual(stored.submissions);

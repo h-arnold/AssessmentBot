@@ -31,14 +31,10 @@ import { getABClass } from '@/services/googleClassrooms/classDetail/classDetailS
  * with no storage writes, and a later ordinary save must not persist the
  * read-time `'legacy'` marker or any read-time E.
  *
- * The backend's read projector once returned a `null` marker with detached
- * REASSESSMENT_REQUIRED placeholders; the landed backend instead emits the
- * `'legacy'` marker and restores real scores and content, so every case below
- * passes end to end. The full-read contract tests drive the real frontend
- * services. The two backend-side guard tests (no storage writes, no persisted
- * read-time state) deliberately invoke the dispatcher seam via
- * `bridge.invokeRequest` to stay backend-scoped; that split is the permanent
- * design of this suite.
+ * The full-read contract tests drive the real frontend services. The two
+ * backend-side guard tests (no storage writes, no persisted read-time state)
+ * deliberately invoke the dispatcher seam via `bridge.invokeRequest` to stay
+ * backend-scoped; that split is the permanent design of this suite.
  */
 type Runner = GoogleScriptRunApiHandler;
 type JsonRecord = Record<string, any>;

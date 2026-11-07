@@ -10,6 +10,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { loadBackendModelInputs } from '#synthetic-data/toBackendModelInputs.js';
 import { restoreGlobals, saveGlobals } from '#test-helpers/globalMockManager.js';
+import { isCorruptItem } from '../assignment/assignmentLegacyReadPreparationSupport.js';
 import {
   createMockCollection,
   setupControllerTestMocks,
@@ -22,11 +23,9 @@ const Assignment = require('#backend/AssignmentProcessor/Assignment/index.js');
 const ABClassController = require('#backend/y_controllers/ABClassController/index.js');
 
 const ABClassAssignmentOps = globalThis.ABClassAssignmentOps;
-const CORRUPT_RECORD = { stage: 'validation', code: 'CORRUPT_RECORD' };
 
 const CLASS_ID = 'class-0';
 const ASSIGNMENT_ID = 'assignment-0-1';
-const CRITERIA = ['completeness', 'accuracy', 'spag'];
 
 /** Canonical class document with the selected assignment marked as stored legacy. */
 function storedLegacyClassDocument() {
@@ -41,16 +40,6 @@ function storedLegacyFullRecord() {
   const record = structuredClone(loadBackendModelInputs('small').assignmentsByKey[ASSIGNMENT_ID]);
   Reflect.deleteProperty(record, 'assessmentContractVersion');
   return record;
-}
-
-/** Reports whether an item carries the exact all-criteria CORRUPT_RECORD map. */
-function isCorruptItem(item) {
-  return CRITERIA.every(
-    (criterion) =>
-      item?.assessments?.[criterion]?.score === 'E' &&
-      item.assessments[criterion].error?.stage === CORRUPT_RECORD.stage &&
-      item.assessments[criterion].error?.code === CORRUPT_RECORD.code
-  );
 }
 
 let savedGlobals;

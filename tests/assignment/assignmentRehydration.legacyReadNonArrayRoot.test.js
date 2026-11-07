@@ -10,37 +10,11 @@
  */
 import { describe, expect, it } from 'vitest';
 import {
+  classRead,
   healthyFullRecord,
   partialSnapshot,
   restoreLegacy,
 } from './assignmentLegacyReadPreparationSupport.js';
-
-const ABClassResponseMapper = require('#backend/y_controllers/ABClassController/ABClassResponseMapper.js');
-
-/** Builds a class read view around one restored legacy assignment and roster. */
-function classView(assignment, students) {
-  return {
-    classId: 'class-non-array-root',
-    className: null,
-    cohortKey: null,
-    courseLength: 1,
-    yearGroupKey: null,
-    classOwner: null,
-    teachers: [],
-    students,
-    active: true,
-    metadata: null,
-    assignments: [assignment],
-    serialiseOwner: (owner) => owner,
-  };
-}
-
-/** Restores the record and reads it through the real class response mapper. */
-function classRead(record) {
-  const assignment = restoreLegacy(record);
-  const students = [{ studentId: 'roster-only', studentName: 'Roster learner' }];
-  return new ABClassResponseMapper()._toReadView(classView(assignment, students)).assignments[0];
-}
 
 describe('legacy non-array submissions root on both read serialisers', () => {
   it('emits the preserved object body date-normalised with the legacy marker on a full read', () => {
@@ -64,7 +38,9 @@ describe('legacy non-array submissions root on both read serialisers', () => {
     const record = partialSnapshot(healthyFullRecord());
     record.submissions = null;
 
-    const view = classRead(record);
+    const view = classRead(record, {
+      students: [{ studentId: 'roster-only', studentName: 'Roster learner' }],
+    });
 
     expect(view.assessmentContractVersion).toBe('legacy');
     expect(view.submissions).toBeNull();
@@ -77,7 +53,9 @@ describe('legacy non-array submissions root on both read serialisers', () => {
     const storedBody = { preserved: { opaque: [null, { body: 'unchanged' }] } };
     record.submissions = storedBody;
 
-    const view = classRead(record);
+    const view = classRead(record, {
+      students: [{ studentId: 'roster-only', studentName: 'Roster learner' }],
+    });
 
     expect(view.assessmentContractVersion).toBe('legacy');
     expect(view.submissions).toEqual(storedBody);

@@ -11,16 +11,9 @@
  */
 import { describe, expect, it } from 'vitest';
 import { currentAssignmentJson } from './assignmentRehydrationCurrentSupport.js';
-import { restoreLegacy } from './assignmentLegacyReadPreparationSupport.js';
+import { LEGACY_MARKER_CASES, restoreLegacy } from './assignmentLegacyReadPreparationSupport.js';
 
 const Rehydration = require('#backend/AssignmentProcessor/Assignment/02_AssignmentRehydration.js');
-
-/** Stored legacy markers that must all prepare preserved read results. */
-const LEGACY_MARKER_CASES = [
-  ['missing', (record) => Reflect.deleteProperty(record, 'assessmentContractVersion')],
-  ['null', (record) => (record.assessmentContractVersion = null)],
-  ['unsupported', (record) => (record.assessmentContractVersion = 88)],
-];
 
 describe('legacy read preparation facade preserves history for every legacy marker', () => {
   it.each(LEGACY_MARKER_CASES)(

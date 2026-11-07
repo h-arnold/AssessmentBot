@@ -1,31 +1,7 @@
 /** Legacy read timestamps and the read/persistence separation boundary. */
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { currentAssignmentJson, restoreAssignment } from './assignmentRehydrationCurrentSupport.js';
-import { loadSyntheticAnalysisProfile } from '#synthetic-data/loadSyntheticAnalysisProfile.js';
-import { deriveLegacyAssignmentScenario } from '#synthetic-data/deriveLegacyAssignmentScenario.js';
-
-/** Canonical `small` selection shared with the legacy restoration suite. */
-const LEGACY_ASSIGNMENT_ID = 'assignment-0-1';
-
-/**
- * Clones the derived stored legacy full record with a local `submissions` override.
- * The marker is removed on the linked assignment and its embedded form.
- * @param {object|null} submissions Stored submissions value.
- * @returns {object} Derived stored full record carrying the override.
- */
-function storedLegacyRecord(submissions) {
-  const sources = {
-    classesById: loadSyntheticAnalysisProfile('small', 'classesById'),
-    assignmentsByKey: loadSyntheticAnalysisProfile('small', 'assignmentsByKey'),
-  };
-  const { full } = deriveLegacyAssignmentScenario({
-    profileName: 'small',
-    assignmentId: LEGACY_ASSIGNMENT_ID,
-    variant: 'stored',
-    sources,
-  });
-  return { ...structuredClone(full), submissions };
-}
+import { storedLegacyRecord } from './assignmentLegacyReadPreparationSupport.js';
 
 const Rehydration = require('#backend/AssignmentProcessor/Assignment/02_AssignmentRehydration.js');
 

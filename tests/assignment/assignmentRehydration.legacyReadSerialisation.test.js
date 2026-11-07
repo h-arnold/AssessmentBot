@@ -1,5 +1,6 @@
 /** Model-level read wiring and purity for legacy assignments. */
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { classView } from './assignmentLegacyReadPreparationSupport.js';
 import {
   currentAssignmentJson,
   rawPartialEmbeddedSnapshot,
@@ -81,24 +82,10 @@ describe('legacy model read serialisation', () => {
     ];
     const assignment = restoreAssignment(partial, 'partial');
     const mapper = new ABClassResponseMapper();
-    const abClass = {
-      classId: 'class-read',
-      className: null,
-      cohortKey: null,
-      courseLength: 1,
-      yearGroupKey: null,
-      classOwner: null,
-      teachers: [],
-      students: roster,
-      active: true,
-      metadata: null,
-      assignments: [assignment],
-      serialiseOwner: (owner) => owner,
-    };
     expect(typeof assignment.toReadJSON).toBe('function');
     const prepareSpy = vi.spyOn(Rehydration, 'prepareLegacyReadSubmissions');
 
-    const output = mapper._toReadView(abClass);
+    const output = mapper._toReadView(classView(assignment, roster));
 
     expect(output.assignments[0].assessmentContractVersion).toBe('legacy');
     expect(prepareSpy).toHaveBeenCalledTimes(1);

@@ -9,6 +9,7 @@
  * the loaded roster; these cases pin the replacement authority boundary.
  */
 import { describe, expect, it, vi } from 'vitest';
+import { classView } from './assignmentLegacyReadPreparationSupport.js';
 import {
   currentAssignmentJson,
   rawPartialEmbeddedSnapshot,
@@ -18,24 +19,6 @@ import { withTemporaryGlobals } from '#test-helpers/globalMockManager.js';
 const Assignment = require('#backend/AssignmentProcessor/Assignment/index.js');
 const ABClassResponseMapper = require('#backend/y_controllers/ABClassController/ABClassResponseMapper.js');
 const ABClassAssignmentOps = require('#backend/y_controllers/ABClassController/ABClassAssignmentOps.js');
-
-/** Minimal class carrier for the response mapper. */
-function classInput(assignment, students) {
-  return {
-    classId: 'class-authority',
-    className: null,
-    cohortKey: null,
-    courseLength: 1,
-    yearGroupKey: null,
-    classOwner: null,
-    teachers: [],
-    students,
-    active: true,
-    metadata: null,
-    assignments: [assignment],
-    serialiseOwner: (owner) => owner,
-  };
-}
 
 /** Registry controller mock whose lookup records calls and returns `definition`. */
 function mockRegistry(definition) {
@@ -63,7 +46,7 @@ describe('legacy class read authority', () => {
 
     const output = withTemporaryGlobals(
       { AssignmentDefinitionController: () => registry.MockDefinitionController },
-      () => new ABClassResponseMapper()._toReadView(classInput(assignment, roster))
+      () => new ABClassResponseMapper()._toReadView(classView(assignment, roster))
     );
     const result = output.assignments[0].submissions;
 
@@ -95,7 +78,7 @@ describe('legacy class read authority', () => {
     const partial = rawPartialEmbeddedSnapshot(structuredClone(record));
     const assignment = Assignment.fromJSON(structuredClone(partial), 'partial');
     const view = new ABClassResponseMapper()._toReadView(
-      classInput(assignment, [{ studentId: 'roster-only', studentName: null }])
+      classView(assignment, [{ studentId: 'roster-only', studentName: null }])
     ).assignments[0];
     expect(view.submissions).toEqual([]);
   });
@@ -180,10 +163,10 @@ describe('legacy full read authority', () => {
     expect(fullRead.assessmentContractVersion).toBe('legacy');
     expect(Object.keys(fullRead.submissions[0].items).sort()).toEqual(fullTaskIds);
 
-    // The class read of the same stored record keeps the summary universe.
+    // The class read of the same stored record keeps the stored summary task list.
     const assignment = Assignment.fromJSON(structuredClone(partial), 'partial');
     const view = new ABClassResponseMapper()._toReadView(
-      classInput(assignment, [{ studentId: assignment.submissions[0].studentId }])
+      classView(assignment, [{ studentId: assignment.submissions[0].studentId }])
     ).assignments[0];
     expect(view).not.toHaveProperty('assignmentDefinition');
     expect(view.assignmentDefinitionKey).toBe(definitionKey);

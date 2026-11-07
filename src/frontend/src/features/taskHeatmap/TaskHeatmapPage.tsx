@@ -17,7 +17,10 @@ import { APP_GAP_MD } from '@/theme/spacing';
 import type { ReRunContext } from '../shared/reRunAssessmentContext';
 
 import type { AveragingResult } from '@/services/dataAnalysis/dataAnalysis.zod';
-import type { ClassFull } from '@/services/googleClassrooms/classDetail/classDetailService.zod';
+import type {
+  AssignmentPartial,
+  ClassFull,
+} from '@/services/googleClassrooms/classDetail/classDetailService.zod';
 import type { AssignmentDefinitionPartialsResponse } from '@/services/assignmentDefinition/assignmentDefinitionPartials.zod';
 import {
   adaptMetricsToHeatmap,
@@ -72,6 +75,20 @@ type TaskHeatmapPageProperties = Readonly<{
 const REASSESSMENT_TAG_TEXT = 'Reassessment required';
 
 /**
+ * Finds the selected assignment entry in the loaded class snapshot.
+ *
+ * @param {ClassFull} classFull - The full class data.
+ * @param {string} assignmentId - The assignment identifier.
+ * @returns {AssignmentPartial | undefined} The matching assignment entry, or undefined when absent.
+ */
+function selectedAssignment(
+  classFull: ClassFull,
+  assignmentId: string
+): AssignmentPartial | undefined {
+  return classFull.assignments.find((entry) => entry.assignmentId === assignmentId);
+}
+
+/**
  * Reads the persisted definition key linked to an assignment.
  *
  * @param {ClassFull} classFull - The full class data.
@@ -79,7 +96,7 @@ const REASSESSMENT_TAG_TEXT = 'Reassessment required';
  * @returns {string | null} The linked definition key, or null when the assignment is absent.
  */
 function getAssignmentDefinitionKey(classFull: ClassFull, assignmentId: string): string | null {
-  const assignment = classFull.assignments.find((a) => a.assignmentId === assignmentId);
+  const assignment = selectedAssignment(classFull, assignmentId);
   return assignment?.assignmentDefinitionKey ?? null;
 }
 
@@ -94,7 +111,7 @@ function getAssignmentDefinitionKey(classFull: ClassFull, assignmentId: string):
  * @returns {boolean} True when the selected assignment reads as `'legacy'`.
  */
 function isLegacyAssignment(classFull: ClassFull, assignmentId: string): boolean {
-  const assignment = classFull.assignments.find((a) => a.assignmentId === assignmentId);
+  const assignment = selectedAssignment(classFull, assignmentId);
   return assignment?.assessmentContractVersion === 'legacy';
 }
 

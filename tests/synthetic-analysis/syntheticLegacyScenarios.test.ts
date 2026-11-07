@@ -3,7 +3,6 @@ import { describe, expect, it } from 'vitest';
 import { deriveLegacyAssignmentScenario } from '#synthetic-data/deriveLegacyAssignmentScenario.js';
 import { loadSyntheticAnalysisProfile } from '#synthetic-data/loadSyntheticAnalysisProfile.js';
 
-// Red-phase suite for the test-only legacy scenario derivation (green-phase work).
 // Pins explicit profile/assignment/variant selection, linked full and class-embedded
 // forms, marker handling, determinism, independent copies and frozen-input safety.
 

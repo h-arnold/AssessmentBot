@@ -12,7 +12,11 @@
  */
 import { describe, expect, it } from 'vitest';
 import {
+  classRead,
+  classView,
   healthyFullRecord,
+  isCorruptItem,
+  LEGACY_MARKER_CASES,
   partialSnapshot,
   restoreLegacy,
 } from './assignmentLegacyReadPreparationSupport.js';
@@ -20,63 +24,11 @@ import {
 const ABClassResponseMapper = require('#backend/y_controllers/ABClassController/ABClassResponseMapper.js');
 const Assignment = require('#backend/AssignmentProcessor/Assignment/index.js');
 
-const CORRUPT_RECORD = { stage: 'validation', code: 'CORRUPT_RECORD' };
-const CRITERIA = ['completeness', 'accuracy', 'spag'];
-
-/** Stored legacy markers that must read as `'legacy'`, with the mutation applied. */
-const LEGACY_MARKER_CASES = [
-  ['missing', (record) => delete record.assessmentContractVersion],
-  ['null', (record) => (record.assessmentContractVersion = null)],
-  ['unsupported', (record) => (record.assessmentContractVersion = 88)],
-];
-
 /** Restores a stored legacy record after applying one marker mutation. */
 function restoreWithMarker(record, applyMarker) {
   const copy = structuredClone(record);
   applyMarker(copy);
   return restoreLegacy(copy);
-}
-
-/** Builds a class read view around one restored legacy assignment and roster. */
-function classView(assignment, students) {
-  return {
-    classId: 'class-wire',
-    className: null,
-    cohortKey: null,
-    courseLength: 1,
-    yearGroupKey: null,
-    classOwner: null,
-    teachers: [],
-    students,
-    active: true,
-    metadata: null,
-    assignments: [assignment],
-    serialiseOwner: (owner) => owner,
-  };
-}
-
-/** Restores the record and reads it through the real class response mapper. */
-function classRead(record, applyMarker = () => {}) {
-  const assignment = restoreWithMarker(record, applyMarker);
-  const students = (assignment.submissions ?? []).map((submission) => ({
-    studentId: submission.studentId,
-    studentName: submission.studentName ?? null,
-  }));
-  return {
-    assignment,
-    students,
-    view: new ABClassResponseMapper()._toReadView(classView(assignment, students)).assignments[0],
-  };
-}
-
-/** Reports whether an item carries the exact all-criteria CORRUPT_RECORD map. */
-function isCorruptItem(item) {
-  return CRITERIA.every(
-    (criterion) =>
-      item?.assessments?.[criterion]?.score === 'E' &&
-      item.assessments[criterion].error?.stage === CORRUPT_RECORD.stage &&
-      item.assessments[criterion].error?.code === CORRUPT_RECORD.code
-  );
 }
 
 /** Applies one stored explicit reassessment error to the first item of `record`. */
@@ -181,7 +133,7 @@ describe('legacy class read wire version matrix', () => {
   it.each(LEGACY_MARKER_CASES)(
     'emits the legacy read marker for a %s stored marker',
     (_label, applyMarker) => {
-      const { view } = classRead(healthyFullRecord(), applyMarker);
+      const view = classRead(healthyFullRecord(), { applyMarker });
       expect(view.assessmentContractVersion).toBe('legacy');
     }
   );
@@ -190,7 +142,7 @@ describe('legacy class read wire version matrix', () => {
     const partial = partialSnapshot(healthyFullRecord());
     const definitionKey = partial.assignmentDefinition.definitionKey;
     const storedTaskIds = partial.assignmentDefinition.tasks.map((task) => task.taskId).sort();
-    const { view } = classRead(partial);
+    const view = classRead(partial);
 
     expect(view.assessmentContractVersion).toBe('legacy');
     expect(view.assignmentDefinitionKey).toBe(definitionKey);
@@ -200,7 +152,7 @@ describe('legacy class read wire version matrix', () => {
 
   it('retains redacted legacy content and numeric scores on a class read', () => {
     const partial = partialSnapshot(healthyFullRecord());
-    const { view } = classRead(partial);
+    const view = classRead(partial);
 
     const items = view.submissions.flatMap((submission) => Object.values(submission.items));
     expect(items.every((item) => item.artifact.content === null)).toBe(true);
@@ -216,7 +168,7 @@ describe('legacy class read wire version matrix', () => {
     const taskIds = partial.assignmentDefinition.tasks.map((task) => task.taskId);
     broken.items = null;
     const healthyBefore = structuredClone(partial.submissions[1]);
-    const { view } = classRead(partial);
+    const view = classRead(partial);
 
     for (const taskId of taskIds)
       expect(isCorruptItem(view.submissions[0].items[taskId])).toBe(true);
@@ -227,7 +179,7 @@ describe('legacy class read wire version matrix', () => {
   it('keeps a stored explicit reassessment error working on a class read', () => {
     const partial = partialSnapshot(healthyFullRecord());
     const taskId = withStoredReassessment(partial);
-    const { view } = classRead(partial);
+    const view = classRead(partial);
 
     expect(view.submissions[0].items[taskId].assessments.completeness.error.code).toBe(
       'REASSESSMENT_REQUIRED'

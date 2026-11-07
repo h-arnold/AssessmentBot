@@ -25,7 +25,7 @@ class AssignmentLegacyRead {
   prepare(assignment, form) {
     if (form !== 'full' && form !== 'partial')
       throw new Error(`Invalid legacy read preparation form: ${form}`);
-    if (!assignment || !Array.isArray(assignment.submissions)) return null;
+    if (!Array.isArray(assignment.submissions)) return null;
     const definition = assignment.assignmentDefinition;
     if (!definition || typeof definition.tasks !== 'object')
       throw new Error('Legacy read preparation requires embedded tasks');

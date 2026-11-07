@@ -16,6 +16,7 @@
 const Assignment = require('#backend/AssignmentProcessor/Assignment/index.js');
 const Rehydration = require('#backend/AssignmentProcessor/Assignment/02_AssignmentRehydration.js');
 const { Assessment } = require('#backend/Models/Assessment.js');
+const ABClassResponseMapper = require('#backend/y_controllers/ABClassController/ABClassResponseMapper.js');
 
 import { expect } from 'vitest';
 import { loadSyntheticAnalysisProfile } from '#synthetic-data/loadSyntheticAnalysisProfile.js';
@@ -61,6 +62,24 @@ export function healthyFullRecord() {
  */
 export function mixedFullRecord() {
   return structuredClone(deriveStoredScenario('medium', MIXED_ASSIGNMENT_ID).full);
+}
+
+/**
+ * Clones the canonical healthy stored full record and replaces its `submissions`
+ * value. Passing `undefined` removes the property, so absence probes keep the
+ * constructor's empty-array state.
+ *
+ * @param {object|null|undefined} submissions Stored value; `undefined` leaves the property absent.
+ * @returns {object} Detached full legacy record carrying the override.
+ */
+export function storedLegacyRecord(submissions) {
+  const record = healthyFullRecord();
+  if (submissions === undefined) {
+    Reflect.deleteProperty(record, 'submissions');
+  } else {
+    record.submissions = submissions;
+  }
+  return record;
 }
 
 /**
@@ -147,8 +166,88 @@ export function embeddedTaskIds(assignment) {
   return Array.isArray(tasks) ? tasks.map((task) => task.taskId) : Object.keys(tasks);
 }
 
+/**
+ * Builds the minimal class carrier that `ABClassResponseMapper._toReadView()`
+ * accepts: one embedded assignment, the caller's roster and an owner-passing
+ * serialiser. The class identifier is carrier bookkeeping; read assertions pin
+ * the embedded assignment entry, not the class fields.
+ *
+ * @param {object} assignment Restored assignment to embed.
+ * @param {Array<object>} students Roster entries carrying `studentId`.
+ * @returns {object} Minimal class carrier for the response mapper.
+ */
+export function classView(assignment, students) {
+  return {
+    classId: 'class-legacy-read',
+    className: null,
+    cohortKey: null,
+    courseLength: 1,
+    yearGroupKey: null,
+    classOwner: null,
+    teachers: [],
+    students,
+    active: true,
+    metadata: null,
+    assignments: [assignment],
+    serialiseOwner: (owner) => owner,
+  };
+}
+
+/**
+ * Restores a stored legacy record and reads it through the real class response
+ * mapper. The roster defaults to the restored submissions' identities; a
+ * non-array submissions root cannot be derived from, so callers pass an
+ * explicit roster in that case.
+ *
+ * @param {object} record Stored legacy record.
+ * @param {object} [options] Read options.
+ * @param {(record: object) => void} [options.applyMarker] Marker mutation applied to a clone before restoration.
+ * @param {Array<object>} [options.students] Roster override for the carrier.
+ * @returns {object} The class read view's embedded assignment entry.
+ */
+export function classRead(record, { applyMarker = () => {}, students } = {}) {
+  const copy = structuredClone(record);
+  applyMarker(copy);
+  const assignment = restoreLegacy(copy);
+  const roster =
+    students ??
+    (assignment.submissions ?? []).map((submission) => ({
+      studentId: submission.studentId,
+      studentName: submission.studentName ?? null,
+    }));
+  return new ABClassResponseMapper()._toReadView(classView(assignment, roster)).assignments[0];
+}
+
+/**
+ * Stored legacy markers that must read as `'legacy'`: the marker missing, `null`
+ * and an unsupported value, each with its mutation applied to a record.
+ *
+ * @type {Array<[string, (record: object) => void]>}
+ */
+export const LEGACY_MARKER_CASES = [
+  ['missing', (record) => Reflect.deleteProperty(record, 'assessmentContractVersion')],
+  ['null', (record) => (record.assessmentContractVersion = null)],
+  ['unsupported', (record) => (record.assessmentContractVersion = 88)],
+];
+
+/** The three marking criteria assessed per submission item. */
+export const CRITERIA = ['completeness', 'accuracy', 'spag'];
+
+/** The validation error map that marks one assessment as an isolated corrupt record. */
+export const CORRUPT_RECORD = { stage: 'validation', code: 'CORRUPT_RECORD' };
+
+/** Reports whether an item carries the exact all-criteria CORRUPT_RECORD map. */
+export function isCorruptItem(item) {
+  return CRITERIA.every(
+    (criterion) =>
+      item?.assessments?.[criterion]?.score === 'E' &&
+      item.assessments[criterion].error?.stage === CORRUPT_RECORD.stage &&
+      item.assessments[criterion].error?.code === CORRUPT_RECORD.code
+  );
+}
+
 /** Fresh all-criteria validation/CORRUPT_RECORD catalogue map. */
 export function corruptRecordAssessments() {
-  const entry = () => Assessment.createError('validation', 'CORRUPT_RECORD').toJSON();
+  const entry = () => Assessment.createError(CORRUPT_RECORD.stage, CORRUPT_RECORD.code).toJSON();
   return { completeness: entry(), accuracy: entry(), spag: entry() };
 }
