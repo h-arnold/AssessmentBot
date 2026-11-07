@@ -2,7 +2,7 @@
 description: Reviews code for quality, standards adherence, and defects using project-specific checklists
 mode: all
 steps: 100
-model: opencode/beam-free
+model: mistral/mistral-large-4#high
 permissions:
   - action: edit
     resource: '*'
@@ -92,7 +92,7 @@ Consult these resources before and during review. Local docs contain project-spe
 - Local: [api-layer.md](../../docs/developer/backend/api-layer.md)
 - Local: [backend-testing.md](../../docs/developer/backend/backend-testing.md)
 - Local: [AssessmentFlow.md](../../docs/developer/backend/AssessmentFlow.md)
-- Local: [rehydration.md](../../docs/developer/backend/rehydration.md)
+- Local: [rehydration.md](../../docs/developer/backend/rehydration.md) - Rehydration model, legacy read preparation (active on both read paths) and persistence/read separation
 - Local: [singletons.md](../../docs/developer/backend/singletons.md)
 - Local: [oauth-scopes.md](../../docs/developer/backend/oauth-scopes.md)
 - Local: [Vendoring.md](../../docs/developer/backend/Vendoring.md)
