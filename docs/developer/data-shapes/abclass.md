@@ -347,7 +347,7 @@ Class-read behaviour:
   contradiction. See
   [Component Shape: Student Submission § Completed submission coverage](student-submission.md#completed-submission-coverage).
 - The read remains read-only. A normal class save must preserve the legacy marker and must not
-  accidentally certify an old result as current. Successful reassessment replaces the full
+  treat an old result as current. Successful reassessment replaces the full
   result and the embedded partial with version `1`.
 - A missing lookup entry must never be reinterpreted as `N` when an explicit `E` is available
   from class-summary data. A failed/unavailable full query cannot hide known `E` reasoning.
@@ -753,7 +753,7 @@ request-time tagging step sets `inputSource: 'request'`.
   absence normalises through `new ABClassMetadata()` to `null`, while a present `undefined` or an
   invalid value is rejected. When the full or partial projection emits `metadata`, that value
   must validate and equal the caller snapshot; an invalid or differing projection rejects with
-  **zero** insert/update/save operations. A legacy projection that omits the field is accepted,
+  **zero** insert/update/save operations. A legacy stored partial that omits `metadata` is accepted,
   and only the prepared copies gain the equal, independently owned snapshot.
 - `ABClassMutationOps.updateABClass()` prepares its complete partial projection before the
   selective full-store `collection.updateOne()`/`save()`, then persists that prepared partial

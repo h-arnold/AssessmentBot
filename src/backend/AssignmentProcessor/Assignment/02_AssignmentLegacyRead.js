@@ -28,7 +28,7 @@ class AssignmentLegacyRead {
     if (!assignment || !Array.isArray(assignment.submissions)) return null;
     const definition = assignment.assignmentDefinition;
     if (!definition || typeof definition.tasks !== 'object')
-      throw new Error('Legacy read preparation requires an embedded task universe');
+      throw new Error('Legacy read preparation requires embedded tasks');
     // A summary array selects partial validation, matching current restoration;
     // a keyed task map selects full validation.
     const mode = Array.isArray(definition.tasks) ? 'partial' : 'full';
@@ -69,7 +69,7 @@ class AssignmentLegacyRead {
 
   /**
    * Builds an independent receiver carrying the legacy marker state verbatim and
-   * the requested task universe, without fetching or stamping anything.
+   * the requested tasks, without fetching or stamping anything.
    * @param {Assignment} assignment - Restored legacy assignment.
    * @returns {Assignment} Empty receiver instance.
    */

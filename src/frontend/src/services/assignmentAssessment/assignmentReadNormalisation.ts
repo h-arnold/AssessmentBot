@@ -70,7 +70,7 @@ type FullRootValidationContext = Pick<AssignmentFull, 'courseId' | 'assignmentId
 
 /** Validates full root identities and both supplied task projections.
  * @param {FullRootValidationContext} root Parsed full assignment root fields.
- * @returns {boolean} Whether the root has one trustworthy task universe.
+ * @returns {boolean} Whether the root has one trustworthy set of tasks.
  */
 function hasConsistentFullRoot(root: FullRootValidationContext): boolean {
   const tasks = root.tasks;

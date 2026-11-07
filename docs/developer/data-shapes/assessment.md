@@ -89,6 +89,17 @@ Key notes:
   safe cause; no student-level `DUPLICATE_TAG` `E` is introduced under the first-match
   policy.
 
+### Legacy `submissions` preservation
+
+Implemented. A legacy (non-marker-1) record's present `submissions` value keeps its stored
+shape through restoration, `toJSON()`, `toPartialJSON()` and an ordinary class save: an array
+is preserved as stored, explicit `null` stays `null` (never `[]`), a plain object is emitted
+as an independently owned date-normalised copy (never `[]`), and only an absent property keeps
+the constructor's `[]`. The original stored `assessmentContractVersion` presence/value is
+preserved alongside it. Marker-1 records are unchanged: their root still requires an array.
+The full rule table lives in
+[Contract: Assignment § Legacy `submissions` preservation](assignment.md#legacy-submissions-preservation).
+
 ---
 
 ## Transport
@@ -349,7 +360,7 @@ partial assignment. It is an assessment-result marker, not a definition-version 
 
 | Field                       | Type        | Persistence                                                                                                                                                                                                                                                               | Transport                                                                                                       | Frontend Zod                                   | Notes                                                                                                                                                                                                                                                   |
 | --------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- | ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `assessmentContractVersion` | `1 \| null` | Newly completed results are validated then stamped `1` before serialization. Legacy absence, `null` or unsupported values are preserved verbatim with the legacy body, including a present non-array `submissions` value; stored values are never certified or rewritten. | Always present. `1` for current results; `'legacy'` for every other stored marker, set on the read output only. | `z.union([z.literal(1), z.literal('legacy')])` | Storage may omit the marker, store `null`, or retain an unsupported legacy value; that stored state means the result requires reassessment. The backend read transport maps every non-`1` stored marker to `'legacy'` beside prepared read submissions. |
+| `assessmentContractVersion` | `1 \| null` | Newly completed results are validated then stamped `1` before serialization. Legacy absence, `null` or unsupported values are preserved verbatim with the legacy body, including a present non-array `submissions` value; stored values are never validated or rewritten. | Always present. `1` for current results; `'legacy'` for every other stored marker, set on the read output only. | `z.union([z.literal(1), z.literal('legacy')])` | Storage may omit the marker, store `null`, or retain an unsupported legacy value; that stored state means the result requires reassessment. The backend read transport maps every non-`1` stored marker to `'legacy'` beside prepared read submissions. |
 
 Persistence rules:
 
@@ -360,7 +371,7 @@ Persistence rules:
 - Storage may omit the marker, or retain `null`/an unsupported legacy value. Restoration
   keeps the legacy submission body in ordinary instance state alongside the original marker
   value and its presence (`_legacyMarkerPresent`); ordinary persistence serialisers re-emit
-  that state unchanged rather than certifying or rewriting it (see
+  that state unchanged, without validating or rewriting it (see
   [§ Legacy read preparation](#legacy-read-preparation)). A present
   non-array `submissions` body is preserved by the same path; see
   [§ Legacy `submissions` preservation](#legacy-submissions-preservation).
@@ -434,9 +445,8 @@ Preparation rules:
 | Mutation            | The restored instance, its saved raw submissions and later persistence output are unchanged.                                                                                                                  |
 
 Stored explicit `REASSESSMENT_REQUIRED` errors remain supported: they are served as stored on
-both read paths and are not regenerated. The all-results placeholder producer
-(`AssignmentRehydration.projectReassessmentSubmissions()` and `02_AssignmentReadProjection.js`)
-has been removed; the catalogue entry remains accepted for previously stored errors.
+both read paths and are not regenerated. The all-results placeholder producer has been
+removed; the catalogue entry remains accepted for previously stored errors.
 
 Format gate and persistence preservation:
 
@@ -486,8 +496,8 @@ The representation mode is threaded from `Assignment.fromJSON()` through
 | Aspect                  | Behaviour                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
 | ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Activation              | `assessmentContractVersion === 1` only. Newly completed runs are validated and stamped before both persistence serialisers emit the marker. Marker-less, `null` and unsupported records are retained as ordinary instance state without reconstruction; the read transport emits `'legacy'` after read preparation. Both frontend read schemas require `1 \| 'legacy'` and both read services run the normaliser before their final parse. See [Known discrepancies](#validation).                                                        |
-| Root and task universe  | Validated once, before any model constructor runs: non-blank `courseId` / `assignmentId` strings, `submissions` as an array, and a non-empty embedded `assignmentDefinition.tasks` universe. In the full task-map form every key is non-blank and equals the embedded task's canonical `id`; an optional `taskId` must match that key. In the partial summary-array form every `taskId` is a non-empty unique string. Any failure throws and fails the owned dataset.                                                                     |
-| Shared identities       | The same task-universe check runs with an empty `submissions` array, so duplicate or inconsistent definition identities cannot be hidden by having no students. A submission must carry a non-blank string `studentId` and an `assignmentId` equal to the root assignment ID. Unknown stored task keys outside the authoritative universe throw; associations are never guessed.                                                                                                                                                          |
+| Root and task list      | Validated once, before any model constructor runs: non-blank `courseId` / `assignmentId` strings, `submissions` as an array, and a non-empty embedded `assignmentDefinition.tasks`. In the full task-map form every key is non-blank and equals the embedded task's canonical `id`; an optional `taskId` must match that key. In the partial summary-array form every `taskId` is a non-empty unique string. Any failure throws and fails the owned dataset.                                                                              |
+| Shared identities       | The same task-list check runs with an empty `submissions` array, so duplicate or inconsistent definition identities cannot be hidden by having no students. A submission must carry a non-blank string `studentId` and an `assignmentId` equal to the root assignment ID. Unknown stored task keys outside the authoritative task list throw; associations are never guessed.                                                                                                                                                             |
 | Empty no-submission     | A submission with parent `documentId: null` and an empty item object remains an empty submission record. It is not expanded into placeholders or fabricated `N` items.                                                                                                                                                                                                                                                                                                                                                                    |
 | Raw item validation     | Before construction, each item must match its authoritative task key. Its artefact must carry the same `taskId`, `role: 'submission'`, one of `base` / `TEXT` / `TABLE` / `IMAGE` / `SPREADSHEET`, a non-empty string `uid`, and `string\|null` `documentId` / `pageId`. Full mode requires own `content` and `contentHash` keys; body/hash are both `null` or both present with a string hash. Bodies are type-checked (`TEXT` / `TABLE` string or `null`, `IMAGE` image data URL or `null`, `SPREADSHEET` 2D primitive grid or `null`). |
 | Completed criteria      | Exactly `completeness`, `accuracy` and `spag`, with no extra keys. Full entries must be complete `Assessment` results. Partial entries are finite 0–5 numeric or `'N'` score-only objects, or an `'E'` with non-blank `reasoning` and a catalogue `error`.                                                                                                                                                                                                                                                                                |
@@ -528,16 +538,6 @@ code remains accepted for previously stored errors; no catalogue deletion is pla
 Corrupted student IDs remain out of scope by user decision: identity/unknown-task rejection
 is unchanged and no recovery is planned.
 
-### Legacy `submissions` preservation
-
-Implemented. A legacy (non-marker-1) record's present `submissions` value keeps its stored
-shape through restoration, `toJSON()`, `toPartialJSON()` and an ordinary class save: an array
-is preserved as stored, explicit `null` stays `null` (never `[]`), a plain object is emitted
-as an independently owned date-normalised copy (never `[]`), and only an absent property keeps
-the constructor's `[]`. The original stored `assessmentContractVersion` presence/value is
-preserved alongside it. Marker-1 records are unchanged: their root still requires an array.
-The full rule table lives in
-[Contract: Assignment § Legacy `submissions` preservation](assignment.md#legacy-submissions-preservation).
 ---
 
 ## File Index

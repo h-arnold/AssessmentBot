@@ -178,6 +178,10 @@ selection. Invalid item maps, `null` roots and other malformed data stay in loca
 selection. Frontend Vitest and Playwright do not import this module; they clone committed canonical
 JSON through their existing typed fixture helpers and change only the linked markers.
 
+`tests/synthetic-analysis/syntheticLegacyAssessmentRoundTrip.test.ts` round-trips both dispatcher
+reads through the real `apiHandler` and the real frontend services behind the `'legacy'` marker,
+and guards that neither read writes storage nor persists read-time state.
+
 The helper adds no profile, view or model-input adapter. The bullet notes below describe the
 generated version-1 corpus, which this derivation leaves untouched.
 

@@ -81,7 +81,7 @@ describe('legacy read preparation embedded-definition trust boundaries', () => {
     const restored = restoreAssignment(legacyFull());
     restored.assignmentDefinition = null;
     expect(() => Rehydration.prepareLegacyReadSubmissions(restored, 'full')).toThrow(
-      /embedded task universe/
+      /embedded tasks/
     );
   });
 

@@ -262,10 +262,10 @@ Current-format restoration lives in
 `AssignmentRehydration` facade.
 
 - The submission must match its parent `assignmentId` and carry a non-blank `studentId`.
-- The embedded definition must supply a non-empty, duplicate-free task universe. A keyed task must have `id === key` and no conflicting `taskId`; an item keyed outside that universe fails the owned dataset.
+- The embedded definition must supply a non-empty, duplicate-free set of tasks. A keyed task must have `id === key` and no conflicting `taskId`; an item keyed outside that set fails the owned dataset.
 - Each item is validated before `StudentSubmission.fromJSON()` can coerce it. Invalid items and known tasks with no item become `CORRUPT_RECORD` E placeholders with the deterministic UID `<taskId>-<studentId>-na-0`, null content/hash and empty metadata. Healthy siblings are retained. A submission with no document and no items restores as an empty submission rather than a set of placeholders.
 - A full record must not combine null `content`/`contentHash` with numeric or `'N'` marks. That contradictory stored record becomes `CORRUPT_RECORD` E for all three criteria. Partial redaction is exempt because its source body is intentionally absent.
-- An untrustworthy submission identity, task universe or timestamp set throws; it is not converted to a placeholder.
+- An untrustworthy submission identity, task list or timestamp set throws; it is not converted to a placeholder.
 
 There is no whole-submission catch/reconstruct/retry flow, per-item drop or plain-object fallback.
 
@@ -279,7 +279,7 @@ records whether the stored document actually had the field.
 A present `submissions` value is preserved exactly as stored: an array, `null` and an object
 all survive restoration unchanged, and only an absent property keeps the constructor's empty
 array (`Object.hasOwn` guard). Persistence (`toJSON()`/`toPartialJSON()`) serialises that state
-directly, so an ordinary save cannot validate, rewrite or re-certify the historical result.
+directly, so an ordinary save re-emits the stored result unchanged, without validating or rewriting it.
 An array body maps through the submission serialiser; any other present value, including
 `null`, is emitted through `_plainSubmissionJSON()` and is never replaced with `[]`. Class save
 and reload preserve the same value.
@@ -357,7 +357,7 @@ hydration boundary is summarised below, as are the prepared write projections.
   browser full-read normaliser provides a defensive same-payload fallback: only if a full wire
   payload nevertheless lacks an expected item does it produce `CORRUPT_RECORD` E using that same
   payload's definition; it never overwrites backend-materialised E. This fallback is a
-  post-backend-validation corruption defence, not the normal coverage owner. No new task-universe
+  post-backend-validation corruption defence, not the normal coverage owner. No new task-list
   transport field or full fetch is needed.
 - **Model-owned raw validation.** Raw current-version validation belongs to the existing model
   restoration owners: `Assessment` validates its own result/cause, `StudentSubmissionItem` and
@@ -401,9 +401,7 @@ hydration boundary is summarised below, as are the prepared write projections.
   through `_plainSubmissionJSON()`, never as `[]`. Class persistence preparation and writes never
   receive read results; current-version serialisers retain their normal full/partial semantics. A
   freshly restored marker-1 partial instance carries no legacy marker, so replacing a class
-  assignment after a run does not resurrect legacy history. An ordinary class save must not
-  validate historical marks against the completed-item contract, strip stored content or certify
-  the old result as current.
+  assignment after a run does not resurrect legacy history. An ordinary class save re-emits the stored legacy state unchanged: it does not validate historical marks against the completed-item contract, strip stored content, or treat the old result as current.
 - **Browser boundary.** Both frontend read services run the normaliser over the prepared entries and keep defensive per-item corruption isolation. The read marker union is `1 | 'legacy'`; the normaliser does not generate a second reassessment graph, query a roster or infer historical outcomes.
 - **Projection preparation before write.** `ABClassAssignmentOps.persistAssignmentRun()` (`src/backend/y_controllers/ABClassController/ABClassAssignmentOps.js`) validates the completed result through `ABClassAssignmentValidation` and prepares four payloads before the first collection mutation: the full assignment and its embedded partial (from `Assignment.toJSON()`/`toPartialJSON()`), plus the prospective updated full-class and class-partials documents. The class projections reuse the existing preparation owner — `ABClassPersistence._prepareFullClass()`/`_prepareClassPartial()` in `src/backend/y_controllers/ABClassController/ABClassPersistence.js` — rather than adding a second preparation path. Read projections are never inputs to this preparation; it serialises the authoritative assignment's own current-version or legacy instance state. The assignment and class payloads are plain serializer output, not deep-detached clones of the model. The write order (full record, then `ABClass`/partials) and its non-transactional failure semantics are unchanged; prepared payloads are retained through each write, and a storage failure throws and logs the failed phase plus whether the full write committed.
 - **Read paths stay read-only.** `readRehydrateAssignment` and class reads do not refresh rosters, repair records or write back. Prepared read entries are derived per read, not persisted, and legacy read preparation runs on an independent receiver so saved state and later persistence output stay untouched.

@@ -295,36 +295,41 @@ Complete and clean through the final re-review. Appended after compaction: docs 
 
 Finish the requested documentation/comment cleanup and verify the whole change. Earlier sections already reconcile behaviour/shape entries; this is the final consistency and language pass, not permission to postpone those updates.
 
-### Red, Green, Refactor
+### Outcome
 
-1. **Red:** add any missing contract regression identified in focused review: ordinary save after legacy reads, real score inclusion, shape mismatches, full/partial parity or no-input-mutation. Use local invalid fixtures, not identity recovery or new realistic data builders. Document any check that already passes rather than inventing production code to make it fail.
-2. **Green:** close gaps in scope; Docs rewrites affected legacy sections of `backend/rehydration.md`, `backend/api-layer.md`, `backend/AssessmentFlow.md`, the five shape docs and their INDEX. Update `frontend/navigation-consistency-status.md` (PageNavCard props and task-heatmap actions, preserving Back-only title-error state), and the synthetic capability/helper entries. Replace old projector references and null-marker instructions; retain accepted stored error support.
-   Also update only the legacy browser-journey inventories in `frontend/frontend-testing.md` (“Playwright owns the browser journeys”) and `frontend/frontend-playwright-e2e.md` (“Assessment-error preview journeys”): record `legacy-assignment-results.spec.ts`, retained-score marker-only fixtures and the changed preview expectations. This is an inventory/behaviour sync, not broad prose cleanup. Do not edit `backend-testing.md`.
-3. **Refactor:** De-Sloppification reviews changed docs/comments for filler and duplicate explanations. Replace “task universe” with “task IDs”/“tasks”; remove certification and honesty framing. Keep useful security terminology and constraints. Do not rename public APIs or change algorithms for prose cleanup. Resubmit any code change for review.
+Red audit confirmed all five planned contract-regression areas were already pinned, with zero test rows added and red discipline held (no manufactured failures):
 
-### Helper, data-shape and fixture plan
+- Ordinary save after legacy reads and no input mutation — `tests/controllers/abclassLegacyAssessmentPersistence.test.js` (4/4).
+- Real score inclusion — `src/frontend/src/services/dataAnalysis/legacyAssessmentParity.spec.ts`.
+- Shape mismatches — `src/frontend/src/services/assignmentAssessment/assignmentReadNormalisation.legacyPartial.spec.ts`.
+- Full/partial parity and validation mode — `tests/assignment/assignmentLegacyReadPreparation.validationMode.test.js`.
+- No write on read / no read-time persistence state — `tests/synthetic-analysis/syntheticLegacyAssessmentRoundTrip.test.ts` (5/5).
 
-- No new helper or schema. Reconcile implemented entries in @docs/developer/backend/rehydration.md @docs/developer/testing/synthetic-test-data.md @docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md and the planned shape entries listed in Section 4. Unrelated Not implemented work stays.
-- Additional tests use the Section 1 canonical selection; only local invalid probes or touched-test migration.
+Green delivered the plain-language pass: `02_AssignmentLegacyRead.js` now throws `'Legacy read preparation requires embedded tasks'` (JSDoc line updated; pinning regex `/embedded tasks/` at `assignmentRehydration.legacyIdentity.test.js:84`); “task universe” replaced by “task list”/“set of tasks” across the changed docs; certification framing removed (7 passages → 0 grep hits, constraints kept verbatim); journey inventories synced to 11 journeys + 2 helpers; `frontend-data-analysis-response.md` “Legacy assignment display” flipped to delivered; synthetic-docs round-trip consumer entry added.
 
-### Acceptance criteria and checks
+All suites green: backend scoped 422/422, `legacyIdentity` 9/9, frontend coverage 3033/3033, E2E 11/11, lint baselines 4 backend / 17 frontend, `typecheck:all` exit 0.
 
-- No active code/test/doc reference to the removed projector API. No documented legacy wire `null`/blanket E policy remains, except explicitly labelled historical material outside this change.
-- Data Shapes Agent reconciles target entries with real serialisers and schemas; Docs removes stale superseded paragraphs instead of adding another explanation beside them.
-- Tests demonstrate healthy legacy scores/content and corrupt task E; no read-time storage mutation or completed-write change.
-- `npm run lint:check`; `npm run typecheck:all`; `npm run test:backend`; `npm run test:frontend`; `npm run test:synthetic`; `npm run test:builder`; full `npm run test:frontend:e2e`.
-- Final `npm run run-all-checks` and same-identity regression comparison. Record any pre-existing failures with baseline evidence; fix new failures without bypassing hooks.
-- `git diff --check` and inspect changed files/ownership. Final clean Code Reviewer pass after Docs/Data Shapes reconciliation.
+### Retained for later passes
 
-### Rollout and JSDoc
+Not authorised by this plan; left for the plan-level §5.1 de-sloppification and §5.2 final documentation passes:
 
-- Release backend and frontend together. No deployment or data migration is part of this plan. Existing sessions with old frontend schemas may need a reload after release.
-- Preserve at most a short comment explaining the non-obvious separation: saved raw legacy bodies are not mutated by read validation. Explain validation mode vs output form only at its owner. No repeated philosophical rationale.
-- Handoff includes checks run, baseline/final comparison paths, reviewed files, and confirmation that no unrelated E2E work was changed.
+- **Plain-language boundary:** “task universe” remains only in untouched files — `02_AssignmentCurrentRestoration.js` and `ABClassAssignmentValidation.js` (throw messages + JSDoc) and their pinning tests (`assignmentRehydration.current.restorationIntegrity.test.js:154`, `ABClassAssignmentOps.completionGate.test.js:111,124,131`, `abclassReadCorruptionProjections.test.js:289`, `assignmentRehydrationCurrentSupport.js:10`, `legacyIdentity.test.js:94–96`); `backend-testing.md:185` (“prepared-projection”) is verified unrelated live completion-gate wording, not the removed projector API. A future whole-codebase sweep may address them.
+- **`ImageManager.js:382`:** the code comment “retained old content never certifies hydration” is in an untouched file (future sweep candidate); the touched shape-doc passages were reworded to “treats retained old content as hydrated/valid” instead.
+- **Retirement statements kept, explicitly labelled historical:** `assignment.md:147`, `assessment.md:438` (trimmed), `rehydration.md:23–24`, and the builder spec's inverted `not.toContain` guard.
+- **Baseline lint debt:** unchanged (4 backend / 17 frontend pre-existing warnings) — do not re-flag.
+
+### Review citations
+
+- `.opencode/scratchpad/review-section6-final.md` — final section review; single Improvement (residual certification framing in five shape-doc passages), cleared by the re-review.
+- `.opencode/scratchpad/review-section6-final-rereview.md` — re-review PASS; per-passage verification of the seven rewordings, technical accuracy of the hydration-sense adaptations, delta confirmation.
+- Red-audit coverage map: the five areas' pinning suites are named in the Outcome above, as recorded in the pre-compaction backup.
 
 ### Implementation notes / deviations / follow-up
 
-Not started. Implementation must record actual evidence; this plan does not claim tests or deployment have run.
+Section checks passed (suite results under Outcome). The section regression gate (§2.6) and commit record (§2.7) are appended below after this compaction.
+
+- **Docs sync (§2.4):** delivered in-phase — the section's green work IS the docs rewrite (the plan's §6 Green assigns the doc rewrites to the section itself), so no separate post-review pass was needed. Scope delivered: `rehydration.md` plain-language + framing removal, both journey inventories, `frontend-data-analysis-response.md` flip, synthetic-docs consumer entry, normaliser JSDoc, shape-doc residuals (Data Shapes). The §6 acceptance criterion "no active doc reference to the removed projector API" verified by sweep: only labelled retirement statements remain.
+- **Section regression gate (§2.6):** PASSED — compare mode, session `legacy-assignment-results`, report `.ts-regression-checker/reports/session-legacy-assignment-results/runs/2026-11-07T15-25-59.677Z/comparison.txt` (2026-11-07T15:25Z). 0 regressions, 0 new failures, 0 fixes; 7/8 checks passing, the only failing check being the identical baseline-debt `backend-lint-check` (4 pre-existing `max-lines` warnings). E2E, all coverage suites, builder checks and typecheck passed.
 
 ## Deferred and out-of-scope findings
 
