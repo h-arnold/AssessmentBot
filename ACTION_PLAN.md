@@ -337,6 +337,25 @@ Section checks passed (suite results under Outcome). The section regression gate
 - **De-sloppification (§5.1):** PASS with 6 findings (2 Improvements, 4 Nitpicks), all fixed and re-reviewed clean (`.opencode/scratchpad/review-deslop-cleanup.md`): LegacyRead fails loudly on a null assignment (wiring fault, not the data bypass); one `selectedAssignment` lookup in `TaskHeatmapPage`; the duplicated backend fixture helpers consolidated into `assignmentLegacyReadPreparationSupport.js` (assertions byte-identical, net −68 lines); stale red-narration/history-narrating comments trimmed. Commit `11ea633a` "refactor: apply de-sloppification fixes (plan-level pass)" (13 files, +153/−221), pushed (`a53e3544..11ea633a`). Report-only boundaries (untouched-file "task universe" occurrences, `ImageManager.js:382` comment) remain recorded under Section 6's Retained bullets.
 - **Final regression comparison (blocking):** CLEAN — report `.ts-regression-checker/reports/session-legacy-assignment-results/runs/2026-11-07T16-03-14.728Z/comparison.txt` (2026-11-07T16:03Z). 0 regressions, 0 new failures, 0 fixes; 7/8 checks passing, the only failing check being the identical baseline-debt `backend-lint-check`. The branch is ready for the final documentation sync.
 
+## Section 7 — Deferred-finding cleanup (user-authorised at close-out)
+
+### Objective and constraints
+
+Fix the outstanding deferred findings the user approved at plan close-out: the "task universe" plain-language sweep in the previously-untouched backend files and their pins, `backend-testing.md:185`'s "prepared-projection" wording, the two stale comments (`ImageManager.js:382`, `TaskPreviewCard.tsx:176`), and the three "when next touched" items (vacuous `.markdown` negatives → `responseRenderer()`, the wire-type helper extraction for the four normaliser specs, the class-level root-check pin). No behaviour change beyond the sweep's message texts (fail-loud wording only); assertions keep their meaning; the attempt-baseline planned entry stays.
+
+### Checks
+
+`npm run test:backend -- tests/assignment tests/controllers`; `npm run test:frontend -- src/services/assignmentAssessment`; `npm run test:frontend:e2e -- e2e-tests/assessment-error-previews.spec.ts e2e-tests/assessment-error-merged-previews.spec.ts`; lint checks at baseline; `npm run typecheck:all`; regression gate once at completion.
+
+### Implementation notes / deviations / follow-up
+
+Approved by the user ("Please fix those outstanding findings") after the §5.2 final documentation pass. Delivered in four batches (sweep + pins, comments, "when next touched" items, doc lines) and reviewed clean (`.opencode/scratchpad/review-section7-cleanup.md`, PASS, zero findings).
+
+- **Sweep result:** `grep -rni "universe" src/ tests/` → 0 hits (the private identifier renamed to `_validateCompletedTaskList` by user direction — "The whole term is bullshit!"); `docs/` → 0 hits; the only surviving occurrence in the repo is root `SPEC.md:20` (the SPEC's own instruction text quoting the term it bans). One swept find beyond the listed pins: `currentReviewCompanions.test.js` hyphenated title. The regenerable `src/frontend/node_modules/.vitest-cache/` stale cache was deleted (gitignored, untracked).
+- **"When next touched" items:** 5 vacuous `.markdown` negatives → `responseRenderer()` (strictly stronger, behaviour-verified); new 118-line `src/frontend/src/test/assignmentAssessment/assignmentReadNormalisation.fixtures.ts` (only genuine duplicates extracted; spec-specific probes left local; −157 spec lines); the class-level root check pinned in `legacyPartial.spec.ts` (passes immediately — coverage-gap fix, not red-driven).
+- **Section regression gate (§2.6):** PASSED — compare mode, session `legacy-assignment-results`, report `.ts-regression-checker/reports/session-legacy-assignment-results/runs/2026-11-07T17-38-11.223Z/comparison.txt` (2026-11-07T17:38Z). 0 regressions, 0 new failures, 0 fixes; 7/8 checks passing, the only failing check being the identical baseline-debt `backend-lint-check`. Note: the first gate attempt (17:13) reported a `classes-crud-mutation-summary.spec.ts` E2E regression that failed to reproduce — the spec passes in isolation (2/2) and the full E2E suite passes standalone (337/337, 9.9m); it is a flake in the checker's parallel run of the user's checkpointed in-flight harness work, not caused by this section (whose delta touches nothing that spec uses). The clean re-run supersedes it.
+- **Out of scope, still open (not authorised):** the 328-line waiver stands; `SPEC.md:20` is the SPEC's own text. `opencode.jsonc` remains uncommitted user-managed config.
+
 ## Deferred and out-of-scope findings
 
 No authorised deferrals or unresolved questions. Corrupted student IDs are an explicit scope exclusion, not a planned recovery feature. Unrelated worktree E2E edits are not part of this delivery.

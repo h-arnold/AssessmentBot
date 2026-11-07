@@ -108,7 +108,7 @@ describe('persistAssignmentRun completion gate — marker-1 graph contradictions
         });
       },
     });
-    expect(thrown.message).toMatch(/unknown-task|task universe|unknown/i);
+    expect(thrown.message).toMatch(/unknown-task|unknown/i);
   });
 
   it('rejects a real submission whose assignment identity differs from the assignment root', () => {
@@ -121,14 +121,14 @@ describe('persistAssignmentRun completion gate — marker-1 graph contradictions
     expect(thrown.message).toMatch(/submission|identity|association|assignment/i);
   });
 
-  it('rejects an emptied embedded definition task universe beside present submissions', () => {
+  it('rejects an emptied embedded definition task list beside present submissions', () => {
     const thrown = expectRejectedBeforeAnyMutation({
       label: 'G1-d',
       mutate: (assignment) => {
         assignment.assignmentDefinition.tasks = {};
       },
     });
-    expect(thrown.message).toMatch(/task universe|task|empty|untrustworthy/i);
+    expect(thrown.message).toMatch(/task list|empty|untrustworthy/i);
   });
 
   it('rejects a missing submissions structure as a structure fault', () => {

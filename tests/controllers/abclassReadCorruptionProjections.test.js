@@ -286,7 +286,7 @@ describe('root and identity faults on the read seam fail loudly', () => {
     );
   });
 
-  it('throws instead of materialising a placeholder for an item outside the task universe', () => {
+  it('throws instead of materialising a placeholder for an item outside the task list', () => {
     const document = canonicalClassDocument();
     const submission = embeddedAssignmentOf(document).submissions[0];
     submission.items['task-unknown'] = {

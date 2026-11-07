@@ -17,61 +17,28 @@ import {
   AssignmentPartialSchema,
   ClassFullSchema,
 } from '@/services/googleClassrooms/classDetail/classDetailService.zod';
+import {
+  allCorrupt,
+  criteria,
+  twoItemKeys,
+  type RawRecord,
+  type WireAssignment,
+  type WireClass,
+} from '@/test/assignmentAssessment/assignmentReadNormalisation.fixtures';
 import { normaliseClassRead } from './assignmentReadNormalisation';
 
-type Raw = Record<string, unknown>;
-type WireItem = {
-  id: string;
-  taskId: string;
-  artifact: Raw;
-  assessments?: Raw;
-  feedback?: Raw;
-};
-type WireSubmission = {
-  studentId: string;
-  studentName: string | null;
-  assignmentId: string;
-  documentId?: string | null;
-  createdAt: string;
-  updatedAt: string;
-  items: Record<string, WireItem>;
-};
-type WireAssignment = Raw & {
-  assignmentId: string;
-  assessmentContractVersion?: unknown;
-  submissions: WireSubmission[];
-};
-type WireClass = Raw & { assignments: WireAssignment[] };
-
-const smallClasses = JSON.parse(smallClassesRaw) as Record<string, Raw>;
-const mediumClasses = JSON.parse(mediumClassesRaw) as Record<string, Raw>;
-const criteria = ['completeness', 'accuracy', 'spag'] as const;
-const corruptResult = {
-  score: 'E',
-  reasoning: 'The stored assessment data for this task is invalid. Reassess the assignment.',
-  error: { stage: 'validation', code: 'CORRUPT_RECORD' },
-};
+const smallClasses = JSON.parse(smallClassesRaw) as Record<string, RawRecord>;
+const mediumClasses = JSON.parse(mediumClassesRaw) as Record<string, RawRecord>;
 
 afterEach(() => vi.restoreAllMocks());
 
-/** Builds the expected all-criterion corruption replacement.
- * @returns {Record<string, typeof corruptResult>} The catalogue corruption result for each criterion.
- */
-function allCorrupt() {
-  return {
-    completeness: corruptResult,
-    accuracy: corruptResult,
-    spag: corruptResult,
-  };
-}
-
 /**
  * Clone a canonical class and mark its selected assignment legacy.
- * @param {Record<string, Raw>} source - Canonical classes-by-id view.
+ * @param {Record<string, RawRecord>} source - Canonical classes-by-id view.
  * @param {string} assignmentId - Assignment to keep and mark.
  * @returns {WireClass} A detached legacy-marked class probe.
  */
-function legacyProbe(source: Record<string, Raw>, assignmentId: string): WireClass {
+function legacyProbe(source: Record<string, RawRecord>, assignmentId: string): WireClass {
   const result = structuredClone(source['class-0']) as unknown as WireClass;
   const assignment = result.assignments.find((entry) => entry.assignmentId === assignmentId);
   if (!assignment) throw new Error('Canonical class assignment is missing');
@@ -99,18 +66,6 @@ function selectedNormalisedAssignment(output: unknown): WireAssignment {
   const assignment = parsed.assignments[0];
   if (!assignment) throw new Error('Expected normalised assignment');
   return assignment;
-}
-
-/**
- * Requires two item keys or fails with a fixture-specific diagnostic.
- * @param {object} submission - Candidate submission.
- * @param {Record<string, WireItem>} submission.items - The submission's items.
- * @returns {[string, string]} The first and second canonical task keys.
- */
-function twoItemKeys(submission: { items: Record<string, WireItem> }): [string, string] {
-  const [first, second] = Object.keys(submission.items);
-  if (!first || !second) throw new Error('Expected two canonical tasks');
-  return [first, second];
 }
 
 describe('normaliseClassRead legacy partial payload', () => {
@@ -293,5 +248,13 @@ describe('normaliseClassRead legacy partial payload', () => {
     assignment.assessmentContractVersion = null;
     assignment.submissions = { 'task-1-0': {} };
     expect(() => normaliseClassRead(input)).toThrow('Invalid partial submissions');
+  });
+
+  it('rejects a non-record class root while preserving not-found null', () => {
+    // The class root schema rejects non-record roots before any assignment is
+    // read; null stays the reserved not-found result.
+    expect(() => normaliseClassRead(['class-0'])).toThrow();
+    expect(() => normaliseClassRead('class-0')).toThrow();
+    expect(normaliseClassRead(null)).toBeNull();
   });
 });

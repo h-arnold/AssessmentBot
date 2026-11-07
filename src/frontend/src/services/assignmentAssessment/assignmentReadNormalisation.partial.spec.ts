@@ -2,40 +2,17 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import smallClassesRaw from '@synthetic/small/classesById.json?raw';
 import * as apiService from '@/services/apiService';
 import { ClassFullSchema } from '@/services/googleClassrooms/classDetail/classDetailService.zod';
+import {
+  allCorrupt,
+  criteria,
+  type RawRecord,
+  type WireAssignment,
+  type WireClass,
+} from '@/test/assignmentAssessment/assignmentReadNormalisation.fixtures';
 import { normaliseClassRead } from './assignmentReadNormalisation';
 
-type Raw = Record<string, unknown>;
-type WireItem = {
-  id: string;
-  taskId: string;
-  artifact: Raw;
-  assessments?: Raw;
-  feedback?: Raw;
-};
-type WireSubmission = {
-  studentId: string;
-  studentName: string | null;
-  assignmentId: string;
-  documentId?: string | null;
-  createdAt: string;
-  updatedAt: string;
-  items: Record<string, WireItem>;
-};
-type WireAssignment = Raw & {
-  assignmentId: string;
-  assessmentContractVersion?: unknown;
-  submissions: WireSubmission[];
-};
-type WireClass = Raw & { assignments: WireAssignment[] };
-
-const classes = JSON.parse(smallClassesRaw) as Record<string, Raw>;
+const classes = JSON.parse(smallClassesRaw) as Record<string, RawRecord>;
 const canonical = structuredClone(classes['class-0']) as unknown as WireClass;
-const criteria = ['completeness', 'accuracy', 'spag'] as const;
-const corruptResult = {
-  score: 'E',
-  reasoning: 'The stored assessment data for this task is invalid. Reassess the assignment.',
-  error: { stage: 'validation', code: 'CORRUPT_RECORD' },
-};
 
 /** Clones the canonical class and adapts the selected real two-task assignment.
  * @returns {WireClass} A mutable version-1 class probe.
@@ -91,17 +68,6 @@ function probe(): WireClass {
 }
 
 afterEach(() => vi.restoreAllMocks());
-
-/** Builds the expected all-criterion corruption replacement.
- * @returns {Record<string, typeof corruptResult>} The catalogue corruption result for each criterion.
- */
-function allCorrupt() {
-  return {
-    completeness: corruptResult,
-    accuracy: corruptResult,
-    spag: corruptResult,
-  };
-}
 
 /** Finds the selected assignment or fails with a fixture-specific diagnostic.
  * @param {WireClass} input - The class wire payload.

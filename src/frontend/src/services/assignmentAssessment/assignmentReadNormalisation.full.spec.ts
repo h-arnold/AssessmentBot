@@ -1,51 +1,18 @@
 import { describe, expect, it, vi } from 'vitest';
 import smallAssignmentsRaw from '@synthetic/small/assignmentsByKey.json?raw';
+import {
+  allCorrupt,
+  criteria,
+  type RawAssignment,
+  type RawItem,
+  type RawRecord,
+} from '@/test/assignmentAssessment/assignmentReadNormalisation.fixtures';
 import { AssignmentFullSchema } from './assignmentAssessment.zod';
 import { normaliseAssignmentRead } from './assignmentReadNormalisation';
 
-type RawRecord = Record<string, unknown>;
-type RawItem = {
-  id: string;
-  taskId: string;
-  artifact: RawRecord;
-  assessments: RawRecord;
-  feedback: RawRecord;
-};
-type RawSubmission = {
-  studentId: string;
-  studentName: string | null;
-  assignmentId: string;
-  documentId: string | null;
-  createdAt: string;
-  updatedAt: string;
-  items: Record<string, RawItem>;
-};
-type RawAssignment = RawRecord & {
-  assignmentId: string;
-  createdAt: string;
-  updatedAt: string | null;
-  tasks: Record<string, RawRecord>;
-  assessmentContractVersion: unknown;
-  submissions: RawSubmission[];
-  assignmentDefinition: {
-    definitionKey?: unknown;
-    tasks: Record<string, RawRecord>;
-  };
-};
-
 const source = JSON.parse(smallAssignmentsRaw) as Record<string, RawRecord>;
 const baseline = structuredClone(source['assignment-0-0']);
-const criteria = ['completeness', 'accuracy', 'spag'] as const;
-const corruptResult = {
-  score: 'E',
-  reasoning: 'The stored assessment data for this task is invalid. Reassess the assignment.',
-  error: { stage: 'validation', code: 'CORRUPT_RECORD' },
-};
-const corruptAssessments = {
-  completeness: corruptResult,
-  accuracy: corruptResult,
-  spag: corruptResult,
-};
+const corruptAssessments = allCorrupt();
 const assessmentErrorResult = {
   score: 'E',
   reasoning: 'The assessment service rejected the request.',

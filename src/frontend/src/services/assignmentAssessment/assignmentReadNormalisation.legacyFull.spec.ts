@@ -11,52 +11,18 @@
 import { describe, expect, it } from 'vitest';
 import smallAssignmentsRaw from '@synthetic/small/assignmentsByKey.json?raw';
 import mediumAssignmentsRaw from '@synthetic/medium/assignmentsByKey.json?raw';
+import {
+  allCorrupt,
+  criteria,
+  twoItemKeys,
+  type RawAssignment,
+  type RawRecord,
+} from '@/test/assignmentAssessment/assignmentReadNormalisation.fixtures';
 import { AssignmentFullSchema } from './assignmentAssessment.zod';
 import { normaliseAssignmentRead } from './assignmentReadNormalisation';
 
-type RawRecord = Record<string, unknown>;
-type RawItem = {
-  id: string;
-  taskId: string;
-  artifact: RawRecord;
-  assessments: RawRecord;
-  feedback: RawRecord;
-};
-type RawSubmission = {
-  studentId: string;
-  studentName: string | null;
-  assignmentId: string;
-  documentId: string | null;
-  createdAt: string;
-  updatedAt: string;
-  items: Record<string, RawItem>;
-};
-type RawAssignment = RawRecord & {
-  assignmentId: string;
-  createdAt: string;
-  updatedAt: string | null;
-  tasks: Record<string, RawRecord>;
-  assessmentContractVersion: unknown;
-  submissions: RawSubmission[];
-  assignmentDefinition: {
-    definitionKey?: unknown;
-    tasks: Record<string, RawRecord>;
-  };
-};
-
 const smallSource = JSON.parse(smallAssignmentsRaw) as Record<string, RawRecord>;
 const mediumSource = JSON.parse(mediumAssignmentsRaw) as Record<string, RawRecord>;
-const criteria = ['completeness', 'accuracy', 'spag'] as const;
-const corruptResult = {
-  score: 'E',
-  reasoning: 'The stored assessment data for this task is invalid. Reassess the assignment.',
-  error: { stage: 'validation', code: 'CORRUPT_RECORD' },
-};
-const corruptAssessments = {
-  completeness: corruptResult,
-  accuracy: corruptResult,
-  spag: corruptResult,
-};
 
 /**
  * Clone the canonical healthy full assignment and mark it legacy.
@@ -66,25 +32,6 @@ function legacyProbe(): RawAssignment {
   const result = structuredClone(smallSource['assignment-0-1']) as unknown as RawAssignment;
   result.assessmentContractVersion = 'legacy';
   return result;
-}
-
-/** Builds the expected all-criterion corruption replacement.
- * @returns {typeof corruptAssessments} A detached corruption map.
- */
-function allCorrupt() {
-  return { ...corruptAssessments };
-}
-
-/**
- * Requires two item keys or fails with a fixture-specific diagnostic.
- * @param {object} submission - Candidate submission.
- * @param {Record<string, RawItem>} submission.items - The submission's items.
- * @returns {[string, string]} The first and second canonical task keys.
- */
-function twoItemKeys(submission: { items: Record<string, RawItem> }): [string, string] {
-  const [first, second] = Object.keys(submission.items);
-  if (!first || !second) throw new Error('Expected two canonical tasks');
-  return [first, second];
 }
 
 describe('normaliseAssignmentRead legacy full payload', () => {

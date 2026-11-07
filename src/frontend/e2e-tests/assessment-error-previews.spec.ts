@@ -198,7 +198,7 @@ test.describe('Embedded heatmap — explicit assessment errors', () => {
     await expect(alert).toContainText(SOURCE_UNAVAILABLE_DESCRIPTION);
     // No source identifiers exist, so no action and no renderer are offered.
     await expect(popover.getByRole('link')).toHaveCount(0);
-    await expect(popover.locator('.markdown')).toHaveCount(0);
+    await expect(responseRenderer(popover)).toHaveCount(0);
     await expect(popover.getByRole('img', { name: 'Student response image' })).toHaveCount(0);
   });
 

@@ -151,7 +151,7 @@ describe('current-format rehydration restoration identity and propagation', () =
     expect(() => restoreAssignment(record)).toThrow();
   });
 
-  it('fails the owned dataset loudly when the embedded task universe loses a known task', () => {
+  it('fails the owned dataset loudly when the embedded task list loses a known task', () => {
     const record = currentAssignmentJson();
     focusDocumentSubmission(record);
     delete record.assignmentDefinition.tasks[HEAD_TASK_ID];

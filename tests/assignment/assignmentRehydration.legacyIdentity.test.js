@@ -92,7 +92,7 @@ describe('legacy read preparation embedded-definition trust boundaries', () => {
     const restored = restoreAssignment(partial);
 
     expect(() => Rehydration.prepareLegacyReadSubmissions(restored, 'partial')).toThrow(
-      /task universe/i
+      /task list/i
     );
   });
 

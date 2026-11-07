@@ -523,7 +523,7 @@ Assessments are `Assessment` instances (`src/backend/Models/Assessment.js`); see
 - **Purpose**: Validates the completed run, stamps the result-format marker, then saves assignment data in two forms
 - **Process**:
   1. Validates the completed run before any mutation
-     - `ABClassAssignmentValidation._validateCompletedAssignmentRun()` mirrors the marker-1 read invariants: task-universe integrity, submission association, item/artefact identity, exactly three canonical criterion results per item, and source/hash consistency. Genuine no-submission (`documentId == null` plus an empty item map) remains valid and is skipped.
+     - `ABClassAssignmentValidation._validateCompletedAssignmentRun()` mirrors the marker-1 read invariants: task-list integrity, submission association, item/artefact identity, exactly three canonical criterion results per item, and source/hash consistency. Genuine no-submission (`documentId == null` plus an empty item map) remains valid and is skipped.
      - Reuses the existing class-save contract (`ABClassValidation._validateClassForSave`) before the first mutation.
   2. Stamps the result-format marker
      - Sets `assignment.assessmentContractVersion = 1` only after the completed-run gate passes and before serialisation.
