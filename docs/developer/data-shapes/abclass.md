@@ -56,11 +56,19 @@ Key notes:
   task-summary array (partial definition) keeps its redacted `toPartialJSON()` output, while a
   genuine full assignment keeps full `toJSON()` output and its serializer errors propagate
   unchanged. `AssignmentDefinition.toJSON()` remains strict and still rejects a partial
-  definition. `Assignment.toJSON()` remains strict for current-format and other non-legacy
-  assignments. Its only exception is the legacy persistence path, where it re-emits the stored
-  body from ordinary instance state and, when the embedded definition is partial, uses
-  `definition.toPartialJSON()` instead of throwing. The class serializer performs no fetch, definition fabrication or
-  assignment removal, adds no second serializer and uses no catch-and-fallback.
+  definition. `Assignment.toJSON()` gates its definition branch solely on
+  `Array.isArray(definition.tasks)`: a restored partial definition (tasks as an array) is emitted
+  through `definition.toPartialJSON()` on every path, not only on the legacy persistence path.
+  Because marker-1 restoration admits the partial summary-array form (see
+  [Component Shape: Assessment § Marker-1 CURRENT restoration](assessment.md#marker-1-current-restoration)),
+  a restored marker-1 assignment with a partial definition is a model-admissible state on which
+  `toJSON()` emits the partial definition instead of throwing; legacy records likewise re-emit the
+  stored body from ordinary instance state. Production write/read flows never reach the
+  partial-definition state: `persistAssignmentRun()` rejects a partial definition before any
+  write, `_ensureFullDefinition()` replaces one before read serialisation, and the class
+  serializer routes partial-definition assignments through `toPartialJSON()`. The class serializer
+  performs no fetch, definition fabrication or assignment removal, adds no second serializer and
+  uses no catch-and-fallback.
 - Class-embedded assignments are normally partial-hydration instances; fully hydrated records live
   in separate `assign_full_*` collections. Whatever representation the model currently holds is
   what `toJSON()` writes.
@@ -161,9 +169,13 @@ Key contract notes:
   introduces no full-class reads, assignment hydration, definition lookups or upstream API
   calls on this path. Returns an empty array when no partial documents exist.
 - This endpoint does **not** pass through `DateUtils.deepConvertDates()` on its response.
-  The stored-partial metadata gate (`_normaliseClassPartial()`) already normalises revived
-  `Date` values inside `metadata` to canonical strings, and `ABClass.toPartialJSON()`
-  otherwise contains no `Date` objects, so no additional conversion is required.
+  The response stays `Date`-free because `_normaliseClassPartial()` projects only scalar
+  fields, teacher summaries and `metadata` — and the stored-partial metadata gate already
+  normalises revived `Date` values inside `metadata` to canonical strings. It is not because
+  the serialiser emits no `Date` objects: restored model state can hold revived `Date` values
+  (a definition restored through `AssignmentDefinition.fromJSON()` keeps them unchanged), so
+  no projection field other than `metadata` can carry one and no additional conversion is
+  required.
 - Reads never write and never backfill; a legacy row without the field is projected as
   explicit `null`. Invalid stored metadata fails the request; the row is not dropped and there is
   no fallback to a full-class fetch.

@@ -55,7 +55,7 @@ class Assignment {
     this.progressTracker = ProgressTracker.getInstance();
     // Controllers may temporarily attach `assignment.students` while an assessment run is active
     // to keep the hydrated roster handy. That property is transient and must never be persisted
-    // (see docs/developer/DATA_SHAPES.md and rehydration.md).
+    // (see docs/developer/data-shapes/INDEX.md and rehydration.md).
     this._hydrationLevel = 'full';
     if (
       restoration?.representationMode !== undefined &&

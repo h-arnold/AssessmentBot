@@ -100,7 +100,14 @@ Key notes:
   and `toJSON()`/`toPartialJSON()` re-emit them unchanged. JsonDbApp revives those stored ISO strings
   as live `Date` objects on read, so a restored model can hold `Date` values in those four fields.
   `fromJSON()` passes them through unchanged; the definition transport handlers normalise
-  `createdAt`/`updatedAt` themselves, and the two `*LastModified` fields are not transported.
+  `createdAt`/`updatedAt` themselves, and the two `*LastModified` fields are not transported by
+  the definition endpoints themselves (`getAssignmentDefinition` and `upsertAssignmentDefinition`
+  omit them from the response-mapper output). They **are** transported inside the Assignment
+  contract's embedded full definition: `AssignmentDefinition.toJSON()` includes both fields,
+  `AssignmentSerialisation.toJSON()` (`00_AssignmentSerialisation.js`) embeds that serialised
+  definition object under the assignment root's `assignmentDefinition` key, and the frontend
+  `AssignmentDefinitionSchema` (`assignmentAssessment.zod.ts`) requires both as
+  `z.string().nullable()`. See [Contract: Assignment](assignment.md).
 - `toJSON()` throws `TypeError` if called on a partial instance (where `tasks` is an array).
 - Full-definition eligibility is a single predicate: keyed (non-array) `tasks` **and** non-null
   `referenceDocumentId`/`templateDocumentId`. The synthetic transport projection
@@ -611,12 +618,16 @@ The definition-write availability invariant is owned by
    `upsertAssignmentDefinition`) filters out null-weighting tasks, so the full-definition path is
    safe. Only the partial path is affected.
 
-2. **`referenceLastModified` and `templateLastModified` exist in persistence but are omitted from transport.**
+2. **`referenceLastModified` and `templateLastModified` exist in persistence but are omitted from the definition endpoints' transport.**
    Both `toJSON()` and the full cache store these timestamps for lazy-refresh decisions, but
-   the response mapper `_getFullAssignmentDefinition()` does not include them. There is no
-   frontend Zod field for them.
-   **Classification: Aligned** — deliberate design. These fields are internal to the backend
-   refresh logic and are not needed on the frontend.
+   the response mapper `_getFullAssignmentDefinition()` does not include them, and the
+   definition-endpoint schemas (`assignmentDefinition.zod.ts`) declare no field for them.
+   The Assignment contract differs: its embedded full definition carries both fields, and
+   `AssignmentDefinitionSchema` (`assignmentAssessment.zod.ts`) requires them as
+   `z.string().nullable()` (see the persistence notes above).
+   **Classification: Aligned** — deliberate design. The fields stay internal to the definition
+   endpoints' transport and the backend refresh logic, while the Assignment-embedded definition
+   intentionally transports them.
 
 3. **`tasks` is a keyed object in persistence but an array in transport.**
    Backend `toJSON()` returns `tasks` as `Record<string, TaskDefinition>` (keyed object).
