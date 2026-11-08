@@ -29,7 +29,7 @@ export type RawItem = {
 };
 
 /** Raw full-read submission with a required source document identity. */
-export type RawSubmission = {
+type RawSubmission = {
   studentId: string;
   studentName: string | null;
   assignmentId: string;
@@ -54,7 +54,7 @@ export type RawAssignment = RawRecord & {
 };
 
 /** Raw class-embedded item whose assessment and feedback maps may be redacted. */
-export type WireItem = {
+type WireItem = {
   id: string;
   taskId: string;
   artifact: RawRecord;
@@ -63,7 +63,7 @@ export type WireItem = {
 };
 
 /** Raw class-embedded submission whose source identity may be redacted. */
-export type WireSubmission = {
+type WireSubmission = {
   studentId: string;
   studentName: string | null;
   assignmentId: string;
@@ -87,7 +87,7 @@ export type WireClass = RawRecord & { assignments: WireAssignment[] };
 export const criteria = ['completeness', 'accuracy', 'spag'] as const;
 
 /** The catalogue `CORRUPT_RECORD` replacement for one criterion. */
-export const corruptResult = {
+const corruptResult = {
   score: 'E',
   reasoning: 'The stored assessment data for this task is invalid. Reassess the assignment.',
   error: { stage: 'validation', code: 'CORRUPT_RECORD' },

@@ -52,9 +52,6 @@ const CANONICAL_ASSIGNMENT: AssignmentFull = deepFreeze(
   )
 );
 
-/** The title-error navigation card keeps only the Back action. */
-const NAV_BACK_ONLY_ACTION_COUNT = 1;
-
 /** Optional render inputs: definition partials and the rerun-callback switch. */
 type RenderOptions = Readonly<{
   partials?: AssignmentDefinitionPartial[];
@@ -158,13 +155,18 @@ function navigationCard(): HTMLElement {
 }
 
 /**
- * List the navigation card's buttons and status tag in document order, so the
- * tag's placement between actions is pinned without depending on geometry.
+ * Assert the status tag renders between the Back action and the following
+ * action button in document order. Pinned with DOM positions instead of Ant
+ * Design class names, so the ordering survives an Ant Design upgrade.
  * @param {HTMLElement} card - The navigation card.
- * @returns {string[]} Accessible text in document order.
+ * @param {string} followingAction - The action button name that follows the tag.
  */
-function navActionOrder(card: HTMLElement): string[] {
-  return [...card.querySelectorAll('button, .ant-tag')].map((element) => element.textContent ?? '');
+function expectTagBetweenBackAndAction(card: HTMLElement, followingAction: string): void {
+  const back = within(card).getByRole('button', { name: 'Back to Class overview' });
+  const tag = within(card).getByText(LEGACY_TAG_TEXT);
+  const following = within(card).getByRole('button', { name: followingAction });
+  expect(back.compareDocumentPosition(tag) & Node.DOCUMENT_POSITION_FOLLOWING).not.toBe(0);
+  expect(tag.compareDocumentPosition(following) & Node.DOCUMENT_POSITION_FOLLOWING).not.toBe(0);
 }
 
 /**
@@ -191,17 +193,23 @@ describe('TaskHeatmapPage — legacy reassessment tag', () => {
     renderPage(buildClassWithMarker('legacy'));
     await expectNormalNavigation();
 
-    const tag = within(navigationCard()).getByText(LEGACY_TAG_TEXT);
-    expect(tag).toHaveClass('ant-tag');
-    expect(tag).toHaveClass('ant-tag-warning');
+    const card = navigationCard();
+    const tag = within(card).getByText(LEGACY_TAG_TEXT);
+    // The tag carries the production zero margin as an inline style.
     expect(tag).toHaveStyle({ margin: '0px' });
-    expect(tag.querySelector('.ant-tag-close-icon')).toBeNull();
-    expect(navActionOrder(navigationCard())).toEqual([
-      'Back to Class overview',
-      LEGACY_TAG_TEXT,
-      'Re-run Assessment',
-      'Refresh',
-    ]);
+    // Non-dismissible: the tag renders exactly the warning text with no close
+    // control or icon inside.
+    expect(tag.textContent).toBe(LEGACY_TAG_TEXT);
+    expect(within(tag).queryByRole('button')).toBeNull();
+    expect(within(tag).queryByRole('img')).toBeNull();
+    // The card renders exactly Back, the tag, and the two actions, with the
+    // tag between Back and Re-run Assessment.
+    expect(
+      within(card)
+        .getAllByRole('button')
+        .map((button) => button.textContent)
+    ).toEqual(['Back to Class overview', 'Re-run Assessment', 'Refresh']);
+    expectTagBetweenBackAndAction(card, 'Re-run Assessment');
   });
 
   it('omits the tag for a current selection', async () => {
@@ -222,7 +230,7 @@ describe('TaskHeatmapPage — legacy reassessment tag', () => {
     expect(within(card).queryByText(LEGACY_TAG_TEXT)).toBeNull();
     expect(within(card).queryByRole('button', { name: 'Re-run Assessment' })).toBeNull();
     expect(within(card).queryByRole('button', { name: 'Refresh' })).toBeNull();
-    expect(within(card).getAllByRole('button')).toHaveLength(NAV_BACK_ONLY_ACTION_COUNT);
+    expect(within(card).getAllByRole('button')).toHaveLength(1);
   });
 
   it('renders the tag as static text with no button or interactive role', async () => {
@@ -269,6 +277,11 @@ describe('TaskHeatmapPage — legacy reassessment tag', () => {
 
     const card = navigationCard();
     expect(within(card).getByText(LEGACY_TAG_TEXT)).toBeInTheDocument();
-    expect(navActionOrder(card)).toEqual(['Back to Class overview', LEGACY_TAG_TEXT, 'Refresh']);
+    expect(
+      within(card)
+        .getAllByRole('button')
+        .map((button) => button.textContent)
+    ).toEqual(['Back to Class overview', 'Refresh']);
+    expectTagBetweenBackAndAction(card, 'Refresh');
   });
 });

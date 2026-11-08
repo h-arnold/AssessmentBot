@@ -391,4 +391,58 @@ describe('normaliseClassRead partial payload', () => {
     expect.soft(() => normaliseClassRead(blankDefinitionKey)).toThrow();
     expect(normaliseClassRead(null)).toBeNull();
   });
+
+  it('rejects a string assignment entry as an invalid partial assignment root', () => {
+    // The entry shape guard fires before the version-bearing root parse, so a
+    // non-record entry keeps its own contextual rejection.
+    const input = probe();
+    (input.assignments as unknown[])[0] = 'assignment-0-1';
+    expect(() => normaliseClassRead(input)).toThrow('Invalid partial assignment root');
+  });
+
+  it('rejects a numeric assignment entry as an invalid partial assignment root', () => {
+    const input = probe();
+    (input.assignments as unknown[])[0] = 0;
+    expect(() => normaliseClassRead(input)).toThrow('Invalid partial assignment root');
+  });
+
+  it('rejects an array assignment entry as an invalid partial assignment root', () => {
+    const input = probe();
+    (input.assignments as unknown[])[0] = [];
+    expect(() => normaliseClassRead(input)).toThrow('Invalid partial assignment root');
+  });
+
+  it('keeps a stored __proto__ item out of the parsed partial output while preserving siblings', () => {
+    // A stored document can carry a prototype-poisoning key as an own property
+    // of the items dictionary. The normaliser's copy loop keeps it as an own
+    // property (never triggering the prototype setter), and the partial schema
+    // parse then drops it, so the poisoning key never reaches the output.
+    const input = probe();
+    const submission = selectedAssignment(input).submissions.find(
+      (entry) => entry.documentId !== null
+    );
+    if (!submission) throw new Error('Expected a document-bearing submission');
+    const taskKeys = Object.keys(submission.items);
+    const [siblingKey] = taskKeys;
+    if (!siblingKey) throw new Error('Expected a canonical sibling task');
+    const sibling = structuredClone(submission.items[siblingKey]);
+    const protoItem = { ...structuredClone(sibling), id: 'item-proto', taskId: '__proto__' };
+    protoItem.artifact = { ...protoItem.artifact, taskId: '__proto__', uid: 'uid-proto' };
+    Object.defineProperty(submission.items, '__proto__', {
+      value: protoItem,
+      enumerable: true,
+      writable: true,
+      configurable: true,
+    });
+
+    const output = normaliseClassRead(input);
+    const items = selectedNormalisedAssignment(output).submissions[0]?.items;
+    if (!items) throw new Error('Expected normalised submission items');
+
+    expect(Object.hasOwn(items, '__proto__')).toBe(false);
+    expect(Object.keys(items)).toEqual(taskKeys);
+    expect(items[siblingKey].assessments).toEqual(sibling.assessments);
+    // The stored document itself keeps its own poisoning key untouched.
+    expect(Object.hasOwn(submission.items, '__proto__')).toBe(true);
+  });
 });

@@ -229,9 +229,15 @@ function addMissingFullTasks(
  */
 export function normaliseAssignmentRead(input: unknown) {
   if (input === null) return null;
+  if (!isRecord(input)) {
+    // Non-object roots fail through the structured Zod parse path, mirroring
+    // normaliseClassRead; parse cannot return for a non-record root.
+    fullRootSchema.parse(input);
+    throw new TypeError('Invalid assignment submissions root');
+  }
   const rawSubmissions = (input as { submissions: unknown }).submissions;
   if (!Array.isArray(rawSubmissions)) throw new TypeError('Invalid assignment submissions root');
-  const rootInput = withoutField(input as Record<string, unknown>, 'submissions');
+  const rootInput = withoutField(input, 'submissions');
   const root = fullRootSchema.parse(rootInput);
   if (!hasConsistentFullRoot(root))
     throw new TypeError('Invalid assignment identity or task definition');
@@ -256,8 +262,9 @@ export function normaliseClassRead(input: unknown) {
   const raw = input as { assignments: unknown };
   if (!Array.isArray(raw.assignments)) throw new TypeError('Invalid class assignments root');
   const assignments = raw.assignments.map(function (candidate) {
+    if (!isRecord(candidate)) throw new TypeError('Invalid partial assignment root');
     const rawAssignment = candidate as Record<string, unknown>;
-    if (!isRecord(candidate) || !Array.isArray(rawAssignment.submissions))
+    if (!Array.isArray(rawAssignment.submissions))
       throw new TypeError('Invalid partial submissions');
     const assignmentRoot = fullAssignmentRootSchema.parse(candidate);
     if (
@@ -295,16 +302,28 @@ function normalisePartialSubmission(
   if (Object.keys(items).some((key) => !isIdentity(key)))
     throw new TypeError('Invalid partial task identity');
   const normalised: Record<string, unknown> = {};
+  // defineProperty keeps a stored `__proto__` key as an own property instead of
+  // triggering the prototype setter (mirrors the backend DateUtils hardening).
   for (const [key, item] of Object.entries(items)) {
     if (isValidPartialItem(item, key, submission.documentId)) {
-      normalised[key] = item;
+      Object.defineProperty(normalised, key, {
+        value: item,
+        enumerable: true,
+        writable: true,
+        configurable: true,
+      });
       continue;
     }
     diagnostic(
       { classId, assignmentId, studentId: submission.studentId, taskId: key },
       itemErrorPath(item, `assignments.submissions.${submissionIndex}.items.${key}`, true, key)
     );
-    normalised[key] = corruptItem(key, item, true, corruptMap, submission.documentId);
+    Object.defineProperty(normalised, key, {
+      value: corruptItem(key, item, true, corruptMap, submission.documentId),
+      enumerable: true,
+      writable: true,
+      configurable: true,
+    });
   }
   return { ...submission, items: normalised };
 }

@@ -25,6 +25,7 @@ import {
   type WireAssignment,
   type WireClass,
 } from '@/test/assignmentAssessment/assignmentReadNormalisation.fixtures';
+import { UNSUPPORTED_MARKERS } from '@/test/assignmentAssessment/assignmentAssessment.zod.fixtures';
 import { normaliseClassRead } from './assignmentReadNormalisation';
 
 const smallClasses = JSON.parse(smallClassesRaw) as Record<string, RawRecord>;
@@ -214,11 +215,7 @@ describe('normaliseClassRead legacy partial payload', () => {
     expect(transport).not.toHaveBeenCalled();
   });
 
-  it.each([
-    ['null', null],
-    ['unsupported zero', 0],
-    ['unsupported draft', 'draft'],
-  ])('rejects a %s legacy marker', (_label, marker) => {
+  it.each([null, ...UNSUPPORTED_MARKERS])('rejects a %s legacy marker', (marker) => {
     const input = legacyProbe(smallClasses, 'assignment-0-1');
     selectedAssignment(input).assessmentContractVersion = marker;
     expect(() => normaliseClassRead(input)).toThrow();

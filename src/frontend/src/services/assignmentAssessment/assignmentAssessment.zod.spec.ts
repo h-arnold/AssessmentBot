@@ -10,6 +10,7 @@ import {
   StudentSubmissionSchema,
 } from './assignmentAssessment.zod';
 import {
+  UNSUPPORTED_MARKERS,
   validBaseArtifact,
   validFullAssignment,
 } from '@/test/assignmentAssessment/assignmentAssessment.zod.fixtures';
@@ -112,11 +113,7 @@ describe('assignmentAssessment.zod schemas', () => {
       expect(AssignmentFullSchema.parse(candidate).assessmentContractVersion).toBe(marker);
     });
 
-    it.each([
-      ['null', null],
-      ['unsupported zero', 0],
-      ['unsupported draft', 'draft'],
-    ])('rejects the read version marker %s', (_label, marker) => {
+    it.each([null, ...UNSUPPORTED_MARKERS])('rejects the read version marker %s', (marker) => {
       expect(
         AssignmentFullSchema.safeParse({
           ...validFullAssignment,

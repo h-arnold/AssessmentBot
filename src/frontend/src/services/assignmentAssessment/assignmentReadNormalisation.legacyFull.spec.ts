@@ -18,6 +18,7 @@ import {
   type RawAssignment,
   type RawRecord,
 } from '@/test/assignmentAssessment/assignmentReadNormalisation.fixtures';
+import { UNSUPPORTED_MARKERS } from '@/test/assignmentAssessment/assignmentAssessment.zod.fixtures';
 import { AssignmentFullSchema } from './assignmentAssessment.zod';
 import { normaliseAssignmentRead } from './assignmentReadNormalisation';
 
@@ -142,11 +143,7 @@ describe('normaliseAssignmentRead legacy full payload', () => {
     expect(AssignmentFullSchema.safeParse(output).success).toBe(true);
   });
 
-  it.each([
-    ['null', null],
-    ['unsupported zero', 0],
-    ['unsupported draft', 'draft'],
-  ])('rejects a %s legacy marker', (_label, marker) => {
+  it.each([null, ...UNSUPPORTED_MARKERS])('rejects a %s legacy marker', (marker) => {
     const input = legacyProbe();
     input.assessmentContractVersion = marker;
     expect(() => normaliseAssignmentRead(input)).toThrow();

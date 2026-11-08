@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { ZodError } from 'zod';
 import smallAssignmentsRaw from '@synthetic/small/assignmentsByKey.json?raw';
 import {
   allCorrupt,
@@ -332,6 +333,39 @@ describe('normaliseAssignmentRead full payload', () => {
     });
     expect(() => normaliseAssignmentRead(throwingItem)).toThrow(sentinel);
     expect(normaliseAssignmentRead(null)).toBeNull();
+  });
+
+  it('rejects non-record roots through the structured Zod parse path while reserving null', () => {
+    // undefined, primitives and arrays fail with a structured ZodError from the
+    // root schema parse; the contextual submissions TypeError is reserved for
+    // object roots whose submissions field is not an array.
+    for (const input of [undefined, 0, 'x', []] as unknown[]) {
+      expect(() => normaliseAssignmentRead(input)).toThrow(ZodError);
+    }
+    expect(normaliseAssignmentRead(null)).toBeNull();
+  });
+
+  it('fails loudly for a stored __proto__ item key at the full-read task guard', () => {
+    // The parsed task dictionary never carries __proto__ (the Zod record parse
+    // drops own prototype-poisoning keys), so a prototype-chain membership
+    // check would silently accept the item; the guard must throw instead.
+    const input = currentProbe();
+    const [taskId] = Object.keys(input.tasks);
+    if (!taskId) throw new Error('Expected a canonical task');
+    const submission = input.submissions[0];
+    const protoItem = {
+      ...structuredClone(submission.items[taskId]),
+      id: 'item-proto',
+      taskId: '__proto__',
+    };
+    protoItem.artifact = { ...protoItem.artifact, taskId: '__proto__', uid: 'uid-proto' };
+    Object.defineProperty(submission.items, '__proto__', {
+      value: protoItem,
+      enumerable: true,
+      writable: true,
+      configurable: true,
+    });
+    expect(() => normaliseAssignmentRead(input)).toThrow('Unknown task key __proto__');
   });
 
   it('logs safe contextual identifiers and paths without source, reasoning, or names', () => {
