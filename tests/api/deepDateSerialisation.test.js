@@ -11,9 +11,13 @@
  * to ISO 8601 strings, preventing the GAS serialisation bug.
  *
  * The tests would fail if:
- * - deepConvertDates is removed from getABClass_ handler
- * - deepConvertDates does not recursively traverse nested structures
+ * - deepConvertDates stops returning an independent deep copy that converts
+ *   whole values: live Date instances become ISO 8601 strings while nested
+ *   arrays, plain objects and primitives are reproduced unchanged
+ * - deepConvertDates stops recursively traversing nested structures
  * - Date objects are introduced at any nesting level without conversion
+ * - getABClass_ stops passing its controller response through
+ *   deepConvertDates at the transport boundary
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
