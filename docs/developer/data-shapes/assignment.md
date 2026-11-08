@@ -119,9 +119,9 @@ Key notes:
 - Read paths prepare submissions only for an array body. `AssignmentSerialisation.toReadJSON()`
   and `ABClassResponseMapper._toReadView()` call
   `AssignmentRehydration.prepareLegacyReadSubmissions()`; a present non-array root returns
-  `null` from that facade and the preserved, date-normalised body from `toJSON()` /
-  `toPartialJSON()` is emitted unchanged. The read does not throw, and the frontend root
-  rejection applies downstream; see [§ Legacy read preparation](#legacy-read-preparation).
+  `null` from that facade and the read transport then throws a contextual error naming the
+  assignment. Persistence keeps preserving the stored body, and the frontend root rejection
+  remains as defence-in-depth; see [§ Legacy read preparation](#legacy-read-preparation).
 
 ### Legacy read preparation
 
@@ -137,7 +137,7 @@ sees it. The owner is `AssignmentLegacyRead` in `02_AssignmentLegacyRead.js`, ex
 | Reuse                   | `AssignmentCurrentRestoration._rehydrateCurrentSubmission()` runs on isolated copies of the stored items, so valid scores, reasoning, feedback, artefact content and identities are retained through the current-format rules.                                        |
 | Corruption isolation    | A malformed item, criterion map, artefact or contradictory source state becomes all-three validation `CORRUPT_RECORD` `E` for that task. Null/missing/array/non-record item maps yield one `E` per saved task on both forms. Healthy siblings and submissions remain. |
 | Coverage and timestamps | Missing known-task items, the genuine no-submission case and timestamp preparation follow the current-format rules, using the saved embedded task list.                                                                                                               |
-| Non-array root          | A present non-array `submissions` value bypasses preparation: the facade returns `null` and the caller keeps the preserved, date-normalised body from `toJSON()`/`toPartialJSON()`.                                                                                   |
+| Non-array root          | A present non-array `submissions` value bypasses preparation: the facade returns `null` and a read transport then throws a contextual error naming the assignment; persistence keeps the preserved, date-normalised body from `toJSON()`/`toPartialJSON()`.           |
 | Error propagation       | Identity failures, unknown-task associations and injected constructor faults propagate unchanged; they are never relabelled `E`.                                                                                                                                      |
 | No mutation             | The restored instance, its saved raw submissions and later persistence output are unchanged by preparation.                                                                                                                                                           |
 | Read marker             | The read output carries `assessmentContractVersion: 'legacy'`; the stored instance keeps its original marker presence/value.                                                                                                                                          |
@@ -450,9 +450,9 @@ contract's `StudentSubmissionItem.artifact` uses the same shape with `role` set 
    The constructor's restoration branch requires `typeof restoration.assignmentName === 'string'` and throws `TypeError` before any Classroom access otherwise, so a stored `null`, `undefined` or other non-string fails loudly and propagates unhandled. The generated `Assignment <assignmentId>` fallback has been deleted, including from the fetched-title path, where `fetchAssignmentName()` throws `TypeError` when the Classroom title is not a string after its single coursework call. Valid strings — including a blank string — and the saved `createdAt` are preserved verbatim, so the normal construction and restoration paths cannot produce a `null` name and `AssignmentFullSchema.assignmentName: z.string()` remains the correct, unwidened contract.
    **Classification: Aligned** — the strict-name contract (no schema widening, no recovery fetch, no fallback) is deliberate. It is not `Fragile`: an invalid saved name fails before it can reach persistence or transport.
 
-8. **A present non-array legacy `submissions` value is preserved in persistence and passed through on read.**
-   Restoration and both persistence serialisers preserve a present `null` or plain-object `submissions` value and re-emit it unchanged, while `AssignmentFullSchema.submissions` and `AssignmentPartialSchema.submissions` require an array. On both read transports preparation is skipped for a non-array root: `AssignmentRehydration.prepareLegacyReadSubmissions()` returns `null`, the caller keeps the preserved, date-normalised body and emits `assessmentContractVersion: 'legacy'`, and no backend throw occurs. `normaliseAssignmentRead()` / `normaliseClassRead()` then reject the non-array root, so `getAssignment` fails for that assignment and `getABClass` fails for that class.
-   **Classification: Aligned** — the persistence and read contracts deliberately differ (a save must not destroy stored data; a read must not serve a non-array root), and the rejection now comes from the frontend root check rather than a backend projector throw.
+8. **A present non-array legacy `submissions` value is preserved in persistence and fails read transports contextually.**
+   Restoration and both persistence serialisers preserve a present `null` or plain-object `submissions` value and re-emit it unchanged, while `AssignmentFullSchema.submissions` and `AssignmentPartialSchema.submissions` require an array. On both read transports preparation is skipped for a non-array root: `AssignmentRehydration.prepareLegacyReadSubmissions()` returns `null`, and the read transport turns that `null` into a contextual error naming the assignment, so `getAssignment` fails for that assignment and `getABClass` fails for that class before any payload is served.
+   **Classification: Aligned** — the persistence and read contracts deliberately differ (a save must not destroy stored data; a read must not serve a non-array root). The rejection now comes from the backend read transport itself, with the frontend root check retained as defence-in-depth.
 
 ---
 
@@ -463,9 +463,12 @@ Persistence model:         src/backend/AssignmentProcessor/Assignment/index.js
   └── AssignmentSerialisation (00_AssignmentSerialisation.js)
       └── toJSON()              — full document shape (legacy state re-emitted unchanged)
       └── toPartialJSON()       — partial (summary) shape (legacy state re-emitted unchanged)
-      └── toReadJSON()          — full read shape (current marker 1 / legacy marker 'legacy' + prepared read submissions)
+      └── toReadJSON()          — read shape in the requested form (default 'full'; current marker 1 /
+                                   legacy marker 'legacy' + prepared read submissions)
       └── _rootOutput()         — root fields shared by the full and partial payloads
       └── _applyContractMarker() — stamps the current marker or re-emits the stored legacy marker
+      └── _submissionsJSON()    — submissions payload shared by both persistence emits: an array body
+                                   maps through _submissionJSON(), a non-array body is preserved
       └── _submissionJSON() / _plainSubmissionJSON() — per-submission serialisation; plain stored
                                                        records and present non-array legacy bodies
                                                        copied through DateUtils.deepConvertDates()

@@ -144,17 +144,15 @@ describe('legacy class read wire marker at the controller seam', () => {
     expect(assignment.assessmentContractVersion).toBe('legacy');
   });
 
-  it('emits a preserved non-array submissions root with the legacy marker instead of throwing', () => {
+  it('fails the class read contextually for a preserved non-array submissions root', () => {
     const document = storedLegacyClassDocument();
     const embedded = document.assignments.find((entry) => entry.assignmentId === ASSIGNMENT_ID);
     embedded.submissions = null;
     classCollection.findOne.mockReturnValue(document);
 
-    const view = new ABClassController().readClass(CLASS_ID);
-    const assignment = view.assignments.find((entry) => entry.assignmentId === ASSIGNMENT_ID);
-
-    expect(assignment.assessmentContractVersion).toBe('legacy');
-    expect(assignment.submissions).toBeNull();
+    expect(() => new ABClassController().readClass(CLASS_ID)).toThrow(
+      /assignment-0-1.*non-array submissions root/
+    );
   });
 });
 

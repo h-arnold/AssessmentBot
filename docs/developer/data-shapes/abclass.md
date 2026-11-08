@@ -228,7 +228,8 @@ Key contract notes:
      (owner `02_AssignmentLegacyRead.js`) and sets
      `assessmentContractVersion: 'legacy'` on the wire entry only. Current results keep
      `assessmentContractVersion: 1`. A present non-array `submissions` root returns `null`
-     from the facade, so the preserved, date-normalised body from `toPartialJSON()` is kept.
+     from the facade, so the read throws a contextual error naming the assignment instead
+     of serving a payload.
   4. Requires each assignment's stored embedded `assignmentDefinition` to carry a
      `definitionKey` that is a non-empty string, then replaces the object with
      `assignmentDefinitionKey`. Consuming the partial shape (`toPartialJSON()`) keeps

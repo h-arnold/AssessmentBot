@@ -58,8 +58,10 @@ preparation are the current-format rules rather than a second validator.
   completed or current to enter validation. The restored assignment keeps its legacy marker state
   and raw submissions, so later persistence output is unchanged.
 
-A present non-array `submissions` root bypasses preparation entirely and returns `null`; the caller
-emits the preserved value for existing frontend root rejection. This is the only `null` return.
+A present non-array `submissions` root bypasses preparation entirely and returns `null`; a read
+transport then throws a contextual error naming the assignment instead of serving a non-array
+root. Persistence keeps preserving the stored value, and the frontend root rejection remains as
+defence-in-depth. This is the only `null` return.
 
 ### Load order
 
@@ -291,8 +293,10 @@ Reads prepare an independent result through
 - Valid stored scores, reasoning, content, hashes, source IDs and feedback are retained.
 - Invalid assessment data becomes `CORRUPT_RECORD` E for that task only; healthy siblings and
   neighbouring submissions are unchanged. A malformed item map yields one E per embedded task.
-- A present non-array `submissions` root bypasses preparation: the preserved, date-normalised body
-  from `toJSON()`/`toPartialJSON()` is emitted for the frontend's existing root rejection.
+- A present non-array `submissions` root bypasses preparation: the facade returns `null`, and a
+  read transport then throws a contextual error naming the assignment. Persistence keeps the
+  preserved, date-normalised body from `toJSON()`/`toPartialJSON()`, and the frontend root
+  rejection remains as defence-in-depth.
 - Both read paths emit `assessmentContractVersion: 'legacy'`, set on the read output only. The
   stored instance keeps its original marker presence and value.
 
@@ -309,10 +313,10 @@ read or re-save stored documents:
   See [api-layer.md § Response mapper reuse](api-layer.md#response-mapper-reuse-implemented).
 - **Legacy submissions.** `AssignmentSerialisation._submissionJSON()` prefers a model
   `toJSON()`/`toPartialJSON()`. A stored record without that serialiser, and any present
-  non-array submission body, falls back to `_plainSubmissionJSON()`, which converts each field
-  through `DateUtils.deepConvertDates()`. Copying a revived `Date` key by key would otherwise
-  produce `{}` and persist that over the stored timestamps. Every emit path therefore serialises
-  live `Date` values to ISO strings.
+  non-array submission body, falls back to `_plainSubmissionJSON()`, which converts the
+  whole value through `DateUtils.deepConvertDates()`. Copying a revived `Date` key by key
+  would otherwise produce `{}` and persist that over the stored timestamps. Every emit path
+  therefore serialises live `Date` values to ISO strings.
 
 This conversion prevents new corruption. It does not repair documents already stored with `{}`
 values; those stay corrupted until rewritten from a correct source.

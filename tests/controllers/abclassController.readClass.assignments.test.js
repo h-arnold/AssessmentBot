@@ -48,13 +48,22 @@ beforeEach(() => {
     fromJSON: vi.fn((json) => {
       // Create a minimal assignment-like object that matches the shape
       const assignment = { ...json, _hydrationLevel: 'partial' };
-      // Define toPartialJSON as non-enumerable to match the real prototype
+      // The class read emit routes through toReadJSON('partial'); a marker-1
+      // record delegates to the same payload as its toPartialJSON.
+      const serialisePartial = () => {
+        const { _hydrationLevel, progressTracker, ...partial } = assignment;
+        return partial;
+      };
+      // Define both serialisers as non-enumerable to match the real prototype
       // behaviour — prevents function properties leaking through serialisation.
       Object.defineProperty(assignment, 'toPartialJSON', {
-        value: vi.fn(() => {
-          const { _hydrationLevel, progressTracker, ...partial } = assignment;
-          return partial;
-        }),
+        value: vi.fn(serialisePartial),
+        enumerable: false,
+        writable: true,
+        configurable: true,
+      });
+      Object.defineProperty(assignment, 'toReadJSON', {
+        value: vi.fn(serialisePartial),
         enumerable: false,
         writable: true,
         configurable: true,
@@ -137,8 +146,23 @@ describe('ABClassController._toReadView', () => {
       assignmentDefinitionKey: 'def-key-001',
     };
 
-    // Mock assignments with toPartialJSON (still returns the embedded object;
-    // _toReadView replaces it with assignmentDefinitionKey).
+    const partialPayload = {
+      courseId: 'class-001',
+      assignmentId: 'assignment-001',
+      assignmentName: 'Essay Draft',
+      dueDate: '2026-01-15T23:59:59Z',
+      updatedAt: '2026-01-10T12:00:00Z',
+      createdAt: '2026-01-01T09:00:00Z',
+      documentType: 'SLIDES',
+      submissions: [],
+      assignmentDefinition: { definitionKey: 'def-key-001' },
+      assessmentContractVersion: 1,
+      _hydrationLevel: 'partial',
+      progressTracker: {},
+    };
+
+    // Mock assignments with toReadJSON('partial') output (still returns the
+    // embedded object; _toReadView replaces it with assignmentDefinitionKey).
     const mockAssignment = {
       courseId: 'class-001',
       assignmentId: 'assignment-001',
@@ -154,20 +178,8 @@ describe('ABClassController._toReadView', () => {
       assessmentContractVersion: 1,
       _hydrationLevel: 'partial',
       progressTracker: {},
-      toPartialJSON: vi.fn().mockReturnValue({
-        courseId: 'class-001',
-        assignmentId: 'assignment-001',
-        assignmentName: 'Essay Draft',
-        dueDate: '2026-01-15T23:59:59Z',
-        updatedAt: '2026-01-10T12:00:00Z',
-        createdAt: '2026-01-01T09:00:00Z',
-        documentType: 'SLIDES',
-        submissions: [],
-        assignmentDefinition: { definitionKey: 'def-key-001' },
-        assessmentContractVersion: 1,
-        _hydrationLevel: 'partial',
-        progressTracker: {},
-      }),
+      toPartialJSON: vi.fn().mockReturnValue(partialPayload),
+      toReadJSON: vi.fn().mockReturnValue(partialPayload),
     };
 
     const teacherObj = buildTeacher({
@@ -199,6 +211,17 @@ describe('ABClassController._toReadView', () => {
 
   /* 9. _toReadView strips _hydrationLevel and progressTracker from assignments */
   it('strips _hydrationLevel and progressTracker from each assignment', () => {
+    const partialPayload = {
+      courseId: 'class-001',
+      assignmentId: 'assignment-001',
+      assignmentName: 'Test',
+      documentType: 'SLIDES',
+      submissions: [],
+      assignmentDefinition: { definitionKey: 'def-key-001' },
+      assessmentContractVersion: 1,
+      _hydrationLevel: 'partial',
+      progressTracker: { some: 'data' },
+    };
     const mockAssignment = {
       courseId: 'class-001',
       assignmentId: 'assignment-001',
@@ -209,17 +232,8 @@ describe('ABClassController._toReadView', () => {
       assessmentContractVersion: 1,
       _hydrationLevel: 'partial',
       progressTracker: { some: 'data' },
-      toPartialJSON: vi.fn().mockReturnValue({
-        courseId: 'class-001',
-        assignmentId: 'assignment-001',
-        assignmentName: 'Test',
-        documentType: 'SLIDES',
-        submissions: [],
-        assignmentDefinition: { definitionKey: 'def-key-001' },
-        assessmentContractVersion: 1,
-        _hydrationLevel: 'partial',
-        progressTracker: { some: 'data' },
-      }),
+      toPartialJSON: vi.fn().mockReturnValue(partialPayload),
+      toReadJSON: vi.fn().mockReturnValue(partialPayload),
     };
 
     const abClass = new ABClass({

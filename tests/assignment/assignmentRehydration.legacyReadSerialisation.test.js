@@ -120,6 +120,18 @@ describe('legacy model read serialisation', () => {
     expect(restored.submissions[0].studentId).toBe(current.submissions[0].studentId);
   });
 
+  it.each([
+    ['a marker-1 assignment', () => restoreAssignment(currentAssignmentJson())],
+    ['a legacy assignment', () => restoreAssignment(legacyRecord())],
+  ])('rejects a bogus read form on %s before preparation', (_label, restore) => {
+    const prepareSpy = vi.spyOn(Rehydration, 'prepareLegacyReadSubmissions');
+
+    const read = () => restore().toReadJSON('bogus');
+
+    expect(read).toThrow(/^Invalid read serialisation form: bogus$/);
+    expect(prepareSpy).not.toHaveBeenCalled();
+  });
+
   it('keeps read output detached from later persistence and reads, and propagates preparation faults', () => {
     const source = legacyRecord();
     const expectedPersisted = structuredClone(source);

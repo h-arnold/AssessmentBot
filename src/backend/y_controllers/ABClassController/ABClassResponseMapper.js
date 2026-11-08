@@ -59,15 +59,20 @@ class ABClassResponseMapper {
 
   /**
    * Converts an ABClass instance to a read-view plain object for API transport.
-   * Assignments are included as Assignment.toPartialJSON() output.
+   * Assignments are included as Assignment.toReadJSON('partial') output.
    * Defence-in-depth: strips _hydrationLevel and progressTracker from each assignment.
    *
-   * @remarks Uses `Assignment.toPartialJSON()` for assignments because stored ABClass
-   * documents carry partial-definition assignment instances.  Calling `Assignment.toJSON()`
-   * would reach `AssignmentDefinition.toJSON()`, which throws a `TypeError` when the
-   * definition's `tasks` is an array (the partial shape).  The read-view therefore
-   * intentionally emits the lightweight partial assignment shape with
-   * `assignmentDefinitionKey` rather than the full hydrated definition.
+   * @remarks Uses the `partial` read form because stored ABClass documents carry
+   * partial-definition assignment instances; the `full` form would serialise a
+   * keyed task map through `AssignmentDefinition.toJSON()`, which throws a
+   * `TypeError` for the partial shape. The read-view therefore intentionally
+   * emits the lightweight partial assignment shape with `assignmentDefinitionKey`
+   * rather than the full hydrated definition. Legacy assignments (marker not `1`)
+   * are prepared inside the read emit: preparation runs before definition
+   * serialisation, so its contextual errors surface, and the emitted submissions
+   * are the prepared read result beside `assessmentContractVersion: 'legacy'` on
+   * the wire entry only. A present non-array submissions root fails the read
+   * with that contextual error instead of being served.
    * The metadata projection revalidates and copies current mutable model state;
    * its UTC timestamps are strings and need no additional date conversion.
    *
@@ -89,22 +94,9 @@ class ABClassResponseMapper {
       metadata: new ABClassMetadata(abClass.metadata).toJSON(),
       assignments: Array.isArray(abClass.assignments)
         ? abClass.assignments.map((assignment) => {
-            const partial = assignment.toPartialJSON();
+            const partial = assignment.toReadJSON('partial');
             // Defence-in-depth: strip _hydrationLevel and progressTracker
             const { _hydrationLevel, progressTracker, ...safe } = partial;
-            if (assignment.assessmentContractVersion !== 1) {
-              // Prepare from the stored submissions while the embedded task list
-              // is still available; a present non-array root bypasses preparation
-              // (null) and keeps the preserved body from toPartialJSON().
-              const prepared = AssignmentRehydration.prepareLegacyReadSubmissions(
-                assignment,
-                'partial'
-              );
-              if (prepared !== null) safe.submissions = prepared;
-              // Stored 1 is handled above; every other stored marker reads as
-              // 'legacy' on the read output only, never on the stored instance.
-              safe.assessmentContractVersion = 'legacy';
-            }
             // Replace the embedded assignmentDefinition with just the definitionKey.
             // The frontend resolves definition details from its own registry
             // (AssignmentDefinitionPartials), so the full embedded object is redundant

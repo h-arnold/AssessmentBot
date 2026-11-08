@@ -1,7 +1,8 @@
 /**
  * AssignmentSerialisation — Serialisation sub-class
  *
- * Owns toJSON(), toPartialJSON(), toReadJSON(), _rootOutput(), _applyContractMarker(),
+ * Owns toJSON(), toPartialJSON(), toReadJSON(), _readRootWithoutSubmissions(),
+ * _applyLegacyReadOverlay(), _rootOutput(), _applyContractMarker(),
  * _extractFullDefinitionFields(), _extractPartialRootFields() and the plain-object
  * submission fallback.
  * Operates on the parent Assignment instance's state via this._assignment.
@@ -33,21 +34,32 @@ class AssignmentSerialisation {
       ? this._assignment.assignmentDefinition.toPartialJSON()
       : this._assignment.assignmentDefinition.toJSON();
 
-    // An array body maps through the submission serialiser; a present non-array
-    // legacy value is preserved (date-normalised, independently copied).
-    const submissions = Array.isArray(this._assignment.submissions)
-      ? this._assignment.submissions.map((submission) =>
-          AssignmentSerialisation._submissionJSON(submission, 'toJSON')
-        )
-      : AssignmentSerialisation._plainSubmissionJSON(this._assignment.submissions);
+    const submissions = AssignmentSerialisation._submissionsJSON(
+      this._assignment.submissions,
+      'toJSON'
+    );
 
     const output = this._rootOutput(
       this._extractFullDefinitionFields(definitionJson),
       submissions,
-      definitionJson || this._assignment.assignmentDefinition
+      definitionJson
     );
     this._applyContractMarker(output);
     return output;
+  }
+
+  /**
+   * Serialises the submissions payload for a persistence emit. An array body
+   * maps through the submission serialiser; a present non-array legacy value
+   * is preserved (date-normalised, independently copied).
+   * @param {*} submissions - Stored submissions value.
+   * @param {'toJSON'|'toPartialJSON'} method - Model serialiser for array entries.
+   * @returns {*} JSON-friendly submissions payload.
+   */
+  static _submissionsJSON(submissions, method) {
+    return Array.isArray(submissions)
+      ? submissions.map((submission) => AssignmentSerialisation._submissionJSON(submission, method))
+      : AssignmentSerialisation._plainSubmissionJSON(submissions);
   }
 
   /**
@@ -63,10 +75,11 @@ class AssignmentSerialisation {
   }
 
   /**
-   * Copies a stored submission record without a model serialiser, converting live
-   * `Date` values to ISO strings. A `Date` has no own enumerable keys, so copying
-   * one key by key would otherwise produce `{}`; arrays and other non-plain values
-   * are therefore converted through `DateUtils.deepConvertDates()`.
+   * Copies a stored submission record without a model serialiser, converting
+   * the whole value through `DateUtils.deepConvertDates()`. A `Date` has no own
+   * enumerable keys, so copying one key by key would otherwise produce `{}`;
+   * `deepConvertDates()` converts whole values (Dates, arrays and plain
+   * objects) instead.
    * @param {*} submission - Plain stored submission record.
    * @returns {*} Independently owned JSON-friendly record.
    */
@@ -74,14 +87,7 @@ class AssignmentSerialisation {
     if (!submission || typeof submission !== 'object') {
       return submission;
     }
-    if (Array.isArray(submission) || submission instanceof Date) {
-      return DateUtils.deepConvertDates(submission);
-    }
-    const output = {};
-    Object.keys(submission).forEach((key) => {
-      output[key] = DateUtils.deepConvertDates(submission[key]);
-    });
-    return output;
+    return DateUtils.deepConvertDates(submission);
   }
 
   /**
@@ -120,23 +126,84 @@ class AssignmentSerialisation {
   }
 
   /**
-   * Serialises this assignment for a full read response.
+   * Serialises this assignment for a read response in the requested form.
    *
-   * Legacy records (marker missing, null or unsupported) prepare an independent
-   * read result from the stored submissions. The read marker maps stored `1`
-   * to `1` and every other stored marker to `'legacy'`, set on the read output
-   * only — the stored instance is never rewritten. A present non-array
-   * submissions root bypasses preparation (the facade returns null) and keeps
-   * the preserved, date-normalised body already emitted by toJSON().
-   * @returns {object} Full read payload.
+   * A marker-1 record keeps its persistence serialisation: `full` emits
+   * toJSON() and `partial` emits toPartialJSON(), byte-identical to those
+   * persistence payloads. A legacy record (marker missing, null or
+   * unsupported) prepares an independent read result first — so contextual
+   * preparation errors surface before definition serialisation — and then
+   * serialises the root without the per-submission mapping preparation
+   * replaces. The read marker maps stored `1` to `1` and every other stored
+   * marker to `'legacy'`, set on the read output only — the stored instance is
+   * never rewritten. A present non-array submissions root cannot be prepared
+   * and fails the read transport contextually; persistence emits keep
+   * preserving it.
+   * @param {'full'|'partial'} [form] - Read output form; defaults to 'full'.
+   * @returns {object} Read payload in the requested form.
+   * @throws {Error} When the form is unsupported or legacy preparation fails.
    */
-  toReadJSON() {
-    const output = this.toJSON();
-    if (this._assignment.assessmentContractVersion !== 1) {
-      const prepared = AssignmentRehydration.prepareLegacyReadSubmissions(this._assignment, 'full');
-      if (prepared !== null) output.submissions = prepared;
-      output.assessmentContractVersion = 'legacy';
+  toReadJSON(form = 'full') {
+    if (form !== 'full' && form !== 'partial') {
+      throw new Error(`Invalid read serialisation form: ${form}`);
     }
+    if (this._assignment.assessmentContractVersion === 1) {
+      return form === 'full' ? this.toJSON() : this.toPartialJSON();
+    }
+    return AssignmentSerialisation._applyLegacyReadOverlay(this._assignment, form, this);
+  }
+
+  /**
+   * Serialises the read root for a legacy record without mapping submissions:
+   * preparation supplies the read submissions, so the per-submission mapping
+   * the persistence emits run would be discarded work.
+   * @param {'full'|'partial'} form - Read output form.
+   * @returns {object} Root output with a placeholder submissions value and no
+   *   contract marker; the overlay applies both.
+   * @private
+   */
+  _readRootWithoutSubmissions(form) {
+    const definition = this._assignment.assignmentDefinition;
+    // A restored partial definition (tasks as an array) is emitted through its
+    // partial serialiser; a full definition through toJSON(), whose errors
+    // propagate. The partial form always emits the partial serialiser.
+    const definitionJson =
+      form === 'partial' || Array.isArray(definition.tasks)
+        ? definition.toPartialJSON()
+        : definition.toJSON();
+    const rootFields =
+      form === 'partial'
+        ? this._extractPartialRootFields(definitionJson)
+        : this._extractFullDefinitionFields(definitionJson);
+    return this._rootOutput(rootFields, [], definitionJson);
+  }
+
+  /**
+   * Applies the shared legacy read overlay: prepares the read submissions from
+   * stored state, then serialises the root and applies the prepared
+   * submissions plus the `'legacy'` marker. A present non-array submissions
+   * root cannot be prepared and fails the read transport with a contextual
+   * error naming the assignment; persistence emits keep preserving that stored
+   * value.
+   * @param {Assignment} assignment - Restored legacy assignment.
+   * @param {'full'|'partial'} form - Read output form.
+   * @param {AssignmentSerialisation} serialisation - Serialiser owning the root emit.
+   * @returns {object} Legacy read payload with prepared submissions.
+   * @throws {Error} When the submissions root is present but not an array, or
+   *   the assignment state is untrustworthy.
+   */
+  static _applyLegacyReadOverlay(assignment, form, serialisation) {
+    // Preparation runs first so its contextual errors (missing embedded tasks,
+    // non-array root) surface before definition serialisation.
+    const prepared = AssignmentRehydration.prepareLegacyReadSubmissions(assignment, form);
+    if (prepared === null) {
+      throw new Error(
+        `Legacy read of assignment ${assignment.assignmentId} found a non-array submissions root`
+      );
+    }
+    const output = serialisation._readRootWithoutSubmissions(form);
+    output.submissions = prepared;
+    output.assessmentContractVersion = 'legacy';
     return output;
   }
 
@@ -174,13 +241,10 @@ class AssignmentSerialisation {
   toPartialJSON() {
     const definitionJson = this._assignment.assignmentDefinition.toPartialJSON();
 
-    // An array body maps through the submission serialiser; a present non-array
-    // legacy value is preserved (date-normalised, independently copied).
-    const partialSubmissions = Array.isArray(this._assignment.submissions)
-      ? this._assignment.submissions.map((submission) =>
-          AssignmentSerialisation._submissionJSON(submission, 'toPartialJSON')
-        )
-      : AssignmentSerialisation._plainSubmissionJSON(this._assignment.submissions);
+    const partialSubmissions = AssignmentSerialisation._submissionsJSON(
+      this._assignment.submissions,
+      'toPartialJSON'
+    );
 
     const output = this._rootOutput(
       this._extractPartialRootFields(definitionJson),

@@ -7,7 +7,7 @@
  * as `'legacy'`. Valid stored legacy data is retained and malformed assessment
  * data becomes per-task CORRUPT_RECORD E, prepared from the stored task list
  * before a class read replaces the embedded definition with its key. The
- * non-array submissions root passthrough convention has its own focused
+ * non-array submissions root read-transport throw has its own focused
  * companion suite.
  */
 import { describe, expect, it } from 'vitest';

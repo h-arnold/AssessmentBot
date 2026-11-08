@@ -148,11 +148,12 @@ class Assignment {
   }
 
   /**
-   * Serialises this Assignment for a full read response.
-   * @returns {object} Full read payload.
+   * Serialises this Assignment for a read response in the requested form.
+   * @param {'full'|'partial'} [form] - Read output form; defaults to 'full'.
+   * @returns {object} Read payload in the requested form.
    */
-  toReadJSON() {
-    return this._serialisation.toReadJSON();
+  toReadJSON(form = 'full') {
+    return this._serialisation.toReadJSON(form);
   }
 
   /**
