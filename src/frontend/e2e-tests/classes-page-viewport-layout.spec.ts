@@ -34,14 +34,13 @@ test.describe('Narrow viewport layout resilience', () => {
     const scenario = createClassesScenario();
     await installRuntimeMock(page, scenario);
 
-    await setupViewportAndVerifyCards(
-      page,
-      MOBILE_VIEWPORT_WIDTH,
-      MOBILE_VIEWPORT_HEIGHT,
-      MIN_CARD_WIDTH_MOBILE,
-      MOBILE_CARD_WIDTH_TOLERANCE,
-      TABLET_CARD_WIDTH_MARGIN
-    );
+    await setupViewportAndVerifyCards(page, {
+      viewportWidth: MOBILE_VIEWPORT_WIDTH,
+      viewportHeight: MOBILE_VIEWPORT_HEIGHT,
+      minCardWidth: MIN_CARD_WIDTH_MOBILE,
+      cardWidthTolerance: MOBILE_CARD_WIDTH_TOLERANCE,
+      viewportWidthMargin: TABLET_CARD_WIDTH_MARGIN,
+    });
 
     // Verify no excessive horizontal overflow
     await expectNoHorizontalOverflow(page, VIEWPORT_OVERFLOW_TOLERANCE_MULTIPLIER, 'document');
@@ -51,14 +50,13 @@ test.describe('Narrow viewport layout resilience', () => {
     const scenario = createClassesScenario();
     await installRuntimeMock(page, scenario);
 
-    await setupViewportAndVerifyCards(
-      page,
-      TABLET_VIEWPORT_WIDTH,
-      TABLET_VIEWPORT_HEIGHT,
-      MIN_CARD_WIDTH_TABLET,
-      MOBILE_CARD_WIDTH_TOLERANCE,
-      TABLET_CARD_WIDTH_MARGIN
-    );
+    await setupViewportAndVerifyCards(page, {
+      viewportWidth: TABLET_VIEWPORT_WIDTH,
+      viewportHeight: TABLET_VIEWPORT_HEIGHT,
+      minCardWidth: MIN_CARD_WIDTH_TABLET,
+      cardWidthTolerance: MOBILE_CARD_WIDTH_TOLERANCE,
+      viewportWidthMargin: TABLET_CARD_WIDTH_MARGIN,
+    });
 
     // Verify no excessive horizontal overflow
     await expectNoHorizontalOverflow(page, VIEWPORT_OVERFLOW_TOLERANCE_MULTIPLIER, 'body');

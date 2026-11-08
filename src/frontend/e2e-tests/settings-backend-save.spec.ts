@@ -19,7 +19,6 @@ import {
   backendSettingsSavedCopy,
   backendUrlLabel,
   editFieldViaKeyboard,
-  getField,
   openBackendSettings,
   saveButtonLabel,
   storedApiKeyHelperCopy,
@@ -69,8 +68,8 @@ test.describe('backend settings save journey', () => {
     await expect(page.getByText(backendSettingsSavedCopy)).toBeVisible();
 
     await expect(page.getByRole('region', { name: backendSettingsPanelLabel })).toBeVisible();
-    await expect(getField(page, backendAssessorBatchSizeLabel)).toHaveValue('48');
-    await expect(getField(page, apiKeyLabel)).toHaveValue('');
+    await expect(page.getByLabel(backendAssessorBatchSizeLabel)).toHaveValue('48');
+    await expect(page.getByLabel(apiKeyLabel)).toHaveValue('');
     await expect(page.getByText(storedApiKeyHelperCopy)).toBeVisible();
   });
 
@@ -119,8 +118,8 @@ test.describe('backend settings save journey', () => {
       await expect(panel).toHaveAttribute('aria-busy', 'true');
       await expect(saveButton).not.toHaveClass(/ant-btn-loading/);
       await expect(panel.getByRole('heading', { level: 3, name: 'Backend' })).toBeVisible();
-      await expect(getField(page, backendUrlLabel)).toHaveValue('https://backend.example.com');
-      await expect(getField(page, backendAssessorBatchSizeLabel)).toHaveValue('45');
+      await expect(page.getByLabel(backendUrlLabel)).toHaveValue('https://backend.example.com');
+      await expect(page.getByLabel(backendAssessorBatchSizeLabel)).toHaveValue('45');
     } finally {
       await releaseRuntimeSignal(page, backendSettingsRefreshReleaseSignal);
     }
@@ -159,6 +158,6 @@ test.describe('backend settings save journey', () => {
     await page.getByRole('button', { name: saveButtonLabel }).click();
 
     await expect(page.getByRole('alert')).toContainText(backendSettingsSaveFailureCopy);
-    await expect(getField(page, backendAssessorBatchSizeLabel)).toHaveValue('46');
+    await expect(page.getByLabel(backendAssessorBatchSizeLabel)).toHaveValue('46');
   });
 });

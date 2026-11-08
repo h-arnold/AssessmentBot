@@ -20,15 +20,11 @@ import {
   backendUrlLabel,
   editFieldViaKeyboard,
   emptyApiKeyHelperCopy,
-  getField,
   loadingBackendSettingsLabel,
   openBackendSettings,
   partialLoadWarning,
   saveButtonLabel,
 } from './helpers/settings-backend-journey';
-
-/** Validation copy asserted when the API key field is required. */
-const apiKeyValidationMessage = backendApiKeyValidationMessage;
 
 test.describe('backend settings journey', () => {
   test('navigates to the backend settings tab after showing the loading skeleton', async ({
@@ -57,7 +53,7 @@ test.describe('backend settings journey', () => {
     await releaseRuntimeSignal(page, backendSettingsLoadReleaseSignal);
 
     await expect(page.getByRole('region', { name: backendSettingsPanelLabel })).toBeVisible();
-    await expect(getField(page, apiKeyLabel)).toHaveValue('');
+    await expect(page.getByLabel(apiKeyLabel)).toHaveValue('');
   });
 
   test('shows a top-level alert when loading backend settings fails hard', async ({ page }) => {
@@ -106,7 +102,7 @@ test.describe('backend settings journey', () => {
     await expect(page.getByRole('tabpanel', { name: backendSettingsTabLabel })).toBeFocused();
 
     await page.keyboard.press('Tab');
-    await expect(getField(page, apiKeyLabel)).toBeFocused();
+    await expect(page.getByLabel(apiKeyLabel)).toBeFocused();
 
     await editFieldViaKeyboard(page, {
       fieldLabel: backendUrlLabel,
@@ -119,8 +115,8 @@ test.describe('backend settings journey', () => {
 
     await page.getByRole('button', { name: saveButtonLabel }).click();
 
-    await expect(getField(page, apiKeyLabel)).toBeFocused();
-    await expect(page.getByText(apiKeyValidationMessage)).toBeVisible();
+    await expect(page.getByLabel(apiKeyLabel)).toBeFocused();
+    await expect(page.getByText(backendApiKeyValidationMessage)).toBeVisible();
   });
 
   test('suppresses the backend settings form when the loaded configuration payload is incomplete', async ({
@@ -144,6 +140,6 @@ test.describe('backend settings journey', () => {
 
     await expect(page.getByRole('alert')).toContainText(partialLoadWarning);
     await expect(page.getByRole('button', { name: saveButtonLabel })).toHaveCount(0);
-    await expect(getField(page, apiKeyLabel)).toHaveCount(0);
+    await expect(page.getByLabel(apiKeyLabel)).toHaveCount(0);
   });
 });

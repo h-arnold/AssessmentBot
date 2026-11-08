@@ -67,16 +67,6 @@ const CLASS_READ_QUEUE_LENGTH = 6;
 const TRAILING_REFETCH_READS = 3;
 
 /**
- * `getABClass` reads the removal journey consumes before its Refresh: the
- * class page load issues one class read, and opening the embedded heatmap and
- * the rerun modal issue none (measured with `getMethodCalls`).
- */
-const PRE_REFRESH_CLASS_READS = 1;
-
-/** `getABClass` reads the removal journey's Refresh consumes. */
-const REFRESH_CLASS_READS = 1;
-
-/**
  * Repeat one payload into a success queue.
  * @param {unknown} data - The payload to serve.
  * @returns {ResponseItem[]} The success entries.
@@ -170,7 +160,9 @@ function rerunClassroomQueue(): ResponseItem[] {
  * Build the removal journey's `getABClass` queue.
  *
  * @remarks
- * The initial load consumes the legacy reads; the post-rerun Refresh consumes
+ * The class page load issues one class read, and opening the embedded heatmap
+ * and the rerun modal issue none (measured with `getMethodCalls`), so the
+ * initial load consumes the legacy read and the post-rerun Refresh consumes
  * the marker-1 snapshot, which is what removes the tag.
  *
  * @returns {ResponseItem[]} The ordered `getABClass` queue.
@@ -178,10 +170,7 @@ function rerunClassroomQueue(): ResponseItem[] {
 export function rerunClassQueue(): ResponseItem[] {
   const legacyRead: ResponseItem = { kind: 'success', data: rerunClassSnapshot('legacy') };
   const refreshedRead: ResponseItem = { kind: 'success', data: rerunClassSnapshot(1) };
-  return [
-    ...Array.from({ length: PRE_REFRESH_CLASS_READS }, () => ({ ...legacyRead })),
-    ...Array.from({ length: REFRESH_CLASS_READS }, () => ({ ...refreshedRead })),
-  ];
+  return [legacyRead, refreshedRead];
 }
 
 /**

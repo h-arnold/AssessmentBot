@@ -211,7 +211,7 @@ export function previewPopover(page: Page): Locator {
  * @param {string} label - The cell's accessible label.
  * @returns {Promise<Locator>} The open popover.
  */
-export async function openPreviewByKeyboard(page: Page, label: string): Promise<Locator> {
+async function openPreviewByKeyboard(page: Page, label: string): Promise<Locator> {
   const trigger = page.getByRole('button', { name: label });
   await expect(trigger).toHaveCount(1);
   await trigger.focus();

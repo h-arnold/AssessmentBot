@@ -35,10 +35,12 @@ import {
   type ClassFull,
 } from '@/services/googleClassrooms/classDetail/classDetailService.zod';
 import { deepFreeze, requireRecord } from '@/test/shared/canonicalFixturePrimitives';
-import assignmentsByKeyRaw from '@synthetic/medium/assignmentsByKey.json';
-import classesByIdRaw from '@synthetic/medium/classesById.json';
-import classPartialsRaw from '@synthetic/medium/classPartials.json';
-import definitionPartialsRaw from '@synthetic/medium/assignmentDefinitionPartials.json';
+import { readSyntheticFixture } from './syntheticFixtureData';
+
+const assignmentsByKeyRaw = readSyntheticFixture('medium', 'assignmentsByKey.json');
+const classesByIdRaw = readSyntheticFixture('medium', 'classesById.json');
+const classPartialsRaw = readSyntheticFixture('medium', 'classPartials.json');
+const definitionPartialsRaw = readSyntheticFixture('medium', 'assignmentDefinitionPartials.json');
 
 // ---------------------------------------------------------------------------
 // Canonical selection

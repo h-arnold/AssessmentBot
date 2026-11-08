@@ -53,17 +53,6 @@ export async function openBackendSettings(page: Page): Promise<void> {
 }
 
 /**
- * Returns a labelled backend-settings field locator.
- *
- * @param {Page} page The Playwright page under test.
- * @param {string} label The field label.
- * @returns {ReturnType<Page['getByLabel']>} The labelled field locator.
- */
-export function getField(page: Page, label: string) {
-  return page.getByLabel(label);
-}
-
-/**
  * Uses keyboard navigation to reach and edit a backend settings field.
  *
  * @param {Page} page The Playwright page under test.
@@ -76,7 +65,7 @@ export async function editFieldViaKeyboard(
   page: Page,
   options: { fieldLabel: string; value: string }
 ): Promise<void> {
-  const field = getField(page, options.fieldLabel);
+  const field = page.getByLabel(options.fieldLabel);
   let hasReachedField = false;
 
   for (let index = 0; index < MAX_KEYBOARD_FOCUS_STEPS; index += 1) {

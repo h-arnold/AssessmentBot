@@ -27,11 +27,11 @@ import { expect, type Locator, type Page } from '@playwright/test';
 export const REASSESSMENT_TAG_TEXT = 'Reassessment required';
 
 /** Back action that identifies the navigation card. */
-const BACK_LABEL = 'Back to Class overview';
+export const BACK_LABEL = 'Back to Class overview';
 /** Rerun action that follows the tag. */
-const RE_RUN_LABEL = 'Re-run Assessment';
+export const RE_RUN_LABEL = 'Re-run Assessment';
 /** Refresh action that closes the action group. */
-const REFRESH_LABEL = 'Refresh';
+export const REFRESH_LABEL = 'Refresh';
 
 /** Consecutive identical geometry reads required before asserting layout. */
 const STABLE_GEOMETRY_READS = 3;
@@ -50,7 +50,7 @@ const EDGE_TOLERANCE_PX = 1;
 const ROW_TOLERANCE_PX = 8;
 
 /** Expected row topology of the navigation card's items. */
-export type NavActionOrderMode = 'same-row' | 'wrapped';
+type NavActionOrderMode = 'same-row' | 'wrapped';
 
 /** A rendered box in CSS pixels. */
 type Box = { x: number; y: number; width: number; height: number };
@@ -66,7 +66,7 @@ interface NavItem {
  * @param {Page} page - The Playwright page.
  * @returns {Locator} The navigation card.
  */
-export function navigationCard(page: Page): Locator {
+function navigationCard(page: Page): Locator {
   return page.locator('.ant-card').filter({ has: page.getByRole('button', { name: BACK_LABEL }) });
 }
 
@@ -106,23 +106,22 @@ async function readBox(locator: Locator): Promise<number[]> {
 }
 
 /**
- * Poll the navigation card and its actions until their geometry is stable.
+ * Poll the navigation-card items until their geometry is stable.
+ *
+ * @remarks
+ * The sampled set is exactly the four items whose order and geometry the
+ * navigation assertions measure, so their boxes settling also settles the
+ * card's rendered box: an entrance transform moves parent and children alike.
+ *
  * @param {Page} page - The Playwright page.
  * @returns {Promise<void>} Resolves once the layout has settled.
  */
-export async function waitForStableNavGeometry(page: Page): Promise<void> {
+async function waitForStableNavGeometry(page: Page): Promise<void> {
   let samples: string[] = [];
   await expect
     .poll(async () => {
       const sample = JSON.stringify(
-        await Promise.all(
-          [
-            navigationCard(page),
-            reassessmentTag(page),
-            page.getByRole('button', { name: RE_RUN_LABEL }),
-            page.getByRole('button', { name: REFRESH_LABEL }),
-          ].map(async (locator) => readBox(locator))
-        )
+        await Promise.all(navItems(page).map(async (item) => readBox(item.locator)))
       );
       samples = [...samples, sample].slice(-STABLE_GEOMETRY_READS);
       return samples.length === STABLE_GEOMETRY_READS && samples.every((entry) => entry === sample);
@@ -338,11 +337,10 @@ export async function expectTagNotClippedOrOverlapped(
   mode: NavActionOrderMode
 ): Promise<void> {
   await waitForStableNavGeometry(page);
-  const tagBox = await reassessmentTag(page).boundingBox();
+  const [, tagItem, reRunItem, refreshItem] = navItems(page);
+  const tagBox = await tagItem.locator.boundingBox();
   const actionBoxes = await Promise.all(
-    [RE_RUN_LABEL, REFRESH_LABEL].map(async (name) =>
-      page.getByRole('button', { name }).boundingBox()
-    )
+    [reRunItem.locator, refreshItem.locator].map((locator) => locator.boundingBox())
   );
   if (tagBox === null || actionBoxes.includes(null)) {
     throw new Error('Expected the tag and the navigation actions to report a bounding box.');
@@ -373,7 +371,7 @@ export async function expectTagNotClippedOrOverlapped(
       tagBox.x + tagBox.width,
       'Expected the tag to stay within the page scrollable content area.'
     ).toBeLessThanOrEqual(pageOverflowWidth);
-    const clippedBy = await findClippingAncestors(reassessmentTag(page));
+    const clippedBy = await findClippingAncestors(tagItem.locator);
     expect(clippedBy, 'Expected no clipping ancestor to truncate the tag.').toEqual([]);
   }
 

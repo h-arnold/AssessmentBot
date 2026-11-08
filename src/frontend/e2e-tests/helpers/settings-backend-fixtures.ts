@@ -2,6 +2,7 @@ import type {
   BackendConfig,
   BackendConfigWriteResult,
 } from '@/services/backendConfiguration/backendConfiguration.zod';
+import { partialLoadWarning } from './settings-backend-journey';
 
 /** Baseline masked backend configuration served by the settings read. */
 export const baseBackendConfig = {
@@ -31,7 +32,7 @@ export const refreshedBackendConfig = {
 export const partialLoadBackendConfig = {
   ...baseBackendConfig,
   backendUrl: '',
-  loadError: 'apiKey: REDACTED',
+  loadError: partialLoadWarning,
 } satisfies BackendConfig;
 
 /** Configuration with no stored API key, used by the validation journey. */

@@ -66,18 +66,18 @@ import {
   warmUpQueue,
 } from './helpers/legacy-assignment-results-journeys';
 import {
+  BACK_LABEL,
   expectNavActionOrder,
   expectTagNotClippedOrOverlapped,
+  RE_RUN_LABEL,
   readPageOverflowWidth,
   readTagComputedColour,
   REASSESSMENT_TAG_TEXT,
   reassessmentTag,
+  REFRESH_LABEL,
 } from './helpers/legacy-reassessment-tag-layout';
 
 const TABLE_NAME = 'Task Heatmap';
-const BACK_LABEL = 'Back to Class overview';
-const RE_RUN_LABEL = 'Re-run Assessment';
-const REFRESH_LABEL = 'Refresh';
 const CLOSE_LABEL = 'Close';
 const INTERNAL_ERROR_COPY =
   'An internal error occurred. Please try again or contact support if the issue persists.';

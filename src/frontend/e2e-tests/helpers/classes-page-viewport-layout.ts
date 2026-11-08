@@ -28,21 +28,26 @@ export async function navigateAndExpandAllPanels(page: Page): Promise<void> {
  * Used by both mobile and tablet viewport tests.
  *
  * @param {Page} page - The Playwright page under test.
- * @param {number} viewportWidth - Viewport width in pixels.
- * @param {number} viewportHeight - Viewport height in pixels.
- * @param {number} minCardWidth - Minimum expected card width in pixels.
- * @param {number} cardWidthTolerance - Tolerance for minimum card width check.
- * @param {number} viewportWidthMargin - Maximum card width margin from viewport edge.
+ * @param {object} options - Layout parameters for the verification.
+ * @param {number} options.viewportWidth - Viewport width in pixels.
+ * @param {number} options.viewportHeight - Viewport height in pixels.
+ * @param {number} options.minCardWidth - Minimum expected card width in pixels.
+ * @param {number} options.cardWidthTolerance - Tolerance for minimum card width check.
+ * @param {number} options.viewportWidthMargin - Maximum card width margin from viewport edge.
  * @returns {Promise<void>}
  */
 export async function setupViewportAndVerifyCards(
   page: Page,
-  viewportWidth: number,
-  viewportHeight: number,
-  minCardWidth: number,
-  cardWidthTolerance: number,
-  viewportWidthMargin: number
+  options: {
+    viewportWidth: number;
+    viewportHeight: number;
+    minCardWidth: number;
+    cardWidthTolerance: number;
+    viewportWidthMargin: number;
+  }
 ): Promise<void> {
+  const { viewportWidth, viewportHeight, minCardWidth, cardWidthTolerance, viewportWidthMargin } =
+    options;
   await page.setViewportSize({ width: viewportWidth, height: viewportHeight });
   await page.goto('/');
   await navigateAndExpandAllPanels(page);
