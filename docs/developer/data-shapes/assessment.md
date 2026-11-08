@@ -488,7 +488,6 @@ marker presence) and prepared for reads as described under
 [§ Legacy read preparation](#legacy-read-preparation).
 The representation mode is threaded from `Assignment.fromJSON()` through
 `Assignment._baseFromJSON()` / `AssignmentRehydration._rehydrateSubmission()` and
-`AssignmentRehydration._rehydrateCurrentSubmission()` /
 `AssignmentCurrentRestoration._rehydrateCurrentSubmission()`, then through
 `SlidesAssignment.fromJSON()` / `SheetsAssignment.fromJSON()` and
 `StudentSubmission.fromJSON()` into `StudentSubmissionItem.fromJSON()`.

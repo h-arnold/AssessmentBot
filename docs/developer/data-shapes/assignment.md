@@ -443,7 +443,7 @@ contract's `StudentSubmissionItem.artifact` uses the same shape with `role` set 
    **Classification: Aligned** — root presence/type is enforced by the schemas and the normaliser re-parses the normalised result.
 
 6. **Legacy records are retained as ordinary instance state and both read paths prepare them at read time.**
-   `Assignment._baseFromJSON()` does not catch, reconstruct or drop non-marker-1 records: it keeps the stored submission records in `inst.submissions`, the exact stored marker value in `inst.assessmentContractVersion` and its presence in `inst._legacyMarkerPresent`, and does not run the marker-1 submission rehydration. `AssignmentRehydration._rehydrateSubmission()` handles marker-1 records only — it delegates each one to `_rehydrateCurrentSubmission()` — so non-marker-1 records never reach it. `AssignmentSerialisation.toJSON()` / `toPartialJSON()` re-emit that state through their normal paths (an ordinary save never marks a stored result as current), while `toReadJSON()` and `ABClassResponseMapper._toReadView()` prepare read submissions through `AssignmentRehydration.prepareLegacyReadSubmissions()` and emit `'legacy'` on the wire entry. Both read services validate the resulting entries. Completed-write preflight/gates are enforced at the write boundary.
+   `Assignment._baseFromJSON()` does not catch, reconstruct or drop non-marker-1 records: it keeps the stored submission records in `inst.submissions`, the exact stored marker value in `inst.assessmentContractVersion` and its presence in `inst._legacyMarkerPresent`, and does not run the marker-1 submission rehydration. `AssignmentRehydration._rehydrateSubmission()` handles marker-1 records only — it delegates each one to `AssignmentCurrentRestoration._rehydrateCurrentSubmission()` — so non-marker-1 records never reach it. `AssignmentSerialisation.toJSON()` / `toPartialJSON()` re-emit that state through their normal paths (an ordinary save never marks a stored result as current), while `toReadJSON()` and `ABClassResponseMapper._toReadView()` prepare read submissions through `AssignmentRehydration.prepareLegacyReadSubmissions()` and emit `'legacy'` on the wire entry. Both read services validate the resulting entries. Completed-write preflight/gates are enforced at the write boundary.
    **Classification: Aligned** — recorded under [Component Shape: Assessment § Write boundary](assessment.md#write-boundary-preflight-before-any-write).
 
 7. **A restored `assignmentName` must be a string; there is no generated fallback.**
@@ -474,7 +474,7 @@ Persistence model:         src/backend/AssignmentProcessor/Assignment/index.js
                                                        copied through DateUtils.deepConvertDates()
   └── AssignmentRehydration (02_AssignmentRehydration.js)
       └── _baseFromJSON()       — marker-1 root/task pre-validation; legacy records kept as instance state
-      └── _rehydrateSubmission() — marker-1 only; delegates to _rehydrateCurrentSubmission()
+      └── _rehydrateSubmission() — marker-1 only; delegates to AssignmentCurrentRestoration._rehydrateCurrentSubmission()
       └── prepareLegacyReadSubmissions() — public legacy read-preparation facade
   └── AssignmentLegacyRead (02_AssignmentLegacyRead.js)
       └── prepare()             — independent legacy read result; per-task CORRUPT_RECORD isolation;

@@ -136,7 +136,8 @@ function getAssignment_(parameters) {
       logger.warn('getAssignment: assignment not found', { courseId, assignmentId });
       return null;
     }
-    logger.error('getAssignment failed', { courseId, assignmentId, err: error });
+    // Failure logging is owned by the apiHandler boundary ('API request failed.' with
+    // requestId/method/error); rethrow without a duplicate handler-level error log.
     throw error;
   }
 }

@@ -148,6 +148,8 @@ const { TaskDefinition } = require('../src/backend/Models/TaskDefinition.js');
 g.TaskDefinition = TaskDefinition;
 const { AssignmentDefinition } = require('../src/backend/Models/AssignmentDefinition.js');
 g.AssignmentDefinition = AssignmentDefinition;
+const { Teacher } = require('../src/backend/Models/Teacher.js');
+g.Teacher = Teacher;
 g.SpreadsheetFormulaEquivalence = require('../src/backend/Assessors/0_SpreadsheetFormulaEquivalence.js');
 
 // Load and expose ConfigurationManager validators as globals so modules that

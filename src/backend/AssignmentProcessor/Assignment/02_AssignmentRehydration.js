@@ -123,6 +123,7 @@ const AssignmentRehydration = {
   /**
    * Rehydrates a current-format submission object and adds it to the assignment's submissions array.
    * Only marker-1 assignments reach this helper; legacy history stays as raw instance state.
+   * Delegates to AssignmentCurrentRestoration, which owns marker-1 restoration.
    * @param {Assignment} inst - The Assignment instance to add the submission to.
    * @param {object} subObject - The submission object to rehydrate.
    * @param {object} assignmentData - The assignment JSON containing restoration metadata.
@@ -130,23 +131,11 @@ const AssignmentRehydration = {
    * @returns {void}
    */
   _rehydrateSubmission(inst, subObject, assignmentData, representationMode) {
-    this._rehydrateCurrentSubmission(inst, subObject, assignmentData, representationMode);
-  },
-
-  /**
-   * Preserve the rehydration method seam while delegating current records.
-   * @param {Assignment} inst - The Assignment instance receiving the submission.
-   * @param {object} raw - The raw submission data to restore.
-   * @param {object} assignmentData - The assignment JSON containing restoration metadata.
-   * @param {'full'|'partial'} mode - Representation mode used to restore the submission.
-   * @returns {void}
-   */
-  _rehydrateCurrentSubmission(inst, raw, assignmentData, mode) {
-    return AssignmentCurrentRestoration._rehydrateCurrentSubmission(
+    AssignmentCurrentRestoration._rehydrateCurrentSubmission(
       inst,
-      raw,
+      subObject,
       assignmentData,
-      mode
+      representationMode
     );
   },
 };

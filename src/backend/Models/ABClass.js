@@ -380,6 +380,8 @@ class ABClass {
    * @param {Object|null} json - The serialised class object
    * @returns {ABClass|null} A new ABClass instance, or null if the JSON input is falsy
    * @throws {ABClassMetadataValidationError} If present metadata, including explicit undefined, is invalid.
+   * @throws {Error} If restoring `classOwner` through `Teacher.fromJSON` fails; the failure
+   *   propagates so a corrupt owner or missing model wiring surfaces at the restoration site.
    */
   static fromJSON(json) {
     if (!json || typeof json !== 'object') return null;
@@ -402,17 +404,10 @@ class ABClass {
         ? String(json.yearGroupKey)
         : null;
 
-    // Restore explicit owner (attempt Teacher.fromJSON when available)
-    try {
-      inst.classOwner =
-        json.classOwner && typeof Teacher === 'function' && typeof Teacher.fromJSON === 'function'
-          ? Teacher.fromJSON(json.classOwner) || json.classOwner
-          : json.classOwner || null;
-    } catch (error) {
-      inst.classOwner = json.classOwner || null;
-      if (globalThis.__TRACE_SINGLETON__)
-        ABLogger.getInstance().debug('ABClass.fromJSON classOwner coercion failed:', error);
-    }
+    // Restore explicit owner. Teacher is a known internal model loaded before this
+    // file in GAS concatenation order; restoration failures propagate rather than
+    // being swallowed.
+    inst.classOwner = Teacher.fromJSON(json.classOwner);
 
     // Restore arrays - callers may want to map to Student/Teacher/Assignment via their own fromJSON
     inst.teachers = Array.isArray(json.teachers) ? [...json.teachers] : [];

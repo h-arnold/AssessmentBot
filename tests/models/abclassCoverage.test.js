@@ -256,26 +256,23 @@ describe('ABClass collection behaviour', () => {
     }
   });
 
-  it('falls back to the raw owner when coercion throws', () => {
+  it('propagates owner restoration failures from Teacher.fromJSON', () => {
     class ThrowingTeacher {
       static fromJSON() {
         throw new Error('coercion failed');
       }
     }
-    const warnLogger = { debug: vi.fn() };
     const mockContext = withGlobalMocks({
-      ABLogger: () => ({ getInstance: () => warnLogger }),
       Teacher: () => ThrowingTeacher,
-      __TRACE_SINGLETON__: () => true,
       Assignment: () => globalThis.Assignment,
     });
     try {
-      const restored = ABClass.fromJSON({
-        classId: 'c-fifteen',
-        classOwner: { email: 'raw@example.com' },
-      });
-      expect(restored.classOwner).toEqual({ email: 'raw@example.com' });
-      expect(warnLogger.debug).toHaveBeenCalled();
+      expect(() =>
+        ABClass.fromJSON({
+          classId: 'c-fifteen',
+          classOwner: { email: 'raw@example.com' },
+        })
+      ).toThrow('coercion failed');
     } finally {
       mockContext.restore();
     }
