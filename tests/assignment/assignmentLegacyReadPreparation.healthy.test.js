@@ -6,6 +6,11 @@
  * source IDs; an explicitly valid E stays E; the `partial` output form redacts
  * artefact bodies through the existing submission serialiser.
  */
+const AssignmentLegacyRead = require('#backend/AssignmentProcessor/Assignment/02_AssignmentLegacyRead.js');
+const {
+  StudentSubmissionItem,
+} = require('#backend/Models/StudentSubmission/00_StudentSubmissionItem.js');
+
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   corruptRecordAssessments,
@@ -170,5 +175,49 @@ describe('legacy read preparation timestamps', () => {
     const preparedSubmission = submissionById(prepared, source.studentId);
     expect(preparedSubmission.createdAt).toBe(record.createdAt);
     expect(preparedSubmission.updatedAt).toBe(record.createdAt);
+  });
+});
+
+describe('legacy read preparation raw stored item precedence', () => {
+  const STORED_DATE = new Date('2022-05-06T07:08:09.000Z');
+
+  it('keeps a stored raw item record as a deep-copied, date-converted, independently owned entry', () => {
+    const record = healthyFullRecord();
+    const stored = record.submissions[0];
+    const storedItem = stored.items[HEALTHY_HEAD_TASK_ID];
+    // A stored shape the model serialiser never emits: an extra raw field and a
+    // live Date inside the feedback map.
+    storedItem.legacyNote = 'raw-stored-shape';
+    storedItem.feedback.reviewedAt = STORED_DATE;
+    const before = structuredClone(record);
+
+    const isolated = new AssignmentLegacyRead()._selectStoredItems(stored);
+    const isolatedItem = isolated.items[HEALTHY_HEAD_TASK_ID];
+
+    // The raw record flows through as-is rather than through the model serialiser.
+    expect(isolatedItem).not.toBeInstanceOf(StudentSubmissionItem);
+    expect(isolatedItem.legacyNote).toBe('raw-stored-shape');
+    expect(isolatedItem.feedback.reviewedAt).toBe('2022-05-06T07:08:09.000Z');
+    // The carrier holds independent copies, not the stored references.
+    expect(isolated.items).not.toBe(stored.items);
+    expect(isolatedItem).not.toBe(storedItem);
+    // Mutating the isolated entry leaves the stored record untouched.
+    isolatedItem.legacyNote = 'mutated';
+    isolatedItem.feedback.reviewedAt = 'mutated';
+    isolatedItem.artifact.content = 'mutated';
+    expect(record).toEqual(before);
+  });
+
+  it('emerges a live Date inside a stored item as an ISO string in the prepared read result', () => {
+    const record = healthyFullRecord();
+    // A document-bearing submission keeps non-empty feedback healthy on the full form.
+    const source = record.submissions.find((submission) => submission.documentId != null);
+    source.items[HEALTHY_HEAD_TASK_ID].feedback.reviewedAt = STORED_DATE;
+
+    const prepared = prepare(restoredWithDefinitionShape(record, 'full'), 'full');
+    const preparedItem = submissionById(prepared, source.studentId).items[HEALTHY_HEAD_TASK_ID];
+    expect(preparedItem.feedback.reviewedAt).toBe('2022-05-06T07:08:09.000Z');
+    // The stored record keeps its live Date; conversion happened on the isolated copy.
+    expect(source.items[HEALTHY_HEAD_TASK_ID].feedback.reviewedAt).toBeInstanceOf(Date);
   });
 });

@@ -6,6 +6,8 @@
  * validation/CORRUPT_RECORD E for that task, while healthy sibling items and
  * neighbouring submissions stay unchanged.
  */
+const AssignmentLegacyRead = require('#backend/AssignmentProcessor/Assignment/02_AssignmentLegacyRead.js');
+
 import { describe, expect, it } from 'vitest';
 import {
   corruptRecordAssessments,
@@ -192,5 +194,86 @@ describe('legacy read preparation malformed item maps and missing tasks', () => 
     expect(prepared).toHaveLength(1);
     expect(prepared[0].items).toEqual({});
     expect(prepared[0].documentId).toBeNull();
+  });
+});
+
+describe('legacy read preparation untrustworthy submission elements', () => {
+  it.each([
+    ['null', null],
+    ['undefined', undefined],
+  ])('rejects a %s submissions element with the contextual identity error', (_label, element) => {
+    const record = healthyFullRecord();
+    record.submissions = [element];
+
+    let thrown;
+    try {
+      prepare(restoreLegacy(record), 'full');
+    } catch (error) {
+      thrown = error;
+    }
+
+    // The contextual rejection replaces the raw `TypeError` a bare `stored.items`
+    // dereference produced for the same shape.
+    expect(thrown).toBeDefined();
+    expect(thrown).not.toBeInstanceOf(TypeError);
+    expect(thrown.name).toBe('Error');
+    expect(thrown.message).toBe('Current submission identity is untrustworthy');
+  });
+});
+
+describe('legacy read preparation materialised own __proto__ item keys', () => {
+  /**
+   * Builds a stored item map whose `__proto__` key is genuinely own-and-materialised,
+   * exactly as the vendored JsonDbApp's `JSON.parse` revival produces; an object
+   * literal `__proto__:` would set the prototype instead.
+   *
+   * @param {object} siblingItem Stored item for the sibling task.
+   * @returns {object} Stored item map with the injected key.
+   */
+  function storedItemsWithProtoKey(siblingItem) {
+    const storedItems = JSON.parse(
+      `{"__proto__": {"taskId": "${HEAD_TASK_ID}", "artifact": {"broken": true}}}`
+    );
+    storedItems[SIBLING_TASK_ID] = siblingItem;
+    return storedItems;
+  }
+
+  it('keeps a materialised own __proto__ item key as an own property on the isolated map', () => {
+    const record = singleDocumentSubmissionRecord();
+    const stored = record.submissions[0];
+    const storedItems = storedItemsWithProtoKey(structuredClone(stored.items[SIBLING_TASK_ID]));
+    stored.items = storedItems;
+    expect(Object.getOwnPropertyDescriptor(storedItems, '__proto__')).toBeDefined();
+
+    const isolated = new AssignmentLegacyRead()._selectStoredItems(stored);
+
+    const descriptor = Object.getOwnPropertyDescriptor(isolated.items, '__proto__');
+    expect(descriptor).toBeDefined();
+    expect(descriptor.enumerable).toBe(true);
+    expect(descriptor.writable).toBe(true);
+    expect(descriptor.configurable).toBe(true);
+    expect(descriptor.value).toEqual({ taskId: HEAD_TASK_ID, artifact: { broken: true } });
+    // The isolated map keeps the null prototype, so the stored key can never
+    // silently become a prototype mutation.
+    expect(Object.getPrototypeOf(isolated.items)).toBeNull();
+    // The stored map's own key survives isolation untouched.
+    expect(Object.getOwnPropertyDescriptor(storedItems, '__proto__').value).toEqual({
+      taskId: HEAD_TASK_ID,
+      artifact: { broken: true },
+    });
+  });
+
+  it('rejects the materialised __proto__ item key loudly instead of silently dropping it', () => {
+    const record = singleDocumentSubmissionRecord();
+    const stored = record.submissions[0];
+    stored.items = storedItemsWithProtoKey(structuredClone(stored.items[SIBLING_TASK_ID]));
+    const before = structuredClone(record);
+
+    // A dropped entry would let preparation succeed with the key gone; the kept
+    // key reaches the current-format owner, which rejects it by name.
+    expect(() => prepare(restoreLegacy(record), 'full')).toThrowError(
+      'Unknown task key: __proto__'
+    );
+    expect(record).toEqual(before);
   });
 });

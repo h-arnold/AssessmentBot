@@ -2,7 +2,7 @@
  * AssignmentLegacyRead — prepares an independent read result for a restored
  * legacy assignment.
  *
- * Depends on global `AssignmentCurrentRestoration` and `Assignment`
+ * Depends on global `AssignmentCurrentRestoration`, `Assignment`, and `DateUtils`
  * (GAS runtime globals).
  *
  * Saved raw legacy records are never mutated. Preparation runs the existing
@@ -20,9 +20,12 @@ class AssignmentLegacyRead {
    * @param {'full'|'partial'} form - Output serialisation form.
    * @returns {Array<object>|null} Prepared submissions in the requested form, or
    *   `null` when the submissions root is present but not an array.
-   * @throws {Error} When the form is unsupported or the assignment state is untrustworthy.
+   * @throws {Error} When the assignment is not an object, the form is unsupported, or the
+   *   assignment state is untrustworthy.
    */
   prepare(assignment, form) {
+    if (!assignment || typeof assignment !== 'object')
+      throw new Error('Legacy read preparation requires a restored assignment');
     if (form !== 'full' && form !== 'partial')
       throw new Error(`Invalid legacy read preparation form: ${form}`);
     if (!Array.isArray(assignment.submissions)) return null;
@@ -68,8 +71,8 @@ class AssignmentLegacyRead {
   }
 
   /**
-   * Builds an independent receiver carrying the legacy marker state verbatim and
-   * the requested tasks, without fetching or stamping anything.
+   * Builds an independent receiver with the saved metadata and embedded
+   * definition, without fetching or stamping anything.
    * @param {Assignment} assignment - Restored legacy assignment.
    * @returns {Assignment} Empty receiver instance.
    */
@@ -82,9 +85,6 @@ class AssignmentLegacyRead {
     receiver.dueDate = assignment.dueDate;
     receiver.updatedAt = assignment.updatedAt;
     receiver.assignmentDefinition = assignment.assignmentDefinition;
-    receiver.submissions = [];
-    receiver.assessmentContractVersion = assignment.assessmentContractVersion;
-    receiver._legacyMarkerPresent = assignment._legacyMarkerPresent;
     return receiver;
   }
 
@@ -94,19 +94,29 @@ class AssignmentLegacyRead {
    * materialises malformed maps, missing-task coverage and broken items.
    * @param {object} stored - Stored raw submission record.
    * @returns {object} Isolated carrier for the current-format owner.
+   * @throws {Error} When the stored element is not a record object.
    */
   _selectStoredItems(stored) {
+    if (!stored || typeof stored !== 'object')
+      throw new Error('Current submission identity is untrustworthy');
     const record = { ...stored };
     const items = stored.items;
     if (!items || typeof items !== 'object' || Array.isArray(items)) {
       record.items = undefined;
       return record;
     }
-    const isolatedItems = {};
+    // A null-prototype record written with defineProperty keeps a stored
+    // `__proto__` key as an own property instead of triggering the prototype setter.
+    const isolatedItems = Object.create(null);
     for (const [key, value] of Object.entries(items)) {
       // Deep copy discards any model class identity so the existing item is found
       // and validated as a raw record.
-      isolatedItems[key] = structuredClone(value);
+      Object.defineProperty(isolatedItems, key, {
+        value: DateUtils.deepConvertDates(value),
+        enumerable: true,
+        writable: true,
+        configurable: true,
+      });
     }
     record.items = isolatedItems;
     return record;

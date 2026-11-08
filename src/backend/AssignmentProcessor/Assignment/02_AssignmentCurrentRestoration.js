@@ -2,9 +2,9 @@
  * AssignmentCurrentRestoration — restores current-format submissions and validates
  * their assessment and source state.
  *
- * Depends on the model classes and Assessment as GAS runtime globals. This file sorts
- * before `Models/Assessment.js` in the concatenated script, so `Assessment.CRITERIA` is
- * read inside method bodies, never at evaluation time.
+ * Depends on the model classes, Assessment, and ABLogger as GAS runtime globals. This
+ * file sorts before `Models/Assessment.js` in the concatenated script, so
+ * `Assessment.CRITERIA` is read inside method bodies, never at evaluation time.
  * @namespace
  */
 const AssignmentCurrentRestoration = {
@@ -92,6 +92,7 @@ const AssignmentCurrentRestoration = {
     // Prepare canonical JSON before restoration so invalid records never enter
     // the model restoration path and each healthy item is restored only once.
     const prepared = { ...preparedRaw, items: {} };
+    const degradedTaskIds = [];
     for (const taskId of taskIds) {
       const originalItem = items[taskId];
       if (!originalItem) continue;
@@ -100,11 +101,25 @@ const AssignmentCurrentRestoration = {
         prepared.items[taskId] = result.retained;
       } else {
         prepared.items[taskId] = createCorruptPlaceholder(taskId);
+        degradedTaskIds.push(taskId);
       }
     }
     for (const taskId of taskIds)
-      if (!Object.hasOwn(prepared.items, taskId))
+      if (!Object.hasOwn(prepared.items, taskId)) {
         prepared.items[taskId] = createCorruptPlaceholder(taskId);
+        degradedTaskIds.push(taskId);
+      }
+    // One degradation warn at the isolation boundary; individual throw sites stay silent.
+    if (degradedTaskIds.length > 0)
+      ABLogger.getInstance().warn(
+        'Isolated invalid stored submission items as CORRUPT_RECORD placeholders.',
+        {
+          assignmentId: assignmentData.assignmentId,
+          studentId: raw.studentId,
+          mode,
+          taskIds: degradedTaskIds,
+        }
+      );
     const submission = StudentSubmission.fromJSON(prepared, mode);
     inst.submissions.push(submission);
   },

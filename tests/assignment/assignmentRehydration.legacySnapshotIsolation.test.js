@@ -162,3 +162,31 @@ describe('legacy non-array submission payloads are independent of saved state', 
     expect(restored.toJSON().submissions).toBeNull();
   });
 });
+
+describe('legacy unknown fields restore as own instance properties', () => {
+  it('restores a materialised own __proto__ unknown field as an own property, not a prototype change', () => {
+    const record = historicalRecord();
+    const injected = { forged: true };
+    // defineProperty materialises the stored key exactly as the vendored JsonDbApp's
+    // JSON.parse revival does; an object literal `__proto__:` would set the prototype.
+    Object.defineProperty(record, '__proto__', {
+      value: injected,
+      enumerable: true,
+      writable: true,
+      configurable: true,
+    });
+    const cleanPrototype = Object.getPrototypeOf(restoreAssignment(historicalRecord()));
+
+    const restored = restoreAssignment(record);
+
+    const descriptor = Object.getOwnPropertyDescriptor(restored, '__proto__');
+    expect(descriptor).toBeDefined();
+    expect(descriptor.enumerable).toBe(true);
+    expect(descriptor.writable).toBe(true);
+    expect(descriptor.configurable).toBe(true);
+    expect(descriptor.value).toEqual(injected);
+    // The instance prototype is the restored subclass prototype, not the stored value.
+    expect(Object.getPrototypeOf(restored)).not.toBe(injected);
+    expect(Object.getPrototypeOf(restored)).toBe(cleanPrototype);
+  });
+});

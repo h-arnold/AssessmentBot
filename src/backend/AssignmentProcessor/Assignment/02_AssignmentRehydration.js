@@ -16,8 +16,15 @@ const AssignmentRehydration = {
    * @param {Assignment} assignment - Restored legacy assignment.
    * @param {'full'|'partial'} form - Output serialisation form.
    * @returns {Array<object>|null} Prepared read submissions, or null for a non-array root.
+   * @throws {Error} When the assignment is not an object or the form is unsupported.
    */
   prepareLegacyReadSubmissions(assignment, form) {
+    // Entry guards deliberately mirror AssignmentLegacyRead.prepare so both public
+    // entry points reject unusable input with the same contextual messages.
+    if (!assignment || typeof assignment !== 'object')
+      throw new Error('Legacy read preparation requires a restored assignment');
+    if (form !== 'full' && form !== 'partial')
+      throw new Error(`Invalid legacy read preparation form: ${form}`);
     return new AssignmentLegacyRead().prepare(assignment, form);
   },
   /**
@@ -96,7 +103,14 @@ const AssignmentRehydration = {
     ]);
     Object.entries(data).forEach(([key, value]) => {
       if (!knownFields.has(key)) {
-        inst[key] = value;
+        // defineProperty keeps a stored `__proto__` key as an own property instead
+        // of triggering the prototype setter.
+        Object.defineProperty(inst, key, {
+          value,
+          enumerable: true,
+          writable: true,
+          configurable: true,
+        });
       }
     });
 
