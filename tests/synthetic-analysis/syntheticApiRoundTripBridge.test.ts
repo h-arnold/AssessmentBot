@@ -152,13 +152,38 @@ describe('synthetic analysis dispatcher round-trip bridge', () => {
     const definitionPartials = await getAssignmentDefinitionPartials();
 
     const results = new DataAnalysisService().analyse({
-      filter: { classIds: [classFull.classId] },
+      filter: { classIds: [classFull.classId], analysisMode: 'absolute' },
       classes: [classFull],
       assignmentDefinitionPartials: definitionPartials,
     });
 
     expect(results).toHaveLength(1);
     expect(results[0].classId).toBe(knownClassId);
+  });
+
+  it('round-trips the small profile in explicit absolute mode with the mode echo and row flags', async () => {
+    const bridge = createApiHandlerRoundTripBridge({ vi, profileName: SMALL_PROFILE });
+    installGoogleRunner(createSyntheticApiRoundTripRunner(bridge.invokeRequest));
+
+    const classFull = await getABClass({ classId: knownClassId });
+    if (classFull === null) {
+      throw new Error('Expected a non-null ClassFull before absolute-mode analysis.');
+    }
+    const definitionPartials = await getAssignmentDefinitionPartials();
+
+    const results = new DataAnalysisService().analyse({
+      filter: { classIds: [classFull.classId], analysisMode: 'absolute' },
+      classes: [classFull],
+      assignmentDefinitionPartials: definitionPartials,
+    });
+
+    const [result] = results;
+    expect(result.appliedAnalysisMode).toBe('absolute');
+    expect(result).not.toHaveProperty('attemptBaseline');
+    expect(result.perTask.length).toBeGreaterThan(0);
+    for (const row of result.perTask) {
+      expect(row.includedInAttemptBaseline).toBe(true);
+    }
   });
 
   it('serialises the success envelope exactly once through the factory-compatible adapter runner', () => {

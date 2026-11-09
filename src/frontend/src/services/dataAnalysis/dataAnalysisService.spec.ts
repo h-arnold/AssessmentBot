@@ -114,7 +114,10 @@ describe('DataAnalysisService', () => {
     // -----------------------------------------------------------------------
     it('throws a ZodError when filter.classIds is an empty array', () => {
       const input = buildInput([{ classId: 'c_001', assignments: [] }]);
-      const invalidInput = { ...input, filter: { classIds: [] } };
+      const invalidInput = {
+        ...input,
+        filter: { classIds: [], analysisMode: 'absolute' as const },
+      };
 
       const service = new DataAnalysisService();
 
@@ -130,6 +133,7 @@ describe('DataAnalysisService', () => {
         ...input,
         filter: {
           classIds: ['c_001'],
+          analysisMode: 'absolute' as const,
           dateRange: { from: '2026-06-01T00:00:00.000Z', to: '2026-01-01T00:00:00.000Z' },
         },
       };
@@ -148,6 +152,7 @@ describe('DataAnalysisService', () => {
         ...input,
         filter: {
           classIds: ['c_001'],
+          analysisMode: 'absolute' as const,
           criterionWeightings: { completeness: 1, accuracy: 1, spag: 1 },
         },
       };
@@ -288,6 +293,7 @@ describe('DataAnalysisService', () => {
               taskId: 't_001',
               taskTitle: null,
               averageContribution: { effectiveWeight: 1, includedInAverage: true },
+              includedInAttemptBaseline: true,
               completeness: createComputedMetricResult(),
               accuracy: createComputedMetricResult(),
               spag: createComputedMetricResult(),
@@ -301,6 +307,7 @@ describe('DataAnalysisService', () => {
             overall: createComputedMetricResult(),
           },
           appliedCriterionWeightings: { completeness: 0.4, accuracy: 0.4, spag: 0.2 },
+          appliedAnalysisMode: 'absolute',
         },
       ];
 
@@ -340,6 +347,7 @@ describe('DataAnalysisService', () => {
             overall: createComputedMetricResult(),
           },
           appliedCriterionWeightings: { completeness: 0.4, accuracy: 0.4, spag: 0.2 },
+          appliedAnalysisMode: 'absolute',
         },
       ];
 
@@ -373,6 +381,7 @@ describe('DataAnalysisService', () => {
             overall: createComputedMetricResult(),
           },
           appliedCriterionWeightings: { completeness: 0.4, accuracy: 0.4, spag: 0.2 },
+          appliedAnalysisMode: 'absolute',
         },
       ];
 

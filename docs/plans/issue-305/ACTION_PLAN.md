@@ -1,5 +1,7 @@
 # Feature Delivery Plan (TDD-First) — Attempt-Baseline Analysis Mode (issue #305)
 
+> **Status (in progress):** Implementation underway on branch `feat/issue-305-attempt-baseline-mode`. Current phase: Section 1 (red). Baseline established 2026-11-05 on this branch: 7/8 checks pass; `backend-lint-check` fails only on four pre-existing `max-lines` warnings in untouched backend test files (`tests/backend-api/assignmentDefinitionPartials.unit.test.js`, `tests/dbManager/dbManager.test.js`, `tests/googleClassroom/classroomApiClient.test.js`, `tests/utils/batchUpdateUtility.test.js`) — accepted as pre-existing technical debt for this frontend-only plan; report: `.ts-regression-checker/reports/session-feat-issue-305-attempt-baseline-mode/baseline/baseline.txt`.
+
 ## Read-First Context
 
 Before writing or executing this plan:
@@ -60,71 +62,64 @@ Red → Green → Refactor per section; run the section's verification commands 
 
 ## Section 1 — Schema contracts + required-field contract-enabling sweep
 
-### Objective
+### Outcome (compacted)
 
-- Add the required `analysisMode` to the analysis filter; the `appliedAnalysisMode`/`attemptBaseline` echo block; `PerTaskRowSchema.includedInAttemptBaseline`; the named `AnalysisMode` enum export — **and own every blast-radius consequence so Sections 2–5 never inherit a red tree**:
-  1. **Test-builder fix point:** `buildInput()`/`buildSingleStudentInput()` in `src/frontend/src/test/dataAnalysis/fixtures.ts` gain `analysisMode: 'absolute'` once (constructor-like scope, root `AGENTS.md` §2.1.10).
-  2. **Literal input-construction sites** (all fail the moment the field is required): `src/frontend/src/services/dataAnalysis/dataAnalysis.zod.spec.ts` (multiple direct `AnalysisFilterSchema`/`AveragingAnalyserInputSchema.parse` sites, e.g. `:105`, `:113`, `:147`, `:154`, `:168`, `:183`, `:198`, `:209`, `:228`, `:245`), `src/frontend/src/services/dataAnalysis/dataAnalysisService.spec.ts` (three literal filter sites: `:117` empty-classIds spread, `:131` dateRange, `:149` criterionWeightings), `src/frontend/src/services/dataAnalysis/analysers/averagingAnalyser.filters.spec.ts` (six occurrences, first at `:83`), `src/frontend/src/services/dataAnalysis/analysers/averagingAnalyser.rows.spec.ts:241` and `:489`, `src/frontend/src/services/dataAnalysis/analysers/averagingAnalyser.spec.ts:468`, `src/frontend/src/services/dataAnalysis/analysers/averagingAnalyser.metricResolution.spec.ts:459` (`const unvalidatedInput`; the `filter:` literal at `:460`; the `AveragingAnalyserInputSchema.parse` call at `:464`), `src/frontend/src/features/taskHeatmap/useHeatmapsPageData.spec.ts` (`:359/362` filter `toEqual` assertions must include the default `'absolute'`), the ABClass-metadata suites added in #339 — `src/frontend/src/services/abClass/abClassMetadataService.calculation.spec.ts:136` (custom `criterionWeightings`), `src/frontend/src/services/abClass/abClassMetadataService.failure.spec.ts:37`, `src/frontend/src/test/abClass/metadataRefreshFixtures.ts:67` and `:106`, `src/frontend/src/services/googleClassrooms/classDetail/classDetailService.zod.metadataIntegration.spec.ts:60` — and `tests/synthetic-analysis/syntheticApiRoundTripBridge.test.ts:155`.
-  3. **Five non-hook production sites pinned `'absolute'`** with literal values (their final state anyway — zero behavioural risk moved earlier): `heatmapsPipeline.ts:128`, `useHeatmapSelectionSummary.ts:46`, `TaskHeatmapPage.tsx:136`, `analysers/assignmentSummaryAnalyser.ts:140` (internal delegation, inside the analyse call at `:139–143`), and `abClassMetadataService.ts:53` (the rolling-ABClass-metadata refresh path, added in #339 — full-class aggregate evidence only, never baseline).
-  4. **Named interim literal** at `useClassPageData.ts:133` (`'absolute'`) — replaced by the section-5a hook parameter, tracked in that section's notes.
-  5. **Row-level output sweep** (fixtures building `PerTaskRow`): inline row literals in `src/frontend/src/services/dataAnalysis/dataAnalysis.zod.result.spec.ts` (`validPerTaskRow` at `:70` and its spread sites) and the adapter-side row fixtures in `src/frontend/src/test/classPage/classPageAdapterTestFixtures.ts` (`computedPerTaskRow` at `:90`, and the base builder `perTaskRow` at `:138` — the spread source for the hand-built literals in `classPageAdapter.assignmentAverage.spec.ts`). The untyped "new-shape" response fixture in `dataAnalysisService.spec.ts` (~`:285`) also carries non-empty `perTask` rows and must gain the flag for its runtime `not.toThrow()` assertion. (`buildCellPreviewLookup.parity.spec.ts` carries no row literals, and `src/frontend/src/test/dataAnalysis/fixtures.ts` holds no `PerTaskRow` fixtures either — the latter stays the input-side fix point.)
-  6. **Result-echo sweep** (typed `AveragingResult` literals gain `appliedAnalysisMode: 'absolute'` and, where present, row flags): `src/frontend/src/test/dataAnalysis/heatmapAdapterTestSetup.ts` (`minimalAveragingResult`), `src/frontend/src/test/classPage/useClassPageDataTestFixtures.ts` (`createAveragingResult` — the fix point for the hook suites), `src/frontend/src/services/dataAnalysis/heatmapAdapter.merged.spec.ts` (a local `minimalAveragingResult` at `:211`, distinct from the shared one), `src/frontend/src/services/dataAnalysis/heatmapAdapter.merged.contribution.spec.ts` (`:76`, a `satisfies AveragingResult` literal), `src/frontend/src/test/taskHeatmapPageFixtures.ts:94`, `src/frontend/src/test/classPage/classPageAdapterTestFixtures.ts` (the `averagingResult` helper), `src/frontend/src/features/classPage/ClassPageHeatmapView.spec.tsx:139`, `src/frontend/src/features/taskHeatmap/buildCellPreviewLookup.parity.spec.ts` (`:170`, `:286`, `:318`), `src/frontend/src/services/dataAnalysis/heatmapAdapter.diagnostics.spec.ts:97`, `dataAnalysis.zod.result.spec.ts:323` (`validAveragingResult`), and the untyped "new-shape" response fixture in `dataAnalysisService.spec.ts` (asserted not to throw at runtime, so it must carry the field; its `perTask` rows must also carry the row flag). Double-cast literals (`as unknown as AveragingResult`) are exempt — but they gain the field opportunistically where touched. The merged-column literals (`heatmapFixtures.ts` → `createHeatmapMergedResult`, `useHeatmapsPageData.preview.spec.ts:194`, `TaskHeatmapTable.merged.spec.tsx:99/:145/:202`, `TaskHeatmapTable.zeroWeight.spec.tsx:64`) belong to Section 3's sweep.
+Delivered the attempt-baseline schema contracts and the full required-field sweep, leaving Sections 2–5 a green tree:
 
-### Constraints
+- `dataAnalysis.zod.ts` exports `AnalysisModeSchema`/`AnalysisMode` (`'absolute' | 'topDecileBaseline'`); the strict `AnalysisFilterSchema` requires `analysisMode`; `AveragingResultSchema` requires the `appliedAnalysisMode` echo and the optional strict `attemptBaseline` block; `PerTaskRowSchema` requires `includedInAttemptBaseline: boolean`. Nothing on `PerStudentTaskMetric` or cells; no `baselineTaskCount` (SPEC decision 7 and data-shape item 3 record two fields only).
+- The test-builder fix point (`buildInput`/`buildSingleStudentInput`) gained `analysisMode: 'absolute'` once; every plan-listed literal site plus the additional sites recorded in the notes below was pinned `'absolute'`.
+- The analyser emits the echo and always-true row flags as literals and no `attemptBaseline` block yet (Section 2 owns that).
+- Data-shape items 1–4 are marked implemented and item 5 partial (Section 4 reconciles); the §9.27 register gained new entries 6–8 recording this section's delivered helpers (`AnalysisModeSchema`/`AnalysisMode`, the deliberate call-site medium-corpus decision, and the `buildInput`/`buildSingleStudentInput` extend), each marked `Implemented` for Section 1; entries 1–5 remain `Not implemented` and flip with Sections 2–5a.
 
-- Frontend-only validation change; no transport or persistence (SPEC "Recommended data shapes"; contract target: the data-shape doc's "Planned contract changes (not implemented)" block, items 1–8).
-- `attemptBaseline` stays optional on the result; the narrowing fail-fast rule is schema-tested here and consumer-enforced from Section 2.
-- `PerStudentTaskMetric` carries **no** flag.
+Section checks passed: `npm run typecheck:all` exit 0; `npm run test:frontend -- src` 318 files / 3070 passed; `npm run test:frontend -- src/services/dataAnalysis` 450/450; `npm run test:synthetic -- syntheticApiRoundTripBridge` 14/14; `npm run lint:frontend:check` 0 errors / 17 warnings (the true pre-plan baseline — see the retained correction below); Prettier clean on all 42 changed files; review PASS with zero in-scope findings. The full-gate `run-all-checks` checkpoint is still to run.
 
-### Shared helper plan
+### Retained for later sections
 
-1. `AnalysisModeSchema`/`AnalysisMode` — `new` (schema enum in `dataAnalysis.zod.ts`); canonical doc target: data-shape items 1/2.
-2. Medium synthetic-corpus loading — **follows the established call-site `?raw` pattern** (deliberate, per the recorded decision in `src/frontend/src/test/shared/canonicalFixturePrimitives.ts`'s `@remarks`: record loading stays at the call site and is deliberately not shared). The `@synthetic/*` alias **is** resolvable from the Vitest app project (`src/frontend/vite.config.ts` `resolve.alias` plus `tsconfig.app.json` paths; exercised via `?raw` imports by `averagingAnalyser.metricResolution.spec.ts:6–8`). Sections 1 and 2 import the committed `medium` views at their own call sites — no shared loader is created.
-3. `buildInput`/`buildSingleStudentInput` — `extend` (`src/frontend/src/test/dataAnalysis/fixtures.ts`).
+- **Contract shapes (Sections 2–5 consumers):**
 
-### Data-shape planning block
+  ```ts
+  // dataAnalysis.zod.ts
+  export const AnalysisModeSchema = z.enum(['absolute', 'topDecileBaseline']);
+  export type AnalysisMode = z.infer<typeof AnalysisModeSchema>;
 
-- Implement data-shape doc items 1–4 exactly as recorded (filter field, echo block, row flag, narrowing rule); remove `Not implemented` markers from items 1–4 as delivered. Item 5 (summary contract) lands its implementation in Section 1 via the `analysers/assignmentSummaryAnalyser.ts:140` pin and is reconciled in Section 4.
+  AnalysisFilterSchema = z.strictObject({
+    classIds: z.array(z.string().min(1)).min(1),
+    analysisMode: AnalysisModeSchema, // required, no default
+    // dateRange/topicKeys/assignmentDefinitionKeys/criterionWeightings unchanged
+  });
 
-### Canonical fixture note
+  AveragingResultSchema = z.strictObject({
+    // ...existing fields...
+    appliedAnalysisMode: AnalysisModeSchema, // required echo
+    attemptBaseline: AttemptBaselineSchema.optional(), // absolute mode omits
+  });
 
-- The **bridge stays on `small`** (hard-coded `SMALL_PROFILE` in `syntheticApiRoundTripBridge.test.ts:28–42`) and merely gains the explicit `analysisMode: 'absolute'`. The **`medium` echo/flag round-trip gets a named host**: a new spec under `src/frontend/src/services/dataAnalysis/` loading the committed `medium` views via the call-site `?raw` pattern (helper entry 2's recorded approach). Canonical claims covered: pool sizing 2, the pool-boundary tie-break (indices 3 vs 4 at seven attempts, broken by `studentId`; pool = {0, 3}), E-condition candidacy (roster indices 1 and 2: zero attempts despite participating in five assignments), eligibility thresholds — reused by Section 2 identically. No canonical regeneration (byte-for-byte policy); all other cases local hand-built.
+  PerTaskRowSchema = z.strictObject({
+    // ...existing fields...
+    includedInAttemptBaseline: z.boolean(), // required on every task row
+  });
+  // PerStudentTaskMetricSchema: no flag; cells stay absolute
+  ```
 
-### Delegation mandatory reads
+  Module-private `AttemptBaselineSchema` is `poolStudentIds: z.array(z.string()).min(BASELINE_POOL_MINIMUM)` plus `baselineTaskKeys: z.array(z.string().min(1)).min(1)`, with `BASELINE_POOL_MINIMUM = 2` kept so the schema bound and Section 2's derivation minimum agree by name. The narrowing rule is schema-tested here and consumer-enforced from Section 2: an attempt-baseline result without `attemptBaseline` is an invariant violation (fail fast with a throw); an `attemptBaseline?.baselineTaskKeys ?? []` fallback is forbidden. `perStudentTaskMetrics` contents stay mode-independent.
 
-- Testing Specialist: `@docs/plans/issue-305/SPEC.md`, `@docs/developer/data-shapes/frontend-data-analysis-response.md`, `@docs/developer/frontend/frontend-testing.md`
-- Implementation: `@docs/plans/issue-305/SPEC.md`, `@docs/developer/data-shapes/frontend-data-analysis-response.md`, `@src/frontend/src/services/dataAnalysis/dataAnalysis.zod.ts`, `@src/frontend/src/services/dataAnalysis/dataAnalysisService.ts`, `@src/frontend/src/services/dataAnalysis/analysers/assignmentSummaryAnalyser.ts`, `@src/frontend/src/features/taskHeatmap/heatmapsPipeline.ts`, `@src/frontend/src/features/taskHeatmap/useHeatmapSelectionSummary.ts`, `@src/frontend/src/features/taskHeatmap/TaskHeatmapPage.tsx`, `@src/frontend/src/features/classPage/useClassPageData.ts`, `@src/frontend/src/services/abClass/abClassMetadataService.ts`, `@src/frontend/src/test/abClass/metadataRefreshFixtures.ts`, `@src/frontend/src/services/abClass/abClassMetadataService.calculation.spec.ts`, `@src/frontend/src/services/abClass/abClassMetadataService.failure.spec.ts`, `@src/frontend/src/services/googleClassrooms/classDetail/classDetailService.zod.metadataIntegration.spec.ts`
-- Code Reviewer: `@docs/plans/issue-305/SPEC.md`, `@docs/developer/data-shapes/frontend-data-analysis-response.md`
-
-### Acceptance criteria
-
-- `AnalysisFilterSchema` rejects an input without `analysisMode`; accepts both enum values; result echo/block parse per items 1–4.
-- Absolute-mode result: `appliedAnalysisMode: 'absolute'`, no `attemptBaseline`, `includedInAttemptBaseline: true` on every `PerTaskRow`; otherwise byte-identical.
-- Entire frontend + synthetic test trees green at section end (sweep complete).
-- `npm run run-all-checks` green (first full-gate checkpoint).
-
-### Required test cases (Red first)
-
-Frontend tests:
-
-1. `dataAnalysis.zod.spec.ts`: filter without `analysisMode` fails; both values pass; strictObject rejects unknown keys; result-echo block shape (`poolStudentIds` min 2, `baselineTaskKeys` min 1).
-2. `dataAnalysis.zod.result.spec.ts` (+ the `AveragingResult` literals swept in step 6): absolute result parses with echo/row flags; the adapter-side fixtures in `classPageAdapterTestFixtures.ts` include the flags.
-3. `averagingAnalyser.spec.ts`: absolute-mode byte-equivalence vs current behaviour plus echo/flags.
-4. Bridge: `small` + explicit `'absolute'` round-trips end-to-end.
-5. Medium round-trip (call-site `?raw` load in a new spec under `src/frontend/src/services/dataAnalysis/` — no shared loader, per helper entry 2): `medium` result with echo/flags through the service schema.
-6. Narrowing rule at schema level: documented consumer contract (tested fully at analyser level in Section 2).
-
-### Section checks
-
-- `npm run test:frontend -- src/services/dataAnalysis`
-- `npm run test:frontend -- src`
-- `npm run test:synthetic -- syntheticApiRoundTripBridge`
-- `npm run lint:frontend:check`
-- Shared-helper/data-shape statuses reconciled for items 1–4 (+5 partial).
+- **Analyser handoff to Section 2:** the analyser does **not** emit `attemptBaseline` yet — `averagingAnalyser.ts` emits `appliedAnalysisMode: 'absolute'` and `buildPerTaskRows` sets `includedInAttemptBaseline: true` as literals (truthful while only absolute behaviour exists). Section 2 derives the pool, intersection and filtering and emits the block plus per-row flags from the input mode; `perStudentTaskMetrics` stays byte-identical across modes.
+- **Production pins (keep; the §5a site is the one later replaced):** `heatmapsPipeline.ts:128`, `useHeatmapSelectionSummary.ts:46`, `TaskHeatmapPage.tsx:136`, `assignmentSummaryAnalyser.ts:140` (item-5 internal delegation; Section 4 reconciles), `abClassMetadataService.ts:53`. Additional sweep sites and the §5a interim literal key (`useClassPageData.ts:135` — the plan's original line pointer is stale; Section 5a's constraint still cites :133) are recorded in the Implementation notes below.
+- **Lint baseline:** 17 warnings is the true pre-plan `lint:frontend:check` baseline (it supersedes the 19 previously recorded in the plan header); treat 0 errors / 17 warnings as the no-regression floor in later sections' lint runs.
+- **Medium-corpus loading (used by Sections 2, 3 and 5b):** deliberately stays at call sites via the `?raw` pattern — no shared loader is created (recorded decision in `src/frontend/src/test/shared/canonicalFixturePrimitives.ts`'s `@remarks`). The `@synthetic/*` alias resolves from the Vitest app project (`vite.config.ts` `resolve.alias` plus `tsconfig.app.json` paths; exercised by `averagingAnalyser.metricResolution.spec.ts:6–8`), and `dataAnalysis.mediumRoundTrip.spec.ts` is the delivered named host for the `medium` echo/flag round-trip.
+- **Outstanding follow-ups:** those in the Implementation notes below, plus the pending full-gate `run-all-checks` checkpoint noted above.
 
 ### Implementation notes / deviations / follow-up
 
-- Record the interim literal key for §5a; record any additional literal sites discovered during the sweep.
+- **§5a interim literal key (confirmed):** `src/frontend/src/features/classPage/useClassPageData.ts:135` — `filter: { classIds: [classId], analysisMode: 'absolute' }` inside `runAnalyserStep`; Section 5a replaces the literal with the hook parameter.
+- **Additional literal sites discovered during the sweep (beyond Section 1 step 2's list):** `src/frontend/e2e-tests/helpers/post-analysis-metadata-scenarios.ts:120/:125` (caught by the pre-flight recon), and `src/frontend/src/test/dataAnalysis/legacyAssessmentParityOracle.ts:79` (caught by the post-change grep sweep; `AveragingAnalyserInputSchema.parse` input — invisible to `tsc` because `parse` accepts `unknown`). All pinned `'absolute'`.
+- **Result-echo notes:** every typed `AveragingResult` fixture in step 6's list gained `appliedAnalysisMode: 'absolute'` as listed; `heatmapAdapter.merged.contribution.spec.ts`'s ten `tsc` sites all flow from its one shared `satisfies AveragingResult` fixture (single fix point). Removing the red-phase `as unknown as` cast in `buildCellPreviewLookup.parity.spec.ts` surfaced a genuinely missing `averageContribution` on the merged fixture's two metric entries (added — fixture completion, no assertion touched). `dataAnalysisService.spec.ts`'s three invalid-filter literals needed `as const` on `'absolute'` (no contextual type on the spread-built object).
+- **`baselineTaskCount` not added:** the tasking mentioned a `baselineTaskCount` int-min-1 field, but SPEC decision 7, SPEC's "Recommended data shapes" block, data-shape item 3 and the red-phase tests record only `poolStudentIds` (min 2) and `baselineTaskKeys` (min 1, key min 1); the block is implemented exactly as recorded.
+- **Analyser echo pinned literal:** `averagingAnalyser.ts` emits `appliedAnalysisMode: 'absolute'` (and `buildPerTaskRows` sets `includedInAttemptBaseline: true`) as literals — Section 1 implements no baseline behaviour, so the literal is the truthful "mode actually applied"; Section 2 derives both from the input mode.
+- **Remaining `as unknown as` casts (all pre-existing, not red-phase bridges):** `buildCellPreviewLookup.parity.spec.ts` merged `ClassFull`/`AssignmentFull` fixtures (missing-metadata fixture shapes, unrelated to the mode contract) and the pre-existing dynamic-import cast in `dataAnalysis.zod.spec.ts:29` (committed before this plan; not a red-phase bridge). No "Temporary red-phase bridge" comment remains.
+- **Docs sync outcome:** §9.27 register reconciliation applied in `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` (new entries 6–8 for this section's helpers, heading retitled "helper decisions", entries 1–5 left `Not implemented`); 2-line JSDoc-only addition on `AnalysisFilterSchema` in `dataAnalysis.zod.ts`; data-shape doc edits verified correct (`frontend-data-analysis-response.md` items 1–4 implemented / 5 partial, no residual markers; `assessment.md` and `student-submission.md` inbound anchors retargeted correctly). Scoped re-validation after the JSDoc edit: Prettier clean, frontend tsc exit 0, `lint:frontend:check` 0 errors / 17 warnings. Reported out-of-scope drift: `docs/developer/data-shapes/assessment.md` ~:517 carries a stale "preview error states remain unimplemented" claim contradicting the canonical doc — logged as a nitpick for the preview workstream's docs pass, not fixed here. Playwright E2E suite not run (no user-visible change in this section).
+- **Section regression gate (run 1, 2026-11-09T19:23Z, pre-rework): FAILING.** Report: `.ts-regression-checker/reports/session-feat-issue-305-attempt-baseline-mode/runs/2026-11-09T19-23-10.126Z/comparison.txt`. `checksFailing: 2` (backend-lint-check = accepted pre-existing debt, unchanged); lint deltas: 4 "fixes" and 2 "regressions" from max-lines fingerprint shifts. Dispositions: `classes-page-end-to-end-helpers.ts` (657→635) and the `classes-page.spec.ts`/`settings-backend.spec.ts`/ legacy deltas are attributable to the branch merge of `origin/main` (`4635f18b`, landing #347 et al.) that occurred after the 2026-11-05 baseline — recorded as merge-window baseline staleness, not section regressions (the Nov 5 baseline predates merge drift). `averagingAnalyser.rows.spec.ts` (637→638) IS attributable to this section's sweep and violated the frontend non-negotiable "decompose any frontend file over 550 lines in scope for your change, in the same change"; rework: decomposed (refactor review PASS, test parity 450/450 across 52 hosts, full suite 3070/3070 across 320 files, tsc exit 0) and the baseline refreshed on the merged tree (baseline dir removed; re-baselined 2026-11-09T20:11Z).
+- **Section regression gate (run 2, 2026-11-09T20:24Z, post-rework — section-completion gate, supersedes run 1): PASSED.** Report: `.ts-regression-checker/reports/session-feat-issue-305-attempt-baseline-mode/runs/2026-11-09T20-24-59.799Z/comparison.json` (fresh baseline manifest created 2026-11-09T20:11Z on the merged tree). Totals: `regressionsCount: 0`, `newFailuresCount: 0`, `fixesCount: 0`; `checksPassing: 7`, `checksFailing: 1` — the only failing check is `backend-lint-check` (4 pre-existing accepted `max-lines` warnings, present in the fresh baseline with zero deltas). Frontend lint warnings now 16 (the rows-spec decomposition removed one); refactor-review record: `.opencode/scratchpad/review-issue305-section1-refactor.md`.
 
 ---
 

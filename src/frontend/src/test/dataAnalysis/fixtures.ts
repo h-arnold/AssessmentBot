@@ -431,6 +431,7 @@ export function buildInput(
   return {
     filter: {
       classIds,
+      analysisMode: 'absolute',
     },
     classes,
     assignmentDefinitionPartials:

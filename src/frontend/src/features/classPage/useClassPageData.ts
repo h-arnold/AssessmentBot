@@ -130,7 +130,9 @@ function runAnalyserStep(
   try {
     const response = _analysisService.analyse(
       {
-        filter: { classIds: [classId] },
+        // Interim literal: Section 5a replaces this with the Class page's
+        // analysis-mode hook parameter.
+        filter: { classIds: [classId], analysisMode: 'absolute' },
         classes: [classFull],
         assignmentDefinitionPartials: assignmentDefinitionPartials!,
       },

@@ -179,6 +179,9 @@ export function buildPerTaskRows(
       accuracy,
       spag,
       overall,
+      // Absolute mode includes every task row in the baseline; baseline mode
+      // derives the flag from the class's baseline set instead.
+      includedInAttemptBaseline: true,
     });
   }
 

@@ -99,12 +99,12 @@ const minimalClassFull = {
 // ---------------------------------------------------------------------------
 
 describe('AnalysisFilterSchema', () => {
-  it('accepts valid minimal input (classIds only)', async () => {
+  it('accepts valid minimal input (classIds and analysisMode only)', async () => {
     const { AnalysisFilterSchema } = await loadDataAnalysisZod();
 
-    const result = AnalysisFilterSchema.parse({ classIds: ['c1'] });
+    const result = AnalysisFilterSchema.parse({ classIds: ['c1'], analysisMode: 'absolute' });
 
-    expect(result).toEqual({ classIds: ['c1'] });
+    expect(result).toEqual({ classIds: ['c1'], analysisMode: 'absolute' });
   });
 
   it('accepts valid full input with all optional fields', async () => {
@@ -112,6 +112,7 @@ describe('AnalysisFilterSchema', () => {
 
     const result = AnalysisFilterSchema.parse({
       classIds: ['c1', 'c2'],
+      analysisMode: 'absolute',
       dateRange: {
         from: validIsoTimestamp,
         to: validIsoTimestampLater,
@@ -127,6 +128,7 @@ describe('AnalysisFilterSchema', () => {
 
     expect(result).toEqual({
       classIds: ['c1', 'c2'],
+      analysisMode: 'absolute',
       dateRange: {
         from: validIsoTimestamp,
         to: validIsoTimestampLater,
@@ -144,7 +146,7 @@ describe('AnalysisFilterSchema', () => {
   it('rejects empty classIds array', async () => {
     const { AnalysisFilterSchema } = await loadDataAnalysisZod();
 
-    expect(() => AnalysisFilterSchema.parse({ classIds: [] })).toThrow();
+    expect(() => AnalysisFilterSchema.parse({ classIds: [], analysisMode: 'absolute' })).toThrow();
   });
 
   it('rejects dateRange.from > dateRange.to', async () => {
@@ -153,6 +155,7 @@ describe('AnalysisFilterSchema', () => {
     expect(() => {
       return AnalysisFilterSchema.parse({
         classIds: ['c1'],
+        analysisMode: 'absolute',
         dateRange: {
           from: validIsoTimestampLater,
           to: validIsoTimestamp,
@@ -167,6 +170,7 @@ describe('AnalysisFilterSchema', () => {
     expect(() => {
       return AnalysisFilterSchema.parse({
         classIds: ['c1'],
+        analysisMode: 'absolute',
         criterionWeightings: {
           completeness: 0.5,
           accuracy: 0.5,
@@ -182,6 +186,7 @@ describe('AnalysisFilterSchema', () => {
     expect(() => {
       return AnalysisFilterSchema.parse({
         classIds: ['c1'],
+        analysisMode: 'absolute',
         criterionWeightings: {
           completeness: -0.1,
           accuracy: 0.5,
@@ -197,6 +202,7 @@ describe('AnalysisFilterSchema', () => {
     expect(() => {
       return AnalysisFilterSchema.parse({
         classIds: ['c1'],
+        analysisMode: 'absolute',
         extraField: 'should not be allowed',
       });
     }).toThrow();
@@ -208,6 +214,7 @@ describe('AnalysisFilterSchema', () => {
     expect(() => {
       return AnalysisFilterSchema.parse({
         classIds: ['c1'],
+        analysisMode: 'absolute',
         dateRange: {
           from: '2026-01-05T10:00:00Z',
           to: validIsoTimestampLater,
@@ -228,7 +235,7 @@ describe('AveragingAnalyserInputSchema', () => {
     const result = AveragingAnalyserInputSchema.parse({
       classes: [minimalClassFull],
       assignmentDefinitionPartials: [minimalAssignmentDefinitionPartial],
-      filter: { classIds: ['c-1'] },
+      filter: { classIds: ['c-1'], analysisMode: 'absolute' },
     });
 
     expect(result).toBeDefined();

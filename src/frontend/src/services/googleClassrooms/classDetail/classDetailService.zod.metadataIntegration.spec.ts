@@ -57,7 +57,7 @@ function canonicalPartialRow(
  */
 function buildAnalysisInput(fullClass: unknown): AveragingAnalyserInput {
   return AveragingAnalyserInputSchema.parse({
-    filter: { classIds: ['class-1'] },
+    filter: { classIds: ['class-1'], analysisMode: 'absolute' },
     classes: [fullClass],
     assignmentDefinitionPartials: structuredClone(JSON.parse(smallDefinitionPartialsRaw)),
   });

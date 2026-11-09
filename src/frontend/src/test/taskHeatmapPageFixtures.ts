@@ -103,6 +103,7 @@ export const analyserResultFixture: AveragingResult = {
     overall: COMPUTED_4,
   },
   appliedCriterionWeightings: { completeness: 0.4, accuracy: 0.4, spag: 0.2 },
+  appliedAnalysisMode: 'absolute',
   perStudentTaskMetrics: [
     {
       classId: 'class-1',

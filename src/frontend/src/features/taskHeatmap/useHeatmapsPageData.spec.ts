@@ -359,7 +359,10 @@ describe('useHeatmapsPageData — analysis scope', () => {
       filter: { classIds: readonly string[] };
       assignmentDefinitionPartials: unknown;
     };
-    expect(callArgument.filter).toEqual({ classIds: [DEFAULT_CLASS_ID] });
+    expect(callArgument.filter).toEqual({
+      classIds: [DEFAULT_CLASS_ID],
+      analysisMode: 'absolute',
+    });
     expect(callArgument.classes).toHaveLength(1);
     expect(callArgument.classes[0].classId).toBe(DEFAULT_CLASS_ID);
     // Selected assignments are input-shaped onto the class.

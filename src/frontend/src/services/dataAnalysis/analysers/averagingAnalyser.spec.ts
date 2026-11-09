@@ -467,6 +467,7 @@ describe('AveragingAnalyser', () => {
       const input: AveragingAnalyserInput = {
         filter: {
           classIds: ['c_001'],
+          analysisMode: 'absolute',
         },
         classes: [
           createClassFull({

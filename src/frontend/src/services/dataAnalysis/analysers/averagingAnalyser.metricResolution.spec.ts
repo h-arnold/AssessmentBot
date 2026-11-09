@@ -457,7 +457,7 @@ describe('aggregate metric state resolution', () => {
 
     expect(manifest.seed).toBe(EXPECTED_SMALL_SEED);
     const unvalidatedInput = {
-      filter: { classIds: [clone.class.classId] },
+      filter: { classIds: [clone.class.classId], analysisMode: 'absolute' },
       classes: [clone.class],
       assignmentDefinitionPartials: [clone.definition],
     } as AveragingAnalyserInput;

@@ -168,7 +168,7 @@ function computeHeatmapState(
   try {
     const summary = new DataAnalysisService().analyseAssignmentSummary(
       {
-        filter: { classIds: [classFull.classId] },
+        filter: { classIds: [classFull.classId], analysisMode: 'absolute' },
         classes: [classFull],
         assignmentDefinitionPartials: adp,
       },

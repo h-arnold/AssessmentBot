@@ -157,6 +157,10 @@ export class AveragingAnalyser {
       perTask,
       perClass,
       appliedCriterionWeightings: { ...this.appliedCriterionWeightings },
+      // Only absolute behaviour exists in Section 1, so the echo records the
+      // mode actually applied; baseline selection derives it from the input
+      // mode when it lands.
+      appliedAnalysisMode: 'absolute',
       perStudentTaskMetrics,
     };
   }

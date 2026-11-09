@@ -122,12 +122,12 @@ function buildScenario(surface: 'class' | 'heatmaps'): RuntimeScenario {
   const analysis = new DataAnalysisService().analyse({
     classes: [source],
     assignmentDefinitionPartials: definitions,
-    filter: { classIds: [CLASS_ID] },
+    filter: { classIds: [CLASS_ID], analysisMode: 'absolute' },
   })[0];
   const targetAnalysis = new DataAnalysisService().analyse({
     classes: [ClassFullSchema.parse({ ...source, assignments: [target] })],
     assignmentDefinitionPartials: definitions,
-    filter: { classIds: [CLASS_ID] },
+    filter: { classIds: [CLASS_ID], analysisMode: 'absolute' },
   })[0];
   const classAverages = expectedScores(analysis.perClass);
   const recent: RecentAssignment = {

@@ -82,6 +82,7 @@ describe('AveragingAnalyser', () => {
       const input: AveragingAnalyserInput = {
         filter: {
           classIds: ['c_001'],
+          analysisMode: 'absolute',
           dateRange: {
             from: '2026-01-02T00:00:00.000Z',
             to: '2026-01-04T00:00:00.000Z',
@@ -121,6 +122,7 @@ describe('AveragingAnalyser', () => {
       const input: AveragingAnalyserInput = {
         filter: {
           classIds: ['c_001'],
+          analysisMode: 'absolute',
           topicKeys: ['algebra'],
         },
         classes: [
@@ -167,6 +169,7 @@ describe('AveragingAnalyser', () => {
       const input: AveragingAnalyserInput = {
         filter: {
           classIds: ['c_001'],
+          analysisMode: 'absolute',
           assignmentDefinitionKeys: ['dk_algebra'],
         },
         classes: [
@@ -321,6 +324,7 @@ describe('AveragingAnalyser', () => {
       const input: AveragingAnalyserInput = {
         filter: {
           classIds: ['c_001'],
+          analysisMode: 'absolute',
           topicKeys,
           assignmentDefinitionKeys,
         },
@@ -394,14 +398,18 @@ describe('AveragingAnalyser', () => {
 
       // Input with empty topicKeys array (all assignments pass through)
       const inputEmptyFilter: AveragingAnalyserInput = {
-        filter: { classIds: ['c_001'], topicKeys: [] as unknown as [string, ...string[]] },
+        filter: {
+          classIds: ['c_001'],
+          analysisMode: 'absolute',
+          topicKeys: [] as unknown as [string, ...string[]],
+        },
         classes: [sharedClass],
         assignmentDefinitionPartials: [],
       };
 
       // Input with undefined topicKeys (all assignments pass through)
       const inputUndefinedFilter: AveragingAnalyserInput = {
-        filter: { classIds: ['c_001'] },
+        filter: { classIds: ['c_001'], analysisMode: 'absolute' },
         classes: [sharedClass],
         assignmentDefinitionPartials: [],
       };

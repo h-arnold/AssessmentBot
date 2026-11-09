@@ -5,9 +5,11 @@
 **Implemented.** Canonical contract for the frontend-only, in-memory data-analysis response.
 It has **no backend API, persistence collection, transport envelope or migration**. The ABClass
 metadata lifecycle, the shared post-analysis contracts, both consumer surfaces and the
-error-aware task-preview view models are implemented and described below. The only outstanding
-planned change is the attempt-baseline analysis mode (see
-[Planned contract changes](#planned-contract-changes-not-implemented)).
+error-aware task-preview view models are implemented and described below. The attempt-baseline
+analysis mode is being delivered incrementally (tracking issue: h-arnold/AssessmentBot#305):
+its schema contracts (filter field, result echo and optional baseline block, task-row flag) are
+implemented, while the analyser's baseline-mode behaviour and downstream surfaces remain
+planned (see [Attempt-baseline contract changes](#attempt-baseline-contract-changes)).
 
 Sibling contracts:
 
@@ -1113,23 +1115,30 @@ Class-page adapter:
 
 Delivered: valid legacy scores are included in analysis through the existing heatmap/averaging and E rules, with no version-based filtering or new analyser/card-model field, and the task-heatmap `Reassessment required` tag is shown from the `'legacy'` marker (task-heatmap-only, by explicit user decision, with no field added to persisted metadata). The remaining planned work is the top-decile attempt-baseline analysis mode (tracking issue: h-arnold/AssessmentBot#305); complete the existing attempt-baseline plan independently.
 
-## Planned contract changes (not implemented)
+## Attempt-baseline contract changes
 
 ### Attempt-baseline analysis mode
 
-Only the top-decile attempt-baseline analysis mode remains unimplemented (tracking issue:
+The top-decile attempt-baseline analysis mode is delivered incrementally (tracking issue:
 h-arnold/AssessmentBot#305). The explicit-`E` analyser input, the preview `sourceUrl` field and
 every other previously planned addition are implemented and documented in the sections above.
-The following declarative shapes are the intended target; nothing here exists in code today.
+The schema contracts for items 1–4 below are implemented as recorded (Section 1 of the
+attempt-baseline action plan: required filter field, result echo and optional baseline block,
+required task-row flag); item 5 is partially delivered. The analyser's baseline-mode behaviour
+(Section 2), the heatmap column projection (Section 3), the summary reconciliation (Section 4)
+and the Class-page mode control (Section 5) remain planned.
 
 1. **`AnalysisFilterSchema.analysisMode`** — required enum field
    `z.enum(['absolute', 'topDecileBaseline'])` on the existing strict filter
    object. There is no default; every caller states the mode explicitly.
    `'absolute'` is the explicit representation of current behaviour.
+   **Implemented (Section 1):** the schema requires the field and every
+   input-construction site supplies it.
 
 2. **`AveragingResultSchema.appliedAnalysisMode`** — required echo enum
    (same two values) recording the mode actually applied to the per-class
-   result.
+   result. **Implemented (Section 1):** the schema requires the echo and the
+   analyser emits `'absolute'` while only absolute behaviour exists.
 
 3. **`AveragingResultSchema.attemptBaseline`** — optional strict object present
    only when `appliedAnalysisMode` is `'topDecileBaseline'`:
@@ -1186,6 +1195,10 @@ The following declarative shapes are the intended target; nothing here exists in
      accumulators at all follows today's absolute-mode path (`error` metrics)
      and is never converted.
 
+   **Implemented (schema, Section 1):** the optional block validates exactly as
+   recorded; the analyser does not yet emit it — baseline selection is
+   Section 2.
+
 4. **`PerTaskRowSchema.includedInAttemptBaseline`** — required boolean always
    present on task rows. `true` for every row in `absolute` mode; in baseline
    mode it marks baseline-set membership. Per-task row _values_ stay absolute
@@ -1196,6 +1209,10 @@ The following declarative shapes are the intended target; nothing here exists in
    so `perStudentTaskMetrics` carries every observed (student, task) pair in
    both modes — availability and heatmap substitution paths therefore see
    identical evidence regardless of mode.
+
+   **Implemented (Section 1):** the flag is required on every task row and the
+   analyser sets it `true` in absolute mode; the heatmap-column projection is
+   Section 3.
 
    **Baseline narrowing rule.** `attemptBaseline` is optional on the result
    because absolute mode omits it; the analyser always emits it in baseline
@@ -1210,6 +1227,10 @@ The following declarative shapes are the intended target; nothing here exists in
    delegation states `analysisMode: 'absolute'` explicitly (task-level
    evidence must never invoke baseline selection), while the public summary
    input continues to validate the caller's supplied `analysisMode`.
+
+   **Partially delivered (Section 1):** the internal delegation pin and the
+   required public filter field are in place; final reconciliation is
+   Section 4.
 
 6. **Downstream aggregate consumers.** Per-assignment aggregates on the Class
    page (recent-assignment cards) are recomputed in baseline mode from

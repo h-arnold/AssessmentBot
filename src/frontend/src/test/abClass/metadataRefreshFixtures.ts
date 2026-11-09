@@ -64,7 +64,7 @@ export function createMetadataRefreshFixture(profile: MetadataProfile) {
   const averagingResult = new DataAnalysisService().analyse({
     classes: [classFull],
     assignmentDefinitionPartials,
-    filter: { classIds: [classFull.classId] },
+    filter: { classIds: [classFull.classId], analysisMode: 'absolute' },
   })[0];
   return { classFull, assignmentDefinitionPartials, averagingResult };
 }
@@ -103,7 +103,7 @@ export function calculateExpectedScores(
     new DataAnalysisService().analyse({
       classes: [classFull],
       assignmentDefinitionPartials: fixture.assignmentDefinitionPartials,
-      filter: { classIds: [classFull.classId] },
+      filter: { classIds: [classFull.classId], analysisMode: 'absolute' },
     })[0].perClass
   );
 }

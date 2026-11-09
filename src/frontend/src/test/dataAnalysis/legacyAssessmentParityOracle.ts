@@ -76,7 +76,7 @@ export function buildClassInput(isLegacy: boolean): AveragingAnalyserInput {
   if (!assignment) throw new Error('Canonical class-2 assignment is missing');
   if (isLegacy) assignment.assessmentContractVersion = 'legacy';
   return AveragingAnalyserInputSchema.parse({
-    filter: { classIds: [CLASS_ID] },
+    filter: { classIds: [CLASS_ID], analysisMode: 'absolute' },
     classes: [cls],
     assignmentDefinitionPartials: structuredClone(definitionPartials),
   });

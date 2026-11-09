@@ -149,6 +149,7 @@ export function perTaskRow(overrides: {
     taskId: overrides.taskId,
     taskTitle: null,
     averageContribution: { effectiveWeight: 1, includedInAverage: true },
+    includedInAttemptBaseline: true,
     completeness: overrides.completeness,
     accuracy: overrides.accuracy,
     spag: overrides.spag,
@@ -226,6 +227,7 @@ export function averagingResult(
     perTask: overrides.perTask ?? [],
     perClass: overrides.perClass ?? perClassResult(),
     appliedCriterionWeightings: { completeness: 0.4, accuracy: 0.4, spag: 0.2 },
+    appliedAnalysisMode: 'absolute',
   } as AveragingResult;
 }
 

@@ -22,6 +22,7 @@ import { createCanonicalMetadataFixture } from '@/test/abClass/abClassMetadataFi
 import type { AssignmentFull } from '@/services/assignmentAssessment/assignmentAssessment.zod';
 import type { AssignmentDefinitionPartialsResponse } from '@/services/assignmentDefinition/assignmentDefinitionPartials.zod';
 import type { AveragingResult } from '@/services/dataAnalysis/dataAnalysis.zod';
+import { AveragingResultSchema } from '@/services/dataAnalysis/dataAnalysis.zod';
 import { createComputedMetricResult } from '@/test/dataAnalysis/fixtures';
 
 const DEFINITION_KEY = 'def-xyz';
@@ -179,6 +180,7 @@ const analyserResultFixture: AveragingResult = {
     overall: COMPUTED_4,
   },
   appliedCriterionWeightings: { completeness: 0.4, accuracy: 0.4, spag: 0.2 },
+  appliedAnalysisMode: 'absolute',
   perStudentTaskMetrics: [
     {
       classId: CLASS_ID,
@@ -222,6 +224,61 @@ describe('buildCellPreviewLookup cross-fetch parity', () => {
       `${DEFINITION_KEY}::${TASK_A}`,
       `${DEFINITION_KEY}::${TASK_B}`,
     ]);
+  });
+
+  it('parses the absolute-mode adapter input with the mode echo and all-true task-row flags', () => {
+    const analyserResult = {
+      ...analyserResultFixture,
+      perTask: [
+        {
+          definitionKey: DEFINITION_KEY,
+          taskId: TASK_A,
+          taskTitle: null,
+          averageContribution: { effectiveWeight: 1, includedInAverage: true },
+          completeness: COMPUTED_5,
+          accuracy: COMPUTED_4,
+          spag: COMPUTED_3,
+          overall: COMPUTED_4,
+          includedInAttemptBaseline: true,
+        },
+        {
+          definitionKey: DEFINITION_KEY,
+          taskId: TASK_B,
+          taskTitle: null,
+          averageContribution: { effectiveWeight: 1, includedInAverage: true },
+          completeness: COMPUTED_5,
+          accuracy: COMPUTED_4,
+          spag: COMPUTED_3,
+          overall: COMPUTED_4,
+          includedInAttemptBaseline: true,
+        },
+      ],
+    };
+
+    const parsed = AveragingResultSchema.parse(analyserResult);
+
+    expect(parsed.appliedAnalysisMode).toBe('absolute');
+    expect(parsed.perTask.map((row) => row.includedInAttemptBaseline)).toEqual([true, true]);
+  });
+
+  it('rejects an adapter input whose task row omits includedInAttemptBaseline', () => {
+    expect(() => {
+      return AveragingResultSchema.parse({
+        ...analyserResultFixture,
+        perTask: [
+          {
+            definitionKey: DEFINITION_KEY,
+            taskId: TASK_A,
+            taskTitle: null,
+            averageContribution: { effectiveWeight: 1, includedInAverage: true },
+            completeness: COMPUTED_5,
+            accuracy: COMPUTED_4,
+            spag: COMPUTED_3,
+            overall: COMPUTED_4,
+          },
+        ],
+      });
+    }).toThrow();
   });
 });
 
@@ -295,11 +352,13 @@ describe('buildCellPreviewLookup merged-path taskKey parity (T-9)', () => {
       overall: createComputedMetricResult({ value: 4 }),
     },
     appliedCriterionWeightings: { completeness: 0.4, accuracy: 0.4, spag: 0.2 },
+    appliedAnalysisMode: 'absolute',
     perStudentTaskMetrics: [
       {
         classId: MERGED_CLASS_ID,
         studentId: MERGED_STUDENT_ID,
         taskKey: `${MERGED_DEF}::${MERGED_TASK_A}`,
+        averageContribution: { effectiveWeight: 1, includedInAverage: true },
         completeness: createComputedMetricResult({ value: 5 }),
         accuracy: createComputedMetricResult({ value: 4 }),
         spag: createComputedMetricResult({ value: 3 }),
@@ -309,13 +368,14 @@ describe('buildCellPreviewLookup merged-path taskKey parity (T-9)', () => {
         classId: MERGED_CLASS_ID,
         studentId: MERGED_STUDENT_ID,
         taskKey: `${MERGED_DEF}::${MERGED_TASK_B}`,
+        averageContribution: { effectiveWeight: 1, includedInAverage: true },
         completeness: createComputedMetricResult({ value: 5 }),
         accuracy: createComputedMetricResult({ value: 4 }),
         spag: createComputedMetricResult({ value: 3 }),
         overall: createComputedMetricResult({ value: 4 }),
       },
     ],
-  } as unknown as AveragingResult;
+  };
 
   // Independent fixture 3: a getAssignment-shaped AssignmentFull for the SAME assignment.
   const mergedAssignmentFull: AssignmentFull = {
