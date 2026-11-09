@@ -77,11 +77,17 @@ class AssignmentLegacyRead {
    * @returns {Assignment} Empty receiver instance.
    */
   _createReceiver(assignment) {
-    const receiver = new Assignment(assignment.courseId, assignment.assignmentId, null, {
-      assignmentName: assignment.assignmentName,
-      createdAt: assignment.createdAt,
-      representationMode: 'full',
-    });
+    // Assignment is a constructor class exported from ./index.js, so S2999 is suppressed.
+    /* NOSONAR */ const receiver = new Assignment(
+      assignment.courseId,
+      assignment.assignmentId,
+      null,
+      {
+        assignmentName: assignment.assignmentName,
+        createdAt: assignment.createdAt,
+        representationMode: 'full',
+      }
+    );
     receiver.dueDate = assignment.dueDate;
     receiver.updatedAt = assignment.updatedAt;
     receiver.assignmentDefinition = assignment.assignmentDefinition;

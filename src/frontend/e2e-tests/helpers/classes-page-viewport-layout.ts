@@ -1,4 +1,4 @@
-import { expect, type Page } from '@playwright/test';
+import { expect, type Locator, type Page } from '@playwright/test';
 import { CLASSES_LABEL, EXPECTED_TOTAL_CARDS_COUNT } from './classes-page-end-to-end-helpers';
 
 /**
@@ -23,12 +23,50 @@ export async function navigateAndExpandAllPanels(page: Page): Promise<void> {
   await expect(articles).toHaveCount(EXPECTED_TOTAL_CARDS_COUNT);
 }
 
+type CardLayoutOptions = {
+  viewportWidth: number;
+  viewportHeight: number;
+  minCardWidth: number;
+  cardWidthTolerance: number;
+  viewportWidthMargin: number;
+};
+
+/**
+ * Verifies a single class card: visible, within width bounds, buttons enabled.
+ *
+ * @param {Locator} article - The card article locator to verify.
+ * @param {CardLayoutOptions} options - Layout parameters for the verification.
+ * @returns {Promise<void>} Resolves once the card's assertions pass.
+ */
+async function verifyArticleCard(article: Locator, options: CardLayoutOptions): Promise<void> {
+  const { minCardWidth, cardWidthTolerance, viewportWidth, viewportWidthMargin } = options;
+  await expect(article).toBeVisible();
+
+  const cardTitle = article.locator('.ant-card-head-title');
+  await expect(cardTitle).toBeVisible();
+
+  const cardWidth = await article.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    return rect.width;
+  });
+
+  expect(cardWidth).toBeGreaterThanOrEqual(minCardWidth - cardWidthTolerance);
+  expect(cardWidth).toBeLessThanOrEqual(viewportWidth - viewportWidthMargin);
+
+  const viewButton = article.getByRole('button', { name: /view/i });
+  const assessTaskButton = article.getByRole('button', { name: 'Assess Task' });
+  await expect(viewButton).toBeVisible();
+  await expect(assessTaskButton).toBeVisible();
+  await expect(viewButton).toBeEnabled();
+  await expect(assessTaskButton).toBeEnabled();
+}
+
 /**
  * Sets viewport, navigates to Classes page, expands all panels, and verifies card layout.
  * Used by both mobile and tablet viewport tests.
  *
  * @param {Page} page - The Playwright page under test.
- * @param {object} options - Layout parameters for the verification.
+ * @param {CardLayoutOptions} options - Layout parameters for the verification.
  * @param {number} options.viewportWidth - Viewport width in pixels.
  * @param {number} options.viewportHeight - Viewport height in pixels.
  * @param {number} options.minCardWidth - Minimum expected card width in pixels.
@@ -38,16 +76,9 @@ export async function navigateAndExpandAllPanels(page: Page): Promise<void> {
  */
 export async function setupViewportAndVerifyCards(
   page: Page,
-  options: {
-    viewportWidth: number;
-    viewportHeight: number;
-    minCardWidth: number;
-    cardWidthTolerance: number;
-    viewportWidthMargin: number;
-  }
+  options: CardLayoutOptions
 ): Promise<void> {
-  const { viewportWidth, viewportHeight, minCardWidth, cardWidthTolerance, viewportWidthMargin } =
-    options;
+  const { viewportWidth, viewportHeight } = options;
   await page.setViewportSize({ width: viewportWidth, height: viewportHeight });
   await page.goto('/');
   await navigateAndExpandAllPanels(page);
@@ -56,27 +87,7 @@ export async function setupViewportAndVerifyCards(
   const articles = page.locator('[role="article"]');
   const allArticles = await articles.all();
 
-  for (const article of allArticles) {
-    await expect(article).toBeVisible();
-
-    const cardTitle = article.locator('.ant-card-head-title');
-    await expect(cardTitle).toBeVisible();
-
-    const cardWidth = await article.evaluate((element) => {
-      const rect = element.getBoundingClientRect();
-      return rect.width;
-    });
-
-    expect(cardWidth).toBeGreaterThanOrEqual(minCardWidth - cardWidthTolerance);
-    expect(cardWidth).toBeLessThanOrEqual(viewportWidth - viewportWidthMargin);
-
-    const viewButton = article.getByRole('button', { name: /view/i });
-    const assessTaskButton = article.getByRole('button', { name: 'Assess Task' });
-    await expect(viewButton).toBeVisible();
-    await expect(assessTaskButton).toBeVisible();
-    await expect(viewButton).toBeEnabled();
-    await expect(assessTaskButton).toBeEnabled();
-  }
+  await Promise.all(allArticles.map((article) => verifyArticleCard(article, options)));
 }
 
 /**

@@ -98,7 +98,7 @@ function navItems(page: Page): NavItem[] {
  * @param {Locator} locator - The element to measure.
  * @returns {Promise<number[]>} `[x, y, width, height]` in CSS pixels.
  */
-async function readBox(locator: Locator): Promise<number[]> {
+function readBox(locator: Locator): Promise<number[]> {
   return locator.evaluate((element) => {
     const bounds = element.getBoundingClientRect();
     return [bounds.x, bounds.y, bounds.width, bounds.height];
@@ -121,7 +121,7 @@ async function waitForStableNavGeometry(page: Page): Promise<void> {
   await expect
     .poll(async () => {
       const sample = JSON.stringify(
-        await Promise.all(navItems(page).map(async (item) => readBox(item.locator)))
+        await Promise.all(navItems(page).map((item) => readBox(item.locator)))
       );
       samples = [...samples, sample].slice(-STABLE_GEOMETRY_READS);
       return samples.length === STABLE_GEOMETRY_READS && samples.every((entry) => entry === sample);
@@ -187,13 +187,17 @@ function groupRowsByRenderedTop(positioned: Array<{ label: string; box: Box }>):
  */
 async function expectWrappedNavActionOrder(page: Page): Promise<void> {
   const items = navItems(page);
+  const orderingChecks: Array<Promise<void>> = [];
   for (let index = 0; index < items.length - 1; index += 1) {
-    await expectFollowsInDomOrder(
-      items[index].locator,
-      items[index + 1].locator,
-      `Expected ${items[index + 1].label} to follow ${items[index].label} in DOM order.`
+    orderingChecks.push(
+      expectFollowsInDomOrder(
+        items[index].locator,
+        items[index + 1].locator,
+        `Expected ${items[index + 1].label} to follow ${items[index].label} in DOM order.`
+      )
     );
   }
+  await Promise.all(orderingChecks);
 
   const measured = await Promise.all(
     items.map(async (item) => ({ label: item.label, box: await item.locator.boundingBox() }))
@@ -237,7 +241,7 @@ export async function expectNavActionOrder(
     return;
   }
   const [backBox, tagBox, reRunBox, refreshBox] = await Promise.all(
-    navItems(page).map(async (item) => item.locator.boundingBox())
+    navItems(page).map((item) => item.locator.boundingBox())
   );
   if (backBox === null || tagBox === null || reRunBox === null || refreshBox === null) {
     throw new Error('Expected every navigation item to report a bounding box.');
@@ -266,7 +270,7 @@ function isOverlapping(left: number[], right: number[]): boolean {
  * @param {Page} page - The Playwright page.
  * @returns {Promise<number>} `document.documentElement.scrollWidth` in CSS pixels.
  */
-export async function readPageOverflowWidth(page: Page): Promise<number> {
+export function readPageOverflowWidth(page: Page): Promise<number> {
   return page.evaluate(() => document.documentElement.scrollWidth);
 }
 
@@ -281,7 +285,7 @@ export async function readPageOverflowWidth(page: Page): Promise<number> {
  * @param {Locator} tag - The status tag.
  * @returns {Promise<string[]>} One description per clipping ancestor axis.
  */
-async function findClippingAncestors(tag: Locator): Promise<string[]> {
+function findClippingAncestors(tag: Locator): Promise<string[]> {
   return tag.evaluate((element, tolerance) => {
     const axes = [
       { property: 'overflowX', start: 'left', end: 'right' },
