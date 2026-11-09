@@ -18,27 +18,26 @@ import { APP_GAP_COMPACT } from '@/theme/spacing';
 
 const { Text } = Typography;
 
-export type ReferenceDataManagementModalScaffoldProperties<T extends { key: string }> =
-  Readonly<{
-    open: boolean;
-    modalTitle: string;
-    modalClassName: string;
-    modalWidth: number;
-    createActionLabel: string;
-    tableAriaLabel: string;
-    emptyTableCopy: string;
-    refreshStatusCopy: string;
-    isInitialLoading: boolean;
-    isRefreshing: boolean;
-    loadError: string | null;
-    loadingState: React.ReactElement<{ role?: string; 'aria-live'?: 'polite' | 'off' | 'assertive' }>;
-    rows: T[];
-    columns: TableColumnType<T>[];
-    inlineAlert?: ReactElement | null;
-    inlineDialog?: ReactElement | null;
-    onClose: () => void;
-    onCreate: () => void;
-  }>;
+export type ReferenceDataManagementModalScaffoldProperties<T extends { key: string }> = Readonly<{
+  open: boolean;
+  modalTitle: string;
+  modalClassName: string;
+  modalWidth: number;
+  createActionLabel: string;
+  tableAriaLabel: string;
+  emptyTableCopy: string;
+  refreshStatusCopy: string;
+  isInitialLoading: boolean;
+  isRefreshing: boolean;
+  loadError: string | null;
+  loadingState: React.ReactElement<{ role?: string; 'aria-live'?: 'polite' | 'off' | 'assertive' }>;
+  rows: T[];
+  columns: TableColumnType<T>[];
+  inlineAlert?: ReactElement | null;
+  inlineDialog?: ReactElement | null;
+  onClose: () => void;
+  onCreate: () => void;
+}>;
 
 /**
  * Renders the shared scaffold for reference-data management modals.
@@ -76,7 +75,7 @@ export function ReferenceDataManagementModalScaffold<T extends { key: string }>(
   properties: ReferenceDataManagementModalScaffoldProperties<T>
 ): ReactElement {
   const previousIsRefreshingReference = useRef<boolean | undefined>(undefined);
-  const busyStateTimeoutReference = useRef<number | null>(null);
+  const busyStateTimeoutReference = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Track isRefreshing changes to trigger aria-busy updates
   // Note: setTimeout is used to defer DOM query to allow Ant Design classes to be applied
@@ -139,9 +138,8 @@ export function ReferenceDataManagementModalScaffold<T extends { key: string }>(
       footer={<Button onClick={properties.onClose}>Cancel</Button>}
       width={properties.modalWidth}
     >
-      {blockingBody ?? (
-        !properties.isInitialLoading &&
-        properties.loadError === null && (
+      {blockingBody ??
+        (!properties.isInitialLoading && properties.loadError === null && (
           <Flex vertical align="start" gap={APP_GAP_COMPACT} style={{ width: '100%' }}>
             {properties.isRefreshing && (
               <div aria-live="polite" role="status">
@@ -152,10 +150,7 @@ export function ReferenceDataManagementModalScaffold<T extends { key: string }>(
               type="primary"
               onClick={properties.onCreate}
               icon={
-                <PlusOutlined
-                  data-testid="reference-data-create-action-icon"
-                  aria-hidden="true"
-                />
+                <PlusOutlined data-testid="reference-data-create-action-icon" aria-hidden="true" />
               }
             >
               {properties.createActionLabel}
@@ -171,8 +166,7 @@ export function ReferenceDataManagementModalScaffold<T extends { key: string }>(
               style={{ width: '100%' }}
             />
           </Flex>
-        )
-      )}
+        ))}
       {properties.inlineDialog}
     </Modal>
   );

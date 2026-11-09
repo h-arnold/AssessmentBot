@@ -173,7 +173,7 @@ export const SOURCE_UNAVAILABLE_DESCRIPTION =
 export const SOURCE_CORRUPTION_DESCRIPTION =
   'Source preview unavailable. Displayed scores are unchanged; reassess the assignment to refresh them.';
 
-/** Alert description for a legacy result that needs reassessment. */
+/** Alert description for a stored reassessment-required error. */
 export const REASSESSMENT_DESCRIPTION =
   'Reassess this assignment to create results in the current format.';
 

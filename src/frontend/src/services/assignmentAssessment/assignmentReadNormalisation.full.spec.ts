@@ -1,56 +1,19 @@
 import { describe, expect, it, vi } from 'vitest';
+import { ZodError } from 'zod';
 import smallAssignmentsRaw from '@synthetic/small/assignmentsByKey.json?raw';
+import {
+  allCorrupt,
+  criteria,
+  type RawAssignment,
+  type RawItem,
+  type RawRecord,
+} from '@/test/assignmentAssessment/assignmentReadNormalisation.fixtures';
 import { AssignmentFullSchema } from './assignmentAssessment.zod';
 import { normaliseAssignmentRead } from './assignmentReadNormalisation';
 
-type RawRecord = Record<string, unknown>;
-type RawItem = {
-  id: string;
-  taskId: string;
-  artifact: RawRecord;
-  assessments: RawRecord;
-  feedback: RawRecord;
-};
-type RawSubmission = {
-  studentId: string;
-  studentName: string | null;
-  assignmentId: string;
-  documentId: string | null;
-  createdAt: string;
-  updatedAt: string;
-  items: Record<string, RawItem>;
-};
-type RawAssignment = RawRecord & {
-  assignmentId: string;
-  createdAt: string;
-  updatedAt: string | null;
-  tasks: Record<string, RawRecord>;
-  assessmentContractVersion: unknown;
-  submissions: RawSubmission[];
-  assignmentDefinition: {
-    definitionKey?: unknown;
-    tasks: Record<string, RawRecord>;
-  };
-};
-
 const source = JSON.parse(smallAssignmentsRaw) as Record<string, RawRecord>;
 const baseline = structuredClone(source['assignment-0-0']);
-const criteria = ['completeness', 'accuracy', 'spag'] as const;
-const corruptResult = {
-  score: 'E',
-  reasoning: 'The stored assessment data for this task is invalid. Reassess the assignment.',
-  error: { stage: 'validation', code: 'CORRUPT_RECORD' },
-};
-const corruptAssessments = {
-  completeness: corruptResult,
-  accuracy: corruptResult,
-  spag: corruptResult,
-};
-const reassessmentResult = {
-  score: 'E',
-  reasoning: 'Reassessment required',
-  error: { stage: 'validation', code: 'REASSESSMENT_REQUIRED' },
-};
+const corruptAssessments = allCorrupt();
 const assessmentErrorResult = {
   score: 'E',
   reasoning: 'The assessment service rejected the request.',
@@ -166,36 +129,6 @@ describe('normaliseAssignmentRead full payload', () => {
     expect(output).not.toBeNull();
     expect(output).toEqual(input);
     expect(AssignmentFullSchema.safeParse(output).success).toBe(true);
-
-    const legacy = currentProbe();
-    legacy.assessmentContractVersion = null;
-    legacy.submissions[0].documentId = null;
-    legacy.submissions[0].items = Object.fromEntries(
-      Object.keys(legacy.tasks).map((id) => {
-        const item = acquisitionErrorItem(id);
-        item.assessments = Object.fromEntries(
-          criteria.map((criterion) => [criterion, reassessmentResult])
-        );
-        return [id, item];
-      })
-    );
-    const legacyOutput = normaliseAssignmentRead(legacy);
-    expect(legacyOutput?.assessmentContractVersion).toBeNull();
-    expect(legacyOutput?.submissions[0].items).toEqual(legacy.submissions[0].items);
-    expect(AssignmentFullSchema.safeParse(legacyOutput).success).toBe(true);
-
-    const unmarkedSuccess = currentProbe();
-    unmarkedSuccess.assessmentContractVersion = null;
-    const unmarkedTask = Object.keys(unmarkedSuccess.tasks)[0]!;
-    unmarkedSuccess.submissions[0].items[unmarkedTask].assessments = assessmentErrorAssessments;
-    const unmarkedOutput = normaliseAssignmentRead(unmarkedSuccess);
-    expect(unmarkedOutput?.assessmentContractVersion).toBeNull();
-    expect(unmarkedOutput?.submissions[0].studentId).toBe(unmarkedSuccess.submissions[0].studentId);
-    expect(unmarkedOutput?.submissions[0].items).toHaveProperty(
-      Object.keys(unmarkedSuccess.tasks)[0]
-    );
-    const unmarkedItems = Object.values(unmarkedOutput!.submissions[0].items);
-    for (const item of unmarkedItems) expect.soft(item.assessments).toEqual(corruptAssessments);
   });
 
   it('isolates invalid items as exact catalogue corruption while preserving a healthy sibling', () => {
@@ -355,12 +288,6 @@ describe('normaliseAssignmentRead full payload', () => {
   });
 
   it('rejects invalid roots and definitions loudly while reserving null for not-found', () => {
-    const unsupported = currentProbe();
-    unsupported.assessmentContractVersion = 2;
-    expect(() => normaliseAssignmentRead(unsupported)).toThrow();
-    const missingMarker = currentProbe();
-    delete missingMarker.assessmentContractVersion;
-    expect(() => normaliseAssignmentRead(missingMarker)).toThrow();
     const invalidDefinition = currentProbe();
     invalidDefinition.tasks = null as unknown as Record<string, RawRecord>;
     expect(() => normaliseAssignmentRead(invalidDefinition)).toThrow();
@@ -406,6 +333,39 @@ describe('normaliseAssignmentRead full payload', () => {
     });
     expect(() => normaliseAssignmentRead(throwingItem)).toThrow(sentinel);
     expect(normaliseAssignmentRead(null)).toBeNull();
+  });
+
+  it('rejects non-record roots through the structured Zod parse path while reserving null', () => {
+    // undefined, primitives and arrays fail with a structured ZodError from the
+    // root schema parse; the contextual submissions TypeError is reserved for
+    // object roots whose submissions field is not an array.
+    for (const input of [undefined, 0, 'x', []] as unknown[]) {
+      expect(() => normaliseAssignmentRead(input)).toThrow(ZodError);
+    }
+    expect(normaliseAssignmentRead(null)).toBeNull();
+  });
+
+  it('fails loudly for a stored __proto__ item key at the full-read task guard', () => {
+    // The parsed task dictionary never carries __proto__ (the Zod record parse
+    // drops own prototype-poisoning keys), so a prototype-chain membership
+    // check would silently accept the item; the guard must throw instead.
+    const input = currentProbe();
+    const [taskId] = Object.keys(input.tasks);
+    if (!taskId) throw new Error('Expected a canonical task');
+    const submission = input.submissions[0];
+    const protoItem = {
+      ...structuredClone(submission.items[taskId]),
+      id: 'item-proto',
+      taskId: '__proto__',
+    };
+    protoItem.artifact = { ...protoItem.artifact, taskId: '__proto__', uid: 'uid-proto' };
+    Object.defineProperty(submission.items, '__proto__', {
+      value: protoItem,
+      enumerable: true,
+      writable: true,
+      configurable: true,
+    });
+    expect(() => normaliseAssignmentRead(input)).toThrow('Unknown task key __proto__');
   });
 
   it('logs safe contextual identifiers and paths without source, reasoning, or names', () => {

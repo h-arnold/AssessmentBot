@@ -18,7 +18,7 @@ g.RuntimeConstants = require('../src/backend/00_RuntimeConstants.js').RuntimeCon
 g.AssignmentSerialisation = require('../src/backend/AssignmentProcessor/Assignment/00_AssignmentSerialisation.js');
 g.AssignmentFactory = require('../src/backend/AssignmentProcessor/Assignment/01_AssignmentFactory.js');
 g.AssignmentCurrentRestoration = require('../src/backend/AssignmentProcessor/Assignment/02_AssignmentCurrentRestoration.js');
-g.AssignmentReadProjection = require('../src/backend/AssignmentProcessor/Assignment/02_AssignmentReadProjection.js');
+g.AssignmentLegacyRead = require('../src/backend/AssignmentProcessor/Assignment/02_AssignmentLegacyRead.js');
 g.AssignmentRehydration = require('../src/backend/AssignmentProcessor/Assignment/02_AssignmentRehydration.js');
 g.AssignmentTimestamps = require('../src/backend/AssignmentProcessor/Assignment/03_AssignmentTimestamps.js');
 g.AssignmentSubmissions = require('../src/backend/AssignmentProcessor/Assignment/04_AssignmentSubmissions.js');
@@ -148,6 +148,8 @@ const { TaskDefinition } = require('../src/backend/Models/TaskDefinition.js');
 g.TaskDefinition = TaskDefinition;
 const { AssignmentDefinition } = require('../src/backend/Models/AssignmentDefinition.js');
 g.AssignmentDefinition = AssignmentDefinition;
+const { Teacher } = require('../src/backend/Models/Teacher.js');
+g.Teacher = Teacher;
 g.SpreadsheetFormulaEquivalence = require('../src/backend/Assessors/0_SpreadsheetFormulaEquivalence.js');
 
 // Load and expose ConfigurationManager validators as globals so modules that

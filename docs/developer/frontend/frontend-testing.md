@@ -97,8 +97,8 @@ When adding coverage to a duplicated interaction matrix, extend the unit suite. 
 
 The preview's error states split the same way.
 
-- **Vitest owns the state matrix.** `TaskPreviewCard.errors.spec.tsx` pins the card's source-region states and copy: a known `E` keeps its reasoning, an unavailable source replaces the renderer with the non-dismissible inline `Alert`, a pending full fetch shows only the source-region skeleton, an assessment-only `E` keeps rendering its surviving content, a genuine no-submission stays the ready `N` placeholder with no `Alert`, and a legacy result gets the reassessment copy. `TaskMetricPreviewContent.spec.tsx` pins the pending/failed/ready body decision, including the known-error fallback that never leaves a perpetual skeleton. `assembleTaskPreviewData.errors.spec.ts`, `assembleMergedPreviewData.errors.spec.ts`, `heatmapsPreviewQueries.spec.ts` and `buildCellPreviewLookup.errors.spec.ts` pin derivation and precedence. `useHeatmapsPageData.knownErrorPreview.spec.ts` holds the hook-level known-error material split out of `useHeatmapsPageData.preview.spec.ts`.
-- **Playwright owns the browser journeys.** `assessment-error-previews.spec.ts` covers the embedded surface and `assessment-error-merged-previews.spec.ts` the standalone merged surface: a healthy sibling beside an assessment `E` with valid source, an `E` without usable source, a known class-partial `E` while the full read is pending and after it terminally fails, the preview-only corruption notice with unchanged class cells, a legacy reassessment preview beside an unaffected current sibling, refresh from `E` to a current result, the two-instance shared-definition leak check, untrapped Tab, and narrow-viewport wrapping of the unavailable-source copy. Their scenario, navigation and locator helpers are `src/frontend/e2e-tests/helpers/assessment-error-preview-{fixtures,journeys}.ts`.
+- **Vitest owns the state matrix.** `TaskPreviewCard.errors.spec.tsx` pins the card's source-region states and copy: a known `E` keeps its reasoning, an unavailable source replaces the renderer with the non-dismissible inline `Alert`, a pending full fetch shows only the source-region skeleton, an assessment-only `E` keeps rendering its surviving content, a genuine no-submission stays the ready `N` placeholder with no `Alert`, and a stored `REASSESSMENT_REQUIRED` error gets the reassessment copy. `TaskMetricPreviewContent.spec.tsx` pins the pending/failed/ready body decision, including the known-error fallback that never leaves a perpetual skeleton. `assembleTaskPreviewData.errors.spec.ts`, `assembleMergedPreviewData.errors.spec.ts`, `heatmapsPreviewQueries.spec.ts` and `buildCellPreviewLookup.errors.spec.ts` pin derivation and precedence. `useHeatmapsPageData.knownErrorPreview.spec.ts` holds the hook-level known-error material split out of `useHeatmapsPageData.preview.spec.ts`.
+- **Playwright owns the browser journeys.** `assessment-error-previews.spec.ts` covers the embedded surface and `assessment-error-merged-previews.spec.ts` the standalone merged surface: a healthy sibling beside an assessment `E` with valid source, an `E` without usable source, a known class-partial `E` while the full read is pending and after it terminally fails, the preview-only corruption notice with unchanged class cells, refresh from `E` to a current result, the two-instance shared-definition leak check, untrapped Tab, and narrow-viewport wrapping of the unavailable-source copy. The legacy read journeys live in `legacy-assignment-results.spec.ts`: eleven journeys, nine serving a legacy full read (real legacy scores and source previews beside a corrupt-task `E`, a readable legacy TEXT preview, the status tag and rerun flows) and two marker-1 probes (a corrupt record and a stored error). Its helpers are `src/frontend/e2e-tests/helpers/legacy-assignment-results-journeys.ts` for scenario plumbing (response queues, overrides, navigation helpers) and `src/frontend/e2e-tests/helpers/legacy-reassessment-tag-layout.ts` for locators, geometry, ordering and readability. The assessment-error scenario, navigation and locator helpers are `src/frontend/e2e-tests/helpers/assessment-error-preview-{fixtures,journeys}.ts`; legacy variants are marker-only clones of canonical JSON that retain real scores and content.
 
 Do not duplicate the whole state matrix in Playwright, and do not weaken the unit assertions to make a browser journey pass.
 
@@ -387,7 +387,7 @@ Shared frontend test helpers belong under `src/frontend/src/test/**`. Feature-sc
 
 - Data-analysis test fixtures: `src/frontend/src/test/dataAnalysis/fixtures.ts` — moved from `src/frontend/src/services/dataAnalysis/test/fixtures.ts` to the canonical shared-helpers location.
 - Data-analysis assertion helpers: `src/frontend/src/test/dataAnalysis/averagingAnalyserAssertions.ts` — shared module exporting `expectMetricResult` and `checkMetricInvariant` (extracted from `averagingAnalyser.spec.ts`).
-- Synthetic analysis API round-trip adapter: `src/frontend/src/test/syntheticApiRoundTripAdapter.ts` — exports `createSyntheticApiRoundTripRunner(invokeRequest)`, a thin test-only adapter that composes the script-owned synthetic `apiHandler` bridge with `googleScriptRunHarness`. It preserves the harness's single success JSON serialisation, raw failures, and per-request callback isolation, and it imports no `scripts/` code. See [Synthetic Test Data](../testing/synthetic-test-data.md).
+- Synthetic analysis API round-trip adapter: `src/frontend/src/test/syntheticApiRoundTripAdapter.ts` — exports `createSyntheticApiRoundTripRunner(invokeRequest)`, a thin test-only adapter that composes the script-owned synthetic `apiHandler` bridge with `googleScriptRunHarness`. The bridge hands the real `apiHandler` JSON string to the harness, which passes strings through unchanged, so the envelope is serialised once by the backend and parsed once by `apiService`. The adapter also preserves raw failures and per-request callback isolation, and it imports no `scripts/` code. See [Synthetic Test Data](../testing/synthetic-test-data.md).
 - Task-preview fixture selection: `src/frontend/src/test/taskHeatmap/previewFixtures.ts` — selects the canonical `small` `class-2` roster and its populated Slides `assignment-2-1` and Sheets `assignment-2-2` records through the frontend raw-JSON import convention, validates every selected full record through `ClassFullSchema` / `AssignmentFullSchema`, and derives and deep-freezes the preview identifiers, labels, metric values and content so the suites assert real record data rather than restated literals. It also exposes clone/build helpers so callers never mutate the shared records.
 - Task-preview source-action and focus-session helper: `src/frontend/src/test/taskHeatmap/previewSourceActionTestHelpers.ts` — owns the single shared contract for the issue #19 source action and the metric cell's preview focus session: the action's accessible name, the canonical editor URL derived through the production lookup, a no-source boundary cell, and a harness that renders the real `TaskMetricPreviewCell` between focusable neighbours with focus-transfer observation and overlay open/dismiss waits. The no-source boundary cell keeps the canonical per-criterion reasoning and error causes, so only the source link differs. Its four callers are `TaskPreviewCard.sourceLink.spec.tsx`, `TaskMetricPreviewContent.spec.tsx`, `TaskMetricPreviewCell.focus.spec.tsx` and `TaskMetricPreviewCell.focusSession.spec.tsx`.
 - Heatmaps hook ready-dataset mock factory: `src/frontend/src/test/taskHeatmap/hookMockFactories.ts` — exports `createReadyHeatmapsDatasetResult(datasetKey)` to build the ready query and dataset-state pair returned by the mocked `usePageDataset`, selecting `classPartials` or `assignmentDefinitionPartials` data for the requested key; shared by `useHeatmapsPageData.spec.ts`, `useHeatmapsPageData.preview.spec.ts`, `useHeatmapsPageData.knownErrorPreview.spec.ts` and `useHeatmapsPageData.postAnalysis.spec.ts`.
@@ -546,16 +546,34 @@ Do not introduce new ad-hoc `google.script.run` mocks that mutate one shared run
 #### GAS serialisation fidelity rule
 
 The shared harness factory (`src/frontend/src/test/google-script-run-harness-factory.js`)
-automatically wraps `successHandler` with `JSON.stringify()`, faithfully simulating real GAS
-behaviour where `google.script.run` auto-stringifies return values.
+models the real backend boundary: the backend `apiHandler()` returns the envelope as a JSON
+string, and `google.script.run` passes a returned string through untouched.
 
-- **Do not add `JSON.stringify()` in individual test files.** The factory handles this.
-  Adding manual `JSON.stringify()` in a spec file is redundant and risks double-encoding.
+What the factory does with a success value:
+
+- **A string passes through unchanged.** This is what the real backend returns, so a mock should
+  deliver a pre-serialised envelope when it is modelling the backend.
+- **An object is serialised once after dropping `null` object properties.** Real
+  `google.script.run` omits `null` properties from returned objects (which is why the backend
+  stringifies). Dropping them keeps object-style mocks faithful; `null` array elements are kept.
+  `JSON.stringify` then drops `undefined` properties.
+- **Live `Date` values are rejected** on both the request and success graphs, because real
+  `google.script.run` prohibits them and `JSON.stringify` would otherwise hide the violation.
+
+Rules:
+
+- **Do not add `JSON.stringify()` around an object you pass to `successHandler`.** The factory
+  serialises objects itself; wrapping again double-encodes. Pass a string only when you are
+  deliberately modelling the backend's own serialised output.
 - **Do not add `JSON.parse()` in test callbacks.** The production `apiService.ts` (`dispatchAttempt`)
-  handles deserialisation before Zod validation. Tests should pass raw objects to the factory's
-  `successHandler` — the factory stringifies them, and `apiService.ts` parses them back.
+  handles deserialisation before Zod validation.
 - **`failureHandler` must not be stringified.** Real GAS passes raw error strings to
   `failureHandler`. The factory leaves `failureHandler` unwrapped.
+- **Object-style mocks lose `null` properties.** A mock that must prove a required nullable field
+  (for example `metadata: null`) survives transport has to deliver a serialised string, as
+  `src/frontend/src/test/abClass/metadataRefreshTransport.ts` does. The E2E runtime mock does this
+  for every envelope it sends (see
+  [Playwright E2E § Runtime Mock Infrastructure](frontend-playwright-e2e.md#runtime-mock-infrastructure)).
 - **All `google.script.run` mocks must use the factory:**
   - Vitest: `createGoogleScriptRunApiHandlerMock(invokeRequest)`
   - E2E: inject `googleScriptRunApiHandlerFactorySource` via `page.addInitScript(...)`
@@ -564,8 +582,8 @@ behaviour where `google.script.run` auto-stringifies return values.
 
 #### Void/delete response guidance: `data: null` required
 
-The factory wraps `successHandler` with `JSON.stringify(value)`. `JSON.stringify` silently strips
-`undefined` values from objects, so `{ data: undefined }` becomes `{}` after serialisation.
+The factory serialises object success values with `JSON.stringify`. `JSON.stringify` silently
+strips `undefined` values from objects, so `{ data: undefined }` becomes `{}` after serialisation.
 
 The backend `_success()` contract converts `undefined → null` via `data: data ?? null`. Therefore,
 mock responses for void backend methods (for example deletes, start-assessment-run) **must always

@@ -3,12 +3,20 @@ import { describe, expect, it, vi } from 'vitest';
 const ABClassResponseMapper = require('#backend/y_controllers/ABClassController/ABClassResponseMapper.js');
 
 function assignment(definition) {
+  const payload = {
+    courseId: 'course-1',
+    assignmentId: 'assignment-1',
+    assessmentContractVersion: 1,
+    ...(definition === undefined ? {} : { assignmentDefinition: definition }),
+  };
   return {
-    toPartialJSON: vi.fn(() => ({
-      courseId: 'course-1',
-      assignmentId: 'assignment-1',
-      ...(definition === undefined ? {} : { assignmentDefinition: definition }),
-    })),
+    // Current-format marker: a non-marker-1 record is read as legacy and
+    // reassessment-projected, which this definition-key probe does not model.
+    assessmentContractVersion: 1,
+    toPartialJSON: vi.fn(() => payload),
+    // The class read emit routes through toReadJSON('partial'); a marker-1
+    // record delegates to the same payload as its toPartialJSON.
+    toReadJSON: vi.fn(() => payload),
   };
 }
 

@@ -145,6 +145,46 @@ This is **fixture realism only**, not a production nullable-contract change:
 
 ## Generated content: artefacts, contract marker and outcomes
 
+### Legacy scenario derivation
+
+`scripts/synthetic-test-data/deriveLegacyAssignmentScenario.js` derives linked legacy copies of one
+selected assignment from canonical views. It is pure and test-only: it reads no files, imports
+neither the loader nor any generator, and changes no corpus, validator or committed fixture. The
+corpus stays version-1-only, so this helper is the only way Node tests obtain a legacy scenario.
+
+```js
+deriveLegacyAssignmentScenario({ profileName, assignmentId, variant, sources });
+```
+
+- `profileName` is used only in error messages.
+- `assignmentId` selects the assignment; the helper finds its owning class from
+  `sources.classesById`.
+- `variant` is explicit and has no default. `'stored'` deletes `assessmentContractVersion` from both
+  derived forms; `'read'` sets it to `'legacy'` on both.
+- `sources` holds caller-supplied `classesById` and `assignmentsByKey` views. Callers load them, for
+  example with `loadSyntheticAnalysisProfile`, which returns deep-frozen views.
+
+It returns `{ classId, classView, assignmentsByKey, full, classEmbedded }`. `full` and
+`classEmbedded` are the selected assignment's standalone and class-embedded forms, taken from the
+returned `assignmentsByKey` and `classView` copies. Outputs are deep clones, deterministic across
+calls and independently owned; inputs are never mutated. Scores, identities, artefacts, feedback and
+timestamps pass through unchanged.
+
+An unsupported variant, or an assignment absent from either view, throws an error naming the
+selection. Invalid item maps, `null` roots and other malformed data stay in local probes.
+
+`tests/synthetic-analysis/syntheticLegacyScenarios.test.ts` uses the `small` `class-0` /
+`assignment-0-1` healthy primary and the `medium` `class-0` / `assignment-0-2` mixed healthy/E
+selection. Frontend Vitest and Playwright do not import this module; they clone committed canonical
+JSON through their existing typed fixture helpers and change only the linked markers.
+
+`tests/synthetic-analysis/syntheticLegacyAssessmentRoundTrip.test.ts` round-trips both dispatcher
+reads through the real `apiHandler` and the real frontend services behind the `'legacy'` marker,
+and guards that neither read writes storage nor persists read-time state.
+
+The helper adds no profile, view or model-input adapter. The bullet notes below describe the
+generated version-1 corpus, which this derivation leaves untouched.
+
 - **Artefact types.** The existing definition and submission builders cycle `TEXT`, `IMAGE` and
   `SPREADSHEET` bodies using their existing deterministic index arithmetic. IMAGE bodies are
   genuine PNG bytes (signature, IHDR, deflated IDAT, IEND) encoded as
@@ -401,7 +441,7 @@ The bridge composes existing test seams rather than reimplementing envelope beha
 
 Round-trip semantics:
 
-- A backend success envelope travels through the success path and is JSON-stringified exactly once by the frontend `googleScriptRunHarness`.
+- A backend success envelope is serialised once by the backend `apiHandler`; the frontend `googleScriptRunHarness` passes that string through unchanged, and `callApi` parses it once. The bridge passes the `apiHandler` return value to the success handler as-is; it never stringifies it again.
 - A backend failure envelope reaches `callApi` as an `ApiTransportError`; a raw transport failure is delivered raw through the harness failure handler without JSON serialisation.
 - Void responses resolve from envelope `data: null`, matching `apiHandler` behaviour.
 - Malformed JSON or a malformed-but-enveloped payload surfaces the existing parser or Zod error; the bridge never converts a failure into a synthetic success.

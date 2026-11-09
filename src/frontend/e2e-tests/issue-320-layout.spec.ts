@@ -7,7 +7,7 @@ import {
   selectVisibleOption,
 } from './shared/endToEndRuntimeMocks';
 import { createHeatmapScenario } from './helpers/task-heatmap-end-to-end-helpers';
-import editableDefinitions from '@synthetic/small/editableDefinitions.json';
+import { readSyntheticFixture } from './helpers/syntheticFixtureData';
 import {
   baseCohorts,
   baseYearGroups,
@@ -16,6 +16,11 @@ import {
   matchedGoogleClassrooms,
   openClassesTabWithScenario,
 } from './classes-crud.shared';
+
+const editableDefinitions = readSyntheticFixture('small', 'editableDefinitions.json') as Record<
+  string,
+  unknown
+>;
 
 const minimumButtonClearance = 8;
 const roundingTolerance = 0.25;

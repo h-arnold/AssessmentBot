@@ -190,7 +190,7 @@ describe('CURRENT shared task summaries and timestamp selection', () => {
     expect(() => restoreAssignment(partial, 'partial')).not.toThrow();
   });
 
-  it('rejects shared task-universe corruption with empty submissions', () => {
+  it('rejects shared task-list corruption with empty submissions', () => {
     const record = currentAssignmentJson();
     record.submissions = [];
     record.assignmentDefinition.tasks[HEAD_TASK_ID].taskId = SIBLING_TASK_ID;

@@ -23,6 +23,7 @@ import {
   validClassFull,
   validStudentSummary,
 } from '@/test/abClass/classDetailSchemaFixtures';
+import { UNSUPPORTED_MARKERS } from '@/test/assignmentAssessment/assignmentAssessment.zod.fixtures';
 
 describe('ClassFullSchema', () => {
   it('is exported from the zod module', () => {
@@ -135,6 +136,26 @@ describe('AssignmentPartialSchema', () => {
   it('round-trips validAssignmentPartial with the renamed updatedAt field', () => {
     const result = AssignmentPartialSchema.parse(validAssignmentPartial);
     expect(result).toEqual(validAssignmentPartial);
+  });
+
+  it.each([1, 'legacy'] as const)('accepts the class read version marker %s', (marker) => {
+    const candidate = { ...validAssignmentPartial, assessmentContractVersion: marker };
+    expect(AssignmentPartialSchema.parse(candidate).assessmentContractVersion).toBe(marker);
+  });
+
+  it.each([null, ...UNSUPPORTED_MARKERS])('rejects the class read version marker %s', (marker) => {
+    expect(
+      AssignmentPartialSchema.safeParse({
+        ...validAssignmentPartial,
+        assessmentContractVersion: marker,
+      }).success
+    ).toBe(false);
+  });
+
+  it('rejects an absent class read version marker', () => {
+    const markerless = { ...validAssignmentPartial };
+    delete (markerless as Record<string, unknown>).assessmentContractVersion;
+    expect(AssignmentPartialSchema.safeParse(markerless).success).toBe(false);
   });
 });
 

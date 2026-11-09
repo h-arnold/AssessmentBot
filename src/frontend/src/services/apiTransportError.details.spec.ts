@@ -81,7 +81,7 @@ describe('ApiTransportError structured details', () => {
     const runner = createGoogleScriptRunApiHandlerMock((request, callbacks) => {
       expect((request as { method?: unknown }).method).toBe('getAssignmentDefinition');
       queueMicrotask(() => {
-        callbacks.successHandler?.(makeStaleEnvelope());
+        callbacks.successHandler?.(JSON.stringify(makeStaleEnvelope()));
       });
     });
     setGoogle({ script: { run: runner } });

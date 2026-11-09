@@ -102,21 +102,25 @@ export async function mockClassesCrudRuntime(page: Page, scenario: ClassesCrudRu
 
       function sendSuccess(handler, data, requestId) {
         if (handler !== undefined) {
-          handler({ ok: true, requestId, data });
+          // The backend apiHandler returns the envelope as a JSON string and real GAS
+          // passes it through, so fixtures keep their explicit null properties.
+          handler(JSON.stringify({ ok: true, requestId, data }));
         }
       }
 
       function sendFailureEnvelope(handler, requestId, code, message) {
         if (handler !== undefined) {
-          handler({
-            ok: false,
-            requestId,
-            error: {
-              code,
-              message,
-               isRetriable: false,
-            },
-          });
+          handler(
+            JSON.stringify({
+              ok: false,
+              requestId,
+              error: {
+                code,
+                message,
+                isRetriable: false,
+              },
+            })
+          );
         }
       }
 

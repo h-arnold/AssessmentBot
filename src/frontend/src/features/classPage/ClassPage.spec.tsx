@@ -197,6 +197,36 @@ describe('ClassPage', () => {
     expect(screen.getByText('Back to Classes')).toBeInTheDocument();
   });
 
+  it('keeps the overview navigation card unwrapped', () => {
+    // The overview nav card owns no wrapActions opt-in: the outer row applies
+    // no shared gap and the action group does not opt into wrapping. Located
+    // structurally from the Back action so the assertions survive Ant Design
+    // class-name changes.
+    mockUseClassPageData.mockReturnValue(createReadyClassPageData());
+
+    render(
+      createElement(ClassPage, {
+        classId: DEFAULT_CLASS_ID,
+      })
+    );
+
+    const backButton = screen.getByRole('button', { name: 'Back to Classes' });
+    const card = backButton.closest('.ant-card');
+    const row = backButton.parentElement;
+    const actions = row?.lastElementChild;
+    if (
+      !(card instanceof HTMLElement) ||
+      !(row instanceof HTMLElement) ||
+      !(actions instanceof HTMLElement)
+    ) {
+      throw new TypeError('Class page navigation card layout is missing');
+    }
+
+    expect(row.style.gap).toBe('');
+    expect(actions.style.flexWrap).toBe('');
+    expect(screen.getByRole('button', { name: /Start New Assessment/ })).toBeInTheDocument();
+  });
+
   it('hides the Back to Classes nav card when the heatmap view is active', async () => {
     const user = userEvent.setup();
 

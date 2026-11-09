@@ -294,7 +294,7 @@ describe('Api/apiHandler dispatcher — integration, VM context and delegation',
   });
 
   describe('GAS-global apiHandler', () => {
-    it('GAS-global apiHandler delegates to ApiDispatcher.getInstance().handle(request)', () => {
+    it('GAS-global apiHandler delegates to ApiDispatcher.getInstance().handle(request) and returns its JSON string', () => {
       const { apiHandler, ApiDispatcher } = loadApiHandlerModule();
 
       const request = {
@@ -311,10 +311,60 @@ describe('Api/apiHandler dispatcher — integration, VM context and delegation',
 
       expect(getInstance).toHaveBeenCalledTimes(1);
       expect(handle).toHaveBeenCalledWith(request);
-      expect(response).toEqual({
+      // `google.script.run` drops `null` properties from returned objects, so the global
+      // entry point hands over a JSON string instead.
+      expect(typeof response).toBe('string');
+      expect(JSON.parse(response)).toEqual({
         ok: true,
         requestId: 'req-wrapper-generated',
         data: { delegated: true },
+      });
+    });
+
+    it('GAS-global apiHandler keeps a null data payload in the returned JSON string', () => {
+      const { apiHandler, ApiDispatcher } = loadApiHandlerModule();
+
+      const handle = vi.fn(() => ({
+        ok: true,
+        requestId: 'req-wrapper-null',
+        data: null,
+      }));
+      vi.spyOn(ApiDispatcher, 'getInstance').mockReturnValue({ handle });
+
+      const response = apiHandler({ method: 'hasScriptAuthorisation' });
+
+      expect(typeof response).toBe('string');
+      expect(JSON.parse(response)).toEqual({
+        ok: true,
+        requestId: 'req-wrapper-null',
+        data: null,
+      });
+      expect(JSON.parse(response)).toHaveProperty('data', null);
+    });
+
+    it('GAS-global apiHandler keeps a null error field in the returned JSON string', () => {
+      const { apiHandler, ApiDispatcher } = loadApiHandlerModule();
+
+      const handle = vi.fn(() => ({
+        ok: false,
+        requestId: 'req-wrapper-null-error',
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: 'Internal API error.',
+          isRetriable: false,
+          details: null,
+        },
+      }));
+      vi.spyOn(ApiDispatcher, 'getInstance').mockReturnValue({ handle });
+
+      const response = apiHandler({ method: 'hasScriptAuthorisation' });
+
+      expect(typeof response).toBe('string');
+      expect(JSON.parse(response).error).toEqual({
+        code: 'INTERNAL_ERROR',
+        message: 'Internal API error.',
+        isRetriable: false,
+        details: null,
       });
     });
   });

@@ -419,11 +419,9 @@ describe('Api/getAssignment transport contract', () => {
       getAssignment_({ courseId: 'course-001', assignmentId: 'assign-001' });
     }).toThrow('Corrupt assignment data');
 
-    // ABLogger.error called with the failure message
-    expect(abLoggerSpies.error).toHaveBeenCalledWith(
-      expect.stringContaining('getAssignment failed'),
-      expect.objectContaining({ courseId: 'course-001', assignmentId: 'assign-001' })
-    );
+    // Failure logging is owned by the apiHandler boundary; the handler helper
+    // must not duplicate it.
+    expect(abLoggerSpies.error).not.toHaveBeenCalled();
   });
 
   // ── Test 12: Propagates TypeError thrown by readRehydrateAssignment verbatim ─────────
@@ -444,10 +442,8 @@ describe('Api/getAssignment transport contract', () => {
       getAssignment_({ courseId: 'course-001', assignmentId: 'assign-001' });
     }).toThrow(TypeError);
 
-    // ABLogger.error called with the failure message
-    expect(abLoggerSpies.error).toHaveBeenCalledWith(
-      expect.stringContaining('getAssignment failed'),
-      expect.objectContaining({ courseId: 'course-001', assignmentId: 'assign-001' })
-    );
+    // Failure logging is owned by the apiHandler boundary; the handler helper
+    // must not duplicate it.
+    expect(abLoggerSpies.error).not.toHaveBeenCalled();
   });
 });

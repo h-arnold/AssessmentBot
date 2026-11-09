@@ -35,7 +35,7 @@ const AssignmentFactory = {
     }
 
     throw new Error(
-      `Unknown documentType: ${assignmentDefinition.documentType}. Valid types are 'SLIDES' or 'SHEETS'. See docs/developer/DATA_SHAPES.md for details.`
+      `Unknown documentType: ${assignmentDefinition.documentType}. Valid types are 'SLIDES' or 'SHEETS'. See docs/developer/data-shapes/INDEX.md for details.`
     );
   },
 

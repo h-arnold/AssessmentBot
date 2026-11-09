@@ -1,4 +1,4 @@
-/* global ABLogger, Assignment, AssignmentNotFoundError, TypeError, AssignmentDefinitionController, Validate, AssignmentSerialisation, ABClassAssignmentValidation */
+/* global ABLogger, Assignment, AssignmentNotFoundError, TypeError, AssignmentDefinitionController, Validate, ABClassAssignmentValidation */
 
 /**
  * ABClassAssignmentOps
@@ -109,14 +109,13 @@ class ABClassAssignmentOps {
       // and before the full and partial payloads are serialised.
       assignment.assessmentContractVersion = 1;
 
-      // 1. Prepare the full assignment and embedded partial projections, detached
-      // from the live model so later writes cannot observe model mutations.
+      // 1. Prepare the full assignment and embedded partial projections.
       failedPhase = 'full-assignment-projection';
       assignment._hydrationLevel = 'full';
-      const fullPayload = AssignmentSerialisation.copyJsonSnapshot(assignment.toJSON());
+      const fullPayload = assignment.toJSON();
 
       failedPhase = 'embedded-partial-projection';
-      const partialPayload = AssignmentSerialisation.copyJsonSnapshot(assignment.toPartialJSON());
+      const partialPayload = assignment.toPartialJSON();
 
       // Restore the actual partial representation that will live in the class.
       // This is a representation conversion, not a validation-only round-trip.

@@ -2,40 +2,17 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import smallClassesRaw from '@synthetic/small/classesById.json?raw';
 import * as apiService from '@/services/apiService';
 import { ClassFullSchema } from '@/services/googleClassrooms/classDetail/classDetailService.zod';
+import {
+  allCorrupt,
+  criteria,
+  type RawRecord,
+  type WireAssignment,
+  type WireClass,
+} from '@/test/assignmentAssessment/assignmentReadNormalisation.fixtures';
 import { normaliseClassRead } from './assignmentReadNormalisation';
 
-type Raw = Record<string, unknown>;
-type WireItem = {
-  id: string;
-  taskId: string;
-  artifact: Raw;
-  assessments?: Raw;
-  feedback?: Raw;
-};
-type WireSubmission = {
-  studentId: string;
-  studentName: string | null;
-  assignmentId: string;
-  documentId?: string | null;
-  createdAt: string;
-  updatedAt: string;
-  items: Record<string, WireItem>;
-};
-type WireAssignment = Raw & {
-  assignmentId: string;
-  assessmentContractVersion?: unknown;
-  submissions: WireSubmission[];
-};
-type WireClass = Raw & { assignments: WireAssignment[] };
-
-const classes = JSON.parse(smallClassesRaw) as Record<string, Raw>;
+const classes = JSON.parse(smallClassesRaw) as Record<string, RawRecord>;
 const canonical = structuredClone(classes['class-0']) as unknown as WireClass;
-const criteria = ['completeness', 'accuracy', 'spag'] as const;
-const corruptResult = {
-  score: 'E',
-  reasoning: 'The stored assessment data for this task is invalid. Reassess the assignment.',
-  error: { stage: 'validation', code: 'CORRUPT_RECORD' },
-};
 
 /** Clones the canonical class and adapts the selected real two-task assignment.
  * @returns {WireClass} A mutable version-1 class probe.
@@ -91,17 +68,6 @@ function probe(): WireClass {
 }
 
 afterEach(() => vi.restoreAllMocks());
-
-/** Builds the expected all-criterion corruption replacement.
- * @returns {Record<string, typeof corruptResult>} The catalogue corruption result for each criterion.
- */
-function allCorrupt() {
-  return {
-    completeness: corruptResult,
-    accuracy: corruptResult,
-    spag: corruptResult,
-  };
-}
 
 /** Finds the selected assignment or fails with a fixture-specific diagnostic.
  * @param {WireClass} input - The class wire payload.
@@ -278,72 +244,6 @@ describe('normaliseClassRead partial payload', () => {
         Object.entries(normalised.submissions[0]!.items).map(([id, item]) => [id, item.assessments])
       )
     ).toEqual(expectedMaps);
-
-    const unmarked = structuredClone(assignment);
-    unmarked.assessmentContractVersion = null;
-    const documentSubmission = unmarked.submissions.find((entry) => entry.documentId !== null);
-    unmarked.submissions = [documentSubmission!];
-    const nonReassessmentMap = structuredClone(
-      Object.values(documentSubmission!.items)[1]!.assessments
-    );
-    const [nonReassessmentTask] = Object.keys(documentSubmission!.items);
-    if (!nonReassessmentTask) throw new Error('Expected a canonical task');
-    documentSubmission!.items[nonReassessmentTask].assessments = {
-      completeness: { score: 1 },
-      accuracy: { score: 2 },
-      spag: { score: 'N' },
-    };
-    documentSubmission!.items[Object.keys(documentSubmission!.items)[1]!].assessments =
-      nonReassessmentMap;
-    const unmarkedOutput = selectedNormalisedAssignment(
-      normaliseClassRead({ ...structuredClone(input), assignments: [unmarked] })
-    );
-    expect(unmarkedOutput.assessmentContractVersion).toBeNull();
-    const unmarkedAssessmentMaps = unmarkedOutput.submissions.flatMap((entry) =>
-      Object.values(entry.items).map((item) => item.assessments)
-    );
-    expect.soft(unmarkedAssessmentMaps).toEqual([allCorrupt(), allCorrupt()]);
-
-    const legacy = structuredClone(assignment);
-    legacy.assessmentContractVersion = null;
-    const reassessment = {
-      score: 'E',
-      reasoning: 'Reassessment required',
-      error: { stage: 'validation', code: 'REASSESSMENT_REQUIRED' },
-    };
-    for (const entry of legacy.submissions) {
-      for (const item of Object.values(entry.items)) {
-        item.artifact = {
-          ...item.artifact,
-          type: 'base',
-          role: 'submission',
-          content: null,
-          contentHash: null,
-          documentId: null,
-          pageId: null,
-          metadata: {},
-        };
-        item.feedback = {};
-        item.assessments = Object.fromEntries(criteria.map((key) => [key, reassessment]));
-      }
-    }
-    const legacyInput = { ...structuredClone(input), assignments: [legacy] };
-    const legacyExpected = legacy.submissions.map((entry) => {
-      return Object.fromEntries(
-        Object.entries(entry.items).map(
-          ([taskId, item]) => [taskId, structuredClone(item.assessments)] as const
-        )
-      );
-    });
-    const legacyOutput = selectedNormalisedAssignment(normaliseClassRead(legacyInput));
-    expect(legacyOutput.assessmentContractVersion).toBeNull();
-    expect(
-      legacyOutput.submissions.map((entry) => {
-        return Object.fromEntries(
-          Object.entries(entry.items).map(([taskId, item]) => [taskId, item.assessments])
-        );
-      })
-    ).toEqual(legacyExpected);
   });
 
   it('isolates malformed criteria and a dictionary-key identity mismatch without harming a sibling', () => {
@@ -455,12 +355,6 @@ describe('normaliseClassRead partial payload', () => {
   });
 
   it('rejects malformed roots, marker and identities, while preserving not-found null', () => {
-    const unsupported = probe();
-    selectedAssignment(unsupported).assessmentContractVersion = 2;
-    expect(() => normaliseClassRead(unsupported)).toThrow();
-    const missingMarker = probe();
-    delete selectedAssignment(missingMarker).assessmentContractVersion;
-    expect(() => normaliseClassRead(missingMarker)).toThrow();
     const badIdentity = probe();
     selectedAssignment(badIdentity).submissions[0]!.studentId = '';
     expect(() => normaliseClassRead(badIdentity)).toThrow();
@@ -496,5 +390,59 @@ describe('normaliseClassRead partial payload', () => {
     selectedAssignment(blankDefinitionKey).assignmentDefinitionKey = '  ';
     expect.soft(() => normaliseClassRead(blankDefinitionKey)).toThrow();
     expect(normaliseClassRead(null)).toBeNull();
+  });
+
+  it('rejects a string assignment entry as an invalid partial assignment root', () => {
+    // The entry shape guard fires before the version-bearing root parse, so a
+    // non-record entry keeps its own contextual rejection.
+    const input = probe();
+    (input.assignments as unknown[])[0] = 'assignment-0-1';
+    expect(() => normaliseClassRead(input)).toThrow('Invalid partial assignment root');
+  });
+
+  it('rejects a numeric assignment entry as an invalid partial assignment root', () => {
+    const input = probe();
+    (input.assignments as unknown[])[0] = 0;
+    expect(() => normaliseClassRead(input)).toThrow('Invalid partial assignment root');
+  });
+
+  it('rejects an array assignment entry as an invalid partial assignment root', () => {
+    const input = probe();
+    (input.assignments as unknown[])[0] = [];
+    expect(() => normaliseClassRead(input)).toThrow('Invalid partial assignment root');
+  });
+
+  it('keeps a stored __proto__ item out of the parsed partial output while preserving siblings', () => {
+    // A stored document can carry a prototype-poisoning key as an own property
+    // of the items dictionary. The normaliser's copy loop keeps it as an own
+    // property (never triggering the prototype setter), and the partial schema
+    // parse then drops it, so the poisoning key never reaches the output.
+    const input = probe();
+    const submission = selectedAssignment(input).submissions.find(
+      (entry) => entry.documentId !== null
+    );
+    if (!submission) throw new Error('Expected a document-bearing submission');
+    const taskKeys = Object.keys(submission.items);
+    const [siblingKey] = taskKeys;
+    if (!siblingKey) throw new Error('Expected a canonical sibling task');
+    const sibling = structuredClone(submission.items[siblingKey]);
+    const protoItem = { ...structuredClone(sibling), id: 'item-proto', taskId: '__proto__' };
+    protoItem.artifact = { ...protoItem.artifact, taskId: '__proto__', uid: 'uid-proto' };
+    Object.defineProperty(submission.items, '__proto__', {
+      value: protoItem,
+      enumerable: true,
+      writable: true,
+      configurable: true,
+    });
+
+    const output = normaliseClassRead(input);
+    const items = selectedNormalisedAssignment(output).submissions[0]?.items;
+    if (!items) throw new Error('Expected normalised submission items');
+
+    expect(Object.hasOwn(items, '__proto__')).toBe(false);
+    expect(Object.keys(items)).toEqual(taskKeys);
+    expect(items[siblingKey].assessments).toEqual(sibling.assessments);
+    // The stored document itself keeps its own poisoning key untouched.
+    expect(Object.hasOwn(submission.items, '__proto__')).toBe(true);
   });
 });

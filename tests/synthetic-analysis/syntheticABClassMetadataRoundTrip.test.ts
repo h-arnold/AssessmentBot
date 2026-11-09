@@ -116,7 +116,9 @@ describe('ABClass metadata real dispatcher round trip', () => {
           response = value;
         },
       });
-      return response;
+      // The global `apiHandler` hands its envelope over as a JSON string.
+      expect(typeof response).toBe('string');
+      return JSON.parse(response as string);
     };
     const invalid = dispatch({ method: 42 }) as {
       ok: boolean;
@@ -141,7 +143,9 @@ describe('ABClass metadata real dispatcher round trip', () => {
     const dispatch = (bridge: typeof firstBridge, request: unknown): unknown => {
       let response: unknown;
       bridge.invokeRequest(request, { successHandler: (value) => (response = value) });
-      return response;
+      // The global `apiHandler` hands its envelope over as a JSON string.
+      expect(typeof response).toBe('string');
+      return JSON.parse(response as string);
     };
     const seams = [
       'ScriptAppManager',

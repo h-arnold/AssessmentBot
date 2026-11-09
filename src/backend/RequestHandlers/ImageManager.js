@@ -379,8 +379,8 @@ class ImageManager extends BaseRequestManager {
       // A null/reader-less blob cannot carry hydratable bytes: the writer
       // still runs so a throwing writer's fault escapes by identity (the real
       // writer early-returns), then the outcome is classified as unusable
-      // returned content by scope — retained old content never certifies
-      // hydration.
+      // returned content by scope — retained old content is never treated as
+      // validly hydrated.
       artifact.setContentFromBlob(blob);
       this._assignUnusableReturnedContent(record);
       return;

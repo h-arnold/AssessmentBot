@@ -89,7 +89,7 @@ const canonicalClass = ClassFullSchema.parse(
 
 describe('classDetailService.getABClass', () => {
   afterEach(() => {
-    vi.clearAllMocks();
+    vi.resetAllMocks();
   });
 
   it('delegates to callApi with the getABClass method name and the supplied classId', async () => {
@@ -159,11 +159,22 @@ describe('classDetailService.getABClass', () => {
     expect(items[healthyTask]).toEqual(submission.items[healthyTask]);
   });
 
-  it('preserves marker-null reassessment E and redacted partial source fields', async () => {
+  it('rejects a null version marker at the service boundary', async () => {
+    const payload: ClassFull = structuredClone(validClassFull);
+    payload.assignments[0]!.assessmentContractVersion = null as unknown as 1;
+    callApiMock.mockResolvedValueOnce(payload);
+
+    const { getABClass } = await import('./classDetailService');
+
+    await expect(getABClass({ classId: 'class-1' })).rejects.toThrow();
+  });
+
+  it('preserves stored reassessment E and redacted partial source fields on a legacy read', async () => {
     const payload: ClassFull = structuredClone(validClassFull);
     const assignment = payload.assignments[0]!;
-    assignment.assessmentContractVersion = null;
+    assignment.assessmentContractVersion = 'legacy';
     const item = assignment.submissions[0]!.items['task-1']!;
+    // Previously stored explicit REASSESSMENT_REQUIRED errors stay supported.
     const reassessment = {
       score: 'E' as const,
       reasoning: 'Reassessment required',
@@ -181,7 +192,7 @@ describe('classDetailService.getABClass', () => {
     const actualAssignment = result!.assignments[0]!;
     const actualItem = actualAssignment.submissions[0]!.items['task-1']!;
 
-    expect(actualAssignment.assessmentContractVersion).toBeNull();
+    expect(actualAssignment.assessmentContractVersion).toBe('legacy');
     expect(actualItem.assessments).toEqual(item.assessments);
     expect(actualItem.artifact).not.toHaveProperty('content');
     expect(actualItem.artifact).not.toHaveProperty('contentHash');

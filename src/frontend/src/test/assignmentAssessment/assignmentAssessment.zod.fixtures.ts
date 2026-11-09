@@ -32,3 +32,12 @@ export const validBaseArtifact = {
   contentHash: null,
   metadata: {},
 };
+
+/**
+ * Read version markers the read schemas must reject.
+ *
+ * `null` is excluded: the read normalisers reserve a literal null root for
+ * not-found, and the schema suites probe it beside these markers with
+ * `[null, ...UNSUPPORTED_MARKERS]`.
+ */
+export const UNSUPPORTED_MARKERS = [0, 'draft'] as const;

@@ -10,7 +10,9 @@
  * canonical corpus; local identifiers and score/layout boundaries remain owned here.
  */
 
-import assignmentsByKeyRaw from '@synthetic/small/assignmentsByKey.json';
+import { readSyntheticFixture } from './syntheticFixtureData';
+
+const assignmentsByKeyRaw = readSyntheticFixture('small', 'assignmentsByKey.json');
 
 export const HEATMAP_CLASS_ID = '100000000001';
 export const HEATMAP_ASSIGNMENT_NAME = '4. Presenting our Findings - Video Plan';

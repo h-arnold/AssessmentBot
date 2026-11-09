@@ -2,7 +2,9 @@ import {
   ABClassMetadataSchema,
   type ABClassMetadata,
 } from '@/services/abClass/abClassMetadata.zod';
-import classPartialsRaw from '@synthetic/small/classPartials.json';
+import { readSyntheticFixture } from './syntheticFixtureData';
+
+const classPartialsRaw = readSyntheticFixture('small', 'classPartials.json');
 
 /**
  * Canonical-backed class metadata fixtures for browser scenarios.

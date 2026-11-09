@@ -5,20 +5,27 @@
  * for deserialising Assignment instances from JSON data.
  *
  * Depends on global `AssignmentDefinition`, `AssignmentCurrentRestoration`,
- * `AssignmentReadProjection`, `ProgressTracker`, `ABLogger`, and `Validate`
+ * `AssignmentLegacyRead`, and `ProgressTracker`
  * (GAS runtime globals).
  * @namespace
  */
 const AssignmentRehydration = {
   /**
-   * Builds detached placeholders for a legacy read; historical assessment bodies are ignored.
-   * @param {object} assignment - Raw or opaque legacy assignment snapshot.
-   * @param {Array<object>} students - Loaded roster for partial projections.
-   * @param {'full'|'partial'} form - Projection representation.
-   * @returns {StudentSubmission[]} Detached reassessment submissions.
+   * Prepares an independent legacy read result, keeping valid stored data and
+   * isolating invalid assessment data as CORRUPT_RECORD E per task.
+   * @param {Assignment} assignment - Restored legacy assignment.
+   * @param {'full'|'partial'} form - Output serialisation form.
+   * @returns {Array<object>|null} Prepared read submissions, or null for a non-array root.
+   * @throws {Error} When the assignment is not an object or the form is unsupported.
    */
-  projectReassessmentSubmissions(assignment, students, form) {
-    return AssignmentReadProjection.projectReassessmentSubmissions(assignment, students, form);
+  prepareLegacyReadSubmissions(assignment, form) {
+    // Entry guards deliberately mirror AssignmentLegacyRead.prepare so both public
+    // entry points reject unusable input with the same contextual messages.
+    if (!assignment || typeof assignment !== 'object')
+      throw new Error('Legacy read preparation requires a restored assignment');
+    if (form !== 'full' && form !== 'partial')
+      throw new Error(`Invalid legacy read preparation form: ${form}`);
+    return new AssignmentLegacyRead().prepare(assignment, form);
   },
   /**
    * Internal helper to restore base Assignment fields from JSON data.
@@ -58,11 +65,12 @@ const AssignmentRehydration = {
     if (isCurrent) {
       inst.assessmentContractVersion = 1;
     } else {
-      inst._legacyPersistenceSnapshot = AssignmentSerialisation.copyJsonSnapshot({
-        submissions: data.submissions === undefined ? [] : data.submissions,
-        markerPresent: Object.hasOwn(data, 'assessmentContractVersion'),
-        marker: data.assessmentContractVersion,
-      });
+      // Legacy record: keep a present submission body exactly as stored, and keep
+      // the marker presence/value as ordinary instance state. Only an absent
+      // property keeps the constructor's empty array.
+      if (Object.hasOwn(data, 'submissions')) inst.submissions = data.submissions;
+      inst.assessmentContractVersion = data.assessmentContractVersion;
+      inst._legacyMarkerPresent = Object.hasOwn(data, 'assessmentContractVersion');
     }
     // Do not set transient hydration marker here — remain absent/undefined so
     // that deserialized objects don't claim a persisted hydration level.
@@ -90,12 +98,19 @@ const AssignmentRehydration = {
       'progressTracker', // Transient, don't restore
       '_hydrationLevel', // Transient, don't restore
       'assessmentContractVersion',
-      '_legacyPersistenceSnapshot',
+      '_legacyMarkerPresent',
       '_restorationMode',
     ]);
     Object.entries(data).forEach(([key, value]) => {
       if (!knownFields.has(key)) {
-        inst[key] = value;
+        // defineProperty keeps a stored `__proto__` key as an own property instead
+        // of triggering the prototype setter.
+        Object.defineProperty(inst, key, {
+          value,
+          enumerable: true,
+          writable: true,
+          configurable: true,
+        });
       }
     });
 
@@ -107,7 +122,8 @@ const AssignmentRehydration = {
 
   /**
    * Rehydrates a current-format submission object and adds it to the assignment's submissions array.
-   * Only marker-1 assignments reach this helper; legacy history stays opaque in the snapshot.
+   * Only marker-1 assignments reach this helper; legacy history stays as raw instance state.
+   * Delegates to AssignmentCurrentRestoration, which owns marker-1 restoration.
    * @param {Assignment} inst - The Assignment instance to add the submission to.
    * @param {object} subObject - The submission object to rehydrate.
    * @param {object} assignmentData - The assignment JSON containing restoration metadata.
@@ -115,23 +131,11 @@ const AssignmentRehydration = {
    * @returns {void}
    */
   _rehydrateSubmission(inst, subObject, assignmentData, representationMode) {
-    this._rehydrateCurrentSubmission(inst, subObject, assignmentData, representationMode);
-  },
-
-  /**
-   * Preserve the rehydration method seam while delegating current records.
-   * @param {Assignment} inst - The Assignment instance receiving the submission.
-   * @param {object} raw - The raw submission data to restore.
-   * @param {object} assignmentData - The assignment JSON containing restoration metadata.
-   * @param {'full'|'partial'} mode - Representation mode used to restore the submission.
-   * @returns {void}
-   */
-  _rehydrateCurrentSubmission(inst, raw, assignmentData, mode) {
-    return AssignmentCurrentRestoration._rehydrateCurrentSubmission(
+    AssignmentCurrentRestoration._rehydrateCurrentSubmission(
       inst,
-      raw,
+      subObject,
       assignmentData,
-      mode
+      representationMode
     );
   },
 };

@@ -4,9 +4,9 @@
 
 Before writing or executing this plan:
 
-1. Read `@SPEC.md` — product behaviour, contracts, decisions 1–9, display rules, fixture strategy, and scope boundaries.
-2. Read `@ATTEMPT_BASELINE_MODE_LAYOUT.md` — header-slot composition, control states, heatmap column marking, accessibility rules.
-3. Read `@docs/developer/data-shapes/frontend-data-analysis-response.md` — the "Planned contract additions (Not implemented, issue #305)" block (items 1–8) is the target contract this plan implements and reconciles.
+1. Read `@docs/plans/issue-305/SPEC.md` — product behaviour, contracts, decisions 1–13 (incl. 6a), display rules, fixture strategy, and scope boundaries.
+2. Read `@docs/plans/issue-305/ATTEMPT_BASELINE_MODE_LAYOUT.md` — header-slot composition, control states, heatmap column marking, accessibility rules.
+3. Read `@docs/developer/data-shapes/frontend-data-analysis-response.md` — the "Planned contract changes (not implemented)" block (items 1–8) is the target contract this plan implements and reconciles.
 4. Read `@docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` §9.27 — the planned-only helper register (entries 1–5).
 
 ## Scope and assumptions
@@ -29,7 +29,7 @@ Before writing or executing this plan:
 1. The planned data-shape entries (items 1–8) and helper entries (§9.27.1–5) already recorded in the canonical docs are the authoritative target; each section updates their status as delivered.
 2. Lint constraints are hard: `react-hooks/refs` and `react-hooks/set-state-in-effect` are errors — the availability retention must use the previous-render state pattern (SPEC decision 6; verified lint-clean).
 3. The Segmented disabled-tooltip treatment starts from the recorded no-wrapper decision; the live check runs as part of §5a's red phase with the pinned wrapper fallback.
-4. Canonical synthetic fixtures support scoring at pool min 2, tie-break ordering, echo/flags, E-condition attempts, and eligibility thresholds; every other behavioural case uses local hand-built fixtures per SPEC's fixture paragraph (no generator changes in v1).
+4. Canonical synthetic fixtures support scoring at pool min 2, pool-boundary tie-break ordering, echo/flags, E-condition attempts, and eligibility thresholds; every other behavioural case uses local hand-built fixtures per SPEC's fixture paragraph (no generator changes in v1).
 5. Between Sections 1 and 4 the whole test tree stays green — no section leaves red suites behind (the blast-radius sweep exits with Section 1).
 
 ---
@@ -38,9 +38,9 @@ Before writing or executing this plan:
 
 ### Engineering constraints
 
-- No un-instructed defaults: `analysisMode` is required at all five non-test input construction sites and in test fixtures via the shared builder fix point; `attemptBaseline` narrowing is fail-fast; `buildTaskColumns`' second parameter is required (explicit `null` for absolute); `TaskHeatmapColumn.includedInAttemptBaseline` is required.
-- Absolute-mode output stays byte-identical to current behaviour except the `appliedAnalysisMode: 'absolute'` echo and `includedInAttemptBaseline: true` flags (SPEC decision 7).
-- Frontend files crossing 550 lines must decompose in-change (`src/frontend/AGENTS.md` §15): watch `useClassPageData.ts` (498) and `ClassPageContent.tsx` (449); §5 records projected and measured counts.
+- No un-instructed defaults: `analysisMode` is required at all six non-test input construction sites and in test fixtures via the shared builder fix point; `attemptBaseline` narrowing is fail-fast; `buildTaskColumns`' second parameter is required (explicit `null` for absolute); `TaskHeatmapColumn.includedInAttemptBaseline` is required.
+- Absolute-mode output stays byte-identical to current behaviour except the `appliedAnalysisMode: 'absolute'` echo and `includedInAttemptBaseline: true` flags (SPEC decisions 7 and 12).
+- Frontend files crossing 550 lines must decompose in-change (`docs/developer/frontend/frontend-architecture.md`; `src/frontend/AGENTS.md` §2 Non-negotiables): watch `useClassPageData.ts` (456) and `ClassPageContent.tsx` (449); §5 records projected and measured counts.
 - All spacing via tokens (`APP_GAP_SM`, `APP_GAP_MD`, existing Card defaults); no new layout patterns.
 - E2E routing: `Playwright` owns all browser-test work (root `AGENTS.md` §5); no toggle ships without browser coverage.
 
@@ -64,36 +64,37 @@ Red → Green → Refactor per section; run the section's verification commands 
 
 - Add the required `analysisMode` to the analysis filter; the `appliedAnalysisMode`/`attemptBaseline` echo block; `PerTaskRowSchema.includedInAttemptBaseline`; the named `AnalysisMode` enum export — **and own every blast-radius consequence so Sections 2–5 never inherit a red tree**:
   1. **Test-builder fix point:** `buildInput()`/`buildSingleStudentInput()` in `src/frontend/src/test/dataAnalysis/fixtures.ts` gain `analysisMode: 'absolute'` once (constructor-like scope, root `AGENTS.md` §2.1.10).
-  2. **Literal input-construction sites** (all fail the moment the field is required): `src/frontend/src/services/dataAnalysis/dataAnalysis.zod.spec.ts` (`AnalysisFilterSchema.parse({ classIds: [...] })`), `src/frontend/src/services/dataAnalysis/dataAnalysisService.spec.ts:132`, `src/frontend/src/services/dataAnalysis/analysers/averagingAnalyser.filters.spec.ts` (six occurrences, first at `:84`), `src/frontend/src/services/dataAnalysis/analysers/averagingAnalyser.rows.spec.ts:241` and `:490`, `src/frontend/src/services/dataAnalysis/analysers/averagingAnalyser.spec.ts:469`, `src/frontend/src/services/dataAnalysis/analysers/averagingAnalyser.metricResolution.spec.ts:460` (`AveragingAnalyserInputSchema.parse` direct), `src/frontend/src/features/taskHeatmap/useHeatmapsPageData.spec.ts` (`:358/361` filter `toEqual` assertions must include the default `'absolute'`), and `tests/synthetic-analysis/syntheticApiRoundTripBridge.test.ts:162`.
-  3. **Four non-hook production sites pinned `'absolute'`** with literal values (their final state anyway — zero behavioural risk moved earlier): `heatmapsPipeline.ts:128`, `useHeatmapSelectionSummary.ts:46`, `TaskHeatmapPage.tsx:137`, `analysers/assignmentSummaryAnalyser.ts:138` (internal delegation, inside the analyse call at `:137–141`).
-  4. **Named interim literal** at `useClassPageData.ts:140` (`'absolute'`) — replaced by the section-5a hook parameter, tracked in that section's notes.
-  5. **Row-level output sweep** (fixtures building `PerTaskRow`): `src/frontend/src/test/dataAnalysis/fixtures.ts`, inline row literal specs (`src/frontend/src/services/dataAnalysis/dataAnalysis.zod.result.spec.ts`, `src/frontend/src/features/taskHeatmap/buildCellPreviewLookup.parity.spec.ts`, the adapter-side row fixtures in `src/frontend/src/test/classPage/classPageAdapterTestFixtures.ts`).
+  2. **Literal input-construction sites** (all fail the moment the field is required): `src/frontend/src/services/dataAnalysis/dataAnalysis.zod.spec.ts` (multiple direct `AnalysisFilterSchema`/`AveragingAnalyserInputSchema.parse` sites, e.g. `:105`, `:113`, `:147`, `:154`, `:168`, `:183`, `:198`, `:209`, `:228`, `:245`), `src/frontend/src/services/dataAnalysis/dataAnalysisService.spec.ts` (three literal filter sites: `:117` empty-classIds spread, `:131` dateRange, `:149` criterionWeightings), `src/frontend/src/services/dataAnalysis/analysers/averagingAnalyser.filters.spec.ts` (six occurrences, first at `:83`), `src/frontend/src/services/dataAnalysis/analysers/averagingAnalyser.rows.spec.ts:241` and `:489`, `src/frontend/src/services/dataAnalysis/analysers/averagingAnalyser.spec.ts:468`, `src/frontend/src/services/dataAnalysis/analysers/averagingAnalyser.metricResolution.spec.ts:459` (`const unvalidatedInput`; the `filter:` literal at `:460`; the `AveragingAnalyserInputSchema.parse` call at `:464`), `src/frontend/src/features/taskHeatmap/useHeatmapsPageData.spec.ts` (`:359/362` filter `toEqual` assertions must include the default `'absolute'`), the ABClass-metadata suites added in #339 — `src/frontend/src/services/abClass/abClassMetadataService.calculation.spec.ts:136` (custom `criterionWeightings`), `src/frontend/src/services/abClass/abClassMetadataService.failure.spec.ts:37`, `src/frontend/src/test/abClass/metadataRefreshFixtures.ts:67` and `:106`, `src/frontend/src/services/googleClassrooms/classDetail/classDetailService.zod.metadataIntegration.spec.ts:60` — and `tests/synthetic-analysis/syntheticApiRoundTripBridge.test.ts:155`.
+  3. **Five non-hook production sites pinned `'absolute'`** with literal values (their final state anyway — zero behavioural risk moved earlier): `heatmapsPipeline.ts:128`, `useHeatmapSelectionSummary.ts:46`, `TaskHeatmapPage.tsx:136`, `analysers/assignmentSummaryAnalyser.ts:140` (internal delegation, inside the analyse call at `:139–143`), and `abClassMetadataService.ts:53` (the rolling-ABClass-metadata refresh path, added in #339 — full-class aggregate evidence only, never baseline).
+  4. **Named interim literal** at `useClassPageData.ts:133` (`'absolute'`) — replaced by the section-5a hook parameter, tracked in that section's notes.
+  5. **Row-level output sweep** (fixtures building `PerTaskRow`): inline row literals in `src/frontend/src/services/dataAnalysis/dataAnalysis.zod.result.spec.ts` (`validPerTaskRow` at `:70` and its spread sites) and the adapter-side row fixtures in `src/frontend/src/test/classPage/classPageAdapterTestFixtures.ts` (`computedPerTaskRow` at `:90`, and the base builder `perTaskRow` at `:138` — the spread source for the hand-built literals in `classPageAdapter.assignmentAverage.spec.ts`). The untyped "new-shape" response fixture in `dataAnalysisService.spec.ts` (~`:285`) also carries non-empty `perTask` rows and must gain the flag for its runtime `not.toThrow()` assertion. (`buildCellPreviewLookup.parity.spec.ts` carries no row literals, and `src/frontend/src/test/dataAnalysis/fixtures.ts` holds no `PerTaskRow` fixtures either — the latter stays the input-side fix point.)
+  6. **Result-echo sweep** (typed `AveragingResult` literals gain `appliedAnalysisMode: 'absolute'` and, where present, row flags): `src/frontend/src/test/dataAnalysis/heatmapAdapterTestSetup.ts` (`minimalAveragingResult`), `src/frontend/src/test/classPage/useClassPageDataTestFixtures.ts` (`createAveragingResult` — the fix point for the hook suites), `src/frontend/src/services/dataAnalysis/heatmapAdapter.merged.spec.ts` (a local `minimalAveragingResult` at `:211`, distinct from the shared one), `src/frontend/src/services/dataAnalysis/heatmapAdapter.merged.contribution.spec.ts` (`:76`, a `satisfies AveragingResult` literal), `src/frontend/src/test/taskHeatmapPageFixtures.ts:94`, `src/frontend/src/test/classPage/classPageAdapterTestFixtures.ts` (the `averagingResult` helper), `src/frontend/src/features/classPage/ClassPageHeatmapView.spec.tsx:139`, `src/frontend/src/features/taskHeatmap/buildCellPreviewLookup.parity.spec.ts` (`:170`, `:286`, `:318`), `src/frontend/src/services/dataAnalysis/heatmapAdapter.diagnostics.spec.ts:97`, `dataAnalysis.zod.result.spec.ts:323` (`validAveragingResult`), and the untyped "new-shape" response fixture in `dataAnalysisService.spec.ts` (asserted not to throw at runtime, so it must carry the field; its `perTask` rows must also carry the row flag). Double-cast literals (`as unknown as AveragingResult`) are exempt — but they gain the field opportunistically where touched. The merged-column literals (`heatmapFixtures.ts` → `createHeatmapMergedResult`, `useHeatmapsPageData.preview.spec.ts:194`, `TaskHeatmapTable.merged.spec.tsx:99/:145/:202`, `TaskHeatmapTable.zeroWeight.spec.tsx:64`) belong to Section 3's sweep.
 
 ### Constraints
 
-- Frontend-only validation change; no transport or persistence (SPEC §Planned contract additions).
+- Frontend-only validation change; no transport or persistence (SPEC "Recommended data shapes"; contract target: the data-shape doc's "Planned contract changes (not implemented)" block, items 1–8).
 - `attemptBaseline` stays optional on the result; the narrowing fail-fast rule is schema-tested here and consumer-enforced from Section 2.
 - `PerStudentTaskMetric` carries **no** flag.
 
 ### Shared helper plan
 
-1. `AnalysisModeSchema`/`AnalysisMode` — `new` (schema enum in `dataAnalysis.zod.ts`); canonical doc target: data-shape items 1/4.
-2. Medium synthetic-corpus loading — **follows the established call-site `?raw` pattern** (deliberate, per the recorded decision in `src/frontend/src/test/shared/canonicalFixturePrimitives.ts`'s `@remarks`: record loading stays at the call site and is deliberately not shared; the `@synthetic/*` alias exists only in the E2E TS layer and is not resolvable from the Vitest app project). Sections 1 and 2 import the committed `medium` views at their own call sites per `averagingAnalyser.metricResolution.spec.ts:6–8` precedent — no shared loader is created.
+1. `AnalysisModeSchema`/`AnalysisMode` — `new` (schema enum in `dataAnalysis.zod.ts`); canonical doc target: data-shape items 1/2.
+2. Medium synthetic-corpus loading — **follows the established call-site `?raw` pattern** (deliberate, per the recorded decision in `src/frontend/src/test/shared/canonicalFixturePrimitives.ts`'s `@remarks`: record loading stays at the call site and is deliberately not shared). The `@synthetic/*` alias **is** resolvable from the Vitest app project (`src/frontend/vite.config.ts` `resolve.alias` plus `tsconfig.app.json` paths; exercised via `?raw` imports by `averagingAnalyser.metricResolution.spec.ts:6–8`). Sections 1 and 2 import the committed `medium` views at their own call sites — no shared loader is created.
 3. `buildInput`/`buildSingleStudentInput` — `extend` (`src/frontend/src/test/dataAnalysis/fixtures.ts`).
 
 ### Data-shape planning block
 
-- Implement data-shape doc items 1–4 exactly as recorded (filter field, echo block, row flag, narrowing rule); remove `Not implemented` markers from items 1–4 as delivered. Item 5 (summary contract) lands its implementation in Section 1 via the `analysers/assignmentSummaryAnalyser.ts:138` pin and is reconciled in Section 4.
+- Implement data-shape doc items 1–4 exactly as recorded (filter field, echo block, row flag, narrowing rule); remove `Not implemented` markers from items 1–4 as delivered. Item 5 (summary contract) lands its implementation in Section 1 via the `analysers/assignmentSummaryAnalyser.ts:140` pin and is reconciled in Section 4.
 
 ### Canonical fixture note
 
-- The **bridge stays on `small`** (hard-coded `SMALL_PROFILE` in `syntheticApiRoundTripBridge.test.ts:28–42`) and merely gains the explicit `analysisMode: 'absolute'`. The **`medium` echo/flag round-trip gets a named host**: a new spec under `src/frontend/src/services/dataAnalysis/` loading the committed `medium` views via the call-site `?raw` pattern (helper entry 2's recorded approach). Canonical claims covered: pool sizing 2, tie-break pool-array order, E-condition candidacy, eligibility thresholds — reused by Section 2 identically. No canonical regeneration (byte-for-byte policy); all other cases local hand-built.
+- The **bridge stays on `small`** (hard-coded `SMALL_PROFILE` in `syntheticApiRoundTripBridge.test.ts:28–42`) and merely gains the explicit `analysisMode: 'absolute'`. The **`medium` echo/flag round-trip gets a named host**: a new spec under `src/frontend/src/services/dataAnalysis/` loading the committed `medium` views via the call-site `?raw` pattern (helper entry 2's recorded approach). Canonical claims covered: pool sizing 2, the pool-boundary tie-break (indices 3 vs 4 at seven attempts, broken by `studentId`; pool = {0, 3}), E-condition candidacy (roster indices 1 and 2: zero attempts despite participating in five assignments), eligibility thresholds — reused by Section 2 identically. No canonical regeneration (byte-for-byte policy); all other cases local hand-built.
 
 ### Delegation mandatory reads
 
-- Testing Specialist: `@SPEC.md`, `@docs/developer/data-shapes/frontend-data-analysis-response.md`, `@docs/developer/frontend/frontend-testing.md`
-- Implementation: `@SPEC.md`, `@docs/developer/data-shapes/frontend-data-analysis-response.md`, `@src/frontend/src/services/dataAnalysis/dataAnalysis.zod.ts`, `@src/frontend/src/services/dataAnalysis/dataAnalysisService.ts`, `@src/frontend/src/services/dataAnalysis/analysers/assignmentSummaryAnalyser.ts`, `@src/frontend/src/features/taskHeatmap/heatmapsPipeline.ts`, `@src/frontend/src/features/taskHeatmap/useHeatmapSelectionSummary.ts`, `@src/frontend/src/features/taskHeatmap/TaskHeatmapPage.tsx`, `@src/frontend/src/features/classPage/useClassPageData.ts`
-- Code Reviewer: `@SPEC.md`, `@docs/developer/data-shapes/frontend-data-analysis-response.md`
+- Testing Specialist: `@docs/plans/issue-305/SPEC.md`, `@docs/developer/data-shapes/frontend-data-analysis-response.md`, `@docs/developer/frontend/frontend-testing.md`
+- Implementation: `@docs/plans/issue-305/SPEC.md`, `@docs/developer/data-shapes/frontend-data-analysis-response.md`, `@src/frontend/src/services/dataAnalysis/dataAnalysis.zod.ts`, `@src/frontend/src/services/dataAnalysis/dataAnalysisService.ts`, `@src/frontend/src/services/dataAnalysis/analysers/assignmentSummaryAnalyser.ts`, `@src/frontend/src/features/taskHeatmap/heatmapsPipeline.ts`, `@src/frontend/src/features/taskHeatmap/useHeatmapSelectionSummary.ts`, `@src/frontend/src/features/taskHeatmap/TaskHeatmapPage.tsx`, `@src/frontend/src/features/classPage/useClassPageData.ts`, `@src/frontend/src/services/abClass/abClassMetadataService.ts`, `@src/frontend/src/test/abClass/metadataRefreshFixtures.ts`, `@src/frontend/src/services/abClass/abClassMetadataService.calculation.spec.ts`, `@src/frontend/src/services/abClass/abClassMetadataService.failure.spec.ts`, `@src/frontend/src/services/googleClassrooms/classDetail/classDetailService.zod.metadataIntegration.spec.ts`
+- Code Reviewer: `@docs/plans/issue-305/SPEC.md`, `@docs/developer/data-shapes/frontend-data-analysis-response.md`
 
 ### Acceptance criteria
 
@@ -107,7 +108,7 @@ Red → Green → Refactor per section; run the section's verification commands 
 Frontend tests:
 
 1. `dataAnalysis.zod.spec.ts`: filter without `analysisMode` fails; both values pass; strictObject rejects unknown keys; result-echo block shape (`poolStudentIds` min 2, `baselineTaskKeys` min 1).
-2. `dataAnalysis.zod.result.spec.ts` + `buildCellPreviewLookup.parity.spec.ts`: absolute result parses with echo/row flags; adapter-input fixtures parse with flags.
+2. `dataAnalysis.zod.result.spec.ts` (+ the `AveragingResult` literals swept in step 6): absolute result parses with echo/row flags; the adapter-side fixtures in `classPageAdapterTestFixtures.ts` include the flags.
 3. `averagingAnalyser.spec.ts`: absolute-mode byte-equivalence vs current behaviour plus echo/flags.
 4. Bridge: `small` + explicit `'absolute'` round-trips end-to-end.
 5. Medium round-trip (call-site `?raw` load in a new spec under `src/frontend/src/services/dataAnalysis/` — no shared loader, per helper entry 2): `medium` result with echo/flags through the service schema.
@@ -154,18 +155,18 @@ Frontend tests:
 
 ### Canonical fixture note
 
-- Canonical synthetic-corpus fixtures are loaded at call sites via the established `?raw` pattern (Section 1 helper entry 2). `medium` claims covered here: pool sizing 2, tie-break (pool-array order asserted explicitly — indices 0/2 tied at 9), E-condition candidacy evidence (roster index 1: zero attempts despite participating), eligibility thresholds. Local hand-built fixtures per SPEC's split: all-outside-baseline student; disjoint attempt sets; sparse-evidence newly assessed class; pool > 2 (`ceil`); <2 attempters; <3 roster; all-`N` item; shared-`taskKey` collapse; zero-weight already-`excluded`; zero-evidence variants.
+- Canonical synthetic-corpus fixtures are loaded at call sites via the established `?raw` pattern (Section 1 helper entry 2). `medium` claims covered here: pool sizing 2, tie-break (pool-boundary tie at roster indices 3 vs 4 — seven attempts each, identical attempt sets — broken by `studentId`; pool membership **and** pool-array order asserted explicitly), E-condition candidacy evidence (rosters 1 and 2 — `ASSESSMENT_FAILED` and `SOURCE_UNREADABLE` — zero attempts despite participating in five assignments), the raw-`N`-alongside-numeric attempt case at roster 0, a non-degenerate 7-of-9-key baseline (outside-baseline pair: `definition-2-slides` in class-0/2, `definition-0-slides` in class-1/3), and eligibility thresholds. Local hand-built fixtures per SPEC's split: all-outside-baseline student; disjoint attempt sets; sparse-evidence newly assessed class; pool > 2 (`ceil`); <2 attempters; <3 roster; all-`N` item; shared-`taskKey` collapse; zero-weight already-`excluded`; zero-evidence variants.
 
 ### Delegation mandatory reads
 
-- Testing Specialist: `@SPEC.md`, `@docs/developer/data-shapes/frontend-data-analysis-response.md`, `@docs/developer/frontend/frontend-testing.md`
-- Implementation: `@SPEC.md`, `@docs/developer/data-shapes/frontend-data-analysis-response.md`, `@docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md`, `@src/frontend/src/services/dataAnalysis/analysers/averagingAnalyser.ts`, `@src/frontend/src/services/dataAnalysis/analysers/averagingAnalyser.accumulation.ts`, `@src/frontend/src/services/dataAnalysis/analysers/rollupMetric.ts`, `@src/frontend/src/services/dataAnalysis/analysers/averagingAnalyser.composite.ts`
-- Code Reviewer: `@SPEC.md`, `@docs/developer/data-shapes/frontend-data-analysis-response.md`
+- Testing Specialist: `@docs/plans/issue-305/SPEC.md`, `@docs/developer/data-shapes/frontend-data-analysis-response.md`, `@docs/developer/frontend/frontend-testing.md`
+- Implementation: `@docs/plans/issue-305/SPEC.md`, `@docs/developer/data-shapes/frontend-data-analysis-response.md`, `@docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md`, `@src/frontend/src/services/dataAnalysis/analysers/averagingAnalyser.ts`, `@src/frontend/src/services/dataAnalysis/analysers/averagingAnalyser.accumulation.ts`, `@src/frontend/src/services/dataAnalysis/analysers/rollupMetric.ts`, `@src/frontend/src/services/dataAnalysis/analysers/averagingAnalyser.composite.ts`
+- Code Reviewer: `@docs/plans/issue-305/SPEC.md`, `@docs/developer/data-shapes/frontend-data-analysis-response.md`
 
 ### Acceptance criteria
 
 - Baseline mode recomputes per-student/per-class aggregates for all four metrics from baseline-restricted accumulators; non-baseline tasks keep absolute row values with `false` flags on `PerTaskRow` only.
-- Pool/intersection/eligibility/throw behave per decisions 3–4; **both** ordinary throw scenarios covered (disjoint pool attempt sets; sparse-evidence newly assessed class).
+- Pool/intersection/eligibility/throw behave per decisions 3–5 and 11; **both** ordinary throw scenarios covered (disjoint pool attempt sets; sparse-evidence newly assessed class).
 - Excluded/conversion/composite rules per the acceptance matrix; absolute mode unchanged byte-for-byte; `perStudentTaskMetrics` identical across modes.
 
 ### Required test cases (Red first)
@@ -199,7 +200,7 @@ Frontend tests:
 ### Constraints
 
 - `buildTaskColumns(partial, baselineSet: ReadonlySet<string> | null)`; supplier derives from its own `analyserResult` under the fail-fast narrowing rule; merged chain (`buildMergedTaskColumnsInClassOrder` → `buildMergedTaskColumns` → `buildTaskColumns`) passes `null` explicitly; no props change hands anywhere; `HeatmapCell` unchanged.
-- Column-level only in v1. The table-level `TaskHeatmapColumn` required-field hop is implemented in §5c but the **instrumentation for it is owned here** where it belongs to the adapter contract: `taskHeatmapTableTestHelpers.ts` (`TASK_COLUMNS`) and the heatmap fixture modules are updated in this section.
+- Column-level only in v1. The table-level `TaskHeatmapColumn` required-field hop is implemented in §5c but the **instrumentation for it is owned here** where it belongs to the adapter contract — likewise every adapter-typed `MergedHeatmapTaskColumn` literal, since `MergedHeatmapTaskColumn` gains the required field in this section. The hand-built column hosts to update here: `src/frontend/src/test/taskHeatmapTableTestHelpers.ts` (`TASK_COLUMNS`), `src/frontend/src/test/dataAnalysis/heatmapFixtures.ts` (`createHeatmapMergedResult` — merged-column literal), `src/frontend/src/features/taskHeatmap/useHeatmapsPageData.preview.spec.ts:194` (typed `MergedHeatmapResult` literal), `src/frontend/src/features/taskHeatmap/TaskHeatmapTable.merged.spec.tsx` (`taskColumns: MergedHeatmapTaskColumn[]` at `:99`, `:145`, `:202`) and `src/frontend/src/features/taskHeatmap/TaskHeatmapTable.zeroWeight.spec.tsx` (`buildMergedZeroWeightResult(): MergedHeatmapResult` at `:64`). (`heatmapsPipeline.spec.ts:184` builds its merged-result literal as `as unknown as MergedHeatmapResult` — exempt.)
 
 ### Shared helper plan
 
@@ -211,13 +212,13 @@ Frontend tests:
 
 ### Canonical fixture note
 
-- No canonical needs; `medium` exercises all-true columns in baseline (degenerate full set). Column-`false` coverage is §5c surface work with local fixtures.
+- `medium` exercises a non-degenerate 7-of-9-key baseline: baseline mode yields `includedInAttemptBaseline: false` columns for the two outside-baseline tasks (class-0/2: `definition-2-slides`; class-1/3: `definition-0-slides`), so baseline column projection with mixed flags is assertable canonically; absolute/merged paths stay all-`true` via the explicit `null`. Surface-level false-marker rendering with local fixtures is §5c work.
 
 ### Delegation mandatory reads
 
 - Testing Specialist: `@docs/developer/frontend/frontend-testing.md`
-- Implementation: `@SPEC.md`, `@docs/developer/data-shapes/frontend-data-analysis-response.md`, `@src/frontend/src/services/dataAnalysis/heatmapAdapter.ts`, `@src/frontend/src/services/dataAnalysis/heatmapAdapter.merged.ts`, `@src/frontend/src/test/taskHeatmapTableTestHelpers.ts`
-- Code Reviewer: `@SPEC.md`, `@docs/developer/data-shapes/frontend-data-analysis-response.md`
+- Implementation: `@docs/plans/issue-305/SPEC.md`, `@docs/developer/data-shapes/frontend-data-analysis-response.md`, `@src/frontend/src/services/dataAnalysis/heatmapAdapter.ts`, `@src/frontend/src/services/dataAnalysis/heatmapAdapter.merged.ts`, `@src/frontend/src/test/taskHeatmapTableTestHelpers.ts`
+- Code Reviewer: `@docs/plans/issue-305/SPEC.md`, `@docs/developer/data-shapes/frontend-data-analysis-response.md`
 
 ### Acceptance criteria
 
@@ -230,7 +231,7 @@ Frontend tests:
 
 1. `heatmapAdapter.spec.ts`: required second parameter; derived set in baseline; `null` in absolute; fail-fast throw on missing echo.
 2. `heatmapAdapter.merged.spec.ts`: merged chain passes explicit `null`; merged columns inherit `true`.
-3. `averagingAnalyser.assignmentProcessing.spec.ts` + `heatmapAdapter.weighting.spec.ts` (:14/:23): direct callers updated for the required second parameter.
+3. `averagingAnalyser.assignmentProcessing.spec.ts:165` (sole direct caller) + `heatmapAdapter.weighting.spec.ts` (import at `:15`; direct calls at `:36` and `:45`; `:82` is an `adaptMetricsToHeatmap` error-message assertion — not a direct call, and not edited for the second parameter): direct callers updated for the required second parameter.
 
 ### Section checks
 
@@ -273,8 +274,8 @@ Frontend tests:
 ### Delegation mandatory reads
 
 - Testing Specialist: `@docs/developer/frontend/frontend-testing.md`
-- Implementation: `@SPEC.md`, `@src/frontend/src/services/dataAnalysis/metricDisplay/metricTone.ts`, `@src/frontend/src/services/dataAnalysis/metricDisplay/MetricPill.tsx`, `@src/frontend/src/features/classPage/studentAveragesTableColumns.tsx`, `@src/frontend/src/services/dataAnalysis/analysers/assignmentSummaryAnalyser.ts`
-- Code Reviewer: `@SPEC.md`
+- Implementation: `@docs/plans/issue-305/SPEC.md`, `@src/frontend/src/services/dataAnalysis/metricDisplay/metricTone.ts`, `@src/frontend/src/services/dataAnalysis/metricDisplay/MetricPill.tsx`, `@src/frontend/src/features/classPage/studentAveragesTableColumns.tsx`, `@src/frontend/src/services/dataAnalysis/analysers/assignmentSummaryAnalyser.ts`
+- Code Reviewer: `@docs/plans/issue-305/SPEC.md`
 
 ### Acceptance criteria
 
@@ -311,10 +312,10 @@ Frontend tests:
 
 ### Constraints
 
-- **LOC watch (§15):** projected hook growth: retention state pairs + derived availability + memo dep ≈ +30 lines → `useClassPageData.ts` ≈ 528 (below the 550 trigger); the availability resolver is pre-placed in `useClassPageData.helpers.ts` (register §9.27.5) keeping hook growth to wiring. Measure both files after implementation; if the measured count exceeds 550, decompose **in-change** with the named targets: retention/availability hook beside `useClassPageData.ts` or a region-renderer module beside `ClassPageContent.tsx` ("analysis/orchestration split"; region split).
+- **LOC watch (`docs/developer/frontend/frontend-architecture.md`; `src/frontend/AGENTS.md` §2):** projected hook growth: retention state pairs + derived availability + memo dep ≈ +30 lines → `useClassPageData.ts` ≈ 486 (below the 550 trigger); the availability resolver is pre-placed in `useClassPageData.helpers.ts` (register §9.27.5) keeping hook growth to wiring. Measure both files after implementation; if the measured count exceeds 550, decompose **in-change** with the named targets: retention/availability hook beside `useClassPageData.ts` or a region-renderer module beside `ClassPageContent.tsx` ("analysis/orchestration split"; region split).
 - Header slot per layout spec: third stacked element, `Card size="small"`, `Flex` (`wrap`, `align="center"`, gap `APP_GAP_SM`), label+control; props `analysisMode`/`onAnalysisModeChange`/`baselineAvailability`; `ClassesPage` passes `key={selectedClassId}` (wired here, asserted in §5b).
 - Availability per SPEC decision 6; `reason` single source; live Segmented disabled-tooltip check in this section's red phase (pinned wrapper fallback).
-- The interim literal at `useClassPageData.ts:140` is replaced by the hook parameter here.
+- The interim literal at `useClassPageData.ts:133` is replaced by the hook parameter here.
 
 ### Shared helper plan
 
@@ -330,9 +331,9 @@ Frontend tests:
 
 ### Delegation mandatory reads
 
-- Testing Specialist: `@docs/developer/frontend/frontend-testing.md`, `@ATTEMPT_BASELINE_MODE_LAYOUT.md`
-- Implementation: `@SPEC.md`, `@ATTEMPT_BASELINE_MODE_LAYOUT.md`, `@src/frontend/src/features/classPage/useClassPageData.ts`, `@src/frontend/src/features/classPage/useClassPageData.helpers.ts`, `@src/frontend/src/features/classPage/ClassPage.tsx`, `@src/frontend/src/pages/ClassesPage.tsx`, `@src/frontend/src/pages/pageContent.ts`, `@src/frontend/src/features/taskHeatmap/HeatmapSelectionBar.tsx`
-- Code Reviewer: `@SPEC.md`, `@ATTEMPT_BASELINE_MODE_LAYOUT.md`
+- Testing Specialist: `@docs/developer/frontend/frontend-testing.md`, `@docs/plans/issue-305/ATTEMPT_BASELINE_MODE_LAYOUT.md`
+- Implementation: `@docs/plans/issue-305/SPEC.md`, `@docs/plans/issue-305/ATTEMPT_BASELINE_MODE_LAYOUT.md`, `@src/frontend/src/features/classPage/useClassPageData.ts`, `@src/frontend/src/features/classPage/useClassPageData.helpers.ts`, `@src/frontend/src/features/classPage/ClassPage.tsx`, `@src/frontend/src/pages/ClassesPage.tsx`, `@src/frontend/src/pages/pageContent.ts`, `@src/frontend/src/features/taskHeatmap/HeatmapSelectionBar.tsx`
+- Code Reviewer: `@docs/plans/issue-305/SPEC.md`, `@docs/plans/issue-305/ATTEMPT_BASELINE_MODE_LAYOUT.md`
 
 ### Acceptance criteria
 
@@ -342,7 +343,7 @@ Frontend tests:
 
 Frontend tests:
 
-1. `useClassPageData.spec.ts` (5 suites): mode parameter in memo deps; retention previous-render pattern; full availability table (first-success; retention-survives-throw; pre-success blocking incl. dataset-blocked → 'awaiting-data'; ineligible ×2 reasons; optional-metrics-missing → 'awaiting-data'; remount clears); re-run on toggle; no refetch.
+1. The `useClassPageData` hook spec family — currently split across `useClassPageData.spec.ts` and the `.blocking`/`.memoisation`/`.postAnalysis`/`.assignmentQueries`/`.diagnostics` siblings (new availability/retention cases land in `useClassPageData.spec.ts` or a new adjacent sibling): mode parameter in memo deps; retention previous-render pattern; full availability table (first-success; retention-survives-throw; pre-success blocking incl. dataset-blocked → 'awaiting-data'; ineligible ×2 reasons; optional-metrics-missing → 'awaiting-data'; remount clears); re-run on toggle; no refetch.
 2. `ClassesPage` composition assertion: `ClassPage` receives the class-scoped `key` (guaranteed remount reset).
 3. `ClassPage`/header component tests: slot in both views + blocking; named props; disabled/tooltip/sr-node DOM contract (always-rendered node, empty when enabled, bound exactly while disabled); aria-labelledby present.
 
@@ -383,8 +384,8 @@ Frontend tests:
 ### Delegation mandatory reads
 
 - Testing Specialist: `@docs/developer/frontend/frontend-testing.md`
-- Implementation: `@SPEC.md`, `@ATTEMPT_BASELINE_MODE_LAYOUT.md`, `@src/frontend/src/features/classPage/classPageAdapter.ts`, `@src/frontend/src/features/classPage/ClassPageContent.tsx`, `@src/frontend/src/features/classPage/RecentAssignmentsSection.tsx`, `@src/frontend/src/features/classPage/RecentAssignmentCard.tsx`, `@src/frontend/src/features/classPage/StudentAveragesTableCard.tsx`, `@src/frontend/src/features/classPage/studentAveragesTableColumns.tsx`, `@src/frontend/src/pages/pageContent.ts`
-- Code Reviewer: `@SPEC.md`, `@ATTEMPT_BASELINE_MODE_LAYOUT.md`
+- Implementation: `@docs/plans/issue-305/SPEC.md`, `@docs/plans/issue-305/ATTEMPT_BASELINE_MODE_LAYOUT.md`, `@src/frontend/src/features/classPage/classPageAdapter.ts`, `@src/frontend/src/features/classPage/ClassPageContent.tsx`, `@src/frontend/src/features/classPage/RecentAssignmentsSection.tsx`, `@src/frontend/src/features/classPage/RecentAssignmentCard.tsx`, `@src/frontend/src/features/classPage/StudentAveragesTableCard.tsx`, `@src/frontend/src/features/classPage/studentAveragesTableColumns.tsx`, `@src/frontend/src/pages/pageContent.ts`
+- Code Reviewer: `@docs/plans/issue-305/SPEC.md`, `@docs/plans/issue-305/ATTEMPT_BASELINE_MODE_LAYOUT.md`
 
 ### Acceptance criteria
 
@@ -417,7 +418,7 @@ Frontend tests:
 
 ### Constraints
 
-- Required `TaskHeatmapColumn.includedInAttemptBaseline` (sweep owner: Section 3; the hand-built column hosts updated here: `TaskHeatmapTable.spec.tsx`, `.preview.spec.tsx`, `.status.spec.tsx`, `.merged.spec.tsx`, `.zeroWeight.spec.tsx`).
+- Required `TaskHeatmapColumn.includedInAttemptBaseline` (sweep owner: Section 3, which also owns the adapter-typed `MergedHeatmapTaskColumn` literals in `TaskHeatmapTable.merged.spec.tsx` and `buildMergedZeroWeightResult()` in `TaskHeatmapTable.zeroWeight.spec.tsx`). The remaining `TaskHeatmapTable`-family specs (`TaskHeatmapTable.spec.tsx`, `.preview.spec.tsx`, `.status.spec.tsx`) build no column literals — they consume `TASK_COLUMNS` — so no literal edits are needed there; §5c owns the marker/caption/edge-class surface work and the assertion updates in the table specs below.
 - Visual language + helper signatures per layout spec §4; caption inside `TaskHeatmapTable` beside the existing notice (`role="status"`, `aria-live="polite"`, `type="secondary"`); copy constants beside `taskHeatmapZeroWeightHeader.tsx`.
 
 ### Shared helper plan
@@ -430,13 +431,13 @@ Frontend tests:
 
 ### Canonical fixture note
 
-- Local hand-built fixtures; the `medium` all-true case loads via the call-site `?raw` pattern when useful (deliberate non-sharing per the recorded canonicalFixturePrimitives decision).
+- Local hand-built fixtures; the `medium` non-degenerate 7-of-9-key baseline (two `false` columns per class) loads via the call-site `?raw` pattern when useful (deliberate non-sharing per the recorded canonicalFixturePrimitives decision).
 
 ### Delegation mandatory reads
 
 - Testing Specialist: `@docs/developer/frontend/frontend-testing.md`
-- Implementation: `@SPEC.md`, `@ATTEMPT_BASELINE_MODE_LAYOUT.md`, `@src/frontend/src/features/taskHeatmap/TaskHeatmapTable.tsx`, `@src/frontend/src/features/taskHeatmap/taskHeatmapZeroWeightHeader.tsx`, `@src/frontend/src/features/taskHeatmap/taskHeatmapTableColumns.tsx`
-- Code Reviewer: `@ATTEMPT_BASELINE_MODE_LAYOUT.md`
+- Implementation: `@docs/plans/issue-305/SPEC.md`, `@docs/plans/issue-305/ATTEMPT_BASELINE_MODE_LAYOUT.md`, `@src/frontend/src/features/taskHeatmap/TaskHeatmapTable.tsx`, `@src/frontend/src/features/taskHeatmap/taskHeatmapZeroWeightHeader.tsx`, `@src/frontend/src/features/taskHeatmap/taskHeatmapTableColumns.tsx`
+- Code Reviewer: `@docs/plans/issue-305/ATTEMPT_BASELINE_MODE_LAYOUT.md`
 
 ### Acceptance criteria
 
@@ -467,13 +468,13 @@ Frontend tests:
 ### Constraints
 
 - Owner: `Playwright` agent. Named spec: **`src/frontend/e2e-tests/class-page-baseline-mode.spec.ts`** (kebab-case, issue-keyed precedent).
-- Scenario extension owned here: `src/frontend/e2e-tests/helpers/task-heatmap-fixtures.ts` gains an explicit "students that skip tasks" option so column markers (`false`) become assertable (the default all-submit scenario is degenerately in-baseline — verified).
+- Scenario extension owned here: `src/frontend/e2e-tests/helpers/task-heatmap-class-fixtures.ts` gains an explicit "students that skip tasks" option so column markers (`false`) become assertable. This module now owns the ten-student scenario (`HEATMAP_STUDENTS`, :33; every student attempts all three `HEATMAP_TASK_IDS` through `buildSubmissionItems(student, hasEmptySubmissions)`, :159) — `task-heatmap-fixtures.ts` no longer holds it. The all-or-nothing `hasEmptySubmissions` switch on `buildClassFullDocument(:179)` is not sufficient: add a per-student/per-task skip option so some students miss some tasks while the rest attempt everything (the default all-submit scenario is degenerately in-baseline — verified).
 - Screenshot re-captures stay in `navigation-screenshots.spec.ts` (`class-page-overview`, `task-heatmap`); `heatmaps-builder` baseline must remain unchanged.
 - First-use checks: both themes, focus-ring visibility, thumb-motion settled before post-toggle assertions/captures.
 
 ### Delegation mandatory reads
 
-- Playwright: `@docs/developer/frontend/frontend-playwright-e2e.md`, `@SPEC.md`, `@ATTEMPT_BASELINE_MODE_LAYOUT.md`, `@src/frontend/e2e-tests/navigation-screenshots.spec.ts`, `@src/frontend/e2e-tests/helpers/task-heatmap-fixtures.ts`
+- Playwright: `@docs/developer/frontend/frontend-playwright-e2e.md`, `@docs/plans/issue-305/SPEC.md`, `@docs/plans/issue-305/ATTEMPT_BASELINE_MODE_LAYOUT.md`, `@src/frontend/e2e-tests/navigation-screenshots.spec.ts`, `@src/frontend/e2e-tests/helpers/task-heatmap-class-fixtures.ts`
 
 ### Acceptance criteria
 
@@ -494,7 +495,7 @@ E2E tests:
 
 ### Implementation notes / deviations / follow-up
 
-- Record the scenario-extension shape and the live Segmented decision if it differs from the recorded one. **Ordering note (deliberate):** the layout spec makes the first-use Segmented checks (both themes, focus ring, thumb motion) "the first implementation step"; they are hosted here in §5d because 5b/5c build their suites on the landed control — 5a's component tests still assert the DOM contract the checks depend on.
+- Record the scenario-extension shape and the live Segmented decision if it differs from the recorded one. **Ordering note (deliberate):** the layout spec makes the first-use Segmented checks (both themes, focus ring, thumb motion) "the first implementation step"; they are hosted here in §5d because 5b/5c build their suites on the landed control — 5a's component tests still assert the DOM contract the checks depend on. (SPEC and the layout spec call the antd-source-pin re-verification "§5a's first-use live check" — the same §5a red-phase moment as the disabled-tooltip check; the themes/focus-ring/thumb-motion checks are the §5d-hosted subset. One term, two hosted locations, both deliberate.)
 
 ---
 
@@ -510,7 +511,7 @@ E2E tests:
 
 ### Delegation mandatory reads
 
-- Docs: `@SPEC.md`, `@ATTEMPT_BASELINE_MODE_LAYOUT.md`, `@ACTION_PLAN.md`, the four document targets above, `@docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md`
+- Docs: `@docs/plans/issue-305/SPEC.md`, `@docs/plans/issue-305/ATTEMPT_BASELINE_MODE_LAYOUT.md`, `@docs/plans/issue-305/ACTION_PLAN.md`, the four document targets above, `@docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md`
 
 ### Acceptance criteria
 
@@ -543,7 +544,7 @@ E2E tests:
 
 ### Delegation mandatory reads
 
-- Docs: `@SPEC.md`, `@docs/developer/data-shapes/frontend-data-analysis-response.md`, `@docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md`
+- Docs: `@docs/plans/issue-305/SPEC.md`, `@docs/developer/data-shapes/frontend-data-analysis-response.md`, `@docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md`
 - Playwright: `@docs/developer/frontend/frontend-playwright-e2e.md`, `@src/frontend/e2e-tests/class-page-baseline-mode.spec.ts`
 
 ### Acceptance criteria

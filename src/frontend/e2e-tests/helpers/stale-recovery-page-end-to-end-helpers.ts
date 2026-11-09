@@ -6,9 +6,16 @@ import {
   type ResponseItem,
   type RuntimeScenario,
 } from '../shared/endToEndRuntimeMocks';
-import editableDefinitionsRaw from '@synthetic/small/editableDefinitions.json';
-import assignmentDefinitionPartialsRaw from '@synthetic/small/assignmentDefinitionPartials.json';
-import classPartialsRaw from '@synthetic/small/classPartials.json';
+import { readSyntheticFixture } from './syntheticFixtureData';
+
+const editableDefinitionsRaw = readSyntheticFixture('small', 'editableDefinitions.json');
+const assignmentDefinitionPartialsRaw = readSyntheticFixture(
+  'small',
+  'assignmentDefinitionPartials.json'
+);
+const classPartialsRaw = readSyntheticFixture('small', 'classPartials.json') as ReadonlyArray<
+  Record<string, unknown>
+>;
 
 // ============================================================================
 // Canonical fixture shapes and loading
