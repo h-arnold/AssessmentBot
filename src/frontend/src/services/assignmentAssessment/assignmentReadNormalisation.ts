@@ -70,7 +70,7 @@ type FullRootValidationContext = Pick<AssignmentFull, 'courseId' | 'assignmentId
 
 /** Validates full root identities and both supplied task projections.
  * @param {FullRootValidationContext} root Parsed full assignment root fields.
- * @returns {boolean} Whether the root has one trustworthy task universe.
+ * @returns {boolean} Whether the root has one trustworthy set of tasks.
  */
 function hasConsistentFullRoot(root: FullRootValidationContext): boolean {
   const tasks = root.tasks;
@@ -156,8 +156,7 @@ function normaliseFullSubmission(
       submission.documentId,
       submissionIndex,
       root,
-      submission.studentId,
-      root.assessmentContractVersion
+      submission.studentId
     );
   }
   addMissingFullTasks(
@@ -178,7 +177,6 @@ function normaliseFullSubmission(
  * @param {number} index Submission index.
  * @param {FullAssignmentContext} root Assignment context.
  * @param {string} studentId Trusted student identity.
- * @param {1 | null} assessmentContractVersion Validated result marker.
  * @returns {unknown} Valid item or corruption replacement.
  */
 function normaliseFullItem(
@@ -187,14 +185,9 @@ function normaliseFullItem(
   documentId: unknown,
   index: number,
   root: FullAssignmentContext,
-  studentId: string,
-  assessmentContractVersion: 1 | null
+  studentId: string
 ): unknown {
-  if (
-    isValidFullItem(item, key, documentId) &&
-    (assessmentContractVersion === 1 || isReassessmentItem(item))
-  )
-    return item;
+  if (isValidFullItem(item, key, documentId)) return item;
   diagnostic(
     { classId: root.courseId, assignmentId: root.assignmentId, studentId, taskId: key },
     itemErrorPath(item, `submissions.${index}.items.${key}`, false, key)
@@ -236,9 +229,15 @@ function addMissingFullTasks(
  */
 export function normaliseAssignmentRead(input: unknown) {
   if (input === null) return null;
+  if (!isRecord(input)) {
+    // Non-object roots fail through the structured Zod parse path, mirroring
+    // normaliseClassRead; parse cannot return for a non-record root.
+    fullRootSchema.parse(input);
+    throw new TypeError('Invalid assignment submissions root');
+  }
   const rawSubmissions = (input as { submissions: unknown }).submissions;
   if (!Array.isArray(rawSubmissions)) throw new TypeError('Invalid assignment submissions root');
-  const rootInput = withoutField(input as Record<string, unknown>, 'submissions');
+  const rootInput = withoutField(input, 'submissions');
   const root = fullRootSchema.parse(rootInput);
   if (!hasConsistentFullRoot(root))
     throw new TypeError('Invalid assignment identity or task definition');
@@ -263,6 +262,10 @@ export function normaliseClassRead(input: unknown) {
   const raw = input as { assignments: unknown };
   if (!Array.isArray(raw.assignments)) throw new TypeError('Invalid class assignments root');
   const assignments = raw.assignments.map(function (candidate) {
+    if (!isRecord(candidate)) throw new TypeError('Invalid partial assignment root');
+    const rawAssignment = candidate as Record<string, unknown>;
+    if (!Array.isArray(rawAssignment.submissions))
+      throw new TypeError('Invalid partial submissions');
     const assignmentRoot = fullAssignmentRootSchema.parse(candidate);
     if (
       !isIdentity(assignmentRoot.assignmentId) ||
@@ -270,18 +273,9 @@ export function normaliseClassRead(input: unknown) {
     ) {
       throw new TypeError('Invalid partial assignment identity');
     }
-    const rawAssignment = candidate as Record<string, unknown>;
-    if (!Array.isArray(rawAssignment.submissions))
-      throw new TypeError('Invalid partial submissions');
-    const submissions = rawAssignment.submissions.map((entry, index) => {
-      return normalisePartialSubmission(
-        entry,
-        index,
-        assignmentRoot.assignmentId,
-        root.classId,
-        assignmentRoot.assessmentContractVersion
-      );
-    });
+    const submissions = rawAssignment.submissions.map((entry, index) =>
+      normalisePartialSubmission(entry, index, assignmentRoot.assignmentId, root.classId)
+    );
     return AssignmentPartialSchema.parse({ ...assignmentRoot, submissions });
   });
   return ClassFullSchema.parse({ ...root, assignments });
@@ -292,15 +286,13 @@ export function normaliseClassRead(input: unknown) {
  * @param {number} submissionIndex Position for safe diagnostic paths.
  * @param {string} assignmentId Owning assignment identity.
  * @param {string} classId Owning class identity.
- * @param {1 | null} assignmentContractVersion Validated result marker.
  * @returns {Record<string, unknown>} Normalised submission.
  */
 function normalisePartialSubmission(
   entry: unknown,
   submissionIndex: number,
   assignmentId: string,
-  classId: string,
-  assignmentContractVersion: 1 | null
+  classId: string
 ): Record<string, unknown> {
   const submission = StudentSubmissionPartialSchema.omit({ items: true }).parse(entry);
   if (!isIdentity(submission.studentId) || submission.assignmentId !== assignmentId)
@@ -310,55 +302,28 @@ function normalisePartialSubmission(
   if (Object.keys(items).some((key) => !isIdentity(key)))
     throw new TypeError('Invalid partial task identity');
   const normalised: Record<string, unknown> = {};
+  // defineProperty keeps a stored `__proto__` key as an own property instead of
+  // triggering the prototype setter (mirrors the backend DateUtils hardening).
   for (const [key, item] of Object.entries(items)) {
-    if (isAllowedPartialItem(item, key, submission.documentId, assignmentContractVersion)) {
-      normalised[key] = item;
+    if (isValidPartialItem(item, key, submission.documentId)) {
+      Object.defineProperty(normalised, key, {
+        value: item,
+        enumerable: true,
+        writable: true,
+        configurable: true,
+      });
       continue;
     }
     diagnostic(
       { classId, assignmentId, studentId: submission.studentId, taskId: key },
       itemErrorPath(item, `assignments.submissions.${submissionIndex}.items.${key}`, true, key)
     );
-    normalised[key] = corruptItem(key, item, true, corruptMap, submission.documentId);
+    Object.defineProperty(normalised, key, {
+      value: corruptItem(key, item, true, corruptMap, submission.documentId),
+      enumerable: true,
+      writable: true,
+      configurable: true,
+    });
   }
   return { ...submission, items: normalised };
-}
-
-/** Validates provided item state against its marker and parent source.
- * @param {unknown} item Candidate item.
- * @param {string} taskId Dictionary task identity.
- * @param {unknown} parentDocumentId Parent submission source identity.
- * @param {1 | null} assessmentContractVersion Validated result marker.
- * @returns {boolean} Whether the item satisfies the applicable result contract.
- */
-function isAllowedPartialItem(
-  item: unknown,
-  taskId: string,
-  parentDocumentId: unknown,
-  assessmentContractVersion: 1 | null
-): boolean {
-  return (
-    (assessmentContractVersion === 1 || isReassessmentItem(item)) &&
-    isValidPartialItem(item, taskId, parentDocumentId)
-  );
-}
-
-/** Requires marker-null provided entries to be backend-materialised reassessment errors.
- * @param {unknown} item Candidate item.
- * @returns {boolean} Whether the item has the exact reassessment result map.
- */
-function isReassessmentItem(item: unknown): boolean {
-  if (!isRecord(item) || !isRecord(item.assessments)) return false;
-  const assessments = item.assessments;
-  return criteria.every((key) => {
-    const result = assessments[key];
-    return (
-      isRecord(result) &&
-      result.score === 'E' &&
-      result.reasoning === 'Reassessment required' &&
-      isRecord(result.error) &&
-      result.error.stage === 'validation' &&
-      result.error.code === 'REASSESSMENT_REQUIRED'
-    );
-  });
 }

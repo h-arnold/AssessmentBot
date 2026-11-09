@@ -21,8 +21,8 @@
 class ABClassAssignmentValidation {
   /** Validates that a completed run is safe to persist.
    * Requires the assignment to hold a completed terminal result for every known
-   * task: the embedded task universe and submission associations are
-   * trustworthy, every submission covers the known task universe, every item
+   * task: the embedded task list and submission associations are
+   * trustworthy, every submission covers the known task list, every item
    * carries exactly the three canonical criteria as valid complete results with
    * a consistent source state, and every known task's required shared
    * reference/template artefacts are usable.
@@ -40,7 +40,7 @@ class ABClassAssignmentValidation {
   _validateCompletedAssignmentRun(assignment) {
     const tasks = assignment.assignmentDefinition?.tasks ?? {};
     const taskIds = Object.keys(tasks);
-    this._validateCompletedTaskUniverse(tasks, taskIds);
+    this._validateCompletedTaskList(tasks, taskIds);
     const submissions = this._requireCompletedSubmissions(assignment);
     for (const submission of submissions) {
       this._validateCompletedSubmission(submission, assignment, taskIds);
@@ -57,7 +57,7 @@ class ABClassAssignmentValidation {
    * @param {Array<string>} taskIds - Known task identities.
    * @returns {void}
    * @throws {Error} If the submission contradicts the assignment root or its
-   *   known task universe.
+   *   known task list.
    */
   _validateCompletedSubmission(submission, assignment, taskIds) {
     this._validateCompletedSubmissionIdentity(submission, assignment);
@@ -72,7 +72,7 @@ class ABClassAssignmentValidation {
     for (const key of Object.keys(items)) {
       if (!taskIds.includes(key)) {
         throw new Error(
-          `Completed assignment run is invalid: submission for student ${submission.studentId} carries an item for unknown-task '${key}' outside the embedded task universe.`
+          `Completed assignment run is invalid: submission for student ${submission.studentId} carries an item for unknown-task '${key}' outside the embedded task list.`
         );
       }
     }
@@ -105,32 +105,32 @@ class ABClassAssignmentValidation {
     return submissions;
   }
 
-  /** Validates the embedded task universe before item associations are checked.
+  /** Validates the embedded task list before item associations are checked.
    * The task map must be a keyed object, non-empty, and every entry's `id` must
    * match its dictionary key. Item associations are only meaningful once this
-   * universe is trustworthy.
+   * list is trustworthy.
    *
    * @param {Object} tasks - Embedded definition task map.
    * @param {Array<string>} taskIds - Keys of the embedded task map.
    * @returns {void}
-   * @throws {Error} If the task universe is empty or internally inconsistent.
+   * @throws {Error} If the task list is empty or internally inconsistent.
    */
-  _validateCompletedTaskUniverse(tasks, taskIds) {
+  _validateCompletedTaskList(tasks, taskIds) {
     if (!tasks || typeof tasks !== 'object' || Array.isArray(tasks)) {
       throw new Error(
-        'Completed assignment run is invalid: the embedded task universe is missing or untrustworthy.'
+        'Completed assignment run is invalid: the embedded task list is missing or untrustworthy.'
       );
     }
     if (taskIds.length === 0) {
       throw new Error(
-        'Completed assignment run is invalid: the embedded task universe is empty beside present submissions.'
+        'Completed assignment run is invalid: the embedded task list is empty beside present submissions.'
       );
     }
     taskIds.forEach((taskId) => {
       const task = tasks[taskId];
       if (!task || typeof task !== 'object' || task.id !== taskId) {
         throw new Error(
-          `Completed assignment run is invalid: task universe entry '${taskId}' has a mismatched task identity.`
+          `Completed assignment run is invalid: task list entry '${taskId}' has a mismatched task identity.`
         );
       }
     });

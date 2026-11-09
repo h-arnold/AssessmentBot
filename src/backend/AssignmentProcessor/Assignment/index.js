@@ -55,7 +55,7 @@ class Assignment {
     this.progressTracker = ProgressTracker.getInstance();
     // Controllers may temporarily attach `assignment.students` while an assessment run is active
     // to keep the hydrated roster handy. That property is transient and must never be persisted
-    // (see docs/developer/DATA_SHAPES.md and rehydration.md).
+    // (see docs/developer/data-shapes/INDEX.md and rehydration.md).
     this._hydrationLevel = 'full';
     if (
       restoration?.representationMode !== undefined &&
@@ -148,11 +148,12 @@ class Assignment {
   }
 
   /**
-   * Serialises this Assignment for a full read response.
-   * @returns {object} Full read payload.
+   * Serialises this Assignment for a read response in the requested form.
+   * @param {'full'|'partial'} [form] - Read output form; defaults to 'full'.
+   * @returns {object} Read payload in the requested form.
    */
-  toReadJSON() {
-    return this._serialisation.toReadJSON();
+  toReadJSON(form = 'full') {
+    return this._serialisation.toReadJSON(form);
   }
 
   /**

@@ -40,6 +40,12 @@ Frontend calls reach the backend exclusively through `apiHandler`; `z_Api` trail
 
 Reads are not persistence serialisations: `getAssignment` goes through `ABClassController.readRehydrateAssignment()` → `Assignment.toReadJSON()`, which strips `progressTracker` and applies `DateUtils.deepConvertDates()` at the boundary. See [Contract: Assignment § getAssignment (read)](../data-shapes/assignment.md#getassignment-read).
 
+`apiHandler()` returns its envelope as a JSON string so `google.script.run` cannot drop `null`
+properties; the frontend parses it once in `apiService.ts`. Storage reads are the other direction:
+JsonDbApp revives stored ISO strings as `Date` objects, so stored-read gates convert them back
+before domain validation. See [api-layer.md § Response envelope](api-layer.md#response-envelope) and
+[rehydration.md § Stored-read Date revival](rehydration.md#stored-read-date-revival).
+
 ## Detailed Flow Documentation
 
 ### Phase 1: Assessment Initiation
@@ -517,13 +523,14 @@ Assessments are `Assessment` instances (`src/backend/Models/Assessment.js`); see
 - **Purpose**: Validates the completed run, stamps the result-format marker, then saves assignment data in two forms
 - **Process**:
   1. Validates the completed run before any mutation
-     - `ABClassAssignmentValidation._validateCompletedAssignmentRun()` mirrors the marker-1 read invariants: task-universe integrity, submission association, item/artefact identity, exactly three canonical criterion results per item, and source/hash consistency. Genuine no-submission (`documentId == null` plus an empty item map) remains valid and is skipped.
+     - `ABClassAssignmentValidation._validateCompletedAssignmentRun()` mirrors the marker-1 read invariants: task-list integrity, submission association, item/artefact identity, exactly three canonical criterion results per item, and source/hash consistency. Genuine no-submission (`documentId == null` plus an empty item map) remains valid and is skipped.
      - Reuses the existing class-save contract (`ABClassValidation._validateClassForSave`) before the first mutation.
   2. Stamps the result-format marker
      - Sets `assignment.assessmentContractVersion = 1` only after the completed-run gate passes and before serialisation.
-  3. Prepares four independent payloads before the first collection mutation
+  3. Prepares four payloads before the first collection mutation
      - Full assignment via `Assignment.toJSON()`; embedded partial via `Assignment.toPartialJSON()`, then constructed back through `Assignment.fromJSON(partialPayload, 'partial')` as the actual partial representation that will live in the class (a representation conversion, not a validation-only round-trip)
      - Prospective updated full-class and class-partials documents via `ABClassPersistence._prepareFullClass()`/`_prepareClassPartial()` with the partial temporarily spliced into `abClass.assignments`
+     - These are plain serializer outputs plus a detached metadata copy, not deep-detached clones of the model
   4. Writes the full assignment to its dedicated collection
      - Collection key: `assign_full_{courseId}_{assignmentId}`
      - Contains complete data with all artifacts, content and the marker

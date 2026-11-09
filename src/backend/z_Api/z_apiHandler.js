@@ -440,10 +440,12 @@ class ApiDispatcher extends BaseSingleton {
  * @param {Object} request - Request object with method and optional params.
  * @param {string} request.method - The API method name to dispatch.
  * @param {*} [request.params] - Optional parameters for the handler.
- * @returns {Object} Response envelope (ok, requestId, data or error).
+ * @returns {string} JSON-serialised response envelope (ok, requestId, data or error).
+ * @remarks Returned as a string because `google.script.run` drops `null` properties from
+ * returned objects; the frontend parses the string in `deserialiseRawResponse`.
  */
 function apiHandler(request) {
-  return ApiDispatcher.getInstance().handle(request);
+  return JSON.stringify(ApiDispatcher.getInstance().handle(request));
 }
 
 if (typeof module !== 'undefined' && module.exports) {

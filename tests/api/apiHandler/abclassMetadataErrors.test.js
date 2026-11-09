@@ -22,6 +22,21 @@ const registryRows = [
   { ...canonical.classPartials.find((row) => row.classId === source.classId), _id: 'partial-row' },
 ];
 const { ABClass } = require('#backend/Models/ABClass.js');
+/**
+ * Calls the global `apiHandler` and parses the transport string it returns.
+ *
+ * @remarks `google.script.run` receives a JSON string so `null` properties survive the
+ * transport. Every direct consumer must therefore parse at this boundary.
+ * @param {object} api - The loaded `z_apiHandler` module.
+ * @param {object} request - The dispatcher request payload.
+ * @returns {object} The parsed response envelope.
+ */
+function dispatch(api, request) {
+  const raw = api.apiHandler(request);
+  expect(typeof raw).toBe('string');
+  return JSON.parse(raw);
+}
+
 const globalsToRestore = [
   'Utilities',
   'LockService',
@@ -77,7 +92,7 @@ describe('ABClass metadata dispatcher error contracts', () => {
               ...metadataProperty,
             }
           : { classId: source.classId, active: false, ...metadataProperty };
-      const response = context.realContext.api.apiHandler({ method, params });
+      const response = dispatch(context.realContext.api, { method, params });
       expect
         .soft(
           response,
@@ -160,7 +175,7 @@ describe('ABClass metadata dispatcher error contracts', () => {
     };
     const invalidMetadata = structuredClone(ordered.metadata);
     invalidMetadata.recentAssignments.reverse();
-    const response = context.realContext.api.apiHandler({
+    const response = dispatch(context.realContext.api, {
       method: 'updateABClass',
       params: { classId: ordered.classId, active: false, metadata: invalidMetadata },
     });
@@ -203,7 +218,7 @@ describe('ABClass metadata dispatcher error contracts', () => {
             metadata,
           }
         : { classId: source.classId, metadata };
-    const response = context.realContext.api.apiHandler({ method, params });
+    const response = dispatch(context.realContext.api, { method, params });
     expect.soft(response).toMatchObject({
       ok: false,
       error: { code: 'INTERNAL_ERROR', message: 'Internal API error.', isRetriable: false },
@@ -224,7 +239,7 @@ describe('ABClass metadata dispatcher error contracts', () => {
         { classId: source.classId, partialRows: registryRows }
       ),
     };
-    const response = context.realContext.api.apiHandler({
+    const response = dispatch(context.realContext.api, {
       method: 'getABClass',
       params: { classId: source.classId },
     });
@@ -250,7 +265,7 @@ describe('ABClass metadata dispatcher error contracts', () => {
       model.metadata.classAverages.overall = 8;
       return model;
     });
-    const response = context.realContext.api.apiHandler({
+    const response = dispatch(context.realContext.api, {
       method: 'getABClass',
       params: { classId: source.classId },
     });
@@ -274,7 +289,7 @@ describe('ABClass metadata dispatcher error contracts', () => {
         partialRows: [{ ...corrupted, _id: 'corrupt-partial' }],
       }),
     };
-    const response = context.realContext.api.apiHandler({ method: 'getABClassPartials' });
+    const response = dispatch(context.realContext.api, { method: 'getABClassPartials' });
     expect(response).toMatchObject({
       ok: false,
       error: { code: 'INTERNAL_ERROR', message: 'Internal API error.' },
@@ -294,7 +309,7 @@ describe('ABClass metadata dispatcher error contracts', () => {
     globalThis.DbManager = { getInstance: () => ({ getCollection: collectionAccess }) };
     const lock = installLockServiceMock(vi);
     const { apiHandler } = require('#backend/z_Api/z_apiHandler.js');
-    const response = apiHandler({ method: 'getABClassPartials' });
+    const response = dispatch({ apiHandler }, { method: 'getABClassPartials' });
     expect(response).toMatchObject({ ok: false, error: { code: 'FORBIDDEN', isRetriable: false } });
     expect(controller).not.toHaveBeenCalled();
     expect(collectionAccess).not.toHaveBeenCalled();
@@ -334,7 +349,7 @@ describe('ABClass metadata dispatcher error contracts', () => {
         };
       },
     };
-    const response = context.realContext.api.apiHandler({ method: 'getABClassPartials' });
+    const response = dispatch(context.realContext.api, { method: 'getABClassPartials' });
     expect(response.requestId).toBe('metadata-accepted-id');
     expect(readPersistedUserRequestStore()['metadata-accepted-id']).toMatchObject({
       method: 'getABClassPartials',
@@ -382,7 +397,7 @@ describe('ABClass metadata dispatcher error contracts', () => {
     });
     vi.spyOn(console, 'info').mockImplementation(() => {});
     vi.spyOn(console, 'warn').mockImplementation(() => {});
-    const response = context.realContext.api.apiHandler({
+    const response = dispatch(context.realContext.api, {
       method: 'getABClass',
       params: { classId: source.classId },
     });

@@ -36,11 +36,9 @@ async function mockSettingsPageRuntime(page: Page) {
       const backendConfig = ${JSON.stringify(backendConfig)};
 
       function sendSuccess(handler, data, requestId) {
-        handler?.({
-          ok: true,
-          requestId,
-          data,
-        });
+        // The backend apiHandler returns the envelope as a JSON string and real GAS
+        // passes it through, so fixtures keep their explicit null properties.
+        handler?.(JSON.stringify({ ok: true, requestId, data }));
       }
 
       globalThis.google = {

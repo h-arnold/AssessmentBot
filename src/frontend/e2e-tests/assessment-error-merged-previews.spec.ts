@@ -38,6 +38,7 @@ import {
   createErrorPreviewScenario,
   ERROR_CLASS_NAME,
   previewPopover,
+  responseRenderer,
   SHARED_FIRST_ASSIGNMENT_ID,
   SHARED_SECOND_ASSIGNMENT_ID,
   sourceAlert,
@@ -324,7 +325,7 @@ test.describe('Merged heatmap — explicit assessment errors', () => {
     await expect(absentPopover.getByText(NO_SUBMISSION_COPY)).toHaveCount(1);
     await expect(absentPopover.getByText(ASSESSMENT_FAILED_REASONING)).toHaveCount(0);
     await expect(sourceAlert(absentPopover)).toHaveCount(0);
-    await expect(absentPopover.locator('.markdown')).toHaveCount(0);
+    await expect(responseRenderer(absentPopover)).toHaveCount(0);
     await expect(absentPopover.getByRole('img', { name: 'Student response image' })).toHaveCount(0);
   });
 
@@ -409,7 +410,7 @@ test.describe('Merged heatmap — explicit assessment errors', () => {
     await expect(alert).toHaveCount(1);
     await expect(alert).toContainText(UNAVAILABLE_TITLE);
     await expect(alert).toContainText(SOURCE_UNAVAILABLE_DESCRIPTION);
-    await expect(popover.locator('.markdown')).toHaveCount(0);
+    await expect(responseRenderer(popover)).toHaveCount(0);
     await expect(popover.getByRole('img', { name: 'Student response image' })).toHaveCount(0);
     await expect(popover.getByRole('link', { name: SOURCE_ACTION_LABEL })).toHaveCount(1);
 
@@ -421,7 +422,7 @@ test.describe('Merged heatmap — explicit assessment errors', () => {
     const absentPopover = await openMergedCell(page, ABSENT_CELL);
     await expect(absentPopover.getByText(PREVIEW_ERROR_TEXT)).toHaveCount(1);
     await expect(absentPopover.getByText(ASSESSMENT_FAILED_REASONING)).toHaveCount(0);
-    await expect(absentPopover.locator('.markdown')).toHaveCount(0);
+    await expect(responseRenderer(absentPopover)).toHaveCount(0);
     await expect(absentPopover.getByRole('img', { name: 'Student response image' })).toHaveCount(0);
   });
 
@@ -473,7 +474,7 @@ test.describe('Merged heatmap — explicit assessment errors', () => {
     await expect(alert).toHaveCount(1);
     await expect(alert).toContainText(UNAVAILABLE_TITLE);
     await expect(alert).toContainText(SOURCE_UNAVAILABLE_DESCRIPTION);
-    await expect(popover.locator('.markdown')).toHaveCount(0);
+    await expect(responseRenderer(popover)).toHaveCount(0);
     await expect(popover.getByRole('img', { name: 'Student response image' })).toHaveCount(0);
     await expect(popover.getByRole('link', { name: SOURCE_ACTION_LABEL })).toHaveCount(0);
 

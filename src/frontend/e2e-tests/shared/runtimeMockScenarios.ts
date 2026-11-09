@@ -8,20 +8,7 @@ import type { ResponseItem, RuntimeScenario } from './runtimeMockTypes';
 
 type MutableRuntimeScenario = { -readonly [Key in keyof RuntimeScenario]?: RuntimeScenario[Key] };
 
-/**
- * Shared Playwright E2E runtime mocks for AssignmentBot.
- *
- * This module provides reusable mock factories and helpers for Playwright E2E tests,
- * reducing duplication across test files that need to mock google.script.run API calls.
- */
-
-// ============================================================================
-// Response Types
-// ============================================================================
-
-/**
- * Base response item type for API scenarios.
- */
+/** Reusable runtime scenario factories for Playwright E2E tests. */
 
 // ============================================================================
 // Mock Data Fixtures
@@ -247,6 +234,38 @@ export function createAuthorisationScenario(
     getApplicationAccess: [applicationAccess, applicationAccess],
     ...warmupResponses,
   };
+}
+
+/**
+ * Creates a StrictMode-safe scenario for backend settings journeys.
+ *
+ * @param {object} options Backend configuration queues.
+ * @param {ReadonlyArray<ResponseItem>} options.getBackendConfig Read responses.
+ * @param {ReadonlyArray<ResponseItem>} options.setBackendConfig Write responses.
+ * @returns {RuntimeScenario} Configured backend settings runtime scenario.
+ */
+export function createBackendSettingsScenario(options: {
+  getBackendConfig: ReadonlyArray<ResponseItem>;
+  setBackendConfig: ReadonlyArray<ResponseItem>;
+}): RuntimeScenario {
+  return {
+    ...createAuthorisationScenario(),
+    getGoogleClassrooms: [
+      { kind: 'success', data: [] },
+      { kind: 'success', data: [] },
+    ],
+    getBackendConfig: options.getBackendConfig,
+    setBackendConfig: options.setBackendConfig,
+  };
+}
+
+/**
+ * Creates a StrictMode-safe scenario for shell navigation journeys.
+ *
+ * @returns {RuntimeScenario} Configured shell navigation runtime scenario.
+ */
+export function createShellNavigationScenario(): RuntimeScenario {
+  return createBackendSettingsScenario({ getBackendConfig: [], setBackendConfig: [] });
 }
 
 /**

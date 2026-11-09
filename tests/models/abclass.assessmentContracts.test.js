@@ -7,7 +7,7 @@ import {
 } from '../assignment/assignmentRehydrationCurrentSupport.js';
 const ABClassResponseMapper = require('#backend/y_controllers/ABClassController/ABClassResponseMapper.js');
 
-describe('ABClass legacy assessment read projection', () => {
+describe('ABClass legacy assessment read preparation', () => {
   it.each([
     ['missing', (record) => delete record.assessmentContractVersion],
     ['null', (record) => (record.assessmentContractVersion = null)],
@@ -77,7 +77,7 @@ describe('ABClass legacy assessment read projection', () => {
     expect(classRecord).toEqual(before);
   });
 
-  it('integration: projects canonical legacy submissions before replacing its embedded definition', () => {
+  it('integration: prepares canonical legacy submissions before replacing its embedded definition', () => {
     const mapper = new ABClassResponseMapper();
     const rawLegacy = currentAssignmentJson();
     delete rawLegacy.assessmentContractVersion;
@@ -120,25 +120,18 @@ describe('ABClass legacy assessment read projection', () => {
     });
     const beforePersist = assignment.toPartialJSON();
     const mapped = mapper._toReadView(readClass).assignments[0];
+    // Stored submissions only: the roster student without history is not emitted.
     expect(mapped.submissions.map((submission) => submission.studentId)).toEqual([
-      'roster-student',
+      'stored-student',
     ]);
     expect(Object.keys(mapped.submissions[0].items).sort()).toEqual(storedTaskIds);
-    const reassessmentRequired = {
-      score: 'E',
-      reasoning: 'Reassessment required',
-      error: { stage: 'validation', code: 'REASSESSMENT_REQUIRED' },
-    };
+    // Real stored marks are kept, not replaced with reassessment placeholders.
     for (const item of Object.values(mapped.submissions[0].items)) {
-      expect(Object.keys(item.assessments).sort()).toEqual(['accuracy', 'completeness', 'spag']);
-      expect(item.assessments).toEqual({
-        accuracy: reassessmentRequired,
-        completeness: reassessmentRequired,
-        spag: reassessmentRequired,
-      });
-      expect(item.feedback).toEqual({});
+      const storedItem = original.submissions[0].items[item.taskId];
+      expect(item.assessments).toEqual(storedItem.assessments);
+      expect(item.feedback).toEqual(storedItem.feedback);
     }
-    expect(mapped.assessmentContractVersion).toBeNull();
+    expect(mapped.assessmentContractVersion).toBe('legacy');
     expect(mapped.assignmentDefinitionKey).toBe('embedded-key');
     expect(mapped).not.toHaveProperty('assignmentDefinition');
     const afterPersist = assignment.toPartialJSON();

@@ -8,8 +8,8 @@ import { ABClass } from '#backend/Models/ABClass.js';
  * toPartialJSON() emits keys and active state without cohort/year-group labels.
  */
 describe('ABClass – partial data contract (key-based)', () => {
-  /** Minimal plain-object owner stub; avoids Teacher global dependency in tests. */
-  const stubOwner = { uid: 'owner-1', teacherName: 'Ms Owner', email: 'owner@school.example' };
+  /** Plain-object owner stub matching the TeacherSummary contract fields. */
+  const stubOwner = { userId: 'owner-1', teacherName: 'Ms Owner', email: 'owner@school.example' };
 
   function makeClass(overrides = {}) {
     const inst = new ABClass({

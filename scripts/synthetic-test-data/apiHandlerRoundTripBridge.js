@@ -15,10 +15,11 @@ import { loadSyntheticAnalysisProfile } from './loadSyntheticAnalysisProfile.js'
  * installs isolated controller/transport seams that supply the committed
  * generated transport views, dispatches once through the real `apiHandler`, then
  * restores every seam so overlapping requests cannot leak state into one
- * another. The returned backend envelope (success or failure) travels through
- * the caller's success path, matching `google.script.run` semantics; only a
- * thrown dispatch error is routed to the failure path. It does not seed
- * persistence or re-exercise controllers and response mappers.
+ * another. The global `apiHandler` already returns the envelope as a JSON
+ * string, so the bridge forwards that string untouched: the caller's success
+ * path receives exactly what `google.script.run` would deliver. Only a thrown
+ * dispatch error is routed to the failure path. It does not seed persistence or
+ * re-exercise controllers and response mappers.
  */
 
 /**

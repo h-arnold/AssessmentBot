@@ -19,7 +19,9 @@ export {
   createAssignmentsScenario,
   createAuthenticationSettingsScenario,
   createAuthorisationScenario,
+  createBackendSettingsScenario,
   createFailedRefreshScenario,
+  createShellNavigationScenario,
   createWizardScenario,
 } from './runtimeMockScenarios';
 // ============================================================================
@@ -40,6 +42,11 @@ const DEFERRED_SUCCESS_QUEUE = '__deferredSuccessQueue' as const;
  * Global tracking object name for releasing deferred success.
  */
 const RELEASE_DEFERRED_FUNCTION = '__releaseNextDeferredSuccess' as const;
+
+/**
+ * Global tracking object name for releasing named response signals.
+ */
+const RELEASE_SIGNAL_FUNCTION = '__releaseRuntimeSignal' as const;
 
 /**
  * Installs a browser-side `google.script.run` mock for E2E tests.
@@ -71,6 +78,8 @@ export async function installRuntimeMock(
     'getApplicationAccess',
     'getAuthenticationSettings',
     'setAuthenticationSettings',
+    'getBackendConfig',
+    'setBackendConfig',
     'getABClassPartials',
     'getABClass',
     'upsertABClass',
@@ -130,24 +139,31 @@ export async function installRuntimeMock(
       globalThis.${methodCallsTrackerName} = [];
       globalThis.${deferredQueueTrackerName} = [];
 
+      // The backend apiHandler returns the envelope as a JSON string and real GAS
+      // passes it through, so success and error envelopes are serialised here.
+      // Handing the harness a raw object would let it drop null properties.
       function sendSuccess(callbacks, method, responseIndex, data) {
-        callbacks.successHandler?.({
-          ok: true,
-          requestId: 'req-' + method + '-' + responseIndex,
-          data,
-        });
+        callbacks.successHandler?.(
+          JSON.stringify({
+            ok: true,
+            requestId: 'req-' + method + '-' + responseIndex,
+            data,
+          })
+        );
       }
 
       function sendFailureEnvelope(callbacks, method, responseIndex, response) {
-        callbacks.successHandler?.({
-          ok: false,
-          requestId: 'req-' + method + '-' + responseIndex,
-          error: {
-            code: response.code ?? 'INTERNAL_ERROR',
-            message: response.message,
-            isRetriable: false,
-          },
-        });
+        callbacks.successHandler?.(
+          JSON.stringify({
+            ok: false,
+            requestId: 'req-' + method + '-' + responseIndex,
+            error: {
+              code: response.code ?? 'INTERNAL_ERROR',
+              message: response.message,
+              isRetriable: false,
+            },
+          })
+        );
       }
 
       globalThis.${RELEASE_DEFERRED_FUNCTION} = () => {
@@ -157,6 +173,84 @@ export async function installRuntimeMock(
         }
         nextDeferredSuccess();
       };
+
+      const releasedSignals = new Set();
+      const releaseResolvers = new Map();
+
+      function waitForReleaseSignal(signal) {
+        if (signal === undefined || releasedSignals.has(signal)) {
+          return Promise.resolve();
+        }
+
+        return new Promise((resolve) => {
+          const resolvers = releaseResolvers.get(signal) ?? new Set();
+          resolvers.add(resolve);
+          releaseResolvers.set(signal, resolvers);
+        });
+      }
+
+      // React StrictMode can register more than one waiter for the same signal,
+      // so release every resolver registered for it.
+      globalThis.${RELEASE_SIGNAL_FUNCTION} = (signal) => {
+        releasedSignals.add(signal);
+        const resolvers = releaseResolvers.get(signal);
+
+        if (resolvers === undefined) {
+          return;
+        }
+
+        releaseResolvers.delete(signal);
+        for (const resolve of resolvers) {
+          resolve();
+        }
+      };
+
+      function deliverResponse(callbacks, method, responseIndex, response) {
+        if (response.kind === 'transportFailure') {
+          callbacks.failureHandler?.(new Error(response.message));
+          return;
+        }
+
+        if (response.kind === 'failureEnvelope') {
+          sendFailureEnvelope(callbacks, method, responseIndex, response);
+          return;
+        }
+
+        if (response.kind === 'deferredSuccess') {
+          globalThis.${deferredQueueTrackerName}.push(() => {
+            sendSuccess(callbacks, method, responseIndex, response.data);
+          });
+          return;
+        }
+
+        if (response.kind === 'deferredFailure') {
+          globalThis.${deferredQueueTrackerName}.push(() => {
+            sendFailureEnvelope(callbacks, method, responseIndex, response);
+          });
+          return;
+        }
+
+        sendSuccess(callbacks, method, responseIndex, response.data);
+      }
+
+      function deliverResponseAfterHold(callbacks, method, responseIndex, response) {
+        if (response.delayMs === undefined && response.releaseSignal === undefined) {
+          deliverResponse(callbacks, method, responseIndex, response);
+          return;
+        }
+
+        void (async () => {
+          await waitForReleaseSignal(response.releaseSignal);
+
+          if (response.delayMs !== undefined) {
+            await new Promise((resolve) => {
+              setTimeout(resolve, response.delayMs);
+            });
+          }
+
+          deliverResponse(callbacks, method, responseIndex, response);
+        })();
+      }
 
       globalThis.google = {
         script: {
@@ -180,31 +274,7 @@ export async function installRuntimeMock(
               return;
             }
 
-            if (response.kind === 'transportFailure') {
-              callbacks.failureHandler?.(new Error(response.message));
-              return;
-            }
-
-            if (response.kind === 'failureEnvelope') {
-              sendFailureEnvelope(callbacks, method, responseIndex, response);
-              return;
-            }
-
-            if (response.kind === 'deferredSuccess') {
-              globalThis.${deferredQueueTrackerName}.push(() => {
-                sendSuccess(callbacks, method, responseIndex, response.data);
-              });
-              return;
-            }
-
-            if (response.kind === 'deferredFailure') {
-              globalThis.${deferredQueueTrackerName}.push(() => {
-                sendFailureEnvelope(callbacks, method, responseIndex, response);
-              });
-              return;
-            }
-
-            sendSuccess(callbacks, method, responseIndex, response.data);
+            deliverResponseAfterHold(callbacks, method, responseIndex, response);
           }),
         },
       };
@@ -243,6 +313,35 @@ export async function releaseNextDeferredSuccess(
 
     releaseFunction();
   }, releaseFunctionName);
+}
+
+/**
+ * Releases a named runtime response signal, including every waiter registered for it.
+ *
+ * @param {Page} page The Playwright page under test.
+ * @param {string} signal The signal name to release.
+ * @param {string} releaseFunctionName Name for the release function (default: '__releaseRuntimeSignal').
+ * @returns {Promise<void>} Resolves once the signal has been released.
+ */
+export async function releaseRuntimeSignal(
+  page: Page,
+  signal: string,
+  releaseFunctionName: string = RELEASE_SIGNAL_FUNCTION
+): Promise<void> {
+  await page.evaluate(
+    (payload) => {
+      const releaseFunction = Reflect.get(globalThis, payload.releaseFunctionName);
+
+      if (typeof releaseFunction !== 'function') {
+        throw new TypeError(
+          'No release function named ' + payload.releaseFunctionName + ' is available.'
+        );
+      }
+
+      releaseFunction(payload.signal);
+    },
+    { releaseFunctionName, signal }
+  );
 }
 
 /**

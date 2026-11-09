@@ -19,6 +19,7 @@ Sibling contracts:
 - [Component Shape: BaseTaskArtifact](base-task-artifact.md) — the artifact shape embedded in `TaskDefinition.artifacts.{reference,template}`; this contract is its origin.
 - [Contract: Reference Data](reference-data.md) — `primaryTopicKey` references AssignmentTopics; `yearGroupKey` references YearGroups.
 - [Contract: BackendConfig](backend-config.md) — No direct relationship.
+- [Transport envelope](transport-envelope.md) — definition API payloads use the shared `apiHandler` envelope, which leaves the backend as a JSON string; this contract documents only the inner payload.
 
 ---
 
@@ -94,6 +95,19 @@ Key notes:
 - `tasks` is stored as a `Record<string, TaskDefinition>` keyed object but arrives at
   the frontend as a `Array<{taskId, taskTitle, taskWeighting}>` lightweight array after
   response-mapper transformation.
+- Stored dates are ISO strings: the constructor stores `createdAt`/`updatedAt`/
+  `referenceLastModified`/`templateLastModified` as supplied strings (or from `new Date().toISOString()`),
+  and `toJSON()`/`toPartialJSON()` re-emit them unchanged. JsonDbApp revives those stored ISO strings
+  as live `Date` objects on read, so a restored model can hold `Date` values in those four fields.
+  `fromJSON()` passes them through unchanged; the definition transport handlers normalise
+  `createdAt`/`updatedAt` themselves, and the two `*LastModified` fields are not transported by
+  the definition endpoints themselves (`getAssignmentDefinition` and `upsertAssignmentDefinition`
+  omit them from the response-mapper output). They **are** transported inside the Assignment
+  contract's embedded full definition: `AssignmentDefinition.toJSON()` includes both fields,
+  `AssignmentSerialisation.toJSON()` (`00_AssignmentSerialisation.js`) embeds that serialised
+  definition object under the assignment root's `assignmentDefinition` key, and the frontend
+  `AssignmentDefinitionSchema` (`assignmentAssessment.zod.ts`) requires both as
+  `z.string().nullable()`. See [Contract: Assignment](assignment.md).
 - `toJSON()` throws `TypeError` if called on a partial instance (where `tasks` is an array).
 - Full-definition eligibility is a single predicate: keyed (non-array) `tasks` **and** non-null
   `referenceDocumentId`/`templateDocumentId`. The synthetic transport projection
@@ -162,8 +176,10 @@ Key contract notes:
   and `createdAt`/`updatedAt` must be null or strict ISO datetime strings with timezone info.
 - Returns an empty array when no registry documents exist.
 - `referenceLastModified` and `templateLastModified` are omitted from the partial transport.
-- `DateUtils.normaliseDateFields()` is called on each row to convert `Date` objects to ISO strings
-  (required because `google.script.run` prohibits `Date` in return values).
+- `DateUtils.normaliseDateFields()` is called on each row to convert `createdAt`/`updatedAt` to ISO
+  strings. This is required because `google.script.run` prohibits `Date` in return values and
+  JsonDbApp revives stored ISO strings as `Date` objects on read. It also keeps the emitted shape
+  explicit rather than relying on `JSON.stringify` at the entry point.
 
 ### `getAssignmentDefinition` (read)
 
@@ -230,7 +246,10 @@ Key contract notes:
 - The response shape is shared with `upsertAssignmentDefinition` — both read and write
   transports use the same canonical editable entity contract (`AssignmentDefinitionSchema`).
 - Returns `null` when no persisted definition exists for the given `definitionKey`.
-- `DateUtils.normaliseDateFields()` is called on the response before returning from the handler.
+- `DateUtils.normaliseDateFields()` is called on the response before returning from the handler,
+  converting `createdAt`/`updatedAt` to ISO strings. The same conversion applies to the
+  `upsertAssignmentDefinition` response. `referenceLastModified`/`templateLastModified` are not
+  part of the response, so revived `Date` values in those fields never reach the frontend.
 
 ### `upsertAssignmentDefinition` (write)
 
@@ -599,12 +618,16 @@ The definition-write availability invariant is owned by
    `upsertAssignmentDefinition`) filters out null-weighting tasks, so the full-definition path is
    safe. Only the partial path is affected.
 
-2. **`referenceLastModified` and `templateLastModified` exist in persistence but are omitted from transport.**
+2. **`referenceLastModified` and `templateLastModified` exist in persistence but are omitted from the definition endpoints' transport.**
    Both `toJSON()` and the full cache store these timestamps for lazy-refresh decisions, but
-   the response mapper `_getFullAssignmentDefinition()` does not include them. There is no
-   frontend Zod field for them.
-   **Classification: Aligned** — deliberate design. These fields are internal to the backend
-   refresh logic and are not needed on the frontend.
+   the response mapper `_getFullAssignmentDefinition()` does not include them, and the
+   definition-endpoint schemas (`assignmentDefinition.zod.ts`) declare no field for them.
+   The Assignment contract differs: its embedded full definition carries both fields, and
+   `AssignmentDefinitionSchema` (`assignmentAssessment.zod.ts`) requires them as
+   `z.string().nullable()` (see the persistence notes above).
+   **Classification: Aligned** — deliberate design. The fields stay internal to the definition
+   endpoints' transport and the backend refresh logic, while the Assignment-embedded definition
+   intentionally transports them.
 
 3. **`tasks` is a keyed object in persistence but an array in transport.**
    Backend `toJSON()` returns `tasks` as `Record<string, TaskDefinition>` (keyed object).
@@ -641,7 +664,7 @@ The definition-write availability invariant is owned by
 Persistence model:         src/backend/Models/AssignmentDefinition.js
   └── AssignmentDefinition.toJSON()          — full definition shape (tasks as keyed object)
   └── AssignmentDefinition.toPartialJSON()   — partial registry shape (tasks as array)
-  └── AssignmentDefinition.fromJSON()        — deserialisation (coerces tasks: null → [])
+  └── AssignmentDefinition.fromJSON()        — deserialisation (coerces tasks: null → []; leaves revived Date values unchanged)
   └── AssignmentDefinition.buildDefinitionKey() — constructor-fallback metadata key (production create uses the orchestrator's opaque UUID)
   └── AssignmentDefinition._computePartialTasks() — partial tasks array computation
 
@@ -679,7 +702,7 @@ API handlers:              src/backend/z_Api/
   │                                             getAssignmentDefinition_(),
   │                                             upsertAssignmentDefinition_(),
   │                                             deleteAssignmentDefinition_(),
-  │                                             toTransportPartialRow_()   (remains flat)
+  │                                             toTransportPartialRow_()   (remains flat; normalises createdAt/updatedAt to ISO)
   └── assignmentDefinition/
         ├── assignmentDefinitionValidation.js            — validateReadParameters_(),
         │                                                  validateDeleteParameters_()

@@ -51,13 +51,22 @@ beforeEach(() => {
     fromJSON: vi.fn((json) => {
       // Create a minimal assignment-like object that matches the shape
       const assignment = { ...json, _hydrationLevel: 'partial' };
-      // Define toPartialJSON as non-enumerable to match the real prototype
+      // The class read emit routes through toReadJSON('partial'); a marker-1
+      // record delegates to the same payload as its toPartialJSON.
+      const serialisePartial = () => {
+        const { _hydrationLevel, progressTracker, ...partial } = assignment;
+        return partial;
+      };
+      // Define both serialisers as non-enumerable to match the real prototype
       // behaviour — prevents function properties leaking through serialisation.
       Object.defineProperty(assignment, 'toPartialJSON', {
-        value: vi.fn(() => {
-          const { _hydrationLevel, progressTracker, ...partial } = assignment;
-          return partial;
-        }),
+        value: vi.fn(serialisePartial),
+        enumerable: false,
+        writable: true,
+        configurable: true,
+      });
+      Object.defineProperty(assignment, 'toReadJSON', {
+        value: vi.fn(serialisePartial),
         enumerable: false,
         writable: true,
         configurable: true,

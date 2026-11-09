@@ -2,9 +2,9 @@
  * AssignmentCurrentRestoration — restores current-format submissions and validates
  * their assessment and source state.
  *
- * Depends on the model classes and Assessment as GAS runtime globals. This file sorts
- * before `Models/Assessment.js` in the concatenated script, so `Assessment.CRITERIA` is
- * read inside method bodies, never at evaluation time.
+ * Depends on the model classes, Assessment, and ABLogger as GAS runtime globals. This
+ * file sorts before `Models/Assessment.js` in the concatenated script, so
+ * `Assessment.CRITERIA` is read inside method bodies, never at evaluation time.
  * @namespace
  */
 const AssignmentCurrentRestoration = {
@@ -24,7 +24,7 @@ const AssignmentCurrentRestoration = {
       throw new Error('Current assignment root is untrustworthy');
     const tasks = data.assignmentDefinition?.tasks;
     if (!tasks || typeof tasks !== 'object')
-      throw new Error('Current assignment requires an embedded task universe');
+      throw new Error('Current assignment requires embedded tasks');
     if (Array.isArray(tasks)) {
       const ids = tasks.map((task) => task?.taskId);
       if (
@@ -32,7 +32,7 @@ const AssignmentCurrentRestoration = {
         ids.some((id) => typeof id !== 'string' || !id.trim()) ||
         new Set(ids).size !== ids.length
       )
-        throw new Error('Current assignment task universe is untrustworthy');
+        throw new Error('Current assignment task list is untrustworthy');
       return;
     }
     const keys = Object.keys(tasks);
@@ -51,13 +51,13 @@ const AssignmentCurrentRestoration = {
         );
       })
     )
-      throw new Error('Current assignment task universe is untrustworthy');
+      throw new Error('Current assignment task list is untrustworthy');
   },
 
   /**
-   * Restores a current-format submission and its complete task-item universe.
+   * Restores a current-format submission and its complete task-item list.
    * Invalid items become corrupt-record placeholders; untrustworthy submission
-   * identity or task universes are rejected.
+   * identity or task lists are rejected.
    * @param {Assignment} inst - Assignment receiving the restored submission.
    * @param {object} raw - Current-format submission JSON.
    * @param {object} assignmentData - Parent assignment JSON and embedded definition.
@@ -92,6 +92,7 @@ const AssignmentCurrentRestoration = {
     // Prepare canonical JSON before restoration so invalid records never enter
     // the model restoration path and each healthy item is restored only once.
     const prepared = { ...preparedRaw, items: {} };
+    const degradedTaskIds = [];
     for (const taskId of taskIds) {
       const originalItem = items[taskId];
       if (!originalItem) continue;
@@ -100,11 +101,25 @@ const AssignmentCurrentRestoration = {
         prepared.items[taskId] = result.retained;
       } else {
         prepared.items[taskId] = createCorruptPlaceholder(taskId);
+        degradedTaskIds.push(taskId);
       }
     }
     for (const taskId of taskIds)
-      if (!Object.hasOwn(prepared.items, taskId))
+      if (!Object.hasOwn(prepared.items, taskId)) {
         prepared.items[taskId] = createCorruptPlaceholder(taskId);
+        degradedTaskIds.push(taskId);
+      }
+    // One degradation warn at the isolation boundary; individual throw sites stay silent.
+    if (degradedTaskIds.length > 0)
+      ABLogger.getInstance().warn(
+        'Isolated invalid stored submission items as CORRUPT_RECORD placeholders.',
+        {
+          assignmentId: assignmentData.assignmentId,
+          studentId: raw.studentId,
+          mode,
+          taskIds: degradedTaskIds,
+        }
+      );
     const submission = StudentSubmission.fromJSON(prepared, mode);
     inst.submissions.push(submission);
   },
@@ -156,7 +171,7 @@ const AssignmentCurrentRestoration = {
       !definition?.tasks ||
       typeof definition.tasks !== 'object'
     )
-      throw new Error('Current assignment restoration requires an embedded task universe');
+      throw new Error('Current assignment restoration requires embedded tasks');
     if (
       raw.assignmentId !== assignmentData.assignmentId ||
       typeof raw.studentId !== 'string' ||
@@ -167,7 +182,7 @@ const AssignmentCurrentRestoration = {
       ? definition.tasks.map((task) => task.taskId)
       : Object.keys(definition.tasks);
     if (taskIds.length === 0 || taskIds.some((id) => typeof id !== 'string' || !id))
-      throw new Error('Current assignment task universe is untrustworthy');
+      throw new Error('Current assignment task list is untrustworthy');
     return taskIds;
   },
 

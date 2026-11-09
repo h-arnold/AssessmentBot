@@ -68,6 +68,31 @@ describe('ABClass metadata construction and serialization boundaries', () => {
     expect(ABClass.fromJSON({ classId: 'legacy-null', metadata: null }).metadata).toBeNull();
   });
 
+  it('converts live Dates in restored metadata to ISO strings before validation', () => {
+    // A live Date fails metadata validation, so reaching the ISO-string output
+    // proves the restoration conversion runs before the metadata constructor.
+    const canonical = Object.values(canonicalClasses('medium')).find(
+      (input) => input.metadata?.recentAssignments.length === 1
+    );
+    const withLiveDates = clone(canonical.metadata);
+    withLiveDates.classAverages.updatedAt = new Date('2026-01-15T10:30:00Z');
+    withLiveDates.recentAssignments[0].updatedAt = new Date('2026-01-16T11:45:30Z');
+
+    const restored = withTemporaryGlobals(teacherGlobal, () =>
+      ABClass.fromJSON({ ...clone(canonical), metadata: withLiveDates })
+    );
+
+    expect(restored.metadata.classAverages.updatedAt).toBe('2026-01-15T10:30:00.000Z');
+    expect(restored.metadata.recentAssignments[0].updatedAt).toBe('2026-01-16T11:45:30.000Z');
+    expect(restored.toJSON().metadata.classAverages.updatedAt).toBe('2026-01-15T10:30:00.000Z');
+    expect(restored.toPartialJSON().metadata.recentAssignments[0].updatedAt).toBe(
+      '2026-01-16T11:45:30.000Z'
+    );
+    // The conversion deep-copies whole values: the caller's Dates stay live.
+    expect(withLiveDates.classAverages.updatedAt).toBeInstanceOf(Date);
+    expect(withLiveDates.recentAssignments[0].updatedAt).toBeInstanceOf(Date);
+  });
+
   it('rejects invalid present metadata at construction and restoration with its domain path', () => {
     const canonical = Object.values(canonicalClasses('medium')).find((row) => row.metadata);
     const invalid = invalidMetadata(canonical.metadata);

@@ -1,7 +1,7 @@
 ---
 description: Creates, maintains, and debugs Vitest unit/component tests and backend tests
 mode: all
-model: mistral/deepseek-v4-1-flash-1017
+model: mistral/zai-glm-5-3-flash
 steps: 100
 ---
 

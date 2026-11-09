@@ -34,10 +34,15 @@ import {
   type ClassFull,
 } from '@/services/googleClassrooms/classDetail/classDetailService.zod';
 import { deepFreeze, requireRecord } from '@/test/shared/canonicalFixturePrimitives';
-import classPartialsRaw from '@synthetic/small/classPartials.json';
-import classesByIdRaw from '@synthetic/small/classesById.json';
-import assignmentDefinitionPartialsRaw from '@synthetic/small/assignmentDefinitionPartials.json';
-import assignmentsByKeyRaw from '@synthetic/small/assignmentsByKey.json';
+import { readSyntheticFixture } from './syntheticFixtureData';
+
+const classPartialsRaw = readSyntheticFixture('small', 'classPartials.json');
+const classesByIdRaw = readSyntheticFixture('small', 'classesById.json');
+const assignmentDefinitionPartialsRaw = readSyntheticFixture(
+  'small',
+  'assignmentDefinitionPartials.json'
+);
+const assignmentsByKeyRaw = readSyntheticFixture('small', 'assignmentsByKey.json');
 
 // ---------------------------------------------------------------------------
 // Canonical fixture shapes

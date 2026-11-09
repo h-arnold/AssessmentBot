@@ -106,7 +106,14 @@ const DateUtils = {
     if (value !== null && typeof value === 'object') {
       const result = {};
       for (const [key, value_] of Object.entries(value)) {
-        result[key] = this.deepConvertDates(value_);
+        // defineProperty keeps a stored `__proto__` key as an own property instead
+        // of triggering the prototype setter.
+        Object.defineProperty(result, key, {
+          value: this.deepConvertDates(value_),
+          enumerable: true,
+          writable: true,
+          configurable: true,
+        });
       }
       return result;
     }

@@ -6,7 +6,7 @@ import { withGlobalMocks } from '../helpers/globalMockManager.js';
  *
  * DateUtils.js exists and is fully implemented. These tests validate
  * all exported methods: getFormattedDate, getFutureDate,
- * definitionNeedsRefresh, isNewer, and normaliseDateFields.
+ * definitionNeedsRefresh, isNewer, normaliseDateFields, and deepConvertDates.
  */
 
 describe('DateUtils', () => {
@@ -368,6 +368,36 @@ describe('DateUtils', () => {
       expect(obj.createdAt).toBe('2025-06-16T14:00:00.000Z');
       // Nested object's Date should not be touched
       expect(obj.metadata.createdAt).toBe(nestedDate);
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // deepConvertDates
+  // ---------------------------------------------------------------------------
+  describe('deepConvertDates', () => {
+    it('keeps a materialised own __proto__ key as an own enumerable property with the converted value', () => {
+      const input = { stored: new Date('2025-06-15T10:30:00Z') };
+      // defineProperty materialises the stored key exactly as the vendored JsonDbApp's
+      // JSON.parse revival does; an object literal `__proto__:` would set the prototype.
+      Object.defineProperty(input, '__proto__', {
+        value: { at: new Date('2025-06-16T14:00:00Z') },
+        enumerable: true,
+        writable: true,
+        configurable: true,
+      });
+
+      const result = DateUtils.deepConvertDates(input);
+
+      expect(result).not.toBe(input);
+      const descriptor = Object.getOwnPropertyDescriptor(result, '__proto__');
+      expect(descriptor).toBeDefined();
+      expect(descriptor.enumerable).toBe(true);
+      expect(descriptor.writable).toBe(true);
+      expect(descriptor.configurable).toBe(true);
+      expect(descriptor.value).toEqual({ at: '2025-06-16T14:00:00.000Z' });
+      // Ordinary-key semantics are unchanged.
+      expect(result.stored).toBe('2025-06-15T10:30:00.000Z');
+      expect(Object.getPrototypeOf(result)).toBe(Object.prototype);
     });
   });
 });

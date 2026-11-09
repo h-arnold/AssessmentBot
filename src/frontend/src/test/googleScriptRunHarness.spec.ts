@@ -2,6 +2,21 @@ import { describe, expect, it, vi } from 'vitest';
 import { createGoogleScriptRunApiHandlerMock } from './googleScriptRunHarness';
 
 /**
+ * Delivers `response` through the harness success handler and returns what the handler received.
+ * @param {unknown} response - Backend response handed to the mocked runner.
+ * @returns {unknown} The value the frontend success handler received.
+ */
+function deliver(response: unknown): unknown {
+  const successHandler = vi.fn();
+  const runner = createGoogleScriptRunApiHandlerMock((_request, callbacks) => {
+    callbacks.successHandler?.(response);
+  });
+  runner.withSuccessHandler(successHandler).apiHandler({ method: 'm' });
+  expect(successHandler).toHaveBeenCalledTimes(1);
+  return successHandler.mock.calls[0][0];
+}
+
+/**
  * Focused contract coverage for the shared `google.script.run` harness factory:
  * live-Date rejection (unlike silent `JSON.stringify` coercion), ISO-string
  * passthrough, one-time success serialisation, raw failure delivery, and
@@ -152,6 +167,60 @@ describe('googleScriptRunHarness', () => {
       runner.withFailureHandler(failureHandler).apiHandler({ method: 'm' });
 
       expect(failureHandler).toHaveBeenCalledWith(rawFailure);
+    });
+  });
+
+  describe('null property dropping', () => {
+    it('drops null object properties at every depth, as real google.script.run does', () => {
+      const delivered = deliver({
+        ok: true,
+        requestId: 'req-null',
+        data: [{ classId: '1', metadata: null, owner: { name: 'A', email: null } }],
+      });
+
+      expect(JSON.parse(delivered as string)).toEqual({
+        ok: true,
+        requestId: 'req-null',
+        data: [{ classId: '1', owner: { name: 'A' } }],
+      });
+    });
+
+    it('keeps null array elements and non-null falsy values', () => {
+      const delivered = deliver({ ok: true, data: { list: [null, 0, '', false] } });
+
+      expect(JSON.parse(delivered as string)).toEqual({
+        ok: true,
+        data: { list: [null, 0, '', false] },
+      });
+    });
+
+    it('passes a string response through unchanged so the backend serialisation keeps null', () => {
+      const serialised = JSON.stringify({
+        ok: true,
+        requestId: 'req-string-null',
+        data: [{ classId: '1', metadata: null }],
+      });
+
+      expect(deliver(serialised)).toBe(serialised);
+      expect(JSON.parse(deliver(serialised) as string)).toEqual({
+        ok: true,
+        requestId: 'req-string-null',
+        data: [{ classId: '1', metadata: null }],
+      });
+    });
+
+    it('keeps a null error payload when the backend hands over its JSON string', () => {
+      const serialised = JSON.stringify({
+        ok: false,
+        requestId: 'req-string-error',
+        error: { code: 'INTERNAL_ERROR', message: 'Failed.', isRetriable: false, details: null },
+      });
+
+      expect(JSON.parse(deliver(serialised) as string)).toEqual({
+        ok: false,
+        requestId: 'req-string-error',
+        error: { code: 'INTERNAL_ERROR', message: 'Failed.', isRetriable: false, details: null },
+      });
     });
   });
 

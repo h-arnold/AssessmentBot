@@ -2,7 +2,7 @@
 description: Reviews code for quality, standards adherence, and defects using project-specific checklists
 mode: all
 steps: 100
-model: mistral/mistral-large-4
+model: mistral/mistral-large-4#high
 permissions:
   - action: edit
     resource: '*'
@@ -92,7 +92,7 @@ Consult these resources before and during review. Local docs contain project-spe
 - Local: [api-layer.md](../../docs/developer/backend/api-layer.md)
 - Local: [backend-testing.md](../../docs/developer/backend/backend-testing.md)
 - Local: [AssessmentFlow.md](../../docs/developer/backend/AssessmentFlow.md)
-- Local: [rehydration.md](../../docs/developer/backend/rehydration.md)
+- Local: [rehydration.md](../../docs/developer/backend/rehydration.md) - Rehydration model, legacy read preparation (active on both read paths) and persistence/read separation
 - Local: [singletons.md](../../docs/developer/backend/singletons.md)
 - Local: [oauth-scopes.md](../../docs/developer/backend/oauth-scopes.md)
 - Local: [Vendoring.md](../../docs/developer/backend/Vendoring.md)
@@ -111,7 +111,7 @@ Consult these resources before and during review. Local docs contain project-spe
 
 - [AGENTS.md](../../AGENTS.md)
 - [CONTRIBUTING.md](../../CONTRIBUTING.md)
-- [Synthetic Test Data](../../docs/developer/testing/synthetic-test-data.md) — canonical architecture and canonical-fixture policy for the deterministic synthetic analysis corpus
+- [Synthetic Test Data](../../docs/developer/testing/synthetic-test-data.md) — canonical architecture, canonical-fixture policy and the test-only legacy scenario derivation for the deterministic synthetic analysis corpus
 - [Known Flaky Tests](../../docs/developer/known-flaky-tests.md) — catalogue of known flaky tests and root causes
 
 **Data shapes (all modules — persistence, transport, validation)**:
@@ -283,8 +283,15 @@ Apply only the rows relevant to the module(s) under review.
 - [ ] British English in all comments, identifiers, and user-facing text.
 - [ ] No speculative features or scope beyond the explicit request.
 - [ ] No default values introduced without explicit instruction.
-- [ ] @remarks comments added to all key classes, methods and functions where additional explanation is required
+- [ ] @remarks comments added to all key classes, methods and functions where additional explanation is required.
 - [ ] Files are no longer than 500 lines. If they are, consider if they can be split into smaller modules or if some logic can be moved to helper functions.
+- [ ] **Logic Errors**: Are there off-by-one errors, incorrect assumptions, or unhandled edge cases?
+- [ ] **Side Effects**: Does this change introduce unintended side effects or alter behavior elsewhere?
+- [ ] **Data Flow**: Are inputs/outputs sanitized? Are there race conditions or data corruption risks?
+- [ ] **Redundancy**: Is this logic already implemented elsewhere? Could it be simplified or removed?
+- [ ] **Speculative Scope**: Is this code necessary, or could it be deferred until explicitly requested?
+- [ ] **Purpose Fulfillment**: Does this change solve the problem it claims to solve?
+- [ ] **Edge Case Testing**: Are boundary conditions and edge cases tested?
 
 ### Backend Only
 

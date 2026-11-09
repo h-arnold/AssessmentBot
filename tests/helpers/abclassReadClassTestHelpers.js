@@ -102,6 +102,9 @@ function buildExistingClassDoc(overrides = {}) {
         createdAt: '2026-01-01T09:00:00Z',
         documentType: 'SLIDES',
         submissions: [],
+        // Current-format marker: a non-marker-1 record is read as legacy and
+        // reassessment-projected, which needs a task list this fixture lacks.
+        assessmentContractVersion: 1,
         assignmentDefinition: {
           primaryTitle: 'Essay Draft',
           primaryTopicKey: 'topic-english',
@@ -148,6 +151,7 @@ function buildExpectedReadView(doc) {
       createdAt: a.createdAt,
       documentType: a.documentType,
       submissions: a.submissions,
+      assessmentContractVersion: a.assessmentContractVersion,
       assignmentDefinitionKey: a.assignmentDefinition?.definitionKey ?? null,
     })),
     active: doc.active,

@@ -26,7 +26,7 @@
 import type { JSX } from 'react';
 import { Button, Card, Flex, Space, Typography } from 'antd';
 import { ArrowLeft } from 'lucide-react';
-import { APP_SPACE_SIZE_TIGHT } from '@/theme/spacing';
+import { APP_GAP_SM, APP_SPACE_SIZE_TIGHT } from '@/theme/spacing';
 
 type TitleLevel = 2 | 3 | 4;
 
@@ -46,6 +46,8 @@ type PageNavCardProperties = Readonly<{
   backAriaLabel?: string;
   /** Action buttons rendered right-aligned. */
   actions?: React.ReactNode;
+  /** Opt in to wrapping: the outer row and the action group wrap at narrow widths. */
+  wrapActions?: boolean;
 }>;
 
 /** Default back button label. */
@@ -86,6 +88,10 @@ export function PageTitleCard({
  * @param {string} [properties.backLabel="Back"] - The back button label text.
  * @param {string} [properties.backAriaLabel="Go back"] - The back button aria-label.
  * @param {React.ReactNode} [properties.actions] - Action buttons for the right side.
+ * @param {boolean} [properties.wrapActions] - When true, the outer row wraps with the
+ *   shared 8px gap and the action Space wraps with its existing tight spacing; the
+ *   wrapped single-item rows stay left-aligned. Omitted/false keeps the single-row
+ *   layout.
  * @returns {JSX.Element} The rendered navigation Card.
  */
 export function PageNavCard({
@@ -93,10 +99,14 @@ export function PageNavCard({
   backLabel = DEFAULT_BACK_LABEL,
   backAriaLabel = DEFAULT_BACK_ARIA_LABEL,
   actions,
+  wrapActions,
 }: PageNavCardProperties): JSX.Element {
+  const outerRowProps: { wrap?: 'wrap'; gap?: number } = wrapActions
+    ? { wrap: 'wrap', gap: APP_GAP_SM }
+    : {};
   return (
     <Card size="small">
-      <Flex justify="space-between" align="center">
+      <Flex justify="space-between" align="center" {...outerRowProps}>
         {onBack ? (
           <Button
             type="default"
@@ -106,10 +116,16 @@ export function PageNavCard({
           >
             {backLabel}
           </Button>
-        ) : <div />}
+        ) : (
+          <div />
+        )}
         {actions ? (
-          <Space size={APP_SPACE_SIZE_TIGHT}>{actions}</Space>
-        ) : <div />}
+          <Space size={APP_SPACE_SIZE_TIGHT} wrap={wrapActions}>
+            {actions}
+          </Space>
+        ) : (
+          <div />
+        )}
       </Flex>
     </Card>
   );

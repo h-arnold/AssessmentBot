@@ -37,10 +37,9 @@ describe('getAssignment read error boundary', () => {
       'Corrupt or invalid assignment data: missing required field assignmentDefinition'
     );
     expect(findOne).toHaveBeenCalledWith({ courseId: 'course-001', assignmentId: 'assign-001' });
-    expect(logger.error).toHaveBeenCalledWith(
-      'getAssignment failed',
-      expect.objectContaining({ courseId: 'course-001', assignmentId: 'assign-001' })
-    );
+    // Failure logging is owned by the apiHandler boundary; the handler helper
+    // must not duplicate it.
+    expect(logger.error).not.toHaveBeenCalled();
   });
 
   it('returns null when the real read route cannot find the stored assignment', () => {

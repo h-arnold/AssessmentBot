@@ -94,6 +94,25 @@ describe('ABClass metadata response projections', () => {
     expect(new ABClassController().readClass(sourceClass.classId).metadata).toEqual(metadata);
   });
 
+  it('converts live Dates in a stored partial document to ISO strings during normalisation', () => {
+    // A live Date fails metadata validation, so reaching the ISO-string output
+    // proves the transport normalisation converts before the metadata
+    // constructor validates the stored document.
+    const mapper = new ABClassResponseMapper();
+    const storedPartial = {
+      ...clone(inputs.classPartials[0]),
+      metadata: clone(metadata),
+      _id: 'stored',
+    };
+    storedPartial.metadata.classAverages.updatedAt = new Date('2026-01-15T10:30:00Z');
+
+    const normalised = mapper._normaliseClassPartial(storedPartial);
+
+    expect(normalised.metadata.classAverages.updatedAt).toBe('2026-01-15T10:30:00.000Z');
+    // The conversion deep-copies whole values: the stored document's Date stays live.
+    expect(storedPartial.metadata.classAverages.updatedAt).toBeInstanceOf(Date);
+  });
+
   it('emits null for legacy partial/full absence and for an existing null-metadata class', () => {
     const mapper = new ABClassResponseMapper();
     const legacyPartial = mapper._normaliseClassPartial({

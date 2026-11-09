@@ -1,9 +1,6 @@
 /** Canonical historical-source boundary for changed post-analysis metadata writes. */
 
-import classesByIdRaw from '@synthetic/small/classesById.json';
-import classPartialsRaw from '@synthetic/small/classPartials.json';
-import assignmentDefinitionPartialsRaw from '@synthetic/small/assignmentDefinitionPartials.json';
-import assignmentsByKeyRaw from '@synthetic/small/assignmentsByKey.json';
+import { readSyntheticFixture } from './syntheticFixtureData';
 import { DataAnalysisService } from '@/services/dataAnalysis/dataAnalysisService';
 import {
   ABClassMetadataSchema,
@@ -26,10 +23,15 @@ const OMIT_FINAL_ASSIGNMENT = 1;
 const CLASS_PREFETCH_LIMIT = 3;
 const TARGET_ASSIGNMENT_ID = 'assignment-2-2';
 const LATER_TARGET_UPDATED_AT = '2026-10-21T06:30:00.123Z';
-const classDocuments = classesByIdRaw as Record<string, unknown>;
-const classPartials = classPartialsRaw as ReadonlyArray<Record<string, unknown>>;
-const assignmentDefinitions = assignmentDefinitionPartialsRaw as unknown;
-const assignmentsByKey = assignmentsByKeyRaw as Record<string, unknown>;
+const classDocuments = readSyntheticFixture('small', 'classesById.json') as Record<string, unknown>;
+const classPartials = readSyntheticFixture('small', 'classPartials.json') as ReadonlyArray<
+  Record<string, unknown>
+>;
+const assignmentDefinitions = readSyntheticFixture('small', 'assignmentDefinitionPartials.json');
+const assignmentsByKey = readSyntheticFixture('small', 'assignmentsByKey.json') as Record<
+  string,
+  unknown
+>;
 
 /**
  * Maps one analysis metric without importing the production metadata projection.
