@@ -23,7 +23,7 @@ This document covers:
 
 This document does **not** redefine:
 
-- analysis contracts, pool/baseline derivation, or availability rules — settled in `SPEC.md` decisions 1–9
+- analysis contracts, pool/baseline derivation, or availability rules — settled in `SPEC.md` decisions 1–13 (incl. 6a)
 - the Heatmaps page (`features/taskHeatmap/` standalone surface), which never enters baseline mode and has no control (SPEC decision 1)
 - shared frontend policies already defined in canonical developer docs
 
@@ -37,7 +37,7 @@ This document does **not** redefine:
 
 ## Ant Design references consulted
 
-Consulted for this layout (official documentation and installed antd 6.6.5 definitions; `Segmented`'s official page was fetched during planning, the components below have in-repo cache notes under `docs/developer/frontend/ant-design-docs-cache/`):
+Consulted for this layout (official documentation and installed antd 6.6.5 definitions; `Segmented`'s official page was fetched during planning; of the components below, only Tooltip, Skeleton, and Space have in-repo cache notes under `docs/developer/frontend/ant-design-docs-cache/` — the rest were consulted from the official docs live). Note: the declared/lockfile dependency is 6.6.7 since #339 (the committed install still carries 6.6.5); the source-line pins quoted below hold in 6.6.5 and are re-verified against the declared 6.6.7 in §5a's first-use live check.
 
 - [Segmented](https://ant.design/components/segmented) — the mode control: controlled `value`/`onChange`, two labelled options (`SegmentedLabeledOption` in the installed package), whole-control `disabled`, per-option `tooltip` (supplied **only** in the enabled branch — see the recorded decision, so two popups cannot compete while disabled), `name` for radio-group keyboard semantics, `small` size (24px height)
 - [Tooltip](https://ant.design/components/tooltip) — disabled-reason copy; `trigger` `['hover', 'focus']` per the zero-weight precedent
@@ -76,7 +76,7 @@ Rationale:
 
 - Mode is one binary question; surrounding content with navigation would bury it
 - aggregates and markings must stay simultaneously visible so the user can compare modes while switching
-- a section re-render on toggle is synchronous (SPEC decision 5); no async or modal workflow is involved
+- a section re-render on toggle is synchronous (SPEC decision 6a; Workflow — Toggle baseline mode); no async or modal workflow is involved
 
 ## Recommended page skeleton
 
@@ -196,7 +196,7 @@ Reason:
 1. **Absolute mode**
    - unchanged presentation
 2. **Baseline mode**
-   - aggregates recompute from baseline-restricted evidence; card pills reflecting `excluded` (either cause) render the mode-aware accessible label (SPEC decisions 7–8: baseline-mode label wording names both causes — zero weighting and outside the baseline task set)
+   - aggregates recompute from baseline-restricted evidence; card pills reflecting `excluded` (either cause) render the mode-aware accessible label (SPEC decision 8: baseline-mode label wording names both causes — zero weighting and outside the baseline task set)
    - a card whose criteria are all `error` keeps today's error presentation (`error` is never converted to `excluded`)
 3. **Interaction rule**
    - no per-card control is added; the single header control governs all cards
@@ -248,8 +248,8 @@ TaskHeatmapPage (embedded)
 ### Content
 
 - Column marking: a heading **suffixed with the visible marker "†"** for each column whose `includedInAttemptBaseline` is `false`; the heading is wrapped in the precedent's focusable `<span>`/`Tooltip` pattern with explanation copy _"Task outside the baseline set — shown, but not included in baseline averages."_
-- **Visual language rules (decided):** marked headings **reuse** the zero-weight group class and metric edge classes (`ZERO_WEIGHT_GROUP_CLASS` + edge classes) — one "not averaging" visual language; the two causes are distinguished only by tooltip and `aria-label` text, never by different chrome. **Both** zero-weight helpers gain the new input as an options-object parameter — `buildTaskHeaderPresentation` for the heading tuple and `getZeroWeightMetricEdgeClass` for the `FIRST`/`LAST` edge classes, the latter applied at `taskHeatmapTableColumns.tsx:280–284` to metric headers **and body cells**; leaving the second helper untouched would give baseline-off columns the group chrome but lose the edge treatment, contradicting this one-language rule. When zero-weight and baseline-off co-occur, the `Tooltip` body is **one text with both facts, baseline-off first** (no stacked tooltips, no separate class layer), and the composed `aria-label` follows the same order. Extending the constants or these classes touches existing assertions: `TaskHeatmapTable.zeroWeight.spec.tsx` asserts the constants and classes verbatim — helper-signature assertions at `:108` and DOM body-cell class assertions at `:168–170` and `:271–272` (the affected test bodies span roughly `:106–282`).
-- **Flag plumbing ownership:** the flag reaches `TaskHeatmapColumn` (`taskHeatmapTableColumns.tsx:60–68`) as a **required** field — an optional field plus a `?? true` fallback would be an un-instructed default (root `AGENTS.md` §2.1.7) and would betray the SPEC rule that a column without baseline information must never silently read as included. SPEC names only `HeatmapTaskColumn` (the adapter interface); this table-level hop plus its required-field blast radius is owned by this feature's implementation: `TaskHeatmapTable.merged.spec.tsx:99/145/202` hand-builds `MergedHeatmapTaskColumn[]`, and `src/frontend/src/test/taskHeatmapTableTestHelpers.ts` plus the heatmap fixture modules update (the presentation contract stays a TS interface, not a Zod shape — no data-shape entry).
+- **Visual language rules (decided):** marked headings **reuse** the zero-weight group class and metric edge classes (`ZERO_WEIGHT_GROUP_CLASS` + edge classes) — one "not averaging" visual language; the two causes are distinguished only by tooltip and `aria-label` text, never by different chrome. **Both** zero-weight helpers gain the new input as an options-object parameter — `buildTaskHeaderPresentation` for the heading tuple and `getZeroWeightMetricEdgeClass` for the `FIRST`/`LAST` edge classes, the latter applied at `taskHeatmapTableColumns.tsx:329` (import at `:45`) to metric headers **and body cells**; leaving the second helper untouched would give baseline-off columns the group chrome but lose the edge treatment, contradicting this one-language rule. When zero-weight and baseline-off co-occur, the `Tooltip` body is **one text with both facts, baseline-off first** (no stacked tooltips, no separate class layer), and the composed `aria-label` follows the same order. Extending the constants or these classes touches existing assertions: `TaskHeatmapTable.zeroWeight.spec.tsx` asserts the constants and classes verbatim — helper-signature assertions at `:108` and DOM body-cell class assertions at `:168–170` and `:271–272` (the affected test bodies span roughly `:106–282`).
+- **Flag plumbing ownership:** the flag reaches `TaskHeatmapColumn` (`taskHeatmapTableColumns.tsx:60–68`) as a **required** field — an optional field plus a `?? true` fallback would be an un-instructed default (root `AGENTS.md` §2.1.7) and would betray the SPEC rule that a column without baseline information must never silently read as included. SPEC names only `HeatmapTaskColumn` (the adapter interface); this table-level hop plus its required-field blast radius is owned by this feature's implementation: `TaskHeatmapTable.merged.spec.tsx:99/145/202` hand-builds `MergedHeatmapTaskColumn[]` (and `TaskHeatmapTable.zeroWeight.spec.tsx:64` builds a `MergedHeatmapResult` literal via `buildMergedZeroWeightResult()` — both adapter-typed, both updated in the baseline-delivery sweep), and `src/frontend/src/test/taskHeatmapTableTestHelpers.ts` plus the heatmap fixture modules update (the presentation contract stays a TS interface, not a Zod shape — no data-shape entry).
 - Caption line (rendered once above the table when at least one marked column exists): _"† Tasks marked with this symbol are outside the baseline task set. Their values are unchanged; averages exclude them."_
 - **Caption ownership and placement (decided):** the caption lives **inside `TaskHeatmapTable`**, immediately above the `<Table>`, after its existing above-table notice — the component that already holds `taskColumns` and already owns an in-place notice, so no prop plumbing is added and "above the table" is unambiguous. It renders as `Typography.Paragraph` — same element and live semantics as the existing sibling notice (`role="status"`, `aria-live="polite"`), with `type="secondary"` added for the explanatory tone — **deliberately so**: entering baseline mode silently changes aggregates, and this is the only surface-level explanation on the heatmap view; live-region announcement makes the aggregate change non-silent for AT users. Spacing follows the Card's existing stack (no new token).
 - Merge behaviour: when a column group is merged, the merged column inherits the flag via the existing spread; if the merged flag is `false` the merged heading receives the marker (a merged group of mixed membership cannot occur: merge keys are definition-scoped and the flag is per task key)
@@ -288,7 +288,7 @@ The student averages table and heatmap table are existing data regions; only the
 
 ### Copy homes (decided)
 
-All six new strings live in the codebase's two established locations:
+All seven new strings live in the codebase's two established locations:
 
 - **Header copy** → `src/frontend/src/pages/pageContent.ts` under `classDetail` (the page-level copy module the Class page already uses): the group label "Averages basis", the two option labels, and the per-option tooltip summary
 - **Heatmap-side copy** → constants co-located beside `taskHeatmapZeroWeightHeader.tsx` (the existing home of `ZERO_WEIGHT_EXPLANATION` and the group/tooltip class constants): the column tooltip explanation, the caption line, and the "†" marker
@@ -332,7 +332,7 @@ No new modal, drawer, popover, or inline-expansion workflow. `AssessTaskModal` a
 - Installed-component facts worth recording: `@rc-component/segmented` imposes `role="radiogroup"`, a hard-coded `aria-label="segmented control"`, and `tabIndex: 0` **when enabled** (`tabIndex` is dropped when whole-control-disabled). Because caller props are spread after those defaults, `aria-labelledby` both applies and **overrides** the hard-coded label — set it explicitly so nobody relies on (or unknowingly leaves) the default English label; the group is unfocusable while disabled
 - The disabled reason lives in one place (`ClassPageData.baselineAvailability.reason`) shared by the tooltip and the sr-only node, so hover and screen-reader text are identical by construction
 - Marked column headings expose their explanation both visually (marker + tooltip on hover/focus of the focusable heading span) and to assistive tech (`aria-label` on the heading span and `onHeaderCell` on the column), mirroring the zero-weight precedent
-- The mode-aware `excluded` accessible label keeps pill and table-cell announcements truthful in both modes (SPEC decision 7); no cause field exists in data, by design
+- The mode-aware `excluded` accessible label keeps pill and table-cell announcements truthful in both modes (SPEC decision 8); no cause field exists in data, by design
 - `Segmented` (small) introduces a thumb-slide animation (`MotionThumb`, `thumb-motion`, transitions on `transform`/`width` via `motionDurationSlow`); reduced motion is covered **indirectly** by the shell's global reduced-motion token (`AppThemeShell` sets `motion = !shouldReduceMotion`, and antd's alias zeroes all durations when `motion === false`) — no component-level handling is added. Post-toggle E2E assertions and screenshot capture should let the thumb motion settle first
 - Focus is preserved across a mode toggle (re-render does not remount the control or tables)
 
