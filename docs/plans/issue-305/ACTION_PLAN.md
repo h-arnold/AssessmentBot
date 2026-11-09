@@ -1,6 +1,6 @@
 # Feature Delivery Plan (TDD-First) — Attempt-Baseline Analysis Mode (issue #305)
 
-> **Status (in progress):** Implementation underway on branch `feat/issue-305-attempt-baseline-mode`. Current phase: Section 1 (red). Baseline established 2026-11-05 on this branch: 7/8 checks pass; `backend-lint-check` fails only on four pre-existing `max-lines` warnings in untouched backend test files (`tests/backend-api/assignmentDefinitionPartials.unit.test.js`, `tests/dbManager/dbManager.test.js`, `tests/googleClassroom/classroomApiClient.test.js`, `tests/utils/batchUpdateUtility.test.js`) — accepted as pre-existing technical debt for this frontend-only plan; report: `.ts-regression-checker/reports/session-feat-issue-305-attempt-baseline-mode/baseline/baseline.txt`.
+> **Status (in progress):** Implementation underway on branch `feat/issue-305-attempt-baseline-mode`. Current phase: Section 2 (red). Section 1 complete (`b2199cfe` + `f2c8cef9`, gate run 2 clean). Baseline refreshed 2026-11-09 on the merged tree (`origin/main` · `4635f18b`): 7/8 checks pass; `backend-lint-check` fails only on four pre-existing `max-lines` warnings in untouched backend test files (`tests/backend-api/assignmentDefinitionPartials.unit.test.js`, `tests/dbManager/dbManager.test.js`, `tests/googleClassroom/classroomApiClient.test.js`, `tests/utils/batchUpdateUtility.test.js`) — accepted as pre-existing technical debt for this frontend-only plan; report: `.ts-regression-checker/reports/session-feat-issue-305-attempt-baseline-mode/baseline/baseline.txt`.
 
 ## Read-First Context
 
