@@ -7,9 +7,9 @@ It has **no backend API, persistence collection, transport envelope or migration
 metadata lifecycle, the shared post-analysis contracts, both consumer surfaces and the
 error-aware task-preview view models are implemented and described below. The attempt-baseline
 analysis mode is being delivered incrementally (tracking issue: h-arnold/AssessmentBot#305):
-its schema contracts (filter field, result echo and optional baseline block, task-row flag) and
-the analyser's baseline-mode behaviour are implemented, while the downstream surfaces (heatmap
-column projection, summary reconciliation and the Class-page mode control) remain planned
+its schema contracts (filter field, result echo and optional baseline block, task-row flag),
+the analyser's baseline-mode behaviour and the heatmap column projection are implemented,
+while the summary reconciliation and the Class-page mode control remain planned
 (see [Attempt-baseline contract changes](#attempt-baseline-contract-changes)).
 
 Sibling contracts:
@@ -773,19 +773,24 @@ assignment-definition partial and emit it on task-column descriptors. UI code
 must consume that descriptor and must not derive weighting from displayed scores
 or duplicate definition resolution.
 
-| Field                 | `HeatmapTaskColumn`   | `MergedHeatmapTaskColumn` |
-| --------------------- | --------------------- | ------------------------- |
-| `taskKey`             | `string`              | `string`                  |
-| `taskId`              | `string`              | `string`                  |
-| `taskTitle`           | `string\|null`        | `string\|null`            |
-| `averageContribution` | `AverageContribution` | `AverageContribution`     |
-| `assignmentId`        | —                     | `string`                  |
-| `definitionKey`       | —                     | `string`                  |
-| `assignmentName`      | —                     | `string`                  |
+| Field                       | `HeatmapTaskColumn`   | `MergedHeatmapTaskColumn` |
+| --------------------------- | --------------------- | ------------------------- |
+| `taskKey`                   | `string`              | `string`                  |
+| `taskId`                    | `string`              | `string`                  |
+| `taskTitle`                 | `string\|null`        | `string\|null`            |
+| `averageContribution`       | `AverageContribution` | `AverageContribution`     |
+| `includedInAttemptBaseline` | `boolean`             | `boolean`                 |
+| `assignmentId`              | —                     | `string`                  |
+| `definitionKey`             | —                     | `string`                  |
+| `assignmentName`            | —                     | `string`                  |
 
 `MergedHeatmapTaskColumn` is produced by spreading the shared `buildTaskColumns`
 projection and adding the full assignment identity, so the contribution metadata
-is inherited unchanged. In merged heatmaps, a definition-scoped duplicate
+is inherited unchanged. `includedInAttemptBaseline` is set by the same shared
+projection from the caller's baseline set: `adaptMetricsToHeatmap` derives the
+set from its own result's mode echo under the Baseline narrowing rule's
+fail-fast, while the merged chain passes `null` (absolute mode), so every merged
+column is included. In merged heatmaps, a definition-scoped duplicate
 `taskKey` has one unambiguous contribution value: duplicate columns are collapsed
 by `taskKey`, and every collapsed instance shares the same definition-scoped
 effective weighting.
@@ -1128,8 +1133,8 @@ attempt-baseline action plan: required filter field, result echo and optional ba
 required task-row flag), as is the analyser's baseline-mode behaviour (Section 2:
 post-accumulation baseline selection, baseline-restricted aggregation, the baseline-mode
 per-student `excluded` conversion and the `attemptBaseline` echo); item 5 is partially
-delivered. The heatmap column projection (Section 3), the summary reconciliation (Section 4)
-and the Class-page mode control (Section 5) remain planned.
+delivered. The heatmap column projection (Section 3) is delivered. The summary
+reconciliation (Section 4) and the Class-page mode control (Section 5) remain planned.
 
 1. **`AnalysisFilterSchema.analysisMode`** — required enum field
    `z.enum(['absolute', 'topDecileBaseline'])` on the existing strict filter
@@ -1220,7 +1225,7 @@ and the Class-page mode control (Section 5) remain planned.
 
    **Implemented (Section 1):** the flag is required on every task row and the
    analyser sets it `true` in absolute mode; the heatmap-column projection is
-   Section 3.
+   implemented with the column descriptors (item 8).
 
    **Baseline narrowing rule.** `attemptBaseline` is optional on the result
    because absolute mode omits it; the analyser always emits it in baseline
@@ -1284,6 +1289,11 @@ and the Class-page mode control (Section 5) remain planned.
    each hop. `MergedHeatmapTaskColumn` inherits the field via its existing spread
    of the base projection. `HeatmapCell` is unchanged: marking is
    **column-level only in v1**, and cell values stay absolute in both modes.
+   **Implemented (Section 3):** both column descriptors require the field and
+   the adapter derives the set from its own analyser result; the fail-fast
+   throws name `appliedAnalysisMode` (missing or unrecognised echo) and
+   `attemptBaseline` (baseline-mode result without the block), as the Baseline
+   narrowing rule requires.
 
 9. **Preview error fields — implemented.** The derived preview shapes now distinguish an
    assessment-only error whose source is available, an unavailable/corrupt source, and a

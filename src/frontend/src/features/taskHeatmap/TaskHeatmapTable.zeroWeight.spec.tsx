@@ -42,8 +42,7 @@ function renderEmbeddedZeroWeightTable() {
             averageContribution: { effectiveWeight: 0, includedInAverage: false },
           }
         : { ...column };
-    }
-    ),
+    }),
     rows: base.rows.map((row) => ({ ...row, cells: [...row.cells] })),
   };
 
@@ -79,6 +78,7 @@ function buildMergedZeroWeightResult(): MergedHeatmapResult {
         taskId: 'zero-task',
         taskTitle: 'Merged zero-weight task',
         averageContribution: { effectiveWeight: 0, includedInAverage: false },
+        includedInAttemptBaseline: true,
         assignmentId: 'assignment-1',
         definitionKey: 'definition-1',
         assignmentName: 'Parent tier',
@@ -88,6 +88,7 @@ function buildMergedZeroWeightResult(): MergedHeatmapResult {
         taskId: 'positive-task',
         taskTitle: 'Merged positive task',
         averageContribution: { effectiveWeight: 1, includedInAverage: true },
+        includedInAttemptBaseline: true,
         assignmentId: 'assignment-2',
         definitionKey: 'definition-2',
         assignmentName: 'Other tier',
@@ -179,8 +180,7 @@ describe('TaskHeatmapTable zero-weight presentation', () => {
         return index === 0
           ? { ...column, averageContribution: { effectiveWeight: 0, includedInAverage: false } }
           : { ...column };
-      }
-      ),
+      }),
     };
     render(
       <TaskHeatmapTable
@@ -221,8 +221,7 @@ describe('TaskHeatmapTable zero-weight presentation', () => {
         return index === 0
           ? { ...column, averageContribution: { effectiveWeight: 0, includedInAverage: false } }
           : { ...column };
-      }
-      ),
+      }),
     };
     render(
       <TaskHeatmapTable

@@ -8,6 +8,12 @@
  * attempts at roster index 0, the non-degenerate seven-of-nine-key baseline,
  * and the per-class outside-baseline pair.
  *
+ * The heatmap-projection cases pin the adapter's column-level
+ * `includedInAttemptBaseline` projection of the same corpus: baseline mode
+ * marks the per-class outside-baseline pair as outside the baseline, while the
+ * absolute and merged paths stay all-included through the explicit `null`
+ * baseline set.
+ *
  * The committed views are imported at this call site with the `?raw` suffix,
  * following `dataAnalysis.mediumRoundTrip.spec.ts`: record loading stays at
  * the call site and no shared loader is created.
@@ -21,6 +27,8 @@ import mediumPartialsRaw from '@synthetic/medium/assignmentDefinitionPartials.js
 import { DataAnalysisService } from './dataAnalysisService';
 import { AveragingAnalyserInputSchema } from './dataAnalysis.zod';
 import type { AveragingAnalyserInput, AnalysisMode } from './dataAnalysis.zod';
+import { adaptMetricsToHeatmap } from './heatmapAdapter';
+import { adaptMetricsToMergedHeatmap } from './heatmapAdapter.merged';
 import { buildTaskKey } from './taskKey';
 
 /** `medium` class analysed in depth by this suite. */
@@ -55,16 +63,8 @@ const EXPECTED_BASELINE_KEY_COUNT = 7;
 /** Number of per-task rows derived for every `medium` class (nine task keys). */
 const EXPECTED_PER_TASK_ROW_COUNT = 9;
 
-/** Non-degenerate baseline key set shared by every `medium` class (ascending). */
-const EXPECTED_BASELINE_TASK_KEYS = [
-  'definition-0-slides::task-0-0',
-  'definition-0-slides::task-0-1',
-  'definition-1-sheets::task-1-0',
-  'definition-1-sheets::task-1-1',
-  'definition-3-sheets::task-3-0',
-  'definition-3-sheets::task-3-1',
-  'definition-partial-0::task-partial-0-0',
-];
+/** Distinct task keys projected across every assignment of one `medium` class. */
+const EXPECTED_PROJECTED_TASK_KEY_COUNT = 9;
 
 /** The outside-baseline task keys per class (the pool leader's extra attempts). */
 const OUTSIDE_BASELINE_KEYS_BY_CLASS: Record<string, string[]> = {
@@ -73,6 +73,34 @@ const OUTSIDE_BASELINE_KEYS_BY_CLASS: Record<string, string[]> = {
   'class-2': ['definition-2-slides::task-2-0', 'definition-2-slides::task-2-1'],
   'class-3': ['definition-0-slides::task-0-0', 'definition-0-slides::task-0-1'],
 };
+
+/** All nine projected task keys per class, ascending. */
+const EXPECTED_PROJECTED_TASK_KEYS = [
+  'definition-0-slides::task-0-0',
+  'definition-0-slides::task-0-1',
+  'definition-1-sheets::task-1-0',
+  'definition-1-sheets::task-1-1',
+  'definition-2-slides::task-2-0',
+  'definition-2-slides::task-2-1',
+  'definition-3-sheets::task-3-0',
+  'definition-3-sheets::task-3-1',
+  'definition-partial-0::task-partial-0-0',
+];
+
+/** Per-class baseline keys: the projected set minus the outside pair. */
+const EXPECTED_BASELINE_KEYS_BY_CLASS: Record<string, string[]> = Object.fromEntries(
+  MEDIUM_CLASS_IDS.map((classId): [string, string[]] => {
+    return [
+      classId,
+      EXPECTED_PROJECTED_TASK_KEYS.filter(
+        (key) => !OUTSIDE_BASELINE_KEYS_BY_CLASS[classId].includes(key)
+      ),
+    ];
+  })
+);
+
+/** Class-0/2 baseline key set (ascending): the projected set minus its outside pair. */
+const EXPECTED_BASELINE_TASK_KEYS = EXPECTED_BASELINE_KEYS_BY_CLASS[MEDIUM_CLASS_ID];
 
 type MediumAssessment = { score: number | 'N' | 'E'; error?: { code: string } };
 type MediumItem = { assessments?: Record<string, MediumAssessment> };
@@ -351,6 +379,87 @@ describe('medium corpus baseline-mode round trip', () => {
     expect(baseline.map((result) => result.perStudentTaskMetrics)).toEqual(
       absolute.map((result) => result.perStudentTaskMetrics)
     );
+  });
+});
+
+describe('medium corpus heatmap column projection', () => {
+  it('marks exactly the outside-baseline columns excluded from the attempt baseline in baseline mode', () => {
+    const input = buildMediumInput('topDecileBaseline', MEDIUM_CLASS_IDS);
+    const results = new DataAnalysisService().analyse(input);
+
+    for (const [classIndex, classId] of MEDIUM_CLASS_IDS.entries()) {
+      const result = results[classIndex];
+      const classFull = input.classes[classIndex];
+      const includedFlags = new Map<string, boolean>();
+      for (const assignment of classFull.assignments) {
+        const heatmap = adaptMetricsToHeatmap(
+          result,
+          classFull,
+          assignment.assignmentId,
+          input.assignmentDefinitionPartials
+        );
+        for (const column of heatmap.taskColumns) {
+          includedFlags.set(column.taskKey, column.includedInAttemptBaseline);
+        }
+      }
+
+      const outsideKeys = OUTSIDE_BASELINE_KEYS_BY_CLASS[classId];
+      expect(includedFlags.size).toBe(EXPECTED_PROJECTED_TASK_KEY_COUNT);
+      const excludedKeys: string[] = [];
+      const includedKeys: string[] = [];
+      for (const [key, included] of includedFlags) {
+        if (included) {
+          includedKeys.push(key);
+        } else {
+          excludedKeys.push(key);
+        }
+      }
+      expect(excludedKeys.toSorted((a, b) => a.localeCompare(b))).toEqual(
+        outsideKeys.toSorted((a, b) => a.localeCompare(b))
+      );
+      expect(includedKeys.toSorted((a, b) => a.localeCompare(b))).toEqual(
+        EXPECTED_BASELINE_KEYS_BY_CLASS[classId]
+      );
+    }
+  });
+
+  it('keeps every heatmap column included in absolute mode via the explicit null baseline set', () => {
+    const input = buildMediumInput('absolute', MEDIUM_CLASS_IDS);
+    const results = new DataAnalysisService().analyse(input);
+
+    for (const classIndex of MEDIUM_CLASS_IDS.keys()) {
+      const result = results[classIndex];
+      const classFull = input.classes[classIndex];
+      for (const assignment of classFull.assignments) {
+        const heatmap = adaptMetricsToHeatmap(
+          result,
+          classFull,
+          assignment.assignmentId,
+          input.assignmentDefinitionPartials
+        );
+        for (const column of heatmap.taskColumns) {
+          expect(column.includedInAttemptBaseline).toBe(true);
+        }
+      }
+    }
+  });
+
+  it('keeps merged heatmap columns all included via the explicit null chain even for a baseline-mode result', () => {
+    const input = buildMediumInput('topDecileBaseline', [MEDIUM_CLASS_ID]);
+    const [result] = new DataAnalysisService().analyse(input);
+    const classFull = input.classes[0];
+
+    const merged = adaptMetricsToMergedHeatmap(
+      result,
+      classFull,
+      classFull.assignments.map((assignment) => assignment.assignmentId),
+      input.assignmentDefinitionPartials
+    );
+
+    expect(merged.taskColumns).toHaveLength(EXPECTED_PROJECTED_TASK_KEY_COUNT);
+    for (const column of merged.taskColumns) {
+      expect(column.includedInAttemptBaseline).toBe(true);
+    }
   });
 });
 

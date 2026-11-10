@@ -84,8 +84,7 @@ function buildMergedRows(taskCount: number): MergedHeatmapResult['rows'] {
           completenessValue:
             taskIndex === 0 ? MERGED_PRIMARY_TASK_SCORE : MERGED_SECONDARY_TASK_SCORE,
         });
-      }
-      ),
+      }),
     };
   });
 }
@@ -102,6 +101,7 @@ function buildSingleSourceMergedResult(): MergedHeatmapResult {
       taskId: 't1',
       taskTitle: 'A1 Task 1',
       averageContribution: { effectiveWeight: 1, includedInAverage: true },
+      includedInAttemptBaseline: true,
       assignmentId: A1_ID,
       definitionKey: MERGED_DEF_1,
       assignmentName: A1_NAME,
@@ -111,6 +111,7 @@ function buildSingleSourceMergedResult(): MergedHeatmapResult {
       taskId: 't2',
       taskTitle: 'A1 Task 2',
       averageContribution: { effectiveWeight: 1, includedInAverage: true },
+      includedInAttemptBaseline: true,
       assignmentId: A1_ID,
       definitionKey: MERGED_DEF_1,
       assignmentName: A1_NAME,
@@ -120,6 +121,7 @@ function buildSingleSourceMergedResult(): MergedHeatmapResult {
       taskId: 't3',
       taskTitle: 'A1 Task 3',
       averageContribution: { effectiveWeight: 1, includedInAverage: true },
+      includedInAttemptBaseline: true,
       assignmentId: A1_ID,
       definitionKey: MERGED_DEF_1,
       assignmentName: A1_NAME,
@@ -148,6 +150,7 @@ function buildTwoSourceMergedResult(): MergedHeatmapResult {
       taskId: 't1',
       taskTitle: 'A1 Task 1',
       averageContribution: { effectiveWeight: 1, includedInAverage: true },
+      includedInAttemptBaseline: true,
       assignmentId: A1_ID,
       definitionKey: MERGED_DEF_1,
       assignmentName: A1_NAME,
@@ -157,6 +160,7 @@ function buildTwoSourceMergedResult(): MergedHeatmapResult {
       taskId: 't2',
       taskTitle: 'A1 Task 2',
       averageContribution: { effectiveWeight: 1, includedInAverage: true },
+      includedInAttemptBaseline: true,
       assignmentId: A1_ID,
       definitionKey: MERGED_DEF_1,
       assignmentName: A1_NAME,
@@ -166,6 +170,7 @@ function buildTwoSourceMergedResult(): MergedHeatmapResult {
       taskId: 't3',
       taskTitle: 'A2 Task 1',
       averageContribution: { effectiveWeight: 1, includedInAverage: true },
+      includedInAttemptBaseline: true,
       assignmentId: A2_ID,
       definitionKey: MERGED_DEF_2,
       assignmentName: A2_NAME,
@@ -175,6 +180,7 @@ function buildTwoSourceMergedResult(): MergedHeatmapResult {
       taskId: 't4',
       taskTitle: 'A2 Task 2',
       averageContribution: { effectiveWeight: 1, includedInAverage: true },
+      includedInAttemptBaseline: true,
       assignmentId: A2_ID,
       definitionKey: MERGED_DEF_2,
       assignmentName: A2_NAME,
@@ -205,6 +211,7 @@ function buildCollapsedMergedResult(): MergedHeatmapResult {
       taskId: 't1',
       taskTitle: 'Shared Task 1',
       averageContribution: { effectiveWeight: 1, includedInAverage: true },
+      includedInAttemptBaseline: true,
       assignmentId: A1_ID,
       definitionKey: MERGED_DEF_SHARED,
       assignmentName: A1_NAME,
@@ -214,6 +221,7 @@ function buildCollapsedMergedResult(): MergedHeatmapResult {
       taskId: 't2',
       taskTitle: 'Shared Task 2',
       averageContribution: { effectiveWeight: 1, includedInAverage: true },
+      includedInAttemptBaseline: true,
       assignmentId: A1_ID,
       definitionKey: MERGED_DEF_SHARED,
       assignmentName: A1_NAME,

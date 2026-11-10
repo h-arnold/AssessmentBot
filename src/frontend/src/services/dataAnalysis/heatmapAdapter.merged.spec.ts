@@ -374,3 +374,46 @@ describe('adaptMetricsToMergedHeatmap — error paths', () => {
     ).toThrow(TaskTitlesUnavailableError);
   });
 });
+
+describe('adaptMetricsToMergedHeatmap — attempt-baseline column inheritance', () => {
+  it('inherits includedInAttemptBaseline true on every merged column (explicit null baseline set)', () => {
+    const analyserResult = minimalAveragingResult([]);
+
+    const result = adaptMetricsToMergedHeatmap(
+      analyserResult,
+      buildClassFull(),
+      [ASSIGNMENT_ID_ONE, ASSIGNMENT_ID_THREE],
+      buildPartials()
+    );
+
+    expect(result.taskColumns.map((column) => column.includedInAttemptBaseline)).toEqual([
+      true,
+      true,
+      true,
+      true,
+    ]);
+  });
+
+  it('keeps every merged column included for a baseline-mode result (the merged chain passes null explicitly)', () => {
+    const analyserResult = minimalAveragingResult([]);
+    analyserResult.appliedAnalysisMode = 'topDecileBaseline';
+    analyserResult.attemptBaseline = {
+      poolStudentIds: [STUDENT_IDS[0], STUDENT_IDS[1]],
+      baselineTaskKeys: [taskKeyFor(QUADRATICS_DEFINITION_KEY, QUAD_TASK_IDS[0])],
+    };
+
+    const result = adaptMetricsToMergedHeatmap(
+      analyserResult,
+      buildClassFull(),
+      [ASSIGNMENT_ID_ONE, ASSIGNMENT_ID_THREE],
+      buildPartials()
+    );
+
+    expect(result.taskColumns.map((column) => column.includedInAttemptBaseline)).toEqual([
+      true,
+      true,
+      true,
+      true,
+    ]);
+  });
+});

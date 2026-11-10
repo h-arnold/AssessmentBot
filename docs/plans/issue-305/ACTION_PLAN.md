@@ -1,6 +1,6 @@
 # Feature Delivery Plan (TDD-First) — Attempt-Baseline Analysis Mode (issue #305)
 
-> **Status (in progress):** Implementation underway on branch `feat/issue-305-attempt-baseline-mode`. Current phase: Section 2 (section regression gate). Section 1 complete (`b2199cfe`, gate run 2 clean). Baseline refreshed 2026-11-09 on the merged tree (`origin/main` · `4635f18b`): `backend-lint-check` fails only on four pre-existing `max-lines` warnings in untouched backend test files — accepted as pre-existing technical debt for this frontend-only plan; report: `.ts-regression-checker/reports/session-feat-issue-305-attempt-baseline-mode/baseline/baseline.txt`.
+> **Status (in progress):** Implementation underway on branch `feat/issue-305-attempt-baseline-mode`. Current phase: Section 3 (section regression gate). Sections 1–2 complete (`b2199cfe`; `f1709904` + `08dd1b1f`, gates clean). Baseline refreshed 2026-11-09 on the merged tree (`origin/main` · `4635f18b`): `backend-lint-check` fails only on four pre-existing `max-lines` warnings in untouched backend test files — accepted as pre-existing technical debt for this frontend-only plan; report: `.ts-regression-checker/reports/session-feat-issue-305-attempt-baseline-mode/baseline/baseline.txt`.
 
 ## Read-First Context
 
@@ -154,56 +154,26 @@ Section checks passed: dataAnalysis suite 489/489 (55 files); full frontend 3109
 
 ## Section 3 — Heatmap projection: `HeatmapTaskColumn.includedInAttemptBaseline`
 
-### Objective
+### Outcome (compacted)
 
-- Project the flag onto task columns through `buildTaskColumns`' required second parameter, with `adaptMetricsToHeatmap` as the mode-bearing supplier and explicit `null` across the merged chain — including the column-level output sweep.
+Delivered the attempt-baseline flag onto heatmap task columns: `buildTaskColumns(partial, baselineSet: ReadonlySet<string> | null)` gained its required second parameter (`heatmapAdapter.ts:160`), fed by a private `deriveAttemptBaselineSet` supplier in `heatmapAdapter.ts` that derives the set from the result's own mode echo and `attemptBaseline` block under the fail-fast narrowing rule; `HeatmapTaskColumn` and `MergedHeatmapTaskColumn` now require `includedInAttemptBaseline: boolean`; the merged chain passes an explicit `null` and inherits `true` (it never enters baseline mode, SPEC decision 1); `HeatmapCell` is unchanged and `adaptMetricsToHeatmap`'s signature is unchanged (`TaskHeatmapPage.tsx:163` sole production caller, untouched). The column-level output sweep is complete — five hand-built column hosts plus four additional tsc-surfaced sites all pinned `true` (inventory retained below), `heatmapsPipeline.spec.ts:184`'s exempt cast untouched, and the required green edits landed on existing output pins (`heatmapAdapter.spec.ts` :55/:61/:67, `heatmapAdapter.merged.contribution.spec.ts:148`).
 
-### Constraints
+Section checks passed: full `test:frontend -- src` 3120/3120 (323 files; +11 red deltas turned green), dataAnalysis 500/500 (55 files), `typecheck:all` exit 0, `lint:frontend:check` 0 errors / 16 warnings, Prettier clean; green review PASS with zero in-scope findings (reviewer independently recomputed the medium-corpus baseline and re-ran the full coverage gate: 323 files/3120, new code 100% lines); red review PASS first round.
 
-- `buildTaskColumns(partial, baselineSet: ReadonlySet<string> | null)`; supplier derives from its own `analyserResult` under the fail-fast narrowing rule; merged chain (`buildMergedTaskColumnsInClassOrder` → `buildMergedTaskColumns` → `buildTaskColumns`) passes `null` explicitly; no props change hands anywhere; `HeatmapCell` unchanged.
-- Column-level only in v1. The table-level `TaskHeatmapColumn` required-field hop is implemented in §5c but the **instrumentation for it is owned here** where it belongs to the adapter contract — likewise every adapter-typed `MergedHeatmapTaskColumn` literal, since `MergedHeatmapTaskColumn` gains the required field in this section. The hand-built column hosts to update here: `src/frontend/src/test/taskHeatmapTableTestHelpers.ts` (`TASK_COLUMNS`), `src/frontend/src/test/dataAnalysis/heatmapFixtures.ts` (`createHeatmapMergedResult` — merged-column literal), `src/frontend/src/features/taskHeatmap/useHeatmapsPageData.preview.spec.ts:194` (typed `MergedHeatmapResult` literal), `src/frontend/src/features/taskHeatmap/TaskHeatmapTable.merged.spec.tsx` (`taskColumns: MergedHeatmapTaskColumn[]` at `:99`, `:145`, `:202`) and `src/frontend/src/features/taskHeatmap/TaskHeatmapTable.zeroWeight.spec.tsx` (`buildMergedZeroWeightResult(): MergedHeatmapResult` at `:64`). (`heatmapsPipeline.spec.ts:184` builds its merged-result literal as `as unknown as MergedHeatmapResult` — exempt.)
+### Retained for later sections
 
-### Shared helper plan
-
-1. `buildTaskColumns`/merged chain — `extend`; owning paths `src/frontend/src/services/dataAnalysis/heatmapAdapter.ts` (+ `heatmapAdapter.merged.ts`); register §9.27.4 → status reconciles on delivery.
-
-### Data-shape planning block
-
-- Implement data-shape item 8 as written (supplier = `adaptMetricsToHeatmap`; three-link explicit-null chain); reconcile item 8's status here.
-
-### Canonical fixture note
-
-- `medium` exercises a non-degenerate 7-of-9-key baseline: baseline mode yields `includedInAttemptBaseline: false` columns for the two outside-baseline tasks (class-0/2: `definition-2-slides`; class-1/3: `definition-0-slides`), so baseline column projection with mixed flags is assertable canonically; absolute/merged paths stay all-`true` via the explicit `null`. Surface-level false-marker rendering with local fixtures is §5c work.
-
-### Delegation mandatory reads
-
-- Testing Specialist: `@docs/developer/frontend/frontend-testing.md`
-- Implementation: `@docs/plans/issue-305/SPEC.md`, `@docs/developer/data-shapes/frontend-data-analysis-response.md`, `@src/frontend/src/services/dataAnalysis/heatmapAdapter.ts`, `@src/frontend/src/services/dataAnalysis/heatmapAdapter.merged.ts`, `@src/frontend/src/test/taskHeatmapTableTestHelpers.ts`
-- Code Reviewer: `@docs/plans/issue-305/SPEC.md`, `@docs/developer/data-shapes/frontend-data-analysis-response.md`
-
-### Acceptance criteria
-
-- Baseline-mode Class-page projection yields per-column flags from `attemptBaseline.baselineTaskKeys`; absolute/merged paths all `true` via explicit `null`; `adaptMetricsToHeatmap` fails fast on a missing echo.
-- Entire tree green (column-level sweep complete).
-
-### Required test cases (Red first)
-
-Frontend tests:
-
-1. `heatmapAdapter.spec.ts`: required second parameter; derived set in baseline; `null` in absolute; fail-fast throw on missing echo.
-2. `heatmapAdapter.merged.spec.ts`: merged chain passes explicit `null`; merged columns inherit `true`.
-3. `averagingAnalyser.assignmentProcessing.spec.ts:165` (sole direct caller) + `heatmapAdapter.weighting.spec.ts` (import at `:15`; direct calls at `:36` and `:45`; `:82` is an `adaptMetricsToHeatmap` error-message assertion — not a direct call, and not edited for the second parameter): direct callers updated for the required second parameter.
-
-### Section checks
-
-- `npm run test:frontend -- src/services/dataAnalysis`
-- `npm run test:frontend -- src`
-- `npm run lint:frontend:check`
-- Data-shape item 8 reconciled; §9.27.4 flipped.
+- **Contract shapes (§5c consumers):** `buildTaskColumns(partial, baselineSet: ReadonlySet<string> | null)` — the second parameter is required, no default. Two production call facts: the derived-set call at `heatmapAdapter.ts:457` and the merged chain's explicit `null` at `heatmapAdapter.merged.ts:104`. Both `HeatmapTaskColumn` and `MergedHeatmapTaskColumn` require `includedInAttemptBaseline: boolean` (merged inherits it via the existing spread of the base projection). The **table-level** `TaskHeatmapColumn` required-field hop remains §5c work, as does surface-level false-marker rendering; Playwright E2E is §5d.
+- **Fail-fast message shapes (parameterised by class id; blocking errors for §5's surface error handling):** `adaptMetricsToHeatmap: analyser result for class '<classId>' is missing the required appliedAnalysisMode echo` — thrown for a missing **and** an unrecognised echo — and `adaptMetricsToHeatmap: baseline-mode analyser result for class '<classId>' is missing the required attemptBaseline block`. The echo check is implemented as a both-literals comparison (`!== 'absolute' && !== 'topDecileBaseline'`) because `sonarjs/different-types-comparison` conflicts with `unicorn/no-typeof-undefined`; no lint rule was disabled.
+- **Sweep inventory (§5's surface sweeps must not re-inventory):** hand-built column hosts — `src/frontend/src/test/taskHeatmapTableTestHelpers.ts` (`TASK_COLUMNS`, two column literals), `src/frontend/src/test/dataAnalysis/heatmapFixtures.ts` (`createHeatmapMergedResult`, merged-column literal), `src/frontend/src/features/taskHeatmap/useHeatmapsPageData.preview.spec.ts:194` (typed `MergedHeatmapResult` literal), `src/frontend/src/features/taskHeatmap/TaskHeatmapTable.merged.spec.tsx` (nine `MergedHeatmapTaskColumn` literals), `src/frontend/src/features/taskHeatmap/TaskHeatmapTable.zeroWeight.spec.tsx` (two literals plus the `buildMergedZeroWeightResult()` builder) — plus four additional tsc-surfaced sites: `assembleMergedPreviewData.spec.ts:72` (`col()` builder), `assembleMergedPreviewData.errors.spec.ts:85` (`column()` builder), `heatmapsPreviewQueries.spec.ts:131` (`column()` builder), `src/frontend/src/services/dataAnalysis/assignmentSummaryAdapter.spec.ts:34` (`COLUMNS` literal). All pinned `true`; `heatmapsPipeline.spec.ts:184`'s `as unknown as MergedHeatmapResult` cast is exempt and untouched.
+- **Passed down:** `heatmapAdapter.weighting.spec.ts:82` is an `adaptMetricsToHeatmap` error-message assertion, not a direct `buildTaskColumns` call — any future edition of the signature work must leave it untouched (avoid re-breaking it).
 
 ### Implementation notes / deviations / follow-up
 
-- Note any additional direct `buildTaskColumns` callers discovered.
+- **Direct `buildTaskColumns` callers (recorded):** complete inventory — the two production sites named above, plus test callers `heatmapAdapter.weighting.spec.ts:36/:45` and `averagingAnalyser.assignmentProcessing.spec.ts:165` which were updated for the required second parameter; no further direct callers exist. `weighting.spec.ts:82` untouched by design (see the passed-down note above).
+- **Red-spec consistency fix (deviation):** `dataAnalysis.mediumBaselineRoundTrip.spec.ts`'s all-four-classes assertion originally used class-0's expected keys, contradicting its own first assertion; fixed to per-class `EXPECTED_BASELINE_KEYS_BY_CLASS` (each class's complement of its outside-baseline pair) with the first assertion byte-identical and exact 7-key per-class equality preserved. Ground truth was independently recomputed from the committed corpus twice (green reviewer and implementer).
+- **Docs sync:** data-shape item 8 flipped to `Implemented (Section 3)` in `docs/developer/data-shapes/frontend-data-analysis-response.md` (both descriptors require the field; both fail-fast throw shapes recorded; the projection-contract field table gained the `includedInAttemptBaseline` row with set provenance; Status paragraph/intro narrowed to Sections 4–5 outstanding; item 4's forward reference retargeted); §9.27.4 flipped to `Implemented` for Section 3 in `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` (intro recount updated; entries 3/5/6–8 untouched). One comment-only source trim in `heatmapAdapter.ts` (supplier JSDoc transient planning reference → durable `data-shape item 8` pointer). Scoped re-validation: Prettier clean, frontend tsc exit 0, `lint:frontend:check` 0 errors / 16 warnings. Reported untreated nitpick drift: item 9's preview-precedence list has a pre-existing numbering typo (third step labelled 2), and `adaptMetricsToHeatmap`'s `@remarks` retains historical planning vocabulary ("Breaking change (Section 8)", "(E3–F3)") from the warm-up-partials feature plan.
+- **Section regression gate (2026-11-10T01:52Z): PASSED.** Report: `.ts-regression-checker/reports/session-feat-issue-305-attempt-baseline-mode/runs/2026-11-10T01-52-17.533Z/comparison.json`. Totals: `regressionsCount: 0`, `newFailuresCount: 0`, `fixesCount: 0`; `checksPassing: 7`, `checksFailing: 1` — the only failing check is `backend-lint-check` (4 pre-existing accepted `max-lines` warnings, zero deltas vs the 2026-11-09T20:11Z baseline). Review records: red `.opencode/scratchpad/review-issue305-section3-red.md` (PASS), green `.opencode/scratchpad/review-issue305-section3-green.md` (PASS, zero in-scope findings).
+- **Commit record:** pending.
 
 ---
 

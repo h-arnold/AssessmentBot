@@ -30,12 +30,17 @@ import {
  * render the selection bar without reshaping the view model. `taskKey` is the
  * composite `${definitionKey}::${taskId}` shared with the analyser's
  * per-student-task accumulators.
+ *
+ * `includedInAttemptBaseline` is inherited from the shared base projection:
+ * the merged chain passes an explicit `null` baseline set (absolute mode), so
+ * every merged column is included.
  */
 export interface MergedHeatmapTaskColumn {
   taskKey: string;
   taskId: string;
   taskTitle: string | null;
   averageContribution: AverageContribution;
+  includedInAttemptBaseline: boolean;
   assignmentId: string;
   definitionKey: string;
   assignmentName: string;
@@ -82,6 +87,12 @@ export interface MergedHeatmapResult {
  *   `primaryTitle`).
  * @returns {MergedHeatmapTaskColumn[]} Ordered merged task-column descriptors
  *   carrying full identity.
+ *
+ * @remarks
+ * The merged heatmap never enters baseline mode, so the shared base projection
+ * receives an explicit `null` baseline set (absolute mode: every column
+ * included) — an omitted or defaulted argument would be an un-instructed
+ * default.
  */
 function buildMergedTaskColumns(
   partial: AssignmentDefinitionPartial,
@@ -90,7 +101,7 @@ function buildMergedTaskColumns(
 ): MergedHeatmapTaskColumn[] {
   // Reuse the complete shared base projection
   // mapping, then augment each entry with the full assignment identity.
-  return buildTaskColumns(partial).map((column) => {
+  return buildTaskColumns(partial, null).map((column) => {
     return {
       ...column,
       assignmentId,

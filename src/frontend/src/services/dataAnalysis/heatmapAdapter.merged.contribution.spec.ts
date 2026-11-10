@@ -151,6 +151,7 @@ describe('merged heatmap contribution projection', () => {
         taskId: TASK,
         taskTitle: 'Task',
         averageContribution: { effectiveWeight: 1, includedInAverage: true },
+        includedInAttemptBaseline: true,
         assignmentId: FIRST_ASSIGNMENT,
         definitionKey: DEFINITION,
         assignmentName: 'Live title',
