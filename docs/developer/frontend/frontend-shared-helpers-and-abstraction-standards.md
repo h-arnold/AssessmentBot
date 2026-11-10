@@ -288,7 +288,7 @@ Section 3 helper) is **`Implemented` for Section 3**; entry 3 (a Section 4–5
 helper) is **`Implemented`** — label content for Section 4, mode threading for
 Section 5b; entry 5 (the Section 5 helper) is **`Implemented` for Section 5a**;
 entries 6–8 record Section 1's delivered decisions. All eight entries are now
-implemented; the plan's remaining section (E2E browser coverage) adds no
+implemented; the plan's E2E browser coverage landed in Section 5d and adds no
 further entries to this register. The action plan's shared-helper planning
 blocks reference these entries.
 

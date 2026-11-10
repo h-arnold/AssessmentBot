@@ -351,37 +351,27 @@ Delivered the plan's canonical documentation in a single Docs pass — review PA
 
 ## Section 7 — Regression and contract hardening
 
-### Objective
+### Outcome (compacted)
 
-- Prove absolute equivalence, contract safety, E2E visual stability, and three-document consistency end-to-end.
+All four checks proven green. Verification-only section: no files changed by it apart from one one-line documentation retense already delivered by the consistency pass (check 4).
 
-### Constraints
+- **Check 1 — `npm run run-all-checks`:** green modulo the accepted debt. The chained run aborts at `lint:backend:check` (0 errors / 4 pre-existing `max-lines` warnings in untouched backend test files, `--max-warnings 0` — accepted technical debt, not regressions), so the remaining steps were run independently and all passed: `test:coverage` all five legs green (backend 270 files/3749 tests, frontend 326/3176, builder 23/252, synthetic 54/764, plugins 2/33), `lint:synthetic:check` green, `build:production` green (all 10 GAS-bundle steps, determinism checksums recorded).
+- **Check 2 — `npm run test:synthetic -- syntheticCommittedFixtureRegeneration`:** green 7/7 — committed synthetic fixtures byte-for-byte stable.
+- **Check 3 — full E2E targets per §5d:** green via the Playwright delegation: 6/6 + 3/3 with zero retries consumed; the two Class-page screenshot baselines byte-stable (git blob hashes identical to the §5d re-capture at `0f8d8d3f`; `heatmaps-builder` untouched since Nov 5); §5d assertions confirmed still pinning the delivered behaviour.
+- **Check 4 — three-document consistency pass:** green via the Docs delegation: SPEC decisions ↔ data-shape items 1–8 and data-shape ↔ §9.27 both consistent with zero disagreement; the §9.27 intro's stale "(E2E browser coverage)" phrase retensed (one line, net-zero, authorised by the deferred-findings ledger's Section 6 row); sweep clean.
 
-- Prefer focused runs, then the full gate; `Docs` and `Playwright` carry the final reconciliation/checking reads.
+### Retained for later sections (Documentation-and-rollout notes + final report)
 
-### Delegation mandatory reads
-
-- Docs: `@docs/plans/issue-305/SPEC.md`, `@docs/developer/data-shapes/frontend-data-analysis-response.md`, `@docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md`
-- Playwright: `@docs/developer/frontend/frontend-playwright-e2e.md`, `@src/frontend/e2e-tests/class-page-baseline-mode.spec.ts`
-
-### Acceptance criteria
-
-- Full local gate green; committed fixtures unchanged (byte-for-byte regeneration check); no regression in touch-free suites.
-
-### Required test cases/checks
-
-1. `npm run run-all-checks`
-2. `npm run test:synthetic -- syntheticCommittedFixtureRegeneration`
-3. Full E2E targets per §5d
-4. Three-document consistency pass: SPEC decisions ↔ data-shape items ↔ §9.27 entries (`Docs` reconciliation).
-
-### Section checks
-
-- Gate green; deviations recorded.
+- **The four check results** as recorded above, with the accepted-debt shape of check 1: the only non-green element in the full gate is `backend-lint-check`'s 4 pre-existing `max-lines` warnings in untouched backend test files — accepted technical debt, never a section regression.
+- **Byte-stability evidence chain (E2E baselines):** the two Class-page screenshot baselines are byte-stable — git blob hashes identical to the §5d re-capture at `0f8d8d3f`, `heatmaps-builder` untouched since Nov 5, capture deterministic, and today's runs green. Caveat for the record: the spec's inline `maxDiffPixelRatio: 0.1` means a passing run alone does not mathematically prove pixel-exactness; stability rests on the combined chain (identical hashes + no rendering-relevant change + deterministic capture + green runs). A tolerance-0 probe was correctly not created — the delegation's no-file-changes exclusion forbade it.
+- **Awareness-only observations (not failures, not chased):** an antd `rc-collapse` "children will be removed" deprecation warning in the Vite dev-server console on Classes-page load (dependency-level; zero changes since §5d); the builder vitest coverage run's interleaved `regression-checker:` log lines are the checker's own failure-path fixtures exercised by the builder project's tests of the checker tool (not gate failures).
+- **Deferred-findings ledger rows carried into the final documentation pass (three known out-of-surface drifts):** `INDEX.md:33`, `assessment.md:519`, and the `heatmapAdapter.ts` `@remarks` planning vocabulary. The `@remarks` row appears already resolved (keyword sweep finds nothing); the other two remain open for the final pass.
 
 ### Implementation notes / deviations / follow-up
 
-- Fill during delivery.
+- No deviations from the plan's verification shape. Docs sync (§2.4): not applicable as a separate pass — this section IS the plan's documentation delivery; its one worktree change is the consistency pass's retense edit in the shared-helpers doc (one line, net-zero, authorised by the deferred-findings ledger's Section 6 row).
+- Section regression gate (run `2026-11-10T14:24Z`): 0 regressions, 0 new failures, 0 fixes; 7/8 checks passing. Sole failing check is `backend-lint-check` with the four pre-existing `max-lines` debts in untouched backend test files — identical to baseline, accepted technical debt, not regressions. Playwright E2E passed cleanly; the known-flaky `classes-crud-bulk-progress` "Set cohort" test did not tick this run.
+- Pending: commit record.
 
 ---
 
