@@ -1,6 +1,6 @@
 # Feature Delivery Plan (TDD-First) — Attempt-Baseline Analysis Mode (issue #305)
 
-> **Status (in progress):** Implementation underway on branch `feat/issue-305-attempt-baseline-mode`. Sections 1–5d complete (`b2199cfe`; `f1709904`; `c397b481`; `05132a38`; `33cb92c8`; `34412807`; `0f8d8d3f`, gates clean); Section 6 complete and pushed (`dfc4729e`, gate run `2026-11-10T13:49Z` clean). Current phase: Section 7 (red). Baseline refreshed 2026-11-09 on the merged tree (`origin/main` · `4635f18b`): `backend-lint-check` fails only on four pre-existing `max-lines` warnings in untouched backend test files — accepted as pre-existing technical debt for this frontend-only plan; report: `.ts-regression-checker/reports/session-feat-issue-305-attempt-baseline-mode/baseline/baseline.txt`.
+> **Status (in progress):** Implementation underway on branch `feat/issue-305-attempt-baseline-mode`. Sections 1–6 complete (`b2199cfe`; `f1709904`; `c397b481`; `05132a38`; `33cb92c8`; `34412807`; `0f8d8d3f`; `dfc4729e`, gates clean); Section 7 complete and pushed (`cf935b49`, gate run `2026-11-10T14:24Z` clean). Current phase: Documentation and rollout notes. Baseline refreshed 2026-11-09 on the merged tree (`origin/main` · `4635f18b`): `backend-lint-check` fails only on four pre-existing `max-lines` warnings in untouched backend test files — accepted as pre-existing technical debt for this frontend-only plan; report: `.ts-regression-checker/reports/session-feat-issue-305-attempt-baseline-mode/baseline/baseline.txt`.
 
 ## Read-First Context
 
@@ -371,7 +371,7 @@ All four checks proven green. Verification-only section: no files changed by it 
 
 - No deviations from the plan's verification shape. Docs sync (§2.4): not applicable as a separate pass — this section IS the plan's documentation delivery; its one worktree change is the consistency pass's retense edit in the shared-helpers doc (one line, net-zero, authorised by the deferred-findings ledger's Section 6 row).
 - Section regression gate (run `2026-11-10T14:24Z`): 0 regressions, 0 new failures, 0 fixes; 7/8 checks passing. Sole failing check is `backend-lint-check` with the four pre-existing `max-lines` debts in untouched backend test files — identical to baseline, accepted technical debt, not regressions. Playwright E2E passed cleanly; the known-flaky `classes-crud-bulk-progress` "Set cohort" test did not tick this run.
-- Pending: commit record.
+- Commit record: `cf935b49` — "docs: reconcile three-document consistency and record Section 7 hardening results (issue #305, Section 7)" — branch `feat/issue-305-attempt-baseline-mode`, pushed successfully (pre-commit Prettier/lint/typecheck clean).
 
 ---
 
