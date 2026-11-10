@@ -328,34 +328,24 @@ Section checks passed: `npm run lint:frontend:check` exit 0 (0 errors / 16 pre-e
 
 ## Section 6 — Pedagogy and architecture documentation
 
-### Objective
+### Outcome (compacted)
 
-- Deliver the same-change documentation.
+Delivered the plan's canonical documentation in a single Docs pass — review PASS with zero findings (`.opencode/scratchpad/review-issue305-section6-docs.md`); all five acceptance criteria confirmed against source. Section checks passed: `npm run lint:frontend:check` 0 errors / 16 warnings (retained floor); planned-entry reconciliation complete — no stale `Not implemented`/`Planned` marker in any of the four documents; the out-of-v1 generator-extension plan remains recorded as deferred (SPEC.md:357).
 
-### Constraints
+### Retained for later sections (Section 7 / final passes)
 
-- Delegate to `Docs`; modify only the four documents in SPEC's docs bullet: `docs/pedagogy/data-analysis-scoring.md`, `docs/developer/frontend/data-analysis-architecture.md`, `docs/developer/frontend/navigation-consistency-status.md`, `docs/developer/data-shapes/frontend-data-analysis-response.md`.
-
-### Delegation mandatory reads
-
-- Docs: `@docs/plans/issue-305/SPEC.md`, `@docs/plans/issue-305/ATTEMPT_BASELINE_MODE_LAYOUT.md`, `@docs/plans/issue-305/ACTION_PLAN.md`, the four document targets above, `@docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md`
-
-### Acceptance criteria
-
-- Teacher-facing mode explanation (what changes, what stays absolute); pipeline placement named post-accumulation; data-shape items 1–8 statuses finalised; §9.27 entries reconciled; navigation tracker records the third always-rendered header element.
-
-### Required checks
-
-1. `npm run lint:frontend:check` (no doc-driven code drift)
-2. Planned-entry reconciliation complete (no stale `Not implemented` on delivered items; the out-of-v1 generator-extension plan stays recorded as deferred).
-
-### Section checks
-
-- All statuses reconciled; deviations notes filled.
+- The four documents' reconciled final states are Section 7's consistency-pass baseline (its check 4: SPEC decisions ↔ data-shape items ↔ §9.27 entries). §9.27 reconciliation was verify-only here: register 8/8 `Implemented` with section attribution; the shared-helpers doc sits outside this section's four-document surface.
+- Final-pass nitpicks (deferred-findings log, all disregarded): the §9.27 intro's "remaining section (E2E browser coverage)" phrase is tense-stale post-§5d; `INDEX.md:33`'s outstanding-planned-change claim is newly stale; `assessment.md:519` stale preview claim; `heatmapAdapter.ts` `@remarks` planning vocabulary.
 
 ### Implementation notes / deviations / follow-up
 
-- Fill during delivery.
+- Delivered (single Docs pass; review PASS with zero findings — record: `.opencode/scratchpad/review-issue305-section6-docs.md`): scoring doc gained the teacher-facing "Averages basis: all tasks or baseline tasks" section (what changes, what stays absolute, plain-language selection rule with the class-of-24 worked example, limits) and the three Excluded cause-statements were amended for baseline-mode truthfulness; architecture doc gained "Attempt-baseline mode (post-accumulation)" (derivation ownership + accumulation-filter flow, verified against `averagingAnalyser.ts:202–234`) plus ownership-table/module-inventory/Status updates; navigation tracker recorded the third always-rendered header element (Design Decision section, both layout blocks, Completed Work §10) and corrected §7's re-capture claim to match §5d; data-shape items 1–8 all finalised `Implemented (Section N)` with Status/intro/Legacy-pointer narratives closed (net-zero line change).
+- Required checks: `npm run lint:frontend:check` 0 errors / 16 warnings (retained floor); planned-entry reconciliation complete — no stale `Not implemented`/`Planned` marker in any of the four documents; the out-of-v1 generator-extension plan remains recorded as deferred (SPEC.md:357).
+- §9.27 reconciliation was verify-only (the shared-helpers doc is outside this section's four-document surface): register confirmed 8/8 `Implemented` with section attribution; no edit needed. One new nitpick recorded for the final pass: the §9.27 intro's "remaining section (E2E browser coverage)" phrasing is tense-stale post-§5d (deferred-findings log, disregarded).
+- Docs-sync pass (§2.4): not applicable — this section IS the plan's documentation delivery; no code, test, or behaviour changed.
+- Out-of-scope findings re-reported by delivery and review, all pre-existing ledger rows (no new rows): `assessment.md:519` stale preview claim (Section 1), `INDEX.md:33` outstanding-planned-change claim (Section 2 — now newly stale and awaiting the final pass), `heatmapAdapter.ts` `@remarks` planning vocabulary (Section 3).
+- Section regression gate (run `2026-11-10T13:49Z`): 0 regressions, 0 new failures, 0 fixes; 7/8 checks passing. Sole failing check is `backend-lint-check` with the four pre-existing `max-lines` debts in untouched backend test files — identical to baseline, accepted technical debt, not regressions. Playwright E2E passed cleanly; the known-flaky `classes-crud-bulk-progress` "Set cohort" test did not tick this run.
+- Pending: commit record.
 
 ---
 

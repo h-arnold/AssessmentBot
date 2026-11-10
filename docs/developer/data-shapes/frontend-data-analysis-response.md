@@ -6,12 +6,12 @@
 It has **no backend API, persistence collection, transport envelope or migration**. The ABClass
 metadata lifecycle, the shared post-analysis contracts, both consumer surfaces and the
 error-aware task-preview view models are implemented and described below. The attempt-baseline
-analysis mode is being delivered incrementally (tracking issue: h-arnold/AssessmentBot#305):
-its schema contracts (filter field, result echo and optional baseline block, task-row flag),
-the analyser's baseline-mode behaviour, the heatmap column projection, the summary
+analysis mode (tracking issue: h-arnold/AssessmentBot#305) is implemented: its schema
+contracts (filter field, result echo and optional baseline block, task-row flag), the
+analyser's baseline-mode behaviour, the heatmap column projection, the summary
 reconciliation, the Class-page mode control, the mode threading to the Class-page
-display labels, and the embedded heatmap's baseline marking and caption are implemented;
-the remaining planned work is the E2E browser coverage
+display labels, the embedded heatmap's baseline marking and caption, and the E2E browser
+coverage are all delivered
 (see [Attempt-baseline contract changes](#attempt-baseline-contract-changes)).
 
 Sibling contracts:
@@ -1128,13 +1128,13 @@ Class-page adapter:
 
 ## Legacy assignment display
 
-Delivered: valid legacy scores are included in analysis through the existing heatmap/averaging and E rules, with no version-based filtering or new analyser/card-model field, and the task-heatmap `Reassessment required` tag is shown from the `'legacy'` marker (task-heatmap-only, by explicit user decision, with no field added to persisted metadata). The remaining planned work is the top-decile attempt-baseline analysis mode (tracking issue: h-arnold/AssessmentBot#305); complete the existing attempt-baseline plan independently.
+Delivered: valid legacy scores are included in analysis through the existing heatmap/averaging and E rules, with no version-based filtering or new analyser/card-model field, and the task-heatmap `Reassessment required` tag is shown from the `'legacy'` marker (task-heatmap-only, by explicit user decision, with no field added to persisted metadata). The attempt-baseline analysis mode (tracking issue: h-arnold/AssessmentBot#305) is implemented; see [Attempt-baseline contract changes](#attempt-baseline-contract-changes).
 
 ## Attempt-baseline contract changes
 
 ### Attempt-baseline analysis mode
 
-The top-decile attempt-baseline analysis mode is delivered incrementally (tracking issue:
+The top-decile attempt-baseline analysis mode is delivered (tracking issue:
 h-arnold/AssessmentBot#305). The explicit-`E` analyser input, the preview `sourceUrl` field and
 every other previously planned addition are implemented and documented in the sections above.
 The schema contracts for items 1–4 below are implemented as recorded (Section 1 of the
@@ -1144,9 +1144,9 @@ post-accumulation baseline selection, baseline-restricted aggregation, the basel
 per-student `excluded` conversion and the `attemptBaseline` echo). The heatmap column
 projection (Section 3), the summary reconciliation (Section 4), the Class-page mode
 control with its availability resolver (Section 5a), item 7's mode threading to the
-Class-page display labels (Section 5b) and the embedded heatmap's baseline marking
-and caption (Section 5c) are delivered. The remaining planned work is the E2E
-browser coverage.
+Class-page display labels (Section 5b), the embedded heatmap's baseline marking
+and caption (Section 5c) and the E2E browser coverage (Section 5d) are delivered.
+Every planned contract change in this section is implemented.
 
 1. **`AnalysisFilterSchema.analysisMode`** — required enum field
    `z.enum(['absolute', 'topDecileBaseline'])` on the existing strict filter
