@@ -1,6 +1,6 @@
 # Feature Delivery Plan (TDD-First) — Attempt-Baseline Analysis Mode (issue #305)
 
-> **Status (in progress):** Implementation underway on branch `feat/issue-305-attempt-baseline-mode`. Sections 1–5b complete (`b2199cfe`; `f1709904`; `c397b481`; `05132a38`; `33cb92c8`; `34412807`, gates clean); Section 5c complete and pushed (`fe1f064b`, gate run `2026-11-10T11:04Z` clean). Current phase: Section 5d (red). Baseline refreshed 2026-11-09 on the merged tree (`origin/main` · `4635f18b`): `backend-lint-check` fails only on four pre-existing `max-lines` warnings in untouched backend test files — accepted as pre-existing technical debt for this frontend-only plan; report: `.ts-regression-checker/reports/session-feat-issue-305-attempt-baseline-mode/baseline/baseline.txt`.
+> **Status (in progress):** Implementation underway on branch `feat/issue-305-attempt-baseline-mode`. Sections 1–5d complete (`b2199cfe`; `f1709904`; `c397b481`; `05132a38`; `33cb92c8`; `34412807`; `0f8d8d3f`, gates clean); Section 5d complete and pushed (`0f8d8d3f`, gate run `2026-11-10T12:20Z` clean). Current phase: Section 6 (red). Baseline refreshed 2026-11-09 on the merged tree (`origin/main` · `4635f18b`): `backend-lint-check` fails only on four pre-existing `max-lines` warnings in untouched backend test files — accepted as pre-existing technical debt for this frontend-only plan; report: `.ts-regression-checker/reports/session-feat-issue-305-attempt-baseline-mode/baseline/baseline.txt`.
 
 ## Read-First Context
 
