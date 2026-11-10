@@ -30,8 +30,9 @@ reference.
 | **Frontend Data Analysis Response** | [`frontend-data-analysis-response.md`](frontend-data-analysis-response.md) | None — derived frontend validation contract                        | None — in-memory `DataAnalysisService` output                                                                                                                                                                                            | AverageContribution, MetricResult, ClassPageDisplayMetric (adapter-local), CellPreviewData, TaskPreviewData                   |
 
 Status: all eleven contracts are implemented and conform to their documented contracts.
-`frontend-data-analysis-response.md` carries an outstanding planned change (the attempt-baseline
-analysis mode). Legacy `submissions` preservation on restoration and ordinary save is implemented
+`frontend-data-analysis-response.md`'s attempt-baseline analysis mode is implemented (see
+[Attempt-baseline contract changes](frontend-data-analysis-response.md#attempt-baseline-contract-changes)).
+Legacy `submissions` preservation on restoration and ordinary save is implemented
 (see [assignment.md § Legacy `submissions` preservation](assignment.md#legacy-submissions-preservation)).
 The read marker union is `1 | 'legacy'` on both read paths, and legacy reads are prepared by
 `AssignmentRehydration.prepareLegacyReadSubmissions()` (see

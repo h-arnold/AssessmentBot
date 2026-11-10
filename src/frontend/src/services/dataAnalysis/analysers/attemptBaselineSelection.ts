@@ -1,18 +1,17 @@
 import type { AveragingResult, PerStudentTaskMetric } from '../dataAnalysis.zod';
 
 /**
- * Ten-percent pool fraction (attempt-baseline specification decision 13).
+ * Ten-percent pool fraction (data-shape item 3).
  */
 const BASELINE_POOL_FRACTION = 0.1;
 
 /**
- * Minimum baseline pool size (attempt-baseline specification decision 13).
+ * Minimum baseline pool size (data-shape item 3).
  */
 const BASELINE_POOL_MINIMUM = 2;
 
 /**
- * Minimum roster size for attempt-baseline eligibility (attempt-baseline
- * specification decision 13).
+ * Minimum roster size for attempt-baseline eligibility (data-shape item 3).
  */
 export const BASELINE_ROSTER_MINIMUM = 3;
 
@@ -30,7 +29,7 @@ interface AttemptBaselineDerivationInput {
 }
 
 /**
- * The shared attempt predicate (decision 3): whether one per-(student, task)
+ * The shared attempt predicate (data-shape item 3): whether one per-(student, task)
  * metric is an attempt — at least one criterion assessment carries a numeric
  * score, which the display projection records as a computed criterion.
  * All-raw-`N` items, all-error (`E`) items and absent items are not attempts,
@@ -48,7 +47,7 @@ export function isAttemptMetric(metric: PerStudentTaskMetric): boolean {
 }
 
 /**
- * Collect the roster's attempt candidates (decision 4): roster student ids
+ * Collect the roster's attempt candidates (data-shape item 3): roster student ids
  * carrying at least one attempted task, ascending by student id. Roster-scoped:
  * metrics for students outside the roster never become candidates.
  *
@@ -72,7 +71,7 @@ export function collectRosterAttemptCandidates(
 
 /**
  * The two availability conditions of the attempt-baseline availability rule
- * (decision 6) as one predicate: at least 3 students in the class and at
+ * (data-shape item 3) as one predicate: at least 3 students in the class and at
  * least 2 students attempted at least one in-scope task.
  *
  * @param {number} rosterStudentCount - The class roster's size.
@@ -89,7 +88,7 @@ export function isAttemptBaselineEligible(
 }
 
 /**
- * Collect each student's distinct attempted task keys (decision 3).
+ * Collect each student's distinct attempted task keys (data-shape item 3).
  *
  * @param {ReadonlyArray<PerStudentTaskMetric>} perStudentTaskMetrics - The
  *   per-(student, task) metrics.
@@ -138,7 +137,7 @@ function requireAttemptedTaskKeys(
 
 /**
  * Rank candidates by distinct attempted task-key count (descending), breaking
- * ties by ascending student id (decision 4).
+ * ties by ascending student id (data-shape item 3).
  *
  * @param {ReadonlyArray<string>} candidates - Candidate student ids.
  * @param {ReadonlyMap<string, Set<string>>} attemptedTaskKeysByStudent - Attempted keys per student.
@@ -158,7 +157,7 @@ function rankCandidates(
 }
 
 /**
- * Intersect the attempt sets of every pool member (decision 5): a task key is
+ * Intersect the attempt sets of every pool member (data-shape item 3): a task key is
  * in the baseline set when every pool member attempted it.
  *
  * @param {ReadonlyArray<string>} poolStudentIds - The pool's student ids.
@@ -268,7 +267,9 @@ export function deriveAttemptBaseline(
  *
  * @remarks
  * The `appliedAnalysisMode` echo is the single source of truth for whether a
- * result is baseline-mode (data-shape item 6; SPEC decision 8). The narrowing
+ * result is baseline-mode (data-shape item 6 in
+ * docs/developer/data-shapes/frontend-data-analysis-response.md §
+ * Attempt-baseline contract changes). The narrowing
  * is fail-fast: a baseline-mode result without the block is an invariant
  * violation, and an `attemptBaseline?.baselineTaskKeys ?? []` fallback is
  * forbidden because it would silently treat every task as outside the

@@ -49,15 +49,19 @@ interface ClassBaseline {
  * @remarks
  * The derivation consumes the mode-invariant per-(student, task) metrics
  * (post-accumulation, no second raw-data walk) and the class's own roster, so
- * each class derives its pool and baseline independently (decision 10).
+ * each class derives its pool and baseline independently (data-shape item 3;
+ * docs/developer/frontend/data-analysis-architecture.md § Attempt-baseline
+ * mode).
  *
  * @param {AveragingAnalyserInput['classes'][number]} cls - The class data.
  * @param {AveragingAnalyserInput['filter']['analysisMode']} analysisMode - The analysis mode.
  * @param {ReadonlyArray<PerStudentTaskMetric>} perStudentTaskMetrics - The
  *   mode-invariant per-(student, task) metrics.
  * @returns {ClassBaseline | null} The baseline, or `null` in absolute mode.
- * @throws {Error} When the derived baseline task set is empty (decision 11):
- *   the descriptive failure names the class and no result is produced.
+ * @throws {Error} When the derived baseline task set is empty (data-shape
+ *   item 3; docs/developer/frontend/data-analysis-architecture.md §
+ *   Attempt-baseline mode): the descriptive failure names the class and no
+ *   result is produced.
  */
 function deriveClassBaseline(
   cls: AveragingAnalyserInput['classes'][number],

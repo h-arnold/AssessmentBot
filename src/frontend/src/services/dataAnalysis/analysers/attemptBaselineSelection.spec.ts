@@ -4,7 +4,7 @@
  * eligibility predicate, and the post-accumulation pool + intersection
  * derivation consumed by the averaging analyser.
  *
- * Attempt semantics (attempt-baseline specification decision 3): a
+ * Attempt semantics (data-shape item 3): a
  * (student, task) observation is an attempt when at least one criterion
  * assessment carries a numeric score. All-raw-`N` items, all-error (`E`) items
  * and absent items are not attempts, and criterion weighting plays no part.

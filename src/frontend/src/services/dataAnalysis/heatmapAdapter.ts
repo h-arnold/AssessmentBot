@@ -380,7 +380,8 @@ export function resolveAssignmentPartial(
  *   echo, or a baseline-mode result omits the `attemptBaseline` block.
  *
  * @remarks
- * **Breaking change (Section 8):** the signature now requires a 4th parameter
+ * **Breaking change (data-shape contract, heatmap projection):** the signature
+ * now requires a 4th parameter
  * (`assignmentDefinitionPartials`).  Task columns are sourced from the warm-up
  * partial located via `getAssignmentDefinitionPartial`, NOT from the embedded
  * `assignment.assignmentDefinition.tasks` (which was removed in favour of the
@@ -388,7 +389,7 @@ export function resolveAssignmentPartial(
  * `TaskTitlesUnavailableError` is thrown.
  * This is distinct from a generic `Error` (unknown `assignmentId`).
  *
- * The per-task `null`-title branch was removed (E3–F3) because `null` titles
+ * The per-task `null`-title branch was removed because `null` titles
  * are now carried through to the column descriptor (the table header falls back
  * to `taskId` for display).  Missing partials are caught by the
  * `getAssignmentDefinitionPartial` check above.

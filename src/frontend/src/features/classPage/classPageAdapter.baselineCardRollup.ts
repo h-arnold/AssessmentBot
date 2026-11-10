@@ -3,7 +3,7 @@
  *
  * @remarks
  * Owns the recent-assignment card half of the attempt-baseline display rules
- * (SPEC decision 8; data-shape item 6): deriving the baseline task-key set
+ * (data-shape item 6): deriving the baseline task-key set
  * from the analyser result's own mode echo (fail-fast narrowing), and rolling
  * up a card's three criterion metrics from baseline-restricted per-task rows
  * with the empty-set `excluded` fallback conversion. Extracted from
@@ -13,8 +13,8 @@
  * The student-averages half needs no rule here: the analyser's per-student
  * rows are already baseline-filtered, so the adapter passes them through.
  *
- * @see docs/plans/issue-305/SPEC.md — decision 8
- * @see docs/developer/data-shapes/frontend-data-analysis-response.md — item 6
+ * @see docs/developer/data-shapes/frontend-data-analysis-response.md —
+ *   Attempt-baseline contract changes (items 4 and 6)
  */
 
 import { rollupMetric } from '@/services/dataAnalysis/analysers/rollupMetric';
@@ -48,7 +48,7 @@ function rollupCriterion(
 
 /**
  * Roll up a card's three criterion metrics from its per-task rows under the
- * baseline-mode card rule (SPEC decision 8; data-shape item 6).
+ * baseline-mode card rule (data-shape item 6).
  *
  * @remarks
  * Absolute mode (`baselineTaskSet === null`) rolls up every row. Baseline mode

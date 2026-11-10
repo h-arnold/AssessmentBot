@@ -49,9 +49,9 @@ type PostAnalysisCall = readonly [
 
 /**
  * Shared-hook invocations on the first ready render: the previous-render
- * retention pattern (SPEC decision 6) stores the first successful result
- * during render and React immediately re-renders before committing, so the
- * hook runs once per render pass with identical arguments.
+ * retention pattern (shared-helpers register §9.27 entry 5) stores the first
+ * successful result during render and React immediately re-renders before
+ * committing, so the hook runs once per render pass with identical arguments.
  */
 const READY_RENDER_PASS_COUNT = 2;
 

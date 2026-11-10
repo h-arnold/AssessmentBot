@@ -283,14 +283,12 @@ Delivered design decisions for the issue #19 task-preview source link; each entr
 ## 9.27 Attempt-baseline analysis mode (issue #305) — helper decisions
 
 Shared-helper decisions for the top-decile attempt-baseline mode. Entries 1–2
-(the Section 2 helpers) are **`Implemented` for Section 2**; entry 4 (the
-Section 3 helper) is **`Implemented` for Section 3**; entry 3 (a Section 4–5
-helper) is **`Implemented`** — label content for Section 4, mode threading for
-Section 5b; entry 5 (the Section 5 helper) is **`Implemented` for Section 5a**;
-entries 6–8 record Section 1's delivered decisions. All eight entries are now
-implemented; the plan's E2E browser coverage landed in Section 5d and adds no
-further entries to this register. The action plan's shared-helper planning
-blocks reference these entries.
+(baseline selection and the shared attempt predicate), entry 4 (the heatmap
+projection flag), entry 3 (mode-aware `excluded` label content and threading)
+and entry 5 (the availability resolver) are **`Implemented`**; entries 6–8
+record the schema enum, the corpus-loading decision and the builder fix point.
+All eight entries are implemented, and the E2E browser coverage added no
+further entries to this register.
 
 1. Baseline selection module — **new**, `src/frontend/src/services/dataAnalysis/analysers/attemptBaselineSelection.ts`. Derives, per class, the candidate set (roster students with ≥ 1 attempted task), the pool (`min(|candidates|, max(2, ceil(0.1 × rosterSize)))` ranked by distinct attempted task keys, ties by `studentId` asc), and the baseline task set (intersection of pool attempt sets). Delivered as a **post-accumulation derivation** over the analyser's mode-invariant per-(student, task) metrics (projected from `perStudentTaskAccums`, whose per-criterion `displayCount` already encodes the attempt signal and whose keys already encode definition resolution) rather than a second raw-data walk. **Status: `Implemented` for Section 2**.
 2. Shared attempt predicate — **new exports from `src/frontend/src/services/dataAnalysis/analysers/attemptBaselineSelection.ts`**: `isAttemptMetric` decides one per-(student, task) metric (any criterion `computed`), and `collectRosterAttemptCandidates` applies it across a `ReadonlyArray<PerStudentTaskMetric>`, roster-scoped by intersecting the metrics' student ids with `classFull.students[].id` and returning ascending student ids. The availability side (entry 5) consumes the retained result's `perStudentTaskMetrics` directly; the analyser's candidacy projects its internal accumulators through the existing `buildPerStudentTaskMetrics` before the predicate runs, so one predicate serves both consumers with one shared test. **Status: `Implemented` for Section 2**.

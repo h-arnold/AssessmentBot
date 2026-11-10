@@ -292,8 +292,10 @@ export type AppliedCriterionWeightings = z.infer<typeof AppliedCriterionWeightin
  * Minimum baseline pool size: the pool structurally cannot be smaller.
  *
  * @remarks
- * Mirrors the baseline-derivation minimum pool constant (SPEC decision 13);
- * kept here so the schema bound and the derivation agree by name.
+ * Mirrors the baseline-derivation minimum pool constant (data-shape item 3 in
+ * docs/developer/data-shapes/frontend-data-analysis-response.md §
+ * Attempt-baseline contract changes); kept here so the schema bound and the
+ * derivation agree by name.
  */
 const BASELINE_POOL_MINIMUM = 2;
 

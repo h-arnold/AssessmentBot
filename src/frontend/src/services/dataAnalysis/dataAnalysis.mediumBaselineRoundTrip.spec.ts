@@ -157,7 +157,7 @@ function requireRosterStudent(classRecord: MediumClass, rosterIndex: number): { 
 }
 
 /**
- * Whether the submission item is an attempt (decision 3): at least one
+ * Whether the submission item is an attempt (data-shape item 3): at least one
  * criterion assessment carries a numeric score.
  *
  * @param {MediumItem} item - The submission item.
@@ -193,7 +193,7 @@ function collectAttemptedTaskKeysFromAssignment(
 }
 
 /**
- * Collect a roster student's attempted task keys (decision 3: at least one
+ * Collect a roster student's attempted task keys (data-shape item 3: at least one
  * numeric criterion score on the submission item).
  *
  * @param {MediumClass} classRecord - The parsed class record.

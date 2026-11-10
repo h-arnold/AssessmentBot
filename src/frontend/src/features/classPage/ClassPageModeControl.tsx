@@ -7,8 +7,8 @@
  * `absolute` ("All tasks") and `topDecileBaseline` ("Baseline tasks"), hosted
  * in a `Card size="small"` as the header's third stacked element so the
  * control stays reachable in every non-loading state — including blocking
- * failures, where the escape route back to `absolute` lives (SPEC decision
- * 6a).
+ * failures, where the escape route back to `absolute` lives (see
+ * docs/pedagogy/data-analysis-scoring.md § Averages basis).
  *
  * DOM contract:
  * - the control's accessible name is the visible group label via

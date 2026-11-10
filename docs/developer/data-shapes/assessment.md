@@ -516,7 +516,7 @@ persistence and both read transports emit the marker; the backend legacy read pr
 and the frontend read normaliser are active in both read services. The analyser accepts
 explicit `E` input. The completed-write gates (including pending-image rejection and
 completion-time marker stamping) are enforced at the write boundary; preview error states
-remain unimplemented (see
+are implemented (see
 [Frontend Data Analysis Response § Attempt-baseline contract changes](frontend-data-analysis-response.md#attempt-baseline-contract-changes)).
 
 ---

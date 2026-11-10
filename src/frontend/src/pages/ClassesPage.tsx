@@ -389,7 +389,8 @@ export function ClassesPage() {
     </PageSection>
   ) : (
     // The class-scoped key guarantees a remount on class change, resetting the
-    // Class page's mode selection and its retained availability (SPEC decision 6a).
+    // Class page's mode selection and its retained availability (see
+    // docs/pedagogy/data-analysis-scoring.md § Averages basis).
     <ClassPage key={selectedClassId} classId={selectedClassId} />
   );
 }

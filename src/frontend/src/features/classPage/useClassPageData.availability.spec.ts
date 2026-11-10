@@ -3,7 +3,7 @@
  * availability, and retention (`useClassPageData`).
  *
  * @remarks
- * Availability follows the attempt-baseline specification decision 6: the
+ * Availability follows the shared-helpers register (§9.27 entry 5): the
  * control's availability derives from the last successful analysis result
  * (attempt evidence) plus the current `classFull` (roster), resolving to
  * `'awaiting-data'` whenever either input is absent — never to `'ineligible'`.
@@ -58,9 +58,9 @@ afterEach(() => {
   vi.resetAllMocks();
 });
 
-// Reason copy pinned by the attempt-baseline specification decision 6 and the
-// layout specification's control states: the hook produces the display copy
-// that feeds both the control's tooltip and its sr-only description node.
+// Reason copy pinned by the shared-helpers register (§9.27 entry 5): the hook
+// produces the display copy that feeds both the control's tooltip and its
+// sr-only description node.
 const AWAITING_DATA_REASON = 'Waiting for class data';
 const ROSTER_REASON = 'Baseline mode needs at least 3 students in this class';
 const ENGAGED_STUDENTS_REASON = 'Baseline mode needs at least 2 students who attempted some work';
@@ -340,7 +340,7 @@ describe('baselineAvailability', () => {
 describe('availability retention (previous-render pattern)', () => {
   // The green implementation must retain the last successful analysis result
   // with React's documented previous-render state pattern (two useState pairs
-  // updated during render, per the attempt-baseline specification decision 6):
+  // updated during render, per the shared-helpers register §9.27 entry 5):
   // `react-hooks/refs` and `react-hooks/set-state-in-effect` are lint errors,
   // so neither a ref read during render nor an effect-driven state write can
   // express this contract. The assertions below pin the behaviour that

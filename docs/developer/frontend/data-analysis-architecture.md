@@ -17,7 +17,8 @@ observation:
 A zero effective weight changes the second fact only; it does not turn an
 assessed numeric score into `N` or `E`.
 
-This architecture mirrors the agreed behaviour in [`SPEC.md`](../../../docs/plans/issue-305/SPEC.md).
+This architecture mirrors the delivered behaviour in
+[Attempt-baseline mode (post-accumulation)](#attempt-baseline-mode-post-accumulation).
 The canonical contract is
 [`frontend-data-analysis-response.md`](../data-shapes/frontend-data-analysis-response.md).
 

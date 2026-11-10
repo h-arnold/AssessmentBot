@@ -66,7 +66,8 @@ type ClassPageHeaderProperties = Readonly<{
  * Always shows the class-name {@link PageTitleCard} and the analysis-mode
  * control slot ({@link ClassPageModeControl}, third stacked element, rendered
  * in every non-loading state so the escape route back to `absolute` stays
- * reachable — SPEC decision 6a). The parent {@link PageNavCard}
+ * reachable — docs/pedagogy/data-analysis-scoring.md § Averages basis). The
+ * parent {@link PageNavCard}
  * ("Back to Classes") is shown only in the overview view; when a child view
  * (heatmap) is active, the child page renders its own navigation card so that
  * only the most-junior nav card is visible.
@@ -123,8 +124,9 @@ function ClassPageHeader({
 export function ClassPage({ classId }: ClassPageProperties): JSX.Element {
   const { onNavigateToClasses } = useClassSelection();
 
-  // The analysis mode is page state (no persistence; SPEC decision 6a): a
-  // class change remounts this component (see `ClassesPage`) and resets it.
+  // The analysis mode is page state (no persistence; see
+  // docs/pedagogy/data-analysis-scoring.md § Averages basis): a class change
+  // remounts this component (see `ClassesPage`) and resets it.
   const [analysisMode, setAnalysisMode] = useState<AnalysisMode>('absolute');
 
   const {

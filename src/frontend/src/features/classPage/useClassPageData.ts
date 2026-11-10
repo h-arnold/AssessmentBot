@@ -82,7 +82,10 @@ export type ClassPageData = Readonly<{
   /** Derived adapter result — non-null only when `surfaceState.status === 'ready'`. */
   adapterResult: ClassPageAdapterResult | null;
 
-  /** Availability of the attempt-baseline mode control (SPEC decision 6). */
+  /**
+   * Availability of the attempt-baseline mode control (shared-helpers register
+   * §9.27: docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md).
+   */
   baselineAvailability: BaselineAvailability;
 
   /** The structured error (null when no blocking condition applies). */
@@ -339,7 +342,9 @@ export function useClassPageData(classId: string, analysisMode: AnalysisMode): C
 
   // -----------------------------------------------------------------------
   // 5a. Retained last-successful analysis result — React's previous-render
-  // state pattern (SPEC decision 6): updated during render and guarded so the
+  // state pattern (shared-helpers register §9.27 in
+  // docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md):
+  // updated during render and guarded so the
   // update converges; a throwing render leaves the retained value intact (a
   // remount clears it). `react-hooks/refs` and `react-hooks/set-state-in-effect`
   // are lint errors, forbidding the ref and effect alternatives.

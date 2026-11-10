@@ -24,7 +24,8 @@ import type { ClassPageAdapterResult } from './classPageAdapter.zod';
 
 /**
  * Availability of the attempt-baseline analysis mode on the Class page
- * (attempt-baseline specification decision 6).
+ * (shared-helpers register §9.27 in
+ * docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md).
  *
  * - `ready`: both eligibility conditions hold — the control is enabled.
  * - `awaiting-data`: no usable attempt evidence yet (no successful analysis
@@ -168,7 +169,7 @@ export function isClassPageLoading(
 }
 
 // ---------------------------------------------------------------------------
-// Attempt-baseline availability (specification decision 6)
+// Attempt-baseline availability (shared-helpers register §9.27)
 // ---------------------------------------------------------------------------
 
 /** Neutral copy for the awaiting-data availability state. */
@@ -182,7 +183,7 @@ const ENGAGED_STUDENTS_REASON = 'Baseline mode needs at least 2 students who att
 
 /**
  * Resolve the Class page's attempt-baseline availability from the current
- * render state (decision 6).
+ * render state (shared-helpers register §9.27).
  *
  * @param {AveragingResult | null} analyserResult - The current render's
  *   analyser result (null unless the pipeline succeeded this render).

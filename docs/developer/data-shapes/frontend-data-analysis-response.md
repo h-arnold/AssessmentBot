@@ -1137,11 +1137,11 @@ Delivered: valid legacy scores are included in analysis through the existing hea
 The top-decile attempt-baseline analysis mode is delivered (tracking issue:
 h-arnold/AssessmentBot#305). The explicit-`E` analyser input, the preview `sourceUrl` field and
 every other previously planned addition are implemented and documented in the sections above.
-The schema contracts for items 1–4 below are implemented as recorded (Section 1 of the
-attempt-baseline action plan: required filter field, result echo and optional baseline block,
-required task-row flag), as is the analyser's baseline-mode behaviour (Section 2:
-post-accumulation baseline selection, baseline-restricted aggregation, the baseline-mode
-per-student `excluded` conversion and the `attemptBaseline` echo). The heatmap column
+The schema contracts for items 1–4 below are implemented as recorded in their
+delivered entries (required filter field, result echo and optional baseline block,
+required task-row flag), as is the analyser's baseline-mode behaviour
+(post-accumulation baseline selection, baseline-restricted aggregation, the
+baseline-mode per-student `excluded` conversion and the `attemptBaseline` echo). The heatmap column
 projection (Section 3), the summary reconciliation (Section 4), the Class-page mode
 control with its availability resolver (Section 5a), item 7's mode threading to the
 Class-page display labels (Section 5b), the embedded heatmap's baseline marking
@@ -1279,9 +1279,9 @@ Every planned contract change in this section is implemented.
 
    **Implemented (Section 5b):** the rule lives in the co-located module
    `src/frontend/src/features/classPage/classPageAdapter.baselineCardRollup.ts`
-   (`deriveBaselineTaskKeySet` —
-   `src/frontend/src/services/dataAnalysis/analysers/attemptBaselineSelection.ts`,
-   `rollupCardCriteria` and `convertToBaselineExcluded` —
+   (`rollupCardCriteria`; `deriveBaselineTaskKeySet` —
+   `src/frontend/src/services/dataAnalysis/analysers/attemptBaselineSelection.ts`;
+   `convertToBaselineExcluded` —
    `src/frontend/src/services/dataAnalysis/analysers/averagingAnalyser.rows.ts`),
    whose sole consumer is
    `classPageAdapter.ts`. The adapter derives the baseline set once per run
