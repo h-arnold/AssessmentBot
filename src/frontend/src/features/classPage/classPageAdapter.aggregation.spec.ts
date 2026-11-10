@@ -1,6 +1,7 @@
 /**
- * Focused adapter tests: student-average synthesis and ordering, and
- * class-metric passthrough for the Class page adapter (`classPageAdapter.ts`).
+ * Focused adapter tests: student-average synthesis and ordering,
+ * class-metric passthrough, and baseline-mode recent-assignment metric
+ * resolution for the Class page adapter (`classPageAdapter.ts`).
  *
  * @remarks
  * Split from the original single-file `classPageAdapter.spec.ts` to keep each
@@ -17,12 +18,15 @@ import {
   assignment,
   averagingResult,
   classFull,
+  computedPerTaskRow,
   perClassResult,
   perStudentRow,
+  perTaskRow,
+  singleAssignmentAdapterInput,
   student,
 } from '@/test/classPage/classPageAdapterTestFixtures';
 import { adaptClassPageToViewModel } from './classPageAdapter';
-import type { PerStudentRow } from '@/services/dataAnalysis/dataAnalysis.zod';
+import type { PerStudentRow, PerTaskRow } from '@/services/dataAnalysis/dataAnalysis.zod';
 
 describe('adaptClassPageToViewModel — aggregation', () => {
   describe('studentAverages', () => {
@@ -168,6 +172,148 @@ describe('adaptClassPageToViewModel — aggregation', () => {
       expect(result.classMetrics.accuracy).toEqual(customPerClass.accuracy);
       expect(result.classMetrics.spag).toEqual(customPerClass.spag);
       expect(result.classMetrics.overall).toEqual(customPerClass.overall);
+    });
+  });
+
+  describe('recentAssignments — baseline-mode metric resolution', () => {
+    it('converts card criteria to excluded preserving observed data points when no row is inside the baseline', () => {
+      // Both rows sit outside the baseline set, so the filtered row set is
+      // empty: the unfiltered rollups (computed here) convert to `excluded`
+      // while preserving their resolved `totalDataPoints`, and the card's
+      // average composite derives from the converted criteria.
+      const perTaskRows: PerTaskRow[] = [
+        computedPerTaskRow(
+          'dk1',
+          't1',
+          { completeness: 4, accuracy: 3, spag: 2 },
+          {
+            includedInAttemptBaseline: false,
+          }
+        ),
+        computedPerTaskRow(
+          'dk1',
+          't2',
+          { completeness: 2, accuracy: 2, spag: 2 },
+          {
+            includedInAttemptBaseline: false,
+          }
+        ),
+      ];
+
+      const result = adaptClassPageToViewModel(
+        singleAssignmentAdapterInput(perTaskRows, {
+          appliedAnalysisMode: 'topDecileBaseline',
+          // The baseline set only contains tasks of other assignments.
+          attemptBaseline: { poolStudentIds: ['s-1', 's-2'], baselineTaskKeys: ['dk2::t9'] },
+        })
+      );
+
+      const metrics = result.recentAssignments[0].metrics;
+      const expectedConvertedDataPoints = 2;
+      expect(metrics.completeness).toMatchObject({
+        state: 'excluded',
+        value: null,
+        totalWeight: 0,
+        applicableDataPoints: 0,
+        totalDataPoints: expectedConvertedDataPoints,
+      });
+      expect(metrics.accuracy).toMatchObject({
+        state: 'excluded',
+        value: null,
+        totalWeight: 0,
+        applicableDataPoints: 0,
+        totalDataPoints: expectedConvertedDataPoints,
+      });
+      expect(metrics.spag).toMatchObject({
+        state: 'excluded',
+        value: null,
+        totalWeight: 0,
+        applicableDataPoints: 0,
+        totalDataPoints: expectedConvertedDataPoints,
+      });
+      // The composite is never converted: its resolved totalDataPoints is the
+      // sum of the converted criteria's counts (2 + 2 + 2).
+      const expectedConvertedAverageDataPoints = 6;
+      expect(metrics.average).toMatchObject({
+        state: 'excluded',
+        value: null,
+        totalWeight: 0,
+        applicableDataPoints: 0,
+        totalDataPoints: expectedConvertedAverageDataPoints,
+      });
+    });
+
+    it('keeps zero-evidence card criteria as error when no row is inside the baseline', () => {
+      // A definition with tasks but no attempts anywhere: every criterion is
+      // `error` with zero data points, so no `excluded` is synthesised
+      // (ExcludedMetricSchema requires at least one observed data point).
+      const noAttemptRows: PerTaskRow[] = ['t1', 't2'].map((taskId) => {
+        return perTaskRow({
+          definitionKey: 'dk1',
+          taskId,
+          includedInAttemptBaseline: false,
+          completeness: createMetricResult('error', { totalDataPoints: 0 }),
+          accuracy: createMetricResult('error', { totalDataPoints: 0 }),
+          spag: createMetricResult('error', { totalDataPoints: 0 }),
+        });
+      });
+
+      const result = adaptClassPageToViewModel(
+        singleAssignmentAdapterInput(noAttemptRows, {
+          appliedAnalysisMode: 'topDecileBaseline',
+          attemptBaseline: { poolStudentIds: ['s-1', 's-2'], baselineTaskKeys: ['dk2::t9'] },
+        })
+      );
+
+      const metrics = result.recentAssignments[0].metrics;
+      expect(metrics.completeness).toMatchObject({ state: 'error', totalDataPoints: 0 });
+      expect(metrics.accuracy).toMatchObject({ state: 'error', totalDataPoints: 0 });
+      expect(metrics.spag).toMatchObject({ state: 'error', totalDataPoints: 0 });
+      expect(metrics.average).toMatchObject({ state: 'error', totalDataPoints: 0 });
+    });
+
+    it('keeps an already-excluded zero-weight card rollup unchanged when no row is inside the baseline', () => {
+      // Every observation carries zero effective weight, so the unfiltered
+      // rollup is already `excluded`: the conversion leaves it untouched
+      // (preserving the observed totalDataPoints) rather than re-deriving it.
+      const zeroWeightRows: PerTaskRow[] = [
+        { taskId: 't1', completeness: 4, accuracy: 3, spag: 2 },
+        { taskId: 't2', completeness: 2, accuracy: 2, spag: 2 },
+      ].map((row) => {
+        return perTaskRow({
+          definitionKey: 'dk1',
+          taskId: row.taskId,
+          includedInAttemptBaseline: false,
+          averageContribution: { effectiveWeight: 0, includedInAverage: false },
+          completeness: createMetricResult('computed', { value: row.completeness, totalWeight: 0 }),
+          accuracy: createMetricResult('computed', { value: row.accuracy, totalWeight: 0 }),
+          spag: createMetricResult('computed', { value: row.spag, totalWeight: 0 }),
+        });
+      });
+
+      const result = adaptClassPageToViewModel(
+        singleAssignmentAdapterInput(zeroWeightRows, {
+          appliedAnalysisMode: 'topDecileBaseline',
+          attemptBaseline: { poolStudentIds: ['s-1', 's-2'], baselineTaskKeys: ['dk2::t9'] },
+        })
+      );
+
+      const metrics = result.recentAssignments[0].metrics;
+      const expectedZeroWeightDataPoints = 2;
+      expect(metrics.completeness).toMatchObject({
+        state: 'excluded',
+        value: null,
+        totalWeight: 0,
+        applicableDataPoints: 0,
+        totalDataPoints: expectedZeroWeightDataPoints,
+      });
+      // Composite totalDataPoints: sum of the three criteria's counts (2 * 3).
+      const expectedZeroWeightAverageDataPoints = 6;
+      expect(metrics.average).toMatchObject({
+        state: 'excluded',
+        value: null,
+        totalDataPoints: expectedZeroWeightAverageDataPoints,
+      });
     });
   });
 });

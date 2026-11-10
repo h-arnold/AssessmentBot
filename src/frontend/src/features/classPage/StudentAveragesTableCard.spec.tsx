@@ -221,16 +221,14 @@ afterEach(() => {
  * @param {Partial<ClassPageAdapterResult>} [options.adapterResult] - Adapter result overrides.
  * @returns {ReturnType<typeof render>} The render result.
  */
-function renderCard(options: {
-  adapterResult?: Partial<ClassPageAdapterResult>;
-} = {}): ReturnType<typeof render> {
+function renderCard(
+  options: {
+    adapterResult?: Partial<ClassPageAdapterResult>;
+  } = {}
+): ReturnType<typeof render> {
   const adapterResult = buildAdapterResult(options.adapterResult);
 
-  return render(
-    <StudentAveragesTableCard
-      adapterResult={adapterResult}
-    />
-  );
+  return render(<StudentAveragesTableCard adapterResult={adapterResult} />);
 }
 
 // ===========================================================================
@@ -309,9 +307,7 @@ describe('StudentAveragesTableCard', () => {
     // Click the "Forename" column header to trigger sort.
     // Ant Design renders sort triggers inside .ant-table-column-sorters elements.
     const columnHeaders = screen.getAllByRole('columnheader');
-    const forenameHeader = columnHeaders.find((header) =>
-      header.textContent?.includes('Forename')
-    );
+    const forenameHeader = columnHeaders.find((header) => header.textContent?.includes('Forename'));
     expect(forenameHeader).toBeDefined();
 
     // Click the sorter area inside the column header
@@ -348,9 +344,7 @@ describe('StudentAveragesTableCard', () => {
 
     // Find the Forename column header and its sorter area
     const columnHeaders = screen.getAllByRole('columnheader');
-    const forenameHeader = columnHeaders.find((header) =>
-      header.textContent?.includes('Forename')
-    );
+    const forenameHeader = columnHeaders.find((header) => header.textContent?.includes('Forename'));
     expect(forenameHeader).toBeDefined();
 
     const sorter = forenameHeader!.querySelector('.ant-table-column-sorters');
@@ -378,9 +372,7 @@ describe('StudentAveragesTableCard', () => {
   // -----------------------------------------------------------------------
   it('renders Empty with "No students match your search" when dataSource is empty', () => {
     // Override the default view model to have an empty studentAverages array
-    mockBuildViewModel.mockReturnValue(
-      buildViewModel({ studentAverages: [] })
-    );
+    mockBuildViewModel.mockReturnValue(buildViewModel({ studentAverages: [] }));
 
     renderCard();
 
@@ -401,37 +393,50 @@ describe('StudentAveragesTableCard', () => {
     });
     mockBuildViewModel.mockReturnValue(buildViewModel({ studentAverages: [excludedRow] }));
     mockBuildColumns.mockImplementation((filters: { completeness: readonly string[] }) => {
-      return [{
-        key: 'completeness',
-        title: 'Completeness',
-        filters: [{ text: 'Include Excluded', value: INCLUDE_EXCLUDED_KEY }],
-        filterDropdown: ({ setSelectedKeys, confirm }: Parameters<NonNullable<MockColumn['filterDropdown']>>[0]) => {
-          return (
-            <div>
-              <label>
-                <input
-                  type="checkbox"
-                  aria-label="Include Excluded"
-                  checked={filters.completeness.includes(INCLUDE_EXCLUDED_KEY)}
-                  onChange={(event) => {
-                    setSelectedKeys(event.target.checked ? [INCLUDE_EXCLUDED_KEY] : []);
-                    confirm();
-                  }}
-                />
-                Include Excluded
-              </label>
-            </div>
-          );
+      return [
+        {
+          key: 'completeness',
+          title: 'Completeness',
+          filters: [{ text: 'Include Excluded', value: INCLUDE_EXCLUDED_KEY }],
+          filterDropdown: ({
+            setSelectedKeys,
+            confirm,
+          }: Parameters<NonNullable<MockColumn['filterDropdown']>>[0]) => {
+            return (
+              <div>
+                <label>
+                  <input
+                    type="checkbox"
+                    aria-label="Include Excluded"
+                    checked={filters.completeness.includes(INCLUDE_EXCLUDED_KEY)}
+                    onChange={(event) => {
+                      setSelectedKeys(event.target.checked ? [INCLUDE_EXCLUDED_KEY] : []);
+                      confirm();
+                    }}
+                  />
+                  Include Excluded
+                </label>
+              </div>
+            );
+          },
         },
-      }];
+      ];
     });
     const { container } = renderCard({ adapterResult: { studentAverages: [excludedRow] } });
     const filterTrigger = container.querySelector('.ant-table-filter-trigger');
     expect(filterTrigger).not.toBeNull();
     await user.click(filterTrigger!);
     await user.click(await screen.findByRole('checkbox', { name: 'Include Excluded' }));
-    expect(mockBuildColumns).toHaveBeenLastCalledWith(expect.objectContaining({ completeness: [INCLUDE_EXCLUDED_KEY] }));
-    expect(mockBuildViewModel).toHaveBeenCalledWith(expect.objectContaining({ adapterResult: expect.any(Object) }));
+    // The card always forwards the page's analysis mode as the second
+    // argument (§9.27.3 threading chain); this spec renders without it, so
+    // the forwarded mode is `undefined`.
+    expect(mockBuildColumns).toHaveBeenLastCalledWith(
+      expect.objectContaining({ completeness: [INCLUDE_EXCLUDED_KEY] }),
+      undefined
+    );
+    expect(mockBuildViewModel).toHaveBeenCalledWith(
+      expect.objectContaining({ adapterResult: expect.any(Object) })
+    );
   });
 
   // -----------------------------------------------------------------------

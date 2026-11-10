@@ -32,5 +32,12 @@ export const pageContent = {
     summary: 'Review assessment performance for this class.',
     recentAssignmentsEmpty: 'No recent assessments yet',
     searchEmpty: 'No students match your search',
+    // Attempt-baseline mode-control copy (layout spec "Copy homes": header
+    // copy lives here; consumed by ClassPageModeControl).
+    modeControlLabel: 'Averages basis',
+    absoluteModeOptionLabel: 'All tasks',
+    baselineModeOptionLabel: 'Baseline tasks',
+    baselineModeOptionTooltip:
+      'Uses the tasks the ten-percent most-engaged students (minimum 2) have all attempted.',
   },
 } as const;

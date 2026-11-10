@@ -33,17 +33,8 @@ import type { JSX } from 'react';
 import { Card, Flex, Segmented, Tooltip, Typography } from 'antd';
 import type { AnalysisMode } from '@/services/dataAnalysis/dataAnalysis.zod';
 import type { BaselineAvailability } from './useClassPageData.helpers';
+import { pageContent } from '@/pages/pageContent';
 import { APP_GAP_SM } from '@/theme/spacing';
-
-// Visible control copy (layout spec control states; the `pageContent.classDetail`
-// copy home is wired in a later section of the plan).
-const MODE_CONTROL_LABEL = 'Averages basis';
-const ABSOLUTE_OPTION_LABEL = 'All tasks';
-const BASELINE_OPTION_LABEL = 'Baseline tasks';
-
-/** Baseline-option tooltip summary, supplied only while the control is enabled. */
-const BASELINE_OPTION_TOOLTIP =
-  'Uses the tasks the ten-percent most-engaged students (minimum 2) have all attempted.';
 
 /** Stable DOM ids (the Class page mounts once per selected class). */
 const MODE_CONTROL_LABEL_ID = 'class-page-mode-control-label';
@@ -76,20 +67,25 @@ export function ClassPageModeControl({
 
   // Per-option tooltips only in the enabled branch (see module remarks).
   const options = [
-    { value: 'absolute' as const, label: ABSOLUTE_OPTION_LABEL },
+    { value: 'absolute' as const, label: pageContent.classDetail.absoluteModeOptionLabel },
     isDisabled
-      ? { value: 'topDecileBaseline' as const, label: BASELINE_OPTION_LABEL }
+      ? {
+          value: 'topDecileBaseline' as const,
+          label: pageContent.classDetail.baselineModeOptionLabel,
+        }
       : {
           value: 'topDecileBaseline' as const,
-          label: BASELINE_OPTION_LABEL,
-          tooltip: BASELINE_OPTION_TOOLTIP,
+          label: pageContent.classDetail.baselineModeOptionLabel,
+          tooltip: pageContent.classDetail.baselineModeOptionTooltip,
         },
   ];
 
   return (
     <Card size="small">
       <Flex wrap align="center" gap={APP_GAP_SM}>
-        <Typography.Text id={MODE_CONTROL_LABEL_ID}>{MODE_CONTROL_LABEL}</Typography.Text>
+        <Typography.Text id={MODE_CONTROL_LABEL_ID}>
+          {pageContent.classDetail.modeControlLabel}
+        </Typography.Text>
         {/* Always present so the `aria-describedby` target is robustly
             reachable while disabled (HeatmapSelectionBar precedent). */}
         <span id={MODE_CONTROL_DESCRIPTION_ID} className="sr-only">

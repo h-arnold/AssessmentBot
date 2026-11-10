@@ -14,7 +14,6 @@
 import { logFrontendEvent } from '@/logging/frontendLogger';
 import { computeOverallComposite } from '@/services/dataAnalysis/analysers/averagingAnalyser.composite';
 import { DEFAULT_CRITERION_WEIGHTINGS } from '@/services/dataAnalysis/analysers/averagingAnalyser';
-import { rollupMetric } from '@/services/dataAnalysis/analysers/rollupMetric';
 import { formatUpdatedAtLabel } from '@/utils/dateFormatting';
 import type {
   AveragingResult,
@@ -31,6 +30,7 @@ import type {
   StudentAverageRowModel,
 } from './classPageAdapter.zod';
 import { compareAssignmentUpdatedAtDesc } from './classPageModel';
+import { deriveCardBaselineSet, rollupCardCriteria } from './classPageAdapter.baselineCardRollup';
 import { compareStudentNames } from '@/services/dataAnalysis/compareStudentNames';
 import { TaskTitlesUnavailableError } from '@/services/dataAnalysis/heatmapAdapter';
 import { getAssignmentDefinitionPartial } from '@/services/assignmentDefinition/assignmentDefinitionUtilities';
@@ -169,13 +169,16 @@ function computeAverageMetric(
  * @param {string} assignmentName - The resolved display name (primaryTitle from definition registry).
  * @param {AveragingResult['perTask']} matchingPerTask - The per-task analysis rows matching this assignment.
  * @param {string} validatedUpdatedAt - The validated non-null parseable updatedAt string.
+ * @param {ReadonlySet<string> | null} baselineTaskSet - The baseline task-key set in
+ *   baseline mode, or `null` in absolute mode (see {@link rollupCardCriteria}).
  * @returns {RecentAssignmentCardModel} A fully-populated recent assignment card model.
  */
 function buildRecentAssignment(
   assignmentId: string,
   assignmentName: string,
   matchingPerTask: PerTaskRow[] | undefined,
-  validatedUpdatedAt: string
+  validatedUpdatedAt: string,
+  baselineTaskSet: ReadonlySet<string> | null
 ): RecentAssignmentCardModel {
   const rows = matchingPerTask ?? [];
   // Roll up per-task metrics into per-assignment values
@@ -189,17 +192,10 @@ function buildRecentAssignment(
     rolledUpAccuracy = noDataMetric();
     rolledUpSpag = noDataMetric();
   } else {
-    const completenessValues: MetricResult[] = [];
-    const accuracyValues: MetricResult[] = [];
-    const spagValues: MetricResult[] = [];
-    for (const r of rows) {
-      completenessValues.push(r.completeness);
-      accuracyValues.push(r.accuracy);
-      spagValues.push(r.spag);
-    }
-    rolledUpCompleteness = rollupMetric(completenessValues, 'completeness');
-    rolledUpAccuracy = rollupMetric(accuracyValues, 'accuracy');
-    rolledUpSpag = rollupMetric(spagValues, 'spag');
+    const rollups = rollupCardCriteria(rows, baselineTaskSet);
+    rolledUpCompleteness = rollups.completeness;
+    rolledUpAccuracy = rollups.accuracy;
+    rolledUpSpag = rollups.spag;
   }
 
   // Compute the per-assignment average composite
@@ -311,6 +307,10 @@ export function adaptClassPageToViewModel(input: {
   // Recent assignments
   // -----------------------------------------------------------------------
 
+  // The baseline task-key set is derived once from the result's own mode echo
+  // (fail-fast on a baseline-mode result without its attemptBaseline block).
+  const baselineTaskSet = deriveCardBaselineSet(analyserResult);
+
   const perTaskLookup = buildPerTaskLookup(analyserResult.perTask);
 
   // Validate all assignments first (required for sorting — trust validation)
@@ -363,7 +363,8 @@ export function adaptClassPageToViewModel(input: {
         assignment.assignmentId,
         assignmentName,
         matchingPerTask,
-        validatedUpdatedAt
+        validatedUpdatedAt,
+        baselineTaskSet
       );
     }
   );

@@ -250,56 +250,33 @@ Section checks passed: `src/features/classPage` 208/208 (29 files); `src/pages` 
 
 ### 5b — Card/table aggregates, label threading, header key
 
-### Objective
+### Outcome (compacted)
 
-- `classPageAdapter` card rule; `analysisMode` threading to `RecentAssignmentCard` and the column builder; the mode-aware labels on the Class-page surfaces.
+Delivered the Class page's baseline-mode card/table aggregates and label threading:
 
-### Constraints
+- New `classPageAdapter.baselineCardRollup.ts` owns the card rule: `deriveCardBaselineSet` (fail-fast narrowing from the result's own `appliedAnalysisMode` echo) and `rollupCardCriteria` (baseline-filtered rollup with the empty-set `excluded` fallback conversion); the card `average` still derives through the untouched `computeAverageMetric` → `computeOverallComposite` path. `classPageAdapter.ts` is the module's sole consumer and stays a pure function of `analyserResult`.
+- `analysisMode` threads through the full chain so the card pills and the students-table `aria-label` render the mode-aware `excluded` wording; the embedded heatmap view receives no mode props.
+- Header copies verbatim-moved to the `pageContent.ts` `classDetail` home; the excluded labels stay single-sourced in `metricTone.ts`.
+- §9.27.3's threading unit assertion landed in `RecentAssignmentCard.spec.tsx`; the §5a-wired `ClassesPage` remount is asserted by the existing `ClassesPage.shell.spec.tsx` mount-count behaviour test (no new test needed).
 
-- Adapter reads `analyserResult.appliedAnalysisMode`; rule: filtered rollup → empty-set fallback conversion → `computeOverallComposite` (SPEC display rules).
-- Threading chain: `ClassPage` → `ClassPageContent` → `renderReadyContent` (options object) → `ClassPageReady` → `RecentAssignmentsSection` → `RecentAssignmentCard`; `ClassPageReady` → `StudentAveragesTableCard` → `studentAveragesTableColumns.tsx`.
-- **LOC watch:** `ClassPageContent.tsx` projected +≈20 → ≈469; measured in notes; decompose in-change via the named region-renderer module if >550.
+Section checks passed: `src/features/classPage` 217/217 (29 files); `src/pages` 99/99; full `test:frontend -- src` 3161/3161 (325 files; +9 vs Section 5a); `typecheck:all` exit 0; `lint:frontend:check` 0 errors / 16 warnings; Prettier clean (16 touched files); red review PASS; green review PASS with zero in-scope findings.
 
-### Shared helper plan
+### Retained for later sections (§5c/§5d/6/7 consumption)
 
-- Completes §9.27.3 (threading half; copy home `pageContent.ts` `classDetail` per layout spec).
-
-### Data-shape planning block
-
-- Reconciles data-shape item 6 (downstream aggregate consumers: adapter rule, empty-set conversion, composite; plus the true "no new entry" for `baselineAvailability`).
-
-### Canonical fixture note
-
-- `classPageAdapterTestFixtures.ts` + adapter suites gain baseline-mode/`excluded` cases from local hand-built fixtures (SPEC list). Note: medium-corpus loading in any new spec here follows the `?raw` call-site pattern (deliberate non-shared per the recorded canonicalFixturePrimitives decision).
-
-### Delegation mandatory reads
-
-- Testing Specialist: `@docs/developer/frontend/frontend-testing.md`
-- Implementation: `@docs/plans/issue-305/SPEC.md`, `@docs/plans/issue-305/ATTEMPT_BASELINE_MODE_LAYOUT.md`, `@src/frontend/src/features/classPage/classPageAdapter.ts`, `@src/frontend/src/features/classPage/ClassPageContent.tsx`, `@src/frontend/src/features/classPage/RecentAssignmentsSection.tsx`, `@src/frontend/src/features/classPage/RecentAssignmentCard.tsx`, `@src/frontend/src/features/classPage/StudentAveragesTableCard.tsx`, `@src/frontend/src/features/classPage/studentAveragesTableColumns.tsx`, `@src/frontend/src/pages/pageContent.ts`
-- Code Reviewer: `@docs/plans/issue-305/SPEC.md`, `@docs/plans/issue-305/ATTEMPT_BASELINE_MODE_LAYOUT.md`
-
-### Acceptance criteria
-
-- Cards/averages recompute per mode; card zero-evidence variant stays `error`; excluded labels mode-aware on cards + students-table `aria-label`; no overview-region layout shift.
-
-### Required test cases (Red first)
-
-Frontend tests:
-
-1. `classPageAdapter.recentAssignments.spec.ts` + `.aggregation.spec.ts`: card filter rule; empty-set fallback conversion; zero-evidence stays `error`; zero-weight already-`excluded` keeps cause.
-2. `classPageAdapter.zod.spec.ts`: `appliedAnalysisMode` read; display metrics parse with `excluded`.
-3. `RecentAssignmentCard.spec.tsx`: `analysisMode` threading assertion (§9.27.3 unit-assertion host); mode-aware labels.
-4. `ClassesPage` remount key assertion (with §5a's wiring).
-
-### Section checks
-
-- `npm run test:frontend -- src/features/classPage`
-- `npm run lint:frontend:check`
-- §9.27.3 fully reconciled; data-shape item 6 reconciled; measured LOC recorded.
+- **Card-rollup module contract** (`src/frontend/src/features/classPage/classPageAdapter.baselineCardRollup.ts`; sole consumer `classPageAdapter.ts`): `deriveCardBaselineSet(analyserResult)` reads the `appliedAnalysisMode` echo as the single source of truth — a missing/unrecognised echo, or a baseline-mode result without its `attemptBaseline` block, throws; an `attemptBaseline?.baselineTaskKeys ?? []` fallback is forbidden; absolute mode returns `null`. The adapter only ever sees fresh schema-parsed results (sole production call site in `useClassPageData`), so the throws are defence-in-depth for non-parsed inputs. `rollupCardCriteria(rows, baselineTaskSet)`: `null` rolls up every row (byte-identical to the pre-change inline loop); baseline mode filters rows by `buildTaskKey(definitionKey, taskId)` membership — equivalent to filtering on `includedInAttemptBaseline: true` because `averagingAnalyser.rows.ts:313` sets the flag as `baselineTaskKeys?.has(taskKey) ?? true`; an empty filtered set rolls up the unfiltered rows per criterion and converts only `computed`/`notAttempted` to the `ExcludedMetricSchema` literals (`value: null`, `totalWeight: 0`, `applicableDataPoints: 0`) while preserving the resolved observed `totalDataPoints`; an already-`excluded` zero-weight rollup keeps its cause untouched. The module is only reached with non-empty rows — the `rows.length === 0` → `noDataMetric()` placeholder branch stays in the adapter (data-shape item 6).
+- **Red-phase guards (later sections and Section 7 keep these green):** the card `average`/row `overall` composite is never converted directly — it derives from the converted criteria via `computeOverallComposite`, so its resolved `totalDataPoints` is the sum of the converted criteria's counts (all-`error` stays `error` td 0; a mixture converges on `excluded`); `ExcludedMetricSchema`'s `totalDataPoints >= 1` is never violated — zero-evidence `error` td 0 stays `error` and no `excluded` is synthesised without observed evidence; absolute-mode invariance (SPEC decision 12) — rows flagged `includedInAttemptBaseline: false` still roll up unfiltered when the echo is `'absolute'`; the mode echo alone is the switch.
+- **Threading chain + optional-prop design (§5c/§5d/6 rely on the shape):** `ClassPage` (owns `useState<AnalysisMode>('absolute')`) → `ClassPageContent` (optional prop) → `renderReadyContent` (options object) → `ClassPageReady` → `RecentAssignmentsSection` → `RecentAssignmentCard` → each `MetricPill`; and `ClassPageReady` → `StudentAveragesTableCard` → `buildStudentAveragesTableColumns(filters, analysisMode)` → `buildMetricColumn` → `resolveExcludedMetricAccessibleLabel(analysisMode)`. Props stay optional at every hop; the page passes the mode explicitly (no React context); absent renders the weighting-only wording. `renderReadyContent`'s `TaskHeatmapPage` branch passes no mode — `features/taskHeatmap/**` keeps only its known `'absolute'` pins. The analysis memo deps widened to `[filters, analysisMode]`; the view-model memo stays `[adapterResult, searchTerm, sort]` (mode already baked into `adapterResult`).
+- **Copy homes:** header copies live in `pageContent.ts` `classDetail.{modeControlLabel, absoluteModeOptionLabel, baselineModeOptionLabel, baselineModeOptionTooltip}` (consumed by `ClassPageModeControl`, whose module-private constants and pointer comment were removed); the excluded labels stay single-sourced in `metricTone.ts` (`EXCLUDED_METRIC_ACCESSIBLE_LABEL` / `BASELINE_EXCLUDED_METRIC_ACCESSIBLE_LABEL` + resolver, Section 4, untouched). §5b's label assertions consume the exported constants rather than restating literals.
+- **Fixture basis:** all §5b baseline/`excluded` cases are local hand-built fixtures (`classPageAdapterTestFixtures.ts` + the adapter suites); no canonical-corpus loading and no committed fixtures were added — `medium`'s three recent cards per class are all in-baseline, so outside-baseline card scenarios are not expressible canonically (recorded in SPEC).
+- **LOC record and threshold watches:** `ClassPageContent.tsx` 470 (+21); `classPageAdapter.ts` 421 + extracted `classPageAdapter.baselineCardRollup.ts` 166 (both under the 500-line lint cap and the 550 decomposition trigger — reviewer-verified as a genuine responsibility split, not threshold-gaming); `useClassPageData.ts` 495 untouched — no decomposition, and the 550 watch stays closed unless a later section pushes a watched file over. `classPageAdapter.zod.spec.ts` sits at 499 lines, at the lint `max-lines` warning boundary — watch it if later sections grow its assertions.
+- **Reconciliation state later sections rely on:** §9.27.3 is fully reconciled (Section 4's label content plus this section's threading half; the docs sync records the `Implemented` flip); data-shape item 6 is reconciled (adapter rule, empty-set conversion and composite facts recorded, plus the confirmed "no new entry" for `baselineAvailability`). Section 6 finalises statuses; Section 7's three-document consistency pass checks them.
 
 ### Implementation notes / deviations / follow-up
 
-- Measured LOC: content `___`; decomposition decision.
+- Measured LOC: `ClassPageContent.tsx` 470 (+21 from 449); `classPageAdapter.ts` 421 + new `classPageAdapter.baselineCardRollup.ts` 166; `useClassPageData.ts` 495 untouched. The plan-named LOC-watch file (`ClassPageContent`) stayed under the 550 trigger — no region-renderer decomposition; the adapter rule was extracted in-change only because the adapter breach-rule pushed it over the 500-line lint cap (466→566 mid-change; reviewer-verified responsibility split).
+- Review records: red `.opencode/scratchpad/review-issue305-section5b-red.md` (PASS, zero findings); green `.opencode/scratchpad/review-issue305-section5b-green.md` (PASS, zero in-scope findings).
+- Docs sync (completed, no new pages): data-shape doc — item 6 flipped `Implemented (Section 5b)` naming the module, `classPageAdapter.ts` sole-consumer fact, the fail-fast contract and the `baselineAvailability` no-new-entry decision; item 7 flipped `Implemented (Section 5b, threading)` with both chains; the Status/intro narrowed remaining planned work to §5c (embedded heatmap marking + caption) and §5d (E2E); the Display-contract quote (was at :926–928) now names `resolveExcludedMetricAccessibleLabel(analysisMode?)` and carries both the weighting-only and the baseline both-causes quoted wordings; the new module added to the doc's File Index. Shared-helpers doc — §9.27 intro recount now says entry 3 is `Implemented` and all eight entries are implemented (remaining plan sections add no further entries); §9.27.3 flipped `Implemented (label content for Section 4; threading for Section 5b)` extended with the delivered consumers, the `metricTone` single-source note, the `pageContent.classDetail` copy home and the closed §5a pointer-comment follow-up. No JSDoc edits needed (all changed public symbols verified accurate). Untouched by design: `navigation-consistency-status.md` (Section 6 owns the third-header-element recording).
+- **Section gate PASSED:** run `2026-11-10T08:16:35.698Z` vs baseline `2026-11-09T20:11:14.004Z` — 7/8 checks passing, **0 regressions / 0 new failures**; `frontend-e2e-check: passing` (the known-flaky classes-crud test passed on this run; its user-decided known-flake record stands from §5a). Sole failing check `backend-lint-check` carries the identical 4 pre-existing `max-lines` findings in untouched backend test files accepted as technical debt at the baseline.
 
 ### 5c — Embedded heatmap column marking + caption
 

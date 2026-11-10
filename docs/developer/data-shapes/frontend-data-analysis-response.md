@@ -9,9 +9,9 @@ error-aware task-preview view models are implemented and described below. The at
 analysis mode is being delivered incrementally (tracking issue: h-arnold/AssessmentBot#305):
 its schema contracts (filter field, result echo and optional baseline block, task-row flag),
 the analyser's baseline-mode behaviour, the heatmap column projection, the summary
-reconciliation and the Class-page mode control are implemented; the remaining Class-page
-work — mode threading to the display labels, the embedded heatmap's baseline marking and
-caption, and E2E coverage — remains planned
+reconciliation, the Class-page mode control and the mode threading to the Class-page
+display labels are implemented; the remaining Class-page work — the embedded heatmap's
+baseline marking and caption, and E2E coverage — remains planned
 (see [Attempt-baseline contract changes](#attempt-baseline-contract-changes)).
 
 Sibling contracts:
@@ -923,9 +923,16 @@ interface TaskPreviewData {
 
 ### Display contract
 
-The `excluded` state is displayed as **Excluded** with accessible text:
+The `excluded` state is displayed as **Excluded** with accessible text resolved
+by `resolveExcludedMetricAccessibleLabel(analysisMode?)`:
 
 > Excluded from average: displayed work had zero weighting.
+
+In baseline mode the Class-page consumers thread the mode, so the label names
+both possible causes (see item 7's threading):
+
+> Excluded from average: displayed work had zero weighting, or fell outside
+> the baseline task set.
 
 - `MetricPill` renders the literal label `Excluded` for the state, with
   `role="img"` and the shared accessible name.
@@ -1135,10 +1142,10 @@ attempt-baseline action plan: required filter field, result echo and optional ba
 required task-row flag), as is the analyser's baseline-mode behaviour (Section 2:
 post-accumulation baseline selection, baseline-restricted aggregation, the baseline-mode
 per-student `excluded` conversion and the `attemptBaseline` echo). The heatmap column
-projection (Section 3), the summary reconciliation (Section 4), the label-content half
-of item 7 and the Class-page mode control with its availability resolver (Section 5a)
-are delivered. The remaining planned work is item 7's mode threading to the Class-page
-display labels, the embedded heatmap's baseline marking and caption, and the E2E coverage.
+projection (Section 3), the summary reconciliation (Section 4), the Class-page mode
+control with its availability resolver (Section 5a) and item 7's mode threading to the
+Class-page display labels (Section 5b) are delivered. The remaining planned work is the
+embedded heatmap's baseline marking and caption, and the E2E coverage.
 
 1. **`AnalysisFilterSchema.analysisMode`** — required enum field
    `z.enum(['absolute', 'topDecileBaseline'])` on the existing strict filter
@@ -1269,6 +1276,20 @@ display labels, the embedded heatmap's baseline marking and caption, and the E2E
    `error`, and any mixture with a converted criterion converges on
    `excluded`.
 
+   **Implemented (Section 5b):** the rule lives in the co-located module
+   `src/frontend/src/features/classPage/classPageAdapter.baselineCardRollup.ts`
+   (`deriveCardBaselineSet`, `rollupCardCriteria` and the module-private
+   `toExcludedPreservingDataPoints`), whose sole consumer is
+   `classPageAdapter.ts`. The adapter derives the baseline set once per run
+   from the result's own mode echo and passes it to every card rollup;
+   `deriveCardBaselineSet` fails fast — its throws (prefixed
+   `adaptClassPageToViewModel:`) name the class for a missing or unrecognised
+   `appliedAnalysisMode` echo and for a baseline-mode result without its
+   required `attemptBaseline` block, the same narrowing rule as item 8.
+   `baselineAvailability` deliberately gains no entry in this contract: it is a
+   Class-page hook value derived during render (`useClassPageData.helpers.ts`),
+   not part of the analysis response shape.
+
 7. **Display-only additions (no schema change):** the `excluded` aggregate
    state would carry two causes (zero weighting vs baseline exclusion); the
    accessible label becomes mode-aware at the `metricDisplay` layer
@@ -1287,10 +1308,17 @@ display labels, the embedded heatmap's baseline marking and caption, and the E2E
    the baseline task set.") beside the unchanged weighting-only constant, with
    the resolver `resolveExcludedMetricAccessibleLabel(analysisMode?)`;
    `MetricPill` accepts the optional `analysisMode` prop for the excluded
-   accessible name only; the students-table label builder calls the resolver
-   with no argument. **Planned (Section 5b):** the mode threading — no
-   Class-page consumer passes the mode yet, so every rendered label is still
-   the weighting-only wording quoted in [Display contract](#display-contract).
+   accessible name only; at delivery the students-table label builder called
+   the resolver with no argument (threaded since Section 5b below).
+   **Implemented (Section 5b, threading):** Class-page
+   consumers now pass the mode explicitly — `ClassPage` → `ClassPageContent`
+   (optional prop) → `renderReadyContent` (options object) → `ClassPageReady` →
+   `RecentAssignmentsSection` → `RecentAssignmentCard` → `MetricPill`, and
+   `ClassPageReady` → `StudentAveragesTableCard` →
+   `buildStudentAveragesTableColumns(filters, analysisMode)` → the resolver for
+   the students-table `aria-label` — so excluded pills and table cells announce
+   both causes under baseline mode; the embedded heatmap view receives no mode
+   prop.
 
 8. **Heatmap projection addition:** `HeatmapTaskColumn` gains `includedInAttemptBaseline: boolean`, set in
    `heatmapAdapter.ts` from a required second `buildTaskColumns` parameter
@@ -1374,6 +1402,7 @@ Analyser: `src/frontend/src/services/dataAnalysis/analysers/`
 Heatmap adapters: `src/frontend/src/services/dataAnalysis/heatmapAdapter.ts`, `src/frontend/src/services/dataAnalysis/heatmapAdapter.merged.ts`
 Metric display: `src/frontend/src/services/dataAnalysis/metricDisplay/`
 Class-page adapter schema: `src/frontend/src/features/classPage/classPageAdapter.zod.ts`
+Class-page adapter card-rollup rule: `src/frontend/src/features/classPage/classPageAdapter.baselineCardRollup.ts` → `deriveCardBaselineSet`, `rollupCardCriteria` (baseline-mode card aggregates, item 6)
 
 Metadata refresh execution companions:
 ├── `src/frontend/src/services/dataAnalysis/postAnalysis/metadataProjection.ts` → pure decision, shared newest-first comparator, metric mapping, non-nullable rolling merge; `MetadataRefreshSkipped`, `MetadataRefreshDecision`

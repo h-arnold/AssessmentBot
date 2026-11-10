@@ -225,6 +225,7 @@ export function ClassPage({ classId }: ClassPageProperties): JSX.Element {
           onReRunAssessment={handleReRunAssessment}
           onNavigateToClasses={onNavigateToClasses}
           onRetry={refetch}
+          analysisMode={analysisMode}
         />
       </Flex>
 
