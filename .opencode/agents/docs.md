@@ -4,6 +4,30 @@ mode: all
 model: mistral/zai-glm-5-3-flash
 steps: 100
 permissions:
+  - action: edit
+    resource: 'eslint.config.*'
+    effect: deny
+  - action: edit
+    resource: '**/eslint.config.*'
+    effect: deny
+  - action: edit
+    resource: '.eslint*'
+    effect: deny
+  - action: edit
+    resource: '**/.eslint*'
+    effect: deny
+  - action: edit
+    resource: 'config/eslint/**'
+    effect: deny
+  - action: edit
+    resource: '**/config/eslint/**'
+    effect: deny
+  - action: edit
+    resource: 'tsconfig*.json*'
+    effect: deny
+  - action: edit
+    resource: '**/tsconfig*.json*'
+    effect: deny
   - action: shell
     resource: 'git commit*'
     effect: deny

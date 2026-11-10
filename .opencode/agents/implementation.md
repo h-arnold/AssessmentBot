@@ -19,6 +19,30 @@ permissions:
   - action: edit
     resource: '**/*.test.*'
     effect: deny
+  - action: edit
+    resource: 'eslint.config.*'
+    effect: deny
+  - action: edit
+    resource: '**/eslint.config.*'
+    effect: deny
+  - action: edit
+    resource: '.eslint*'
+    effect: deny
+  - action: edit
+    resource: '**/.eslint*'
+    effect: deny
+  - action: edit
+    resource: 'config/eslint/**'
+    effect: deny
+  - action: edit
+    resource: '**/config/eslint/**'
+    effect: deny
+  - action: edit
+    resource: 'tsconfig*.json*'
+    effect: deny
+  - action: edit
+    resource: '**/tsconfig*.json*'
+    effect: deny
   - action: read
     resource: '*'
     effect: allow
