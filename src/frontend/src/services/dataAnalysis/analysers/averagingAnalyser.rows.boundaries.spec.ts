@@ -123,8 +123,7 @@ describe('rollupAccumulators (exported)', () => {
     };
     const rollupAccumulators = module_.rollupAccumulators;
 
-    // Fails in RED phase because rollupAccumulators is currently private.
-    // GREEN phase exports it, making this assertion pass.
+    // rollupAccumulators is exported from the module.
     expect(typeof rollupAccumulators).toBe('function');
 
     const criterionWeightings = { completeness: 0.4, accuracy: 0.4, spag: 0.2 };

@@ -394,6 +394,19 @@ All four checks proven green. Verification-only section: no files changed by it 
 
 - Both required checks confirmed (verification-only; no files changed by this section): (1) Section 6's five acceptance criteria confirmed in final state by Section 7's consistency pass (SPEC decisions ↔ data-shape items 1–8 ↔ §9.27 register, zero disagreement; the §9.27 intro retense landed in `cf935b49`). (2) `@remarks` audit: the planned remarks from Sections 1–5 exist in code — `dataAnalysis.zod.ts` (mode enum, wire-format, `BASELINE_POOL_MINIMUM` agreement-by-name), `ClassPageModeControl.tsx` (third stacked header element), `useClassPageData.availability.spec.ts` (decision 6 availability), `classPageAdapter.baselineCardRollup.ts` (decision 8 / data-shape item 6); the `attemptBaselineSelection.ts`/`averagingAnalyser.ts` decision-N JSDoc anchors exist (ledger row: reword once the plan is archived) and the `heatmapAdapter.ts` `@remarks` block now documents delivered behaviour (Section 3's docs pass trimmed the planning vocabulary; §7's keyword sweep finds no plan references).
 - Landing summary and caveats: the feature is delivered across Sections 1–7; canonical docs reflect delivered behaviour; the out-of-v1 generator-extension plan remains recorded as deferred (SPEC.md:357), not delivered. Known caveats carried forward: the accepted backend `max-lines` debt (4 untouched test files), the known-flaky `classes-crud-bulk-progress` test (user-instructed, never chased), and the final-pass ledger rows (`INDEX.md:33`, `assessment.md:519`, the decision-N JSDoc anchors).
+- Commit record: `b3433917` — "docs(issue-305): retense plan-anchored comments to durable canonical homes (final documentation pass)" — branch `feat/issue-305-attempt-baseline-mode`, pushed successfully.
+
+### Post-completion amendment (user-approved, 2026-11-10)
+
+Three deferred ledger rows approved by the user ("Please fix all the stale red-phase and feature spec comments, the item 9 typo and the unparked focus sights", extended by "Just fix the numbering and the additional typos… you have my permission to proceed"):
+
+1. Stale red-phase comments removed from five moved test bodies (`averagingAnalyser.rows.errorStates.spec.ts` ×4, `.boundaries.spec.ts` ×1) — comment-only, tests unchanged.
+2. Additional stale red-phase comments removed from the pre-decomposition specs (`averagingAnalyser.spec.ts` :87/:247–248/:298, `averagingAnalyser.rollup.spec.ts` :19–22) — comment-only; 12 targeted tests pass.
+3. Item-9 preview-precedence numbering fixed durably: the two-line inline list reformatted into a true four-item ordered list (one step per line, `1.`–`4.`) — the minimal `2.`→`3.` edit was Prettier-unstable (the formatter renumbers inline lists back to `2.`), so the user authorised the reformat; `npx prettier --check` now passes.
+4. Park-the-mouse protocol applied to the two unparked `focus()` sites in `task-heatmap-summary.spec.ts` (:259/:387) — `await page.mouse.move(0, 0)` before each `focus()`, and site 1's two bare tooltip locators name-scoped; the spec passed twice (9/9 both runs).
+
+Review waived by the user for this comment-only batch ("A few comment changes don't need a full review"). Final regression gate (run `2026-11-10T18:49Z`, the plan-level final comparison owed since the §5.1 cleanup): 0 regressions, 0 new failures, 7/8 checks — sole failing check `backend-lint-check` with the four pre-existing `max-lines` debts, identical to baseline; Playwright E2E passed cleanly (no known-flake tick). All ledger rows are now dispositioned and delivered except the permanent known-flake row and the disregarded other-feature SPEC-citations row.
+
 - Pending: commit record.
 
 ---

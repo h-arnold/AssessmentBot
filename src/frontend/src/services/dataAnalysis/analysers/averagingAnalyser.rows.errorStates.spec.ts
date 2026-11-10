@@ -45,8 +45,7 @@ describe('AveragingAnalyser', () => {
       expect(results[0].perStudent).toEqual([]);
       expect(results[0].perTask).toEqual([]);
 
-      // All per-class metric results should be error (0 data points, 0 'N')
-      // This will FAIL in the Red phase (current code produces value: null)
+      // All per-class metric results are error (no data points, no 'N' scores)
       expectMetricResultStateAware(results[0].perClass.completeness as unknown as MetricResult, {
         state: 'error',
         totalWeight: 0,
@@ -94,8 +93,7 @@ describe('AveragingAnalyser', () => {
       const student = results[0].perStudent[0];
       expect(student.studentId).toBe('s_001');
 
-      // All student metrics are error (0 data points)
-      // This will FAIL in the Red phase
+      // All student metrics are error (no data points)
       expectMetricResultStateAware(student.completeness as unknown as MetricResult, {
         state: 'error',
         totalWeight: 0,
@@ -168,7 +166,6 @@ describe('AveragingAnalyser', () => {
 
       expect(taskWithoutData.taskId).toBe('t_002');
       // No submissions for t_002 → error
-      // This will FAIL in the Red phase
       expectMetricResultStateAware(taskWithoutData.completeness as unknown as MetricResult, {
         state: 'error',
         totalWeight: 0,
@@ -221,8 +218,7 @@ describe('AveragingAnalyser', () => {
 
       const student = results[0].perStudent[0];
       // Per-criterion metrics all notAttempted with value 'N' (nCount > 0)
-      // This will FAIL in the Red phase (current code produces value: null)
-      // totalWeight is now accumulated for 'N' scores (was 0 before Bug #1 fix)
+      // totalWeight is accumulated for 'N' scores
       expectMetricResultStateAware(student.completeness as unknown as MetricResult, {
         state: 'notAttempted',
         totalWeight: 1,

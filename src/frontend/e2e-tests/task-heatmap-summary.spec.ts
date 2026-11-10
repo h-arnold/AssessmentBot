@@ -256,14 +256,20 @@ test.describe('Task Heatmap assignment summaries', () => {
       name: 'About completeness',
       exact: true,
     });
+    // Park the mouse so the focus() scroll cannot hover a table header and open a competing tooltip.
+    await page.mouse.move(0, 0);
     await completenessInformation.focus();
     await page.keyboard.press('Enter');
-    await expect(page.getByRole('tooltip')).toHaveText(explanations[0].text);
+    await expect(
+      page.getByRole('tooltip', { name: /Students meet the completeness threshold/ })
+    ).toHaveText(explanations[0].text);
     await page
       .getByRole('region', { name: 'Completeness summary' })
       .getByText('Completeness', { exact: true })
       .click();
-    await expect(page.getByRole('tooltip')).toBeHidden();
+    await expect(
+      page.getByRole('tooltip', { name: /Students meet the completeness threshold/ })
+    ).toBeHidden();
   });
 
   test('does not fabricate accuracy when tasks have not been attempted', async ({ page }) => {
@@ -384,6 +390,8 @@ test.describe('Task Heatmap assignment summaries', () => {
     });
     const showCompleteness = completeness.getByRole('button', { name: 'Show all 30 tasks' });
     await expect(showCompleteness).toHaveAttribute('aria-expanded', 'false');
+    // Park the mouse so the focus() scroll cannot hover a table header and open a competing tooltip.
+    await page.mouse.move(0, 0);
     await showCompleteness.focus();
     await page.keyboard.press('Enter');
     await expect(completeness.getByRole('listitem')).toHaveCount(LARGE_TASK_COUNT);

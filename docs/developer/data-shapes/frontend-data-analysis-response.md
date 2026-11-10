@@ -1371,8 +1371,10 @@ Every planned contract change in this section is implemented.
    `null` result. A known `E` with null `IMAGE`/`SPREADSHEET` full content assembles as
    `artifactContent: ''` with `sourceState: 'unavailable'`; non-`E` unexpected null content
    still throws. Precedence in an opened preview:
-   1. explicit full-record validation error; 2. the class-partial `E` for that criterion;
-   2. the selected full item's `E`; 4. the existing analyser metric. A full-read-only
+   1. explicit full-record validation error;
+   2. the class-partial `E` for that criterion;
+   3. the selected full item's `E`;
+   4. the existing analyser metric. A full-read-only
       corruption overrides the affected preview's score/reasoning with `E` even when the
       class-derived heatmap cell still shows a historic numeric value, stating
       `Source preview unavailable. Displayed scores are unchanged; reassess the assignment to refresh them.`

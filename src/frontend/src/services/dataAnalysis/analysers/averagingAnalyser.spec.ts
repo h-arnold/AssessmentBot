@@ -84,7 +84,6 @@ describe('AveragingAnalyser', () => {
       expect(student.studentName).toBe('Alice');
 
       // completeness: no data point → error (no numeric score, no 'N')
-      // This will FAIL in the Red phase (current code produces value: null)
       expectMetricResultStateAware(student.completeness as unknown as MetricResult, {
         state: 'error',
         totalWeight: 0,
@@ -244,8 +243,6 @@ describe('AveragingAnalyser', () => {
     });
 
     it('includes perStudentTaskMetrics with expected length and preserves perStudent/perTask counts', () => {
-      // RED phase: perStudentTaskMetrics is not yet populated on AveragingResult,
-      // so expect(...).toBeDefined() will fail.
       const assignment = createAssignmentPartial({
         assignmentId: 'a_001',
         definitionKey: 'dk_algebra',
@@ -295,7 +292,7 @@ describe('AveragingAnalyser', () => {
       const expectedPerStudentCount = 2; // Both students have per-student rows
       const expectedPerTaskCount = 2; // Two distinct task IDs across submissions
 
-      // perStudentTaskMetrics should be populated — will fail in RED phase
+      // perStudentTaskMetrics should be populated
       expect(result.perStudentTaskMetrics).toBeDefined();
       expect(result.perStudentTaskMetrics).toHaveLength(expectedPerStudentTaskCount);
 
