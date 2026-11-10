@@ -407,7 +407,7 @@ Three deferred ledger rows approved by the user ("Please fix all the stale red-p
 
 Review waived by the user for this comment-only batch ("A few comment changes don't need a full review"). Final regression gate (run `2026-11-10T18:49Z`, the plan-level final comparison owed since the §5.1 cleanup): 0 regressions, 0 new failures, 7/8 checks — sole failing check `backend-lint-check` with the four pre-existing `max-lines` debts, identical to baseline; Playwright E2E passed cleanly (no known-flake tick). All ledger rows are now dispositioned and delivered except the permanent known-flake row and the disregarded other-feature SPEC-citations row.
 
-- Pending: commit record.
+- Commit record: `f281a4ea` — "chore(issue-305): apply user-approved deferred fixes (stale red-phase comments, item-9 numbering, mouse-park protocol)" — branch `feat/issue-305-attempt-baseline-mode`, pushed successfully (pre-commit Prettier/lint/typecheck clean; the item-9 reformat survived the hook's `prettier --write` unchanged, confirming formatter stability).
 
 ---
 
