@@ -29,6 +29,20 @@ type HeatmapTaskMetric = {
   spag: number | string;
 };
 type HeatmapStudentScores = Record<string, HeatmapTaskMetric>;
+/** Task identifiers owned by the heatmap fixture class snapshot. */
+export type HeatmapTaskId = (typeof HEATMAP_TASK_IDS)[number];
+
+/**
+ * Per-student task skips: student id → task ids that student did not attempt.
+ *
+ * Skipped (student, task) pairs render as not-attempted submission items (all
+ * criteria raw `N`), so scenarios can construct classes where some students
+ * miss some tasks while the rest attempt everything. The default all-submit
+ * scenario is degenerately in-baseline (its top-engaged pool attempted every
+ * task), so attempt-baseline journeys need this option to make baseline-off
+ * column markers and empty-baseline failures constructible.
+ */
+export type HeatmapSkippedTasksByStudentId = Readonly<Record<string, ReadonlyArray<HeatmapTaskId>>>;
 
 const HEATMAP_STUDENTS: ReadonlyArray<HeatmapStudent> = [
   { id: '100000000004', name: 'Student One' },
@@ -154,14 +168,21 @@ function buildItem(
  * Builds one submission's task-item dictionary.
  * @param {HeatmapStudent} student - Student owning the submission.
  * @param {boolean} hasEmptySubmissions - Whether to use not-attempted scores.
+ * @param {ReadonlySet<HeatmapTaskId>} skippedTaskIds - Task ids rendered as not attempted.
  * @returns {Record<string, unknown>} Items keyed by task identifier.
  */
 function buildSubmissionItems(
   student: HeatmapStudent,
-  hasEmptySubmissions: boolean
+  hasEmptySubmissions: boolean,
+  skippedTaskIds: ReadonlySet<HeatmapTaskId>
 ): Record<string, unknown> {
   return Object.fromEntries(
-    HEATMAP_TASK_IDS.map((taskId) => [taskId, buildItem(student, taskId, hasEmptySubmissions)])
+    HEATMAP_TASK_IDS.map((taskId) => {
+      return [
+        taskId,
+        buildItem(student, taskId, hasEmptySubmissions || skippedTaskIds.has(taskId)),
+      ];
+    })
   );
 }
 
@@ -173,10 +194,31 @@ function buildSubmissionItems(
  * `AssignmentDefinitionPartials` registry by `assignmentDefinitionKey`.
  * The class snapshot therefore deliberately carries the registry key rather
  * than an embedded definition object.
+ *
  * @param {boolean} hasEmptySubmissions - Whether submissions should be empty.
+ * @param {HeatmapSkippedTasksByStudentId} skippedTasksByStudentId - Optional
+ *   per-student task skips; each skipped (student, task) item renders as
+ *   not attempted while every other task keeps its seeded scores. Unknown
+ *   student or task identifiers fail loudly so a mistyped skip can never
+ *   silently produce a degenerate scenario.
  * @returns {Record<string, unknown>} Class payload.
  */
-export function buildClassFullDocument(hasEmptySubmissions: boolean): Record<string, unknown> {
+export function buildClassFullDocument(
+  hasEmptySubmissions: boolean,
+  skippedTasksByStudentId: HeatmapSkippedTasksByStudentId = {}
+): Record<string, unknown> {
+  const studentIds = new Set(HEATMAP_STUDENTS.map((student) => student.id));
+  for (const [studentId, taskIds] of Object.entries(skippedTasksByStudentId)) {
+    if (!studentIds.has(studentId)) {
+      throw new Error(`Heatmap fixture has no student '${studentId}' for the requested skips.`);
+    }
+    for (const taskId of taskIds) {
+      if (!HEATMAP_TASK_IDS.includes(taskId)) {
+        throw new Error(`Heatmap fixture has no task '${taskId}' for the requested skips.`);
+      }
+    }
+  }
+
   return {
     classId: HEATMAP_CLASS_ID,
     className: HEATMAP_CLASS_NAME,
@@ -212,7 +254,11 @@ export function buildClassFullDocument(hasEmptySubmissions: boolean): Record<str
             assignmentId: HEATMAP_ASSIGNMENT_ID,
             documentId: `doc-${student.id}`,
             studentName: student.name,
-            items: buildSubmissionItems(student, hasEmptySubmissions),
+            items: buildSubmissionItems(
+              student,
+              hasEmptySubmissions,
+              new Set(skippedTasksByStudentId[student.id])
+            ),
             createdAt: '2026-07-07T07:49:23.014Z',
             updatedAt: '2026-07-07T07:49:29.872Z',
             _updateCounter: 0,

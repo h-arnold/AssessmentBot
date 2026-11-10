@@ -311,41 +311,18 @@ Section checks passed: `npm run test:frontend -- src/features/taskHeatmap` 387/3
 
 ### 5d — E2E browser coverage (Playwright)
 
-### Objective
+### Outcome (compacted)
 
-- Browser coverage of the feature's user-visible interaction, per the E2E policy: toggle → aggregate change → toggle back; keyboard/radio semantics; blocking-recovery; screenshots; first-use checks.
+Delivered the feature's E2E browser coverage: new spec `class-page-baseline-mode.spec.ts` (386 lines, 6 tests, green-on-arrival — empirically verified against the real browser via a temporary probe spec since deleted) covering toggle → aggregate change → toggle back with exact pinned values, keyboard radio semantics, the blocking-recovery path (the real derivation-level empty-baseline throw observed in the browser log), the skip-tasks baseline-off marker/caption/tooltip assertions, and the first-use checks (both themes, focus-ring visibility, thumb-motion settled before post-toggle assertions/captures). `task-heatmap-class-fixtures.ts` gained the skip-tasks scenario extension — exported `HeatmapTaskId` and `HeatmapSkippedTasksByStudentId`, plus an optional `skippedTasksByStudentId` parameter on `buildClassFullDocument` threaded through `buildSubmissionItems` (unknown ids throw) — making baseline-off columns assertable. `navigation-screenshots.spec.ts` gained pre-capture assertions (mode control visible with `All tasks` checked before the Class-page captures; mode-control radiogroup `toHaveCount(0)` before the Heatmaps-builder capture), and the two Class-page baselines (`class-page-overview`, `task-heatmap`) were deliberately re-captured; the `heatmaps-builder` baseline stayed byte-identical.
 
-### Constraints
-
-- Owner: `Playwright` agent. Named spec: **`src/frontend/e2e-tests/class-page-baseline-mode.spec.ts`** (kebab-case, issue-keyed precedent).
-- Scenario extension owned here: `src/frontend/e2e-tests/helpers/task-heatmap-class-fixtures.ts` gains an explicit "students that skip tasks" option so column markers (`false`) become assertable. This module now owns the ten-student scenario (`HEATMAP_STUDENTS`, :33; every student attempts all three `HEATMAP_TASK_IDS` through `buildSubmissionItems(student, hasEmptySubmissions)`, :159) — `task-heatmap-fixtures.ts` no longer holds it. The all-or-nothing `hasEmptySubmissions` switch on `buildClassFullDocument(:179)` is not sufficient: add a per-student/per-task skip option so some students miss some tasks while the rest attempt everything (the default all-submit scenario is degenerately in-baseline — verified).
-- Screenshot re-captures stay in `navigation-screenshots.spec.ts` (`class-page-overview`, `task-heatmap`); `heatmaps-builder` baseline must remain unchanged.
-- First-use checks: both themes, focus-ring visibility, thumb-motion settled before post-toggle assertions/captures.
-
-### Delegation mandatory reads
-
-- Playwright: `@docs/developer/frontend/frontend-playwright-e2e.md`, `@docs/plans/issue-305/SPEC.md`, `@docs/plans/issue-305/ATTEMPT_BASELINE_MODE_LAYOUT.md`, `@src/frontend/e2e-tests/navigation-screenshots.spec.ts`, `@src/frontend/e2e-tests/helpers/task-heatmap-class-fixtures.ts`
-
-### Acceptance criteria
-
-- Toggle behaviour, keyboard interaction, recovery, and column-marker assertions pass; screenshots re-captured deliberately (not tolerance-leaned).
-
-### Required test cases (Red first)
-
-E2E tests:
-
-1. `class-page-baseline-mode.spec.ts`: toggle → aggregates change → toggle back; keyboard radio semantics; recovery path (baseline throw → control reachable → toggle → recovery).
-2. Extended fixture option: skip-tasks students → assert baseline-off column marker + caption in the heatmap view.
-3. `navigation-screenshots.spec.ts` re-captures; `heatmaps-builder` unchanged assertion.
-
-### Section checks
-
-- `npm run test:frontend:e2e -- e2e-tests/class-page-baseline-mode.spec.ts`
-- `npm run test:frontend:e2e -- e2e-tests/navigation-screenshots.spec.ts`
+Section checks passed: `npm run lint:frontend:check` exit 0 (0 errors / 16 pre-existing warnings, the plan's retained floor); `npm run test:frontend:e2e -- e2e-tests/navigation-screenshots.spec.ts` 3/3 passed; `npm run test:frontend:e2e -- e2e-tests/class-page-baseline-mode.spec.ts` 6/6 passed; frontend type-check including the e2e project exit 0; red review PASS with zero findings and green review PASS with zero findings (`.opencode/scratchpad/review-issue305-section5d-red.md`, `.opencode/scratchpad/review-issue305-section5d-green.md`). The full E2E suite was not run — the section checks name exactly these two specs, and production code is unchanged since §5c's clean full-suite gate.
 
 ### Implementation notes / deviations / follow-up
 
-- Record the scenario-extension shape and the live Segmented decision if it differs from the recorded one. **Ordering note (deliberate):** the layout spec makes the first-use Segmented checks (both themes, focus ring, thumb motion) "the first implementation step"; they are hosted here in §5d because 5b/5c build their suites on the landed control — 5a's component tests still assert the DOM contract the checks depend on. (SPEC and the layout spec call the antd-source-pin re-verification "§5a's first-use live check" — the same §5a red-phase moment as the disabled-tooltip check; the themes/focus-ring/thumb-motion checks are the §5d-hosted subset. One term, two hosted locations, both deliberate.)
+- **Deliberate baseline re-capture (why the scoped flags were needed):** the pinned Playwright 1.64's default `--update-snapshots` mode only rewrites snapshots whose comparison fails, and the stale baselines still passed within the spec's `maxDiffPixelRatio: 0.1` tolerance — so `--update-snapshots=all` scoped with `-g "Class Page overview|Task Heatmap"` was required to force the rewrite while guaranteeing the Heatmaps-builder baseline could not be rewritten. Capture config untouched; the non-#305 pixel drift in the re-captured baselines is attributed to the `4635f18b` merge (merged-main drift — Forename/Surname split, synthetic-corpus values, summary cards, "Re-run Assessment" button, "Heatmaps" sidebar — reviewer spot-checked against that commit range), not feature fallout.
+- **Known-flake sighting (skip decision):** the `classes-crud-bulk-progress` "Set cohort" test was sighted during this section and never chased — user-acknowledged known flake, already recorded in the deferred-findings log; future gate runs surface it as the known flake, not a section regression.
+- **Deferred-findings ledger:** unchanged by this section (1 known-flake row, 6 nitpick rows) and remains the authoritative ledger; no new follow-ups left for Sections 6/7.
+- **First-use checks hosting (deliberate deviation from the layout spec's ordering):** the layout spec makes the first-use Segmented checks "the first implementation step"; they are hosted here because 5b/5c build their suites on the landed control — 5a's component tests assert the DOM contract the checks depend on. (SPEC and the layout spec call the antd-source-pin re-verification "§5a's first-use live check"; the themes/focus-ring/thumb-motion checks are the §5d-hosted subset.)
 
 ---
 
