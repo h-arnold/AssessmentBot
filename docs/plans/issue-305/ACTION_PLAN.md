@@ -409,7 +409,7 @@ Review waived by the user for this comment-only batch ("A few comment changes do
 
 5. Additional follow-up (user, 2026-11-10: "I like clean code and it's a trivial fix. Do this yourself without delegating"): the five other-feature "SPEC decision N" citations — the last fixable ledger row — reworded to durable canonical homes (`frontend-modal-patterns.md` for the one-modal rule, the create-path conversion, and the recovery-cancel flow; the transport-envelope contract for `DEFINITION_PARSE_FAILED`); the `HeatmapSelectionBar.tsx` citation dropped (no durable home records the placeholder rule — the behaviour statement is self-contained); one stale red-phase header narration in `AssessTaskModal.inModalCreate.spec.tsx` rewritten to the delivered regression contract. Applied by the orchestrator directly (user-instructed, no delegation); validated Prettier/lint 0-16/tsc/10 targeted tests.
 
-- Pending: commit record.
+- Commit record: `9e0b2dce` — "chore(frontend): reword archived-plan SPEC citations to durable canonical homes (issue #305 follow-up)" — branch `feat/issue-305-attempt-baseline-mode`, pushed successfully (pre-commit Prettier/lint/typecheck clean). Note: the commit also carries five `.opencode/agents/*.md` permission edits from a parallel workstream, swept in by `git add -A` and confirmed legitimate by the user ("Those are being worked on in parallel").
 
 - Commit record: `f281a4ea` — "chore(issue-305): apply user-approved deferred fixes (stale red-phase comments, item-9 numbering, mouse-park protocol)" — branch `feat/issue-305-attempt-baseline-mode`, pushed successfully (pre-commit Prettier/lint/typecheck clean; the item-9 reformat survived the hook's `prettier --write` unchanged, confirming formatter stability).
 
