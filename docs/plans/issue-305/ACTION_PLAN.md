@@ -148,7 +148,7 @@ Section checks passed: dataAnalysis suite 489/489 (55 files); full frontend 3109
 
 - **Two-site throw message copy (recorded; consumed by the §5 surface error handling):** derivation-level — `deriveAttemptBaseline: class 'c_001' derived an empty attempt baseline: the 2 pooled students attempted no task key in common`; analyser-level (`averagingAnalyser.ts` `deriveClassBaseline`) — `AveragingAnalyser: class 'c_001' derived an empty attempt baseline: the 2 pooled students attempted no task key in common`. Both copies are blocking errors; the `'c_001'`/`2` literals are test-fixture values (the messages are parameterised by class id and pool size).
 - **Section regression gate (2026-11-10T00:11Z): PASSED.** Report: `.ts-regression-checker/reports/session-feat-issue-305-attempt-baseline-mode/runs/2026-11-10T00-11-17.262Z/comparison.json`. Totals: `regressionsCount: 0`, `newFailuresCount: 0`, `fixesCount: 0`; `checksPassing: 7`, `checksFailing: 1` — the only failing check is `backend-lint-check` (4 pre-existing accepted `max-lines` warnings, zero deltas vs the 2026-11-09T20:11Z baseline). Review records: red `.opencode/scratchpad/review-issue305-section2-red-recheck.md` (final PASS), green `.opencode/scratchpad/review-issue305-section2-green.md` (PASS).
-- **Commit record:** pending.
+- **Commit record:** `f1709904` ("feat(issue-305): derive attempt baseline and wire baseline-mode aggregation" — 11 files: the new module, analyser wiring, 4 spec hosts, docs flips, compacted plan). Branch `feat/issue-305-attempt-baseline-mode`; `git push origin` succeeded (356b97ba..f1709904). Pre-commit hooks passed (Prettier, staged lint, typecheck:all); no hook bypasses used. This note itself was included in the same commit (placeholder text said "pending").
 
 ---
 
