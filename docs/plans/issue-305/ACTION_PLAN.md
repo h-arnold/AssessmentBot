@@ -1,6 +1,6 @@
 # Feature Delivery Plan (TDD-First) — Attempt-Baseline Analysis Mode (issue #305)
 
-> **Status (in progress):** Implementation underway on branch `feat/issue-305-attempt-baseline-mode`. Current phase: Section 3 (section regression gate). Sections 1–2 complete (`b2199cfe`; `f1709904` + `08dd1b1f`, gates clean). Baseline refreshed 2026-11-09 on the merged tree (`origin/main` · `4635f18b`): `backend-lint-check` fails only on four pre-existing `max-lines` warnings in untouched backend test files — accepted as pre-existing technical debt for this frontend-only plan; report: `.ts-regression-checker/reports/session-feat-issue-305-attempt-baseline-mode/baseline/baseline.txt`.
+> **Status (in progress):** Implementation underway on branch `feat/issue-305-attempt-baseline-mode`. Current phase: Section 4 (red). Sections 1–3 complete (`b2199cfe`; `f1709904`; `c397b481`, gates clean). Baseline refreshed 2026-11-09 on the merged tree (`origin/main` · `4635f18b`): `backend-lint-check` fails only on four pre-existing `max-lines` warnings in untouched backend test files — accepted as pre-existing technical debt for this frontend-only plan; report: `.ts-regression-checker/reports/session-feat-issue-305-attempt-baseline-mode/baseline/baseline.txt`.
 
 ## Read-First Context
 
@@ -179,57 +179,35 @@ Section checks passed: full `test:frontend -- src` 3120/3120 (323 files; +11 red
 
 ## Section 4 — summary-contract reconciliation + metric-display mode-aware label
 
-### Objective
+### Outcome (compacted)
 
-- Add the mode-aware `excluded` accessible label (`metricTone`/`MetricPill`/`studentAveragesTableColumns`) and reconcile the summary-contract data-shape entry; production pinning and fixture sweeps are already done (Sections 1/3) — this section verifies them as regression only.
+Delivered the mode-aware `excluded` accessible label and reconciled the summary-contract display half:
 
-### Constraints
+- `metricTone.ts` gained `BASELINE_EXCLUDED_METRIC_ACCESSIBLE_LABEL` beside the unchanged `EXCLUDED_METRIC_ACCESSIBLE_LABEL`, plus the exported resolver `resolveExcludedMetricAccessibleLabel(analysisMode?: AnalysisMode): string` — `'topDecileBaseline'` → the two-cause wording; `absolute`/no-arg → the weighting-only copy.
+- `MetricPill.tsx` gained the optional `analysisMode?: AnalysisMode` prop, consumed only by the excluded-state `aria-label` (tone invariants pinned; no-prop = the absolute copy, correct for the three-state task-display flow — `TaskPreviewCard` and `features/taskHeatmap/**` stay untouched).
+- `studentAveragesTableColumns.tsx:122` routes through the resolver with no argument — byte-identical rendering; §5b does the real threading.
+- Production readers of the resolver: exactly `MetricPill.tsx:173` and `studentAveragesTableColumns.tsx:122`.
+- The `assignmentSummary` regression host stayed green untouched, verifying the summary invariants (see Retained below); the red-phase shims (namespace-Partial cast, typed-props spread) are fully replaced — no `as unknown as` remains except the pre-existing pinned invalid-mode injection at `assignmentSummary.spec.ts:314`.
 
-- `MetricPill` gains an **optional** `analysisMode` prop; Class-page consumers pass it explicitly (unit assertion on `RecentAssignmentCard` lands in §5b); baseline wording names both causes (zero weighting + outside the baseline); `TaskPreviewCard` untouched; full threading chain per SPEC helper entry 3.
-- `assignmentSummaryAnalyser` stays absolute internally (pin landed in Section 1); verify item 5's summary-contract invariants.
+Section checks passed: scoped 701/701 (82 files over `src/services/dataAnalysis src/features/classPage`); full `test:frontend -- src` 3132/3132 (323 files; +12 vs Section 3); `typecheck:all` exit 0; `lint:frontend:check` 0 errors / 16 warnings; Prettier clean; red review PASS first round; green review PASS zero in-scope findings (full coverage gate re-run: 323 files/3132 tests, 95.59/91.68/95.41/96.28 above the 85% gate).
 
-### Shared helper plan
+### Retained for later sections
 
-1. `metricTone.ts` `EXCLUDED_METRIC_ACCESSIBLE_LABEL` + `MetricPill` consumer — `extend`; register §9.27.3 (label content) → reconciles here; threading completes in §5b.
-2. `studentAveragesTableColumns.tsx` label builder — `extend`; completes §9.27.3 in §5b.
-
-### Data-shape planning block
-
-- Reconciles data-shape item 5 (summary contract unchanged; internal delegation pinned absolute — landed in Section 1).
-- Item 7's label stance is display-only; reconciles here for the label-content half.
-
-### Canonical fixture note
-
-- Regression verification of the seeded output-side sweeps (SPEC output-side list); no canonical regeneration.
-
-### Delegation mandatory reads
-
-- Testing Specialist: `@docs/developer/frontend/frontend-testing.md`
-- Implementation: `@docs/plans/issue-305/SPEC.md`, `@src/frontend/src/services/dataAnalysis/metricDisplay/metricTone.ts`, `@src/frontend/src/services/dataAnalysis/metricDisplay/MetricPill.tsx`, `@src/frontend/src/features/classPage/studentAveragesTableColumns.tsx`, `@src/frontend/src/services/dataAnalysis/analysers/assignmentSummaryAnalyser.ts`
-- Code Reviewer: `@docs/plans/issue-305/SPEC.md`
-
-### Acceptance criteria
-
-- Absolute mode renders today's weighting wording unchanged; baseline-mode aggregate `excluded` announces the two-cause wording (unit-tested at `metricTone` and `MetricPill` levels); summary invariant verified.
-- Full frontend unit suite green.
-
-### Required test cases (Red first)
-
-Frontend tests:
-
-1. `metricTone.spec.ts`: baseline wording names both causes; absolute/three-state task-display flow unchanged.
-2. `MetricPill.spec.tsx`: mode-conditional label; no prop → weighting wording.
-3. `src/frontend/src/services/dataAnalysis/assignmentSummary.spec.ts` (existing host): internal delegation remains `absolute` and public schema untouched; task summaries identical across a baseline-mode caller-supplied mode.
-
-### Section checks
-
-- `npm run test:frontend -- src`
-- `npm run lint:frontend:check`
-- §9.27.3 label-content half reconciled — full chain in §5b; item 5 reconciled.
+- **Label constants (both verbatim; §5b's label assertions consume them):**
+  - `EXCLUDED_METRIC_ACCESSIBLE_LABEL` — `Excluded from average: displayed work had zero weighting.`
+  - `BASELINE_EXCLUDED_METRIC_ACCESSIBLE_LABEL` — `Excluded from average: displayed work had zero weighting, or fell outside the baseline task set.`
+- **Resolver:** `resolveExcludedMetricAccessibleLabel(analysisMode?: AnalysisMode): string` in `metricTone.ts` — `'topDecileBaseline'` → the two-cause wording; `absolute`/no-arg → the weighting-only copy.
+- **Production reader sites (exactly two):** `MetricPill.tsx:173` and `studentAveragesTableColumns.tsx:122` (the latter no-arg until §5b threads the mode).
+- **§5b to-do facts:** the `RecentAssignmentCard` unit assertion on explicit `analysisMode` threading lands in §5b; the full threading chain (`ClassPage` → `ClassPageContent` → `renderReadyContent` → `ClassPageReady` → `RecentAssignmentsSection` → `RecentAssignmentCard`, and `ClassPageReady` → `StudentAveragesTableCard` → `studentAveragesTableColumns.tsx`) completes §5b, where §9.27.3 fully reconciles.
+- **Summary invariant facts (regression-verified this section):** `assignmentSummaryAnalyser.ts:140` keeps the internal `'absolute'` pin (landed in Section 1); the public summary schema is unchanged; the mode-isolation regression guard in `assignmentSummary.spec.ts` (task summaries identical across a baseline-mode caller-supplied mode) exists and stays green.
 
 ### Implementation notes / deviations / follow-up
 
-- Record the final two-cause wording copy (consumed by §5b's label assertions).
+- **Recorded label copy (consumed by §5b's label assertions):** weighting-only — `Excluded from average: displayed work had zero weighting.`; baseline two-cause — `Excluded from average: displayed work had zero weighting, or fell outside the baseline task set.` §5b asserts against these exact strings.
+- **Docs sync (completed):** data-shape item 5 flipped to `Implemented (Section 4)` (invariants verified against code: `assignmentSummaryAnalyser.ts:140` `'absolute'` pin, unchanged public schema) and item 7 gained a two-half block (`Implemented (Section 4, label content only)` with the verbatim wording/constants/resolver/prop facts + `Planned (Section 5)` linking the Display-contract quote update) in `docs/developer/data-shapes/frontend-data-analysis-response.md`; the Status paragraph/index recount narrowed remaining planned work to the Class-page mode control; §9.27 entry 3 flipped per the register's lifecycle idiom (`Implemented` for Section 4 label content; Section 5 completes the threading) with the intro recount moved to its own clause (entries 5/6–8 untouched). No source edits needed (JSDoc verified accurate); no new pages; `INDEX.md` verified-only. §5b's doc-pass obligations recorded on item 7: update the Display-contract quote, fully flip §9.27.3, reconcile item 6, update the intro recount.
+- **Test-delta composition (+12 vs Section 3, verified via the three hosts' diffs):** `metricTone.spec.ts` +3 (both wording modes), `MetricPill.spec.tsx` +5 (baseline red, absolute/no-prop optionality, tone parity, non-excluded states), `assignmentSummary.spec.ts` +4 (regression guards: mode-isolation, byte-identical cross-mode summaries, public key-set pins, boundary rejection) — no new host files.
+- **Section regression gate (2026-11-10T03:07Z): PASSED.** Report: `.ts-regression-checker/reports/session-feat-issue-305-attempt-baseline-mode/runs/2026-11-10T03-07-50.381Z/comparison.json`. Totals: `regressionsCount: 0`, `newFailuresCount: 0`, `fixesCount: 0`; `checksPassing: 7`, `checksFailing: 1` — the only failing check is `backend-lint-check` (4 pre-existing accepted `max-lines` warnings, zero deltas). Review records: red `.opencode/scratchpad/review-issue305-section4-red.md` (PASS), green `.opencode/scratchpad/review-issue305-section4-green.md` (PASS).
+- **Commit record:** pending.
 
 ---
 

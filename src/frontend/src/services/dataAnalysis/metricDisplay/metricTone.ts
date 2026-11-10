@@ -10,10 +10,19 @@
  */
 
 import type { CSSProperties } from 'react';
-import type { MetricResult } from '../dataAnalysis.zod';
+import type { AnalysisMode, MetricResult } from '../dataAnalysis.zod';
 
 export const EXCLUDED_METRIC_ACCESSIBLE_LABEL =
   'Excluded from average: displayed work had zero weighting.';
+
+/**
+ * Baseline-mode accessible wording for the `excluded` state: one truthful
+ * sentence naming both possible causes — zero weighting and outside the
+ * baseline task set — so an already-`excluded` zero-weight rollup left
+ * unconverted by the baseline rules is still announced truthfully.
+ */
+export const BASELINE_EXCLUDED_METRIC_ACCESSIBLE_LABEL =
+  'Excluded from average: displayed work had zero weighting, or fell outside the baseline task set.';
 
 /**
  * Ant Design `Tag` preset colour tokens supported by `metricTone` and
@@ -305,4 +314,24 @@ function resolveDiscreteCellStyle(token: MetricToneColor): CSSProperties {
       return METRIC_TONE_CELL_STYLE.default;
     }
   }
+}
+
+/**
+ * Resolve the accessible label for an `excluded` metric under an analysis
+ * mode.
+ *
+ * @remarks
+ * Baseline mode names both possible causes — zero weighting and outside the
+ * baseline task set — in one truthful sentence; absolute mode, and the
+ * no-argument path the three-state task-display flow relies on, keeps the
+ * weighting-only wording. The label is chosen by mode alone: no cause field
+ * and no schema change.
+ *
+ * @param {AnalysisMode} [analysisMode] - Optional analysis mode.
+ * @returns {string} The mode-aware accessible label.
+ */
+export function resolveExcludedMetricAccessibleLabel(analysisMode?: AnalysisMode): string {
+  return analysisMode === 'topDecileBaseline'
+    ? BASELINE_EXCLUDED_METRIC_ACCESSIBLE_LABEL
+    : EXCLUDED_METRIC_ACCESSIBLE_LABEL;
 }

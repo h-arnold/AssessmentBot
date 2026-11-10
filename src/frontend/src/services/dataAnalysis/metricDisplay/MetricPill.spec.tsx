@@ -1,12 +1,14 @@
 /**
- * Tests for `MetricPill` — presentational Ant Design Tag for a MetricResult.
+ * Tests for `MetricPill` — presentational Ant Design Tag for a MetricResult —
+ * including the mode-aware `excluded` accessible label.
  *
  * @see SPEC_CLASS_PAGE_PREPARATION.md lines 299–346
  */
 
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import type { MetricResult } from '../dataAnalysis.zod';
+import type { RenderResult } from '@testing-library/react';
+import type { AnalysisMode, MetricResult } from '../dataAnalysis.zod';
 import {
   createComputedMetricResult,
   createNotAttemptedMetricResult,
@@ -14,7 +16,7 @@ import {
   createExcludedMetricResult,
 } from '@/test/dataAnalysis/fixtures';
 import { MetricPill } from './MetricPill';
-import { resolveMetricTone } from './metricTone';
+import { EXCLUDED_METRIC_ACCESSIBLE_LABEL, resolveMetricTone } from './metricTone';
 
 /** Default font size (px) for a non-emphasised Tag. */
 const DEFAULT_TAG_FONT_SIZE_PX = 14;
@@ -33,6 +35,27 @@ const STATE_TEXT_COMPUTED_VALUE = Math.PI;
 
 /** Expected computed text at the default precision. */
 const STATE_TEXT_COMPUTED_OUTPUT = '3.14';
+
+/**
+ * Baseline-mode accessible label for the `excluded` state: one truthful
+ * sentence naming both possible causes — zero weighting and outside the
+ * baseline task set.
+ */
+const BASELINE_EXCLUDED_METRIC_ACCESSIBLE_LABEL =
+  'Excluded from average: displayed work had zero weighting, or fell outside the baseline task set.';
+
+/**
+ * Render a pill with an optional `analysisMode` prop.
+ *
+ * When `analysisMode` is `undefined` the JSX attribute is `undefined`, which
+ * React treats as an absent optional prop — the same as the no-prop render.
+ * @param {MetricResult} metric - The metric value to render.
+ * @param {AnalysisMode} [analysisMode] - Optional analysis mode.
+ * @returns {RenderResult} The Testing Library render result.
+ */
+function renderMetricPill(metric: MetricResult, analysisMode?: AnalysisMode): RenderResult {
+  return render(<MetricPill metric={metric} analysisMode={analysisMode} />);
+}
 
 describe('MetricPill', () => {
   // -------------------------------------------------------------------------
@@ -261,9 +284,7 @@ describe('MetricPill', () => {
     const metric: MetricResult = createComputedMetricResult({ value: 5 });
 
     const { container: compactContainer } = render(<MetricPill metric={metric} compact />);
-    const { container: emphasisedContainer } = render(
-      <MetricPill metric={metric} emphasised />
-    );
+    const { container: emphasisedContainer } = render(<MetricPill metric={metric} emphasised />);
 
     const compactTag = compactContainer.querySelector('.ant-tag');
     const emphasisedTag = emphasisedContainer.querySelector('.ant-tag');
@@ -303,8 +324,59 @@ describe('MetricPill', () => {
     // Emphasised styling: large font size and bold weight
     expect(Number.parseFloat(getComputedStyle(tag!).fontSize)).toBeCloseTo(
       EMPHASISED_TAG_FONT_SIZE_PX,
-      1,
+      1
     );
     expect(Number(getComputedStyle(tag!).fontWeight)).toBe(EMPHASISED_FONT_WEIGHT);
+  });
+
+  // -------------------------------------------------------------------------
+  // analysisMode prop — mode-aware `excluded` accessible label
+  // -------------------------------------------------------------------------
+
+  it('announces both exclusion causes for an excluded metric in baseline mode', () => {
+    renderMetricPill(createExcludedMetricResult(), 'topDecileBaseline');
+
+    expect(
+      screen.getByRole('img', { name: BASELINE_EXCLUDED_METRIC_ACCESSIBLE_LABEL })
+    ).toBeInTheDocument();
+  });
+
+  it('keeps the weighting-only wording for an excluded metric in absolute mode', () => {
+    renderMetricPill(createExcludedMetricResult(), 'absolute');
+
+    expect(screen.getByRole('img', { name: EXCLUDED_METRIC_ACCESSIBLE_LABEL })).toBeInTheDocument();
+  });
+
+  it('keeps the weighting-only wording and rendering when no analysisMode prop is supplied', () => {
+    renderMetricPill(createExcludedMetricResult());
+
+    const pill = screen.getByRole('img', { name: EXCLUDED_METRIC_ACCESSIBLE_LABEL });
+    expect(pill).toHaveTextContent(/^Excluded$/);
+  });
+
+  it('keeps the same tone for an excluded metric across every analysis mode', () => {
+    const renders = [
+      renderMetricPill(createExcludedMetricResult()),
+      renderMetricPill(createExcludedMetricResult(), 'absolute'),
+      renderMetricPill(createExcludedMetricResult(), 'topDecileBaseline'),
+    ];
+
+    const toneByMode = renders.map(({ container }) => {
+      const tag = container.querySelector('.ant-tag');
+      expect(tag).not.toBeNull();
+      return { className: tag!.className, style: tag!.getAttribute('style') };
+    });
+
+    expect(toneByMode[1]).toEqual(toneByMode[0]);
+    expect(toneByMode[2]).toEqual(toneByMode[0]);
+  });
+
+  it('leaves non-excluded states without an accessible label in baseline mode', () => {
+    const { container } = renderMetricPill(createNotAttemptedMetricResult(), 'topDecileBaseline');
+
+    const tag = container.querySelector('.ant-tag');
+    expect(tag).not.toBeNull();
+    expect(tag!.getAttribute('aria-label')).toBeNull();
+    expect(tag!.getAttribute('role')).toBeNull();
   });
 });

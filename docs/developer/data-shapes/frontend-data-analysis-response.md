@@ -8,8 +8,8 @@ metadata lifecycle, the shared post-analysis contracts, both consumer surfaces a
 error-aware task-preview view models are implemented and described below. The attempt-baseline
 analysis mode is being delivered incrementally (tracking issue: h-arnold/AssessmentBot#305):
 its schema contracts (filter field, result echo and optional baseline block, task-row flag),
-the analyser's baseline-mode behaviour and the heatmap column projection are implemented,
-while the summary reconciliation and the Class-page mode control remain planned
+the analyser's baseline-mode behaviour, the heatmap column projection and the summary
+reconciliation are implemented, while the Class-page mode control remains planned
 (see [Attempt-baseline contract changes](#attempt-baseline-contract-changes)).
 
 Sibling contracts:
@@ -1132,9 +1132,10 @@ The schema contracts for items 1–4 below are implemented as recorded (Section 
 attempt-baseline action plan: required filter field, result echo and optional baseline block,
 required task-row flag), as is the analyser's baseline-mode behaviour (Section 2:
 post-accumulation baseline selection, baseline-restricted aggregation, the baseline-mode
-per-student `excluded` conversion and the `attemptBaseline` echo); item 5 is partially
-delivered. The heatmap column projection (Section 3) is delivered. The summary
-reconciliation (Section 4) and the Class-page mode control (Section 5) remain planned.
+per-student `excluded` conversion and the `attemptBaseline` echo). The heatmap column
+projection (Section 3), the summary reconciliation (Section 4) and the label-content half
+of item 7 are delivered. The Class-page mode control (Section 5), which completes item 7's
+mode threading, remains planned.
 
 1. **`AnalysisFilterSchema.analysisMode`** — required enum field
    `z.enum(['absolute', 'topDecileBaseline'])` on the existing strict filter
@@ -1241,9 +1242,9 @@ reconciliation (Section 4) and the Class-page mode control (Section 5) remain pl
    evidence must never invoke baseline selection), while the public summary
    input continues to validate the caller's supplied `analysisMode`.
 
-   **Partially delivered (Section 1):** the internal delegation pin and the
-   required public filter field are in place; final reconciliation is
-   Section 4.
+   **Implemented (Section 4):** the internal delegation pin and the required
+   public filter field are in place; the reconciliation confirms the analyser
+   stays internally `'absolute'` and the public summary schema is unchanged.
 
 6. **Downstream aggregate consumers.** Per-assignment aggregates on the Class
    page (recent-assignment cards) are recomputed in baseline mode from
@@ -1276,6 +1277,17 @@ reconciliation (Section 4) and the Class-page mode control (Section 5) remain pl
    always `true` there. The Class page's embedded single-assignment heatmap
    inherits the Class page's analysis result and may therefore render `false`
    markers in baseline mode while keeping absolute cell values.
+
+   **Implemented (Section 4, label content only):** `metricTone.ts` exports the
+   two-cause baseline wording (`BASELINE_EXCLUDED_METRIC_ACCESSIBLE_LABEL` —
+   "Excluded from average: displayed work had zero weighting, or fell outside
+   the baseline task set.") beside the unchanged weighting-only constant, with
+   the resolver `resolveExcludedMetricAccessibleLabel(analysisMode?)`;
+   `MetricPill` accepts the optional `analysisMode` prop for the excluded
+   accessible name only; the students-table label builder calls the resolver
+   with no argument. **Planned (Section 5):** the mode threading — no
+   Class-page consumer passes the mode yet, so every rendered label is still
+   the weighting-only wording quoted in [Display contract](#display-contract).
 
 8. **Heatmap projection addition:** `HeatmapTaskColumn` gains `includedInAttemptBaseline: boolean`, set in
    `heatmapAdapter.ts` from a required second `buildTaskColumns` parameter

@@ -36,7 +36,7 @@ import { METRIC_DISPLAY_META } from '@/services/dataAnalysis/metricDisplay/metri
 import type { MetricColumnKey } from '@/services/dataAnalysis/metricDisplay/metricDisplayMeta';
 import {
   DEFAULT_TONE_RANGE,
-  EXCLUDED_METRIC_ACCESSIBLE_LABEL,
+  resolveExcludedMetricAccessibleLabel,
   resolveMetricTone,
 } from '@/services/dataAnalysis/metricDisplay/metricTone';
 import { buildMetricRangeFilter } from '@/services/dataAnalysis/metricDisplay/metricRangeFilter';
@@ -119,7 +119,7 @@ function buildMetricColumn(
       const { className, ...inlineCellStyle } = cellStyle;
       const score = formatMetricDisplayText(metric, CLASS_PAGE_SCORE_PRECISION);
       const ariaLabel = `${record.studentName}, ${meta.label}: ${
-        metric.state === 'excluded' ? EXCLUDED_METRIC_ACCESSIBLE_LABEL : score
+        metric.state === 'excluded' ? resolveExcludedMetricAccessibleLabel() : score
       }`;
       return {
         className,
@@ -129,12 +129,12 @@ function buildMetricColumn(
     },
     render: (_: unknown, record: StudentAverageRowModel): JSX.Element => {
       return (
-      <span>
-        {formatMetricDisplayText(
-          getStudentMetric(record.metrics, key),
-          CLASS_PAGE_SCORE_PRECISION
-        )}
-      </span>
+        <span>
+          {formatMetricDisplayText(
+            getStudentMetric(record.metrics, key),
+            CLASS_PAGE_SCORE_PRECISION
+          )}
+        </span>
       );
     },
   };
