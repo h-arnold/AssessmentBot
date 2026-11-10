@@ -169,12 +169,15 @@ remounts while logging distinct errors.
    `averageContribution` metadata to each task-column descriptor.
 2. `TaskHeatmapTable` consumes this metadata without resolving definition data
    itself.
-3. `features/taskHeatmap/taskHeatmapZeroWeightHeader.tsx` selects the
-   zero-effective-weight header presentation: a non-actionable, focusable
-   Tooltip on the task title plus the group-edge classes
-   (`.task-heatmap-zero-weight-group`, `-first`, `-last`), defined as
-   theme-aware inset 2px box-shadows in `src/frontend/src/index.css` and applied
-   by `taskHeatmapTableColumns.tsx`. Score-band backgrounds are unchanged.
+3. `features/taskHeatmap/taskHeatmapZeroWeightHeader.tsx` selects the marked
+   header presentation for zero-effective-weight and outside-the-attempt-baseline
+   columns: a non-actionable, focusable Tooltip on the task title plus the
+   group-edge classes (`.task-heatmap-zero-weight-group`, `-first`, `-last`),
+   defined as theme-aware inset 2px box-shadows in `src/frontend/src/index.css` and applied
+   by `taskHeatmapTableColumns.tsx`. One visual language covers both causes — the
+   tooltip and accessible labels distinguish them, baseline-off headings carry the
+   `†` suffix, and the table renders a caption when any column is outside the
+   baseline. Score-band backgrounds are unchanged.
 4. Shared metric-display modules give aggregate `excluded` a distinct label,
    accessible name, neutral tone, filter option, and state sort rank.
 5. Class page aggregate consumers pass `excluded` through their adapter and
@@ -220,8 +223,8 @@ always wins. The merged surface uses full reads only and resolves per-column sta
 through `previewStatusByTaskKey`. Neither lookup feeds analysis: preview selection
 never changes class scores, summaries or metadata.
 
-The task-heatmap presentation was kept feature-local. Zero-weight header
-rendering and group-edge class construction live in
+The task-heatmap presentation was kept feature-local. Zero-weight and
+outside-the-baseline header rendering and group-edge class construction live in
 `features/taskHeatmap/taskHeatmapZeroWeightHeader.tsx`
 (`buildTaskHeaderPresentation`, `getZeroWeightMetricEdgeClass`), consumed by
 `taskHeatmapTableColumns.tsx`, which remains the column-construction

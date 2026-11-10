@@ -281,52 +281,33 @@ Section checks passed: `src/features/classPage` 217/217 (29 files); `src/pages` 
 
 ### 5c — Embedded heatmap column marking + caption
 
-### Objective
+### Outcome (compacted)
 
-- `TaskHeatmapTable`-level flag, marked headings via the extended zero-weight helpers, merge inheritance, and the caption.
+Delivered the embedded heatmap's baseline column marking and caption: `TaskHeatmapColumn` (the table-level structural contract in `taskHeatmapTableColumns.tsx`) now requires `includedInAttemptBaseline: boolean`; both zero-weight helpers gained a required trailing options-object parameter and mark zero-weighted and outside-baseline columns with one visual language (marker, composed tooltip/aria-label, group and edge classes); merged columns inherit the flag through the existing spread; the caption renders inside `TaskHeatmapTable` when at least one column sits outside the baseline. New red-first host `TaskHeatmapTable.baseline.spec.tsx` (9 tests); `TaskHeatmapTable.zeroWeight.spec.tsx` updated for the helper signatures and shared constants.
 
-### Constraints
+Section checks passed: `npm run test:frontend -- src/features/taskHeatmap` 387/387 across 45 files; full frontend 3176/3176 across 326 files; `typecheck:all` exit 0; `lint:frontend:check` 0 errors / 16 warnings; red review PASS (`.opencode/scratchpad/review-issue305-section5c-red.md`); green review PASS with zero in-scope findings (`.opencode/scratchpad/review-issue305-section5c-green.md`).
 
-- Required `TaskHeatmapColumn.includedInAttemptBaseline` (sweep owner: Section 3, which also owns the adapter-typed `MergedHeatmapTaskColumn` literals in `TaskHeatmapTable.merged.spec.tsx` and `buildMergedZeroWeightResult()` in `TaskHeatmapTable.zeroWeight.spec.tsx`). The remaining `TaskHeatmapTable`-family specs (`TaskHeatmapTable.spec.tsx`, `.preview.spec.tsx`, `.status.spec.tsx`) build no column literals — they consume `TASK_COLUMNS` — so no literal edits are needed there; §5c owns the marker/caption/edge-class surface work and the assertion updates in the table specs below.
-- Visual language + helper signatures per layout spec §4; caption inside `TaskHeatmapTable` beside the existing notice (`role="status"`, `aria-live="polite"`, `type="secondary"`); copy constants beside `taskHeatmapZeroWeightHeader.tsx`.
+### Retained for later sections (§5d/6/7 consumption)
 
-### Shared helper plan
-
-1. `buildTaskHeaderPresentation`/`getZeroWeightMetricEdgeClass` — `extend` (options-object input; single visual language; composed tooltip/aria-label ordering).
-
-### Data-shape planning block
-
-- No adapter-level change (item 8 done in Section 3); presentation contract stays a TS interface (no data-shape entry).
-
-### Canonical fixture note
-
-- Local hand-built fixtures; the `medium` non-degenerate 7-of-9-key baseline (two `false` columns per class) loads via the call-site `?raw` pattern when useful (deliberate non-sharing per the recorded canonicalFixturePrimitives decision).
-
-### Delegation mandatory reads
-
-- Testing Specialist: `@docs/developer/frontend/frontend-testing.md`
-- Implementation: `@docs/plans/issue-305/SPEC.md`, `@docs/plans/issue-305/ATTEMPT_BASELINE_MODE_LAYOUT.md`, `@src/frontend/src/features/taskHeatmap/TaskHeatmapTable.tsx`, `@src/frontend/src/features/taskHeatmap/taskHeatmapZeroWeightHeader.tsx`, `@src/frontend/src/features/taskHeatmap/taskHeatmapTableColumns.tsx`
-- Code Reviewer: `@docs/plans/issue-305/ATTEMPT_BASELINE_MODE_LAYOUT.md`
-
-### Acceptance criteria
-
-- Marked columns render marker + composed tooltip/aria-label; merge inheritance; caption presence/absence live semantics; body-cell edge classes consistent; absolute mode byte-identical presentation.
-
-### Required test cases (Red first)
-
-Frontend tests:
-
-1. `TaskHeatmapTable.spec`-family: marked headings (both helpers extended; composed co-occurrence order); merge flag inheritance; caption presence + live semantics.
-2. Updated zero-weight-suite assertions (constants/classes; helper-signature + body-cell DOM assertions per layout spec §4).
-
-### Section checks
-
-- `npm run test:frontend -- src/features/taskHeatmap`
-- `npm run lint:frontend:check`
+- **Helper signatures (later-section-breaking if missed):** `buildTaskHeaderPresentation(title, averageContribution, options)` and `getZeroWeightMetricEdgeClass(metricIndex, metricCount, averageContribution, options)` in `taskHeatmapZeroWeightHeader.tsx` both end in a required `options: Readonly<{ includedInAttemptBaseline: boolean }>` — no default; every caller passes it. `TaskHeatmapColumn` requires `includedInAttemptBaseline: boolean` — an optional field plus a `?? true` fallback stays forbidden.
+- **Flag plumbing + no-mode-props guarantee:** `TaskHeatmapTable.tsx` builds the options object from the adapter-projected `taskColumn.includedInAttemptBaseline`; `buildTaskMetricSubColumns` forwards it to `getZeroWeightMetricEdgeClass` (single production call site; antd applies the class to both `th` and body `td`s). No `analysisMode` prop or state enters `features/taskHeatmap/**` — the flag arrives only through the heatmap projection.
+- **Caption contract:** rendered inside `TaskHeatmapTable`, after the existing no-submissions notice and above the `<Table>`, as `Typography.Paragraph` with `role="status"`, `aria-live="polite"`, `type="secondary"`; shows exactly when at least one task column has `includedInAttemptBaseline === false` (`hasBaselineOffColumn` memo; a zero-column list never shows it). Constants `BASELINE_OFF_EXPLANATION`, `BASELINE_CAPTION` and `BASELINE_MARKER` (`'†'`) live in `taskHeatmapZeroWeightHeader.tsx` beside the zero-weight ones.
+- **Composer ordering rule:** zero-weight + baseline-off co-occurrence renders one tooltip body with both facts, baseline-off first (`${BASELINE_OFF_EXPLANATION} ${ZERO_WEIGHT_EXPLANATION}`); the heading-span `aria-label` and the `onHeaderCell` label follow the same order.
+- **Byte-identical absolute mode:** with `includedInAverage && includedInAttemptBaseline` both helpers return the plain rendering (`{ title }` / `undefined`); pinned by the required flag (no fallback anywhere), the sweep-pinned `true` fixtures, the new absolute-invariance negatives (no caption, no `role="group"`, no `†` in embedded and merged renders), and the untouched pre-existing table suites (`.spec`/`.preview`/`.status`/`.merged`).
+- **Merge inheritance:** merged columns inherit the flag via the existing spread; adapter-level inheritance (explicit `null` → all `true`) stays pinned by Section 3's `heatmapAdapter.merged.spec.ts`; the §5c tests exercise the merged tier path with a `false` flag under the assignment-tier parent.
+- **LOC record:** `TaskHeatmapTable.tsx` 230, `taskHeatmapZeroWeightHeader.tsx` 112, `taskHeatmapTableColumns.tsx` 464 — all under the 550 trigger; no decomposition.
+- **Fixture facts:** the only table-level column literal builder is `taskHeatmapTableColumns.spec.ts`'s `column()`, which gained the one-line `includedInAttemptBaseline: true` (plumbing-required); `TASK_COLUMNS` in `src/frontend/src/test/taskHeatmapTableTestHelpers.ts` is adapter-typed and already carried the flag from Section 3; the remaining table-family specs build no column literals — they consume `TASK_COLUMNS`. Canonical `medium` (non-degenerate 7-of-9-key baseline, two `false` columns per class) loads via the call-site `?raw` pattern when useful — deliberate non-sharing per the recorded `canonicalFixturePrimitives` decision.
+- **Red-phase literal-vs-constants note:** red-phase tests restated the copy as spec-local literals because the production constants did not exist yet; green created them and the tests now consume the shared constants — §5d E2E asserts these surfaces (marker, tooltip explanation, caption).
+- **Data-shape:** no data-shape entry — the presentation contract stays a TS interface (item 8 done in Section 3).
 
 ### Implementation notes / deviations / follow-up
 
-- Record any merge/marker edge cases discovered.
+- No merge/marker edge-case findings emerged (red and green reviews both PASS with zero findings; merge inheritance exercised under the assignment-tier parent and pinned at adapter level by Section 3).
+- Measured LOC: `TaskHeatmapTable.tsx` 230, `taskHeatmapZeroWeightHeader.tsx` 112, `taskHeatmapTableColumns.tsx` 464 — all under the 500 cap and 550 trigger; no decomposition. Green-phase lint repair cycle renamed booleans (`isZeroWeighted`/`isBaselineOff`) to clear 3 transient unicorn errors.
+- Plumbing-required test edit: `taskHeatmapTableColumns.spec.ts` `column()` fixture gained the required flag (`true`, neutral).
+- Docs sync (completed, no new pages): data-shape doc — Status/intro now include the delivered heatmap marking + caption (Section 5c) and narrow remaining planned work to §5d E2E; item 8 verified accurate, no change. Shared-helpers doc — §9.27 intro recount narrowed to "(E2E browser coverage)"; entry 4 amended to attribute the flag's presentation rendering (marker, composed tooltip/label text, edge classes, caption) to Section 5c; register still 8/8 Implemented, no new entry (the two extended helpers are pre-existing zero-weight-feature helpers with no §9.27 entry). `data-analysis-architecture.md` — zero-weight-header module description widened to the one-visual-language reality (`†` suffix, table-level caption). JSDoc: `TaskHeatmapTable.tsx` module docstring updated to "no-submissions and baseline captions" (comment-only, 2 lines; scoped lint + frontend tsc re-run clean by the docs delegation; covered by the section gate). Untouched by design: `navigation-consistency-status.md` (Section 6), `docs/pedagogy/data-analysis-scoring.md` (teacher-facing explanation is Section 6's deliverable).
+- Section regression gate (run `2026-11-10T11:04Z`): 0 regressions, 0 new failures, 0 fixes; 7/8 checks passing. Sole failing check is `backend-lint-check` with the four pre-existing `max-lines` debts in untouched backend test files — identical to baseline, accepted technical debt, not regressions. Playwright E2E passed cleanly; the known-flaky `classes-crud-bulk-progress` "Set cohort" test did not tick this run. Report: `.ts-regression-checker/reports/session-feat-issue-305-attempt-baseline-mode/`.
+- Pending: commit record.
 
 ### 5d — E2E browser coverage (Playwright)
 

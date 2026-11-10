@@ -9,9 +9,9 @@ error-aware task-preview view models are implemented and described below. The at
 analysis mode is being delivered incrementally (tracking issue: h-arnold/AssessmentBot#305):
 its schema contracts (filter field, result echo and optional baseline block, task-row flag),
 the analyser's baseline-mode behaviour, the heatmap column projection, the summary
-reconciliation, the Class-page mode control and the mode threading to the Class-page
-display labels are implemented; the remaining Class-page work — the embedded heatmap's
-baseline marking and caption, and E2E coverage — remains planned
+reconciliation, the Class-page mode control, the mode threading to the Class-page
+display labels, and the embedded heatmap's baseline marking and caption are implemented;
+the remaining planned work is the E2E browser coverage
 (see [Attempt-baseline contract changes](#attempt-baseline-contract-changes)).
 
 Sibling contracts:
@@ -1143,9 +1143,10 @@ required task-row flag), as is the analyser's baseline-mode behaviour (Section 2
 post-accumulation baseline selection, baseline-restricted aggregation, the baseline-mode
 per-student `excluded` conversion and the `attemptBaseline` echo). The heatmap column
 projection (Section 3), the summary reconciliation (Section 4), the Class-page mode
-control with its availability resolver (Section 5a) and item 7's mode threading to the
-Class-page display labels (Section 5b) are delivered. The remaining planned work is the
-embedded heatmap's baseline marking and caption, and the E2E coverage.
+control with its availability resolver (Section 5a), item 7's mode threading to the
+Class-page display labels (Section 5b) and the embedded heatmap's baseline marking
+and caption (Section 5c) are delivered. The remaining planned work is the E2E
+browser coverage.
 
 1. **`AnalysisFilterSchema.analysisMode`** — required enum field
    `z.enum(['absolute', 'topDecileBaseline'])` on the existing strict filter

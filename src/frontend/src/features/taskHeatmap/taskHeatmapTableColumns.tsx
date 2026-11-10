@@ -53,7 +53,7 @@ import { getZeroWeightMetricEdgeClass } from './taskHeatmapZeroWeightHeader';
  *
  * Both `HeatmapTaskColumn` (embedded) and `MergedHeatmapTaskColumn` (merged)
  * satisfy this shape structurally with no casts: the embedded column carries
- * only the three required fields, while the merged column additionally carries
+ * only its required fields, while the merged column additionally carries
  * the optional assignment-identity fields used solely when building the
  * adaptive assignment tier.
  */
@@ -62,6 +62,11 @@ export interface TaskHeatmapColumn {
   taskId: string;
   taskTitle: string | null;
   averageContribution: AverageContribution;
+  /**
+   * Whether the column's task sits inside the analysed class's attempt
+   * baseline; `false` marks the column outside it.
+   */
+  includedInAttemptBaseline: boolean;
   assignmentId?: string;
   assignmentName?: string;
   definitionKey?: string;
@@ -329,7 +334,8 @@ export function buildTaskMetricSubColumns(
       className: getZeroWeightMetricEdgeClass(
         metricIndex,
         HEATMAP_METRIC_KEYS.length,
-        taskColumn.averageContribution
+        taskColumn.averageContribution,
+        { includedInAttemptBaseline: taskColumn.includedInAttemptBaseline }
       ),
       title: <MetricIconLabel icon={meta.icon} label={meta.label} />,
       align: 'center' as const,

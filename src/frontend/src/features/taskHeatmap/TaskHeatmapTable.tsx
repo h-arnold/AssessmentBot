@@ -15,8 +15,8 @@
  * and the adaptive assignment-tier grouping live in the co-located
  * `taskHeatmapTableColumns.tsx` helper module (extracted when this component
  * breached the 500-line split gate). The component owns local filter state
- * (keyed by column key), row sorting, the no-submissions caption, and the
- * memoised column tree.
+ * (keyed by column key), row sorting, the no-submissions and baseline captions,
+ * and the memoised column tree.
  *
  * @see docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md §3.7
  */
@@ -39,7 +39,7 @@ import {
 } from './taskHeatmapTableColumns';
 import type { CellPreviewLookup } from './buildCellPreviewLookup';
 import type { PreviewStatus } from './assembleMergedPreviewData';
-import { buildTaskHeaderPresentation } from './taskHeatmapZeroWeightHeader';
+import { BASELINE_CAPTION, buildTaskHeaderPresentation } from './taskHeatmapZeroWeightHeader';
 
 // ---------------------------------------------------------------------------
 // Component
@@ -53,7 +53,8 @@ import { buildTaskHeaderPresentation } from './taskHeatmapZeroWeightHeader';
  * structural contract (`TaskHeatmapData`) rather than a generic over the two
  * adapter output types. Both `HeatmapResult` (embedded) and
  * `MergedHeatmapResult` (merged) satisfy it structurally with no casts: the
- * column element requires only `{ taskKey; taskId; taskTitle }` plus optional
+ * column element requires only `{ taskKey; taskId; taskTitle;
+ * averageContribution; includedInAttemptBaseline }` plus optional
  * assignment-identity fields, and the result requires only `rows` /
  * `taskColumns` plus an optional `sourceAssignments` signal. A generic would
  * force callers to thread the adapter type through every render path for no
@@ -120,6 +121,13 @@ export function TaskHeatmapTable({
     );
   }, [rows, taskColumns]);
 
+  // The baseline caption shows exactly when at least one task column sits
+  // outside the attempt baseline; an empty column list never shows it.
+  const hasBaselineOffColumn = useMemo(
+    () => taskColumns.some((column) => !column.includedInAttemptBaseline),
+    [taskColumns]
+  );
+
   // Adaptive assignment-tier grouping (merged mode, ≥2 sources). Hoisted into
   // its own memo keyed on `[sourceAssignments, taskColumns]` so filter and
   // cell state changes recompute only the column tree, not the grouping.
@@ -151,7 +159,9 @@ export function TaskHeatmapTable({
       const title = taskColumn.taskTitle ?? taskColumn.taskId;
       return {
         key: taskColumn.taskKey,
-        ...buildTaskHeaderPresentation(title, taskColumn.averageContribution),
+        ...buildTaskHeaderPresentation(title, taskColumn.averageContribution, {
+          includedInAttemptBaseline: taskColumn.includedInAttemptBaseline,
+        }),
         children: buildTaskMetricSubColumns(
           taskColumn,
           taskIndex,
@@ -195,6 +205,11 @@ export function TaskHeatmapTable({
       {hasNoSubmissions && (
         <Typography.Paragraph role="status" aria-live="polite">
           No submissions yet
+        </Typography.Paragraph>
+      )}
+      {hasBaselineOffColumn && (
+        <Typography.Paragraph role="status" aria-live="polite" type="secondary">
+          {BASELINE_CAPTION}
         </Typography.Paragraph>
       )}
       <Table<TaskHeatmapRow>

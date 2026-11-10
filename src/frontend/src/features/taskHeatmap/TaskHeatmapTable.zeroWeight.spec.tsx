@@ -10,12 +10,21 @@ import {
   ZERO_WEIGHT_FIRST_CLASS,
   ZERO_WEIGHT_GROUP_CLASS,
   ZERO_WEIGHT_LAST_CLASS,
+  buildTaskHeaderPresentation,
   getZeroWeightMetricEdgeClass,
 } from './taskHeatmapZeroWeightHeader';
 
 const MAX_ZERO_TITLE_TAB_STEPS = 20;
 const SINGLE_METRIC_INDEX = 0;
 const SINGLE_METRIC_COUNT = 1;
+
+// The layout spec pins this wording verbatim; the production copy constants
+// live beside `taskHeatmapZeroWeightHeader.tsx`.
+const BASELINE_OFF_EXPLANATION =
+  'Task outside the baseline set — shown, but not included in baseline averages.';
+const BASELINE_CAPTION =
+  '† Tasks marked with this symbol are outside the baseline task set. Their values are unchanged; averages exclude them.';
+const BASELINE_MARKER = '†';
 
 let user: ReturnType<typeof userEvent.setup>;
 
@@ -106,10 +115,12 @@ function buildMergedZeroWeightResult(): MergedHeatmapResult {
 
 describe('TaskHeatmapTable zero-weight presentation', () => {
   it('marks a single zero-weight metric as both the first and last group edge', () => {
-    const edgeClass = getZeroWeightMetricEdgeClass(SINGLE_METRIC_INDEX, SINGLE_METRIC_COUNT, {
-      effectiveWeight: 0,
-      includedInAverage: false,
-    });
+    const edgeClass = getZeroWeightMetricEdgeClass(
+      SINGLE_METRIC_INDEX,
+      SINGLE_METRIC_COUNT,
+      { effectiveWeight: 0, includedInAverage: false },
+      { includedInAttemptBaseline: true }
+    );
 
     expect(edgeClass).toContain(ZERO_WEIGHT_FIRST_CLASS);
     expect(edgeClass).toContain(ZERO_WEIGHT_LAST_CLASS);
@@ -170,6 +181,9 @@ describe('TaskHeatmapTable zero-weight presentation', () => {
     expect(bodyCells[4]).toHaveClass(ZERO_WEIGHT_LAST_CLASS);
     expect(bodyCells[5]).not.toHaveClass(ZERO_WEIGHT_FIRST_CLASS);
     expect(screen.getAllByLabelText('Student One, Task 1, Completeness: 5')[0]).toBeInTheDocument();
+
+    // Zero-weight marking alone never introduces the baseline caption.
+    expect(screen.queryByText(BASELINE_CAPTION)).not.toBeInTheDocument();
   });
 
   it('preserves numeric zero-weight scores, genuine N and E as distinct rendered cell states', () => {
@@ -277,5 +291,204 @@ describe('TaskHeatmapTable zero-weight presentation', () => {
     );
     expect(scoreMatches[0]).toBeInTheDocument();
     expect(scoreMatches[0]).toHaveTextContent('4');
+  });
+});
+
+/**
+ * Render a locally cloned embedded result whose first task sits outside the
+ * attempt baseline while keeping a positive weighting.
+ * @returns {ReturnType<typeof render>} The rendered table.
+ */
+function renderEmbeddedBaselineOffTable() {
+  const base = buildHeatmapResult();
+  const result = {
+    ...base,
+    taskColumns: base.taskColumns.map((column, index) =>
+      index === 0 ? { ...column, includedInAttemptBaseline: false } : { ...column }
+    ),
+    rows: base.rows.map((row) => ({ ...row, cells: [...row.cells] })),
+  };
+
+  return render(
+    <TaskHeatmapTable
+      heatmapResult={result}
+      cellPreviewLookup={null}
+      isAssignmentLoading={false}
+      showAssignmentError={false}
+    />
+  );
+}
+
+/**
+ * Render a locally cloned embedded result whose first task is both
+ * zero-weight and outside the attempt baseline.
+ * @returns {ReturnType<typeof render>} The rendered table.
+ */
+function renderEmbeddedCoOccurringTable() {
+  const base = buildHeatmapResult();
+  const result = {
+    ...base,
+    taskColumns: base.taskColumns.map((column, index) => {
+      return index === 0
+        ? {
+            ...column,
+            averageContribution: { effectiveWeight: 0, includedInAverage: false },
+            includedInAttemptBaseline: false,
+          }
+        : { ...column };
+    }),
+    rows: base.rows.map((row) => ({ ...row, cells: [...row.cells] })),
+  };
+
+  return render(
+    <TaskHeatmapTable
+      heatmapResult={result}
+      cellPreviewLookup={null}
+      isAssignmentLoading={false}
+      showAssignmentError={false}
+    />
+  );
+}
+
+describe('TaskHeatmapTable zero-weight and baseline-off shared visual language', () => {
+  /** Weighting that contributes to averages (the baseline-off column default). */
+  const POSITIVE_CONTRIBUTION = { effectiveWeight: 1, includedInAverage: true };
+  /** Metric sub-column count of a full task group. */
+  const THREE_METRICS = 3;
+  /** Zero-based index of the last metric in a three-metric group. */
+  const LAST_METRIC_INDEX = 2;
+  /** Single-metric group count used for the both-edges case. */
+  const SINGLE_METRIC_GROUP = 1;
+
+  it('applies the zero-weight edge classes to a column outside the attempt baseline even when its weighting is positive', () => {
+    const firstEdge = getZeroWeightMetricEdgeClass(0, THREE_METRICS, POSITIVE_CONTRIBUTION, {
+      includedInAttemptBaseline: false,
+    });
+    expect(firstEdge).toBeDefined();
+    expect(firstEdge).toContain(ZERO_WEIGHT_FIRST_CLASS);
+    expect(
+      getZeroWeightMetricEdgeClass(1, THREE_METRICS, POSITIVE_CONTRIBUTION, {
+        includedInAttemptBaseline: false,
+      })
+    ).toBeUndefined();
+    expect(
+      getZeroWeightMetricEdgeClass(LAST_METRIC_INDEX, THREE_METRICS, POSITIVE_CONTRIBUTION, {
+        includedInAttemptBaseline: false,
+      })
+    ).toContain(ZERO_WEIGHT_LAST_CLASS);
+    const singleMetricEdge = getZeroWeightMetricEdgeClass(
+      0,
+      SINGLE_METRIC_GROUP,
+      POSITIVE_CONTRIBUTION,
+      { includedInAttemptBaseline: false }
+    );
+    expect(singleMetricEdge).toContain(ZERO_WEIGHT_FIRST_CLASS);
+    expect(singleMetricEdge).toContain(ZERO_WEIGHT_LAST_CLASS);
+  });
+
+  it('applies the identical edge classes when zero weighting and baseline exclusion co-occur', () => {
+    const zeroWeightContribution = { effectiveWeight: 0, includedInAverage: false };
+    const zeroWeightOnly = getZeroWeightMetricEdgeClass(
+      0,
+      SINGLE_METRIC_GROUP,
+      zeroWeightContribution,
+      {
+        includedInAttemptBaseline: true,
+      }
+    );
+    const coOccurring = getZeroWeightMetricEdgeClass(
+      0,
+      SINGLE_METRIC_GROUP,
+      zeroWeightContribution,
+      {
+        includedInAttemptBaseline: false,
+      }
+    );
+
+    // One visual language: the cause never changes the chrome.
+    expect(coOccurring).toBe(zeroWeightOnly);
+    expect(coOccurring).toContain(ZERO_WEIGHT_FIRST_CLASS);
+    expect(coOccurring).toContain(ZERO_WEIGHT_LAST_CLASS);
+  });
+
+  it('presents a baseline-only marked heading with the shared group chrome and the baseline explanation', () => {
+    const presentation = buildTaskHeaderPresentation('Task X', POSITIVE_CONTRIBUTION, {
+      includedInAttemptBaseline: false,
+    });
+
+    expect(presentation.className).toBe(ZERO_WEIGHT_GROUP_CLASS);
+    expect(presentation.title).not.toBe('Task X');
+    const headerCellProperties = presentation.onHeaderCell?.();
+    expect(headerCellProperties?.['aria-label']).toContain('Task X');
+    expect(headerCellProperties?.['aria-label']).toContain(BASELINE_OFF_EXPLANATION);
+  });
+
+  it('composes the co-occurring header aria-label with the baseline fact before the zero-weight fact', () => {
+    const presentation = buildTaskHeaderPresentation(
+      'Task X',
+      { effectiveWeight: 0, includedInAverage: false },
+      { includedInAttemptBaseline: false }
+    );
+    const label = presentation.onHeaderCell?.()['aria-label'] ?? '';
+    const baselineIndex = label.indexOf(BASELINE_OFF_EXPLANATION);
+    const zeroWeightIndex = label.indexOf(ZERO_WEIGHT_EXPLANATION);
+
+    expect(baselineIndex).toBeGreaterThanOrEqual(0);
+    expect(zeroWeightIndex).toBeGreaterThanOrEqual(0);
+    expect(baselineIndex).toBeLessThan(zeroWeightIndex);
+  });
+
+  it('applies the shared edge classes to baseline-off metric headers and body cells', () => {
+    const { container } = renderEmbeddedBaselineOffTable();
+
+    const markedSpan = screen.getByRole('group');
+    expect(markedSpan.textContent).toBe(`Task 1${BASELINE_MARKER}`);
+    expect(markedSpan.closest('th')).toHaveClass(ZERO_WEIGHT_GROUP_CLASS);
+
+    const metricHeaders = screen.getAllByRole('columnheader', {
+      name: /completeness|accuracy|spag/i,
+    });
+    expect(metricHeaders[0]).toHaveClass(ZERO_WEIGHT_FIRST_CLASS);
+    expect(metricHeaders[2]).toHaveClass(ZERO_WEIGHT_LAST_CLASS);
+    expect(metricHeaders[3]).not.toHaveClass(ZERO_WEIGHT_FIRST_CLASS);
+
+    const bodyCells = [...container.querySelectorAll(':scope tbody tr[data-row-key="s-1"] td')];
+    expect(bodyCells[2]).toHaveClass(ZERO_WEIGHT_FIRST_CLASS);
+    expect(bodyCells[4]).toHaveClass(ZERO_WEIGHT_LAST_CLASS);
+    expect(bodyCells[5]).not.toHaveClass(ZERO_WEIGHT_FIRST_CLASS);
+  });
+
+  it('renders one composed tooltip with the baseline fact before the zero-weight fact when both causes co-occur', async () => {
+    renderEmbeddedCoOccurringTable();
+
+    const markedSpan = screen.getByRole('group');
+    expect(markedSpan.textContent).toBe(`Task 1${BASELINE_MARKER}`);
+
+    // The focusable target's aria-label carries both facts, baseline first.
+    const spanLabel = markedSpan.getAttribute('aria-label') ?? '';
+    expect(spanLabel).toContain(BASELINE_OFF_EXPLANATION);
+    expect(spanLabel).toContain(ZERO_WEIGHT_EXPLANATION);
+    expect(spanLabel.indexOf(BASELINE_OFF_EXPLANATION)).toBeLessThan(
+      spanLabel.indexOf(ZERO_WEIGHT_EXPLANATION)
+    );
+
+    // The header cell aria-label follows the same order.
+    const headerLabel = markedSpan.closest('th')?.getAttribute('aria-label') ?? '';
+    expect(headerLabel.indexOf(BASELINE_OFF_EXPLANATION)).toBeLessThan(
+      headerLabel.indexOf(ZERO_WEIGHT_EXPLANATION)
+    );
+
+    // One composed tooltip body — never two stacked tooltips.
+    await user.hover(markedSpan);
+    const tooltip = await screen.findByRole('tooltip');
+    const tooltipText = tooltip.textContent ?? '';
+    expect(tooltipText).toContain(BASELINE_OFF_EXPLANATION);
+    expect(tooltipText).toContain(ZERO_WEIGHT_EXPLANATION);
+    expect(tooltipText.indexOf(BASELINE_OFF_EXPLANATION)).toBeLessThan(
+      tooltipText.indexOf(ZERO_WEIGHT_EXPLANATION)
+    );
+
+    // The marked column also brings the caption in.
+    expect(screen.getByText(BASELINE_CAPTION)).toBeInTheDocument();
   });
 });
