@@ -68,16 +68,11 @@ export function ClassPageModeControl({
   // Per-option tooltips only in the enabled branch (see module remarks).
   const options = [
     { value: 'absolute' as const, label: pageContent.classDetail.absoluteModeOptionLabel },
-    isDisabled
-      ? {
-          value: 'topDecileBaseline' as const,
-          label: pageContent.classDetail.baselineModeOptionLabel,
-        }
-      : {
-          value: 'topDecileBaseline' as const,
-          label: pageContent.classDetail.baselineModeOptionLabel,
-          tooltip: pageContent.classDetail.baselineModeOptionTooltip,
-        },
+    {
+      value: 'topDecileBaseline' as const,
+      label: pageContent.classDetail.baselineModeOptionLabel,
+      ...(!isDisabled && { tooltip: pageContent.classDetail.baselineModeOptionTooltip }),
+    },
   ];
 
   return (

@@ -29,7 +29,7 @@ type PerStudentRowWithName = PerStudentRow & { studentName: string };
  * @param {MetricResult} metric - The unfiltered per-criterion rollup.
  * @returns {MetricResult} The converted (or untouched) metric result.
  */
-function convertToBaselineExcluded(metric: MetricResult): MetricResult {
+export function convertToBaselineExcluded(metric: MetricResult): MetricResult {
   if (metric.state !== 'computed' && metric.state !== 'notAttempted') {
     return metric;
   }

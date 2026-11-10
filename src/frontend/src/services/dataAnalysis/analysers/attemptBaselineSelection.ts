@@ -1,4 +1,4 @@
-import type { PerStudentTaskMetric } from '../dataAnalysis.zod';
+import type { AveragingResult, PerStudentTaskMetric } from '../dataAnalysis.zod';
 
 /**
  * Ten-percent pool fraction (attempt-baseline specification decision 13).
@@ -14,16 +14,16 @@ const BASELINE_POOL_MINIMUM = 2;
  * Minimum roster size for attempt-baseline eligibility (attempt-baseline
  * specification decision 13).
  */
-const BASELINE_ROSTER_MINIMUM = 3;
+export const BASELINE_ROSTER_MINIMUM = 3;
 
 /** Derivation output: the pool members and the baseline task set. */
-export interface AttemptBaselineDerivation {
+interface AttemptBaselineDerivation {
   poolStudentIds: string[];
   baselineTaskKeys: string[];
 }
 
 /** Derivation input for one class. */
-export interface AttemptBaselineDerivationInput {
+interface AttemptBaselineDerivationInput {
   classId: string;
   rosterStudentIds: ReadonlyArray<string>;
   perStudentTaskMetrics: ReadonlyArray<PerStudentTaskMetric>;
@@ -112,6 +112,31 @@ function collectAttemptedTaskKeysByStudent(
 }
 
 /**
+ * Fetch one student's attempted task keys, failing fast on a missing entry.
+ *
+ * @remarks
+ * Every candidate id comes from {@link collectRosterAttemptCandidates}, so the
+ * map built by {@link collectAttemptedTaskKeysByStudent} holds an entry for
+ * each of them; a miss is an invariant violation and must throw rather than
+ * silently rank or intersect against an empty attempt set.
+ *
+ * @param {string} studentId - The student whose attempt set to fetch.
+ * @param {ReadonlyMap<string, Set<string>>} attemptedTaskKeysByStudent - Attempted keys per student.
+ * @returns {ReadonlySet<string>} The student's attempted task keys.
+ * @throws {Error} When the student has no entry in the map.
+ */
+function requireAttemptedTaskKeys(
+  studentId: string,
+  attemptedTaskKeysByStudent: ReadonlyMap<string, Set<string>>
+): ReadonlySet<string> {
+  const attemptedTaskKeys = attemptedTaskKeysByStudent.get(studentId);
+  if (!attemptedTaskKeys) {
+    throw new Error(`deriveAttemptBaseline: student '${studentId}' has no attempted task keys`);
+  }
+  return attemptedTaskKeys;
+}
+
+/**
  * Rank candidates by distinct attempted task-key count (descending), breaking
  * ties by ascending student id (decision 4).
  *
@@ -125,8 +150,8 @@ function rankCandidates(
 ): string[] {
   return candidates.toSorted((a, b) => {
     const countDifference =
-      (attemptedTaskKeysByStudent.get(b)?.size ?? 0) -
-      (attemptedTaskKeysByStudent.get(a)?.size ?? 0);
+      requireAttemptedTaskKeys(b, attemptedTaskKeysByStudent).size -
+      requireAttemptedTaskKeys(a, attemptedTaskKeysByStudent).size;
     if (countDifference !== 0) return countDifference;
     return a.localeCompare(b);
   });
@@ -144,21 +169,11 @@ function intersectAttemptSets(
   poolStudentIds: ReadonlyArray<string>,
   attemptedTaskKeysByStudent: ReadonlyMap<string, Set<string>>
 ): string[] {
-  const firstStudentId = poolStudentIds[0];
-  const firstAttemptedTaskKeys = attemptedTaskKeysByStudent.get(firstStudentId);
-  if (!firstAttemptedTaskKeys) {
-    throw new Error(
-      `deriveAttemptBaseline: pool student '${firstStudentId}' has no attempted task keys`
-    );
-  }
-  const sharedTaskKeys = new Set(firstAttemptedTaskKeys);
+  const sharedTaskKeys = new Set(
+    requireAttemptedTaskKeys(poolStudentIds[0], attemptedTaskKeysByStudent)
+  );
   for (const studentId of poolStudentIds) {
-    const attemptedTaskKeys = attemptedTaskKeysByStudent.get(studentId);
-    if (!attemptedTaskKeys) {
-      throw new Error(
-        `deriveAttemptBaseline: pool student '${studentId}' has no attempted task keys`
-      );
-    }
+    const attemptedTaskKeys = requireAttemptedTaskKeys(studentId, attemptedTaskKeysByStudent);
     for (const taskKey of sharedTaskKeys) {
       if (!attemptedTaskKeys.has(taskKey)) sharedTaskKeys.delete(taskKey);
     }
@@ -236,4 +251,47 @@ export function deriveAttemptBaseline(
     );
   }
   return { poolStudentIds, baselineTaskKeys };
+}
+
+/**
+ * Derive the baseline task-key set from a mode-bearing analyser result.
+ *
+ * @param {AveragingResult} analyserResult - The analysis result carrying the
+ *   applied-mode echo and, in baseline mode, the attemptBaseline block.
+ * @param {string} context - The caller's function name, prefixed onto thrown
+ *   error messages (for example `adaptMetricsToHeatmap`).
+ * @returns {ReadonlySet<string> | null} The baseline task-key set in baseline
+ *   mode, or `null` in absolute mode (nothing is baseline-restricted).
+ * @throws {Error} When the result is missing the required
+ *   `appliedAnalysisMode` echo, or when a baseline-mode result omits its
+ *   required `attemptBaseline` block.
+ *
+ * @remarks
+ * The `appliedAnalysisMode` echo is the single source of truth for whether a
+ * result is baseline-mode (data-shape item 6; SPEC decision 8). The narrowing
+ * is fail-fast: a baseline-mode result without the block is an invariant
+ * violation, and an `attemptBaseline?.baselineTaskKeys ?? []` fallback is
+ * forbidden because it would silently treat every task as outside the
+ * baseline.
+ */
+export function deriveBaselineTaskKeySet(
+  analyserResult: AveragingResult,
+  context: string
+): ReadonlySet<string> | null {
+  const { appliedAnalysisMode } = analyserResult;
+  if (appliedAnalysisMode !== 'absolute' && appliedAnalysisMode !== 'topDecileBaseline') {
+    throw new Error(
+      `${context}: analyser result for class '${analyserResult.classId}' is missing the required appliedAnalysisMode echo`
+    );
+  }
+  if (appliedAnalysisMode !== 'topDecileBaseline') {
+    return null;
+  }
+  const attemptBaseline = analyserResult.attemptBaseline;
+  if (!attemptBaseline) {
+    throw new Error(
+      `${context}: baseline-mode analyser result for class '${analyserResult.classId}' is missing the required attemptBaseline block`
+    );
+  }
+  return new Set(attemptBaseline.baselineTaskKeys);
 }

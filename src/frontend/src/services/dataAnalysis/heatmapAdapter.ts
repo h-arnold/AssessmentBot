@@ -16,6 +16,7 @@ import {
   getAssignmentDefinitionPartial,
 } from '../assignmentDefinition/assignmentDefinitionUtilities';
 import { buildTaskKey } from './taskKey';
+import { deriveBaselineTaskKeySet } from './analysers/attemptBaselineSelection';
 
 /**
  * Error thrown when task titles cannot be resolved for a heatmap assignment.
@@ -358,45 +359,6 @@ export function resolveAssignmentPartial(
 }
 
 /**
- * Derive the heatmap baseline-membership set from the mode-bearing analyser
- * result.
- *
- * @param {AveragingResult} analyserResult - The analysis result carrying the
- *   applied-mode echo and, in baseline mode, the attemptBaseline block.
- * @returns {ReadonlySet<string> | null} The baseline task-key set in baseline
- *   mode, or `null` in absolute mode (every column included).
- * @throws {Error} When the result is missing the required
- *   `appliedAnalysisMode` echo, or when a baseline-mode result omits its
- *   required `attemptBaseline` block.
- *
- * @remarks
- * `adaptMetricsToHeatmap` is the only caller that receives a mode-bearing
- * analyser result, so it is the only supplier of a non-null baseline set
- * (data-shape item 8). The narrowing is fail-fast: a
- * baseline-mode result without the block is an invariant violation, and an
- * `attemptBaseline?.baselineTaskKeys ?? []` fallback is forbidden because it
- * would silently mark every column excluded.
- */
-function deriveAttemptBaselineSet(analyserResult: AveragingResult): ReadonlySet<string> | null {
-  const { appliedAnalysisMode } = analyserResult;
-  if (appliedAnalysisMode !== 'absolute' && appliedAnalysisMode !== 'topDecileBaseline') {
-    throw new Error(
-      `adaptMetricsToHeatmap: analyser result for class '${analyserResult.classId}' is missing the required appliedAnalysisMode echo`
-    );
-  }
-  if (appliedAnalysisMode !== 'topDecileBaseline') {
-    return null;
-  }
-  const attemptBaseline = analyserResult.attemptBaseline;
-  if (!attemptBaseline) {
-    throw new Error(
-      `adaptMetricsToHeatmap: baseline-mode analyser result for class '${analyserResult.classId}' is missing the required attemptBaseline block`
-    );
-  }
-  return new Set(attemptBaseline.baselineTaskKeys);
-}
-
-/**
  * Project an `AveragingResult` (with per-student-task metrics), a `ClassFull`,
  * an `assignmentId`, and the warm-up `assignmentDefinitionPartials` into a
  * `HeatmapResult` view model for a single assignment.
@@ -437,7 +399,7 @@ function deriveAttemptBaselineSet(analyserResult: AveragingResult): ReadonlySet<
  *
  * The baseline-membership set for column projection is derived from this
  * result's own mode echo and `attemptBaseline` block under the fail-fast
- * narrowing rule ({@link deriveAttemptBaselineSet}); absolute mode passes
+ * narrowing rule ({@link deriveBaselineTaskKeySet}); absolute mode passes
  * `null` so every column is included.
  */
 export function adaptMetricsToHeatmap(
@@ -446,7 +408,7 @@ export function adaptMetricsToHeatmap(
   assignmentId: string,
   assignmentDefinitionPartials: AssignmentDefinitionPartialsResponse
 ): HeatmapResult {
-  const baselineSet = deriveAttemptBaselineSet(analyserResult);
+  const baselineSet = deriveBaselineTaskKeySet(analyserResult, 'adaptMetricsToHeatmap');
   const { partial } = resolveAssignmentPartial(
     classFull,
     assignmentId,

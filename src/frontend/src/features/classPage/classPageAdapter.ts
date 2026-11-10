@@ -14,6 +14,7 @@
 import { logFrontendEvent } from '@/logging/frontendLogger';
 import { computeOverallComposite } from '@/services/dataAnalysis/analysers/averagingAnalyser.composite';
 import { DEFAULT_CRITERION_WEIGHTINGS } from '@/services/dataAnalysis/analysers/averagingAnalyser';
+import { deriveBaselineTaskKeySet } from '@/services/dataAnalysis/analysers/attemptBaselineSelection';
 import { formatUpdatedAtLabel } from '@/utils/dateFormatting';
 import type {
   AveragingResult,
@@ -30,7 +31,7 @@ import type {
   StudentAverageRowModel,
 } from './classPageAdapter.zod';
 import { compareAssignmentUpdatedAtDesc } from './classPageModel';
-import { deriveCardBaselineSet, rollupCardCriteria } from './classPageAdapter.baselineCardRollup';
+import { rollupCardCriteria } from './classPageAdapter.baselineCardRollup';
 import { compareStudentNames } from '@/services/dataAnalysis/compareStudentNames';
 import { TaskTitlesUnavailableError } from '@/services/dataAnalysis/heatmapAdapter';
 import { getAssignmentDefinitionPartial } from '@/services/assignmentDefinition/assignmentDefinitionUtilities';
@@ -309,7 +310,7 @@ export function adaptClassPageToViewModel(input: {
 
   // The baseline task-key set is derived once from the result's own mode echo
   // (fail-fast on a baseline-mode result without its attemptBaseline block).
-  const baselineTaskSet = deriveCardBaselineSet(analyserResult);
+  const baselineTaskSet = deriveBaselineTaskKeySet(analyserResult, 'adaptClassPageToViewModel');
 
   const perTaskLookup = buildPerTaskLookup(analyserResult.perTask);
 

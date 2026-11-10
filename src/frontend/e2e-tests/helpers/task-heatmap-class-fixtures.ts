@@ -205,10 +205,11 @@ function buildSubmissionItems(
  */
 export function buildClassFullDocument(
   hasEmptySubmissions: boolean,
-  skippedTasksByStudentId: HeatmapSkippedTasksByStudentId = {}
+  skippedTasksByStudentId?: HeatmapSkippedTasksByStudentId
 ): Record<string, unknown> {
   const studentIds = new Set(HEATMAP_STUDENTS.map((student) => student.id));
-  for (const [studentId, taskIds] of Object.entries(skippedTasksByStudentId)) {
+  const skippedTasksByStudent = skippedTasksByStudentId ?? {};
+  for (const [studentId, taskIds] of Object.entries(skippedTasksByStudent)) {
     if (!studentIds.has(studentId)) {
       throw new Error(`Heatmap fixture has no student '${studentId}' for the requested skips.`);
     }
@@ -257,7 +258,7 @@ export function buildClassFullDocument(
             items: buildSubmissionItems(
               student,
               hasEmptySubmissions,
-              new Set(skippedTasksByStudentId[student.id])
+              new Set(skippedTasksByStudentId?.[student.id])
             ),
             createdAt: '2026-07-07T07:49:23.014Z',
             updatedAt: '2026-07-07T07:49:29.872Z',

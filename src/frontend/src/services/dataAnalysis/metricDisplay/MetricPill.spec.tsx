@@ -16,7 +16,11 @@ import {
   createExcludedMetricResult,
 } from '@/test/dataAnalysis/fixtures';
 import { MetricPill } from './MetricPill';
-import { EXCLUDED_METRIC_ACCESSIBLE_LABEL, resolveMetricTone } from './metricTone';
+import {
+  BASELINE_EXCLUDED_METRIC_ACCESSIBLE_LABEL,
+  EXCLUDED_METRIC_ACCESSIBLE_LABEL,
+  resolveMetricTone,
+} from './metricTone';
 
 /** Default font size (px) for a non-emphasised Tag. */
 const DEFAULT_TAG_FONT_SIZE_PX = 14;
@@ -35,14 +39,6 @@ const STATE_TEXT_COMPUTED_VALUE = Math.PI;
 
 /** Expected computed text at the default precision. */
 const STATE_TEXT_COMPUTED_OUTPUT = '3.14';
-
-/**
- * Baseline-mode accessible label for the `excluded` state: one truthful
- * sentence naming both possible causes — zero weighting and outside the
- * baseline task set.
- */
-const BASELINE_EXCLUDED_METRIC_ACCESSIBLE_LABEL =
-  'Excluded from average: displayed work had zero weighting, or fell outside the baseline task set.';
 
 /**
  * Render a pill with an optional `analysisMode` prop.

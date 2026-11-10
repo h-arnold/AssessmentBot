@@ -11,6 +11,7 @@
 import type { ClassFull } from '@/services/googleClassrooms/classDetail/classDetailService.zod';
 import { computeDatasetBlockingReason, type PageDatasetState } from '@/hooks/usePageDataset';
 import {
+  BASELINE_ROSTER_MINIMUM,
   collectRosterAttemptCandidates,
   isAttemptBaselineEligible,
 } from '@/services/dataAnalysis/analysers/attemptBaselineSelection';
@@ -178,13 +179,6 @@ const ROSTER_REASON = 'Baseline mode needs at least 3 students in this class';
 
 /** Ineligibility copy when fewer than two students attempted work. */
 const ENGAGED_STUDENTS_REASON = 'Baseline mode needs at least 2 students who attempted some work';
-
-/**
- * Minimum roster size for attempt-baseline eligibility (specification
- * decision 13); mirrors the derivation module's constant so the reason
- * selection agrees with the eligibility rule by name.
- */
-const BASELINE_ROSTER_MINIMUM = 3;
 
 /**
  * Resolve the Class page's attempt-baseline availability from the current

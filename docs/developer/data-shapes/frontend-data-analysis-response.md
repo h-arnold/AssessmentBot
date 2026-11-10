@@ -1279,11 +1279,14 @@ Every planned contract change in this section is implemented.
 
    **Implemented (Section 5b):** the rule lives in the co-located module
    `src/frontend/src/features/classPage/classPageAdapter.baselineCardRollup.ts`
-   (`deriveCardBaselineSet`, `rollupCardCriteria` and the module-private
-   `toExcludedPreservingDataPoints`), whose sole consumer is
+   (`deriveBaselineTaskKeySet` —
+   `src/frontend/src/services/dataAnalysis/analysers/attemptBaselineSelection.ts`,
+   `rollupCardCriteria` and `convertToBaselineExcluded` —
+   `src/frontend/src/services/dataAnalysis/analysers/averagingAnalyser.rows.ts`),
+   whose sole consumer is
    `classPageAdapter.ts`. The adapter derives the baseline set once per run
    from the result's own mode echo and passes it to every card rollup;
-   `deriveCardBaselineSet` fails fast — its throws (prefixed
+   `deriveBaselineTaskKeySet` fails fast — its throws (prefixed
    `adaptClassPageToViewModel:`) name the class for a missing or unrecognised
    `appliedAnalysisMode` echo and for a baseline-mode result without its
    required `attemptBaseline` block, the same narrowing rule as item 8.
@@ -1403,7 +1406,7 @@ Analyser: `src/frontend/src/services/dataAnalysis/analysers/`
 Heatmap adapters: `src/frontend/src/services/dataAnalysis/heatmapAdapter.ts`, `src/frontend/src/services/dataAnalysis/heatmapAdapter.merged.ts`
 Metric display: `src/frontend/src/services/dataAnalysis/metricDisplay/`
 Class-page adapter schema: `src/frontend/src/features/classPage/classPageAdapter.zod.ts`
-Class-page adapter card-rollup rule: `src/frontend/src/features/classPage/classPageAdapter.baselineCardRollup.ts` → `deriveCardBaselineSet`, `rollupCardCriteria` (baseline-mode card aggregates, item 6)
+Class-page adapter card-rollup rule: `src/frontend/src/features/classPage/classPageAdapter.baselineCardRollup.ts` → `rollupCardCriteria` (baseline-mode card aggregates, item 6); `deriveBaselineTaskKeySet` (`src/frontend/src/services/dataAnalysis/analysers/attemptBaselineSelection.ts`)
 
 Metadata refresh execution companions:
 ├── `src/frontend/src/services/dataAnalysis/postAnalysis/metadataProjection.ts` → pure decision, shared newest-first comparator, metric mapping, non-nullable rolling merge; `MetadataRefreshSkipped`, `MetadataRefreshDecision`

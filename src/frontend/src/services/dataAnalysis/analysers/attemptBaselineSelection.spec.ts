@@ -1,5 +1,5 @@
 /**
- * Red-first contract for the planned attempt-baseline selection module
+ * Contract tests for the attempt-baseline selection module
  * (`attemptBaselineSelection.ts`): the shared attempt predicate, the baseline
  * eligibility predicate, and the post-accumulation pool + intersection
  * derivation consumed by the averaging analyser.
@@ -9,14 +9,11 @@
  * assessment carries a numeric score. All-raw-`N` items, all-error (`E`) items
  * and absent items are not attempts, and criterion weighting plays no part.
  *
- * The module does not exist yet, so this spec loads it dynamically through a
- * computed specifier: the import rejection is the intended red phase, and the
- * computed specifier keeps the type-check gate green until the module lands.
- * The planned public surface pinned here:
+ * Public surface pinned here:
  *
  * - `collectRosterAttemptCandidates(perStudentTaskMetrics, rosterStudentIds)` —
- *   the shared attempt predicate: roster student ids carrying at least one
- *   attempted task, ascending by student id.
+ *   roster student ids carrying at least one attempted task, ascending by
+ *   student id.
  * - `isAttemptBaselineEligible(rosterStudentCount, candidateStudentCount)` —
  *   the two availability conditions of the specification's availability rule
  *   as one predicate.
@@ -27,6 +24,11 @@
 
 import { describe, expect, it } from 'vitest';
 import type { PerStudentTaskMetric, TaskDisplayMetric } from '../dataAnalysis.zod';
+import {
+  collectRosterAttemptCandidates,
+  deriveAttemptBaseline,
+  isAttemptBaselineEligible,
+} from './attemptBaselineSelection';
 
 /** Class id shared by every derivation fixture in this spec. */
 const CLASS_ID = 'c_001';
@@ -176,40 +178,9 @@ function buildRosterIds(rosterSize: number): string[] {
   );
 }
 
-/** The planned module surface this spec pins (see the file header). */
-interface AttemptBaselineSelectionModule {
-  collectRosterAttemptCandidates(
-    perStudentTaskMetrics: ReadonlyArray<PerStudentTaskMetric>,
-    rosterStudentIds: ReadonlyArray<string>
-  ): string[];
-  isAttemptBaselineEligible(rosterStudentCount: number, candidateStudentCount: number): boolean;
-  deriveAttemptBaseline(input: {
-    classId: string;
-    rosterStudentIds: ReadonlyArray<string>;
-    perStudentTaskMetrics: ReadonlyArray<PerStudentTaskMetric>;
-  }): { poolStudentIds: string[]; baselineTaskKeys: string[] };
-}
-
-/** Computed module specifier: keeps the type-check gate green while the module is missing. */
-const SELECTION_MODULE_SPECIFIER = './attemptBaselineSelection';
-
-/**
- * Load the module under test dynamically.
- *
- * While the module does not exist yet, every test fails on this import — the
- * intended red phase. The computed specifier keeps the static type-check gate
- * green because TypeScript cannot resolve a non-literal import path.
- *
- * @returns {Promise<AttemptBaselineSelectionModule>} The loaded selection module.
- */
-async function loadSelectionModule(): Promise<AttemptBaselineSelectionModule> {
-  return (await import(SELECTION_MODULE_SPECIFIER)) as AttemptBaselineSelectionModule;
-}
-
 describe('collectRosterAttemptCandidates (shared attempt predicate)', () => {
-  it('counts a numeric criterion score as the attempt signal', async () => {
-    const selection = await loadSelectionModule();
-    const candidates = selection.collectRosterAttemptCandidates(
+  it('counts a numeric criterion score as the attempt signal', () => {
+    const candidates = collectRosterAttemptCandidates(
       [createCellMetric('s_001', TASK_KEY_ONE, { completeness: COMPUTED_DISPLAY })],
       ['s_001']
     );
@@ -217,9 +188,8 @@ describe('collectRosterAttemptCandidates (shared attempt predicate)', () => {
     expect(candidates).toEqual(['s_001']);
   });
 
-  it('excludes all-raw-N evidence and students with no observed metrics', async () => {
-    const selection = await loadSelectionModule();
-    const candidates = selection.collectRosterAttemptCandidates(
+  it('excludes all-raw-N evidence and students with no observed metrics', () => {
+    const candidates = collectRosterAttemptCandidates(
       [
         createCellMetric('s_001', TASK_KEY_ONE, { completeness: NOT_ATTEMPTED_DISPLAY }),
         createCellMetric('s_002', TASK_KEY_ONE, { accuracy: NOT_ATTEMPTED_DISPLAY }),
@@ -232,12 +202,11 @@ describe('collectRosterAttemptCandidates (shared attempt predicate)', () => {
     expect(candidates).toEqual([]);
   });
 
-  it('excludes the E-condition projection from candidacy', async () => {
-    const selection = await loadSelectionModule();
+  it('excludes the E-condition projection from candidacy', () => {
     // All-criteria error evidence is the post-accumulation projection of the
     // E condition; the committed corpus carries it as ASSESSMENT_FAILED and
     // SOURCE_UNREADABLE items.
-    const candidates = selection.collectRosterAttemptCandidates(
+    const candidates = collectRosterAttemptCandidates(
       [
         createCellMetric('s_001', TASK_KEY_ONE),
         createCellMetric('s_002', TASK_KEY_TWO, { spag: ERROR_DISPLAY }),
@@ -248,9 +217,8 @@ describe('collectRosterAttemptCandidates (shared attempt predicate)', () => {
     expect(candidates).toEqual([]);
   });
 
-  it('counts zero-weight numeric evidence as an attempt', async () => {
-    const selection = await loadSelectionModule();
-    const candidates = selection.collectRosterAttemptCandidates(
+  it('counts zero-weight numeric evidence as an attempt', () => {
+    const candidates = collectRosterAttemptCandidates(
       [createCellMetric('s_001', TASK_KEY_ONE, { completeness: ZERO_WEIGHT_COMPUTED_DISPLAY })],
       ['s_001']
     );
@@ -259,15 +227,14 @@ describe('collectRosterAttemptCandidates (shared attempt predicate)', () => {
     expect(candidates).toEqual(['s_001']);
   });
 
-  it('is roster-scoped and returns candidates in ascending studentId order', async () => {
-    const selection = await loadSelectionModule();
+  it('is roster-scoped and returns candidates in ascending studentId order', () => {
     const metrics = [
       createCellMetric('s_009', TASK_KEY_ONE, { completeness: COMPUTED_DISPLAY }),
       createCellMetric('s_002', TASK_KEY_TWO, { completeness: COMPUTED_DISPLAY }),
       createCellMetric('s_001', TASK_KEY_ONE, { completeness: COMPUTED_DISPLAY }),
     ];
 
-    const candidates = selection.collectRosterAttemptCandidates(metrics, THREE_STUDENT_ROSTER);
+    const candidates = collectRosterAttemptCandidates(metrics, THREE_STUDENT_ROSTER);
 
     // s_009 submitted work but is outside the roster; s_003 is rostered with
     // no observations.
@@ -276,34 +243,28 @@ describe('collectRosterAttemptCandidates (shared attempt predicate)', () => {
 });
 
 describe('isAttemptBaselineEligible', () => {
-  it('returns false when the roster is below three students', async () => {
-    const selection = await loadSelectionModule();
-    expect(selection.isAttemptBaselineEligible(ROSTER_BELOW_MINIMUM, POOL_MINIMUM)).toBe(false);
+  it('returns false when the roster is below three students', () => {
+    expect(isAttemptBaselineEligible(ROSTER_BELOW_MINIMUM, POOL_MINIMUM)).toBe(false);
   });
 
-  it('returns false when fewer than two students attempted work', async () => {
-    const selection = await loadSelectionModule();
-    expect(selection.isAttemptBaselineEligible(ROSTER_ABOVE_MINIMUM, SINGLE_CANDIDATE_COUNT)).toBe(
-      false
-    );
+  it('returns false when fewer than two students attempted work', () => {
+    expect(isAttemptBaselineEligible(ROSTER_ABOVE_MINIMUM, SINGLE_CANDIDATE_COUNT)).toBe(false);
   });
 
-  it('returns true at both minimums', async () => {
-    const selection = await loadSelectionModule();
-    expect(selection.isAttemptBaselineEligible(ROSTER_MINIMUM, POOL_MINIMUM)).toBe(true);
+  it('returns true at both minimums', () => {
+    expect(isAttemptBaselineEligible(ROSTER_MINIMUM, POOL_MINIMUM)).toBe(true);
   });
 });
 
 describe('deriveAttemptBaseline — pool sizing', () => {
-  it('applies the minimum pool size of two below the ten-percent threshold', async () => {
-    const selection = await loadSelectionModule();
+  it('applies the minimum pool size of two below the ten-percent threshold', () => {
     // Roster 3: ceil(0.1 × 3) = 1, raised to the structural minimum of 2.
     const metrics = [
       createCellMetric('s_001', TASK_KEY_ONE, { completeness: COMPUTED_DISPLAY }),
       createCellMetric('s_002', TASK_KEY_TWO, { completeness: COMPUTED_DISPLAY }),
     ];
 
-    const derivation = selection.deriveAttemptBaseline({
+    const derivation = deriveAttemptBaseline({
       classId: CLASS_ID,
       rosterStudentIds: THREE_STUDENT_ROSTER,
       perStudentTaskMetrics: metrics,
@@ -313,8 +274,7 @@ describe('deriveAttemptBaseline — pool sizing', () => {
     expect(derivation.poolStudentIds).toEqual(['s_001', 's_002']);
   });
 
-  it('rounds the ten-percent bound up with ceil', async () => {
-    const selection = await loadSelectionModule();
+  it('rounds the ten-percent bound up with ceil', () => {
     // Roster 21: ceil(2.1) = 3 — the bound rounds up before the minimum
     // applies, and four candidates prove the bound (not the cap) limits it.
     const roster = buildRosterIds(ROSTER_CEIL_CASE);
@@ -324,7 +284,7 @@ describe('deriveAttemptBaseline — pool sizing', () => {
       });
     });
 
-    const derivation = selection.deriveAttemptBaseline({
+    const derivation = deriveAttemptBaseline({
       classId: CLASS_ID,
       rosterStudentIds: roster,
       perStudentTaskMetrics: metrics,
@@ -333,8 +293,7 @@ describe('deriveAttemptBaseline — pool sizing', () => {
     expect(derivation.poolStudentIds).toHaveLength(POOL_CEILED_SIZE);
   });
 
-  it('keeps the exact-tenth bound unrounded', async () => {
-    const selection = await loadSelectionModule();
+  it('keeps the exact-tenth bound unrounded', () => {
     // Roster 20: 0.1 × 20 = 2 exactly — the bound stays 2 despite three candidates.
     const roster = buildRosterIds(ROSTER_EXACT_TENTH);
     const metrics = roster.slice(0, POOL_CEILED_SIZE).map((studentId) => {
@@ -343,7 +302,7 @@ describe('deriveAttemptBaseline — pool sizing', () => {
       });
     });
 
-    const derivation = selection.deriveAttemptBaseline({
+    const derivation = deriveAttemptBaseline({
       classId: CLASS_ID,
       rosterStudentIds: roster,
       perStudentTaskMetrics: metrics,
@@ -352,8 +311,7 @@ describe('deriveAttemptBaseline — pool sizing', () => {
     expect(derivation.poolStudentIds).toHaveLength(POOL_MINIMUM);
   });
 
-  it('caps the pool at the candidate count', async () => {
-    const selection = await loadSelectionModule();
+  it('caps the pool at the candidate count', () => {
     // Roster 25: ceil(2.5) = 3, but only two candidates exist.
     const roster = buildRosterIds(ROSTER_CAP_CASE);
     const metrics = [
@@ -361,7 +319,7 @@ describe('deriveAttemptBaseline — pool sizing', () => {
       createCellMetric('s_002', TASK_KEY_TWO, { completeness: COMPUTED_DISPLAY }),
     ];
 
-    const derivation = selection.deriveAttemptBaseline({
+    const derivation = deriveAttemptBaseline({
       classId: CLASS_ID,
       rosterStudentIds: roster,
       perStudentTaskMetrics: metrics,
@@ -372,8 +330,7 @@ describe('deriveAttemptBaseline — pool sizing', () => {
 });
 
 describe('deriveAttemptBaseline — ranking and intersection', () => {
-  it('ranks by distinct attempted taskKey count and breaks ties by studentId ascending', async () => {
-    const selection = await loadSelectionModule();
+  it('ranks by distinct attempted taskKey count and breaks ties by studentId ascending', () => {
     // s_001 attempted three distinct keys (TASK_KEY_ONE observed twice through
     // a shared taskKey — counted once); s_002 and s_003 tie at two; s_004 has
     // one. The pool takes the top two, breaking the tie by student id.
@@ -389,7 +346,7 @@ describe('deriveAttemptBaseline — ranking and intersection', () => {
       createCellMetric('s_004', TASK_KEY_ONE, { completeness: COMPUTED_DISPLAY }),
     ];
 
-    const derivation = selection.deriveAttemptBaseline({
+    const derivation = deriveAttemptBaseline({
       classId: CLASS_ID,
       rosterStudentIds: ['s_001', 's_002', 's_003', 's_004'],
       perStudentTaskMetrics: metrics,
@@ -401,8 +358,7 @@ describe('deriveAttemptBaseline — ranking and intersection', () => {
     expect(derivation.baselineTaskKeys).toEqual([TASK_KEY_ONE, TASK_KEY_TWO]);
   });
 
-  it('intersects the attempt sets of every pool member', async () => {
-    const selection = await loadSelectionModule();
+  it('intersects the attempt sets of every pool member', () => {
     // Roster 30 gives a three-member pool. TASK_KEY_ONE and TASK_KEY_THREE
     // are attempted by all three; TASK_KEY_TWO by two — a majority. A majority
     // rule would admit it, but the baseline requires every member, so it stays outside.
@@ -417,7 +373,7 @@ describe('deriveAttemptBaseline — ranking and intersection', () => {
       createCellMetric('s_003', TASK_KEY_THREE, { completeness: COMPUTED_DISPLAY }),
     ];
 
-    const derivation = selection.deriveAttemptBaseline({
+    const derivation = deriveAttemptBaseline({
       classId: CLASS_ID,
       rosterStudentIds: buildRosterIds(ROSTER_THREE_MEMBER_POOL),
       perStudentTaskMetrics: metrics,
@@ -429,12 +385,11 @@ describe('deriveAttemptBaseline — ranking and intersection', () => {
 });
 
 describe('deriveAttemptBaseline — failures', () => {
-  it('throws when fewer than two students attempted work', async () => {
-    const selection = await loadSelectionModule();
+  it('throws when fewer than two students attempted work', () => {
     const metrics = [createCellMetric('s_001', TASK_KEY_ONE, { completeness: COMPUTED_DISPLAY })];
 
     expect(() => {
-      return selection.deriveAttemptBaseline({
+      return deriveAttemptBaseline({
         classId: CLASS_ID,
         rosterStudentIds: THREE_STUDENT_ROSTER,
         perStudentTaskMetrics: metrics,
@@ -442,15 +397,14 @@ describe('deriveAttemptBaseline — failures', () => {
     }).toThrow(/c_001/);
   });
 
-  it('throws when the roster is below three students', async () => {
-    const selection = await loadSelectionModule();
+  it('throws when the roster is below three students', () => {
     const metrics = [
       createCellMetric('s_001', TASK_KEY_ONE, { completeness: COMPUTED_DISPLAY }),
       createCellMetric('s_002', TASK_KEY_TWO, { completeness: COMPUTED_DISPLAY }),
     ];
 
     expect(() => {
-      return selection.deriveAttemptBaseline({
+      return deriveAttemptBaseline({
         classId: CLASS_ID,
         rosterStudentIds: ['s_001', 's_002'],
         perStudentTaskMetrics: metrics,
@@ -458,8 +412,7 @@ describe('deriveAttemptBaseline — failures', () => {
     }).toThrow(/c_001/);
   });
 
-  it('throws when the pool attempt sets are disjoint', async () => {
-    const selection = await loadSelectionModule();
+  it('throws when the pool attempt sets are disjoint', () => {
     // Ordinary trigger (a): both pool candidates attempted work, but never the
     // same task. s_003 also attempted TASK_KEY_ONE, but the intersection runs
     // over pool members only.
@@ -470,7 +423,7 @@ describe('deriveAttemptBaseline — failures', () => {
     ];
 
     expect(() => {
-      return selection.deriveAttemptBaseline({
+      return deriveAttemptBaseline({
         classId: CLASS_ID,
         rosterStudentIds: THREE_STUDENT_ROSTER,
         perStudentTaskMetrics: metrics,
@@ -478,8 +431,7 @@ describe('deriveAttemptBaseline — failures', () => {
     }).toThrow(/c_001/);
   });
 
-  it('throws when a newly assessed class has sparse shared evidence', async () => {
-    const selection = await loadSelectionModule();
+  it('throws when a newly assessed class has sparse shared evidence', () => {
     // Ordinary trigger (b): ten candidates exist, but each attempted a single
     // different task, so the top two by student id share no usable evidence.
     const roster = buildRosterIds(SPARSE_CANDIDATE_COUNT);
@@ -490,7 +442,7 @@ describe('deriveAttemptBaseline — failures', () => {
     });
 
     expect(() => {
-      return selection.deriveAttemptBaseline({
+      return deriveAttemptBaseline({
         classId: CLASS_ID,
         rosterStudentIds: roster,
         perStudentTaskMetrics: metrics,
