@@ -392,7 +392,9 @@ All four checks proven green. Verification-only section: no files changed by it 
 
 ### Implementation notes / deviations / follow-up
 
-- Fill during delivery.
+- Both required checks confirmed (verification-only; no files changed by this section): (1) Section 6's five acceptance criteria confirmed in final state by Section 7's consistency pass (SPEC decisions ↔ data-shape items 1–8 ↔ §9.27 register, zero disagreement; the §9.27 intro retense landed in `cf935b49`). (2) `@remarks` audit: the planned remarks from Sections 1–5 exist in code — `dataAnalysis.zod.ts` (mode enum, wire-format, `BASELINE_POOL_MINIMUM` agreement-by-name), `ClassPageModeControl.tsx` (third stacked header element), `useClassPageData.availability.spec.ts` (decision 6 availability), `classPageAdapter.baselineCardRollup.ts` (decision 8 / data-shape item 6); the `attemptBaselineSelection.ts`/`averagingAnalyser.ts` decision-N JSDoc anchors exist (ledger row: reword once the plan is archived) and the `heatmapAdapter.ts` `@remarks` block now documents delivered behaviour (Section 3's docs pass trimmed the planning vocabulary; §7's keyword sweep finds no plan references).
+- Landing summary and caveats: the feature is delivered across Sections 1–7; canonical docs reflect delivered behaviour; the out-of-v1 generator-extension plan remains recorded as deferred (SPEC.md:357), not delivered. Known caveats carried forward: the accepted backend `max-lines` debt (4 untouched test files), the known-flaky `classes-crud-bulk-progress` test (user-instructed, never chased), and the final-pass ledger rows (`INDEX.md:33`, `assessment.md:519`, the decision-N JSDoc anchors).
+- Pending: commit record.
 
 ---
 
