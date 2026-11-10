@@ -243,7 +243,8 @@ export function useAssessTaskRecoveryFlow(
 
   /**
    * Abandons recovery from a prompt/reparsing/failure state and closes the
-   * owning modal (SPEC decision 1: Cancel must not open the choice prompt).
+   * owning modal (Cancel must not open the choice prompt; modal-patterns doc,
+   * `docs/developer/frontend/frontend-modal-patterns.md`).
    *
    * @returns {void}
    */

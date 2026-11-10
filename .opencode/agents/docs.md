@@ -3,6 +3,13 @@ description: Keeps project documentation accurate, current, and aligned with act
 mode: all
 model: mistral/zai-glm-5-3-flash
 steps: 100
+permissions:
+  - action: shell
+    resource: 'git commit*'
+    effect: deny
+  - action: shell
+    resource: 'git push*'
+    effect: deny
 ---
 
 # Documentation Agent Instructions

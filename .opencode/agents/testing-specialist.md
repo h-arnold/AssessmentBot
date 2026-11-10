@@ -3,6 +3,13 @@ description: Creates, maintains, and debugs Vitest unit/component tests and back
 mode: all
 model: mistral/zai-glm-5-3-flash
 steps: 100
+permissions:
+  - action: shell
+    resource: 'git commit*'
+    effect: deny
+  - action: shell
+    resource: 'git push*'
+    effect: deny
 ---
 
 # Testing Specialist Agent Instructions

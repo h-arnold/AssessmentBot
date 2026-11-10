@@ -7,6 +7,21 @@ permissions:
   - action: playwright_*
     resource: '*'
     effect: allow
+  - action: edit
+    resource: '*'
+    effect: deny
+  - action: edit
+    resource: 'src/frontend/e2e-tests/**'
+    effect: allow
+  - action: read
+    resource: '*'
+    effect: allow
+  - action: shell
+    resource: 'git commit*'
+    effect: deny
+  - action: shell
+    resource: 'git push*'
+    effect: deny
 ---
 
 # Playwright Specialist Agent Instructions

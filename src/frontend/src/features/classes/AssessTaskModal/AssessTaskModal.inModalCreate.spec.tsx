@@ -1,17 +1,16 @@
 /**
  * In-modal create-path composition specs for `AssessTaskModal`.
  *
- * These specs pin SPEC decision 9: after choosing Create, the assignment-definition
- * wizard content renders inside the single owning `AssessTaskModal` rather than a
- * stacked second modal. They drive the real create journey (choice → stage-one URL
- * entry → stage-two review → auto-assessment) through user-visible interactions and
- * assert the one-modal composition, footer ownership, width-token behaviour and the
- * existing parse-failure treatment.
+ * These specs pin the one-modal rule (modal-patterns doc, §3.4/§3.5): after
+ * choosing Create, the assignment-definition wizard content renders inside the
+ * single owning `AssessTaskModal` rather than a stacked second modal. They drive
+ * the real create journey (choice → stage-one URL entry → stage-two review →
+ * auto-assessment) through user-visible interactions and assert the one-modal
+ * composition, footer ownership, width-token behaviour and the existing
+ * parse-failure treatment.
  *
- * Red phase: these specs fail while `AssessTaskModal` still renders the stacked
- * `AssignmentDefinitionWizardModal` instance, because the stage-one/stage-two content
- * lives in a second dialog instead of the owning modal body. They pass once the
- * extracted chrome-free review content renders in-modal.
+ * The stacked-modal regression is pinned: these specs fail if the wizard content
+ * renders in a second dialog instead of the owning modal body.
  */
 
 import { act, screen, waitFor, within } from '@testing-library/react';
@@ -100,7 +99,8 @@ vi.mock('./matchDefinitionForAssignment', () => {
 const WIDE_DATA_WIDTH = 'var(--app-modal-width-wide-data)';
 
 /**
- * Registry copy for the stable `DEFINITION_PARSE_FAILED` code (SPEC decision 8).
+ * Registry copy for the stable `DEFINITION_PARSE_FAILED` code (transport-envelope
+ * contract: `docs/developer/data-shapes/transport-envelope.md`).
  */
 const DEFINITION_PARSE_FAILED_MESSAGE =
   'The assignment documents could not be parsed. Check the reference and template documents, then try again.';

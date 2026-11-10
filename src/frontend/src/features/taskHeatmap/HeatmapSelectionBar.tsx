@@ -43,7 +43,7 @@ import { APP_GAP_MD, APP_GAP_SM } from '@/theme/spacing';
 /** Stable DOM id for the disabled-reason description node (I2). */
 const DISABLED_REASON_ID = 'heatmap-selection-disabled-reason';
 
-/** Placeholders — action-describing, never auto-selected (SPEC decision 6). */
+/** Placeholders — action-describing, never auto-selected. */
 const CLASS_PLACEHOLDER = 'Select a class';
 const TOPICS_PLACEHOLDER = 'Select topics';
 const ASSIGNMENTS_PLACEHOLDER = 'Select assignments';

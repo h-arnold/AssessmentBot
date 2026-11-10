@@ -3,6 +3,31 @@ description: Implements code changes in an idiomatic and type-safe manner with v
 mode: all
 model: mistral/zai-glm-5-3-flash
 steps: 100
+permissions:
+  - action: edit
+    resource: 'tests/**'
+    effect: deny
+  - action: edit
+    resource: 'src/frontend/src/test/**'
+    effect: deny
+  - action: edit
+    resource: 'src/frontend/e2e-tests/**'
+    effect: deny
+  - action: edit
+    resource: '**/*.spec.*'
+    effect: deny
+  - action: edit
+    resource: '**/*.test.*'
+    effect: deny
+  - action: read
+    resource: '*'
+    effect: allow
+  - action: shell
+    resource: 'git commit*'
+    effect: deny
+  - action: shell
+    resource: 'git push*'
+    effect: deny
 ---
 
 # Implementation Agent Instructions

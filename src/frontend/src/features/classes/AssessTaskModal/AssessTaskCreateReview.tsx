@@ -20,7 +20,8 @@ export type AssessTaskCreateReviewProperties = Readonly<{
  * `AssessTaskModal` body, without a second stacked `Modal`.
  *
  * @remarks
- * SPEC decision 9 converts the create path to in-modal rendering. This component
+ * The create path is converted to in-modal rendering (the one-modal rule in
+ * `docs/developer/frontend/frontend-modal-patterns.md`). This component
  * reuses the chrome-free `AssignmentDefinitionWizardReviewContent` (both wizard
  * stages) and the `useAssignmentDefinitionWizard` create-mode composition, so the
  * create journey (choice → parse → review → auto-assessment) is presentation-only
@@ -34,9 +35,7 @@ export type AssessTaskCreateReviewProperties = Readonly<{
  * @param {AssessTaskCreateReviewProperties} properties Initial values, create-success, cancel and modal-cancel registration handlers.
  * @returns {JSX.Element} The in-modal create wizard content.
  */
-export function AssessTaskCreateReview(
-  properties: AssessTaskCreateReviewProperties
-): JSX.Element {
+export function AssessTaskCreateReview(properties: AssessTaskCreateReviewProperties): JSX.Element {
   const { initialValues, onCreateSuccess, onClose, registerModalCancel } = properties;
   const [manageTopicsModalOpen, setManageTopicsModalOpen] = useState(false);
   const [manageYearGroupsModalOpen, setManageYearGroupsModalOpen] = useState(false);

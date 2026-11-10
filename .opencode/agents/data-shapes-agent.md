@@ -13,6 +13,12 @@ permissions:
   - action: read
     resource: '*'
     effect: allow
+  - action: shell
+    resource: 'git commit*'
+    effect: deny
+  - action: shell
+    resource: 'git push*'
+    effect: deny
 ---
 
 # Data Shapes Agent Instructions
