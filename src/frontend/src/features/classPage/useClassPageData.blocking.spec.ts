@@ -48,7 +48,9 @@ describe('blocking precedence', () => {
       )
     );
 
-    const { result } = renderHook(() => useClassPageData(DEFAULT_CLASS_ID), { wrapper });
+    const { result } = renderHook(() => useClassPageData(DEFAULT_CLASS_ID, 'absolute'), {
+      wrapper,
+    });
 
     // Blocking takes precedence over loading
     expect(result.current.surfaceState.status).toBe('blocking');
@@ -73,7 +75,9 @@ describe('empty analyser response', () => {
     mocks.mockUseQuery.mockReturnValue(createMockClassQueryResult({ data: createClassFull() }));
     mocks.mockUsePageDataset.mockReturnValue(createPageDatasetReturn());
 
-    const { result } = renderHook(() => useClassPageData(DEFAULT_CLASS_ID), { wrapper });
+    const { result } = renderHook(() => useClassPageData(DEFAULT_CLASS_ID, 'absolute'), {
+      wrapper,
+    });
 
     expect(result.current.surfaceState).toEqual({
       status: 'blocking',
@@ -91,7 +95,9 @@ describe('empty analyser response', () => {
     mocks.mockUseQuery.mockReturnValue(createMockClassQueryResult({ data: createClassFull() }));
     mocks.mockUsePageDataset.mockReturnValue(createPageDatasetReturn());
 
-    const { result } = renderHook(() => useClassPageData(DEFAULT_CLASS_ID), { wrapper });
+    const { result } = renderHook(() => useClassPageData(DEFAULT_CLASS_ID, 'absolute'), {
+      wrapper,
+    });
 
     expect(result.current.adapterResult).toBeNull();
     expect(result.current.analyserResult).toBeNull();
@@ -110,7 +116,9 @@ describe('empty analyser response', () => {
     mocks.mockUseQuery.mockReturnValue(createMockClassQueryResult({ data: createClassFull() }));
     mocks.mockUsePageDataset.mockReturnValue(createPageDatasetReturn());
 
-    const { result } = renderHook(() => useClassPageData(DEFAULT_CLASS_ID), { wrapper });
+    const { result } = renderHook(() => useClassPageData(DEFAULT_CLASS_ID, 'absolute'), {
+      wrapper,
+    });
 
     expect(result.current.surfaceState).toEqual({ status: 'ready' });
     expect(result.current.error).toBeNull();

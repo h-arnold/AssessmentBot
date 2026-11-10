@@ -1,7 +1,9 @@
 import '@/test/classes/ClassesPage.mockSetup';
-import { screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { createElement, useEffect, type JSX } from 'react';
+import { QueryClientProvider } from '@tanstack/react-query';
 
 import {
   resetClassesPageComponentMocks,
@@ -11,6 +13,11 @@ import {
 } from '@/test/classes/classesPageComponentTestSetup';
 import { createReadyWarmupState } from '@/test/classes/classesPageWarmupFixtures';
 import { renderClassesPage } from '../test/classes/classesPageTestHelpers';
+import { createAppQueryClient } from '@/query/queryClient';
+import { ClassesPage } from './ClassesPage';
+
+/** Mounts observed after the class-scoped key changes and remounts the page. */
+const EXPECTED_MOUNTS_AFTER_CLASS_CHANGE = 2;
 
 beforeEach(() => {
   resetClassesPageComponentMocks();
@@ -79,6 +86,52 @@ describe('Shell integration', () => {
     // ClassPage should receive the correct classId
     const classPageProperties = mockClassPage.mock.calls[0][0] as Record<string, unknown>;
     expect(classPageProperties.classId).toBe(testClassId);
+  });
+
+  it('remounts ClassPage when the selected class changes so class-scoped state resets', () => {
+    // ClassPage is composed with the class-scoped `key`, so a class change
+    // guarantees a remount (clearing the mode selection and its retained
+    // availability) rather than an in-place update of the existing instance.
+    // The providers are applied as the render wrapper (not baked into the
+    // element) so the rerender below re-renders the same tree and only the
+    // class-scoped key can produce the remount.
+    let mountCount = 0;
+
+    /**
+     * ClassPage double that counts its mounts.
+     *
+     * @returns {JSX.Element} An empty marker element.
+     */
+    function CountingClassPage(): JSX.Element {
+      useEffect(() => {
+        mountCount += 1;
+      }, []);
+      return createElement('div');
+    }
+    mockClassPage.mockImplementation(CountingClassPage);
+
+    mockUseClassSelection.mockReturnValue({
+      selectedClassId: 'class-a',
+      className: 'Class A',
+      onSelectClass: vi.fn(),
+      onNavigateToClasses: vi.fn(),
+    });
+    const queryClient = createAppQueryClient();
+    const { rerender } = render(createElement(ClassesPage), {
+      wrapper: ({ children }) =>
+        createElement(QueryClientProvider, { client: queryClient }, children),
+    });
+    expect(mountCount).toBe(1);
+
+    mockUseClassSelection.mockReturnValue({
+      selectedClassId: 'class-b',
+      className: 'Class B',
+      onSelectClass: vi.fn(),
+      onNavigateToClasses: vi.fn(),
+    });
+    rerender(createElement(ClassesPage));
+
+    expect(mountCount).toBe(EXPECTED_MOUNTS_AFTER_CLASS_CHANGE);
   });
 
   it('the View button does not have tabIndex=-1', () => {

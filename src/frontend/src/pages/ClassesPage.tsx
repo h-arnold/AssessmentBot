@@ -1,4 +1,16 @@
-import { Alert, Button, Card, Col, Collapse, Empty, Row, Skeleton, Space, Tooltip, Typography } from 'antd';
+import {
+  Alert,
+  Button,
+  Card,
+  Col,
+  Collapse,
+  Empty,
+  Row,
+  Skeleton,
+  Space,
+  Tooltip,
+  Typography,
+} from 'antd';
 import { AuditOutlined } from '@ant-design/icons';
 import { type JSX, useMemo, useState } from 'react';
 import {
@@ -52,8 +64,7 @@ function getClassesSurfaceState(
   }>
 ): Readonly<{ shouldRenderBlockingState: boolean; shouldRenderLoadingState: boolean }> {
   const isBlocking =
-    shouldBlockPageSurface(input.classPartials) ||
-    shouldBlockPageSurface(input.yearGroups);
+    shouldBlockPageSurface(input.classPartials) || shouldBlockPageSurface(input.yearGroups);
 
   if (isBlocking) {
     return {
@@ -135,7 +146,10 @@ function renderYearGroupCollapse(
   const isMobile = window.innerWidth <= CLASSES_MOBILE_BREAKPOINT_PX;
 
   return (
-    <section aria-label="year group panels" style={{ minWidth: isMobile ? `${MIN_PANEL_WIDTH_PX}px` : 'auto' }}>
+    <section
+      aria-label="year group panels"
+      style={{ minWidth: isMobile ? `${MIN_PANEL_WIDTH_PX}px` : 'auto' }}
+    >
       <Collapse defaultActiveKey={defaultExpandedPanelKeys}>
         {panels.map((panel) => {
           const headerId = `panel-header-${panel.yearGroupKey}`;
@@ -157,35 +171,35 @@ function renderYearGroupCollapse(
                     <Row gutter={[APP_GAP_MD, APP_GAP_MD]}>
                       {panel.classes.map((card) => {
                         return (
-                        <Col key={card.classId}>
-                          <Card
-                            role="article"
-                            aria-label={card.className}
-                            size="small"
-                            title={<div style={{ textAlign: 'center' }}>{card.className}</div>}
-                            style={{
-                              width: CLASSES_CARD_WIDTH_PX,
-                              maxWidth: CLASSES_CARD_WIDTH_PX,
-                            }}
-                          >
-                            <div style={{ display: 'flex', justifyContent: 'center' }}>
-                              <Space wrap size={APP_SPACE_SIZE_TIGHT}>
-                                <Button onClick={() => onViewClass(card.classId, card.className)}>
-                                  View
-                                </Button>
-                                <Tooltip title="Assess Task">
-                                  <Button
-                                    aria-label="Assess Task"
-                                    icon={<AuditOutlined />}
-                                    onClick={() => {
-                                      onAssessTask(card.classId, card.className);
-                                    }}
-                                  />
-                                </Tooltip>
-                              </Space>
-                            </div>
-                          </Card>
-                        </Col>
+                          <Col key={card.classId}>
+                            <Card
+                              role="article"
+                              aria-label={card.className}
+                              size="small"
+                              title={<div style={{ textAlign: 'center' }}>{card.className}</div>}
+                              style={{
+                                width: CLASSES_CARD_WIDTH_PX,
+                                maxWidth: CLASSES_CARD_WIDTH_PX,
+                              }}
+                            >
+                              <div style={{ display: 'flex', justifyContent: 'center' }}>
+                                <Space wrap size={APP_SPACE_SIZE_TIGHT}>
+                                  <Button onClick={() => onViewClass(card.classId, card.className)}>
+                                    View
+                                  </Button>
+                                  <Tooltip title="Assess Task">
+                                    <Button
+                                      aria-label="Assess Task"
+                                      icon={<AuditOutlined />}
+                                      onClick={() => {
+                                        onAssessTask(card.classId, card.className);
+                                      }}
+                                    />
+                                  </Tooltip>
+                                </Space>
+                              </div>
+                            </Card>
+                          </Col>
                         );
                       })}
                     </Row>
@@ -342,7 +356,10 @@ export function ClassesPage() {
 
   return selectedClassId === null ? (
     <PageSection heading={pageContent.classes.heading} summary={pageContent.classes.summary}>
-      <section aria-label="Classes page content" aria-busy={isClassesSurfaceBusy ? 'true' : undefined}>
+      <section
+        aria-label="Classes page content"
+        aria-busy={isClassesSurfaceBusy ? 'true' : undefined}
+      >
         {renderClassesContent({
           finalShouldRenderBlockingState,
           shouldRenderLoadingState,
@@ -371,6 +388,8 @@ export function ClassesPage() {
       )}
     </PageSection>
   ) : (
-    <ClassPage classId={selectedClassId} />
+    // The class-scoped key guarantees a remount on class change, resetting the
+    // Class page's mode selection and its retained availability (SPEC decision 6a).
+    <ClassPage key={selectedClassId} classId={selectedClassId} />
   );
 }

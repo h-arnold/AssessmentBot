@@ -128,6 +128,7 @@ function createReadyClassPageData() {
       studentAverages: [],
       classMetrics: analyserResultFixture.perClass,
     } satisfies ClassPageAdapterResult,
+    baselineAvailability: { status: 'ready', reason: null },
     error: null,
     surfaceState: { status: 'ready' },
     refetch: vi.fn(),

@@ -37,7 +37,7 @@
  * @see SPEC_CLASS_PAGE.md — "useClassPageData — data orchestrator hook"
  */
 
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 import { getABClassQueryOptions } from '@/query/sharedQueries';
 import { usePageDataset } from '@/hooks/usePageDataset';
@@ -47,15 +47,16 @@ import { useClassPagePipelineDiagnostics } from './useClassPagePipelineDiagnosti
 import { useClassPageAssignmentPrefetch } from './useClassPageAssignmentPrefetch';
 import { usePagePostAnalysisTasks } from '@/hooks/usePagePostAnalysisTasks';
 import type { ClassFull } from '@/services/googleClassrooms/classDetail/classDetailService.zod';
-import type { AveragingResult } from '@/services/dataAnalysis/dataAnalysis.zod';
+import type { AnalysisMode, AveragingResult } from '@/services/dataAnalysis/dataAnalysis.zod';
 import type { AssignmentDefinitionPartialsResponse } from '@/services/assignmentDefinition/assignmentDefinitionPartials.zod';
 import type { ClassPageAdapterResult } from './classPageAdapter.zod';
-import type { ClassPageError } from './useClassPageData.helpers';
+import type { BaselineAvailability, ClassPageError } from './useClassPageData.helpers';
 import {
   computeQueryBlockingError,
   computeDatasetBlockingError,
   computeServiceError,
   isClassPageLoading,
+  resolveBaselineAvailability,
 } from './useClassPageData.helpers';
 
 // ---------------------------------------------------------------------------
@@ -80,6 +81,9 @@ export type ClassPageData = Readonly<{
 
   /** Derived adapter result — non-null only when `surfaceState.status === 'ready'`. */
   adapterResult: ClassPageAdapterResult | null;
+
+  /** Availability of the attempt-baseline mode control (SPEC decision 6). */
+  baselineAvailability: BaselineAvailability;
 
   /** The structured error (null when no blocking condition applies). */
   error: ClassPageError | null;
@@ -111,6 +115,7 @@ export type ClassPageSurfaceState =
  * @param {ClassFull | null} classFull - The class data (null skips analysis).
  * @param {AssignmentDefinitionPartialsResponse | null} assignmentDefinitionPartials - Reference data.
  * @param {string} classId - The class ID for the filter.
+ * @param {AnalysisMode} analysisMode - The Class page's selected analysis mode.
  * @returns {readonly [AveragingResult | null, Error | null]} The result and optional error.
  *
  * @remarks
@@ -121,7 +126,8 @@ export type ClassPageSurfaceState =
 function runAnalyserStep(
   classFull: ClassFull | null,
   assignmentDefinitionPartials: AssignmentDefinitionPartialsResponse | null,
-  classId: string
+  classId: string,
+  analysisMode: AnalysisMode
 ): readonly [AveragingResult | null, Error | null] {
   if (classFull === null) {
     return [null, null];
@@ -130,9 +136,7 @@ function runAnalyserStep(
   try {
     const response = _analysisService.analyse(
       {
-        // Interim literal: Section 5a replaces this with the Class page's
-        // analysis-mode hook parameter.
-        filter: { classIds: [classId], analysisMode: 'absolute' },
+        filter: { classIds: [classId], analysisMode },
         classes: [classFull],
         assignmentDefinitionPartials: assignmentDefinitionPartials!,
       },
@@ -227,9 +231,11 @@ const _analysisService: DataAnalysisService = createAnalysisService();
  * Data orchestrator hook for the Class page.
  *
  * @param {string} classId - The class ID to fetch data for.
+ * @param {AnalysisMode} analysisMode - The Class page's selected analysis mode;
+ *   toggling it re-runs the synchronous analysis without refetching.
  * @returns {ClassPageData} Typed data result with surface state.
  */
-export function useClassPageData(classId: string): ClassPageData {
+export function useClassPageData(classId: string, analysisMode: AnalysisMode): ClassPageData {
   // -----------------------------------------------------------------------
   // 1. Per-class query — view-entry fetch via getABClass
   // -----------------------------------------------------------------------
@@ -305,7 +311,12 @@ export function useClassPageData(classId: string): ClassPageData {
       return [null, null, null, null];
     }
 
-    const [aResult, aError] = runAnalyserStep(classFull, assignmentDefinitionPartials, classId);
+    const [aResult, aError] = runAnalyserStep(
+      classFull,
+      assignmentDefinitionPartials,
+      classId,
+      analysisMode
+    );
 
     if (aError !== null) {
       return [null, aError, null, null];
@@ -322,9 +333,34 @@ export function useClassPageData(classId: string): ClassPageData {
     }
 
     return [aResult, null, adResult, null];
-  }, [shouldRunPipeline, classFull, assignmentDefinitionPartials, classId]);
+  }, [shouldRunPipeline, classFull, assignmentDefinitionPartials, classId, analysisMode]);
 
   useClassPagePipelineDiagnostics(classId, analyserError, adapterError);
+
+  // -----------------------------------------------------------------------
+  // 5a. Retained last-successful analysis result — React's previous-render
+  // state pattern (SPEC decision 6): updated during render and guarded so the
+  // update converges; a throwing render leaves the retained value intact (a
+  // remount clears it). `react-hooks/refs` and `react-hooks/set-state-in-effect`
+  // are lint errors, forbidding the ref and effect alternatives.
+  // -----------------------------------------------------------------------
+
+  const [retainedAnalyserResult, setRetainedAnalyserResult] = useState<AveragingResult | null>(
+    null
+  );
+  const [seenAnalyserResult, setSeenAnalyserResult] = useState<AveragingResult | null>(null);
+
+  if (analyserResult !== null && analyserResult !== seenAnalyserResult) {
+    setRetainedAnalyserResult(analyserResult);
+    setSeenAnalyserResult(analyserResult);
+  }
+
+  // The current render's result wins; the retained result supplies evidence only when null.
+  const baselineAvailability: BaselineAvailability = resolveBaselineAvailability(
+    analyserResult,
+    retainedAnalyserResult,
+    classFull
+  );
 
   // -----------------------------------------------------------------------
   // 6. Surface state — error precedence, then loading, then ready
@@ -451,6 +487,7 @@ export function useClassPageData(classId: string): ClassPageData {
     assignmentDefinitionPartials,
     analyserResult,
     adapterResult,
+    baselineAvailability,
     error,
     surfaceState,
     refetch,

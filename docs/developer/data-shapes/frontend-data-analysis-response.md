@@ -8,8 +8,10 @@ metadata lifecycle, the shared post-analysis contracts, both consumer surfaces a
 error-aware task-preview view models are implemented and described below. The attempt-baseline
 analysis mode is being delivered incrementally (tracking issue: h-arnold/AssessmentBot#305):
 its schema contracts (filter field, result echo and optional baseline block, task-row flag),
-the analyser's baseline-mode behaviour, the heatmap column projection and the summary
-reconciliation are implemented, while the Class-page mode control remains planned
+the analyser's baseline-mode behaviour, the heatmap column projection, the summary
+reconciliation and the Class-page mode control are implemented; the remaining Class-page
+work — mode threading to the display labels, the embedded heatmap's baseline marking and
+caption, and E2E coverage — remains planned
 (see [Attempt-baseline contract changes](#attempt-baseline-contract-changes)).
 
 Sibling contracts:
@@ -1133,9 +1135,10 @@ attempt-baseline action plan: required filter field, result echo and optional ba
 required task-row flag), as is the analyser's baseline-mode behaviour (Section 2:
 post-accumulation baseline selection, baseline-restricted aggregation, the baseline-mode
 per-student `excluded` conversion and the `attemptBaseline` echo). The heatmap column
-projection (Section 3), the summary reconciliation (Section 4) and the label-content half
-of item 7 are delivered. The Class-page mode control (Section 5), which completes item 7's
-mode threading, remains planned.
+projection (Section 3), the summary reconciliation (Section 4), the label-content half
+of item 7 and the Class-page mode control with its availability resolver (Section 5a)
+are delivered. The remaining planned work is item 7's mode threading to the Class-page
+display labels, the embedded heatmap's baseline marking and caption, and the E2E coverage.
 
 1. **`AnalysisFilterSchema.analysisMode`** — required enum field
    `z.enum(['absolute', 'topDecileBaseline'])` on the existing strict filter
@@ -1285,7 +1288,7 @@ mode threading, remains planned.
    the resolver `resolveExcludedMetricAccessibleLabel(analysisMode?)`;
    `MetricPill` accepts the optional `analysisMode` prop for the excluded
    accessible name only; the students-table label builder calls the resolver
-   with no argument. **Planned (Section 5):** the mode threading — no
+   with no argument. **Planned (Section 5b):** the mode threading — no
    Class-page consumer passes the mode yet, so every rendered label is still
    the weighting-only wording quoted in [Display contract](#display-contract).
 

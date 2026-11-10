@@ -47,6 +47,14 @@ type PostAnalysisCall = readonly [
   string | null,
 ];
 
+/**
+ * Shared-hook invocations on the first ready render: the previous-render
+ * retention pattern (SPEC decision 6) stores the first successful result
+ * during render and React immediately re-renders before committing, so the
+ * hook runs once per render pass with identical arguments.
+ */
+const READY_RENDER_PASS_COUNT = 2;
+
 beforeEach(() => {
   queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   wrapper = createClassPageDataWrapper(queryClient);
@@ -89,10 +97,12 @@ describe('useClassPageData shared post-analysis binding', () => {
     const dataset = createPageDatasetReturn();
     mocks.mockUsePageDataset.mockReturnValue(dataset);
 
-    const { result } = renderHook(() => useClassPageData(DEFAULT_CLASS_ID), { wrapper });
+    const { result } = renderHook(() => useClassPageData(DEFAULT_CLASS_ID, 'absolute'), {
+      wrapper,
+    });
 
     expect(result.current.surfaceState).toEqual({ status: 'ready' });
-    expect(mocks.mockUsePostAnalysisTasks).toHaveBeenCalledTimes(1);
+    expect(mocks.mockUsePostAnalysisTasks).toHaveBeenCalledTimes(READY_RENDER_PASS_COUNT);
     const [context, tasks] = mocks.mockUsePostAnalysisTasks.mock.calls[0] as PostAnalysisCall;
     expect(mocks.mockUsePostAnalysisTasks.mock.calls[0][2]).toBe(DEFAULT_CLASS_ID);
     expect(context).not.toBeNull();
@@ -115,7 +125,9 @@ describe('useClassPageData shared post-analysis binding', () => {
     mockReadyClassQuery(createReadyClass());
     mocks.mockUsePageDataset.mockReturnValue(createPageDatasetReturn());
 
-    const { rerender } = renderHook(() => useClassPageData(DEFAULT_CLASS_ID), { wrapper });
+    const { rerender } = renderHook(() => useClassPageData(DEFAULT_CLASS_ID, 'absolute'), {
+      wrapper,
+    });
     const [firstContext, firstTasks] = mocks.mockUsePostAnalysisTasks.mock
       .lastCall as PostAnalysisCall;
     expect(firstContext).not.toBeNull();
@@ -135,7 +147,9 @@ describe('useClassPageData shared post-analysis binding', () => {
     mocks.mockUseQuery.mockReturnValue(createMockClassQueryResult({ isPending: true }));
     mocks.mockUsePageDataset.mockReturnValue(createPageDatasetReturn());
 
-    const { result } = renderHook(() => useClassPageData(DEFAULT_CLASS_ID), { wrapper });
+    const { result } = renderHook(() => useClassPageData(DEFAULT_CLASS_ID, 'absolute'), {
+      wrapper,
+    });
 
     expect(result.current.surfaceState).toEqual({ status: 'loading' });
     expect(mocks.mockUsePostAnalysisTasks).toHaveBeenCalledTimes(1);
@@ -149,7 +163,9 @@ describe('useClassPageData shared post-analysis binding', () => {
     mockReadyClassQuery(createReadyClass());
     mocks.mockUsePageDataset.mockReturnValue(createPageDatasetReturn());
 
-    const { result } = renderHook(() => useClassPageData(DEFAULT_CLASS_ID), { wrapper });
+    const { result } = renderHook(() => useClassPageData(DEFAULT_CLASS_ID, 'absolute'), {
+      wrapper,
+    });
 
     expect(result.current.surfaceState.status).toBe('blocking');
     expect(result.current.error?.type).toBe('analyserError');
@@ -165,7 +181,9 @@ describe('useClassPageData shared post-analysis binding', () => {
     mockReadyClassQuery(createReadyClass());
     mocks.mockUsePageDataset.mockReturnValue(createPageDatasetReturn());
 
-    const { result } = renderHook(() => useClassPageData(DEFAULT_CLASS_ID), { wrapper });
+    const { result } = renderHook(() => useClassPageData(DEFAULT_CLASS_ID, 'absolute'), {
+      wrapper,
+    });
 
     expect(result.current.surfaceState.status).toBe('blocking');
     expect(result.current.error?.type).toBe('adapterError');
@@ -179,7 +197,9 @@ describe('useClassPageData shared post-analysis binding', () => {
     mockReadyClassQuery(createReadyClass());
     mocks.mockUsePageDataset.mockReturnValue(createPageDatasetReturn());
 
-    const { rerender } = renderHook(() => useClassPageData(DEFAULT_CLASS_ID), { wrapper });
+    const { rerender } = renderHook(() => useClassPageData(DEFAULT_CLASS_ID, 'absolute'), {
+      wrapper,
+    });
 
     const firstTasks = (mocks.mockUsePostAnalysisTasks.mock.calls[0] as PostAnalysisCall)[1];
     expect(firstTasks.map((task) => task.id)).toEqual(['refreshABClassMetadata']);

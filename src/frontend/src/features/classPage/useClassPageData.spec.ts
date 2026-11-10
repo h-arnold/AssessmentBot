@@ -42,7 +42,9 @@ describe('surfaceState derivation', () => {
       )
     );
 
-    const { result } = renderHook(() => useClassPageData(DEFAULT_CLASS_ID), { wrapper });
+    const { result } = renderHook(() => useClassPageData(DEFAULT_CLASS_ID, 'absolute'), {
+      wrapper,
+    });
 
     expect(result.current.surfaceState).toEqual({ status: 'loading' });
     expect(result.current.analyserResult).toBeNull();
@@ -57,7 +59,9 @@ describe('surfaceState derivation', () => {
     mocks.mockUseQuery.mockReturnValue(createMockClassQueryResult({ data: null }));
     mocks.mockUsePageDataset.mockReturnValue(createPageDatasetReturn());
 
-    const { result } = renderHook(() => useClassPageData(DEFAULT_CLASS_ID), { wrapper });
+    const { result } = renderHook(() => useClassPageData(DEFAULT_CLASS_ID, 'absolute'), {
+      wrapper,
+    });
 
     expect(result.current.surfaceState).toEqual({
       status: 'blocking',
@@ -79,7 +83,9 @@ describe('surfaceState derivation', () => {
     );
     mocks.mockUsePageDataset.mockReturnValue(createPageDatasetReturn());
 
-    const { result } = renderHook(() => useClassPageData(DEFAULT_CLASS_ID), { wrapper });
+    const { result } = renderHook(() => useClassPageData(DEFAULT_CLASS_ID, 'absolute'), {
+      wrapper,
+    });
 
     expect(result.current.surfaceState).toEqual({
       status: 'blocking',
@@ -110,7 +116,9 @@ describe('surfaceState derivation', () => {
       )
     );
 
-    const { result } = renderHook(() => useClassPageData(DEFAULT_CLASS_ID), { wrapper });
+    const { result } = renderHook(() => useClassPageData(DEFAULT_CLASS_ID, 'absolute'), {
+      wrapper,
+    });
 
     expect(result.current.surfaceState).toEqual({
       status: 'blocking',
@@ -133,7 +141,9 @@ describe('surfaceState derivation', () => {
       )
     );
 
-    const { result } = renderHook(() => useClassPageData(DEFAULT_CLASS_ID), { wrapper });
+    const { result } = renderHook(() => useClassPageData(DEFAULT_CLASS_ID, 'absolute'), {
+      wrapper,
+    });
 
     expect(result.current.surfaceState).toEqual({
       status: 'blocking',
@@ -157,7 +167,9 @@ describe('surfaceState derivation', () => {
     mocks.mockUseQuery.mockReturnValue(createMockClassQueryResult({ data: createClassFull() }));
     mocks.mockUsePageDataset.mockReturnValue(createPageDatasetReturn());
 
-    const { result } = renderHook(() => useClassPageData(DEFAULT_CLASS_ID), { wrapper });
+    const { result } = renderHook(() => useClassPageData(DEFAULT_CLASS_ID, 'absolute'), {
+      wrapper,
+    });
 
     expect(result.current.surfaceState).toEqual({
       status: 'blocking',
@@ -180,7 +192,9 @@ describe('surfaceState derivation', () => {
     mocks.mockUseQuery.mockReturnValue(createMockClassQueryResult({ data: createClassFull() }));
     mocks.mockUsePageDataset.mockReturnValue(createPageDatasetReturn());
 
-    const { result } = renderHook(() => useClassPageData(DEFAULT_CLASS_ID), { wrapper });
+    const { result } = renderHook(() => useClassPageData(DEFAULT_CLASS_ID, 'absolute'), {
+      wrapper,
+    });
 
     expect(result.current.surfaceState).toEqual({
       status: 'blocking',
@@ -204,7 +218,9 @@ describe('surfaceState derivation', () => {
     mocks.mockUseQuery.mockReturnValue(createMockClassQueryResult({ data: createClassFull() }));
     mocks.mockUsePageDataset.mockReturnValue(createPageDatasetReturn());
 
-    const { result } = renderHook(() => useClassPageData(DEFAULT_CLASS_ID), { wrapper });
+    const { result } = renderHook(() => useClassPageData(DEFAULT_CLASS_ID, 'absolute'), {
+      wrapper,
+    });
 
     expect(result.current.surfaceState).toEqual({ status: 'ready' });
     expect(result.current.error).toBeNull();
@@ -229,7 +245,9 @@ describe('surfaceState derivation', () => {
       )
     );
 
-    const { result } = renderHook(() => useClassPageData(DEFAULT_CLASS_ID), { wrapper });
+    const { result } = renderHook(() => useClassPageData(DEFAULT_CLASS_ID, 'absolute'), {
+      wrapper,
+    });
 
     expect(result.current.surfaceState).toEqual({ status: 'loading' });
     expect(result.current.adapterResult).toBeNull();
@@ -252,7 +270,7 @@ describe('analyser and adapter synchronous invocation', () => {
     mocks.mockUseQuery.mockReturnValue(createMockClassQueryResult({ data: createClassFull() }));
     mocks.mockUsePageDataset.mockReturnValue(createPageDatasetReturn());
 
-    renderHook(() => useClassPageData(DEFAULT_CLASS_ID), { wrapper });
+    renderHook(() => useClassPageData(DEFAULT_CLASS_ID, 'absolute'), { wrapper });
 
     expect(mocks.mockAnalyse).toHaveBeenCalledTimes(1);
   });
@@ -270,7 +288,7 @@ describe('analyser and adapter synchronous invocation', () => {
     mocks.mockUseQuery.mockReturnValue(createMockClassQueryResult({ data: createClassFull() }));
     mocks.mockUsePageDataset.mockReturnValue(createPageDatasetReturn());
 
-    renderHook(() => useClassPageData(DEFAULT_CLASS_ID), { wrapper });
+    renderHook(() => useClassPageData(DEFAULT_CLASS_ID, 'absolute'), { wrapper });
 
     expect(mocks.mockAdaptClassPageToViewModel).toHaveBeenCalledTimes(1);
   });

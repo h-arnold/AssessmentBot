@@ -27,6 +27,7 @@ import { useState, type JSX } from 'react';
 import { Flex } from 'antd';
 import { ClassPageContent } from './ClassPageContent';
 import { ClassPageHeaderActions } from './ClassPageHeaderActions';
+import { ClassPageModeControl } from './ClassPageModeControl';
 import { useClassPageData } from './useClassPageData';
 import { AssessTaskModal } from '@/features/classes/AssessTaskModal/AssessTaskModal';
 import { pageContent } from '@/pages/pageContent';
@@ -34,6 +35,8 @@ import { useClassSelection } from '@/ClassSelectionContext';
 import { APP_GAP_MD } from '@/theme/spacing';
 import { PageTitleCard, PageNavCard } from '@/components/PageHeader/PageHeader';
 import type { ReRunContext } from '../shared/reRunAssessmentContext';
+import type { AnalysisMode } from '@/services/dataAnalysis/dataAnalysis.zod';
+import type { BaselineAvailability } from './useClassPageData.helpers';
 
 type ClassPageProperties = Readonly<{
   /** The class ID to fetch data for. */
@@ -45,6 +48,12 @@ type ClassPageHeaderProperties = Readonly<{
   className: string;
   /** Whether the overview view is active (controls the parent nav card). */
   isOverview: boolean;
+  /** The current analysis mode (the mode control's selected value). */
+  analysisMode: AnalysisMode;
+  /** Change the analysis mode (page-owned state). */
+  onAnalysisModeChange: (mode: AnalysisMode) => void;
+  /** Availability of baseline mode (control disabled state + reason). */
+  baselineAvailability: BaselineAvailability;
   /** Callback invoked when the user clicks "Back to Classes". */
   onNavigateToClasses: () => void;
   /** Callback invoked when the user clicks "Start New Assessment". */
@@ -54,7 +63,10 @@ type ClassPageHeaderProperties = Readonly<{
 /**
  * Render the Class page header.
  *
- * Always shows the class-name {@link PageTitleCard}. The parent {@link PageNavCard}
+ * Always shows the class-name {@link PageTitleCard} and the analysis-mode
+ * control slot ({@link ClassPageModeControl}, third stacked element, rendered
+ * in every non-loading state so the escape route back to `absolute` stays
+ * reachable — SPEC decision 6a). The parent {@link PageNavCard}
  * ("Back to Classes") is shown only in the overview view; when a child view
  * (heatmap) is active, the child page renders its own navigation card so that
  * only the most-junior nav card is visible.
@@ -62,6 +74,9 @@ type ClassPageHeaderProperties = Readonly<{
  * @param {ClassPageHeaderProperties} properties - Component properties.
  * @param {string} properties.className - The class name to display.
  * @param {boolean} properties.isOverview - Whether the overview view is active.
+ * @param {AnalysisMode} properties.analysisMode - The current analysis mode.
+ * @param {(mode: AnalysisMode) => void} properties.onAnalysisModeChange - Mode-change handler.
+ * @param {BaselineAvailability} properties.baselineAvailability - Baseline availability.
  * @param {() => void} properties.onNavigateToClasses - Back-to-classes callback.
  * @param {() => void} properties.onStartNewAssessment - Start-assessment callback.
  * @returns {JSX.Element} The rendered header.
@@ -69,12 +84,20 @@ type ClassPageHeaderProperties = Readonly<{
 function ClassPageHeader({
   className,
   isOverview,
+  analysisMode,
+  onAnalysisModeChange,
+  baselineAvailability,
   onNavigateToClasses,
   onStartNewAssessment,
 }: ClassPageHeaderProperties): JSX.Element {
   return (
     <>
       <PageTitleCard title={className || pageContent.classDetail.heading} titleLevel={2} />
+      <ClassPageModeControl
+        analysisMode={analysisMode}
+        onAnalysisModeChange={onAnalysisModeChange}
+        baselineAvailability={baselineAvailability}
+      />
       {isOverview && (
         <PageNavCard
           onBack={onNavigateToClasses}
@@ -99,8 +122,21 @@ function ClassPageHeader({
  */
 export function ClassPage({ classId }: ClassPageProperties): JSX.Element {
   const { onNavigateToClasses } = useClassSelection();
-  const { surfaceState, classFull, analyserResult, adapterResult, error, refetch, assignmentDefinitionPartials } =
-    useClassPageData(classId);
+
+  // The analysis mode is page state (no persistence; SPEC decision 6a): a
+  // class change remounts this component (see `ClassesPage`) and resets it.
+  const [analysisMode, setAnalysisMode] = useState<AnalysisMode>('absolute');
+
+  const {
+    surfaceState,
+    classFull,
+    analyserResult,
+    adapterResult,
+    error,
+    refetch,
+    assignmentDefinitionPartials,
+    baselineAvailability,
+  } = useClassPageData(classId, analysisMode);
 
   const [isAssessModalOpen, setIsAssessModalOpen] = useState<boolean>(false);
 
@@ -166,6 +202,9 @@ export function ClassPage({ classId }: ClassPageProperties): JSX.Element {
           <ClassPageHeader
             className={className}
             isOverview={isOverview}
+            analysisMode={analysisMode}
+            onAnalysisModeChange={setAnalysisMode}
+            baselineAvailability={baselineAvailability}
             onNavigateToClasses={onNavigateToClasses}
             onStartNewAssessment={handleStartNewAssessment}
           />

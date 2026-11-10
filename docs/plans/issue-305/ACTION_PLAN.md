@@ -1,6 +1,6 @@
 # Feature Delivery Plan (TDD-First) — Attempt-Baseline Analysis Mode (issue #305)
 
-> **Status (in progress):** Implementation underway on branch `feat/issue-305-attempt-baseline-mode`. Current phase: Section 4 (red). Sections 1–3 complete (`b2199cfe`; `f1709904`; `c397b481`, gates clean). Baseline refreshed 2026-11-09 on the merged tree (`origin/main` · `4635f18b`): `backend-lint-check` fails only on four pre-existing `max-lines` warnings in untouched backend test files — accepted as pre-existing technical debt for this frontend-only plan; report: `.ts-regression-checker/reports/session-feat-issue-305-attempt-baseline-mode/baseline/baseline.txt`.
+> **Status (in progress):** Implementation underway on branch `feat/issue-305-attempt-baseline-mode`. Sections 1–4 complete (`b2199cfe`; `f1709904`; `c397b481`; `05132a38`, gates clean); Section 5a delivered and its gate re-run passed (`2026-11-10T06-50-58.219Z`, 0 regressions). Current phase: Section 5b (red). Baseline refreshed 2026-11-09 on the merged tree (`origin/main` · `4635f18b`): `backend-lint-check` fails only on four pre-existing `max-lines` warnings in untouched backend test files — accepted as pre-existing technical debt for this frontend-only plan; report: `.ts-regression-checker/reports/session-feat-issue-305-attempt-baseline-mode/baseline/baseline.txt`.
 
 ## Read-First Context
 
@@ -215,56 +215,38 @@ Section checks passed: scoped 701/701 (82 files over `src/services/dataAnalysis 
 
 ### 5a — Mode control, availability, retention
 
-### Objective
+### Outcome (compacted)
 
-- The hook's mode parameter, retention (previous-render pattern), `baselineAvailability`, the header-slot `Segmented` card, and the state machine wiring.
+Delivered the Class page's attempt-baseline mode control, availability resolution and result retention:
 
-### Constraints
+- `useClassPageData` takes a required `analysisMode` second parameter (fail-fast; replaces Section 1's interim literal) and includes it in the analysis memo dependency list.
+- Retention uses the previous-render state pattern, so the last successful analyser result survives a baseline-mode blocking throw within one mounted class and is cleared on the class-change remount.
+- `baselineAvailability` resolves during render via the pure resolver in `useClassPageData.helpers.ts`; the new `ClassPageModeControl.tsx` (115 lines) renders the header-slot `Segmented` card with the recorded DOM contract; `ClassPage.tsx` owns the mode state.
 
-- **LOC watch (`docs/developer/frontend/frontend-architecture.md`; `src/frontend/AGENTS.md` §2):** projected hook growth: retention state pairs + derived availability + memo dep ≈ +30 lines → `useClassPageData.ts` ≈ 486 (below the 550 trigger); the availability resolver is pre-placed in `useClassPageData.helpers.ts` (register §9.27.5) keeping hook growth to wiring. Measure both files after implementation; if the measured count exceeds 550, decompose **in-change** with the named targets: retention/availability hook beside `useClassPageData.ts` or a region-renderer module beside `ClassPageContent.tsx` ("analysis/orchestration split"; region split).
-- Header slot per layout spec: third stacked element, `Card size="small"`, `Flex` (`wrap`, `align="center"`, gap `APP_GAP_SM`), label+control; props `analysisMode`/`onAnalysisModeChange`/`baselineAvailability`; `ClassesPage` passes `key={selectedClassId}` (wired here, asserted in §5b).
-- Availability per SPEC decision 6; `reason` single source; live Segmented disabled-tooltip check in this section's red phase (pinned wrapper fallback).
-- The interim literal at `useClassPageData.ts:133` is replaced by the hook parameter here.
+Section checks passed: `src/features/classPage` 208/208 (29 files); `src/pages` 99/99; full `test:frontend -- src` 3152/3152 (325 files; +20 vs Section 4 = the red deltas); `typecheck:all` exit 0; `lint:frontend:check` 0 errors / 16 warnings; Prettier clean; red review PASS; green review PASS with zero in-scope findings.
 
-### Shared helper plan
+### Retained for later sections (§5b/§5d consumption)
 
-1. Availability resolver — `extend` into the existing `useClassPageData.helpers.ts` (register §9.27.5's classification: existing helper surface, not a new abstraction) → reconciles on delivery.
-
-### Data-shape planning block
-
-- `ClassPageData.baselineAvailability` is hook-local UI state — no canonical entry (verified); no new schema members.
-
-### Canonical fixture note
-
-- `useClassPageData` hook suites update for the second parameter + availability field; local hand-built fixture states for the full availability table.
-
-### Delegation mandatory reads
-
-- Testing Specialist: `@docs/developer/frontend/frontend-testing.md`, `@docs/plans/issue-305/ATTEMPT_BASELINE_MODE_LAYOUT.md`
-- Implementation: `@docs/plans/issue-305/SPEC.md`, `@docs/plans/issue-305/ATTEMPT_BASELINE_MODE_LAYOUT.md`, `@src/frontend/src/features/classPage/useClassPageData.ts`, `@src/frontend/src/features/classPage/useClassPageData.helpers.ts`, `@src/frontend/src/features/classPage/ClassPage.tsx`, `@src/frontend/src/pages/ClassesPage.tsx`, `@src/frontend/src/pages/pageContent.ts`, `@src/frontend/src/features/taskHeatmap/HeatmapSelectionBar.tsx`
-- Code Reviewer: `@docs/plans/issue-305/SPEC.md`, `@docs/plans/issue-305/ATTEMPT_BASELINE_MODE_LAYOUT.md`
-
-### Acceptance criteria
-
-- Toggle re-runs analysis synchronously without refetch; all availability states per decision 6 (incl. dataset-blocked → 'awaiting-data'; remount clears retention); control DOM contract per the recorded decision (aria-labelledby overriding the rc hard-coded label; option tooltips only when enabled); Segmented live-check outcome recorded; hook ≤ measured threshold or decomposed in-change.
-
-### Required test cases (Red first)
-
-Frontend tests:
-
-1. The `useClassPageData` hook spec family — currently split across `useClassPageData.spec.ts` and the `.blocking`/`.memoisation`/`.postAnalysis`/`.assignmentQueries`/`.diagnostics` siblings (new availability/retention cases land in `useClassPageData.spec.ts` or a new adjacent sibling): mode parameter in memo deps; retention previous-render pattern; full availability table (first-success; retention-survives-throw; pre-success blocking incl. dataset-blocked → 'awaiting-data'; ineligible ×2 reasons; optional-metrics-missing → 'awaiting-data'; remount clears); re-run on toggle; no refetch.
-2. `ClassesPage` composition assertion: `ClassPage` receives the class-scoped `key` (guaranteed remount reset).
-3. `ClassPage`/header component tests: slot in both views + blocking; named props; disabled/tooltip/sr-node DOM contract (always-rendered node, empty when enabled, bound exactly while disabled); aria-labelledby present.
-
-### Section checks
-
-- `npm run test:frontend -- src/features/classPage`
-- `npm run lint:frontend:check`
-- §9.27.5 reconciled; measured LOC recorded; Segmented live-check outcome noted below.
+- **Hook signature:** `useClassPageData(classId, analysisMode)` — the second parameter is required (no default) and `analysisMode` sits in the analysis memo dependency list.
+- **Retention pattern:** previous-render state pairs (`retainedAnalyserResult`/`seenAnalyserResult`) updated during render behind a converging guard; the retained result survives a later baseline-mode blocking throw, is superseded by any newer success, and is cleared on the class-change remount (`ClassesPage.tsx` passes `key={selectedClassId}` — wired here, asserted in §5b).
+- **Availability resolver** (`useClassPageData.helpers.ts`): exported `BaselineAvailability` `{ status: 'ready' | 'awaiting-data' | 'ineligible'; reason: string | null }` and pure `resolveBaselineAvailability(analyserResult, retainedAnalyserResult, classFull)`. Precedence: `analyserResult ?? retainedAnalyserResult` — the current render's successful result always wins; the retained state supplies attempt evidence only when it is `null`. Absence rules: `classFull === null` or evidence without `perStudentTaskMetrics` resolves `'awaiting-data'` — absence never produces `'ineligible'`. Eligibility composes Section 2's `collectRosterAttemptCandidates` + `isAttemptBaselineEligible` over the `classFull.students[].id` roster; `reason` is populated for both disabled statuses and `null` only for `'ready'`.
+- **Reason copy (single-sourced in helpers, verbatim):** `Waiting for class data`; `Baseline mode needs at least 3 students in this class`; `Baseline mode needs at least 2 students who attempted some work`.
+- **Control copy (module-private in `ClassPageModeControl.tsx`, verbatim):** label `Averages basis` (id `class-page-mode-control-label`); options `All tasks`/`Baseline tasks`; baseline tooltip `Uses the tasks the ten-percent most-engaged students (minimum 2) have all attempted.` (enabled branch only); sr node id `class-page-mode-control-description`, always rendered, carrying the reason while disabled and empty while enabled (`aria-describedby` bound exactly while disabled). §5b wires the `pageContent.ts` `classDetail` copy home.
+- **DOM contract + antd decision outcome (antd 6.6.7):** header slot = third stacked element, `Card size="small"`, `Flex` (`wrap`, `align="center"`, gap `APP_GAP_SM`), label+control; props `analysisMode`/`onAnalysisModeChange`/`baselineAvailability`; root `Tooltip` unconditional (`title = reason` while disabled); `aria-labelledby` overrides the underlying hard-coded `aria-label="segmented control"` (caller props spread after antd defaults); no wrapper span; per-option tooltips in the enabled branch only (antd wraps option tooltips unconditionally, so a disabled-state hover would fire competing popups); neither antd nor the underlying control emits `aria-disabled` — the disabled state surfaces as the root disabled class plus disabled radio inputs.
+- **LOC record:** `useClassPageData.ts` 495 (+39), `ClassPageContent.tsx` 449 untouched — both under the 550 trigger, no decomposition; the threshold watch closes unless a later section pushes a watched file over.
+- **postAnalysis render-pass contract:** `postAnalysis.spec.ts` `READY_RENDER_PASS_COUNT = 2` — the retention pattern re-renders once on first success; post-commit execution still deduped. §5b's hook suites must respect this template.
+- **§5b threading entry points:** mode state lives in `ClassPage.tsx` (`useState<AnalysisMode>('absolute')`); §5b threads `mode` through the `renderReadyContent` options object; the control's `key` guarantee comes from the `ClassPage` remount.
 
 ### Implementation notes / deviations / follow-up
 
-- **Measured LOC:** hook `___`, content `___` (fill); decomposition applied/not applied and why. Segmented disabled-tooltip live check: fired/did-not-fire.
+- **Measured LOC:** hook `useClassPageData.ts` 495 (+39 from 456); `ClassPageContent.tsx` 449 untouched. No decomposition applied — the hook stayed under the 550 trigger (the resolver's pre-placement in `useClassPageData.helpers.ts` kept hook growth to wiring/retention).
+- **Docs sync (completed):** §9.27.5 flipped to `Implemented` for Section 5a in `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` (intro recount; entry body carries the resolver type/signature, precedence rule, and the three verbatim reason constants). Data-shape doc: Status/intro narrowed remaining planned work to the §5b–5d remainder (mode threading to display labels, embedded heatmap marking + caption, E2E); item 7's planned bullet retargeted `Planned (Section 5)` → `Planned (Section 5b)`; item 6 untouched (§5b pending). No JSDoc edits needed (all changed exports verified accurate). Untouched reported items: `navigation-consistency-status.md` third-header-element recording stays with Section 6; `SPEC.md:358`'s stale 456 figure is plan snapshot language; `ClassPageModeControl.tsx`'s copy-home pointer comment updates in §5b's pass when `pageContent.classDetail` owns it.
+- **Segmented disabled-tooltip live check: did not fire** — the pinned wrapper fallback was NOT triggered; the root tooltip reads because rc sets no `pointer-events: none` on the disabled control.
+- **Section gate run 1 FAILED then passed on re-run (§2.6 rework path):** run `2026-11-10T04-51-56.736Z` failed `frontend-e2e-check` with 3 regressions: two deterministic `task-heatmap-summary` strict-mode tooltip collisions plus the `classes-crud-bulk-progress` "Set cohort" failure. Diagnosis (trace-verified): §5a's `ClassPageModeControl` card grew the header stack → `focus()` scrolls moved heatmap table headers under the stationary mouse → competing antd tooltips opened and persisted → the tests' bare global `getByRole('tooltip')` collided. The user ruled `classes-crud-bulk-progress` a **known flaky test** (do not chase). The schema-mismatch/Date-object hypothesis was ruled out by evidence: all content assertions passed before the collisions and no validation/Date errors appeared in any console output.
+- **Gate rework:** Playwright fixed `src/frontend/e2e-tests/task-heatmap-summary.spec.ts` only (+20/−8): mouse parked at `(0, 0)` before each scroll-inducing `focus()` in the two failing tests, and all four tooltip locators in those tests named (`{ name: /N means not attempted…/ }`, `{ name: /An assessment error…/ }`); test 3 untouched; semantics unchanged. Validated: fixed tests ×3 repeats green; full describe ×3 green (27 passed); full E2E suite 336 passed / 1 failed (the known-flaky classes-crud test ticked in that run; not chased); typecheck exit 0; lint 0 errors / 16 warnings; Prettier clean. Green re-review of the E2E diff: PASS, zero in-scope findings (`.opencode/scratchpad/review-issue305-section5a-e2e-gate-rework.md`).
+- **Section gate re-run PASSED (supersedes run 1):** `2026-11-10T06-50-58.219Z` — 7/8 checks passing with **0 regressions / 0 new failures**; `frontend-e2e-check: passing` (the known-flaky `classes-crud-bulk-progress` test also happened to pass on this run; its flake is recorded below). The sole failing check, `backend-lint-check`, carries the 4 pre-existing `max-lines` failures in untouched backend test files accepted as technical debt at the baseline (`baseline/checks/backend-lint-check/raw.json` contains the identical 4 findings; never counted as regressions).
+- **Known-flake record (user decision):** `classes-crud-bulk-progress` "Set cohort" (`tests` site: `e2e-tests/helpers/classes-crud-bulk-scaffold.ts:39` `clickModalConfirmAndDismiss`) is a known flaky test per the user; not to be fixed or chased. Recorded in the deferred-findings log; if it fails in a future gate run, surface it as the known flake rather than as a section regression.
+- **Commit record:** see below (added after commit/push).
 
 ### 5b — Card/table aggregates, label threading, header key
 
