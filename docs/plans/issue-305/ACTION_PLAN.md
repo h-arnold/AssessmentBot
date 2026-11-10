@@ -1,6 +1,6 @@
 # Feature Delivery Plan (TDD-First) — Attempt-Baseline Analysis Mode (issue #305)
 
-> **Status (in progress):** Implementation underway on branch `feat/issue-305-attempt-baseline-mode`. Current phase: Section 2 (red). Section 1 complete (`b2199cfe` + `f2c8cef9`, gate run 2 clean). Baseline refreshed 2026-11-09 on the merged tree (`origin/main` · `4635f18b`): 7/8 checks pass; `backend-lint-check` fails only on four pre-existing `max-lines` warnings in untouched backend test files (`tests/backend-api/assignmentDefinitionPartials.unit.test.js`, `tests/dbManager/dbManager.test.js`, `tests/googleClassroom/classroomApiClient.test.js`, `tests/utils/batchUpdateUtility.test.js`) — accepted as pre-existing technical debt for this frontend-only plan; report: `.ts-regression-checker/reports/session-feat-issue-305-attempt-baseline-mode/baseline/baseline.txt`.
+> **Status (in progress):** Implementation underway on branch `feat/issue-305-attempt-baseline-mode`. Current phase: Section 2 (section regression gate). Section 1 complete (`b2199cfe`, gate run 2 clean). Baseline refreshed 2026-11-09 on the merged tree (`origin/main` · `4635f18b`): `backend-lint-check` fails only on four pre-existing `max-lines` warnings in untouched backend test files — accepted as pre-existing technical debt for this frontend-only plan; report: `.ts-regression-checker/reports/session-feat-issue-305-attempt-baseline-mode/baseline/baseline.txt`.
 
 ## Read-First Context
 
@@ -126,64 +126,29 @@ Section checks passed: `npm run typecheck:all` exit 0; `npm run test:frontend --
 
 ## Section 2 — Baseline selection + averaging analyser: pool, intersection, filtering, excluded resolution
 
-### Objective
+### Outcome (compacted)
 
-- Implement `attemptBaselineSelection.ts` (post-accumulation) and the shared attempt predicate; wire pool derivation, intersection baseline, aggregate filtering, the `excluded`/composite/conversion rules, and per-task flags through the averaging analyser — with the empty-baseline throw.
+Delivered `attemptBaselineSelection.ts` and the averaging-analyser baseline wiring: post-accumulation pool derivation (attempt predicate, candidate ranking with `studentId` tie-break, intersection baseline, eligibility), baseline-scoped aggregation over all four metrics, the analyser now deriving the `appliedAnalysisMode` echo, `attemptBaseline` block and per-row flags from the input mode (replacing Section 1's absolute literals), and `PerTaskRow.includedInAttemptBaseline` as membership-only; `collectClassAccumulators` was extracted in `averagingAnalyser.ts` (behaviour-neutral, complexity lint fix).
 
-### Constraints
+Section checks passed: dataAnalysis suite 489/489 (55 files); full frontend 3109/3109 (323 files; +3/+39 exactly the red deltas); `test:synthetic -- syntheticApiRoundTripBridge` 14/14; `typecheck:all` exit 0; `lint:frontend:check` 0 errors / 16 warnings; Prettier clean; red review PASS after 3 findings (1 false-red Critical→Material, 1 fixture/comment mismatch, 1 comment typo — all fixed and VERIFIED FIXED in re-reviews); green review PASS with zero in-scope findings and the full-repo coverage gate passed (`test:frontend:coverage` 323 files/3109, all thresholds above the 85% gate).
 
-- Post-accumulation derivation over `perStudentTaskAccums` (SPEC Placement; `displayCount` is the attempt signal; no second raw-data walk). Predicate input: `ReadonlyArray<PerStudentTaskMetric>` projected via `buildPerStudentTaskMetrics`.
-- Pool: candidates = ≥1-attempt roster students; size `min(|candidates|, max(2, ceil(0.1 × rosterSize)))`; distinct-`taskKey` attempt counts; `studentId` tie-break; eligibility fails below 2 candidates or below 3 roster students.
-- Empty intersection throws with descriptive error naming the class (no fallback; user-settled).
-- Per-student conversion: only `computed`/`notAttempted` → `excluded` preserving resolved `totalDataPoints`, constructing `value: null`/`totalWeight: 0`/`applicableDataPoints: 0`; already-`excluded` untouched; `overall` via `computeOverallComposite` over converted criteria; all-`error` stays `error`; the `studentAccums` fallback keeps today's path only for students with no per-(student, task) accumulators.
-- Mode invariance: `perStudentTaskMetrics` byte-identical across modes; per-class/per-student rollups keep today's all-accumulator scope (pool is the only roster-scoped step).
-- Production pinning was completed in Section 1 (constraint only referenced, not re-done here).
+### Retained for later sections
 
-### Shared helper plan
-
-1. `attemptBaselineSelection.ts` — `new`; `src/frontend/src/services/dataAnalysis/analysers/attemptBaselineSelection.ts`; register §9.27.1 → status flips on delivery.
-2. Shared attempt predicate — `new export` from the same module; register §9.27.2.
-3. Reuse (no extraction): `buildTaskKey`, `resolveAssignmentDefinitionData`/`createTaskWeightingIndex`, `rollupMetric`, `computeOverallComposite`, `buildPerStudentTaskMetrics`.
-
-### Data-shape planning block
-
-- Implement data-shape item 3's domain rules (candidacy, attempt definition, intersection, conversion/composite rules); item 3's status reconciles here.
-
-### Canonical fixture note
-
-- Canonical synthetic-corpus fixtures are loaded at call sites via the established `?raw` pattern (Section 1 helper entry 2). `medium` claims covered here: pool sizing 2, tie-break (pool-boundary tie at roster indices 3 vs 4 — seven attempts each, identical attempt sets — broken by `studentId`; pool membership **and** pool-array order asserted explicitly), E-condition candidacy evidence (rosters 1 and 2 — `ASSESSMENT_FAILED` and `SOURCE_UNREADABLE` — zero attempts despite participating in five assignments), the raw-`N`-alongside-numeric attempt case at roster 0, a non-degenerate 7-of-9-key baseline (outside-baseline pair: `definition-2-slides` in class-0/2, `definition-0-slides` in class-1/3), and eligibility thresholds. Local hand-built fixtures per SPEC's split: all-outside-baseline student; disjoint attempt sets; sparse-evidence newly assessed class; pool > 2 (`ceil`); <2 attempters; <3 roster; all-`N` item; shared-`taskKey` collapse; zero-weight already-`excluded`; zero-evidence variants.
-
-### Delegation mandatory reads
-
-- Testing Specialist: `@docs/plans/issue-305/SPEC.md`, `@docs/developer/data-shapes/frontend-data-analysis-response.md`, `@docs/developer/frontend/frontend-testing.md`
-- Implementation: `@docs/plans/issue-305/SPEC.md`, `@docs/developer/data-shapes/frontend-data-analysis-response.md`, `@docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md`, `@src/frontend/src/services/dataAnalysis/analysers/averagingAnalyser.ts`, `@src/frontend/src/services/dataAnalysis/analysers/averagingAnalyser.accumulation.ts`, `@src/frontend/src/services/dataAnalysis/analysers/rollupMetric.ts`, `@src/frontend/src/services/dataAnalysis/analysers/averagingAnalyser.composite.ts`
-- Code Reviewer: `@docs/plans/issue-305/SPEC.md`, `@docs/developer/data-shapes/frontend-data-analysis-response.md`
-
-### Acceptance criteria
-
-- Baseline mode recomputes per-student/per-class aggregates for all four metrics from baseline-restricted accumulators; non-baseline tasks keep absolute row values with `false` flags on `PerTaskRow` only.
-- Pool/intersection/eligibility/throw behave per decisions 3–5 and 11; **both** ordinary throw scenarios covered (disjoint pool attempt sets; sparse-evidence newly assessed class).
-- Excluded/conversion/composite rules per the acceptance matrix; absolute mode unchanged byte-for-byte; `perStudentTaskMetrics` identical across modes.
-
-### Required test cases (Red first)
-
-Frontend tests:
-
-1. `attemptBaselineSelection.spec.ts` (new): candidate derivation (numeric/N/missing/E semantics), pool sizing incl. cap and `ceil`, min-2, tie-break on distinct taskKeys with `studentId` order, intersection, eligibility predicates, descriptive throw — **under both named scenarios**.
-2. `averagingAnalyser.filters.spec.ts`: filtering restricts aggregation only; `perTask` flags; `perStudentTaskMetrics` mode-invariance (byte-identical arrays both modes).
-3. `averagingAnalyser.rows.excluded.spec.ts` (existing host) + `.rows.spec.ts`/`.metricResolution.spec.ts` as needed: excluded conversion matrix (computed/notAttempted → excluded preserving resolved counts; already-excluded untouched; all-error stays error; no-accumulator student keeps fallback path; `overall` composite summed/`excluded`/`error` cases).
-4. Scoping: per-class independence; rollups retain all-accumulator scope in both modes.
-5. Absolute-mode regression: unchanged outputs (Section 1's equivalence tests extended to end-to-end analyser calls).
-
-### Section checks
-
-- `npm run test:frontend -- src/services/dataAnalysis`
-- `npm run lint:frontend:check`
-- Data-shape item 3 reconciled; §9.27.1/.2 flipped to implemented.
+- **Module and export surface** (`src/frontend/src/services/dataAnalysis/analysers/attemptBaselineSelection.ts`): `isAttemptMetric(metric)` — an attempt is any criterion `computed` (all-`N`, `E` and absent items are not attempts; weighting plays no part); `collectRosterAttemptCandidates(perStudentTaskMetrics, rosterStudentIds)` — roster-scoped, ascending by `studentId`; `isAttemptBaselineEligible(rosterStudentCount, candidateStudentCount)` — roster ≥ 3 and candidates ≥ 2; `deriveAttemptBaseline(input)` → `{ poolStudentIds, baselineTaskKeys }`, which also fails fast on an ineligible class. Module-private constants: `BASELINE_POOL_FRACTION = 0.1`, `BASELINE_POOL_MINIMUM = 2`, `BASELINE_ROSTER_MINIMUM = 3`. §5a's availability resolver composes the same predicate and eligibility helper with the retained result's `perStudentTaskMetrics` and the `classFull` roster.
+- **Two-site empty-intersection throw (no silent fallback anywhere):** derivation-level in `attemptBaselineSelection.ts`, only when the 0.1-fraction bound truncates the pool to the structural minimum while unused candidates remain — `deriveAttemptBaseline: class '<classId>' derived an empty attempt baseline: the <poolSize> pooled students attempted no task key in common`; analyser-level in `averagingAnalyser.ts` `deriveClassBaseline`, every other empty intersection, thrown before any result (protecting the schema's `baselineTaskKeys.min(1)`) — `AveragingAnalyser: class '<classId>' derived an empty attempt baseline: the <poolSize> pooled students attempted no task key in common`. The `'c_001'`/`2` literals in the delivered test pins are test-fixture values; the messages are parameterised by class id and pool size.
+- **§5 throw consumption:** both copies are blocking errors for the §5 surface error handling (they join the Class page's existing blocking treatment; recovery is via the mode control, not Retry).
+- **Mirror constant:** `BASELINE_POOL_MINIMUM = 2` is mirrored in `dataAnalysis.zod.ts` (schema bound) and `attemptBaselineSelection.ts` (derivation minimum) — a deliberate "agree by name" mirror per SPEC decision 13, reviewer-verified as not drift; change both together.
+- **`collectClassAccumulators`:** the per-class rollup's accumulator collection (baseline-restricted in baseline mode, all-accumulator scope otherwise) is factored into `collectClassAccumulators` in `averagingAnalyser.ts`; later analyser edits route through it.
+- **Invariance guarantees (later sections keep byte-identical):** `perStudentTaskMetrics` for the same input in both modes (§3 heatmap substitution and §5a availability depend on identical evidence); absolute-mode output apart from the `'absolute'` echo and always-`true` flags (SPEC decision 12); per-class/per-student rollups keep today's all-accumulator scope in both modes (the pool is the only roster-scoped step); per-task row values stay absolute with membership-only flags (`baselineTaskKeys?.has(taskKey) ?? true` in `averagingAnalyser.rows.ts`); a baseline-mode result always carries `attemptBaseline` — consumers narrow fail-fast and an `attemptBaseline?.baselineTaskKeys ?? []` fallback stays forbidden.
+- **Deviations:** the predicate is named `isAttemptMetric` (the red specs pin only the three other named exports; §9.27.2 describes the role, not a name); the red-phase analyser host is `averagingAnalyser.baselineMode.spec.ts` rather than extending `filters.spec.ts`; the canonical round-trip host is `dataAnalysis.mediumBaselineRoundTrip.spec.ts`, sibling to `dataAnalysis.mediumRoundTrip.spec.ts`.
+- **Lint floor:** `lint:frontend:check` is now 0 errors / 16 warnings (the rows-spec decomposition removed one); this supersedes Section 1's retained 17-warning floor for later sections' lint comparisons.
+- **Docs sync:** data-shape item 3's status flipped to `Implemented (Section 2)` and §9.27 entries 1–2 flipped to `Implemented` for Section 2 in `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` (intro recount; entries 3–5 byte-untouched); data-shape item 2 corrected ("emits the input's mode — `'absolute'` since Section 1, and `'topDecileBaseline'` with the baseline block since Section 2"); the intro/status narrowed remaining planned work to Sections 3–5; `attemptBaselineSelection.ts` added to the File Index; the two-site throw recorded inside item 3's existing bullet. Scope: both docs, no source JSDoc edits needed (verified accurate), no new pages. Reported untreated nitpick drift: `assessment.md` ~:518 stale preview claim (already logged) and `INDEX.md:33` outstanding-planned phrasing (still true until Sections 3–5a land).
 
 ### Implementation notes / deviations / follow-up
 
-- Record the exact throw message copy (consumed by the §5 surface error handling).
+- **Two-site throw message copy (recorded; consumed by the §5 surface error handling):** derivation-level — `deriveAttemptBaseline: class 'c_001' derived an empty attempt baseline: the 2 pooled students attempted no task key in common`; analyser-level (`averagingAnalyser.ts` `deriveClassBaseline`) — `AveragingAnalyser: class 'c_001' derived an empty attempt baseline: the 2 pooled students attempted no task key in common`. Both copies are blocking errors; the `'c_001'`/`2` literals are test-fixture values (the messages are parameterised by class id and pool size).
+- **Section regression gate (2026-11-10T00:11Z): PASSED.** Report: `.ts-regression-checker/reports/session-feat-issue-305-attempt-baseline-mode/runs/2026-11-10T00-11-17.262Z/comparison.json`. Totals: `regressionsCount: 0`, `newFailuresCount: 0`, `fixesCount: 0`; `checksPassing: 7`, `checksFailing: 1` — the only failing check is `backend-lint-check` (4 pre-existing accepted `max-lines` warnings, zero deltas vs the 2026-11-09T20:11Z baseline). Review records: red `.opencode/scratchpad/review-issue305-section2-red-recheck.md` (final PASS), green `.opencode/scratchpad/review-issue305-section2-green.md` (PASS).
+- **Commit record:** pending.
 
 ---
 

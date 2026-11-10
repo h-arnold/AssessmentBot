@@ -154,4 +154,40 @@ describe('AveragingAnalyser absolute-mode analysis', () => {
       'dk_algebra::t_001',
     ]);
   });
+
+  it('analyses without invoking baseline selection when the class is baseline-ineligible', () => {
+    // Three roster students where the two candidates attempt different tasks:
+    // baseline mode would fail eligibility and then empty-intersect, so this
+    // input must never reach the baseline derivation in absolute mode.
+    const disjointAssignment = createAssignmentPartial({
+      assignmentId: 'a_disjoint',
+      definitionKey: 'dk_algebra',
+      tasks: [createTaskPartial('t_001'), createTaskPartial('t_002')],
+      submissions: [
+        createSubmission('s_001', 'Alice', 'a_disjoint', {
+          t_001: createSubmissionItem('t_001', {
+            completeness: { score: ALICE_TASK_ONE_COMPLETENESS },
+          }),
+        }),
+        createSubmission('s_002', 'Bob', 'a_disjoint', {
+          t_002: createSubmissionItem('t_002', {
+            completeness: { score: ALICE_TASK_TWO_COMPLETENESS },
+          }),
+        }),
+      ],
+    });
+    const input = buildInput([
+      {
+        classId: 'c_001',
+        className: 'Test Class',
+        studentIds: ['s_001', 's_002', 's_003'],
+        assignments: [disjointAssignment],
+      },
+    ]);
+
+    const [result] = new AveragingAnalyser().analyse(input);
+
+    expect(result.appliedAnalysisMode).toBe('absolute');
+    expect(result).not.toHaveProperty('attemptBaseline');
+  });
 });

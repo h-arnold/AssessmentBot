@@ -1,4 +1,9 @@
-import type { AveragingAnalyserInput, AveragingResult, PerClassResult } from '../dataAnalysis.zod';
+import type {
+  AveragingAnalyserInput,
+  AveragingResult,
+  PerClassResult,
+  PerStudentTaskMetric,
+} from '../dataAnalysis.zod';
 import { accumulateDataPoints } from './averagingAnalyser.accumulation';
 import { createDataPointAccumulator } from './averagingAnalyser.accumulatorRegistry';
 import { filterAssignments } from './averagingAnalyser.filters';
@@ -9,6 +14,7 @@ import {
 } from './averagingAnalyser.rows';
 import { buildPerStudentTaskMetrics } from './averagingAnalyser.taskProjection';
 import type { DataPointAccumulator } from './averagingAnalyser.types';
+import { deriveAttemptBaseline } from './attemptBaselineSelection';
 
 /**
  * Default criterion weightings: completeness=0.4, accuracy=0.4, spag=0.2.
@@ -25,6 +31,88 @@ export interface CriterionWeightings {
   completeness: number;
   accuracy: number;
   spag: number;
+}
+
+/**
+ * Per-class baseline derivation: the transparency block emitted on the result
+ * plus the baseline task-key set used to scope the aggregation.
+ */
+interface ClassBaseline {
+  attemptBaseline: NonNullable<AveragingResult['attemptBaseline']>;
+  baselineTaskKeys: ReadonlySet<string>;
+}
+
+/**
+ * Derive one class's attempt baseline in `topDecileBaseline` mode; `null` in
+ * `absolute` mode.
+ *
+ * @remarks
+ * The derivation consumes the mode-invariant per-(student, task) metrics
+ * (post-accumulation, no second raw-data walk) and the class's own roster, so
+ * each class derives its pool and baseline independently (decision 10).
+ *
+ * @param {AveragingAnalyserInput['classes'][number]} cls - The class data.
+ * @param {AveragingAnalyserInput['filter']['analysisMode']} analysisMode - The analysis mode.
+ * @param {ReadonlyArray<PerStudentTaskMetric>} perStudentTaskMetrics - The
+ *   mode-invariant per-(student, task) metrics.
+ * @returns {ClassBaseline | null} The baseline, or `null` in absolute mode.
+ * @throws {Error} When the derived baseline task set is empty (decision 11):
+ *   the descriptive failure names the class and no result is produced.
+ */
+function deriveClassBaseline(
+  cls: AveragingAnalyserInput['classes'][number],
+  analysisMode: AveragingAnalyserInput['filter']['analysisMode'],
+  perStudentTaskMetrics: ReadonlyArray<PerStudentTaskMetric>
+): ClassBaseline | null {
+  if (analysisMode !== 'topDecileBaseline') {
+    return null;
+  }
+  const derivation = deriveAttemptBaseline({
+    classId: cls.classId,
+    rosterStudentIds: cls.students.map((student) => student.id),
+    perStudentTaskMetrics,
+  });
+  if (derivation.baselineTaskKeys.length === 0) {
+    throw new Error(
+      `AveragingAnalyser: class '${cls.classId}' derived an empty attempt baseline: the ${derivation.poolStudentIds.length} pooled students attempted no task key in common`
+    );
+  }
+  return {
+    attemptBaseline: {
+      poolStudentIds: derivation.poolStudentIds,
+      baselineTaskKeys: derivation.baselineTaskKeys,
+    },
+    baselineTaskKeys: new Set(derivation.baselineTaskKeys),
+  };
+}
+
+/**
+ * Collect the per-(student, task) accumulators for the per-class rollup,
+ * restricted to the baseline task set in baseline mode.
+ *
+ * @remarks
+ * The per-class rollup keeps today's all-accumulator scope in both modes
+ * apart from the task-key restriction: the pool is the only roster-scoped
+ * step, so a submission student id outside the roster keeps its evidence.
+ *
+ * @param {ReadonlyMap<string, Map<string, DataPointAccumulator>>}
+ *   perStudentTaskAccums - The per-(student, task) accumulators.
+ * @param {ReadonlySet<string> | undefined} baselineTaskKeys - The class's
+ *   baseline task keys; `undefined` in absolute mode.
+ * @returns {DataPointAccumulator[]} The class-scoped accumulators.
+ */
+function collectClassAccumulators(
+  perStudentTaskAccums: ReadonlyMap<string, Map<string, DataPointAccumulator>>,
+  baselineTaskKeys: ReadonlySet<string> | undefined
+): DataPointAccumulator[] {
+  const classAccums: DataPointAccumulator[] = [];
+  for (const taskMap of perStudentTaskAccums.values()) {
+    for (const [taskKey, accumulator] of taskMap) {
+      if (baselineTaskKeys && !baselineTaskKeys.has(taskKey)) continue;
+      classAccums.push(accumulator);
+    }
+  }
+  return classAccums;
 }
 
 /**
@@ -113,24 +201,37 @@ export class AveragingAnalyser {
     const filteredAssignments = filterAssignments(cls, input, topicKeySet, definitionKeySet);
     const accumulators = accumulateDataPoints(filteredAssignments, input, this.criterionWeightings);
 
+    // Heatmap-facing evidence is mode-invariant: project it before any
+    // baseline scoping so both modes emit identical per-(student, task) metrics.
+    const perStudentTaskMetrics = buildPerStudentTaskMetrics(
+      cls.classId,
+      accumulators.perStudentTaskAccums,
+      accumulators.averageContributionByTaskKey
+    );
+
+    const baseline = deriveClassBaseline(cls, input.filter.analysisMode, perStudentTaskMetrics);
+    const baselineTaskKeys = baseline?.baselineTaskKeys;
+
     const perStudent = buildPerStudentRows(
       accumulators.studentAccums,
       accumulators.perStudentTaskAccums,
-      this.criterionWeightings
+      this.criterionWeightings,
+      baselineTaskKeys
     );
     const perTask = buildPerTaskRows(
       accumulators.taskAccums,
       this.criterionWeightings,
-      accumulators.averageContributionByTaskKey
+      accumulators.averageContributionByTaskKey,
+      baselineTaskKeys
     );
 
-    // Build per-class rollup from all per-(student, task) accumulators
-    const allPerStudentTaskAccums: DataPointAccumulator[] = [];
-    for (const taskMap of accumulators.perStudentTaskAccums.values()) {
-      for (const accumulator of taskMap.values()) {
-        allPerStudentTaskAccums.push(accumulator);
-      }
-    }
+    // Build per-class rollup from all per-(student, task) accumulators,
+    // restricted to the baseline task set in baseline mode (the pool is the
+    // only roster-scoped step; the outside-roster submitter keeps its row).
+    const allPerStudentTaskAccums = collectClassAccumulators(
+      accumulators.perStudentTaskAccums,
+      baselineTaskKeys
+    );
 
     const { completeness, accuracy, spag, overall } = rollupAccumulators(
       allPerStudentTaskAccums.length > 0 ? allPerStudentTaskAccums : [createDataPointAccumulator()],
@@ -144,24 +245,19 @@ export class AveragingAnalyser {
       overall,
     };
 
-    const perStudentTaskMetrics = buildPerStudentTaskMetrics(
-      cls.classId,
-      accumulators.perStudentTaskAccums,
-      accumulators.averageContributionByTaskKey
-    );
-
-    return {
+    const result: AveragingResult = {
       classId: cls.classId,
       className: cls.className,
       perStudent,
       perTask,
       perClass,
       appliedCriterionWeightings: { ...this.appliedCriterionWeightings },
-      // Only absolute behaviour exists in Section 1, so the echo records the
-      // mode actually applied; baseline selection derives it from the input
-      // mode when it lands.
-      appliedAnalysisMode: 'absolute',
+      appliedAnalysisMode: input.filter.analysisMode,
       perStudentTaskMetrics,
     };
+    if (baseline) {
+      result.attemptBaseline = baseline.attemptBaseline;
+    }
+    return result;
   }
 }

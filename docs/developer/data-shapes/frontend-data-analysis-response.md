@@ -7,9 +7,10 @@ It has **no backend API, persistence collection, transport envelope or migration
 metadata lifecycle, the shared post-analysis contracts, both consumer surfaces and the
 error-aware task-preview view models are implemented and described below. The attempt-baseline
 analysis mode is being delivered incrementally (tracking issue: h-arnold/AssessmentBot#305):
-its schema contracts (filter field, result echo and optional baseline block, task-row flag) are
-implemented, while the analyser's baseline-mode behaviour and downstream surfaces remain
-planned (see [Attempt-baseline contract changes](#attempt-baseline-contract-changes)).
+its schema contracts (filter field, result echo and optional baseline block, task-row flag) and
+the analyser's baseline-mode behaviour are implemented, while the downstream surfaces (heatmap
+column projection, summary reconciliation and the Class-page mode control) remain planned
+(see [Attempt-baseline contract changes](#attempt-baseline-contract-changes)).
 
 Sibling contracts:
 
@@ -1124,8 +1125,10 @@ h-arnold/AssessmentBot#305). The explicit-`E` analyser input, the preview `sourc
 every other previously planned addition are implemented and documented in the sections above.
 The schema contracts for items 1–4 below are implemented as recorded (Section 1 of the
 attempt-baseline action plan: required filter field, result echo and optional baseline block,
-required task-row flag); item 5 is partially delivered. The analyser's baseline-mode behaviour
-(Section 2), the heatmap column projection (Section 3), the summary reconciliation (Section 4)
+required task-row flag), as is the analyser's baseline-mode behaviour (Section 2:
+post-accumulation baseline selection, baseline-restricted aggregation, the baseline-mode
+per-student `excluded` conversion and the `attemptBaseline` echo); item 5 is partially
+delivered. The heatmap column projection (Section 3), the summary reconciliation (Section 4)
 and the Class-page mode control (Section 5) remain planned.
 
 1. **`AnalysisFilterSchema.analysisMode`** — required enum field
@@ -1137,8 +1140,9 @@ and the Class-page mode control (Section 5) remain planned.
 
 2. **`AveragingResultSchema.appliedAnalysisMode`** — required echo enum
    (same two values) recording the mode actually applied to the per-class
-   result. **Implemented (Section 1):** the schema requires the echo and the
-   analyser emits `'absolute'` while only absolute behaviour exists.
+   result. **Implemented (Section 1):** the schema requires the echo; the
+   analyser emits the input's mode — `'absolute'` since Section 1, and
+   `'topDecileBaseline'` with the baseline block since Section 2.
 
 3. **`AveragingResultSchema.attemptBaseline`** — optional strict object present
    only when `appliedAnalysisMode` is `'topDecileBaseline'`:
@@ -1166,7 +1170,11 @@ and the Class-page mode control (Section 5) remain planned.
      Criterion weighting plays no part.
    - Baseline task keys = intersection of the attempt sets across the whole
      pool. An empty intersection throws (descriptive error naming the class)
-     before any result is produced, so the schema `min(1)` is protected.
+     before any result is produced, so the schema `min(1)` is protected. The
+     failure has two deliberate sites, both naming the class: the derivation
+     throws when the ten-percent bound truncated the pool to the structural
+     minimum of 2 while unused candidates remained, and the averaging analyser
+     throws for every other empty intersection.
    - The derivation is a **post-accumulation** pass over the analyser's accumulators
      (whose per-criterion `displayCount` already encodes the attempt signal); it is not a
      separate raw-data pre-pass.
@@ -1195,9 +1203,9 @@ and the Class-page mode control (Section 5) remain planned.
      accumulators at all follows today's absolute-mode path (`error` metrics)
      and is never converted.
 
-   **Implemented (schema, Section 1):** the optional block validates exactly as
-   recorded; the analyser does not yet emit it — baseline selection is
-   Section 2.
+   **Implemented (Section 2):** the optional block validates exactly as recorded
+   and the analyser emits it in every baseline-mode result (absolute mode omits
+   it); baseline selection is the post-accumulation derivation recorded above.
 
 4. **`PerTaskRowSchema.includedInAttemptBaseline`** — required boolean always
    present on task rows. `true` for every row in `absolute` mode; in baseline
@@ -1324,6 +1332,7 @@ Frontend service: `src/frontend/src/services/dataAnalysis/dataAnalysisService.ts
 Effective-weight helper: `src/frontend/src/services/assignmentDefinition/assignmentDefinitionUtilities.ts`
 Task-key helper: `src/frontend/src/services/dataAnalysis/taskKey.ts`
 Analyser: `src/frontend/src/services/dataAnalysis/analysers/`
+├── `attemptBaselineSelection.ts`
 ├── `averagingAnalyser.ts`
 ├── `averagingAnalyser.accumulation.ts`
 ├── `averagingAnalyser.accumulatorRegistry.ts`
