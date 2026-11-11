@@ -36,19 +36,12 @@ import {
   TASK_1_TITLE,
   TASK_2_TITLE,
 } from '@/test/taskHeatmapTableTestHelpers';
-import { EXCLUDED_COLUMN_GROUP_CLASS } from './taskHeatmapColumnMarking';
-
-// ---------------------------------------------------------------------------
-// Copy under test
-// ---------------------------------------------------------------------------
-
-// The layout spec pins this wording verbatim; the production copy constants
-// live beside `taskHeatmapColumnMarking.tsx`.
-const BASELINE_OFF_EXPLANATION =
-  'Task outside the baseline set — shown, but not included in baseline averages.';
-const BASELINE_CAPTION =
-  '† Tasks marked with this symbol are outside the baseline task set. Their values are unchanged; averages exclude them.';
-const BASELINE_MARKER = '†';
+import {
+  BASELINE_CAPTION,
+  BASELINE_MARKER,
+  BASELINE_OFF_EXPLANATION,
+  EXCLUDED_COLUMN_GROUP_CLASS,
+} from './taskHeatmapColumnMarking';
 
 // ---------------------------------------------------------------------------
 // Setup

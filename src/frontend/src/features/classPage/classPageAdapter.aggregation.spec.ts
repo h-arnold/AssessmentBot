@@ -4,9 +4,8 @@
  * resolution for the Class page adapter (`classPageAdapter.ts`).
  *
  * @remarks
- * Split from the original single-file `classPageAdapter.spec.ts` to keep each
- * spec module under the 500-line `max-lines` lint threshold. Shared fixture
- * builders live in `src/test/classPage/classPageAdapterTestFixtures.ts`.
+ * Shared fixture builders live in
+ * `src/test/classPage/classPageAdapterTestFixtures.ts`.
  *
  * @see docs/developer/frontend/frontend-testing.md
  */

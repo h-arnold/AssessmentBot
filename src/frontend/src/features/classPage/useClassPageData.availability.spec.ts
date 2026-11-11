@@ -11,12 +11,8 @@
  * and sr-only description node.
  *
  * The hook is called with its two-argument form
- * `useClassPageData(classId, analysisMode)`. Until the mode parameter lands,
- * these specs fail at runtime (the interim `'absolute'` literal is used
- * regardless of the requested mode) and the two-argument calls are TypeScript
- * errors confined to this spec file — the intended red channels for this
- * suite. Fixtures are local hand-built states; no canonical corpus loading is
- * needed at hook level.
+ * `useClassPageData(classId, analysisMode)`. Fixtures are local hand-built
+ * states; no canonical corpus loading is needed at hook level.
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';

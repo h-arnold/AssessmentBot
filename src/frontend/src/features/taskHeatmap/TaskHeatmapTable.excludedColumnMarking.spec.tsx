@@ -19,24 +19,15 @@ import userEvent from '@testing-library/user-event';
 import { TaskHeatmapTable } from './TaskHeatmapTable';
 import { buildHeatmapResult } from '@/test/taskHeatmapTableTestHelpers';
 import {
+  BASELINE_CAPTION,
+  BASELINE_MARKER,
+  BASELINE_OFF_EXPLANATION,
   EXCLUDED_COLUMN_FIRST_CLASS,
   EXCLUDED_COLUMN_GROUP_CLASS,
   EXCLUDED_COLUMN_LAST_CLASS,
   ZERO_WEIGHT_EXPLANATION,
   getExcludedMetricEdgeClass,
 } from './taskHeatmapColumnMarking';
-
-// ---------------------------------------------------------------------------
-// Copy under test
-// ---------------------------------------------------------------------------
-
-// The layout spec pins this wording verbatim; the production copy constants
-// live beside `taskHeatmapColumnMarking.tsx`.
-const BASELINE_OFF_EXPLANATION =
-  'Task outside the baseline set — shown, but not included in baseline averages.';
-const BASELINE_CAPTION =
-  '† Tasks marked with this symbol are outside the baseline task set. Their values are unchanged; averages exclude them.';
-const BASELINE_MARKER = '†';
 
 // ---------------------------------------------------------------------------
 // Setup

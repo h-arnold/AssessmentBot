@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { AveragingAnalyser } from './averagingAnalyser';
-import { buildPerStudentRows, buildPerTaskRows } from './averagingAnalyser.rows';
+import { buildPerTaskRows } from './averagingAnalyser.rows';
 import { createDataPointAccumulator } from './averagingAnalyser.accumulatorRegistry';
 import type { AveragingAnalyserInput } from '../dataAnalysis.zod';
 import {
@@ -12,28 +12,6 @@ import {
   createTaskPartial,
 } from '@/test/dataAnalysis/fixtures';
 import { expectMetricResultStateAware } from '@/test/dataAnalysis/averagingAnalyserAssertions';
-
-describe('per-student row naming boundaries', () => {
-  it('throws for a null studentName in a single row and names the student ID', () => {
-    const studentAccums = new Map([
-      [
-        's_single',
-        {
-          studentName: null,
-          ...createDataPointAccumulator(),
-        },
-      ],
-    ]);
-
-    expect(() => {
-      return buildPerStudentRows(studentAccums, new Map(), {
-        completeness: 0.4,
-        accuracy: 0.4,
-        spag: 0.2,
-      });
-    }).toThrow(/s_single/);
-  });
-});
 
 describe('per-task display fallback boundaries', () => {
   it('retains the display overall when the composite resolves excluded', () => {

@@ -130,9 +130,8 @@ const SINGLE_ATTEMPTER_SKIPS: HeatmapSkippedTasksByStudentId = {
   [STUDENT_TEN_ID]: [...ALL_TASK_IDS],
 };
 
-/** Absolute-mode card pill values for the partial-attempt scenario (verified against the landed analyser). */
+// Partial-attempt card pill = mean of per-task completeness means (N excluded): Task 1 = 36/8, Task 2 = 25/7, Task 3 = 0/1 (Student Ten alone), so absolute = (36/8 + 25/7 + 0)/3 = 2.69 and baseline, dropping out-of-set Task 3, = (36/8 + 25/7)/2 = 4.04.
 const ABSOLUTE_COMPLETENESS_PILL = '2.69';
-/** Baseline-mode card pill for the same scenario: Task 3 observations drop out. */
 const BASELINE_COMPLETENESS_PILL = '4.04';
 
 /**

@@ -111,7 +111,7 @@ describe('AveragingAnalyser', () => {
       ]);
 
       const analyser = new AveragingAnalyser();
-      expect(() => analyser.analyse(input)).toThrow();
+      expect(() => analyser.analyse(input)).toThrow(/s_002/);
     });
   });
 });

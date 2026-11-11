@@ -15,6 +15,7 @@ import {
   createExcludedMetricResult,
 } from '@/test/dataAnalysis/fixtures';
 import {
+  BASELINE_EXCLUDED_METRIC_ACCESSIBLE_LABEL,
   EXCLUDED_METRIC_ACCESSIBLE_LABEL,
   resolveExcludedMetricAccessibleLabel,
   resolveMetricTone,
@@ -24,14 +25,6 @@ import { appStylesRaw } from '@/test/appStylesRaw';
 
 /** Value at the default range ceiling (upper bound of { lower: 0, upper: 5 }). */
 const DEFAULT_RANGE_CEILING = 5;
-
-/**
- * Baseline-mode accessible wording for the `excluded` state: one truthful
- * sentence naming both possible causes — zero weighting and outside the
- * baseline task set.
- */
-const BASELINE_EXCLUDED_METRIC_ACCESSIBLE_LABEL =
-  'Excluded from average: displayed work had zero weighting, or fell outside the baseline task set.';
 
 describe('resolveMetricTone', () => {
   // -------------------------------------------------------------------------
@@ -337,7 +330,7 @@ describe('resolveMetricTone', () => {
 describe('resolveExcludedMetricAccessibleLabel', () => {
   it('resolves the baseline wording naming both exclusion causes in baseline mode', () => {
     expect(resolveExcludedMetricAccessibleLabel).toBeTypeOf('function');
-    expect(resolveExcludedMetricAccessibleLabel?.('topDecileBaseline')).toBe(
+    expect(resolveExcludedMetricAccessibleLabel('topDecileBaseline')).toBe(
       BASELINE_EXCLUDED_METRIC_ACCESSIBLE_LABEL
     );
   });
@@ -346,12 +339,10 @@ describe('resolveExcludedMetricAccessibleLabel', () => {
     // Task-display metrics (computed / notAttempted / error) structurally
     // cannot be `excluded`, so their surfaces never supply a mode: the
     // weighting-only wording must remain the no-mode resolution.
-    expect(resolveExcludedMetricAccessibleLabel?.()).toBe(EXCLUDED_METRIC_ACCESSIBLE_LABEL);
+    expect(resolveExcludedMetricAccessibleLabel()).toBe(EXCLUDED_METRIC_ACCESSIBLE_LABEL);
   });
 
   it('keeps the weighting-only wording in absolute mode', () => {
-    expect(resolveExcludedMetricAccessibleLabel?.('absolute')).toBe(
-      EXCLUDED_METRIC_ACCESSIBLE_LABEL
-    );
+    expect(resolveExcludedMetricAccessibleLabel('absolute')).toBe(EXCLUDED_METRIC_ACCESSIBLE_LABEL);
   });
 });
