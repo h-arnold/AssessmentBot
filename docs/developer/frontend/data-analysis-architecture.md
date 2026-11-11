@@ -159,12 +159,11 @@ pipeline placement is fixed:
    never re-derives a baseline.
 
 An empty intersection across the pool throws before any result is produced.
-There are two deliberate throw sites: the derivation throws when the
-ten-percent bound truncates the pool to the structural minimum of 2 while
-unused candidates remain, and the averaging analyser throws for every other
-empty intersection. Both name the class. The same attempt predicate drives the
-Class-page availability resolver (`useClassPageData.helpers.ts`), so
-availability cannot change when the mode toggles.
+The derivation is the single throw site: it fails fast for any empty
+intersection, naming the class, and the averaging analyser propagates that
+failure. The same attempt predicate drives the Class-page availability
+resolver (`useClassPageData.helpers.ts`), so availability cannot change when
+the mode toggles.
 
 ## Presentation flow
 

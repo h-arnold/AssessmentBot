@@ -1188,10 +1188,9 @@ Every planned contract change in this section is implemented.
    - Baseline task keys = intersection of the attempt sets across the whole
      pool. An empty intersection throws (descriptive error naming the class)
      before any result is produced, so the schema `min(1)` is protected. The
-     failure has two deliberate sites, both naming the class: the derivation
-     throws when the ten-percent bound truncated the pool to the structural
-     minimum of 2 while unused candidates remained, and the averaging analyser
-     throws for every other empty intersection.
+     failure has a single site: the derivation fails fast for any empty pool
+     intersection, naming the class, and the averaging analyser propagates that
+     failure.
    - The derivation is a **post-accumulation** pass over the analyser's accumulators
      (whose per-criterion `displayCount` already encodes the attempt signal); it is not a
      separate raw-data pre-pass.

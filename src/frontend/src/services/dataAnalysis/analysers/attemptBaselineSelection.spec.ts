@@ -259,9 +259,12 @@ describe('isAttemptBaselineEligible', () => {
 describe('deriveAttemptBaseline — pool sizing', () => {
   it('applies the minimum pool size of two below the ten-percent threshold', () => {
     // Roster 3: ceil(0.1 × 3) = 1, raised to the structural minimum of 2.
+    // Both candidates attempted TASK_KEY_ONE; the count tie breaks by ascending
+    // student id, so the pool stays ['s_001', 's_002'] and the intersection is
+    // TASK_KEY_ONE.
     const metrics = [
       createCellMetric('s_001', TASK_KEY_ONE, { completeness: COMPUTED_DISPLAY }),
-      createCellMetric('s_002', TASK_KEY_TWO, { completeness: COMPUTED_DISPLAY }),
+      createCellMetric('s_002', TASK_KEY_ONE, { completeness: COMPUTED_DISPLAY }),
     ];
 
     const derivation = deriveAttemptBaseline({
@@ -272,17 +275,23 @@ describe('deriveAttemptBaseline — pool sizing', () => {
 
     expect(derivation.poolStudentIds).toHaveLength(POOL_MINIMUM);
     expect(derivation.poolStudentIds).toEqual(['s_001', 's_002']);
+    expect(derivation.baselineTaskKeys).toEqual([TASK_KEY_ONE]);
   });
 
   it('rounds the ten-percent bound up with ceil', () => {
     // Roster 21: ceil(2.1) = 3 — the bound rounds up before the minimum
     // applies, and four candidates prove the bound (not the cap) limits it.
+    // All four candidates attempted TASK_KEY_ONE; s_001 additionally attempted
+    // TASK_KEY_TWO, so it ranks first and the three-member pool intersects on
+    // TASK_KEY_ONE.
     const roster = buildRosterIds(ROSTER_CEIL_CASE);
-    const metrics = roster.slice(0, POOL_CEILED_SIZE + 1).map((studentId, index) => {
-      return createCellMetric(studentId, index === 0 ? TASK_KEY_ONE : TASK_KEY_TWO, {
-        completeness: COMPUTED_DISPLAY,
-      });
-    });
+    const candidates = roster.slice(0, POOL_CEILED_SIZE + 1);
+    const metrics = [
+      ...candidates.map((studentId) =>
+        createCellMetric(studentId, TASK_KEY_ONE, { completeness: COMPUTED_DISPLAY })
+      ),
+      createCellMetric(candidates[0], TASK_KEY_TWO, { completeness: COMPUTED_DISPLAY }),
+    ];
 
     const derivation = deriveAttemptBaseline({
       classId: CLASS_ID,
@@ -291,6 +300,7 @@ describe('deriveAttemptBaseline — pool sizing', () => {
     });
 
     expect(derivation.poolStudentIds).toHaveLength(POOL_CEILED_SIZE);
+    expect(derivation.baselineTaskKeys).toEqual([TASK_KEY_ONE]);
   });
 
   it('keeps the exact-tenth bound unrounded', () => {
@@ -312,11 +322,12 @@ describe('deriveAttemptBaseline — pool sizing', () => {
   });
 
   it('caps the pool at the candidate count', () => {
-    // Roster 25: ceil(2.5) = 3, but only two candidates exist.
+    // Roster 25: ceil(2.5) = 3, but only two candidates exist. Both attempted
+    // TASK_KEY_ONE, so the capped two-member pool intersects on TASK_KEY_ONE.
     const roster = buildRosterIds(ROSTER_CAP_CASE);
     const metrics = [
       createCellMetric('s_001', TASK_KEY_ONE, { completeness: COMPUTED_DISPLAY }),
-      createCellMetric('s_002', TASK_KEY_TWO, { completeness: COMPUTED_DISPLAY }),
+      createCellMetric('s_002', TASK_KEY_ONE, { completeness: COMPUTED_DISPLAY }),
     ];
 
     const derivation = deriveAttemptBaseline({
@@ -326,6 +337,7 @@ describe('deriveAttemptBaseline — pool sizing', () => {
     });
 
     expect(derivation.poolStudentIds).toEqual(['s_001', 's_002']);
+    expect(derivation.baselineTaskKeys).toEqual([TASK_KEY_ONE]);
   });
 });
 
@@ -413,9 +425,9 @@ describe('deriveAttemptBaseline — failures', () => {
   });
 
   it('throws when the pool attempt sets are disjoint', () => {
-    // Ordinary trigger (a): both pool candidates attempted work, but never the
-    // same task. s_003 also attempted TASK_KEY_ONE, but the intersection runs
-    // over pool members only.
+    // Both pool candidates attempted work, but never the same task: any empty
+    // pool intersection throws, naming the class. s_003 also attempted
+    // TASK_KEY_ONE, but the intersection runs over pool members only.
     const metrics = [
       createCellMetric('s_001', TASK_KEY_ONE, { completeness: COMPUTED_DISPLAY }),
       createCellMetric('s_002', TASK_KEY_TWO, { completeness: COMPUTED_DISPLAY }),
@@ -432,8 +444,9 @@ describe('deriveAttemptBaseline — failures', () => {
   });
 
   it('throws when a newly assessed class has sparse shared evidence', () => {
-    // Ordinary trigger (b): ten candidates exist, but each attempted a single
-    // different task, so the top two by student id share no usable evidence.
+    // Ten candidates exist, but each attempted a single different task, so the
+    // top two by student id share no usable evidence: any empty pool
+    // intersection throws, naming the class.
     const roster = buildRosterIds(SPARSE_CANDIDATE_COUNT);
     const metrics = roster.map((studentId, index) => {
       return createCellMetric(studentId, `dk_sparse::task-${index}`, {

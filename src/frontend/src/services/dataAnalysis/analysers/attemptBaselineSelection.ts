@@ -181,26 +181,6 @@ function intersectAttemptSets(
 }
 
 /**
- * Whether an empty pool intersection fails at the derivation level.
- *
- * @remarks
- * When the ten-percent bound truncates the pool to the structural minimum
- * while unused candidates remain, an empty intersection means the top-engaged
- * students share no usable evidence and the derivation fails fast. Otherwise
- * (the pool exhausts the candidates, or sits above the structural minimum)
- * the empty intersection is returned and the averaging analyser surfaces the
- * decision-11 descriptive failure naming the class, which protects the
- * baseline schema's non-empty task-key bound before any result is produced.
- *
- * @param {number} poolSize - The derived pool's size.
- * @param {number} candidateCount - The class's candidate count.
- * @returns {boolean} True when the derivation itself must fail.
- */
-function isEmptyIntersectionFailure(poolSize: number, candidateCount: number): boolean {
-  return poolSize === BASELINE_POOL_MINIMUM && candidateCount > BASELINE_POOL_MINIMUM;
-}
-
-/**
  * Derive one class's attempt-baseline pool and baseline task set
  * (decisions 3–5): the pool is the top
  * `min(|candidates|, max(2, ceil(0.1 × roster size)))` candidates ranked by
@@ -211,11 +191,9 @@ function isEmptyIntersectionFailure(poolSize: number, candidateCount: number): b
  *   per-(student, task) metrics.
  * @returns {AttemptBaselineDerivation} The pool and the baseline task set.
  * @throws {Error} When the class is ineligible (fewer than 2 candidates or
- *   fewer than 3 roster students), or when a pool truncated to the structural
- *   minimum by the ten-percent bound shares no task key despite unused
- *   candidates remaining. Any other empty intersection is returned to the
- *   averaging analyser, which raises the decision-11 descriptive failure
- *   naming the class before any result is produced.
+ *   fewer than 3 roster students), or when the pool's attempt sets share no
+ *   task key in common (data-shape item 3; the descriptive failure names the
+ *   class and no result is produced).
  */
 export function deriveAttemptBaseline(
   input: AttemptBaselineDerivationInput
@@ -241,10 +219,7 @@ export function deriveAttemptBaseline(
   const poolStudentIds = rankCandidates(candidates, attemptedTaskKeysByStudent).slice(0, poolSize);
 
   const baselineTaskKeys = intersectAttemptSets(poolStudentIds, attemptedTaskKeysByStudent);
-  if (
-    baselineTaskKeys.length === 0 &&
-    isEmptyIntersectionFailure(poolStudentIds.length, candidates.length)
-  ) {
+  if (baselineTaskKeys.length === 0) {
     throw new Error(
       `deriveAttemptBaseline: class '${input.classId}' derived an empty attempt baseline: the ${poolStudentIds.length} pooled students attempted no task key in common`
     );
