@@ -361,10 +361,11 @@ export function useClassPageData(classId: string, analysisMode: AnalysisMode): C
   }
 
   // The current render's result wins; the retained result supplies evidence only when null.
-  const baselineAvailability: BaselineAvailability = resolveBaselineAvailability(
-    analyserResult,
-    retainedAnalyserResult,
-    classFull
+  // Memoised on the three inputs (referentially stable between pipeline runs), so the
+  // resolution runs once per pipeline result rather than on every render.
+  const baselineAvailability: BaselineAvailability = useMemo<BaselineAvailability>(
+    () => resolveBaselineAvailability(analyserResult, retainedAnalyserResult, classFull),
+    [analyserResult, retainedAnalyserResult, classFull]
   );
 
   // -----------------------------------------------------------------------

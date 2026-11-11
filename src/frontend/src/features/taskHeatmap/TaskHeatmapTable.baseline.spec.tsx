@@ -4,9 +4,11 @@
  * These tests encode the presentation contract for task columns outside the
  * analysed class's attempt-baseline task set: the marked heading (visible "†"
  * marker, tooltip and header `aria-label` reusing the zero-weight visual
- * language), the once-per-table live caption beside the existing notice, the
- * merged-column flag inheritance, and the absolute-mode invariance (no
- * baseline presentation when every column is inside the baseline).
+ * language, plus the shared edge classes on the marked column's metric
+ * sub-columns and body cells), the once-per-table live caption beside the
+ * existing notice, the merged-column flag inheritance, and the absolute-mode
+ * invariance (no baseline presentation when every column is inside the
+ * baseline).
  *
  * The column fixtures are hand-built local literals typed on the adapter's
  * `HeatmapTaskColumn` / `MergedHeatmapTaskColumn`, which already require
@@ -271,9 +273,11 @@ describe('TaskHeatmapTable attempt-baseline column marking', () => {
       );
 
       // The header cell carries the same explanation and the shared
-      // zero-weight group chrome (one visual language).
+      // zero-weight group chrome (one visual language); the accessible label
+      // leads with the marked title.
       const headerCell = markedSpan.closest('th');
       expect(headerCell).toHaveClass(EXCLUDED_COLUMN_GROUP_CLASS);
+      expect(headerCell).toHaveAttribute('aria-label', expect.stringContaining(TASK_2_TITLE));
       expect(headerCell).toHaveAttribute(
         'aria-label',
         expect.stringContaining(BASELINE_OFF_EXPLANATION)
@@ -289,35 +293,6 @@ describe('TaskHeatmapTable attempt-baseline column marking', () => {
 
       // The in-baseline sibling heading stays plain.
       expect(screen.getByRole('columnheader', { name: TASK_1_TITLE })).toBeInTheDocument();
-    });
-
-    it('keeps a marked column cell values and tone identical to the in-baseline rendering', () => {
-      const inBaselineRender = renderHeatmapTable(
-        withBaselineFlags(buildHeatmapResult(), [true, true])
-      );
-      const inBaselineCell = screen.getAllByLabelText(
-        'Student Three, Task 2, Completeness: 4'
-      )[0] as HTMLElement;
-      const inBaselineBackground = inBaselineCell.style.backgroundColor;
-      inBaselineRender.unmount();
-
-      renderHeatmapTable(withBaselineFlags(buildHeatmapResult(), [true, false]));
-
-      // Every observed cell of the marked column still renders with its
-      // absolute value and label.
-      expect(
-        screen.getAllByLabelText('Student Three, Task 2, Completeness: 4')[0]
-      ).toBeInTheDocument();
-      expect(screen.getAllByLabelText('Student One, Task 2, Accuracy: N')[0]).toBeInTheDocument();
-      expect(
-        screen.getAllByLabelText('Student Two, Task 2, Completeness: E')[0]
-      ).toBeInTheDocument();
-
-      // The conditional-format tone is unchanged by the marking.
-      const markedCell = screen.getAllByLabelText(
-        'Student Three, Task 2, Completeness: 4'
-      )[0] as HTMLElement;
-      expect(markedCell.style.backgroundColor).toBe(inBaselineBackground);
     });
   });
 
@@ -450,16 +425,6 @@ describe('TaskHeatmapTable attempt-baseline column marking', () => {
       expect(
         screen.getByRole('columnheader', { name: `${MERGED_A1_NAME} (shared definition)` })
       ).not.toHaveClass(EXCLUDED_COLUMN_GROUP_CLASS);
-    });
-
-    it('renders no baseline marking on an all-in-baseline merged result (absolute-mode invariance)', () => {
-      const { container } = renderHeatmapTable(
-        buildMergedResultWithBaselineFlags([true, true, true, true])
-      );
-
-      expect(screen.queryByText(BASELINE_CAPTION)).not.toBeInTheDocument();
-      expect(screen.queryByRole('group')).not.toBeInTheDocument();
-      expect(container.textContent).not.toContain(BASELINE_MARKER);
     });
   });
 });

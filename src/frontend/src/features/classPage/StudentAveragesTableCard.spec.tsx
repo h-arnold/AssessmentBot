@@ -13,6 +13,9 @@ import { StudentAveragesTableCard } from './StudentAveragesTableCard';
 import type { ClassPageAdapterResult, StudentAverageRowModel } from './classPageAdapter.zod';
 import type { ClassPageViewModel } from './classPageModel';
 import type { FilterDropdownProps } from 'antd/es/table/interface';
+import type { AnalysisMode } from '@/services/dataAnalysis/dataAnalysis.zod';
+import type * as studentAveragesTableColumnsModule from './studentAveragesTableColumns';
+import { BASELINE_EXCLUDED_METRIC_ACCESSIBLE_LABEL } from '@/services/dataAnalysis/metricDisplay/metricTone';
 import {
   createComputedMetricResult,
   createNotAttemptedMetricResult,
@@ -219,16 +222,20 @@ afterEach(() => {
  *
  * @param {object} [options] - Render options.
  * @param {Partial<ClassPageAdapterResult>} [options.adapterResult] - Adapter result overrides.
+ * @param {AnalysisMode} [options.analysisMode] - The page's analysis mode forwarded to the column builder.
  * @returns {ReturnType<typeof render>} The render result.
  */
 function renderCard(
   options: {
     adapterResult?: Partial<ClassPageAdapterResult>;
+    analysisMode?: AnalysisMode;
   } = {}
 ): ReturnType<typeof render> {
   const adapterResult = buildAdapterResult(options.adapterResult);
 
-  return render(<StudentAveragesTableCard adapterResult={adapterResult} />);
+  return render(
+    <StudentAveragesTableCard adapterResult={adapterResult} analysisMode={options.analysisMode} />
+  );
 }
 
 // ===========================================================================
@@ -437,6 +444,43 @@ describe('StudentAveragesTableCard', () => {
     expect(mockBuildViewModel).toHaveBeenCalledWith(
       expect.objectContaining({ adapterResult: expect.any(Object) })
     );
+  });
+
+  it('forwards the baseline mode to the column builder so an excluded cell announces the baseline wording', async () => {
+    // The `onCell` aria-label threading is the behaviour under test: the real columns builder runs via `importActual`.
+    const actualColumns = await vi.importActual<typeof studentAveragesTableColumnsModule>(
+      './studentAveragesTableColumns'
+    );
+    mockBuildColumns.mockImplementation(actualColumns.buildStudentAveragesTableColumns);
+
+    const excludedRow = buildRow({
+      metrics: {
+        completeness: createExcludedMetricResult(),
+        accuracy: createComputedMetricResult({ value: 3 }),
+        spag: createNotAttemptedMetricResult(),
+        average: createComputedMetricResult({ value: 3 }),
+      },
+    });
+    mockBuildViewModel.mockReturnValue(buildViewModel({ studentAverages: [excludedRow] }));
+
+    renderCard({
+      adapterResult: { studentAverages: [excludedRow] },
+      analysisMode: 'topDecileBaseline',
+    });
+
+    // The positive-path counterpart of the absence pin above: the card
+    // forwards the page's analysis mode as the builder's second argument.
+    expect(mockBuildColumns).toHaveBeenLastCalledWith(
+      expect.objectContaining({ completeness: [] }),
+      'topDecileBaseline'
+    );
+
+    // The excluded cell's accessible label carries the baseline wording.
+    expect(
+      screen.getAllByLabelText(
+        `Alice, Completeness: ${BASELINE_EXCLUDED_METRIC_ACCESSIBLE_LABEL}`
+      )[0]
+    ).toBeInTheDocument();
   });
 
   // -----------------------------------------------------------------------

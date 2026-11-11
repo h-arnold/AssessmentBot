@@ -22,6 +22,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ClassPage } from './ClassPage';
 import type { ClassPageAdapterResult, RecentAssignmentCardModel } from './classPageAdapter.zod';
 import type { ClassPageError } from './useClassPageData';
+import type { StudentAveragesTableCardProperties } from './StudentAveragesTableCard';
 import {
   analyserResultFixture,
   buildDefaultAssignmentFixture,
@@ -45,6 +46,9 @@ const AWAITING_DATA_REASON = 'Waiting for class data';
 
 /** Number of options the mode control presents. */
 const MODE_OPTION_COUNT = 2;
+
+/** Sentinel for accessing the last element of an array. */
+const LAST_CALL_INDEX = -1;
 
 const {
   mockUseClassPageData,
@@ -269,6 +273,19 @@ describe('ClassPage — mode-control slot', () => {
     await user.click(baselineOption);
 
     expect(mockUseClassPageData).toHaveBeenLastCalledWith(CLASS_PAGE_CLASS_ID, 'topDecileBaseline');
+  });
+
+  it('passes the selected mode through to the student averages card', async () => {
+    const user = userEvent.setup();
+    renderClassPage();
+
+    await user.click(screen.getByRole('radio', { name: BASELINE_OPTION_LABEL }));
+
+    // React renders function components with a trailing legacy-context
+    // argument; the props are read off the typed call tuple.
+    const lastCall = mockStudentAveragesTableCard.mock.calls.at(LAST_CALL_INDEX) as
+      [StudentAveragesTableCardProperties] | undefined;
+    expect(lastCall?.[0]).toEqual(expect.objectContaining({ analysisMode: 'topDecileBaseline' }));
   });
 
   it('keeps the mode control rendered above the blocking result and enabled on retained evidence', () => {
