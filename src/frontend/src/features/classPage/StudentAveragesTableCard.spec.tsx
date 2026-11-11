@@ -468,8 +468,7 @@ describe('StudentAveragesTableCard', () => {
       analysisMode: 'topDecileBaseline',
     });
 
-    // The positive-path counterpart of the absence pin above: the card
-    // forwards the page's analysis mode as the builder's second argument.
+    // The positive-path counterpart of the absence pin above: the mode reaches the builder.
     expect(mockBuildColumns).toHaveBeenLastCalledWith(
       expect.objectContaining({ completeness: [] }),
       'topDecileBaseline'
@@ -483,23 +482,17 @@ describe('StudentAveragesTableCard', () => {
     ).toBeInTheDocument();
   });
 
-  // -----------------------------------------------------------------------
-  // Input / Space.Compact does not render enterButton
-  // -----------------------------------------------------------------------
   it('Input / Space.Compact does not render enterButton (filters apply on keystroke)', () => {
     const { container } = renderCard();
 
-    // Space.Compact with plain Input renders with class .ant-input-search (applied
-    // via the Space.Compact className). Unlike Input.Search, plain Input never
-    // renders a submit button, so there is no button inside the wrapper.
+    // Space.Compact with plain Input renders with class .ant-input-search; unlike
+    // Input.Search it never renders a submit button.
     const searchInput = container.querySelector('.ant-input-search');
     expect(searchInput).toBeInTheDocument();
 
-    // There should be no button inside the search input wrapper
     const searchButtons = searchInput!.querySelectorAll('button');
     expect(searchButtons).toHaveLength(0);
 
-    // The search input should be an <input> element
     const inputElement = searchInput!.querySelector('input');
     expect(inputElement).toBeInTheDocument();
     expect(inputElement).toHaveAttribute('type', 'search');
