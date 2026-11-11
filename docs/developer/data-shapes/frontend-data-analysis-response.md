@@ -114,15 +114,17 @@ the [single-assignment presentation flow](../frontend/data-analysis-architecture
 
 ### `AveragingResult`
 
-| #   | Field                        | Type                                       | Persistence | Transport | Frontend Zod                                     | Notes                                                                                                                                                |
-| --- | ---------------------------- | ------------------------------------------ | ----------- | --------- | ------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | `classId`                    | `string`                                   | —           | —         | `z.string()`                                     |                                                                                                                                                      |
-| 2   | `className`                  | `string\|null`                             | —           | —         | `z.string().nullable()`                          |                                                                                                                                                      |
-| 3   | `perStudent`                 | `PerStudentRow[]`                          | —           | —         | `z.array(PerStudentRowSchema)`                   | Aggregate scope; may contain `excluded`.                                                                                                             |
-| 4   | `perTask`                    | `PerTaskRow[]`                             | —           | —         | `z.array(PerTaskRowSchema)`                      | Task display scope; never `excluded`.                                                                                                                |
-| 5   | `perClass`                   | `PerClassResult`                           | —           | —         | `PerClassResultSchema`                           | Aggregate scope.                                                                                                                                     |
-| 6   | `appliedCriterionWeightings` | `{ completeness, accuracy, spag: number }` | —           | —         | `AppliedCriterionWeightingsSchema`               | Echoes the weightings actually applied.                                                                                                              |
-| 7   | `perStudentTaskMetrics`      | `PerStudentTaskMetric[] \| undefined`      | —           | —         | `z.array(PerStudentTaskMetricSchema).optional()` | Heatmap-facing. The analyser always emits it (an empty array when no per-(student, task) accumulators exist); `.optional()` only tolerates omission. |
+| #   | Field                        | Type                                                                    | Persistence | Transport | Frontend Zod                                     | Notes                                                                                                                                                |
+| --- | ---------------------------- | ----------------------------------------------------------------------- | ----------- | --------- | ------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | `classId`                    | `string`                                                                | —           | —         | `z.string()`                                     |                                                                                                                                                      |
+| 2   | `className`                  | `string\|null`                                                          | —           | —         | `z.string().nullable()`                          |                                                                                                                                                      |
+| 3   | `perStudent`                 | `PerStudentRow[]`                                                       | —           | —         | `z.array(PerStudentRowSchema)`                   | Aggregate scope; may contain `excluded`.                                                                                                             |
+| 4   | `perTask`                    | `PerTaskRow[]`                                                          | —           | —         | `z.array(PerTaskRowSchema)`                      | Task display scope; never `excluded`.                                                                                                                |
+| 5   | `perClass`                   | `PerClassResult`                                                        | —           | —         | `PerClassResultSchema`                           | Aggregate scope.                                                                                                                                     |
+| 6   | `appliedCriterionWeightings` | `{ completeness, accuracy, spag: number }`                              | —           | —         | `AppliedCriterionWeightingsSchema`               | Echoes the weightings actually applied.                                                                                                              |
+| 7   | `appliedAnalysisMode`        | `'absolute' \| 'topDecileBaseline'`                                     | —           | —         | `AnalysisModeSchema`                             | Required echo of the mode actually applied to this result.                                                                                           |
+| 8   | `attemptBaseline`            | `{ poolStudentIds: string[]; baselineTaskKeys: string[] } \| undefined` | —           | —         | `AttemptBaselineSchema.optional()`               | Present only when `appliedAnalysisMode` is `'topDecileBaseline'`; see [Attempt-baseline contract changes](#attempt-baseline-contract-changes).       |
+| 9   | `perStudentTaskMetrics`      | `PerStudentTaskMetric[] \| undefined`                                   | —           | —         | `z.array(PerStudentTaskMetricSchema).optional()` | Heatmap-facing. The analyser always emits it (an empty array when no per-(student, task) accumulators exist); `.optional()` only tolerates omission. |
 
 ### `PerStudentRow`
 
@@ -192,10 +194,11 @@ carries `averageContribution`.
 ### Input shapes
 
 `AveragingAnalyserInputSchema` is a strict object of `filter`, `classes`, and
-`assignmentDefinitionPartials`. `AnalysisFilterSchema` requires a non-empty
-`classIds` array and permits optional `dateRange`, `topicKeys`,
-`assignmentDefinitionKeys`, and `criterionWeightings` (which must sum to `1`
-within a `1e-9` float-drift tolerance).
+`assignmentDefinitionPartials`. `AnalysisFilterSchema` requires `analysisMode`
+(`AnalysisModeSchema`, no default) and a non-empty `classIds` array, and
+permits optional `dateRange`, `topicKeys`, `assignmentDefinitionKeys`, and
+`criterionWeightings` (which must sum to `1` within a `1e-9` float-drift
+tolerance).
 
 `classes` is `z.array(ClassFullSchema)`, so each analysed class now requires the
 shared nullable `ABClassMetadataSchema` owned by
@@ -293,8 +296,8 @@ result enum reused by both task-result and outcome schemas. Reason drift therefo
 compilation instead of turning a legitimate no-op into a lifecycle parse failure.
 
 The successful display result is never the persistence oracle. Both calculations use the
-unchanged synchronous service with only `{ classIds: [classId] }` as filter and the
-constructor's standard 0.4/0.4/0.2 criterion weights. The second class copy contains only the
+unchanged synchronous service with `{ classIds: [classId], analysisMode: 'absolute' }` as
+filter and the constructor's standard 0.4/0.4/0.2 criterion weights. The second class copy contains only the
 target assignment instance, preventing definition-scoped task keys from merging another
 instance into its summary. Both project all four weighted `perClass` metrics, including
 `overall`, through `projectAverageScores()`:
@@ -960,7 +963,7 @@ both possible causes (see item 7's threading):
   `TaskDisplayMetricSchema` (exported, three states), `PerStudentRowSchema`,
   `PerTaskRowSchema`, `PerClassResultSchema`, `PerStudentTaskMetricSchema`,
   `AveragingResultSchema`, `DataAnalysisResponseSchema`,
-  `AveragingAnalyserInputSchema`, `AnalysisFilterSchema`,
+  `AveragingAnalyserInputSchema`, `AnalysisFilterSchema`, `AnalysisModeSchema`,
   `AppliedCriterionWeightingsSchema`.
 - `src/frontend/src/features/classPage/classPageAdapter.zod.ts` →
   `ClassPageNoDataMetricSchema`, `ClassPageDisplayMetricSchema`,
@@ -1191,9 +1194,9 @@ Every planned contract change in this section is implemented.
      failure has a single site: the derivation fails fast for any empty pool
      intersection, naming the class, and the averaging analyser propagates that
      failure.
-   - The derivation is a **post-accumulation** pass over the analyser's accumulators
-     (whose per-criterion `displayCount` already encodes the attempt signal); it is not a
-     separate raw-data pre-pass.
+   - The derivation is a **post-accumulation** projection over the emitted
+     `PerStudentTaskMetric[]` (a metric is an attempt when any criterion's display
+     state is `computed`); it is not a separate raw-data pre-pass.
    - Applies to all four metric aggregates (per-student, per-class) built from
      per-(student, task) accumulators restricted to the baseline task set.
    - Students whose observed tasks fall entirely outside the baseline resolve

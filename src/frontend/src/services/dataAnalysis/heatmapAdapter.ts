@@ -380,19 +380,16 @@ export function resolveAssignmentPartial(
  *   echo, or a baseline-mode result omits the `attemptBaseline` block.
  *
  * @remarks
- * **Breaking change (data-shape contract, heatmap projection):** the signature
- * now requires a 4th parameter
- * (`assignmentDefinitionPartials`).  Task columns are sourced from the warm-up
- * partial located via `getAssignmentDefinitionPartial`, NOT from the embedded
- * `assignment.assignmentDefinition.tasks` (which was removed in favour of the
- * lightweight `assignmentDefinitionKey`).  If the partial is missing,
- * `TaskTitlesUnavailableError` is thrown.
- * This is distinct from a generic `Error` (unknown `assignmentId`).
+ * The function takes the warm-up `assignmentDefinitionPartials` as its 4th
+ * parameter. Task columns and titles are sourced from the warm-up partial
+ * matching the assignment's `definitionKey` (resolved via
+ * {@link resolveAssignmentPartial}), not from the embedded
+ * `assignment.assignmentDefinition.tasks`, which no longer exists. A missing
+ * partial throws `TaskTitlesUnavailableError`, distinct from a generic `Error`
+ * (unknown `assignmentId`).
  *
- * The per-task `null`-title branch was removed because `null` titles
- * are now carried through to the column descriptor (the table header falls back
- * to `taskId` for display).  Missing partials are caught by the
- * `getAssignmentDefinitionPartial` check above.
+ * `null` titles are carried through to the column descriptor (the table header
+ * falls back to `taskId` for display).
  *
  * v1 uses single-assignment selection at the adapter boundary by deriving
  * `taskKey`s with the shared `buildTaskKey` helper from the warm-up partial.

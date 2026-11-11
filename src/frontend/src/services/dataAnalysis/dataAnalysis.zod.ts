@@ -64,10 +64,11 @@ export type AnalysisFilter = z.infer<typeof AnalysisFilterSchema>;
  * partial definition cross-references, and a validated filter.
  *
  * @remarks
- * `classes` uses the canonical `ClassFullSchema` from `classDetailService.zod.ts`
- * (post-correction in Section 2). `assignmentDefinitionPartials` reuses
- * `AssignmentDefinitionPartialsResponseSchema` from `assignmentDefinitionPartials.zod.ts`
- * (unified in Section 3).
+ * `classes` uses the canonical `ClassFullSchema` from `classDetailService.zod.ts`,
+ * so every analysed class carries the shared nullable metadata field.
+ * `assignmentDefinitionPartials` reuses `AssignmentDefinitionPartialsResponseSchema`
+ * from `assignmentDefinitionPartials.zod.ts`, so the analyser input and the
+ * metadata-refresh context validate one shared partials shape.
  */
 export const AveragingAnalyserInputSchema = z.strictObject({
   filter: AnalysisFilterSchema,
