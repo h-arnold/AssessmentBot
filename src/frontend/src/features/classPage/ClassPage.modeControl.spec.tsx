@@ -9,7 +9,9 @@
  * the embedded heatmap view, and the disabled-state affordances (root disabled
  * class and disabled radio inputs rather than an `aria-disabled` attribute, the
  * always-rendered sr-only description node, and the `aria-describedby` binding
- * that is present exactly while the control is disabled).
+ * that is present exactly while the control is disabled), and the
+ * ineligible-state escape route (the control stays enabled while only the
+ * baseline option is disabled, carrying the reason in its tooltip).
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -138,6 +140,15 @@ const READY_AVAILABILITY = { status: 'ready' as const, reason: null };
 const AWAITING_DATA_AVAILABILITY = {
   status: 'awaiting-data' as const,
   reason: AWAITING_DATA_REASON,
+};
+
+/** Ineligibility copy for a class below the three-student minimum. */
+const ROSTER_REASON = 'Baseline mode needs at least 3 students in this class';
+
+/** Availability state of a class that cannot use baseline mode (control enabled). */
+const INELIGIBLE_AVAILABILITY = {
+  status: 'ineligible' as const,
+  reason: ROSTER_REASON,
 };
 
 /**
@@ -323,6 +334,97 @@ describe('ClassPage — mode-control slot', () => {
     expect(descriptionNode).toHaveTextContent(AWAITING_DATA_REASON);
     expect(descriptionNode?.id).toBeTruthy();
     expect(control.getAttribute('aria-describedby')).toBe(descriptionNode?.id);
+  });
+
+  it('keeps the control enabled and leaves absolute selectable when ineligible', async () => {
+    const user = userEvent.setup();
+    // A shrunk roster makes baseline mode ineligible while baseline is the
+    // selected mode: the control stays enabled so absolute remains reachable.
+    mockUseClassPageData.mockImplementation((_classId: string, mode: string) => {
+      return mode === 'topDecileBaseline'
+        ? { ...createReadyClassPageData(), baselineAvailability: INELIGIBLE_AVAILABILITY }
+        : createReadyClassPageData();
+    });
+
+    renderClassPage();
+
+    await user.click(screen.getByRole('radio', { name: BASELINE_OPTION_LABEL }));
+    expect(mockUseClassPageData).toHaveBeenLastCalledWith(CLASS_PAGE_CLASS_ID, 'topDecileBaseline');
+
+    const control = screen.getByRole('radiogroup', { name: MODE_CONTROL_LABEL });
+    const absoluteOption = within(control).getByRole('radio', { name: ABSOLUTE_OPTION_LABEL });
+    const baselineOption = within(control).getByRole('radio', { name: BASELINE_OPTION_LABEL });
+
+    // Only the baseline option is disabled; the control itself is not.
+    expect(control).not.toHaveClass('ant-segmented-disabled');
+    expect(control).not.toHaveAttribute('aria-disabled');
+    expect(absoluteOption).toBeEnabled();
+    expect(baselineOption).toBeDisabled();
+    expect(baselineOption).toBeChecked();
+
+    // The escape route works: selecting absolute switches the mode back.
+    await user.click(absoluteOption);
+    expect(mockUseClassPageData).toHaveBeenLastCalledWith(CLASS_PAGE_CLASS_ID, 'absolute');
+  });
+
+  it('ignores a click on the disabled baseline option when ineligible', async () => {
+    const user = userEvent.setup();
+    mockUseClassPageData.mockReturnValue({
+      ...createReadyClassPageData(),
+      baselineAvailability: INELIGIBLE_AVAILABILITY,
+    });
+
+    renderClassPage();
+
+    const baselineOption = screen.getByRole('radio', { name: BASELINE_OPTION_LABEL });
+    expect(baselineOption).toBeDisabled();
+
+    const callsBeforeClick = mockUseClassPageData.mock.calls.length;
+    await user.click(baselineOption);
+
+    // The fail-fast guard is the disabled option: the mode never leaves absolute.
+    expect(mockUseClassPageData).toHaveBeenCalledTimes(callsBeforeClick);
+    expect(mockUseClassPageData).toHaveBeenLastCalledWith(CLASS_PAGE_CLASS_ID, 'absolute');
+  });
+
+  it('exposes the availability reason through the disabled baseline option tooltip', async () => {
+    const user = userEvent.setup();
+    mockUseClassPageData.mockReturnValue({
+      ...createReadyClassPageData(),
+      baselineAvailability: INELIGIBLE_AVAILABILITY,
+    });
+
+    renderClassPage();
+
+    const baselineOption = screen.getByRole('radio', { name: BASELINE_OPTION_LABEL });
+    const baselineOptionLabel = baselineOption.closest('label');
+    if (!(baselineOptionLabel instanceof HTMLElement)) {
+      throw new TypeError('Baseline option is not hosted in a label');
+    }
+
+    await user.hover(baselineOptionLabel);
+
+    expect(await screen.findByRole('tooltip')).toHaveTextContent(ROSTER_REASON);
+  });
+
+  it('renders the availability reason in the sr-only description node while ineligible', () => {
+    mockUseClassPageData.mockReturnValue({
+      ...createReadyClassPageData(),
+      baselineAvailability: INELIGIBLE_AVAILABILITY,
+    });
+
+    renderClassPage();
+
+    const control = screen.getByRole('radiogroup', { name: MODE_CONTROL_LABEL });
+
+    // The description node always exists and carries the reason for ineligible.
+    const descriptionNode = getModeControlCard(control).querySelector('.sr-only');
+    expect(descriptionNode).not.toBeNull();
+    expect(descriptionNode).toHaveTextContent(ROSTER_REASON);
+
+    // The binding stays reserved for the disabled control state, so the reason
+    // reaches assistive tech through the option tooltip instead.
+    expect(control).not.toHaveAttribute('aria-describedby');
   });
 
   it('renders an always-present empty description node and no describedby binding while enabled', () => {

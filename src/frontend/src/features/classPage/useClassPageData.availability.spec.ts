@@ -379,6 +379,42 @@ describe('availability retention (previous-render pattern)', () => {
     expect(result.current.baselineAvailability).toEqual({ status: 'ready', reason: null });
   });
 
+  it('reports ineligible with the roster reason when a later failure meets a shrunk roster', () => {
+    const eligibleClassFull = createClassFull({ students: createRoster(ELIGIBLE_ROSTER_COUNT) });
+    seedReadyPipeline(
+      eligibleClassFull,
+      createAveragingResult({
+        perStudentTaskMetrics: [
+          createAttemptMetric('s-1', 'task-1'),
+          createAttemptMetric('s-2', 'task-2'),
+        ],
+      })
+    );
+
+    const { rerender, result } = renderHook(
+      () => useClassPageData(DEFAULT_CLASS_ID, 'topDecileBaseline'),
+      { wrapper }
+    );
+
+    expect(result.current.baselineAvailability).toEqual({ status: 'ready', reason: null });
+
+    // A later render cycle fails in baseline mode (the analyser result is null)
+    // while the current roster has shrunk below the three-student minimum: the
+    // retained evidence supplies attempts, but eligibility re-judges the roster.
+    const shrunkClassFull = createClassFull({ students: createRoster(BELOW_MINIMUM_ROSTER_COUNT) });
+    mocks.mockAnalyse.mockImplementation(() => {
+      throw new Error('baseline derivation failed');
+    });
+    mocks.mockUseQuery.mockReturnValue(createMockClassQueryResult({ data: shrunkClassFull }));
+    rerender();
+
+    expect(result.current.surfaceState.status).toBe('blocking');
+    expect(result.current.baselineAvailability).toEqual({
+      status: 'ineligible',
+      reason: ROSTER_REASON,
+    });
+  });
+
   it('lets a newer successful result supersede the retained evidence', () => {
     const classFull = createClassFull({ students: createRoster(ELIGIBLE_ROSTER_COUNT) });
     seedReadyPipeline(
