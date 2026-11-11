@@ -1,5 +1,5 @@
 /**
- * Green-phase contract tests for `adaptMetricsToMergedHeatmap` (Section 2 — merged adapter).
+ * Green-phase contract tests for `adaptMetricsToMergedHeatmap`.
  *
  * @remarks
  * This suite pins the merged-adapter contract for the exported

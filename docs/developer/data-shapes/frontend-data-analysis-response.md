@@ -72,6 +72,10 @@ escaping.
 
 ### Response shapes
 
+The response's shape is documented in two parts: the assignment task summaries
+below, then the `DataAnalysisResponse` tree with its component shapes and the
+analyser's input shapes.
+
 ### Assignment task summaries
 
 `DataAnalysisService.analyseAssignmentSummary(input, classId, assignmentId)`

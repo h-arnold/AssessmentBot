@@ -268,7 +268,7 @@ export function HeatmapSelectionBar({
 
   return (
     <Flex vertical gap={APP_GAP_MD}>
-      {/* Always present in the DOM so the `aria-describedby` target is robustly
+      {/* Always present in the DOM so the `aria-describedby` target is
           reachable when the dependent controls are disabled (A-N2). */}
       <span id={DISABLED_REASON_ID} className="sr-only">
         {pageContent.heatmaps.selectionDisabledReason}
