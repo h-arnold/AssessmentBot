@@ -134,14 +134,7 @@ describe('adaptClassPageToViewModel', () => {
       // card's rollups must reflect t1 only.
       const perTaskRows: PerTaskRow[] = [
         computedPerTaskRow('dk1', 't1', { completeness: 4, accuracy: 3, spag: 2 }),
-        computedPerTaskRow(
-          'dk1',
-          't2',
-          { completeness: 2, accuracy: 2, spag: 2 },
-          {
-            includedInAttemptBaseline: false,
-          }
-        ),
+        computedPerTaskRow('dk1', 't2', { completeness: 2, accuracy: 2, spag: 2 }),
       ];
 
       const result = adaptClassPageToViewModel(

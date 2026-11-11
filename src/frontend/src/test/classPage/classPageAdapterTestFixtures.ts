@@ -80,9 +80,6 @@ export function assignment(overrides: {
  *
  * @remarks Covers the most common adapter-test shape (all criteria computed
  * with unit weight); use {@link perTaskRow} directly for mixed-state rows.
- * The optional options mark the row as outside the attempt baseline for
- * baseline-mode adapter tests (inside the baseline by default, matching the
- * analyser's absolute-mode output).
  *
  * @param {string} definitionKey - The definition key linking to an assignment.
  * @param {string} taskId - The task identifier.
@@ -90,21 +87,17 @@ export function assignment(overrides: {
  * @param {number} values.completeness - The completeness score.
  * @param {number} values.accuracy - The accuracy score.
  * @param {number} values.spag - The spelling, punctuation and grammar score.
- * @param {Object} [options] - Optional row options.
- * @param {boolean} [options.includedInAttemptBaseline] - Baseline-membership flag; defaults to `true`.
  * @returns {PerTaskRow} A fully typed PerTaskRow with unit-weight computed criteria.
  */
 export function computedPerTaskRow(
   definitionKey: string,
   taskId: string,
-  values: { completeness: number; accuracy: number; spag: number },
-  options?: { includedInAttemptBaseline?: boolean }
+  values: { completeness: number; accuracy: number; spag: number }
 ): PerTaskRow {
   const { completeness, accuracy, spag } = values;
   return perTaskRow({
     definitionKey,
     taskId,
-    includedInAttemptBaseline: options?.includedInAttemptBaseline,
     completeness: createMetricResult('computed', { value: completeness, totalWeight: 1 }),
     accuracy: createMetricResult('computed', { value: accuracy, totalWeight: 1 }),
     spag: createMetricResult('computed', { value: spag, totalWeight: 1 }),
@@ -115,9 +108,9 @@ export function computedPerTaskRow(
  * Build the single-assignment `dk1` input shared by metric rollup tests.
  *
  * @remarks The optional overrides re-state the analyser result's mode fields
- * for baseline-mode adapter tests; the adapter consumes the
- * `appliedAnalysisMode` echo and the rows' `includedInAttemptBaseline` flags,
- * so the `attemptBaseline` block is fixture realism for those tests.
+ * for baseline-mode adapter tests; the adapter derives baseline membership
+ * from the `attemptBaseline.baselineTaskKeys` set, so the `attemptBaseline`
+ * block is fixture realism for those tests.
  *
  * @param {PerTaskRow[]} perTaskRows - Fresh rows supplied by the test, including empty data.
  * @param {Object} [analyserResultOverrides] - Optional mode-field overrides for the analyser result.
@@ -150,9 +143,8 @@ export function singleAssignmentAdapterInput(
 /**
  * Build a minimal PerTaskRow fixture.
  *
- * @remarks `includedInAttemptBaseline` defaults to `true` (the analyser's
- * absolute-mode output) and `averageContribution` to a unit-effective-weight
- * contribution; baseline-mode tests override one or both.
+ * @remarks `averageContribution` defaults to a unit-effective-weight
+ * contribution; baseline-mode tests override it where needed.
  *
  * @param {Object} overrides - The required fields for the per-task row fixture.
  * @param {string} overrides.definitionKey - The definition key linking to an assignment.
@@ -160,7 +152,6 @@ export function singleAssignmentAdapterInput(
  * @param {MetricResult} overrides.completeness - The completeness MetricResult.
  * @param {MetricResult} overrides.accuracy - The accuracy MetricResult.
  * @param {MetricResult} overrides.spag - The spelling, punctuation and grammar MetricResult.
- * @param {boolean} [overrides.includedInAttemptBaseline] - Baseline-membership flag; defaults to `true`.
  * @param {AverageContribution} [overrides.averageContribution] - Contribution metadata; defaults to unit effective weight.
  * @returns {PerTaskRow} A fully typed PerTaskRow.
  */
@@ -170,7 +161,6 @@ export function perTaskRow(overrides: {
   completeness: MetricResult;
   accuracy: MetricResult;
   spag: MetricResult;
-  includedInAttemptBaseline?: boolean;
   averageContribution?: AverageContribution;
 }): PerTaskRow {
   // The overall is computed the same way as the adapter's average
@@ -183,7 +173,6 @@ export function perTaskRow(overrides: {
       effectiveWeight: 1,
       includedInAverage: true,
     },
-    includedInAttemptBaseline: overrides.includedInAttemptBaseline ?? true,
     completeness: overrides.completeness,
     accuracy: overrides.accuracy,
     spag: overrides.spag,

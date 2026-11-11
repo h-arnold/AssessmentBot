@@ -22,7 +22,6 @@ import { createCanonicalMetadataFixture } from '@/test/abClass/abClassMetadataFi
 import type { AssignmentFull } from '@/services/assignmentAssessment/assignmentAssessment.zod';
 import type { AssignmentDefinitionPartialsResponse } from '@/services/assignmentDefinition/assignmentDefinitionPartials.zod';
 import type { AveragingResult } from '@/services/dataAnalysis/dataAnalysis.zod';
-import { AveragingResultSchema } from '@/services/dataAnalysis/dataAnalysis.zod';
 import { createComputedMetricResult } from '@/test/dataAnalysis/fixtures';
 
 const DEFINITION_KEY = 'def-xyz';
@@ -224,61 +223,6 @@ describe('buildCellPreviewLookup cross-fetch parity', () => {
       `${DEFINITION_KEY}::${TASK_A}`,
       `${DEFINITION_KEY}::${TASK_B}`,
     ]);
-  });
-
-  it('parses the absolute-mode adapter input with the mode echo and all-true task-row flags', () => {
-    const analyserResult = {
-      ...analyserResultFixture,
-      perTask: [
-        {
-          definitionKey: DEFINITION_KEY,
-          taskId: TASK_A,
-          taskTitle: null,
-          averageContribution: { effectiveWeight: 1, includedInAverage: true },
-          completeness: COMPUTED_5,
-          accuracy: COMPUTED_4,
-          spag: COMPUTED_3,
-          overall: COMPUTED_4,
-          includedInAttemptBaseline: true,
-        },
-        {
-          definitionKey: DEFINITION_KEY,
-          taskId: TASK_B,
-          taskTitle: null,
-          averageContribution: { effectiveWeight: 1, includedInAverage: true },
-          completeness: COMPUTED_5,
-          accuracy: COMPUTED_4,
-          spag: COMPUTED_3,
-          overall: COMPUTED_4,
-          includedInAttemptBaseline: true,
-        },
-      ],
-    };
-
-    const parsed = AveragingResultSchema.parse(analyserResult);
-
-    expect(parsed.appliedAnalysisMode).toBe('absolute');
-    expect(parsed.perTask.map((row) => row.includedInAttemptBaseline)).toEqual([true, true]);
-  });
-
-  it('rejects an adapter input whose task row omits includedInAttemptBaseline', () => {
-    expect(() => {
-      return AveragingResultSchema.parse({
-        ...analyserResultFixture,
-        perTask: [
-          {
-            definitionKey: DEFINITION_KEY,
-            taskId: TASK_A,
-            taskTitle: null,
-            averageContribution: { effectiveWeight: 1, includedInAverage: true },
-            completeness: COMPUTED_5,
-            accuracy: COMPUTED_4,
-            spag: COMPUTED_3,
-            overall: COMPUTED_4,
-          },
-        ],
-      });
-    }).toThrow();
   });
 });
 

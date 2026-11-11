@@ -219,8 +219,7 @@ export class AveragingAnalyser {
     const perTask = buildPerTaskRows(
       accumulators.taskAccums,
       this.criterionWeightings,
-      accumulators.averageContributionByTaskKey,
-      baselineTaskKeys
+      accumulators.averageContributionByTaskKey
     );
 
     // Build per-class rollup from all per-(student, task) accumulators,

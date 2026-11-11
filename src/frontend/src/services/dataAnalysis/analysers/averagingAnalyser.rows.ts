@@ -289,17 +289,12 @@ export function buildPerStudentRows(
  * @param {ReadonlyMap<string, AverageContribution>} averageContributionByTaskKey -
  *   Authoritative contribution metadata keyed by taskKey. Every key present in
  *   `taskAccums` must have an entry; a missing entry is a producer bug.
- * @param {ReadonlySet<string> | undefined} baselineTaskKeys - The class's
- *   baseline task keys in baseline mode; `undefined` in absolute mode, where
- *   every task row is included. Row values stay absolute in both modes: the
- *   flag marks baseline-set membership only.
  * @returns {PerTaskRow[]} Sorted per-task result rows.
  */
 export function buildPerTaskRows(
   taskAccums: Map<string, { definitionKey: string; taskId: string } & DataPointAccumulator>,
   criterionWeightings: CriterionWeightings,
-  averageContributionByTaskKey: ReadonlyMap<string, AverageContribution>,
-  baselineTaskKeys?: ReadonlySet<string>
+  averageContributionByTaskKey: ReadonlyMap<string, AverageContribution>
 ): PerTaskRow[] {
   const rows: PerTaskRow[] = [];
 
@@ -326,9 +321,6 @@ export function buildPerTaskRows(
       accuracy,
       spag,
       overall,
-      // Absolute mode includes every task row in the baseline; baseline mode
-      // derives the flag from the class's baseline set instead.
-      includedInAttemptBaseline: baselineTaskKeys?.has(taskKey) ?? true,
     });
   }
 

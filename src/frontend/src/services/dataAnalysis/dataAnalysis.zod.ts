@@ -238,9 +238,10 @@ export type PerStudentRow = z.infer<typeof PerStudentRowSchema>;
  * `averageContribution` records whether the represented task's effective
  * weighting allowed its scores into parent averages.
  *
- * `includedInAttemptBaseline` is required on every task row: `true` for every
- * row in `absolute` mode; in `topDecileBaseline` mode it marks whether the task
- * is inside that class's baseline set. Row values stay absolute in both modes.
+ * Row metric values stay absolute in every analysis mode. Attempt-baseline
+ * membership is not carried on the row: consumers derive it from the result's
+ * `attemptBaseline.baselineTaskKeys` (heatmap column marking does so per
+ * column).
  */
 export const PerTaskRowSchema = z.strictObject({
   definitionKey: z.string(),
@@ -251,7 +252,6 @@ export const PerTaskRowSchema = z.strictObject({
   accuracy: TaskDisplayMetricSchema,
   spag: TaskDisplayMetricSchema,
   overall: TaskDisplayMetricSchema,
-  includedInAttemptBaseline: z.boolean(),
 });
 
 export type PerTaskRow = z.infer<typeof PerTaskRowSchema>;

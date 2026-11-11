@@ -161,7 +161,7 @@ describe('synthetic analysis dispatcher round-trip bridge', () => {
     expect(results[0].classId).toBe(knownClassId);
   });
 
-  it('round-trips the small profile in explicit absolute mode with the mode echo and row flags', async () => {
+  it('round-trips the small profile in explicit absolute mode with the mode echo', async () => {
     const bridge = createApiHandlerRoundTripBridge({ vi, profileName: SMALL_PROFILE });
     installGoogleRunner(createSyntheticApiRoundTripRunner(bridge.invokeRequest));
 
@@ -181,9 +181,6 @@ describe('synthetic analysis dispatcher round-trip bridge', () => {
     expect(result.appliedAnalysisMode).toBe('absolute');
     expect(result).not.toHaveProperty('attemptBaseline');
     expect(result.perTask.length).toBeGreaterThan(0);
-    for (const row of result.perTask) {
-      expect(row.includedInAttemptBaseline).toBe(true);
-    }
   });
 
   it('serialises the success envelope exactly once through the factory-compatible adapter runner', () => {

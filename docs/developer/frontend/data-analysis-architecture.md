@@ -146,10 +146,14 @@ pipeline placement is fixed:
    per-student and per-class rollups consume only the accumulators whose task
    key is in the baseline set, for all four metrics (`collectClassAccumulators`
    owns the per-class collection). Task rows and heatmap task columns keep
-   absolute values and carry `includedInAttemptBaseline` as membership
-   marking. A student whose observed tasks all fall outside the set resolves
-   to the aggregate-only `excluded` state under the observed-evidence rules
-   recorded in the
+   absolute values in every mode. Rows carry no baseline flag: consumers
+   derive membership from the result's `attemptBaseline.baselineTaskKeys`
+   (heatmap column marking per column; the Class-page card rollup via the
+   set). Heatmap columns retain the column-level
+   `HeatmapTaskColumn.includedInAttemptBaseline` flag, derived in
+   `heatmapAdapter.ts`. A student whose observed tasks all fall outside the
+   set resolves to the aggregate-only `excluded` state under the
+   observed-evidence rules recorded in the
    [data-shape contract](../data-shapes/frontend-data-analysis-response.md#attempt-baseline-contract-changes).
 4. **Consumers recompute from the restricted evidence.** The Class-page card
    rollup (`classPageAdapter.baselineCardRollup.ts`) applies the same

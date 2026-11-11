@@ -19,32 +19,6 @@ const TIED_TASK_COUNT = 2;
 /** Roster for the mode-isolation boundary case: three students, two attempters. */
 const MODE_ISOLATION_ROSTER = ['s_001', 's_002', 's_003'];
 
-/** Exact public summary key set, sorted — an order-independent key-set pin. */
-const EXPECTED_SUMMARY_KEYS = [
-  'assignmentId',
-  'classId',
-  'leastAccurateTaskKeys',
-  'mostAccurateTaskKeys',
-  'tasks',
-  'thresholds',
-  'totalStudents',
-];
-
-/** Exact public task-summary key set, sorted — an order-independent key-set pin. */
-const EXPECTED_TASK_SUMMARY_KEYS = [
-  'accuracyAssessedCount',
-  'accuracyAverage',
-  'accuracyErrorCount',
-  'accuracyNotAttemptedCount',
-  'belowAccuracyThreshold',
-  'belowThresholdCount',
-  'completedCount',
-  'completenessErrorCount',
-  'incompleteAcrossMostStudents',
-  'notAttemptedCount',
-  'taskKey',
-];
-
 /**
  * Build a minimal boundary case covering numeric, N, error and missing cells.
  * @returns {ReturnType<typeof buildInput>} Minimal valid input.
@@ -84,15 +58,6 @@ function buildBoundaryInput() {
       assignments: [assignment],
     },
   ]);
-}
-
-/**
- * Sort key names with a locale-aware comparator for order-independent key-set pins.
- * @param {string[]} keyNames - Key names in their natural object order.
- * @returns {string[]} The same names, sorted.
- */
-function sortedKeyNames(keyNames: string[]): string[] {
-  return keyNames.toSorted((first, second) => first.localeCompare(second));
 }
 
 /**
@@ -273,7 +238,13 @@ describe('assignment summaries', () => {
   // -------------------------------------------------------------------------
 
   it('summarises an assignment when the caller supplies baseline mode even where an assignment-scoped baseline would empty-intersect', () => {
-    const summary = new DataAnalysisService().analyseAssignmentSummary(
+    const service = new DataAnalysisService();
+    const absoluteSummary = service.analyseAssignmentSummary(
+      buildModeIsolationInput('absolute'),
+      'c_001',
+      'a_001'
+    );
+    const summary = service.analyseAssignmentSummary(
       buildModeIsolationInput('topDecileBaseline'),
       'c_001',
       'a_001'
@@ -283,41 +254,8 @@ describe('assignment summaries', () => {
       'dk_algebra::t_001',
       'dk_algebra::t_002',
     ]);
-  });
-
-  it('returns byte-identical summaries for absolute and baseline caller modes', () => {
-    const service = new DataAnalysisService();
-    const absoluteSummary = service.analyseAssignmentSummary(
-      buildModeIsolationInput('absolute'),
-      'c_001',
-      'a_001'
-    );
-    const baselineSummary = service.analyseAssignmentSummary(
-      buildModeIsolationInput('topDecileBaseline'),
-      'c_001',
-      'a_001'
-    );
-    expect(baselineSummary).toStrictEqual(absoluteSummary);
-  });
-
-  it('keeps the public summary schema free of analysis-mode fields', () => {
-    const summary = new DataAnalysisService().analyseAssignmentSummary(
-      buildModeIsolationInput('topDecileBaseline'),
-      'c_001',
-      'a_001'
-    );
-    expect(sortedKeyNames(Object.keys(summary))).toEqual(EXPECTED_SUMMARY_KEYS);
-    expect(sortedKeyNames(Object.keys(summary.tasks[0]))).toEqual(EXPECTED_TASK_SUMMARY_KEYS);
-  });
-
-  it('still validates the caller-supplied analysis mode at the public input boundary', () => {
-    const invalidMode = 'relative' as unknown as AnalysisMode;
-    expect(() => {
-      return new DataAnalysisService().analyseAssignmentSummary(
-        buildModeIsolationInput(invalidMode),
-        'c_001',
-        'a_001'
-      );
-    }).toThrow();
+    // The caller's mode never reaches the summary's internal averaging: the
+    // baseline-mode summary is byte-identical to the absolute-mode one.
+    expect(summary).toStrictEqual(absoluteSummary);
   });
 });

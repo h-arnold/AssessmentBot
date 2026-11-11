@@ -7,7 +7,7 @@ It has **no backend API, persistence collection, transport envelope or migration
 metadata lifecycle, the shared post-analysis contracts, both consumer surfaces and the
 error-aware task-preview view models are implemented and described below. The attempt-baseline
 analysis mode (tracking issue: h-arnold/AssessmentBot#305) is implemented: its schema
-contracts (filter field, result echo and optional baseline block, task-row flag), the
+contracts (filter field, result echo and optional baseline block), the
 analyser's baseline-mode behaviour, the heatmap column projection, the summary
 reconciliation, the Class-page mode control, the mode threading to the Class-page
 display labels, the embedded heatmap's baseline marking and caption, and the E2E browser
@@ -1138,8 +1138,8 @@ The top-decile attempt-baseline analysis mode is delivered (tracking issue:
 h-arnold/AssessmentBot#305). The explicit-`E` analyser input, the preview `sourceUrl` field and
 every other previously planned addition are implemented and documented in the sections above.
 The schema contracts for items 1–4 below are implemented as recorded in their
-delivered entries (required filter field, result echo and optional baseline block,
-required task-row flag), as is the analyser's baseline-mode behaviour
+delivered entries (required filter field, result echo and optional baseline block),
+as is the analyser's baseline-mode behaviour
 (post-accumulation baseline selection, baseline-restricted aggregation, the
 baseline-mode per-student `excluded` conversion and the `attemptBaseline` echo). The heatmap column
 projection (Section 3), the summary reconciliation (Section 4), the Class-page mode
@@ -1223,20 +1223,17 @@ Every planned contract change in this section is implemented.
    and the analyser emits it in every baseline-mode result (absolute mode omits
    it); baseline selection is the post-accumulation derivation recorded above.
 
-4. **`PerTaskRowSchema.includedInAttemptBaseline`** — required boolean always
-   present on task rows. `true` for every row in `absolute` mode; in baseline
-   mode it marks baseline-set membership. Per-task row _values_ stay absolute
-   in both modes. **Per-student cell metrics carry no flag:** columns are the
-   only marked heatmap unit (column-level marking in v1; see item 8), so
-   `PerStudentTaskMetric` is unchanged. The array's **contents are also
+4. **`PerTaskRowSchema` carries no membership flag.** The former required
+   `includedInAttemptBaseline` boolean was removed from the task row as an
+   unread surface: attempt-baseline membership is derived by consumers from the
+   result's `attemptBaseline.baselineTaskKeys`. Per-task row _values_ stay
+   absolute in both modes. **Per-student cell metrics carry no flag:** columns
+   are the only marked heatmap unit (column-level marking in v1; see item 8),
+   so `PerStudentTaskMetric` is unchanged. The array's **contents are also
    mode-independent**: baseline filtering restricts only the aggregation step,
    so `perStudentTaskMetrics` carries every observed (student, task) pair in
    both modes — availability and heatmap substitution paths therefore see
    identical evidence regardless of mode.
-
-   **Implemented (Section 1):** the flag is required on every task row and the
-   analyser sets it `true` in absolute mode; the heatmap-column projection is
-   implemented with the column descriptors (item 8).
 
    **Baseline narrowing rule.** `attemptBaseline` is optional on the result
    because absolute mode omits it; the analyser always emits it in baseline

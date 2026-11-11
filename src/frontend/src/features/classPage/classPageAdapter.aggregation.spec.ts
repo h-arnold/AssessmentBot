@@ -182,22 +182,8 @@ describe('adaptClassPageToViewModel — aggregation', () => {
       // while preserving their resolved `totalDataPoints`, and the card's
       // average composite derives from the converted criteria.
       const perTaskRows: PerTaskRow[] = [
-        computedPerTaskRow(
-          'dk1',
-          't1',
-          { completeness: 4, accuracy: 3, spag: 2 },
-          {
-            includedInAttemptBaseline: false,
-          }
-        ),
-        computedPerTaskRow(
-          'dk1',
-          't2',
-          { completeness: 2, accuracy: 2, spag: 2 },
-          {
-            includedInAttemptBaseline: false,
-          }
-        ),
+        computedPerTaskRow('dk1', 't1', { completeness: 4, accuracy: 3, spag: 2 }),
+        computedPerTaskRow('dk1', 't2', { completeness: 2, accuracy: 2, spag: 2 }),
       ];
 
       const result = adaptClassPageToViewModel(
@@ -251,7 +237,6 @@ describe('adaptClassPageToViewModel — aggregation', () => {
         return perTaskRow({
           definitionKey: 'dk1',
           taskId,
-          includedInAttemptBaseline: false,
           completeness: createMetricResult('error', { totalDataPoints: 0 }),
           accuracy: createMetricResult('error', { totalDataPoints: 0 }),
           spag: createMetricResult('error', { totalDataPoints: 0 }),
@@ -283,7 +268,6 @@ describe('adaptClassPageToViewModel — aggregation', () => {
         return perTaskRow({
           definitionKey: 'dk1',
           taskId: row.taskId,
-          includedInAttemptBaseline: false,
           averageContribution: { effectiveWeight: 0, includedInAverage: false },
           completeness: createMetricResult('computed', { value: row.completeness, totalWeight: 0 }),
           accuracy: createMetricResult('computed', { value: row.accuracy, totalWeight: 0 }),

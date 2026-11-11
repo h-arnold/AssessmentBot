@@ -2,8 +2,8 @@
  * Baseline-mode behaviour of the averaging analyser.
  *
  * Pins the attempt-baseline specification's analyser handoff: aggregate
- * restriction to the baseline task set, per-task row flags that keep absolute
- * values, the `attemptBaseline` transparency block, mode-invariant
+ * restriction to the baseline task set, per-task rows that keep absolute
+ * values in every mode, the `attemptBaseline` transparency block, mode-invariant
  * per-(student, task) evidence, per-class independence, all-accumulator rollup
  * scope in both modes, and the empty-intersection throw propagated by the
  * analyser.
@@ -299,16 +299,14 @@ describe('AveragingAnalyser', () => {
       });
     });
 
-    it('marks per-task rows with baseline membership while keeping absolute values', () => {
+    it('keeps per-task row values absolute outside the baseline task set', () => {
       const [result] = new AveragingAnalyser().analyse(buildAnalysisInput('topDecileBaseline'));
 
-      const baselineTaskRow = result.perTask.find((row) => row.taskId === 't_001');
       const outsideTaskRow = result.perTask.find((row) => row.taskId === 't_002');
-      expect(baselineTaskRow?.includedInAttemptBaseline).toBe(true);
-      expect(outsideTaskRow?.includedInAttemptBaseline).toBe(false);
 
-      // Row values stay absolute in both modes: t_002 aggregates both of its
-      // observers (Alice 2, Carol 1), so the row keeps the absolute mean.
+      // Row values stay absolute in every mode: t_002 aggregates both of its
+      // observers (Alice 2, Carol 1), so the row keeps the absolute mean even
+      // though the task sits outside the derived baseline set.
       expectMetricResultStateAware(outsideTaskRow!.completeness, {
         state: 'computed',
         value:
@@ -381,14 +379,6 @@ describe('AveragingAnalyser', () => {
         poolStudentIds: ['u_001', 'u_002'],
         baselineTaskKeys: [SECOND_TASK_KEY_ONE],
       });
-
-      // Each class marks its own outside-baseline task.
-      expect(first.perTask.find((row) => row.taskId === 't_002')?.includedInAttemptBaseline).toBe(
-        false
-      );
-      expect(second.perTask.find((row) => row.taskId === 'v_002')?.includedInAttemptBaseline).toBe(
-        false
-      );
     });
 
     it('throws a descriptive error when the pool attempt sets are disjoint', () => {

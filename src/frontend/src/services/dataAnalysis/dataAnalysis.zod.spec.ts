@@ -107,6 +107,31 @@ describe('AnalysisFilterSchema', () => {
     expect(result).toEqual({ classIds: ['c1'], analysisMode: 'absolute' });
   });
 
+  it('accepts the topDecileBaseline mode', async () => {
+    const { AnalysisFilterSchema } = await loadDataAnalysisZod();
+
+    const result = AnalysisFilterSchema.parse({
+      classIds: ['c1'],
+      analysisMode: 'topDecileBaseline',
+    });
+
+    expect(result).toEqual({ classIds: ['c1'], analysisMode: 'topDecileBaseline' });
+  });
+
+  it('rejects a filter that omits analysisMode', async () => {
+    const { AnalysisFilterSchema } = await loadDataAnalysisZod();
+
+    expect(() => AnalysisFilterSchema.parse({ classIds: ['c1'] })).toThrow();
+  });
+
+  it('rejects an unknown mode value', async () => {
+    const { AnalysisFilterSchema } = await loadDataAnalysisZod();
+
+    expect(() =>
+      AnalysisFilterSchema.parse({ classIds: ['c1'], analysisMode: 'percentileBaseline' })
+    ).toThrow();
+  });
+
   it('accepts valid full input with all optional fields', async () => {
     const { AnalysisFilterSchema } = await loadDataAnalysisZod();
 

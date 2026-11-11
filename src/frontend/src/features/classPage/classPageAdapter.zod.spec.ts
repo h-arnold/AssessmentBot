@@ -391,25 +391,11 @@ describe('ClassPageAdapterResultSchema', () => {
 
 describe('ClassPageAdapterResultSchema — baseline-mode adapter output', () => {
   it('reads appliedAnalysisMode as the switch between unfiltered and baseline-filtered card rollups', () => {
-    // Identical rows flagged outside the baseline; only the mode echo (and the
+    // Identical rows outside the baseline key set; only the mode echo (and the
     // baseline block it gates) differs between the two results.
     const perTaskRows = [
-      computedPerTaskRow(
-        'dk1',
-        't1',
-        { completeness: 4, accuracy: 3, spag: 2 },
-        {
-          includedInAttemptBaseline: false,
-        }
-      ),
-      computedPerTaskRow(
-        'dk1',
-        't2',
-        { completeness: 2, accuracy: 2, spag: 2 },
-        {
-          includedInAttemptBaseline: false,
-        }
-      ),
+      computedPerTaskRow('dk1', 't1', { completeness: 4, accuracy: 3, spag: 2 }),
+      computedPerTaskRow('dk1', 't2', { completeness: 2, accuracy: 2, spag: 2 }),
     ];
 
     const absoluteResult = adaptClassPageToViewModel(
@@ -422,7 +408,8 @@ describe('ClassPageAdapterResultSchema — baseline-mode adapter output', () => 
       })
     );
 
-    // Absolute mode rolls up every row regardless of the row flags.
+    // Absolute mode rolls up every row; rows carry no baseline flag, so baseline
+    // membership is consumer-derived from `attemptBaseline.baselineTaskKeys`.
     expect(absoluteResult.recentAssignments[0].metrics.completeness).toMatchObject({
       state: 'computed',
       value: 3,
@@ -441,7 +428,6 @@ describe('ClassPageAdapterResultSchema — baseline-mode adapter output', () => 
       perTaskRow({
         definitionKey: 'dk1',
         taskId: 't1',
-        includedInAttemptBaseline: false,
         completeness: createMetricResult('computed', { value: 4, totalWeight: 1 }),
         accuracy: createMetricResult('error', { totalDataPoints: 0 }),
         spag: createMetricResult('notAttempted', { totalWeight: 1 }),

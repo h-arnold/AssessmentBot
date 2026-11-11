@@ -1,23 +1,12 @@
 /**
  * Medium-corpus baseline-mode round trip through the data-analysis service.
- *
- * Pins the committed `medium` profile's attempt-baseline claims (specification
- * decisions 3–5): pool sizing at the structural minimum of two, the
- * pool-boundary tie at roster indices 3 and 4 broken by ascending student id,
- * E-condition non-candidacy for rosters 1 and 2, raw-`N`-alongside-numeric
- * attempts at roster index 0, the non-degenerate seven-of-nine-key baseline,
- * and the per-class outside-baseline pair.
- *
- * The heatmap-projection cases pin the adapter's column-level
- * `includedInAttemptBaseline` projection of the same corpus: baseline mode
- * marks the per-class outside-baseline pair as outside the baseline, while the
- * absolute and merged paths stay all-included through the explicit `null`
- * baseline set.
- *
- * The committed views are imported at this call site with the `?raw` suffix,
- * following `dataAnalysis.mediumRoundTrip.spec.ts`: record loading stays at
- * the call site and no shared loader is created.
- *
+ * Pins the committed `medium` profile's attempt-baseline claims: pool sizing at
+ * the structural minimum of two, the pool-boundary tie broken by ascending
+ * student id, E-condition non-candidacy for rosters 1 and 2, and the per-class
+ * outside-baseline pair. The heatmap-projection cases pin the adapter's
+ * column-level `includedInAttemptBaseline` projection of the same corpus.
+ * The committed views are imported at this call site with the `?raw` suffix:
+ * record loading stays at the call site and no shared loader is created.
  * @see docs/developer/testing/synthetic-test-data.md
  */
 
@@ -118,7 +107,6 @@ type MediumClass = {
 
 /**
  * Parse the committed `medium` class records.
- *
  * @returns {Record<string, MediumClass>} The classes keyed by class id.
  */
 function parseMediumClasses(): Record<string, MediumClass> {
@@ -127,7 +115,6 @@ function parseMediumClasses(): Record<string, MediumClass> {
 
 /**
  * Build the validated analysis input over the requested `medium` classes.
- *
  * @param {AnalysisMode} analysisMode - The analysis mode under test.
  * @param {string[]} classIds - The `medium` class ids to analyse.
  * @returns {AveragingAnalyserInput} The validated analysis input.
@@ -143,7 +130,6 @@ function buildMediumInput(analysisMode: AnalysisMode, classIds: string[]): Avera
 
 /**
  * Return the roster student at the given index, failing loudly when absent.
- *
  * @param {MediumClass} classRecord - The parsed class record.
  * @param {number} rosterIndex - The roster index to read.
  * @returns {{ id: string }} The roster student.
@@ -159,7 +145,6 @@ function requireRosterStudent(classRecord: MediumClass, rosterIndex: number): { 
 /**
  * Whether the submission item is an attempt (data-shape item 3): at least one
  * criterion assessment carries a numeric score.
- *
  * @param {MediumItem} item - The submission item.
  * @returns {boolean} True when the item is an attempt.
  */
@@ -172,7 +157,6 @@ function isAttemptItem(item: MediumItem): boolean {
 /**
  * Collect a roster student's attempted task keys from one assignment into the
  * given set.
- *
  * @param {MediumAssignment} assignment - The assignment to walk.
  * @param {string} studentId - The student whose items are collected.
  * @param {Set<string>} attemptedTaskKeys - The accumulator set (mutated).
@@ -195,7 +179,6 @@ function collectAttemptedTaskKeysFromAssignment(
 /**
  * Collect a roster student's attempted task keys (data-shape item 3: at least one
  * numeric criterion score on the submission item).
- *
  * @param {MediumClass} classRecord - The parsed class record.
  * @param {number} rosterIndex - The roster index to collect for.
  * @returns {Set<string>} The student's distinct attempted task keys.
@@ -211,7 +194,6 @@ function collectAttemptedTaskKeys(classRecord: MediumClass, rosterIndex: number)
 
 /**
  * Count the assignments a roster student submitted to.
- *
  * @param {MediumClass} classRecord - The parsed class record.
  * @param {number} rosterIndex - The roster index to count for.
  * @returns {number} Distinct assignment ids carrying a submission from the student.
@@ -230,7 +212,6 @@ function countAssignmentsWithSubmissions(classRecord: MediumClass, rosterIndex: 
 /**
  * Whether the submission item carries a raw-`N` SPaG assessment alongside a
  * numeric completeness or accuracy score (the corpus's attempt-with-raw-N shape).
- *
  * @param {MediumItem} item - The submission item.
  * @returns {boolean} True when the item matches the shape.
  */
@@ -244,7 +225,6 @@ function hasSpagNotAttemptedWithNumericSibling(item: MediumItem): boolean {
 /**
  * Count a roster student's submitted items whose SPaG assessment is raw `N`
  * alongside a numeric completeness or accuracy score.
- *
  * @param {MediumClass} classRecord - The parsed class record.
  * @param {number} rosterIndex - The roster index to count for.
  * @returns {number} The matching item count.
@@ -352,15 +332,24 @@ describe('medium corpus baseline-mode round trip', () => {
     expect(result.perTask).toHaveLength(EXPECTED_PER_TASK_ROW_COUNT);
   });
 
-  it('marks the per-class outside-baseline pair on per-task rows across all classes', () => {
+  it('derives the per-class outside-baseline pair from the baseline task keys across all classes', () => {
     const results = new DataAnalysisService().analyse(
       buildMediumInput('topDecileBaseline', MEDIUM_CLASS_IDS)
     );
 
     expect(results).toHaveLength(MEDIUM_CLASS_IDS.length);
     for (const result of results) {
+      const attemptBaseline = result.attemptBaseline;
+      if (!attemptBaseline) {
+        throw new Error('baseline-mode result is missing the attemptBaseline block');
+      }
       const outsideKeys = OUTSIDE_BASELINE_KEYS_BY_CLASS[result.classId];
-      const outsideRows = result.perTask.filter((row) => !row.includedInAttemptBaseline);
+      // Attempt-baseline membership is derived from the result's baseline task
+      // keys: rows whose key sits outside the set are the outside-baseline pair.
+      const baselineTaskKeys = new Set(attemptBaseline.baselineTaskKeys);
+      const outsideRows = result.perTask.filter(
+        (row) => !baselineTaskKeys.has(buildTaskKey(row.definitionKey, row.taskId))
+      );
       expect(outsideRows.map((row) => buildTaskKey(row.definitionKey, row.taskId))).toEqual(
         outsideKeys
       );
@@ -375,6 +364,12 @@ describe('medium corpus baseline-mode round trip', () => {
     const baseline = new DataAnalysisService().analyse(
       buildMediumInput('topDecileBaseline', MEDIUM_CLASS_IDS)
     );
+
+    // Absolute mode echoes its mode and omits the baseline block entirely.
+    for (const result of absolute) {
+      expect(result.appliedAnalysisMode).toBe('absolute');
+      expect(result).not.toHaveProperty('attemptBaseline');
+    }
 
     expect(baseline.map((result) => result.perStudentTaskMetrics)).toEqual(
       absolute.map((result) => result.perStudentTaskMetrics)
@@ -465,7 +460,6 @@ describe('medium corpus heatmap column projection', () => {
 
 /**
  * Collect the explicit error cause codes from one submission item.
- *
  * @param {MediumItem} item - The submission item.
  * @param {Set<string>} errorCodes - The accumulator set (mutated).
  */
@@ -480,7 +474,6 @@ function collectErrorCodesFromItem(item: MediumItem, errorCodes: Set<string>): v
 
 /**
  * Collect the explicit error cause codes across one roster student's items.
- *
  * @param {MediumClass} classRecord - The parsed class record.
  * @param {number} rosterIndex - The roster index to collect for.
  * @returns {Set<string>} The distinct error cause codes.

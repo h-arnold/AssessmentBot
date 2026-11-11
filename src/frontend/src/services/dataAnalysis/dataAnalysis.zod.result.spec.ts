@@ -75,7 +75,6 @@ const validPerTaskRow = {
   accuracy: computedMetricResult,
   spag: computedMetricResult,
   overall: computedMetricResult,
-  includedInAttemptBaseline: true,
 };
 
 const validAverageContribution = {

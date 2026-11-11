@@ -3,8 +3,7 @@
  *
  * Pins decision 12 of the attempt-baseline specification: absolute-mode output
  * stays identical to the pre-echo behaviour apart from the
- * `appliedAnalysisMode: 'absolute'` echo and the always-true
- * `includedInAttemptBaseline` task-row flags.
+ * `appliedAnalysisMode: 'absolute'` echo.
  */
 
 import { describe, it, expect } from 'vitest';
@@ -95,15 +94,6 @@ describe('AveragingAnalyser absolute-mode analysis', () => {
 
     expect(result.appliedAnalysisMode).toBe('absolute');
     expect(result).not.toHaveProperty('attemptBaseline');
-  });
-
-  it('marks every per-task row as included in the attempt baseline', () => {
-    const [result] = new AveragingAnalyser().analyse(buildAbsoluteModeInput());
-
-    expect(result.perTask.length).toBeGreaterThan(0);
-    for (const row of result.perTask) {
-      expect(row.includedInAttemptBaseline).toBe(true);
-    }
   });
 
   it('keeps absolute-mode aggregate and task values identical to the pre-echo behaviour', () => {

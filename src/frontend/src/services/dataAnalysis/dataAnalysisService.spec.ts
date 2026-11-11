@@ -293,7 +293,6 @@ describe('DataAnalysisService', () => {
               taskId: 't_001',
               taskTitle: null,
               averageContribution: { effectiveWeight: 1, includedInAverage: true },
-              includedInAttemptBaseline: true,
               completeness: createComputedMetricResult(),
               accuracy: createComputedMetricResult(),
               spag: createComputedMetricResult(),
