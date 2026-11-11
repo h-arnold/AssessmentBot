@@ -8,7 +8,9 @@
  * empty derived baseline joins the existing blocking treatment while the
  * control stays reachable so switching back to "All tasks" recovers the page,
  * and the embedded heatmap marks task columns outside the baseline set with
- * the page-level caption.
+ * the page-level caption. The control also explains itself through its option
+ * tooltips: the enabled baseline option carries its explanatory copy, and an
+ * ineligible class's reason rides on the disabled option's hover tooltip.
  *
  * The fixture scenarios are built from the heatmap class fixtures' per-student
  * task-skip option: the default all-submit scenario is degenerately in-baseline
@@ -50,11 +52,21 @@ const BASELINE_CAPTION =
 const BASELINE_OFF_EXPLANATION =
   'Task outside the baseline set — shown, but not included in baseline averages.';
 
+// Mode-control copy restated so the browser assertions stay independent of the
+// production modules: the option tooltip's copy home is `pageContent` under
+// `classDetail` (baselineModeOptionTooltip); the reason's is the availability
+// helpers' ENGAGED_STUDENTS_REASON.
+const BASELINE_MODE_OPTION_TOOLTIP =
+  'Uses the tasks the ten-percent most-engaged students (minimum 2) have all attempted.';
+const ENGAGED_STUDENTS_REASON = 'Baseline mode needs at least 2 students who attempted some work';
+
 // Roster ids of the heatmap fixture class (task-heatmap-class-fixtures
 // HEATMAP_STUDENTS). The fixture builder rejects unknown ids, so a mistyped
 // skip fails loudly instead of silently producing a degenerate scenario.
+const STUDENT_ONE_ID = '100000000004';
 const STUDENT_TWO_ID = '100000000005';
 const STUDENT_THREE_ID = '100000000006';
+const STUDENT_FOUR_ID = '100000000007';
 const STUDENT_FIVE_ID = '100000000008';
 const STUDENT_SIX_ID = '100000000009';
 const STUDENT_SEVEN_ID = '100000000010';
@@ -95,6 +107,26 @@ const DISJOINT_ATTEMPT_SKIPS: HeatmapSkippedTasksByStudentId = {
   [STUDENT_SEVEN_ID]: [...ALL_TASK_IDS],
   [STUDENT_EIGHT_ID]: [...ALL_TASK_IDS],
   [STUDENT_NINE_ID]: ['task_002', 'task_003'],
+  [STUDENT_TEN_ID]: [...ALL_TASK_IDS],
+};
+
+/**
+ * Nine students attempt nothing and Student Two attempts only Task 1, so the
+ * roster's attempt-candidate count is 1 — below the two-student pool minimum.
+ * Availability lands on ineligible with the engaged-students reason while the
+ * control stays enabled (the absolute escape route) and the baseline option is
+ * disabled.
+ */
+const SINGLE_ATTEMPTER_SKIPS: HeatmapSkippedTasksByStudentId = {
+  [STUDENT_ONE_ID]: [...ALL_TASK_IDS],
+  [STUDENT_TWO_ID]: ['task_002', 'task_003'],
+  [STUDENT_THREE_ID]: [...ALL_TASK_IDS],
+  [STUDENT_FOUR_ID]: [...ALL_TASK_IDS],
+  [STUDENT_FIVE_ID]: [...ALL_TASK_IDS],
+  [STUDENT_SIX_ID]: [...ALL_TASK_IDS],
+  [STUDENT_SEVEN_ID]: [...ALL_TASK_IDS],
+  [STUDENT_EIGHT_ID]: [...ALL_TASK_IDS],
+  [STUDENT_NINE_ID]: [...ALL_TASK_IDS],
   [STUDENT_TEN_ID]: [...ALL_TASK_IDS],
 };
 
@@ -250,6 +282,67 @@ test.describe('Class page attempt-baseline mode', () => {
     await expect(absoluteRadio).toBeChecked();
     await expectModeSettled(control, ABSOLUTE_OPTION_LABEL);
     await expect(completenessPill).toHaveText(ABSOLUTE_COMPLETENESS_PILL);
+  });
+
+  test('explains the enabled baseline option through its tooltip', async ({ page }) => {
+    await installRuntimeMock(page, createBaselineModeScenario(PARTIAL_ATTEMPT_SKIPS));
+    await openHeatmapClass(page);
+
+    const control = getModeControl(page);
+    await expect(control).toBeVisible();
+    // Ready availability: the control is enabled and the baseline option is not.
+    await expect(control).not.toHaveClass(/ant-segmented-disabled/);
+    const baselineItem = control
+      .locator('.ant-segmented-item')
+      .filter({ hasText: BASELINE_OPTION_LABEL });
+    await expect(baselineItem).not.toHaveClass(/ant-segmented-item-disabled/);
+
+    // Hovering the enabled baseline option opens its explanatory tooltip. The
+    // name matcher stays a plain string: the copy carries parentheses that an
+    // unescaped RegExp would read as a capture group.
+    await baselineItem.hover();
+    await expect(page.getByRole('tooltip', { name: BASELINE_MODE_OPTION_TOOLTIP })).toHaveText(
+      BASELINE_MODE_OPTION_TOOLTIP
+    );
+
+    // Hovering the absolute option closes the popup and opens none: only the
+    // baseline option carries a tooltip.
+    await control.getByText(ABSOLUTE_OPTION_LABEL).hover();
+    await expect(page.getByRole('tooltip')).toHaveCount(0);
+
+    // Moving the pointer away leaves the page without a tooltip.
+    await page.mouse.move(0, 0);
+    await expect(page.getByRole('tooltip')).toBeHidden();
+  });
+
+  test('carries the ineligible reason on the disabled baseline option tooltip', async ({
+    page,
+  }) => {
+    await installRuntimeMock(page, createBaselineModeScenario(SINGLE_ATTEMPTER_SKIPS));
+    await openHeatmapClass(page);
+
+    const control = getModeControl(page);
+    await expect(control).toBeVisible();
+    // Ineligible availability: the control stays enabled so the absolute escape
+    // route remains selectable (the control-level class is the awaiting-data case).
+    await expect(control).not.toHaveClass(/ant-segmented-disabled/);
+    const baselineItem = control
+      .locator('.ant-segmented-item')
+      .filter({ hasText: BASELINE_OPTION_LABEL });
+    await expect(baselineItem).toHaveClass(/ant-segmented-item-disabled/);
+    await expect(baselineItem.getByRole('radio')).toBeDisabled();
+
+    // Hovering the disabled baseline option opens its reason tooltip.
+    await baselineItem.hover();
+    await expect(page.getByRole('tooltip', { name: ENGAGED_STUDENTS_REASON })).toHaveText(
+      ENGAGED_STUDENTS_REASON
+    );
+
+    // Moving the pointer away hides the reason tooltip.
+    await page.mouse.move(0, 0);
+    await expect(
+      page.getByRole('tooltip', { name: new RegExp(ENGAGED_STUDENTS_REASON) })
+    ).toBeHidden();
   });
 
   test('recovers the page from a baseline blocking failure through the mode control', async ({
