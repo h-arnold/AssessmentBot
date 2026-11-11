@@ -39,7 +39,7 @@ import {
 } from './taskHeatmapTableColumns';
 import type { CellPreviewLookup } from './buildCellPreviewLookup';
 import type { PreviewStatus } from './assembleMergedPreviewData';
-import { BASELINE_CAPTION, buildTaskHeaderPresentation } from './taskHeatmapZeroWeightHeader';
+import { BASELINE_CAPTION, buildTaskHeaderPresentation } from './taskHeatmapColumnMarking';
 
 // ---------------------------------------------------------------------------
 // Component

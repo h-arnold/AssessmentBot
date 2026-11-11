@@ -178,21 +178,21 @@ body {
   color: var(--ant-color-text-secondary);
 }
 
-.task-heatmap-zero-weight-group {
+.task-heatmap-excluded-group {
   box-shadow:
     inset 2px 0 0 var(--ant-color-text-secondary),
     inset -2px 0 0 var(--ant-color-text-secondary);
 }
 
-.task-heatmap-zero-weight-first {
+.task-heatmap-excluded-first {
   box-shadow: inset 2px 0 0 var(--ant-color-text-secondary);
 }
 
-.task-heatmap-zero-weight-last {
+.task-heatmap-excluded-last {
   box-shadow: inset -2px 0 0 var(--ant-color-text-secondary);
 }
 
-.task-heatmap-zero-weight-tooltip-target:focus-visible {
+.task-heatmap-excluded-tooltip-target:focus-visible {
   outline: 2px solid var(--ant-color-primary);
   outline-offset: 2px;
 }

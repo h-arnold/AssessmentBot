@@ -42,7 +42,7 @@ import { TaskMetricPreviewCell } from './TaskMetricPreviewCell';
 import type { CellPreviewData, CellPreviewLookup } from './buildCellPreviewLookup';
 import type { PreviewStatus } from './assembleMergedPreviewData';
 import { APP_COL_WIDTH_METRIC } from '@/theme/spacing';
-import { getZeroWeightMetricEdgeClass } from './taskHeatmapZeroWeightHeader';
+import { getExcludedMetricEdgeClass } from './taskHeatmapColumnMarking';
 
 // ---------------------------------------------------------------------------
 // Structural view-model contract (read, never asserted)
@@ -331,7 +331,7 @@ export function buildTaskMetricSubColumns(
     });
     return {
       key: columnKey,
-      className: getZeroWeightMetricEdgeClass(
+      className: getExcludedMetricEdgeClass(
         metricIndex,
         HEATMAP_METRIC_KEYS.length,
         taskColumn.averageContribution,

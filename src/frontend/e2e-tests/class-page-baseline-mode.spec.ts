@@ -42,7 +42,7 @@ const BASELINE_OPTION_LABEL = 'Baseline tasks';
 
 const HEATMAP_TABLE_NAME = 'Task Heatmap';
 
-// Heatmap-side copy from `taskHeatmapZeroWeightHeader.tsx` (constants
+// Heatmap-side copy from `taskHeatmapColumnMarking.tsx` (constants
 // BASELINE_CAPTION / BASELINE_OFF_EXPLANATION), restated so the browser
 // assertions stay independent of the production module.
 const BASELINE_CAPTION =

@@ -34,14 +34,14 @@ import {
   TASK_1_TITLE,
   TASK_2_TITLE,
 } from '@/test/taskHeatmapTableTestHelpers';
-import { ZERO_WEIGHT_GROUP_CLASS } from './taskHeatmapZeroWeightHeader';
+import { EXCLUDED_COLUMN_GROUP_CLASS } from './taskHeatmapColumnMarking';
 
 // ---------------------------------------------------------------------------
 // Copy under test
 // ---------------------------------------------------------------------------
 
 // The layout spec pins this wording verbatim; the production copy constants
-// live beside `taskHeatmapZeroWeightHeader.tsx`.
+// live beside `taskHeatmapColumnMarking.tsx`.
 const BASELINE_OFF_EXPLANATION =
   'Task outside the baseline set — shown, but not included in baseline averages.';
 const BASELINE_CAPTION =
@@ -273,7 +273,7 @@ describe('TaskHeatmapTable attempt-baseline column marking', () => {
       // The header cell carries the same explanation and the shared
       // zero-weight group chrome (one visual language).
       const headerCell = markedSpan.closest('th');
-      expect(headerCell).toHaveClass(ZERO_WEIGHT_GROUP_CLASS);
+      expect(headerCell).toHaveClass(EXCLUDED_COLUMN_GROUP_CLASS);
       expect(headerCell).toHaveAttribute(
         'aria-label',
         expect.stringContaining(BASELINE_OFF_EXPLANATION)
@@ -408,7 +408,7 @@ describe('TaskHeatmapTable attempt-baseline column marking', () => {
       const markedSpan = screen.getByRole('group');
       expect(markedSpan.textContent).toBe(`A1 Task 2${BASELINE_MARKER}`);
       const headerCell = markedSpan.closest('th');
-      expect(headerCell).toHaveClass(ZERO_WEIGHT_GROUP_CLASS);
+      expect(headerCell).toHaveClass(EXCLUDED_COLUMN_GROUP_CLASS);
       expect(headerCell).toHaveAttribute(
         'aria-label',
         expect.stringContaining(BASELINE_OFF_EXPLANATION)
@@ -419,16 +419,16 @@ describe('TaskHeatmapTable attempt-baseline column marking', () => {
 
       // Tier parents and sticky columns carry no marking chrome.
       expect(screen.getByRole('columnheader', { name: MERGED_A1_NAME })).not.toHaveClass(
-        ZERO_WEIGHT_GROUP_CLASS
+        EXCLUDED_COLUMN_GROUP_CLASS
       );
       expect(screen.getByRole('columnheader', { name: MERGED_A2_NAME })).not.toHaveClass(
-        ZERO_WEIGHT_GROUP_CLASS
+        EXCLUDED_COLUMN_GROUP_CLASS
       );
       expect(screen.getByRole('columnheader', { name: 'Forename' })).not.toHaveClass(
-        ZERO_WEIGHT_GROUP_CLASS
+        EXCLUDED_COLUMN_GROUP_CLASS
       );
       expect(screen.getByRole('columnheader', { name: 'Surname' })).not.toHaveClass(
-        ZERO_WEIGHT_GROUP_CLASS
+        EXCLUDED_COLUMN_GROUP_CLASS
       );
 
       // In-baseline sibling headings stay plain; cell values are unchanged.
@@ -449,7 +449,7 @@ describe('TaskHeatmapTable attempt-baseline column marking', () => {
       // The collapsed tier parent itself carries no marking chrome.
       expect(
         screen.getByRole('columnheader', { name: `${MERGED_A1_NAME} (shared definition)` })
-      ).not.toHaveClass(ZERO_WEIGHT_GROUP_CLASS);
+      ).not.toHaveClass(EXCLUDED_COLUMN_GROUP_CLASS);
     });
 
     it('renders no baseline marking on an all-in-baseline merged result (absolute-mode invariance)', () => {

@@ -57,14 +57,14 @@ function readCssRule(selector: string): string | undefined {
 function findZeroWeightFocusVisibleRule(): string | undefined {
   return appStylesRaw
     .split('}')
-    .find((rule) => rule.includes('task-heatmap-zero-weight') && rule.includes(':focus-visible'));
+    .find((rule) => rule.includes('task-heatmap-excluded') && rule.includes(':focus-visible'));
 }
 
 describe('task heatmap zero-weight presentation styles', () => {
   it('defines the theme-aware 2px inset edges on the group and both metric boundaries', () => {
-    const groupRule = readCssRule('.task-heatmap-zero-weight-group');
-    const firstMetricRule = readCssRule('.task-heatmap-zero-weight-first');
-    const lastMetricRule = readCssRule('.task-heatmap-zero-weight-last');
+    const groupRule = readCssRule('.task-heatmap-excluded-group');
+    const firstMetricRule = readCssRule('.task-heatmap-excluded-first');
+    const lastMetricRule = readCssRule('.task-heatmap-excluded-last');
 
     expect(groupRule).toContain(LEFT_ZERO_WEIGHT_EDGE);
     expect(groupRule).toContain(RIGHT_ZERO_WEIGHT_EDGE);

@@ -95,8 +95,8 @@ test.describe('Task Heatmap E2E journey', () => {
       exact: true,
     });
     await expect(taskHeaderLabel).toHaveCount(1);
-    const zeroWeightHeader = table.locator('th.task-heatmap-zero-weight-group').first();
-    await expect(zeroWeightHeader).toHaveClass(/task-heatmap-zero-weight-group/);
+    const zeroWeightHeader = table.locator('th.task-heatmap-excluded-group').first();
+    await expect(zeroWeightHeader).toHaveClass(/task-heatmap-excluded-group/);
     const headerBoxShadow = await zeroWeightHeader.evaluate(
       (element) => getComputedStyle(element).boxShadow
     );
@@ -156,13 +156,11 @@ test.describe('Task Heatmap E2E journey', () => {
     expect(scoreBackground).not.toBe('rgba(0, 0, 0, 0)');
     expect(scoreBackground).not.toBe('transparent');
 
-    await expect(table.locator('.task-heatmap-zero-weight-group')).toHaveCount(
-      METRIC_SUBCOLUMN_COUNT
-    );
-    await expect(table.locator('.task-heatmap-zero-weight-first').first()).toHaveCount(1);
-    await expect(table.locator('.task-heatmap-zero-weight-last').first()).toHaveCount(1);
-    const firstMetricCell = table.locator('.task-heatmap-zero-weight-first').first();
-    const lastMetricCell = table.locator('.task-heatmap-zero-weight-last').first();
+    await expect(table.locator('.task-heatmap-excluded-group')).toHaveCount(METRIC_SUBCOLUMN_COUNT);
+    await expect(table.locator('.task-heatmap-excluded-first').first()).toHaveCount(1);
+    await expect(table.locator('.task-heatmap-excluded-last').first()).toHaveCount(1);
+    const firstMetricCell = table.locator('.task-heatmap-excluded-first').first();
+    const lastMetricCell = table.locator('.task-heatmap-excluded-last').first();
     const [firstBoxShadow, lastBoxShadow] = await Promise.all([
       firstMetricCell.evaluate((element) => getComputedStyle(element).boxShadow),
       lastMetricCell.evaluate((element) => getComputedStyle(element).boxShadow),
@@ -170,10 +168,10 @@ test.describe('Task Heatmap E2E journey', () => {
     expect(firstBoxShadow).toMatch(/2(?:px 0){3}px inset/);
     expect(lastBoxShadow).toMatch(/-2(?:px 0){3}px inset/);
     await expect(table.getByRole('columnheader', { name: 'Forename' })).not.toHaveClass(
-      /task-heatmap-zero-weight/
+      /task-heatmap-excluded/
     );
     await expect(table.getByRole('columnheader', { name: 'Surname' })).not.toHaveClass(
-      /task-heatmap-zero-weight/
+      /task-heatmap-excluded/
     );
   });
 
