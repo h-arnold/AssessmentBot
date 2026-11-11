@@ -11,10 +11,10 @@ import {
   EXCLUDED_COLUMN_FIRST_CLASS,
   EXCLUDED_COLUMN_GROUP_CLASS,
   EXCLUDED_COLUMN_LAST_CLASS,
+  EXCLUDED_COLUMN_TOOLTIP_TARGET_CLASS,
   getExcludedMetricEdgeClass,
 } from './taskHeatmapColumnMarking';
 
-const MAX_ZERO_TITLE_TAB_STEPS = 20;
 const SINGLE_METRIC_INDEX = 0;
 const SINGLE_METRIC_COUNT = 1;
 
@@ -118,35 +118,22 @@ describe('TaskHeatmapTable zero-weight presentation', () => {
     expect(edgeClass).toContain(EXCLUDED_COLUMN_LAST_CLASS);
   });
 
-  it('shows the exact explanation on pointer hover and keyboard focus with one non-actionable tab stop', async () => {
-    renderEmbeddedZeroWeightTable();
+  it('shows the exact explanation on pointer hover', async () => {
+    const { container } = renderEmbeddedZeroWeightTable();
 
     const headerName = `Task 1; ${ZERO_WEIGHT_EXPLANATION}`;
-    const targetName = `Task 1 ${ZERO_WEIGHT_EXPLANATION}`;
-    const title = screen.getByRole('group', { name: targetName });
+    const title = container.querySelector('.' + EXCLUDED_COLUMN_TOOLTIP_TARGET_CLASS);
+    if (!(title instanceof HTMLElement)) {
+      throw new TypeError('Expected the zero-weight tooltip target span to render.');
+    }
     expect(screen.getByRole('columnheader', { name: headerName })).toHaveAttribute(
       'aria-label',
       headerName
     );
-    expect(title).toHaveAttribute('tabindex', '0');
-    expect(screen.getAllByRole('group', { name: targetName })).toHaveLength(1);
+    expect(container.querySelectorAll('.' + EXCLUDED_COLUMN_TOOLTIP_TARGET_CLASS)).toHaveLength(1);
 
     await user.hover(title);
     expect(await screen.findByText(ZERO_WEIGHT_EXPLANATION)).toBeInTheDocument();
-
-    await user.unhover(title);
-    screen.getByRole('columnheader', { name: 'Forename' }).focus();
-    await user.tab();
-    let tabSteps = 0;
-    while (document.activeElement !== title && tabSteps < MAX_ZERO_TITLE_TAB_STEPS) {
-      await user.tab();
-      tabSteps += 1;
-    }
-    expect(title).toHaveFocus();
-    expect(await screen.findByText(ZERO_WEIGHT_EXPLANATION)).toBeInTheDocument();
-
-    await user.keyboard('{Enter}{Space}');
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     expect(screen.getByRole('columnheader', { name: headerName })).toBeInTheDocument();
   });
 
@@ -268,10 +255,11 @@ describe('TaskHeatmapTable zero-weight presentation', () => {
       EXCLUDED_COLUMN_GROUP_CLASS
     );
 
-    const focusableTitle = screen.getByRole('group', {
-      name: `Merged zero-weight task ${ZERO_WEIGHT_EXPLANATION}`,
-    });
-    expect(focusableTitle).toBeInTheDocument();
+    const markedSpan = container.querySelector('.' + EXCLUDED_COLUMN_TOOLTIP_TARGET_CLASS);
+    if (!(markedSpan instanceof HTMLElement)) {
+      throw new TypeError('Expected the merged zero-weight tooltip target span to render.');
+    }
+    expect(markedSpan).toBeInTheDocument();
     const completeness = screen.getAllByRole('columnheader', { name: /completeness/i });
     expect(completeness[0]).toHaveClass(EXCLUDED_COLUMN_FIRST_CLASS);
     expect(completeness[1]).not.toHaveClass(EXCLUDED_COLUMN_FIRST_CLASS);

@@ -25,6 +25,7 @@ import {
   EXCLUDED_COLUMN_FIRST_CLASS,
   EXCLUDED_COLUMN_GROUP_CLASS,
   EXCLUDED_COLUMN_LAST_CLASS,
+  EXCLUDED_COLUMN_TOOLTIP_TARGET_CLASS,
   ZERO_WEIGHT_EXPLANATION,
   getExcludedMetricEdgeClass,
 } from './taskHeatmapColumnMarking';
@@ -166,7 +167,10 @@ describe('shared visual language across marking causes', () => {
   it('applies the shared edge classes to baseline-off metric headers and body cells', () => {
     const { container } = renderEmbeddedBaselineOffTable();
 
-    const markedSpan = screen.getByRole('group');
+    const markedSpan = container.querySelector('.' + EXCLUDED_COLUMN_TOOLTIP_TARGET_CLASS);
+    if (!(markedSpan instanceof HTMLElement)) {
+      throw new TypeError('Expected the marked tooltip target span to render.');
+    }
     expect(markedSpan.textContent).toBe(`Task 1${BASELINE_MARKER}`);
     expect(markedSpan.closest('th')).toHaveClass(EXCLUDED_COLUMN_GROUP_CLASS);
 
@@ -184,12 +188,15 @@ describe('shared visual language across marking causes', () => {
   });
 
   it('renders one composed tooltip with the baseline fact before the zero-weight fact when both causes co-occur', async () => {
-    renderEmbeddedCoOccurringTable();
+    const { container } = renderEmbeddedCoOccurringTable();
 
-    const markedSpan = screen.getByRole('group');
+    const markedSpan = container.querySelector('.' + EXCLUDED_COLUMN_TOOLTIP_TARGET_CLASS);
+    if (!(markedSpan instanceof HTMLElement)) {
+      throw new TypeError('Expected the marked tooltip target span to render.');
+    }
     expect(markedSpan.textContent).toBe(`Task 1${BASELINE_MARKER}`);
 
-    // The focusable target's aria-label carries both facts, baseline first.
+    // The tooltip target's aria-label carries both facts, baseline first.
     const spanLabel = markedSpan.getAttribute('aria-label') ?? '';
     expect(spanLabel).toContain(BASELINE_OFF_EXPLANATION);
     expect(spanLabel).toContain(ZERO_WEIGHT_EXPLANATION);

@@ -20,6 +20,7 @@
  */
 
 import { expect, test, type Locator, type Page } from '@playwright/test';
+import { EXCLUDED_COLUMN_TOOLTIP_TARGET_CLASS } from '@/features/taskHeatmap/taskHeatmapColumnMarking';
 import { ClassFullSchema } from '@/services/googleClassrooms/classDetail/classDetailService.zod';
 import {
   getMethodCalls,
@@ -405,19 +406,14 @@ test.describe('Class page attempt-baseline mode', () => {
     await expect(table.getByRole('columnheader', { name: /†/ })).toHaveCount(1);
     await expect(page.getByText(BASELINE_CAPTION)).toBeVisible();
 
-    // The marked heading explains itself through its tooltip on keyboard focus.
-    const markedHeading = table.getByRole('group', {
-      name: `Task 3† ${BASELINE_OFF_EXPLANATION}`,
-    });
+    // The marked heading's tooltip target span is deliberately not focusable, so
+    // it is located by its class; its composed accessible label stays pinned.
+    const markedHeading = table.locator(`.${EXCLUDED_COLUMN_TOOLTIP_TARGET_CLASS}`);
     await expect(markedHeading).toHaveCount(1);
-    await markedHeading.focus();
-    await expect(
-      page.getByRole('tooltip', { name: new RegExp(BASELINE_OFF_EXPLANATION) })
-    ).toHaveText(BASELINE_OFF_EXPLANATION);
-    await markedHeading.blur();
-    await expect(
-      page.getByRole('tooltip', { name: new RegExp(BASELINE_OFF_EXPLANATION) })
-    ).toBeHidden();
+    await expect(markedHeading).toHaveAttribute(
+      'aria-label',
+      `Task 3† ${BASELINE_OFF_EXPLANATION}`
+    );
 
     // Toggling back removes the marking and the caption without leaving the view.
     await control.getByText(ABSOLUTE_OPTION_LABEL).click();

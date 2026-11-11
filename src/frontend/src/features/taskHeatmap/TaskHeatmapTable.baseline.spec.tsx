@@ -41,6 +41,7 @@ import {
   BASELINE_MARKER,
   BASELINE_OFF_EXPLANATION,
   EXCLUDED_COLUMN_GROUP_CLASS,
+  EXCLUDED_COLUMN_TOOLTIP_TARGET_CLASS,
 } from './taskHeatmapColumnMarking';
 
 // ---------------------------------------------------------------------------
@@ -253,13 +254,17 @@ describe('TaskHeatmapTable attempt-baseline column marking', () => {
   // the shared zero-weight group chrome.
   // -------------------------------------------------------------------------
   describe('marked task headings', () => {
-    it('suffixes the baseline-off heading with the marker and exposes the explanation through hover, focus and the header cell', async () => {
-      renderHeatmapTable(withBaselineFlags(buildHeatmapResult(), [true, false]));
+    it('suffixes the baseline-off heading with the marker and exposes the explanation through hover and the header cell', async () => {
+      const { container } = renderHeatmapTable(
+        withBaselineFlags(buildHeatmapResult(), [true, false])
+      );
 
-      // Exactly one marked heading: the focusable tooltip target span.
-      const markedSpan = screen.getByRole('group');
+      // Exactly one marked heading: the tooltip target span.
+      const markedSpan = container.querySelector('.' + EXCLUDED_COLUMN_TOOLTIP_TARGET_CLASS);
+      if (!(markedSpan instanceof HTMLElement)) {
+        throw new TypeError('Expected the marked tooltip target span to render.');
+      }
       expect(markedSpan.textContent).toBe(`${TASK_2_TITLE}${BASELINE_MARKER}`);
-      expect(markedSpan).toHaveAttribute('tabindex', '0');
       expect(markedSpan).toHaveAttribute(
         'aria-label',
         expect.stringContaining(BASELINE_OFF_EXPLANATION)
@@ -276,12 +281,8 @@ describe('TaskHeatmapTable attempt-baseline column marking', () => {
         expect.stringContaining(BASELINE_OFF_EXPLANATION)
       );
 
-      // Hover reveals the explanation; keyboard focus reveals it too.
+      // Hover reveals the explanation.
       await user.hover(markedSpan);
-      expect(await screen.findByRole('tooltip')).toHaveTextContent(BASELINE_OFF_EXPLANATION);
-
-      await user.unhover(markedSpan);
-      markedSpan.focus();
       expect(await screen.findByRole('tooltip')).toHaveTextContent(BASELINE_OFF_EXPLANATION);
 
       // The in-baseline sibling heading stays plain.
@@ -350,7 +351,7 @@ describe('TaskHeatmapTable attempt-baseline column marking', () => {
 
       expect(screen.queryByText(BASELINE_CAPTION)).not.toBeInTheDocument();
       expect(screen.queryByText(BASELINE_OFF_EXPLANATION)).not.toBeInTheDocument();
-      expect(screen.queryByRole('group')).not.toBeInTheDocument();
+      expect(container.querySelector('.' + EXCLUDED_COLUMN_TOOLTIP_TARGET_CLASS)).toBeNull();
       expect(container.textContent).not.toContain(BASELINE_MARKER);
 
       // Headers keep their plain accessible names.
@@ -371,9 +372,14 @@ describe('TaskHeatmapTable attempt-baseline column marking', () => {
   // -------------------------------------------------------------------------
   describe('merged attempt-baseline inheritance', () => {
     it('marks a merged task column outside the attempt baseline under its assignment tier', () => {
-      renderHeatmapTable(buildMergedResultWithBaselineFlags([true, false, true, true]));
+      const { container } = renderHeatmapTable(
+        buildMergedResultWithBaselineFlags([true, false, true, true])
+      );
 
-      const markedSpan = screen.getByRole('group');
+      const markedSpan = container.querySelector('.' + EXCLUDED_COLUMN_TOOLTIP_TARGET_CLASS);
+      if (!(markedSpan instanceof HTMLElement)) {
+        throw new TypeError('Expected the marked tooltip target span to render.');
+      }
       expect(markedSpan.textContent).toBe(`A1 Task 2${BASELINE_MARKER}`);
       const headerCell = markedSpan.closest('th');
       expect(headerCell).toHaveClass(EXCLUDED_COLUMN_GROUP_CLASS);
@@ -408,9 +414,14 @@ describe('TaskHeatmapTable attempt-baseline column marking', () => {
     });
 
     it('marks a collapsed shared-definition merged column outside the attempt baseline', () => {
-      renderHeatmapTable(buildCollapsedMergedResultWithBaselineFlags([false, true]));
+      const { container } = renderHeatmapTable(
+        buildCollapsedMergedResultWithBaselineFlags([false, true])
+      );
 
-      const markedSpan = screen.getByRole('group');
+      const markedSpan = container.querySelector('.' + EXCLUDED_COLUMN_TOOLTIP_TARGET_CLASS);
+      if (!(markedSpan instanceof HTMLElement)) {
+        throw new TypeError('Expected the marked tooltip target span to render.');
+      }
       expect(markedSpan.textContent).toBe(`Shared Task 1${BASELINE_MARKER}`);
       expect(screen.getByText(BASELINE_CAPTION)).toBeInTheDocument();
 

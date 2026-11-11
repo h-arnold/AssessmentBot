@@ -49,17 +49,6 @@ function readCssRule(selector: string): string | undefined {
     : appStylesRaw.slice(declarationStart, declarationEnd);
 }
 
-/**
- * Find the zero-weight Tooltip target's `:focus-visible` rule.
- *
- * @returns {string | undefined} The selector and declarations, when present.
- */
-function findZeroWeightFocusVisibleRule(): string | undefined {
-  return appStylesRaw
-    .split('}')
-    .find((rule) => rule.includes('task-heatmap-excluded') && rule.includes(':focus-visible'));
-}
-
 describe('task heatmap zero-weight presentation styles', () => {
   it('defines the theme-aware 2px inset edges on the group and both metric boundaries', () => {
     const groupRule = readCssRule('.task-heatmap-excluded-group');
@@ -70,28 +59,5 @@ describe('task heatmap zero-weight presentation styles', () => {
     expect(groupRule).toContain(RIGHT_ZERO_WEIGHT_EDGE);
     expect(firstMetricRule).toContain(LEFT_ZERO_WEIGHT_EDGE);
     expect(lastMetricRule).toContain(RIGHT_ZERO_WEIGHT_EDGE);
-  });
-
-  it('defines a visible focus indicator for the zero-weight tooltip target', () => {
-    const focusVisibleRule = findZeroWeightFocusVisibleRule();
-    const declarations = focusVisibleRule?.slice(focusVisibleRule.lastIndexOf('{') + 1);
-    const hasVisibleOutline = declarations?.split(';').some((declaration) => {
-      const separatorIndex = declaration.indexOf(':');
-      if (separatorIndex === INDEX_NOT_FOUND) {
-        return false;
-      }
-      const property = declaration.slice(0, separatorIndex).trim().toLowerCase();
-      const value = declaration
-        .slice(separatorIndex + 1)
-        .trim()
-        .toLowerCase();
-      if (property === 'outline') {
-        return value !== 'none' && !value.startsWith('0');
-      }
-      return property === 'outline-style' && value !== 'none';
-    });
-
-    expect(focusVisibleRule).toBeDefined();
-    expect(hasVisibleOutline).toBe(true);
   });
 });

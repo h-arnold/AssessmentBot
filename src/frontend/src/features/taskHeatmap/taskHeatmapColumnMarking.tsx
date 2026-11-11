@@ -41,6 +41,12 @@ function isColumnUnmarked(
  * labels distinguish them, composing the baseline fact before the zero-weight
  * fact when both apply.
  *
+ * The tooltip target span is deliberately not focusable: the header cell's
+ * `aria-label` (set via `onHeaderCell`) already carries the full composed
+ * explanation for assistive technology during table navigation, the visible
+ * caption above the table covers the baseline cause, and the hover tooltip
+ * remains the visual affordance for pointer users.
+ *
  * @param {string} title - Full task title or ID fallback.
  * @param {AverageContribution} averageContribution - Validated adapter metadata.
  * @param {Readonly<{ includedInAttemptBaseline: boolean }>} options - The column's attempt-baseline membership.
@@ -73,11 +79,9 @@ export function buildTaskHeaderPresentation(
 
   return {
     title: (
-      <Tooltip title={explanation} trigger={['hover', 'focus']}>
+      <Tooltip title={explanation}>
         <span
           className={EXCLUDED_COLUMN_TOOLTIP_TARGET_CLASS}
-          role="group"
-          tabIndex={0}
           aria-label={`${displayTitle} ${explanation}`}
         >
           {displayTitle}

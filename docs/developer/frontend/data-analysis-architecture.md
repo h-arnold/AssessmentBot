@@ -221,8 +221,9 @@ remounts while logging distinct errors.
    itself.
 3. `features/taskHeatmap/taskHeatmapColumnMarking.tsx` selects the marked
    header presentation for zero-effective-weight and outside-the-attempt-baseline
-   columns: a non-actionable, focusable Tooltip on the task title plus the
-   group-edge classes (`.task-heatmap-excluded-group`, `-first`, `-last`),
+   columns: a hover-only Tooltip on the task title (not focusable — the composed
+   explanation rides on the header cell's `aria-label` and the visible caption)
+   plus the group-edge classes (`.task-heatmap-excluded-group`, `-first`, `-last`),
    defined as theme-aware inset 2px box-shadows in `src/frontend/src/index.css` and applied
    by `taskHeatmapTableColumns.tsx`. One visual language covers both causes — the
    tooltip and accessible labels distinguish them, baseline-off headings carry the

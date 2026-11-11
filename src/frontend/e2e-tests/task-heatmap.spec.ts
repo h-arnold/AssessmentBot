@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { EXCLUDED_COLUMN_TOOLTIP_TARGET_CLASS } from '@/features/taskHeatmap/taskHeatmapColumnMarking';
 import { installRuntimeMock, releaseNextDeferredSuccess } from './shared/endToEndRuntimeMocks';
 import {
   CLASSES_LABEL,
@@ -14,7 +15,6 @@ const EXCLUDED_METRIC_ACCESSIBLE_NAME = 'Excluded from average: displayed work h
 const METRIC_SUBCOLUMN_COUNT = 3;
 const EXCLUDED_AGGREGATE_COUNT = 4;
 const EXPECTED_EXCLUDED_COLUMN_WIDTH = 72;
-const MAX_ZERO_WEIGHT_TAB_PRESSES = 40;
 /** Number of keyboard steps to nudge the lower band-filter handle up past zero. */
 const LOWER_HANDLE_NUDGE_STEPS = 3;
 /** Human-readable task titles sourced from the warm-up partial (taskColumn.taskTitle). */
@@ -90,12 +90,13 @@ test.describe('Task Heatmap E2E journey', () => {
 
     const zeroWeightLabel =
       'Task 1 Zero weighting — scores are shown but do not contribute to averages.';
-    const taskHeaderLabel = table.getByRole('group', {
-      name: zeroWeightLabel,
-      exact: true,
-    });
-    await expect(taskHeaderLabel).toHaveCount(1);
+    // The marked header's tooltip target span is deliberately not focusable, so
+    // it is located by its class inside the first excluded group header (Task 1);
+    // its composed accessible label stays pinned.
     const zeroWeightHeader = table.locator('th.task-heatmap-excluded-group').first();
+    const taskHeaderLabel = zeroWeightHeader.locator(`.${EXCLUDED_COLUMN_TOOLTIP_TARGET_CLASS}`);
+    await expect(taskHeaderLabel).toHaveCount(1);
+    await expect(taskHeaderLabel).toHaveAttribute('aria-label', zeroWeightLabel);
     await expect(zeroWeightHeader).toHaveClass(/task-heatmap-excluded-group/);
     const headerBoxShadow = await zeroWeightHeader.evaluate(
       (element) => getComputedStyle(element).boxShadow
@@ -108,34 +109,6 @@ test.describe('Task Heatmap E2E journey', () => {
     );
     await page.mouse.move(0, 0);
     await expect(page.getByRole('tooltip')).toHaveCount(0);
-    const focusStart = page.getByRole('button', { name: 'Back to Class overview' });
-    await focusStart.focus();
-    for (let tabPress = 0; tabPress < MAX_ZERO_WEIGHT_TAB_PRESSES; tabPress += 1) {
-      await page.keyboard.press('Tab');
-      if (await taskHeaderLabel.evaluate((element) => element === document.activeElement)) {
-        break;
-      }
-    }
-    await expect(taskHeaderLabel).toBeFocused();
-    const focusStyle = await taskHeaderLabel.evaluate((element) => {
-      const style = getComputedStyle(element);
-      return {
-        outlineColor: style.outlineColor,
-        outlineOffset: style.outlineOffset,
-        outlineStyle: style.outlineStyle,
-        outlineWidth: style.outlineWidth,
-      };
-    });
-    expect(focusStyle.outlineStyle).toBe('solid');
-    expect(focusStyle.outlineWidth).toBe('2px');
-    expect(focusStyle.outlineOffset).toBe('2px');
-    expect(focusStyle.outlineColor).not.toBe('transparent');
-    await expect(page.getByRole('tooltip', { name: /^Zero weighting/ })).toHaveText(
-      'Zero weighting — scores are shown but do not contribute to averages.'
-    );
-    await page.keyboard.press('Enter');
-    await page.keyboard.press('Space');
-    await expect(page.getByRole('dialog')).toHaveCount(0);
 
     const studentTwoScore = table.getByRole('button', {
       name: 'Student Two, Task 1, Completeness: 5',
