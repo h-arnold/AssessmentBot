@@ -10,6 +10,7 @@ import { filterAssignments } from './averagingAnalyser.filters';
 import {
   buildPerStudentRows,
   buildPerTaskRows,
+  filterAccumulatorsByBaseline,
   rollupAccumulators,
 } from './averagingAnalyser.rows';
 import { buildPerStudentTaskMetrics } from './averagingAnalyser.taskProjection';
@@ -107,10 +108,7 @@ function collectClassAccumulators(
 ): DataPointAccumulator[] {
   const classAccums: DataPointAccumulator[] = [];
   for (const taskMap of perStudentTaskAccums.values()) {
-    for (const [taskKey, accumulator] of taskMap) {
-      if (baselineTaskKeys && !baselineTaskKeys.has(taskKey)) continue;
-      classAccums.push(accumulator);
-    }
+    classAccums.push(...filterAccumulatorsByBaseline(taskMap, baselineTaskKeys));
   }
   return classAccums;
 }

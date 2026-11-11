@@ -1,14 +1,13 @@
-import type { AveragingResult, PerStudentTaskMetric } from '../dataAnalysis.zod';
+import {
+  BASELINE_POOL_MINIMUM,
+  type AveragingResult,
+  type PerStudentTaskMetric,
+} from '../dataAnalysis.zod';
 
 /**
  * Ten-percent pool fraction (data-shape item 3).
  */
 const BASELINE_POOL_FRACTION = 0.1;
-
-/**
- * Minimum baseline pool size (data-shape item 3).
- */
-const BASELINE_POOL_MINIMUM = 2;
 
 /**
  * Minimum roster size for attempt-baseline eligibility (data-shape item 3).
@@ -48,13 +47,15 @@ export function isAttemptMetric(metric: PerStudentTaskMetric): boolean {
 
 /**
  * Collect the roster's attempt candidates (data-shape item 3): roster student ids
- * carrying at least one attempted task, ascending by student id. Roster-scoped:
- * metrics for students outside the roster never become candidates.
+ * carrying at least one attempted task. Roster-scoped: metrics for students
+ * outside the roster never become candidates. The returned order is unspecified;
+ * consumers must not rely on it.
  *
  * @param {ReadonlyArray<PerStudentTaskMetric>} perStudentTaskMetrics - Mode-invariant
  *   per-(student, task) metrics projected via `buildPerStudentTaskMetrics`.
  * @param {ReadonlyArray<string>} rosterStudentIds - The class roster's student ids.
- * @returns {string[]} Roster student ids with at least one attempted task, ascending.
+ * @returns {string[]} Roster student ids with at least one attempted task, in
+ *   unspecified order.
  */
 export function collectRosterAttemptCandidates(
   perStudentTaskMetrics: ReadonlyArray<PerStudentTaskMetric>,
@@ -66,7 +67,7 @@ export function collectRosterAttemptCandidates(
     if (!rosterIds.has(metric.studentId) || !isAttemptMetric(metric)) continue;
     candidates.add(metric.studentId);
   }
-  return [...candidates].toSorted((a, b) => a.localeCompare(b));
+  return [...candidates];
 }
 
 /**

@@ -47,6 +47,20 @@ function rollupCriterion(
 }
 
 /**
+ * Roll up a card's three criterion metrics across the given per-task rows.
+ *
+ * @param {PerTaskRow[]} rows - The per-task rows to roll up (non-empty).
+ * @returns {CardCriterionRollups} The rolled-up criterion metrics.
+ */
+function rollCriteria(rows: PerTaskRow[]): CardCriterionRollups {
+  return {
+    completeness: rollupCriterion(rows, 'completeness'),
+    accuracy: rollupCriterion(rows, 'accuracy'),
+    spag: rollupCriterion(rows, 'spag'),
+  };
+}
+
+/**
  * Roll up a card's three criterion metrics from its per-task rows under the
  * baseline-mode card rule (data-shape item 6).
  *
@@ -67,27 +81,15 @@ export function rollupCardCriteria(
   baselineTaskSet: ReadonlySet<string> | null
 ): CardCriterionRollups {
   if (baselineTaskSet === null) {
-    return {
-      completeness: rollupCriterion(rows, 'completeness'),
-      accuracy: rollupCriterion(rows, 'accuracy'),
-      spag: rollupCriterion(rows, 'spag'),
-    };
+    return rollCriteria(rows);
   }
   const baselineRows = rows.filter((row) =>
     baselineTaskSet.has(buildTaskKey(row.definitionKey, row.taskId))
   );
   if (baselineRows.length > 0) {
-    return {
-      completeness: rollupCriterion(baselineRows, 'completeness'),
-      accuracy: rollupCriterion(baselineRows, 'accuracy'),
-      spag: rollupCriterion(baselineRows, 'spag'),
-    };
+    return rollCriteria(baselineRows);
   }
-  const unfiltered = {
-    completeness: rollupCriterion(rows, 'completeness'),
-    accuracy: rollupCriterion(rows, 'accuracy'),
-    spag: rollupCriterion(rows, 'spag'),
-  };
+  const unfiltered = rollCriteria(rows);
   return {
     completeness: convertToBaselineExcluded(unfiltered.completeness),
     accuracy: convertToBaselineExcluded(unfiltered.accuracy),

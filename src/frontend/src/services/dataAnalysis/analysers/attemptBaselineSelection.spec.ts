@@ -12,8 +12,8 @@
  * Public surface pinned here:
  *
  * - `collectRosterAttemptCandidates(perStudentTaskMetrics, rosterStudentIds)` —
- *   roster student ids carrying at least one attempted task, ascending by
- *   student id.
+ *   roster student ids carrying at least one attempted task, in unspecified
+ *   order (consumers must not rely on the returned order).
  * - `isAttemptBaselineEligible(rosterStudentCount, candidateStudentCount)` —
  *   the two availability conditions of the specification's availability rule
  *   as one predicate.
@@ -59,6 +59,9 @@ const SINGLE_CANDIDATE_COUNT = 1;
 
 /** Sparse-evidence scenario: many candidates, one distinct attempt each. */
 const SPARSE_CANDIDATE_COUNT = 10;
+
+/** Expected candidates in the roster-scoping fixture (two in-roster submitters). */
+const ROSTER_CANDIDATE_COUNT = 2;
 
 /** Structural minimum pool size. */
 const POOL_MINIMUM = 2;
@@ -227,7 +230,7 @@ describe('collectRosterAttemptCandidates (shared attempt predicate)', () => {
     expect(candidates).toEqual(['s_001']);
   });
 
-  it('is roster-scoped and returns candidates in ascending studentId order', () => {
+  it('is roster-scoped and returns the roster students with an attempt', () => {
     const metrics = [
       createCellMetric('s_009', TASK_KEY_ONE, { completeness: COMPUTED_DISPLAY }),
       createCellMetric('s_002', TASK_KEY_TWO, { completeness: COMPUTED_DISPLAY }),
@@ -236,9 +239,11 @@ describe('collectRosterAttemptCandidates (shared attempt predicate)', () => {
 
     const candidates = collectRosterAttemptCandidates(metrics, THREE_STUDENT_ROSTER);
 
-    // s_009 submitted work but is outside the roster; s_003 is rostered with
-    // no observations.
-    expect(candidates).toEqual(['s_001', 's_002']);
+    // The candidate order is unspecified by contract (Set insertion order), so
+    // compare membership order-insensitively. s_009 submitted work but is
+    // outside the roster; s_003 is rostered with no observations.
+    expect(candidates).toHaveLength(ROSTER_CANDIDATE_COUNT);
+    expect(candidates.toSorted((a, b) => a.localeCompare(b))).toEqual(['s_001', 's_002']);
   });
 });
 

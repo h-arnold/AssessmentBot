@@ -43,6 +43,28 @@ export function convertToBaselineExcluded(metric: MetricResult): MetricResult {
 }
 
 /**
+ * Keep only the accumulators whose task key is inside the baseline task set.
+ *
+ * @param {Map<string, DataPointAccumulator>} accumulators - The candidate
+ *   accumulators keyed by task key.
+ * @param {ReadonlySet<string> | undefined} baselineTaskKeys - The class's
+ *   baseline task keys; `undefined` keeps every accumulator (absolute mode).
+ * @returns {DataPointAccumulator[]} The baseline-restricted accumulators.
+ */
+export function filterAccumulatorsByBaseline(
+  accumulators: Map<string, DataPointAccumulator>,
+  baselineTaskKeys: ReadonlySet<string> | undefined
+): DataPointAccumulator[] {
+  const baselineAccums: DataPointAccumulator[] = [];
+  for (const [taskKey, accumulator] of accumulators) {
+    if (!baselineTaskKeys || baselineTaskKeys.has(taskKey)) {
+      baselineAccums.push(accumulator);
+    }
+  }
+  return baselineAccums;
+}
+
+/**
  * Select a student's per-(student, task) accumulators inside the baseline
  * task set.
  *
@@ -54,11 +76,7 @@ function selectBaselineAccumulators(
   taskAccumsForStudent: Map<string, DataPointAccumulator>,
   baselineTaskKeys: ReadonlySet<string>
 ): DataPointAccumulator[] {
-  const baselineAccums: DataPointAccumulator[] = [];
-  for (const [taskKey, accumulator] of taskAccumsForStudent) {
-    if (baselineTaskKeys.has(taskKey)) baselineAccums.push(accumulator);
-  }
-  return baselineAccums;
+  return filterAccumulatorsByBaseline(taskAccumsForStudent, baselineTaskKeys);
 }
 
 /**
