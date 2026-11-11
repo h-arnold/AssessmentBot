@@ -397,7 +397,7 @@ test.describe('Class page attempt-baseline mode', () => {
     await page.mouse.move(0, 0);
 
     const markedHeader = table.getByRole('columnheader', {
-      name: `Task 3† — ${BASELINE_OFF_EXPLANATION}`,
+      name: `Task 3†; ${BASELINE_OFF_EXPLANATION}`,
     });
     await expect(markedHeader).toBeVisible();
     await expect(table.getByRole('columnheader', { name: 'Task 3', exact: true })).toHaveCount(0);

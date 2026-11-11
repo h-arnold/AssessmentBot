@@ -118,8 +118,8 @@ export function ClassPageModeControl({
         <Typography.Text id={MODE_CONTROL_LABEL_ID}>
           {pageContent.classDetail.modeControlLabel}
         </Typography.Text>
-        {/* Always present so the `aria-describedby` target is robustly
-            reachable while disabled (HeatmapSelectionBar precedent). */}
+        {/* Always present so the `aria-describedby` target is reachable
+            while disabled (HeatmapSelectionBar precedent). */}
         <span id={MODE_CONTROL_DESCRIPTION_ID} className="sr-only">
           {baselineAvailability.reason ?? ''}
         </span>

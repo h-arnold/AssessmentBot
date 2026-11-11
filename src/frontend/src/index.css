@@ -160,7 +160,9 @@ body {
 
 /* Visually-hidden but accessibility-tree-present utility (canonical sr-only pattern).
    This is the canonical screen-reader-only utility used where a visually-hidden but
-   a11y-tree-present node is needed (currently the Heatmaps selection-bar disabled reason). */
+   a11y-tree-present node is needed (the Heatmaps selection-bar disabled reason
+   (`HeatmapSelectionBar.tsx`) and the Class page mode-control description carrier
+   (`ClassPageModeControl.tsx`)). */
 .sr-only {
   position: absolute;
   width: 1px;

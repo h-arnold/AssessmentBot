@@ -37,7 +37,7 @@ interface AttemptBaselineDerivationInput {
  * @param {PerStudentTaskMetric} metric - The per-(student, task) metric.
  * @returns {boolean} True when the metric is an attempt.
  */
-export function isAttemptMetric(metric: PerStudentTaskMetric): boolean {
+function isAttemptMetric(metric: PerStudentTaskMetric): boolean {
   return (
     metric.completeness.state === 'computed' ||
     metric.accuracy.state === 'computed' ||
@@ -161,6 +161,11 @@ function rankCandidates(
  * Intersect the attempt sets of every pool member (data-shape item 3): a task key is
  * in the baseline set when every pool member attempted it.
  *
+ * @remarks
+ * The pool is structurally at least 2 members (`deriveAttemptBaseline` floors the
+ * pool size at 2), so seeding from member 0 and intersecting the rest covers every
+ * pool member without re-processing the seed.
+ *
  * @param {ReadonlyArray<string>} poolStudentIds - The pool's student ids.
  * @param {ReadonlyMap<string, Set<string>>} attemptedTaskKeysByStudent - Attempted keys per student.
  * @returns {string[]} The intersection, ascending.
@@ -172,7 +177,7 @@ function intersectAttemptSets(
   const sharedTaskKeys = new Set(
     requireAttemptedTaskKeys(poolStudentIds[0], attemptedTaskKeysByStudent)
   );
-  for (const studentId of poolStudentIds) {
+  for (const studentId of poolStudentIds.slice(1)) {
     const attemptedTaskKeys = requireAttemptedTaskKeys(studentId, attemptedTaskKeysByStudent);
     for (const taskKey of sharedTaskKeys) {
       if (!attemptedTaskKeys.has(taskKey)) sharedTaskKeys.delete(taskKey);

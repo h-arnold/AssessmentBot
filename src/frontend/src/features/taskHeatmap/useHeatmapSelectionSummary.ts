@@ -10,6 +10,21 @@ import type { MergedHeatmapResult } from '@/services/dataAnalysis/heatmapAdapter
 import type { ClassFull } from '@/services/googleClassrooms/classDetail/classDetailService.zod';
 import type { AssignmentDefinitionPartialsResponse } from '@/services/assignmentDefinition/assignmentDefinitionPartials.zod';
 
+/**
+ * Create the module-level `DataAnalysisService` instance.
+ *
+ * A factory function is used so that `vi.mock` patching of `DataAnalysisService`
+ * as a function (not a class constructor) works correctly in tests. The cached
+ * instance retains the mocked `analyse` function reference between renders.
+ *
+ * @returns {DataAnalysisService} A new service instance.
+ */
+function createAnalysisService(): DataAnalysisService {
+  return new DataAnalysisService();
+}
+
+const _analysisService: DataAnalysisService = createAnalysisService();
+
 export interface HeatmapSelectionSummaryResult {
   view: SummaryCardsView | null;
   error: Error | null;
@@ -41,7 +56,7 @@ function buildSelectionSummary(
   if (heatmap.sourceAssignments.length === 0) return { view: null, error: null };
   const assignment = heatmap.sourceAssignments[0];
   try {
-    const summary = new DataAnalysisService().analyseAssignmentSummary(
+    const summary = _analysisService.analyseAssignmentSummary(
       {
         filter: { classIds: [classFull.classId], analysisMode: 'absolute' },
         classes: [classFull],

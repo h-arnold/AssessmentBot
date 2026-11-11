@@ -158,33 +158,22 @@ function runAnalyserStep(
  * Run the adapter step of the pipeline.
  *
  * Extracted to keep the pipeline `useMemo` callback under the complexity limit.
- * Only called when `classFull` is non-null (the pipeline guard ensures this).
  *
- * @param {AveragingResult | null} analyserResult - The analyser result (null skips adapter).
+ * @param {AveragingResult} analyserResult - The analyser result (non-null, guaranteed by caller).
  * @param {ClassFull} classFull - The class data (non-null, guaranteed by caller).
- * @param {AssignmentDefinitionPartialsResponse | null} assignmentDefinitionPartials - The definition registry.
+ * @param {AssignmentDefinitionPartialsResponse} assignmentDefinitionPartials - The definition registry.
  * @returns {readonly [ClassPageAdapterResult | null, Error | null]} The adapter result and optional error.
  *
- * @remarks Fail-closed guards: the pipeline's `shouldRunPipeline` already
- *   ensures both inputs are non-null before this step runs, so these branches
- *   are defensive. They return an explicit `Error` (not a silent `[null, null]`)
- *   so any future caller-skip regression surfaces as a blocking error.
+ * @remarks The pipeline's `shouldRunPipeline` gate and the analyser step's
+ *   error check guarantee all three inputs are non-null before this step runs,
+ *   so the signature is non-null (matching `heatmapsPipeline.runAdapterStep`);
+ *   adapter throws still surface as a blocking error through the catch below.
  */
 function runAdapterStep(
-  analyserResult: AveragingResult | null,
+  analyserResult: AveragingResult,
   classFull: ClassFull,
-  assignmentDefinitionPartials: AssignmentDefinitionPartialsResponse | null
+  assignmentDefinitionPartials: AssignmentDefinitionPartialsResponse
 ): readonly [ClassPageAdapterResult | null, Error | null] {
-  if (analyserResult === null) {
-    return [null, new Error('useClassPageData.runAdapterStep: analyserResult is null')];
-  }
-  if (assignmentDefinitionPartials === null) {
-    return [
-      null,
-      new Error('useClassPageData.runAdapterStep: assignmentDefinitionPartials is null'),
-    ];
-  }
-
   try {
     const result = adaptClassPageToViewModel({
       analyserResult,
@@ -326,9 +315,9 @@ export function useClassPageData(classId: string, analysisMode: AnalysisMode): C
     }
 
     const [adResult, adError] = runAdapterStep(
-      aResult,
+      aResult as AveragingResult,
       classFull as ClassFull,
-      assignmentDefinitionPartials
+      assignmentDefinitionPartials as AssignmentDefinitionPartialsResponse
     );
 
     if (adError !== null) {

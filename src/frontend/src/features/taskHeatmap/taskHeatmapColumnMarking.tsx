@@ -86,8 +86,10 @@ export function buildTaskHeaderPresentation(
     ),
     className: EXCLUDED_COLUMN_GROUP_CLASS,
     onHeaderCell: () => {
+      // Semicolon join: both explanations contain em-dashes, so an em-dash
+      // join would read as two separate clauses in the accessible label.
       return {
-        'aria-label': `${displayTitle} — ${explanation}`,
+        'aria-label': `${displayTitle}; ${explanation}`,
       };
     },
   };

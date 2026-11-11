@@ -121,7 +121,7 @@ describe('TaskHeatmapTable zero-weight presentation', () => {
   it('shows the exact explanation on pointer hover and keyboard focus with one non-actionable tab stop', async () => {
     renderEmbeddedZeroWeightTable();
 
-    const headerName = `Task 1 — ${ZERO_WEIGHT_EXPLANATION}`;
+    const headerName = `Task 1; ${ZERO_WEIGHT_EXPLANATION}`;
     const targetName = `Task 1 ${ZERO_WEIGHT_EXPLANATION}`;
     const title = screen.getByRole('group', { name: targetName });
     expect(screen.getByRole('columnheader', { name: headerName })).toHaveAttribute(
@@ -158,7 +158,7 @@ describe('TaskHeatmapTable zero-weight presentation', () => {
     expect(screen.queryByText(ZERO_WEIGHT_EXPLANATION)).not.toBeInTheDocument();
 
     const zeroHeader = screen.getByRole('columnheader', {
-      name: `Task 1 — ${ZERO_WEIGHT_EXPLANATION}`,
+      name: `Task 1; ${ZERO_WEIGHT_EXPLANATION}`,
     });
     expect(zeroHeader).toHaveClass(EXCLUDED_COLUMN_GROUP_CLASS);
     const metricHeaders = screen.getAllByRole('columnheader', {
@@ -255,7 +255,7 @@ describe('TaskHeatmapTable zero-weight presentation', () => {
       />
     );
 
-    const mergedHeaderName = `Merged zero-weight task — ${ZERO_WEIGHT_EXPLANATION}`;
+    const mergedHeaderName = `Merged zero-weight task; ${ZERO_WEIGHT_EXPLANATION}`;
     const mergedHeader = screen.getByRole('columnheader', { name: mergedHeaderName });
     expect(mergedHeader).toHaveClass(EXCLUDED_COLUMN_GROUP_CLASS);
     expect(screen.getByRole('columnheader', { name: 'Parent tier' })).not.toHaveClass(
