@@ -74,6 +74,7 @@ function col(assignmentId: string, definitionKey: string, taskId: string): Merge
     taskId,
     taskTitle: null,
     averageContribution: { effectiveWeight: 1, includedInAverage: true },
+    includedInAttemptBaseline: true,
     assignmentId,
     definitionKey,
     assignmentName: assignmentId,

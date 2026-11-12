@@ -23,7 +23,7 @@
  * keyed on `[adapterResult, searchTerm, sort]`, and the model is called with
  * `filters: { searchTerm }`.
  * `buildStudentAveragesTableColumns` is called inside a `useMemo` keyed on
- * `[filters]`.
+ * `[filters, analysisMode]`.
  *
  * **Sort mapping (`onChange`).** The `sorter` argument is
  * `SorterResult<StudentAverageRowModel> | SorterResult<StudentAverageRowModel>[]`.
@@ -56,6 +56,7 @@ import { Card, Input, Space, Typography, Flex, Table, Empty } from 'antd';
 import type { TableColumnsType, TablePaginationConfig } from 'antd';
 import type { FilterValue, SorterResult } from 'antd/es/table/interface';
 import { SearchOutlined } from '@ant-design/icons';
+import type { AnalysisMode } from '@/services/dataAnalysis/dataAnalysis.zod';
 import type { ClassPageAdapterResult, StudentAverageRowModel } from './classPageAdapter.zod';
 import { pageContent } from '@/pages/pageContent';
 
@@ -86,6 +87,13 @@ type SortState = {
 
 export type StudentAveragesTableCardProperties = {
   readonly adapterResult: ClassPageAdapterResult;
+  /**
+   * The Class page's current analysis mode, forwarded to the column builder
+   * for the `excluded` cells' accessible label (§9.27.3 threading chain).
+   * Class-page consumers pass it explicitly; when absent the weighting-only
+   * wording is used.
+   */
+  readonly analysisMode?: AnalysisMode;
 };
 
 // ---------------------------------------------------------------------------
@@ -166,12 +174,13 @@ function normaliseSorter(
  *
  * @param {StudentAveragesTableCardProperties} properties - Component properties.
  * @param {ClassPageAdapterResult} properties.adapterResult - The adapter's canonical output.
+ * @param {AnalysisMode} [properties.analysisMode] - The page's analysis mode for the excluded labels.
  * @returns {JSX.Element} The Student Averages table card.
  */
 export function StudentAveragesTableCard(
   properties: StudentAveragesTableCardProperties
 ): JSX.Element {
-  const { adapterResult } = properties;
+  const { adapterResult, analysisMode } = properties;
 
   // ── State ──────────────────────────────────────────────────────────────
   const [searchTerm, setSearchTerm] = useState<string>('');
@@ -182,20 +191,17 @@ export function StudentAveragesTableCard(
 
   // ── Memoised derived values ────────────────────────────────────────────
 
-  const viewModel = useMemo(
-    () => {
-      return buildClassPageViewModel({
-        adapterResult,
-        filters: { searchTerm },
-        sort,
-      });
-    },
-    [adapterResult, searchTerm, sort]
-  );
+  const viewModel = useMemo(() => {
+    return buildClassPageViewModel({
+      adapterResult,
+      filters: { searchTerm },
+      sort,
+    });
+  }, [adapterResult, searchTerm, sort]);
 
   const columns: TableColumnsType<StudentAverageRowModel> = useMemo(
-    () => buildStudentAveragesTableColumns(filters),
-    [filters]
+    () => buildStudentAveragesTableColumns(filters, analysisMode),
+    [filters, analysisMode]
   );
 
   // ── Event handlers ─────────────────────────────────────────────────────
@@ -207,12 +213,9 @@ export function StudentAveragesTableCard(
    *
    * @param {ChangeEvent<HTMLInputElement>} event - The input change event.
    */
-  const handleSearchChange = useCallback(
-    (event: ChangeEvent<HTMLInputElement>): void => {
-      setSearchTerm(event.target.value);
-    },
-    []
-  );
+  const handleSearchChange = useCallback((event: ChangeEvent<HTMLInputElement>): void => {
+    setSearchTerm(event.target.value);
+  }, []);
 
   /**
    * Handle table sort and filter change.
@@ -259,9 +262,7 @@ export function StudentAveragesTableCard(
             prefix={<SearchOutlined />}
           />
         </Space.Compact>
-        <Typography.Text type="secondary">
-          Viewing: Overall Class Averages
-        </Typography.Text>
+        <Typography.Text type="secondary">Viewing: Overall Class Averages</Typography.Text>
       </Flex>
 
       <Table<StudentAverageRowModel>

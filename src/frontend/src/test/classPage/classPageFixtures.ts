@@ -93,6 +93,7 @@ export function createReadyClassPageData(overrides?: Partial<ClassPageData>): Cl
     assignmentDefinitionPartials: [],
     analyserResult: null,
     adapterResult: createClassPageAdapterResult(),
+    baselineAvailability: { status: 'ready', reason: null },
     error: null,
     surfaceState: { status: 'ready' } as ClassPageSurfaceState,
     refetch: vi.fn(),

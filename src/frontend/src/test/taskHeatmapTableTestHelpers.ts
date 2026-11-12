@@ -48,12 +48,14 @@ export const TASK_COLUMNS: HeatmapTaskColumn[] = [
     taskId: TASK_1_ID,
     taskTitle: TASK_1_TITLE,
     averageContribution: { effectiveWeight: 1, includedInAverage: true },
+    includedInAttemptBaseline: true,
   },
   {
     taskKey: 'definitionKey::task_002',
     taskId: TASK_2_ID,
     taskTitle: TASK_2_TITLE,
     averageContribution: { effectiveWeight: 1, includedInAverage: true },
+    includedInAttemptBaseline: true,
   },
 ];
 

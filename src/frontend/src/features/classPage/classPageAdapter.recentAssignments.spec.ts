@@ -4,9 +4,8 @@
  * (`classPageAdapter.ts`).
  *
  * @remarks
- * Split from the original single-file `classPageAdapter.spec.ts` to keep each
- * spec module under the 500-line `max-lines` lint threshold. Shared fixture
- * builders live in `src/test/classPage/classPageAdapterTestFixtures.ts`.
+ * Shared fixture builders live in
+ * `src/test/classPage/classPageAdapterTestFixtures.ts`.
  *
  * @see docs/developer/frontend/frontend-testing.md
  */
@@ -124,6 +123,76 @@ describe('adaptClassPageToViewModel', () => {
       expect(result.recentAssignments[0].assignmentId).toBe('a-3');
       expect(result.recentAssignments[1].assignmentId).toBe('a-2');
       expect(result.recentAssignments[2].assignmentId).toBe('a-1');
+    });
+  });
+
+  describe('recentAssignments — baseline-mode card rollups', () => {
+    it('restricts card rollups to rows inside the attempt baseline when the applied mode is topDecileBaseline', () => {
+      // The card's aggregates recompute from baseline-restricted per-task
+      // evidence: t1 is inside the baseline set, t2 is outside it, so the
+      // card's rollups must reflect t1 only.
+      const perTaskRows: PerTaskRow[] = [
+        computedPerTaskRow('dk1', 't1', { completeness: 4, accuracy: 3, spag: 2 }),
+        computedPerTaskRow('dk1', 't2', { completeness: 2, accuracy: 2, spag: 2 }),
+      ];
+
+      const result = adaptClassPageToViewModel(
+        singleAssignmentAdapterInput(perTaskRows, {
+          appliedAnalysisMode: 'topDecileBaseline',
+          attemptBaseline: { poolStudentIds: ['s-1', 's-2'], baselineTaskKeys: ['dk1::t1'] },
+        })
+      );
+
+      const metrics = result.recentAssignments[0].metrics;
+      expect(metrics.completeness).toMatchObject({ state: 'computed', value: 4 });
+      expect(metrics.accuracy).toMatchObject({ state: 'computed', value: 3 });
+      expect(metrics.spag).toMatchObject({ state: 'computed', value: 2 });
+      // Average composite from the filtered criteria: 0.4*4 + 0.4*3 + 0.2*2 = 3.2
+      const expectedBaselineAverage = 3.2;
+      expect(metrics.average.state).toBe('computed');
+      if (metrics.average.state === 'computed') {
+        expect(metrics.average.value).toBeCloseTo(expectedBaselineAverage);
+      }
+    });
+
+    it('keeps card rollups computed when every task row is inside the attempt baseline', () => {
+      const perTaskRows: PerTaskRow[] = [
+        computedPerTaskRow('dk1', 't1', { completeness: 4, accuracy: 3, spag: 2 }),
+        computedPerTaskRow('dk1', 't2', { completeness: 5, accuracy: 4, spag: 3 }),
+      ];
+
+      const result = adaptClassPageToViewModel(
+        singleAssignmentAdapterInput(perTaskRows, {
+          appliedAnalysisMode: 'topDecileBaseline',
+          attemptBaseline: {
+            poolStudentIds: ['s-1', 's-2'],
+            baselineTaskKeys: ['dk1::t1', 'dk1::t2'],
+          },
+        })
+      );
+
+      const metrics = result.recentAssignments[0].metrics;
+      const expectedFullBaselineCompleteness = 4.5;
+      const expectedFullBaselineAccuracy = 3.5;
+      const expectedFullBaselineSpag = 2.5;
+      expect(metrics.completeness).toMatchObject({ state: 'computed' });
+      if (metrics.completeness.state === 'computed') {
+        expect(metrics.completeness.value).toBeCloseTo(expectedFullBaselineCompleteness);
+      }
+      expect(metrics.accuracy).toMatchObject({ state: 'computed' });
+      if (metrics.accuracy.state === 'computed') {
+        expect(metrics.accuracy.value).toBeCloseTo(expectedFullBaselineAccuracy);
+      }
+      expect(metrics.spag).toMatchObject({ state: 'computed' });
+      if (metrics.spag.state === 'computed') {
+        expect(metrics.spag.value).toBeCloseTo(expectedFullBaselineSpag);
+      }
+      // 0.4*4.5 + 0.4*3.5 + 0.2*2.5 = 3.7
+      const expectedFullBaselineAverage = 3.7;
+      expect(metrics.average.state).toBe('computed');
+      if (metrics.average.state === 'computed') {
+        expect(metrics.average.value).toBeCloseTo(expectedFullBaselineAverage);
+      }
     });
   });
 

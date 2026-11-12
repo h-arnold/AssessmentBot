@@ -160,7 +160,9 @@ body {
 
 /* Visually-hidden but accessibility-tree-present utility (canonical sr-only pattern).
    This is the canonical screen-reader-only utility used where a visually-hidden but
-   a11y-tree-present node is needed (currently the Heatmaps selection-bar disabled reason). */
+   a11y-tree-present node is needed (the Heatmaps selection-bar disabled reason
+   (`HeatmapSelectionBar.tsx`) and the Class page mode-control description carrier
+   (`ClassPageModeControl.tsx`)). */
 .sr-only {
   position: absolute;
   width: 1px;
@@ -178,21 +180,16 @@ body {
   color: var(--ant-color-text-secondary);
 }
 
-.task-heatmap-zero-weight-group {
+.task-heatmap-excluded-group {
   box-shadow:
     inset 2px 0 0 var(--ant-color-text-secondary),
     inset -2px 0 0 var(--ant-color-text-secondary);
 }
 
-.task-heatmap-zero-weight-first {
+.task-heatmap-excluded-first {
   box-shadow: inset 2px 0 0 var(--ant-color-text-secondary);
 }
 
-.task-heatmap-zero-weight-last {
+.task-heatmap-excluded-last {
   box-shadow: inset -2px 0 0 var(--ant-color-text-secondary);
-}
-
-.task-heatmap-zero-weight-tooltip-target:focus-visible {
-  outline: 2px solid var(--ant-color-primary);
-  outline-offset: 2px;
 }

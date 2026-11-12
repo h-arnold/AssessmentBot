@@ -42,7 +42,7 @@ import { TaskMetricPreviewCell } from './TaskMetricPreviewCell';
 import type { CellPreviewData, CellPreviewLookup } from './buildCellPreviewLookup';
 import type { PreviewStatus } from './assembleMergedPreviewData';
 import { APP_COL_WIDTH_METRIC } from '@/theme/spacing';
-import { getZeroWeightMetricEdgeClass } from './taskHeatmapZeroWeightHeader';
+import { getExcludedMetricEdgeClass } from './taskHeatmapColumnMarking';
 
 // ---------------------------------------------------------------------------
 // Structural view-model contract (read, never asserted)
@@ -53,7 +53,7 @@ import { getZeroWeightMetricEdgeClass } from './taskHeatmapZeroWeightHeader';
  *
  * Both `HeatmapTaskColumn` (embedded) and `MergedHeatmapTaskColumn` (merged)
  * satisfy this shape structurally with no casts: the embedded column carries
- * only the three required fields, while the merged column additionally carries
+ * only its required fields, while the merged column additionally carries
  * the optional assignment-identity fields used solely when building the
  * adaptive assignment tier.
  */
@@ -62,6 +62,11 @@ export interface TaskHeatmapColumn {
   taskId: string;
   taskTitle: string | null;
   averageContribution: AverageContribution;
+  /**
+   * Whether the column's task sits inside the analysed class's attempt
+   * baseline; `false` marks the column outside it.
+   */
+  includedInAttemptBaseline: boolean;
   assignmentId?: string;
   assignmentName?: string;
   definitionKey?: string;
@@ -326,10 +331,11 @@ export function buildTaskMetricSubColumns(
     });
     return {
       key: columnKey,
-      className: getZeroWeightMetricEdgeClass(
+      className: getExcludedMetricEdgeClass(
         metricIndex,
         HEATMAP_METRIC_KEYS.length,
-        taskColumn.averageContribution
+        taskColumn.averageContribution,
+        { includedInAttemptBaseline: taskColumn.includedInAttemptBaseline }
       ),
       title: <MetricIconLabel icon={meta.icon} label={meta.label} />,
       align: 'center' as const,

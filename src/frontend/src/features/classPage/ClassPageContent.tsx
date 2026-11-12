@@ -32,7 +32,7 @@ import type { JSX } from 'react';
 import { Space, Skeleton, Button, Result } from 'antd';
 import type { ClassPageSurfaceState, ClassPageError } from './useClassPageData';
 import type { ClassPageAdapterResult } from './classPageAdapter.zod';
-import type { AveragingResult } from '@/services/dataAnalysis/dataAnalysis.zod';
+import type { AnalysisMode, AveragingResult } from '@/services/dataAnalysis/dataAnalysis.zod';
 import type { ClassFull } from '@/services/googleClassrooms/classDetail/classDetailService.zod';
 import type { AssignmentDefinitionPartialsResponse } from '@/services/assignmentDefinition/assignmentDefinitionPartials.zod';
 import { RecentAssignmentsSection } from './RecentAssignmentsSection';
@@ -75,6 +75,14 @@ type ClassPageContentProperties = Readonly<{
   onStartNewAssessment: () => void;
   /** Callback invoked when the user clicks Re-run Assessment in the heatmap view. */
   onReRunAssessment?: (context: ReRunContext) => void;
+  /**
+   * The page's current analysis mode (§9.27.3 threading chain), forwarded to
+   * the ready overview tree's `excluded` accessible labels. The page passes it
+   * explicitly; when absent the weighting-only wording is used. Never forwarded
+   * to the embedded heatmap view (`features/taskHeatmap/**` receives no mode
+   * props).
+   */
+  analysisMode?: AnalysisMode;
 }>;
 
 type ClassPageBlockingProperties = Readonly<{
@@ -93,6 +101,8 @@ type ClassPageReadyProperties = Readonly<{
   onOpenHeatmap: (assignmentId: string) => void;
   /** Callback invoked when the user clicks "Start New Assessment" (used by empty-state CTA). */
   onStartNewAssessment: () => void;
+  /** The page's analysis mode for the `excluded` accessible labels (§9.27.3). */
+  analysisMode?: AnalysisMode;
 }>;
 
 // ---------------------------------------------------------------------------
@@ -292,6 +302,7 @@ interface RenderReadyContentOptions {
   refetch: () => void;
   onStartNewAssessment: () => void;
   onReRunAssessment?: (context: ReRunContext) => void;
+  analysisMode?: AnalysisMode;
 }
 
 /**
@@ -313,6 +324,7 @@ function renderReadyContent(options: RenderReadyContentOptions): JSX.Element {
     refetch,
     onStartNewAssessment,
     onReRunAssessment,
+    analysisMode,
   } = options;
   if (
     selectedView.view === 'heatmap' &&
@@ -339,6 +351,7 @@ function renderReadyContent(options: RenderReadyContentOptions): JSX.Element {
       adapterResult={adapterResult}
       onOpenHeatmap={onOpenHeatmap}
       onStartNewAssessment={onStartNewAssessment}
+      analysisMode={analysisMode}
     />
   );
 }
@@ -351,16 +364,21 @@ function renderReadyContent(options: RenderReadyContentOptions): JSX.Element {
  *    and the `onOpenHeatmap` callback
  * 2. `StudentAveragesTableCard` with `adapterResult`
  *
+ * Both children receive the page's `analysisMode` so their `excluded`
+ * accessible labels stay mode-aware (§9.27.3 threading chain).
+ *
  * @param {ClassPageReadyProperties} properties - Component properties.
  * @param {ClassPageAdapterResult} properties.adapterResult - The adapter result.
  * @param {(assignmentId: string) => void} properties.onOpenHeatmap - Callback to open the heatmap.
  * @param {() => void} properties.onStartNewAssessment - Callback to start a new assessment (empty-state CTA).
+ * @param {AnalysisMode} [properties.analysisMode] - The page's analysis mode for the excluded labels.
  * @returns {JSX.Element} The rendered ready-state content tree.
  */
 function ClassPageReady({
   adapterResult,
   onOpenHeatmap,
   onStartNewAssessment,
+  analysisMode,
 }: ClassPageReadyProperties): JSX.Element {
   return (
     <>
@@ -368,8 +386,9 @@ function ClassPageReady({
         recentAssignments={adapterResult.recentAssignments}
         onStartNewAssessment={onStartNewAssessment}
         onOpenHeatmap={onOpenHeatmap}
+        analysisMode={analysisMode}
       />
-      <StudentAveragesTableCard adapterResult={adapterResult} />
+      <StudentAveragesTableCard adapterResult={adapterResult} analysisMode={analysisMode} />
     </>
   );
 }
@@ -411,6 +430,7 @@ export function ClassPageContent({
   onBack,
   refetch,
   onReRunAssessment,
+  analysisMode,
 }: ClassPageContentProperties): JSX.Element {
   switch (surfaceState.status) {
     case 'loading': {
@@ -443,6 +463,7 @@ export function ClassPageContent({
         refetch,
         onStartNewAssessment,
         onReRunAssessment,
+        analysisMode,
       });
     }
   }

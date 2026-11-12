@@ -108,6 +108,7 @@ export function createHeatmapMergedResult(
         taskId: 'tA',
         taskTitle: 'Task A',
         averageContribution: { effectiveWeight: 1, includedInAverage: true },
+        includedInAttemptBaseline: true,
         assignmentId: 'a1',
         definitionKey: 'def1',
         assignmentName: 'Title def1',

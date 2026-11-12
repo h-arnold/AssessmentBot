@@ -31,6 +31,7 @@
 import type { JSX, KeyboardEvent } from 'react';
 import { Card, Flex, Typography } from 'antd';
 
+import type { AnalysisMode } from '@/services/dataAnalysis/dataAnalysis.zod';
 import type { RecentAssignmentCardModel } from './classPageAdapter.zod';
 import { getStudentMetric } from './classPageAdapter.zod';
 import { METRIC_DISPLAY_META } from '@/services/dataAnalysis/metricDisplay/metricDisplayMeta';
@@ -69,6 +70,13 @@ type RecentAssignmentCardProperties = Readonly<{
   card: RecentAssignmentCardModel;
   /** Optional callback invoked when the card is clicked to open the heatmap view. */
   onOpenHeatmap?: (assignmentId: string) => void;
+  /**
+   * The Class page's current analysis mode, forwarded to each pill's
+   * `excluded` accessible label (baseline mode announces both possible
+   * causes). Class-page consumers pass it explicitly (§9.27.3); when absent
+   * the weighting-only wording is used.
+   */
+  analysisMode?: AnalysisMode;
 }>;
 
 /**
@@ -86,19 +94,26 @@ type RecentAssignmentCardProperties = Readonly<{
  * @param {Readonly<RecentAssignmentCardProperties>} root0 - Component properties.
  * @param {RecentAssignmentCardModel} root0.card - The fully-built recent assignment card model.
  * @param {(assignmentId: string) => void} [root0.onOpenHeatmap] - Optional callback invoked when the card is clicked.
+ * @param {AnalysisMode} [root0.analysisMode] - The page's analysis mode for the excluded accessible label.
  * @returns {JSX.Element} The assignment card.
  */
 export function RecentAssignmentCard({
   card,
   onOpenHeatmap,
+  analysisMode,
 }: RecentAssignmentCardProperties): JSX.Element {
   const isClickable = onOpenHeatmap !== undefined;
-  const handleActivate = () => { onOpenHeatmap!(card.assignmentId); };
+  const handleActivate = () => {
+    onOpenHeatmap!(card.assignmentId);
+  };
   return (
     <Card
       size="small"
       title={card.assignmentName}
-      style={{ width: RECENT_ASSIGNMENT_CARD_WIDTH_PX, cursor: isClickable ? 'pointer' : undefined }}
+      style={{
+        width: RECENT_ASSIGNMENT_CARD_WIDTH_PX,
+        cursor: isClickable ? 'pointer' : undefined,
+      }}
       role={isClickable ? 'button' : undefined}
       tabIndex={isClickable ? 0 : undefined}
       onClick={isClickable ? handleActivate : undefined}
@@ -112,16 +127,17 @@ export function RecentAssignmentCard({
           : undefined
       }
     >
-      <Typography.Text type="secondary">
-        Last Assessed: {card.lastAssessedAtLabel}
-      </Typography.Text>
+      <Typography.Text type="secondary">Last Assessed: {card.lastAssessedAtLabel}</Typography.Text>
       <Flex justify="space-around" style={{ marginTop: 8 }}>
         {METRIC_ENTRIES.map(({ key, align }) => {
           const meta = METRIC_DISPLAY_META.get(key as MetricColumnKey)!;
           return (
             <Flex key={key} vertical align={align}>
               <MetricIconLabel icon={meta.icon} label={meta.label} />
-              <MetricPill metric={getStudentMetric(card.metrics, key)} />
+              <MetricPill
+                metric={getStudentMetric(card.metrics, key)}
+                analysisMode={analysisMode}
+              />
             </Flex>
           );
         })}

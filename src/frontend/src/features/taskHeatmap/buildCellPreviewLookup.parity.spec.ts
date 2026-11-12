@@ -179,6 +179,7 @@ const analyserResultFixture: AveragingResult = {
     overall: COMPUTED_4,
   },
   appliedCriterionWeightings: { completeness: 0.4, accuracy: 0.4, spag: 0.2 },
+  appliedAnalysisMode: 'absolute',
   perStudentTaskMetrics: [
     {
       classId: CLASS_ID,
@@ -295,11 +296,13 @@ describe('buildCellPreviewLookup merged-path taskKey parity (T-9)', () => {
       overall: createComputedMetricResult({ value: 4 }),
     },
     appliedCriterionWeightings: { completeness: 0.4, accuracy: 0.4, spag: 0.2 },
+    appliedAnalysisMode: 'absolute',
     perStudentTaskMetrics: [
       {
         classId: MERGED_CLASS_ID,
         studentId: MERGED_STUDENT_ID,
         taskKey: `${MERGED_DEF}::${MERGED_TASK_A}`,
+        averageContribution: { effectiveWeight: 1, includedInAverage: true },
         completeness: createComputedMetricResult({ value: 5 }),
         accuracy: createComputedMetricResult({ value: 4 }),
         spag: createComputedMetricResult({ value: 3 }),
@@ -309,13 +312,14 @@ describe('buildCellPreviewLookup merged-path taskKey parity (T-9)', () => {
         classId: MERGED_CLASS_ID,
         studentId: MERGED_STUDENT_ID,
         taskKey: `${MERGED_DEF}::${MERGED_TASK_B}`,
+        averageContribution: { effectiveWeight: 1, includedInAverage: true },
         completeness: createComputedMetricResult({ value: 5 }),
         accuracy: createComputedMetricResult({ value: 4 }),
         spag: createComputedMetricResult({ value: 3 }),
         overall: createComputedMetricResult({ value: 4 }),
       },
     ],
-  } as unknown as AveragingResult;
+  };
 
   // Independent fixture 3: a getAssignment-shaped AssignmentFull for the SAME assignment.
   const mergedAssignmentFull: AssignmentFull = {

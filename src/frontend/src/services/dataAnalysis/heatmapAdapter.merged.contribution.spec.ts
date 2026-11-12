@@ -72,6 +72,7 @@ function fixtures() {
       overall: createComputedMetricResult(),
     },
     appliedCriterionWeightings: { completeness: 0.4, accuracy: 0.4, spag: 0.2 },
+    appliedAnalysisMode: 'absolute',
     perStudentTaskMetrics: [metric],
   } satisfies AveragingResult;
   return { classFull, partial, partials, analyserResult, metric };
@@ -150,6 +151,7 @@ describe('merged heatmap contribution projection', () => {
         taskId: TASK,
         taskTitle: 'Task',
         averageContribution: { effectiveWeight: 1, includedInAverage: true },
+        includedInAttemptBaseline: true,
         assignmentId: FIRST_ASSIGNMENT,
         definitionKey: DEFINITION,
         assignmentName: 'Live title',

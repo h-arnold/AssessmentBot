@@ -15,6 +15,12 @@ import {
 
 const CLASSES_NAV_LABEL = 'Classes';
 
+// The Class page's attempt-baseline mode control (issue #305): always rendered
+// in the Class-page header once loading finishes, never on the Heatmaps
+// builder surface. The re-captured baselines must include it.
+const MODE_CONTROL_LABEL = 'Averages basis';
+const ABSOLUTE_OPTION_LABEL = 'All tasks';
+
 /**
  * Navigate to the Task Heatmap from the Classes list.
  * @param {Page} page - The Playwright page instance.
@@ -55,6 +61,12 @@ test.describe('Navigation screenshot tests', () => {
     // Wait for the Class Page ready state
     await expect(page.getByText('Recent Assignments')).toBeVisible();
 
+    // The attempt-baseline mode control joins the header slot in both captured
+    // baselines; assert it before capturing so the re-capture is deliberate.
+    const modeControl = page.getByRole('radiogroup', { name: MODE_CONTROL_LABEL });
+    await expect(modeControl).toBeVisible();
+    await expect(modeControl.getByRole('radio', { name: ABSOLUTE_OPTION_LABEL })).toBeChecked();
+
     // Take screenshot of the Class Page overview with PageHeader
     await expect(page).toHaveScreenshot('class-page-overview.png', {
       maxDiffPixelRatio: 0.1,
@@ -65,6 +77,9 @@ test.describe('Navigation screenshot tests', () => {
     const scenario = createHeatmapScenario();
     await installRuntimeMock(page, scenario);
     await openTaskHeatmap(page);
+
+    // The mode control stays rendered above the embedded heatmap view.
+    await expect(page.getByRole('radiogroup', { name: MODE_CONTROL_LABEL })).toBeVisible();
 
     // Take screenshot of the Task Heatmap with PageHeader
     await expect(page).toHaveScreenshot('task-heatmap.png', {
@@ -79,6 +94,10 @@ test.describe('Navigation screenshot tests', () => {
 
     await expect(page.getByRole('heading', { level: 2, name: 'Heatmaps' })).toBeVisible();
     await expect(page.getByText('Select a class to build a heatmap.')).toHaveCount(1);
+    // The Heatmaps builder surface never shows the attempt-baseline mode
+    // control (no mode control exists off the Class page), so this baseline
+    // must remain unchanged by the feature.
+    await expect(page.getByRole('radiogroup', { name: MODE_CONTROL_LABEL })).toHaveCount(0);
     await expect(page).toHaveScreenshot('heatmaps-builder.png', {
       maxDiffPixelRatio: 0.1,
     });

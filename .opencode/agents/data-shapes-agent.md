@@ -13,6 +13,36 @@ permissions:
   - action: read
     resource: '*'
     effect: allow
+  - action: edit
+    resource: 'eslint.config.*'
+    effect: deny
+  - action: edit
+    resource: '**/eslint.config.*'
+    effect: deny
+  - action: edit
+    resource: '.eslint*'
+    effect: deny
+  - action: edit
+    resource: '**/.eslint*'
+    effect: deny
+  - action: edit
+    resource: 'config/eslint/**'
+    effect: deny
+  - action: edit
+    resource: '**/config/eslint/**'
+    effect: deny
+  - action: edit
+    resource: 'tsconfig*.json*'
+    effect: deny
+  - action: edit
+    resource: '**/tsconfig*.json*'
+    effect: deny
+  - action: shell
+    resource: 'git commit*'
+    effect: deny
+  - action: shell
+    resource: 'git push*'
+    effect: deny
 ---
 
 # Data Shapes Agent Instructions

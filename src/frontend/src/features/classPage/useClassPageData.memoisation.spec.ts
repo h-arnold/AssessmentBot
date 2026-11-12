@@ -2,6 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderHook } from '@testing-library/react';
 import { QueryClient } from '@tanstack/react-query';
+import type { AnalysisMode } from '@/services/dataAnalysis/dataAnalysis.zod';
 import '@/test/classPage/useClassPageData.mockSetup';
 import { useClassPageData } from './useClassPageData';
 import {
@@ -76,7 +77,7 @@ describe('memoisation (referential equality)', () => {
     mocks.mockUsePageDataset.mockReturnValue(createPageDatasetReturn());
 
     const { rerender } = renderHook(
-      (properties: { classId: string }) => useClassPageData(properties.classId),
+      (properties: { classId: string }) => useClassPageData(properties.classId, 'absolute'),
       { initialProps: { classId: DEFAULT_CLASS_ID }, wrapper }
     );
 
@@ -113,7 +114,7 @@ describe('memoisation invalidation', () => {
     mocks.mockUseQuery.mockReturnValue(createMockClassQueryResult({ data: initialClassFull }));
 
     const { rerender } = renderHook(
-      (properties: { classId: string }) => useClassPageData(properties.classId),
+      (properties: { classId: string }) => useClassPageData(properties.classId, 'absolute'),
       { initialProps: { classId: DEFAULT_CLASS_ID }, wrapper }
     );
 
@@ -148,7 +149,7 @@ describe('memoisation invalidation', () => {
     mocks.mockAnalyse.mockReturnValue([updatedAveragingResult]);
 
     const { rerender } = renderHook(
-      (properties: { classId: string }) => useClassPageData(properties.classId),
+      (properties: { classId: string }) => useClassPageData(properties.classId, 'absolute'),
       { initialProps: { classId: DEFAULT_CLASS_ID }, wrapper }
     );
 
@@ -165,6 +166,36 @@ describe('memoisation invalidation', () => {
 
     expect(mocks.mockAdaptClassPageToViewModel).toHaveBeenCalledTimes(1);
   });
+
+  it('re-calls the analyser when the analysis mode changes', () => {
+    const classFull = createClassFull();
+    const averagingResult = createAveragingResult();
+    const adapterResult = createAdapterResult();
+
+    mocks.mockAnalyse.mockReturnValue([averagingResult]);
+    mocks.mockAdaptClassPageToViewModel.mockReturnValue(adapterResult);
+
+    mocks.mockGetABClassQueryOptions.mockReturnValue(
+      createABClassQueryOptionsFixture(DEFAULT_CLASS_ID)
+    );
+    mocks.mockUseQuery.mockReturnValue(createMockClassQueryResult({ data: classFull }));
+    mocks.mockUsePageDataset.mockReturnValue(createPageDatasetReturn());
+
+    const { rerender } = renderHook(
+      (properties: { classId: string; analysisMode: AnalysisMode }) =>
+        useClassPageData(properties.classId, properties.analysisMode),
+      { initialProps: { classId: DEFAULT_CLASS_ID, analysisMode: 'absolute' }, wrapper }
+    );
+
+    expect(mocks.mockAnalyse).toHaveBeenCalledTimes(1);
+    mocks.mockAnalyse.mockClear();
+
+    // The analysis memo's dependency list includes the mode: toggling it
+    // invalidates the memo even when classFull and the dataset are unchanged.
+    rerender({ classId: DEFAULT_CLASS_ID, analysisMode: 'topDecileBaseline' });
+
+    expect(mocks.mockAnalyse).toHaveBeenCalledTimes(1);
+  });
 });
 
 // ===========================================================================
@@ -179,7 +210,9 @@ describe('refetch dual-query contract', () => {
 
     seedReadyState(classFull, queryRefetchMock, adpRefetchMock);
 
-    const { result } = renderHook(() => useClassPageData(DEFAULT_CLASS_ID), { wrapper });
+    const { result } = renderHook(() => useClassPageData(DEFAULT_CLASS_ID, 'absolute'), {
+      wrapper,
+    });
 
     queryRefetchMock.mockClear();
     adpRefetchMock.mockClear();
@@ -215,7 +248,9 @@ describe('refetch dual-query contract', () => {
       )
     );
 
-    const { result } = renderHook(() => useClassPageData(DEFAULT_CLASS_ID), { wrapper });
+    const { result } = renderHook(() => useClassPageData(DEFAULT_CLASS_ID, 'absolute'), {
+      wrapper,
+    });
 
     expect(result.current.surfaceState).toEqual({
       status: 'blocking',
@@ -239,7 +274,7 @@ describe('refetch dual-query contract', () => {
     seedReadyState(classFull, queryRefetchMock, adpRefetchMock);
 
     const { rerender, result } = renderHook(
-      (properties: { classId: string }) => useClassPageData(properties.classId),
+      (properties: { classId: string }) => useClassPageData(properties.classId, 'absolute'),
       { initialProps: { classId: DEFAULT_CLASS_ID }, wrapper }
     );
 
@@ -261,7 +296,7 @@ describe('refetch dual-query contract', () => {
     seedReadyState(classFull, initialQueryRefetchMock, initialAdpRefetchMock);
 
     const { rerender, result } = renderHook(
-      (properties: { classId: string }) => useClassPageData(properties.classId),
+      (properties: { classId: string }) => useClassPageData(properties.classId, 'absolute'),
       { initialProps: { classId: DEFAULT_CLASS_ID }, wrapper }
     );
 

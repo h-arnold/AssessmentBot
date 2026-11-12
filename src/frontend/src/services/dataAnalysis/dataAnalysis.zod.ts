@@ -9,15 +9,30 @@ import { ClassFullSchema } from '../googleClassrooms/classDetail/classDetailServ
 const CRITERION_WEIGHTINGS_TOLERANCE = 1e-9;
 
 /**
+ * Analysis mode applied to the analysis.
+ *
+ * @remarks
+ * `absolute` is the explicit representation of the unweighted-by-baseline
+ * behaviour; `topDecileBaseline` restricts aggregate roll-ups to the
+ * top-decile attempt baseline. There is no default; every caller states the
+ * mode explicitly.
+ */
+export const AnalysisModeSchema = z.enum(['absolute', 'topDecileBaseline']);
+
+export type AnalysisMode = z.infer<typeof AnalysisModeSchema>;
+
+/**
  * Filter specifying which classes and optional criteria to include in the analysis.
  *
  * @remarks
  * The `dateRange` uses strict ISO-with-timezone validation matching the data-load
  * layer. This is necessary because `google.script.run` prohibits `Date` objects in
- * payloads, so all timestamps on the wire are ISO 8601 strings.
+ * payloads, so all timestamps on the wire are ISO 8601 strings. `analysisMode` is
+ * required with no default; see `AnalysisModeSchema`.
  */
 export const AnalysisFilterSchema = z.strictObject({
   classIds: z.array(z.string().min(1)).min(1),
+  analysisMode: AnalysisModeSchema,
   dateRange: z
     .strictObject({
       from: IsoDateTimeWithTimezoneSchema,
@@ -49,10 +64,11 @@ export type AnalysisFilter = z.infer<typeof AnalysisFilterSchema>;
  * partial definition cross-references, and a validated filter.
  *
  * @remarks
- * `classes` uses the canonical `ClassFullSchema` from `classDetailService.zod.ts`
- * (post-correction in Section 2). `assignmentDefinitionPartials` reuses
- * `AssignmentDefinitionPartialsResponseSchema` from `assignmentDefinitionPartials.zod.ts`
- * (unified in Section 3).
+ * `classes` uses the canonical `ClassFullSchema` from `classDetailService.zod.ts`,
+ * so every analysed class carries the shared nullable metadata field.
+ * `assignmentDefinitionPartials` reuses `AssignmentDefinitionPartialsResponseSchema`
+ * from `assignmentDefinitionPartials.zod.ts`, so the analyser input and the
+ * metadata-refresh context validate one shared partials shape.
  */
 export const AveragingAnalyserInputSchema = z.strictObject({
   filter: AnalysisFilterSchema,
@@ -222,6 +238,11 @@ export type PerStudentRow = z.infer<typeof PerStudentRowSchema>;
  * Metrics use the narrow task-level display union (no `excluded`), and
  * `averageContribution` records whether the represented task's effective
  * weighting allowed its scores into parent averages.
+ *
+ * Row metric values stay absolute in every analysis mode. Attempt-baseline
+ * membership is not carried on the row: consumers derive it from the result's
+ * `attemptBaseline.baselineTaskKeys` (heatmap column marking does so per
+ * column).
  */
 export const PerTaskRowSchema = z.strictObject({
   definitionKey: z.string(),
@@ -269,6 +290,30 @@ export const AppliedCriterionWeightingsSchema = z.strictObject({
 export type AppliedCriterionWeightings = z.infer<typeof AppliedCriterionWeightingsSchema>;
 
 /**
+ * Minimum baseline pool size: the pool structurally cannot be smaller.
+ *
+ * @remarks
+ * The single home for the minimum pool size used by both the schema bound and
+ * the baseline derivation (data-shape item 3 in
+ * docs/developer/data-shapes/frontend-data-analysis-response.md §
+ * Attempt-baseline contract changes).
+ */
+export const BASELINE_POOL_MINIMUM = 2;
+
+/**
+ * Baseline transparency block, present only on `topDecileBaseline` results.
+ *
+ * @remarks
+ * Absolute mode omits the block. `poolStudentIds` carries the pool's
+ * structural minimum; `baselineTaskKeys` requires at least one key because an
+ * empty baseline intersection throws before any result is produced.
+ */
+const AttemptBaselineSchema = z.strictObject({
+  poolStudentIds: z.array(z.string()).min(BASELINE_POOL_MINIMUM),
+  baselineTaskKeys: z.array(z.string().min(1)).min(1),
+});
+
+/**
  * Per-(student, task) metric for the heatmap — one entry per (studentId, taskKey)
  * present in the per-student-task accumulators.
  *
@@ -294,6 +339,12 @@ export type PerStudentTaskMetric = z.infer<typeof PerStudentTaskMetricSchema>;
 
 /**
  * Complete analysis result for a single class.
+ *
+ * @remarks
+ * `appliedAnalysisMode` echoes the mode actually applied to the result.
+ * `attemptBaseline` is optional and present only in `topDecileBaseline` mode
+ * (absolute mode omits it); consumers narrow by mode and treat a baseline-mode
+ * result without the block as an invariant violation.
  */
 export const AveragingResultSchema = z.strictObject({
   classId: z.string(),
@@ -302,6 +353,8 @@ export const AveragingResultSchema = z.strictObject({
   perTask: z.array(PerTaskRowSchema),
   perClass: PerClassResultSchema,
   appliedCriterionWeightings: AppliedCriterionWeightingsSchema,
+  appliedAnalysisMode: AnalysisModeSchema,
+  attemptBaseline: AttemptBaselineSchema.optional(),
   perStudentTaskMetrics: z.array(PerStudentTaskMetricSchema).optional(),
 });
 

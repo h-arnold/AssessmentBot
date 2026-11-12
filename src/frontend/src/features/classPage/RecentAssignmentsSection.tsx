@@ -24,6 +24,7 @@
 import type { JSX } from 'react';
 import { Button, Card, Empty, Flex } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
+import type { AnalysisMode } from '@/services/dataAnalysis/dataAnalysis.zod';
 import type { RecentAssignmentCardModel } from './classPageAdapter.zod';
 import { RecentAssignmentCard } from './RecentAssignmentCard';
 import { pageContent } from '@/pages/pageContent';
@@ -35,6 +36,13 @@ type RecentAssignmentsSectionProperties = Readonly<{
   onStartNewAssessment: () => void;
   /** Optional callback forwarded to each card, invoked on card click to open the heatmap view. */
   onOpenHeatmap?: (assignmentId: string) => void;
+  /**
+   * The Class page's current analysis mode, forwarded to each card's
+   * `excluded` accessible labels (§9.27.3 threading chain). Class-page
+   * consumers pass it explicitly; when absent the weighting-only wording is
+   * used.
+   */
+  analysisMode?: AnalysisMode;
 }>;
 
 /**
@@ -49,19 +57,19 @@ type RecentAssignmentsSectionProperties = Readonly<{
  * @param {() => void} root0.onStartNewAssessment - Callback invoked when the user clicks "Start New Assessment".
  * @param {(assignmentId: string) => void} [root0.onOpenHeatmap] - Optional callback forwarded to each card,
  *   invoked on card click to open the heatmap view.
+ * @param {AnalysisMode} [root0.analysisMode] - The page's analysis mode for the cards' excluded labels.
  * @returns {JSX.Element} The Recent Assignments section card.
  */
 export function RecentAssignmentsSection({
   recentAssignments,
   onStartNewAssessment,
   onOpenHeatmap,
+  analysisMode,
 }: RecentAssignmentsSectionProperties): JSX.Element {
   return (
     <Card size="small" title="Recent Assignments">
       {recentAssignments.length === 0 ? (
-        <Empty
-          description={pageContent.classDetail.recentAssignmentsEmpty}
-        >
+        <Empty description={pageContent.classDetail.recentAssignmentsEmpty}>
           <Button type="primary" icon={<PlusOutlined />} onClick={onStartNewAssessment}>
             Start New Assessment
           </Button>
@@ -70,7 +78,12 @@ export function RecentAssignmentsSection({
         <Flex justify="center" gap="middle" wrap>
           {recentAssignments.map((card) => {
             return (
-              <RecentAssignmentCard key={card.assignmentId} card={card} onOpenHeatmap={onOpenHeatmap} />
+              <RecentAssignmentCard
+                key={card.assignmentId}
+                card={card}
+                onOpenHeatmap={onOpenHeatmap}
+                analysisMode={analysisMode}
+              />
             );
           })}
         </Flex>

@@ -212,6 +212,7 @@ export function minimalAveragingResult(
       overall: createComputedMetricResult(),
     },
     appliedCriterionWeightings: { completeness: 0.4, accuracy: 0.4, spag: 0.2 },
+    appliedAnalysisMode: 'absolute',
     perStudentTaskMetrics: pstm,
   };
 }

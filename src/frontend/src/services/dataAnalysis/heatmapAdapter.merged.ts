@@ -1,9 +1,4 @@
-import type {
-  AverageContribution,
-  AveragingResult,
-  PerStudentTaskMetric,
-  TaskDisplayMetric,
-} from './dataAnalysis.zod';
+import type { AveragingResult, PerStudentTaskMetric, TaskDisplayMetric } from './dataAnalysis.zod';
 import type { ClassFull } from '../googleClassrooms/classDetail/classDetailService.zod';
 import type {
   AssignmentDefinitionPartial,
@@ -16,26 +11,27 @@ import {
   DEFAULT_CLASS_NAME_LABEL,
   resolveAssignmentPartial,
   warnForMissingTaskMetrics,
+  type HeatmapTaskColumn,
 } from './heatmapAdapter';
 
 /**
- * A column descriptor for a single task in the merged heatmap table, carrying
- * the full assignment identity consumed by the standalone Heatmaps surface's
- * adaptive tier grouping and selection bar.
+ * A column descriptor for a single task in the merged heatmap table, extending
+ * the shared base projection with the full assignment identity consumed by the
+ * standalone Heatmaps surface's adaptive tier grouping and selection bar.
  *
  * @remarks
- * Unlike {@link HeatmapTaskColumn}, every merged column carries its full
- * assignment identity (`assignmentId`, `definitionKey`, `assignmentName`) so
- * the standalone Heatmaps surface can group columns into adaptive tiers and
- * render the selection bar without reshaping the view model. `taskKey` is the
+ * Extends {@link HeatmapTaskColumn} with the merged-specific assignment
+ * identity (`assignmentId`, `definitionKey`, `assignmentName`) so the
+ * standalone Heatmaps surface can group columns into adaptive tiers and render
+ * the selection bar without reshaping the view model. `taskKey` is the
  * composite `${definitionKey}::${taskId}` shared with the analyser's
  * per-student-task accumulators.
+ *
+ * `includedInAttemptBaseline` is inherited from the shared base projection:
+ * the merged chain passes an explicit `null` baseline set (absolute mode), so
+ * every merged column is included.
  */
-export interface MergedHeatmapTaskColumn {
-  taskKey: string;
-  taskId: string;
-  taskTitle: string | null;
-  averageContribution: AverageContribution;
+export interface MergedHeatmapTaskColumn extends HeatmapTaskColumn {
   assignmentId: string;
   definitionKey: string;
   assignmentName: string;
@@ -82,6 +78,12 @@ export interface MergedHeatmapResult {
  *   `primaryTitle`).
  * @returns {MergedHeatmapTaskColumn[]} Ordered merged task-column descriptors
  *   carrying full identity.
+ *
+ * @remarks
+ * The merged heatmap never enters baseline mode, so the shared base projection
+ * receives an explicit `null` baseline set (absolute mode: every column
+ * included) — an omitted or defaulted argument would be an un-instructed
+ * default.
  */
 function buildMergedTaskColumns(
   partial: AssignmentDefinitionPartial,
@@ -90,7 +92,7 @@ function buildMergedTaskColumns(
 ): MergedHeatmapTaskColumn[] {
   // Reuse the complete shared base projection
   // mapping, then augment each entry with the full assignment identity.
-  return buildTaskColumns(partial).map((column) => {
+  return buildTaskColumns(partial, null).map((column) => {
     return {
       ...column,
       assignmentId,

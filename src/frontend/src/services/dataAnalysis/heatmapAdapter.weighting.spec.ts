@@ -33,7 +33,7 @@ describe('heatmap task-column weighting boundaries', () => {
       tasks: [createTaskPartial('task-001', NEGATIVE_TASK_WEIGHTING)],
     });
 
-    expect(() => buildTaskColumns(partial)).toThrow();
+    expect(() => buildTaskColumns(partial, null)).toThrow();
   });
 
   it('rejects an overflowed effective product from finite live weightings', () => {
@@ -42,7 +42,7 @@ describe('heatmap task-column weighting boundaries', () => {
       tasks: [createTaskPartial('task-001', LARGE_FINITE_WEIGHTING)],
     });
 
-    expect(() => buildTaskColumns(partial)).toThrow();
+    expect(() => buildTaskColumns(partial, null)).toThrow();
   });
 });
 

@@ -50,7 +50,7 @@ export function refreshABClassMetadataInQueue(
       const result = service.analyse({
         classes: [scope],
         assignmentDefinitionPartials: input.assignmentDefinitionPartials,
-        filter: { classIds: [classFull.classId] },
+        filter: { classIds: [classFull.classId], analysisMode: 'absolute' },
       })[0];
       if (!result) throw new Error(`Missing averaging result for class ${classFull.classId}`);
       return projectAverageScores(result.perClass);

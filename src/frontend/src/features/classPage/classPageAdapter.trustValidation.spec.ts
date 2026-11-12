@@ -1,11 +1,12 @@
 /**
  * Focused adapter tests: trust validation (null/unparseable `updatedAt`,
- * duplicate IDs) for the Class page adapter (`classPageAdapter.ts`).
+ * duplicate IDs) and the fail-fast baseline narrowing call site (a
+ * baseline-mode result missing its `attemptBaseline` block) for the Class page
+ * adapter (`classPageAdapter.ts`).
  *
  * @remarks
- * Split from the original single-file `classPageAdapter.spec.ts` to keep each
- * spec module under the 500-line `max-lines` lint threshold. Shared fixture
- * builders live in `src/test/classPage/classPageAdapterTestFixtures.ts`.
+ * Shared fixture builders live in
+ * `src/test/classPage/classPageAdapterTestFixtures.ts`.
  *
  * @see docs/developer/frontend/frontend-testing.md
  */
@@ -104,6 +105,28 @@ describe('adaptClassPageToViewModel', () => {
           assignmentDefinitionPartials: [],
         })
       ).toThrow(/duplicate.*assignment/i);
+    });
+
+    it('throws when a baseline-mode analyser result omits the attemptBaseline block', () => {
+      // The adapter's narrowing call site (`deriveBaselineTaskKeySet`) fails
+      // fast on a baseline-mode result whose `attemptBaseline` block is
+      // missing, even though the mode echo is present.
+      expect(() => {
+        return adaptClassPageToViewModel({
+          analyserResult: averagingResult({ appliedAnalysisMode: 'topDecileBaseline' }),
+          classFull: classFull({
+            students: [student('s-1', 'Alice')],
+            assignments: [
+              assignment({
+                assignmentId: 'a-1',
+                updatedAt: DEFAULT_TS,
+                definitionKey: 'dk1',
+              }),
+            ],
+          }),
+          assignmentDefinitionPartials: [],
+        });
+      }).toThrow(/missing the required attemptBaseline block/);
     });
   });
 });

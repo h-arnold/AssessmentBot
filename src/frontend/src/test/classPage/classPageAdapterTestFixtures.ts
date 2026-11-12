@@ -18,6 +18,8 @@ import type {
   PerStudentRow,
   PerClassResult,
   MetricResult,
+  AnalysisMode,
+  AverageContribution,
 } from '@/services/dataAnalysis/dataAnalysis.zod';
 import type {
   ClassFull,
@@ -105,16 +107,29 @@ export function computedPerTaskRow(
 /**
  * Build the single-assignment `dk1` input shared by metric rollup tests.
  *
+ * @remarks The optional overrides re-state the analyser result's mode fields
+ * for baseline-mode adapter tests; the adapter derives baseline membership
+ * from the `attemptBaseline.baselineTaskKeys` set, so the `attemptBaseline`
+ * block is fixture realism for those tests.
+ *
  * @param {PerTaskRow[]} perTaskRows - Fresh rows supplied by the test, including empty data.
+ * @param {Object} [analyserResultOverrides] - Optional mode-field overrides for the analyser result.
+ * @param {AnalysisMode} [analyserResultOverrides.appliedAnalysisMode] - The applied-mode echo; defaults to `'absolute'`.
+ * @param {AveragingResult['attemptBaseline']} [analyserResultOverrides.attemptBaseline] - The baseline transparency block; omitted by default.
  * @returns {Object} Fresh adapter input with Alice's roster and the matching definition.
  */
-export function singleAssignmentAdapterInput(perTaskRows: PerTaskRow[]): {
+export function singleAssignmentAdapterInput(
+  perTaskRows: PerTaskRow[],
+  analyserResultOverrides?: Partial<
+    Pick<AveragingResult, 'appliedAnalysisMode' | 'attemptBaseline'>
+  >
+): {
   analyserResult: AveragingResult;
   classFull: ClassFull;
   assignmentDefinitionPartials: ReturnType<typeof createDefinitionPartial>[];
 } {
   return {
-    analyserResult: averagingResult({ perTask: perTaskRows }),
+    analyserResult: averagingResult({ perTask: perTaskRows, ...analyserResultOverrides }),
     classFull: classFull({
       students: [student('s-1', 'Alice')],
       assignments: [
@@ -127,12 +142,17 @@ export function singleAssignmentAdapterInput(perTaskRows: PerTaskRow[]): {
 
 /**
  * Build a minimal PerTaskRow fixture.
- * @param {{ definitionKey: string; taskId: string; completeness: MetricResult; accuracy: MetricResult; spag: MetricResult }} overrides - The required fields for the per-task row fixture.
+ *
+ * @remarks `averageContribution` defaults to a unit-effective-weight
+ * contribution; baseline-mode tests override it where needed.
+ *
+ * @param {Object} overrides - The required fields for the per-task row fixture.
  * @param {string} overrides.definitionKey - The definition key linking to an assignment.
  * @param {string} overrides.taskId - The task identifier.
  * @param {MetricResult} overrides.completeness - The completeness MetricResult.
  * @param {MetricResult} overrides.accuracy - The accuracy MetricResult.
  * @param {MetricResult} overrides.spag - The spelling, punctuation and grammar MetricResult.
+ * @param {AverageContribution} [overrides.averageContribution] - Contribution metadata; defaults to unit effective weight.
  * @returns {PerTaskRow} A fully typed PerTaskRow.
  */
 export function perTaskRow(overrides: {
@@ -141,6 +161,7 @@ export function perTaskRow(overrides: {
   completeness: MetricResult;
   accuracy: MetricResult;
   spag: MetricResult;
+  averageContribution?: AverageContribution;
 }): PerTaskRow {
   // The overall is computed the same way as the adapter's average
   // For test simplicity we set it to a sensible default
@@ -148,7 +169,10 @@ export function perTaskRow(overrides: {
     definitionKey: overrides.definitionKey,
     taskId: overrides.taskId,
     taskTitle: null,
-    averageContribution: { effectiveWeight: 1, includedInAverage: true },
+    averageContribution: overrides.averageContribution ?? {
+      effectiveWeight: 1,
+      includedInAverage: true,
+    },
     completeness: overrides.completeness,
     accuracy: overrides.accuracy,
     spag: overrides.spag,
@@ -202,12 +226,19 @@ export function perClassResult(overrides?: Partial<PerClassResult>): PerClassRes
 
 /**
  * Build a minimal AveragingResult fixture.
- * @param {{ classId?: string; className?: string | null; perStudent?: PerStudentRow[]; perTask?: PerTaskRow[]; perClass?: PerClassResult }} [overrides] - Optional overrides for the AveragingResult fields.
+ *
+ * @remarks `appliedAnalysisMode` defaults to `'absolute'` and `attemptBaseline`
+ * stays omitted, matching the analyser's absolute-mode output; baseline-mode
+ * tests override both explicitly.
+ *
+ * @param {Object} [overrides] - Optional overrides for the AveragingResult fields.
  * @param {string} [overrides.classId] - The class identifier (defaults to 'c-1').
  * @param {string | null} [overrides.className] - The class display name or null (defaults to 'Test Class').
  * @param {PerStudentRow[]} [overrides.perStudent] - The per-student rows (defaults to empty array).
  * @param {PerTaskRow[]} [overrides.perTask] - The per-task rows (defaults to empty array).
  * @param {PerClassResult} [overrides.perClass] - The per-class results (defaults to perClassResult()).
+ * @param {AnalysisMode} [overrides.appliedAnalysisMode] - The applied-mode echo (defaults to 'absolute').
+ * @param {NonNullable<AveragingResult['attemptBaseline']>} [overrides.attemptBaseline] - The baseline transparency block (omitted by default).
  * @returns {AveragingResult} A fully typed AveragingResult.
  */
 export function averagingResult(
@@ -217,16 +248,20 @@ export function averagingResult(
     perStudent?: PerStudentRow[];
     perTask?: PerTaskRow[];
     perClass?: PerClassResult;
+    appliedAnalysisMode?: AnalysisMode;
+    attemptBaseline?: NonNullable<AveragingResult['attemptBaseline']>;
   } = {}
 ): AveragingResult {
-  return {
-    classId: overrides.classId ?? 'c-1',
-    className: overrides.className ?? 'Test Class',
-    perStudent: overrides.perStudent ?? [],
-    perTask: overrides.perTask ?? [],
-    perClass: overrides.perClass ?? perClassResult(),
+  const absoluteDefaults = {
+    classId: 'c-1',
+    className: 'Test Class',
+    perStudent: [],
+    perTask: [],
+    perClass: perClassResult(),
     appliedCriterionWeightings: { completeness: 0.4, accuracy: 0.4, spag: 0.2 },
-  } as AveragingResult;
+    appliedAnalysisMode: 'absolute' as const,
+  };
+  return { ...absoluteDefaults, ...overrides } as AveragingResult;
 }
 
 /**

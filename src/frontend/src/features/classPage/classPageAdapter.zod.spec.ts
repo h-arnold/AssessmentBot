@@ -13,6 +13,9 @@ import {
   student,
   assignment,
   DEFAULT_TS,
+  computedPerTaskRow,
+  perTaskRow,
+  singleAssignmentAdapterInput,
 } from '@/test/classPage/classPageAdapterTestFixtures';
 import { createDefinitionPartial } from '@/test/dataAnalysis/fixtures';
 import { createMetricResult } from '@/test/dataAnalysis/fixtures';
@@ -383,6 +386,68 @@ describe('ClassPageAdapterResultSchema', () => {
   it('rejects missing classMetrics', () => {
     const input = validClassPageAdapterResult({ classMetrics: undefined });
     expect(() => ClassPageAdapterResultSchema.parse(input)).toThrow();
+  });
+});
+
+describe('ClassPageAdapterResultSchema — baseline-mode adapter output', () => {
+  it('reads appliedAnalysisMode as the switch between unfiltered and baseline-filtered card rollups', () => {
+    // Identical rows outside the baseline key set; only the mode echo (and the
+    // baseline block it gates) differs between the two results.
+    const perTaskRows = [
+      computedPerTaskRow('dk1', 't1', { completeness: 4, accuracy: 3, spag: 2 }),
+      computedPerTaskRow('dk1', 't2', { completeness: 2, accuracy: 2, spag: 2 }),
+    ];
+
+    const absoluteResult = adaptClassPageToViewModel(
+      singleAssignmentAdapterInput(perTaskRows, { appliedAnalysisMode: 'absolute' })
+    );
+    const baselineResult = adaptClassPageToViewModel(
+      singleAssignmentAdapterInput(perTaskRows, {
+        appliedAnalysisMode: 'topDecileBaseline',
+        attemptBaseline: { poolStudentIds: ['s-1', 's-2'], baselineTaskKeys: ['dk2::t9'] },
+      })
+    );
+
+    // Absolute mode rolls up every row; rows carry no baseline flag, so baseline
+    // membership is consumer-derived from `attemptBaseline.baselineTaskKeys`.
+    expect(absoluteResult.recentAssignments[0].metrics.completeness).toMatchObject({
+      state: 'computed',
+      value: 3,
+    });
+    // Baseline mode applies the card rule: the filtered set is empty, so the unfiltered rollup converts to `excluded`.
+    expect(baselineResult.recentAssignments[0].metrics.completeness).toMatchObject({
+      state: 'excluded',
+      totalDataPoints: 2,
+    });
+    expect(() => ClassPageAdapterResultSchema.parse(absoluteResult)).not.toThrow();
+    expect(() => ClassPageAdapterResultSchema.parse(baselineResult)).not.toThrow();
+  });
+
+  it('parses baseline-mode display metrics converted to the excluded state', () => {
+    const perTaskRows = [
+      perTaskRow({
+        definitionKey: 'dk1',
+        taskId: 't1',
+        completeness: createMetricResult('computed', { value: 4, totalWeight: 1 }),
+        accuracy: createMetricResult('error', { totalDataPoints: 0 }),
+        spag: createMetricResult('notAttempted', { totalWeight: 1 }),
+      }),
+    ];
+
+    const result = adaptClassPageToViewModel(
+      singleAssignmentAdapterInput(perTaskRows, {
+        appliedAnalysisMode: 'topDecileBaseline',
+        attemptBaseline: { poolStudentIds: ['s-1', 's-2'], baselineTaskKeys: ['dk2::t9'] },
+      })
+    );
+
+    const parsed = ClassPageAdapterResultSchema.parse(result);
+    const metrics = parsed.recentAssignments[0].metrics;
+    expect(metrics.completeness).toMatchObject({ state: 'excluded', totalDataPoints: 1 });
+    expect(metrics.accuracy).toMatchObject({ state: 'error', totalDataPoints: 0 });
+    expect(metrics.spag).toMatchObject({ state: 'excluded', totalDataPoints: 1 });
+    // Composite of the converted criteria: excluded, with the summed count.
+    expect(metrics.average).toMatchObject({ state: 'excluded', totalDataPoints: 2 });
   });
 });
 

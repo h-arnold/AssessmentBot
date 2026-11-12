@@ -96,7 +96,10 @@ describe('ABClass metadata calculation and exact replacement', () => {
         [target.assignmentId],
       ]);
       for (const input of inputs) {
-        expect(input.filter).toEqual({ classIds: [context.classFull.classId] });
+        expect(input.filter).toEqual({
+          classIds: [context.classFull.classId],
+          analysisMode: 'absolute',
+        });
         expect(input.assignmentDefinitionPartials).toEqual(context.assignmentDefinitionPartials);
       }
       expect(backend.requests).toEqual([
@@ -135,6 +138,7 @@ describe('ABClass metadata calculation and exact replacement', () => {
       assignmentDefinitionPartials: context.assignmentDefinitionPartials,
       filter: {
         classIds: [context.classFull.classId],
+        analysisMode: 'absolute',
         criterionWeightings: { completeness: 1, accuracy: 0, spag: 0 },
       },
     })[0];
@@ -147,7 +151,10 @@ describe('ABClass metadata calculation and exact replacement', () => {
       ...expected,
       updatedAt: SUMMARY_TIME,
     });
-    expect(calculate.mock.calls[0][0].filter).toEqual({ classIds: [context.classFull.classId] });
+    expect(calculate.mock.calls[0][0].filter).toEqual({
+      classIds: [context.classFull.classId],
+      analysisMode: 'absolute',
+    });
     expect(calculate.mock.results[0].value[0].appliedCriterionWeightings).toEqual({
       completeness: 0.4,
       accuracy: 0.4,

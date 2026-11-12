@@ -137,7 +137,7 @@ export class AssignmentSummaryAnalyser {
 
     // Existing task keys omit assignmentId: isolate the assignment before accumulation.
     const [result] = new AveragingAnalyser().analyse({
-      filter: { classIds: [classId] },
+      filter: { classIds: [classId], analysisMode: 'absolute' },
       classes: [{ ...classFull, assignments: [assignment] }],
       assignmentDefinitionPartials: input.assignmentDefinitionPartials,
     });

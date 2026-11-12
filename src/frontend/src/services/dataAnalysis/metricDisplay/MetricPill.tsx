@@ -1,9 +1,9 @@
 import type { CSSProperties, JSX } from 'react';
 import { Tag } from 'antd';
-import type { MetricResult } from '../dataAnalysis.zod';
+import type { MetricResult, AnalysisMode } from '../dataAnalysis.zod';
 import { formatMetricDisplayText } from './metricDisplayText';
 import {
-  EXCLUDED_METRIC_ACCESSIBLE_LABEL,
+  resolveExcludedMetricAccessibleLabel,
   resolveMetricTone,
   type MetricToneColor,
 } from './metricTone';
@@ -67,6 +67,16 @@ type MetricPillProperties = {
    * `resolveMetricTone` (which owns the `'volcano'` default).
    */
   readonly errorColor?: MetricToneColor;
+  /**
+   * Optional analysis mode controlling the `excluded` accessible label.
+   * Baseline mode announces both possible causes (zero weighting and outside
+   * the baseline task set); when omitted — or in absolute mode — the
+   * weighting-only wording is used, which stays correct for the three-state
+   * task-display metrics that structurally cannot be `excluded`. Tone and
+   * visual behaviour are unchanged by mode. Class-page consumers pass it
+   * explicitly.
+   */
+  readonly analysisMode?: AnalysisMode;
 };
 
 /**
@@ -77,7 +87,11 @@ type MetricPillProperties = {
  * @param {boolean} isCompact - When true applies smaller font and tighter padding.
  * @returns {CSSProperties} The merged style object.
  */
-function buildPillStyle(isMuted: boolean, isEmphasised: boolean, isCompact: boolean): CSSProperties {
+function buildPillStyle(
+  isMuted: boolean,
+  isEmphasised: boolean,
+  isCompact: boolean
+): CSSProperties {
   const style: CSSProperties = {};
 
   if (isMuted) {
@@ -115,13 +129,16 @@ function buildPillStyle(isMuted: boolean, isEmphasised: boolean, isCompact: bool
  * or a focus ring. It is purely a labelled badge.
  *
  * **Props.** `metric` is required; `range`, `emphasised`, `compact`,
- * `precision`, and `errorColor` are optional. `range` and `errorColor` are
- * pass-through defaults to `resolveMetricTone` (no `MetricPill`-level default
- * for `errorColor`).
+ * `precision`, `errorColor`, and `analysisMode` are optional. `range` and
+ * `errorColor` are pass-through defaults to `resolveMetricTone` (no
+ * `MetricPill`-level default for `errorColor`).
  *
- * **Accessibility.** Excluded receives an `img` role and the shared accessible
- * name explaining that the displayed work did not contribute to the average.
- * `notAttempted` and `error` retain their existing literal labels and semantics.
+ * **Accessibility.** Excluded receives an `img` role and a mode-aware
+ * accessible name resolved by `resolveExcludedMetricAccessibleLabel` — the
+ * baseline wording naming both causes when `analysisMode` is
+ * `'topDecileBaseline'`, otherwise the weighting-only wording.
+ * `notAttempted` and `error` retain their existing literal labels and
+ * semantics.
  *
  * @param {MetricPillProperties} root0 - Component properties.
  * @param {MetricResult} root0.metric - The metric value to render.
@@ -130,6 +147,7 @@ function buildPillStyle(isMuted: boolean, isEmphasised: boolean, isCompact: bool
  * @param {boolean} [root0.compact=false] - When true applies a smaller footprint (font ~12px, padding 2px 4px).
  * @param {number} [root0.precision=2] - Number of decimal places for computed values.
  * @param {MetricToneColor} [root0.errorColor] - Optional error colour override passed through to resolveMetricTone.
+ * @param {AnalysisMode} [root0.analysisMode] - Optional analysis mode for the excluded accessible label.
  * @returns {JSX.Element} An Ant Design `Tag` element.
  */
 export function MetricPill({
@@ -139,6 +157,7 @@ export function MetricPill({
   compact = false,
   precision = DEFAULT_PRECISION,
   errorColor,
+  analysisMode,
 }: MetricPillProperties): JSX.Element {
   const resolution = resolveMetricTone(metric, range, errorColor);
   const displayText = formatMetricDisplayText(metric, precision);
@@ -150,7 +169,9 @@ export function MetricPill({
       color={resolution.color}
       style={tagStyle}
       role={metric.state === 'excluded' ? 'img' : undefined}
-      aria-label={metric.state === 'excluded' ? EXCLUDED_METRIC_ACCESSIBLE_LABEL : undefined}
+      aria-label={
+        metric.state === 'excluded' ? resolveExcludedMetricAccessibleLabel(analysisMode) : undefined
+      }
     >
       {displayText}
     </Tag>

@@ -36,6 +36,7 @@ const COLUMNS: HeatmapTaskColumn[] = [
     taskId: 't_001',
     taskTitle: 'Task title',
     averageContribution: { effectiveWeight: 0, includedInAverage: false },
+    includedInAttemptBaseline: true,
   },
 ];
 

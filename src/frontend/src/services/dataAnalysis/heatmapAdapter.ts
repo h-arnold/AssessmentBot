@@ -16,6 +16,7 @@ import {
   getAssignmentDefinitionPartial,
 } from '../assignmentDefinition/assignmentDefinitionUtilities';
 import { buildTaskKey } from './taskKey';
+import { deriveBaselineTaskKeySet } from './analysers/attemptBaselineSelection';
 
 /**
  * Error thrown when task titles cannot be resolved for a heatmap assignment.
@@ -65,12 +66,19 @@ export interface HeatmapRow {
  * `taskTitle` is sourced from the warm-up `assignmentDefinitionPartials`
  * dataset and may be `null` (carried through to the column; the table header
  * falls back to `taskId` for display).
+ *
+ * `includedInAttemptBaseline` marks whether the task is inside the analysed
+ * class's attempt-baseline task set: `true` for every column in absolute mode,
+ * and in baseline mode the membership of the column's `taskKey` in the
+ * analyser result's `attemptBaseline.baselineTaskKeys`. Cell values stay
+ * absolute in both modes; marking is column-level only.
  */
 export interface HeatmapTaskColumn {
   taskKey: string;
   taskId: string;
   taskTitle: string | null;
   averageContribution: AverageContribution;
+  includedInAttemptBaseline: boolean;
 }
 
 /**
@@ -141,10 +149,19 @@ export const ERROR_METRIC: Readonly<TaskDisplayMetric> = Object.freeze({
  *
  * @param {AssignmentDefinitionPartial} partial - The assignment-definition
  *   partial whose tasks define the column set.
+ * @param {ReadonlySet<string> | null} baselineSet - The analysed class's
+ *   baseline task-key set. A `null` set means absolute mode: every column is
+ *   included in the attempt baseline. When a set is supplied, each column's
+ *   `includedInAttemptBaseline` is the membership of its `taskKey` in the set.
  * @returns {HeatmapTaskColumn[]} Ordered task-column descriptors with `taskKey`,
  *   `taskId`, and `taskTitle` read directly from the partial.
+ * @throws {Error} If a task's effective weight cannot be resolved from the
+ *   partial.
  */
-export function buildTaskColumns(partial: AssignmentDefinitionPartial): HeatmapTaskColumn[] {
+export function buildTaskColumns(
+  partial: AssignmentDefinitionPartial,
+  baselineSet: ReadonlySet<string> | null
+): HeatmapTaskColumn[] {
   const taskWeightingIndex = createTaskWeightingIndex(partial);
   return partial.tasks.map((task) => {
     const effectiveWeight = computeEffectiveWeight(taskWeightingIndex, task.taskId);
@@ -153,14 +170,16 @@ export function buildTaskColumns(partial: AssignmentDefinitionPartial): HeatmapT
         `buildTaskColumns: task '${task.taskId}' is missing from partial '${partial.definitionKey}'`
       );
     }
+    const taskKey = buildTaskKey(partial.definitionKey, task.taskId);
     return {
-      taskKey: buildTaskKey(partial.definitionKey, task.taskId),
+      taskKey,
       taskId: task.taskId,
       taskTitle: task.taskTitle,
       averageContribution: {
         effectiveWeight,
         includedInAverage: effectiveWeight > 0,
       },
+      includedInAttemptBaseline: baselineSet === null || baselineSet.has(taskKey),
     };
   });
 }
@@ -357,24 +376,29 @@ export function resolveAssignmentPartial(
  * @throws {TaskTitlesUnavailableError} When the warm-up partial is missing for
  *   the assignment's `definitionKey`.
  * @throws {Error} If `assignmentId` is not found in `classFull.assignments`.
+ * @throws {Error} If the analyser result is missing the `appliedAnalysisMode`
+ *   echo, or a baseline-mode result omits the `attemptBaseline` block.
  *
  * @remarks
- * **Breaking change (Section 8):** the signature now requires a 4th parameter
- * (`assignmentDefinitionPartials`).  Task columns are sourced from the warm-up
- * partial located via `getAssignmentDefinitionPartial`, NOT from the embedded
- * `assignment.assignmentDefinition.tasks` (which was removed in favour of the
- * lightweight `assignmentDefinitionKey`).  If the partial is missing,
- * `TaskTitlesUnavailableError` is thrown.
- * This is distinct from a generic `Error` (unknown `assignmentId`).
+ * The function takes the warm-up `assignmentDefinitionPartials` as its 4th
+ * parameter. Task columns and titles are sourced from the warm-up partial
+ * matching the assignment's `definitionKey` (resolved via
+ * {@link resolveAssignmentPartial}), not from the embedded
+ * `assignment.assignmentDefinition.tasks`, which no longer exists. A missing
+ * partial throws `TaskTitlesUnavailableError`, distinct from a generic `Error`
+ * (unknown `assignmentId`).
  *
- * The per-task `null`-title branch was removed (E3–F3) because `null` titles
- * are now carried through to the column descriptor (the table header falls back
- * to `taskId` for display).  Missing partials are caught by the
- * `getAssignmentDefinitionPartial` check above.
+ * `null` titles are carried through to the column descriptor (the table header
+ * falls back to `taskId` for display).
  *
  * v1 uses single-assignment selection at the adapter boundary by deriving
  * `taskKey`s with the shared `buildTaskKey` helper from the warm-up partial.
  * Multi-assignment selection is handled by the merged adapter (`heatmapAdapter.merged.ts`); this adapter remains single-assignment.
+ *
+ * The baseline-membership set for column projection is derived from this
+ * result's own mode echo and `attemptBaseline` block under the fail-fast
+ * narrowing rule ({@link deriveBaselineTaskKeySet}); absolute mode passes
+ * `null` so every column is included.
  */
 export function adaptMetricsToHeatmap(
   analyserResult: AveragingResult,
@@ -382,6 +406,7 @@ export function adaptMetricsToHeatmap(
   assignmentId: string,
   assignmentDefinitionPartials: AssignmentDefinitionPartialsResponse
 ): HeatmapResult {
+  const baselineSet = deriveBaselineTaskKeySet(analyserResult, 'adaptMetricsToHeatmap');
   const { partial } = resolveAssignmentPartial(
     classFull,
     assignmentId,
@@ -389,7 +414,7 @@ export function adaptMetricsToHeatmap(
   );
   const className: string = classFull.className ?? DEFAULT_CLASS_NAME_LABEL;
 
-  const taskColumns = buildTaskColumns(partial);
+  const taskColumns = buildTaskColumns(partial, baselineSet);
 
   const columnTaskKeys = new Set(taskColumns.map((c) => c.taskKey));
   const metricsByStudent = groupMetricsByStudent(analyserResult, classFull.classId, columnTaskKeys);

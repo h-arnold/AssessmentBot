@@ -10,11 +10,20 @@
  * The live task/assignment weighting projection cases live in the sibling
  * `heatmapAdapter.weighting.spec.ts`, sharing this file's former fixture
  * builders through `heatmapAdapterTestSetup`.
+ *
+ * The attempt-baseline cases pin the required second `buildTaskColumns`
+ * parameter (baseline-membership set, or `null` for absolute mode) and the
+ * adapter's fail-fast narrowing of the mode-bearing analyser result.
  */
 
 import { describe, expect, it } from 'vitest';
+import type { AveragingResult } from './dataAnalysis.zod';
 import type { AssignmentDefinitionPartialsResponse } from '../assignmentDefinition/assignmentDefinitionPartials.zod';
-import { adaptMetricsToHeatmap, TaskTitlesUnavailableError } from './heatmapAdapter';
+import {
+  adaptMetricsToHeatmap,
+  buildTaskColumns,
+  TaskTitlesUnavailableError,
+} from './heatmapAdapter';
 import {
   ASSIGNMENT_ID,
   CLASS_NAME,
@@ -57,18 +66,21 @@ describe('adaptMetricsToHeatmap — 4-parameter warm-up partial sourcing', () =>
       taskId: 'task_001',
       taskTitle: 'task_001',
       averageContribution: { effectiveWeight: 1, includedInAverage: true },
+      includedInAttemptBaseline: true,
     });
     expect(result.taskColumns[1]).toEqual({
       taskKey: taskKey('task_002'),
       taskId: 'task_002',
       taskTitle: 'task_002',
       averageContribution: { effectiveWeight: 1, includedInAverage: true },
+      includedInAttemptBaseline: true,
     });
     expect(result.taskColumns[2]).toEqual({
       taskKey: taskKey('task_003'),
       taskId: 'task_003',
       taskTitle: 'task_003',
       averageContribution: { effectiveWeight: 1, includedInAverage: true },
+      includedInAttemptBaseline: true,
     });
 
     // Rows — one per student in roster order
@@ -249,5 +261,81 @@ describe('adaptMetricsToHeatmap — 4-parameter warm-up partial sourcing', () =>
     expect(() =>
       adaptMetricsToHeatmap(analyserResult, classFull, ASSIGNMENT_ID, emptyPartials)
     ).toThrow(TaskTitlesUnavailableError);
+  });
+});
+
+describe('buildTaskColumns — attempt-baseline projection', () => {
+  it('sets includedInAttemptBaseline from baseline-set membership for each task column', () => {
+    const partial = buildPartials()[0];
+    const baselineSet = new Set([taskKey('task_001'), taskKey('task_003')]);
+
+    const columns = buildTaskColumns(partial, baselineSet);
+
+    expect(columns.map((column) => column.includedInAttemptBaseline)).toEqual([true, false, true]);
+  });
+
+  it('marks every column included when the baseline set is null (absolute mode)', () => {
+    const partial = buildPartials()[0];
+
+    const columns = buildTaskColumns(partial, null);
+
+    expect(columns.map((column) => column.includedInAttemptBaseline)).toEqual([true, true, true]);
+  });
+});
+
+describe('adaptMetricsToHeatmap — attempt-baseline supplier narrowing', () => {
+  it('derives the baseline set from the attemptBaseline block in baseline mode', () => {
+    const analyserResult = minimalAveragingResult([]);
+    analyserResult.appliedAnalysisMode = 'topDecileBaseline';
+    analyserResult.attemptBaseline = {
+      poolStudentIds: ['s_001', 's_002'],
+      baselineTaskKeys: [taskKey('task_001'), taskKey('task_003')],
+    };
+
+    const result = adaptMetricsToHeatmap(
+      analyserResult,
+      buildClassFull(),
+      ASSIGNMENT_ID,
+      buildPartials()
+    );
+
+    expect(result.taskColumns.map((column) => column.includedInAttemptBaseline)).toEqual([
+      true,
+      false,
+      true,
+    ]);
+  });
+
+  it('marks every column included for an absolute-mode result (null baseline set)', () => {
+    const result = adaptMetricsToHeatmap(
+      minimalAveragingResult([]),
+      buildClassFull(),
+      ASSIGNMENT_ID,
+      buildPartials()
+    );
+
+    expect(result.taskColumns.map((column) => column.includedInAttemptBaseline)).toEqual([
+      true,
+      true,
+      true,
+    ]);
+  });
+
+  it('fails fast when the analyser result is missing the appliedAnalysisMode echo', () => {
+    const analyserResult = minimalAveragingResult([]);
+    delete (analyserResult as Partial<AveragingResult>).appliedAnalysisMode;
+
+    expect(() =>
+      adaptMetricsToHeatmap(analyserResult, buildClassFull(), ASSIGNMENT_ID, buildPartials())
+    ).toThrow(/appliedAnalysisMode/);
+  });
+
+  it('fails fast when a baseline-mode result omits the attemptBaseline block', () => {
+    const analyserResult = minimalAveragingResult([]);
+    analyserResult.appliedAnalysisMode = 'topDecileBaseline';
+
+    expect(() =>
+      adaptMetricsToHeatmap(analyserResult, buildClassFull(), ASSIGNMENT_ID, buildPartials())
+    ).toThrow(/attemptBaseline/);
   });
 });

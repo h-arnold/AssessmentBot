@@ -197,6 +197,7 @@ describe('useHeatmapsPageData — preview queries and status map', () => {
           taskId: 'tA',
           taskTitle: 'Task A',
           averageContribution: { effectiveWeight: 1, includedInAverage: true },
+          includedInAttemptBaseline: true,
           assignmentId,
           definitionKey: 'def1',
           assignmentName: 'Title def1',

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { DataAnalysisService } from './dataAnalysisService';
 import { AssignmentSummaryAnalyser } from './analysers/assignmentSummaryAnalyser';
+import type { AnalysisMode } from './dataAnalysis.zod';
 import {
   buildInput,
   createAssignmentPartial,
@@ -14,6 +15,9 @@ const ROSTER_SIZE = 5;
 const EXPECTED_ACCURACY_AVERAGE = 2;
 const ACCURACY_THRESHOLD = 3;
 const TIED_TASK_COUNT = 2;
+
+/** Roster for the mode-isolation boundary case: three students, two attempters. */
+const MODE_ISOLATION_ROSTER = ['s_001', 's_002', 's_003'];
 
 /**
  * Build a minimal boundary case covering numeric, N, error and missing cells.
@@ -54,6 +58,44 @@ function buildBoundaryInput() {
       assignments: [assignment],
     },
   ]);
+}
+
+/**
+ * Build a boundary input whose two in-assignment attempters attempted disjoint
+ * task sets, so an assignment-scoped baseline derivation would empty-intersect
+ * and throw if the caller's mode ever reached the summary's internal averaging.
+ * @param {AnalysisMode} analysisMode - Caller-supplied analysis mode.
+ * @returns {ReturnType<typeof buildInput>} Minimal valid input.
+ */
+function buildModeIsolationInput(analysisMode: AnalysisMode) {
+  const assignment = createAssignmentPartial({
+    assignmentId: 'a_001',
+    definitionKey: 'dk_algebra',
+    submissions: [
+      createSubmission('s_001', 'One', 'a_001', {
+        t_001: createSubmissionItem('t_001', {
+          completeness: { score: 4 },
+          accuracy: { score: 4 },
+        }),
+      }),
+      createSubmission('s_002', 'Two', 'a_001', {
+        t_002: createSubmissionItem('t_002', {
+          completeness: { score: 3 },
+          accuracy: { score: 3 },
+        }),
+      }),
+    ],
+  });
+  return buildInput(
+    [
+      {
+        classId: 'c_001',
+        studentIds: MODE_ISOLATION_ROSTER,
+        assignments: [assignment],
+      },
+    ],
+    { filter: { classIds: ['c_001'], analysisMode } }
+  );
 }
 
 describe('assignment summaries', () => {
@@ -189,5 +231,31 @@ describe('assignment summaries', () => {
     expect(() =>
       new DataAnalysisService().analyseAssignmentSummary(input, 'c_001', 'a_001')
     ).toThrow();
+  });
+
+  // -------------------------------------------------------------------------
+  // Analysis-mode independence — the summary's internal averaging stays absolute
+  // -------------------------------------------------------------------------
+
+  it('summarises an assignment when the caller supplies baseline mode even where an assignment-scoped baseline would empty-intersect', () => {
+    const service = new DataAnalysisService();
+    const absoluteSummary = service.analyseAssignmentSummary(
+      buildModeIsolationInput('absolute'),
+      'c_001',
+      'a_001'
+    );
+    const summary = service.analyseAssignmentSummary(
+      buildModeIsolationInput('topDecileBaseline'),
+      'c_001',
+      'a_001'
+    );
+    expect(summary.totalStudents).toBe(MODE_ISOLATION_ROSTER.length);
+    expect(summary.tasks.map((task) => task.taskKey)).toEqual([
+      'dk_algebra::t_001',
+      'dk_algebra::t_002',
+    ]);
+    // The caller's mode never reaches the summary's internal averaging: the
+    // baseline-mode summary is byte-identical to the absolute-mode one.
+    expect(summary).toStrictEqual(absoluteSummary);
   });
 });

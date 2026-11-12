@@ -5,9 +5,14 @@
 **Implemented.** Canonical contract for the frontend-only, in-memory data-analysis response.
 It has **no backend API, persistence collection, transport envelope or migration**. The ABClass
 metadata lifecycle, the shared post-analysis contracts, both consumer surfaces and the
-error-aware task-preview view models are implemented and described below. The only outstanding
-planned change is the attempt-baseline analysis mode (see
-[Planned contract changes](#planned-contract-changes-not-implemented)).
+error-aware task-preview view models are implemented and described below. The attempt-baseline
+analysis mode (tracking issue: h-arnold/AssessmentBot#305) is implemented: its schema
+contracts (filter field, result echo and optional baseline block), the
+analyser's baseline-mode behaviour, the heatmap column projection, the summary
+reconciliation, the Class-page mode control, the mode threading to the Class-page
+display labels, the embedded heatmap's baseline marking and caption, and the E2E browser
+coverage are all delivered
+(see [Attempt-baseline contract changes](#attempt-baseline-contract-changes)).
 
 Sibling contracts:
 
@@ -67,6 +72,10 @@ escaping.
 
 ### Response shapes
 
+The response's shape is documented in two parts: the assignment task summaries
+below, then the `DataAnalysisResponse` tree with its component shapes and the
+analyser's input shapes.
+
 ### Assignment task summaries
 
 `DataAnalysisService.analyseAssignmentSummary(input, classId, assignmentId)`
@@ -109,15 +118,17 @@ the [single-assignment presentation flow](../frontend/data-analysis-architecture
 
 ### `AveragingResult`
 
-| #   | Field                        | Type                                       | Persistence | Transport | Frontend Zod                                     | Notes                                                                                                                                                |
-| --- | ---------------------------- | ------------------------------------------ | ----------- | --------- | ------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | `classId`                    | `string`                                   | —           | —         | `z.string()`                                     |                                                                                                                                                      |
-| 2   | `className`                  | `string\|null`                             | —           | —         | `z.string().nullable()`                          |                                                                                                                                                      |
-| 3   | `perStudent`                 | `PerStudentRow[]`                          | —           | —         | `z.array(PerStudentRowSchema)`                   | Aggregate scope; may contain `excluded`.                                                                                                             |
-| 4   | `perTask`                    | `PerTaskRow[]`                             | —           | —         | `z.array(PerTaskRowSchema)`                      | Task display scope; never `excluded`.                                                                                                                |
-| 5   | `perClass`                   | `PerClassResult`                           | —           | —         | `PerClassResultSchema`                           | Aggregate scope.                                                                                                                                     |
-| 6   | `appliedCriterionWeightings` | `{ completeness, accuracy, spag: number }` | —           | —         | `AppliedCriterionWeightingsSchema`               | Echoes the weightings actually applied.                                                                                                              |
-| 7   | `perStudentTaskMetrics`      | `PerStudentTaskMetric[] \| undefined`      | —           | —         | `z.array(PerStudentTaskMetricSchema).optional()` | Heatmap-facing. The analyser always emits it (an empty array when no per-(student, task) accumulators exist); `.optional()` only tolerates omission. |
+| #   | Field                        | Type                                                                    | Persistence | Transport | Frontend Zod                                     | Notes                                                                                                                                                |
+| --- | ---------------------------- | ----------------------------------------------------------------------- | ----------- | --------- | ------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | `classId`                    | `string`                                                                | —           | —         | `z.string()`                                     |                                                                                                                                                      |
+| 2   | `className`                  | `string\|null`                                                          | —           | —         | `z.string().nullable()`                          |                                                                                                                                                      |
+| 3   | `perStudent`                 | `PerStudentRow[]`                                                       | —           | —         | `z.array(PerStudentRowSchema)`                   | Aggregate scope; may contain `excluded`.                                                                                                             |
+| 4   | `perTask`                    | `PerTaskRow[]`                                                          | —           | —         | `z.array(PerTaskRowSchema)`                      | Task display scope; never `excluded`.                                                                                                                |
+| 5   | `perClass`                   | `PerClassResult`                                                        | —           | —         | `PerClassResultSchema`                           | Aggregate scope.                                                                                                                                     |
+| 6   | `appliedCriterionWeightings` | `{ completeness, accuracy, spag: number }`                              | —           | —         | `AppliedCriterionWeightingsSchema`               | Echoes the weightings actually applied.                                                                                                              |
+| 7   | `appliedAnalysisMode`        | `'absolute' \| 'topDecileBaseline'`                                     | —           | —         | `AnalysisModeSchema`                             | Required echo of the mode actually applied to this result.                                                                                           |
+| 8   | `attemptBaseline`            | `{ poolStudentIds: string[]; baselineTaskKeys: string[] } \| undefined` | —           | —         | `AttemptBaselineSchema.optional()`               | Present only when `appliedAnalysisMode` is `'topDecileBaseline'`; see [Attempt-baseline contract changes](#attempt-baseline-contract-changes).       |
+| 9   | `perStudentTaskMetrics`      | `PerStudentTaskMetric[] \| undefined`                                   | —           | —         | `z.array(PerStudentTaskMetricSchema).optional()` | Heatmap-facing. The analyser always emits it (an empty array when no per-(student, task) accumulators exist); `.optional()` only tolerates omission. |
 
 ### `PerStudentRow`
 
@@ -187,10 +198,11 @@ carries `averageContribution`.
 ### Input shapes
 
 `AveragingAnalyserInputSchema` is a strict object of `filter`, `classes`, and
-`assignmentDefinitionPartials`. `AnalysisFilterSchema` requires a non-empty
-`classIds` array and permits optional `dateRange`, `topicKeys`,
-`assignmentDefinitionKeys`, and `criterionWeightings` (which must sum to `1`
-within a `1e-9` float-drift tolerance).
+`assignmentDefinitionPartials`. `AnalysisFilterSchema` requires `analysisMode`
+(`AnalysisModeSchema`, no default) and a non-empty `classIds` array, and
+permits optional `dateRange`, `topicKeys`, `assignmentDefinitionKeys`, and
+`criterionWeightings` (which must sum to `1` within a `1e-9` float-drift
+tolerance).
 
 `classes` is `z.array(ClassFullSchema)`, so each analysed class now requires the
 shared nullable `ABClassMetadataSchema` owned by
@@ -288,8 +300,8 @@ result enum reused by both task-result and outcome schemas. Reason drift therefo
 compilation instead of turning a legitimate no-op into a lifecycle parse failure.
 
 The successful display result is never the persistence oracle. Both calculations use the
-unchanged synchronous service with only `{ classIds: [classId] }` as filter and the
-constructor's standard 0.4/0.4/0.2 criterion weights. The second class copy contains only the
+unchanged synchronous service with `{ classIds: [classId], analysisMode: 'absolute' }` as
+filter and the constructor's standard 0.4/0.4/0.2 criterion weights. The second class copy contains only the
 target assignment instance, preventing definition-scoped task keys from merging another
 instance into its summary. Both project all four weighted `perClass` metrics, including
 `overall`, through `projectAverageScores()`:
@@ -770,19 +782,24 @@ assignment-definition partial and emit it on task-column descriptors. UI code
 must consume that descriptor and must not derive weighting from displayed scores
 or duplicate definition resolution.
 
-| Field                 | `HeatmapTaskColumn`   | `MergedHeatmapTaskColumn` |
-| --------------------- | --------------------- | ------------------------- |
-| `taskKey`             | `string`              | `string`                  |
-| `taskId`              | `string`              | `string`                  |
-| `taskTitle`           | `string\|null`        | `string\|null`            |
-| `averageContribution` | `AverageContribution` | `AverageContribution`     |
-| `assignmentId`        | —                     | `string`                  |
-| `definitionKey`       | —                     | `string`                  |
-| `assignmentName`      | —                     | `string`                  |
+| Field                       | `HeatmapTaskColumn`   | `MergedHeatmapTaskColumn` |
+| --------------------------- | --------------------- | ------------------------- |
+| `taskKey`                   | `string`              | `string`                  |
+| `taskId`                    | `string`              | `string`                  |
+| `taskTitle`                 | `string\|null`        | `string\|null`            |
+| `averageContribution`       | `AverageContribution` | `AverageContribution`     |
+| `includedInAttemptBaseline` | `boolean`             | `boolean`                 |
+| `assignmentId`              | —                     | `string`                  |
+| `definitionKey`             | —                     | `string`                  |
+| `assignmentName`            | —                     | `string`                  |
 
 `MergedHeatmapTaskColumn` is produced by spreading the shared `buildTaskColumns`
 projection and adding the full assignment identity, so the contribution metadata
-is inherited unchanged. In merged heatmaps, a definition-scoped duplicate
+is inherited unchanged. `includedInAttemptBaseline` is set by the same shared
+projection from the caller's baseline set: `adaptMetricsToHeatmap` derives the
+set from its own result's mode echo under the Baseline narrowing rule's
+fail-fast, while the merged chain passes `null` (absolute mode), so every merged
+column is included. In merged heatmaps, a definition-scoped duplicate
 `taskKey` has one unambiguous contribution value: duplicate columns are collapsed
 by `taskKey`, and every collapsed instance shares the same definition-scoped
 effective weighting.
@@ -913,9 +930,16 @@ interface TaskPreviewData {
 
 ### Display contract
 
-The `excluded` state is displayed as **Excluded** with accessible text:
+The `excluded` state is displayed as **Excluded** with accessible text resolved
+by `resolveExcludedMetricAccessibleLabel(analysisMode?)`:
 
 > Excluded from average: displayed work had zero weighting.
+
+In baseline mode the Class-page consumers thread the mode, so the label names
+both possible causes (see item 7's threading):
+
+> Excluded from average: displayed work had zero weighting, or fell outside
+> the baseline task set.
 
 - `MetricPill` renders the literal label `Excluded` for the state, with
   `role="img"` and the shared accessible name.
@@ -943,7 +967,7 @@ The `excluded` state is displayed as **Excluded** with accessible text:
   `TaskDisplayMetricSchema` (exported, three states), `PerStudentRowSchema`,
   `PerTaskRowSchema`, `PerClassResultSchema`, `PerStudentTaskMetricSchema`,
   `AveragingResultSchema`, `DataAnalysisResponseSchema`,
-  `AveragingAnalyserInputSchema`, `AnalysisFilterSchema`,
+  `AveragingAnalyserInputSchema`, `AnalysisFilterSchema`, `AnalysisModeSchema`,
   `AppliedCriterionWeightingsSchema`.
 - `src/frontend/src/features/classPage/classPageAdapter.zod.ts` →
   `ClassPageNoDataMetricSchema`, `ClassPageDisplayMetricSchema`,
@@ -1111,25 +1135,38 @@ Class-page adapter:
 
 ## Legacy assignment display
 
-Delivered: valid legacy scores are included in analysis through the existing heatmap/averaging and E rules, with no version-based filtering or new analyser/card-model field, and the task-heatmap `Reassessment required` tag is shown from the `'legacy'` marker (task-heatmap-only, by explicit user decision, with no field added to persisted metadata). The remaining planned work is the top-decile attempt-baseline analysis mode (tracking issue: h-arnold/AssessmentBot#305); complete the existing attempt-baseline plan independently.
+Delivered: valid legacy scores are included in analysis through the existing heatmap/averaging and E rules, with no version-based filtering or new analyser/card-model field, and the task-heatmap `Reassessment required` tag is shown from the `'legacy'` marker (task-heatmap-only, by explicit user decision, with no field added to persisted metadata). The attempt-baseline analysis mode (tracking issue: h-arnold/AssessmentBot#305) is implemented; see [Attempt-baseline contract changes](#attempt-baseline-contract-changes).
 
-## Planned contract changes (not implemented)
+## Attempt-baseline contract changes
 
 ### Attempt-baseline analysis mode
 
-Only the top-decile attempt-baseline analysis mode remains unimplemented (tracking issue:
+The top-decile attempt-baseline analysis mode is delivered (tracking issue:
 h-arnold/AssessmentBot#305). The explicit-`E` analyser input, the preview `sourceUrl` field and
 every other previously planned addition are implemented and documented in the sections above.
-The following declarative shapes are the intended target; nothing here exists in code today.
+The schema contracts for items 1–4 below are implemented as recorded in their
+delivered entries (required filter field, result echo and optional baseline block),
+as is the analyser's baseline-mode behaviour
+(post-accumulation baseline selection, baseline-restricted aggregation, the
+baseline-mode per-student `excluded` conversion and the `attemptBaseline` echo). The heatmap column
+projection (Section 3), the summary reconciliation (Section 4), the Class-page mode
+control with its availability resolver (Section 5a), item 7's mode threading to the
+Class-page display labels (Section 5b), the embedded heatmap's baseline marking
+and caption (Section 5c) and the E2E browser coverage (Section 5d) are delivered.
+Every planned contract change in this section is implemented.
 
 1. **`AnalysisFilterSchema.analysisMode`** — required enum field
    `z.enum(['absolute', 'topDecileBaseline'])` on the existing strict filter
    object. There is no default; every caller states the mode explicitly.
    `'absolute'` is the explicit representation of current behaviour.
+   **Implemented (Section 1):** the schema requires the field and every
+   input-construction site supplies it.
 
 2. **`AveragingResultSchema.appliedAnalysisMode`** — required echo enum
    (same two values) recording the mode actually applied to the per-class
-   result.
+   result. **Implemented (Section 1):** the schema requires the echo; the
+   analyser emits the input's mode — `'absolute'` since Section 1, and
+   `'topDecileBaseline'` with the baseline block since Section 2.
 
 3. **`AveragingResultSchema.attemptBaseline`** — optional strict object present
    only when `appliedAnalysisMode` is `'topDecileBaseline'`:
@@ -1157,10 +1194,13 @@ The following declarative shapes are the intended target; nothing here exists in
      Criterion weighting plays no part.
    - Baseline task keys = intersection of the attempt sets across the whole
      pool. An empty intersection throws (descriptive error naming the class)
-     before any result is produced, so the schema `min(1)` is protected.
-   - The derivation is a **post-accumulation** pass over the analyser's accumulators
-     (whose per-criterion `displayCount` already encodes the attempt signal); it is not a
-     separate raw-data pre-pass.
+     before any result is produced, so the schema `min(1)` is protected. The
+     failure has a single site: the derivation fails fast for any empty pool
+     intersection, naming the class, and the averaging analyser propagates that
+     failure.
+   - The derivation is a **post-accumulation** projection over the emitted
+     `PerStudentTaskMetric[]` (a metric is an attempt when any criterion's display
+     state is `computed`); it is not a separate raw-data pre-pass.
    - Applies to all four metric aggregates (per-student, per-class) built from
      per-(student, task) accumulators restricted to the baseline task set.
    - Students whose observed tasks fall entirely outside the baseline resolve
@@ -1186,12 +1226,17 @@ The following declarative shapes are the intended target; nothing here exists in
      accumulators at all follows today's absolute-mode path (`error` metrics)
      and is never converted.
 
-4. **`PerTaskRowSchema.includedInAttemptBaseline`** — required boolean always
-   present on task rows. `true` for every row in `absolute` mode; in baseline
-   mode it marks baseline-set membership. Per-task row _values_ stay absolute
-   in both modes. **Per-student cell metrics carry no flag:** columns are the
-   only marked heatmap unit (column-level marking in v1; see item 8), so
-   `PerStudentTaskMetric` is unchanged. The array's **contents are also
+   **Implemented (Section 2):** the optional block validates exactly as recorded
+   and the analyser emits it in every baseline-mode result (absolute mode omits
+   it); baseline selection is the post-accumulation derivation recorded above.
+
+4. **`PerTaskRowSchema` carries no membership flag.** The former required
+   `includedInAttemptBaseline` boolean was removed from the task row as an
+   unread surface: attempt-baseline membership is derived by consumers from the
+   result's `attemptBaseline.baselineTaskKeys`. Per-task row _values_ stay
+   absolute in both modes. **Per-student cell metrics carry no flag:** columns
+   are the only marked heatmap unit (column-level marking in v1; see item 8),
+   so `PerStudentTaskMetric` is unchanged. The array's **contents are also
    mode-independent**: baseline filtering restricts only the aggregation step,
    so `perStudentTaskMetrics` carries every observed (student, task) pair in
    both modes — availability and heatmap substitution paths therefore see
@@ -1210,6 +1255,10 @@ The following declarative shapes are the intended target; nothing here exists in
    delegation states `analysisMode: 'absolute'` explicitly (task-level
    evidence must never invoke baseline selection), while the public summary
    input continues to validate the caller's supplied `analysisMode`.
+
+   **Implemented (Section 4):** the internal delegation pin and the required
+   public filter field are in place; the reconciliation confirms the analyser
+   stays internally `'absolute'` and the public summary schema is unchanged.
 
 6. **Downstream aggregate consumers.** Per-assignment aggregates on the Class
    page (recent-assignment cards) are recomputed in baseline mode from
@@ -1231,6 +1280,23 @@ The following declarative shapes are the intended target; nothing here exists in
    `error`, and any mixture with a converted criterion converges on
    `excluded`.
 
+   **Implemented (Section 5b):** the rule lives in the co-located module
+   `src/frontend/src/features/classPage/classPageAdapter.baselineCardRollup.ts`
+   (`rollupCardCriteria`; `deriveBaselineTaskKeySet` —
+   `src/frontend/src/services/dataAnalysis/analysers/attemptBaselineSelection.ts`;
+   `convertToBaselineExcluded` —
+   `src/frontend/src/services/dataAnalysis/analysers/averagingAnalyser.rows.ts`),
+   whose sole consumer is
+   `classPageAdapter.ts`. The adapter derives the baseline set once per run
+   from the result's own mode echo and passes it to every card rollup;
+   `deriveBaselineTaskKeySet` fails fast — its throws (prefixed
+   `adaptClassPageToViewModel:`) name the class for a missing or unrecognised
+   `appliedAnalysisMode` echo and for a baseline-mode result without its
+   required `attemptBaseline` block, the same narrowing rule as item 8.
+   `baselineAvailability` deliberately gains no entry in this contract: it is a
+   Class-page hook value derived during render (`useClassPageData.helpers.ts`),
+   not part of the analysis response shape.
+
 7. **Display-only additions (no schema change):** the `excluded` aggregate
    state would carry two causes (zero weighting vs baseline exclusion); the
    accessible label becomes mode-aware at the `metricDisplay` layer
@@ -1242,6 +1308,24 @@ The following declarative shapes are the intended target; nothing here exists in
    always `true` there. The Class page's embedded single-assignment heatmap
    inherits the Class page's analysis result and may therefore render `false`
    markers in baseline mode while keeping absolute cell values.
+
+   **Implemented (Section 4, label content only):** `metricTone.ts` exports the
+   two-cause baseline wording (`BASELINE_EXCLUDED_METRIC_ACCESSIBLE_LABEL` —
+   "Excluded from average: displayed work had zero weighting, or fell outside
+   the baseline task set.") beside the unchanged weighting-only constant, with
+   the resolver `resolveExcludedMetricAccessibleLabel(analysisMode?)`;
+   `MetricPill` accepts the optional `analysisMode` prop for the excluded
+   accessible name only; at delivery the students-table label builder called
+   the resolver with no argument (threaded since Section 5b below).
+   **Implemented (Section 5b, threading):** Class-page
+   consumers now pass the mode explicitly — `ClassPage` → `ClassPageContent`
+   (optional prop) → `renderReadyContent` (options object) → `ClassPageReady` →
+   `RecentAssignmentsSection` → `RecentAssignmentCard` → `MetricPill`, and
+   `ClassPageReady` → `StudentAveragesTableCard` →
+   `buildStudentAveragesTableColumns(filters, analysisMode)` → the resolver for
+   the students-table `aria-label` — so excluded pills and table cells announce
+   both causes under baseline mode; the embedded heatmap view receives no mode
+   prop.
 
 8. **Heatmap projection addition:** `HeatmapTaskColumn` gains `includedInAttemptBaseline: boolean`, set in
    `heatmapAdapter.ts` from a required second `buildTaskColumns` parameter
@@ -1255,6 +1339,11 @@ The following declarative shapes are the intended target; nothing here exists in
    each hop. `MergedHeatmapTaskColumn` inherits the field via its existing spread
    of the base projection. `HeatmapCell` is unchanged: marking is
    **column-level only in v1**, and cell values stay absolute in both modes.
+   **Implemented (Section 3):** both column descriptors require the field and
+   the adapter derives the set from its own analyser result; the fail-fast
+   throws name `appliedAnalysisMode` (missing or unrecognised echo) and
+   `attemptBaseline` (baseline-mode result without the block), as the Baseline
+   narrowing rule requires.
 
 9. **Preview error fields — implemented.** The derived preview shapes now distinguish an
    assessment-only error whose source is available, an unavailable/corrupt source, and a
@@ -1285,8 +1374,10 @@ The following declarative shapes are the intended target; nothing here exists in
    `null` result. A known `E` with null `IMAGE`/`SPREADSHEET` full content assembles as
    `artifactContent: ''` with `sourceState: 'unavailable'`; non-`E` unexpected null content
    still throws. Precedence in an opened preview:
-   1. explicit full-record validation error; 2. the class-partial `E` for that criterion;
-   2. the selected full item's `E`; 4. the existing analyser metric. A full-read-only
+   1. explicit full-record validation error;
+   2. the class-partial `E` for that criterion;
+   3. the selected full item's `E`;
+   4. the existing analyser metric. A full-read-only
       corruption overrides the affected preview's score/reasoning with `E` even when the
       class-derived heatmap cell still shows a historic numeric value, stating
       `Source preview unavailable. Displayed scores are unchanged; reassess the assignment to refresh them.`
@@ -1303,6 +1394,7 @@ Frontend service: `src/frontend/src/services/dataAnalysis/dataAnalysisService.ts
 Effective-weight helper: `src/frontend/src/services/assignmentDefinition/assignmentDefinitionUtilities.ts`
 Task-key helper: `src/frontend/src/services/dataAnalysis/taskKey.ts`
 Analyser: `src/frontend/src/services/dataAnalysis/analysers/`
+├── `attemptBaselineSelection.ts`
 ├── `averagingAnalyser.ts`
 ├── `averagingAnalyser.accumulation.ts`
 ├── `averagingAnalyser.accumulatorRegistry.ts`
@@ -1319,6 +1411,7 @@ Analyser: `src/frontend/src/services/dataAnalysis/analysers/`
 Heatmap adapters: `src/frontend/src/services/dataAnalysis/heatmapAdapter.ts`, `src/frontend/src/services/dataAnalysis/heatmapAdapter.merged.ts`
 Metric display: `src/frontend/src/services/dataAnalysis/metricDisplay/`
 Class-page adapter schema: `src/frontend/src/features/classPage/classPageAdapter.zod.ts`
+Class-page adapter card-rollup rule: `src/frontend/src/features/classPage/classPageAdapter.baselineCardRollup.ts` → `rollupCardCriteria` (baseline-mode card aggregates, item 6); `deriveBaselineTaskKeySet` (`src/frontend/src/services/dataAnalysis/analysers/attemptBaselineSelection.ts`)
 
 Metadata refresh execution companions:
 ├── `src/frontend/src/services/dataAnalysis/postAnalysis/metadataProjection.ts` → pure decision, shared newest-first comparator, metric mapping, non-nullable rolling merge; `MetadataRefreshSkipped`, `MetadataRefreshDecision`

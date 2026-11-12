@@ -7,13 +7,14 @@ import type { MergedHeatmapResult } from '@/services/dataAnalysis/heatmapAdapter
 import { buildCell, buildHeatmapResult } from '@/test/taskHeatmapTableTestHelpers';
 import {
   ZERO_WEIGHT_EXPLANATION,
-  ZERO_WEIGHT_FIRST_CLASS,
-  ZERO_WEIGHT_GROUP_CLASS,
-  ZERO_WEIGHT_LAST_CLASS,
-  getZeroWeightMetricEdgeClass,
-} from './taskHeatmapZeroWeightHeader';
+  BASELINE_CAPTION,
+  EXCLUDED_COLUMN_FIRST_CLASS,
+  EXCLUDED_COLUMN_GROUP_CLASS,
+  EXCLUDED_COLUMN_LAST_CLASS,
+  EXCLUDED_COLUMN_TOOLTIP_TARGET_CLASS,
+  getExcludedMetricEdgeClass,
+} from './taskHeatmapColumnMarking';
 
-const MAX_ZERO_TITLE_TAB_STEPS = 20;
 const SINGLE_METRIC_INDEX = 0;
 const SINGLE_METRIC_COUNT = 1;
 
@@ -42,8 +43,7 @@ function renderEmbeddedZeroWeightTable() {
             averageContribution: { effectiveWeight: 0, includedInAverage: false },
           }
         : { ...column };
-    }
-    ),
+    }),
     rows: base.rows.map((row) => ({ ...row, cells: [...row.cells] })),
   };
 
@@ -79,6 +79,7 @@ function buildMergedZeroWeightResult(): MergedHeatmapResult {
         taskId: 'zero-task',
         taskTitle: 'Merged zero-weight task',
         averageContribution: { effectiveWeight: 0, includedInAverage: false },
+        includedInAttemptBaseline: true,
         assignmentId: 'assignment-1',
         definitionKey: 'definition-1',
         assignmentName: 'Parent tier',
@@ -88,6 +89,7 @@ function buildMergedZeroWeightResult(): MergedHeatmapResult {
         taskId: 'positive-task',
         taskTitle: 'Merged positive task',
         averageContribution: { effectiveWeight: 1, includedInAverage: true },
+        includedInAttemptBaseline: true,
         assignmentId: 'assignment-2',
         definitionKey: 'definition-2',
         assignmentName: 'Other tier',
@@ -105,44 +107,33 @@ function buildMergedZeroWeightResult(): MergedHeatmapResult {
 
 describe('TaskHeatmapTable zero-weight presentation', () => {
   it('marks a single zero-weight metric as both the first and last group edge', () => {
-    const edgeClass = getZeroWeightMetricEdgeClass(SINGLE_METRIC_INDEX, SINGLE_METRIC_COUNT, {
-      effectiveWeight: 0,
-      includedInAverage: false,
-    });
+    const edgeClass = getExcludedMetricEdgeClass(
+      SINGLE_METRIC_INDEX,
+      SINGLE_METRIC_COUNT,
+      { effectiveWeight: 0, includedInAverage: false },
+      { includedInAttemptBaseline: true }
+    );
 
-    expect(edgeClass).toContain(ZERO_WEIGHT_FIRST_CLASS);
-    expect(edgeClass).toContain(ZERO_WEIGHT_LAST_CLASS);
+    expect(edgeClass).toContain(EXCLUDED_COLUMN_FIRST_CLASS);
+    expect(edgeClass).toContain(EXCLUDED_COLUMN_LAST_CLASS);
   });
 
-  it('shows the exact explanation on pointer hover and keyboard focus with one non-actionable tab stop', async () => {
-    renderEmbeddedZeroWeightTable();
+  it('shows the exact explanation on pointer hover', async () => {
+    const { container } = renderEmbeddedZeroWeightTable();
 
-    const headerName = `Task 1 — ${ZERO_WEIGHT_EXPLANATION}`;
-    const targetName = `Task 1 ${ZERO_WEIGHT_EXPLANATION}`;
-    const title = screen.getByRole('group', { name: targetName });
+    const headerName = `Task 1; ${ZERO_WEIGHT_EXPLANATION}`;
+    const title = container.querySelector('.' + EXCLUDED_COLUMN_TOOLTIP_TARGET_CLASS);
+    if (!(title instanceof HTMLElement)) {
+      throw new TypeError('Expected the zero-weight tooltip target span to render.');
+    }
     expect(screen.getByRole('columnheader', { name: headerName })).toHaveAttribute(
       'aria-label',
       headerName
     );
-    expect(title).toHaveAttribute('tabindex', '0');
-    expect(screen.getAllByRole('group', { name: targetName })).toHaveLength(1);
+    expect(container.querySelectorAll('.' + EXCLUDED_COLUMN_TOOLTIP_TARGET_CLASS)).toHaveLength(1);
 
     await user.hover(title);
     expect(await screen.findByText(ZERO_WEIGHT_EXPLANATION)).toBeInTheDocument();
-
-    await user.unhover(title);
-    screen.getByRole('columnheader', { name: 'Forename' }).focus();
-    await user.tab();
-    let tabSteps = 0;
-    while (document.activeElement !== title && tabSteps < MAX_ZERO_TITLE_TAB_STEPS) {
-      await user.tab();
-      tabSteps += 1;
-    }
-    expect(title).toHaveFocus();
-    expect(await screen.findByText(ZERO_WEIGHT_EXPLANATION)).toBeInTheDocument();
-
-    await user.keyboard('{Enter}{Space}');
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     expect(screen.getByRole('columnheader', { name: headerName })).toBeInTheDocument();
   });
 
@@ -154,21 +145,24 @@ describe('TaskHeatmapTable zero-weight presentation', () => {
     expect(screen.queryByText(ZERO_WEIGHT_EXPLANATION)).not.toBeInTheDocument();
 
     const zeroHeader = screen.getByRole('columnheader', {
-      name: `Task 1 — ${ZERO_WEIGHT_EXPLANATION}`,
+      name: `Task 1; ${ZERO_WEIGHT_EXPLANATION}`,
     });
-    expect(zeroHeader).toHaveClass(ZERO_WEIGHT_GROUP_CLASS);
+    expect(zeroHeader).toHaveClass(EXCLUDED_COLUMN_GROUP_CLASS);
     const metricHeaders = screen.getAllByRole('columnheader', {
       name: /completeness|accuracy|spag/i,
     });
-    expect(metricHeaders[0]).toHaveClass(ZERO_WEIGHT_FIRST_CLASS);
-    expect(metricHeaders[2]).toHaveClass(ZERO_WEIGHT_LAST_CLASS);
-    expect(metricHeaders[3]).not.toHaveClass(ZERO_WEIGHT_FIRST_CLASS);
+    expect(metricHeaders[0]).toHaveClass(EXCLUDED_COLUMN_FIRST_CLASS);
+    expect(metricHeaders[2]).toHaveClass(EXCLUDED_COLUMN_LAST_CLASS);
+    expect(metricHeaders[3]).not.toHaveClass(EXCLUDED_COLUMN_FIRST_CLASS);
 
     const bodyCells = [...container.querySelectorAll(':scope tbody tr[data-row-key="s-1"] td')];
-    expect(bodyCells[2]).toHaveClass(ZERO_WEIGHT_FIRST_CLASS);
-    expect(bodyCells[4]).toHaveClass(ZERO_WEIGHT_LAST_CLASS);
-    expect(bodyCells[5]).not.toHaveClass(ZERO_WEIGHT_FIRST_CLASS);
+    expect(bodyCells[2]).toHaveClass(EXCLUDED_COLUMN_FIRST_CLASS);
+    expect(bodyCells[4]).toHaveClass(EXCLUDED_COLUMN_LAST_CLASS);
+    expect(bodyCells[5]).not.toHaveClass(EXCLUDED_COLUMN_FIRST_CLASS);
     expect(screen.getAllByLabelText('Student One, Task 1, Completeness: 5')[0]).toBeInTheDocument();
+
+    // Zero-weight marking alone never introduces the baseline caption.
+    expect(screen.queryByText(BASELINE_CAPTION)).not.toBeInTheDocument();
   });
 
   it('preserves numeric zero-weight scores, genuine N and E as distinct rendered cell states', () => {
@@ -179,8 +173,7 @@ describe('TaskHeatmapTable zero-weight presentation', () => {
         return index === 0
           ? { ...column, averageContribution: { effectiveWeight: 0, includedInAverage: false } }
           : { ...column };
-      }
-      ),
+      }),
     };
     render(
       <TaskHeatmapTable
@@ -221,8 +214,7 @@ describe('TaskHeatmapTable zero-weight presentation', () => {
         return index === 0
           ? { ...column, averageContribution: { effectiveWeight: 0, includedInAverage: false } }
           : { ...column };
-      }
-      ),
+      }),
     };
     render(
       <TaskHeatmapTable
@@ -250,26 +242,27 @@ describe('TaskHeatmapTable zero-weight presentation', () => {
       />
     );
 
-    const mergedHeaderName = `Merged zero-weight task — ${ZERO_WEIGHT_EXPLANATION}`;
+    const mergedHeaderName = `Merged zero-weight task; ${ZERO_WEIGHT_EXPLANATION}`;
     const mergedHeader = screen.getByRole('columnheader', { name: mergedHeaderName });
-    expect(mergedHeader).toHaveClass(ZERO_WEIGHT_GROUP_CLASS);
+    expect(mergedHeader).toHaveClass(EXCLUDED_COLUMN_GROUP_CLASS);
     expect(screen.getByRole('columnheader', { name: 'Parent tier' })).not.toHaveClass(
-      ZERO_WEIGHT_GROUP_CLASS
+      EXCLUDED_COLUMN_GROUP_CLASS
     );
     expect(screen.getByRole('columnheader', { name: 'Forename' })).not.toHaveClass(
-      ZERO_WEIGHT_GROUP_CLASS
+      EXCLUDED_COLUMN_GROUP_CLASS
     );
     expect(screen.getByRole('columnheader', { name: 'Surname' })).not.toHaveClass(
-      ZERO_WEIGHT_GROUP_CLASS
+      EXCLUDED_COLUMN_GROUP_CLASS
     );
 
-    const focusableTitle = screen.getByRole('group', {
-      name: `Merged zero-weight task ${ZERO_WEIGHT_EXPLANATION}`,
-    });
-    expect(focusableTitle).toBeInTheDocument();
+    const markedSpan = container.querySelector('.' + EXCLUDED_COLUMN_TOOLTIP_TARGET_CLASS);
+    if (!(markedSpan instanceof HTMLElement)) {
+      throw new TypeError('Expected the merged zero-weight tooltip target span to render.');
+    }
+    expect(markedSpan).toBeInTheDocument();
     const completeness = screen.getAllByRole('columnheader', { name: /completeness/i });
-    expect(completeness[0]).toHaveClass(ZERO_WEIGHT_FIRST_CLASS);
-    expect(completeness[1]).not.toHaveClass(ZERO_WEIGHT_FIRST_CLASS);
+    expect(completeness[0]).toHaveClass(EXCLUDED_COLUMN_FIRST_CLASS);
+    expect(completeness[1]).not.toHaveClass(EXCLUDED_COLUMN_FIRST_CLASS);
 
     const studentRow = container.querySelector(':scope tbody tr[data-row-key="student-1"]');
     expect(studentRow).not.toBeNull();

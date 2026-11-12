@@ -31,12 +31,13 @@ import type { FilterValue } from 'antd/es/table/interface';
 
 import { getStudentMetric } from './classPageAdapter.zod';
 import type { ClassPageDisplayMetric, StudentAverageRowModel } from './classPageAdapter.zod';
+import type { AnalysisMode } from '@/services/dataAnalysis/dataAnalysis.zod';
 import { buildStudentNameColumns } from '../shared/studentNameTableColumns';
 import { METRIC_DISPLAY_META } from '@/services/dataAnalysis/metricDisplay/metricDisplayMeta';
 import type { MetricColumnKey } from '@/services/dataAnalysis/metricDisplay/metricDisplayMeta';
 import {
   DEFAULT_TONE_RANGE,
-  EXCLUDED_METRIC_ACCESSIBLE_LABEL,
+  resolveExcludedMetricAccessibleLabel,
   resolveMetricTone,
 } from '@/services/dataAnalysis/metricDisplay/metricTone';
 import { buildMetricRangeFilter } from '@/services/dataAnalysis/metricDisplay/metricRangeFilter';
@@ -84,11 +85,15 @@ const CLASS_PAGE_SCORE_PRECISION = 2;
  * @param {MetricColumnKey} key - The column key (metric field name).
  * @param {readonly string[]} columnFilters - The raw encoded filter keys, or an
  *   empty array when the column is unfiltered.
+ * @param {AnalysisMode} [analysisMode] - The page's analysis mode for the
+ *   `excluded` cell's accessible label (§9.27.3 threading chain); when absent
+ *   the weighting-only wording is used.
  * @returns {TableColumnType<StudentAverageRowModel>} A column definition.
  */
 function buildMetricColumn(
   key: MetricColumnKey,
-  columnFilters: readonly string[]
+  columnFilters: readonly string[],
+  analysisMode?: AnalysisMode
 ): TableColumnType<StudentAverageRowModel> {
   const meta = METRIC_DISPLAY_META.get(key)!;
   const activeRange: readonly number[] =
@@ -119,7 +124,7 @@ function buildMetricColumn(
       const { className, ...inlineCellStyle } = cellStyle;
       const score = formatMetricDisplayText(metric, CLASS_PAGE_SCORE_PRECISION);
       const ariaLabel = `${record.studentName}, ${meta.label}: ${
-        metric.state === 'excluded' ? EXCLUDED_METRIC_ACCESSIBLE_LABEL : score
+        metric.state === 'excluded' ? resolveExcludedMetricAccessibleLabel(analysisMode) : score
       }`;
       return {
         className,
@@ -129,12 +134,12 @@ function buildMetricColumn(
     },
     render: (_: unknown, record: StudentAverageRowModel): JSX.Element => {
       return (
-      <span>
-        {formatMetricDisplayText(
-          getStudentMetric(record.metrics, key),
-          CLASS_PAGE_SCORE_PRECISION
-        )}
-      </span>
+        <span>
+          {formatMetricDisplayText(
+            getStudentMetric(record.metrics, key),
+            CLASS_PAGE_SCORE_PRECISION
+          )}
+        </span>
       );
     },
   };
@@ -160,10 +165,14 @@ function buildMetricColumn(
  *
  * @param {StudentAveragesTableFilters} filters - The current filter state for
  *   each metric column. Empty arrays mean no filter.
+ * @param {AnalysisMode} [analysisMode] - The page's analysis mode for the
+ *   `excluded` cells' accessible label (§9.27.3 threading chain); when absent
+ *   the weighting-only wording is used.
  * @returns {TableColumnsType<StudentAverageRowModel>} Six column definitions.
  */
 export function buildStudentAveragesTableColumns(
-  filters: StudentAveragesTableFilters
+  filters: StudentAveragesTableFilters,
+  analysisMode?: AnalysisMode
 ): TableColumnsType<StudentAverageRowModel> {
   // ── Forename / Surname (no filters) ───────────────────────────────────
   // No `defaultSortOrder`: the initial full-name order comes from the
@@ -176,9 +185,9 @@ export function buildStudentAveragesTableColumns(
   return [
     forenameColumn,
     surnameColumn,
-    buildMetricColumn('completeness', filters.completeness),
-    buildMetricColumn('accuracy', filters.accuracy),
-    buildMetricColumn('spag', filters.spag),
-    buildMetricColumn('average', filters.average),
+    buildMetricColumn('completeness', filters.completeness, analysisMode),
+    buildMetricColumn('accuracy', filters.accuracy, analysisMode),
+    buildMetricColumn('spag', filters.spag, analysisMode),
+    buildMetricColumn('average', filters.average, analysisMode),
   ];
 }

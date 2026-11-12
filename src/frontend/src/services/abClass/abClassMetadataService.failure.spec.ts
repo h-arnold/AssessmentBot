@@ -34,7 +34,7 @@ describe('ABClass metadata failure propagation', () => {
       context.averagingResult = new DataAnalysisService().analyse({
         classes: [context.classFull],
         assignmentDefinitionPartials: context.assignmentDefinitionPartials,
-        filter: { classIds: [context.classFull.classId] },
+        filter: { classIds: [context.classFull.classId], analysisMode: 'absolute' },
       })[0];
       const backend = installMetadataRefreshTransport(context.classFull);
       const before = backend.readStored();

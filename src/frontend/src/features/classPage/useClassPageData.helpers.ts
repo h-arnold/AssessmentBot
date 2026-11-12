@@ -10,11 +10,38 @@
 
 import type { ClassFull } from '@/services/googleClassrooms/classDetail/classDetailService.zod';
 import { computeDatasetBlockingReason, type PageDatasetState } from '@/hooks/usePageDataset';
+import {
+  BASELINE_ROSTER_MINIMUM,
+  collectRosterAttemptCandidates,
+  isAttemptBaselineEligible,
+} from '@/services/dataAnalysis/analysers/attemptBaselineSelection';
+import type { AveragingResult } from '@/services/dataAnalysis/dataAnalysis.zod';
 import type { ClassPageAdapterResult } from './classPageAdapter.zod';
 
 // ---------------------------------------------------------------------------
 // Exported types
 // ---------------------------------------------------------------------------
+
+/**
+ * Availability of the attempt-baseline analysis mode on the Class page
+ * (shared-helpers register §9.27 in
+ * docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md).
+ *
+ * - `ready`: both eligibility conditions hold — the control is enabled.
+ * - `awaiting-data`: no usable attempt evidence yet (no successful analysis
+ *   result in this mount, a result without `perStudentTaskMetrics`, or no
+ *   class roster). Never produced by an eligibility failure.
+ * - `ineligible`: the class cannot use baseline mode; `reason` names the
+ *   unmet condition.
+ *
+ * `reason` is the display copy feeding the mode control's tooltip and its
+ * sr-only description node; it is populated for both disabled statuses and
+ * `null` only for `ready`.
+ */
+export type BaselineAvailability = Readonly<{
+  status: 'ready' | 'awaiting-data' | 'ineligible';
+  reason: string | null;
+}>;
 
 /**
  * Structured error type for the class page.
@@ -139,4 +166,65 @@ export function isClassPageLoading(
   if (!isDatasetReady && !isDatasetFailed) return true;
   if (adapterResult === null) return true;
   return false;
+}
+
+// ---------------------------------------------------------------------------
+// Attempt-baseline availability (shared-helpers register §9.27)
+// ---------------------------------------------------------------------------
+
+/** Neutral copy for the awaiting-data availability state. */
+const AWAITING_DATA_REASON = 'Waiting for class data';
+
+/** Ineligibility copy when the roster is below the three-student minimum. */
+const ROSTER_REASON = 'Baseline mode needs at least 3 students in this class';
+
+/** Ineligibility copy when fewer than two students attempted work. */
+const ENGAGED_STUDENTS_REASON = 'Baseline mode needs at least 2 students who attempted some work';
+
+/**
+ * Resolve the Class page's attempt-baseline availability from the current
+ * render state (shared-helpers register §9.27).
+ *
+ * @param {AveragingResult | null} analyserResult - The current render's
+ *   analyser result (null unless the pipeline succeeded this render).
+ * @param {AveragingResult | null} retainedAnalyserResult - The last
+ *   successful analyser result retained across renders (previous-render
+ *   pattern); supplies attempt evidence only when `analyserResult` is null.
+ * @param {ClassFull | null} classFull - The current class roster.
+ * @returns {BaselineAvailability} The availability status and display reason.
+ *
+ * @remarks
+ * Availability resolves to `'awaiting-data'` whenever either input is absent —
+ * including a shape-legal result whose optional `perStudentTaskMetrics` field
+ * is missing — because absence never produces `'ineligible'`. Eligibility is
+ * composed from the shared attempt predicate and eligibility helper over the
+ * evidence's `perStudentTaskMetrics` and the current roster.
+ */
+export function resolveBaselineAvailability(
+  analyserResult: AveragingResult | null,
+  retainedAnalyserResult: AveragingResult | null,
+  classFull: ClassFull | null
+): BaselineAvailability {
+  // The current render's successful result always wins; the retained state
+  // supplies attempt evidence only when the current render's result is null.
+  const evidence = analyserResult ?? retainedAnalyserResult;
+  if (classFull === null || evidence?.perStudentTaskMetrics === undefined) {
+    return { status: 'awaiting-data', reason: AWAITING_DATA_REASON };
+  }
+
+  const rosterStudentIds = classFull.students.map((student) => student.id);
+  const candidateStudentIds = collectRosterAttemptCandidates(
+    evidence.perStudentTaskMetrics,
+    rosterStudentIds
+  );
+
+  if (!isAttemptBaselineEligible(rosterStudentIds.length, candidateStudentIds.length)) {
+    // Eligibility fails only on the two conditions below; when the roster
+    // condition holds, the engaged-students condition is the unmet one.
+    const reason =
+      rosterStudentIds.length < BASELINE_ROSTER_MINIMUM ? ROSTER_REASON : ENGAGED_STUDENTS_REASON;
+    return { status: 'ineligible', reason };
+  }
+
+  return { status: 'ready', reason: null };
 }

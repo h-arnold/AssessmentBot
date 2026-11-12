@@ -83,7 +83,7 @@ describe('assignment query effect', () => {
     );
     mockUsePageDataset.mockReturnValue(createPageDatasetReturn());
 
-    renderHook(() => useClassPageData(DEFAULT_CLASS_ID), { wrapper });
+    renderHook(() => useClassPageData(DEFAULT_CLASS_ID, 'absolute'), { wrapper });
 
     expect(querySpy.mock.calls).toHaveLength(EXPECTED_PREFETCH_COUNT_TOP_3);
     expect(querySpy.mock.calls[0][0]).toMatchObject(
@@ -110,7 +110,7 @@ describe('assignment query effect', () => {
     );
     mockUsePageDataset.mockReturnValue(createPageDatasetReturn());
 
-    renderHook(() => useClassPageData(DEFAULT_CLASS_ID), { wrapper });
+    renderHook(() => useClassPageData(DEFAULT_CLASS_ID, 'absolute'), { wrapper });
 
     expect(querySpy.mock.calls).toHaveLength(EXPECTED_PREFETCH_COUNT_SINGLE);
     expect(querySpy.mock.calls[0][0]).toMatchObject(
@@ -130,7 +130,7 @@ describe('assignment query effect', () => {
     );
     mockUsePageDataset.mockReturnValue(createPageDatasetReturn());
 
-    renderHook(() => useClassPageData(DEFAULT_CLASS_ID), { wrapper });
+    renderHook(() => useClassPageData(DEFAULT_CLASS_ID, 'absolute'), { wrapper });
 
     expect(querySpy).not.toHaveBeenCalled();
   });
@@ -155,7 +155,9 @@ describe('assignment query effect', () => {
     );
     mockUsePageDataset.mockReturnValue(createPageDatasetReturn());
 
-    const { result } = renderHook(() => useClassPageData(DEFAULT_CLASS_ID), { wrapper });
+    const { result } = renderHook(() => useClassPageData(DEFAULT_CLASS_ID, 'absolute'), {
+      wrapper,
+    });
 
     // Surface state must remain ready and error must stay null even though
     // query rejected — the effect catches and logs the failure
@@ -181,7 +183,7 @@ describe('assignment query effect', () => {
     mockUsePageDataset.mockReturnValue(createPageDatasetReturn());
 
     const { rerender } = renderHook(
-      (properties: { classId: string }) => useClassPageData(properties.classId),
+      (properties: { classId: string }) => useClassPageData(properties.classId, 'absolute'),
       { initialProps: { classId: DEFAULT_CLASS_ID }, wrapper }
     );
 
@@ -222,7 +224,9 @@ describe('assignment query effect', () => {
       )
     );
 
-    const { result } = renderHook(() => useClassPageData(DEFAULT_CLASS_ID), { wrapper });
+    const { result } = renderHook(() => useClassPageData(DEFAULT_CLASS_ID, 'absolute'), {
+      wrapper,
+    });
 
     expect(result.current.surfaceState.status).toBe('loading');
     expect(querySpy).not.toHaveBeenCalled();

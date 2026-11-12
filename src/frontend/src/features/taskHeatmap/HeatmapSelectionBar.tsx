@@ -43,7 +43,7 @@ import { APP_GAP_MD, APP_GAP_SM } from '@/theme/spacing';
 /** Stable DOM id for the disabled-reason description node (I2). */
 const DISABLED_REASON_ID = 'heatmap-selection-disabled-reason';
 
-/** Placeholders — action-describing, never auto-selected (SPEC decision 6). */
+/** Placeholders — action-describing, never auto-selected. */
 const CLASS_PLACEHOLDER = 'Select a class';
 const TOPICS_PLACEHOLDER = 'Select topics';
 const ASSIGNMENTS_PLACEHOLDER = 'Select assignments';
@@ -268,7 +268,7 @@ export function HeatmapSelectionBar({
 
   return (
     <Flex vertical gap={APP_GAP_MD}>
-      {/* Always present in the DOM so the `aria-describedby` target is robustly
+      {/* Always present in the DOM so the `aria-describedby` target is
           reachable when the dependent controls are disabled (A-N2). */}
       <span id={DISABLED_REASON_ID} className="sr-only">
         {pageContent.heatmaps.selectionDisabledReason}

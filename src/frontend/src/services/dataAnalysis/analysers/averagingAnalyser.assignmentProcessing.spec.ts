@@ -162,7 +162,7 @@ describe('AveragingAnalyser assignment processing', () => {
       );
 
       const analyserResult = new AveragingAnalyser().analyse(input)[0];
-      const adapterColumns = buildTaskColumns(partial);
+      const adapterColumns = buildTaskColumns(partial, null);
       const analyserTasks = new Map(analyserResult.perTask.map((task) => [task.taskId, task]));
 
       for (const column of adapterColumns) {

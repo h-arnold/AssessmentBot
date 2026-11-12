@@ -106,6 +106,7 @@ function buildAnalyserResult(perStudentTaskMetrics?: PerStudentTaskMetric[]): Av
       overall: createComputedMetricResult(),
     },
     appliedCriterionWeightings: { completeness: 0.4, accuracy: 0.4, spag: 0.2 },
+    appliedAnalysisMode: 'absolute',
   };
   return perStudentTaskMetrics === undefined ? base : { ...base, perStudentTaskMetrics };
 }

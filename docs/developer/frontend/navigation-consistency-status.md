@@ -13,12 +13,15 @@ The navigation pattern uses **two separate cards** per page level:
 
 This separation keeps title and navigation concerns independent, so child pages can stack a parent title card above their own title + nav cards without inheriting the parent's action buttons.
 
+The Class page additionally carries a third always-rendered header element — the attempt-baseline mode-control slot (issue #305) — inserted between `PageTitleCard` and `PageNavCard`. It is a page-level control card outside this title/nav pattern; see Completed Work §10.
+
 ### Layout per page level
 
 **Top-level (Class Page):**
 
 ```
 [PageTitleCard — class name, level 2]
+[Mode-control slot — "Averages basis" Segmented (All tasks | Baseline tasks), always rendered with the header]
 [PageNavCard — "Back to Classes" | Edit Student Details + Start New Assessment]
 [Recent Assignments section]
 [Student Averages table]
@@ -28,6 +31,7 @@ This separation keeps title and navigation concerns independent, so child pages 
 
 ```
 [PageTitleCard — parent class name, level 2]
+[Mode-control slot — always rendered with the Class-page header]
 [PageTitleCard — assignment name, level 4]
 [PageNavCard — "Back to Class overview" | (Reassessment required) Re-run Assessment + Refresh]
 [Task Heatmap table]
@@ -132,7 +136,7 @@ Snapshots committed at:
 - `e2e-tests/navigation-screenshots.spec.ts-snapshots/task-heatmap-chromium-linux.png`
 - `e2e-tests/navigation-screenshots.spec.ts-snapshots/heatmaps-builder-chromium-linux.png`
 
-The committed snapshots were captured with the title + nav card design, so no re-capture is outstanding.
+The committed snapshots were captured with the title + nav card design. Issue #305's mode-control slot changed the two Class-page captures (`class-page-overview`, `task-heatmap`), which were re-captured deliberately; the `heatmaps-builder` baseline is unchanged.
 
 ### 8. Heatmaps standalone top-level entry (`src/frontend/src/pages/HeatmapsPage.tsx`)
 
@@ -164,6 +168,17 @@ Changes:
 The entry, matching, success, failure, and recovery contract is owned by `frontend-modal-patterns.md` §3.6 and `frontend-shared-helpers-and-abstraction-standards.md` §9.25.
 
 The full frontend suite, frontend lint check, and Playwright navigation screenshots passed during the issue #298 regression comparison.
+
+### 10. Class-page mode-control slot (issue #305)
+
+**Status: Implemented**
+
+The Class-page header gained a third always-rendered element: the attempt-baseline mode-control slot (`src/frontend/src/features/classPage/ClassPageModeControl.tsx`), a `Card size="small"` between `PageTitleCard` and `PageNavCard` hosting the "Averages basis" `Segmented` control (`All tasks` | `Baseline tasks`).
+
+- Rendered in both child views (overview and embedded heatmap) whenever the header renders — including blocking states — so the escape back to `All tasks` stays reachable during a baseline-mode failure.
+- It is a page-level control card outside the title/nav pattern: `PageTitleCard` stays action-free, `PageNavCard` is unchanged, and no per-card or per-table mode switch exists.
+- While disabled it pairs a hover tooltip with an always-present sr-only description node, both fed by `ClassPageData.baselineAvailability.reason`.
+- The Heatmaps surfaces (standalone builder and embedded heatmap) gain no control; the embedded heatmap shows baseline marking through data only.
 
 ## Outstanding Work
 

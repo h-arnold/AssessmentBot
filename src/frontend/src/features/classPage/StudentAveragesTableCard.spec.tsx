@@ -13,6 +13,9 @@ import { StudentAveragesTableCard } from './StudentAveragesTableCard';
 import type { ClassPageAdapterResult, StudentAverageRowModel } from './classPageAdapter.zod';
 import type { ClassPageViewModel } from './classPageModel';
 import type { FilterDropdownProps } from 'antd/es/table/interface';
+import type { AnalysisMode } from '@/services/dataAnalysis/dataAnalysis.zod';
+import type * as studentAveragesTableColumnsModule from './studentAveragesTableColumns';
+import { BASELINE_EXCLUDED_METRIC_ACCESSIBLE_LABEL } from '@/services/dataAnalysis/metricDisplay/metricTone';
 import {
   createComputedMetricResult,
   createNotAttemptedMetricResult,
@@ -219,17 +222,19 @@ afterEach(() => {
  *
  * @param {object} [options] - Render options.
  * @param {Partial<ClassPageAdapterResult>} [options.adapterResult] - Adapter result overrides.
+ * @param {AnalysisMode} [options.analysisMode] - The page's analysis mode forwarded to the column builder.
  * @returns {ReturnType<typeof render>} The render result.
  */
-function renderCard(options: {
-  adapterResult?: Partial<ClassPageAdapterResult>;
-} = {}): ReturnType<typeof render> {
+function renderCard(
+  options: {
+    adapterResult?: Partial<ClassPageAdapterResult>;
+    analysisMode?: AnalysisMode;
+  } = {}
+): ReturnType<typeof render> {
   const adapterResult = buildAdapterResult(options.adapterResult);
 
   return render(
-    <StudentAveragesTableCard
-      adapterResult={adapterResult}
-    />
+    <StudentAveragesTableCard adapterResult={adapterResult} analysisMode={options.analysisMode} />
   );
 }
 
@@ -309,9 +314,7 @@ describe('StudentAveragesTableCard', () => {
     // Click the "Forename" column header to trigger sort.
     // Ant Design renders sort triggers inside .ant-table-column-sorters elements.
     const columnHeaders = screen.getAllByRole('columnheader');
-    const forenameHeader = columnHeaders.find((header) =>
-      header.textContent?.includes('Forename')
-    );
+    const forenameHeader = columnHeaders.find((header) => header.textContent?.includes('Forename'));
     expect(forenameHeader).toBeDefined();
 
     // Click the sorter area inside the column header
@@ -348,9 +351,7 @@ describe('StudentAveragesTableCard', () => {
 
     // Find the Forename column header and its sorter area
     const columnHeaders = screen.getAllByRole('columnheader');
-    const forenameHeader = columnHeaders.find((header) =>
-      header.textContent?.includes('Forename')
-    );
+    const forenameHeader = columnHeaders.find((header) => header.textContent?.includes('Forename'));
     expect(forenameHeader).toBeDefined();
 
     const sorter = forenameHeader!.querySelector('.ant-table-column-sorters');
@@ -378,9 +379,7 @@ describe('StudentAveragesTableCard', () => {
   // -----------------------------------------------------------------------
   it('renders Empty with "No students match your search" when dataSource is empty', () => {
     // Override the default view model to have an empty studentAverages array
-    mockBuildViewModel.mockReturnValue(
-      buildViewModel({ studentAverages: [] })
-    );
+    mockBuildViewModel.mockReturnValue(buildViewModel({ studentAverages: [] }));
 
     renderCard();
 
@@ -401,56 +400,99 @@ describe('StudentAveragesTableCard', () => {
     });
     mockBuildViewModel.mockReturnValue(buildViewModel({ studentAverages: [excludedRow] }));
     mockBuildColumns.mockImplementation((filters: { completeness: readonly string[] }) => {
-      return [{
-        key: 'completeness',
-        title: 'Completeness',
-        filters: [{ text: 'Include Excluded', value: INCLUDE_EXCLUDED_KEY }],
-        filterDropdown: ({ setSelectedKeys, confirm }: Parameters<NonNullable<MockColumn['filterDropdown']>>[0]) => {
-          return (
-            <div>
-              <label>
-                <input
-                  type="checkbox"
-                  aria-label="Include Excluded"
-                  checked={filters.completeness.includes(INCLUDE_EXCLUDED_KEY)}
-                  onChange={(event) => {
-                    setSelectedKeys(event.target.checked ? [INCLUDE_EXCLUDED_KEY] : []);
-                    confirm();
-                  }}
-                />
-                Include Excluded
-              </label>
-            </div>
-          );
+      return [
+        {
+          key: 'completeness',
+          title: 'Completeness',
+          filters: [{ text: 'Include Excluded', value: INCLUDE_EXCLUDED_KEY }],
+          filterDropdown: ({
+            setSelectedKeys,
+            confirm,
+          }: Parameters<NonNullable<MockColumn['filterDropdown']>>[0]) => {
+            return (
+              <div>
+                <label>
+                  <input
+                    type="checkbox"
+                    aria-label="Include Excluded"
+                    checked={filters.completeness.includes(INCLUDE_EXCLUDED_KEY)}
+                    onChange={(event) => {
+                      setSelectedKeys(event.target.checked ? [INCLUDE_EXCLUDED_KEY] : []);
+                      confirm();
+                    }}
+                  />
+                  Include Excluded
+                </label>
+              </div>
+            );
+          },
         },
-      }];
+      ];
     });
     const { container } = renderCard({ adapterResult: { studentAverages: [excludedRow] } });
     const filterTrigger = container.querySelector('.ant-table-filter-trigger');
     expect(filterTrigger).not.toBeNull();
     await user.click(filterTrigger!);
     await user.click(await screen.findByRole('checkbox', { name: 'Include Excluded' }));
-    expect(mockBuildColumns).toHaveBeenLastCalledWith(expect.objectContaining({ completeness: [INCLUDE_EXCLUDED_KEY] }));
-    expect(mockBuildViewModel).toHaveBeenCalledWith(expect.objectContaining({ adapterResult: expect.any(Object) }));
+    // The card always forwards the page's analysis mode as the second
+    // argument (§9.27.3 threading chain); this spec renders without it, so
+    // the forwarded mode is `undefined`.
+    expect(mockBuildColumns).toHaveBeenLastCalledWith(
+      expect.objectContaining({ completeness: [INCLUDE_EXCLUDED_KEY] }),
+      undefined
+    );
+    expect(mockBuildViewModel).toHaveBeenCalledWith(
+      expect.objectContaining({ adapterResult: expect.any(Object) })
+    );
   });
 
-  // -----------------------------------------------------------------------
-  // Input / Space.Compact does not render enterButton
-  // -----------------------------------------------------------------------
+  it('forwards the baseline mode to the column builder so an excluded cell announces the baseline wording', async () => {
+    // The `onCell` aria-label threading is the behaviour under test: the real columns builder runs via `importActual`.
+    const actualColumns = await vi.importActual<typeof studentAveragesTableColumnsModule>(
+      './studentAveragesTableColumns'
+    );
+    mockBuildColumns.mockImplementation(actualColumns.buildStudentAveragesTableColumns);
+
+    const excludedRow = buildRow({
+      metrics: {
+        completeness: createExcludedMetricResult(),
+        accuracy: createComputedMetricResult({ value: 3 }),
+        spag: createNotAttemptedMetricResult(),
+        average: createComputedMetricResult({ value: 3 }),
+      },
+    });
+    mockBuildViewModel.mockReturnValue(buildViewModel({ studentAverages: [excludedRow] }));
+
+    renderCard({
+      adapterResult: { studentAverages: [excludedRow] },
+      analysisMode: 'topDecileBaseline',
+    });
+
+    // The positive-path counterpart of the absence pin above: the mode reaches the builder.
+    expect(mockBuildColumns).toHaveBeenLastCalledWith(
+      expect.objectContaining({ completeness: [] }),
+      'topDecileBaseline'
+    );
+
+    // The excluded cell's accessible label carries the baseline wording.
+    expect(
+      screen.getAllByLabelText(
+        `Alice, Completeness: ${BASELINE_EXCLUDED_METRIC_ACCESSIBLE_LABEL}`
+      )[0]
+    ).toBeInTheDocument();
+  });
+
   it('Input / Space.Compact does not render enterButton (filters apply on keystroke)', () => {
     const { container } = renderCard();
 
-    // Space.Compact with plain Input renders with class .ant-input-search (applied
-    // via the Space.Compact className). Unlike Input.Search, plain Input never
-    // renders a submit button, so there is no button inside the wrapper.
+    // Space.Compact with plain Input renders with class .ant-input-search; unlike
+    // Input.Search it never renders a submit button.
     const searchInput = container.querySelector('.ant-input-search');
     expect(searchInput).toBeInTheDocument();
 
-    // There should be no button inside the search input wrapper
     const searchButtons = searchInput!.querySelectorAll('button');
     expect(searchButtons).toHaveLength(0);
 
-    // The search input should be an <input> element
     const inputElement = searchInput!.querySelector('input');
     expect(inputElement).toBeInTheDocument();
     expect(inputElement).toHaveAttribute('type', 'search');

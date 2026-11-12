@@ -653,7 +653,7 @@ generates TABLE fixtures nor introduces new TABLE feature work.
 The acquisition, extraction, image-hydration and coverage rules above are the current
 contract; preview error states and the attempt-baseline analysis mode are frontend analysis
 concerns, tracked in
-[Frontend Data Analysis Response](frontend-data-analysis-response.md#planned-contract-changes-not-implemented).
+[Frontend Data Analysis Response](frontend-data-analysis-response.md#attempt-baseline-contract-changes).
 
 The legacy read preparation described in
 [Contract: Assessment § Legacy read preparation](assessment.md#legacy-read-preparation) is

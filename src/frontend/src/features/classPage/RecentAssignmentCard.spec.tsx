@@ -23,6 +23,10 @@ import {
   createErrorMetricResult,
   createExcludedMetricResult,
 } from '@/test/dataAnalysis/fixtures';
+import {
+  BASELINE_EXCLUDED_METRIC_ACCESSIBLE_LABEL,
+  EXCLUDED_METRIC_ACCESSIBLE_LABEL,
+} from '@/services/dataAnalysis/metricDisplay/metricTone';
 import { RecentAssignmentCard } from './RecentAssignmentCard';
 
 // ---------------------------------------------------------------------------
@@ -43,9 +47,7 @@ const EXPECTED_EXCLUDED_METRIC_COUNT = 2;
  * @param {Partial<RecentAssignmentCardModel>} [overrides] - Optional field overrides.
  * @returns {RecentAssignmentCardModel} A RecentAssignmentCardModel fixture.
  */
-function makeCard(
-  overrides: Partial<RecentAssignmentCardModel> = {}
-): RecentAssignmentCardModel {
+function makeCard(overrides: Partial<RecentAssignmentCardModel> = {}): RecentAssignmentCardModel {
   return {
     assignmentId: 'a-1',
     assignmentName: 'Algebra Baseline',
@@ -96,18 +98,10 @@ describe('RecentAssignmentCard', () => {
     // neither getByLabelText nor getByRole('img') resolve
     // <svg aria-label="…"> in the happy-dom stack (MetricIconLabel renders
     // aria-label on an <svg> element).
-    expect(
-      container.ownerDocument.querySelector('[aria-label="Completeness"]')
-    ).not.toBeNull();
-    expect(
-      container.ownerDocument.querySelector('[aria-label="Accuracy"]')
-    ).not.toBeNull();
-    expect(
-      container.ownerDocument.querySelector('[aria-label="SPaG"]')
-    ).not.toBeNull();
-    expect(
-      container.ownerDocument.querySelector('[aria-label="Average"]')
-    ).not.toBeNull();
+    expect(container.ownerDocument.querySelector('[aria-label="Completeness"]')).not.toBeNull();
+    expect(container.ownerDocument.querySelector('[aria-label="Accuracy"]')).not.toBeNull();
+    expect(container.ownerDocument.querySelector('[aria-label="SPaG"]')).not.toBeNull();
+    expect(container.ownerDocument.querySelector('[aria-label="Average"]')).not.toBeNull();
   });
 
   it('renders Card with style width 320px', () => {
@@ -177,6 +171,44 @@ describe('RecentAssignmentCard', () => {
     expect(screen.getByText('3.80')).toBeInTheDocument();
     expect(screen.getByText('N')).toBeInTheDocument();
     expect(container.querySelectorAll('.ant-tag')).toHaveLength(EXPECTED_METRIC_PILL_COUNT);
+  });
+
+  it('announces both exclusion causes on excluded pills when analysisMode is topDecileBaseline', () => {
+    // Class-page consumers pass the page's analysis mode explicitly, so the
+    // card's excluded pills announce the baseline two-cause wording.
+    const excluded = createExcludedMetricResult();
+    const card = makeCard({
+      metrics: {
+        completeness: excluded,
+        accuracy: createComputedMetricResult({ value: 3.8 }),
+        spag: createNotAttemptedMetricResult(),
+        average: excluded,
+      },
+    });
+
+    render(<RecentAssignmentCard card={card} analysisMode="topDecileBaseline" />);
+
+    expect(screen.getAllByLabelText(BASELINE_EXCLUDED_METRIC_ACCESSIBLE_LABEL)).toHaveLength(
+      EXPECTED_EXCLUDED_METRIC_COUNT
+    );
+  });
+
+  it('keeps the weighting-only excluded wording when analysisMode is absolute', () => {
+    const excluded = createExcludedMetricResult();
+    const card = makeCard({
+      metrics: {
+        completeness: excluded,
+        accuracy: createComputedMetricResult({ value: 3.8 }),
+        spag: createNotAttemptedMetricResult(),
+        average: excluded,
+      },
+    });
+
+    render(<RecentAssignmentCard card={card} analysisMode="absolute" />);
+
+    expect(screen.getAllByLabelText(EXCLUDED_METRIC_ACCESSIBLE_LABEL)).toHaveLength(
+      EXPECTED_EXCLUDED_METRIC_COUNT
+    );
   });
 
   it('invokes onOpenHeatmap with the card assignmentId when clicked', async () => {

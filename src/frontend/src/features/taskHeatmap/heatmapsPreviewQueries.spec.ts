@@ -133,6 +133,7 @@ function column(definitionKey: string, taskId: string): MergedHeatmapTaskColumn 
     taskId,
     taskTitle: null,
     averageContribution: { effectiveWeight: 1, includedInAverage: true },
+    includedInAttemptBaseline: true,
     assignmentId: MIXED_ASSIGNMENT_ID,
     definitionKey,
     assignmentName: MIXED_ASSIGNMENT_ID,

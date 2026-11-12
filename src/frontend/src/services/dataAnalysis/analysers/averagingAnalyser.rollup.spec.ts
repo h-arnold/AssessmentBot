@@ -16,10 +16,6 @@ describe('per-class rollup unification', () => {
     // Structural test: the per-class rollup in analyseClass must use the same
     // rollupAccumulators helper as buildPerStudentRows and buildPerTaskRows.
     // This eliminates the dual-path fallback (CRITICAL-2).
-    //
-    // In RED phase this fails because rollupAccumulators is currently private.
-    // GREEN phase exports it, making the per-class path structurally identical
-    // to the per-student and per-task paths.
     const rowsModule = (await import('./averagingAnalyser.rows')) as {
       rollupAccumulators?: (...arguments_: unknown[]) => unknown;
     };

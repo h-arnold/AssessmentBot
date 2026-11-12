@@ -125,7 +125,7 @@ function runAnalyserStep(
   try {
     const selectedIds = new Set(selectedAssignmentIds);
     const analyserInput: AveragingAnalyserInput = {
-      filter: { classIds: [classId] },
+      filter: { classIds: [classId], analysisMode: 'absolute' },
       // Input shaping: scope analysis to exactly the selected assignment instances.
       classes: [
         {

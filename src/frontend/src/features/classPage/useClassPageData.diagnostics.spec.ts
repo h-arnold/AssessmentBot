@@ -107,7 +107,7 @@ function renderReadyClassPage(classFull: ClassFull, options: { strict?: boolean 
       hasTrustworthyDataset: true,
     },
   });
-  return renderHook(() => useClassPageData(CLASS_ID), { wrapper });
+  return renderHook(() => useClassPageData(CLASS_ID, 'absolute'), { wrapper });
 }
 
 describe('useClassPageData analyser diagnostics ownership', () => {

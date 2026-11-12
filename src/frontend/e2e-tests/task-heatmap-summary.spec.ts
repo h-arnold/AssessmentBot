@@ -174,12 +174,16 @@ test.describe('Task Heatmap assignment summaries', () => {
     await expect(completeness.getByRole('button', { name: /Show all/ })).toHaveCount(0);
     await expectAlignedSummaryCards(page);
     const taskOne = completeness.getByRole('listitem', { name: 'Task 1', exact: true });
+    // Park the mouse so the focus() scroll cannot hover a table header and open a competing tooltip.
+    await page.mouse.move(0, 0);
     await taskOne.getByText('2 not attempted / not applicable', { exact: true }).focus();
-    await expect(page.getByRole('tooltip')).toContainText(
-      'N means not attempted or not applicable'
-    );
+    await expect(
+      page.getByRole('tooltip', { name: /N means not attempted or not applicable/ })
+    ).toContainText('N means not attempted or not applicable');
     await taskOne.getByText('2 not attempted / not applicable', { exact: true }).blur();
-    await expect(page.getByRole('tooltip')).toBeHidden();
+    await expect(
+      page.getByRole('tooltip', { name: /N means not attempted or not applicable/ })
+    ).toBeHidden();
     const cardsBox = await completeness.boundingBox();
     const tableBox = await page.getByRole('table', { name: 'Task Heatmap' }).boundingBox();
     expect(cardsBox!.y + cardsBox!.height).toBeLessThan(tableBox!.y);
@@ -252,14 +256,20 @@ test.describe('Task Heatmap assignment summaries', () => {
       name: 'About completeness',
       exact: true,
     });
+    // Park the mouse so the focus() scroll cannot hover a table header and open a competing tooltip.
+    await page.mouse.move(0, 0);
     await completenessInformation.focus();
     await page.keyboard.press('Enter');
-    await expect(page.getByRole('tooltip')).toHaveText(explanations[0].text);
+    await expect(
+      page.getByRole('tooltip', { name: /Students meet the completeness threshold/ })
+    ).toHaveText(explanations[0].text);
     await page
       .getByRole('region', { name: 'Completeness summary' })
       .getByText('Completeness', { exact: true })
       .click();
-    await expect(page.getByRole('tooltip')).toBeHidden();
+    await expect(
+      page.getByRole('tooltip', { name: /Students meet the completeness threshold/ })
+    ).toBeHidden();
   });
 
   test('does not fabricate accuracy when tasks have not been attempted', async ({ page }) => {
@@ -296,12 +306,20 @@ test.describe('Task Heatmap assignment summaries', () => {
       await expect(error).toBeVisible();
       await expect(error).toHaveClass(/ant-typography-danger/);
       await expect(card.getByText('0 assessment errors', { exact: true })).toHaveCount(0);
+      // Park the mouse so the focus() scroll cannot hover a table header and open a competing tooltip.
+      await page.mouse.move(0, 0);
       await error.focus();
-      await expect(page.getByRole('tooltip')).toHaveText(
-        'An assessment error means the analyser could not produce a usable score.'
-      );
+      await expect(
+        page.getByRole('tooltip', {
+          name: /An assessment error means the analyser could not produce a usable score/,
+        })
+      ).toHaveText('An assessment error means the analyser could not produce a usable score.');
       await error.blur();
-      await expect(page.getByRole('tooltip')).toBeHidden();
+      await expect(
+        page.getByRole('tooltip', {
+          name: /An assessment error means the analyser could not produce a usable score/,
+        })
+      ).toBeHidden();
     }
     await testInfo.attach('summary-assessment-errors', {
       body: await page.screenshot({
@@ -372,6 +390,8 @@ test.describe('Task Heatmap assignment summaries', () => {
     });
     const showCompleteness = completeness.getByRole('button', { name: 'Show all 30 tasks' });
     await expect(showCompleteness).toHaveAttribute('aria-expanded', 'false');
+    // Park the mouse so the focus() scroll cannot hover a table header and open a competing tooltip.
+    await page.mouse.move(0, 0);
     await showCompleteness.focus();
     await page.keyboard.press('Enter');
     await expect(completeness.getByRole('listitem')).toHaveCount(LARGE_TASK_COUNT);

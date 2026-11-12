@@ -43,6 +43,21 @@ import {
 } from '@/services/dataAnalysis/assignmentSummaryAdapter';
 import { PageTitleCard, PageNavCard } from '@/components/PageHeader/PageHeader';
 
+/**
+ * Create the module-level `DataAnalysisService` instance.
+ *
+ * A factory function is used so that `vi.mock` patching of `DataAnalysisService`
+ * as a function (not a class constructor) works correctly in tests. The cached
+ * instance retains the mocked `analyse` function reference between renders.
+ *
+ * @returns {DataAnalysisService} A new service instance.
+ */
+function createAnalysisService(): DataAnalysisService {
+  return new DataAnalysisService();
+}
+
+const _analysisService: DataAnalysisService = createAnalysisService();
+
 type HeatmapPageState = Readonly<{
   heatmapResult: ReturnType<typeof adaptMetricsToHeatmap> | null;
   summary: AssignmentSummaryView | null;
@@ -166,9 +181,9 @@ function computeHeatmapState(
   }
 
   try {
-    const summary = new DataAnalysisService().analyseAssignmentSummary(
+    const summary = _analysisService.analyseAssignmentSummary(
       {
-        filter: { classIds: [classFull.classId] },
+        filter: { classIds: [classFull.classId], analysisMode: 'absolute' },
         classes: [classFull],
         assignmentDefinitionPartials: adp,
       },

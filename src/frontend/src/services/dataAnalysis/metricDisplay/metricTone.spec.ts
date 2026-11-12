@@ -1,5 +1,6 @@
 /**
- * Tests for `resolveMetricTone` — pure tone resolver.
+ * Tests for `resolveMetricTone` — pure tone resolver — and the mode-aware
+ * `excluded` accessible label.
  *
  * @see SPEC_CLASS_PAGE_PREPARATION.md lines 246–298
  * @see metricDisplayText.spec.ts for state-to-text and precision coverage.
@@ -13,7 +14,12 @@ import {
   createErrorMetricResult,
   createExcludedMetricResult,
 } from '@/test/dataAnalysis/fixtures';
-import { resolveMetricTone } from './metricTone';
+import {
+  BASELINE_EXCLUDED_METRIC_ACCESSIBLE_LABEL,
+  EXCLUDED_METRIC_ACCESSIBLE_LABEL,
+  resolveExcludedMetricAccessibleLabel,
+  resolveMetricTone,
+} from './metricTone';
 import type { MetricToneResolution } from './metricTone';
 import { appStylesRaw } from '@/test/appStylesRaw';
 
@@ -318,5 +324,25 @@ describe('resolveMetricTone', () => {
 
     // t = clampUnit((ABOVE_RANGE_VALUE - 0) / 5) = clampUnit(2) = 1
     expect(result.color).toBe('hsl(120.0, 70%, 34.0%)');
+  });
+});
+
+describe('resolveExcludedMetricAccessibleLabel', () => {
+  it('resolves the baseline wording naming both exclusion causes in baseline mode', () => {
+    expect(resolveExcludedMetricAccessibleLabel).toBeTypeOf('function');
+    expect(resolveExcludedMetricAccessibleLabel('topDecileBaseline')).toBe(
+      BASELINE_EXCLUDED_METRIC_ACCESSIBLE_LABEL
+    );
+  });
+
+  it('keeps the weighting-only wording without a mode, as the three-state task-display flow requires', () => {
+    // Task-display metrics (computed / notAttempted / error) structurally
+    // cannot be `excluded`, so their surfaces never supply a mode: the
+    // weighting-only wording must remain the no-mode resolution.
+    expect(resolveExcludedMetricAccessibleLabel()).toBe(EXCLUDED_METRIC_ACCESSIBLE_LABEL);
+  });
+
+  it('keeps the weighting-only wording in absolute mode', () => {
+    expect(resolveExcludedMetricAccessibleLabel('absolute')).toBe(EXCLUDED_METRIC_ACCESSIBLE_LABEL);
   });
 });

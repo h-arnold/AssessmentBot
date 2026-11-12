@@ -222,6 +222,7 @@ describe('AveragingResultSchema', () => {
       perTask: [{ ...validPerTaskRow, averageContribution: validAverageContribution }],
       perClass: validPerClassResult,
       appliedCriterionWeightings: validAppliedCriterionWeightings,
+      appliedAnalysisMode: 'absolute',
     });
 
     expect(result).toEqual({
@@ -231,6 +232,7 @@ describe('AveragingResultSchema', () => {
       perTask: [{ ...validPerTaskRow, averageContribution: validAverageContribution }],
       perClass: validPerClassResult,
       appliedCriterionWeightings: validAppliedCriterionWeightings,
+      appliedAnalysisMode: 'absolute',
     });
   });
 
@@ -244,6 +246,7 @@ describe('AveragingResultSchema', () => {
       perTask: [{ ...validPerTaskRow, averageContribution: validAverageContribution }],
       perClass: { ...validPerClassResult, overall: excludedMetricResult },
       appliedCriterionWeightings: validAppliedCriterionWeightings,
+      appliedAnalysisMode: 'absolute',
     }) as { perClass: { overall: unknown } };
 
     expect(result.perClass.overall).toMatchObject({ state: 'excluded', value: null });
@@ -259,6 +262,7 @@ describe('AveragingResultSchema', () => {
       perTask: [{ ...validPerTaskRow, averageContribution: validAverageContribution }],
       perClass: validPerClassResult,
       appliedCriterionWeightings: validAppliedCriterionWeightings,
+      appliedAnalysisMode: 'absolute',
     });
 
     expect(result).toBeDefined();
@@ -276,6 +280,7 @@ describe('AveragingResultSchema', () => {
         perTask: [{ ...validPerTaskRow, averageContribution: validAverageContribution }],
         perClass: validPerClassResult,
         appliedCriterionWeightings: validAppliedCriterionWeightings,
+        appliedAnalysisMode: 'absolute',
         perStudentTaskMetrics: 'not-an-array',
       });
     }).toThrow();
@@ -302,6 +307,7 @@ describe('AveragingResultSchema', () => {
       perTask: [{ ...validPerTaskRow, averageContribution: validAverageContribution }],
       perClass: validPerClassResult,
       appliedCriterionWeightings: validAppliedCriterionWeightings,
+      appliedAnalysisMode: 'absolute',
       perStudentTaskMetrics: [validMetric],
     });
 
@@ -327,6 +333,7 @@ describe('DataAnalysisResponseSchema', () => {
       perTask: [{ ...validPerTaskRow, averageContribution: validAverageContribution }],
       perClass: validPerClassResult,
       appliedCriterionWeightings: validAppliedCriterionWeightings,
+      appliedAnalysisMode: 'absolute',
     };
 
     const result = DataAnalysisResponseSchema.parse([validAveragingResult]) as DataAnalysisResponse;
