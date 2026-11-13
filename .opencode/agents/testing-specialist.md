@@ -1,7 +1,7 @@
 ---
 description: Creates, maintains, and debugs Vitest unit/component tests and backend tests
 mode: all
-model: mistral/zai-glm-5-3-flash
+model: opencode-go/deepseek-v4.1-flash
 steps: 100
 permissions:
   - action: edit

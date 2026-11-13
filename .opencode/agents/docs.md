@@ -1,7 +1,7 @@
 ---
 description: Keeps project documentation accurate, current, and aligned with actual code behaviour
 mode: all
-model: mistral/zai-glm-5-3-flash
+model: opencode-go/deepseek-v4.1-flash
 steps: 100
 permissions:
   - action: edit
