@@ -2,7 +2,7 @@
 
 ## Progress tracker
 
-- **Current section:** Section 3 complete pending commit; Section 4 next. E2E gate gap (82 strict-mode violations pending Section 5 migration) approved by user — see Deferred findings.
+- **Current section:** Section 4 — one-off Vitest locator audit (starting). Sections 1–3 pushed (`54482724`, `f39d9dbd`, `0607b1e7`).
 - **Regression baseline (Mandatory Gate 1):** established 2026-11-13, mode `baseline`, session `feat/frozen-columns-and-working-horizontal-scrolling`, report at `.ts-regression-checker/reports/session-feat-frozen-columns-and-working-horizontal-scrolling/baseline/baseline.txt`. Status: 7 of 8 checks pass; `backend-lint-check` exits 1 with 4 pre-existing `max-lines` warnings (0 errors) in backend test files outside this feature's scope (`tests/backend-api/assignmentDefinitionPartials.unit.test.js`, `tests/dbManager/dbManager.test.js`, `tests/googleClassroom/classroomApiClient.test.js`, `tests/utils/batchUpdateUtility.test.js`). Documented as accepted technical debt; the tree was untouched when measured. No regressions, no new failures.
 
 ## Read-First Context
@@ -146,7 +146,7 @@ Passed: six Section 3 spec files 28/28; `taskHeatmap`/`classPage`/`shared` suite
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** final LOC and the antd confirmation are listed above. Docs-sync skipped: the `@remarks` JSDoc follow-through landed in the green change, and the locator-convention docs plus canonical reconciliation are Section 7's by design. Section regression gate 2026-11-13 12:07 UTC: 7 of 8 checks green (no regressions in Vitest, lint, builder, tsc); `frontend-e2e-check` fails with 82 deterministic strict-mode violations on `getByRole('table', { name: 'Task Heatmap' })` — the sticky split render resolves that name to two tables — which are precisely the locators `SPEC.md` enumerates for Section 5's migration. User decision (asked and approved 2026-11-13): Sections 3–4 gates proceed on the 7 green checks with these E2E failures documented as plan-sequenced intentional failures; Section 5's gate must show `frontend-e2e-check` fully green. Gate report: `.ts-regression-checker/reports/session-feat-frozen-columns-and-working-horizontal-scrolling/runs/2026-11-13T12-07-23.822Z/comparison.txt`.
+- **Implementation notes:** final LOC and the antd confirmation are listed above. Docs-sync skipped: the `@remarks` JSDoc follow-through landed in the green change, and the locator-convention docs plus canonical reconciliation are Section 7's by design. Section regression gate 2026-11-13 12:07 UTC: 7 of 8 checks green (no regressions in Vitest, lint, builder, tsc); `frontend-e2e-check` fails with 82 deterministic strict-mode violations on `getByRole('table', { name: 'Task Heatmap' })` — the sticky split render resolves that name to two tables — which are precisely the locators `SPEC.md` enumerates for Section 5's migration. User decision (asked and approved 2026-11-13): Sections 3–4 gates proceed on the 7 green checks with these E2E failures documented as plan-sequenced intentional failures; Section 5's gate must show `frontend-e2e-check` fully green. Gate report: `.ts-regression-checker/reports/session-feat-frozen-columns-and-working-horizontal-scrolling/runs/2026-11-13T12-07-23.822Z/comparison.txt`. Commit `0607b1e7` — "feat(frontend): sticky split render on both student tables (issue #344 section 3)" on branch `feat/frozen-columns-and-working-horizontal-scrolling`; `git push` confirmed (`9ca82d5f..0607b1e7`).
 - **Deviations from plan:** the co-located `StudentAveragesTableCard.sticky.spec.tsx` deviation recorded above; `TaskHeatmapTable.sticky.spec.tsx` created under the LOC rule, as the plan mandated if 500 lines would be crossed; no suite needed re-scoping beyond the four named ones.
 - **Follow-up implications for later sections:** Sections 4–6 inherit the convention; Section 7 documents it; Section 4's audit list builds on the delivered re-scoping; Section 5 removes the 82 E2E strict-mode violations and must leave `frontend-e2e-check` green at its gate.
 
@@ -154,46 +154,33 @@ Passed: six Section 3 spec files 28/28; `taskHeatmap`/`classPage`/`shared` suite
 
 ## Section 4 — One-off Vitest locator audit across all co-located table specs
 
-### Objective
+**Outcome (compacted):** Verification-only audit completed 2026-11-13 across all 37 candidate specs (13 `classPage`, 23 `taskHeatmap`, 1 `shared`). Every suite is green unchanged, no locator is genuinely ambiguous, so nothing was re-scoped and the red-first obligation is discharged vacuously. No production or spec file was edited, so the conditional Code Reviewer pass was not required.
 
-Run a one-off audit spanning the Vitest layer for any remaining co-located spec that probes student tables, and re-scope only locators that are actually ambiguous under the split render.
+### Retained for later sections
 
-### Constraints
+- **Structural counts** (measured with a temporary probe spec, run then deleted): heatmap split render — 2 `table` roles, 10 `columnheader`s, 5 `row`s (2 header + 3 body), 24 `cell`s, 1 `thead` (header table only), 1 `.ant-table`, 1 `.ant-table-wrapper`; Student Averages split render — 2 `table` roles, 6 `columnheader`s, 2 `row`s (1 header + 1 body), 6 `cell`s, 1 `thead`, 1 `.ant-table`. `getByRole('table', { name: 'Task Heatmap' })` still throws a strict-mode "Found multiple elements" violation, so the four Section 3 suites must stay re-scoped.
+- **Row attribution:** no Vitest spec uses `getByRole('row').filter({ hasText: … })`; every row probe is `:scope tbody tr[data-row-key=…]`, which resolves to the body table only. Section 5 audits the E2E content-filtered case (`class-page-baseline-mode.spec.ts`) on the same basis.
+- **Pre-existing duplicate header text:** antd's `tr.ant-table-measure-row` repeats header titles as body text (`getAllByText('Forename')` = 2 in both sticky and non-sticky `scroll.x` renders), so header assertions must stay role-based. No audited spec used `getByText` on a header title; Section 5's E2E migration must not reintroduce text-based header probes.
 
-- Audit includes unscoped content-filtered row locators such as `getByRole('row').filter({ hasText: ... })`: their match set is unchanged by the split, so they are audited for attribution and robustness only — confirming the content filter still selects the intended rows — not because the split altered matching.
-- Re-scope only what breaks or becomes ambiguous; do not churn working locators.
-- Candidate surface: the full list of `*.spec.tsx` under `src/frontend/src/features/classPage/`, `src/frontend/src/features/taskHeatmap/`, and `src/frontend/src/features/shared/`, with priority on the suites named in `SPEC.md` "Testing expectations".
+### Audit list
 
-### Delegation mandatory reads
+| Spec file(s)                                                                                                                             | Locator family                                                                                                                                                                                            | Verdict                                                                                                    |
+| ---------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `ClassPageHeatmapView.spec.tsx`, `TaskHeatmapPage.spec.tsx`, `HeatmapBuilderSurface.spec.tsx`, `shared/studentNameTableColumns.spec.tsx` | Structural `.ant-table-body` / `.ant-table-header.ant-table-sticky-holder` bases with `within` scoping; `col` and row probes anchored to the body table                                                   | Section 3 re-scope, re-verified green                                                                      |
+| `StudentAveragesTableCard.spec.tsx` (500 lines), `StudentAveragesTableCard.sticky.spec.tsx`                                              | `container.querySelector('.ant-table')`, unscoped `getAllByRole('columnheader')`, `.ant-table-column-sorters`, filter trigger/placeholder/text queries; structural holder + body in the sticky spec       | Split-safe, unchanged; 6 `columnheader`s keep pre-split order and the unique `Forename` match              |
+| `TaskHeatmapTable.spec.tsx` plus `.baseline`, `.excludedColumnMarking`, `.merged`, `.preview`, `.status`, `.sticky`, `.zeroWeight`       | Unscoped `getByRole('columnheader', { name })` and `queryByRole` variants, indexed `getAllByRole`, `th`/`td`/`:scope tbody tr[data-row-key]` probes, `document.querySelectorAll('thead .ant-table-cell')` | Split-safe, unchanged; one `thead` in source order, body-only row probes, no strict-mode duplicate matches |
 
-- Testing Specialist: `@SPEC.md`, `@docs/developer/frontend/frontend-testing.md`, `@src/frontend/src/features/classPage`, `@src/frontend/src/features/taskHeatmap`, `@src/frontend/src/features/shared`. Note: the three `@`-prefixed directory tokens deliver directory listings only, not file contents — the agent must open each candidate spec file itself.
-- Code Reviewer (conditional — only if the audit re-scopes locators): `@SPEC.md` plus the touched spec files.
-
-### Acceptance criteria
-
-- Every Vitest spec in the three feature folders is either green unchanged or re-scoped with a recorded reason.
-- A short audit list (file → locator → verdict) is recorded in this section's implementation notes.
-
-### Required test cases (Red first)
-
-- For each ambiguous locator found: red assertion demonstrating ambiguity (e.g. strict-mode violation from two matching tables), then re-scope, then green.
-
-Canonical-fixture note: no new fixtures; the audit reuses the suites' existing canonical/local data. No generator change.
+N/A, 23 specs with no student table in the DOM: `ClassPage.spec.tsx`, `ClassPageContent.spec.tsx`, `ClassPage.modeControl.spec.tsx`, `ClassPage.reRunAssessment.spec.tsx`, `ClassPageHeaderActions.spec.tsx`, `RecentAssignmentCard.spec.tsx`, `RecentAssignmentsSection.spec.tsx` (page shells and cards); `studentAveragesTableColumns.spec.tsx`, `.accessibility.spec.tsx`, `.excluded.spec.tsx` (exercise column definitions and renderers, never render a `Table`); `HeatmapSelectionBar.spec.tsx`; `TaskHeatmapPage.assignmentQuery.spec.tsx`, `.legacy.spec.tsx`, `.reRunAssessment.spec.tsx` (`TaskHeatmapTable` mocked); `TaskMetricPreviewCell.spec.tsx`, `.focus`, `.focusSession`, `.openChange`; `TaskMetricPreviewContent.spec.tsx`; `TaskPreviewCard.spec.tsx`, `.errors`, `.sourceLink`, `.status`.
 
 ### Section checks
 
-- `npm run test:frontend -- src/frontend/src` (full frontend Vitest run) green.
-- `npm run test:frontend:coverage` still meets the 85% minimum.
-
-### Optional `@remarks` JSDoc follow-through
-
-- None.
+Passed: `npm run test:frontend -- src` 326 files / 3153 tests green; `npm run test:frontend:coverage` 95.67% statements (91.85% branches, 95.45% functions, 96.36% lines), above the 85% minimum; `npm run lint:frontend:check` exit 0 (0 errors; the 16 `max-lines` warnings are pre-existing and in untouched files).
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** the audit list goes here.
-- **Deviations from plan:** record any suite whose DOM changed beyond the planned split render.
-- **Follow-up implications for later sections:** the audit's locator verdicts seed the E2E migration in Section 5.
+- **Implementation notes:** the Audit list above is the record; the probe spec was temporary and is not committed. Docs-sync skipped: an audit-only section changed no code, test, or documented behaviour. Section regression gate 2026-11-13 13:24 UTC: 7 of 8 checks green, zero regressions in Vitest/lint/builder/tsc; `frontend-e2e-check` red with the same plan-sequenced strict-mode violation set (approved gate-gap decision — no code changed in this section, so the E2E set is unchanged). Gate report: `.ts-regression-checker/reports/session-feat-frozen-columns-and-working-horizontal-scrolling/runs/2026-11-13T13-24-57.502Z/comparison.txt`.
+- **Deviations from plan:** none — no suite's DOM changed beyond the planned split render, and no production or spec file was edited.
+- **Follow-up implications for later sections:** the audit's verdicts seed Section 5's E2E migration, whose gate must leave `frontend-e2e-check` fully green (approved gate-gap decision, Deferred findings and Section 3).
 
 ---
 
