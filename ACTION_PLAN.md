@@ -1,5 +1,10 @@
 # Feature Delivery Plan (TDD-First) — Sticky Table Scroll and Frozen Student-Name Columns
 
+## Progress tracker
+
+- **Current section:** Section 1 — Planned-only canonical-doc entries (in progress).
+- **Regression baseline (Mandatory Gate 1):** established 2026-11-13, mode `baseline`, session `feat/frozen-columns-and-working-horizontal-scrolling`, report at `.ts-regression-checker/reports/session-feat-frozen-columns-and-working-horizontal-scrolling/baseline/baseline.txt`. Status: 7 of 8 checks pass; `backend-lint-check` exits 1 with 4 pre-existing `max-lines` warnings (0 errors) in backend test files outside this feature's scope (`tests/backend-api/assignmentDefinitionPartials.unit.test.js`, `tests/dbManager/dbManager.test.js`, `tests/googleClassroom/classroomApiClient.test.js`, `tests/utils/batchUpdateUtility.test.js`). Documented as accepted technical debt; the tree was untouched when measured. No regressions, no new failures.
+
 ## Read-First Context
 
 1. Read `@SPEC.md` (repository root) — the reviewed, clean core spec for GitHub issue h-arnold/AssessmentBot#344. It is the source of truth for product behaviour, the DOM contract, and scope boundaries.
@@ -69,50 +74,33 @@ Every delegated handoff in a section lists its mandatory docs as `@`-prefixed pa
 
 ## Section 1 — Planned-only canonical-doc entries (`Not implemented`) before any implementation
 
-### Objective
+**Outcome (compacted):** All three planned-only entries landed with `Not implemented` markers: §3.6 and the §9 register entry 9.30 in `frontend-shared-helpers-and-abstraction-standards.md`, and the shared sticky-table locator entry in `frontend-playwright-e2e.md` §"Shared Helpers and Imports". The §3.6 purity bullet was also scoped to `utils/splitStudentName.ts`; that correction is unconditional and carries no marker, because `studentNameTableColumns.tsx` imports Ant Design `Typography` and renders JSX. Code Reviewer returned PASS with no findings. No production or test code was touched, so there were no test cases. Docs-sync was skipped: this section's output is the documentation itself.
 
-Land the planned-only entries that must exist in the canonical docs before any implementation starts:
+### Retained for later sections
 
-1. In `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` — a §3.6 note that both tables always receive fixed name columns and that the builder option is being removed, and a one-line §9 register entry recording the same decision — each marked `Not implemented` (required by `SPEC.md`).
-2. In `docs/developer/frontend/frontend-playwright-e2e.md` §"Shared Helpers and Imports" — a planned-only entry for the shared sticky-table E2E locator helper anticipated in Section 5's shared-helper plan (decision `new`, audit-conditional `keep local` fallback), marked `Not implemented`.
+Exact wording landed:
 
-This section is the gate that must complete before Sections 2–3 start implementing.
+- Shared-helpers §3.6: "Always-fixed name columns (`Not implemented`): both consumers need fixed name columns, so `buildStudentNameColumns` will always emit `fixed: 'start'` on Forename and Surname. The `options` parameter, the `StudentNameTableColumnsOptions` type and its `sticky`-option JSDoc will be removed, and both call sites (`features/classPage/studentAveragesTableColumns.tsx` and `features/taskHeatmap/TaskHeatmapTable.tsx`) will drop the option argument."
+- Shared-helpers §9 register: "**9.30 Always-fixed student-name columns** — … **Status: `Not implemented`**." Its body mirrors the §3.6 wording above.
+- Playwright doc §"Shared Helpers and Imports": "Sticky-table locators (`Not implemented`): a shared module under `src/frontend/e2e-tests/helpers/` (for example `sticky-table-locators.ts`) will expose wrapper-scoped structural bases for `.ant-table-header.ant-table-sticky-holder`, `.ant-table-body` and `.ant-table-sticky-scroll`, so specs never resolve a sticky table by accessible name. Keep a base local to its spec if fewer than three specs need it."
+- §3.6 purity bullet: "`src/frontend/src/utils/splitStudentName.ts` is pure: no React, Ant Design, I/O, or state dependencies. `studentNameTableColumns.tsx` is not: it imports Ant Design `Typography` and renders JSX."
 
-### Constraints
+Register placement: 9.30 sits in a new `### Pending decisions` subsection between "Rejected and superseded designs" and "Delivered decisions kept for existing cross-references". Section 7 must move 9.30 into the delivered area and delete the then-empty subsection.
 
-- Entries are planned-only and marked `Not implemented`; they describe the target decision, not delivered code.
-- While editing §3.6 of the shared-helpers doc, scope the existing purity bullet explicitly to `utils/splitStudentName.ts`. This is an unconditional accuracy correction (the column-builder module is not pure today — it imports Ant Design `Typography` and JSX), so it carries no `Not implemented` marker; the marker applies only to the always-fixed/option-removal decision entries, the §9 register line, and the playwright-doc helper entry.
-- No code changes in this section.
+Out-of-scope observations:
 
-### Delegation mandatory reads
-
-- Docs agent: `@SPEC.md`, `@docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md`, `@docs/developer/frontend/frontend-playwright-e2e.md`
-
-### Acceptance criteria
-
-- §3.6 of the shared-helpers doc records the always-fixed decision and the option removal with status `Not implemented`, and the purity bullet is scoped to `utils/splitStudentName.ts`.
-- The §9 register gains one line recording the same decision with status `Not implemented`.
-- §"Shared Helpers and Imports" of the playwright doc gains a planned-only entry for the Section 5 sticky-table locator helper with status `Not implemented`.
-- `npm run lint:check` is unaffected (docs-only change); no tests are added, so the red-first rule is satisfied vacuously — verification is the doc diff itself.
-
-### Required test cases (Red first)
-
-- None (documentation-only section).
+- `SPEC.md` "Documentation and rollout notes" also covers `frontend-loading-and-width-standards.md` and `frontend-testing.md`. Those are later sections' work, already sequenced in Section 7.
+- The §9 register already carries two entries numbered 9.24 ("Generic wizard orchestrator…" and "Stale-definition recovery"). Pre-existing; out of scope.
 
 ### Section checks
 
-- All three planned-only entries present with the `Not implemented` marker: the §3.6 note and the §9 register line in `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md`, and the sticky-table locator helper entry in `docs/developer/frontend/frontend-playwright-e2e.md` §"Shared Helpers and Imports".
-- No production or test code touched.
-
-### Optional `@remarks` JSDoc follow-through
-
-- None.
+Passed: all three markers present (reviewer-verified); `npm run lint:frontend:check`, `npm run lint:builder:check`, `npm run lint:synthetic:check` and prettier on the edited docs clean; `npm run lint:check` shows only the backend `max-lines` warnings already accepted in the Progress tracker; no production or test file changed.
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** record the exact entry wording chosen.
-- **Deviations from plan:** none expected.
-- **Follow-up implications for later sections:** Sections 2 and 7 remove the `Not implemented` markers as the decision is delivered.
+- **Implementation notes:** files touched — `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` (§3.6 entry plus purity scope, §9 entry 9.30) and `docs/developer/frontend/frontend-playwright-e2e.md` (§"Shared Helpers and Imports"); entry wording quoted above. Regression baseline unchanged from the Progress tracker (7 of 8 checks; backend `max-lines` debt only).
+- **Deviations from plan:** none.
+- **Follow-up implications for later sections:** Sections 2 and 7 remove the §3.6/§9 `Not implemented` markers as the decision is delivered; Section 7 moves 9.30 into the delivered register area and removes the playwright helper marker when the Section 5 helper is catalogued. The duplicated 9.24 IDs are noted and out of scope.
 
 ---
 

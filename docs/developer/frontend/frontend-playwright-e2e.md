@@ -577,6 +577,7 @@ unauthorised, backend error, delayed loading) to quickly verify usability during
 - E2E runtime mocks: `src/frontend/e2e-tests/shared/endToEndRuntimeMocks.ts`
 - Classes E2E helpers: `src/frontend/e2e-tests/helpers/classes-page-end-to-end-helpers.ts`
 - Select popup readiness helper: `src/frontend/e2e-tests/helpers/select-popup-readiness.ts` — exports `waitForSelectPopupReady(option)`, called before each ready-sensitive option click listed in [Select Popup Readiness Before Option Clicks](#select-popup-readiness-before-option-clicks).
+- Sticky-table locators (`Not implemented`): a shared module under `src/frontend/e2e-tests/helpers/` (for example `sticky-table-locators.ts`) will expose wrapper-scoped structural bases for `.ant-table-header.ant-table-sticky-holder`, `.ant-table-body` and `.ant-table-sticky-scroll`, so specs never resolve a sticky table by accessible name. Keep a base local to its spec if fewer than three specs need it.
 - `google.script.run` harness: `src/frontend/src/test/googleScriptRunHarness.ts`
   - For Playwright init scripts, inline `googleScriptRunApiHandlerFactorySource` inside `page.addInitScript(...)`
 - Classes page test helpers (shared fixtures): `src/frontend/src/test/classes/classesPageTestHelpers.ts`
