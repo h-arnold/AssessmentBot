@@ -178,7 +178,7 @@ class ABClassRoster {
   _rosterMatchesStores(existingDocument, existingPartial, abClass) {
     // A registry row without a stored _id is corrupt, so take the write path and let
     // _prepareRosterPartial raise the integrity failure instead of skipping past it.
-    if (!existingDocument || !existingPartial || existingPartial._id == null) return false;
+    if (!existingDocument || existingPartial?._id == null) return false;
 
     const refreshedFields = this._buildRosterFieldsForComparison(abClass);
     const storedClassFields = this._buildRosterFieldsForComparison(existingDocument);

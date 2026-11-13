@@ -37,6 +37,18 @@ function createCollection(label, order, result) {
 }
 
 /**
+ * Records a `save` call and rethrows the matching injected failure.
+ * @param {Array} order - Recorded operation log.
+ * @param {string} label - Store name used in the recorded entry.
+ * @param {Error} [failure] - Failure to throw instead of completing.
+ * @returns {void}
+ */
+function recordSave(order, label, failure) {
+  order.push(`${label}.save`);
+  if (failure) throw failure;
+}
+
+/**
  * Builds a canonical ABClass from the committed medium profile.
  * @returns {ABClass} Deserialised class with a non-null metadata snapshot.
  */
@@ -65,15 +77,8 @@ export function makeRoster({ partialRow, updateResult, failures }) {
     order.push('partial.insertOne', args);
     if (failures.insert) throw failures.insert;
   });
-  for (const [store, target] of [
-    ['full', full],
-    ['partial', partial],
-  ]) {
-    target.save.mockImplementation(() => {
-      order.push(`${store}.save`);
-      if (failures[`${store}Save`]) throw failures[`${store}Save`];
-    });
-  }
+  full.save.mockImplementation(() => recordSave(order, 'full', failures.fullSave));
+  partial.save.mockImplementation(() => recordSave(order, 'partial', failures.partialSave));
   const dbManager = {
     getCollection: vi.fn((name) => (name === 'abclass_partials' ? partial : full)),
   };
