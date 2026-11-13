@@ -17,6 +17,7 @@ import {
   createComputedMetricResult,
   createNotAttemptedMetricResult,
 } from '@/test/dataAnalysis/fixtures';
+import { requireElement, requireTableElement } from '@/test/shared/domGuards';
 
 const COMPUTED_SCORE = 4;
 
@@ -64,22 +65,26 @@ describe('StudentAveragesTableCard sticky render', () => {
   it('renders the sticky header holder and body while leaving the table unnamed', () => {
     const { container } = render(<StudentAveragesTableCard adapterResult={buildAdapterResult()} />);
 
-    const wrapper = container.querySelector('.ant-table-wrapper');
-    if (!(wrapper instanceof HTMLElement)) {
-      throw new TypeError('Expected the Student Averages table wrapper.');
-    }
-
-    const headerHolder = wrapper.querySelector('.ant-table-header.ant-table-sticky-holder');
-    const body = wrapper.querySelector('.ant-table-body');
-    if (!(headerHolder instanceof HTMLElement) || !(body instanceof HTMLElement)) {
-      throw new TypeError('Expected the sticky header holder and body elements.');
-    }
-
-    const headerTable = headerHolder.querySelector('table');
-    const bodyTable = body.querySelector('table');
-    if (!(headerTable instanceof HTMLTableElement) || !(bodyTable instanceof HTMLTableElement)) {
-      throw new TypeError('Expected a header table and a body table.');
-    }
+    const wrapper = requireElement(
+      container.querySelector('.ant-table-wrapper'),
+      'Expected the Student Averages table wrapper.'
+    );
+    const headerHolder = requireElement(
+      wrapper.querySelector('.ant-table-header.ant-table-sticky-holder'),
+      'Expected the sticky header holder and body elements.'
+    );
+    const body = requireElement(
+      wrapper.querySelector('.ant-table-body'),
+      'Expected the sticky header holder and body elements.'
+    );
+    const headerTable = requireTableElement(
+      headerHolder.querySelector('table'),
+      'Expected a header table and a body table.'
+    );
+    const bodyTable = requireTableElement(
+      body.querySelector('table'),
+      'Expected a header table and a body table.'
+    );
 
     // The table supplies no aria-label, so the split leaves both halves unnamed.
     expect(headerTable.getAttribute('aria-label')).toBeNull();
