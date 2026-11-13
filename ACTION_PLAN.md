@@ -2,7 +2,7 @@
 
 ## Progress tracker
 
-- **Current section:** Section 2 — Shared column builder always emits fixed name columns (starting: red phase). Section 1 complete and pushed (`54482724`).
+- **Current section:** Section 3 complete pending commit; Section 4 next. E2E gate gap (82 strict-mode violations pending Section 5 migration) approved by user — see Deferred findings.
 - **Regression baseline (Mandatory Gate 1):** established 2026-11-13, mode `baseline`, session `feat/frozen-columns-and-working-horizontal-scrolling`, report at `.ts-regression-checker/reports/session-feat-frozen-columns-and-working-horizontal-scrolling/baseline/baseline.txt`. Status: 7 of 8 checks pass; `backend-lint-check` exits 1 with 4 pre-existing `max-lines` warnings (0 errors) in backend test files outside this feature's scope (`tests/backend-api/assignmentDefinitionPartials.unit.test.js`, `tests/dbManager/dbManager.test.js`, `tests/googleClassroom/classroomApiClient.test.js`, `tests/utils/batchUpdateUtility.test.js`). Documented as accepted technical debt; the tree was untouched when measured. No regressions, no new failures.
 
 ## Read-First Context
@@ -122,7 +122,7 @@ Passed: shared spec 2/2; `taskHeatmap`/`classPage`/`shared` suites 608/608; `npm
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** final LOC — `studentNameTableColumns.tsx` 75 → 70 against ~62 projected, the delta being the required decision-5 JSDoc paragraph; `studentAveragesTableColumns.tsx` 193 → 191; `studentNameTableColumns.spec.tsx` 105 → 139. The antd structure confirmation is deferred to Section 3, which first creates `.ant-table-body`. Docs-sync skipped: the `@remarks` JSDoc follow-through landed in the green change, and the canonical shared-helpers reconciliation is Section 7's by design. Section regression gate passed 2026-11-13 08:18 UTC: zero regressions, zero new failures (report `.ts-regression-checker/reports/session-feat-frozen-columns-and-working-horizontal-scrolling/runs/2026-11-13T08-18-30.889Z/comparison.txt`). Commit `pending` — recorded after the commit gate below.
+- **Implementation notes:** final LOC — `studentNameTableColumns.tsx` 75 → 70 against ~62 projected, the delta being the required decision-5 JSDoc paragraph; `studentAveragesTableColumns.tsx` 193 → 191; `studentNameTableColumns.spec.tsx` 105 → 139. The antd structure confirmation is deferred to Section 3, which first creates `.ant-table-body`. Docs-sync skipped: the `@remarks` JSDoc follow-through landed in the green change, and the canonical shared-helpers reconciliation is Section 7's by design. Section regression gate passed 2026-11-13 08:18 UTC: zero regressions, zero new failures (report `.ts-regression-checker/reports/session-feat-frozen-columns-and-working-horizontal-scrolling/runs/2026-11-13T08-18-30.889Z/comparison.txt`). Commit `f39d9dbd` — "refactor(frontend): student-name columns always fixed start (issue #344 section 2)" on branch `feat/frozen-columns-and-working-horizontal-scrolling`; `git push` confirmed (`54482724..f39d9dbd`).
 - **Deviations from plan:** none behavioural. Command-form deviation: the Vitest filter path recorded above.
 - **Follow-up implications for later sections:** Section 3 re-scopes the heatmap half of the shared spec; Section 7 removes the §3.6/§9 markers and relocates entry 9.30. The section regression gate and commit/push follow this compaction.
 
@@ -130,66 +130,25 @@ Passed: shared spec 2/2; `taskHeatmap`/`classPage`/`shared` suites 608/608; `npm
 
 ## Section 3 — `sticky` on both student tables plus Vitest re-scoping of the named suites
 
-### Objective
+**Outcome (compacted):** Both Tables carry a bare `sticky` prop: `StudentAveragesTableCard.tsx` (280 → 287) and `TaskHeatmapTable.tsx` (228 → 236), the deltas being the required JSDoc. `@remarks` on both records the split render, the unnamed Student Averages halves, and the accepted heatmap dual `aria-label="Task Heatmap"` (decision 8; never deduplicated). Red phase created `StudentAveragesTableCard.sticky.spec.tsx` (92 lines) and, under the LOC rule, `TaskHeatmapTable.sticky.spec.tsx` (66 lines); re-scoped the heatmap half of `studentNameTableColumns.spec.tsx` (221) and `TaskHeatmapPage.spec.tsx` (294), `HeatmapBuilderSurface.spec.tsx` (438), `ClassPageHeatmapView.spec.tsx` (371) to structural holder/body bases with no accessible-name resolution left. Red and green review loops closed with PASS verdicts; the one red nitpick (compound holder selector in `TaskHeatmapPage.spec.tsx`) was fixed and re-reviewed clean.
 
-Add the `sticky` prop to the `Table` in `StudentAveragesTableCard.tsx` and `TaskHeatmapTable.tsx`, and re-scope the Vitest locators that the split render makes ambiguous: `TaskHeatmapPage.spec.tsx`, `HeatmapBuilderSurface.spec.tsx`, `ClassPageHeatmapView.spec.tsx`, and the heatmap half of `studentNameTableColumns.spec.tsx`; add the sticky-header-holder assertion for the Student Averages table.
+### Retained for later sections
 
-**Recorded deviation from `SPEC.md`:** the spec's "Testing expectations" says to add the Student Averages sticky-header-holder assertion to `StudentAveragesTableCard.spec.tsx`. This plan deliberately supersedes that pointer: the file is exactly 500 lines (verified with `wc -l`), and this plan's own rule keeps files at or above 500 lines from growing. The assertion lands in a new co-located `StudentAveragesTableCard.sticky.spec.tsx` instead. Record the same deviation in this section's deviations field during implementation.
-
-### Constraints
-
-- `sticky` with no offset object — offsets stay at default `0`. Do not add `scroll.y`.
-- Both tables already set `scroll={{ x: 'max-content' }}`; unchanged.
-- The Task Heatmap table keeps `aria-label="Task Heatmap"`; after the split it lands on both header and body tables — accepted, do not "fix".
-- Locator convention: row and cell assertions base on `.ant-table-body`; column-header assertions base on `.ant-table-header.ant-table-sticky-holder`; never resolve a sticky table by accessible name. Wrapper/Card scoping is valid only for roles whose occurrence count is unchanged (e.g. named column headers); `table` role count doubles and `row` occurrences are redistributed with total unchanged.
-- Student Averages remains unnamed in both halves: locate its wrapper via the surrounding Card, then the structural bases.
-- The other `TaskHeatmapTable.*.spec.tsx` suites use unscoped column-header and button locators that keep resolving (header cells stay in the accessibility tree) — do not re-scope them unless the DOM changes beyond this plan.
-- LOC: `StudentAveragesTableCard.tsx` 280 → ~281; `TaskHeatmapTable.tsx` 230 → ~231; `taskHeatmapTableColumns.tsx` 464 → unchanged (the builder call site lives in `TaskHeatmapTable.tsx`). Spec deltas: `TaskHeatmapPage.spec.tsx` 285, `HeatmapBuilderSurface.spec.tsx` 438, `ClassPageHeatmapView.spec.tsx` 371 are re-scoped; `TaskHeatmapTable.spec.tsx` 478 gains only the new holder/aria-label assertions (it has no name-based table locators to re-scope), so it is projected close to the 500-line no-growth threshold — if it crosses 500, split its sticky-structure assertions into a new co-located `TaskHeatmapTable.sticky.spec.tsx` in the same change. **`StudentAveragesTableCard.spec.tsx` is at exactly 500 lines today**: the new sticky assertions must NOT be added to it. Plan file separation: create a new co-located `StudentAveragesTableCard.sticky.spec.tsx` (~80 lines) owning the sticky-holder/split-structure assertions for the Student Averages table; the existing 500-line spec is touched only if a locator inside it breaks.
-
-### Delegation mandatory reads
-
-- Testing Specialist: `@SPEC.md`, `@STUDENT_TABLES_STICKY_SCROLL_LAYOUT.md`, `@src/frontend/src/features/classPage/StudentAveragesTableCard.tsx`, `@src/frontend/src/features/classPage/StudentAveragesTableCard.spec.tsx`, `@src/frontend/src/features/taskHeatmap/TaskHeatmapTable.tsx`, `@src/frontend/src/features/taskHeatmap/TaskHeatmapPage.spec.tsx`, `@src/frontend/src/features/taskHeatmap/HeatmapBuilderSurface.spec.tsx`, `@src/frontend/src/features/classPage/ClassPageHeatmapView.spec.tsx`, `@src/frontend/src/features/shared/studentNameTableColumns.spec.tsx`, `@docs/developer/frontend/frontend-testing.md`, `@docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md`
-- Implementation: `@SPEC.md`, `@src/frontend/src/features/classPage/StudentAveragesTableCard.tsx`, `@src/frontend/src/features/taskHeatmap/TaskHeatmapTable.tsx`, `@docs/developer/frontend/frontend-architecture.md`
-- Code Reviewer: `@SPEC.md`, `@STUDENT_TABLES_STICKY_SCROLL_LAYOUT.md`, all touched files
-
-### Shared helper plan
-
-- No new helpers. The split-render locator convention is a testing convention, not a shared production helper; its doc target is `frontend-testing.md` / `frontend-playwright-e2e.md` (landed in Section 7). Planned doc status: `Not implemented` until then.
-
-### Acceptance criteria
-
-- Both table components render with `sticky` and no `scroll.y`.
-- In the happy-dom test environment, each sticky table renders `.ant-table-header.ant-table-sticky-holder` and `.ant-table-body` (no measured overflow there, so the sticky bar does not render — bar behaviour is E2E-only, Section 6).
-- The full accessible-name family the spec enumerates — `getByRole('table', { name: 'Task Heatmap' })`, `getByLabelText`, `queryByLabelText`, `queryByRole`, and any `findBy*` variants — is gone from the four named suites (the fourth being the heatmap half of `studentNameTableColumns.spec.tsx`; its class-side half stays single-table and keeps its name-based locator), including the negative `queryBy*` probes, which would keep passing but violate the never-resolve-by-name convention — all replaced by wrapper-/holder-/body-scoped locators.
-- `TaskHeatmapPage.spec.tsx`, `HeatmapBuilderSurface.spec.tsx`, `ClassPageHeatmapView.spec.tsx`, `studentNameTableColumns.spec.tsx`, the `TaskHeatmapTable.*` suites, and the `studentAveragesTableColumns.*` suites are all green.
-
-### Required test cases (Red first)
-
-Frontend tests (Vitest):
-
-1. Red: `StudentAveragesTableCard.sticky.spec.tsx` (new file) asserts the Student Averages table renders `.ant-table-header.ant-table-sticky-holder` and `.ant-table-body` when `sticky` is set — fails before the prop is added.
-2. Red: `TaskHeatmapTable.spec.tsx` asserts the holder structure and the `aria-label` on both header and body tables (documenting the accepted double-name posture), and the heatmap half of `studentNameTableColumns.spec.tsx` re-scopes its structural `col` and row probes to the body table under `.ant-table-body` so the header table's colgroup is not measured by mistake (the class-side half stays a single table, rendered without `sticky`/`scroll`) — all of these fail before `sticky`, since `.ant-table-body` does not exist yet.
-3. Red: in `TaskHeatmapPage.spec.tsx`, `HeatmapBuilderSurface.spec.tsx`, `ClassPageHeatmapView.spec.tsx`, replace name-resolved table locators with structural bases; the red is carried by the presence/structure assertions, which fail against the pre-change single-table render where the holder is absent (re-scoped absence probes pass vacuously pre-change by nature), then pass after Green.
-4. Green: add `sticky` to both `Table` components.
-5. Refactor: confirm the untouched `TaskHeatmapTable.*` suites (preview, merged, baseline, status, zeroWeight, excludedColumnMarking) still pass with unscoped locators.
-
-Canonical-fixture note: all suites here use existing committed local literals and the `small`/`medium`/`large-representative` canonical views via `abClassMetadataFixtures.ts` where metadata is needed; no generator extension is planned, and no existing test migrates to a different canonical profile (opportunistic migration: none required — the touched suites already select supported canonical views).
+- **Binding locator convention (Sections 4–6):** rows and cells base on `.ant-table-body`; column headers base on `.ant-table-header.ant-table-sticky-holder`; never resolve a sticky table by accessible name, including negative probes. Wrapper/Card scoping is valid only for roles whose occurrence count is unchanged. The heatmap dual `aria-label` is accepted and is never a resolution path; Student Averages is located via its surrounding Card/wrapper, then structural bases. Section 7 documents this in `frontend-testing.md` and `frontend-playwright-e2e.md`.
+- **Delivered files and LOC:** `StudentAveragesTableCard.tsx` 280 → 287; `TaskHeatmapTable.tsx` 228 → 236; `StudentAveragesTableCard.sticky.spec.tsx` 92 (new); `TaskHeatmapTable.sticky.spec.tsx` 66 (new); `studentNameTableColumns.spec.tsx` 221; `TaskHeatmapPage.spec.tsx` 294; `HeatmapBuilderSurface.spec.tsx` 438; `ClassPageHeatmapView.spec.tsx` 371. Section 4 audits from this list. Untouched and still at their limit: `StudentAveragesTableCard.spec.tsx` exactly 500, `TaskHeatmapTable.spec.tsx` 478.
+- **happy-dom posture:** the split render is present there, but the sticky bar never renders (no measured overflow); bar behaviour is E2E-only, Section 6.
+- **Recorded deviation from `SPEC.md`:** the Student Averages sticky-header-holder assertion lives in the new co-located `StudentAveragesTableCard.sticky.spec.tsx`, not in the 500-line `StudentAveragesTableCard.spec.tsx`, because the 500-line no-growth rule forbids growing that file.
+- **antd 6.6.7 (assumption 1):** confirmed at implementation time to produce the documented split structure.
 
 ### Section checks
 
-- `npm run test:frontend -- src/frontend/src/features/taskHeatmap src/frontend/src/features/classPage src/frontend/src/features/shared` green.
-- New `StudentAveragesTableCard.sticky.spec.tsx` exists and passes; `StudentAveragesTableCard.spec.tsx` remains at ≤500 lines.
-- `npm run lint:frontend:check` green and `npm run typecheck:all` green (frontend projects included).
-
-### Optional `@remarks` JSDoc follow-through
-
-- `TaskHeatmapTable.tsx` and `StudentAveragesTableCard.tsx` JSDoc should note the split render and the accepted `aria-label` duplication for the heatmap.
+Passed: six Section 3 spec files 28/28; `taskHeatmap`/`classPage`/`shared` suites 610/610 (78 files); full coverage 3153/3153 at 95.67%; `npm run lint:frontend:check` exit 0 (only pre-existing unrelated `max-lines` warnings); `npm run typecheck:all` exit 0.
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** record final LOC per touched file and the antd-version confirmation (assumption 1).
-- **Deviations from plan:** the sticky-header-holder assertion for Student Averages lands in the new `StudentAveragesTableCard.sticky.spec.tsx`, not in `StudentAveragesTableCard.spec.tsx` as `SPEC.md` names it (500-line gate — recorded in this section's objective); plus any suite that needed re-scoping beyond the four named ones.
-- **Follow-up implications for later sections:** Sections 4–6 inherit the locator convention; Section 7 documents it.
+- **Implementation notes:** final LOC and the antd confirmation are listed above. Docs-sync skipped: the `@remarks` JSDoc follow-through landed in the green change, and the locator-convention docs plus canonical reconciliation are Section 7's by design. Section regression gate 2026-11-13 12:07 UTC: 7 of 8 checks green (no regressions in Vitest, lint, builder, tsc); `frontend-e2e-check` fails with 82 deterministic strict-mode violations on `getByRole('table', { name: 'Task Heatmap' })` — the sticky split render resolves that name to two tables — which are precisely the locators `SPEC.md` enumerates for Section 5's migration. User decision (asked and approved 2026-11-13): Sections 3–4 gates proceed on the 7 green checks with these E2E failures documented as plan-sequenced intentional failures; Section 5's gate must show `frontend-e2e-check` fully green. Gate report: `.ts-regression-checker/reports/session-feat-frozen-columns-and-working-horizontal-scrolling/runs/2026-11-13T12-07-23.822Z/comparison.txt`.
+- **Deviations from plan:** the co-located `StudentAveragesTableCard.sticky.spec.tsx` deviation recorded above; `TaskHeatmapTable.sticky.spec.tsx` created under the LOC rule, as the plan mandated if 500 lines would be crossed; no suite needed re-scoping beyond the four named ones.
+- **Follow-up implications for later sections:** Sections 4–6 inherit the convention; Section 7 documents it; Section 4's audit list builds on the delivered re-scoping; Section 5 removes the 82 E2E strict-mode violations and must leave `frontend-e2e-check` green at its gate.
 
 ---
 
@@ -474,6 +433,7 @@ Confirm the docs landed in Section 7 match the shipped behaviour and record any 
 
 No deferred or out-of-scope findings are recorded at planning time. If any arise during delivery, they are logged here and, for nitpicks, in `.opencode/scratchpad/feat-frozen-columns-and-working-horizontal-scrolling-deferred-findings.md`.
 
-| Finding | Severity | Scope rationale | Evidence | Disposition | User decision |
-| ------- | -------- | --------------- | -------- | ----------- | ------------- |
-| —       | —        | —               | —        | —           | —             |
+| Finding                                                                                                                                                                                  | Severity | Scope rationale                                                                                                                                                           | Evidence                                                                                                                                              | Disposition | User decision                                                                                                                                                                                             |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| E2E gate gap: `frontend-e2e-check` red (82 strict-mode violations on `getByRole('table', { name: 'Task Heatmap' })`) at the Section 3 and 4 gates, pending Section 5's locator migration | Material | Plan-sequenced: Sections 3–4 land Vitest-side work; Section 5 migrates the E2E locators; the plan's own red mechanic for Section 5 requires these failures to exist first | `.ts-regression-checker/.../runs/2026-11-13T12-07-23.822Z/comparison.txt`; strict-mode errors naming two `<table aria-label="Task Heatmap">` elements | `approved`  | Approved 2026-11-13: Sections 3–4 gates proceed on the 7 green checks with these failures documented as plan-sequenced intentional failures; Section 5's gate must show `frontend-e2e-check` fully green. |
+| §9 register carries two entries numbered 9.24 (pre-existing duplication)                                                                                                                 | Minor    | Pre-existing doc defect outside this feature's change surface                                                                                                             | `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` §9 (noted by Section 1 Docs agent)                                     | `noted`     | —                                                                                                                                                                                                         |

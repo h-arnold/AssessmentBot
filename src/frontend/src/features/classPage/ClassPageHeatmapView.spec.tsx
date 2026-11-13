@@ -276,7 +276,7 @@ describe('ClassPage heatmap view-state wiring', () => {
     const queryClient = createTestQueryClient();
     const harness = createElement(Harness, { initialView: 'overview' });
     const app = createElement(App, null, harness);
-    render(createElement(QueryClientProvider, { client: queryClient }, app));
+    const { container } = render(createElement(QueryClientProvider, { client: queryClient }, app));
 
     // The overview should render a RecentAssignmentCard for "Assignment One"
     // with role="button" — the card is clickable via onOpenHeatmap.
@@ -284,16 +284,16 @@ describe('ClassPage heatmap view-state wiring', () => {
     expect(card).toBeInTheDocument();
 
     // The heatmap table must NOT be present initially.
-    expect(screen.queryByLabelText('Task Heatmap')).not.toBeInTheDocument();
+    expect(container.querySelector('.ant-table-body')).not.toBeInTheDocument();
 
     // Click the card — this should call onOpenHeatmap('a-1') which sets
     // selectedView to { view: 'heatmap', assignmentId: 'a-1' }, causing
     // ClassPageContent to render TaskHeatmapPage.
     await user.click(card);
 
-    // Assert that the TaskHeatmapTable (aria-label="Task Heatmap") is now
-    // present — meaning TaskHeatmapPage rendered successfully.
-    expect(screen.getByLabelText('Task Heatmap')).toBeInTheDocument();
+    // Assert that the TaskHeatmapTable body is now present — meaning
+    // TaskHeatmapPage rendered successfully.
+    expect(container.querySelector('.ant-table-body')).toBeInTheDocument();
 
     // The assignment name "Assignment One" should appear as a header title.
     expect(screen.getByText('Assignment One')).toBeInTheDocument();
@@ -311,18 +311,18 @@ describe('ClassPage heatmap view-state wiring', () => {
     const queryClient = createTestQueryClient();
     const harness = createElement(Harness, { initialView: 'heatmap', assignmentId: 'a-1' });
     const app = createElement(App, null, harness);
-    render(createElement(QueryClientProvider, { client: queryClient }, app));
+    const { container } = render(createElement(QueryClientProvider, { client: queryClient }, app));
 
-    // The heatmap should render — the TaskHeatmapTable with aria-label="Task Heatmap"
-    // and the Back button with aria-label "Back to Class overview" should be present.
-    expect(screen.getByLabelText('Task Heatmap')).toBeInTheDocument();
+    // The heatmap should render — the TaskHeatmapTable body and the Back
+    // button with aria-label "Back to Class overview" should be present.
+    expect(container.querySelector('.ant-table-body')).toBeInTheDocument();
     expect(screen.getByLabelText('Back to Class overview')).toBeInTheDocument();
 
     // Click the Back button.
     await user.click(screen.getByLabelText('Back to Class overview'));
 
-    // The heatmap table should be gone.
-    expect(screen.queryByLabelText('Task Heatmap')).not.toBeInTheDocument();
+    // The heatmap table body should be gone.
+    expect(container.querySelector('.ant-table-body')).not.toBeInTheDocument();
 
     // The overview should render the RecentAssignmentCard again.
     expect(screen.getByRole('button', { name: /assignment one/i })).toBeInTheDocument();
@@ -345,7 +345,7 @@ describe('ClassPage heatmap view-state wiring', () => {
 
     // The catch-and-navigate behaviour means:
     //   - logFrontendError was called with first argument 'TaskHeatmapPage'
-    //   - The heatmap table (aria-label="Task Heatmap") is NOT present
+    //   - The heatmap table body is NOT present
     //   - The overview card IS present (onBack returned to overview)
     //   - No in-view Alert/Result error message is shown
 
@@ -354,7 +354,7 @@ describe('ClassPage heatmap view-state wiring', () => {
     expect(mockLogFrontendError).toHaveBeenCalledWith('TaskHeatmapPage', expect.any(Error));
 
     // The heatmap should not be visible.
-    expect(screen.queryByLabelText('Task Heatmap')).not.toBeInTheDocument();
+    expect(container.querySelector('.ant-table-body')).not.toBeInTheDocument();
 
     // The overview card should be visible (returned to overview).
     expect(screen.getByRole('button', { name: /assignment one/i })).toBeInTheDocument();

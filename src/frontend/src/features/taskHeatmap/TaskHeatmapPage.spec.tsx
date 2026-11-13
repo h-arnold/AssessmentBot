@@ -111,7 +111,7 @@ describe('TaskHeatmapPage — TaskTitlesUnavailableError and generic Error handl
         refetch,
       };
       const queryClient = createTestQueryClient();
-      const { rerender } = render(
+      const { container, rerender } = render(
         <QueryClientProvider client={queryClient}>
           <App>
             <TaskHeatmapPage {...properties} />
@@ -129,19 +129,28 @@ describe('TaskHeatmapPage — TaskTitlesUnavailableError and generic Error handl
         screen.queryByRole('region', { name: 'Completeness summary' })
       ).not.toBeInTheDocument();
       expect(screen.queryByRole('region', { name: 'Accuracy summary' })).not.toBeInTheDocument();
-      const table = screen.getByRole('table', { name: 'Task Heatmap' });
-      expect(within(table).getByRole('columnheader', { name: 'Task One' })).toBeInTheDocument();
+      const tableHeader = container.querySelector<HTMLElement>(
+        '.ant-table-header.ant-table-sticky-holder'
+      );
+      const tableBody = container.querySelector<HTMLElement>('.ant-table-body');
+      expect(tableHeader).toBeInTheDocument();
+      expect(tableBody).toBeInTheDocument();
       expect(
-        within(table).getByRole('cell', { name: 'Student One, Task One, Completeness: 5' })
+        within(tableHeader!).getByRole('columnheader', { name: 'Task One' })
+      ).toBeInTheDocument();
+      expect(
+        within(tableBody!).getByRole('cell', { name: 'Student One, Task One, Completeness: 5' })
       ).toHaveTextContent('5');
-      expect(alert.compareDocumentPosition(table) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      expect(
+        alert.compareDocumentPosition(tableBody!) & Node.DOCUMENT_POSITION_FOLLOWING
+      ).toBeTruthy();
       expect(onBack).not.toHaveBeenCalled();
       expect(logFrontendError).toHaveBeenCalledExactlyOnceWith('TaskHeatmapPage.summary', error, {
         classId: classFullFixture.classId,
         assignmentId: properties.assignmentId,
       });
 
-      const forename = within(table).getByRole('columnheader', { name: /Forename/ });
+      const forename = within(tableHeader!).getByRole('columnheader', { name: /Forename/ });
       await user.click(forename);
       expect(forename).toHaveAttribute('aria-sort', 'ascending');
       await act(async () => {
@@ -150,7 +159,7 @@ describe('TaskHeatmapPage — TaskTitlesUnavailableError and generic Error handl
       await waitFor(() => expect(queryClient.isFetching()).toBe(0));
       expect(refetch).toHaveBeenCalledTimes(1);
       expect(onBack).not.toHaveBeenCalled();
-      expect(screen.getByRole('table', { name: 'Task Heatmap' })).toBeInTheDocument();
+      expect(container.querySelector('.ant-table-body')).toBeInTheDocument();
 
       failure.mockRestore();
       rerender(
@@ -165,7 +174,7 @@ describe('TaskHeatmapPage — TaskTitlesUnavailableError and generic Error handl
       ).toBeInTheDocument();
       expect(screen.getByRole('region', { name: 'Accuracy summary' })).toBeInTheDocument();
       expect(screen.queryByRole('alert')).not.toBeInTheDocument();
-      expect(screen.getByRole('table', { name: 'Task Heatmap' })).toBeInTheDocument();
+      expect(container.querySelector('.ant-table-body')).toBeInTheDocument();
       expect(onBack).not.toHaveBeenCalled();
       expect(logFrontendError).toHaveBeenCalledTimes(1);
     }
@@ -202,7 +211,7 @@ describe('TaskHeatmapPage — TaskTitlesUnavailableError and generic Error handl
     ];
 
     const queryClient = createTestQueryClient();
-    render(
+    const { container } = render(
       <QueryClientProvider client={queryClient}>
         <App>
           <TaskHeatmapPage
@@ -236,8 +245,8 @@ describe('TaskHeatmapPage — TaskTitlesUnavailableError and generic Error handl
     expect(screen.getByText('Task titles are currently unavailable.')).toBeInTheDocument();
     expect(screen.getByText('Please try reloading the page.')).toBeInTheDocument();
 
-    // No TaskHeatmapTable should mount
-    expect(screen.queryByLabelText('Task Heatmap')).not.toBeInTheDocument();
+    // No TaskHeatmapTable body should mount
+    expect(container.querySelector('.ant-table-body')).not.toBeInTheDocument();
 
     // onBack should NOT be auto-invoked on the throw (only the explicit click above)
     expect(onBack).toHaveBeenCalledTimes(1);
@@ -253,7 +262,7 @@ describe('TaskHeatmapPage — TaskTitlesUnavailableError and generic Error handl
 
     // Pass an unknown assignmentId that the adapter will reject with a generic Error
     const queryClient = createTestQueryClient();
-    render(
+    const { container } = render(
       <QueryClientProvider client={queryClient}>
         <App>
           <TaskHeatmapPage
@@ -280,6 +289,6 @@ describe('TaskHeatmapPage — TaskTitlesUnavailableError and generic Error handl
         'Something went wrong while loading the heatmap. Returning to class overview.'
       )
     ).toBeInTheDocument();
-    expect(screen.queryByRole('table', { name: 'Task Heatmap' })).not.toBeInTheDocument();
+    expect(container.querySelector('.ant-table-body')).not.toBeInTheDocument();
   });
 });

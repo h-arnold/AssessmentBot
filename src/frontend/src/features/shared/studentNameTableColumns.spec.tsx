@@ -18,6 +18,7 @@ const EMPTY_FILTERS = {
 } as const;
 const COMPUTED_SCORE = 4;
 const STUDENT_NAME_COLUMN_COUNT = 2;
+const STUDENT_TABLE_COUNT = 2;
 const CLASS_AVERAGE_ROW = {
   studentId: 'student-alice',
   studentName: 'Alice Smith',
@@ -33,9 +34,77 @@ afterEach(() => {
   cleanup();
 });
 
+/**
+ * Resolve the sticky Task Heatmap header and body tables from the rendered
+ * wrapper, avoiding the duplicated accessible name on both halves.
+ *
+ * @param {HTMLElement} container - The container returned by `render`.
+ * @returns {Readonly<{ headerTable: HTMLTableElement; bodyTable: HTMLTableElement }>} The split tables.
+ */
+function resolveStickyHeatmapTables(container: HTMLElement): {
+  headerTable: HTMLTableElement;
+  bodyTable: HTMLTableElement;
+} {
+  const tableWrappers = container.querySelectorAll('.ant-table-wrapper');
+
+  if (tableWrappers.length !== STUDENT_TABLE_COUNT) {
+    throw new TypeError('Expected exactly two rendered table wrappers.');
+  }
+
+  const heatmapWrapper = tableWrappers[STUDENT_TABLE_COUNT - 1];
+  const headerHolder = requireElement(
+    heatmapWrapper.querySelector('.ant-table-header.ant-table-sticky-holder'),
+    'Expected the sticky Task Heatmap header holder.'
+  );
+  const body = requireElement(
+    heatmapWrapper.querySelector('.ant-table-body'),
+    'Expected the sticky Task Heatmap body.'
+  );
+  const headerTable = requireTableElement(
+    headerHolder.querySelector('table'),
+    'Expected the sticky Task Heatmap header table.'
+  );
+  const bodyTable = requireTableElement(
+    body.querySelector('table'),
+    'Expected the sticky Task Heatmap body table.'
+  );
+
+  return { headerTable, bodyTable };
+}
+
+/**
+ * Assert that an element is present and an HTML element.
+ *
+ * @param {Element | null} element - The candidate element.
+ * @param {string} message - Failure message.
+ * @returns {HTMLElement} The asserted element.
+ */
+function requireElement(element: Element | null, message: string): HTMLElement {
+  if (!(element instanceof HTMLElement)) {
+    throw new TypeError(message);
+  }
+
+  return element;
+}
+
+/**
+ * Assert that an element is present and an HTML table element.
+ *
+ * @param {Element | null} element - The candidate element.
+ * @param {string} message - Failure message.
+ * @returns {HTMLTableElement} The asserted table element.
+ */
+function requireTableElement(element: Element | null, message: string): HTMLTableElement {
+  if (!(element instanceof HTMLTableElement)) {
+    throw new TypeError(message);
+  }
+
+  return element;
+}
+
 describe('shared student-name table column presentation', () => {
   it('keeps split-name headers, widths, and rendered values aligned across Class and Heatmap tables', () => {
-    render(
+    const { container } = render(
       <>
         <Table<StudentAverageRowModel>
           aria-label="Student averages table"
@@ -62,12 +131,22 @@ describe('shared student-name table column presentation', () => {
       </>
     );
 
+    // The Class-side table is rendered without `sticky` or `scroll`, so it
+    // stays a single named table. The Task Heatmap is sticky and splits into a
+    // header table and a body table; never resolve it by accessible name,
+    // because Ant Design copies `aria-label="Task Heatmap"` onto both halves.
     const classTable = screen.getByRole('table', { name: 'Student averages table' });
-    const heatmapTable = screen.getByRole('table', { name: 'Task Heatmap' });
+    const { headerTable: heatmapHeaderTable, bodyTable: heatmapBodyTable } =
+      resolveStickyHeatmapTables(container);
+
     const classForename = within(classTable).getByRole('columnheader', { name: 'Forename' });
-    const heatmapForename = within(heatmapTable).getByRole('columnheader', { name: 'Forename' });
+    const heatmapForename = within(heatmapHeaderTable).getByRole('columnheader', {
+      name: 'Forename',
+    });
     const classSurname = within(classTable).getByRole('columnheader', { name: 'Surname' });
-    const heatmapSurname = within(heatmapTable).getByRole('columnheader', { name: 'Surname' });
+    const heatmapSurname = within(heatmapHeaderTable).getByRole('columnheader', {
+      name: 'Surname',
+    });
 
     expect(classForename).toHaveTextContent('Forename');
     expect(heatmapForename).toHaveTextContent('Forename');
@@ -76,7 +155,9 @@ describe('shared student-name table column presentation', () => {
     const classNameColumnWidths = [...classTable.querySelectorAll('col')]
       .slice(0, STUDENT_NAME_COLUMN_COUNT)
       .map((column) => (column as HTMLElement).style.width);
-    const heatmapNameColumnWidths = [...heatmapTable.querySelectorAll('col')]
+    // Anchor the width probe to the body table so the header colgroup is not
+    // measured by mistake.
+    const heatmapNameColumnWidths = [...heatmapBodyTable.querySelectorAll('col')]
       .slice(0, STUDENT_NAME_COLUMN_COUNT)
       .map((column) => (column as HTMLElement).style.width);
 
@@ -87,7 +168,8 @@ describe('shared student-name table column presentation', () => {
     expect(heatmapNameColumnWidths).toEqual(classNameColumnWidths);
 
     const classDataRow = classTable.querySelector(':scope tbody tr[data-row-key]');
-    const heatmapDataRow = heatmapTable.querySelector(':scope tbody tr[data-row-key]');
+    // Data rows live in the body table, not the header table.
+    const heatmapDataRow = heatmapBodyTable.querySelector(':scope tbody tr[data-row-key]');
     if (!(classDataRow instanceof HTMLElement) || !(heatmapDataRow instanceof HTMLElement)) {
       throw new TypeError('Expected both student-name tables to render a data row.');
     }

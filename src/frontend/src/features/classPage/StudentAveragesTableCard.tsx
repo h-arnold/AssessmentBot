@@ -38,6 +38,12 @@
  * to the cleared (`null`) sort, so the table falls back to full-name
  * ascending order.
  *
+ * **Sticky split render.** The table sets `sticky` with Ant Design's default
+ * offsets (`0`), so it renders as a header table inside
+ * `.ant-table-header.ant-table-sticky-holder` above a body table inside
+ * `.ant-table-body`. The table supplies no `aria-label`, so both halves stay
+ * unnamed. `sticky` alone adds no fixed-height body region (`scroll.y`).
+ *
  * **Search input (v1 workaround).** The component uses `Space.Compact` with a
  * plain `Input` and `SearchOutlined` prefix instead of Ant Design's
  * `Input.Search`, because Ant Design v6.3.1 always renders a `<button>` in
@@ -272,6 +278,7 @@ export function StudentAveragesTableCard(
         pagination={false}
         size="small"
         scroll={{ x: 'max-content' }}
+        sticky
         onChange={handleTableChange}
         locale={EMPTY_LOCALE}
       />

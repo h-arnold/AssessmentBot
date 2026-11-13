@@ -335,8 +335,8 @@ describe('HeatmapBuilderSurface — content-region precedence matrix', () => {
       surfaceState: { status: 'ready' } as HeatmapsSurfaceState,
     });
 
-    // The merged table is the TaskHeatmapTable (aria-label "Task Heatmap").
-    expect(screen.getByLabelText('Task Heatmap')).toBeInTheDocument();
+    // The merged table is the TaskHeatmapTable; assert its body scroll region.
+    expect(document.querySelector('.ant-table-body')).toBeInTheDocument();
   });
 
   it('gives the blocking state precedence over empty-state candidates when both co-occur', () => {
@@ -406,8 +406,8 @@ describe('HeatmapBuilderSurface — refresh', () => {
       isRefreshing: true,
     });
 
-    // Visible data persists during refresh — no skeleton flash, table stays mounted.
-    expect(screen.getByLabelText('Task Heatmap')).toBeInTheDocument();
+    // Visible data persists during refresh — no skeleton flash, body region stays mounted.
+    expect(document.querySelector('.ant-table-body')).toBeInTheDocument();
     expect(document.querySelector('.ant-skeleton')).not.toBeInTheDocument();
   });
 });
