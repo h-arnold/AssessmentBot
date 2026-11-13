@@ -5,6 +5,10 @@
  * student-name pair. This module owns the Ant Design column shape while the
  * pure name splitting and comparison functions remain in
  * `utils/splitStudentName.ts`.
+ *
+ * Both columns are always fixed start columns. The former `sticky` option was
+ * removed per `SPEC.md` decision 5 ("No non-fixed variant"), because both
+ * consumers require fixed name columns.
  */
 
 import type { JSX } from 'react';
@@ -20,31 +24,22 @@ type StudentNameTableRow = Readonly<{
   studentName: string;
 }>;
 
-/** Options controlling the shared columns' table-surface behaviour. */
-export type StudentNameTableColumnsOptions = Readonly<{
-  sticky: boolean;
-}>;
-
 /**
  * Build the shared Forename and Surname columns for a table row type.
  *
- * The columns deliberately omit `defaultSortOrder`; each table's row model owns
- * the initial full-name ordering, while these sorters provide the derived-name
- * ordering after an explicit header interaction. The `sticky` option preserves
- * the surface-specific distinction between the sticky heatmap columns and the
- * non-sticky Class-page columns.
+ * Both columns carry `fixed: 'start'`, so they stay at the table's start edge
+ * while its metric and task columns scroll horizontally. The columns
+ * deliberately omit `defaultSortOrder`; each table's row model owns the
+ * initial full-name ordering, while these sorters provide the derived-name
+ * ordering after an explicit header interaction.
  *
- * @param {StudentNameTableColumnsOptions} options - Column behaviour options.
  * @returns {TableColumnType<Row>[]} The two shared student-name columns.
  */
-export function buildStudentNameColumns<Row extends StudentNameTableRow>(
-  options: StudentNameTableColumnsOptions
-): TableColumnType<Row>[] {
-  const fixedColumnProperties = options.sticky ? { fixed: 'start' as const } : {};
+export function buildStudentNameColumns<Row extends StudentNameTableRow>(): TableColumnType<Row>[] {
   const forenameColumn: TableColumnType<Row> = {
     key: 'forename',
     title: 'Forename',
-    ...fixedColumnProperties,
+    fixed: 'start',
     width: APP_COL_WIDTH_FORENAME,
     sorter: {
       compare: (a: Row, b: Row): number => compareStudentNamePart('forename', a, b),
@@ -59,7 +54,7 @@ export function buildStudentNameColumns<Row extends StudentNameTableRow>(
   const surnameColumn: TableColumnType<Row> = {
     key: 'surname',
     title: 'Surname',
-    ...fixedColumnProperties,
+    fixed: 'start',
     width: APP_COL_WIDTH_SURNAME,
     sorter: {
       compare: (a: Row, b: Row): number => compareStudentNamePart('surname', a, b),

@@ -5,6 +5,7 @@ import { Table } from 'antd';
 import { TaskHeatmapTable } from '../taskHeatmap/TaskHeatmapTable';
 import { buildStudentAveragesTableColumns } from '../classPage/studentAveragesTableColumns';
 import type { StudentAverageRowModel } from '../classPage/classPageAdapter.zod';
+import { buildStudentNameColumns } from './studentNameTableColumns';
 import { createComputedMetricResult } from '@/test/dataAnalysis/fixtures';
 import { buildCell, buildHeatmapResult } from '@/test/taskHeatmapTableTestHelpers';
 import { APP_COL_WIDTH_FORENAME, APP_COL_WIDTH_SURNAME } from '@/theme/spacing';
@@ -101,5 +102,38 @@ describe('shared student-name table column presentation', () => {
 
     expect(classNameValues).toEqual(['Alice', 'Smith']);
     expect(heatmapNameValues).toEqual(classNameValues);
+  });
+});
+
+describe('shared student-name column builder', () => {
+  it('always marks Forename and Surname as fixed start columns without changing their contract', () => {
+    // Red phase: the builder still requires its `sticky` option, so this
+    // zero-argument call throws before the column shape can be asserted. The
+    // green phase removes the option and the call compiles as written.
+    const columns = buildStudentNameColumns<StudentAverageRowModel>();
+
+    expect(columns).toHaveLength(STUDENT_NAME_COLUMN_COUNT);
+    expect(columns.map((column) => column.key)).toEqual(['forename', 'surname']);
+
+    const forenameColumn = columns.find((column) => column.key === 'forename');
+    const surnameColumn = columns.find((column) => column.key === 'surname');
+    if (!forenameColumn || !surnameColumn) {
+      throw new TypeError('Expected the shared builder to return Forename and Surname columns.');
+    }
+
+    expect(forenameColumn).toMatchObject({
+      key: 'forename',
+      title: 'Forename',
+      fixed: 'start',
+      width: APP_COL_WIDTH_FORENAME,
+    });
+    expect(surnameColumn).toMatchObject({
+      key: 'surname',
+      title: 'Surname',
+      fixed: 'start',
+      width: APP_COL_WIDTH_SURNAME,
+    });
+    expect(forenameColumn.defaultSortOrder).toBeUndefined();
+    expect(surnameColumn.defaultSortOrder).toBeUndefined();
   });
 });

@@ -2,7 +2,7 @@
 
 ## Progress tracker
 
-- **Current section:** Section 1 — Planned-only canonical-doc entries (in progress).
+- **Current section:** Section 2 — Shared column builder always emits fixed name columns (starting: red phase). Section 1 complete and pushed (`54482724`).
 - **Regression baseline (Mandatory Gate 1):** established 2026-11-13, mode `baseline`, session `feat/frozen-columns-and-working-horizontal-scrolling`, report at `.ts-regression-checker/reports/session-feat-frozen-columns-and-working-horizontal-scrolling/baseline/baseline.txt`. Status: 7 of 8 checks pass; `backend-lint-check` exits 1 with 4 pre-existing `max-lines` warnings (0 errors) in backend test files outside this feature's scope (`tests/backend-api/assignmentDefinitionPartials.unit.test.js`, `tests/dbManager/dbManager.test.js`, `tests/googleClassroom/classroomApiClient.test.js`, `tests/utils/batchUpdateUtility.test.js`). Documented as accepted technical debt; the tree was untouched when measured. No regressions, no new failures.
 
 ## Read-First Context
@@ -98,7 +98,7 @@ Passed: all three markers present (reviewer-verified); `npm run lint:frontend:ch
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** files touched — `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` (§3.6 entry plus purity scope, §9 entry 9.30) and `docs/developer/frontend/frontend-playwright-e2e.md` (§"Shared Helpers and Imports"); entry wording quoted above. Regression baseline unchanged from the Progress tracker (7 of 8 checks; backend `max-lines` debt only).
+- **Implementation notes:** files touched — `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` (§3.6 entry plus purity scope, §9 entry 9.30) and `docs/developer/frontend/frontend-playwright-e2e.md` (§"Shared Helpers and Imports"); entry wording quoted above. Regression baseline unchanged from the Progress tracker (7 of 8 checks; backend `max-lines` debt only). Section regression gate passed 2026-11-13 07:01 UTC: zero regressions, zero new failures (report `.ts-regression-checker/reports/session-feat-frozen-columns-and-working-horizontal-scrolling/runs/2026-11-13T07-01-30.083Z/comparison.txt`). Commit `54482724` — "docs(frontend): land planned-only sticky-table helper entries (issue #344 section 1)" on branch `feat/frozen-columns-and-working-horizontal-scrolling`; `git push` confirmed (`3c096617..54482724`).
 - **Deviations from plan:** none.
 - **Follow-up implications for later sections:** Sections 2 and 7 remove the §3.6/§9 `Not implemented` markers as the decision is delivered; Section 7 moves 9.30 into the delivered register area and removes the playwright helper marker when the Section 5 helper is catalogued. The duplicated 9.24 IDs are noted and out of scope.
 
@@ -106,63 +106,25 @@ Passed: all three markers present (reviewer-verified); `npm run lint:frontend:ch
 
 ## Section 2 — Shared column builder always emits fixed name columns (Vitest red-first)
 
-### Objective
+**Outcome (compacted):** `buildStudentNameColumns<Row>()` in `src/frontend/src/features/shared/studentNameTableColumns.tsx` takes no options and always emits `fixed: 'start'` on Forename (104px) and Surname (96px). `StudentNameTableColumnsOptions` and the options parameter are removed, both call sites (`studentAveragesTableColumns.tsx:181`, `TaskHeatmapTable.tsx:147`) are zero-arg, and the module/function JSDoc records the always-fixed behaviour and the decision-5 removal. Red-first added a builder-level describe block; no split-render locators were re-scoped here. Code Reviewer returned PASS; the single red-phase nitpick (pin the column order) was fixed and re-reviewed clean.
 
-Simplify `buildStudentNameColumns` in `src/frontend/src/features/shared/studentNameTableColumns.tsx` so Forename and Surname always carry `fixed: 'start'`; remove the `StudentNameTableColumnsOptions` type, the options parameter, and the `sticky`-option JSDoc; update both call sites to drop the option argument.
+### Retained for later sections
 
-### Constraints
-
-- Owning module stays at `src/frontend/src/features/shared/studentNameTableColumns.tsx` (decision: keep the existing owner, remove the option — do not extract anything new).
-- Column keys, titles, widths (`APP_COL_WIDTH_FORENAME` 104px, `APP_COL_WIDTH_SURNAME` 96px), sorters, and renderers are unchanged.
-- No `defaultSortOrder` is introduced.
-- LOC: `studentNameTableColumns.tsx` 75 → ~62 lines; `studentNameTableColumns.spec.tsx` 105 → ~120 lines (builder-level assertions only — the split-render re-scoping of this spec is Section 3's work, because `.ant-table-body` does not exist until `sticky` is enabled); `studentAveragesTableColumns.tsx` 193 → ~190 lines. All far below 500 — no file separation needed.
-
-### Delegation mandatory reads
-
-- Testing Specialist: `@SPEC.md`, `@src/frontend/src/features/shared/studentNameTableColumns.tsx`, `@src/frontend/src/features/shared/studentNameTableColumns.spec.tsx`, `@src/frontend/src/features/classPage/studentAveragesTableColumns.tsx`, `@src/frontend/src/features/taskHeatmap/TaskHeatmapTable.tsx`, `@docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md`, `@docs/developer/frontend/frontend-testing.md`
-- Implementation: `@SPEC.md`, `@src/frontend/src/features/shared/studentNameTableColumns.tsx`, `@src/frontend/src/features/classPage/studentAveragesTableColumns.tsx`, `@src/frontend/src/features/taskHeatmap/TaskHeatmapTable.tsx`, `@docs/developer/frontend/frontend-architecture.md`
-- Code Reviewer: `@SPEC.md`, `@docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md`, plus the touched files
-
-### Shared helper plan
-
-1. Helper: `buildStudentNameColumns<Row>` — **Decision: `extend`** (simplify the existing owner in place — remove the option rather than add a new helper).
-   - Owning module/path: `src/frontend/src/features/shared/studentNameTableColumns.tsx`
-   - Call-site rationale: both current callers (`studentAveragesTableColumns.tsx`, `TaskHeatmapTable.tsx`) require fixed columns per `SPEC.md` decision 5, so the option has no non-fixed consumer and is removed with its type and JSDoc.
-   - Relevant canonical doc target: `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` §3.6 and §9 (planned-only `Not implemented` entries landed in Section 1).
-   - Planned doc status: `Not implemented` until Section 7 reconciles it.
-
-### Acceptance criteria
-
-- `buildStudentNameColumns<Row>()` takes no options and returns Forename and Surname columns that both carry `fixed: 'start'`.
-- `StudentNameTableColumnsOptions` is no longer exported; both call sites compile without an options argument.
-- No behavioural change to widths, sorters, renderers, or column order.
-
-### Required test cases (Red first)
-
-Frontend tests (Vitest, in `studentNameTableColumns.spec.tsx`):
-
-1. Red: builder output for a row type has `fixed: 'start'` on both the Forename and Surname column definitions.
-2. The removal of the `StudentNameTableColumnsOptions` export and of the options parameter is inherently type-level: a runtime `in` probe cannot fail (type-only exports are erased), so this criterion is verified by the `npm run typecheck:all` gate — any stale named import of the removed type fails the build. Its red obligation is carried by case 1, which fails at runtime before the change (`buildStudentNameColumns()` called without arguments dereferences `options.sticky`).
-3. Existing sorter/renderer and single-table structural assertions for both row types keep passing unchanged (the class-side half is rendered without `sticky` or `scroll`, so it stays a single table; the heatmap half is likewise still a single table at this point — its `.ant-table-body` re-scoping belongs to Section 3, once `sticky` creates that element).
-
-Canonical-fixture note: these component specs use existing committed local row literals; no canonical profile selection changes and no synthetic-generator change is planned. Invalid/boundary fixtures stay local; none are needed here.
+- **Contract:** the builder is zero-argument and always emits `fixed: 'start'`; keys, titles, widths (104px/96px), sorters, renderers and column order are unchanged, and no `defaultSortOrder` is introduced. A new consumer must not reintroduce an options parameter (`SPEC.md` decision 5).
+- **Section 3:** the split render exercises the unconditional fixed columns as soon as `sticky` is added. `studentNameTableColumns.spec.tsx` (139 lines) still renders both halves as single tables; its heatmap half is re-scoped to `.ant-table-body` in Section 3.
+- **Section 7:** the canonical shared-helpers doc §3.6 entry and the §9 register entry 9.30 still read `Not implemented`. This section's checks require those markers to survive; Section 7 removes them and moves 9.30 into the delivered register area.
+- **Vitest invocation:** the original `npm run test:frontend -- src/frontend/src/...` form does not match, because Vitest runs with cwd `src/frontend`; the working form is `npm run test:frontend -- src/features/...`. Later section checks must use it.
+- **Tooling note for `studentNameTableColumns.tsx`:** frontend lint applies `unicorn.configs.all`, whose `unicorn/consistent-arrow-return-style` requires the multi-line `return (...)` form in the JSX render callbacks. Editor format-on-write collapses it and breaks lint, so edit this file through the shell. The pre-commit Prettier glob (`\.(js|json|md|ts)$`) does not cover `.tsx`.
 
 ### Section checks
 
-- `npm run test:frontend -- src/frontend/src/features/shared/studentNameTableColumns.spec.tsx` green.
-- `npm run test:frontend -- src/frontend/src/features/classPage/studentAveragesTableColumns` and the `TaskHeatmapTable` suites that consume the builder still green (call sites updated).
-- `npm run lint:frontend:check` green and `npm run typecheck:all` green (frontend projects included).
-- Section 1 planned entries still present with `Not implemented` (this section must not remove them; Section 7 does).
-
-### Optional `@remarks` JSDoc follow-through
-
-- Update the module JSDoc in `studentNameTableColumns.tsx` to state that both columns are always fixed start columns and that the former option was removed per `SPEC.md` decision 5.
+Passed: shared spec 2/2; `taskHeatmap`/`classPage`/`shared` suites 608/608; `npm run lint:frontend:check` exit 0 (only pre-existing unrelated `max-lines` warnings); `npm run typecheck:all` exit 0; full coverage 3151/3151 at 95.67%. Section 1 `Not implemented` markers unchanged.
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** record final LOC and any call-site touch-ups.
-- **Deviations from plan:** none expected.
-- **Follow-up implications for later sections:** Section 3 adds `sticky` to the tables; with fixed columns now unconditional, the split render in Section 3 exercises them immediately.
+- **Implementation notes:** final LOC — `studentNameTableColumns.tsx` 75 → 70 against ~62 projected, the delta being the required decision-5 JSDoc paragraph; `studentAveragesTableColumns.tsx` 193 → 191; `studentNameTableColumns.spec.tsx` 105 → 139. The antd structure confirmation is deferred to Section 3, which first creates `.ant-table-body`. Docs-sync skipped: the `@remarks` JSDoc follow-through landed in the green change, and the canonical shared-helpers reconciliation is Section 7's by design. Section regression gate passed 2026-11-13 08:18 UTC: zero regressions, zero new failures (report `.ts-regression-checker/reports/session-feat-frozen-columns-and-working-horizontal-scrolling/runs/2026-11-13T08-18-30.889Z/comparison.txt`). Commit `pending` — recorded after the commit gate below.
+- **Deviations from plan:** none behavioural. Command-form deviation: the Vitest filter path recorded above.
+- **Follow-up implications for later sections:** Section 3 re-scopes the heatmap half of the shared spec; Section 7 removes the §3.6/§9 markers and relocates entry 9.30. The section regression gate and commit/push follow this compaction.
 
 ---
 

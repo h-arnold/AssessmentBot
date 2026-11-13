@@ -144,9 +144,7 @@ export function TaskHeatmapTable({
     // default full-name ascending order comes from the `sortedRows` pre-sort
     // above (unchanged `compareStudentNames`), and Ant Design applies the
     // per-column derived sorter only after a header click.
-    const [forenameColumn, surnameColumn] = buildStudentNameColumns<TaskHeatmapRow>({
-      sticky: true,
-    });
+    const [forenameColumn, surnameColumn] = buildStudentNameColumns<TaskHeatmapRow>();
 
     // ── Per-task group columns (built once, indexed by task position) ─
     const groupedTaskColumns = taskColumns.map((taskColumn: TaskHeatmapColumn, taskIndex) => {
