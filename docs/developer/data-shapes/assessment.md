@@ -528,7 +528,15 @@ legacy read preparation on both read paths.
 
 ## Planned contract changes (Not implemented)
 
-None for this contract. The read version union `1 | 'legacy'`, legacy read preparation, the
+- **Single-pass read validation chain (issue #349) — `Not implemented`.** The documented chain
+  "read normaliser invoked by the read services before their final response parse" changes: the
+  services' final full-tree `parseApiResponse` calls are removed and the read normalisers
+  (`normaliseAssignmentRead`/`normaliseClassRead`) perform the single per-item validation pass,
+  with parent passes omitting and reassembling item/submission collections. Schemas, markers
+  (`1 | 'legacy'`), legacy read preparation and returned shapes are unchanged.
+  Tracking issue: h-arnold/AssessmentBot#349.
+
+No other planned changes for this contract. The read version union `1 | 'legacy'`, legacy read preparation, the
 removal of the all-results `REASSESSMENT_REQUIRED` placeholder producer and the frontend
 normaliser change are implemented and documented above
 ([§ `assessmentContractVersion` result marker](#assessmentcontractversion-result-marker),

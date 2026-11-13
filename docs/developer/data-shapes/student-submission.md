@@ -661,7 +661,22 @@ implemented and is the current contract for both read paths.
 
 ## Planned contract changes (Not implemented)
 
-None for this shape. Legacy read preparation reuses the existing item validation on an
+- **Single-pass read validation (issue #349) — `Not implemented`.** On both read paths each
+  `StudentSubmissionItem` is Zod-evaluated exactly once per read: the item-level pass inside
+  `normaliseAssignmentRead`/`normaliseClassRead` returns the parsed item, and the parent passes
+  (submission, assignment via `AssignmentPartialSchema.omit({ submissions: true })`, root via
+  `ClassFullSchema.omit({ assignments: true })`) parse with the item/submission collections
+  omitted and reassemble parsed parts. The normalisers' terminal full-tree parses (on the class
+  path both `AssignmentPartialSchema.parse` and `ClassFullSchema.parse`; on the full path
+  `AssignmentFullSchema.parse`) and the read services' final full-tree `parseApiResponse` calls
+  are removed; the services keep their cheap root/envelope stub parses (`assignments: []` for
+  `getABClass`, `submissions: []` for `getAssignment`). Corrupt-item replacements are
+  constructed schema-shaped. On the partial path the copy loop drops unsafe keys (notably a
+  stored `__proto__` item key) explicitly in both the valid and corrupt branches, preserving the
+  existing hardening's observable outcome now that the terminal parse no longer strips it.
+  Schemas and returned shapes are unchanged. Tracking issue: h-arnold/AssessmentBot#349.
+
+No other planned changes for this shape. Legacy read preparation reuses the existing item validation on an
 independent read result, so valid items are retained and corrupt items or item maps become
 `CORRUPT_RECORD` `E` per saved task on both read paths. The blanket placeholder producer is
 removed; its error code remains accepted for stored errors. Legacy status is assignment-level

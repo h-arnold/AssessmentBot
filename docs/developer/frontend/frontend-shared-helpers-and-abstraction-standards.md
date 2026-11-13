@@ -319,6 +319,22 @@ The shared result schema, the bounded per-item normaliser, its extracted item ow
 3. Analyser E input — **extend the existing local type**. `AssessmentScore` in `services/dataAnalysis/analysers/averagingAnalyser.types.ts` explicitly accepts E. E contributes neither a numeric zero nor denominator weight: it increments no numeric/`N` evidence, `applicableDataPoints`, `totalDataPoints` or weight counter, matching existing missing-assessment error accounting. A lone E has zero applicable/total data points and zero weight. Existing numeric/`N`/zero-weight/`excluded` and aggregate-resolution semantics are unchanged, and no new coverage counter is introduced. The validated class input retains partial E reasoning/cause for preview consumers; score accumulation uses the score only. Public `MetricResult` output gains no reasoning/history fields. **Status: Implemented in Section 2.**
 4. Full-read corruption precedence — **keep local** to `features/taskHeatmap/`: the preview-only E override, the known-partial-E fallback and the "scores unchanged; reassess" message are feature-local data selection and do not mutate class-query data or justify a shared override helper. **Status: `Implemented`** (Section 9); the copy lives in `TaskPreviewCard.tsx` and the source-state resolution in `assembleTaskPreviewData.ts`/`TaskMetricPreviewContent.tsx`. The embedded known-partial fallback is `buildClassPartialPreviewLookup.ts`.
 
+## 9.30 Heatmaps selection-bar dropdown header (issues #342/#343)
+
+Planned helper decision for the standalone Heatmaps selection bar: one **feature-local**
+dropdown-header component under `src/frontend/src/features/taskHeatmap/` (**keep-local**, shared
+by the Topics and Assignments `Select`s via `popupRender`), owning search-query tracking via a
+**controlled** `showSearch.searchValue` (reset only on option selection via `onSelect` — a
+deselect-toggle fires `onDeselect` and keeps the query, a deliberate divergence from
+`autoClearSearchValue`; kept on tag removal, allow-clear and close, matching the multiple-select's
+rendered behaviour),
+select-all scope computation (mirroring Ant Design's default `optionFilterProp: 'label'`
+case-insensitive filtering, narrowed by the active topic cascade for Assignments), select-all /
+select-none dispatch through the existing `selectionCascadeReducer` actions (`changeTopics` /
+`changeAssignments`), the select-all checkbox checked/indeterminate derivation, and the
+`onMouseDown` `preventDefault()`/`stopPropagation()` guard that keeps the dropdown open on header
+clicks. **Status: `Not implemented`** (planned in `docs/plans/SPEC.md`, issue #342 section).
+
 ## 10. Frontend utils folder convention
 
 The `src/frontend/src/utils/` folder exists for pure formatting / utility functions that are shared across the frontend. This folder is a separate convention from the service-folder rules in `frontend-architecture.md`, which govern only `services/` subfolder organisation.

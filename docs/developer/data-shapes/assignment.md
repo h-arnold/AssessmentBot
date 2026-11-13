@@ -528,7 +528,18 @@ Frontend:
 
 ## Planned contract changes (Not implemented)
 
-None for this contract. The legacy read marker union `1 | 'legacy'`, legacy read
+- **Single-pass read validation (issue #349) — `Not implemented`.** The `getAssignment`
+  service's final full-tree `parseApiResponse(AssignmentFullResponseSchema, …)` is removed;
+  `normaliseAssignmentRead` becomes the single validation authority per read. Each submission
+  item is Zod-evaluated exactly once: the item-level pass returns the parsed item, and the
+  submission/root passes parse with the item/submission collections omitted and reassemble the
+  already-parsed parts. The service keeps its cheap root/envelope stub parse (`submissions: []`)
+  for fail-fast transport-shape errors and the not-found `null` contract. Schemas and returned
+  shapes are unchanged; normalised output is structurally identical to today's post-parse output
+  (corrupt-item replacements are constructed schema-shaped, so they need no second evaluation).
+  Tracking issue: h-arnold/AssessmentBot#349.
+
+No other planned changes for this contract. The legacy read marker union `1 | 'legacy'`, legacy read
 preparation and the removal of the all-results `REASSESSMENT_REQUIRED` placeholder producer
 are implemented and documented in the canonical sections above
 ([§ Legacy read preparation](#legacy-read-preparation),

@@ -1479,7 +1479,15 @@ Regression suites:
 
 ## Planned contract changes (Not implemented)
 
-None for this contract. ABClass adds no field of its own; its embedded partial assignment
+- **Single-pass `getABClass` read validation (issue #349) — `Not implemented`.** The
+  `getABClass` service's final full-tree `parseApiResponse(ClassFullResponseSchema, …)` is
+  removed; `normaliseClassRead` becomes the single validation authority per class read (each
+  embedded partial item is Zod-evaluated exactly once, parent passes omit and reassemble the
+  item/submission collections). The service keeps its root/envelope stub parse
+  (`assignments: []`) for fail-fast transport-shape errors and the not-found `null` contract.
+  Schemas and returned shapes are unchanged. Tracking issue: h-arnold/AssessmentBot#349.
+
+No other planned changes for this contract. ABClass adds no field of its own; its embedded partial assignment
 entries carry the implemented read marker `1 | 'legacy'` and prepared legacy read submissions,
 documented in the canonical sections above
 ([§ `getABClass`](abclass.md#getabclass-read),
