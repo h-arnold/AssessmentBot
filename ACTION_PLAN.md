@@ -2,7 +2,7 @@
 
 ## Progress tracker
 
-- **Current section:** Section 4 — one-off Vitest locator audit (starting). Sections 1–3 pushed (`54482724`, `f39d9dbd`, `0607b1e7`).
+- **Current section:** Section 5 gate passed; committing. Sections 1–4 pushed (`54482724`, `f39d9dbd`, `0607b1e7`, `61e80563`).
 - **Regression baseline (Mandatory Gate 1):** established 2026-11-13, mode `baseline`, session `feat/frozen-columns-and-working-horizontal-scrolling`, report at `.ts-regression-checker/reports/session-feat-frozen-columns-and-working-horizontal-scrolling/baseline/baseline.txt`. Status: 7 of 8 checks pass; `backend-lint-check` exits 1 with 4 pre-existing `max-lines` warnings (0 errors) in backend test files outside this feature's scope (`tests/backend-api/assignmentDefinitionPartials.unit.test.js`, `tests/dbManager/dbManager.test.js`, `tests/googleClassroom/classroomApiClient.test.js`, `tests/utils/batchUpdateUtility.test.js`). Documented as accepted technical debt; the tree was untouched when measured. No regressions, no new failures.
 
 ## Read-First Context
@@ -178,7 +178,7 @@ Passed: `npm run test:frontend -- src` 326 files / 3153 tests green; `npm run te
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** the Audit list above is the record; the probe spec was temporary and is not committed. Docs-sync skipped: an audit-only section changed no code, test, or documented behaviour. Section regression gate 2026-11-13 13:24 UTC: 7 of 8 checks green, zero regressions in Vitest/lint/builder/tsc; `frontend-e2e-check` red with the same plan-sequenced strict-mode violation set (approved gate-gap decision — no code changed in this section, so the E2E set is unchanged). Gate report: `.ts-regression-checker/reports/session-feat-frozen-columns-and-working-horizontal-scrolling/runs/2026-11-13T13-24-57.502Z/comparison.txt`.
+- **Implementation notes:** the Audit list above is the record; the probe spec was temporary and is not committed. Docs-sync skipped: an audit-only section changed no code, test, or documented behaviour. Section regression gate 2026-11-13 13:24 UTC: 7 of 8 checks green, zero regressions in Vitest/lint/builder/tsc; `frontend-e2e-check` red with the same plan-sequenced strict-mode violation set (approved gate-gap decision — no code changed in this section, so the E2E set is unchanged). Gate report: `.ts-regression-checker/reports/session-feat-frozen-columns-and-working-horizontal-scrolling/runs/2026-11-13T13-24-57.502Z/comparison.txt`. Commit `61e80563` — "docs(plan): record section 4 vitest locator audit outcome (issue #344)" on branch `feat/frozen-columns-and-working-horizontal-scrolling`; `git push` confirmed (`0607b1e7..61e80563`).
 - **Deviations from plan:** none — no suite's DOM changed beyond the planned split render, and no production or spec file was edited.
 - **Follow-up implications for later sections:** the audit's verdicts seed Section 5's E2E migration, whose gate must leave `frontend-e2e-check` fully green (approved gate-gap decision, Deferred findings and Section 3).
 
@@ -186,59 +186,59 @@ Passed: `npm run test:frontend -- src` 326 files / 3153 tests green; `npm run te
 
 ## Section 5 — Playwright migration of existing table-locator E2E specs and helpers
 
-### Objective
+**Outcome (compacted):** All 16 in-scope specs and both helpers (`task-preview-source-link-helpers.ts`, `assessment-error-preview-journeys.ts`) now resolve the sticky student tables through the shared `sticky-table-locators.ts` helper. No `table`-role scoping, accessible-name resolution (`getByRole('table', { name: … })`, `getByLabelText`, `queryBy*`/`findBy*`) or `.ant-table-content` probe remains on the three student-table surfaces; only out-of-scope tables (Classes, Assignments, modal tables) keep table-scoped locators. Each batch captured strict-mode-violation red evidence on the dual-labelled split tables before migrating, then green. The combined Code Reviewer pass over the full section diff returned **PASS with zero findings**. Line-count neutral — replacement, not addition, plus one unavoidable import where nothing was removable — with no file over 500 and `assessment-error-merged-previews.spec.ts` at exactly 497.
 
-Migrate every E2E spec and helper on the three surfaces that resolves a student table by accessible name, scopes headers/rows/cells through a `table` role locator, or probes `.ant-table-content`, so the suite survives the split render.
+### Retained for later sections
 
-### Constraints
+**Helper API — `src/frontend/e2e-tests/helpers/sticky-table-locators.ts` (109 lines, new).** The `StickyTableScope = Page | Locator` argument must contain exactly one sticky table: the `Page` on the standalone Heatmaps page and the Class assignment heatmap view, the owning `.ant-card` filter on the Class overview (Student Averages).
 
-- Specs to migrate (from `SPEC.md`): `heatmaps.spec.ts`, `heatmaps-layout.spec.ts`, `class-page-baseline-mode.spec.ts`, `task-heatmap.spec.ts`, `task-heatmap-summary.spec.ts`, `task-heatmap-re-run-assessment.spec.ts`, `task-preview-card.spec.ts`, `task-preview-source-link.spec.ts`, `task-preview-source-link.visual.spec.ts`, `assessment-error-previews.spec.ts`, `assessment-error-merged-previews.spec.ts`, `legacy-assignment-results.spec.ts`, `navigation-screenshots.spec.ts`, `metric-range-filter.spec.ts`, `post-analysis-metadata.feedback.spec.ts`, `post-analysis-metadata.persistence.spec.ts`, and helpers `task-preview-source-link-helpers.ts`, `assessment-error-preview-journeys.ts`.
-- `heatmaps-layout.spec.ts` migrates its `.ant-table-content` probe to `.ant-table-body`, including its card-ancestor XPath probe (class-contains `ant-card`), which must start from a wrapper-scoped base rather than the ambiguous table name.
-- In `task-heatmap.spec.ts` and `metric-range-filter.spec.ts`, `getByRole('table').last()` still resolves to the Student Averages body table; both migrate to wrapper-scoped locators for robustness anyway. `metric-range-filter.spec.ts`'s nested `columnheader` locator must move to the header table base.
-- `task-preview-source-link-helpers.ts`'s `revealMetricCellForPointer` keeps its window-scroll reveal as a no-op (the document does not overflow — do not turn it into document-level horizontal panning) and its stale docblock claim is corrected in the same change.
-- `class-page-baseline-mode.spec.ts`'s unscoped `getByRole('row').filter({ hasText: ... })` keeps its match set; audit for attribution/robustness only.
-- LOC: current lines — `assessment-error-merged-previews.spec.ts` 497, `class-page-baseline-mode.spec.ts` 474, `task-heatmap.spec.ts` 458, `task-heatmap-summary.spec.ts` 416, `task-preview-source-link.visual.spec.ts` 411, `assessment-error-previews.spec.ts` 390, `legacy-assignment-results.spec.ts` 362, `post-analysis-metadata.feedback.spec.ts` 294, `task-heatmap-re-run-assessment.spec.ts` 280, `task-preview-source-link.spec.ts` 251, `task-preview-card.spec.ts` 191, `heatmaps.spec.ts` 168, `post-analysis-metadata.persistence.spec.ts` 124, `navigation-screenshots.spec.ts` 105, `heatmaps-layout.spec.ts` 102, `metric-range-filter.spec.ts` 64, `helpers/task-preview-source-link-helpers.ts` 443, `helpers/assessment-error-preview-journeys.ts` 257. Locator migrations must be line-count-neutral (replacement, not addition): any new shared locator helper goes into `e2e-tests/helpers/`, and `assessment-error-merged-previews.spec.ts` (497 lines) must not gain net lines — if a spec is projected to exceed 500 lines, split its table-touching cases into a co-located `*.sticky-locators.spec.ts` in the same change.
+| Base                             | Returns                                     | Use                                                                                                                            |
+| -------------------------------- | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `stickyTableWrapper(scope)`      | `.ant-table-wrapper`                        | readiness gates, `toHaveCount(0)` absence probes, ancestor XPath (card probe), roles whose count the split leaves unchanged    |
+| `stickyTableHeaderHolder(scope)` | `.ant-table-header.ant-table-sticky-holder` | all `columnheader`, header `th` and `thead` probes                                                                             |
+| `stickyTableBody(scope)`         | `.ant-table-body`                           | all row and cell probes; owns the table's horizontal overflow                                                                  |
+| `stickyTableScrollBar(scope)`    | `.ant-table-sticky-scroll`                  | Section 6's bar assertions; thumb is `.ant-table-sticky-scroll-bar`. Exported but unused in Section 5 — Section 6 consumes it. |
 
-### Delegation mandatory reads
+- **Measure row:** the body `tbody` starts with an `aria-hidden` `tr.ant-table-measure-row` that repeats the column titles as text. `tbody tr.ant-table-row` counts data rows only; a bare `tbody tr` is measure-row-inclusive, which `metric-range-filter.spec.ts` keeps by design (11 included / 2 filtered — the same `.ant-table-body` element the pre-migration `getByRole('table').last()` resolved to).
+- **Absence-probe contract:** `.ant-table-wrapper` and the sticky holder render whenever the antd `Table` mounts (the Spin wrappers sit between wrapper and table), so a `toHaveCount(0)` probe on either base cannot false-positive on a mounted-but-loading table; it passes only when the table is genuinely unmounted.
+- **Dead code:** `HEATMAP_TABLE_NAME` (`helpers/task-preview-source-link-fixtures.ts:170`) is exported but unused repo-wide. Left in place as instructed; Section 7's doc sweep decides its removal.
+- **Evidence:** per-batch red/green runs under `.opencode/scratchpad/batch-b-migration/` and `.opencode/scratchpad/batch-c-migration/` (batch A used its own scratchpad files); combined review at `.opencode/scratchpad/review-section5-playwright-migration.md`.
+- **Docs-sync skipped:** test-only change; the E2E helper register and locator-convention docs are Section 7's planned surface (Section 1 landed those entries marked `Not implemented`), so the `sticky-table-locators.ts` doc marker stays `Not implemented` until Section 7 catalogues it.
+- **Follow-up:** Section 6 builds `sticky-table-scroll.spec.ts` on this helper; this section's gate and the final section gate require `frontend-e2e-check` fully green (approved E2E gate-gap decision, Deferred findings).
 
-- Playwright: `@SPEC.md`, `@STUDENT_TABLES_STICKY_SCROLL_LAYOUT.md`, `@docs/developer/frontend/frontend-playwright-e2e.md`, `@src/frontend/e2e-tests/heatmaps-layout.spec.ts`, `@src/frontend/e2e-tests/helpers/task-heatmap-end-to-end-helpers.ts`, `@src/frontend/e2e-tests/helpers/task-preview-source-link-helpers.ts`, `@src/frontend/e2e-tests/helpers/class-metadata-fixtures.ts`, `@src/frontend/e2e-tests/shared/endToEndRuntimeMocks.ts`. Note: of the migration targets named in the constraints above, `heatmaps-layout.spec.ts` is attached here as the migration exemplar; the other 15 specs and `assessment-error-preview-journeys.ts` are work targets the Playwright agent must open itself — the `@`-prefixed tokens listed here deliver only the docs, helpers, and exemplar spec attached above.
-- Code Reviewer: `@SPEC.md`, the touched specs/helpers
+**Final line counts** (the 500-line gate and Section 7's doc sweep reference these):
 
-### Shared helper plan
-
-1. Helper: shared sticky-table locator helper for the E2E layer — **Decision: `new`** (a single shared module owned under `src/frontend/e2e-tests/helpers/`, e.g. `sticky-table-locators.ts`, exposing wrapper-scoped bases for `.ant-table-header.ant-table-sticky-holder`, `.ant-table-body`, and `.ant-table-sticky-scroll`; fall back to `keep local` per-spec locators only if the audit shows fewer than three specs need the same base).
-   - Owning module/path: `src/frontend/e2e-tests/helpers/` (new file, named per the existing helper conventions)
-   - Call-site rationale: the 16-spec migration in this section must not duplicate the same structural bases per spec; Section 6's new sticky spec reuses them.
-   - Relevant canonical doc target: `docs/developer/frontend/frontend-playwright-e2e.md` §"Shared Helpers and Imports" (planned-only entry landed there by Section 1; catalogue the delivered helper there in Section 7).
-   - Planned doc status: `Not implemented` (entry landed in Section 1; marker removed when the helper is delivered and catalogued in Section 7).
-
-### Acceptance criteria
-
-- No E2E file on the three surfaces resolves a sticky student table by accessible name (`getByRole('table', { name: 'Task Heatmap' })`, `getByLabelText`/`queryByLabelText` and their `queryByRole`/`findBy*` variants), scopes that table's headers/rows/cells through a `table` role locator, or probes its `.ant-table-content`. Out-of-scope tables (Classes, Assignments, modal tables) keep their existing table-scoped locators untouched.
-- All listed specs pass against the sticky implementation (Sections 2–3 green first — this section runs after them).
-- Helper docblocks match reality (`revealMetricCellForPointer` no-op claim corrected).
-
-### Required test cases (Red first)
-
-- Red: each migrated locator is first shown to fail/strict-mode-violate against the sticky build (run the spec before re-scoping), then re-scoped, then green.
-
-Canonical-fixture note: all migrated specs keep the committed `createHeatmapScenario` fixture (10 students, 3 tasks; roster, score evidence, and assignment-definition partial are committed local literals; the class-metadata snapshot selects from the committed `small` canonical corpus via `class-metadata-fixtures.ts`). No synthetic-generator change and no new canonical profile/view; invalid/boundary fixtures stay local and none are needed.
+| File                                           | Lines |
+| ---------------------------------------------- | ----- |
+| `assessment-error-merged-previews.spec.ts`     | 497   |
+| `class-page-baseline-mode.spec.ts`             | 473   |
+| `task-heatmap.spec.ts`                         | 460   |
+| `task-heatmap-summary.spec.ts`                 | 417   |
+| `task-preview-source-link.visual.spec.ts`      | 411   |
+| `assessment-error-previews.spec.ts`            | 390   |
+| `legacy-assignment-results.spec.ts`            | 362   |
+| `post-analysis-metadata.feedback.spec.ts`      | 295   |
+| `task-heatmap-re-run-assessment.spec.ts`       | 280   |
+| `task-preview-source-link.spec.ts`             | 251   |
+| `task-preview-card.spec.ts`                    | 191   |
+| `heatmaps.spec.ts`                             | 168   |
+| `post-analysis-metadata.persistence.spec.ts`   | 125   |
+| `navigation-screenshots.spec.ts`               | 106   |
+| `heatmaps-layout.spec.ts`                      | 102   |
+| `metric-range-filter.spec.ts`                  | 67    |
+| `helpers/task-preview-source-link-helpers.ts`  | 443   |
+| `helpers/assessment-error-preview-journeys.ts` | 258   |
+| `helpers/sticky-table-locators.ts`             | 109   |
 
 ### Section checks
 
-- `npm run test:frontend:e2e -- <each touched spec>` green.
-- `npm run lint:frontend:check` and the E2E project type-check (part of `npm run typecheck:all`) green.
-- No spec file crosses 500 lines.
-
-### Optional `@remarks` JSDoc follow-through
-
-- Correct the stale docblock in `task-preview-source-link-helpers.ts` as part of the migration.
+Passed on the combined review pass: `npm run lint:frontend:check` exit 0 (0 errors; the 16 `max-lines` warnings are pre-existing in untouched files), `npm run typecheck:all` exit 0, prettier clean on all 19 files, `npm run test:frontend:coverage` 3153/3153 at 95.67% statements, and `npm run test:frontend:e2e` 107 passed over the 16 touched specs plus the transitive `task-preview-source-link.states.spec.ts`.
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** per-spec migration summary.
-- **Deviations from plan:** none expected.
-- **Follow-up implications for later sections:** Section 6 adds new sticky-behaviour specs that reuse the migrated helper bases.
+- **Implementation notes:** combined review PASS with zero findings (report `.opencode/scratchpad/review-section5-playwright-migration.md`). Section regression gate 2026-11-13 16:04 UTC (run `2026-11-13T16-04-18.847Z`): `frontend-e2e-check` fully green — the approved Section 5 gate requirement is met; `Regressions Count: 0`, `New Failures Count: 0`; the only failing check is `backend-lint-check` with the 4 pre-existing `max-lines` warnings (accepted baseline debt, unchanged). An earlier gate attempt (run `2026-11-13T15-49-32.122Z`) showed one flake in `classes-crud-bulk-cohort.spec.ts` ("keeps the cohort modal open with inline feedback when all selected updates fail") — an untouched out-of-scope file: Playwright marked it flaky (failed attempt 1 on a 10s toast-visibility timeout under gate load, passed on retry), it passes 4/4 solo with `--retries=0`, and nothing in this section's diff can affect it (test-only changes, no shared worker state). That run is superseded by the clean 16:04 run; no rework was needed. Docs-sync skipped (test-only change; E2E helper register and conventions docs are Section 7's planned surface).
+- **Deviations from plan:** none. Batch B needed one continuation checkpoint after its first agent reached its step budget (4 of 6 specs done; the follow-up finished the last two); no plan change resulted.
+- **Follow-up implications for later sections:** Section 6 consumes `stickyTableScrollBar` and the other three bases; Section 7 catalogues the helper, removes its `Not implemented` marker, and decides the `HEATMAP_TABLE_NAME` removal.
 
 ---
 

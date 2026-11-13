@@ -36,14 +36,13 @@ import {
   buildClassFullDocument,
   type HeatmapSkippedTasksByStudentId,
 } from './helpers/task-heatmap-class-fixtures';
+import { stickyTableHeaderHolder } from './helpers/sticky-table-locators';
 
 // Visible control copy pinned by the attempt-baseline layout specification
 // (copy home: `pageContent` under `classDetail`).
 const MODE_CONTROL_LABEL = 'Averages basis';
 const ABSOLUTE_OPTION_LABEL = 'All tasks';
 const BASELINE_OPTION_LABEL = 'Baseline tasks';
-
-const HEATMAP_TABLE_NAME = 'Task Heatmap';
 
 // Heatmap-side copy from `taskHeatmapColumnMarking.tsx` (constants
 // BASELINE_CAPTION / BASELINE_OFF_EXPLANATION), restated so the browser
@@ -385,10 +384,10 @@ test.describe('Class page attempt-baseline mode', () => {
 
     // Absolute mode: plain task headers, no caption.
     await card.click();
-    const table = page.getByRole('table', { name: HEATMAP_TABLE_NAME });
-    await expect(table).toBeVisible();
-    await expect(table.getByRole('columnheader', { name: 'Task 3', exact: true })).toBeVisible();
-    await expect(table.getByRole('columnheader', { name: /†/ })).toHaveCount(0);
+    const header = stickyTableHeaderHolder(page);
+    await expect(header).toBeVisible();
+    await expect(header.getByRole('columnheader', { name: 'Task 3', exact: true })).toBeVisible();
+    await expect(header.getByRole('columnheader', { name: /†/ })).toHaveCount(0);
     await expect(page.getByText(BASELINE_CAPTION)).toHaveCount(0);
 
     // Baseline mode: Task 3 is marked, the in-baseline tasks are not.
@@ -396,19 +395,19 @@ test.describe('Class page attempt-baseline mode', () => {
     await expectModeSettled(control, BASELINE_OPTION_LABEL);
     await page.mouse.move(0, 0);
 
-    const markedHeader = table.getByRole('columnheader', {
+    const markedHeader = header.getByRole('columnheader', {
       name: `Task 3†; ${BASELINE_OFF_EXPLANATION}`,
     });
     await expect(markedHeader).toBeVisible();
-    await expect(table.getByRole('columnheader', { name: 'Task 3', exact: true })).toHaveCount(0);
-    await expect(table.getByRole('columnheader', { name: 'Task 1', exact: true })).toBeVisible();
-    await expect(table.getByRole('columnheader', { name: 'Task 2', exact: true })).toBeVisible();
-    await expect(table.getByRole('columnheader', { name: /†/ })).toHaveCount(1);
+    await expect(header.getByRole('columnheader', { name: 'Task 3', exact: true })).toHaveCount(0);
+    await expect(header.getByRole('columnheader', { name: 'Task 1', exact: true })).toBeVisible();
+    await expect(header.getByRole('columnheader', { name: 'Task 2', exact: true })).toBeVisible();
+    await expect(header.getByRole('columnheader', { name: /†/ })).toHaveCount(1);
     await expect(page.getByText(BASELINE_CAPTION)).toBeVisible();
 
     // The marked heading's tooltip target span is deliberately not focusable, so
     // it is located by its class; its composed accessible label stays pinned.
-    const markedHeading = table.locator(`.${EXCLUDED_COLUMN_TOOLTIP_TARGET_CLASS}`);
+    const markedHeading = header.locator(`.${EXCLUDED_COLUMN_TOOLTIP_TARGET_CLASS}`);
     await expect(markedHeading).toHaveCount(1);
     await expect(markedHeading).toHaveAttribute(
       'aria-label',
@@ -418,7 +417,7 @@ test.describe('Class page attempt-baseline mode', () => {
     // Toggling back removes the marking and the caption without leaving the view.
     await control.getByText(ABSOLUTE_OPTION_LABEL).click();
     await expectModeSettled(control, ABSOLUTE_OPTION_LABEL);
-    await expect(table.getByRole('columnheader', { name: /†/ })).toHaveCount(0);
+    await expect(header.getByRole('columnheader', { name: /†/ })).toHaveCount(0);
     await expect(page.getByText(BASELINE_CAPTION)).toHaveCount(0);
   });
 

@@ -76,8 +76,8 @@ import {
   reassessmentTag,
   REFRESH_LABEL,
 } from './helpers/legacy-reassessment-tag-layout';
+import { stickyTableWrapper } from './helpers/sticky-table-locators';
 
-const TABLE_NAME = 'Task Heatmap';
 const CLOSE_LABEL = 'Close';
 const INTERNAL_ERROR_COPY =
   'An internal error occurred. Please try again or contact support if the issue persists.';
@@ -126,7 +126,7 @@ test.describe('Embedded heatmap — legacy assignment results', () => {
       getAssignment: warmUpQueue({ kind: 'success', data: corrupt }),
     });
     await openEmbeddedHeatmap(page, LEGACY_ASSIGNMENT_ID);
-    await expect(page.getByRole('table', { name: TABLE_NAME })).toBeVisible();
+    await expect(stickyTableWrapper(page)).toBeVisible();
 
     // The legacy numeric result renders as a score, not as a blanket E.
     const healthy = healthyCell(page);

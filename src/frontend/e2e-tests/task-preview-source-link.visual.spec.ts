@@ -27,13 +27,13 @@
  * Screenshots are captured as review evidence into Playwright's untracked
  * per-test output directory.
  *
- * **Narrow-viewport journey.** At 390x844 the heatmap's sticky Forename/Surname
- * columns are wider than the table's remaining visible strip, so they cover every
- * metric cell and the pointer physically cannot enter one. Those cases therefore
- * open the preview with the keyboard — the real journey at that size — while the
- * desktop cases keep the pointer journey. Recorded rather than worked around: the
- * pointer-reachability limit is a property of the existing table, not of this
- * feature.
+ * **Narrow-viewport journey.** The heatmap's horizontal overflow is internal to
+ * `.ant-table-body`, and at 390x844 the sticky Forename/Surname columns exceed the
+ * body's remaining strip, so no metric cell is pointer-reachable (measured during
+ * the sticky-table migration probes). Those cases therefore open the preview with
+ * the keyboard — the real journey at that size — while the desktop cases keep the
+ * pointer journey. Recorded rather than worked around: the pointer-reachability
+ * limit is a property of the existing table, not of this feature.
  *
  * **Long metric label.** Metric labels are fixed production display metadata
  * (`METRIC_DISPLAY_META`), not test data, so no synthetic longer label is
@@ -55,6 +55,7 @@
 
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { installRuntimeMock } from './shared/endToEndRuntimeMocks';
+import { stickyTableWrapper } from './helpers/sticky-table-locators';
 import {
   type ControlActivation,
   metricTrigger,
@@ -78,7 +79,6 @@ import {
 } from './helpers/task-preview-source-link-geometry';
 import {
   CANONICAL_SLIDES_ASSIGNMENT,
-  HEATMAP_TABLE_NAME,
   withArtifactBody,
   type SourceLinkBodyKind,
 } from './helpers/task-preview-source-link-fixtures';
@@ -98,11 +98,11 @@ import { PREVIEW_HEADER_REGION_SELECTORS } from './helpers/task-preview-header-r
  *
  * `pointer` is a teacher's mouse journey. `keyboard` exists because at the narrow
  * viewport two antd controls have no usable pointer target: the builder's selection
- * bar collapses each select to roughly 21 CSS pixels, and the heatmap's sticky
- * Forename/Surname columns are wider than the table's remaining visible strip, so
- * they cover every metric cell. Both were measured
- * (`.opencode/scratchpad/issue19-sec4-probes/`), and the keyboard is the real user
- * journey at that size.
+ * bar collapses each select to roughly 21 CSS pixels (measured in
+ * `.opencode/scratchpad/issue19-sec4-probes/`), and the heatmap's horizontal
+ * overflow is internal to `.ant-table-body`, whose remaining strip at 390x844 is
+ * narrower than the sticky Forename/Surname columns, so no metric cell is
+ * pointer-reachable. The keyboard is the real user journey at that size.
  */
 type PreviewActivation = ControlActivation;
 
@@ -177,7 +177,7 @@ async function enterEntryPoint(
   await (entryPoint === 'embedded Classes'
     ? openEmbeddedHeatmap(page)
     : openMergedHeatmap(page, { controlActivation: viewport.activation }));
-  await expect(page.getByRole('table', { name: HEATMAP_TABLE_NAME })).toBeVisible();
+  await expect(stickyTableWrapper(page)).toBeVisible();
   await setColourScheme(page, scheme);
   if (viewport.activation === 'pointer') {
     await revealMetricCellForPointer(page);

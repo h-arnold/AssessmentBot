@@ -22,11 +22,11 @@ import {
 } from '../shared/endToEndRuntimeMocks';
 import { pageContent } from '@/pages/pageContent';
 import {
-  HEATMAP_TABLE_NAME,
   SHEETS_ASSIGNMENT_TITLE,
   SLIDES_ASSIGNMENT_TITLE,
   SOURCE_LINK_CLASS_NAME,
 } from './task-preview-source-link-fixtures';
+import { stickyTableWrapper } from './sticky-table-locators';
 import { SOURCE_ACTION_LABEL } from '@/features/taskHeatmap/TaskPreviewCard';
 import { createSourceLinkScenario } from './task-preview-source-link-scenarios';
 
@@ -202,7 +202,7 @@ export async function openEmbeddedHeatmap(
 ): Promise<void> {
   await openCanonicalClassOverview(page);
   await page.getByRole('button').filter({ hasText: assignmentTitle }).click();
-  await expect(page.getByRole('table', { name: HEATMAP_TABLE_NAME })).toBeVisible();
+  await expect(stickyTableWrapper(page)).toBeVisible();
 }
 
 /**
@@ -309,7 +309,7 @@ export async function openMergedHeatmap(
   });
   await selection;
 
-  await expect(page.getByRole('table', { name: HEATMAP_TABLE_NAME })).toBeVisible();
+  await expect(stickyTableWrapper(page)).toBeVisible();
 }
 
 // ---------------------------------------------------------------------------
@@ -422,19 +422,19 @@ export async function setColourScheme(page: Page, scheme: 'light' | 'dark'): Pro
 }
 
 /**
- * Scroll the page fully right so a metric cell clears the table's sticky name
- * columns for the pointer journey.
+ * Reveal step the pointer journeys call before hovering a metric cell.
  *
  * @remarks
- * At the narrow viewport the heatmap table is wider than the page, so the page is
- * scrolled — which is exactly what a teacher does. It is not sufficient there:
- * measured at 390x844, the sticky Forename/Surname columns are wider than the
- * table's remaining visible strip and cover every metric cell, so no pointer
- * journey exists at that viewport and callers open the preview with the keyboard
- * instead. At viewports where the page already fits this is a no-op.
+ * Kept as the pointer journeys' reveal step, and a deliberate no-op: the
+ * sticky table keeps its horizontal overflow inside its own `.ant-table-body`
+ * scroll region, so the page no longer scrolls the table's right edge into
+ * view and this window scroll cannot reveal a metric cell. Measured at
+ * 390x844, the fixed Forename/Surname columns are wider than the body's
+ * remaining visible strip, so no metric cell is pointer-reachable there and
+ * callers open the preview with the keyboard instead.
  *
  * @param {Page} page - The Playwright page under test.
- * @returns {Promise<void>} Resolves once the page is scrolled fully right.
+ * @returns {Promise<void>} Resolves immediately; the window scroll is a no-op.
  */
 export async function revealMetricCellForPointer(page: Page): Promise<void> {
   await page.evaluate(() => {

@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { installRuntimeMock, selectVisibleOption } from './shared/endToEndRuntimeMocks';
+import { stickyTableWrapper } from './helpers/sticky-table-locators';
 import {
   createHeatmapScenario,
   HEATMAP_ASSIGNMENT_DISPLAY_TITLE,
@@ -12,7 +13,6 @@ const NARROW_VIEWPORT = 390;
 const VIEWPORT_HEIGHT = 1000;
 const EXPECTED_SHELL_PADDING = 16;
 const GEOMETRY_TOLERANCE = 1;
-const TABLE_NAME = 'Task Heatmap';
 const SIBLING_PAGE_MAX_WIDTH = 1280;
 const ASSIGNMENTS_CONTROL_INDEX = 2;
 
@@ -29,7 +29,7 @@ test('populated Heatmaps stays fluid across viewport widths without widening cap
   await page.getByRole('combobox').nth(ASSIGNMENTS_CONTROL_INDEX).click();
   await selectVisibleOption(page, HEATMAP_ASSIGNMENT_DISPLAY_TITLE);
 
-  const table = page.getByRole('table', { name: TABLE_NAME });
+  const table = stickyTableWrapper(page);
   await expect(table).toBeVisible();
   const panel = table.locator(
     'xpath=ancestor::div[contains(concat(" ", normalize-space(@class), " "), " ant-card ")][1]'
@@ -78,16 +78,16 @@ test('populated Heatmaps stays fluid across viewport widths without widening cap
   await expect
     .poll(() => {
       return page.evaluate((tolerance) => {
-        const tableContent = document.querySelector('.ant-table-content');
-        if (!(tableContent instanceof HTMLElement))
+        const tableBody = document.querySelector('.ant-table-body');
+        if (!(tableBody instanceof HTMLElement))
           throw new TypeError('Heatmap table scroll region missing');
         const documentOverflow = document.documentElement.scrollWidth - window.innerWidth;
         return {
           documentOverflow,
-          tableContentWidth: tableContent.clientWidth,
-          tableScrollWidth: tableContent.scrollWidth,
+          tableBodyWidth: tableBody.clientWidth,
+          tableScrollWidth: tableBody.scrollWidth,
           noDocumentOverflow: documentOverflow <= tolerance,
-          tableScrollsLocally: tableContent.scrollWidth > tableContent.clientWidth,
+          tableScrollsLocally: tableBody.scrollWidth > tableBody.clientWidth,
         };
       }, GEOMETRY_TOLERANCE);
     })

@@ -5,6 +5,7 @@ import {
   installRuntimeMock,
   releaseNextDeferredSuccess,
 } from './shared/endToEndRuntimeMocks';
+import { stickyTableWrapper } from './helpers/sticky-table-locators';
 import {
   createReRunHeatmapScenario,
   HEATMAP_ASSIGNMENT_DISPLAY_TITLE,
@@ -15,7 +16,6 @@ import {
   openHeatmapClass,
 } from './helpers/task-heatmap-end-to-end-helpers';
 
-const HEATMAP_TABLE_NAME = 'Task Heatmap';
 const START_ASSESSMENT_RUN_METHOD = 'startAssessmentRun';
 const RE_RUN_BUTTON_NAME = 'Re-run Assessment';
 const ASSIGNMENT_SELECT_TEST_ID = 'assignment-select';
@@ -171,7 +171,7 @@ function footerButton(dialog: Locator, name: string): Locator {
 async function openAssignmentHeatmap(page: Page): Promise<void> {
   await openHeatmapClass(page);
   await page.getByRole('button').filter({ hasText: HEATMAP_ASSIGNMENT_DISPLAY_TITLE }).click();
-  await expect(page.getByRole('table', { name: HEATMAP_TABLE_NAME })).toBeVisible();
+  await expect(stickyTableWrapper(page)).toBeVisible();
 }
 
 /**

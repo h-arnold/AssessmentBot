@@ -6,9 +6,9 @@ import {
   HEATMAP_ASSIGNMENT_DISPLAY_TITLE,
   HEATMAP_CLASS_NAME,
 } from './helpers/task-heatmap-end-to-end-helpers';
+import { stickyTableBody, stickyTableHeaderHolder } from './helpers/sticky-table-locators';
 
 const HEATMAPS_LABEL = pageContent.heatmaps.heading;
-const TABLE_NAME = 'Task Heatmap';
 const TOPIC_LABEL = 'Earth';
 const CLASS_CONTROL_INDEX = 0;
 const TOPICS_CONTROL_INDEX = 1;
@@ -52,22 +52,22 @@ test.describe('Heatmaps builder', () => {
     await page.getByRole('combobox').nth(ASSIGNMENTS_CONTROL_INDEX).click();
     await selectVisibleOption(page, HEATMAP_ASSIGNMENT_DISPLAY_TITLE, 1);
 
-    const table = page.getByRole('table', { name: TABLE_NAME });
-    await expect(table).toBeVisible();
-    await expect(table.getByRole('columnheader', { name: 'Forename' })).toHaveCount(1);
-    await expect(table.getByRole('columnheader', { name: 'Surname' })).toHaveCount(1);
-    const studentTwoRow = table
+    const header = stickyTableHeaderHolder(page);
+    await expect(header).toBeVisible();
+    await expect(header.getByRole('columnheader', { name: 'Forename' })).toHaveCount(1);
+    await expect(header.getByRole('columnheader', { name: 'Surname' })).toHaveCount(1);
+    const studentTwoRow = stickyTableBody(page)
       .locator('tbody tr.ant-table-row')
       .filter({ has: page.locator('[aria-label^="Student Two,"]') });
     await expect(studentTwoRow.locator('td').nth(0)).toHaveText('Student');
     await expect(studentTwoRow.locator('td').nth(1)).toHaveText('Two');
     await expect(
-      table.getByRole('columnheader', { name: HEATMAP_ASSIGNMENT_DISPLAY_TITLE })
+      header.getByRole('columnheader', { name: HEATMAP_ASSIGNMENT_DISPLAY_TITLE })
     ).toHaveCount(1);
-    await expect(table.getByRole('columnheader', { name: /shared definition/ })).toHaveCount(1);
-    await expect(table.getByRole('columnheader', { name: 'Task 1' })).toHaveCount(1);
+    await expect(header.getByRole('columnheader', { name: /shared definition/ })).toHaveCount(1);
+    await expect(header.getByRole('columnheader', { name: 'Task 1' })).toHaveCount(1);
     await expect(
-      table.getByRole('button', {
+      stickyTableBody(page).getByRole('button', {
         name: 'Student Two, Task 1, Completeness: 5',
         exact: true,
       })

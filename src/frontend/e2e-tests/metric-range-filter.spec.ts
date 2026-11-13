@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { installRuntimeMock } from './shared/endToEndRuntimeMocks';
+import { stickyTableBody, stickyTableHeaderHolder } from './helpers/sticky-table-locators';
 import {
   createHeatmapScenario,
   HEATMAP_ASSIGNMENT_DISPLAY_TITLE,
@@ -7,7 +8,6 @@ import {
 } from './helpers/task-heatmap-end-to-end-helpers';
 
 const CLASSES_LABEL = 'Classes';
-const HEATMAP_TABLE_NAME = 'Task Heatmap';
 const FILTERED_ROW_COUNT = 2;
 const INCLUDED_ROW_COUNT = 11;
 
@@ -30,8 +30,11 @@ test('filters excluded aggregate rows and hides the toggle from task filters', a
   await installRuntimeMock(page, createHeatmapScenario({ zeroWeightAssignment: true }));
   await openHeatmapClass(page);
 
-  const averagesTable = page.getByRole('table').last();
-  const completenessHeader = averagesTable.getByRole('columnheader', { name: 'Completeness' });
+  const averagesCard = page.locator('.ant-card').filter({ hasText: 'Student Averages' });
+  const averagesBody = stickyTableBody(averagesCard);
+  const completenessHeader = stickyTableHeaderHolder(averagesCard).getByRole('columnheader', {
+    name: 'Completeness',
+  });
   await completenessHeader.getByRole('button').click();
 
   const aggregateFilter = page.locator('.ant-dropdown:visible').last();
@@ -39,12 +42,12 @@ test('filters excluded aggregate rows and hides the toggle from task filters', a
   const lowerHandle = aggregateFilter.locator('.ant-slider-handle').first();
   await lowerHandle.focus();
   await page.keyboard.press('ArrowUp');
-  await expect(averagesTable.locator('tbody tr')).toHaveCount(FILTERED_ROW_COUNT);
+  await expect(averagesBody.locator('tbody tr')).toHaveCount(FILTERED_ROW_COUNT);
 
   await completenessHeader.getByRole('button').click();
   const narrowedAggregateFilter = page.locator('.ant-dropdown:visible').last();
   await narrowedAggregateFilter.getByRole('checkbox', { name: 'Include Excluded' }).click();
-  await expect(averagesTable.locator('tbody tr')).toHaveCount(INCLUDED_ROW_COUNT);
+  await expect(averagesBody.locator('tbody tr')).toHaveCount(INCLUDED_ROW_COUNT);
 
   await completenessHeader.getByRole('button').click();
   const reopenedFilter = page.locator('.ant-dropdown:visible').last();
@@ -52,9 +55,9 @@ test('filters excluded aggregate rows and hides the toggle from task filters', a
   await page.keyboard.press('Escape');
 
   await page.getByRole('button').filter({ hasText: HEATMAP_ASSIGNMENT_DISPLAY_TITLE }).click();
-  const heatmapTable = page.getByRole('table', { name: HEATMAP_TABLE_NAME });
-  await expect(heatmapTable).toBeVisible();
-  await heatmapTable
+  const heatmapHeader = stickyTableHeaderHolder(page);
+  await expect(heatmapHeader).toBeVisible();
+  await heatmapHeader
     .getByRole('columnheader', { name: 'Completeness' })
     .first()
     .getByRole('button')

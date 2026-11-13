@@ -32,6 +32,7 @@ import {
   ERROR_CLASS_NAME,
   UNAVAILABLE_TITLE,
 } from './assessment-error-preview-fixtures';
+import { stickyTableWrapper } from './sticky-table-locators';
 
 // ---------------------------------------------------------------------------
 // Copy re-exports
@@ -158,7 +159,7 @@ export async function openEmbeddedHeatmap(page: Page, assignmentId: string): Pro
     .getByRole('button')
     .filter({ hasText: assignmentCardTitle(assignmentId) })
     .click();
-  await expect(page.getByRole('table', { name: 'Task Heatmap' })).toBeVisible();
+  await expect(stickyTableWrapper(page)).toBeVisible();
 }
 
 // ---------------------------------------------------------------------------
