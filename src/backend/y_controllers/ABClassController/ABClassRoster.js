@@ -1,4 +1,4 @@
-/* global ABLogger, ClassroomApiClient, Teacher, ABClass */
+/* global ABLogger, ArrayUtils, ClassroomApiClient, Teacher, ABClass */
 
 /**
  * ABClassRoster
@@ -118,6 +118,87 @@ class ABClassRoster {
   }
 
   /**
+   * Normalises a live model or stored document into plain roster values that can be
+   * compared without serialising the whole class.
+   *
+   * @param {Object|null} source - Live ABClass instance, stored class document, or registry row.
+   * @returns {Object} Plain values for className, classOwner, teachers, and students.
+   * @private
+   */
+  _buildRosterFieldsForComparison(source) {
+    const owner = source?.classOwner ?? null;
+    let classOwner = null;
+    if (owner) {
+      classOwner = typeof owner.toJSON === 'function' ? owner.toJSON() : owner;
+    }
+
+    return {
+      className: source?.className ?? null,
+      classOwner,
+      teachers: ArrayUtils.serialiseArray(source?.teachers),
+      students: ArrayUtils.serialiseArray(source?.students),
+    };
+  }
+
+  /**
+   * Produces a key-order-insensitive JSON string for comparison.
+   * Stored documents and the live model can carry the same values in a different
+   * key order, so JSON.stringify alone would produce false mismatches. Object keys
+   * are sorted; array order is preserved because it is meaningful.
+   *
+   * @param {*} value - Value to stringify.
+   * @returns {string} Stable representation of the value.
+   * @private
+   */
+  _stableStringify(value) {
+    if (Array.isArray(value)) {
+      return `[${value.map((item) => this._stableStringify(item)).join(',')}]`;
+    }
+
+    if (value && typeof value === 'object') {
+      const entries = Object.keys(value)
+        .toSorted((left, right) => left.localeCompare(right))
+        .map((key) => `${JSON.stringify(key)}:${this._stableStringify(value[key])}`);
+      return `{${entries.join(',')}}`;
+    }
+
+    return JSON.stringify(value) ?? 'null';
+  }
+
+  /**
+   * Reports whether the refreshed roster already matches both stores, so persisting
+   * it would change nothing.
+   *
+   * @param {Object|null} existingDocument - Stored full class document, when found.
+   * @param {Object|null} existingPartial - Stored registry row, when found.
+   * @param {ABClass} abClass - Refreshed class model.
+   * @returns {boolean} True only when the full document and the registry row both match.
+   * @private
+   */
+  _rosterMatchesStores(existingDocument, existingPartial, abClass) {
+    // A registry row without a stored _id is corrupt, so take the write path and let
+    // _prepareRosterPartial raise the integrity failure instead of skipping past it.
+    if (!existingDocument || !existingPartial || existingPartial._id == null) return false;
+
+    const refreshedFields = this._buildRosterFieldsForComparison(abClass);
+    const storedClassFields = this._buildRosterFieldsForComparison(existingDocument);
+
+    if (this._stableStringify(refreshedFields) !== this._stableStringify(storedClassFields)) {
+      return false;
+    }
+
+    const storedPartialFields = this._buildRosterFieldsForComparison(existingPartial);
+
+    // The registry row does not store students, so only its three owned fields are compared.
+    return ['className', 'classOwner', 'teachers'].every((field) => {
+      return (
+        this._stableStringify(refreshedFields[field]) ===
+        this._stableStringify(storedPartialFields[field])
+      );
+    });
+  }
+
+  /**
    * Clears and refreshes all roster data (owner, teachers, students) for a class.
    * Fetches latest data from the Classroom API.
    *
@@ -138,7 +219,8 @@ class ABClassRoster {
 
   /**
    * Persists roster changes to a collection and updates the partial registry.
-   * Logs intent and completion for diagnostic purposes.
+   * Returns without writing when both stores already match the refreshed roster.
+   * Logs the skip, intent and completion for diagnostic purposes.
    *
    * @param {Object} collection - The JsonDb collection to persist to.
    * @param {Object} existingDocument - The existing document (if any) to identify for update.
@@ -155,6 +237,14 @@ class ABClassRoster {
     try {
       const partialsCollection = this._dbManager.getCollection('abclass_partials');
       const existingPartial = partialsCollection.findOne({ classId: abClass.classId });
+
+      if (this._rosterMatchesStores(existingDocument, existingPartial, abClass)) {
+        logger.info('_persistRoster: roster unchanged; skipping persistence', {
+          classId: abClass.classId,
+        });
+        return;
+      }
+
       const preparedPartial = this._persistence._prepareRosterPartial(existingPartial, abClass);
 
       // Log intent to persist

@@ -296,8 +296,11 @@ against the current specification first.
   prepared partial without re-projecting the model.
 - Field-scoped roster persistence is implemented in `_prepareRosterPartial(existingPartial,
 abClass)` and `_writePreparedRosterPartial(prepared, classId)`. `ABClassRoster._persistRoster()`
-  remains the roster orchestrator: it performs the permitted existence lookup, prepares the
-  operation, writes the full-store roster `$set`, and then calls the write helper.
+  remains the roster orchestrator: it performs the permitted existence lookup, compares the
+  refreshed roster with the stored full document and registry row, and, when both still match,
+  logs once and returns without preparing or writing anything. Otherwise it prepares the
+  operation, writes the full-store roster `$set`, and then calls the write helper. The comparison
+  only suppresses a redundant write; no stored shape, schema or transport contract changes.
 - An existing row is patched with `$set` only `className`, `classOwner` (owner helper) and
   `teachers` (array helper), filtered by the row's stored `_id`. The vendor's `matchedCount` is
   checked: an `_id`-only filter counts a matched-but-unmodified row, so a true zero-match patch
