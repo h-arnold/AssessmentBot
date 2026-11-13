@@ -72,7 +72,8 @@ stalenessThresholdMs`. Completed entries (`'success'` / `'error'`) are never rem
    `store` is the (same) mutated store object and `prunedIds` is an array of the entry IDs
    that were removed (status `'started'` and older than the threshold). Validates `store`
    and `stalenessThresholdMs` via `Validate.requireParams`; validates `referenceTimeMs` is
-   a finite number.
+   a finite number. `ApiDispatcher._runAdmissionPhase` (`src/backend/z_Api/z_apiHandler.js`)
+   consumes `prunedIds` to log each pruned entry.
 
 7. **`compactStore_(store)`** — When the total number of entries exceeds `MAX_TRACKED_REQUESTS`,
    removes the oldest completed entries (sorted by `startedAtMs` ascending) until the store
@@ -138,37 +139,6 @@ _runCompletionPhase(requestId, method, handlerFailed, handlerError):
 
 ---
 
-## Planned changes
-
-> Planned-only entry — tracked ahead of implementation so the canonical contract is not
-> silently changed by production code. The entry below is now **implemented** — the
-> production change is live and the §6 record-lifecycle contract above reflects the
-> shipped return shape.
-
-### Planned: `pruneStaleEntries_` return-shape change
-
-**Status: implemented**
-
-Signature unchanged: `pruneStaleEntries_(store, stalenessThresholdMs, referenceTimeMs?)`.
-All validation behaviour is unchanged — `store` and `stalenessThresholdMs` via
-`Validate.requireParams`; `referenceTimeMs` validated as a finite number via
-`Validate.isNumber()`.
-
-The return value is now `{ store, prunedIds }` instead of the store object itself, where:
-
-- `store` — the same mutated store object. The store is still mutated in place; `.store` is
-  the same reference as the input argument.
-- `prunedIds` — an array of the entry IDs (`string`s) that were actually removed, i.e.
-  entries whose `status` is `'started'` and whose `startedAtMs` is older than
-  `referenceTimeMs - stalenessThresholdMs`.
-
-`ApiDispatcher._runAdmissionPhase` (`src/backend/z_Api/z_apiHandler.js`) consumes
-`prunedIds` to log each pruned entry, so the redundant `keysBefore`/`keysAfterSet` scan it
-previously performed (lines 256-266) has been removed. The only caller ignored the return
-value before, so changing the return shape was non-breaking.
-
-This entry records the delivered shared-helper decision (`extend`).
-
 ---
 
 ## Transport
@@ -226,22 +196,19 @@ None — RequestStore is a single flat key-value dictionary with no embedded sub
    backend. There is no frontend Zod schema, no API endpoint to query the store, and no
    mechanism to surface store contents in the UI. This is intentional — the store is a
    backend-internal rate-limiting and diagnostic mechanism.
-   **Classification: Aligned** — deliberate design choice.
 
 2. **`markSuccess_()` and `markError_()` do not verify the record exists before mutating.**
    Both functions access `store[requestId]` without checking for the record's presence. If
    a `requestId` is not in the store (e.g. because the store was concurrently replaced or
    pruned), the mutation will throw a `TypeError` (`Cannot set properties of undefined`)
    when attempting to set `store[requestId].status`. This is a latent fragility — a
-   missing-record guard would provide a more informative failure.
-   **Classification: Fragile** — a missing-record guard could prevent a TypeError from
-   propagating to the error envelope.
+   missing-record guard would provide a more informative failure and keep the `TypeError`
+   out of the error envelope.
 
 3. **`loadStore_()` returns `{}` for non-object types but does not surface this via error
    envelope.** Malformed or unexpected store data is silently reset. Warnings are logged
    via `ABLogger`, but no alerting or structured error is propagated. This is intentional
    for a self-healing internal store.
-   **Classification: Aligned** — deliberate self-healing design.
 
 ---
 

@@ -222,21 +222,20 @@ Rules:
    `string | null`; `toPartialJSON()` redacts only `content` and `contentHash`.
    The full `getAssignment` schema is the strict contract; the class-detail partial
    schema is intentionally permissive, mirroring the pre-existing optionality of the
-   parent `StudentSubmissionPartialSchema.documentId`.
-   **Classification: Aligned** — deliberate, scoped asymmetry. The partial path
+   parent `StudentSubmissionPartialSchema.documentId`. This is a deliberate, scoped asymmetry.
+   The partial path
    accepts an absent key the backend never produces; tightening it is a separate
    decision.
 
 2. **`BaseTaskArtifactPartialSchema` omits `content` and `contentHash` entirely.**
    Backend `toPartialJSON()` emits them as `null`. The frontend partial schema simply
-   omits them since null fields are not useful in partial views.
-   **Classification: Aligned** — intentional reduction.
+   omits them since null fields are not useful in partial views. This is an intentional
+   reduction.
 
 3. **`BaseTaskArtifactPartialSchema` does not discriminate on `type`.**
    The full schema is a `z.discriminatedUnion('type', ...)`; the partial schema
-   declares `type: z.string()` and a single loose `content`-less shape.
-   **Classification: Aligned** — the partial projection has no content to
-   discriminate, so the union would add no validation power.
+   declares `type: z.string()` and a single loose `content`-less shape. The partial projection
+   has no content to discriminate, so the union would add no validation power.
 
 ---
 

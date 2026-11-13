@@ -273,6 +273,7 @@ This applies to body content, not only filenames and headings. Do not carry plan
 │   │   │   ├── reference-data.md                      # Contract: Reference Data (cohorts, year groups, assignment topics)
 │   │   │   ├── request-store.md                       # Contract: RequestStore (internal backend API request tracking)
 │   │   │   ├── trigger-context.md                     # Contract: TriggerContext (Script Properties trigger context)
+│   │   │   ├── frontend-data-analysis-response.md     # Contract: derived in-memory DataAnalysisResponse, averaging shapes and preview view models
 │   │   │   ├── student-submission.md                  # Component shape: StudentSubmission (+ StudentSubmissionItem)
 │   │   │   ├── assessment.md                          # Component shape: Assessment (+ assessment pipeline discipline rules)
 │   │   │   └── base-task-artifact.md                  # Component shape: BaseTaskArtifact (origin AssignmentDefinition, consumer Assignment)
@@ -296,7 +297,7 @@ This applies to body content, not only filenames and headings. Do not carry plan
 │   │   │   ├── frontend-testing.md                      # Canonical: Vitest + Playwright split, commands, structure, helpers, patterns
 │   │   │   ├── metric-display-precision.md              # Metric score decimal-place convention (0dp individual, 2dp averages)
 │   │   │   ├── metric-icon-display.md                   # Metric icon rendering, theme-aware colour, stroke conventions
-│   │   │   ├── navigation-consistency-status.md         # Status tracker for the shared PageTitleCard + PageNavCard pattern
+│   │   │   ├── page-header-navigation-pattern.md        # Page title/nav cards, stacking, page-level actions and mode-control slot
 │   │   │   └── ant-design-docs-cache/                   # Local cache of Ant Design component notes (reference only, not policy)
 │   │   │
 │   │   ├── testing/
@@ -331,7 +332,8 @@ This applies to body content, not only filenames and headings. Do not carry plan
 │   │   ├── v0.7.7_release_notes.md
 │   │   ├── v0.7.8_release_notes.md
 │   │   ├── v0.7.9_release_notes.md
-│   │   └── v1.0.0_release_notes.md
+│   │   ├── v1.0.0_release_notes.md
+│   │   └── v1.1.0_release_notes.md
 │   │
 │   └── setup/
 │       ├── README.md                                  # Main setup guide with prerequisites and process

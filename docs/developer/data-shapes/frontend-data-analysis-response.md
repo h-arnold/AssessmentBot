@@ -1,18 +1,12 @@
 # Contract: Frontend Data Analysis Response
 
-## Status
+## Scope
 
-**Implemented.** Canonical contract for the frontend-only, in-memory data-analysis response.
-It has **no backend API, persistence collection, transport envelope or migration**. The ABClass
-metadata lifecycle, the shared post-analysis contracts, both consumer surfaces and the
-error-aware task-preview view models are implemented and described below. The attempt-baseline
-analysis mode (tracking issue: h-arnold/AssessmentBot#305) is implemented: its schema
-contracts (filter field, result echo and optional baseline block), the
-analyser's baseline-mode behaviour, the heatmap column projection, the summary
-reconciliation, the Class-page mode control, the mode threading to the Class-page
-display labels, the embedded heatmap's baseline marking and caption, and the E2E browser
-coverage are all delivered
-(see [Attempt-baseline contract changes](#attempt-baseline-contract-changes)).
+Contract for the frontend-only, in-memory data-analysis response. It has **no backend API,
+persistence collection, transport envelope or migration**. This document covers the ABClass
+metadata lifecycle, the shared post-analysis contracts, both consumer surfaces, the error-aware
+task-preview view models and the attempt-baseline analysis mode (see
+[Attempt-baseline contract changes](#attempt-baseline-contract-changes)).
 
 Sibling contracts:
 
@@ -204,7 +198,7 @@ permits optional `dateRange`, `topicKeys`, `assignmentDefinitionKeys`, and
 `criterionWeightings` (which must sum to `1` within a `1e-9` float-drift
 tolerance).
 
-`classes` is `z.array(ClassFullSchema)`, so each analysed class now requires the
+`classes` is `z.array(ClassFullSchema)`, so each analysed class requires the
 shared nullable `ABClassMetadataSchema` owned by
 [Contract: ABClass](abclass.md). The analyser does not read metadata: analysis
 scores and derived outputs are unchanged. Legacy backend absence arrives as
@@ -315,7 +309,7 @@ instance into its summary. Both project all four weighted `perClass` metrics, in
 
 The exact source timestamp, summary clock, stable immutable rolling-three merge and
 `{ classId, metadata }` update are owned by
-[ABClass — implemented writer](abclass.md#metadata-writer-projection-and-task).
+[ABClass — metadata writer](abclass.md#metadata-writer-projection-and-task).
 The rolling merge validates through the non-nullable `NonNullableABClassMetadataSchema` and
 returns `NonNullable<ABClassMetadata>`, so the write path has no nullable-union branch;
 `UpdateABClassRequestSchema` validates the whole replacement. The nullable read/request
@@ -325,13 +319,13 @@ Failures reject rather than returning a `failed` outcome: calculation/validation
 failures propagate, not-found is not an upsert, and there is no repair/rollback/per-feature
 retry. Existing analyser failures (including null student-name invariants) remain failures;
 corpus calculation-capability limits do not change production shapes or authorise repairs.
-The shared runner now catches these rejections as individual failed outcomes, separately from
+The shared runner catches these rejections as individual failed outcomes, separately from
 the unchanged task's `RefreshOutcome` union. No query/cache access, invalidation, warning or
 automatic surface invocation exists in these three owners. `confirmedPersistence` is not query-refresh success; a response-parse
 failure can reject after a backend write without producing the saved variant.
 
 Helper discovery/status is owned by
-[Frontend shared helpers](../frontend/frontend-shared-helpers-and-abstraction-standards.md#928-frontend-abclass-metadata-and-post-analysis-frontend-abclass-metadata).
+[Frontend shared helpers](../frontend/frontend-shared-helpers-and-abstraction-standards.md#928-frontend-abclass-metadata-and-post-analysis).
 
 ### Shared post-analysis lifecycle
 
@@ -806,7 +800,7 @@ effective weighting.
 
 ### Task preview derived shapes
 
-> **Status: implemented.** Both types below carry one required
+> Both types below carry one required
 > `readonly sourceUrl: string | null` field. It is resolved once in the lookup and
 > carried unchanged through assembly and merge. `CellPreviewData` also carries the
 > per-criterion `errors` map, and `TaskPreviewData` the selected criterion's
@@ -924,7 +918,7 @@ interface TaskPreviewData {
 > `/edit#slide=id.<pageId>`; `SHEETS` → spreadsheet `/edit#gid=<pageId>`), with a
 > bare `/edit` root fallback when no usable page ID exists. An unknown document,
 > or a `null`/unsupported format, yields `sourceUrl: null`; so does missing cell
-> data. It depends on the implemented nullable artefact `pageId`/`documentId`
+> data. It depends on the nullable artefact `pageId`/`documentId`
 > alignment recorded in
 > [Component Shape: BaseTaskArtifact](base-task-artifact.md).
 
@@ -1113,7 +1107,7 @@ Class-page adapter:
 6. **Aligned** — `PostAnalysisTaskResultSchema` admits only strict
    succeeded/skipped results, and the runner parses it before adding descriptor-owned
    `taskId` and validating outcome data. The former wider outcome-only parse accepted
-   untyped pending/failed task returns with `error: null`; both now become runner-owned
+   untyped pending/failed task returns with `error: null`; both become runner-owned
    failed outcomes with non-null local Errors, without blocking later tasks. Types derive
    from the result schema, whose variants are reused by the outcome schema.
 
@@ -1135,38 +1129,34 @@ Class-page adapter:
 
 ## Legacy assignment display
 
-Delivered: valid legacy scores are included in analysis through the existing heatmap/averaging and E rules, with no version-based filtering or new analyser/card-model field, and the task-heatmap `Reassessment required` tag is shown from the `'legacy'` marker (task-heatmap-only, by explicit user decision, with no field added to persisted metadata). The attempt-baseline analysis mode (tracking issue: h-arnold/AssessmentBot#305) is implemented; see [Attempt-baseline contract changes](#attempt-baseline-contract-changes).
+Valid legacy scores are included in analysis through the existing heatmap/averaging and E rules,
+with no version-based filtering and no new analyser or card-model field. The task-heatmap
+`Reassessment required` tag is shown from the `'legacy'` marker, task-heatmap only, with no field
+added to persisted metadata.
 
 ## Attempt-baseline contract changes
 
 ### Attempt-baseline analysis mode
 
-The top-decile attempt-baseline analysis mode is delivered (tracking issue:
-h-arnold/AssessmentBot#305). The explicit-`E` analyser input, the preview `sourceUrl` field and
-every other previously planned addition are implemented and documented in the sections above.
-The schema contracts for items 1–4 below are implemented as recorded in their
-delivered entries (required filter field, result echo and optional baseline block),
-as is the analyser's baseline-mode behaviour
-(post-accumulation baseline selection, baseline-restricted aggregation, the
-baseline-mode per-student `excluded` conversion and the `attemptBaseline` echo). The heatmap column
-projection (Section 3), the summary reconciliation (Section 4), the Class-page mode
-control with its availability resolver (Section 5a), item 7's mode threading to the
-Class-page display labels (Section 5b), the embedded heatmap's baseline marking
-and caption (Section 5c) and the E2E browser coverage (Section 5d) are delivered.
-Every planned contract change in this section is implemented.
+The top-decile attempt-baseline analysis mode adds a required filter field, a result echo and an
+optional baseline block, plus the analyser's baseline-mode behaviour (post-accumulation baseline
+selection, baseline-restricted aggregation, the baseline-mode per-student `excluded` conversion
+and the `attemptBaseline` echo). The heatmap column projection, the summary reconciliation, the
+Class-page mode control and its availability resolver, the mode threading to Class-page display
+labels, the embedded heatmap's baseline marking and caption, and the E2E browser coverage are
+described below. The explicit-`E` analyser input and the preview `sourceUrl` field are covered in
+the sections above.
 
 1. **`AnalysisFilterSchema.analysisMode`** — required enum field
    `z.enum(['absolute', 'topDecileBaseline'])` on the existing strict filter
    object. There is no default; every caller states the mode explicitly.
-   `'absolute'` is the explicit representation of current behaviour.
-   **Implemented (Section 1):** the schema requires the field and every
-   input-construction site supplies it.
+   `'absolute'` is the explicit representation of current behaviour. The schema requires the
+   field and every input-construction site supplies it.
 
 2. **`AveragingResultSchema.appliedAnalysisMode`** — required echo enum
    (same two values) recording the mode actually applied to the per-class
-   result. **Implemented (Section 1):** the schema requires the echo; the
-   analyser emits the input's mode — `'absolute'` since Section 1, and
-   `'topDecileBaseline'` with the baseline block since Section 2.
+   result. The schema requires the echo; the analyser emits the input's mode — `'absolute'`, or `'topDecileBaseline'` together with the
+   baseline block.
 
 3. **`AveragingResultSchema.attemptBaseline`** — optional strict object present
    only when `appliedAnalysisMode` is `'topDecileBaseline'`:
@@ -1226,15 +1216,13 @@ Every planned contract change in this section is implemented.
      accumulators at all follows today's absolute-mode path (`error` metrics)
      and is never converted.
 
-   **Implemented (Section 2):** the optional block validates exactly as recorded
-   and the analyser emits it in every baseline-mode result (absolute mode omits
-   it); baseline selection is the post-accumulation derivation recorded above.
+   The optional block validates exactly as recorded, and the analyser emits it in every
+   baseline-mode result; absolute mode omits it. Baseline selection is the post-accumulation
+   derivation recorded above.
 
-4. **`PerTaskRowSchema` carries no membership flag.** The former required
-   `includedInAttemptBaseline` boolean was removed from the task row as an
-   unread surface: attempt-baseline membership is derived by consumers from the
-   result's `attemptBaseline.baselineTaskKeys`. Per-task row _values_ stay
-   absolute in both modes. **Per-student cell metrics carry no flag:** columns
+4. **`PerTaskRowSchema` carries no membership flag.** Attempt-baseline membership is derived by
+   consumers from the result's `attemptBaseline.baselineTaskKeys`; the task row has no
+   `includedInAttemptBaseline` field. Per-task row _values_ stay absolute in both modes. **Per-student cell metrics carry no flag:** columns
    are the only marked heatmap unit (column-level marking in v1; see item 8),
    so `PerStudentTaskMetric` is unchanged. The array's **contents are also
    mode-independent**: baseline filtering restricts only the aggregation step,
@@ -1256,7 +1244,7 @@ Every planned contract change in this section is implemented.
    evidence must never invoke baseline selection), while the public summary
    input continues to validate the caller's supplied `analysisMode`.
 
-   **Implemented (Section 4):** the internal delegation pin and the required
+   the internal delegation pin and the required
    public filter field are in place; the reconciliation confirms the analyser
    stays internally `'absolute'` and the public summary schema is unchanged.
 
@@ -1280,7 +1268,7 @@ Every planned contract change in this section is implemented.
    `error`, and any mixture with a converted criterion converges on
    `excluded`.
 
-   **Implemented (Section 5b):** the rule lives in the co-located module
+   the rule lives in the co-located module
    `src/frontend/src/features/classPage/classPageAdapter.baselineCardRollup.ts`
    (`rollupCardCriteria`; `deriveBaselineTaskKeySet` —
    `src/frontend/src/services/dataAnalysis/analysers/attemptBaselineSelection.ts`;
@@ -1309,16 +1297,15 @@ Every planned contract change in this section is implemented.
    inherits the Class page's analysis result and may therefore render `false`
    markers in baseline mode while keeping absolute cell values.
 
-   **Implemented (Section 4, label content only):** `metricTone.ts` exports the
+   `metricTone.ts` exports the
    two-cause baseline wording (`BASELINE_EXCLUDED_METRIC_ACCESSIBLE_LABEL` —
    "Excluded from average: displayed work had zero weighting, or fell outside
    the baseline task set.") beside the unchanged weighting-only constant, with
    the resolver `resolveExcludedMetricAccessibleLabel(analysisMode?)`;
    `MetricPill` accepts the optional `analysisMode` prop for the excluded
-   accessible name only; at delivery the students-table label builder called
-   the resolver with no argument (threaded since Section 5b below).
-   **Implemented (Section 5b, threading):** Class-page
-   consumers now pass the mode explicitly — `ClassPage` → `ClassPageContent`
+   accessible name only.
+   Class-page
+   consumers pass the mode explicitly — `ClassPage` → `ClassPageContent`
    (optional prop) → `renderReadyContent` (options object) → `ClassPageReady` →
    `RecentAssignmentsSection` → `RecentAssignmentCard` → `MetricPill`, and
    `ClassPageReady` → `StudentAveragesTableCard` →
@@ -1339,13 +1326,13 @@ Every planned contract change in this section is implemented.
    each hop. `MergedHeatmapTaskColumn` inherits the field via its existing spread
    of the base projection. `HeatmapCell` is unchanged: marking is
    **column-level only in v1**, and cell values stay absolute in both modes.
-   **Implemented (Section 3):** both column descriptors require the field and
+   both column descriptors require the field and
    the adapter derives the set from its own analyser result; the fail-fast
    throws name `appliedAnalysisMode` (missing or unrecognised echo) and
    `attemptBaseline` (baseline-mode result without the block), as the Baseline
    narrowing rule requires.
 
-9. **Preview error fields — implemented.** The derived preview shapes now distinguish an
+9. **Preview error fields.** The derived preview shapes distinguish an
    assessment-only error whose source is available, an unavailable/corrupt source, and a
    `null` `artifactContent` caused by deliberate partial redaction. These fields are
    in-memory only; they are never added to backend artefacts, persistence, API
@@ -1367,7 +1354,7 @@ Every planned contract change in this section is implemented.
      suppress the response renderer and show an inline error explanation); `loading` = pending
      only, while a known partial `E` fallback's full fetch is in flight, never terminal.
 
-   Derivation as implemented: `buildCellPreviewLookup` derives each criterion's cause from
+   Derivation: `buildCellPreviewLookup` derives each criterion's cause from
    that criterion's own validated assessment. `assembleTaskPreviewData` yields only
    `available`/`unavailable`; `TaskMetricPreviewContent` supplies `loading` only while the
    fallback full fetch is pending, and resolves it to `unavailable` on a terminal failure or

@@ -401,27 +401,27 @@ Frontend Zod (secondary/unused): `src/frontend/src/services/assignmentDefinition
    - Backend `AssignmentTopic.toJSON()` always emits `{ key, name, yearGroupKeys }`.
    - The primary frontend schema in `referenceData.zod.ts` (`AssignmentTopicSchema`) includes all three fields and is used by the production service.
    - The secondary frontend schema in `assignmentTopics.zod.ts` (`AssignmentTopicSchema`) defines only `{ key, name }` (no `yearGroupKeys`, uses `.strict()`).
-   - **Classification: Fragile** — The secondary schema is unused by any production service (not imported by any `.ts` file except its own `.spec.ts`). If a future change started using it for response validation, it would reject valid backend responses that include `yearGroupKeys`. The secondary schema also uses `.strict()`, which means extra fields would be rejected, creating an additional mismatch. The `assignmentTopics.zod.ts` file appears to be dead code or a leftover from an earlier implementation.
+   - **Risk:** The secondary schema is unused by any production service (not imported by any `.ts` file except its own `.spec.ts`). If a future change started using it for response validation, it would reject valid backend responses that include `yearGroupKeys`. The secondary schema also uses `.strict()`, which means extra fields would be rejected, creating an additional mismatch. The `assignmentTopics.zod.ts` file appears to be dead code or a leftover from an earlier implementation.
 
 2. **`CohortRecordInputSchema.active` is optional on create but `UpdateCohortRecordInputSchema.active` is required.**
    - Backend `Cohort` constructor defaults `active` to `true` when not provided.
    - Frontend `CohortRecordInputSchema` correctly defines `active` as `z.boolean().optional()`.
    - Frontend `UpdateCohortRecordInputSchema` defines `active` as `z.boolean()` (required).
-   - **Classification: Aligned** — On update, the controller does not apply defaults; it merges the update record with the existing stored record via `_buildRecord()`. Requiring `active` on update ensures explicit intent. On create, the constructor default handles it.
+   - On update, the controller does not apply defaults; it merges the update record with the existing stored record via `_buildRecord()`. Requiring `active` on update ensures explicit intent. On create, the constructor default handles it.
 
 3. **Delete endpoints return `null` (via `void` → `null` coercion).**
    - Backend delete methods return `undefined` (JavaScript implicit return). The `apiHandler._success()` method coerces `undefined` to `null` via `data ?? null`.
    - Frontend `Delete*ResponseSchema` all use `z.void().nullable()`.
-   - **Classification: Aligned** — Both sides handle the null/void boundary consistently.
+   - Both sides handle the null/void boundary consistently.
 
 4. **Frontend `UpdateCohortInputSchema` wraps key and record in an object; backend handler destructures `parameters` directly.**
    - Backend handler: `updateCohort: (parameters) => new ReferenceDataController().updateCohort(parameters)` — passes the whole `parameters` object as the `payload` argument.
    - Frontend `UpdateCohortInputSchema`: `z.object({ key: ..., record: ... })` — validates `{ key, record }` shape.
-   - **Classification: Aligned** — The controller's `updateCohort(payload)` destructures `{ key, record } = payload`. The frontend sends `{ key, record }` wrapped in `params` by `callApi`. The backend receives `params: { key, record }` and the inline closure passes `parameters` (which is `request.params`) directly to the controller.
+   - The controller's `updateCohort(payload)` destructures `{ key, record } = payload`. The frontend sends `{ key, record }` wrapped in `params` by `callApi`. The backend receives `params: { key, record }` and the inline closure passes `parameters` (which is `request.params`) directly to the controller.
 
 5. **Duplicate name errors are mapped to `INTERNAL_ERROR` rather than `INVALID_REQUEST`.**
    - The controller throws a plain `Error` for duplicate names or not-found records. The error does not have a `name` matching `ApiValidationError`, so `_mapErrorToFailureEnvelope` maps it to `INTERNAL_ERROR`.
-   - **Classification: Aligned** — The controller does not use `ApiValidationError` for these domain checks. The frontend receives `INTERNAL_ERROR` and treats it as an unexpected failure. This is intentional for the current implementation.
+   - The controller does not use `ApiValidationError` for these domain checks. The frontend receives `INTERNAL_ERROR` and treats it as an unexpected failure. This is intentional for the current implementation.
 
 ---
 

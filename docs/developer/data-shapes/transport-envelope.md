@@ -97,7 +97,7 @@ classified as parse failures.
 
 #### Recovery classification semantics
 
-The following semantics are the canonical implemented behaviour.
+The following semantics are the canonical behaviour.
 
 1. **Recovery invalid-request preconditions map to `INVALID_REQUEST`.**
    A forced reparse without an existing `definitionKey`, and `forceReparse: true`

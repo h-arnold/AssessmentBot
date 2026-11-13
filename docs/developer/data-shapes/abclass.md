@@ -1150,7 +1150,7 @@ dismissal and bounded diagnostic contracts are owned by the linked lifecycle sec
 the backend wire contract.
 
 `DataAnalysisService` is unchanged, synchronous and I/O-free. Helper discovery/status belongs in
-[Frontend shared helpers](../frontend/frontend-shared-helpers-and-abstraction-standards.md#928-frontend-abclass-metadata-and-post-analysis-frontend-abclass-metadata),
+[Frontend shared helpers](../frontend/frontend-shared-helpers-and-abstraction-standards.md#928-frontend-abclass-metadata-and-post-analysis),
 not a duplicated helper register here. Backend persistence/transport remains unchanged.
 
 ### Exclusions
@@ -1240,32 +1240,29 @@ canonical snapshots and boundary probes; it is the parity oracle, not production
 1. **`getABClass` transport includes `courseId` and `assignmentName` on each assignment.**
    Frontend `AssignmentPartialSchema` does not include these fields (Zod `.strip()` mode
    silently removes them). The frontend resolves assignment context (courseId, name)
-   from other sources.
-   **Classification: Aligned** — Zod's default `.strip()` behaviour means extra fields
-   are tolerated, and the stripped data is unused by the frontend. No risk of breakage.
+   from other sources. Zod's default `.strip()` behaviour means extra fields are tolerated, and
+   the stripped data is unused by the frontend.
 
 2. **`ClassFullResponseSchema` is `ClassFullSchema.nullable()`**
    The backend returns `null` when the class document does not exist. The frontend
    schema expects this and handles it.
-   **Classification: Aligned** — documented contract.
 
 3. **`ClassPartialSchema` and `ClassFullSchema` both redundantly declare `TeacherSummarySchema`.**
    The schema is duplicated in both `classPartials.zod.ts` and `classDetailService.zod.ts`.
-   **Classification: Aligned** — intentional to keep each Zod file self-contained and
-   avoid cross-file import coupling for a simple schema.
+   The duplication is intentional: it keeps each Zod file self-contained and avoids cross-file
+   import coupling for a simple schema.
 
 4. **`deleteABClass` response shape (`{ classId, hasDeletedFullClass, hasDeletedClassPartial }`) has no frontend Zod schema.**
    The response is consumed by generic `callApi` without `parseApiResponse` validation.
-   **Classification: Aligned** — the delete flow does not require typed validation at
-   the transport boundary; the caller receives raw `unknown` and destructures as needed.
+   The delete flow does not require typed validation at the transport boundary; the caller
+   receives raw `unknown` and destructures as needed.
 
 5. **Backend reads emit `metadata`, and both class read schemas require it.**
    `ClassPartialSchema` and `ClassFullSchema` import the shared
    `ABClassMetadataSchema`, so successful parsing retains the field instead of stripping it.
    Legacy backend absence must arrive as explicit `null`; a missing or malformed field fails
-   parsing.
-   **Classification: Aligned** — the read contract matches the backend projection. The
-   mutation wrappers also parse summaries through the real `ClassPartialSchema`.
+   parsing. The read contract matches the backend projection. The mutation wrappers also parse
+   summaries through the real `ClassPartialSchema`.
 
 6. **The canonical-UTC timestamp predicate is implemented independently on each side.**
    Backend `Validate.isCanonicalUtcDateTime()` uses a regex plus explicit calendar/leap-year
@@ -1273,7 +1270,7 @@ canonical snapshots and boundary probes; it is the parity oracle, not production
    `Date.parse`/`toISOString()` round-trip equality. The current accepted sets agree on the
    tested matrix (invalid calendar/time, offsets, date-only, alternate precision and counter
    suffixes), but they are two implementations of one contract.
-   **Classification: Fragile** — they could diverge on an untested edge year or engine date
+   **Risk:** they could diverge on an untested edge year or engine date
    behaviour. The Node parity suite is the guard; do not replace it with a shared runtime import
    from backend code.
 
@@ -1285,8 +1282,8 @@ canonical snapshots and boundary probes; it is the parity oracle, not production
    checks reject all unexpected own keys (including symbols), non-plain records and every own
    undefined value before queue admission. They require an own `classId`; no coercion or
    defaulting is applied. Both sides accept positive safe-integer numeric `courseLength` and
-   safe already-trimmed string `classId`.
-   **Classification: Aligned** — the typed frontend request boundary is intentionally narrower;
+   safe already-trimmed string `classId`. The typed frontend request boundary is intentionally
+   narrower;
    it does not change backend admission or migrate generic bulk callers. The existing
    backend own-undefined reference-key `INTERNAL_ERROR` behaviour remains documented above;
    these wrappers reject that input locally instead of dispatching it.
@@ -1298,19 +1295,18 @@ canonical snapshots and boundary probes; it is the parity oracle, not production
    `ABClassMutationOps.upsertABClass()` rejects null/undefined through `Validate.requireParams`
    before metadata validation or any side effect; its plain `Error` maps to generic
    `INTERNAL_ERROR`, not `INVALID_REQUEST`. Later null-handling assignment branches do not
-   bypass it.
-   **Classification: Aligned** — nullable read/response keys, update omission/null clearing and
-   optional nullable whole `metadata` replacement are unchanged. No backend admission, coercion
-   or error-mapping change is introduced.
+   bypass it. Nullable read/response keys, update omission/null clearing and optional nullable
+   whole `metadata` replacement are unchanged. No backend admission, coercion or error-mapping
+   change is introduced.
 
 9. **Metadata refresh requires stricter assignment timestamps than the class-read schema.**
    `AssignmentPartialSchema.updatedAt` remains `z.string().nullable()`. The metadata refresh
    decision (`getMetadataRefreshDecision()`) instead parses every assignment's timestamp with
    `CanonicalMetadataTimestampSchema` before choosing a target, even assignments that would
    not win selection. Null, malformed and non-canonical values fail rather than receiving
-   clock/default substitution. No read schema or backend assignment shape is tightened.
-   **Classification: Aligned** — intentional task-boundary narrowing to make timestamp-only
-   freshness comparisons trustworthy; the existing read contract is unchanged.
+   clock/default substitution. No read schema or backend assignment shape is tightened. This is
+   intentional task-boundary narrowing to make timestamp-only freshness comparisons trustworthy;
+   the existing read contract is unchanged.
 
 10. **Confirmed persistence is distinct from successful frontend refresh.**
     Failed local lifecycle data permits optional literal `confirmedPersistence: true` when either
@@ -1320,29 +1316,8 @@ canonical snapshots and boundary probes; it is the parity oracle, not production
     bounded scalar is logged on refresh-failure diagnostics, and feedback ownership is tied to the
     committed selected class rather than analysis readiness; a required third `selectedClassId`
     argument distinguishes same-class readiness-null from genuine navigation. No ABClass field or
-    transport shape changes.
-    **Classification: Aligned** — deliberate frontend execution-state extension; see
+    transport shape changes. This is a deliberate frontend execution-state extension; see
     [Frontend Data Analysis Response — settlement](frontend-data-analysis-response.md#confirmed-persistence-and-refresh-settlement).
-
-Entries 1–4 are intentional-contract entries, not implementation deferrals. Entry 5 records the
-class-read adoption status; entry 6 remains a current fragility note; entry 7 records intentional
-mutation-request narrowing and entry 8 the upsert null-admission match; entry 9 records
-intentional refresh timestamp narrowing and entry 10 the local confirmed-save/refresh
-distinction. Three former drifts are resolved and are recorded here so they are not
-reintroduced:
-
-- The former `Teacher.toJSON()` conditional-omission discrepancy is resolved: `teacherName`
-  is now always emitted with an explicit `null` (see
-  [§ Sub-entity Teacher](#sub-entity-teacher)).
-- The former `assignmentDefinitionKey` mismatch — `_toReadView()` emitting `null` (or omitting
-  the key) when the stored assignment lacked a valid `definitionKey`, while the documented
-  contract and frontend `AssignmentPartialSchema` both require a plain `string` — is resolved
-  by the read-boundary integrity check above. The contract was **not** widened to
-  nullable/optional; the backend now fails loudly instead.
-- The former mutation/read identifier mismatch — `validateMutationClassId_` admitting
-  non-string, untrimmed or control-character `classId` values that `validateIdentifier_`
-  rejects on reads — is resolved by delegating both paths to
-  `validateSafeTrimmedIdentifier_` (see [§ Validation](#validation)).
 
 ---
 
@@ -1477,12 +1452,7 @@ Regression suites:
   └── tests/api/apiHandler/abclassMetadata{Reads,Writes,Errors}.test.js — real read/write/error envelopes
 ```
 
-## Planned contract changes (Not implemented)
+## Scope boundaries
 
-None for this contract. ABClass adds no field of its own; its embedded partial assignment
-entries carry the implemented read marker `1 | 'legacy'` and prepared legacy read submissions,
-documented in the canonical sections above
-([§ `getABClass`](abclass.md#getabclass-read),
-[Component Shape: Assessment § Legacy read preparation](assessment.md#legacy-read-preparation)).
-Ordinary class saves preserve raw legacy bodies and original version values, including
-non-array submissions roots. Corrupted student IDs remain explicitly out of scope.
+Ordinary class saves preserve raw legacy bodies and original version values, including non-array
+submissions roots. Corrupted student IDs remain explicitly out of scope.

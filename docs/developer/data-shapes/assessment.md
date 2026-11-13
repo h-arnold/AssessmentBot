@@ -189,20 +189,18 @@ None. This shape embeds no other shape; `error` is an inline `{ stage, code }` o
 
 **Known discrepancies:**
 
-1. **Full and partial consumer schemas match the implemented `Assessment` range and `E` union.**
+1. **Full and partial consumer schemas match the `Assessment` range and `E` union.**
    `AssessmentSchema` aliases the shared `assessmentResultSchema` and
    `PartialAssessmentEntrySchema` aliases `partialAssessmentResultSchema`. Both enforce
    finite fractional 0–5, `'N'`, and `'E'` with non-blank reasoning plus a catalogue
    cause. A full or partial backend result the shared schema accepts is not rejected by
    the consumer schemas.
-   **Classification: Aligned**.
 
 2. **Partial projection retains `E` reasoning/cause and the partial consumer accepts it.**
    `StudentSubmissionItem.toPartialJSON()` preserves an `'E'` entry intact
    (`{ score: 'E', reasoning, error }`) while numeric and `'N'` entries remain
    `{ score }`. `PartialAssessmentEntrySchema` aliases `partialAssessmentResultSchema`,
    so a class-embedded `E` validates with its explanation.
-   **Classification: Aligned**.
 
 3. **The shared result/cause owner is consumed by both read schemas and both read services run the normaliser.**
    `assessmentResult.zod.ts` is consumed by `assignmentAssessment.zod.ts` and
@@ -211,7 +209,6 @@ None. This shape embeds no other shape; `error` is an inline `{ stage, code }` o
    `normaliseClassRead()` before their final `parseApiResponse` call, each preceded by a
    root-only parse. Per-item isolation and contextual source/marker checks are active at
    runtime.
-   **Classification: Aligned**.
 
 4. **Duplicate partial score declarations are absent.**
    `classDetailService.zod.ts` declares no `MAX_ASSESSMENT_SCORE`,
@@ -219,26 +216,23 @@ None. This shape embeds no other shape; `error` is an inline `{ stage, code }` o
    `PartialAssessmentEntrySchema` aliases the shared result owner. The one cross-module
    consumer, `tests/synthetic-analysis/syntheticGraphIntegrityAndScenarios.test.ts`,
    uses `assessmentScoreSchema` and retains its non-`E` assertions.
-   **Classification: Aligned** — a single result-schema owner remains.
 
 5. **Adjacent schema comments describe the activated contract.**
    Comments beside `AssessmentSchema` and the class-detail partial entry declarations
    state the fractional 0–5 range, the `'E'` branch and retained partial `E`
    reasoning/cause.
-   **Classification: Aligned**.
 
 6. **`ASSESSMENT_FAILED` has no producer.**
    The catalogue entry exists in `Assessment.js` and is accepted by the frontend cause
    schema, but no backend boundary currently emits it: the assessment-stage owner has no
-   separate ordinary assessment-failure boundary.
-   **Classification: Aligned** — the entry is reserved for a real boundary rather than
-   being manufactured. Do not add a blanket catch to give it a producer.
+   separate ordinary assessment-failure boundary. The entry is reserved for a real boundary;
+   do not add a blanket catch to give it a producer.
 
 ---
 
 ### LLM assessment outcomes and validated cache reuse
 
-Implemented in `src/backend/RequestHandlers/LLMRequestManager.js` (terminal outcomes,
+Owned by `src/backend/RequestHandlers/LLMRequestManager.js` (terminal outcomes,
 shared live/cache validation and internal cache identity) and
 `src/backend/RequestHandlers/CacheManager.js` (generic best-effort `get`/`put`). This
 slice adds no persisted field, no transport field, no service-envelope change, no
@@ -304,17 +298,12 @@ Rules:
   strings, fractions, `NaN`, infinities and unsafe integers) throws a contextual `Error`
   before `setError` and before any catalogue mutation. No default attempt count, new
   cause or retry is introduced.
-- No `ASSESSMENT_FAILED` producer exists. The current owner has no separate ordinary
-  assessment-failure boundary, and no blanket catch was introduced; the catalogue entry
-  remains available for a real boundary rather than being manufactured.
+- `ASSESSMENT_FAILED` has no producer: the owner has no separate ordinary assessment-failure
+  boundary. The catalogue entry stays available for a real boundary; do not add a blanket catch
+  to manufacture one.
 - Completion persistence, completion-time marker stamping and completion-with-errors
   feedback are enforced at the write boundary; handled errors persist beside healthy
   results and the marker is stamped only after completed-result validation succeeds.
-
-Proof boundary: these outcomes are established by hermetic native HTTP/cache mocks with
-real domain models and the real shared transport. They do not prove live GAS/LLM/network
-behaviour, deployed execution-log fidelity, cache expiry or eviction, durable
-persistence, completion-time stamping or the original production incident.
 
 ### Write boundary — preflight before any write
 
@@ -445,8 +434,8 @@ Preparation rules:
 | Mutation            | The restored instance, its saved raw submissions and later persistence output are unchanged.                                                                                                                                                                                                             |
 
 Stored explicit `REASSESSMENT_REQUIRED` errors remain supported: they are served as stored on
-both read paths and are not regenerated. The all-results placeholder producer has been
-removed; the catalogue entry remains accepted for previously stored errors.
+both read paths and are not regenerated. There is no all-results placeholder producer; the
+catalogue entry remains accepted for previously stored errors.
 
 Format gate and persistence preservation:
 
@@ -511,31 +500,14 @@ generates TABLE fixtures nor introduces new TABLE feature work.
 
 The synthetic generator, projection and strict graph validators emit and accept marker-1
 records, real PNG/raw-grid bodies, paired reference formulae and retained partial `E`
-details. The committed canonical corpus is byte-reproducible across two runs. Production
-persistence and both read transports emit the marker; the backend legacy read preparation
-and the frontend read normaliser are active in both read services. The analyser accepts
-explicit `E` input. The completed-write gates (including pending-image rejection and
-completion-time marker stamping) are enforced at the write boundary; preview error states
-are implemented (see
-[Frontend Data Analysis Response § Attempt-baseline contract changes](frontend-data-analysis-response.md#attempt-baseline-contract-changes)).
+details. Production persistence and both read transports emit the marker; the backend legacy
+read preparation and the frontend read normaliser run in both read services. The analyser
+accepts explicit `E` input. The completed-write gates (including pending-image rejection and
+completion-time marker stamping) are enforced at the write boundary. Preview error states are
+described in
+[Frontend Data Analysis Response § Attempt-baseline contract changes](frontend-data-analysis-response.md#attempt-baseline-contract-changes).
 
 ---
-
-## Status
-
-The marker, write gate and marker-1 restoration rules above are the current contract, as is
-legacy read preparation on both read paths.
-
-## Planned contract changes (Not implemented)
-
-None for this contract. The read version union `1 | 'legacy'`, legacy read preparation, the
-removal of the all-results `REASSESSMENT_REQUIRED` placeholder producer and the frontend
-normaliser change are implemented and documented above
-([§ `assessmentContractVersion` result marker](#assessmentcontractversion-result-marker),
-[§ Legacy read preparation](#legacy-read-preparation)). The `REASSESSMENT_REQUIRED` cause
-code remains accepted for previously stored errors; no catalogue deletion is planned.
-Corrupted student IDs remain out of scope by user decision: identity/unknown-task rejection
-is unchanged and no recovery is planned.
 
 ---
 

@@ -305,8 +305,8 @@ exercise the actual `services/apiService.ts` owner; queue tests exercise
 Shared setup lives in `src/test/api/apiServiceTransportTestHelpers.ts`, reusing
 `apiServiceTestMocks.ts`. After `vi.resetModules()`, use `loadCallApi()` /
 `loadParseApiResponse()` for transport and `loadApiQueue()` for a fresh job
-registry. Dynamic imports use the supported owner aliases, not a stale relative
-path from the old suite location. Keep global/timer/mock cleanup in each suite.
+registry. Dynamic imports use the supported owner aliases, not a relative path
+to another suite. Keep global/timer/mock cleanup in each suite.
 
 `services/api/apiQueue.tasks.spec.ts` covers the local deferred-task extension:
 full read/await/merge/write slot reservation, mixed task/request FIFO and snapshots,
@@ -481,7 +481,7 @@ Existing imports through `classesPageTestHelpers` stay valid. The sections below
 
 All shared fixture constants are built from two exported factory functions that provide sensible defaults and keep fixture construction concise:
 
-`createFixtureClassPartial(overrides)` — Creates a `ClassPartial` fixture. Only `classId` is required; all other fields default to the project's conventional fixture defaults (`className: 'Test Class'`, `cohortKey: null`, `courseLength: 1`, `yearGroupKey: 'default-yg'`, `classOwner: null`, `teachers: []`, `active: null`, `metadata: createCanonicalMetadataFixture()`). Every class read now requires the whole nullable metadata snapshot, so the default is a detached canonical non-null snapshot; null-metadata boundary fixtures must pass `metadata: null` explicitly.
+`createFixtureClassPartial(overrides)` — Creates a `ClassPartial` fixture. Only `classId` is required; all other fields default to the project's conventional fixture defaults (`className: 'Test Class'`, `cohortKey: null`, `courseLength: 1`, `yearGroupKey: 'default-yg'`, `classOwner: null`, `teachers: []`, `active: null`, `metadata: createCanonicalMetadataFixture()`). Every class read requires the whole nullable metadata snapshot, so the default is a detached canonical non-null snapshot; null-metadata boundary fixtures must pass `metadata: null` explicitly.
 
 `createFixtureYearGroup(key, name)` — Creates a `YearGroup` fixture with the given key and name.
 
@@ -804,20 +804,13 @@ function createStartupWarmupState(
 }
 ```
 
-## Current Structure
+## Test file layout
 
 - Unit/component tests: `src/frontend/src/**/*.spec.{ts,tsx}`
 - Shared test helpers: `src/frontend/src/test/**`
 - Test setup: `src/frontend/src/test/setup.ts`
 - E2E tests: `src/frontend/e2e-tests/**/*.spec.ts` (see `frontend-playwright-e2e.md`)
 - Playwright config: `src/frontend/playwright.config.ts`
-
-## Current Approach
-
-- Use Vitest for invisible behaviour and fast deterministic checks (this document).
-- Use Playwright for visible, user-observable behaviour in a real browser (see `frontend-playwright-e2e.md`).
-- Keep tests decoupled from implementation details.
-- Maintain a balanced pyramid: broad Vitest coverage, targeted Playwright journeys.
 
 ## CSS and Style Testing
 

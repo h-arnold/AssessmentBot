@@ -230,40 +230,16 @@ If you introduce a new 4px-level spacing, document the rationale in the componen
 
 Alerts inside modals or cards that need visual separation from child content below should use `marginBottom: 16` (aligned to `var(--app-spacing-md)`). The value of 16 is the standard across the codebase and is correct.
 
-## 6. Current Codebase Audit
+## 6. Known permitted exceptions
 
-The following inconsistencies were identified in the initial audit. These should be addressed opportunistically:
+Most spacing comes from the `theme/spacing.ts` constants or the `--app-spacing-*` CSS
+variables. The remaining non-token values below are deliberate:
 
-### 6.1 Resolved Baseline
-
-| Location                 | Current Value                                             | Status                            |
-| ------------------------ | --------------------------------------------------------- | --------------------------------- |
-| `.app-content` padding   | `var(--app-spacing-lg) var(--app-spacing-md)` (24px/16px) | ✅ Resolved — uses spacing tokens |
-| `.app-breadcrumb` margin | `1.5rem` (24px)                                           | ✅ Aligned                        |
-| Card `bodyPadding`       | 24 (default)                                              | ✅ Aligned                        |
-| Card `headerPadding`     | 24 (default)                                              | ✅ Aligned                        |
-| Space `size="middle"`    | 16px                                                      | ✅ Aligned                        |
-
-### 6.2 Values Already Aligned (Do Not Change)
-
-The following inline values are already on the 8px grid and should not be changed:
-
-- `padding: '4px 8px'` in `AssignmentDefinitionsTable.tsx` filter dropdowns — 4px is a permitted half-unit exception
-- `padding: 24` in `InlineDialog.tsx` — maps to `var(--app-spacing-lg)`
-- `marginBottom: 16` in Alert components across the codebase — maps to `var(--app-spacing-md)`; migrated instances now use `APP_GAP_MD` (see §4.7)
-- `gap: 12` in `ClassesManagementPanel.tsx` and `AssignmentsManagementSurface.tsx` — 12px is accepted within the 8px system (8 + 4 half-step, permitted for Flex gap); now `APP_GAP_COMPACT` (see §4.7)
-- `marginTop: 16` in `InlineDialog.tsx` — maps to `var(--app-spacing-md)`
-- `marginTop: 8` in `AssignmentDefinitionWizardModalShell.tsx` — maps to `var(--app-spacing-sm)`
-- `gap: 16` in `TaskHeatmapPage.tsx` and `AssignmentsManagementSurface.tsx` — maps to `var(--app-spacing-md)`; now `APP_GAP_MD` (see §4.7)
-- `gap: 24` in `BackendSettingsPanel.tsx` — maps to `var(--app-spacing-lg)`; now `APP_GAP_LG` (see §4.7)
-
-> These literals have been replaced with the canonical `theme/spacing.ts` constants (see §4.7).
-
-### 6.3 Check-Once Values (Borderline)
-
-- `ClassesPage.tsx` card gap derives from `APP_GAP_MD` (the canonical constant in `src/frontend/src/theme/spacing.ts`; previously a local `CLASSES_CARD_GAP_PX = 16` literal, since removed)
-- `CLASSES_CARD_HORIZONTAL_PADDING_FACTOR = 2` — a scaling factor, not a spacing literal
-- `ASSIGNMENTS} filter dropdown padding: '4px 8px'` — the 4px vertical is a permitted half-unit exception; the 8px horizontal maps to `var(--app-spacing-sm)`
+- `padding: '4px 8px'` in `AssignmentDefinitionsTable.tsx` filter dropdowns — the 4px vertical is
+  the permitted half-unit exception; the 8px horizontal maps to `var(--app-spacing-sm)`.
+- `padding: '2px 4px'` in `MetricPill.tsx` compact mode — see §5.2.
+- `CLASSES_CARD_HORIZONTAL_PADDING_FACTOR = 2` in `ClassesPage.tsx` — a scaling factor, not a
+  spacing literal. The card gap itself derives from `APP_GAP_MD`.
 
 ## 7. Enforcement in Code Review
 

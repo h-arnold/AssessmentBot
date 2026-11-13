@@ -2,7 +2,7 @@
 
 Structural and organisational conventions for `src/frontend/src/**`.
 
-This is the canonical home for frontend structural conventions. `src/frontend/AGENTS.md` signposts here rather than restating the rules. Add further conventions here as they are consolidated out of the agent instructions.
+This is the canonical home for frontend structural conventions. `src/frontend/AGENTS.md` signposts here rather than restating the rules; add further conventions here.
 
 ## 1. Relationship to other docs
 

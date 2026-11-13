@@ -56,7 +56,7 @@ Technical documentation for developers contributing to the AssessmentBot codebas
 - [**Frontend Playwright E2E**](./developer/frontend/frontend-playwright-e2e.md) – Playwright E2E testing patterns, runtime mock infrastructure, StrictMode
 - [**Metric Display Precision**](./developer/frontend/metric-display-precision.md) – Metric score decimal-place convention (0dp individual, 2dp averages)
 - [**Metric Icon Display**](./developer/frontend/metric-icon-display.md) – Metric icon rendering, theme-aware colour, stroke conventions
-- [**Navigation Consistency Status**](./developer/frontend/navigation-consistency-status.md) – Status tracker for the shared `PageTitleCard` + `PageNavCard` navigation pattern
+- [**Page Header and Navigation Pattern**](./developer/frontend/page-header-navigation-pattern.md) – Page title/nav cards, stacking and page-level actions
 
 > The `frontend/ant-design-docs-cache/` directory holds a local cache of Ant Design component notes for offline reference. It is not canonical policy.
 

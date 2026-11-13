@@ -30,78 +30,41 @@ entire codebase.
 Do not modify API contracts based on assumptions about what the data-shape docs say. Always verify
 against the current specification first.
 
-## Shared Helper Status
+## Shared helpers
 
 - ABClass parameters-object validator
-  - Status: `Implemented`
   - Location: `validateParametersObject_()` in `src/backend/z_Api/abclass/abclassValidation.js`
   - Behaviour: shared primitive for the `abclass/` domain folder; validates that the parameters argument is a plain object (not an array). Referenced via `/* global validateParametersObject_ */` from `abclassMutations.js` and `abclassRead.js`.
 - ABClass mutation `classId` validator
-  - Status: `Implemented`
   - Location: `validateMutationClassId_(classId, methodName)` in `src/backend/z_Api/abclass/abclassMutations.js`
   - Behaviour: shared by the upsert, update and delete transport helpers. It delegates to `validateSafeTrimmedIdentifier_` (`src/backend/z_Api/assignmentDefinition/assignmentDefinitionValidation.js`), so mutations enforce the same identifier boundary as reads: string type, non-emptiness, already-trimmed shape, and rejection of path characters (`/`, `\`, `..`) and control characters, reported as `ApiValidationError`. A code comment marks the reuse as an explicit security defence-in-depth guard.
 - ABClass request metadata gate
-  - Status: `Implemented`
   - Location: `_validateRequestMetadata(parameters)` in `src/backend/y_controllers/ABClassController/ABClassValidation.js`
   - Behaviour: own-property request gate shared by `ABClassMutationOps.upsertABClass()` and `.updateABClass()`. Delegates all nested rules to the shared `ABClassMetadata` domain validator and tags only failures from that invocation with `inputSource: 'request'`, rethrowing the same error object and `fieldPath`.
 - ABClass metadata request-error adapter
-  - Status: `Implemented`
   - Location: `adaptMetadataRequestError_(methodName, parameters, operation)` in `src/backend/z_Api/abclass/abclassMutations.js`
   - Behaviour: narrow trailing-underscore transport adapter reused by `upsertABClass_()` and `updateABClass_()` only. It logs the raw thrown value with `method` and `classId` context, converts only an `ABClassMetadataValidationError` whose `inputSource` is exactly `'request'` into an `ApiValidationError` (same path-bearing `message`, `{ method }` option, no new envelope fields), and rethrows every other thrown value with unchanged identity. It does not revalidate metadata or reproduce nested domain rules, and `deleteABClass_()` is unchanged.
 - Assignment-definition upsert request validator
-  - Status: `Implemented`
   - Location: `validateUpsertParameters_()` in `src/backend/z_Api/assignmentDefinition/assignmentDefinitionUpsertValidation.js`
   - Behaviour: owns request-shape validation, optional update-key safety, and structural `taskWeightings` array validation for `upsertAssignmentDefinition` without duplicating controller business rules.
 - Assignment-definition read request validator
-  - Status: `Implemented`
   - Location: `validateReadParameters_()` in `src/backend/z_Api/assignmentDefinition/assignmentDefinitionValidation.js`
   - Behaviour: owns safe-key validation for full-definition reads by `definitionKey`.
-- Assignment-definition full-definition response mapper
-  - Status: `Removed`
-  - Location: `toCanonicalTransportDefinition_` in `src/backend/z_Api/assignmentDefinitionTransport.js` (originally in the file that was split and renamed)
-  - Note: Replaced by direct use of `controller.toCanonicalFullDefinitionResponse(definition)`.
-- Assignment-definition partial row serializer
-  - Status: `Removed`
-  - Location: `toPlainPartialRow_` in `src/backend/z_Api/assignmentDefinitionTransport.js` (file since split: transport functions moved to `assignmentDefinitionTransport.js`, validation functions to `assignmentDefinitionValidation.js`)
-  - Note: Replaced by `toTransportPartialRow_` helper.
-- Assignment-definition upsert payload builder
-  - Status: `Removed`
-  - Location: `buildControllerUpsertPayload_` in `src/backend/z_Api/assignmentDefinitionTransport.js` (file since split)
-  - Note: URL-to-ID translation inlined into `upsertAssignmentDefinition_` without `assignmentWeighting` defaulting logic.
-- Assignment-definition upsert context builder
-  - Status: `Removed`
-  - Location: `_buildUpsertContext` in `src/backend/y_controllers/AssignmentDefinition/index.js` (original location before removal; logic inlined into `upsertDefinition` method body)
-  - Note: Logic moved into `upsertDefinition` method body.
-- Assignment-definition creation method
-  - Status: `Removed`
-  - Location: `ensureDefinition` in `src/backend/y_controllers/AssignmentDefinition/index.js` (original location before removal; `upsertDefinition` is the sole creation/update method)
-  - Note: Removed per architectural decision; `upsertDefinition` is the sole creation/update method.
-- AssignmentDefinition yearGroup field
-  - Status: `Removed`
-  - Location: `yearGroup` parameter and property in `src/backend/Models/AssignmentDefinition.js`
-  - Note: Deprecated in favour of `yearGroupKey` only.
 - Assignment-definition transport partial row helper
-  - Status: `Implemented`
   - Location: `toTransportPartialRow_` in `src/backend/z_Api/assignmentDefinitionTransport.js`
   - Note: Transport-boundary helper that accepts a model instance or plain object, calls `definition.toPartialJSON()`, defensively strips `yearGroup`, and normalises Date fields.
 
 ## ABClass metadata helpers
 
-> **Status: implemented — backend contract and companion documentation delivered.** The metadata
-> domain owner, its typed domain error, the canonical UTC predicate and ABClass model
-> construction/restoration/serialisation support are implemented, including the partial-aware
-> embedded-assignment projection. The ABClass mutation-owner decomposition, shared save
-> validation, prepared whole/partial persistence, field-scoped roster persistence,
-> response-mapper reuse, the controller request gate and the transport request-error adaptation
-> are also implemented. `upsertABClass` and `updateABClass` accept an optional `metadata` field
-> and report request-provenance metadata failures as `INVALID_REQUEST`. The companion deletion
-> documentation reconciliation is delivered below; the deletion **code** flag fix remains
+> `upsertABClass` and `updateABClass` accept an optional `metadata` field and report
+> request-provenance metadata failures as `INVALID_REQUEST`. The deletion flag's known quirk is
 > deferred to [issue #332](https://github.com/h-arnold/AssessmentBot/issues/332).
+>
 > Cross-references:
 > [abclass.md § Validation](../data-shapes/abclass.md#validation) and
 > [synthetic-test-data.md § ABClass metadata generator capability](../testing/synthetic-test-data.md#abclass-metadata-generator-capability).
 
-### Metadata domain model — `Models/ABClassMetadata.js` (`Implemented`)
+### Metadata domain model — `Models/ABClassMetadata.js`
 
 - Dedicated metadata-domain owner holding the five named validation routines:
   `validateAverageScore`, `validateAverageScores`, `validateClassAverages`,
@@ -126,25 +89,25 @@ against the current specification first.
   `module.exports` block. The four metric names come from `Assessment.CRITERIA` plus
   `'overall'`, derived in `ABClassMetadata._metrics()` at call time because this file sorts
   before `Models/Assessment.js`.
-- **Implemented:** `ABClass` owns a plain metadata snapshot or `null`; construction and
+- `ABClass` owns a plain metadata snapshot or `null`; construction and
   `fromJSON()` distinguish actual own-property absence (normalised through the domain
   constructor) from explicitly supplied values, including invalid own `undefined`.
   `setMetadata(value)` replaces the complete snapshot or clears it with `null`, and validates
   before changing model state. `fromJSON()` is a stored-read path, so it converts revived `Date`
   values through `DateUtils.deepConvertDates()` first (see "Stored-read Date revival" in
   [rehydration.md](rehydration.md#stored-read-date-revival)).
-- **Implemented:** `toJSON()` and `toPartialJSON()` always include metadata, revalidate mutable
+- `toJSON()` and `toPartialJSON()` always include metadata, revalidate mutable
   model state and return defensive copies through the domain owner. Missing/deleted model state
   is invalid at serialisation, not silently defaulted.
-- **Implemented:** response mapping emits validated, nullable `metadata` on registry, full-read
+- response mapping emits validated, nullable `metadata` on registry, full-read
   and mutation-summary responses (see "Response mapper reuse" below).
-- **Implemented:** `ABClassValidation._validateRequestMetadata(parameters)` gates request
+- `ABClassValidation._validateRequestMetadata(parameters)` gates request
   metadata through the shared domain validator before any side effect (see "Controller request
   gate" below), and the transport request-error adapter converts the tagged failure into
   `INVALID_REQUEST` (see "Transport error adaptation" below). Persistence preparation is
-  delivered (see "Persistence extension" below).
+  documented under "Persistence extension" below.
 
-### ABClass partial-aware assignment projection — `Models/ABClass.js` (`Implemented`)
+### ABClass partial-aware assignment projection — `Models/ABClass.js`
 
 - `ABClass.toJSON()` serialises each embedded assignment through the private
   `ABClass._serialiseAssignmentsForClass()` helper. A partial definition (tasks stored as an
@@ -155,12 +118,10 @@ against the current specification first.
   `Assignment.toJSON()` emits a partial definition (tasks stored as an array) through
   `definition.toPartialJSON()` and a full definition through `toJSON()`. Serialisation errors
   from a genuine full definition propagate unchanged.
-- This is the user-approved 17 October 2026 correction recorded in `docs/plans/SPEC.md`. It is
-  missing Section 3 model integration delivered in Section 5, not a new frontend feature. No
-  second persistence-specific class serializer, automatic hydration or catch-and-fallback is
-  added.
+- Do not add a second persistence-specific class serializer, automatic hydration or
+  catch-and-fallback.
 
-### Metadata error type — `Utils/ErrorTypes/ABClassMetadataValidationError.js` (`Implemented`)
+### Metadata error type — `Utils/ErrorTypes/ABClassMetadataValidationError.js`
 
 - Typed domain error extending `Error` (not `ApiValidationError`), carrying `fieldPath` and
   defaulting to the non-request provenance `inputSource: 'model'`. The rendered message appends
@@ -171,7 +132,7 @@ against the current specification first.
   restoration, stored-partial validation, serialisation and projection never acquire the
   request tag; the domain layer never throws transport errors.
 
-### Canonical-UTC predicate — `Utils/Validate.js` (`Implemented`)
+### Canonical-UTC predicate — `Utils/Validate.js`
 
 - `Validate.isCanonicalUtcDateTime(value)` enforces the exact canonical UTC real-calendar form
   `YYYY-MM-DDTHH:mm:ss.sssZ`, rejecting live `Date` objects, date-only strings, timezone
@@ -182,7 +143,7 @@ against the current specification first.
   timezone offsets and is owned by the transport layer. Model-domain validation must not depend
   on that helper; leave it and its broader contract unchanged.
 
-### Controller request gate (`Implemented`)
+### Controller request gate
 
 - `ABClassValidation._validateRequestMetadata(parameters)` is the request gate. It runs before
   any record read, roster refresh or write. An `Object.hasOwn` check means actual omission does
@@ -202,7 +163,7 @@ against the current specification first.
   controller. The wrappers' only added behaviour is the request-error adaptation below; they add
   no nested domain rules.
 
-### Transport error adaptation (`Implemented`)
+### Transport error adaptation
 
 - `adaptMetadataRequestError_(methodName, parameters, operation)` in `abclassMutations.js` is the
   narrow trailing-underscore adapter shared by `upsertABClass_()` and `updateABClass_()` only. It
@@ -220,7 +181,7 @@ against the current specification first.
 - No dispatcher, allowlist, authorisation, request-tracking or envelope-shape change is required
   or authorised; the transport layer never evaluates nested domain rules.
 
-### Response mapper reuse (`Implemented`)
+### Response mapper reuse
 
 - `ABClassResponseMapper._normaliseClassPartial()` is the single stored-partial metadata gate.
   Actual own-property absence routes through `new ABClassMetadata()` to `null`; a present value is
@@ -239,10 +200,8 @@ against the current specification first.
   `DateUtils.deepConvertDates()` before `new ABClassMetadata(...)`, which would otherwise reject
   the `Date` as not a canonical UTC datetime. The existing full-read
   `DateUtils.deepConvertDates()` call for the other ABClass fields is retained.
-- Request metadata acceptance and its request-provenance error adaptation are both delivered
-  (see "Controller request gate" and "Transport error adaptation" above).
 
-### Controller decomposition — `ABClassMutationOps.js` (`Implemented`)
+### Controller decomposition — `ABClassMutationOps.js`
 
 - `ABClassMutationOps` owns the facade's upsert, update and delete orchestration. The
   no-argument `ABClassController` facade constructs it with one options object containing
@@ -267,15 +226,14 @@ against the current specification first.
   otherwise gains no unrelated fields; the selective editable path may leave full-store metadata
   absence while rebuilding the partial with `null`. Upsert keeps its whole-class
   `persistClassAndPartial()` path.
-- The facade retains its public-method JSDoc and GAS sub-class load order. This decomposition
-  adds no deletion-flag correction; request-metadata handling (Section 7) and prepared-write
-  behaviour/field-scoped roster persistence are delivered separately (see "Controller request
-  gate" and "Persistence extension" below).
+- The facade retains its public-method JSDoc and GAS sub-class load order. The decomposition does
+  not change the deletion flag; request-metadata handling and prepared-write behaviour are
+  documented under "Controller request gate" and "Persistence extension" below.
 - The conditional `ABClassPersistence.readClassPartials()` extraction is **not required**:
   the resulting facade is within the binding 500-line ceiling, so registry retrieval and
   error logging remain in `getAllClassPartials()`.
 
-### Persistence extension — `ABClassPersistence` (`Implemented`)
+### Persistence extension — `ABClassPersistence`
 
 - `persistClassAndPartial(abClass)` prepares independent full and partial payloads through
   `_prepareClassAndPartial()` **before** the first full-store mutation, then writes the full
@@ -309,19 +267,6 @@ abClass)` and `_writePreparedRosterPartial(prepared, classId)`. `ABClassRoster._
   metadata. A true partial-save or patch failure keeps the existing logged propagation and
   non-transactional partial-success risk; no rollback or retry is added.
 - See [abclass.md § Field-scoped roster persistence](../data-shapes/abclass.md#field-scoped-roster-persistence).
-
-### Companion deletion-documentation reconciliation (`Implemented`)
-
-- This page's `deleteABClass` idempotency note now matches the factual correction recorded in
-  `docs/developer/data-shapes/abclass.md`: repeated deletes succeed, a missing registry row
-  yields `hasDeletedClassPartial: false`, and the full-collection flag is currently true after
-  any non-throwing `dropCollection()`, so it does not prove the collection was removed.
-- That flag is true even when the vendor returns `false` for an absent collection. The
-  recognised `COLLECTION_NOT_FOUND` exception guard is **not** the vendor's normal absent path
-  (which returns `false` rather than throwing): every non-throwing delete currently sets the
-  full flag true, and only that exception path leaves it false. No deletion code was changed.
-- The full-collection flag fix remains deferred to
-  [issue #332](https://github.com/h-arnold/AssessmentBot/issues/332).
 
 ## Design Rules
 
@@ -408,9 +353,7 @@ Rules:
 
 ### Assignment-definition upsert validation split (`upsertAssignmentDefinition`)
 
-Status: `Implemented`
-
-`upsertAssignmentDefinition` now uses a transport validator in `src/backend/z_Api/assignmentDefinition/assignmentDefinitionUpsertValidation.js` that owns only transport-boundary checks, while `AssignmentDefinitionController.upsertDefinition()` owns the domain contract.
+`upsertAssignmentDefinition` uses a transport validator in `src/backend/z_Api/assignmentDefinition/assignmentDefinitionUpsertValidation.js` that owns only transport-boundary checks, while `AssignmentDefinitionController.upsertDefinition()` owns the domain contract.
 
 Transport helper ownership:
 
@@ -436,7 +379,7 @@ Legacy backend `globals.js` files are reference-only during migration and are no
 - `src/backend/AssignmentProcessor/globals.js`
 - `src/backend/y_controllers/globals.js`
 
-Configuration transport no longer uses `src/backend/ConfigurationManager/99_globals.js`; that legacy transport file has been removed. Backend configuration reads and writes now go through `src/backend/z_Api/z_apiHandler.js`, with callable method names owned by `ALLOWLISTED_METHOD_HANDLERS` in that file and the implementation living in `src/backend/z_Api/apiConfig.js`.
+Backend configuration reads and writes go through `src/backend/z_Api/z_apiHandler.js`, with callable method names owned by `ALLOWLISTED_METHOD_HANDLERS` in that file and the implementation living in `src/backend/z_Api/apiConfig.js`.
 
 Migration rule:
 
@@ -583,13 +526,12 @@ Reference: https://developers.google.com/apps-script/guides/html/reference/run
    `google.script.run` would otherwise omit from a returned object. See
    [String serialisation contract](#response-envelope).
 
-### Current migrated endpoints
+### Registered transport endpoints
 
 - `getBackendConfig` and `setBackendConfig` — canonical backend configuration transport methods.
   Source: inline closures in `src/backend/z_Api/z_apiHandler.js` delegating to `getBackendConfig_()` and `setBackendConfig_()` in `src/backend/z_Api/apiConfig.js`.
   Frontend wrapper: `src/frontend/src/services/backendConfiguration/backendConfigurationService.ts`, with request and response validation in `src/frontend/src/services/backendConfiguration/backendConfiguration.zod.ts`.
-  Legacy note: configuration transport no longer uses `src/backend/ConfigurationManager/99_globals.js`.
-  Ownership note: first-time default seeding now belongs to `ConfigurationManager.ensureDefaultConfiguration()`. `getBackendConfig()` remains a thin transport read that delegates bootstrap to the manager before shaping the public payload.
+  Ownership note: first-time default seeding belongs to `ConfigurationManager.ensureDefaultConfiguration()`. `getBackendConfig()` remains a thin transport read that delegates bootstrap to the manager before shaping the public payload.
 
 - `getBackendConfig` read data returns the public configuration payload with exactly the 12 non-auth stable fields: `backendAssessorBatchSize`, masked `apiKey`, `hasApiKey`, `backendUrl`, `revokeAuthTriggerSet`, `daysUntilAuthRevoke`, `slidesFetchBatchSize`, `jsonDbMasterIndexKey`, `jsonDbLockTimeoutMs`, `jsonDbLogLevel`, `jsonDbBackupOnInitialise`, and `jsonDbRootFolderId`. It does **not** emit `authGroupEmail` or `authMode`; auth state is read exclusively through the dedicated auth endpoints (`getApplicationAccess` / `getAuthenticationSettings`).
   Masking contract: the raw stored secret never crosses the transport boundary; the masked shapes are defined in [BackendConfig § Transport](../data-shapes/backend-config.md#transport).

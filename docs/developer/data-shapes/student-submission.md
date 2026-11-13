@@ -211,38 +211,33 @@ This shape embeds [Contract: BaseTaskArtifact](base-task-artifact.md) and
    Both serialisers always include `documentId` (which may be `null`). The frontend
    schemas tolerate both `null` and an absent field to handle Google Classroom edge
    cases where the Drive reference is omitted for students who never opened the
-   assignment.
-   **Classification: Aligned** — permissive-by-design at the transport boundary.
+   assignment. The partial schemas are permissive by design at the transport boundary.
 
 2. **`StudentSubmissionPartialSchema.studentName` is `z.string().nullable()` and the backend always emits it as a nullable string.**
-   Both sides aligned.
-   **Classification: Aligned**.
 
 3. **`StudentSubmissionItemPartialSchema.assessments` is `.optional()` but `toPartialJSON()` always emits it.**
    The backend always includes `assessments` (even if empty `{}`). The `.optional()`
-   only matters if the key is missing due to an unexpected code path.
-   **Classification: Aligned** — defensive tolerance.
+   only matters if the key is missing due to an unexpected code path; it is defensive tolerance.
 
 4. **`StudentSubmission.updatedAt` uses a monotonic counter suffix (e.g. `"2025-09-10T12:30:00Z#2"`).**
    Not standard ISO 8601. The frontend uses `z.string()`, so it passes validation;
-   downstream code that parses it as ISO 8601 would fail on the `#N` suffix.
-   **Classification: Aligned** — the schema is intentionally loose; the counter is
-   documented in `../backend/rehydration.md` (§Hydration Guidelines).
+   downstream code that parses it as ISO 8601 would fail on the `#N` suffix. The schema is
+   intentionally loose; the counter is documented in
+   `../backend/rehydration.md` (§Hydration Guidelines).
 
 5. **`StudentSubmissionItemSchema.feedback` uses `z.looseObject` while `StudentSubmissionItemPartialSchema.feedback` uses `z.unknown()`.**
    The full schema validates `type` and `createdAt` as strings but tolerates extra
    fields (such as `items` for `CellReferenceFeedback`); the partial schema accepts any
-   feedback structure.
-   **Classification: Aligned** — intentional per feedback-type complexity.
+   feedback structure. The asymmetry is intentional for feedback-type complexity.
 
 6. **`BaseTaskArtifactPartialSchema` accepts `pageId`/`documentId` as `.nullable().optional()` while the full `BaseTaskArtifactFields` requires them.**
    See [Contract: BaseTaskArtifact § Known discrepancies](base-task-artifact.md#validation).
-   **Classification: Aligned** — deliberate, scoped asymmetry.
+   This is a deliberate, scoped asymmetry.
 
 7. **The source code comment on `StudentSubmission.studentName` still reads "Temporary addition for V0.7.2 - will be removed later", but the field is contractual.**
    Both read schemas validate `studentName: string | null` and legacy read preparation
    depends on it. The comment is stale relative to the contract.
-   **Classification: Fragile** — the comment invites removal of a field the transport
+   **Risk:** the comment invites removal of a field the transport
    contract requires. Removing it would break both read schemas and the prepared
    legacy shape. Recommended follow-up: delete or correct the comment in
    `src/backend/Models/StudentSubmission/index.js`.
@@ -648,29 +643,16 @@ generates TABLE fixtures nor introduces new TABLE feature work.
 
 ---
 
-## Status
+## Scope notes
 
-The acquisition, extraction, image-hydration and coverage rules above are the current
-contract; preview error states and the attempt-baseline analysis mode are frontend analysis
-concerns, tracked in
+The acquisition, extraction, image-hydration and coverage rules above are the current contract.
+Preview error states and the attempt-baseline analysis mode are frontend analysis concerns,
+described in
 [Frontend Data Analysis Response](frontend-data-analysis-response.md#attempt-baseline-contract-changes).
 
 The legacy read preparation described in
-[Contract: Assessment § Legacy read preparation](assessment.md#legacy-read-preparation) is
-implemented and is the current contract for both read paths.
-
-## Planned contract changes (Not implemented)
-
-None for this shape. Legacy read preparation reuses the existing item validation on an
-independent read result, so valid items are retained and corrupt items or item maps become
-`CORRUPT_RECORD` `E` per saved task on both read paths. The blanket placeholder producer is
-removed; its error code remains accepted for stored errors. Legacy status is assignment-level
-`'legacy'`, not a replacement for scores. Corrupted/missing student IDs remain out of scope
-(explicit user decision), with existing identity and unknown-task rejection unchanged. The
-browser defensive coverage fallback remains marker-1-only; backend preparation owns legacy
-coverage. These rules are documented in
-[§ Completed submission coverage](#completed-submission-coverage) and
-[§ Full and partial item isolation with trustworthy identities](#full-and-partial-item-isolation-with-trustworthy-identities).
+[Contract: Assessment § Legacy read preparation](assessment.md#legacy-read-preparation) applies
+to both read paths.
 
 ---
 

@@ -32,7 +32,7 @@ These tests are **NOT** blocking for feature development. They should be address
 - "cancelling pending rows in a multi-row create closes the progress modal and shows a cancellation message"
 - "toolbar bulk-action buttons remain disabled while the bulk-create queue is active and re-enable after drain"
 
-**Root Cause**: Intermittent Ant Design v6 modal entrance-animation race. During the `rc-dialog` open animation the confirmation click can be swallowed, so the cancel/dismiss interaction occasionally fails to register. This same class of flake was previously documented and mitigated in commit `feb046a`, which added a modal-confirmation click-stabilisation helper (`classes-crud-bulk-progress.spec.ts:147-163`) that waits for enablement and retries only while the dialog is genuinely open.
+**Root Cause**: Intermittent Ant Design v6 modal entrance-animation race. During the `rc-dialog` open animation the confirmation click can be swallowed, so the cancel/dismiss interaction occasionally fails to register. The mitigation is the modal-confirmation click-stabilisation helper in `classes-crud-bulk-progress.spec.ts:147-163`, which waits for enablement and retries only while the dialog is genuinely open.
 
 **History**:
 
@@ -93,10 +93,10 @@ Full investigation documented at: `/tmp/vibe-scratchpad-b0dce62f-pvx7t902/flaky-
 **Decision**: Document as accepted technical debt  
 **Rationale**:
 
-- Pre-existing flaky tests unrelated to Section 1 changes
+- Pre-existing flaky tests unrelated to the changes under review
 - Documented history of instability
-- Section 1 implementation is clean and verified
-- Blocking Section 1 would be inappropriate
+- The reviewed implementation was clean and verified
+- Blocking the change would have been inappropriate
 
 **Approved by**: Implementation orchestrator following investigation by Testing Specialist
 

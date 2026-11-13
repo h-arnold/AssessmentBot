@@ -29,15 +29,12 @@ reference.
 | **AuthUsers**                       | [`auth-users.md`](auth-users.md)                                           | Auth fields inside the `__CONFIG_STORE_KEY__` blob                 | `getApplicationAccess`, `getAuthenticationSettings`, `setAuthenticationSettings`                                                                                                                                                         | AuthUserEntry (embedded)                                                                                                      |
 | **Frontend Data Analysis Response** | [`frontend-data-analysis-response.md`](frontend-data-analysis-response.md) | None — derived frontend validation contract                        | None — in-memory `DataAnalysisService` output                                                                                                                                                                                            | AverageContribution, MetricResult, ClassPageDisplayMetric (adapter-local), CellPreviewData, TaskPreviewData                   |
 
-Status: all eleven contracts are implemented and conform to their documented contracts.
-`frontend-data-analysis-response.md`'s attempt-baseline analysis mode is implemented (see
-[Attempt-baseline contract changes](frontend-data-analysis-response.md#attempt-baseline-contract-changes)).
-Legacy `submissions` preservation on restoration and ordinary save is implemented
-(see [assignment.md § Legacy `submissions` preservation](assignment.md#legacy-submissions-preservation)).
-The read marker union is `1 | 'legacy'` on both read paths, and legacy reads are prepared by
+All eleven contracts conform to their documented shapes. The read marker union is
+`1 | 'legacy'` on both read paths, and legacy reads are prepared by
 `AssignmentRehydration.prepareLegacyReadSubmissions()` (see
-[assessment.md § Legacy read preparation](assessment.md#legacy-read-preparation)); the former
-`1 | null` read marker and the all-results reassessment projection are retired.
+[assessment.md § Legacy read preparation](assessment.md#legacy-read-preparation)). Legacy
+`submissions` preservation is described in
+[assignment.md § Legacy `submissions` preservation](assignment.md#legacy-submissions-preservation).
 
 ## Component Shapes
 
@@ -87,9 +84,7 @@ Containment links:
 
 ## Documented Contracts
 
-All eleven contracts and three component shapes are documented in this directory. The legacy
-`docs/developer/backend/DATA_SHAPES.md` has been deleted; all content has been migrated to the
-individual contract and component-shape files listed above.
+All eleven contracts and three component shapes are documented in this directory.
 
 ## Transport Envelope
 

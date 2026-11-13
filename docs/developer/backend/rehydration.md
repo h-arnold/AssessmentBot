@@ -206,9 +206,9 @@ Classes and primary methods (in call order):
 
 ### Strictness notes
 
-- Task payloads must include `taskTitle`; `_hydrateTasks` now fails fast via `ProgressTracker.logAndThrowError` if a task is missing it.
-- Parser outputs are normalised back into `TaskDefinition` instances before persistence to guarantee `toPartialJSON()` is available and consistent.
-- Artifact redaction now relies on artifact classes’ `toPartialJSON()`; legacy plain-object fallbacks have been removed.
+- Task payloads must include `taskTitle`; `_hydrateTasks` fails fast via `ProgressTracker.logAndThrowError` if a task is missing it.
+- Parser outputs are normalised back into `TaskDefinition` instances before persistence so `toPartialJSON()` is available and consistent.
+- Artifact redaction relies on artifact classes’ `toPartialJSON()`; no legacy plain-object fallback exists.
 
 ## Rehydration Algorithm (Read-Only)
 
@@ -310,7 +310,7 @@ read or re-save stored documents:
 - **Stored metadata.** `ABClassResponseMapper._normaliseClassPartial()` and
   `ABClass.fromJSON()` pass stored metadata through `DateUtils.deepConvertDates()` before
   `new ABClassMetadata(...)`, which otherwise rejects a `Date` as not a canonical UTC datetime.
-  See [api-layer.md § Response mapper reuse](api-layer.md#response-mapper-reuse-implemented).
+  See [api-layer.md § Response mapper reuse](api-layer.md#response-mapper-reuse).
 - **Legacy submissions.** `AssignmentSerialisation._submissionJSON()` prefers a model
   `toJSON()`/`toPartialJSON()`. A stored record without that serialiser, and any present
   non-array submission body, falls back to `_plainSubmissionJSON()`, which converts the

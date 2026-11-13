@@ -143,9 +143,7 @@ sees it. The owner is `AssignmentLegacyRead` in `02_AssignmentLegacyRead.js`, ex
 | Read marker             | The read output carries `assessmentContractVersion: 'legacy'`; the stored instance keeps its original marker presence/value.                                                                                                                                          |
 
 Stored explicit `REASSESSMENT_REQUIRED` errors remain supported: they are served as stored on
-both read paths and are not regenerated. The retired all-criteria placeholder producer
-(`AssignmentRehydration.projectReassessmentSubmissions()` and `02_AssignmentReadProjection.js`)
-no longer exists.
+both read paths and are not regenerated. There is no all-criteria placeholder producer.
 
 ### Partial variant — `Assignment.toPartialJSON()`
 
@@ -424,35 +422,33 @@ contract's `StudentSubmissionItem.artifact` uses the same shape with `role` set 
 
 1. **`Assignment.toPartialJSON()` emits `courseId` and `assignmentName` but frontend `AssignmentPartialSchema` strips them.**
    Frontend `AssignmentPartialSchema` does not include `courseId` or `assignmentName`. Zod's default `.strip()` mode silently removes them. The ABClass transport includes them in the wire format but the frontend resolves assignment context from other sources.
-   **Classification: Aligned** — Zod's default `.strip()` behaviour tolerates the extra fields; the stripped data is unused by the frontend.
 
 2. **`AssignmentPartialSchema` uses `assignmentDefinitionKey` instead of `assignmentDefinition`.**
    The ABClassResponseMapper._toReadView() replaces the embedded `assignmentDefinition` object with a `assignmentDefinitionKey` string at the transport boundary. This is **not** part of `Assignment.toPartialJSON()` — it is a transport transformation specific to the `getABClass` endpoint. The frontend resolves definition details from its own `AssignmentDefinitionPartials` registry.
-   **Classification: Aligned** — intentional transport-boundary transformation documented in ABClassResponseMapper.
 
 3. **`AssignmentFullResponseSchema` is `AssignmentFullSchema.nullable()`.**
    Backend `getAssignment_()` returns `null` when no persisted document exists. The frontend schema expects this.
-   **Classification: Aligned** — documented contract.
 
 4. **`startAssessmentRun` returns `null` and the frontend schema uses `z.void().nullable()`.**
    Backend returns `null` (no payload on success). The frontend `StartAssessmentRunResponseSchema` is `z.void().nullable()` which accepts both `undefined` (from the envelope's `data ?? null` coercion) and `null`.
-   **Classification: Aligned** — standard pattern for void-response endpoints.
 
 5. **`assessmentContractVersion` is required by both frontend read schemas.**
    `AssignmentFullSchema` and `AssignmentPartialSchema` both require `z.union([z.literal(1), z.literal('legacy')])`. The backend emits `1` for a stored marker of `1` and `'legacy'` for every other stored marker, so the read-wire union matches both read paths.
-   **Classification: Aligned** — root presence/type is enforced by the schemas and the normaliser re-parses the normalised result.
 
 6. **Legacy records are retained as ordinary instance state and both read paths prepare them at read time.**
    `Assignment._baseFromJSON()` does not catch, reconstruct or drop non-marker-1 records: it keeps the stored submission records in `inst.submissions`, the exact stored marker value in `inst.assessmentContractVersion` and its presence in `inst._legacyMarkerPresent`, and does not run the marker-1 submission rehydration. `AssignmentRehydration._rehydrateSubmission()` handles marker-1 records only — it delegates each one to `AssignmentCurrentRestoration._rehydrateCurrentSubmission()` — so non-marker-1 records never reach it. `AssignmentSerialisation.toJSON()` / `toPartialJSON()` re-emit that state through their normal paths (an ordinary save never marks a stored result as current), while `toReadJSON()` and `ABClassResponseMapper._toReadView()` prepare read submissions through `AssignmentRehydration.prepareLegacyReadSubmissions()` and emit `'legacy'` on the wire entry. Both read services validate the resulting entries. Completed-write preflight/gates are enforced at the write boundary.
-   **Classification: Aligned** — recorded under [Component Shape: Assessment § Write boundary](assessment.md#write-boundary-preflight-before-any-write).
+   See [Component Shape: Assessment § Write boundary](assessment.md#write-boundary-preflight-before-any-write).
 
 7. **A restored `assignmentName` must be a string; there is no generated fallback.**
-   The constructor's restoration branch requires `typeof restoration.assignmentName === 'string'` and throws `TypeError` before any Classroom access otherwise, so a stored `null`, `undefined` or other non-string fails loudly and propagates unhandled. The generated `Assignment <assignmentId>` fallback has been deleted, including from the fetched-title path, where `fetchAssignmentName()` throws `TypeError` when the Classroom title is not a string after its single coursework call. Valid strings — including a blank string — and the saved `createdAt` are preserved verbatim, so the normal construction and restoration paths cannot produce a `null` name and `AssignmentFullSchema.assignmentName: z.string()` remains the correct, unwidened contract.
-   **Classification: Aligned** — the strict-name contract (no schema widening, no recovery fetch, no fallback) is deliberate. It is not `Fragile`: an invalid saved name fails before it can reach persistence or transport.
+   The constructor's restoration branch requires `typeof restoration.assignmentName === 'string'` and throws `TypeError` before any Classroom access otherwise, so a stored `null`, `undefined` or other non-string fails loudly and propagates unhandled. There is no generated `Assignment <assignmentId>` fallback, including on the fetched-title path, where `fetchAssignmentName()` throws `TypeError` when the Classroom title is not a string after its single coursework call. Valid strings — including a blank string — and the saved `createdAt` are preserved verbatim, so the normal construction and restoration paths cannot produce a `null` name and `AssignmentFullSchema.assignmentName: z.string()` remains the correct, unwidened contract. The
+   strict-name rule (no schema widening, no recovery fetch, no fallback) is deliberate: an invalid
+   saved name fails before it can reach persistence or transport.
 
 8. **A present non-array legacy `submissions` value is preserved in persistence and fails read transports contextually.**
    Restoration and both persistence serialisers preserve a present `null` or plain-object `submissions` value and re-emit it unchanged, while `AssignmentFullSchema.submissions` and `AssignmentPartialSchema.submissions` require an array. On both read transports preparation is skipped for a non-array root: `AssignmentRehydration.prepareLegacyReadSubmissions()` returns `null`, and the read transport turns that `null` into a contextual error naming the assignment, so `getAssignment` fails for that assignment and `getABClass` fails for that class before any payload is served.
-   **Classification: Aligned** — the persistence and read contracts deliberately differ (a save must not destroy stored data; a read must not serve a non-array root). The rejection now comes from the backend read transport itself, with the frontend root check retained as defence-in-depth.
+   The persistence and read contracts deliberately differ: a save must not destroy stored data,
+   and a read must not serve a non-array root. The rejection comes from the backend read transport,
+   with the frontend root check retained as defence-in-depth.
 
 ---
 
@@ -525,11 +521,3 @@ Frontend:
   └── src/frontend/src/services/googleClassrooms/classDetail/classDetailService.zod.ts
         → AssignmentPartialSchema, ClassFullSchema, ClassFullResponseSchema
 ```
-
-## Planned contract changes (Not implemented)
-
-None for this contract. The legacy read marker union `1 | 'legacy'`, legacy read
-preparation and the removal of the all-results `REASSESSMENT_REQUIRED` placeholder producer
-are implemented and documented in the canonical sections above
-([§ Legacy read preparation](#legacy-read-preparation),
-[Component Shape: Assessment § `assessmentContractVersion` result marker](assessment.md#assessmentcontractversion-result-marker)).

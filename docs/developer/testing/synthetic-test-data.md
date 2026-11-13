@@ -125,7 +125,7 @@ Consequences:
 
 ## Assignment-timestamp convention
 
-Every generated assignment carries a deterministic non-null `updatedAt` set exactly three minutes after its `createdAt`, using the generator's existing `isoAt(offset + 3)` offset. This includes each class's index-zero assignment, which previously held `null` only to provide nullable transport-shape diversity.
+Every generated assignment carries a deterministic non-null `updatedAt` set exactly three minutes after its `createdAt`, using the generator's existing `isoAt(offset + 3)` offset. This includes each class's index-zero assignment.
 
 The convention keeps the corpus realistic:
 
@@ -298,7 +298,7 @@ adapter.
 ### `validateClassMetadata.js` helper
 
 - `scripts/synthetic-test-data/validateClassMetadata.js` validates raw generated metadata
-  independently of the frontend schemas. Both class-read schemas now require and retain
+  independently of the frontend schemas. Both class-read schemas require and retain
   the nullable metadata snapshot; generator validation additionally checks corpus linkage
   and cross-view parity rather than relying on frontend parse success.
 - It enforces strict raw shape and score union, canonical UTC timestamps, dense zero-to-three
